@@ -23,6 +23,9 @@ importers:
       '@qitu/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@qitu/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@qitu/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

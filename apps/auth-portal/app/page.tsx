@@ -6,6 +6,7 @@ const destinations = {
   student: '/student',
   parent: '/parent',
   teacher: '/teacher',
+  admin: '/admin',
 } as const;
 
 type Role = keyof typeof destinations;
@@ -50,6 +51,7 @@ export default function LoginPage() {
           <span>学生学习中心</span>
           <span>家长陪伴中心</span>
           <span>班主任工作台</span>
+          <span>平台管理后台</span>
         </div>
       </section>
       <section className="login-panel" aria-labelledby="login-title">
@@ -57,7 +59,7 @@ export default function LoginPage() {
         <h2 id="login-title">登录你的工作空间</h2>
         <p className="login-muted">选择身份后，将进入对应的学习系统。</p>
         <div className="role-tabs" role="tablist" aria-label="选择身份">
-          {(['student', 'parent', 'teacher'] as const).map((item) => (
+          {(['student', 'parent', 'teacher', 'admin'] as const).map((item) => (
             <button
               className={role === item ? 'role-tab active' : 'role-tab'}
               key={item}
@@ -66,7 +68,7 @@ export default function LoginPage() {
               role="tab"
               aria-selected={role === item}
             >
-              {item === 'student' ? '学生' : item === 'parent' ? '家长' : '班主任'}
+              {item === 'student' ? '学生' : item === 'parent' ? '家长' : item === 'teacher' ? '班主任' : '管理员'}
             </button>
           ))}
         </div>

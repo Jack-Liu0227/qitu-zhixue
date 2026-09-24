@@ -34,6 +34,13 @@ const users: AuthUser[] = [
     role: 'teacher',
     password: process.env.DEMO_TEACHER_PASSWORD ?? 'teacher123',
   },
+  {
+    id: 'admin-demo',
+    email: process.env.DEMO_ADMIN_EMAIL ?? 'admin@qtzx.local',
+    displayName: '演示管理员',
+    role: 'admin',
+    password: process.env.DEMO_ADMIN_PASSWORD ?? 'admin123',
+  },
 ];
 
 @Injectable()
