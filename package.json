@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "turbo dev --parallel",
+    "dev:auth": "pnpm --filter @qitu/auth-portal dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

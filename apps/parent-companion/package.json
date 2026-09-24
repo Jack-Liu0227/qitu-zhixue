@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@qitu/api-client": "workspace:*",
+    "@qitu/auth": "workspace:*",
     "@qitu/contracts": "workspace:*",
     "@qitu/design-tokens": "workspace:*",
     "@qitu/ui": "workspace:*",

@@ -1,5 +1,7 @@
 export type Role = 'student' | 'parent' | 'teacher' | 'admin' | 'support';
 
+export * from './auth';
+
 export type ProjectStage =
   | 'exploration'
   | 'intent_confirmed'

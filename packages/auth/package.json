@@ -2,6 +2,13 @@
   "name": "@qitu/auth",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc --noEmit", "lint": "node -e \"console.log('auth: lint placeholder')\"", "typecheck": "tsc --noEmit", "test": "node -e \"console.log('auth: no tests yet')\"" }
+  "exports": { ".": "./src/index.tsx" },
+  "scripts": { "build": "tsc --noEmit", "lint": "node -e \"console.log('auth: lint placeholder')\"", "typecheck": "tsc --noEmit", "test": "node -e \"console.log('auth: no tests yet')\"" },
+  "dependencies": {
+    "@qitu/contracts": "workspace:*",
+    "react": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
 }

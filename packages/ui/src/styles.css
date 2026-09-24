@@ -22,4 +22,6 @@ h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-heigh
 .qitu-stat-card { display: grid; gap: 10px; padding: 24px; background: white; border: 1px solid var(--qitu-border); border-radius: 10px; box-shadow: 0 8px 24px rgb(16 42 92 / 5%); }
 .qitu-stat-card span { color: var(--qitu-muted); font-size: .9rem; }
 .qitu-stat-card strong { color: var(--qitu-heading); font-size: 1.6rem; }
-@media (max-width: 700px) { .qitu-topbar { align-items: flex-start; gap: 8px; flex-direction: column; } .stats-grid { grid-template-columns: 1fr; } }
+
+.auth-logout { position: fixed; top: 16px; right: 6vw; z-index: 10; padding: 8px 12px; border: 1px solid var(--qitu-border); border-radius: 5px; background: white; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .82rem; }
+.auth-logout:hover { border-color: #2878f0; color: #2878f0; }

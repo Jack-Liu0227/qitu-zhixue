@@ -1,3 +1,4 @@
+import { AuthGuard, LogoutButton } from '@qitu/auth';
 import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
 import './globals.css';
@@ -10,7 +11,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <AuthGuard expectedRole="student">
+          <LogoutButton />
+          {children}
+        </AuthGuard>
+      </body>
     </html>
   );
 }
