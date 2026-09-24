@@ -9,6 +9,7 @@ build/
 .next/
 .turbo/
 coverage/
+*.tsbuildinfo
 .cache/
 .tmp/
 
