@@ -1,0 +1,28 @@
+name: repository-baseline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repository structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f AGENTS.md
+          test -f CONTRIBUTING.md
+          test -f docs/AI教育平台前后端开发文档_v1.0.md
+          for dir in apps packages services database docs tooling; do
+            test -d "$dir"
+          done
+          if find . -maxdepth 4 -type f \( -name '*.pem' -o -name '*.key' \) | grep -q .; then
+            echo 'Private key-like file detected'
+            exit 1
+          fi
+          echo 'Repository baseline OK'

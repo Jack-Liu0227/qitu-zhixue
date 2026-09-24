@@ -1,0 +1,12 @@
+# Default reviewers for the repository
+* @Jack-Liu0227
+
+# Product and architecture docs
+/docs/ @Jack-Liu0227
+/AGENTS.md @Jack-Liu0227
+
+# Shared contracts and authorization require explicit review
+/packages/contracts/ @Jack-Liu0227
+/packages/permissions/ @Jack-Liu0227
+/services/api/ @Jack-Liu0227
+/database/ @Jack-Liu0227

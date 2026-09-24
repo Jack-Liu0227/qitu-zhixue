@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+
+# Builds and caches
+dist/
+build/
+.next/
+.turbo/
+coverage/
+.cache/
+.tmp/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Runtime data
+logs/
+*.log
+uploads/
+.tmp-data/
+
+# Local IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local agent state
+.pi/agent/auth.json
+.codex/auth.json
+.pi/sessions/
+.codex/sessions/
