@@ -1,0 +1,27 @@
+{
+  "name": "@qitu/teacher-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "lint": "node -e \"console.log('teacher-workspace: lint rules pending M1')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('teacher-workspace: no tests yet')\""
+  },
+  "dependencies": {
+    "@qitu/api-client": "workspace:*",
+    "@qitu/contracts": "workspace:*",
+    "@qitu/design-tokens": "workspace:*",
+    "@qitu/ui": "workspace:*",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.3"
+  }
+}

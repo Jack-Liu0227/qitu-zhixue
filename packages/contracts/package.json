@@ -1,0 +1,12 @@
+{
+  "name": "@qitu/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "node -e \"console.log('contracts: lint placeholder')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('contracts: no tests yet')\""
+  }
+}

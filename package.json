@@ -1,0 +1,25 @@
+{
+  "name": "qitu-zhixue",
+  "private": true,
+  "version": "0.1.0",
+  "description": "启途智学 AI 教育平台 Monorepo",
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.3"
+  }
+}

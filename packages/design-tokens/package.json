@@ -1,0 +1,12 @@
+{
+  "name": "@qitu/design-tokens",
+  "private": true,
+  "version": "0.1.0",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "node -e \"console.log('design-tokens: lint placeholder')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('design-tokens: no tests yet')\""
+  }
+}

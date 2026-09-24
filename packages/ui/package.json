@@ -1,0 +1,21 @@
+{
+  "name": "@qitu/ui",
+  "private": true,
+  "version": "0.1.0",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "node -e \"console.log('ui: lint placeholder')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('ui: no tests yet')\""
+  },
+  "dependencies": {
+    "react": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
+}
