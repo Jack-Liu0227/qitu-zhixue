@@ -1,0 +1,16 @@
+{
+  "name": "@qitu/workers",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --outDir dist --noEmit false",
+    "lint": "node -e \"console.log('workers: lint placeholder')\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('workers: no tests yet')\""
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}

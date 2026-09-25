@@ -1,9 +1,12 @@
-name: repository-baseline
+name: qitu-zhixue-ci
 
 on:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   structure:
@@ -18,11 +21,33 @@ jobs:
           test -f AGENTS.md
           test -f CONTRIBUTING.md
           test -f docs/AI教育平台前后端开发文档_v1.0.md
+          test -f package.json
+          test -f pnpm-workspace.yaml
           for dir in apps packages services database docs tooling; do
             test -d "$dir"
           done
-          if find . -maxdepth 4 -type f \( -name '*.pem' -o -name '*.key' \) | grep -q .; then
-            echo 'Private key-like file detected'
+          if find . -type f \( -name '*.pem' -o -name '*.key' -o -name 'auth.json' \) | grep -q .; then
+            echo 'Credential-like file detected'
             exit 1
           fi
           echo 'Repository baseline OK'
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.10.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
