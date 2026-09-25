@@ -44,3 +44,4 @@ Thumbs.db
 
 # Runtime logs
 .runtime/
+.codex-tasks/
