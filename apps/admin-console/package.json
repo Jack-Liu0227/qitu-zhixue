@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1 --port 3104",
+    "dev": "next dev --port 3004",
     "build": "next build",
     "lint": "node -e \"console.log('admin-console: lint rules pending M1')\"",
     "typecheck": "tsc --noEmit",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@qitu/api-client": "workspace:*",
+    "@qitu/auth": "workspace:*",
     "@qitu/contracts": "workspace:*",
     "@qitu/design-tokens": "workspace:*",
     "@qitu/ui": "workspace:*",

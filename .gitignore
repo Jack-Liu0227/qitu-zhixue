@@ -41,5 +41,6 @@ Thumbs.db
 .codex/auth.json
 .pi/sessions/
 .codex/sessions/
-.codex-tasks/
-.runtime/qitu/
+
+# Runtime logs
+.runtime/

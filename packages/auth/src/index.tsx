@@ -33,6 +33,11 @@ export function AuthGuard({
       })
       .then(({ data }) => {
         if (!active) return;
+        if (data.role !== expectedRole) {
+          setState('anonymous');
+          window.location.assign(redirectTo);
+          return;
+        }
         setUser(data);
         setState('authenticated');
       })
@@ -44,14 +49,14 @@ export function AuthGuard({
     return () => {
       active = false;
     };
-  }, []);
+  }, [expectedRole, redirectTo]);
 
   if (state === 'refreshing') {
     return <main className="auth-loading">正在验证登录状态…</main>;
   }
 
-  if (state === 'anonymous' || !user || user.role !== expectedRole) {
-    return <main className="auth-loading">正在返回统一登录页…</main>;
+  if (state === 'anonymous' || !user) {
+    return <main className="auth-loading">正在前往登录页…</main>;
   }
 
   return <>{children}</>;
