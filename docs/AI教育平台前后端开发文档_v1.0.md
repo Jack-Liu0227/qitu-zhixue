@@ -55,7 +55,7 @@
 
 - 学生端继续使用“今天、灵感空间、AI导师、我的项目、作品展厅”导航。
 - 家长端继续使用“首页、学习进展、消息与反馈”导航。
-- 班主任端继续使用“工作台、学生管理、问题处理、数据统计、知识库、系统设置”结构。
+- 班主任端继续使用“工作台、学生管理、问题处理、数据统计、系统设置”结构。
 - 管理后台在现有系统设置视觉和壳层内扩展管理功能。
 - 灵感空间分为“推荐项目”和“自由 Live 探索”两条业务路径，最终都创建统一的项目实例。
 - 一个学生同一时间只能有一名当前班主任。
@@ -795,7 +795,6 @@ POST /api/v1/parent/messages/:id/read
 /teacher/issues
 /teacher/issues/:id
 /teacher/statistics
-/teacher/knowledge
 /teacher/settings
 ```
 
@@ -951,25 +950,7 @@ POST  /api/v1/mentor/students/:id/notes
 
 统计数据来自 `learning_events` 和 `alerts`，不能由前端自行计算并写回数据库。
 
-## 6.7 知识库
-
-### 功能
-
-- 搜索理论材料
-- 查看材料详情
-- 按领域、年龄和难度筛选
-- 引用材料到 AI 导师上下文
-- 审核和下线材料
-
-### 接口
-
-```http
-GET /api/v1/mentor/knowledge/search?q=
-GET /api/v1/mentor/knowledge/:id
-POST /api/v1/mentor/knowledge/:id/use
-```
-
-## 6.8 班主任权限
+## 6.7 班主任权限
 
 - 只访问 `mentor_assignments` 中自己的学生。
 - 不能分配其他导师。
@@ -1580,7 +1561,6 @@ delete-data
 - 问题处理
 - Inject Prompt
 - 数据统计
-- 知识库
 
 验收：告警可以完成“发现—处理—干预—结果”闭环。
 
