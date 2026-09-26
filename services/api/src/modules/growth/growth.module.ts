@@ -10,7 +10,7 @@ import { GrowthService } from './growth.service';
  * 两者共用同一个 `GrowthService` 实例，所以「学生看到什么、家长就同步看到什么」
  * 是构造上成立的，而不是靠两边各自轮询对齐。
  *
- * `GrowthService` 被导出：未来 AI 导师 / 项目模块在服务端记录成长事件时注入它，
+ * `GrowthService` 被导出：未来 AI搭档 / 项目模块在服务端记录成长事件时注入它，
  * 但 HTTP 层永远不提供写接口。
  */
 @Module({

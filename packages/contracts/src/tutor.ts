@@ -59,7 +59,7 @@ export type TutorReplyBlock =
 export type TutorToolCallStatus = 'running' | 'done' | 'error';
 
 /**
- * AI 搭档在一次回复中调用的一次工具。
+ * AI搭档在一次回复中调用的一次工具。
  *
  * `label` 是给学生看的短标签；`name` 是稳定的机器名，用于统计与排查。
  * `result` 只能是「面向学生的简短结论」，不得携带原始提示词、完整答案或

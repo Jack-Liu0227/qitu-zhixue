@@ -53,7 +53,7 @@ const USAGES: readonly ModelUsageSlot[] = [
   {
     id: 'tutor.chat',
     agent: 'tutor',
-    label: 'AI 搭档 · 对话',
+    label: 'AI搭档 · 对话',
     description: '启发式追问的主体模型，决定教学语气与提示阶梯。',
     requiresOutput: ['text'],
     fallbackTo: null,
@@ -61,7 +61,7 @@ const USAGES: readonly ModelUsageSlot[] = [
   {
     id: 'tutor.live',
     agent: 'tutor',
-    label: 'AI 搭档 · 实时语音',
+    label: 'AI搭档 · 实时语音',
     description: '实时语音通道。需同时具备 audio 输入与输出才能启用「语音入→语音出」。',
     requiresOutput: ['text'],
     fallbackTo: 'tutor.chat',

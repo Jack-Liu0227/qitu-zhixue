@@ -239,7 +239,7 @@ export default function LoginPage() {
         </p>
 
         <ul className="login-feature-list">
-          <li>AI 搭档启发式引导，先思考再动手</li>
+          <li>AI搭档启发式引导，先思考再动手</li>
           <li>先理论后实践，稳步进入项目创作</li>
           <li>作品与成长档案沉淀每一步学习轨迹</li>
           <li>安全与最小可见范围，守护未成年人数据</li>
