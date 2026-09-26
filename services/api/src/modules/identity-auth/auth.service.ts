@@ -87,6 +87,27 @@ const users: AuthUser[] = [
     role: 'admin',
     password: process.env.DEMO_ADMIN_PASSWORD ?? 'admin123',
   },
+  {
+    id: 'teacher-demo-2',
+    email: process.env.DEMO_TEACHER2_EMAIL ?? 'teacher2@qtzx.local',
+    displayName: '演示班主任二',
+    role: 'teacher',
+    password: process.env.DEMO_TEACHER2_PASSWORD ?? 'teacher123',
+  },
+  {
+    id: 'student-demo-3',
+    email: process.env.DEMO_STUDENT3_EMAIL ?? 'student3@qtzx.local',
+    displayName: '演示学生三',
+    role: 'student',
+    password: process.env.DEMO_STUDENT3_PASSWORD ?? 'student123',
+  },
+  {
+    id: 'student-demo-4',
+    email: process.env.DEMO_STUDENT4_EMAIL ?? 'student4@qtzx.local',
+    displayName: '演示学生四',
+    role: 'student',
+    password: process.env.DEMO_STUDENT4_PASSWORD ?? 'student123',
+  },
 ];
 
 /**

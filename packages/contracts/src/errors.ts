@@ -24,7 +24,13 @@ export type ApiErrorCode =
   /** 学生选择的输入／输出组合当前模型能力不支持（409）。详见 `ModalityUnavailableDetails`。 */
   | 'MODALITY_UNAVAILABLE'
   /** 操作过于频繁（429）。 */
-  | 'RATE_LIMITED';
+  | 'RATE_LIMITED'
+  /** 家长「给孩子一句鼓励」内容不合法（400）：空、超长或只含空白。 */
+  | 'ENCOURAGEMENT_INVALID'
+  /** 家长反馈内容不合法（400）。 */
+  | 'FEEDBACK_INVALID'
+  /** 家长的消息确认 / 暂不提醒动作对该消息不适用（409）。 */
+  | 'MESSAGE_ACTION_NOT_APPLICABLE';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

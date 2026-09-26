@@ -35,12 +35,14 @@ uploads/
 .idea/
 .DS_Store
 Thumbs.db
+*.orig
 
 # Local agent state
 .pi/agent/auth.json
 .codex/auth.json
 .pi/sessions/
 .codex/sessions/
+.pi/runs/
 
 # Runtime logs
 .runtime/

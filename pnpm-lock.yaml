@@ -60,6 +60,12 @@ importers:
 
   apps/auth-portal:
     dependencies:
+      '@qitu/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@qitu/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@qitu/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
@@ -131,6 +137,9 @@ importers:
 
   apps/student-center:
     dependencies:
+      '@qitu/ai-client':
+        specifier: workspace:*
+        version: link:../../packages/ai-client
       '@qitu/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -220,6 +229,9 @@ importers:
       '@qitu/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@qitu/ui':
+        specifier: workspace:*
+        version: link:../ui
       react:
         specifier: ^19.1.0
         version: 19.3.0
@@ -244,6 +256,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@qitu/design-tokens':
+        specifier: workspace:*
+        version: link:../design-tokens
       react:
         specifier: ^19.1.0
         version: 19.3.0

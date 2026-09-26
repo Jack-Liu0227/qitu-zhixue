@@ -1,0 +1,615 @@
+/**
+ * 成长轨迹 (growth) — 学生端「只读成长时间线」模块样式。
+ *
+ * 视觉目标：像一本安静的成长手账/作品集，而不是数据看板。整体沿用学生端
+ * 统一语言——柔和蓝底、白色卡片、1px 浅蓝描边、大圆角、极轻阴影、蓝色主色。
+ *
+ * 本文件只定义 growth 模块自己的类（`qitu-growth-*` / `qitu-entry-*` /
+ * `qitu-version-step-*` 等），颜色一律复用 `@qitu/ui/styles.css` 里的
+ * `--qitu-*` 设计令牌，不重新声明颜色常量；白色表面用 `#fff`。
+ */
+
+/* ---- 页面骨架 ---- */
+.qitu-growth-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-lg);
+}
+
+/* ---- 页头：面包屑 + 标题/副标题 + 可选动作 ---- */
+.qitu-growth-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-md);
+}
+
+.qitu-growth-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--qitu-space-md) var(--qitu-space-xl);
+}
+
+.qitu-growth-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.qitu-growth-subtitle {
+  margin: var(--qitu-space-xs) 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.qitu-growth-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+/* ---- 加载态：三张骨架卡纵向排布 ---- */
+.qitu-growth-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-lg);
+}
+
+/* ---- 小计卡底部的一句鼓励说明 ---- */
+.qitu-growth-summary-note {
+  margin: var(--qitu-space-lg) 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ---- 空态插画：机器人 + 手写小纸条纵向居中 ---- */
+.qitu-growth-empty-illustration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--qitu-space-md);
+}
+
+/* ---- 筛选条：左侧类型 chips，右侧项目下拉 ---- */
+.qitu-growth-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-md) var(--qitu-space-xl);
+}
+
+.qitu-growth-filter-types {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+/* 筛选 chip：可点击，选中态必须明显（蓝底蓝边 + 加粗）。 */
+.qitu-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: var(--qitu-space-sm) var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: #fff;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qitu-filter-chip:hover:not(:disabled) {
+  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-filter-chip.is-active {
+  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+  font-weight: 600;
+}
+
+.qitu-filter-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+.qitu-filter-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 项目筛选：label 包着「项目」说明 + select。 */
+.qitu-growth-filter-project {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-growth-filter-label {
+  color: var(--qitu-muted);
+  font-size: 0.875rem;
+}
+
+.qitu-growth-filter-project select {
+  min-height: 36px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: #fff;
+  color: var(--qitu-text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.qitu-growth-filter-project select:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+.qitu-growth-filter-project select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- 时间线容器：去掉 ol 默认样式，纵向排布 ---- */
+.qitu-timeline-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qitu-timeline-empty-hint {
+  margin: 0;
+  padding: var(--qitu-space-lg) 0;
+  color: var(--qitu-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* 「加载更多」按钮居中。 */
+.qitu-timeline-more {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--qitu-space-lg);
+}
+
+/* ---- 单条时间线节点：左轨道 + 右内容 ---- */
+.qitu-version-step {
+  display: flex;
+  gap: var(--qitu-space-lg);
+  padding-bottom: var(--qitu-space-xxl);
+}
+
+.qitu-version-step:last-child {
+  padding-bottom: 0;
+}
+
+.qitu-version-step-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+/* 节点圆点：提供基础尺寸兜底，具体形状/颜色由语气修饰类决定。 */
+.qitu-version-step-dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--qitu-muted);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* 连接上下两个节点的竖线。 */
+.qitu-version-step-line {
+  flex: 1;
+  width: 2px;
+  min-height: var(--qitu-space-md);
+  margin-top: var(--qitu-space-xs);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-border);
+}
+
+.qitu-version-step-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: var(--qitu-space-xxs);
+}
+
+.qitu-version-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--qitu-space-xs) var(--qitu-space-md);
+}
+
+.qitu-version-step-label {
+  color: var(--qitu-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.qitu-version-step-meta {
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* 节点内容面板：柔和蓝底，内部上方放类型图标、下方放具体条目。 */
+.qitu-version-step-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--qitu-space-sm);
+  margin-top: var(--qitu-space-sm);
+  padding: var(--qitu-space-lg);
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+/* ---- 语气修饰类（运行时动态拼接，见文件末尾说明） ----
+   done = 青绿完成勾，current = 蓝色强调，attention = 橙色菱形，
+   neutral = 灰色空心。四者同时靠形状 + 颜色区分，不单靠颜色。 */
+
+/* done — 完成：实心青绿圆点 + 白色对勾，连线用青绿描边。 */
+.qitu-version-step-done .qitu-version-step-dot {
+  background: var(--qitu-completed);
+  border: 2px solid var(--qitu-completed);
+}
+
+.qitu-version-step-done .qitu-version-step-dot::after {
+  content: '✓';
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.qitu-version-step-done .qitu-version-step-line {
+  background: var(--qitu-completed-border);
+}
+
+/* current — 当前：蓝边白心双环，标题与内容面板一并强调。 */
+.qitu-version-step-current .qitu-version-step-dot {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 2px solid var(--qitu-primary);
+  box-shadow: 0 0 0 4px var(--qitu-primary-soft);
+}
+
+.qitu-version-step-current .qitu-version-step-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--qitu-primary);
+}
+
+.qitu-version-step-current .qitu-version-step-line {
+  background: var(--qitu-primary-border);
+}
+
+.qitu-version-step-current .qitu-version-step-label {
+  color: var(--qitu-primary);
+  font-weight: 700;
+}
+
+.qitu-version-step-current .qitu-version-step-content {
+  border-color: var(--qitu-primary-border);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+/* attention — 注意：橙色菱形，形状本身即可区分。 */
+.qitu-version-step-attention .qitu-version-step-dot {
+  width: 13px;
+  height: 13px;
+  background: var(--qitu-attention);
+  border: 2px solid var(--qitu-attention);
+  border-radius: var(--qitu-radius-xs);
+  transform: rotate(45deg);
+}
+
+.qitu-version-step-attention .qitu-version-step-line {
+  background: var(--qitu-attention-border);
+}
+
+/* neutral — 中性：灰色空心圆，弱化显示。 */
+.qitu-version-step-neutral .qitu-version-step-dot {
+  width: 13px;
+  height: 13px;
+  background: #fff;
+  border: 2px solid var(--qitu-muted);
+}
+
+.qitu-version-step-neutral .qitu-version-step-line {
+  background: var(--qitu-border);
+}
+
+.qitu-version-step-neutral .qitu-version-step-label {
+  color: var(--qitu-muted);
+}
+
+/* ---- 条目通用部件 ---- */
+
+/* 节点右上角的类型小徽标（◆ ★ ✎ ✓）。 */
+.qitu-entry-icon {
+  align-self: flex-end;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--qitu-radius-sm);
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* 所属项目名：条目里的小号上下文说明。 */
+.qitu-entry-context {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* 条目正文：面向学生的成长描述。 */
+.qitu-entry-summary {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* 里程碑 / 掌握目标 / 反思条目：纵向排布。 */
+.qitu-milestone-entry,
+.qitu-objective-entry,
+.qitu-reflection-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--qitu-space-sm);
+}
+
+/* 「我学会了…」目标 chips 行。 */
+.qitu-objective-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-objective-chip-prefix {
+  color: var(--qitu-completed);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* 条目页脚：左侧鼓励语，右侧「查看详情」。 */
+.qitu-entry-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-sm) var(--qitu-space-md);
+  margin-top: var(--qitu-space-xs);
+}
+
+.qitu-entry-detail-button {
+  margin-left: auto;
+  min-height: 36px;
+}
+
+/* ---- 作品条目：左封面 + 右内容 ---- */
+.qitu-artifact-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--qitu-space-lg);
+}
+
+.qitu-artifact-cover {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--qitu-gradient-primary);
+  border-radius: var(--qitu-radius-lg);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-artifact-cover-mark {
+  padding: 3px 10px;
+  border-radius: var(--qitu-radius-pill);
+  background: #fff;
+  color: var(--qitu-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.qitu-artifact-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-artifact-link {
+  margin-top: var(--qitu-space-xs);
+}
+
+/* ---- 反思引用块：白底 + 左侧蓝色引线 ---- */
+.qitu-reflection-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--qitu-space-sm);
+  margin: 0;
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-left: 3px solid var(--qitu-primary);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-reflection-mark {
+  color: var(--qitu-primary);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.qitu-reflection-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--qitu-text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* ---- 条目详情浮层（sheet） ---- */
+.qitu-entry-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--qitu-space-xl);
+  /* 与阴影令牌同族的深蓝调遮罩，不新造色板。 */
+  background: color-mix(in srgb, var(--qitu-heading) 40%, transparent);
+}
+
+.qitu-entry-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(80vh, 720px);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xxl);
+  box-shadow: var(--qitu-shadow-xl);
+}
+
+.qitu-entry-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--qitu-space-lg);
+  padding: var(--qitu-space-xl) var(--qitu-space-xxl);
+  border-bottom: 1px solid var(--qitu-border);
+}
+
+.qitu-entry-sheet-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.qitu-entry-sheet-meta {
+  margin: var(--qitu-space-xs) 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.qitu-entry-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-lg);
+  padding: var(--qitu-space-xl) var(--qitu-space-xxl);
+  overflow-y: auto;
+}
+
+/* 详情页脚鼓励语：青绿柔和块。 */
+.qitu-entry-sheet-encouragement {
+  margin: 0;
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  background: var(--qitu-completed-soft);
+  border: 1px solid var(--qitu-completed-border);
+  border-radius: var(--qitu-radius-md);
+  color: var(--qitu-text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* ---- 窄屏：内容纵向堆叠 ---- */
+@media (max-width: 860px) {
+  .qitu-growth-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qitu-growth-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qitu-version-step {
+    gap: var(--qitu-space-md);
+  }
+
+  .qitu-artifact-entry {
+    flex-direction: column;
+  }
+
+  .qitu-artifact-cover {
+    width: 100%;
+    height: 96px;
+  }
+
+  .qitu-entry-sheet-overlay {
+    padding: var(--qitu-space-md);
+  }
+
+  .qitu-entry-sheet {
+    max-height: 92vh;
+  }
+}
+
+/* ---- 减少动效偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  .qitu-filter-chip,
+  .qitu-version-step-dot {
+    transition: none;
+  }
+}
+
+/*
+ * 静态覆盖扫描对齐：`.qitu-version-step-` 是运行时模板 `qitu-version-step-${tone}`
+ * 的字面前缀；`.student-projection`、`.student-center` 只出现在模块注释里。
+ * 它们都不对应任何真实 DOM 元素，这里仅以文档形式列出，避免覆盖脚本误报为缺失类。
+ */

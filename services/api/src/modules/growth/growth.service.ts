@@ -29,7 +29,7 @@ import type {
 
 /** 家长 → 孩子的绑定关系。对象级权限的唯一真相，前端不可扩展。 */
 const PARENT_CHILDREN: Record<string, string[]> = {
-  'parent-demo': ['student-demo'],
+  'parent-demo': ['student-demo', 'student-demo-3'],
   'parent-demo-2': ['student-demo-2'],
 };
 

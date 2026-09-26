@@ -1,0 +1,220 @@
+/* 灵感空间（/student/inspiration）—— 「推荐项目 / 自由探索」双标签页。
+ *
+ * 只定义本模块自己的 qitu-inspiration-* 类。
+ * 屏内工具栏（.qitu-screen-toolbar）与标签按钮（.qitu-tab）复用 projects.css，
+ * 与「我的项目」的 ProjectTabs 保持完全一致的观感；
+ * 按钮、标签纸、卡片容器复用 @qitu/ui/styles.css 的 .qitu-button / .qitu-tag-chip。
+ *
+ * 模板卡里的「我想做这个」只是跳到探索确认流程，不创建正式项目。
+ */
+
+.qitu-inspiration-tabs {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+/* ---------- 标签栏 ---------- */
+
+.qitu-inspiration-tablist {
+  display: flex;
+  gap: var(--qitu-space-xs);
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+/* 面板本身可聚焦（键盘用户要能跳进面板），所以必须给可见焦点环，
+   不能只依赖隐藏出来的 outline。 */
+.qitu-inspiration-tabs [role='tabpanel']:focus-visible {
+  outline: none;
+  border-radius: var(--qitu-radius-md);
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* ---------- 推荐项目 ---------- */
+
+.qitu-inspiration-recommended {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+/* 按可用宽度自动排 2~4 列，窄屏退化成单列。 */
+.qitu-inspiration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--qitu-space-lg);
+  align-items: start;
+}
+
+/* ---------- 模板卡 ---------- */
+
+.qitu-inspiration-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-md);
+  padding: var(--qitu-space-lg);
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  box-shadow: var(--qitu-shadow-sm);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.qitu-inspiration-template-card:hover {
+  border-color: var(--qitu-primary-border);
+  box-shadow: var(--qitu-shadow-md);
+  transform: translateY(-2px);
+}
+
+.qitu-inspiration-template-header {
+  display: flex;
+  gap: var(--qitu-space-md);
+  align-items: flex-start;
+}
+
+.qitu-inspiration-template-cover {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+}
+
+/* min-width: 0 才能让长标题在 flex 子项里正常换行而不是撑破卡片。 */
+.qitu-inspiration-template-heading {
+  min-width: 0;
+}
+
+.qitu-inspiration-template-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.qitu-inspiration-template-meta {
+  margin: 4px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-inspiration-template-summary {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ---------- 四个阶段 ---------- */
+
+.qitu-inspiration-stages {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-inspiration-stage {
+  display: flex;
+  gap: var(--qitu-space-sm);
+  align-items: baseline;
+}
+
+.qitu-inspiration-stage-index {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--qitu-primary);
+  border-radius: var(--qitu-radius-pill);
+}
+
+.qitu-inspiration-stage-label {
+  color: var(--qitu-text);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* ---------- 成果 ---------- */
+
+.qitu-inspiration-template-outcome {
+  display: flex;
+  gap: var(--qitu-space-sm);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--qitu-space-sm);
+  font-size: 0.85rem;
+  background: var(--qitu-completed-soft);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-inspiration-template-outcome-label {
+  flex-shrink: 0;
+  color: var(--qitu-completed);
+  font-weight: 700;
+}
+
+/* margin-top: auto 让不同高度的卡片底部操作区对齐。 */
+.qitu-inspiration-template-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-md);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.qitu-inspiration-template-hint {
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+}
+
+/* ---------- 自由探索 ---------- */
+
+.qitu-inspiration-free-explore {
+  display: grid;
+  gap: var(--qitu-space-md);
+  justify-items: start;
+}
+
+.qitu-inspiration-free-explore-description {
+  margin: 0;
+  color: var(--qitu-text);
+  line-height: 1.7;
+}
+
+.qitu-inspiration-free-explore-hint {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 760px) {
+  .qitu-inspiration-tablist {
+    width: 100%;
+  }
+
+  .qitu-inspiration-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-inspiration-template-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
