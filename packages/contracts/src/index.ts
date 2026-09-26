@@ -1,18 +1,13 @@
-export type Role = 'student' | 'parent' | 'teacher' | 'admin' | 'support';
-
+// `Role` 与登录契约同源定义在 `./auth`，此处仅做 re-export。
 export * from './auth';
 
-export type ProjectStage =
-  | 'exploration'
-  | 'intent_confirmed'
-  | 'theory_learning'
-  | 'theory_check'
-  | 'practice_ready'
-  | 'practice_building'
-  | 'artifact_review'
-  | 'reflection'
-  | 'published'
-  | 'completed';
+import type { ProjectStage } from './project';
+export * from './project';
+export * from './tutor';
+export * from './realtime';
+export * from './growth';
+export * from './settings';
+export * from './errors';
 
 export interface HealthResponse {
   service: string;
