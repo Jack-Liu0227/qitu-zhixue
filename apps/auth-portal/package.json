@@ -10,6 +10,8 @@
     "test": "node -e \"console.log('auth-portal: no tests yet')\""
   },
   "dependencies": {
+    "@qitu/auth": "workspace:*",
+    "@qitu/contracts": "workspace:*",
     "@qitu/design-tokens": "workspace:*",
     "@qitu/ui": "workspace:*",
     "next": "^15.5.0",
