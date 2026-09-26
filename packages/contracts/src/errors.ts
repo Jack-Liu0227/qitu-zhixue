@@ -1,3 +1,5 @@
+import type { TutorModalityMode } from './tutor';
+
 /**
  * Stable, string-literal error-code union shared across all student-center
  * APIs. Additive only.
@@ -19,8 +21,22 @@ export type ApiErrorCode =
   | 'UNAUTHENTICATED'
   /** 账号或口令不正确（401）。 */
   | 'INVALID_CREDENTIALS'
+  /** 学生选择的输入／输出组合当前模型能力不支持（409）。详见 `ModalityUnavailableDetails`。 */
+  | 'MODALITY_UNAVAILABLE'
   /** 操作过于频繁（429）。 */
   | 'RATE_LIMITED';
+
+/**
+ * `MODALITY_UNAVAILABLE` 的详情。
+ *
+ * 告知前端**现在能用什么**，而不是只丢一句「不支持」让学生自己试。
+ * 这是「学生可选双模态」能成立的前提：选项要按真实能力置灰，
+ * 而不是让语音按钮看上去可点、点下去报错。
+ */
+export interface ModalityUnavailableDetails {
+  requested: TutorModalityMode;
+  available: TutorModalityMode[];
+}
 
 /**
  * RFC 9457-style problem details. `details` carries code-specific context,

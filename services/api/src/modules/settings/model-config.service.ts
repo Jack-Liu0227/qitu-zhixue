@@ -5,6 +5,7 @@ import type {
   ModelRuntimeResponse,
   ModelSlot,
   ModelSlotOption,
+  TutorModalityMode,
   UpdateModelConfigRequest,
 } from '@qitu/contracts';
 
@@ -25,7 +26,17 @@ import type {
 
 const SLOTS: ModelSlot[] = ['text', 'live'];
 
-/** 需要密钥的供应商；`local-heuristic` 是仓库里确定性、无需密钥的引擎。 */
+/**
+ * 内置模型目录。
+ *
+ * `supportsInput` / `supportsOutput` 是**能力声明**，不是宣传语：
+ *  - 它们直接决定学生端能勾选哪几种输入／输出组合（见 `getRuntime`），
+ *    所以只能写已经真实接通的通道。
+ *  - 本地启发式引擎接收语音（拿到的是已转写文本）但**不产出音频**，
+ *    因此它的 `supportsOutput` 只有 `text`；这会让「语音入→语音出」
+ *    在配置本地引擎时诚实地置灰，而不是假装能说。
+ *  - 接入新模型时，若未实测音频输出，请不要预先勾上 `voice`。
+ */
 const OPTIONS: ModelSlotOption[] = [
   {
     provider: 'local-heuristic',
@@ -33,6 +44,8 @@ const OPTIONS: ModelSlotOption[] = [
     label: '本地启发式引擎（无需密钥，确定性）',
     slot: 'text',
     requiresApiKey: false,
+    supportsInput: ['text'],
+    supportsOutput: ['text'],
   },
   {
     provider: 'local-heuristic',
@@ -40,11 +53,39 @@ const OPTIONS: ModelSlotOption[] = [
     label: '本地实时引擎（无需密钥，确定性）',
     slot: 'live',
     requiresApiKey: false,
+    supportsInput: ['text', 'voice'],
+    supportsOutput: ['text'],
   },
-  { provider: 'deepseek', modelId: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', slot: 'text', requiresApiKey: true },
-  { provider: 'deepseek', modelId: 'deepseek-flash', label: 'DeepSeek Flash', slot: 'text', requiresApiKey: true },
-  { provider: 'deepseek', modelId: 'deepseek-realtime', label: 'DeepSeek 实时语音', slot: 'live', requiresApiKey: true },
-  { provider: 'openai', modelId: 'gpt-realtime', label: 'OpenAI Realtime', slot: 'live', requiresApiKey: true },
+  {
+    provider: 'qwen',
+    modelId: 'qwen-audio-3.0-realtime-plus',
+    label: '通义千问 Qwen-Audio-3.0-Realtime-Plus（端到端实时语音）',
+    slot: 'live',
+    requiresApiKey: true,
+    supportsInput: ['text', 'voice'],
+    supportsOutput: ['text', 'voice'],
+  },
+  { provider: 'deepseek', modelId: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', slot: 'text', requiresApiKey: true, supportsInput: ['text'], supportsOutput: ['text'] },
+  { provider: 'deepseek', modelId: 'deepseek-flash', label: 'DeepSeek Flash', slot: 'text', requiresApiKey: true, supportsInput: ['text'], supportsOutput: ['text'] },
+  {
+    provider: 'deepseek',
+    modelId: 'deepseek-realtime',
+    label: 'DeepSeek 实时语音',
+    slot: 'live',
+    requiresApiKey: true,
+    supportsInput: ['text', 'voice'],
+    // 未实测音频输出，不预先声明 `voice`，避免把「能听」说成「能说」。
+    supportsOutput: ['text'],
+  },
+  {
+    provider: 'openai',
+    modelId: 'gpt-realtime',
+    label: 'OpenAI Realtime',
+    slot: 'live',
+    requiresApiKey: true,
+    supportsInput: ['text', 'voice'],
+    supportsOutput: ['text', 'voice'],
+  },
 ];
 
 const ENV_KEY: Record<ModelSlot, string> = {
@@ -115,11 +156,39 @@ export class ModelConfigService {
   }
 
   getRuntime(): ModelRuntimeResponse {
+    const text = this.getPublic('text');
+    const live = this.getPublic('live');
     return {
-      textModelId: this.getPublic('text').modelId,
-      liveModelId: this.getPublic('live').modelId,
-      liveAvailable: this.getPublic('live').configured,
+      textModelId: text.modelId,
+      liveModelId: live.modelId,
+      liveAvailable: live.configured,
+      availableModalities: this.availableModalities(),
     };
+  }
+
+  /**
+   * 按当前生效的 Live 模型能力推导学生可选的组合。
+   *
+   * 规则（与 `settings.ts` 的契约注释一致）：
+   *  - `text_text` 永远可用（文本模型是必须项）。
+   *  - 其余三种都要求 Live 模型**已配置密钥**且能力声明匹配；缺什么就不给什么。
+   *  - 未识别的自定义模型（管理员手填 provider/modelId）一律不给语音能力：
+   *    我们无法声明一个自己没实测过的能力，宁可让学生先用文字。
+   */
+  private availableModalities(): TutorModalityMode[] {
+    const available: TutorModalityMode[] = ['text_text'];
+    const live = this.getPublic('live');
+    if (!live.configured) return available;
+
+    const option = OPTIONS.find((o) => o.provider === live.provider && o.modelId === live.modelId);
+    if (option === undefined) return available;
+
+    const canHear = option.supportsInput.includes('voice');
+    const canSpeak = option.supportsOutput.includes('voice');
+    if (canHear && canSpeak) available.push('voice_voice');
+    if (canHear) available.push('voice_text');
+    if (canSpeak) available.push('text_voice');
+    return available;
   }
 
   /**
