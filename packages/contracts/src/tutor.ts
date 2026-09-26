@@ -73,8 +73,46 @@ export interface TutorToolCall {
   result?: string;
 }
 
-/** How a turn was submitted. */
-export type TutorTurnModality = 'text' | 'voice';
+/**
+ * 输入通道：学生这一轮「怎么说」。
+ *
+ * - `text`：键盘／点选输入。
+ * - `voice`：麦克风实时语音（Live）。
+ */
+export type TutorInputModality = 'text' | 'voice';
+
+/**
+ * 输出通道：AI 这一轮「怎么答」。
+ *
+ * - `text`：结构化回复块，渲染为界面上的文字、选项与工具调用时间线。
+ * - `voice`：在文本块之外额外合成语音播放（TTS）。
+ *
+ * `voice` 是**叠加**在文本之上而不是替代文本：即使学生选了语音输出，
+ * 界面仍保留完整文本，便于回看、复制与无障碍使用。
+ */
+export type TutorOutputModality = 'text' | 'voice';
+
+/**
+ * 学生可选的四种输入／输出组合。
+ *
+ * 「语音输入就语音输出、文本输入就文本输出」是两条默认路径；交叉组合
+ * （语音入→文本出、文本入→语音出）同样开放，由学生自己选，服务端不强制。
+ * 服务端只会拒绝**当前模型能力不支持**的组合（见 `ModelRuntimeResponse
+ * .availableModalities`），并明确告知缺了什么。
+ */
+export type TutorModalityMode =
+  | 'text_text'
+  | 'voice_voice'
+  | 'voice_text'
+  | 'text_voice';
+
+/**
+ * 兼容字段：`TutorTurnModality` 等价于输入通道。
+ *
+ * 历史代码只用它表示「这一轮是打字还是说话」，保留别名以免大面积改名。
+ * 新代码应优先使用 `TutorInputModality` / `TutorModalityMode`。
+ */
+export type TutorTurnModality = TutorInputModality;
 
 /** Whether a tutor session is bound to a project or unbound. */
 export type TutorSessionSource = 'project' | 'unbound';
@@ -106,7 +144,14 @@ export interface TutorTurn {
   stageAfter: ProjectStage | null;
   seq: number;
   createdAt: string;
+  /** 该轮的**输入**通道。 */
   modality: TutorTurnModality;
+  /**
+   * 该轮的**输出**通道。
+   *
+   * 旧数据可能缺省；缺省时前端按 `text` 渲染，不自行推断。
+   */
+  outputModality?: TutorOutputModality;
 }
 
 export interface GetTutorSessionResponse {
@@ -121,6 +166,13 @@ export interface CreateTutorTurnRequest {
   content?: string;
   pedagogicMove?: PedagogicMove;
   optionLabel?: string;
+  /**
+   * 学生本轮选择的输入／输出组合。缺省为 `text_text`。
+   *
+   * 请求里出现语音通道（`voice_*`）时，服务端会再次校验 Live 模型能力，
+   * 不支持的组合返回 `MODALITY_UNAVAILABLE`，不会静默降级成别的通道。
+   */
+  modalityMode?: TutorModalityMode;
   idempotencyKey: string;
 }
 

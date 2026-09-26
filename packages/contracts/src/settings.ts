@@ -9,6 +9,8 @@
  *    且只返回模型标识，不返回任何密钥材料。
  */
 
+import type { TutorInputModality, TutorModalityMode, TutorOutputModality } from './tutor';
+
 /** 两个插槽：普通文本对话，与实时语音（Live）。 */
 export type ModelSlot = 'text' | 'live';
 
@@ -36,6 +38,20 @@ export interface ModelSlotOption {
   slot: ModelSlot;
   /** 该选项是否需要 API Key（本地启发式引擎不需要）。 */
   requiresApiKey: boolean;
+  /**
+   * 该模型能接收的输入通道。
+   *
+   * 纯文本模型的 `supportsInput` 只有 `text`；实时音频模型额外支持 `voice`。
+   * 管理员端据此提示「选了它以后，学生哪些输入方式会变成可用」。
+   */
+  supportsInput: TutorInputModality[];
+  /**
+   * 该模型能产出的输出通道。
+   *
+   * 支持 `voice` 意味着模型本身能直接产出音频（无需额外 TTS）；
+   * 只有 `text` 时，若要「文本入→语音出」得靠独立的 TTS 环节。
+   */
+  supportsOutput: TutorOutputModality[];
 }
 
 export interface AdminModelsResponse {
@@ -57,4 +73,11 @@ export interface ModelRuntimeResponse {
   liveModelId: string;
   /** Live 模式是否真的可用（已配置 live 模型的密钥）。 */
   liveAvailable: boolean;
+  /**
+   * 当前服务端实际可用的输入／输出组合。
+   *
+   * 未配置 Live 密钥时只含 `text_text`，学生端的语音选项应置灰并说明原因，
+   * 而不是让学生选了好几次才发现不能用。前端**不得**自行假定语音可用。
+   */
+  availableModalities: TutorModalityMode[];
 }
