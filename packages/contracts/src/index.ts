@@ -7,6 +7,7 @@ export * from './tutor';
 export * from './realtime';
 export * from './growth';
 export * from './settings';
+export * from './models';
 export * from './errors';
 
 export interface HealthResponse {
