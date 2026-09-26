@@ -1,0 +1,1154 @@
+/**
+ * 制作工作台 (workbench) — 70 个类，仅本文件负责。
+ *
+ * 设计语言遵循学生区整体规范（详见 `@qitu/ui/styles.css`）：
+ * 柔和蓝底、白卡片、1px `--qitu-border` 描边、大圆角、极浅阴影、
+ * 蓝色主色，面向未成年人的学习工具，安静专业，无霓虹/重渐变/暗色模式。
+ *
+ * 本文件只使用 `--qitu-*` 设计令牌，不重新声明任何颜色字面量。
+ * 结构目标：`.qitu-workbench-grid` 三段式（阶段轨道 | 工作区 | AI 建议栏），
+ * 画布/编辑器区要像真正的工具（代码用等宽字体、画布用点阵底纹、锁定态有独立视觉）。
+ */
+
+/* ================================================================ *
+ * 根容器与整体节奏
+ * ================================================================ */
+
+.qitu-workbench {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+/* 加载骨架容器：与工作台卡片同款外观，避免骨架期布局跳动。 */
+.qitu-workbench-loading {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  padding: var(--qitu-space-xxl);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xl);
+  box-shadow: var(--qitu-shadow-md);
+}
+
+/* ================================================================ *
+ * 页头：封面 + 标题 + 进度条，右侧阶段步进条
+ * ================================================================ */
+
+.qitu-workbench-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-xl);
+  padding: var(--qitu-space-xxl);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xl);
+  box-shadow: var(--qitu-shadow-md);
+}
+
+.qitu-workbench-header-main {
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-lg);
+  min-width: 0;
+}
+
+/* 项目封面：图片或「封面」占位，固定尺寸防布局抖动。 */
+.qitu-workbench-cover {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-gradient-banner);
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-workbench-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qitu-workbench-title {
+  min-width: 0;
+}
+
+/* 覆盖全局 h1 的展示字号，工作台标题保持紧凑。 */
+.qitu-workbench-title h1 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.35rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qitu-workbench-subtitle {
+  margin: var(--qitu-space-xs) 0 var(--qitu-space-md);
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+/* 进度条收窄，避免在标题下方铺满整行。 */
+.qitu-workbench-title .qitu-progress {
+  max-width: 320px;
+}
+
+/* 阶段步进条：编号圆点 + 标签，窄屏自动换行。 */
+.qitu-workbench-stepbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-workbench-step {
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: white;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-workbench-step-index {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.qitu-workbench-step-label {
+  white-space: nowrap;
+}
+
+/* 当前阶段：主色强调；已完成：青绿色；未到：弱化。颜色之外再用描边/底纹区分。 */
+.qitu-workbench-step.is-current {
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-heading);
+  font-weight: 600;
+}
+
+.qitu-workbench-step.is-done {
+  border-color: var(--qitu-completed-border);
+  background: var(--qitu-completed-soft);
+  color: var(--qitu-completed);
+}
+
+.qitu-workbench-step.is-done .qitu-workbench-step-index {
+  background: var(--qitu-completed-soft);
+  color: var(--qitu-completed);
+}
+
+.qitu-workbench-step.is-upcoming {
+  background: var(--qitu-page);
+  color: var(--qitu-muted);
+}
+
+/* ================================================================ *
+ * 三段式工作台网格：阶段轨道 | 主区 | AI 建议栏
+ * ================================================================ */
+
+.qitu-workbench-grid {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr) 300px;
+  gap: var(--qitu-space-lg);
+  align-items: start;
+}
+
+.qitu-workbench-main {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  align-content: start;
+  min-width: 0;
+}
+
+/* 工具栏：切换 Tab 与自动保存指示器分居两侧。 */
+.qitu-workbench-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-md);
+}
+
+/* ================================================================ *
+ * 工作区 Tab（流程设计 / 代码 / 模拟器 / 测试）
+ * ================================================================ */
+
+.qitu-workbench-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-xs);
+  padding: 3px;
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+}
+
+.qitu-workbench-tab {
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-lg);
+  border: 1px solid transparent;
+  border-radius: var(--qitu-radius-pill);
+  background: transparent;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.qitu-workbench-tab:hover:not(:disabled) {
+  color: var(--qitu-heading);
+}
+
+.qitu-workbench-tab.is-active {
+  background: white;
+  color: var(--qitu-primary);
+  font-weight: 600;
+  border-color: var(--qitu-border);
+  box-shadow: var(--qitu-shadow-xs);
+}
+
+.qitu-workbench-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.qitu-workbench-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* ================================================================ *
+ * 自动保存指示器：五态（idle / saving / saved / offline / conflict）
+ * ================================================================ */
+
+.qitu-autosave {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: white;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+/* 状态圆点用 currentColor，语义色之外的形状/描边区分状态。 */
+.qitu-autosave::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--qitu-radius-pill);
+  background: currentColor;
+}
+
+.qitu-autosave.is-saving {
+  color: var(--qitu-primary);
+  background: var(--qitu-primary-soft);
+  border-color: var(--qitu-primary-border);
+}
+
+.qitu-autosave.is-saved {
+  color: var(--qitu-completed);
+  background: var(--qitu-completed-soft);
+  border-color: var(--qitu-completed-border);
+}
+
+.qitu-autosave.is-offline {
+  color: var(--qitu-attention);
+  background: var(--qitu-attention-soft);
+  border-color: var(--qitu-attention-border);
+}
+
+.qitu-autosave.is-conflict {
+  color: var(--qitu-danger);
+  background: var(--qitu-danger-soft);
+  border-color: var(--qitu-danger-border);
+}
+
+/* 冲突态内嵌的「查看」按钮收小，避免撑破胶囊。 */
+.qitu-autosave .qitu-button {
+  min-height: 0;
+  padding: 2px var(--qitu-space-sm);
+  font-size: 0.82rem;
+  border-radius: var(--qitu-radius-sm);
+}
+
+/* ================================================================ *
+ * 阶段轨道（左侧栏）
+ * ================================================================ */
+
+.qitu-stage-rail {
+  position: sticky;
+  top: var(--qitu-space-xxl);
+  display: grid;
+  gap: var(--qitu-space-md);
+  align-content: start;
+  padding: var(--qitu-space-lg);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-stage-rail-current {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.qitu-stage-rail-empty {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-stage-rail-list {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-stage-rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-sm);
+  border-radius: var(--qitu-radius-sm);
+  border: 1px solid transparent;
+}
+
+/* 当前项用底纹 + 描边 + 圆点光晕共同表达，不只靠颜色。 */
+.qitu-stage-rail-item.is-current {
+  background: var(--qitu-primary-soft);
+  border-color: var(--qitu-primary-border);
+}
+
+.qitu-stage-rail-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-border);
+}
+
+.qitu-stage-rail-item.is-current .qitu-stage-rail-dot {
+  background: var(--qitu-primary);
+  box-shadow: 0 0 0 3px var(--qitu-primary-soft);
+}
+
+.qitu-stage-rail-note {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* ================================================================ *
+ * 流程设计：节点面板 + 画布 + 缩放撤销栏
+ * ================================================================ */
+
+.qitu-flow-workspace {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--qitu-space-lg);
+  align-items: start;
+}
+
+/* 节点面板：左侧工具面板，像真实编辑器里的物料库。 */
+.qitu-node-palette {
+  display: grid;
+  gap: var(--qitu-space-md);
+  align-content: start;
+  padding: var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-page);
+}
+
+.qitu-node-palette-list {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-node-palette-item {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: white;
+  color: var(--qitu-text);
+  font-size: 0.82rem;
+  cursor: grab;
+}
+
+.qitu-node-palette-item[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 画布外壳：给缩放撤销栏提供定位锚点。 */
+.qitu-flow-canvas-wrap {
+  position: relative;
+  display: grid;
+  min-height: 420px;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: white;
+  overflow: hidden;
+}
+
+/* 画布：浅色点阵底纹，像真正的流程图工作区。 */
+.qitu-flow-canvas {
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  padding: var(--qitu-space-xl);
+  background-color: var(--qitu-page);
+  background-image: radial-gradient(var(--qitu-primary-border) 1px, transparent 1px);
+  background-size: 20px 20px;
+  text-align: center;
+}
+
+/* 待技术选型的占位内容：居中排版。 */
+.qitu-canvas-pending {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  justify-items: center;
+  color: var(--qitu-muted);
+}
+
+.qitu-canvas-pending-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.qitu-canvas-pending-body {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.qitu-canvas-pending-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-md);
+  margin: var(--qitu-space-md) 0 0;
+  padding: 0;
+}
+
+.qitu-canvas-pending-stats > div {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-width: 88px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+}
+
+.qitu-canvas-pending-stats dt {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-canvas-pending-stats dd {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* 面板里的占位标题左对齐，列表占满宽度，更像工具面板。 */
+.qitu-node-palette.qitu-canvas-pending {
+  justify-items: stretch;
+  text-align: left;
+}
+
+/* 缩放 / 撤销栏：悬浮在画布右下角。 */
+.qitu-zoom-undo-bar {
+  position: absolute;
+  right: var(--qitu-space-md);
+  bottom: var(--qitu-space-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-xs);
+  padding: var(--qitu-space-xs);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-zoom-undo-bar button {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--qitu-radius-sm);
+  background: transparent;
+  color: var(--qitu-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.qitu-zoom-undo-bar button:hover:not(:disabled) {
+  color: var(--qitu-primary);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-zoom-undo-bar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qitu-zoom-undo-bar button:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+.qitu-zoom-value {
+  min-width: 48px;
+  text-align: center;
+  color: var(--qitu-text);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.qitu-zoom-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--qitu-space-xs);
+  background: var(--qitu-border);
+}
+
+/* ================================================================ *
+ * 代码编辑器
+ * ================================================================ */
+
+.qitu-code-editor {
+  display: grid;
+  gap: var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: white;
+  overflow: hidden;
+}
+
+.qitu-code-editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-md);
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  background: var(--qitu-page);
+  border-bottom: 1px solid var(--qitu-border);
+}
+
+.qitu-code-editor-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-code-editor-bar select {
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.qitu-code-editor-bar select:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* 代码区：等宽字体，浅色底，像真正的代码编辑器。 */
+.qitu-code-editor-area {
+  width: 100%;
+  min-height: 420px;
+  padding: var(--qitu-space-lg);
+  border: 0;
+  border-radius: 0;
+  background: white;
+  color: var(--qitu-text);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.qitu-code-editor-area::placeholder {
+  color: var(--qitu-muted);
+}
+
+.qitu-code-editor-area:focus-visible {
+  outline: none;
+  box-shadow: inset var(--qitu-focus-ring);
+}
+
+/* 只读/锁定态：底纹与文字弱化，和可编辑态明显区分。 */
+.qitu-code-editor-area:read-only {
+  background: var(--qitu-page);
+  color: var(--qitu-muted);
+}
+
+/* ================================================================ *
+ * 模拟器（试聊面板）
+ * ================================================================ */
+
+.qitu-simulator-panel {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+/* 机器人开场白：主色软底横幅。 */
+.qitu-simulator-scenario {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--qitu-space-md);
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  background: var(--qitu-primary-soft);
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+.qitu-simulator-scenario p {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.qitu-simulator-bot {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary);
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* 对话转写区：白色卡片，限高滚动。 */
+.qitu-simulator-transcript {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  min-height: 240px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: var(--qitu-space-lg);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+.qitu-simulator-hint {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+/* 每轮对话：学生靠右、机器人靠左，位置 + 角色名共同区分。 */
+.qitu-simulator-turn {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  max-width: 80%;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-page);
+}
+
+.qitu-simulator-turn p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.qitu-simulator-turn.is-student {
+  justify-self: end;
+  background: var(--qitu-primary-soft);
+  border-color: var(--qitu-primary-border);
+}
+
+.qitu-simulator-turn.is-bot {
+  justify-self: start;
+  background: white;
+}
+
+.qitu-simulator-role {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--qitu-muted);
+}
+
+.qitu-simulator-turn.is-student .qitu-simulator-role {
+  color: var(--qitu-primary);
+}
+
+.qitu-simulator-error {
+  margin: 0;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-danger-border);
+  border-radius: var(--qitu-radius-sm);
+  background: var(--qitu-danger-soft);
+  color: var(--qitu-danger);
+  font-size: 0.82rem;
+}
+
+/* 输入区：输入框 + 试聊 + 重置，窄屏自动换行。 */
+.qitu-simulator-composer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-simulator-composer input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.qitu-simulator-composer input::placeholder {
+  color: var(--qitu-muted);
+}
+
+.qitu-simulator-composer input:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+.qitu-simulator-note {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* ================================================================ *
+ * 测试用例编辑器
+ * ================================================================ */
+
+.qitu-test-editor {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+.qitu-test-list {
+  display: grid;
+  gap: var(--qitu-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 单条用例：名称占满一行，输入/期望输出并排，状态与删除靠右。 */
+.qitu-test-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: var(--qitu-space-sm);
+  align-items: start;
+  padding: var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-page);
+}
+
+.qitu-test-name {
+  grid-column: 1 / -1;
+  min-height: 36px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.qitu-test-input,
+.qitu-test-expected {
+  min-height: 96px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: white;
+  color: var(--qitu-text);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.qitu-test-input::placeholder,
+.qitu-test-expected::placeholder {
+  color: var(--qitu-muted);
+}
+
+/* 状态按钮：待运行/通过/失败，颜色之外配描边、底纹与文字标签。 */
+.qitu-test-status {
+  min-height: 36px;
+  align-self: start;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: white;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.qitu-test-status.is-pending {
+  color: var(--qitu-muted);
+  border-color: var(--qitu-border);
+  background: white;
+}
+
+.qitu-test-status.is-pass {
+  color: var(--qitu-completed);
+  border-color: var(--qitu-completed-border);
+  background: var(--qitu-completed-soft);
+}
+
+.qitu-test-status.is-fail {
+  color: var(--qitu-danger);
+  border-color: var(--qitu-danger-border);
+  background: var(--qitu-danger-soft);
+}
+
+.qitu-test-remove {
+  min-height: 36px;
+  align-self: start;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  border: 1px solid var(--qitu-danger-border);
+  border-radius: var(--qitu-radius-sm);
+  background: white;
+  color: var(--qitu-danger);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.qitu-test-remove:hover:not(:disabled) {
+  background: var(--qitu-danger-soft);
+}
+
+.qitu-test-name:focus-visible,
+.qitu-test-input:focus-visible,
+.qitu-test-expected:focus-visible,
+.qitu-test-status:focus-visible,
+.qitu-test-remove:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+.qitu-test-name:read-only,
+.qitu-test-input:read-only,
+.qitu-test-expected:read-only {
+  background: white;
+  color: var(--qitu-muted);
+}
+
+.qitu-test-status:disabled,
+.qitu-test-remove:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ================================================================ *
+ * 底部动作栏（预览 / 保存成果 / 完成后进入作品展厅）
+ * ================================================================ */
+
+.qitu-workbench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-md);
+  padding: var(--qitu-space-lg);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-workbench-preview-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--qitu-space-xs) var(--qitu-space-md);
+  color: var(--qitu-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.qitu-workbench-preview-link:hover {
+  text-decoration: underline;
+}
+
+.qitu-workbench-preview-link:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+  border-radius: var(--qitu-radius-sm);
+}
+
+/* 动作失败 / 一般提示：失败用危险色，提示用弱化色。 */
+.qitu-workbench-action-error {
+  margin: 0;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-danger-border);
+  border-radius: var(--qitu-radius-sm);
+  background: var(--qitu-danger-soft);
+  color: var(--qitu-danger);
+  font-size: 0.82rem;
+}
+
+.qitu-workbench-action-note {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+/* ================================================================ *
+ * 乐观锁冲突弹窗：模态遮罩 + 双栏对比 + 明确主操作
+ * ================================================================ */
+
+.qitu-conflict-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--qitu-space-xxl);
+  background: color-mix(in srgb, var(--qitu-heading) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.qitu-conflict-card {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  width: min(880px, 100%);
+  max-height: calc(100vh - 2 * var(--qitu-space-xxl));
+  overflow: auto;
+  padding: var(--qitu-space-xxl);
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xl);
+  box-shadow: var(--qitu-shadow-xl);
+}
+
+.qitu-conflict-card h2 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.3rem;
+}
+
+.qitu-conflict-card h3 {
+  margin: 0 0 var(--qitu-space-sm);
+  color: var(--qitu-heading);
+  font-size: 0.95rem;
+}
+
+.qitu-conflict-lead {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.qitu-conflict-lead strong {
+  color: var(--qitu-heading);
+}
+
+/* 双栏：你的版本 vs 服务器版本。 */
+.qitu-conflict-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--qitu-space-lg);
+}
+
+.qitu-conflict-content {
+  margin: 0;
+  padding: var(--qitu-space-md);
+  max-height: 240px;
+  overflow: auto;
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.qitu-conflict-time {
+  display: inline-block;
+  margin-left: var(--qitu-space-sm);
+  padding: 2px var(--qitu-space-sm);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+/* 主操作（保留我的）是 qitu-button-primary，视觉上已是明确主按钮。 */
+.qitu-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-md);
+  padding-top: var(--qitu-space-md);
+  border-top: 1px solid var(--qitu-border);
+}
+
+.qitu-conflict-note {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+/* ================================================================ *
+ * 响应式：≤1180px 收起右栏；≤860px 三栏全部单列
+ * ================================================================ */
+
+@media (max-width: 1180px) {
+  .qitu-workbench-grid {
+    grid-template-columns: 224px minmax(0, 1fr);
+  }
+
+  /* AI 建议栏（共享样式 .qitu-tutor-advice）落到底部横跨两列。 */
+  .qitu-workbench-grid > .qitu-tutor-advice {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  .qitu-workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-workbench-grid > .qitu-tutor-advice {
+    grid-column: auto;
+  }
+
+  .qitu-stage-rail {
+    position: static;
+  }
+
+  .qitu-workbench-header {
+    padding: var(--qitu-space-lg);
+  }
+
+  .qitu-workbench-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qitu-workbench-cover {
+    width: 64px;
+    height: 64px;
+  }
+
+  .qitu-flow-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-test-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-test-name {
+    grid-column: auto;
+  }
+
+  .qitu-conflict-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-conflict-dialog {
+    padding: var(--qitu-space-md);
+  }
+
+  .qitu-simulator-composer input {
+    flex-basis: 100%;
+  }
+}
+
+/* ================================================================ *
+ * 减少动效：尊重系统偏好
+ * ================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .qitu-workbench-tab {
+    transition: none;
+  }
+}

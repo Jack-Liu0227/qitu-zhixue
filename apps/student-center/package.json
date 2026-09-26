@@ -10,6 +10,7 @@
     "test": "node -e \"console.log('student-center: no tests yet')\""
   },
   "dependencies": {
+    "@qitu/ai-client": "workspace:*",
     "@qitu/api-client": "workspace:*",
     "@qitu/auth": "workspace:*",
     "@qitu/contracts": "workspace:*",

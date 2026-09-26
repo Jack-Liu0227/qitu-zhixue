@@ -1,0 +1,691 @@
+/**
+ * 我的项目 (projects) — 列表屏 / 详情屏 / 理论 / 实践 / 反思。
+ *
+ * 设计取向：延续 `@qitu/ui/styles.css` 的令牌语言（浅蓝页面、白卡、1px #e4ecf7
+ * 边框、大圆角、极浅阴影、蓝色主色），橙色只用在「下一步 / 当前任务」这类
+ * 需要推动学生动作的地方。这是给未成年人用的学习工具，不用霓虹色、不做暗色模式。
+ *
+ * 注意：若干容器目前自带 inline style（`display:grid; gap:16` 之类），inline 优先级
+ * 高于类选择器，所以下面只声明 inline 没有覆盖的部分（列数、对齐、交互态）。
+ */
+
+/* ---------- 屏幕骨架 ---------- */
+
+.qitu-projects-list-screen,
+.qitu-project-detail-screen,
+.qitu-theory-screen,
+.qitu-practice-screen,
+.qitu-reflection-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-lg);
+}
+
+/* 屏内工具栏：宽屏左右分开，窄屏换行；标题与动作同一基线。 */
+.qitu-screen-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-md);
+}
+
+.qitu-screen-toolbar > h1 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+/* 列表屏：项目卡网格在左，下一步卡在右；1180px 以下收成单列。 */
+.qitu-projects-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1180px) {
+  .qitu-projects-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+}
+
+/* 项目卡网格：按可用宽度自动排 2~4 列，避免固定列数在窄屏挤成一条。 */
+.qitu-project-grid {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+/* ---------- 分组标签 ---------- */
+
+.qitu-project-tabs {
+  display: flex;
+  gap: var(--qitu-space-xs);
+  padding: 4px;
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+.qitu-tab {
+  flex: 0 1 auto;
+  min-height: 36px;
+  padding: 0 var(--qitu-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--qitu-radius-md);
+  background: transparent;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.qitu-tab:hover {
+  color: var(--qitu-heading);
+  background: #fff;
+}
+
+/* 选中态同时改背景、文字与边框，不只靠颜色深浅差异。 */
+.qitu-tab.is-active {
+  background: #fff;
+  border-color: var(--qitu-primary-border);
+  color: var(--qitu-primary);
+  box-shadow: var(--qitu-shadow-xs);
+}
+
+.qitu-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* ---------- 搜索 ---------- */
+
+.qitu-project-search {
+  display: block;
+  max-width: 420px;
+}
+
+.qitu-project-search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: #fff;
+  color: var(--qitu-text);
+  font: inherit;
+}
+
+.qitu-project-search input::placeholder {
+  color: var(--qitu-muted);
+}
+
+.qitu-project-search input:focus-visible {
+  outline: none;
+  border-color: var(--qitu-primary);
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* ---------- 项目卡 ---------- */
+
+.qitu-project-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.qitu-project-card:hover {
+  border-color: var(--qitu-primary-border);
+  box-shadow: var(--qitu-shadow-md);
+  transform: translateY(-1px);
+}
+
+.qitu-project-card:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+}
+
+/* 只读（断网）时不给悬浮反馈，避免暗示可以点进去。 */
+.qitu-project-card.is-readonly {
+  opacity: 0.85;
+}
+
+.qitu-project-card.is-readonly:hover {
+  border-color: var(--qitu-border);
+  box-shadow: none;
+  transform: none;
+}
+
+.qitu-project-cover {
+  aspect-ratio: 16 / 9;
+  background: var(--qitu-page);
+  border-bottom: 1px solid var(--qitu-border);
+}
+
+.qitu-project-cover > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 没有封面时的占位：用极浅的品牌渐变，不假装是一张图片。 */
+.qitu-project-cover-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--qitu-gradient-banner);
+}
+
+.qitu-project-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-xs);
+  padding: var(--qitu-space-md);
+}
+
+.qitu-project-card-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.qitu-project-card-subtitle {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  /* 副标题最多两行，防止长短不一的项目卡高度差太大。 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.qitu-project-card-stage {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ---------- 项目头 ---------- */
+
+.qitu-project-header {
+  display: block;
+}
+
+.qitu-project-header-cover {
+  overflow: hidden;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-page);
+}
+
+.qitu-project-header-cover > img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.qitu-project-header-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1.3rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.qitu-project-header-subtitle {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.qitu-project-header-stage {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.qitu-project-header-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-sm);
+  padding-top: var(--qitu-space-xs);
+}
+
+/* ---------- 阶段时间轴 ---------- */
+
+.qitu-stage-timeline {
+  display: grid;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-stage-card {
+  position: relative;
+  padding: var(--qitu-space-md);
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  list-style: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* 可进入的阶段：整卡是一个链接，需要把 <a> 撑满并继承颜色。 */
+.qitu-stage-card > a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-xs);
+  color: inherit;
+  text-decoration: none;
+}
+
+.qitu-stage-card:hover {
+  border-color: var(--qitu-primary-border);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-stage-card > a:focus-visible {
+  outline: none;
+  box-shadow: var(--qitu-focus-ring);
+  border-radius: var(--qitu-radius-md);
+}
+
+/* 锁定 / 待开始：降透明度 + 虚线边框，不只靠颜色变灰。 */
+.qitu-stage-card.is-disabled {
+  border-style: dashed;
+  background: var(--qitu-page);
+  opacity: 0.75;
+}
+
+.qitu-stage-card.is-disabled:hover {
+  border-color: var(--qitu-border);
+  box-shadow: none;
+}
+
+.qitu-stage-card-description {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* 锁定原因：用提示色但要读得出是「说明」而不是「报错」。 */
+.qitu-stage-card-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qitu-space-xs);
+  align-self: flex-start;
+  margin: 0;
+  padding: 2px var(--qitu-space-sm);
+  border: 1px solid var(--qitu-attention-border);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-attention-soft);
+  color: var(--qitu-attention);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.qitu-stage-card-enter {
+  align-self: flex-start;
+  margin-top: var(--qitu-space-xxs);
+  color: var(--qitu-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ---------- 任务列表 ---------- */
+
+.qitu-task-list {
+  display: grid;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-task-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  padding: var(--qitu-space-md);
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-task-item-main {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qitu-task-item-main > h4 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qitu-task-item-main > p {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+/* 「今日重点」是橙色强调，和「下一步」保持同一套注意力语言。 */
+.qitu-task-focus {
+  align-self: flex-start;
+  margin-top: var(--qitu-space-xxs);
+  padding: 1px var(--qitu-space-sm);
+  border: 1px solid var(--qitu-attention-border);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-attention-soft);
+  color: var(--qitu-attention);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ---------- 理论学习 ---------- */
+
+.qitu-theory-module {
+  display: grid;
+  gap: var(--qitu-space-md);
+}
+
+.qitu-theory-module > section > h4 {
+  margin: 0 0 var(--qitu-space-xxs);
+  color: var(--qitu-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qitu-theory-module > section > p {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.qitu-theory-check {
+  display: grid;
+  gap: var(--qitu-space-md);
+}
+
+.qitu-theory-question {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  padding: var(--qitu-space-md);
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  list-style: none;
+}
+
+.qitu-theory-question > p {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+/* 选项做成整行可点的卡片，手机上比小圆点好点得多。 */
+.qitu-theory-question > ul {
+  display: grid;
+  gap: var(--qitu-space-xs);
+}
+
+.qitu-theory-question > ul > li > label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--qitu-space-sm);
+  min-height: 40px;
+  padding: var(--qitu-space-xs) var(--qitu-space-sm);
+  background: #fff;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  color: var(--qitu-text);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.qitu-theory-question > ul > li > label:hover {
+  border-color: var(--qitu-primary-border);
+}
+
+.qitu-theory-question > ul > li > label:has(input:checked) {
+  border-color: var(--qitu-primary);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-theory-question > ul > li > label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.qitu-theory-question input[type='radio'] {
+  margin-top: 3px;
+  accent-color: var(--qitu-primary);
+}
+
+/* ---------- 实践 ---------- */
+
+/*
+ * 锁定态：这是「说明 + 给出去路」而不是报错，所以用中性面板 + 橙色标题，
+ * 并明确给出「去理论学习」的按钮，避免学生以为项目坏了。
+ */
+.qitu-practice-locked {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  justify-items: start;
+  padding: var(--qitu-space-lg);
+  background: var(--qitu-page);
+  border: 1px dashed var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+.qitu-practice-locked > h3 {
+  margin: 0;
+  color: var(--qitu-attention);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.qitu-practice-locked > p {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+/* ---------- 反思 ---------- */
+
+.qitu-reflection-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qitu-space-lg);
+}
+
+/* ---------- 班主任留言 ---------- */
+
+.qitu-mentor-note {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  /* 左侧一道细竖线，让留言看起来像「别人写给你的一段话」。 */
+  border-left: 3px solid var(--qitu-primary-border);
+  background: var(--qitu-page);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-mentor-note > p {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.qitu-mentor-note > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-sm);
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+}
+
+/* ---------- 下一步（橙色推动卡） ---------- */
+
+.qitu-next-step {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  justify-items: start;
+  padding: var(--qitu-space-lg);
+  background: var(--qitu-attention-soft);
+  border: 1px solid var(--qitu-attention-border);
+  border-radius: var(--qitu-radius-lg);
+}
+
+.qitu-next-step > h3 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.qitu-next-step > p {
+  margin: 0;
+  color: var(--qitu-text);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+/* ---------- 表单反馈 ---------- */
+
+.qitu-form-hint,
+.qitu-form-error,
+.qitu-form-success {
+  margin: 0;
+  padding: var(--qitu-space-xs) var(--qitu-space-sm);
+  border-radius: var(--qitu-radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.qitu-form-hint {
+  background: var(--qitu-page);
+  border: 1px solid var(--qitu-border);
+  color: var(--qitu-muted);
+}
+
+/* 失败与成功除了颜色还各带一道左边框，色觉障碍下也分得清。 */
+.qitu-form-error {
+  background: var(--qitu-danger-soft);
+  border: 1px solid var(--qitu-danger-border);
+  border-left-width: 3px;
+  color: var(--qitu-danger);
+}
+
+.qitu-form-success {
+  background: var(--qitu-completed-soft);
+  border: 1px solid var(--qitu-completed-border);
+  border-left-width: 3px;
+  color: var(--qitu-completed);
+}
+
+/* ---------- 作品上传 ---------- */
+
+.qitu-artifact-uploader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  background: var(--qitu-page);
+  border: 1px dashed var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-artifact-uploader > input[type='file'] {
+  max-width: 100%;
+  color: var(--qitu-muted);
+  font-size: 0.83rem;
+}
+
+.qitu-artifact-uploader > input[type='file']::file-selector-button {
+  min-height: 32px;
+  margin-right: var(--qitu-space-sm);
+  padding: 0 var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: #fff;
+  color: var(--qitu-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qitu-artifact-uploader > input[type='file']::file-selector-button:hover {
+  border-color: var(--qitu-primary-border);
+  color: var(--qitu-primary);
+}
+
+.qitu-artifact-uploader > span {
+  color: var(--qitu-muted);
+  font-size: 0.83rem;
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 860px) {
+  .qitu-projects-list-screen,
+  .qitu-project-detail-screen,
+  .qitu-theory-screen,
+  .qitu-practice-screen,
+  .qitu-reflection-screen {
+    gap: var(--qitu-space-md);
+  }
+
+  .qitu-project-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qitu-project-search {
+    max-width: none;
+  }
+
+  .qitu-task-item {
+    align-items: flex-start;
+  }
+
+  .qitu-screen-toolbar {
+    align-items: flex-start;
+  }
+}
+
+/* 尊重系统的「减少动态效果」设置。 */
+@media (prefers-reduced-motion: reduce) {
+  .qitu-project-card,
+  .qitu-tab,
+  .qitu-stage-card {
+    transition: none;
+  }
+
+  .qitu-project-card:hover {
+    transform: none;
+  }
+}

@@ -26,3 +26,1343 @@ h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-heigh
 .auth-loading { display: grid; min-height: 100vh; place-items: center; color: var(--qitu-muted); }
 .auth-logout { position: fixed; top: 16px; right: 6vw; z-index: 10; padding: 8px 12px; border: 1px solid var(--qitu-border); border-radius: 5px; background: white; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .82rem; }
 .auth-logout:hover { border-color: #2878f0; color: #2878f0; }
+
+:root {
+  --qitu-primary: #2878f0;
+  --qitu-completed: #18b7ac;
+  --qitu-attention: #ff8a3d;
+  --qitu-danger: #e95b68;
+  --qitu-primary-soft: #eaf2fe;
+  --qitu-completed-soft: #e6f7f5;
+  --qitu-attention-soft: #fff0e6;
+  --qitu-danger-soft: #fdedee;
+}
+
+/* ---- Student shell ---- */
+.qitu-student-shell { display: flex; min-height: 100vh; background: var(--qitu-page); }
+.qitu-student-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.qitu-student-banner-slot { padding: 24px 32px 0; }
+.qitu-student-content { flex: 1; padding: 24px 32px 48px; }
+
+/* ---- Sidebar ---- */
+.qitu-sidebar {
+  width: 264px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 32px;
+  background: white; border-right: 1px solid var(--qitu-border);
+  padding: 28px 18px; overflow-y: auto;
+}
+.qitu-sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; }
+.qitu-sidebar-logo {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--qitu-primary); color: white;
+  font-weight: 700; font-size: 1.2rem;
+}
+.qitu-sidebar-brand-text { min-width: 0; }
+.qitu-sidebar-name { display: block; color: var(--qitu-heading); font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qitu-sidebar-tagline { display: block; color: var(--qitu-muted); font-size: 0.78rem; margin-top: 2px; }
+.qitu-sidebar-nav { display: flex; flex-direction: column; gap: 6px; }
+.qitu-nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 12px;
+  color: var(--qitu-muted); text-decoration: none; font-size: 0.95rem;
+}
+.qitu-nav-item:hover { color: var(--qitu-primary); background: var(--qitu-primary-soft); }
+.qitu-nav-item.is-active { color: var(--qitu-primary); background: var(--qitu-primary-soft); font-weight: 600; }
+.qitu-nav-icon { display: inline-flex; align-items: center; }
+.qitu-nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Greeting banner ---- */
+.qitu-greeting-banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 24px;
+  padding: 24px 28px; border-radius: 20px;
+  background: linear-gradient(135deg, var(--qitu-primary-soft), var(--qitu-page));
+  border: 1px solid var(--qitu-border);
+}
+.qitu-greeting-hello { margin: 0; color: var(--qitu-heading); font-size: 1.5rem; font-weight: 700; }
+.qitu-greeting-message { margin: 8px 0 0; color: var(--qitu-muted); line-height: 1.6; }
+.qitu-greeting-mascot { flex-shrink: 0; }
+
+/* ---- Breadcrumb ---- */
+.qitu-breadcrumb { display: flex; align-items: center; gap: 8px; color: var(--qitu-muted); font-size: 0.9rem; }
+.qitu-breadcrumb-item { display: inline-flex; align-items: center; gap: 8px; }
+.qitu-breadcrumb-sep { color: var(--qitu-border); }
+.qitu-breadcrumb a { color: var(--qitu-primary); text-decoration: none; }
+.qitu-breadcrumb a:hover { text-decoration: underline; }
+.qitu-breadcrumb-current { color: var(--qitu-heading); font-weight: 600; }
+
+/* ---- Handwritten note ---- */
+.qitu-handwritten { display: inline-block; font-style: italic; font-weight: 600; letter-spacing: 0.02em; }
+
+/* ---- Cards ---- */
+.qitu-section-card {
+  background: white; border: 1px solid var(--qitu-border);
+  border-radius: 20px; box-shadow: 0 8px 24px rgb(16 42 92 / 5%);
+  overflow: hidden;
+}
+.qitu-section-card-header {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 18px 24px; border-bottom: 1px solid var(--qitu-border);
+}
+.qitu-section-card-title { margin: 0; color: var(--qitu-heading); font-size: 1.1rem; }
+.qitu-section-card-action { display: flex; align-items: center; gap: 8px; }
+.qitu-section-card.is-padded .qitu-section-card-body { padding: 20px 24px; }
+
+/* ---- Tag chips ---- */
+.qitu-tag-chips { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.qitu-tag-chip {
+  padding: 4px 12px; border-radius: 999px; font-size: 0.8rem;
+  border: 1px solid var(--qitu-border); background: white; color: var(--qitu-muted);
+}
+.qitu-tag-primary .qitu-tag-chip { color: var(--qitu-primary); border-color: var(--qitu-primary-soft); background: var(--qitu-primary-soft); }
+.qitu-tag-completed .qitu-tag-chip { color: var(--qitu-completed); border-color: var(--qitu-completed-soft); background: var(--qitu-completed-soft); }
+.qitu-tag-attention .qitu-tag-chip { color: var(--qitu-attention); border-color: var(--qitu-attention-soft); background: var(--qitu-attention-soft); }
+
+/* ---- Stat triple ---- */
+.qitu-stat-triple { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.qitu-stat-triple-item {
+  display: grid; gap: 8px; padding: 20px;
+  background: white; border: 1px solid var(--qitu-border); border-radius: 16px;
+}
+.qitu-stat-triple-label { color: var(--qitu-muted); font-size: 0.85rem; }
+.qitu-stat-triple-value { color: var(--qitu-heading); font-size: 1.6rem; }
+.qitu-stat-triple-completed .qitu-stat-triple-value { color: var(--qitu-completed); }
+.qitu-stat-triple-attention .qitu-stat-triple-value { color: var(--qitu-attention); }
+
+/* ---- Progress bar ---- */
+.qitu-progress { display: grid; gap: 8px; }
+.qitu-progress-label { color: var(--qitu-muted); font-size: 0.85rem; }
+.qitu-progress-track { height: 10px; border-radius: 999px; background: var(--qitu-primary-soft); overflow: hidden; }
+.qitu-progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+
+/* ---- Stage badge ---- */
+.qitu-stage-badge {
+  display: inline-flex; align-items: center; padding: 4px 12px;
+  border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+}
+.qitu-stage-locked { color: var(--qitu-muted); background: #f0f4fa; border: 1px solid var(--qitu-border); }
+.qitu-stage-current { color: var(--qitu-primary); background: var(--qitu-primary-soft); }
+.qitu-stage-done { color: var(--qitu-completed); background: var(--qitu-completed-soft); }
+.qitu-stage-attention { color: var(--qitu-attention); background: var(--qitu-attention-soft); }
+
+/* ---- Info row ---- */
+.qitu-info-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 10px 0; border-bottom: 1px solid var(--qitu-border);
+}
+.qitu-info-row:last-child { border-bottom: 0; }
+.qitu-info-label { color: var(--qitu-muted); font-size: 0.9rem; }
+.qitu-info-value { color: var(--qitu-text); font-weight: 500; }
+.qitu-info-row.is-muted .qitu-info-value { color: var(--qitu-muted); font-weight: 400; }
+
+/* ---- Buttons ---- */
+.qitu-button {
+  font: inherit; padding: 9px 18px; border-radius: 10px;
+  border: 1px solid transparent; cursor: pointer;
+}
+.qitu-button:disabled { opacity: 0.6; cursor: default; }
+.qitu-button-primary { background: var(--qitu-primary); color: white; }
+.qitu-button-ghost { background: white; border-color: var(--qitu-border); color: var(--qitu-muted); }
+
+/* ---- States ---- */
+.qitu-state { display: grid; place-items: center; gap: 8px; text-align: center; padding: 48px 24px; color: var(--qitu-muted); }
+.qitu-state-illustration { margin-bottom: 8px; }
+.qitu-state-title { margin: 0; color: var(--qitu-heading); font-size: 1.2rem; }
+.qitu-state-description { margin: 0; max-width: 420px; line-height: 1.7; }
+.qitu-state-action { margin-top: 12px; }
+.qitu-error-code { font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; background: var(--qitu-danger-soft); color: var(--qitu-danger); }
+
+/* ---- Offline banner ---- */
+.qitu-offline-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: 12px;
+  background: var(--qitu-attention-soft); border: 1px solid var(--qitu-attention);
+}
+.qitu-offline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--qitu-attention); flex-shrink: 0; }
+.qitu-offline-text { flex: 1; font-size: 0.9rem; line-height: 1.6; color: var(--qitu-text); }
+
+/* ---- Skeleton ---- */
+.qitu-skeleton { display: grid; gap: 12px; }
+.qitu-skeleton-line {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef3fa 25%, #e2eaf5 50%, #eef3fa 75%);
+  background-size: 200% 100%;
+  animation: qitu-shimmer 1.4s infinite;
+}
+@keyframes qitu-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ================================================================== *
+ * 视觉基础层升级（追加式，向后兼容）
+ * 目标：统一间距/圆角/阴影/排版刻度，补齐基础组件样式、
+ *       焦点可见性、减少动效与响应式断点。
+ * 既有 class 名与语义保持不变，仅加强或新增。
+ * ================================================================== */
+
+:root {
+  /* 间距刻度 */
+  --qitu-space-none: 0;
+  --qitu-space-xxs: 2px;
+  --qitu-space-xs: 4px;
+  --qitu-space-sm: 8px;
+  --qitu-space-md: 12px;
+  --qitu-space-lg: 16px;
+  --qitu-space-xl: 20px;
+  --qitu-space-xxl: 24px;
+  --qitu-space-xxxl: 32px;
+  --qitu-space-huge: 48px;
+
+  /* 圆角刻度 */
+  --qitu-radius-xs: 4px;
+  --qitu-radius-sm: 8px;
+  --qitu-radius-md: 10px;
+  --qitu-radius-lg: 14px;
+  --qitu-radius-xl: 20px;
+  --qitu-radius-xxl: 28px;
+  --qitu-radius-pill: 999px;
+
+  /* 阴影刻度 */
+  --qitu-shadow-xs: 0 1px 2px rgb(16 42 92 / 6%);
+  --qitu-shadow-sm: 0 4px 12px rgb(16 42 92 / 6%);
+  --qitu-shadow-md: 0 8px 24px rgb(16 42 92 / 5%);
+  --qitu-shadow-lg: 0 16px 40px rgb(16 42 92 / 10%);
+  --qitu-shadow-xl: 0 24px 56px rgb(16 42 92 / 14%);
+  --qitu-focus-ring: 0 0 0 3px rgb(40 120 240 / 35%);
+
+  /* 语义色加深态与描边 */
+  --qitu-primary-border: #c6dcfb;
+  --qitu-primary-hover: #1e63ce;
+  --qitu-completed-border: #b6e7e2;
+  --qitu-completed-hover: #139c93;
+  --qitu-attention-border: #ffd3b8;
+  --qitu-attention-hover: #e9762a;
+  --qitu-danger-border: #f8c9ce;
+  --qitu-danger-hover: #d23f4d;
+
+  /* 品牌渐变 */
+  --qitu-gradient-brand: linear-gradient(135deg, #2878f0 0%, #18b7ac 100%);
+  --qitu-gradient-primary: linear-gradient(135deg, #3e8bf5 0%, #2878f0 100%);
+  --qitu-gradient-banner: linear-gradient(135deg, #eaf2fe 0%, #f6faff 100%);
+}
+
+/* ---- 通用可见焦点环（可访问性） ---- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[role='button']:focus-visible,
+[role='radio']:focus-visible,
+[role='tab']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--qitu-primary);
+  outline-offset: 2px;
+}
+
+/* 仅屏幕阅读器可见的文本 */
+.qitu-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- 外壳与顶栏精修 ---- */
+.qitu-shell { background: var(--qitu-page); }
+.qitu-topbar {
+  gap: var(--qitu-space-lg);
+  padding: 16px 6vw;
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--qitu-shadow-xs);
+}
+.qitu-shell .qitu-content { padding: clamp(32px, 7vh, 72px) 6vw; }
+
+/* ---- 侧边栏与导航 ---- */
+.qitu-sidebar {
+  gap: var(--qitu-space-xxl);
+  padding: 24px 16px;
+  box-shadow: var(--qitu-shadow-sm);
+}
+.qitu-sidebar-logo {
+  background: var(--qitu-gradient-brand);
+  box-shadow: 0 6px 14px rgb(40 120 240 / 28%);
+}
+.qitu-nav-item {
+  position: relative;
+  gap: var(--qitu-space-md);
+  padding: 11px 14px;
+  border-radius: var(--qitu-radius-md);
+  font-weight: 500;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.qitu-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary);
+  transform: translateY(-50%);
+  transition: height 0.18s ease;
+}
+.qitu-nav-item:hover { transform: translateX(2px); }
+.qitu-nav-item.is-active { box-shadow: inset 0 0 0 1px var(--qitu-primary-border); }
+.qitu-nav-item.is-active::before { height: 18px; }
+.qitu-nav-item:focus-visible { outline: none; box-shadow: var(--qitu-focus-ring); }
+
+/* ---- 侧边栏收起 / 展开 ----
+   收起是**用户点的**，不是断点说了算：按钮把状态写进 localStorage，
+   收起后只留图标，名称用 title + aria-label 兜底（标签被 display:none
+   隐藏后会退出无障碍树，所以无障碍名称必须另给）。 */
+.qitu-sidebar { transition: width 0.2s ease, padding 0.2s ease; }
+.qitu-sidebar.is-collapsed { width: 76px; padding: 24px 10px; }
+.qitu-sidebar.is-collapsed .qitu-sidebar-brand { justify-content: center; padding: 0; }
+.qitu-sidebar.is-collapsed .qitu-sidebar-brand-text { display: none; }
+.qitu-sidebar.is-collapsed .qitu-nav-item { justify-content: center; padding: 12px 0; }
+.qitu-sidebar.is-collapsed .qitu-nav-label { display: none; }
+.qitu-sidebar.is-collapsed .qitu-nav-item::before { left: -6px; }
+
+.qitu-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  width: 100%;
+  min-height: 36px;
+  margin-top: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: #fff;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+.qitu-sidebar-toggle:hover {
+  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+}
+.qitu-sidebar-toggle:focus-visible { outline: none; box-shadow: var(--qitu-focus-ring); }
+.qitu-sidebar-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+/* 展开时箭头指向左侧（点击收起）；收起后翻转指右（点击展开）。 */
+.qitu-sidebar.is-collapsed .qitu-sidebar-toggle { justify-content: center; padding: 8px 0; }
+.qitu-sidebar.is-collapsed .qitu-sidebar-toggle-label { display: none; }
+.qitu-sidebar.is-collapsed .qitu-sidebar-toggle-icon { transform: rotate(180deg); }
+.qitu-nav-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: currentColor;
+}
+.qitu-nav-icon > svg,
+.qitu-nav-icon > img { width: 100%; height: 100%; display: block; }
+
+/* ---- 顶部横幅 ---- */
+.qitu-greeting-banner {
+  background: var(--qitu-gradient-banner);
+  border: 1px solid var(--qitu-border);
+  box-shadow: var(--qitu-shadow-md);
+  border-radius: var(--qitu-radius-xl);
+}
+.qitu-greeting-hello { letter-spacing: 0.01em; }
+
+/* ---- 卡片（SectionCard / Card） ---- */
+.qitu-section-card,
+.qitu-card {
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xl);
+  box-shadow: var(--qitu-shadow-md);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.qitu-section-card:hover,
+.qitu-card:hover { box-shadow: var(--qitu-shadow-lg); }
+.qitu-section-card-header,
+.qitu-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--qitu-space-lg);
+  padding: 18px var(--qitu-space-xxl);
+  border-bottom: 1px solid var(--qitu-border);
+}
+.qitu-section-card-title,
+.qitu-card-title { margin: 0; color: var(--qitu-heading); font-size: 1.1rem; }
+.qitu-card { overflow: hidden; }
+.qitu-card-heading { min-width: 0; }
+.qitu-card-description { margin: 4px 0 0; color: var(--qitu-muted); font-size: 0.88rem; line-height: 1.5; }
+.qitu-card-action,
+.qitu-section-card-action { display: flex; align-items: center; gap: var(--qitu-space-sm); }
+.qitu-card.is-padded .qitu-card-body,
+.qitu-section-card.is-padded .qitu-section-card-body { padding: 20px var(--qitu-space-xxl); }
+.qitu-card-footer {
+  padding: 14px var(--qitu-space-xxl);
+  border-top: 1px solid var(--qitu-border);
+  background: #fbfdff;
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+}
+
+/* ---- 按钮 ---- */
+.qitu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--qitu-space-sm);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 9px 18px;
+  border-radius: var(--qitu-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease, transform 0.18s ease;
+}
+.qitu-button:focus-visible { outline: none; box-shadow: var(--qitu-focus-ring); }
+.qitu-button:disabled { opacity: 0.55; cursor: not-allowed; }
+.qitu-button:not(:disabled):active { transform: translateY(1px); }
+.qitu-button-primary {
+  background: var(--qitu-primary);
+  color: white;
+  box-shadow: 0 6px 16px rgb(40 120 240 / 24%);
+}
+.qitu-button-primary:hover:not(:disabled) { background: var(--qitu-primary-hover); }
+.qitu-button-secondary {
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border);
+}
+.qitu-button-secondary:hover:not(:disabled) { background: #dfeafe; }
+.qitu-button-ghost {
+  background: white;
+  border-color: var(--qitu-border);
+  color: var(--qitu-muted);
+}
+.qitu-button-ghost:hover:not(:disabled) {
+  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+}
+.qitu-button-danger { background: var(--qitu-danger); color: white; }
+.qitu-button-danger:hover:not(:disabled) { background: var(--qitu-danger-hover); }
+.qitu-button-sm { padding: 6px 12px; font-size: 0.82rem; border-radius: var(--qitu-radius-sm); }
+.qitu-button-lg { padding: 12px 24px; font-size: 1rem; border-radius: var(--qitu-radius-lg); }
+.qitu-button.is-loading { cursor: progress; }
+.qitu-button-label { white-space: nowrap; }
+
+/* ---- 图标按钮 ---- */
+.qitu-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--qitu-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--qitu-muted);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.qitu-icon-button:hover:not(:disabled) { color: var(--qitu-primary); background: var(--qitu-primary-soft); }
+.qitu-icon-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.qitu-icon-button:focus-visible { outline: none; box-shadow: var(--qitu-focus-ring); }
+.qitu-icon-button-primary { background: var(--qitu-primary); color: white; }
+.qitu-icon-button-primary:hover:not(:disabled) { background: var(--qitu-primary-hover); color: white; }
+.qitu-icon-button-secondary { background: var(--qitu-primary-soft); color: var(--qitu-primary); border-color: var(--qitu-primary-border); }
+.qitu-icon-button-danger { color: var(--qitu-danger); }
+.qitu-icon-button-danger:hover:not(:disabled) { background: var(--qitu-danger-soft); color: var(--qitu-danger-hover); }
+.qitu-icon-button-sm { width: 30px; height: 30px; border-radius: var(--qitu-radius-sm); }
+.qitu-icon-button-lg { width: 46px; height: 46px; border-radius: var(--qitu-radius-lg); }
+
+/* ---- 徽章 ---- */
+.qitu-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--qitu-radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--qitu-border);
+  background: white;
+  color: var(--qitu-muted);
+}
+.qitu-badge-md { padding: 4px 12px; }
+.qitu-badge-primary { color: var(--qitu-primary); background: var(--qitu-primary-soft); border-color: var(--qitu-primary-border); }
+.qitu-badge-completed { color: var(--qitu-completed); background: var(--qitu-completed-soft); border-color: var(--qitu-completed-border); }
+.qitu-badge-attention { color: var(--qitu-attention); background: var(--qitu-attention-soft); border-color: var(--qitu-attention-border); }
+.qitu-badge-danger { color: var(--qitu-danger); background: var(--qitu-danger-soft); border-color: var(--qitu-danger-border); }
+
+/* ---- 分段控件 ---- */
+.qitu-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--qitu-radius-pill);
+  background: #eef3fa;
+  border: 1px solid var(--qitu-border);
+}
+.qitu-segment {
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: var(--qitu-radius-pill);
+  background: transparent;
+  color: var(--qitu-muted);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.qitu-segment:hover:not(:disabled) { color: var(--qitu-heading); }
+.qitu-segment.is-active {
+  background: white;
+  color: var(--qitu-primary);
+  font-weight: 600;
+  box-shadow: var(--qitu-shadow-xs);
+}
+.qitu-segment:disabled { opacity: 0.5; cursor: not-allowed; }
+.qitu-segment:focus-visible { outline: none; box-shadow: var(--qitu-focus-ring); }
+.qitu-segmented-sm .qitu-segment { padding: 4px 12px; font-size: 0.8rem; }
+
+/* ---- 头像 ---- */
+.qitu-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--qitu-gradient-primary);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  user-select: none;
+}
+.qitu-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.qitu-avatar-sm { width: 30px; height: 30px; font-size: 0.78rem; }
+.qitu-avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; }
+
+/* ---- 分隔线 ---- */
+.qitu-divider-horizontal {
+  display: flex;
+  align-items: center;
+  gap: var(--qitu-space-md);
+  width: 100%;
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+}
+.qitu-divider-horizontal::before,
+.qitu-divider-horizontal::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--qitu-border);
+}
+.qitu-divider-horizontal:not(:has(.qitu-divider-label))::before { flex: 1; }
+.qitu-divider-horizontal:not(:has(.qitu-divider-label))::after { display: none; }
+.qitu-divider-label { white-space: nowrap; }
+.qitu-divider-vertical {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  min-height: 18px;
+  background: var(--qitu-border);
+}
+
+/* ---- 工具条 ---- */
+.qitu-toolbar { display: flex; align-items: center; gap: var(--qitu-space-md); }
+.qitu-toolbar-start { justify-content: flex-start; }
+.qitu-toolbar-center { justify-content: center; }
+.qitu-toolbar-end { justify-content: flex-end; }
+.qitu-toolbar-between { justify-content: space-between; }
+.qitu-toolbar.is-wrap { flex-wrap: wrap; }
+
+/* ---- 表单字段 ---- */
+.qitu-field { display: grid; gap: 6px; }
+.qitu-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--qitu-heading);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.qitu-field-required { color: var(--qitu-danger); }
+.qitu-field-control { display: block; }
+.qitu-field-control input,
+.qitu-field-control select,
+.qitu-field-control textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--qitu-text);
+  padding: 9px 12px;
+  border-radius: var(--qitu-radius-md);
+  border: 1px solid var(--qitu-border);
+  background: white;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.qitu-field-control input:focus,
+.qitu-field-control select:focus,
+.qitu-field-control textarea:focus {
+  outline: none;
+  border-color: var(--qitu-primary);
+  box-shadow: var(--qitu-focus-ring);
+}
+.qitu-field-control input[aria-invalid='true'],
+.qitu-field-control select[aria-invalid='true'],
+.qitu-field-control textarea[aria-invalid='true'] { border-color: var(--qitu-danger); }
+.qitu-field-hint { margin: 0; color: var(--qitu-muted); font-size: 0.8rem; line-height: 1.5; }
+.qitu-field-error { margin: 0; color: var(--qitu-danger); font-size: 0.8rem; line-height: 1.5; }
+.qitu-field.has-error .qitu-field-label { color: var(--qitu-danger); }
+
+/* ---- 加载指示器 ---- */
+.qitu-spinner { display: inline-flex; position: relative; flex-shrink: 0; }
+.qitu-spinner-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: qitu-spin 0.7s linear infinite;
+  display: block;
+}
+@keyframes qitu-spin { to { transform: rotate(360deg); } }
+.qitu-button .qitu-spinner { color: currentColor; }
+
+/* ---- 进度条精修 ---- */
+.qitu-progress-track {
+  height: 10px;
+  background: var(--qitu-primary-soft);
+  box-shadow: inset 0 1px 3px rgb(16 42 92 / 8%);
+}
+.qitu-progress-fill {
+  background-image: var(--qitu-gradient-primary);
+  box-shadow: 0 0 8px rgb(40 120 240 / 35%);
+}
+
+/* ---- 状态页精修 ---- */
+.qitu-state { gap: var(--qitu-space-md); }
+.qitu-state-illustration {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+}
+.qitu-error-state .qitu-state-illustration { background: var(--qitu-danger-soft); color: var(--qitu-danger); }
+.qitu-state-title { font-size: 1.25rem; }
+
+/* ---- 离线横幅精修 ---- */
+.qitu-offline-banner {
+  border-left: 4px solid var(--qitu-attention);
+  box-shadow: var(--qitu-shadow-sm);
+}
+.qitu-offline-dot { animation: qitu-pulse 1.6s ease-in-out infinite; }
+@keyframes qitu-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ---- 骨架屏 ---- */
+.qitu-skeleton-line { min-height: 8px; }
+
+/* ---- 响应式：≤1080px 侧边栏收窄（但**保留完整标签文字**） ----
+   学生视图最多到 1080px 宽就只剩图标，这让「今天 / 灵感空间 / AI搭档 …」
+   这些名称彻底看不见了。收起与否交给用户点按钮决定，不再由断点强行决定。 */
+@media (max-width: 1080px) {
+  .qitu-sidebar { width: 200px; padding: 24px 14px; gap: var(--qitu-space-xl); }
+  .qitu-sidebar.is-collapsed { width: 76px; padding: 24px 10px; }
+  .qitu-student-banner-slot { padding: 20px 20px 0; }
+  .qitu-student-content { padding: 20px 20px 40px; }
+}
+
+/* ---- 响应式：≤760px 单列布局 ---- */
+@media (max-width: 760px) {
+  .qitu-student-shell { flex-direction: column; }
+  .qitu-sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--qitu-space-sm);
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--qitu-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .qitu-sidebar-brand { display: none; }
+  .qitu-sidebar-toggle { display: none; }
+  .qitu-sidebar-nav { flex-direction: row; gap: 4px; }
+  .qitu-nav-item { padding: 8px 12px; }
+  .qitu-nav-item::before { display: none; }
+  .qitu-nav-label { display: inline; }
+  .qitu-student-banner-slot { padding: 16px 16px 0; }
+  .qitu-student-content { padding: 16px 16px 32px; }
+  .qitu-content { padding: 40px 20px; }
+  .stats-grid,
+  .qitu-stat-triple { grid-template-columns: 1fr; }
+  .qitu-greeting-banner { flex-direction: column; align-items: flex-start; text-align: left; }
+  .qitu-greeting-mascot { align-self: flex-end; }
+}
+
+/* ---- 减少动效偏好 ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .qitu-nav-item:hover { transform: none; }
+  .qitu-button:not(:disabled):active { transform: none; }
+}
+
+/* ================================================================== *
+ * AI搭档页（三栏工作台）
+ * 覆盖 features/tutor 与 features/workbench 引用的 qitu-tutor-* /
+ * qitu-chat-* / qitu-composer-* / qitu-capability-* 类。
+ * 追加式，不改动任何既有 class。
+ * ================================================================== */
+
+/* ---- 页面与三栏栅格 ---- */
+.qitu-tutor-page {
+  display: block;
+  min-height: 100%;
+}
+
+.qitu-tutor-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(240px, 300px);
+  gap: var(--qitu-space-xl);
+  align-items: start;
+  padding: var(--qitu-space-xxl) 6vw var(--qitu-space-huge);
+}
+
+.qitu-tutor-col {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  align-content: start;
+  min-width: 0;
+}
+
+.qitu-tutor-col-left,
+.qitu-tutor-col-right {
+  position: sticky;
+  top: var(--qitu-space-xxl);
+}
+
+/* 中栏要能容纳长对话，且不撑破栅格 */
+.qitu-tutor-col-center {
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-xl);
+  box-shadow: var(--qitu-shadow-md);
+  padding: var(--qitu-space-xl);
+  min-height: 60vh;
+}
+
+.qitu-tutor-muted {
+  color: var(--qitu-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.qitu-tutor-left-cards {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+.qitu-tutor-panel-loading {
+  display: grid;
+  gap: var(--qitu-space-sm);
+}
+
+/* ---- 左栏：项目卡与阶段轨 ---- */
+.qitu-tutor-project-card {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  padding: var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-gradient-banner);
+}
+
+.qitu-tutor-project-title {
+  color: var(--qitu-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.qitu-tutor-project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-sm);
+  align-items: center;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+.qitu-tutor-task {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  border: 1px solid var(--qitu-primary-border);
+  border-left: 3px solid var(--qitu-primary);
+  border-radius: var(--qitu-radius-md);
+  background: white;
+}
+
+.qitu-tutor-task-title {
+  color: var(--qitu-heading);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.qitu-tutor-task-detail {
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+  line-height: 1.7;
+}
+
+.qitu-tutor-stage-rail {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-tutor-stage-item {
+  position: relative;
+  padding: var(--qitu-space-sm) 0 var(--qitu-space-sm) var(--qitu-space-xxl);
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.qitu-tutor-stage-item::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 18px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--qitu-border);
+}
+
+.qitu-tutor-stage-item:last-child::before { display: none; }
+
+.qitu-tutor-stage-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: white;
+}
+
+.qitu-tutor-stage-item.is-current,
+.qitu-tutor-stage-item[aria-current='step'] {
+  color: var(--qitu-heading);
+  font-weight: 600;
+}
+
+.qitu-tutor-stage-item.is-current::after,
+.qitu-tutor-stage-item[aria-current='step']::after {
+  border-color: var(--qitu-primary);
+  background: var(--qitu-primary);
+  box-shadow: 0 0 0 4px var(--qitu-primary-soft);
+}
+
+/* ---- 中栏：对话 ---- */
+.qitu-chat-thread {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  align-content: start;
+  padding-bottom: var(--qitu-space-lg);
+}
+
+.qitu-tutor-thread-loading {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+.qitu-chat-bubble {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  max-width: 82%;
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: white;
+  box-shadow: var(--qitu-shadow-xs);
+}
+
+.qitu-chat-bubble.is-assistant {
+  justify-self: start;
+  border-top-left-radius: var(--qitu-radius-xs);
+}
+
+.qitu-chat-bubble.is-student {
+  justify-self: end;
+  border-color: var(--qitu-primary-border);
+  border-top-right-radius: var(--qitu-radius-xs);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-chat-role {
+  color: var(--qitu-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.qitu-chat-body {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  color: var(--qitu-text);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+.qitu-tutor-text { margin: 0; white-space: pre-wrap; }
+
+.qitu-tutor-hint {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-weight: 600;
+}
+
+/* Numbered 1/2/3 question panel: the reference shows these on a soft blue pad. */
+.qitu-tutor-questions {
+  margin: 0;
+  padding: var(--qitu-space-md) var(--qitu-space-md) var(--qitu-space-md) 2.4em;
+  display: grid;
+  gap: var(--qitu-space-sm);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-page);
+  color: var(--qitu-text);
+}
+
+.qitu-tutor-questions > li::marker {
+  color: var(--qitu-primary);
+  font-weight: 650;
+}
+
+.qitu-tutor-block-fallback {
+  margin: 0;
+  padding: var(--qitu-space-md);
+  border: 1px dashed var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-page);
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+}
+
+.qitu-tutor-escalation {
+  margin: 0 0 var(--qitu-space-lg);
+  padding: var(--qitu-space-md) var(--qitu-space-lg);
+  border: 1px solid var(--qitu-attention-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-attention-soft);
+  color: #8a4a1c;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+/* 证据引用（可溯源，不展示未成年人原始对话） */
+.qitu-tutor-evidence {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-xs);
+  align-items: baseline;
+  margin-top: var(--qitu-space-xs);
+  padding: var(--qitu-space-xs) var(--qitu-space-sm);
+  border: 1px solid var(--qitu-completed-border);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-completed-soft);
+  font-size: 0.78rem;
+}
+
+.qitu-tutor-evidence-label { color: #0f7a72; font-weight: 700; }
+.qitu-tutor-evidence-ref { color: var(--qitu-muted); }
+
+/* 选项卡（学生自选，服务端只读取意图） */
+.qitu-tutor-options { display: grid; gap: var(--qitu-space-sm); }
+
+.qitu-tutor-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-tutor-option-chip {
+  display: grid;
+  gap: var(--qitu-space-xxs);
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: var(--qitu-radius-md);
+  background: white;
+  color: var(--qitu-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.qitu-tutor-option-chip:hover:not(:disabled) {
+  border-color: var(--qitu-primary);
+  background: var(--qitu-primary-soft);
+  transform: translateY(-1px);
+}
+
+.qitu-tutor-option-chip:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.qitu-tutor-option-label {
+  color: var(--qitu-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.qitu-tutor-option-text {
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.qitu-tutor-option-chip.is-other,
+.qitu-tutor-other { margin-top: var(--qitu-space-xs); }
+
+/* 提示阶梯（1→5 档，只显示档位名，不显示答案） */
+.qitu-hint-indicator {
+  display: grid;
+  gap: var(--qitu-space-xs);
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-page);
+}
+
+.qitu-hint-name {
+  color: var(--qitu-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.qitu-hint-track {
+  display: flex;
+  gap: var(--qitu-space-xs);
+}
+
+/*
+ * 阶梯上的单个档位。达到的档位填实，未达到的留白；
+ * 「仅解释这个概念可达」的档位用虚线边框区分，因此不靠颜色单独表意。
+ */
+.qitu-hint-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding: 0 var(--qitu-space-xxs);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: #fff;
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.qitu-hint-step.is-reached {
+  border-color: var(--qitu-primary-border);
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+}
+
+.qitu-hint-step.is-explain-only {
+  border-style: dashed;
+}
+
+/* 打字/思考指示 */
+.qitu-typing-indicator {
+  display: inline-flex;
+  gap: var(--qitu-space-sm);
+  align-items: center;
+  justify-self: start;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px dashed var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-page);
+  color: var(--qitu-muted);
+  font-size: 0.84rem;
+}
+
+.qitu-typing-label { color: var(--qitu-muted); }
+
+.qitu-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary);
+  animation: qitu-typing 1.2s ease-in-out infinite;
+}
+
+.qitu-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.qitu-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes qitu-typing {
+  0%, 60%, 100% { opacity: 0.28; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* ---- 输入区 ----
+/* Reference layout is a single row: [输入方式] [想法] [发送]. */
+.qitu-composer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--qitu-space-sm);
+  align-items: end;
+  padding-top: var(--qitu-space-lg);
+  border-top: 1px solid var(--qitu-border);
+}
+
+/* Full-width rows inside the composer grid (offline note, voice panel). */
+.qitu-composer-hint,
+.qitu-composer-voice {
+  grid-column: 1 / -1;
+}
+
+.qitu-composer-input {
+  width: 100%;
+  min-height: 56px;
+  max-height: 180px;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.qitu-composer-input:focus-visible {
+  border-color: var(--qitu-primary);
+}
+
+.qitu-composer-input:disabled { background: var(--qitu-page); color: var(--qitu-muted); }
+
+.qitu-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--qitu-space-sm);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qitu-composer-voice { display: inline-flex; gap: var(--qitu-space-sm); align-items: center; }
+
+.qitu-composer-hint {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* ---- 右栏：六项能力入口 ---- */
+.qitu-capability-rail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-capability-tile {
+  display: grid;
+  gap: var(--qitu-space-xxs);
+  padding: var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: white;
+  color: var(--qitu-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.qitu-capability-tile:hover:not(:disabled) {
+  border-color: var(--qitu-primary);
+  box-shadow: var(--qitu-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.qitu-capability-tile:disabled { cursor: not-allowed; background: var(--qitu-page); opacity: 0.65; }
+
+.qitu-capability-label {
+  color: var(--qitu-heading);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.qitu-capability-desc {
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.qitu-capability-level {
+  color: var(--qitu-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.qitu-tutor-encouragement { display: grid; justify-items: center; text-align: center; }
+
+/* ---- 制作工作台的 AI 建议侧栏（同一命名空间） ---- */
+.qitu-tutor-advice {
+  display: grid;
+  gap: var(--qitu-space-md);
+  align-content: start;
+  padding: var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: white;
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-tutor-advice-head { display: grid; gap: var(--qitu-space-xxs); }
+
+.qitu-tutor-advice-project {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-weight: 700;
+}
+
+.qitu-tutor-advice-session {
+  margin: 0;
+  color: var(--qitu-completed);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.qitu-tutor-capabilities { display: grid; gap: var(--qitu-space-sm); }
+
+.qitu-tutor-capability {
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-sm);
+  background: var(--qitu-page);
+  color: var(--qitu-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+.qitu-tutor-capability:hover:not(:disabled) { border-color: var(--qitu-primary); }
+.qitu-tutor-capability:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.qitu-tutor-suggestions {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-tutor-suggestion {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--qitu-space-sm);
+  align-items: start;
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+
+.qitu-tutor-suggestion-index {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.qitu-tutor-composer { display: grid; gap: var(--qitu-space-sm); }
+
+.qitu-voice-button { align-self: start; }
+
+/* ---- 响应式：≤1180px 收起右栏，≤860px 单列 ---- */
+@media (max-width: 1180px) {
+  .qitu-tutor-grid {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  }
+  .qitu-tutor-col-right {
+    position: static;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  .qitu-tutor-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--qitu-space-lg) var(--qitu-space-lg) var(--qitu-space-xxxl);
+  }
+  .qitu-tutor-col-left,
+  .qitu-tutor-col-right { position: static; }
+  .qitu-chat-bubble { max-width: 100%; }
+  .qitu-capability-rail { grid-template-columns: minmax(0, 1fr); }
+  /* Composer stacks vertically once the row no longer fits. */
+  .qitu-composer { grid-template-columns: minmax(0, 1fr); }
+}
