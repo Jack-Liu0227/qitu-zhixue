@@ -6,6 +6,7 @@
   "scripts": { "build": "tsc --noEmit", "lint": "node -e \"console.log('auth: lint placeholder')\"", "typecheck": "tsc --noEmit", "test": "node -e \"console.log('auth: no tests yet')\"" },
   "dependencies": {
     "@qitu/contracts": "workspace:*",
+    "@qitu/ui": "workspace:*",
     "react": "^19.1.0"
   },
   "devDependencies": {
