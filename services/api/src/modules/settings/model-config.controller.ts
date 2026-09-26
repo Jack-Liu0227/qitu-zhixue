@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  Param,
-  Patch,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Headers, Param, Patch } from '@nestjs/common';
 import type {
   AdminModelsResponse,
   ModelConfigPublic,
@@ -15,11 +6,10 @@ import type {
   ModelSlot,
   UpdateModelConfigRequest,
 } from '@qitu/contracts';
-import type { CurrentUser } from '@qitu/contracts';
+import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { ModelConfigService } from './model-config.service';
 
-const SESSION_COOKIE = 'qitu_session';
 const SLOTS = new Set<ModelSlot>(['text', 'live']);
 
 /**
@@ -78,33 +68,4 @@ function sanitiseBody(body: UpdateModelConfigRequest | undefined): UpdateModelCo
   if (typeof body.baseUrl === 'string' || body.baseUrl === null) out.baseUrl = body.baseUrl;
   if (typeof body.apiKey === 'string') out.apiKey = body.apiKey;
   return out;
-}
-
-function requireRole(
-  authService: AuthService,
-  cookieHeader: string | undefined,
-  role: CurrentUser['role'],
-  message: string,
-): CurrentUser {
-  const user = requireAnyRole(authService, cookieHeader);
-  if (user.role !== role) throw new ForbiddenException(message);
-  return user;
-}
-
-function requireAnyRole(authService: AuthService, cookieHeader: string | undefined): CurrentUser {
-  const token = readCookie(cookieHeader, SESSION_COOKIE);
-  if (token === undefined) throw new UnauthorizedException('请先登录');
-  return authService.getSession(token).user;
-}
-
-function readCookie(header: string | undefined, name: string): string | undefined {
-  if (header === undefined) return undefined;
-  for (const part of header.split(';')) {
-    const separator = part.indexOf('=');
-    if (separator === -1) continue;
-    if (part.slice(0, separator).trim() !== name) continue;
-    const value = part.slice(separator + 1).trim();
-    return value.length > 0 ? value : undefined;
-  }
-  return undefined;
 }
