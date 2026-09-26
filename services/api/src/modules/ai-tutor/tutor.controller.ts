@@ -54,7 +54,7 @@ const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
 };
 
 /**
- * AI 搭档 HTTP 接口。
+ * AI搭档 HTTP 接口。
  *
  * 两个「工作」端点，安全边界完全一致：
  * - `GET  /api/v1/tutor/session?projectId=`  取回会话历史与游标。
@@ -146,7 +146,7 @@ export class TutorController {
           turnId,
           seq: record.lastSeq,
           timestamp: new Date().toISOString(),
-          message: error instanceof Error ? error.message : 'AI 搭档暂时不可用',
+          message: error instanceof Error ? error.message : 'AI搭档暂时不可用',
         });
       }
     } finally {
@@ -221,7 +221,7 @@ export class TutorController {
     if (token === undefined) throw new UnauthorizedException('请先登录');
     const session = this.authService.getSession(token);
     if (session.user.role !== 'student') {
-      throw new ForbiddenException('AI 搭档仅向学生开放');
+      throw new ForbiddenException('AI搭档仅向学生开放');
     }
     return session.user;
   }

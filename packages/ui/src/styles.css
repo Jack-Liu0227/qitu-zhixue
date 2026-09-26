@@ -757,7 +757,7 @@ summary:focus-visible,
 }
 
 /* ================================================================== *
- * AI 搭档页（三栏工作台）
+ * AI搭档页（三栏工作台）
  * 覆盖 features/tutor 与 features/workbench 引用的 qitu-tutor-* /
  * qitu-chat-* / qitu-composer-* / qitu-capability-* 类。
  * 追加式，不改动任何既有 class。

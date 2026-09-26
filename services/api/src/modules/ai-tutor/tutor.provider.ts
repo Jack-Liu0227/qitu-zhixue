@@ -6,7 +6,7 @@ import type {
 } from '@qitu/contracts';
 
 /**
- * AI 搭档的回合引擎接口（provider seam）。
+ * AI搭档的回合引擎接口（provider seam）。
  *
  * 默认实现 `HeuristicTutorProvider` 完全本地、确定、无需任何外部 API Key。
  * 换成一个真实模型只需实现本接口：上层（service / controller / SSE）不需要

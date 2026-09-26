@@ -8,7 +8,7 @@
  *      一家网关或自己的中转，密钥只挂在这一层。
  *   2. 模型列表 ModelDescriptor[] —— 可以从 `baseUrl` **自动拉取**
  *      （见 `RefreshProviderResponse`），也可以手填。
- *   3. 用途绑定 ModelUsageBinding —— 「AI 搭档的普通回复」「灵感空间推荐」
+ *   3. 用途绑定 ModelUsageBinding —— 「AI搭档的普通回复」「灵感空间推荐」
  *      「成长总结」各自可以指到不同供应商/模型。
  *
  * 为什么值得拆三层：`pi-ai` 的 `createProvider({ baseUrl, auth, models,
