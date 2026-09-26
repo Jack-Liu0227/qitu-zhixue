@@ -3,6 +3,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Role } from '@qitu/contracts';
 
+// 本地一键预览开关：脚本里设置 NEXT_PUBLIC_DEV_BYPASS_AUTH=1 时跳过真实登录。
+// 生产构建不会设置该变量，行为不受影响。
+const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === '1';
+
 export type AuthState = 'anonymous' | 'authenticated' | 'refreshing';
 
 export interface CurrentUser {
@@ -25,6 +29,17 @@ export function AuthGuard({
   const [user, setUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) {
+      setUser({
+        id: 'dev-preview',
+        email: `dev-${expectedRole}@qtxz.local`,
+        displayName: '本地预览',
+        role: expectedRole,
+      });
+      setState('authenticated');
+      return;
+    }
+
     let active = true;
     fetch('/api/v1/auth/me', { credentials: 'include', cache: 'no-store' })
       .then(async (response) => {

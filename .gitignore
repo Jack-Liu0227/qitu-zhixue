@@ -44,3 +44,13 @@ Thumbs.db
 
 # Runtime logs
 .runtime/
+
+# Local dev / demo scripts (keep out of main)
+tooling/dev-teacher-local.sh
+tooling/rebuild-teacher-3105.sh
+tooling/rebuild-teacher-3105-preview.sh
+
+# Local demo docs (keep out of main)
+docs/teacher-workspace-testing.md
+docs/teacher_frontend_pictures/
+/AI教育平台前后端开发文档_v1.0.md
