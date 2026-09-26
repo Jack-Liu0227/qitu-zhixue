@@ -137,11 +137,14 @@ export function AuthGuard({
 
   useEffect(() => {
     if (DEV_BYPASS_AUTH) {
-      setUser({
-        id: 'dev-preview',
-        email: `dev-${expectedRole}@qtxz.local`,
-        displayName: '本地预览',
-        role: expectedRole,
+      writeCachedSession({
+        user: {
+          id: 'dev-preview',
+          email: `dev-${expectedRole}@qtxz.local`,
+          displayName: '本地预览',
+          role: expectedRole,
+        },
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
       setState('authenticated');
       return;
