@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 .next/
+.next.login-failure-*/
 .turbo/
 coverage/
 *.tsbuildinfo
@@ -35,6 +36,7 @@ uploads/
 .idea/
 .DS_Store
 Thumbs.db
+*.orig
 
 # Local agent state
 .pi/agent/auth.json

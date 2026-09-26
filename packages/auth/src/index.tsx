@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import type { CurrentUser, LoginResponse, Role } from '@qitu/contracts';
+import type { CurrentUser, Role } from '@qitu/contracts';
 import { OfflineBanner } from '@qitu/ui';
 
 export type AuthState = 'anonymous' | 'authenticated' | 'refreshing';
@@ -161,20 +161,20 @@ export function AuthGuard({
           return;
         }
 
-        const payload = (await response.json()) as { data?: LoginResponse };
+        const payload = (await response.json()) as { data?: unknown };
         if (!active) return;
 
-        const data = payload.data;
-        if (!data?.user) {
+        const session = normalizeAuthSession(payload.data);
+        if (!session) {
           setOffline(true);
           return;
         }
-        if (data.user.role !== expectedRole) {
+        if (session.user.role !== expectedRole) {
           leave('forbidden');
           return;
         }
 
-        writeCachedSession(data);
+        writeCachedSession(session);
         setOffline(false);
         setState('authenticated');
       } catch {
@@ -222,17 +222,17 @@ export function AuthGuard({
     fetch('/api/v1/auth/me', { credentials: 'include', cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error('anonymous');
-        return (await response.json()) as { data?: LoginResponse };
+        return (await response.json()) as { data?: unknown };
       })
       .then((payload) => {
         if (!active) return;
-        const data = payload.data;
-        if (!data?.user) throw new Error('anonymous');
-        if (data.user.role !== expectedRole) {
+        const session = normalizeAuthSession(payload.data);
+        if (!session) throw new Error('anonymous');
+        if (session.user.role !== expectedRole) {
           leave('forbidden');
           return;
         }
-        writeCachedSession(data);
+        writeCachedSession(session);
         setState('authenticated');
       })
       .catch(() => {
@@ -291,4 +291,36 @@ export function LogoutButton({ redirectTo = '/' }: { redirectTo?: string }) {
       退出登录
     </button>
   );
+}
+
+const LEGACY_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+function isCurrentUser(value: unknown): value is CurrentUser {
+  if (!value || typeof value !== 'object') return false;
+  const user = value as Partial<CurrentUser>;
+  return (
+    typeof user.id === 'string' &&
+    typeof user.email === 'string' &&
+    typeof user.displayName === 'string' &&
+    typeof user.role === 'string' &&
+    ['student', 'parent', 'teacher', 'admin', 'support'].includes(user.role)
+  );
+}
+
+export function normalizeAuthSession(data: unknown): AuthSession | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const candidate = data as Record<string, unknown>;
+  if (isCurrentUser(candidate.user) && typeof candidate.expiresAt === 'string') {
+    return { user: candidate.user, expiresAt: candidate.expiresAt };
+  }
+
+  if (isCurrentUser(data)) {
+    return {
+      user: data,
+      expiresAt: new Date(nowIso() + LEGACY_SESSION_TTL_MS).toISOString(),
+    };
+  }
+
+  return null;
 }
