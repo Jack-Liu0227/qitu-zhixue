@@ -156,3 +156,103 @@ export interface ModelUsageRuntimeSummary {
   modelId: string | null;
   available: boolean;
 }
+
+/* ------------------------------------------------------------------ *
+ * 手工模型管理（管理员）
+ *
+ * 自动拉取（`RefreshProviderResponse`）拿到的是上游真实模型；管理员也可以
+ * **手工补一个**上游列表里没有、或上游没返回能力信息的模型。手工模型与
+ * 拉取模型共存于同一个 `ProviderConfigPublic.models` 列表，靠
+ * `ModelDescriptor.source` 区分，任何一侧的增删都不会覆盖另一侧。
+ *
+ * ⚠️ **`modelId` 与 `displayName` 的分工**：
+ *  - `modelId` 是**上游真实 ID**，发对话请求时用它，创建后**不可更改**；
+ *  - `displayName` 只是平台内展示名，管理员随时可改，**不影响实际请求**。
+ * 因此更新请求里**没有 `modelId`**：想换上游模型只能禁用/删除后新建。
+ * ------------------------------------------------------------------ */
+
+/** `POST /admin/model-providers/:id/models` —— 手工新增一个模型。 */
+export interface CreateManualModelRequest {
+  /** 上游真实模型 ID，用于实际请求；同一 provider 下不可重复，创建后不可更改。 */
+  modelId: string;
+  /** 平台展示名，仅用于界面；不影响实际请求。 */
+  displayName: string;
+  /** 上游协议；缺省时沿用所在 provider 的 `api`。 */
+  api?: ModelApi;
+  /**
+   * 能接收的输入模态。上游不返回能力时保守填 `['text']`；不要为界面好看而
+   * 声明 `audio`／`image`，猜错会让运行时报错。
+   */
+  input: ModelModality[];
+  /** 能产出的输出模态。同上，未知时默认 `['text']`。 */
+  output: ModelModality[];
+  contextWindow: number | null;
+  maxTokens: number | null;
+  enabled: boolean;
+  idempotencyKey: string;
+}
+
+/**
+ * `PATCH /admin/model-providers/:id/models/:modelId` —— 更新手工模型。
+ *
+ * **故意不含 `modelId`**：`modelId` 是不可变主键，改 ID 等于换了一个模型，
+ * 会让已有用途绑定与审计记录指向不存在的东西。需要换上游模型时先禁用再新建。
+ */
+export interface UpdateManualModelRequest {
+  /** 仅改展示名；`modelId`（实际请求用）保持不变。 */
+  displayName?: string;
+  api?: ModelApi;
+  input?: ModelModality[];
+  output?: ModelModality[];
+  contextWindow?: number | null;
+  maxTokens?: number | null;
+  /** 停用后不再参与用途解析，也不会被调用。 */
+  enabled?: boolean;
+  idempotencyKey: string;
+}
+
+/**
+ * 单个模型的增量视图：`providerId` + `ModelDescriptor` 本体 + 运行状态。
+ *
+ * 兼容 `ProviderConfigPublic.models`：`model` 就是列表里的那个
+ * `ModelDescriptor`（含 `id`／`input`／`output`／`contextWindow` 等），
+ * 这里额外带上 `enabled`／`lastSeenAt`，让手工新增、编辑、启停后只需回传
+ * 一个模型，而不必重发整个 provider。
+ */
+export interface AdminModelResponse {
+  providerId: string;
+  model: ModelDescriptor;
+  /** 是否参与用途绑定与实际调用。 */
+  enabled: boolean;
+  /** 最近一次在上游列表中见到的时间；手工模型恒为 `null`。 */
+  lastSeenAt: string | null;
+}
+
+/* ------------------------------------------------------------------ *
+ * 连接测试（Provider / Model / Usage）
+ *
+ * 管理员保存后需要一键确认「这把 Key、这个地址、这个模型真的能通」。测试
+ * 结果只回脱敏信息：**密钥永不出现**在 `message` / `error` 里，错误也只给
+ * 已脱敏的原因，不返回上游原始响应体。
+ * ------------------------------------------------------------------ */
+
+/**
+ * `POST .../test` 的统一响应。
+ *
+ * 三处入口共用：provider 级（`usageId`／`modelId` 均为 `null`）、model 级
+ * （只填 `modelId`）、usage 级（填 `usageId`，并按解析结果填 `modelId`）。
+ */
+export interface ConnectionTestResponse {
+  ok: boolean;
+  /** 端到端往返耗时（毫秒）；失败时为 `null`。 */
+  latencyMs: number | null;
+  /** 面向管理员的一句话说明；无则 `null`。 */
+  message: string | null;
+  /** 已脱敏的错误说明；成功时为 `null`。**绝不含密钥或原始响应体**。 */
+  error: string | null;
+  testedAt: string;
+  /** usage 级测试填该用途 id；provider／model 级为 `null`。 */
+  usageId: string | null;
+  /** model／usage 级测试填解析到的模型 id；provider 级为 `null`。 */
+  modelId: string | null;
+}

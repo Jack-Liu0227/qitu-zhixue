@@ -68,6 +68,8 @@ body { min-height: 100vh; }
 
 /* ---- Overview ---- */
 .admin-page-header-title { display: flex; align-items: center; gap: 12px; }
+/* 页头里的次级入口（例如「查看学生数据统计」），与 <p> 同流但不能贴在一起。 */
+.admin-page-header-action { margin-top: 10px; }
 .admin-overview-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -402,6 +404,102 @@ body { min-height: 100vh; }
   font-size: 0.88rem;
 }
 
+/* ---- 供应商内的模型列表 / 手工模型表单 ---- */
+.admin-models-block { margin-top: 18px; }
+.admin-models-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-models-block-title {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 1rem;
+}
+.admin-models-block-hint { margin: 8px 0 0; }
+.admin-model-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-model-row {
+  padding: 12px 14px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+  background: white;
+}
+.admin-model-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.admin-model-name {
+  min-width: 0;
+  color: var(--qitu-heading);
+  font-size: 0.94rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.admin-model-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-model-row-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+.admin-model-meta-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--qitu-text);
+}
+.admin-model-meta-label {
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+}
+.admin-model-meta-item code { overflow-wrap: anywhere; }
+.admin-model-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.admin-model-row-note {
+  color: var(--qitu-muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.admin-model-form-wrap { margin-top: 16px; }
+.admin-modality-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.admin-confirm-text {
+  color: var(--qitu-attention);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.admin-presets-section { margin: 32px 0 0; }
+.admin-presets-section h2 {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+}
+.admin-presets-hint {
+  margin: 0 0 16px;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+}
+
+
 /* ---- 模型用途绑定 ---- */
 .admin-usage-description {
   margin: 0 0 12px;
@@ -436,6 +534,395 @@ body { min-height: 100vh; }
   color: var(--qitu-completed);
   font-size: 0.86rem;
   font-weight: 600;
+}
+
+/* ---- Relationships ---- */
+.admin-relationships-page { display: grid; gap: 20px; }
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  padding: 4px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-tab {
+  flex: 1;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qitu-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-tab:hover { background: var(--qitu-page); }
+.admin-tab.active {
+  background: #2878f0;
+  color: white;
+}
+.admin-relationship-panel { display: grid; gap: 20px; }
+.admin-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-panel-header h3 { margin: 0 0 6px; font-size: 1.3rem; }
+.admin-panel-description {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+.admin-panel-stats {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-stat-item { flex: 1; display: grid; gap: 6px; }
+.admin-stat-sub {
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+.admin-stat-alert { color: var(--qitu-attention); font-weight: 700; }
+.admin-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-left: 3px solid #e95b68;
+  background: #fff5f6;
+  color: #b63f4d;
+  font-size: 0.88rem;
+  border-radius: 0 6px 6px 0;
+}
+.admin-error-banner button {
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.admin-error-banner button:hover { opacity: 1; }
+.admin-form-card {
+  padding: 20px;
+  background: var(--qitu-page);
+  border: 2px dashed var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-form-card h4 { margin: 0 0 16px; font-size: 1.1rem; }
+.admin-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+.admin-form-row label {
+  display: grid;
+  gap: 8px;
+  color: var(--qitu-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.admin-form-row select {
+  padding: 10px 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 6px;
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+}
+.admin-form-hint {
+  margin: 0 0 12px;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+}
+.admin-alert-card {
+  padding: 20px;
+  background: #fffbf0;
+  border: 1px solid #f5d97a;
+  border-radius: 8px;
+}
+.admin-alert-card h3,
+.admin-alert-card h4 { margin: 0 0 8px; font-size: 1.1rem; }
+.admin-alert-card p {
+  margin: 0 0 12px;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+.admin-unassigned-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.admin-unassigned-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 6px;
+}
+.admin-data-section {
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-data-section h4 { margin: 0 0 16px; font-size: 1.1rem; }
+.admin-data-section .admin-data-table { border: 0; }
+.admin-empty-hint {
+  margin: 0;
+  padding: 20px;
+  color: var(--qitu-muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+.admin-cell-sub {
+  display: block;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+.admin-action-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 4px;
+  background: white;
+  color: var(--qitu-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-action-btn + .admin-action-btn { margin-left: 8px; }
+.admin-action-btn:hover {
+  border-color: #2878f0;
+  color: #2878f0;
+}
+.admin-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.admin-row-ended { opacity: 0.6; }
+.admin-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.admin-dialog {
+  width: min(90vw, 420px);
+  padding: 24px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.admin-dialog h3 { margin: 0 0 12px; font-size: 1.2rem; }
+.admin-dialog p {
+  margin: 0 0 20px;
+  color: var(--qitu-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.admin-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---- Statistics ---- */
+.admin-statistics-page { display: grid; gap: 20px; }
+.admin-range-selector {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+  width: fit-content;
+}
+.admin-range-btn {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qitu-text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-range-btn:hover { background: var(--qitu-page); }
+.admin-range-btn.active {
+  background: #2878f0;
+  color: white;
+}
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.admin-stat-highlight {
+  border-left: 3px solid #2878f0;
+}
+.admin-table-compact table { font-size: 0.88rem; }
+.admin-table-compact th,
+.admin-table-compact td { padding: 10px 14px; }
+.admin-chart-section {
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-chart-section h3 { margin: 0 0 16px; font-size: 1.1rem; }
+.admin-stage-bars { display: grid; gap: 12px; }
+.admin-stage-bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.admin-stage-label {
+  color: var(--qitu-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.admin-stage-bar-track {
+  height: 24px;
+  background: var(--qitu-page);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.admin-stage-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2878f0, #5a9aff);
+  transition: width 0.3s;
+}
+.admin-stage-count {
+  min-width: 40px;
+  color: var(--qitu-text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: right;
+}
+.admin-activity-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 200px;
+  padding: 10px;
+  background: var(--qitu-page);
+  border-radius: 6px;
+}
+.admin-activity-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.admin-activity-bar-track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.admin-activity-bar-fill {
+  width: 100%;
+  background: #2878f0;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s;
+  min-height: 2px;
+}
+.admin-activity-date {
+  color: var(--qitu-muted);
+  font-size: 0.72rem;
+}
+.admin-row-alert {
+  background: #fffbf0 !important;
+}
+.admin-metadata {
+  padding: 16px;
+  border-top: 1px solid var(--qitu-border);
+}
+.admin-generated-at {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+/* ---- 连接测试结果（供应商 / 模型 / 用途共用，失败不作为页面级错误） ---- */
+.admin-test-result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--qitu-border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--qitu-page);
+}
+.admin-test-result.is-ok { border-left-color: var(--qitu-completed); }
+.admin-test-result.is-fail { border-left-color: var(--qitu-danger); }
+.admin-test-result-running {
+  margin: 12px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.86rem;
+}
+.admin-test-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.admin-test-result-meta {
+  min-width: 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+.admin-test-result-message,
+.admin-test-result-error {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.admin-test-result-message { color: var(--qitu-text); }
+.admin-test-result-error { color: var(--qitu-danger); }
+
+/* 用途卡里的连接测试入口与未绑定/回落不可用提示。 */
+.admin-usage-test { margin-top: 16px; }
+.admin-usage-hint {
+  margin: 8px 0 0;
+  color: var(--qitu-attention);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 860px) {

@@ -14,14 +14,16 @@ export type { TutorStreamHandlers, TutorStreamRequest } from './tutorStream';
 /**
  * The single module-level data source.
  *
- * Components never call `fetch` and never import the mock directly; they read
+ * Components never call `fetch` and never import a mock directly; they read
  * this holder through `useTutorDataSource()` (context) so the whole module can
  * be repointed with `setTutorDataSource(...)`.
  *
  * The default is the real API (`TutorApiDataSource`): the conversation is
- * streamed from `POST /api/v1/tutor/stream`. It degrades to the deterministic
- * fixtures only when the API is genuinely unreachable — a 4xx/5xx is surfaced
- * as a retryable error instead.
+ * streamed from `POST /api/v1/tutor/stream`. It does NOT silently degrade to
+ * fixtures — an unreachable API becomes a visible offline/error state, because
+ * a student must never mistake demo content for their own learning record.
+ * `MockTutorDataSource` stays available for explicit tests/QA via
+ * `setTutorDataSource(...)`.
  */
 let activeDataSource: TutorDataSource = new TutorApiDataSource();
 

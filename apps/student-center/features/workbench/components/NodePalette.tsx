@@ -3,8 +3,8 @@
 import type { FlowNodeType } from '../types/workbench';
 
 /**
- * Narrow palette contract. Rendering is deferred with the canvas technology
- * decision; this is the interface the eventual palette must satisfy.
+ * Narrow palette contract. The palette internals are deferred with the
+ * interactive canvas; this is the interface the eventual palette must satisfy.
  */
 export interface NodePaletteProps {
   nodeTypes: FlowNodeType[];
@@ -21,10 +21,10 @@ const LABELS: Record<FlowNodeType, string> = {
 };
 
 export function NodePalette({ nodeTypes, disabled }: NodePaletteProps) {
-  // NOTE: palette internals are deferred behind the canvas technology decision.
+  // NOTE: palette internals are deferred; this is the placeholder surface.
   return (
     <div className="qitu-node-palette qitu-canvas-pending" data-testid="node-palette-pending" role="note">
-      <p className="qitu-canvas-pending-title">节点面板待技术选型确认</p>
+      <p className="qitu-canvas-pending-title">流程节点</p>
       <ul className="qitu-node-palette-list">
         {nodeTypes.map((type) => (
           <li key={type} className="qitu-node-palette-item" aria-disabled={disabled}>

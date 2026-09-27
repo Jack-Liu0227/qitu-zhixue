@@ -27,6 +27,20 @@ export interface TutorTurnInput {
   turnCount: number;
 }
 
+/**
+ * 模型链路不可用时的稳定错误码。
+ *
+ * 这是**可识别的错误语义**：调用方据此区分「还没配置模型」与「模型暂时
+ * 不可用 / 本轮调用失败」，绝不会把这些情况静默降级成 Heuristic/demo 回复。
+ */
+export type TutorModelErrorCode =
+  /** `tutor.chat` 未绑定，或供应商 / 模型 / 凭证不可用。 */
+  | 'MODEL_NOT_CONFIGURED'
+  /** 上游超时 / 网络错误 / 5xx 等可重试故障。 */
+  | 'MODEL_UNAVAILABLE'
+  /** 其它调用失败（响应不可解析、空文本、被取消等）。 */
+  | 'MODEL_CALL_FAILED';
+
 export type TutorStreamEvent =
   | { type: 'tool_call'; callId: string; name: string; label: string }
   | {
@@ -37,6 +51,18 @@ export type TutorStreamEvent =
     }
   | { type: 'delta'; text: string }
   | { type: 'block'; block: TutorReplyBlock }
+  /**
+   * 本轮没有产生任何引导文本时的显式失败信号。
+   *
+   * 只承载**已脱敏**的稳定错误码与面向学生的短句，绝不包含 API Key、
+   * 上游原始响应体或未成年人原始对话。SSE 层把它映射成 `error` 帧。
+   */
+  | {
+      type: 'error';
+      code: TutorModelErrorCode;
+      message: string;
+      retryable: boolean;
+    }
   | { type: 'done'; turnSummary: { hintLevel: TutorHintLevel | null; stage: ProjectStage } };
 
 export interface TutorProvider {
@@ -174,7 +200,7 @@ const DEMO_EXPLANATION =
   '最后用你自己的话复述一遍——复述得出来，才说明你真的懂了。';
 
 /** 把一段文本切成 2–6 字的可见增量，让前端看到「正在写」。 */
-export function splitIntoDeltas(text: string, size = 4): string[] {
+export function splitIntoDeltas(text: string): string[] {
   const chunks: string[] = [];
   let index = 0;
   while (index < text.length) {
@@ -333,6 +359,6 @@ const STAGE_LABELS: Record<ProjectStage, string> = {
   completed: '已完成',
 };
 
-function stageLabel(stage: ProjectStage): string {
+export function stageLabel(stage: ProjectStage): string {
   return STAGE_LABELS[stage] ?? stage;
 }

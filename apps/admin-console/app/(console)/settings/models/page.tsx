@@ -17,7 +17,6 @@ import type {
   ModelConfigPublic,
   ModelSlot,
   ModelSlotOption,
-  ModelRuntimeResponse,
   UpdateModelConfigRequest,
 } from '@qitu/contracts';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';

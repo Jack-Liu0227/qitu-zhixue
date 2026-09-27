@@ -30,7 +30,36 @@ export type ApiErrorCode =
   /** 家长反馈内容不合法（400）。 */
   | 'FEEDBACK_INVALID'
   /** 家长的消息确认 / 暂不提醒动作对该消息不适用（409）。 */
-  | 'MESSAGE_ACTION_NOT_APPLICABLE';
+  | 'MESSAGE_ACTION_NOT_APPLICABLE'
+  /** 关系绑定：目标人不存在或角色不符（404/400）。 */
+  | 'DIRECTORY_USER_NOT_FOUND'
+  /** 关系的两端角色不合法，例如把 admin 绑成学生的监护人（400）。 */
+  | 'RELATIONSHIP_ROLE_INVALID'
+  /** 不允许把自己绑成自己的监护人或班主任（400）。 */
+  | 'SELF_RELATIONSHIP_INVALID'
+  /** 关系不存在（404）。 */
+  | 'RELATIONSHIP_NOT_FOUND'
+  /** 该监护关系已处于 active，不允许重复绑定（409）。 */
+  | 'GUARDIAN_LINK_ALREADY_ACTIVE'
+  /** 该监护关系已结束，不能再修改（409）。 */
+  | 'GUARDIAN_LINK_ENDED'
+  /**
+   * 该学生已有当前班主任（409）。
+   *
+   * 对应数据库 `mentor_assignments_one_active_per_student_idx`。
+   * 正确处理方式是调用「换班主任」接口（在事务里先结束旧分配），
+   * 而不是在这里重试或忽略错误。
+   */
+  | 'MENTOR_ALREADY_ASSIGNED'
+  /** 写操作缺少 `Idempotency-Key` 请求头（400）。 */
+  | 'IDEMPOTENCY_KEY_REQUIRED'
+  /**
+   * 班主任访问了不属于自己的学生（403）。
+   *
+   * 服务端在授权失败时**不得**返回该学生的任何字段——只给这个码，
+   * 否则 403 本身就变成了信息泄露。
+   */
+  | 'STUDENT_NOT_ASSIGNED';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

@@ -1,11 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type {
   AdminDataSource,
-  AdminInterventionRow,
   AdminInterventionStatus,
   ProjectStage,
 } from '@qitu/contracts';
-import { GrowthService } from '../growth/growth.service';
+import type { DirectoryService } from '../directory/directory.service';
 
 /**
  * 平台演示数据集。
@@ -21,8 +20,6 @@ import { GrowthService } from '../growth/growth.service';
 
 export interface DemoStudent {
   studentId: string;
-  displayName: string;
-  email: string;
   gradeLabel: string | null;
   classLabel: string | null;
   mentorId: string | null;
@@ -45,8 +42,6 @@ export interface DemoStudent {
 
 export interface DemoTeacher {
   teacherId: string;
-  displayName: string;
-  email: string;
   /** 该班主任负责的学生 ID 列表。一个学生同一时间只能有一个班主任。 */
   studentIds: string[];
   classLabels: string[];
@@ -168,7 +163,9 @@ export class PlatformDataService {
   private readonly feedbacks: DemoFeedback[] = [];
   private readonly auditLog: AuditLogEntry[] = [];
 
-  constructor(@Inject(GrowthService) private readonly growthService: GrowthService) {
+  constructor(
+    @Inject('DirectoryService') private readonly directory: DirectoryService,
+  ) {
     const now = new Date();
     const daysAgo = (days: number): string => {
       const date = new Date(now);
@@ -176,15 +173,13 @@ export class PlatformDataService {
       return date.toISOString();
     };
 
-    // 学生名册（与 freeze doc §4 一致）
+    // 学生名册（mentorId/mentorName 现在从 DirectoryService 取，这里保留仅为演示）
     this.students = [
       {
         studentId: 'student-demo',
-        displayName: '小宇',
-        email: 'student@qtzx.local',
         gradeLabel: '七年级',
         classLabel: '七年级一班',
-        mentorId: 'teacher-demo',
+        mentorId: 'teacher-demo', // Sourced from DirectoryService.mentorOfStudent()
         mentorName: '演示班主任',
         activeProjectCount: 1,
         projectsCompleted: 0,
@@ -198,8 +193,6 @@ export class PlatformDataService {
       },
       {
         studentId: 'student-demo-2',
-        displayName: '小禾',
-        email: 'student2@qtzx.local',
         gradeLabel: '七年级',
         classLabel: '七年级二班',
         mentorId: 'teacher-demo-2',
@@ -216,8 +209,6 @@ export class PlatformDataService {
       },
       {
         studentId: 'student-demo-3',
-        displayName: '小满',
-        email: 'student3@qtzx.local',
         gradeLabel: '七年级',
         classLabel: '七年级一班',
         mentorId: 'teacher-demo',
@@ -234,8 +225,6 @@ export class PlatformDataService {
       },
       {
         studentId: 'student-demo-4',
-        displayName: '小舟',
-        email: 'student4@qtzx.local',
         gradeLabel: '七年级',
         classLabel: '七年级二班',
         mentorId: 'teacher-demo-2',
@@ -252,13 +241,11 @@ export class PlatformDataService {
       },
     ];
 
-    // 教师名册
+    // 教师名册（mentorId/studentIds 现在从 DirectoryService 取，这里保留仅为演示）
     this.teachers = [
       {
         teacherId: 'teacher-demo',
-        displayName: '演示班主任',
-        email: 'teacher@qtzx.local',
-        studentIds: ['student-demo', 'student-demo-3'],
+        studentIds: ['student-demo', 'student-demo-3'], // Sourced from DirectoryService.studentsOfMentor()
         classLabels: ['七年级一班'],
         pendingInterventionCount: 1,
         resolvedThisWeek: 2,
@@ -266,9 +253,7 @@ export class PlatformDataService {
       },
       {
         teacherId: 'teacher-demo-2',
-        displayName: '演示班主任二',
-        email: 'teacher2@qtzx.local',
-        studentIds: ['student-demo-2', 'student-demo-4'],
+        studentIds: ['student-demo-2', 'student-demo-4'], // Sourced from DirectoryService.studentsOfMentor()
         classLabels: ['七年级二班'],
         pendingInterventionCount: 0,
         resolvedThisWeek: 1,
@@ -426,20 +411,20 @@ export class PlatformDataService {
 
   /* ==================== 学生数据 ==================== */
 
+  /**
+   * 演示内容层：只提供**还没有真实来源**的字段（项目、停滞、活跃时间等）。
+   *
+   * 身份（displayName/email）和班主任关系**不在这里**，一律由 DirectoryService 提供。
+   * 这里原先有两个叫 `enrichStudentWithMentor` / `enrichTeacherWithStudents` 的方法，
+   * 注释写着“已改为每次从 DirectoryService 查询”，实际实现是 `return { ...student }`
+   * ——什么也没做。它们已删除；调用方现在直接向目录取身份与关系。
+   */
   getStudent(studentId: string): DemoStudent | null {
     return this.students.find((s) => s.studentId === studentId) ?? null;
   }
 
   getAllStudents(): DemoStudent[] {
-    return [...this.students];
-  }
-
-  getStudentsByFilter(filter: 'all' | 'active' | 'stuck' | 'no_project'): DemoStudent[] {
-    if (filter === 'all') return this.getAllStudents();
-    if (filter === 'active') return this.students.filter((s) => s.activeProjectCount > 0);
-    if (filter === 'stuck') return this.students.filter((s) => s.stuck);
-    if (filter === 'no_project') return this.students.filter((s) => s.activeProjectCount === 0);
-    return [];
+    return this.students;
   }
 
   /* ==================== 教师数据 ==================== */
@@ -449,7 +434,7 @@ export class PlatformDataService {
   }
 
   getAllTeachers(): DemoTeacher[] {
-    return [...this.teachers];
+    return this.teachers;
   }
 
   /* ==================== 项目数据 ==================== */

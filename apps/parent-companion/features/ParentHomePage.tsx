@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Badge, Button, ProgressBar, SectionCard } from '@qitu/ui';
 import { useCurrentUser } from '@qitu/auth';
 import {
@@ -11,7 +12,6 @@ import {
   type ParentHomePageData,
 } from './parentApi';
 import { ChildPicker, DataState, HeroMascot, PageFrame } from './ParentDataPage';
-import { ProjectVisual } from './ProjectVisual';
 import { formatShortDate, greeting } from './parentFormat';
 
 /**
@@ -163,9 +163,9 @@ export default function HomePage() {
                         <span>最近完成：{data.currentProject?.lastCompleted ?? '暂无'}</span>
                         <span>下一步：{data.currentProject?.nextStep ?? '继续尝试'}</span>
                       </div>
-                      <a className="qitu-button qitu-button-primary" href="/parent/progress">
+                      <Link className="qitu-button qitu-button-primary" href="/progress">
                         查看项目进度 →
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </SectionCard>
@@ -189,9 +189,9 @@ export default function HomePage() {
                       </div>
                     ) : null}
                     <div className="attention-actions">
-                      <a className="qitu-button qitu-button-secondary" href="/parent/progress">
+                      <Link className="qitu-button qitu-button-secondary" href="/progress">
                         查看详情
-                      </a>
+                      </Link>
                       {data.currentProject ? (
                         <Button onClick={() => setFeedbackOpen((v) => !v)}>我有疑问</Button>
                       ) : null}
@@ -254,7 +254,7 @@ export default function HomePage() {
                 </SectionCard>
                 <SectionCard
                   title="最近成果"
-                  action={<a href="/parent/progress">查看全部作品 →</a>}
+                  action={<Link href="/progress">查看全部作品 →</Link>}
                 >
                   {data.recentArtifacts.length ? (
                     <div className="artifact-grid">

@@ -20,6 +20,7 @@ const NAV_SPECS = [
   { path: '/', label: '概览' },
   { path: '/students', label: '学生端数据' },
   { path: '/teachers', label: '教师端数据' },
+  { path: '/relationships', label: '关系绑定' },
   { path: '/settings', label: '设置' },
 ] as const;
 
@@ -98,7 +99,7 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
               <span className="admin-console-identity-name">
                 {user?.displayName ?? user?.email ?? '管理员'}
               </span>
-              <LogoutButton redirectTo="/admin/login" />
+              <LogoutButton redirectTo="/" />
             </div>
           </header>
           <main className="admin-console-content">{children}</main>

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function StudentDetailPage() {
-  // 初版学生档案以 /teacher/students 右侧详情面板呈现，后续 P2 再独立为全页档案。
+  // 学生档案当前以学生管理页右侧的详情面板呈现，本路由只做兼容跳转。
   redirect('/students');
 }

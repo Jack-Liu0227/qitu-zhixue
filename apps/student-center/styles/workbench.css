@@ -449,7 +449,7 @@
   text-align: center;
 }
 
-/* 待技术选型的占位内容：居中排版。 */
+/* 流程画布与节点面板的占位内容：居中排版。 */
 .qitu-canvas-pending {
   display: grid;
   gap: var(--qitu-space-sm);

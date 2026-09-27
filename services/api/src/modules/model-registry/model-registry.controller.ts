@@ -1,14 +1,28 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import type {
+  AdminModelResponse,
   AdminModelUsagesResponse,
   AdminProvidersResponse,
   BindUsageRequest,
+  ConnectionTestResponse,
+  CreateManualModelRequest,
+  ModelUsageBinding,
+  ProviderConfigPublic,
   RefreshProviderResponse,
+  UpdateManualModelRequest,
   UpsertProviderRequest,
 } from '@qitu/contracts';
-import { requireRole } from '../../common/access/request-auth';
+import { pickFields, requireRole } from '../../common/access/request-auth';
+import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
+import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
+import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { AuthService } from '../identity-auth/auth.service';
-import { ModelRegistryService } from './model-registry.service';
+import {
+  ModelRegistryService,
+  type CreateManualModelInput,
+  type UpdateManualModelInput,
+} from './model-registry.service';
+import { resolveIdempotencyKey } from './manual-model.validation';
 
 /**
  * 管理员端「模型接入」接口。
@@ -24,6 +38,7 @@ export class ModelRegistryController {
   constructor(
     private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
+    private readonly idempotency: IdempotencyStore,
   ) {}
 
   /** 供应商列表 + 预置模板（不区分是否已配置）。 */
@@ -34,19 +49,132 @@ export class ModelRegistryController {
   }
 
   @Post('admin/model-providers/:id')
-  upsertProvider(
+  async upsertProvider(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
     @Body() body: UpsertProviderRequest,
-  ) {
+  ): Promise<{ data: ProviderConfigPublic }> {
     const admin = requireAdmin(this.authService, cookieHeader);
-    return { data: this.registry.upsertProvider(id, sanitiseProvider(body), admin.id) };
+    return { data: await this.registry.upsertProvider(id, sanitiseProvider(body), admin.id) };
   }
 
   @Delete('admin/model-providers/:id')
-  deleteProvider(@Headers('cookie') cookieHeader: string | undefined, @Param('id') id: string) {
-    requireAdmin(this.authService, cookieHeader);
-    return { data: this.registry.deleteProvider(id) };
+  async deleteProvider(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('id') id: string,
+  ): Promise<{ data: { id: string } }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.deleteProvider(id, admin.id) };
+  }
+
+  /**
+   * 手工创建一个模型（`source=manual`，`modelId` 在供应商内唯一）。
+   *
+   * 幂等：优先 `Idempotency-Key` 请求头，兼容请求体 `idempotencyKey`；两者不一致
+   * 时 400。scope 含 providerId，避免同一个 key 跨供应商误判为重放。业务写入与
+   * `model.create` 审计在同一事务。
+   */
+  @Post('admin/model-providers/:providerId/models')
+  async createManualModel(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+    @Param('providerId') providerId: string,
+    @Body() body: CreateManualModelRequest,
+  ): Promise<{ data: AdminModelResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const idempotencyKey = resolveIdempotencyKey(idempotencyHeader, body?.idempotencyKey);
+    const input = sanitiseManualModelCreate(body);
+    const scope = `admin.model-registry.model.create:${providerId}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        idempotencyKey,
+        hashIdempotentInput(scope, {}, input),
+        async () => ({
+          status: 201,
+          body: await this.registry.createManualModel(
+            providerId,
+            input,
+            admin.id,
+            `${scope}:${idempotencyKey}`,
+          ),
+        }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /**
+   * 更新手工模型的可编辑字段；`modelId` 来自路径且不可变（body 里的 `modelId`
+   * 会被白名单丢弃）。被用途绑定的模型不允许停用 → 409。
+   */
+  @Patch('admin/model-providers/:providerId/models/:modelId')
+  async updateManualModel(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+    @Param('providerId') providerId: string,
+    @Param('modelId') modelId: string,
+    @Body() body: UpdateManualModelRequest,
+  ): Promise<{ data: AdminModelResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const idempotencyKey = resolveIdempotencyKey(idempotencyHeader, body?.idempotencyKey);
+    const input = sanitiseManualModelUpdate(body);
+    const scope = `admin.model-registry.model.update:${providerId}:${modelId}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        idempotencyKey,
+        hashIdempotentInput(scope, {}, input),
+        async () => ({
+          body: await this.registry.updateManualModel(
+            providerId,
+            modelId,
+            input,
+            admin.id,
+            `${scope}:${idempotencyKey}`,
+          ),
+        }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /**
+   * 删除**未被绑定**的手工模型。远程模型只能刷新；已绑定的模型返回 409。
+   * 这是物理删除，需要 `Idempotency-Key` 请求头（DELETE 无契约 body）。
+   */
+  @Delete('admin/model-providers/:providerId/models/:modelId')
+  async deleteManualModel(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+    @Param('providerId') providerId: string,
+    @Param('modelId') modelId: string,
+  ): Promise<{ data: { providerId: string; modelId: string } }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const idempotencyKey = resolveIdempotencyKey(idempotencyHeader, undefined);
+    const scope = `admin.model-registry.model.delete:${providerId}:${modelId}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        idempotencyKey,
+        hashIdempotentInput(scope, {}, {}),
+        async () => ({
+          body: await this.registry.deleteManualModel(
+            providerId,
+            modelId,
+            admin.id,
+            `${scope}:${idempotencyKey}`,
+          ),
+        }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
   }
 
   /**
@@ -62,8 +190,8 @@ export class ModelRegistryController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
   ): Promise<{ data: RefreshProviderResponse }> {
-    requireAdmin(this.authService, cookieHeader);
-    return { data: await this.registry.refreshProvider(id) };
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.refreshProvider(id, admin.id) };
   }
 
   /** 用途列表与当前绑定（含回落后的实际生效模型）。 */
@@ -74,13 +202,59 @@ export class ModelRegistryController {
   }
 
   @Patch('admin/model-usages/:usageId')
-  bindUsage(
+  async bindUsage(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('usageId') usageId: string,
     @Body() body: BindUsageRequest,
-  ) {
+  ): Promise<{ data: ModelUsageBinding }> {
     const admin = requireAdmin(this.authService, cookieHeader);
-    return { data: this.registry.bindUsage(usageId, sanitiseBinding(body), admin.id) };
+    return { data: await this.registry.bindUsage(usageId, sanitiseBinding(body), admin.id) };
+  }
+
+  /**
+   * Provider 级连接测试。
+   *
+   * 用已保存的 `baseUrl` + Key + 协议发起最小 `/models` 探测，验证**配置 /
+   * 认证 / 模型发现**；不执行推理。测试失败（网络 / 鉴权 / 上游）返回
+   * `200 + ok=false`，不让整页 5xx；未知供应商 404。
+   */
+  @Post('admin/model-providers/:providerId/test')
+  @HttpCode(200)
+  async testProvider(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('providerId') providerId: string,
+  ): Promise<{ data: ConnectionTestResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.testProvider(providerId, admin.id) };
+  }
+
+  /**
+   * Model 级连接测试：探测 Provider 并确认目标 `modelId` 在已知 / 可拉取
+   * 模型或手工模型中。未知模型 404，已停用模型返回 `ok=false`。
+   */
+  @Post('admin/model-providers/:providerId/models/:modelId/test')
+  @HttpCode(200)
+  async testModel(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('providerId') providerId: string,
+    @Param('modelId') modelId: string,
+  ): Promise<{ data: ConnectionTestResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.testModel(providerId, modelId, admin.id) };
+  }
+
+  /**
+   * Usage 级连接测试：先按 `fallbackTo` 解析出实际生效的 provider/model，
+   * 再测试其连通性。未绑定 / 无回落返回 `ok=false`；未知用途 404。
+   */
+  @Post('admin/model-usages/:usageId/test')
+  @HttpCode(200)
+  async testUsage(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('usageId') usageId: string,
+  ): Promise<{ data: ConnectionTestResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.testUsage(usageId, admin.id) };
   }
 }
 
@@ -101,7 +275,7 @@ function sanitiseProvider(body: UpsertProviderRequest | undefined): UpsertProvid
     out.api = body.api;
   }
   if (typeof body.authHeader === 'boolean') out.authHeader = body.authHeader;
-  // 明文密钥只在这里被读取一次，随后由 service 转成指纹。
+  // 明文密钥只在这里被读取一次，随后由 service 加密落库并只对外暴露指纹。
   if (typeof body.apiKey === 'string') out.apiKey = body.apiKey;
   return out;
 }
@@ -112,4 +286,38 @@ function sanitiseBinding(body: BindUsageRequest | undefined): BindUsageRequest {
     providerId: typeof body.providerId === 'string' ? body.providerId : null,
     modelId: typeof body.modelId === 'string' ? body.modelId : null,
   };
+}
+
+/**
+ * 手工模型创建白名单。`source` / `id` / `updatedAt` 等服务端字段不允许从 body 塞入。
+ * 取值范围校验由服务层的纯函数完成（这里只保证「不携带未知字段」）。
+ */
+function sanitiseManualModelCreate(
+  body: CreateManualModelRequest | undefined,
+): CreateManualModelInput {
+  return pickFields<CreateManualModelInput>(body, [
+    'modelId',
+    'displayName',
+    'api',
+    'input',
+    'output',
+    'contextWindow',
+    'maxTokens',
+    'enabled',
+  ]);
+}
+
+/** 手工模型更新白名单；刻意不包含 `modelId`（路径参数才是指纹来源）。 */
+function sanitiseManualModelUpdate(
+  body: UpdateManualModelRequest | undefined,
+): UpdateManualModelInput {
+  return pickFields<UpdateManualModelInput>(body, [
+    'displayName',
+    'api',
+    'input',
+    'output',
+    'contextWindow',
+    'maxTokens',
+    'enabled',
+  ]);
 }

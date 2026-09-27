@@ -66,7 +66,6 @@ function FocusWorkCard({
         <ProgressBar percent={work.progressPercent} label={`项目进度 ${work.progressPercent}%`} />
         <TagChips tags={work.tags} />
         <div className="work-actions">
-          <Button title="作品预览即将上线">预览作品</Button>
           <Button variant="secondary" onClick={onViewProcess}>
             查看项目过程
           </Button>
@@ -253,6 +252,7 @@ export default function ProgressPage() {
         <div className="tabs">
           {TABS.map((t) => (
             <button
+              type="button"
               className={tab === t.id ? 'selected' : ''}
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -263,9 +263,13 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      <DataState state={{ status }} reload={() => childId && load(childId)}>
+      <DataState
+        state={{ status }}
+        reload={() => childId && load(childId)}
+        emptyTitle="还没有绑定孩子"
+      >
         {tab === 'growth' ? (
-          <ParentGrowthPage />
+          <ParentGrowthPage key={childId} childId={childId || null} />
         ) : tab === 'project' ? (
           focus ? (
             <div className="progress-layout">
@@ -285,18 +289,21 @@ export default function ProgressPage() {
           <>
             <div className="filter-row">
               <button
+                type="button"
                 className={statusFilter === 'all' ? 'selected' : ''}
                 onClick={() => setStatusFilter('all')}
               >
                 全部作品（{statusCount('all')}）
               </button>
               <button
+                type="button"
                 className={statusFilter === 'in_progress' ? 'selected' : ''}
                 onClick={() => setStatusFilter('in_progress')}
               >
                 进行中（{statusCount('in_progress')}）
               </button>
               <button
+                type="button"
                 className={statusFilter === 'completed' ? 'selected' : ''}
                 onClick={() => setStatusFilter('completed')}
               >

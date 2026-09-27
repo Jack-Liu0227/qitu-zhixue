@@ -25,6 +25,9 @@ import type { StreamedTutorEvent } from './tutor.service';
 
 const SESSION_COOKIE = 'qitu_session';
 
+/** 未绑定项目时的演示项目 id（与前端 fixture 回退保持一致）。 */
+const DEFAULT_PROJECT_ID = 'project-demo-001';
+
 interface StreamBody {
   projectId?: unknown;
   sessionId?: unknown;
@@ -50,6 +53,7 @@ const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
   tool_result: 300,
   delta: 35,
   block: 120,
+  error: 0,
   done: 0,
 };
 
@@ -79,8 +83,7 @@ export class TutorController {
     @Query('projectId') projectId?: string,
   ): { data: GetTutorSessionResponse } {
     const actor = this.requireStudent(cookieHeader);
-    const record = this.tutorService.getOrCreateSession(projectId ?? 'project-demo-001');
-    void actor;
+    const record = this.tutorService.getOrCreateSession(projectId ?? DEFAULT_PROJECT_ID, actor.id);
     return { data: this.tutorService.toSessionResponse(record) };
   }
 
@@ -100,8 +103,13 @@ export class TutorController {
     @Res() response: Response,
   ): Promise<void> {
     const actor = this.requireStudent(cookieHeader);
-    const projectId = typeof body.projectId === 'string' ? body.projectId : 'project-demo-001';
-    const record = this.tutorService.getOrCreateSession(projectId);
+    const projectId = typeof body.projectId === 'string' ? body.projectId : DEFAULT_PROJECT_ID;
+    // 若请求同时带了 sessionId，也先按归属校验一次：不能借 stream 读到
+    // 别人的会话（即使它恰好映射到同一个 projectId）。
+    if (typeof body.sessionId === 'string' && body.sessionId.length > 0) {
+      this.tutorService.getSession(body.sessionId, actor.id);
+    }
+    const record = this.tutorService.getOrCreateSession(projectId, actor.id);
     const idempotencyKey =
       typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0
         ? body.idempotencyKey
@@ -161,9 +169,9 @@ export class TutorController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Body() body: { projectId?: unknown; source?: unknown },
   ): { data: CreateTutorSessionResponse } {
-    this.requireStudent(cookieHeader);
+    const actor = this.requireStudent(cookieHeader);
     const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
-    const record = this.tutorService.getOrCreateSession(projectId ?? 'project-demo-001');
+    const record = this.tutorService.getOrCreateSession(projectId ?? DEFAULT_PROJECT_ID, actor.id);
     return {
       data: {
         sessionId: record.sessionId,
@@ -179,8 +187,10 @@ export class TutorController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
   ): { data: GetTutorSessionResponse } {
-    this.requireStudent(cookieHeader);
-    return { data: this.tutorService.toSessionResponse(this.tutorService.getSession(id)) };
+    const actor = this.requireStudent(cookieHeader);
+    return {
+      data: this.tutorService.toSessionResponse(this.tutorService.getSession(id, actor.id)),
+    };
   }
 
   /**
@@ -192,10 +202,10 @@ export class TutorController {
   submitTurn(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
-    @Body() body: { content?: unknown; pedagogicMove?: unknown; optionLabel?: unknown; idempotencyKey?: unknown },
+    @Body() _body: { content?: unknown; pedagogicMove?: unknown; optionLabel?: unknown; idempotencyKey?: unknown },
   ): { data: CreateTutorTurnResponse } {
-    this.requireStudent(cookieHeader);
-    const record = this.tutorService.getSession(id);
+    const actor = this.requireStudent(cookieHeader);
+    const record = this.tutorService.getSession(id, actor.id);
     return {
       data: {
         turnId: `${record.sessionId}:pending:${record.lastSeq + 1}`,
@@ -210,8 +220,8 @@ export class TutorController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
   ): { data: TutorSessionSummary } {
-    this.requireStudent(cookieHeader);
-    return { data: this.tutorService.getSummary(id) };
+    const actor = this.requireStudent(cookieHeader);
+    return { data: this.tutorService.getSummary(id, actor.id) };
   }
 
   /* ------------------------------ 内部 ------------------------------ */
@@ -280,6 +290,9 @@ function toPayload(event: StreamedTutorEvent['event']): Record<string, unknown> 
       return { block: event.block };
     case 'done':
       return { turnSummary: event.turnSummary };
+    case 'error':
+      // 已脱敏的稳定错误码 + 面向学生的短句；不含密钥或上游正文。
+      return { code: event.code, message: event.message, retryable: event.retryable };
   }
 }
 
@@ -288,6 +301,7 @@ const FRAME_NAME: Record<StreamedTutorEvent['event']['type'], string> = {
   tool_result: 'tutor.tool_result',
   delta: 'tutor.delta',
   block: 'tutor.block',
+  error: 'error',
   done: 'turn.done',
 };
 

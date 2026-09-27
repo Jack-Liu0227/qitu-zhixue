@@ -9,6 +9,8 @@ export * from './growth';
 export * from './platform';
 export * from './parent';
 export * from './admin';
+export * from './directory';
+export * from './teacher';
 export * from './settings';
 export * from './models';
 export * from './errors';

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
+import { ModelGateway, MODEL_RUNTIME_RESOLVER } from './model-gateway';
 import { ModelRegistryController } from './model-registry.controller';
 import { ModelRegistryService } from './model-registry.service';
 
@@ -11,12 +12,17 @@ import { ModelRegistryService } from './model-registry.service';
  * 老的两个插槽暂时保留可用，待 AI搭档链路改为按用途取模型后再迁移，
  * 避免一次改动同时动到学生端、管理员端和鉴权。
  *
- * `ModelRegistryService` 被导出，供后续按用途取模型的调用方注入。
+ * `ModelRegistryService` 被导出，供后续按用途取模型的调用方注入；
+ * `ModelGateway` 也被导出，作为业务调用 LLM 的唯一入口（本任务暂未接入业务）。
  */
 @Module({
   imports: [AuthModule],
   controllers: [ModelRegistryController],
-  providers: [ModelRegistryService],
-  exports: [ModelRegistryService],
+  providers: [
+    ModelRegistryService,
+    { provide: MODEL_RUNTIME_RESOLVER, useExisting: ModelRegistryService },
+    ModelGateway,
+  ],
+  exports: [ModelRegistryService, ModelGateway],
 })
 export class ModelRegistryModule {}

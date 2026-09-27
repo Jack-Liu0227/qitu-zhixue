@@ -1,4 +1,4 @@
-import { AuthGuard, LogoutButton } from '@qitu/auth';
+import { AuthGuard } from '@qitu/auth';
 import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
 import './globals.css';
@@ -23,7 +23,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="zh-CN" suppressHydrationWarning>
       <body>
         <AuthGuard expectedRole="student">
-          <LogoutButton />
           <StudentShellHost>{children}</StudentShellHost>
         </AuthGuard>
       </body>

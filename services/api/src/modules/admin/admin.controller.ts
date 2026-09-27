@@ -27,6 +27,7 @@ import { AuthService } from '../identity-auth/auth.service';
 import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { DirectoryService } from '../directory/directory.service';
 
 /**
  * 平台管理后台接口。
@@ -47,22 +48,28 @@ export class AdminController {
     private readonly growthService: GrowthService,
     private readonly platformData: PlatformDataService,
     private readonly modelRegistry: ModelRegistryService,
+    private readonly directory: DirectoryService,
   ) {}
 
   /* ==================== 概览 ==================== */
 
   @Get('overview')
-  getOverview(@Headers('cookie') cookieHeader: string | undefined): { data: AdminOverviewPageData } {
+  async getOverview(
+    @Headers('cookie') cookieHeader: string | undefined,
+  ): Promise<{ data: AdminOverviewPageData }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
     const stats = this.platformData.getOverviewStats();
     const allInterventions = this.platformData.getAllInterventions();
 
-    // 最近的介入请求
-    const recentInterventions: AdminInterventionRow[] = allInterventions
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-      .slice(0, 5)
-      .map((i) => this.toInterventionRow(i));
+    // 最近的介入请求。展示名从目录解析，否则这里会显示演示数据里的「小满」，
+    // 而其他页面显示「演示学生三」——同一份数据两个名字。
+    const recentInterventions: AdminInterventionRow[] = await Promise.all(
+      allInterventions
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .slice(0, 5)
+        .map((i) => this.toInterventionRow(i)),
+    );
 
     return {
       data: {
@@ -77,7 +84,7 @@ export class AdminController {
   /* ==================== 学生数据 ==================== */
 
   @Get('students')
-  getStudents(
+  async getStudents(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('filter') filter?: string,
     @Query('classLabel') classLabel?: string,
@@ -85,14 +92,22 @@ export class AdminController {
     @Query('search') search?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
-  ): { data: AdminStudentListPageData } {
+  ): Promise<{ data: AdminStudentListPageData }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
     const validFilter = this.parseStudentFilter(filter);
     const limit = this.parseLimit(limitStr, 20, 100);
 
-    // 筛选
-    let students = this.platformData.getStudentsByFilter(validFilter);
+    let students = await this.listUnifiedStudents();
+
+    // filter 参数与原来 platformData.getStudentsByFilter 的语义保持一致。
+    if (validFilter === 'active') {
+      students = students.filter((s) => s.activeProjectCount > 0);
+    } else if (validFilter === 'stuck') {
+      students = students.filter((s) => s.stuck);
+    } else if (validFilter === 'no_project') {
+      students = students.filter((s) => s.activeProjectCount === 0);
+    }
 
     if (classLabel !== undefined && classLabel.length > 0) {
       students = students.filter((s) => s.classLabel === classLabel);
@@ -150,8 +165,8 @@ export class AdminController {
       attentionCount: s.attentionCount,
     }));
 
-    // 全量计数（不受分页影响）
-    const allStudents = this.platformData.getAllStudents();
+    // 全量计数（不受分页影响），基于上面已合并统一的列表。
+    const allStudents = await this.listUnifiedStudents();
     const totals = {
       all: allStudents.length,
       active: allStudents.filter((s) => s.activeProjectCount > 0).length,
@@ -161,9 +176,9 @@ export class AdminController {
 
     // 筛选选项
     const classOptions = [...new Set(allStudents.map((s) => s.classLabel).filter((c) => c !== null))] as string[];
-    const mentors: AdminMentorOption[] = this.platformData
-      .getAllTeachers()
-      .map((t) => ({ mentorId: t.teacherId, displayName: t.displayName }));
+    const mentors: AdminMentorOption[] = (await this.directory.listUsersByRole('teacher')).map(
+      (t) => ({ mentorId: t.userId, displayName: t.displayName }),
+    );
 
     return {
       data: {
@@ -179,14 +194,16 @@ export class AdminController {
   }
 
   @Get('students/:studentId')
-  getStudentDetail(
+  async getStudentDetail(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('studentId') studentId: string,
-  ): { data: AdminStudentDetail } {
+  ): Promise<{ data: AdminStudentDetail }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
-    const student = this.platformData.getStudent(studentId);
-    if (student === null) {
+    // 用统一的合并列表，而不是 platformData.getStudent：
+    // 后者取的是与目录无关的硬编码副本，会让详情页名字与列表页不一致。
+    const student = (await this.listUnifiedStudents()).find((s) => s.studentId === studentId);
+    if (student === undefined) {
       throw new NotFoundException('学生不存在');
     }
 
@@ -208,9 +225,9 @@ export class AdminController {
     }));
 
     // 介入请求
-    const interventions = this.platformData
-      .getInterventionsByStudent(studentId)
-      .map((i) => this.toInterventionRow(i));
+    const interventions = await Promise.all(
+      this.platformData.getInterventionsByStudent(studentId).map((i) => this.toInterventionRow(i)),
+    );
 
     // 项目列表
     const projects: AdminStudentProject[] = this.platformData
@@ -259,17 +276,18 @@ export class AdminController {
   /* ==================== 教师数据 ==================== */
 
   @Get('teachers')
-  getTeachers(
+  async getTeachers(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('search') search?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
-  ): { data: AdminTeacherListPageData } {
+  ): Promise<{ data: AdminTeacherListPageData }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
     const limit = this.parseLimit(limitStr, 20, 100);
 
-    let teachers = this.platformData.getAllTeachers();
+    // 同 listUnifiedStudents：教师身份来自目录，演示数据只补没有真实来源的字段。
+    let teachers = await this.listUnifiedTeachers();
 
     // 搜索
     if (search !== undefined && search.length > 0) {
@@ -302,26 +320,11 @@ export class AdminController {
     const page = teachers.slice(start, start + limit);
     const hasNext = start + limit < teachers.length;
 
-    // 计算停滞学生数
-    const items: AdminTeacherRow[] = page.map((t) => {
-      const students = this.platformData.getAllStudents().filter((s) => s.mentorId === t.teacherId);
-      const stuckStudentCount = students.filter((s) => s.stuck).length;
+    // 停滞学生数已经在上面的合并里按目录名册算好了，这里不再重算。
+    const items: AdminTeacherRow[] = page;
 
-      return {
-        teacherId: t.teacherId,
-        displayName: t.displayName,
-        email: t.email,
-        studentCount: t.studentIds.length,
-        classLabels: t.classLabels,
-        pendingInterventionCount: t.pendingInterventionCount,
-        resolvedThisWeek: t.resolvedThisWeek,
-        stuckStudentCount,
-        lastActivityAt: t.lastActivityAt,
-      };
-    });
-
-    // 全量计数
-    const allTeachers = this.platformData.getAllTeachers();
+    // 全量计数：基于上面的统一列表，避免两套口径。
+    const allTeachers = await this.listUnifiedTeachers();
     const totals = {
       all: allTeachers.length,
       withPendingIntervention: allTeachers.filter((t) => t.pendingInterventionCount > 0).length,
@@ -340,46 +343,27 @@ export class AdminController {
   }
 
   @Get('teachers/:teacherId')
-  getTeacherDetail(
+  async getTeacherDetail(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('teacherId') teacherId: string,
-  ): { data: AdminTeacherDetail } {
+  ): Promise<{ data: AdminTeacherDetail }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
-    const teacher = this.platformData.getTeacher(teacherId);
-    if (teacher === null) {
+    const teacher = (await this.listUnifiedTeachers()).find((t) => t.teacherId === teacherId);
+    if (teacher === undefined) {
       throw new NotFoundException('教师不存在');
     }
 
-    // 该教师负责的学生
-    const students = this.platformData
-      .getAllStudents()
-      .filter((s) => s.mentorId === teacherId)
-      .map((s) => ({
-        studentId: s.studentId,
-        displayName: s.displayName,
-        email: s.email,
-        gradeLabel: s.gradeLabel,
-        classLabel: s.classLabel,
-        mentorId: s.mentorId,
-        mentorName: s.mentorName,
-        activeProjectCount: s.activeProjectCount,
-        projectsCompleted: s.projectsCompleted,
-        currentProjectId: s.currentProjectId,
-        currentProjectTitle: s.currentProjectTitle,
-        currentStage: s.currentStage,
-        progressPercent: s.progressPercent,
-        lastActivityAt: s.lastActivityAt,
-        stuck: s.stuck,
-        attentionCount: s.attentionCount,
-      }));
+    // 该教师负责的学生：从目录名册筛，而不是演示数据的 mentorId 映射，
+    // 否则这里的学生集合会与名册、与学生统计对不上。
+    const students = (await this.listUnifiedStudents()).filter((s) => s.mentorId === teacherId);
 
     // 该教师的介入请求
-    const interventions = this.platformData
-      .getInterventionsByTeacher(teacherId)
-      .map((i) => this.toInterventionRow(i));
+    const interventions = await Promise.all(
+      this.platformData.getInterventionsByTeacher(teacherId).map((i) => this.toInterventionRow(i)),
+    );
 
-    const stuckStudentCount = students.filter((s) => s.stuck).length;
+    const stuckStudentCount = teacher.stuckStudentCount;
 
     return {
       data: {
@@ -387,7 +371,7 @@ export class AdminController {
           teacherId: teacher.teacherId,
           displayName: teacher.displayName,
           email: teacher.email,
-          studentCount: teacher.studentIds.length,
+          studentCount: teacher.studentCount,
           classLabels: teacher.classLabels,
           pendingInterventionCount: teacher.pendingInterventionCount,
           resolvedThisWeek: teacher.resolvedThisWeek,
@@ -473,7 +457,7 @@ export class AdminController {
 
   /* ==================== 内部工具 ==================== */
 
-  private toInterventionRow(intervention: {
+  private async toInterventionRow(intervention: {
     id: string;
     studentId: string;
     projectId: string | null;
@@ -481,12 +465,17 @@ export class AdminController {
     status: 'open' | 'acknowledged' | 'resolved';
     createdAt: string;
     assigneeId: string | null;
-  }): AdminInterventionRow {
-    const student = this.platformData.getStudent(intervention.studentId);
+  }): Promise<AdminInterventionRow> {
+    // 学生与处理人的显示名来自目录；项目标题仍由演示数据提供。
+    const [student, assignee] = await Promise.all([
+      this.directory.findUser(intervention.studentId),
+      intervention.assigneeId
+        ? this.directory.findUser(intervention.assigneeId)
+        : Promise.resolve(null),
+    ]);
     const project = intervention.projectId
       ? this.platformData.getProjectsByStudent(intervention.studentId).find((p) => p.projectId === intervention.projectId)
       : null;
-    const assignee = intervention.assigneeId ? this.platformData.getTeacher(intervention.assigneeId) : null;
 
     return {
       id: intervention.id,
@@ -498,6 +487,81 @@ export class AdminController {
       createdAt: intervention.createdAt,
       assigneeName: assignee?.displayName ?? null,
     };
+  }
+
+  /**
+   * 管理后台的学生名册：**目录提供身份与班主任关系，演示数据只填充内容**。
+   *
+   * 这是「数据统一」的落点。从前这里直接列 `platformData.students`，而那份数据
+   * 是与目录无关的硬编码副本，于是同一个学生在管理后台叫「小宇」、在教师名册和
+   * 学生统计里叫「演示学生」。合并策略：
+   *
+   * 1. 集合 = 目录里的全部 student（目录里有的学生不会因为演示数据没写在名单里
+   *    就消失）；
+   * 2. displayName / email / mentor 一律取目录；
+   * 3. 项目数、停滞、活跃时间等尚无真实来源的字段，按 studentId 从演示数据合并，
+   *    缺失则为空值而不是报错。
+   */
+  /**
+   * 管理后台的教师名册：同样的合并策略（目录提供身份与带生数，演示数据补内容）。
+   * 列表、全量计数和详情三处共用，保证同一字段不会出现两套口径。
+   */
+  private async listUnifiedTeachers(): Promise<AdminTeacherRow[]> {
+    const directoryTeachers = await this.directory.listUsersByRole('teacher');
+    const demoTeachers = new Map(this.platformData.getAllTeachers().map((t) => [t.teacherId, t]));
+    const demoStudents = this.platformData.getAllStudents();
+
+    return Promise.all(
+      directoryTeachers.map(async (u) => {
+        const demo = demoTeachers.get(u.userId);
+        // studentCount 取目录（当前班主任关系），而不是硬编码的 studentIds 列表。
+        const students = await this.directory.studentsOfMentor(u.userId);
+        const stuckStudentCount = students.filter(
+          (s) => demoStudents.find((d) => d.studentId === s.userId)?.stuck === true,
+        ).length;
+        return {
+          teacherId: u.userId,
+          displayName: u.displayName,
+          email: u.email,
+          studentCount: students.length,
+          classLabels: demo?.classLabels ?? [],
+          pendingInterventionCount: demo?.pendingInterventionCount ?? 0,
+          resolvedThisWeek: demo?.resolvedThisWeek ?? 0,
+          stuckStudentCount,
+          lastActivityAt: demo?.lastActivityAt ?? null,
+        };
+      }),
+    );
+  }
+
+  private async listUnifiedStudents(): Promise<AdminStudentRow[]> {
+    const directoryStudents = await this.directory.listUsersByRole('student');
+    const demoContent = new Map(this.platformData.getAllStudents().map((s) => [s.studentId, s]));
+    const activeAssignments = await this.directory.listMentorAssignments('active');
+    const mentorByStudent = new Map(activeAssignments.map((a) => [a.student.userId, a.mentor]));
+
+    return directoryStudents.map((u) => {
+      const demo = demoContent.get(u.userId);
+      const mentor = mentorByStudent.get(u.userId) ?? null;
+      return {
+        studentId: u.userId,
+        displayName: u.displayName,
+        email: u.email,
+        gradeLabel: demo?.gradeLabel ?? null,
+        classLabel: demo?.classLabel ?? null,
+        mentorId: mentor?.userId ?? null,
+        mentorName: mentor?.displayName ?? null,
+        activeProjectCount: demo?.activeProjectCount ?? 0,
+        projectsCompleted: demo?.projectsCompleted ?? 0,
+        currentProjectId: demo?.currentProjectId ?? null,
+        currentProjectTitle: demo?.currentProjectTitle ?? null,
+        currentStage: demo?.currentStage ?? null,
+        progressPercent: demo?.progressPercent ?? 0,
+        lastActivityAt: demo?.lastActivityAt ?? null,
+        stuck: demo?.stuck ?? false,
+        attentionCount: demo?.attentionCount ?? 0,
+      };
+    });
   }
 
   private parseStudentFilter(filter: string | undefined): AdminStudentFilter {

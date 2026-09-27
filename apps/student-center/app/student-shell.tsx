@@ -1,7 +1,7 @@
 'use client';
 
-import * as Auth from '@qitu/auth';
-import { GreetingBanner, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
+import { LogoutButton, useCurrentUser } from '@qitu/auth';
+import { Avatar, GreetingBanner, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -187,36 +187,38 @@ function toInternalPath(pathname: string): string {
   return pathname.startsWith(`${BASE_PATH}/`) ? pathname.slice(BASE_PATH.length) : pathname;
 }
 
-type CachedUser = { id?: string; email?: string; displayName?: string; role?: string };
-
 /**
- * Best-effort student name for the greeting banner.
+ * Identity area of the shell header.
  *
- * `readCachedUser()` lands in `@qitu/auth` behind the same wave; until then the
- * import is exercised defensively so the shell never fails to render, and the
- * fallback stays visible on logout / no-cache / privacy mode. It must only be
- * called in a client component (the real implementation reads sessionStorage).
+ * The logout control used to be rendered by the root layout as a `position:
+ * fixed` floating button, which sat on top of the greeting banner and was easy
+ * to miss on small screens. It now lives in a static account row inside the
+ * shell's own header, next to the student's name, so the current student is
+ * always identifiable and the control never overlaps the banner.
  */
-function readStudentName(): string | null {
-  try {
-    const auth = Auth as unknown as { readCachedUser?: () => CachedUser | null };
-    if (typeof auth.readCachedUser !== 'function') return null;
-    const user = auth.readCachedUser();
-    if (!user) return null;
-    const name = user.displayName?.trim();
-    return name && name.length > 0 ? name : null;
-  } catch {
-    return null;
-  }
-}
-
-function StudentGreetingBanner() {
-  const name = readStudentName();
+function StudentIdentityHeader() {
+  const user = useCurrentUser();
+  const name = user?.displayName?.trim() ?? '';
+  const displayName = name.length > 0 ? name : '同学';
   return (
-    <GreetingBanner
-      studentName={name ?? '同学'}
-      message={name ? '准备好开始今天的学习了吗？' : '欢迎来到启途智学，开始今天的学习吧。'}
-    />
+    <div className="qitu-student-identity">
+      <div className="qitu-student-account">
+        <Avatar name={displayName} size="sm" />
+        <span className="qitu-student-account-text">
+          <span className="qitu-student-account-label">当前学生</span>
+          <span className="qitu-student-account-name">{displayName}</span>
+        </span>
+        <LogoutButton />
+      </div>
+      <GreetingBanner
+        studentName={displayName}
+        message={
+          name.length > 0
+            ? '准备好开始今天的学习了吗？'
+            : '欢迎来到启途智学，开始今天的学习吧。'
+        }
+      />
+    </div>
   );
 }
 
@@ -259,7 +261,7 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
     <StudentShell
       navItems={NAV_ITEMS}
       activeHref={active ? `${BASE_PATH}${active.path}` : ''}
-      header={<StudentGreetingBanner />}
+      header={<StudentIdentityHeader />}
       renderLink={renderNavLink}
       navCollapsed={navCollapsed}
       onToggleNav={toggleNav}

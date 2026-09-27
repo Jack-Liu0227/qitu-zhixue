@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { AdminTeacherListPageData, AdminTeacherRow } from '@qitu/contracts';
+import type { AdminTeacherListPageData } from '@qitu/contracts';
 import { Badge, Button, EmptyState } from '@qitu/ui';
 import { fetchTeacherList } from '../../../lib/api/teachers';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';

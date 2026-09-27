@@ -58,7 +58,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
             <div className="parent-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '演示家长'} size="sm" />
               <span>{user?.displayName ?? '演示家长'}</span>
-              <LogoutButton redirectTo="/parent/login" />
+              <LogoutButton redirectTo="/" />
             </div>
           </header>
           <main className="parent-content">{children}</main>

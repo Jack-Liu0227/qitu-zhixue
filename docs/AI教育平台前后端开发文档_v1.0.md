@@ -1096,6 +1096,51 @@ POST  /api/v1/admin/users/:id/reset-session
 - 关系变更必须通知相关人员。
 - 关系变更全部写入审计日志。
 
+### 接口（已实现）
+
+关系绑定的唯一数据源是后端目录服务（`DirectoryService`）。家长端、班主任端、
+管理端都从它读关系，不再各自维护一份名单；数据库层同样有唯一索引兜底。
+
+```http
+GET   /api/v1/admin/guardian-links
+POST  /api/v1/admin/guardian-links
+PATCH /api/v1/admin/guardian-links/:linkId
+POST  /api/v1/admin/guardian-links/:linkId/end
+
+GET   /api/v1/admin/mentor-assignments
+POST  /api/v1/admin/mentor-assignments
+POST  /api/v1/admin/mentor-assignments/:assignmentId/end
+POST  /api/v1/admin/mentor-assignments/transfer
+```
+
+- 所有写操作必须携带 `Idempotency-Key`，重复提交不得产生第二条关系记录。
+- 给已有当前班主任的学生再分配班主任时返回 `409 MENTOR_ALREADY_ASSIGNED`。
+  换班主任必须走 `transfer`，由后端在同一事务内结束旧记录并创建新记录，
+  不允许出现「学生暂时没有班主任」的中间状态。
+- 关系记录不做物理删除：结束时写入 `status = ended` 与 `endedAt`，
+  保证转派和解绑历史可追溯（即本节「转派必须保留旧记录」）。
+- 应用层校验之外，数据库部分唯一索引再兜底一次；即使应用校验被绕过，
+  同一学生也不会同时存在两条 active 的班主任记录。
+
+### 路由现状说明
+
+本节开头的路由表是 M8 的目标信息架构，当前管理后台实现的是其中一个子集：
+
+```text
+/admin                      概览
+/admin/students             学生端数据
+/admin/students/statistics  学生数据统计
+/admin/teachers             教师端数据
+/admin/relationships        关系绑定
+/admin/settings             设置
+```
+
+`/admin/relationships` 是本轮为关系绑定新增的唯一顶级入口。家长绑定与班主任分配
+合并在同一页，因为两者共用同一套对象权限校验与幂等要求。
+
+学生数据统计只呈现过程性事实（活跃度、阶段分布、绑定覆盖率、未绑定人数），
+遵守本平台「没有分数、排名、百分位、等级」的统一约束。
+
 ## 7.4 项目模板和推荐项目
 
 ### 模板字段

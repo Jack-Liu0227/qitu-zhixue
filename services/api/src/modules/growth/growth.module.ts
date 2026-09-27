@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
 import { GrowthController, ParentGrowthController } from './growth.controller';
 import { GrowthService } from './growth.service';
+import { DirectoryModule } from '../directory/directory.module';
+import { DirectoryService } from '../directory/directory.service';
 
 /**
  * 成长轨迹模块。
@@ -14,9 +16,15 @@ import { GrowthService } from './growth.service';
  * 但 HTTP 层永远不提供写接口。
  */
 @Module({
-  imports: [AuthModule],
+  imports: [DirectoryModule, AuthModule],
   controllers: [GrowthController, ParentGrowthController],
-  providers: [GrowthService],
+  providers: [
+    GrowthService,
+    {
+      provide: 'DirectoryService',
+      useExisting: DirectoryService,
+    },
+  ],
   exports: [GrowthService],
 })
 export class GrowthModule {}

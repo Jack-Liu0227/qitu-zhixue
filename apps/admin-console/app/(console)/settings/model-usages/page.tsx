@@ -5,11 +5,12 @@ import type {
   AdminModelUsagesResponse,
   AdminProvidersResponse,
   BindUsageRequest,
+  ConnectionTestResponse,
   ModelUsageBinding,
   ModelUsageSlot,
 } from '@qitu/contracts';
 import { Badge, Button, EmptyState, InfoRow, SectionCard } from '@qitu/ui';
-import { bindUsage, fetchProviders, fetchUsages } from '../../../../lib/api/modelRegistry';
+import { bindUsage, fetchProviders, fetchUsages, testUsageConnection } from '../../../../lib/api/modelRegistry';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
@@ -33,6 +34,80 @@ function modalityLabel(modality: string): string {
   return labels[modality] ?? modality;
 }
 
+/**
+ * 用途级连接测试状态：只存测试结果，不存任何密钥。
+ *
+ * 测试用的是服务端**已保存**的绑定（含回落），不是下拉框里未保存的选择；
+ * 因此它是「确认当前生效模型能通」而不是「预检准备保存的选择」。
+ */
+interface ConnectionTestState {
+  running: boolean;
+  result: ConnectionTestResponse | null;
+  /** 网络/权限/未知资源等「请求本身」失败时的可重试文案。 */
+  transportError: string;
+}
+
+const IDLE_CONNECTION_TEST: ConnectionTestState = {
+  running: false,
+  result: null,
+  transportError: '',
+};
+
+function formatTestTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+/** 与供应商页一致的内联结果块：测试失败不上升为页面级错误。 */
+function ConnectionTestResult({
+  state,
+  modelId,
+}: {
+  state: ConnectionTestState;
+  modelId?: string | null;
+}) {
+  if (state.running) {
+    return (
+      <p className="admin-test-result admin-test-result-running" role="status">
+        正在测试连通性（仅验证配置 / 鉴权 / 模型发现，不执行推理）…
+      </p>
+    );
+  }
+
+  const failure =
+    state.transportError ||
+    (state.result && !state.result.ok ? state.result.error ?? '测试未通过，请稍后重试。' : '');
+  if (state.result === null && failure === '') return null;
+
+  const ok = state.result?.ok === true;
+  const text = ok ? state.result?.message : failure;
+  const shownModelId = state.result?.modelId ?? modelId ?? null;
+
+  return (
+    <div className={`admin-test-result ${ok ? 'is-ok' : 'is-fail'}`} role="status">
+      <div className="admin-test-result-head">
+        <Badge tone={ok ? 'completed' : 'danger'} size="sm">
+          {ok ? '连通' : '未通过'}
+        </Badge>
+        {typeof state.result?.latencyMs === 'number' ? (
+          <span className="admin-test-result-meta">耗时 {state.result.latencyMs} ms</span>
+        ) : null}
+        {shownModelId ? (
+          <span className="admin-test-result-meta">
+            解析模型 <code className="admin-console-fingerprint">{shownModelId}</code>
+          </span>
+        ) : null}
+        {state.result?.testedAt ? (
+          <span className="admin-test-result-meta">测试时间 {formatTestTime(state.result.testedAt)}</span>
+        ) : null}
+      </div>
+      {text ? <p className={ok ? 'admin-test-result-message' : 'admin-test-result-error'}>{text}</p> : null}
+    </div>
+  );
+}
+
 function UsageCard({
   usage,
   binding,
@@ -49,6 +124,7 @@ function UsageCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [testState, setTestState] = useState<ConnectionTestState>(IDLE_CONNECTION_TEST);
 
   const providerModels = useMemo(
     () => providers.find((provider) => provider.id === providerId)?.models ?? [],
@@ -87,7 +163,28 @@ function UsageCard({
     }
   }
 
+  /**
+   * 用途级连接测试：按服务端保存的绑定（含 `fallbackTo`）解析实际生效模型并
+   * 探测连通性。未绑定 / 无回落时服务端返回 `ok=false` 的明确文案，这里原样
+   * 展示，**不**当作页面级错误。
+   */
+  async function handleTest() {
+    setTestState({ running: true, result: null, transportError: '' });
+    try {
+      const result = await testUsageConnection(usage.id);
+      setTestState({ running: false, result, transportError: '' });
+    } catch (cause) {
+      setTestState({
+        running: false,
+        result: null,
+        transportError: cause instanceof Error ? cause.message : '测试失败，请稍后重试。',
+      });
+    }
+  }
+
   const resolved = binding.resolved;
+  const usageTestFailed =
+    !testState.running && (testState.transportError !== '' || testState.result?.ok === false);
   const fallbackText =
     usage.fallbackTo !== null
       ? `未绑定或不可用时回落到「${usage.fallbackTo}」`
@@ -174,6 +271,21 @@ function UsageCard({
             </Button>
           ) : null}
         </div>
+      </div>
+
+      <div className="admin-usage-test">
+        <div className="admin-form-actions admin-form-actions-start">
+          <Button size="sm" variant="secondary" onClick={handleTest} loading={testState.running}>
+            {usageTestFailed ? '重试测试' : '测试当前模型'}
+          </Button>
+        </div>
+        {!resolved ? (
+          <p className="admin-usage-hint">
+            该用途当前没有可用模型（含回落），测试会返回可恢复提示。请先在上方绑定供应商/模型，或检查回落用途
+            是否已绑定，然后再测试。
+          </p>
+        ) : null}
+        <ConnectionTestResult state={testState} modelId={resolved?.modelId ?? null} />
       </div>
 
       {saved ? (

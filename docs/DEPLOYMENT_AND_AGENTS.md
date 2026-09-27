@@ -79,4 +79,9 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+`status` 会实际请求每个服务的端口，而不是只看 pid：进程存活不等于服务可用，
+`services/api` 跑在 `nest start --watch` 下时，编译失败后进程仍在但端口没有监听。
+输出 `NOT SERVING (pid ... 存活但 :4100 -> 000)` 就是这种情况，去对应日志找编译错误。
+全部可用时退出码为 0，否则为 1，可以直接用在脚本里。
+
 部署脚本和 Nginx 配置都不会自动删除 Git 分支、worktree、依赖或环境文件。远程备份保存于 `/root/team-workspaces/qitu-backups/`。

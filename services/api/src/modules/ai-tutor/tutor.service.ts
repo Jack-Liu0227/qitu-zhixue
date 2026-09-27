@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   GetTutorSessionResponse,
   ProjectStage,
@@ -7,8 +7,10 @@ import type {
   TutorToolCall,
   TutorTurn,
 } from '@qitu/contracts';
+import { DATA_MODE_TOKEN, type DataMode } from '../../database';
+import { ModelGateway } from '../model-registry/model-gateway';
+import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import {
-  HeuristicTutorProvider,
   type TutorProvider,
   type TutorStreamEvent,
   type TutorTurnInput,
@@ -35,6 +37,15 @@ export interface StreamedTutorEvent {
 
 interface TutorSessionRecord {
   sessionId: string;
+  /**
+   * 会话归属的学生 user id。这是**会话级**的临时授权边界：
+   * 只要归属不一致就统一 403，且不返回任何会话字段。
+   *
+   * 未来 `projects` 模块落地后，还必须在此之上校验
+   * `project.studentUserId === ownerId`（以及班主任的当前分配关系），
+   * 不能把硬编码的 DEMO_PROJECT 当成授权真相。
+   */
+  ownerId: string;
   projectId: string | null;
   createdAt: string;
   turns: TutorTurn[];
@@ -49,7 +60,12 @@ export interface AuditEntry {
   sessionId: string;
   projectId: string | null;
   actorId: string;
-  action: 'tutor.turn' | 'tutor.escalate' | 'tutor.idempotent_replay' | 'tutor.guard_block';
+  action:
+    | 'tutor.session_start'
+    | 'tutor.turn'
+    | 'tutor.escalate'
+    | 'tutor.idempotent_replay'
+    | 'tutor.guard_block';
   detail: string;
 }
 
@@ -75,10 +91,25 @@ const DEMO_SESSION_ID = 'session-demo-001';
  */
 @Injectable()
 export class TutorService {
-  private readonly provider: TutorProvider = new HeuristicTutorProvider();
+  private readonly provider: TutorProvider;
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
   private readonly auditLog: AuditEntry[] = [];
+
+  /**
+   * Provider 按 `QITU_DATA_MODE` 选择：
+   * - `live`（默认）→ `GatewayTutorProvider`，走注册表里绑定的真实模型；
+   * - `demo` / `test` → 确定性的 `HeuristicTutorProvider`。
+   *
+   * live 下若 `tutor.chat` 未绑定，由 provider 显式返回
+   * `MODEL_NOT_CONFIGURED`，不会静默回落到 Heuristic。
+   */
+  constructor(
+    @Inject(DATA_MODE_TOKEN) dataMode: DataMode,
+    @Inject(ModelGateway) gateway: TutorModelGateway,
+  ) {
+    this.provider = createTutorProvider(dataMode, gateway);
+  }
 
   /** 只会暴露给测试与内部审计；不通过 HTTP 暴露。 */
   get auditEntries(): readonly AuditEntry[] {
@@ -86,25 +117,50 @@ export class TutorService {
   }
 
   /**
-   * 取（或惰性创建）某个项目的会话。一个项目对应一个持续会话，
+   * 取（或惰性创建）某个项目**属于该学生**的会话。一个项目对应一个持续会话，
    * 这样掌握度阶梯可以跨刷新延续——学生重新打开页面时不会被「重置」。
+   *
+   * 对象级授权：如果该项目已存在属于**其他学生**的会话，抛统一 403，
+   * 绝不返回该会话的任何字段。这样同一 `projectId` 无法被另一个学生取到。
+   *
+   * 注意：这里的归属只到「学生 ↔ 会话」这一层。等 `projects` 模块落地后，
+   * 仍需在服务端校验 `project.studentUserId`，当前硬编码的 `DEMO_PROJECT`
+   * 不是授权真相。
    */
-  getOrCreateSession(projectId: string): TutorSessionRecord {
+  getOrCreateSession(projectId: string, ownerId: string): TutorSessionRecord {
     const existing = this.findByProject(projectId);
-    if (existing !== undefined) return existing;
+    if (existing !== undefined) {
+      assertOwnedBy(existing, ownerId);
+      return existing;
+    }
     // The demo project keeps its documented id so the frontend's fixture
     // fallback (`MOCK_SESSION_ID`) still lines up; every other project gets a
     // derived id instead of all colliding on the single demo id.
     const sessionId =
       projectId === DEMO_PROJECT.id ? DEMO_SESSION_ID : `session-${projectId}`;
-    const record = this.seedSession(sessionId, projectId);
+    const record = this.seedSession(sessionId, projectId, ownerId);
     this.sessions.set(record.sessionId, record);
+    // 会话开始即写审计，且只在真正创建时写一次：同 owner 重复取用不会重复记录。
+    this.record({
+      sessionId: record.sessionId,
+      projectId: record.projectId,
+      actorId: ownerId,
+      action: 'tutor.session_start',
+      detail: '学生开启 AI搭档会话',
+    });
     return record;
   }
 
-  getSession(sessionId: string): TutorSessionRecord {
+  /**
+   * 按 id 取会话，并校验归属。
+   *
+   * 授权先行的顺序：先按 id 查找，再校验 owner。归属不一致时统一 403，
+   * 不返回任何会话字段；只有确实不存在时才 404。
+   */
+  getSession(sessionId: string, ownerId: string): TutorSessionRecord {
     const record = this.sessions.get(sessionId);
     if (record === undefined) throw new NotFoundException('会话不存在');
+    assertOwnedBy(record, ownerId);
     return record;
   }
 
@@ -118,8 +174,8 @@ export class TutorService {
     };
   }
 
-  getSummary(sessionId: string): TutorSessionSummary {
-    const record = this.getSession(sessionId);
+  getSummary(sessionId: string, ownerId: string): TutorSessionSummary {
+    const record = this.getSession(sessionId, ownerId);
     return {
       summary: summarise(record),
       lastHintLevel: record.lastHintLevel,
@@ -145,6 +201,8 @@ export class TutorService {
       actorId: string;
     },
   ): AsyncGenerator<StreamedTutorEvent, void, undefined> {
+    // 纵深防御：即使调用方绕过了按 id 的授权查询，回合执行前仍校验归属。
+    assertOwnedBy(record, request.actorId);
     const cached = this.idempotency.get(request.idempotencyKey);
     if (cached !== undefined && cached.turnId.startsWith(`${record.sessionId}:`)) {
       this.record({
@@ -212,8 +270,12 @@ export class TutorService {
             call.status = event.status;
             call.result = event.result;
             assistantBlocks = [...assistantBlocks, { kind: 'tool', call: { ...call } }];
+            // 只有安全闸门失败才算「拦截」；模型调用失败属于链路故障，
+            // 不能误记成答案泄露拦截。
+            if (event.status === 'error' && call.name === 'safety.answer_leak.guard') {
+              guardBlocked = true;
+            }
           }
-          if (event.status === 'error') guardBlocked = true;
           break;
         }
         case 'block':
@@ -273,7 +335,11 @@ export class TutorService {
    * 历史必须与实时流遵守同一条「只提问不给答案」规则，否则学生会从历史里
    * 读到实时流不肯给的结论。
    */
-  private seedSession(sessionId: string, projectId: string): TutorSessionRecord {
+  private seedSession(
+    sessionId: string,
+    projectId: string,
+    ownerId: string,
+  ): TutorSessionRecord {
     const now = Date.now();
     const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
     const turns: TutorTurn[] = [
@@ -353,6 +419,7 @@ export class TutorService {
     ];
     return {
       sessionId,
+      ownerId,
       projectId,
       createdAt: at(-600_000),
       turns,
@@ -387,6 +454,17 @@ export class TutorService {
     this.auditLog.push({ at: new Date().toISOString(), ...entry });
     if (this.auditLog.length > 500) this.auditLog.splice(0, this.auditLog.length - 500);
   }
+}
+
+/**
+ * 统一越权文案：不区分「非法角色」「不存在」「不属于你」，
+ * 避免调用方通过响应差异探测会话是否存在或属于谁。
+ */
+const FORBIDDEN_MESSAGE = '无权访问该会话';
+
+/** 断言会话归属；不一致统一 403，且不泄露任何会话字段。 */
+function assertOwnedBy(record: TutorSessionRecord, ownerId: string): void {
+  if (record.ownerId !== ownerId) throw new ForbiddenException(FORBIDDEN_MESSAGE);
 }
 
 function buildStudentBlocks(request: {

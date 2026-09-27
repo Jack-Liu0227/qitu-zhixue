@@ -100,6 +100,11 @@ export default function AdminStudentsPage() {
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
         <p>查看所有学生的学习状态与项目进展</p>
+        <p className="admin-page-header-action">
+          <Link href="/students/statistics" className="admin-link">
+            查看学生数据统计 →
+          </Link>
+        </p>
       </div>
 
       <div className="admin-filter-strip">

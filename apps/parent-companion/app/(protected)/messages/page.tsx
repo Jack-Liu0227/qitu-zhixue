@@ -176,7 +176,7 @@ export default function MessagesPage() {
         </SectionCard>
       ) : null}
 
-      <DataState state={{ status }} reload={() => childId && load(childId)} emptyTitle="暂无消息">
+      <DataState state={{ status }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
         {data ? (
           <>
             <div className="message-summary">
@@ -196,6 +196,7 @@ export default function MessagesPage() {
               <section className="message-list">
                 {data.messages.map((m) => (
                   <button
+                    type="button"
                     className={m.id === selected ? 'message-row selected' : 'message-row'}
                     key={m.id}
                     onClick={() => setSelected(m.id)}
@@ -291,7 +292,6 @@ export default function MessagesPage() {
                   <span>负责人</span>
                   <span>状态</span>
                   <span>处理时间</span>
-                  <span>操作</span>
                 </div>
                 {data.tickets.length ? (
                   data.tickets.map((t) => (
@@ -304,13 +304,6 @@ export default function MessagesPage() {
                         {parentTicketStatusLabel(t.status)}
                       </Badge>
                       <span>{t.handledIn}</span>
-                      <button
-                        type="button"
-                        className="ticket-detail"
-                        title="处理记录查看即将上线"
-                      >
-                        查看处理记录 →
-                      </button>
                     </div>
                   ))
                 ) : (
