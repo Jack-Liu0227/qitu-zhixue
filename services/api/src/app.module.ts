@@ -18,6 +18,7 @@ import { DirectoryModule } from './modules/directory/directory.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
 import { AccountModule } from './modules/account/account.module';
 import { TemplatesModule } from './modules/templates/templates.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
     TeacherModule,
     AccountModule,
     TemplatesModule,
+    KnowledgeModule,
   ],
 })
 export class AppModule {}
