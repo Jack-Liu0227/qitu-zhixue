@@ -716,8 +716,74 @@ body {
   .parent-stage-copy { margin-top: 4px; }
   .parent-stage-copy strong { white-space: normal; }
 }
+/* ---- 全局家长反馈浮窗 ---- */
+.parent-feedback {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  width: min(390px, calc(100vw - 32px));
+}
+.parent-feedback-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 11px 16px;
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: 999px;
+  background: var(--qitu-primary);
+  color: #fff;
+  box-shadow: var(--qitu-shadow-md);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+.parent-feedback-toggle:hover { filter: brightness(0.96); }
+.parent-feedback-panel {
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgb(22 51 84 / 18%);
+}
+.parent-feedback-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--qitu-primary-soft);
+  border-bottom: 1px solid var(--qitu-border);
+}
+.parent-feedback-head h2 { margin: 0; color: var(--qitu-heading); font-size: 1rem; }
+.parent-feedback-head p { margin: 4px 0 0; color: var(--qitu-muted); font-size: 0.78rem; }
+.parent-feedback-body { padding: 16px 18px 18px; }
+.parent-feedback-form { display: grid; gap: 13px; }
+.parent-feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.parent-feedback-form select,
+.parent-feedback-form textarea,
+.parent-feedback-form input[type='file'] { width: 100%; box-sizing: border-box; }
+.parent-feedback-form textarea { resize: vertical; min-height: 96px; }
+.parent-feedback-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--qitu-muted); font-size: 0.78rem; }
+.parent-feedback-action-buttons { display: flex; gap: 8px; }
+.parent-feedback-status { margin: 8px 0; color: var(--qitu-muted); font-size: 0.85rem; line-height: 1.5; }
+.parent-feedback-success { margin: 0; color: var(--qitu-completed); font-size: 0.82rem; line-height: 1.5; }
+.parent-feedback-error { margin: 0; color: var(--qitu-danger, #c33); font-size: 0.82rem; line-height: 1.5; }
 @media (max-width: 650px) {
-  .parent-shell {
+  .parent-feedback {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+  }
+  .parent-feedback-panel { margin-bottom: 8px; max-height: calc(100vh - 92px); overflow-y: auto; }
+  .parent-feedback-grid { grid-template-columns: 1fr; }
+  .parent-feedback-toggle { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 650px) {
+  .parent-shell { 
     display: block;
   }
   .qitu-sidebar {

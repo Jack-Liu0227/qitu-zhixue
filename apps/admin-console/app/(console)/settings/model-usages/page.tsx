@@ -115,8 +115,6 @@ interface ProviderOption {
   id: string;
   name: string;
   models: { id: string; name: string }[];
-  /** 服务端是否已持有可用密钥（`auth.configured`）。 */
-  authConfigured: boolean;
   /** 供应商是否启用。契约当前未透出该字段，后端一旦返回 `enabled=false` 即生效。 */
   enabled: boolean;
 }
@@ -135,8 +133,8 @@ function isProviderEnabled(provider: ProviderConfigPublic): boolean {
 /**
  * 模型下拉的禁用原因；返回 `null` 表示可以正常选模型。
  *
- * 覆盖「没有供应商 / 未选择供应商 / 供应商不存在 / 已停用 / 未配置密钥 / 没有模型」
- * 六类阻塞，每种都给出「请先配置并保存服务提供方/模型」的可执行提示，而不是渲染一个
+ * 覆盖「没有供应商 / 未选择供应商 / 供应商不存在 / 已停用 / 没有模型」
+ * 五类阻塞，每种都给出「请先配置并保存服务提供方/模型」的可执行提示，而不是渲染一个
  * 看似可选、实则没有数据的下拉框。
  */
 function modelSelectionBlocker(
@@ -155,9 +153,6 @@ function modelSelectionBlocker(
   }
   if (!provider.enabled) {
     return '该服务提供方已停用，请先在「模型供应商」启用并保存服务提供方/模型。';
-  }
-  if (!provider.authConfigured) {
-    return '该服务提供方尚未配置密钥，请先在「模型供应商」配置并保存服务提供方/模型。';
   }
   if (provider.models.length === 0) {
     return '该服务提供方还没有可用模型，请先拉取或添加模型并保存，再选择模型。';
@@ -300,11 +295,6 @@ function UsageCard({
       setError('该服务提供方已停用，请先启用并保存服务提供方/模型。');
       return;
     }
-    if (!provider.authConfigured) {
-      setError('该服务提供方尚未配置密钥，请先配置并保存服务提供方/模型。');
-      return;
-    }
-
     const body: BindUsageRequest = { providerId: provider.id, modelId: model.id };
     setSaving(true);
     try {
@@ -530,7 +520,6 @@ export default function AdminModelUsagesPage() {
     id: provider.id,
     name: provider.name,
     models: provider.models.map((model) => ({ id: model.id, name: model.name })),
-    authConfigured: provider.auth.configured,
     enabled: isProviderEnabled(provider),
   }));
 

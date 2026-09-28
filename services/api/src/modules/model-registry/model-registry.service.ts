@@ -601,6 +601,7 @@ export class ModelRegistryService implements OnModuleInit {
 
     const state = this.providers.get(body.providerId);
     if (state === undefined) throw new BadRequestException(`供应商不存在：${body.providerId}`);
+    if (!state.enabled) throw new ConflictException(`供应商已停用：${body.providerId}`);
     const model = this.modelOf(state, body.modelId);
     if (model === undefined) {
       // 已下线（enabled=false）或从未见过的模型都拒绝，避免绑定后运行时才炸。

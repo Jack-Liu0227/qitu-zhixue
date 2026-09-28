@@ -455,8 +455,8 @@ export class ParentController {
   /**
    * 提交反馈。
    *
-   * 目标孩子不再写死：`general` 必填 `childId`，`message`/`project` 由关联对象
-   * 推导并校验一致；服务端会再次校验家长确实绑定了该孩子（越权返回 403）。
+   * 目标孩子不再写死：关联孩子时服务端由 `childId` 或 message/project 推导并校验一致；
+   * 一般使用问题可以不关联孩子，服务端会进入受限待分配队列；有关联孩子时再次校验家长绑定关系。
    */
   @Post('feedback')
   async submitFeedback(
