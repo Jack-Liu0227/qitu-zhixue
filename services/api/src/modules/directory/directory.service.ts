@@ -30,6 +30,7 @@ export type DirectoryTransaction = Parameters<
 export type DirectoryErrorCode =
   | 'DIRECTORY_USER_NOT_FOUND'
   | 'RELATIONSHIP_ROLE_INVALID'
+  | 'RELATIONSHIP_SCHOOL_MISMATCH'
   | 'SELF_RELATIONSHIP_INVALID'
   | 'RELATIONSHIP_NOT_FOUND'
   | 'GUARDIAN_LINK_ALREADY_ACTIVE'
@@ -109,7 +110,18 @@ export class DirectoryService {
     return this.memory.listUsersByRole(role);
   }
 
-  /* ==================== Guardian ↔ Student ==================== */
+  async schoolOfUser(userId: string): Promise<string | null> {
+    if (this.db) {
+      const [row] = await this.db
+        .select({ schoolId: users.schoolId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      return row?.schoolId ?? null;
+    }
+    return null;
+  }
+
 
   async guardiansOfStudent(studentId: string): Promise<DirectoryPersonRef[]> {
     if (this.db) {
@@ -123,12 +135,21 @@ export class DirectoryService {
         .from(guardianLinks)
         .innerJoin(users, eq(guardianLinks.parentUserId, users.id))
         .where(and(eq(guardianLinks.studentUserId, studentId), eq(guardianLinks.status, 'active')));
-      return links.map((link) => ({
-        userId: link.parentUserId,
-        email: link.parentEmail,
-        displayName: link.parentDisplayName,
-        role: link.parentRole as any,
-      }));
+      const studentSchool = await this.schoolOfUser(studentId);
+      const scoped = await Promise.all(
+        links.map(async (link) => ({
+          link,
+          allowed: await this.sameSchoolOrUnscoped(studentSchool, await this.schoolOfUser(link.parentUserId)),
+        })),
+      );
+      return scoped
+        .filter(({ allowed }) => allowed)
+        .map(({ link }) => ({
+          userId: link.parentUserId,
+          email: link.parentEmail,
+          displayName: link.parentDisplayName,
+          role: link.parentRole as any,
+        }));
     }
     return this.memory.guardiansOfStudent(studentId);
   }
@@ -145,12 +166,21 @@ export class DirectoryService {
         .from(guardianLinks)
         .innerJoin(users, eq(guardianLinks.studentUserId, users.id))
         .where(and(eq(guardianLinks.parentUserId, parentUserId), eq(guardianLinks.status, 'active')));
-      return links.map((link) => ({
-        userId: link.studentUserId,
-        email: link.studentEmail,
-        displayName: link.studentDisplayName,
-        role: link.studentRole as any,
-      }));
+      const parentSchool = await this.schoolOfUser(parentUserId);
+      const scoped = await Promise.all(
+        links.map(async (link) => ({
+          link,
+          allowed: await this.sameSchoolOrUnscoped(parentSchool, await this.schoolOfUser(link.studentUserId)),
+        })),
+      );
+      return scoped
+        .filter(({ allowed }) => allowed)
+        .map(({ link }) => ({
+          userId: link.studentUserId,
+          email: link.studentEmail,
+          displayName: link.studentDisplayName,
+          role: link.studentRole as any,
+        }));
     }
     return this.memory.childrenOfParent(parentUserId);
   }
@@ -230,6 +260,9 @@ export class DirectoryService {
         .limit(1);
       if (assignments.length === 0) return null;
       const a = assignments[0]!;
+      const studentSchool = await this.schoolOfUser(studentId);
+      const mentorSchool = await this.schoolOfUser(a.mentorUserId);
+      if (!(await this.sameSchoolOrUnscoped(studentSchool, mentorSchool))) return null;
       return { userId: a.mentorUserId, email: a.mentorEmail, displayName: a.mentorDisplayName, role: a.mentorRole as any };
     }
     return this.memory.mentorOfStudent(studentId);
@@ -271,12 +304,21 @@ export class DirectoryService {
         .from(mentorAssignments)
         .innerJoin(users, eq(mentorAssignments.studentUserId, users.id))
         .where(and(eq(mentorAssignments.mentorUserId, mentorId), eq(mentorAssignments.status, 'active')));
-      return assignments.map((a) => ({
-        userId: a.studentUserId,
-        email: a.studentEmail,
-        displayName: a.studentDisplayName,
-        role: a.studentRole as any,
-      }));
+      const mentorSchool = await this.schoolOfUser(mentorId);
+      const scoped = await Promise.all(
+        assignments.map(async (assignment) => ({
+          assignment,
+          allowed: await this.sameSchoolOrUnscoped(mentorSchool, await this.schoolOfUser(assignment.studentUserId)),
+        })),
+      );
+      return scoped
+        .filter(({ allowed }) => allowed)
+        .map(({ assignment }) => ({
+          userId: assignment.studentUserId,
+          email: assignment.studentEmail,
+          displayName: assignment.studentDisplayName,
+          role: assignment.studentRole as any,
+        }));
     }
     return this.memory.studentsOfMentor(mentorId);
   }
@@ -358,11 +400,27 @@ export class DirectoryService {
    * 若先查存在性，`parentUserId === studentUserId` 这种明显更该报自绑的请求
    * 会在角色校验处报成“角色不符”，前端拿到的错误码就指错了方向。
    */
+  private sameSchoolOrUnscoped(left: string | null, right: string | null): boolean {
+    return left === null || right === null || left === right;
+  }
+
   private async assertDistinctUsers(userIdA: string, userIdB: string): Promise<void> {
     if (userIdA === userIdB) {
       throw new DirectoryError('SELF_RELATIONSHIP_INVALID');
     }
   }
+
+  private async assertSameSchool(userIdA: string, userIdB: string): Promise<void> {
+    const [schoolA, schoolB] = await Promise.all([
+      this.schoolOfUser(userIdA),
+      this.schoolOfUser(userIdB),
+    ]);
+    if (!this.sameSchoolOrUnscoped(schoolA, schoolB)) {
+      throw new DirectoryError('RELATIONSHIP_SCHOOL_MISMATCH');
+    }
+  }
+
+
 
   private async requireUserOfRole(userId: string, role: string): Promise<DirectoryPersonRef> {
     const user = await this.findUser(userId);
@@ -400,6 +458,7 @@ export class DirectoryService {
     tx?: DirectoryTransaction,
   ): Promise<GuardianLinkRow> {
     await this.assertDistinctUsers(parentUserId, studentUserId);
+    await this.assertSameSchool(parentUserId, studentUserId);
     const parent = await this.requireUserOfRole(parentUserId, 'parent');
     const student = await this.requireUserOfRole(studentUserId, 'student');
     if (!GUARDIAN_RELATIONSHIPS.includes(relationship)) {
@@ -551,6 +610,7 @@ export class DirectoryService {
     tx?: DirectoryTransaction,
   ): Promise<MentorAssignmentRow> {
     await this.assertDistinctUsers(studentUserId, mentorUserId);
+    await this.assertSameSchool(studentUserId, mentorUserId);
     const student = await this.requireUserOfRole(studentUserId, 'student');
     const mentor = await this.requireUserOfRole(mentorUserId, 'teacher');
 

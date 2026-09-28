@@ -375,14 +375,6 @@ export class LearningPlanService {
               message: '该题引用的目标不存在（数据不一致）',
             });
           }
-          // 条件状态迁移 `awaiting → answered` 只成功一次，保证一题一 attempt。
-          const claimed = await this.store.markPendingQuestionAnswered(questionId, new Date());
-          if (!claimed) {
-            throw new ConflictException({
-              code: 'QUESTION_NOT_AWAITING',
-              message: '该题已作答',
-            });
-          }
           const card = this.pendingToCard(pending);
           const grade = gradeAnswer(card, body.answer as string, 'awaiting');
           const existing = await this.store.listAttempts(fresh.plan.studentUserId, objective.id);
@@ -395,12 +387,28 @@ export class LearningPlanService {
             attemptCount: existing.length + 1,
             now: new Date(),
           });
-          await this.store.appendAttempt(attempt);
-
           const wasMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          const nextMastery = await this.recomputeMastery(fresh.plan.studentUserId, fresh, objective, {
-            correctAnswer: grade.isCorrect,
+          const nextMastery = await this.recomputeMastery(
+            fresh.plan.studentUserId,
+            fresh,
+            objective,
+            { correctAnswer: grade.isCorrect },
+            false,
+            attempt,
+          );
+          const completed = await this.store.completePendingQuestion({
+            questionId,
+            answeredAt: new Date(),
+            attempt,
+            mastery: nextMastery,
           });
+          if (!completed) {
+            throw new ConflictException({
+              code: 'QUESTION_NOT_AWAITING',
+              message: '该题已作答',
+            });
+          }
+
           const isMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
           if (!wasMastered && isMastered) {
             await this.emitTheoryMastered(actor, fresh, freshSession);
@@ -761,10 +769,13 @@ export class LearningPlanService {
     bundle: PlanBundle,
     objective: ObjectiveRecord,
     options: { correctAnswer: boolean },
+    persist = true,
+    additionalAttempt?: AttemptRecord,
   ): Promise<MasteryRecord> {
     const existing = await this.store.findMastery(studentId, objective.id);
     const attempts = await this.store.listAttempts(studentId, objective.id);
-    const signals = attempts.map((attempt) => ({
+    const allAttempts = additionalAttempt === undefined ? attempts : [...attempts, additionalAttempt];
+    const signals = allAttempts.map((attempt) => ({
       result: attempt.result,
       isCorrect: attempt.isCorrect,
       hintsUsed: attempt.hintsUsed,
@@ -779,8 +790,8 @@ export class LearningPlanService {
       score,
       qualitativeMastered: qualitative,
     });
-    const correct = attempts.filter((attempt) => attempt.isCorrect).length;
-    const wrong = attempts.length - correct;
+    const correct = allAttempts.filter((attempt) => attempt.isCorrect).length;
+    const wrong = allAttempts.length - correct;
     const record: MasteryRecord = {
       id: existing?.id ?? newId('mastery'),
       studentUserId: studentId,
@@ -799,7 +810,7 @@ export class LearningPlanService {
       lapseCount: existing?.lapseCount ?? 0,
       updatedAt: new Date(),
     };
-    await this.store.upsertMastery(record);
+    if (persist) await this.store.upsertMastery(record);
     return record;
   }
 

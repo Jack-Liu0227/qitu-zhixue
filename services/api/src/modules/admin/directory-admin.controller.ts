@@ -48,6 +48,7 @@ const SESSION_COOKIE = 'qitu_session';
 const DIRECTORY_ERROR_MESSAGES: Record<DirectoryErrorCode, string> = {
   DIRECTORY_USER_NOT_FOUND: '目标用户不存在',
   RELATIONSHIP_ROLE_INVALID: '关系两端角色不合法',
+  RELATIONSHIP_SCHOOL_MISMATCH: '关系两端必须属于同一学校',
   SELF_RELATIONSHIP_INVALID: '不能把自己绑定为自己的监护人或班主任',
   RELATIONSHIP_NOT_FOUND: '关系不存在',
   GUARDIAN_LINK_ALREADY_ACTIVE: '该监护关系已存在',

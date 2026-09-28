@@ -152,6 +152,13 @@ export interface LearningProjectRecord {
   completedAt: Date | null;
 }
 
+export interface CompletePendingQuestionInput {
+  questionId: string;
+  answeredAt: Date;
+  attempt: AttemptRecord;
+  mastery: MasteryRecord;
+}
+
 export interface PlanBundle {
   plan: PlanRecord;
   modules: ModuleRecord[];
@@ -236,7 +243,10 @@ export abstract class LearningPlanStore {
 
   abstract createPendingQuestion(record: PendingQuestionRecord): Promise<void>;
 
-  /** `awaiting → answered` 的条件迁移；返回是否命中未答题（保证一次作答一条）。 */
+  /** Atomically claim the awaiting question and persist its attempt + mastery result. */
+  abstract completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean>;
+
+  /** `awaiting → answered` 的条件迁移；保留给兼容调用方。 */
   abstract markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean>;
 }
 
@@ -420,6 +430,20 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       }
     }
     this.pending.set(record.id, clonePendingQuestion(record));
+  }
+
+  async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    const record = this.pending.get(input.questionId);
+    if (record === undefined || record.status !== 'awaiting') return false;
+    this.pending.set(input.questionId, {
+      ...record,
+      status: 'answered',
+      answeredAt: input.answeredAt,
+      updatedAt: input.answeredAt,
+    });
+    await this.appendAttempt(input.attempt);
+    await this.upsertMastery(input.mastery);
+    return true;
   }
 
   async markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean> {

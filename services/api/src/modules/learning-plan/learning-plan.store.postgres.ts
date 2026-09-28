@@ -29,6 +29,7 @@ import {
   LearningPlanStoreConflictError,
   PendingQuestionConflictError,
   type AttemptRecord,
+  type CompletePendingQuestionInput,
   type ConfirmPlanInput,
   type ConfirmPlanResult,
   type LearningProjectRecord,
@@ -439,6 +440,79 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       throw error;
     }
   }
+
+  async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    return withTransaction(this.db, async (tx) => {
+      const claimed = await tx
+        .update(pendingQuestions)
+        .set({ status: 'answered', answeredAt: input.answeredAt, updatedAt: input.answeredAt })
+        .where(
+          and(
+            eq(pendingQuestions.id, input.questionId),
+            eq(pendingQuestions.status, 'awaiting'),
+          ),
+        )
+        .returning({ id: pendingQuestions.id });
+      if (claimed.length === 0) return false;
+
+      await tx.insert(masteryAttempts).values({
+        id: input.attempt.id,
+        studentUserId: input.attempt.studentUserId,
+        planId: input.attempt.planId,
+        objectiveId: input.attempt.objectiveId,
+        questionId: input.attempt.questionId,
+        result: input.attempt.result,
+        isCorrect: input.attempt.isCorrect,
+        assessmentType: input.attempt.assessmentType,
+        errorType: input.attempt.errorType,
+        hintsUsed: input.attempt.hintsUsed,
+        attemptCount: input.attempt.attemptCount,
+        qualityBasisPoints: input.attempt.qualityBasisPoints,
+        userAnswer: input.attempt.userAnswer,
+        createdAt: input.attempt.createdAt,
+      });
+      await tx
+        .insert(masteryRecords)
+        .values({
+          id: input.mastery.id,
+          studentUserId: input.mastery.studentUserId,
+          planId: input.mastery.planId,
+          objectiveId: input.mastery.objectiveId,
+          knowledgeType: input.mastery.knowledgeType,
+          status: input.mastery.status,
+          masteryBasisPoints: input.mastery.masteryBasisPoints,
+          thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+          qualitativeMastered: input.mastery.qualitativeMastered,
+          consecutiveCorrect: input.mastery.consecutiveCorrect,
+          consecutiveWrong: input.mastery.consecutiveWrong,
+          intervalIndex: input.mastery.intervalIndex,
+          nextReviewAt: input.mastery.nextReviewAt,
+          reviewCount: input.mastery.reviewCount,
+          lapseCount: input.mastery.lapseCount,
+          updatedAt: input.mastery.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
+          set: {
+            planId: input.mastery.planId,
+            knowledgeType: input.mastery.knowledgeType,
+            status: input.mastery.status,
+            masteryBasisPoints: input.mastery.masteryBasisPoints,
+            thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+            qualitativeMastered: input.mastery.qualitativeMastered,
+            consecutiveCorrect: input.mastery.consecutiveCorrect,
+            consecutiveWrong: input.mastery.consecutiveWrong,
+            intervalIndex: input.mastery.intervalIndex,
+            nextReviewAt: input.mastery.nextReviewAt,
+            reviewCount: input.mastery.reviewCount,
+            lapseCount: input.mastery.lapseCount,
+            updatedAt: input.mastery.updatedAt,
+          },
+        });
+      return true;
+    });
+  }
+
 
   async markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean> {
     const rows = await this.db
