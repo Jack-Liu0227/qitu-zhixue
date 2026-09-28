@@ -14,6 +14,7 @@ import type {
   StudentGrowthTimeline,
 } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
+import { normaliseEvidenceIds, observationStateFor } from './growth.evidence';
 
 /**
  * 成长轨迹服务端。
@@ -58,6 +59,11 @@ export interface GrowthRecordInput {
   artifactRef?: string | null;
   objectiveTitles?: string[];
   encouragement?: string | null;
+  /**
+   * 服务端证据引用（`sourceKind:opaqueId`）。调用方传入的值会经过白名单
+   * 归一化；非法 / 未知来源被静默丢弃，绝不影响记录本身的写入。
+   */
+  evidenceIds?: string[];
 }
 
 @Injectable()
@@ -188,6 +194,9 @@ export class GrowthService {
         ? null
         : (PROJECT_TITLES[input.projectId] ?? input.projectId);
 
+    // 证据引用只走服务端白名单；观察状态由证据有无推导，客户端无法写入。
+    const evidenceIds = normaliseEvidenceIds(input.evidenceIds);
+
     const entry: StudentGrowthEntry = {
       id: `growth-${input.studentId}-${this.entries(input.studentId).length + 1}`,
       type: input.type,
@@ -201,6 +210,8 @@ export class GrowthService {
       objectiveTitles: input.objectiveTitles ?? [],
       icon: ICON_BY_TYPE[input.type],
       encouragement: input.encouragement ?? null,
+      evidenceIds,
+      observationState: observationStateFor(evidenceIds),
     };
 
     this.entries(input.studentId).push(entry);
@@ -298,6 +309,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'reflection',
       encouragement: '会发现好问题，比会背答案更重要。',
+      evidenceIds: ['reflection:reflection-demo-001'],
     });
 
     this.record({
@@ -310,6 +322,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'published',
       artifactRef: 'artifact-demo-001',
+      evidenceIds: ['artifact:artifact-demo-001'],
     });
 
     this.record({
@@ -322,6 +335,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'theory_check',
       objectiveTitles: ['光合作用的条件'],
+      evidenceIds: ['theory_check:theory-demo-001', 'student_answer:answer-demo-001'],
     });
 
     this.record({
@@ -333,6 +347,7 @@ export class GrowthService {
       summaryParent: '孩子完成了项目的理论阶段，进入实践准备。',
       projectId: 'project-demo-001',
       stage: 'practice_ready',
+      evidenceIds: ['theory_check:theory-demo-002'],
     });
 
     this.record({
@@ -345,6 +360,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'theory_learning',
       objectiveTitles: ['观察记录的要素'],
+      evidenceIds: ['student_answer:answer-demo-002'],
     });
 
     this.record({

@@ -34,6 +34,11 @@ export interface InternalGrowthRecord {
   stage: ProjectStage | null;
   artifactRef: string | null;
   objectiveTitles: string[];
+  /**
+   * 服务端证据引用（`sourceKind:opaqueId`）。原始对话 / 语音 / 内部标签不在
+   * 白名单内，因此不会被当作证据引用带入学生视图；无证据即「待观察」。
+   */
+  evidenceIds: string[];
 }
 
 export const MOCK_GROWTH_SUMMARY: StudentGrowthSummary = {
@@ -63,6 +68,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'theory_learning',
     artifactRef: null,
     objectiveTitles: ['变量'],
+    evidenceIds: ['theory_check:theory-variables'],
   },
   {
     id: 'gr_2002',
@@ -78,6 +84,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'practice_building',
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: ['artifact:design-robot-role'],
   },
   {
     id: 'gr_2003',
@@ -93,6 +100,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'reflection',
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: ['reflection:reflection-huge-problem'],
   },
   {
     id: 'gr_2004',
@@ -108,6 +116,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'theory_check',
     artifactRef: null,
     objectiveTitles: ['条件判断'],
+    evidenceIds: ['student_answer:answer-condition'],
   },
   {
     // Internal-only: a stall signal. summaryStudent stays strength-based and
@@ -125,6 +134,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'practice_building',
     artifactRef: null,
     objectiveTitles: ['循环'],
+    evidenceIds: ['theory_check:theory-loop'],
   },
   {
     id: 'gr_2006',
@@ -140,6 +150,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'published',
     artifactRef: 'art_robot_v1',
     objectiveTitles: ['变量', '条件判断', '循环'],
+    evidenceIds: ['artifact:art_robot_v1'],
   },
   {
     id: 'gr_2007',
@@ -155,6 +166,24 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: 'completed',
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: ['artifact:art_robot_v1'],
+  },
+  {
+    // 暂未被证据支撑的结论：观察状态必须是「待观察」，绝不能画成 0 分。
+    id: 'gr_2008',
+    type: 'objective_mastered',
+    occurredAt: '2026-04-28T10:30:00Z',
+    title: '「函数」还在观察中',
+    summaryStudent: '你开始尝试把重复的步骤收进函数，老师还在收集更多证据。',
+    summaryParent: '孩子正在接触函数，有待更多观察。',
+    summaryMentor: '函数概念初识，证据不足，待观察。',
+    riskSignal: 'none',
+    projectId: 'proj_robot',
+    projectTitle: '桌面 AI 陪伴机器人',
+    stage: 'theory_learning',
+    artifactRef: null,
+    objectiveTitles: ['函数'],
+    evidenceIds: [],
   },
   // ---- Adult-only source types: must be filtered out of the student view. ----
   {
@@ -171,6 +200,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: null,
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: [],
   },
   {
     id: 'gr_3002',
@@ -186,6 +216,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: null,
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: [],
   },
   {
     id: 'gr_3003',
@@ -201,6 +232,7 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: null,
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: [],
   },
   {
     id: 'gr_3004',
@@ -216,5 +248,6 @@ export const MOCK_GROWTH_RECORDS: InternalGrowthRecord[] = [
     stage: null,
     artifactRef: null,
     objectiveTitles: [],
+    evidenceIds: [],
   },
 ];

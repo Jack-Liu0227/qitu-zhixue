@@ -430,6 +430,36 @@
   min-height: 36px;
 }
 
+/* 「待观察」提示：证据不足时的明确状态，绝不显示 0 分。 */
+.qitu-observation-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--qitu-space-sm);
+  margin: var(--qitu-space-xs) 0 0;
+  padding: var(--qitu-space-sm) var(--qitu-space-md);
+  background: var(--qitu-attention-soft);
+  border: 1px solid var(--qitu-attention-border);
+  border-radius: var(--qitu-radius-md);
+}
+
+.qitu-observation-badge {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: var(--qitu-radius-pill);
+  background: #fff;
+  color: var(--qitu-attention);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.qitu-observation-note-text {
+  color: var(--qitu-text);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
 /* ---- 作品条目：左封面 + 右内容 ---- */
 .qitu-artifact-entry {
   display: flex;

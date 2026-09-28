@@ -32,6 +32,27 @@ const REWORDABLE_SIGNALS: readonly RewordableRiskSignal[] = [
   'no_progress',
 ];
 
+/** 学生视图只接受白名单内的证据来源；与服务端 `growth.evidence.ts` 保持一致。 */
+const VISIBLE_EVIDENCE_SOURCE_KINDS: ReadonlySet<string> = new Set([
+  'student_answer',
+  'theory_check',
+  'artifact',
+  'reflection',
+  'help_request',
+]);
+
+/**
+ * 客户端侧的证据引用防御：只保留 `sourceKind:opaqueId` 且来源在白名单内的
+ * 引用。真实白名单由服务端执行；这里只是让学生 mock 也无法渲染原始字段。
+ */
+function visibleEvidenceIds(ids: readonly string[]): string[] {
+  return ids.filter((id) => {
+    const separator = id.indexOf(':');
+    if (separator <= 0 || separator === id.length - 1) return false;
+    return VISIBLE_EVIDENCE_SOURCE_KINDS.has(id.slice(0, separator));
+  });
+}
+
 function isStudentVisibleType(type: string): type is StudentGrowthEntryType {
   return (STUDENT_VISIBLE_TYPES as readonly string[]).includes(type);
 }
@@ -52,6 +73,11 @@ function isRewordableSignal(signal: string): signal is RewordableRiskSignal {
  * `rewordRiskSignal`, and only when the projection gate says the child may see
  * reworded signals. The result is pre-approved wording or `null` — never a raw
  * label and never a count.
+ *
+ * `evidenceIds` are passed through a client-side allowlist mirror of the server
+ * whitelist (`sourceKind:opaqueId`); `observationState` is derived from the
+ * surviving refs, so an entry with no evidence becomes `pending_observation`
+ * (「待观察」) rather than an implicit zero.
  */
 export function projectStudentEntry(record: InternalGrowthRecord): StudentGrowthEntry | null {
   if (!isStudentVisibleType(record.type)) {
@@ -66,6 +92,7 @@ export function projectStudentEntry(record: InternalGrowthRecord): StudentGrowth
     GROWTH_STUDENT_PROJECTION_GATE.studentRiskSignals === 'reworded'
       ? rewordRiskSignal(signal)
       : null;
+  const evidenceIds = visibleEvidenceIds(record.evidenceIds);
 
   return {
     id: record.id,
@@ -80,6 +107,9 @@ export function projectStudentEntry(record: InternalGrowthRecord): StudentGrowth
     objectiveTitles: [...record.objectiveTitles],
     icon: ICON_BY_TYPE[record.type],
     encouragement,
+    evidenceIds,
+    // 「无证据 → 待观察」：绝不能把没有数据画成 0 分或负面结论。
+    observationState: evidenceIds.length > 0 ? 'observed' : 'pending_observation',
   };
 }
 

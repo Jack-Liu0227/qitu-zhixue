@@ -3,6 +3,7 @@
 import { TagChips } from '@qitu/ui';
 import type { StudentGrowthEntry } from '../types';
 import { formatGrowthDate } from './format';
+import { ObservationNote } from './ObservationNote';
 import { ReflectionQuote } from './ReflectionQuote';
 
 /**
@@ -50,6 +51,9 @@ export function EntryDetailSheet({
           )}
           {entry.objectiveTitles.length > 0 ? (
             <TagChips tags={entry.objectiveTitles} tone="completed" />
+          ) : null}
+          {entry.type === 'objective_mastered' ? (
+            <ObservationNote state={entry.observationState} />
           ) : null}
           {entry.encouragement ? (
             <p className="qitu-entry-sheet-encouragement">{entry.encouragement}</p>

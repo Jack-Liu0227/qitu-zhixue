@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "outDir": "./.tmp/test-dist",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": false,
+    "incremental": false
+  },
+  "files": [
+    "features/growth/data/projectStudentEntry.ts",
+    "features/growth/data/projectStudentEntry.test.ts",
+    "features/growth/components/ObservationNote.tsx",
+    "features/growth/components/ObservationNote.test.tsx"
+  ]
+}
