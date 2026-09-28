@@ -395,13 +395,6 @@ export class AdminController {
     // 会自动补 basePath，因此这里要写 `/settings/...` 而不是 `/admin/settings/...`。
     const panels: AdminSettingsPanel[] = [
       {
-        id: 'model_slots',
-        title: '模型插槽',
-        description: '配置「文本模型」与「Live 模型」两个插槽的供应商、模型与密钥',
-        route: '/settings/models',
-        status: 'available',
-      },
-      {
         id: 'model_providers',
         title: '模型供应商',
         description: '配置 OpenAI、Anthropic 等 LLM 供应商的网关地址与密钥，并自动拉取模型列表',

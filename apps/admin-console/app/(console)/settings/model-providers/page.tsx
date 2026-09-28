@@ -211,7 +211,15 @@ function ProviderForm({ initial, preset, onSaved, onCancel }: ProviderFormProps)
     try {
       const updated = await upsertProvider(trimmedId, body);
       if (apiKeyRef.current) apiKeyRef.current.value = '';
-      onSaved(updated);
+      let provider = updated;
+      try {
+        const refreshed = await refreshProvider(updated.id);
+        provider = refreshed.provider;
+      } catch {
+        // Provider configuration is already saved; an unsupported / failed
+        // catalog endpoint must not hide the provider or block manual models.
+      }
+      onSaved(provider);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '保存失败，请稍后重试。');
     } finally {

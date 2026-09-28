@@ -1,14 +1,16 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
   GetTutorSessionResponse,
   ProjectStage,
   TutorHintLevel,
+  TutorProjectContext,
   TutorSessionSummary,
   TutorToolCall,
   TutorTurn,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
 import { ModelGateway } from '../model-registry/model-gateway';
+import { PlatformDataService } from '../platform-data/platform-data.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import {
   type TutorProvider,
@@ -77,7 +79,41 @@ const DEMO_PROJECT = {
   currentTaskTitle: '说明光合作用需要光',
 };
 
-const DEMO_SESSION_ID = 'session-demo-001';
+const PROJECT_STAGES = [
+  { id: 'exploration', label: '探索' },
+  { id: 'intent_confirmed', label: '确认意图' },
+  { id: 'theory_learning', label: '理论学习' },
+  { id: 'theory_check', label: '理论检验' },
+  { id: 'practice_ready', label: '实践就绪' },
+  { id: 'practice_building', label: '动手制作' },
+  { id: 'artifact_review', label: '作品评审' },
+  { id: 'reflection', label: '反思' },
+  { id: 'published', label: '已发布' },
+  { id: 'completed', label: '完成' },
+] satisfies TutorProjectContext['stages'];
+
+function currentTaskFor(
+  projectId: string,
+  title: string,
+  stage: ProjectStage,
+): TutorProjectContext['currentTask'] {
+  if (stage === 'completed' || stage === 'published') return null;
+  if (projectId === 'project-demo-001') {
+    return {
+      id: 'task-photosynthesis',
+      title: '查一查：植物为什么需要阳光',
+      detail: '找到 2 条证据，用自己的话说清楚光合作用。',
+      isTodayFocus: true,
+    };
+  }
+  return {
+    id: `${projectId}-current-task`,
+    title: `继续推进「${title}」`,
+    detail: '打开项目查看当前阶段任务和下一步行动。',
+    isTodayFocus: true,
+  };
+}
+
 
 /**
  * AI搭档的会话与回合服务。
@@ -107,8 +143,39 @@ export class TutorService {
   constructor(
     @Inject(DATA_MODE_TOKEN) dataMode: DataMode,
     @Inject(ModelGateway) gateway: TutorModelGateway,
+    @Optional() private readonly platformData?: PlatformDataService,
   ) {
     this.provider = createTutorProvider(dataMode, gateway);
+  }
+
+  /** Return the student's authorized project projection for the AI搭档 shell. */
+  getProjectContext(projectId: string | undefined, ownerId: string): TutorProjectContext | null {
+    if (this.platformData === undefined) return null;
+    const projects = this.platformData.getProjectsByStudent(ownerId);
+    const selected = projectId === undefined
+      ? projects.find((project) => project.stage !== 'completed' && project.stage !== 'published')
+      : this.platformData.getProject(projectId);
+
+    if (selected === null || selected === undefined) return null;
+    if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
+
+    const stages = PROJECT_STAGES;
+    const currentStageIndex = Math.max(0, stages.findIndex((stage) => stage.id === selected.stage));
+    return {
+      project: {
+        id: selected.projectId,
+        title: selected.title,
+        stage: selected.stage,
+        progress: selected.progressPercent,
+      },
+      progress: {
+        currentStageIndex,
+        stageTotal: stages.length,
+        progressPercent: selected.progressPercent,
+      },
+      stages,
+      currentTask: currentTaskFor(selected.projectId, selected.title, selected.stage),
+    };
   }
 
   /** 只会暴露给测试与内部审计；不通过 HTTP 暴露。 */

@@ -16,7 +16,7 @@ import type {
   CreateTutorSessionResponse,
   CreateTutorTurnResponse,
   GetTutorSessionResponse,
-  PedagogicMove,
+  TutorProjectContext,
   TutorSessionSummary,
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
@@ -85,6 +85,15 @@ export class TutorController {
     const actor = this.requireStudent(cookieHeader);
     const record = this.tutorService.getOrCreateSession(projectId ?? DEFAULT_PROJECT_ID, actor.id);
     return { data: this.tutorService.toSessionResponse(record) };
+  }
+
+  @Get('project-context')
+  getProjectContext(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('projectId') projectId?: string,
+  ): { data: TutorProjectContext | null } {
+    const actor = this.requireStudent(cookieHeader);
+    return { data: this.tutorService.getProjectContext(projectId, actor.id) };
   }
 
   /**

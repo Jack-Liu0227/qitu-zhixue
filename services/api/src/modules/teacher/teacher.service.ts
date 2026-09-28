@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DirectoryService } from '../directory/directory.service';
+import { PlatformDataService } from '../platform-data/platform-data.service';
 import type {
   TeacherStudentRow,
   TeacherStudentDetail,
@@ -10,6 +11,7 @@ import type {
   TeacherStatisticsPageData,
   TeacherIdentity,
   TeacherGuardianRef,
+  ProjectStage,
 } from '@qitu/contracts';
 
 /**
@@ -18,7 +20,10 @@ import type {
  */
 @Injectable()
 export class TeacherService {
-  constructor(private readonly directory: DirectoryService) {}
+  constructor(
+    private readonly directory: DirectoryService,
+    private readonly platformData: PlatformDataService,
+  ) {}
 
   /**
    * Assert that teacherUserId currently mentors studentUserId (active assignment).
@@ -69,27 +74,40 @@ export class TeacherService {
       guardianCounts.set(studentId, (guardianCounts.get(studentId) ?? 0) + 1);
     }
 
-    // In demo mode, return minimal data
-    return students.map((s) => ({
-      studentId: s.userId,
-      displayName: s.displayName,
-      email: s.email,
-      gradeLabel: null,
-      classLabel: null,
-      avatarInitial: s.displayName.charAt(0),
-      activeProjectCount: 0,
-      projectsCompleted: 0,
-      currentProjectId: null,
-      currentProjectTitle: null,
-      currentStage: null,
-      progressPercent: 0,
-      lastActivityAt: null,
-      stuck: false,
-      attentionCount: 0,
-      guardianCount: guardianCounts.get(s.userId) ?? 0,
-      activeDays: 0,
-      weeklyTasks: 0,
-    }));
+    return students.map((s) => {
+      const demo = this.platformData.getStudent(s.userId);
+      const projects = this.platformData.getProjectsByStudent(s.userId);
+      const activeProjects = projects.filter(
+        (project) => project.stage !== 'completed' && project.stage !== 'published',
+      );
+      const current = activeProjects[0] ?? projects[0] ?? null;
+      const activeDays = demo?.lastActivityAt
+        ? isWithinDays(demo.lastActivityAt, 7)
+          ? 1
+          : 0
+        : 0;
+      return {
+        studentId: s.userId,
+        displayName: s.displayName,
+        email: s.email,
+        gradeLabel: demo?.gradeLabel ?? null,
+        classLabel: demo?.classLabel ?? null,
+        avatarInitial: s.displayName.charAt(0),
+        activeProjectCount: demo?.activeProjectCount ?? activeProjects.length,
+        projectsCompleted:
+          demo?.projectsCompleted ?? projects.filter((project) => project.stage === 'completed' || project.stage === 'published').length,
+        currentProjectId: current?.projectId ?? demo?.currentProjectId ?? null,
+        currentProjectTitle: current?.title ?? demo?.currentProjectTitle ?? null,
+        currentStage: current?.stage ?? demo?.currentStage ?? null,
+        progressPercent: current?.progressPercent ?? demo?.progressPercent ?? 0,
+        lastActivityAt: demo?.lastActivityAt ?? null,
+        stuck: demo?.stuck ?? false,
+        attentionCount: demo?.attentionCount ?? 0,
+        guardianCount: guardianCounts.get(s.userId) ?? 0,
+        activeDays,
+        weeklyTasks: 0,
+      };
+    });
   }
 
   /**
@@ -176,23 +194,72 @@ export class TeacherService {
    */
   async getStatistics(teacherUserId: string): Promise<TeacherStatisticsPageData> {
     const teacher = await this.getTeacherIdentity(teacherUserId);
-    const students = await this.directory.studentsOfMentor(teacherUserId);
+    const students = await this.getRoster(teacherUserId);
+    const assignedIds = new Set(students.map((student) => student.studentId));
+    const projects = [...assignedIds].flatMap((studentId) =>
+      this.platformData.getProjectsByStudent(studentId),
+    );
+    const stageDistribution = countStages(projects.map((project) => project.stage));
+    const interventions = this.platformData
+      .getInterventionsByTeacher(teacherUserId)
+      .filter((intervention) => intervention.status !== 'resolved');
+    const weeklyActivity = buildWeeklyActivity(students);
 
     return {
       teacher,
       totals: {
         studentCount: students.length,
-        activeStudentCount: 0,
+        activeStudentCount: students.filter((student) => student.activeDays > 0).length,
         sessionsThisWeek: 0,
         minutesThisWeek: 0,
-        tasksCompletedThisWeek: 0,
-        openInterventions: 0,
+        tasksCompletedThisWeek: students.reduce((sum, student) => sum + student.weeklyTasks, 0),
+        openInterventions: interventions.length,
       },
-      weeklyActivity: [],
-      stageDistribution: [],
-      needsAttention: [],
+      weeklyActivity,
+      stageDistribution,
+      needsAttention: students.filter((student) => student.stuck || student.attentionCount > 0),
       dataSource: 'demo',
     };
   }
+}
 
+function isWithinDays(value: string, days: number): boolean {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return false;
+  const age = Date.now() - timestamp;
+  return age >= 0 && age <= days * 24 * 60 * 60 * 1000;
+}
+
+function countStages(stages: ProjectStage[]): { stage: ProjectStage; count: number }[] {
+  const order: ProjectStage[] = [
+    'exploration',
+    'intent_confirmed',
+    'theory_learning',
+    'theory_check',
+    'practice_ready',
+    'practice_building',
+    'artifact_review',
+    'reflection',
+    'published',
+    'completed',
+  ];
+  return order
+    .map((stage) => ({ stage, count: stages.filter((candidate) => candidate === stage).length }))
+    .filter((item) => item.count > 0);
+}
+
+function buildWeeklyActivity(
+  students: TeacherStudentRow[],
+): { weekLabel: string; activeStudents: number; tasksCompleted: number }[] {
+  const today = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const key = date.toISOString().slice(0, 10);
+    return {
+      weekLabel: `${date.getMonth() + 1}/${date.getDate()}`,
+      activeStudents: students.filter((student) => student.lastActivityAt?.slice(0, 10) === key).length,
+      tasksCompleted: 0,
+    };
+  });
 }

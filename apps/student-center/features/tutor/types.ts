@@ -1,38 +1,12 @@
-import type {
-  ProjectSummary,
-  StageProgressDisplay,
-  TemplateStage,
-  TutorHintLevel,
-} from '@qitu/contracts';
+import type { TutorHintLevel, TutorProjectContext as SharedTutorProjectContext } from '@qitu/contracts';
+
+export type TutorCurrentTask = SharedTutorProjectContext['currentTask'];
 
 /**
- * A single task shown in the left column's 「当前任务」 card.
- *
- * This is a DISPLAY PROJECTION of the server's `/projects/:id/tasks` response,
- * not a client-owned task record and never a mutation target.
+ * Left-column project context. This is the shared server projection; it is not
+ * a second client-owned project model.
  */
-export interface TutorCurrentTask {
-  id: string;
-  title: string;
-  detail?: string;
-  /** Server signal for today's focus; display only. */
-  isTodayFocus: boolean;
-}
-
-/**
- * Left-column project context.
- *
- * PURE DISPLAY PROJECTION. `progress` is server-computed
- * (`StageProgressDisplay` is explicitly ILLUSTRATIVE ONLY). Any stage gate must
- * read `project.stage` (`ProjectStage`) from the server state machine — never
- * `progress.currentStageIndex`. See the comment in `ProjectContextPanel.tsx`.
- */
-export interface TutorProjectContext {
-  project: ProjectSummary;
-  progress: StageProgressDisplay;
-  stages: TemplateStage[];
-  currentTask: TutorCurrentTask | null;
-}
+export type TutorProjectContext = SharedTutorProjectContext;
 
 export type TutorConnectionStatus = 'idle' | 'connecting' | 'open' | 'offline' | 'closed';
 

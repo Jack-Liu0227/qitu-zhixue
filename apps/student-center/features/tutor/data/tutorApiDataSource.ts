@@ -7,6 +7,7 @@ import type {
   CreateTutorTurnResponse,
   GetTutorSessionResponse,
   ProjectSummary,
+  TutorProjectContext as SharedTutorProjectContext,
   TutorSessionSummary,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
@@ -21,16 +22,9 @@ import type { TutorProjectContext } from '../types';
  * history and the journal cursor, and `POST /tutor/stream` streams every turn
  * as `tool_call → tool_result → delta → block → done`.
  *
- * WHAT IS NOT WIRED YET: the left column's project context
- * (`getActiveProject` / `getProjectContext`). The student API does not expose a
- * project read projection yet. This source therefore reports that projection as
- * UNAVAILABLE — it never substitutes a demo project or a demo session, because
- * a student must never mistake invented content for their own learning record.
- *
- * Same rule for the session: if the API is unreachable the error is surfaced
- * (the hook turns `NETWORK_OFFLINE` into the offline banner and a retry), it is
- * NOT swallowed by falling back to fixtures. Deterministic fixtures remain
- * available through `MockTutorDataSource` for explicit tests/QA.
+ * The project context is served by the same API projection used by the
+ * student's project area. It is authorization-checked on the server, so this
+ * source never falls back to a fixture or to the server's demo project.
  *
  * No route here writes project stage, growth records, AI decisions or audit
  * logs.
@@ -41,18 +35,24 @@ export class TutorApiDataSource implements TutorDataSource {
   private readonly sessionCursor = new Map<string, number>();
   private sessionCounter = 0;
 
-  /**
-   * No project read projection is exposed to this app yet. Reporting it as
-   * unavailable is the only honest answer: returning a fixture project would
-   * present invented content as the student's own.
-   */
   async getActiveProject(): Promise<ProjectSummary | null> {
-    throw projectContextUnavailable();
+    const context = await this.fetchProjectContext();
+    return context?.project ?? null;
   }
 
   async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {
-    void projectId;
-    throw projectContextUnavailable();
+    return this.fetchProjectContext(projectId);
+  }
+
+  private async fetchProjectContext(projectId?: string): Promise<TutorProjectContext | null> {
+    const query = projectId === undefined ? '' : `?projectId=${encodeURIComponent(projectId)}`;
+    const response = await this.fetchJson(`/api/v1/tutor/project-context${query}`, '项目信息加载失败');
+    const data = unwrapData(response);
+    if (data === null) return null;
+    if (!isTutorProjectContext(data)) {
+      throw new TutorDataError('项目上下文格式不正确', undefined, 'BAD_PROJECT_CONTEXT_PAYLOAD');
+    }
+    return data;
   }
 
   async createSession(
@@ -186,13 +186,22 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 }
 
-function projectContextUnavailable(): TutorDataError {
-  return new TutorDataError(
-    '项目信息暂时无法加载，请稍后重试。',
-    undefined,
-    'PROJECT_CONTEXT_UNAVAILABLE',
+function isTutorProjectContext(value: unknown): value is TutorProjectContext {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<SharedTutorProjectContext>;
+  return (
+    typeof candidate.project?.id === 'string' &&
+    typeof candidate.project?.title === 'string' &&
+    typeof candidate.project?.stage === 'string' &&
+    typeof candidate.project?.progress === 'number' &&
+    typeof candidate.progress?.currentStageIndex === 'number' &&
+    typeof candidate.progress?.stageTotal === 'number' &&
+    typeof candidate.progress?.progressPercent === 'number' &&
+    Array.isArray(candidate.stages) &&
+    (candidate.currentTask === null || typeof candidate.currentTask === 'object')
   );
 }
+
 
 function unwrapData(body: unknown): unknown {
   if (typeof body === 'object' && body !== null && 'data' in body) {
