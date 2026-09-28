@@ -80,7 +80,7 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 | Works | `artifacts`、`artifact_versions`、`evidence`、`review_records` |
 | Growth | `growth_snapshots`、`milestones` |
 | Mentor Ops | `alerts`、`interventions`、`feedback_tickets`、`knowledge_documents`、`knowledge_chunks` |
-| Parent Experience | `notifications`（读取投影，不建独立业务表） |
+| Parent Experience | `notifications`（读取投影，不建独立业务表）、**`parent_growth_exports`**（0003，家长成长导出任务 + 脱敏正文快照） |
 | Admin & Compliance | **`audit_logs`**、**`outbox`**、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
 | Model Registry | **`model_providers`**、**`model_models`**、**`model_usage_bindings`**（对应 Provider / Model / Usage，0002 已建） |
 
@@ -114,6 +114,7 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 
 第 4 批  运营与模型（M7 / M8）
   └─ alerts / interventions / feedback_tickets / notifications
+     → parent_growth_exports （0003，已建，ISSUE-T5）
      → model_providers / model_models / model_usage_bindings （0002，已建）
 ```
 
@@ -129,6 +130,7 @@ pnpm --filter @qitu/database generate
 psql "$DATABASE_URL" -f database/migrations/0000_clever_kang.sql
 psql "$DATABASE_URL" -f database/migrations/0001_cheerful_colossus.sql
 psql "$DATABASE_URL" -f database/migrations/0002_light_miracleman.sql
+psql "$DATABASE_URL" -f database/migrations/0003_glamorous_ulik.sql
 
 # 确定性演示数据（幂等，可重复执行）
 pnpm --filter @qitu/database seed
@@ -147,6 +149,7 @@ pnpm --filter @qitu/database seed
 | 迁移 `0000_clever_kang`（identity + ops） | **已实现** |
 | 迁移 `0001_cheerful_colossus`（幂等键 + outbox 错误字段） | **已实现** |
 | 迁移 `0002_light_miracleman`（模型注册表三张表） | **已实现**（仅表结构） |
+| 迁移 `0003_glamorous_ulik`（`parent_growth_exports`） | **已实现**（ISSUE-T5；仅任务元数据 + 脱敏正文，未接异步 worker / 对象存储） |
 | 确定性种子与幂等语义 | **已实现** |
 | `DatabaseModule` 模式化接入（`QITU_DATA_MODE`，默认 live） | **已实现**：live 缺 `DATABASE_URL` fail-fast；仅 demo/test（非 production）允许内存引擎 |
 | 项目 / AI / 成长 / 知识库表 | **未实现**（按阶段推进） |

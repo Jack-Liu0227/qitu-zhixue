@@ -74,7 +74,34 @@ export type ApiErrorCode =
    *
    * 三种原因共用同一个码与同一条消息，不区分原因，避免泄露他人附件是否存在。
    */
-  | 'FEEDBACK_ATTACHMENT_INVALID';
+  | 'FEEDBACK_ATTACHMENT_INVALID'
+  /** 家长成长导出请求非法（400）：确认字段不匹配或目的为空 / 超长。 */
+  | 'PARENT_EXPORT_INVALID'
+  /**
+   * 当前账号不是导出目标孩子的**有效**监护人（403）。
+   *
+   * 请求与下载两处都会重新校验 active 监护关系；授权被撤销后返回该码，
+   * **不得**返回空数据或默认放行。
+   */
+  | 'PARENT_EXPORT_DENIED'
+  /**
+   * 导出任务不存在，或对当前账号不可见（404）。
+   *
+   * 两者共用同一个码：家长访问别的家长的导出任务时也返回它，避免通过
+   * 「404 / 403」的差异探测他人导出是否存在。
+   */
+  | 'PARENT_EXPORT_NOT_FOUND'
+  /** 导出正文尚未生成，暂不可下载（409）。 */
+  | 'PARENT_EXPORT_NOT_READY'
+  /** 导出已超出有效期，不再可下载（410）。 */
+  | 'PARENT_EXPORT_EXPIRED'
+  /**
+   * 导出所需的持久化 / 存储能力不可用（503）。
+   *
+   * 未配置 `DATABASE_URL`（无法落库任务元数据）或对象存储未接入时返回该码，
+   * **绝不**退回内存假装成功。
+   */
+  | 'PARENT_EXPORT_UNAVAILABLE';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

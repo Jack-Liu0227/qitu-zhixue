@@ -18,6 +18,8 @@ The initial repository does not create business tables. M1 will introduce identi
 # 建库后按编号顺序重放迁移（对空库可重放，forward-only）
 psql "$DATABASE_URL" -f database/migrations/0000_clever_kang.sql
 psql "$DATABASE_URL" -f database/migrations/0001_cheerful_colossus.sql
+psql "$DATABASE_URL" -f database/migrations/0002_light_miracleman.sql
+psql "$DATABASE_URL" -f database/migrations/0003_glamorous_ulik.sql
 
 # 确定性演示数据，幂等，可重复执行
 # 身份/口令冲突时会被**修正**（DO UPDATE），关系冲突时**保留**（DO NOTHING）
@@ -38,6 +40,11 @@ pnpm --filter @qitu/database generate
   `response_status` / `response_body` 保存已发生的结果以支持重放；`expires_at` 界定保留期。
 - `outbox.last_error`（`0001`，可空、向后兼容增量）：记录 `status='failed'` 的失败原因，
   便于运维诊断；未失败前为 `NULL`。
+- `parent_growth_exports`（`0003_glamorous_ulik`，ISSUE-T5）：家长成长导出任务。
+  保存任务元数据与**服务端白名单投影后的脱敏正文**（无原始 AI 对话 / 语音 / 风险
+  标签 / 邮箱 / 模型推断）；下载时重新校验 active 监护关系与有效期。由
+  Parent Experience 模块独占写入，见
+  `services/api/src/modules/parent/growth-export.md`。
 
 > 迁移只前向；每个迁移配 `.down.sql` 回滚说明。`0001` 的 DDL 对空库与已升级库均可重放
 > （`CREATE TABLE/INDEX IF NOT EXISTS`、`ADD COLUMN IF NOT EXISTS`）。schema 改动后必须

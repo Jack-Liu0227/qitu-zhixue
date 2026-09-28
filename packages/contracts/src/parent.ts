@@ -1,3 +1,4 @@
+import type { StudentGrowthEntryType } from './growth';
 import type { ProjectStage } from './project';
 import type { DataSource } from './platform';
 
@@ -367,4 +368,104 @@ export interface ConfirmParentFeedbackRequest {
 /** 工单变更后的统一响应（补充 / 确认 / 回复）。 */
 export interface ParentFeedbackMutationResponse {
   ticket: ParentFeedbackTicket;
+}
+
+/* ------------------------------------------------------------------ *
+ * 成长数据导出（ISSUE-T5 / #7）
+ *
+ * 服务端独占的家长成长导出契约。四条硬约束（继承自本文件顶部三条 + AGENTS.md）：
+ *
+ *  1. **对象级授权在请求与下载两处各校验一次**：下载时重新查 active 监护关系；
+ *     授权被撤销后再下载返回 403，而不是空数据。
+ *  2. **字段白名单投影**：导出正文只允许下面这些字段。原始 AI 对话、原始语音、
+ *     内部风险标签、邮箱、任意模型推断都**不在**投影里，也不允许后续扩宽追加
+ *     （新增字段必须走契约评审）。
+ *  3. **写操作要求 `Idempotency-Key`**：同 key 重放返回第一次的任务，不产生第二条。
+ *  4. **审计只记过程事实**（任务 id / 孩子 id / 状态 / 目的），不写导出正文。
+ *
+ * ⚠️ 当前是**同步生成 + 限时下载**的最小切片：任务元数据与脱敏正文落库，正文在
+ * 请求时由服务端投影生成。异步 worker 与对象存储（大文件下载）尚未接入；未配置
+ * 持久化时接口诚实返回 503，见 `services/api/src/modules/parent/growth-export.md`。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 导出任务状态。
+ *
+ * - `pending`：已受理、正文尚未生成（为未来异步 worker 预留；当前同步切片不产生）；
+ * - `ready`：正文已生成，可在有效期内下载；
+ * - `expired`：超出有效期，不再可下载。
+ */
+export type ParentGrowthExportStatus = 'pending' | 'ready' | 'expired';
+
+/** 一次导出任务的元数据。**不含正文**——正文只在下载接口返回。 */
+export interface ParentGrowthExportJob {
+  exportId: string;
+  childId: string;
+  childDisplayName: string;
+  status: ParentGrowthExportStatus;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/**
+ * 家长请求导出时**必须显式确认**的字段，用于挡住整包误导出 / 误操作。
+ *
+ * 这是最小化的「身份 + 对象」二次确认；更强的 step-up 认证（重新输入口令 /
+ * 一次性验证码）依赖跨角色账户面，尚未接入，见 `growth-export.md` 的阻塞项。
+ */
+export interface ParentGrowthExportRequest {
+  /** 必须与路径 `:childId` 完全一致；不一致服务端拒绝。 */
+  confirmChildId: string;
+  /** 必须与当前登录家长邮箱一致（大小写不敏感）。 */
+  confirmGuardianEmail: string;
+  /** 导出目的，1..200 字。审计记录该目的，但**不记录导出正文**。 */
+  reason: string;
+}
+
+export interface ParentGrowthExportResponse {
+  job: ParentGrowthExportJob;
+}
+
+/**
+ * 导出正文的白名单条目。
+ *
+ * 与 `ParentGrowthEntry` 同形，但**独立冻结**：即使 `ParentGrowthEntry` 未来新增
+ * 字段，导出投影也不会自动带出，必须在这份契约里显式加字段并通过评审。
+ */
+export interface ParentGrowthExportEntry {
+  id: string;
+  type: StudentGrowthEntryType;
+  occurredAt: string;
+  title: string;
+  summaryParent: string;
+  projectTitle: string | null;
+  stage: ProjectStage | null;
+  artifactRef: string | null;
+}
+
+/** 导出正文的过程性摘要；没有分数 / 排名 / 百分位 / 等级。 */
+export interface ParentGrowthExportSummary {
+  childId: string;
+  childDisplayName: string;
+  streakDays: number;
+  projectsCompleted: number;
+  objectivesMastered: number;
+  artifactsPublished: number;
+  lastActivityAt: string | null;
+}
+
+/** 家长可下载的成长导出正文。`schemaVersion` 固定为 `1`，变更时递增。 */
+export interface ParentGrowthExportDocument {
+  schemaVersion: 1;
+  exportId: string;
+  generatedAt: string;
+  expiresAt: string;
+  /** 条目是否被服务端上限截断；为 true 时前端应提示「仅含最近部分记录」。 */
+  truncated: boolean;
+  summary: ParentGrowthExportSummary;
+  entries: ParentGrowthExportEntry[];
+}
+
+export interface ParentGrowthExportDownloadResponse {
+  document: ParentGrowthExportDocument;
 }
