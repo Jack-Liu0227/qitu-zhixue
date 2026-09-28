@@ -7,7 +7,6 @@ import type {
   TeacherInterventionActionRequest,
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
-  TeacherSettingsPageData,
 } from '@qitu/contracts';
 
 export class TeacherOfflineError extends Error {}
@@ -69,7 +68,6 @@ export const teacherApi = {
       idempotencyKey,
     ),
   statistics: () => get<{ data: TeacherStatisticsPageData }>('/api/v1/teacher/statistics'),
-  settings: () => get<{ data: TeacherSettingsPageData }>('/api/v1/teacher/settings'),
 };
 
 export type {
@@ -82,5 +80,4 @@ export type {
   TeacherInterventionActionRequest,
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
-  TeacherSettingsPageData,
 } from '@qitu/contracts';

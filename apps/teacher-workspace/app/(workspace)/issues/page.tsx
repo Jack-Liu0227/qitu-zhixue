@@ -86,6 +86,150 @@ const statusLabels: Record<string, string> = {
   resolved: '已解决',
 };
 
+/**
+ * 问题类型。契约里的 `TeacherInterventionRow` **没有**类型 / 来源字段，
+ * 也没有可筛选的 query 参数（列表接口一次性返回全部），所以这里只能依据
+ * `reason` 文本做本地归类。措辞与产品文档「问题类型」保持一致，
+ * 并在界面上明确标注「按原因文本归类」，避免把启发式判断伪装成服务端事实。
+ */
+type IssueCategory = 'parent_feedback' | 'learning_block' | 'system' | 'other';
+
+const CATEGORY_LABELS: Record<IssueCategory, string> = {
+  parent_feedback: '家长反馈',
+  learning_block: '学习卡点',
+  system: '系统异常',
+  other: '其他',
+};
+
+const CATEGORY_TONES: Record<IssueCategory, string> = {
+  parent_feedback: '#7c3aed',
+  learning_block: '#2563eb',
+  system: '#d97706',
+  other: '#64748b',
+};
+
+function classifyIssue(reason: string): IssueCategory {
+  const text = reason ?? '';
+  if (/家长|监护人|父母/.test(text)) return 'parent_feedback';
+  if (/系统异常|服务异常|接口异常|故障|报错/.test(text)) return 'system';
+  if (/卡住|卡点|任务失败|连续失败|挫败|情绪|无法推进|推进困难/.test(text)) {
+    return 'learning_block';
+  }
+  return 'other';
+}
+
+function CategoryBadge({ category }: { category: IssueCategory }) {
+  const tone = CATEGORY_TONES[category];
+  return (
+    <span
+      className="qtx-badge"
+      style={{ background: `${tone}14`, color: tone, borderColor: `${tone}33` }}
+    >
+      {CATEGORY_LABELS[category]}
+    </span>
+  );
+}
+
+/** 状态 / 负责人 / 时间线：把一次介入的关键节点显式列出来，避免信息散落。 */
+function InterventionTimeline({
+  intervention,
+  lastActionAt,
+}: {
+  intervention: TeacherInterventionRow;
+  lastActionAt: string | null;
+}) {
+  const formatTime = (value: string | null) =>
+    value
+      ? new Date(value).toLocaleString('zh-CN', {
+          month: 'numeric',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '—';
+
+  const nodes: { label: string; detail: string; time: string; tone: string }[] = [
+    {
+      label: '告警创建',
+      detail: '系统记录该学生的介入请求',
+      time: formatTime(intervention.createdAt),
+      tone: '#2563eb',
+    },
+    {
+      label: '负责人指派',
+      detail: intervention.assigneeName ? `${intervention.assigneeName} 已接手` : '尚未指派负责人',
+      time: '—',
+      tone: intervention.assigneeName ? '#4f46e5' : '#94a3b8',
+    },
+    {
+      label: '状态更新',
+      detail: `当前状态：${statusLabels[intervention.status] ?? intervention.status}`,
+      time: formatTime(lastActionAt),
+      tone: statusTone[intervention.status] ?? '#64748b',
+    },
+  ];
+
+  return (
+    <div className="qtx-card-soft" style={{ padding: 16 }}>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#1e293b',
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <ClockIcon size={15} style={{ color: '#2563eb' }} /> 处理时间线
+      </div>
+      <div style={{ display: 'grid', gap: 0 }}>
+        {nodes.map((node, index) => (
+          <div key={node.label} style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: node.tone,
+                  flexShrink: 0,
+                  marginTop: 4,
+                }}
+              />
+              {index < nodes.length - 1 ? (
+                <span style={{ flex: 1, width: 2, background: '#eef2f7', minHeight: 26 }} />
+              ) : null}
+            </div>
+            <div style={{ paddingBottom: index < nodes.length - 1 ? 14 : 0, flex: 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: '#1e293b',
+                }}
+              >
+                <span>{node.label}</span>
+                <span style={{ fontWeight: 500, color: '#94a3b8' }}>{node.time}</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>
+                {node.detail}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="qtx-note" style={{ marginTop: 4 }}>
+        时间线来自服务端返回的创建时间与本次操作回执；历史处理记录接口尚未开放，未展示的节点标为「—」。
+      </div>
+    </div>
+  );
+}
+
 function InterventionWorkbench({
   intervention,
   onMutated,
@@ -97,28 +241,28 @@ function InterventionWorkbench({
   const [detailLoading, setDetailLoading] = useState(true);
   const [diagnostic, setDiagnostic] = useState('');
   const [suggestion, setSuggestion] = useState('');
-  const [suggestedPrompt, setSuggestedPrompt] = useState('');
-  const [promptText, setPromptText] = useState('');
-  const [previewed, setPreviewed] = useState(false);
+  const [guidanceText, setGuidanceText] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
-  /** 成功提示要说清做的是哪个动作，否则完成闭环后显示「指令已记录」会误导。 */
+  /** 成功提示要说清做的是哪个动作，否则完成闭环后显示「建议已保存」会误导。 */
   const [succeededAction, setSucceededAction] = useState<'acknowledge' | 'resolve'>('acknowledge');
+  /** 本次会话内动作回执的时间，供时间线展示真实状态更新时间。 */
+  const [lastActionAt, setLastActionAt] = useState<string | null>(null);
 
   useEffect(() => {
     setDetailLoading(true);
-    setPreviewed(false);
     setSending(false);
     setSendError(null);
     setSendSuccess(false);
+    setLastActionAt(null);
     teacherApi
       .interventionDetail(intervention.id)
       .then((response) => {
         setDiagnostic(response.data.diagnostic);
         setSuggestion(response.data.suggestion);
-        setSuggestedPrompt(response.data.suggestedPrompt);
-        setPromptText(response.data.suggestedPrompt);
+        // 服务端建议话术仅作为可参考的草稿，默认**不触发**任何模型调用。
+        setGuidanceText(response.data.suggestedPrompt);
         setDetailLoading(false);
       })
       .catch((error) => {
@@ -130,56 +274,60 @@ function InterventionWorkbench({
               : '诊断详情加载失败，请稍后重试';
         setDiagnostic(message);
         setSuggestion(message);
-        setSuggestedPrompt('');
-        setPromptText('');
+        setGuidanceText('');
         setDetailLoading(false);
       });
   }, [intervention.id]);
 
-  const handleSend = async () => {
+  /**
+   * 保存「人工指导建议」。它只把文字写入介入记录（acknowledge 动作的 note），
+   * **默认不会触发 AI 模型、不会注入提示词**；是否在学生会话中生效由服务端策略决定。
+   */
+  const handleSaveGuidance = async () => {
     setSending(true);
     setSendError(null);
     setSendSuccess(false);
     const idempotencyKey = `inj_${intervention.id}_acknowledge`;
     try {
-      await teacherApi.interventionAction(
+      const response = await teacherApi.interventionAction(
         intervention.id,
-        { action: 'acknowledge', note: promptText || null },
+        { action: 'acknowledge', note: guidanceText || null },
         idempotencyKey,
       );
       setSendSuccess(true);
       setSucceededAction('acknowledge');
+      setLastActionAt(response.data.changedAt);
       setSending(false);
       onMutated?.();
     } catch (error) {
       setSending(false);
       if (error instanceof TeacherPermissionError) {
-        setSendError('权限不足，无法发送干预指令');
+        setSendError('权限不足，无法保存指导建议');
       } else if (error instanceof TeacherOfflineError) {
         setSendError('网络连接失败，请检查网络后重试');
       } else {
-        setSendError('发送失败，请稍后重试');
+        setSendError('保存失败，请稍后重试');
       }
     }
   };
 
   /**
-   * 「完成闭环」对应契约里的 `resolve`。它不做提示词注入，所以不要求先预览。
-   * 幂等键和 acknowledge 用同一套规则：由「干预对象 + 动作」确定，
-   * 因此重复点击或失败重试都只会产生一次副作用。
+   * 「完成闭环」对应契约里的 `resolve`。它同样不注入提示词。
+   * 幂等键由「介入对象 + 动作」确定，重复点击或失败重试只会产生一次副作用。
    */
   const handleResolve = async () => {
     setSending(true);
     setSendError(null);
     setSendSuccess(false);
     try {
-      await teacherApi.interventionAction(
+      const response = await teacherApi.interventionAction(
         intervention.id,
-        { action: 'resolve', note: promptText || null },
+        { action: 'resolve', note: guidanceText || null },
         `inj_${intervention.id}_resolve`,
       );
       setSendSuccess(true);
       setSucceededAction('resolve');
+      setLastActionAt(response.data.changedAt);
       setSending(false);
       onMutated?.();
     } catch (error) {
@@ -193,6 +341,8 @@ function InterventionWorkbench({
       }
     }
   };
+
+  const category = classifyIssue(intervention.reason);
 
   return (
     <div className="qtx-col-8 qtx-card" style={{ overflow: 'hidden' }}>
@@ -211,9 +361,26 @@ function InterventionWorkbench({
           <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b' }}>
             {intervention.studentDisplayName} · 干预工作台
           </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-            负责导师：{intervention.assigneeName ?? '未分配'} · 状态：
-            {statusLabels[intervention.status] ?? intervention.status}
+          <div
+            style={{
+              fontSize: 12,
+              color: '#64748b',
+              marginTop: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>负责人：{intervention.assigneeName ?? '未分配'}</span>
+            <span>·</span>
+            <span>
+              状态：
+              <span style={{ color: statusTone[intervention.status], fontWeight: 700 }}>
+                {statusLabels[intervention.status] ?? intervention.status}
+              </span>
+            </span>
+            <CategoryBadge category={category} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -264,7 +431,7 @@ function InterventionWorkbench({
                   gap: 8,
                 }}
               >
-                <SparklesIcon size={15} style={{ color: '#2563eb' }} /> AI 诊断
+                <SparklesIcon size={15} style={{ color: '#2563eb' }} /> 系统诊断
               </div>
               <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: 1.7 }}>
                 {diagnostic}
@@ -290,6 +457,9 @@ function InterventionWorkbench({
             </div>
           </div>
 
+          {/* 状态 / 负责人 / 时间线 */}
+          <InterventionTimeline intervention={intervention} lastActionAt={lastActionAt} />
+
           <div className="qtx-card-soft" style={{ padding: 16 }}>
             <div
               style={{
@@ -302,35 +472,21 @@ function InterventionWorkbench({
                 gap: 8,
               }}
             >
-              <SendIcon size={15} style={{ color: '#7c3aed' }} /> Inject Prompt 干预指令
+              <SendIcon size={15} style={{ color: '#7c3aed' }} /> 人工指导建议
             </div>
+            <p style={{ margin: '0 0 10px', fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+              写下你打算采取的下一步人工指导（例如和谁沟通、补充什么材料）。
+              默认只作为教师跟进记录保存，
+              <strong>不会自动注入提示词，也不会触发模型调用</strong>。
+            </p>
             <textarea
-              value={promptText}
-              onChange={(e) => {
-                setPromptText(e.target.value);
-                setPreviewed(false);
-              }}
+              value={guidanceText}
+              onChange={(e) => setGuidanceText(e.target.value)}
               rows={3}
               className="qtx-input"
+              placeholder="例如：先安抚情绪，再和学生一起把任务拆成两步。"
               style={{ resize: 'vertical', background: '#fff', lineHeight: 1.6 }}
             />
-            {previewed && !sendSuccess ? (
-              <div
-                style={{
-                  marginTop: 10,
-                  padding: 12,
-                  borderRadius: 12,
-                  background: '#f0f9ff',
-                  border: '1px solid #dbeafe',
-                  fontSize: 12,
-                  color: '#1d4ed8',
-                  lineHeight: 1.6,
-                }}
-              >
-                <strong>预览确认</strong>
-                ：该指令将以「教师已确认」身份注入 AI 导师上下文，并记录审计日志。请再次确认内容无敏感信息。
-              </div>
-            ) : null}
             {sendSuccess ? (
               <div
                 style={{
@@ -348,10 +504,10 @@ function InterventionWorkbench({
                 }}
               >
                 <CheckCircleIcon size={16} />
-                <strong>{succeededAction === 'resolve' ? '已完成闭环' : '发送成功'}</strong>
+                <strong>{succeededAction === 'resolve' ? '已完成闭环' : '指导建议已保存'}</strong>
                 ：{succeededAction === 'resolve'
                   ? '该告警已标记为已解决，并进入干预历史。'
-                  : '干预指令已记录并将在学生下次会话时生效。'}
+                  : '已作为教师跟进记录保存，不会自动触发模型。'}
               </div>
             ) : null}
             {sendError ? (
@@ -376,20 +532,11 @@ function InterventionWorkbench({
             ) : null}
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
               <button
-                className="qtx-btn"
+                className="qtx-btn qtx-btn-ghost-blue"
                 type="button"
-                onClick={() => setPreviewed(true)}
                 disabled={sending || sendSuccess}
                 style={sending || sendSuccess ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-              >
-                <SparklesIcon size={15} /> 预览指令
-              </button>
-              <button
-                className="qtx-btn qtx-btn-danger"
-                type="button"
-                disabled={!previewed || sending || sendSuccess}
-                style={!previewed || sending || sendSuccess ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                onClick={handleSend}
+                onClick={handleSaveGuidance}
               >
                 {sending ? (
                   <>
@@ -397,17 +544,17 @@ function InterventionWorkbench({
                       style={{
                         width: 12,
                         height: 12,
-                        border: '2px solid #fff',
+                        border: '2px solid #1d4ed8',
                         borderTopColor: 'transparent',
                         borderRadius: '50%',
                         animation: 'qitu-spin 0.6s linear infinite',
                       }}
                     />
-                    发送中...
+                    保存中...
                   </>
                 ) : (
                   <>
-                    <SendIcon size={15} /> 确认发送
+                    <SendIcon size={15} /> 保存指导建议
                   </>
                 )}
               </button>
@@ -424,6 +571,8 @@ export default function IssuesPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | TeacherInterventionRow['status']>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | IssueCategory>('all');
 
   useEffect(() => {
     teacherApi
@@ -456,7 +605,19 @@ export default function IssuesPage() {
   if (error) return <ErrorState type={error} />;
   if (!data) return <ErrorState type="generic" />;
 
-  const selected = data.items.find((i) => i.id === selectedId);
+  // 列表接口一次性返回全部介入请求且没有查询参数，所以状态 / 问题类型都在本地真过滤。
+  const filteredItems = data.items.filter((issue) => {
+    if (statusFilter !== 'all' && issue.status !== statusFilter) return false;
+    if (categoryFilter !== 'all' && classifyIssue(issue.reason) !== categoryFilter) return false;
+    return true;
+  });
+
+  // 当前选中项若被筛掉，回退到筛选结果的第一条，避免工作台显示一条列表里看不到的记录。
+  const selected = filteredItems.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null;
+  const parentFeedbackCount = data.items.filter(
+    (i) => classifyIssue(i.reason) === 'parent_feedback',
+  ).length;
+  const filterActive = statusFilter !== 'all' || categoryFilter !== 'all';
 
   return (
     <div className="qtx-page">
@@ -523,11 +684,11 @@ export default function IssuesPage() {
           tone="#059669"
         />
         <MetricCard
-          label="总计"
-          value={String(data.items.length)}
+          label="家长反馈"
+          value={String(parentFeedbackCount)}
           delta={null}
           icon={<TrendingUpIcon size={22} />}
-          tone="#4f46e5"
+          tone="#7c3aed"
         />
       </section>
 
@@ -538,106 +699,173 @@ export default function IssuesPage() {
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#e11d48' }} /> 介入请求
             </div>
-            <span className="qtx-badge qtx-badge-rose">{data.items.length} 条</span>
+            <span className="qtx-badge qtx-badge-rose">
+              {filterActive ? `${filteredItems.length} / ${data.items.length}` : data.items.length} 条
+            </span>
           </div>
+
+          {/* 筛选：状态 + 问题类型（含家长反馈） */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <select
+              className="qtx-select"
+              style={{ flex: 1, minWidth: 110 }}
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as 'all' | TeacherInterventionRow['status'])
+              }
+              aria-label="按状态筛选"
+            >
+              <option value="all">全部状态</option>
+              <option value="open">待介入</option>
+              <option value="acknowledged">处理中</option>
+              <option value="resolved">已解决</option>
+            </select>
+            <select
+              className="qtx-select"
+              style={{ flex: 1, minWidth: 110 }}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as 'all' | IssueCategory)}
+              aria-label="按问题类型筛选"
+            >
+              <option value="all">全部类型</option>
+              <option value="parent_feedback">家长反馈</option>
+              <option value="learning_block">学习卡点</option>
+              <option value="system">系统异常</option>
+              <option value="other">其他</option>
+            </select>
+            {filterActive ? (
+              <button
+                className="qtx-btn"
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setCategoryFilter('all');
+                }}
+              >
+                清除筛选
+              </button>
+            ) : null}
+          </div>
+          <div className="qtx-panel-hint" style={{ marginBottom: 12 }}>
+            问题类型按告警原因文本归类；家长反馈用于快速定位来自监护人的诉求。
+          </div>
+
           {data.items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
               暂无介入请求
             </div>
+          ) : filteredItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
+              没有符合当前筛选条件的介入请求
+            </div>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
-              {data.items.map((issue) => (
-                <button
-                  key={issue.id}
-                  type="button"
-                  onClick={() => setSelectedId(issue.id)}
-                  style={{
-                    display: 'flex',
-                    gap: 12,
-                    alignItems: 'flex-start',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    padding: 14,
-                    borderRadius: 14,
-                    border:
-                      issue.id === selectedId ? '1px solid #bfdbfe' : '1px solid #eef2f7',
-                    background: issue.id === selectedId ? '#eff6ff' : '#fff',
-                    fontFamily: 'inherit',
-                    transition: 'all .15s ease',
-                  }}
-                >
-                  <span
+              {filteredItems.map((issue) => {
+                const category = classifyIssue(issue.reason);
+                return (
+                  <button
+                    key={issue.id}
+                    type="button"
+                    onClick={() => setSelectedId(issue.id)}
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 11,
-                      flexShrink: 0,
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: `${statusTone[issue.status]}14`,
-                      color: statusTone[issue.status],
+                      gap: 12,
+                      alignItems: 'flex-start',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      padding: 14,
+                      borderRadius: 14,
+                      border: issue.id === selected?.id ? '1px solid #bfdbfe' : '1px solid #eef2f7',
+                      background: issue.id === selected?.id ? '#eff6ff' : '#fff',
+                      fontFamily: 'inherit',
+                      transition: 'all .15s ease',
                     }}
                   >
-                    <AlertIcon size={18} />
-                  </span>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: 13, color: '#1e293b' }}>
-                        {issue.studentDisplayName}
-                      </strong>
-                      <span
-                        className={`qtx-badge ${
-                          issue.status === 'open'
-                            ? 'qtx-badge-rose'
-                            : issue.status === 'acknowledged'
-                              ? 'qtx-badge-amber'
-                              : 'qtx-badge-emerald'
-                        }`}
-                      >
-                        {statusLabels[issue.status] ?? issue.status}
-                      </span>
-                    </span>
                     <span
                       style={{
-                        display: 'block',
-                        marginTop: 6,
-                        fontSize: 12,
-                        color: '#64748b',
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {issue.reason}
-                    </span>
-                    <span
-                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 11,
+                        flexShrink: 0,
                         display: 'flex',
-                        gap: 12,
-                        marginTop: 8,
-                        fontSize: 11,
-                        color: '#94a3b8',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: `${statusTone[issue.status]}14`,
+                        color: statusTone[issue.status],
                       }}
                     >
-                      <span>
-                        <ClockIcon size={12} />{' '}
-                        {new Date(issue.createdAt).toLocaleString('zh-CN', {
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      {issue.projectTitle && <span>{issue.projectTitle}</span>}
+                      <AlertIcon size={18} />
                     </span>
-                  </span>
-                </button>
-              ))}
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                      >
+                        <strong style={{ fontSize: 13, color: '#1e293b' }}>
+                          {issue.studentDisplayName}
+                        </strong>
+                        <span
+                          className={`qtx-badge ${
+                            issue.status === 'open'
+                              ? 'qtx-badge-rose'
+                              : issue.status === 'acknowledged'
+                                ? 'qtx-badge-amber'
+                                : 'qtx-badge-emerald'
+                          }`}
+                        >
+                          {statusLabels[issue.status] ?? issue.status}
+                        </span>
+                        <CategoryBadge category={category} />
+                      </span>
+                      <span
+                        style={{
+                          display: 'block',
+                          marginTop: 6,
+                          fontSize: 12,
+                          color: '#64748b',
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {issue.reason}
+                      </span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          gap: 12,
+                          marginTop: 8,
+                          fontSize: 11,
+                          color: '#94a3b8',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span>
+                          <ClockIcon size={12} />{' '}
+                          {new Date(issue.createdAt).toLocaleString('zh-CN', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span>负责人：{issue.assigneeName ?? '未分配'}</span>
+                        {issue.projectTitle && <span>{issue.projectTitle}</span>}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {selected && (
+        {selected ? (
           <InterventionWorkbench intervention={selected} onMutated={refreshList} />
+        ) : (
+          <div className="qtx-col-8 qtx-card" style={{ padding: 40, textAlign: 'center' }}>
+            <TicketIcon size={40} style={{ color: '#cbd5e1', margin: '0 auto 12px' }} />
+            <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>
+              选择左侧的一条介入请求查看处理详情。
+            </p>
+          </div>
         )}
       </section>
     </div>
