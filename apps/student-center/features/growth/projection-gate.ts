@@ -9,7 +9,7 @@
  * This module never invents a permission decision.
  *
  * Gates referenced:
- *  - G1: whether a 6th nav item 「成长轨迹」 is added (frozen-IA change).
+ *  - G1: RESOLVED by ADR 0004 (Accepted) — 成长轨迹 is the 6th nav item.
  *  - G3: whether the child may see any risk-derived signal at all.
  *  - G4: approval of the whole three-role projection matrix.
  *  - G5: approval of the trajectory visual design.
@@ -41,8 +41,8 @@ export interface GrowthStudentProjectionGate {
 }
 
 export const GROWTH_STUDENT_PROJECTION_GATE: GrowthStudentProjectionGate = {
-  /** A5: `/student/growth` is a sub-route from 今天 / 我的项目; no 6th nav item. */
-  navigation: 'sub-route-only',
+  /** ADR 0004 (Accepted): `/student/growth` is the 6th first-class nav item. */
+  navigation: 'nav-item',
 
   /** G4 — only the student column ships until the matrix is approved. */
   matrixApproval: 'pending-student-column-only',

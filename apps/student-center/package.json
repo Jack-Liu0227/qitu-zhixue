@@ -7,7 +7,7 @@
     "build": "next build",
     "lint": "node -e \"console.log('student-center: lint rules pending M1')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('student-center: no tests yet')\""
+    "test": "tsc -p tsconfig.test.json && node --test \".tmp/test-dist/features/growth/**/*.test.js\""
   },
   "dependencies": {
     "@qitu/ai-client": "workspace:*",

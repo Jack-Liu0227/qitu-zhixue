@@ -7,8 +7,8 @@ const TutorDataSourceContext = createContext<TutorDataSource | null>(null);
 
 /**
  * Injects the swappable data source into the tutor tree. Without a provider the
- * tree falls back to the module-level source (the mock by default), so the
- * feature works standalone during Wave 3.
+ * tree falls back to the module-level source (the real API by default), so the
+ * feature works standalone. Tests/QA can pass a `MockTutorDataSource` here.
  */
 export function TutorDataSourceProvider({
   dataSource,

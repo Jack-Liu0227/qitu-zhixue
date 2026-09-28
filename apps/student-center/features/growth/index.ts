@@ -5,8 +5,8 @@
  * The parent/teacher projections are a separate, unapproved proposal and are
  * deliberately not implemented here (growth-spec.md §4, 确认门 G4).
  *
- * The integrator wires `/student/growth` to `GrowthPage` and keeps the frozen
- * five-item nav untouched (确认门 G1).
+ * The integrator wires `/student/growth` to a first-class nav item
+ * (ADR 0004; 确认门 G1 resolved).
  */
 
 export { GrowthPage, type GrowthPageProps } from './components/GrowthPage';
@@ -19,6 +19,7 @@ export { MilestoneEntry } from './components/MilestoneEntry';
 export { ArtifactEntry } from './components/ArtifactEntry';
 export { ReflectionEntry } from './components/ReflectionEntry';
 export { ObjectiveChip } from './components/ObjectiveChip';
+export { ObservationNote } from './components/ObservationNote';
 export { EntryDetailSheet } from './components/EntryDetailSheet';
 export { VersionStep, type VersionStepTone } from './components/VersionStep';
 export { ReflectionQuote } from './components/ReflectionQuote';
@@ -53,6 +54,8 @@ export {
 export {
   createDefaultGrowthQuery,
   EMPTY_GROWTH_SUMMARY,
+  type GrowthEvidenceSourceKind,
+  type GrowthObservationState,
   type GrowthProjectOption,
   type StudentGrowthEntry,
   type StudentGrowthEntryType,

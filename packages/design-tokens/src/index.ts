@@ -121,3 +121,73 @@ export const gradients = {
 } as const;
 
 export type DesignGradient = keyof typeof gradients;
+
+/* ------------------------------------------------------------------ *
+ * 基础偏好预设（T4 / #9）
+ *
+ * 只允许「从既有令牌取值」的主题预设：每个预设的每一项都是对上面
+ * `colors` / `semanticColors` 的引用，**不允许出现新的字面色值**。
+ * `tooling/validate-preferences.mjs` 会静态校验这一点。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 字号预设，作用于根元素 `font-size` 百分比。
+ * `md` 为浏览器默认，`lg` 放大到 112.5%（18px），`sm` 缩到 93.75%（15px）。
+ */
+export const preferenceFontSizes = {
+  sm: '93.75%',
+  md: '100%',
+  lg: '112.5%',
+} as const;
+
+export type PreferenceFontSize = keyof typeof preferenceFontSizes;
+
+/**
+ * 主题预设，键为 CSS 变量名，值为既有令牌的引用。
+ * 客户端把选中主题的变量写到 `documentElement` 上覆盖 `:root`。
+ */
+export const preferenceThemes = {
+  /** 默认：与 `styles.css` 的 `:root` 完全一致。 */
+  default: {
+    '--qitu-page': colors.page,
+    '--qitu-heading': colors.heading,
+    '--qitu-text': colors.text,
+    '--qitu-muted': colors.muted,
+    '--qitu-border': colors.border,
+    '--qitu-primary': colors.primary,
+    '--qitu-primary-soft': semanticColors.primary.soft,
+  },
+  /** 专注：正文更深、边框更强，便于长时间阅读，但仍是既有令牌。 */
+  focus: {
+    '--qitu-page': colors.page,
+    '--qitu-heading': colors.heading,
+    '--qitu-text': colors.heading,
+    '--qitu-muted': colors.text,
+    '--qitu-border': colors.heading,
+    '--qitu-primary': colors.primary,
+    '--qitu-primary-soft': semanticColors.primary.soft,
+  },
+  /** 舒缓：主色与边框换成已完成的青色语义色，降低视觉刺激。 */
+  calm: {
+    '--qitu-page': colors.page,
+    '--qitu-heading': colors.heading,
+    '--qitu-text': colors.text,
+    '--qitu-muted': colors.muted,
+    '--qitu-border': semanticColors.completed.border,
+    '--qitu-primary': colors.completed,
+    '--qitu-primary-soft': semanticColors.completed.soft,
+  },
+} as const;
+
+export type PreferenceTheme = keyof typeof preferenceThemes;
+
+/** 把选中的主题 / 字号展开成可写到 `documentElement` 的 CSS 变量表。 */
+export function buildPreferenceVariables(input: {
+  theme: PreferenceTheme;
+  fontSize: PreferenceFontSize;
+}): Record<string, string> {
+  return {
+    ...preferenceThemes[input.theme],
+    '--qitu-font-size': preferenceFontSizes[input.fontSize],
+  };
+}

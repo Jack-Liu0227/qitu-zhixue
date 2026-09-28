@@ -1,9 +1,10 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { CurrentUser, LoginResponse, Role } from '@qitu/contracts';
+import type { CurrentUser, LoginResponse } from '@qitu/contracts';
+import type { DirectoryService } from '../directory/directory.service';
 
 export interface AuthUser extends CurrentUser {
-  password: string;
+  passwordHash: string;
 }
 
 /** 公开投影：与契约中的 `CurrentUser` 一致，绝不包含口令或会话内部字段。 */
@@ -42,73 +43,7 @@ const MAX_ATTEMPTS_PER_CLIENT = 60;
 const MAX_SESSIONS = 5_000;
 
 // 邮箱不存在时也执行一次相同代价的安全比较，避免通过响应时间枚举账号。
-const DUMMY_PASSWORD = 'dummy-password-for-timing';
-
-const users: AuthUser[] = [
-  {
-    id: 'student-demo',
-    email: process.env.DEMO_STUDENT_EMAIL ?? 'student@qtzx.local',
-    displayName: '演示学生',
-    role: 'student',
-    password: process.env.DEMO_STUDENT_PASSWORD ?? 'student123',
-  },
-  {
-    id: 'student-demo-2',
-    email: process.env.DEMO_STUDENT2_EMAIL ?? 'student2@qtzx.local',
-    displayName: '演示学生二',
-    role: 'student',
-    password: process.env.DEMO_STUDENT2_PASSWORD ?? 'student123',
-  },
-  {
-    id: 'parent-demo',
-    email: process.env.DEMO_PARENT_EMAIL ?? 'parent@qtzx.local',
-    displayName: '演示家长',
-    role: 'parent',
-    password: process.env.DEMO_PARENT_PASSWORD ?? 'parent123',
-  },
-  {
-    id: 'parent-demo-2',
-    email: process.env.DEMO_PARENT2_EMAIL ?? 'parent2@qtzx.local',
-    displayName: '演示家长二',
-    role: 'parent',
-    password: process.env.DEMO_PARENT2_PASSWORD ?? 'parent123',
-  },
-  {
-    id: 'teacher-demo',
-    email: process.env.DEMO_TEACHER_EMAIL ?? 'teacher@qtzx.local',
-    displayName: '演示班主任',
-    role: 'teacher',
-    password: process.env.DEMO_TEACHER_PASSWORD ?? 'teacher123',
-  },
-  {
-    id: 'admin-demo',
-    email: process.env.DEMO_ADMIN_EMAIL ?? 'admin@qtzx.local',
-    displayName: '演示管理员',
-    role: 'admin',
-    password: process.env.DEMO_ADMIN_PASSWORD ?? 'admin123',
-  },
-  {
-    id: 'teacher-demo-2',
-    email: process.env.DEMO_TEACHER2_EMAIL ?? 'teacher2@qtzx.local',
-    displayName: '演示班主任二',
-    role: 'teacher',
-    password: process.env.DEMO_TEACHER2_PASSWORD ?? 'teacher123',
-  },
-  {
-    id: 'student-demo-3',
-    email: process.env.DEMO_STUDENT3_EMAIL ?? 'student3@qtzx.local',
-    displayName: '演示学生三',
-    role: 'student',
-    password: process.env.DEMO_STUDENT3_PASSWORD ?? 'student123',
-  },
-  {
-    id: 'student-demo-4',
-    email: process.env.DEMO_STUDENT4_EMAIL ?? 'student4@qtzx.local',
-    displayName: '演示学生四',
-    role: 'student',
-    password: process.env.DEMO_STUDENT4_PASSWORD ?? 'student123',
-  },
-];
+const DUMMY_PASSWORD_HASH = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 /**
  * 定时安全比较。两个输入的长度不同时也会补齐到相同长度后比较，
@@ -128,31 +63,48 @@ export class AuthService {
   private readonly sessions = new Map<string, SessionRecord>();
   private readonly attempts = new Map<string, AttemptRecord>();
 
+  constructor(
+    @Inject('DirectoryService') private readonly directory: DirectoryService,
+  ) {}
+
   /**
    * 校验口令并签发会话。
    *
    * `clientKey` 用于按来源限流（控制器传入客户端地址）。未提供时只按邮箱限流。
    */
-  login(
+  async login(
     email: string,
-    password: string,
+    passwordPlain: string,
     rememberMe = false,
     clientKey = '',
-  ): { token: string } & LoginResponse {
+  ): Promise<{ token: string } & LoginResponse> {
     this.assertWithinRateLimit(email, clientKey);
 
-    const candidate = users.find((user) => user.email === email);
-    // 即使用户不存在也执行一次相同代价的比较，然后才看 `candidate`，
-    // 否则「账号不存在」会比「口令错误」快，可被用来枚举账号。
-    const expectedPassword = candidate?.password ?? DUMMY_PASSWORD;
-    const passwordMatches = safePasswordEqual(password, expectedPassword);
-    if (candidate === undefined || !passwordMatches) {
+    // 凭据从目录取：身份与口令是同一份真相。
+    // 从前这里是两张硬编码表（EMAIL_TO_USER_ID + PASSWORD_STORE），
+    // 结果是数据库里新增的用户永远登不进来。
+    const credential = await this.directory.findCredentialByEmail(email);
+
+    // Hash the provided password and compare with stored hash
+    const providedHash = createHash('sha256').update(passwordPlain, 'utf8').digest('hex');
+    // 账号不存在时也要跑一次同代价的比较，否则响应时间会泄露账号是否存在。
+    const expectedHash = credential?.passwordHash ?? DUMMY_PASSWORD_HASH;
+    const passwordMatches = safePasswordEqual(providedHash, expectedHash);
+
+    if (credential === null || !passwordMatches) {
       this.recordFailure(email, clientKey);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: '邮箱或密码错误',
       });
     }
+
+    const user: CurrentUser = {
+      id: credential.user.userId,
+      email: credential.user.email,
+      displayName: credential.user.displayName,
+      role: credential.user.role,
+    };
 
     this.attempts.delete(this.emailKey(email));
     this.attempts.delete(this.clientKeyOf(clientKey));
@@ -163,13 +115,13 @@ export class AuthService {
     const expiresAt = Date.now() + ttlMs;
 
     this.sessions.set(token, {
-      user: this.toPublicUser(candidate),
+      user,
       expiresAt,
     });
 
     return {
       token,
-      user: this.toPublicUser(candidate),
+      user,
       expiresAt: new Date(expiresAt).toISOString(),
     };
   }
@@ -257,14 +209,5 @@ export class AuthService {
     for (const [token] of byExpiry.slice(0, this.sessions.size - MAX_SESSIONS + 1)) {
       this.sessions.delete(token);
     }
-  }
-
-  private toPublicUser(user: AuthUser): CurrentUser {
-    return {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-    };
   }
 }

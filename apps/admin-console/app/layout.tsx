@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
+import '@qitu/ui/preferences.css';
 import './globals.css';
 
 export const metadata: Metadata = {

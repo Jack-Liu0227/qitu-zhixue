@@ -99,7 +99,12 @@ export default function AdminStudentsPage() {
           <h1>学生端数据</h1>
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
-        <p>查看所有学生的学习状态与项目进展</p>
+        <p>治理用学生名册：查看学习状态与项目进展；个别学生详情需显式授权，当前未开放</p>
+        <p className="admin-page-header-action">
+          <Link href="/students/statistics" className="admin-link">
+            查看学生数据统计 →
+          </Link>
+        </p>
       </div>
 
       <div className="admin-filter-strip">
@@ -188,14 +193,9 @@ export default function AdminStudentsPage() {
                 {data.items.map((student) => (
                   <tr key={student.studentId}>
                     <td>
-                      <Link
-                        href={`/students/${student.studentId}?back=${encodeURIComponent(
-                          window.location.pathname + window.location.search,
-                        )}`}
-                        className="admin-link"
-                      >
-                        {student.displayName}
-                      </Link>
+                      {/* 个别学生详情属于「显式授权」访问（ADR 0008），当前后端 fail closed。
+                          这里不再渲染入口，避免用前端入口暗示一个后端会拒绝的操作。 */}
+                      {student.displayName}
                     </td>
                     <td>{student.classLabel ?? '—'}</td>
                     <td>{student.mentorName ?? '—'}</td>

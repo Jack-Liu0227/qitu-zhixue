@@ -20,6 +20,30 @@ export type StudentGrowthEntryType =
 export type StudentGrowthIcon = 'stage' | 'artifact' | 'reflection' | 'objective';
 
 /**
+ * 服务端认可的成长证据来源种类——**封闭集合**（growth-spec.md §4.7）。
+ *
+ * 证据引用统一编码为 `${sourceKind}:${opaqueId}`，只有这里列出的种类才被
+ * 服务端白名单接受。原始 AI 对话、语音转写、内部风险标签都不在集合内，因此
+ * 它们不可能伪装成证据引用进入学生视图。这里没有任何分数 / 排名 / 百分位 /
+ * 等级语义。
+ */
+export type GrowthEvidenceSourceKind =
+  | 'student_answer'
+  | 'theory_check'
+  | 'artifact'
+  | 'reflection'
+  | 'help_request';
+
+/**
+ * 观察状态——**封闭两值**（growth-spec.md §4.7 验收标准）。
+ *
+ * 当一条结论没有证据支撑时必须落到 `pending_observation`，界面据此渲染
+ * 「待观察」，而**不是** 0 分、负面结论或任何形式的默认判定。该状态由服务端
+ * 根据证据有无推导，客户端不可写入。
+ */
+export type GrowthObservationState = 'observed' | 'pending_observation';
+
+/**
  * Positive, process-oriented counts only (growth-spec.md §3.3, §6).
  * There is deliberately no score, rank, grade, or percentile anywhere.
  */
@@ -37,6 +61,12 @@ export interface StudentGrowthSummary {
  * server-computed, pre-approved child-facing note — never a raw internal risk
  * label. `stage` is the frozen `ProjectStage` contract used ONLY for display;
  * it never drives a gate or permission here.
+ *
+ * `evidenceIds` are opaque, server-allowlisted references
+ * (`sourceKind:opaqueId`) that point back to the original record; they never
+ * contain raw conversation / voice content. `observationState` is derived
+ * server-side from `evidenceIds` and is the only signal the UI needs to render
+ * 「待观察」 instead of a zero.
  */
 export interface StudentGrowthEntry {
   id: string;
@@ -51,6 +81,10 @@ export interface StudentGrowthEntry {
   objectiveTitles: string[];
   icon: StudentGrowthIcon;
   encouragement: string | null;
+  /** 只读证据引用（`sourceKind:opaqueId`）；服务端白名单产出，可为空数组。 */
+  evidenceIds: string[];
+  /** 由服务端按证据有无推导；无证据即 `pending_observation`（「待观察」）。 */
+  observationState: GrowthObservationState;
 }
 
 export type StudentGrowthFilterType = StudentGrowthEntryType | 'all';
@@ -91,6 +125,8 @@ export interface StudentGrowthPageData {
  * 只是投影字段不同。家长投影比学生投影更窄：
  *  - 没有分数 / 排名 / 百分位（同 `StudentGrowthSummary`）
  *  - 没有内部风险标签、没有原始对话或语音
+ *  - **没有** `evidenceIds` / `observationState`：这两者是学生端「点回原始
+ *    记录 / 待观察」的视图词汇，家长投影按最小可见范围暂不携带
  *  - `summaryParent` 是服务端预审过的、面向家长的措辞
  *
  * ⚠️ 该投影的字段矩阵在 growth-spec.md §4 仍是 UNAPPROVED 提案。

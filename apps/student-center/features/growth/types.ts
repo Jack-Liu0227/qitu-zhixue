@@ -14,6 +14,8 @@ import type { StudentGrowthQuery, StudentGrowthSummary } from '@qitu/contracts';
  * cannot even represent a guardian/mentor/tutor/escalation entry.
  */
 export type {
+  GrowthEvidenceSourceKind,
+  GrowthObservationState,
   GrowthProjectOption,
   StudentGrowthEntry,
   StudentGrowthEntryType,

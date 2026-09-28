@@ -3,6 +3,7 @@ import { ArtifactEntry } from './ArtifactEntry';
 import { formatGrowthDate } from './format';
 import { MilestoneEntry } from './MilestoneEntry';
 import { ObjectiveChip } from './ObjectiveChip';
+import { ObservationNote } from './ObservationNote';
 import { ReflectionEntry } from './ReflectionEntry';
 import { VersionStep } from './VersionStep';
 
@@ -50,6 +51,7 @@ export function TimelineEntry({
           {item.projectTitle ? <p className="qitu-entry-context">{item.projectTitle}</p> : null}
           <p className="qitu-entry-summary">{item.summaryStudent}</p>
           <ObjectiveChip titles={item.objectiveTitles} />
+          <ObservationNote state={item.observationState} />
         </article>
       ) : null}
     </VersionStep>

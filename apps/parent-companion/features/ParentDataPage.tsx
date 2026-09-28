@@ -54,7 +54,9 @@ export function ChildPicker({
     <div className="child-picker">
       {children.map((c) => (
         <button
+          type="button"
           className={c.childId === value ? 'selected' : ''}
+          aria-pressed={c.childId === value}
           key={c.childId}
           onClick={() => onChange(c.childId)}
         >

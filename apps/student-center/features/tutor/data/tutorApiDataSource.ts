@@ -1,15 +1,19 @@
 import type {
+  CreateTutorFeedbackRequest,
+  CreateTutorFeedbackResponse,
   CreateTutorSessionRequest,
   CreateTutorSessionResponse,
   CreateTutorTurnRequest,
   CreateTutorTurnResponse,
   GetTutorSessionResponse,
+  ProjectSummary,
+  TutorProjectContext as SharedTutorProjectContext,
+  TutorSessionSummary,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
 import { LiveTutorSocket } from './liveTutorSocket';
-import { MockTutorDataSource } from './mockTutorDataSource';
-import { MOCK_ACTIVE_PROJECT, MOCK_SESSION_ID } from './fixtures';
+import type { TutorProjectContext } from '../types';
 
 /**
  * The tutor data source the app actually runs on.
@@ -18,89 +22,79 @@ import { MOCK_ACTIVE_PROJECT, MOCK_SESSION_ID } from './fixtures';
  * history and the journal cursor, and `POST /tutor/stream` streams every turn
  * as `tool_call → tool_result → delta → block → done`.
  *
- * WHAT IS STILL FIXTURE-BACKED: the left column's project context
- * (`getActiveProject` / `getProjectContext`). The M1 API does not expose
- * `/projects/active` or `/projects/:id` yet, and inventing a client-side guess
- * about a child's project would be worse than showing the documented demo
- * project. Those two methods therefore delegate to `MockTutorDataSource` and
- * are marked as the remaining Wave-4 gap. They are READ-ONLY projections: no
- * route here writes project stage, growth records, AI decisions or audit logs.
+ * The project context is served by the same API projection used by the
+ * student's project area. It is authorization-checked on the server, so this
+ * source never falls back to a fixture or to the server's demo project.
+ *
+ * No route here writes project stage, growth records, AI decisions or audit
+ * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
-  private readonly fixtures = new MockTutorDataSource();
   private readonly projectIdBySession = new Map<string, string>();
   private readonly sockets = new Map<string, LiveTutorSocket>();
   private readonly sessionCursor = new Map<string, number>();
-  /** Sessions where the streaming API actually answered at least once. */
-  private readonly everLive = new Set<string>();
-  private liveUnreachable = false;
   private sessionCounter = 0;
 
-  /** True once the streaming API proved unreachable and fixtures took over. */
-  get usingFixtures(): boolean {
-    return this.liveUnreachable;
+  async getActiveProject(): Promise<ProjectSummary | null> {
+    const context = await this.fetchProjectContext();
+    return context?.project ?? null;
   }
 
-  async getActiveProject() {
-    return this.fixtures.getActiveProject();
+  async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {
+    return this.fetchProjectContext(projectId);
   }
 
-  async getProjectContext(projectId: string) {
-    return this.fixtures.getProjectContext(projectId);
+  private async fetchProjectContext(projectId?: string): Promise<TutorProjectContext | null> {
+    const query = projectId === undefined ? '' : `?projectId=${encodeURIComponent(projectId)}`;
+    const response = await this.fetchJson(`/api/v1/tutor/project-context${query}`, '项目信息加载失败');
+    const data = unwrapData(response);
+    if (data === null) return null;
+    if (!isTutorProjectContext(data)) {
+      throw new TutorDataError('项目上下文格式不正确', undefined, 'BAD_PROJECT_CONTEXT_PAYLOAD');
+    }
+    return data;
   }
 
   async createSession(
     request: CreateTutorSessionRequest,
   ): Promise<CreateTutorSessionResponse> {
-    if (this.liveUnreachable) return this.fixtures.createSession(request);
-    const projectId = request.projectId ?? MOCK_ACTIVE_PROJECT.id;
-    try {
-      const session = await this.fetchSession(projectId);
-      this.projectIdBySession.set(session.sessionId, projectId);
-      return {
-        sessionId: session.sessionId,
-        projectId,
-        createdAt: new Date().toISOString(),
-        lastSeq: session.lastSeq,
-      };
-    } catch (error) {
-      const failure = toTutorError(error);
-      if (!isUnreachable(failure)) throw failure;
-      // The API is down: keep the page usable on the documented demo fixtures
-      // instead of trapping the student on an error screen.
-      this.liveUnreachable = true;
-      return this.fixtures.createSession(request);
+    const projectId = request.projectId;
+    if (projectId === undefined) {
+      // Never bind a session to the server's demo project implicitly.
+      throw new TutorDataError('还没有进行中的项目', undefined, 'NO_ACTIVE_PROJECT');
     }
+    const session = await this.fetchSession(projectId);
+    this.projectIdBySession.set(session.sessionId, projectId);
+    return {
+      sessionId: session.sessionId,
+      projectId,
+      createdAt: new Date().toISOString(),
+      lastSeq: session.lastSeq,
+    };
   }
 
   async getSession(sessionId: string): Promise<GetTutorSessionResponse> {
     const projectId = this.projectIdBySession.get(sessionId);
-    if (this.liveUnreachable || projectId === undefined) {
-      const fallback = await this.fixtures.getSession(sessionId);
-      this.sessionCursor.set(fallback.sessionId, fallback.lastSeq);
-      return fallback;
+    if (projectId === undefined) {
+      throw new TutorDataError('会话不存在或已过期', 404, 'SESSION_NOT_FOUND');
     }
-    try {
-      const session = await this.fetchSession(projectId);
-      this.projectIdBySession.set(session.sessionId, projectId);
-      this.sessionCursor.set(session.sessionId, session.lastSeq);
-      return session;
-    } catch (error) {
-      const failure = toTutorError(error);
-      if (!isUnreachable(failure)) throw failure;
-      this.liveUnreachable = true;
-      const fallback = await this.fixtures.getSession(MOCK_SESSION_ID);
-      this.sessionCursor.set(fallback.sessionId, fallback.lastSeq);
-      return fallback;
-    }
+    const session = await this.fetchSession(projectId);
+    this.projectIdBySession.set(session.sessionId, projectId);
+    this.sessionCursor.set(session.sessionId, session.lastSeq);
+    return session;
   }
 
   async submitTurn(
     sessionId: string,
     request: CreateTutorTurnRequest,
   ): Promise<CreateTutorTurnResponse> {
-    const socket = this.liveUnreachable ? undefined : this.sockets.get(sessionId);
-    if (socket === undefined) return this.fixtures.submitTurn(sessionId, request);
+    const socket = this.sockets.get(sessionId);
+    if (socket === undefined) {
+      // The stream socket is created by the session hook; reaching a submit
+      // before it exists is a transient state the student can retry, not a
+      // reason to fabricate a reply.
+      throw new TutorDataError('连接还没有准备好，请重试。', undefined, 'STREAM_NOT_READY');
+    }
     // The stream itself is opened by the socket; the ack only carries the
     // journal baseline so the UI can order the student's echo correctly.
     const baseline = socket.startTurn({
@@ -110,53 +104,43 @@ export class TutorApiDataSource implements TutorDataSource {
       idempotencyKey: request.idempotencyKey,
     });
     return {
-      turnId: `live-${this.sessionCounter += 1}`,
+      turnId: `live-${(this.sessionCounter += 1)}`,
       seq: baseline,
       accepted: true,
     };
   }
 
-  async getSummary(sessionId: string) {
-    return this.fixtures.getSummary(sessionId);
+  async getSummary(sessionId: string): Promise<TutorSessionSummary> {
+    const response = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/summary`,
+    );
+    const data = unwrapData(response);
+    if (!isTutorSessionSummary(data)) {
+      throw new TutorDataError('会话摘要格式不正确', undefined, 'BAD_SUMMARY_PAYLOAD');
+    }
+    return data;
   }
 
   async submitFeedback(
-    sessionId: string,
-    request: Parameters<TutorDataSource['submitFeedback']>[1],
-  ) {
-    return this.fixtures.submitFeedback(sessionId, request);
+    _sessionId: string,
+    _request: CreateTutorFeedbackRequest,
+  ): Promise<CreateTutorFeedbackResponse> {
+    // No feedback write endpoint is exposed to the student app yet. Fail loud
+    // rather than pretending the feedback was recorded server-side.
+    throw new TutorDataError('反馈暂时无法提交，请稍后重试。', undefined, 'FEEDBACK_UNAVAILABLE');
   }
 
   createSocket(sessionId: string): TutorSocket {
-    if (this.liveUnreachable) return this.fixtures.createSocket(sessionId);
     const existing = this.sockets.get(sessionId);
     if (existing !== undefined) return existing;
     const socket = new LiveTutorSocket(sessionId, {
       projectId: this.projectIdBySession.get(sessionId),
       initialSeq: this.sessionCursor.get(sessionId) ?? 0,
       onUnreachable: (error) => {
-        // A stream failure has two very different causes and they must not be
-        // collapsed:
-        //
-        // * TRANSPORT died (no HTTP status) on a session whose cursor is
-        //   already past the fixture journal. Swapping in fixtures here would
-        //   make every later fixture event look "already seen" to
-        //   `TutorRealtimeClient` — the reply would be dropped and the thread
-        //   would spin forever. Fixtures may therefore only take over for a
-        //   session where the live API NEVER answered.
-        // * The API answered with 4xx/5xx. That is a real answer (forbidden,
-        //   expired session, server bug) and must stay visible; hiding it
-        //   behind demo content would mask a permission failure.
-        const transportDied = isUnreachable(error);
-        if (transportDied && !this.everLive.has(sessionId)) {
-          this.liveUnreachable = true;
-        } else if (!transportDied) {
-          // Only a server *reply* is worth a message; a dead transport already
-          // surfaces as the offline banner + reconnect.
-          socket.failStream(error);
-        }
-        // Detach either way: the client stops waiting, shows its state and
-        // reconnects to this same instance (journal + cursor survive).
+        // Surface the failure on the thread (the student sees a retry) and
+        // detach so the realtime client can reconnect to this same instance.
+        // The journal and cursor survive, so nothing is lost or duplicated.
+        socket.failStream(error);
         socket.close();
       },
     });
@@ -165,12 +149,25 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 
   private async fetchSession(projectId: string): Promise<GetTutorSessionResponse> {
+    const body = await this.fetchJson(
+      `/api/v1/tutor/session?projectId=${encodeURIComponent(projectId)}`,
+      '会话加载失败',
+    );
+    const data = unwrapData(body);
+    if (!isTutorSessionResponse(data)) {
+      throw new TutorDataError('会话数据格式不正确', undefined, 'BAD_SESSION_PAYLOAD');
+    }
+    this.sessionCursor.set(data.sessionId, data.lastSeq);
+    return data;
+  }
+
+  private async fetchJson(path: string, failureLabel = '请求失败'): Promise<unknown> {
     let response: Response;
     try {
-      response = await fetch(
-        `/api/v1/tutor/session?projectId=${encodeURIComponent(projectId)}`,
-        { credentials: 'same-origin', headers: { accept: 'application/json' } },
-      );
+      response = await fetch(path, {
+        credentials: 'same-origin',
+        headers: { accept: 'application/json' },
+      });
     } catch (error) {
       throw new TutorDataError(
         error instanceof Error ? error.message : '网络不可用',
@@ -180,20 +177,31 @@ export class TutorApiDataSource implements TutorDataSource {
     }
     if (!response.ok) {
       throw new TutorDataError(
-        `会话加载失败（${response.status}）`,
+        `${failureLabel}（${response.status}）`,
         response.status,
         `HTTP_${response.status}`,
       );
     }
-    const body: unknown = await response.json();
-    const data = unwrapData(body);
-    if (!isTutorSessionResponse(data)) {
-      throw new TutorDataError('会话数据格式不正确', response.status, 'BAD_SESSION_PAYLOAD');
-    }
-    this.everLive.add(data.sessionId);
-    return data;
+    return response.json();
   }
 }
+
+function isTutorProjectContext(value: unknown): value is TutorProjectContext {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<SharedTutorProjectContext>;
+  return (
+    typeof candidate.project?.id === 'string' &&
+    typeof candidate.project?.title === 'string' &&
+    typeof candidate.project?.stage === 'string' &&
+    typeof candidate.project?.progress === 'number' &&
+    typeof candidate.progress?.currentStageIndex === 'number' &&
+    typeof candidate.progress?.stageTotal === 'number' &&
+    typeof candidate.progress?.progressPercent === 'number' &&
+    Array.isArray(candidate.stages) &&
+    (candidate.currentTask === null || typeof candidate.currentTask === 'object')
+  );
+}
+
 
 function unwrapData(body: unknown): unknown {
   if (typeof body === 'object' && body !== null && 'data' in body) {
@@ -212,16 +220,18 @@ function isTutorSessionResponse(value: unknown): value is GetTutorSessionRespons
   );
 }
 
-function toTutorError(error: unknown): TutorDataError {
-  if (error instanceof TutorDataError) return error;
-  return new TutorDataError(
-    error instanceof Error ? error.message : '发生未知错误',
-    undefined,
-    'NETWORK_OFFLINE',
+function isTutorSessionSummary(value: unknown): value is TutorSessionSummary {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as {
+    summary?: unknown;
+    lastHintLevel?: unknown;
+    stallCount?: unknown;
+    escalated?: unknown;
+  };
+  return (
+    typeof candidate.summary === 'string' &&
+    (candidate.lastHintLevel === null || typeof candidate.lastHintLevel === 'number') &&
+    typeof candidate.stallCount === 'number' &&
+    typeof candidate.escalated === 'boolean'
   );
-}
-
-/** Only a transport failure justifies the fixture fallback, never a 4xx/5xx. */
-function isUnreachable(error: TutorDataError): boolean {
-  return error.code === 'NETWORK_OFFLINE' || error.status === undefined;
 }

@@ -108,8 +108,47 @@ function subscribeToSession(callback: () => void): () => void {
   };
 }
 
+/**
+ * `useSyncExternalStore` 的快照必须**引用稳定**：同一个会话必须返回同一个对象。
+ *
+ * `readCachedUser()` 每次都 `JSON.parse` 出一个新对象，直接当 getSnapshot 会
+ * 让 React 认为「渲染期间 store 又变了」，于是无限重渲染（
+ * `The result of getSnapshot should be cached` → `Maximum update depth exceeded`）。
+ * 这里按 sessionStorage 里的原始字符串做缓存：原始串没变就直接复用上次的对象。
+ */
+let cachedSnapshotRaw: string | null = null;
+let cachedSnapshotUser: CurrentUser | null = null;
+
+function readCurrentUserSnapshot(): CurrentUser | null {
+  if (typeof window === 'undefined') return null;
+  let raw: string | null;
+  try {
+    raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  } catch {
+    // 无痕模式等场景读不到存储：当作未登录，并且不要污染缓存。
+    return null;
+  }
+  if (raw === cachedSnapshotRaw) return cachedSnapshotUser;
+  cachedSnapshotRaw = raw;
+  cachedSnapshotUser = readCachedUser();
+  return cachedSnapshotUser;
+}
+
+function readCurrentUserServerSnapshot(): CurrentUser | null {
+  return null;
+}
+
+/**
+ * 当前登录用户（只读公开投影）。
+ *
+ * 返回值在会话不变时保持引用稳定，可安全用于 `useEffect` / `useMemo` 依赖。
+ */
 export function useCurrentUser(): CurrentUser | null {
-  return useSyncExternalStore(subscribeToSession, readCachedUser, () => null);
+  return useSyncExternalStore(
+    subscribeToSession,
+    readCurrentUserSnapshot,
+    readCurrentUserServerSnapshot,
+  );
 }
 
 type LeaveReason = 'anonymous' | 'expired' | 'forbidden';

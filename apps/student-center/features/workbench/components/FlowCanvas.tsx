@@ -3,9 +3,9 @@
 import type { FlowEdge, FlowNode } from '../types/workbench';
 
 /**
- * Narrow canvas contract. The rendering technology (self-rendered read-only vs
- * React Flow) is undecided, so the internals are deliberately NOT implemented.
- * This interface is the shape the eventual canvas must satisfy.
+ * Narrow canvas contract. The interactive canvas is not built yet, so the
+ * internals are deliberately deferred. This interface is the shape the
+ * eventual canvas must satisfy.
  */
 export interface FlowCanvasProps {
   nodes: FlowNode[];
@@ -18,13 +18,13 @@ export interface FlowCanvasProps {
 }
 
 export function FlowCanvas({ nodes, edges, readOnly }: FlowCanvasProps) {
-  // NOTE: canvas internals are deferred behind the technology decision.
+  // NOTE: the canvas internals are deferred; this is the placeholder surface.
   return (
     <div className="qitu-flow-canvas qitu-canvas-pending" data-testid="flow-canvas-pending" role="note">
-      <p className="qitu-canvas-pending-title">画布待技术选型确认</p>
+      <p className="qitu-canvas-pending-title">画布正在准备中</p>
       <p className="qitu-canvas-pending-body">
-        流程画布的渲染方案（自研 vs React Flow）尚未定稿，暂以占位替代。
-        节点与连线数据已按合同就绪，选型落地后即可直接接入。
+        这里暂时还不能画流程图。你可以先切换到「代码」或「模拟器」，继续完成这个项目。
+        节点和连线已经记录好了，画布上线后就能直接在这里编辑。
       </p>
       <dl className="qitu-canvas-pending-stats">
         <div>

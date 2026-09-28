@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 
-const apiOrigin = process.env.QITU_API_ORIGIN ?? 'http://localhost:4000';
+const apiOrigin = process.env.QITU_API_ORIGIN ?? 'http://127.0.0.1:4100';
 
 const nextConfig: NextConfig = {
   basePath: '/teacher',
@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        // 直接访问 3105 根路径时，跳到班主任工作台首页（basePath 外的 / 默认会 404）。
+        // 直接访问 3103 根路径时，跳到班主任工作台首页（basePath 外的 / 默认会 404）。
         source: '/',
         destination: '/teacher/dashboard',
         basePath: false,

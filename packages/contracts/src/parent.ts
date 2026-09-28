@@ -1,3 +1,4 @@
+import type { StudentGrowthEntryType } from './growth';
 import type { ProjectStage } from './project';
 import type { DataSource } from './platform';
 
@@ -260,14 +261,211 @@ export type ParentFeedbackSource = 'general' | 'message' | 'project';
 
 export interface SubmitParentFeedbackRequest {
   source: ParentFeedbackSource;
+  /**
+   * 目标孩子。
+   *
+   * 修复说明：旧实现由服务端**写死** `student-demo`，任何家长提交的工单都会
+   * 挂到演示孩子名下，既是错误数据也是越权。现在 `general` 来源必填 `childId`；
+   * `message` / `project` 来源可由被关联对象推导，但仍会与推导结果校验一致。
+   */
+  childId: string | null;
   content: string;
   /** `source` 为 `message` 或 `project` 时必填，用于把工单关联到具体对象。 */
   messageId: string | null;
   projectId: string | null;
+  /** 已上传附件的 id 列表；服务端校验归属后才会写进工单。缺省视为无附件。 */
+  attachmentRefs?: string[] | null;
 }
 
 export interface SubmitParentFeedbackResponse {
   ticketId: string;
   status: 'processing';
   createdAt: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * 统一反馈工单（家长与班主任共用同一份记录）
+ *
+ * 状态与时间线**只能由服务端迁移**：客户端的请求体里没有 `status` 字段，
+ * 也无法指定事件类型。班主任只能看到自己当前学生的工单；家长只能看到自己
+ * 绑定孩子的工单。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 统一工单状态。
+ *
+ * - `processing`：待班主任处理（家长刚提交或补充后）；
+ * - `replied`：班主任已公开回复，等待家长确认；
+ * - `resolved`：家长已确认问题解决；
+ * - `reopened`：家长确认未解决，重新打开等待班主任。
+ */
+export type ParentFeedbackStatus = 'processing' | 'replied' | 'resolved' | 'reopened';
+
+/** 工单时间线事件类型。全部由服务端根据动作写入，客户端不可指定。 */
+export type ParentFeedbackEventKind =
+  | 'submitted'
+  | 'supplemented'
+  | 'replied'
+  | 'confirmed'
+  | 'reopened';
+
+/** 时间线中的一条记录；措辞由服务端预审，不含任何原始 AI 对话。 */
+export interface ParentFeedbackEntry {
+  id: string;
+  kind: ParentFeedbackEventKind;
+  authorRole: 'parent' | 'teacher';
+  authorDisplayName: string;
+  content: string;
+  /** 附件引用 id；只包含已通过归属校验的附件。 */
+  attachmentRefs: string[];
+  /** 仅家长确认事件有值：true=确认已解决，false=确认未解决；其他事件为 null。 */
+  resolved: boolean | null;
+  createdAt: string;
+}
+
+/** 家长与班主任共用的工单投影。不含内部字段、负责人 id 与原始对话。 */
+export interface ParentFeedbackTicket {
+  id: string;
+  /** 一般使用问题可以不关联孩子；其余来源必须由服务端推导并校验。 */
+  childId: string | null;
+  childDisplayName: string;
+  source: ParentFeedbackSource;
+  projectId: string | null;
+  projectTitle: string | null;
+  messageId: string | null;
+  status: ParentFeedbackStatus;
+  /** 家长首次提交的问题描述。 */
+  problem: string;
+  /** 当前负责人（班主任）展示名；尚未分配班主任时为 null。 */
+  owner: string | null;
+  /** 服务端格式化的处理时长，例如「2小时15分钟」。 */
+  handledIn: string;
+  entries: ParentFeedbackEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParentFeedbackListResponse {
+  tickets: ParentFeedbackTicket[];
+}
+
+export interface ParentFeedbackDetailResponse {
+  ticket: ParentFeedbackTicket;
+}
+
+/** 家长补充说明（追问）请求；内容与首次提交同规则校验。 */
+export interface SupplementParentFeedbackRequest {
+  content: string;
+  attachmentRefs?: string[] | null;
+}
+
+/** 家长确认结果请求。`resolved=true` 关闭工单；`false` 表示未解决，重新打开。 */
+export interface ConfirmParentFeedbackRequest {
+  resolved: boolean;
+  note: string | null;
+}
+
+/** 工单变更后的统一响应（补充 / 确认 / 回复）。 */
+export interface ParentFeedbackMutationResponse {
+  ticket: ParentFeedbackTicket;
+}
+
+/* ------------------------------------------------------------------ *
+ * 成长数据导出（ISSUE-T5 / #7）
+ *
+ * 服务端独占的家长成长导出契约。四条硬约束（继承自本文件顶部三条 + AGENTS.md）：
+ *
+ *  1. **对象级授权在请求与下载两处各校验一次**：下载时重新查 active 监护关系；
+ *     授权被撤销后再下载返回 403，而不是空数据。
+ *  2. **字段白名单投影**：导出正文只允许下面这些字段。原始 AI 对话、原始语音、
+ *     内部风险标签、邮箱、任意模型推断都**不在**投影里，也不允许后续扩宽追加
+ *     （新增字段必须走契约评审）。
+ *  3. **写操作要求 `Idempotency-Key`**：同 key 重放返回第一次的任务，不产生第二条。
+ *  4. **审计只记过程事实**（任务 id / 孩子 id / 状态 / 目的），不写导出正文。
+ *
+ * ⚠️ 当前是**同步生成 + 限时下载**的最小切片：任务元数据与脱敏正文落库，正文在
+ * 请求时由服务端投影生成。异步 worker 与对象存储（大文件下载）尚未接入；未配置
+ * 持久化时接口诚实返回 503，见 `services/api/src/modules/parent/growth-export.md`。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 导出任务状态。
+ *
+ * - `pending`：已受理、正文尚未生成（为未来异步 worker 预留；当前同步切片不产生）；
+ * - `ready`：正文已生成，可在有效期内下载；
+ * - `expired`：超出有效期，不再可下载。
+ */
+export type ParentGrowthExportStatus = 'pending' | 'ready' | 'expired';
+
+/** 一次导出任务的元数据。**不含正文**——正文只在下载接口返回。 */
+export interface ParentGrowthExportJob {
+  exportId: string;
+  childId: string;
+  childDisplayName: string;
+  status: ParentGrowthExportStatus;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/**
+ * 家长请求导出时**必须显式确认**的字段，用于挡住整包误导出 / 误操作。
+ *
+ * 这是最小化的「身份 + 对象」二次确认；更强的 step-up 认证（重新输入口令 /
+ * 一次性验证码）依赖跨角色账户面，尚未接入，见 `growth-export.md` 的阻塞项。
+ */
+export interface ParentGrowthExportRequest {
+  /** 必须与路径 `:childId` 完全一致；不一致服务端拒绝。 */
+  confirmChildId: string;
+  /** 必须与当前登录家长邮箱一致（大小写不敏感）。 */
+  confirmGuardianEmail: string;
+  /** 导出目的，1..200 字。审计记录该目的，但**不记录导出正文**。 */
+  reason: string;
+}
+
+export interface ParentGrowthExportResponse {
+  job: ParentGrowthExportJob;
+}
+
+/**
+ * 导出正文的白名单条目。
+ *
+ * 与 `ParentGrowthEntry` 同形，但**独立冻结**：即使 `ParentGrowthEntry` 未来新增
+ * 字段，导出投影也不会自动带出，必须在这份契约里显式加字段并通过评审。
+ */
+export interface ParentGrowthExportEntry {
+  id: string;
+  type: StudentGrowthEntryType;
+  occurredAt: string;
+  title: string;
+  summaryParent: string;
+  projectTitle: string | null;
+  stage: ProjectStage | null;
+  artifactRef: string | null;
+}
+
+/** 导出正文的过程性摘要；没有分数 / 排名 / 百分位 / 等级。 */
+export interface ParentGrowthExportSummary {
+  childId: string;
+  childDisplayName: string;
+  streakDays: number;
+  projectsCompleted: number;
+  objectivesMastered: number;
+  artifactsPublished: number;
+  lastActivityAt: string | null;
+}
+
+/** 家长可下载的成长导出正文。`schemaVersion` 固定为 `1`，变更时递增。 */
+export interface ParentGrowthExportDocument {
+  schemaVersion: 1;
+  exportId: string;
+  generatedAt: string;
+  expiresAt: string;
+  /** 条目是否被服务端上限截断；为 true 时前端应提示「仅含最近部分记录」。 */
+  truncated: boolean;
+  summary: ParentGrowthExportSummary;
+  entries: ParentGrowthExportEntry[];
+}
+
+export interface ParentGrowthExportDownloadResponse {
+  document: ParentGrowthExportDocument;
 }

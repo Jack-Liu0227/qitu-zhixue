@@ -138,12 +138,9 @@ export default async function AdminTeacherDetailPage({ params }: { params: Promi
                 {data.students.map((student) => (
                   <tr key={student.studentId}>
                     <td>
-                      <Link
-                        href={`/students/${student.studentId}`}
-                        className="admin-link"
-                      >
-                        {student.displayName}
-                      </Link>
+                      {/* 个别学生详情需显式授权（ADR 0008），后端当前 fail closed；
+                          这里不再渲染入口。 */}
+                      {student.displayName}
                     </td>
                     <td>{student.classLabel ?? '—'}</td>
                     <td className="admin-cell-center">{student.activeProjectCount}</td>
@@ -182,12 +179,8 @@ export default async function AdminTeacherDetailPage({ params }: { params: Promi
                 {data.interventions.map((intervention) => (
                   <tr key={intervention.id}>
                     <td>
-                      <Link
-                        href={`/students/${intervention.studentId}`}
-                        className="admin-link"
-                      >
-                        {intervention.studentDisplayName}
-                      </Link>
+                      {/* 同上：个别学生详情需显式授权，暂不提供入口。 */}
+                      {intervention.studentDisplayName}
                     </td>
                     <td>{intervention.projectTitle ?? '—'}</td>
                     <td>{intervention.reason}</td>

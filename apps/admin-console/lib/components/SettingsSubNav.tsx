@@ -12,7 +12,6 @@ import { usePathname } from 'next/navigation';
 
 const ITEMS = [
   { href: '/settings', label: '设置总览', exact: true },
-  { href: '/settings/models', label: '模型插槽', exact: false },
   { href: '/settings/model-providers', label: '模型供应商', exact: false },
   { href: '/settings/model-usages', label: '模型用途绑定', exact: false },
 ] as const;

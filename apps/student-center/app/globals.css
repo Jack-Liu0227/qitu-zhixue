@@ -1,1 +1,27 @@
 body { min-height: 100vh; }
+
+/* ---- 学生端身份区 ----
+   问候 Banner 上方的静态账号行。@qitu/ui 里的 `.auth-logout` 默认是
+   `position: fixed`，会浮在 Banner 上；这里在学生壳的账号区内覆盖成静态，
+   让「当前学生 + 退出登录」随页面正常排版。移动端改为左对齐并允许换行，
+   避免与问候 Banner 重叠。 */
+.qitu-student-identity { display: grid; gap: 12px; }
+.qitu-student-account {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qitu-student-account-text { display: flex; flex-direction: column; line-height: 1.25; }
+.qitu-student-account-label { color: var(--qitu-muted); font-size: 0.72rem; }
+.qitu-student-account-name { color: var(--qitu-heading); font-weight: 600; font-size: 0.9rem; }
+.qitu-student-account .auth-logout { position: static; }
+
+@media (max-width: 760px) {
+  .qitu-student-account { justify-content: flex-start; }
+}
+
+/* ---- 作品展厅 ---- */
+.qitu-works-page { padding: 12px 0; }
+.qitu-works-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }

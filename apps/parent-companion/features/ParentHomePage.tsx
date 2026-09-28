@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Badge, Button, ProgressBar, SectionCard } from '@qitu/ui';
 import { useCurrentUser } from '@qitu/auth';
 import {
@@ -11,7 +12,6 @@ import {
   type ParentHomePageData,
 } from './parentApi';
 import { ChildPicker, DataState, HeroMascot, PageFrame } from './ParentDataPage';
-import { ProjectVisual } from './ProjectVisual';
 import { formatShortDate, greeting } from './parentFormat';
 
 /**
@@ -26,9 +26,6 @@ export default function HomePage() {
   const [childId, setChildId] = useState('');
   const [data, setData] = useState<ParentHomePageData | null>(null);
   const [state, setState] = useState('loading');
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackContent, setFeedbackContent] = useState('');
-  const [feedbackState, setFeedbackState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   const load = useCallback((id: string) => {
     setState('loading');
@@ -64,31 +61,6 @@ export default function HomePage() {
 
   const childName = data?.childDisplayName ?? '';
   const parentName = user?.displayName ?? user?.email ?? '家长';
-
-  const submitFeedback = async () => {
-    const content = feedbackContent.trim();
-    if (
-      content.length === 0 ||
-      content.length > 500 ||
-      !data?.currentProject ||
-      feedbackState === 'sending'
-    ) {
-      return;
-    }
-    setFeedbackState('sending');
-    try {
-      await parentApi.post('/api/v1/parent/feedback', {
-        source: 'project',
-        content,
-        messageId: null,
-        projectId: data.currentProject.projectId,
-      });
-      setFeedbackState('sent');
-      setFeedbackContent('');
-    } catch {
-      setFeedbackState('error');
-    }
-  };
 
   return (
     <PageFrame title="首页" subtitle="了解今天的学习状态，在需要时给予恰当支持" source={data?.dataSource}>
@@ -163,9 +135,9 @@ export default function HomePage() {
                         <span>最近完成：{data.currentProject?.lastCompleted ?? '暂无'}</span>
                         <span>下一步：{data.currentProject?.nextStep ?? '继续尝试'}</span>
                       </div>
-                      <a className="qitu-button qitu-button-primary" href="/parent/progress">
+                      <Link className="qitu-button qitu-button-primary" href="/progress">
                         查看项目进度 →
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </SectionCard>
@@ -189,44 +161,18 @@ export default function HomePage() {
                       </div>
                     ) : null}
                     <div className="attention-actions">
-                      <a className="qitu-button qitu-button-secondary" href="/parent/progress">
+                      <Link className="qitu-button qitu-button-secondary" href="/progress">
                         查看详情
-                      </a>
+                      </Link>
                       {data.currentProject ? (
-                        <Button onClick={() => setFeedbackOpen((v) => !v)}>我有疑问</Button>
+                        <Button
+                          onClick={() => window.dispatchEvent(new CustomEvent('qitu:open-parent-feedback'))}
+                        >
+                          我有疑问
+                        </Button>
                       ) : null}
                     </div>
-                    {feedbackOpen ? (
-                      <div className="feedback-form">
-                        <textarea
-                          value={feedbackContent}
-                          onChange={(e) => {
-                            setFeedbackContent(e.target.value);
-                            if (feedbackState !== 'sending') setFeedbackState('idle');
-                          }}
-                          maxLength={500}
-                          rows={3}
-                          placeholder="请描述您对当前项目的疑问（1-500 字）…"
-                          aria-label="疑问内容"
-                        />
-                        <div className="feedback-actions">
-                          <small>{feedbackContent.trim().length}/500</small>
-                          <Button
-                            onClick={submitFeedback}
-                            loading={feedbackState === 'sending'}
-                            disabled={feedbackContent.trim().length === 0 || feedbackState === 'sending'}
-                          >
-                            提交
-                          </Button>
-                        </div>
-                        {feedbackState === 'sent' ? (
-                          <p className="feedback-done">已记录，服务团队会跟进您的问题。</p>
-                        ) : null}
-                        {feedbackState === 'error' ? (
-                          <p className="inline-error">提交失败，请稍后重试。</p>
-                        ) : null}
-                      </div>
-                    ) : null}
+
                   </div>
                 </SectionCard>
               </div>
@@ -254,7 +200,7 @@ export default function HomePage() {
                 </SectionCard>
                 <SectionCard
                   title="最近成果"
-                  action={<a href="/parent/progress">查看全部作品 →</a>}
+                  action={<Link href="/progress">查看全部作品 →</Link>}
                 >
                   {data.recentArtifacts.length ? (
                     <div className="artifact-grid">

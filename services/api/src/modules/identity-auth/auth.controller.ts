@@ -35,7 +35,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(
+  async login(
     @Body() body: LoginBody,
     @Ip() ip: string,
     @Headers('x-forwarded-for') forwardedFor: string | undefined,
@@ -50,7 +50,7 @@ export class AuthController {
     const clientKey =
       forwardedFor?.split(',')[0]?.trim() || ip || 'unknown';
 
-    const result = this.authService.login(email, password, rememberMe, clientKey);
+    const result = await this.authService.login(email, password, rememberMe, clientKey);
 
     response.cookie(SESSION_COOKIE, result.token, {
       httpOnly: true,

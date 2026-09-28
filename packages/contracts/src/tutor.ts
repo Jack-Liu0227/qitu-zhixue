@@ -1,4 +1,9 @@
-import type { ProjectStage } from './project';
+import type {
+  ProjectStage,
+  ProjectSummary,
+  StageProgressDisplay,
+  TemplateStage,
+} from './project';
 
 /**
  * The pedagogic move a student requests through the six capability entries on
@@ -114,7 +119,22 @@ export type TutorModalityMode =
  */
 export type TutorTurnModality = TutorInputModality;
 
-/** Whether a tutor session is bound to a project or unbound. */
+export interface TutorProjectCurrentTask {
+  id: string;
+  title: string;
+  detail?: string;
+  isTodayFocus: boolean;
+}
+
+/** Server-owned project context projection used by the AI搭档 page. */
+export interface TutorProjectContext {
+  project: ProjectSummary;
+  progress: StageProgressDisplay;
+  stages: TemplateStage[];
+  currentTask: TutorProjectCurrentTask | null;
+}
+
+
 export type TutorSessionSource = 'project' | 'unbound';
 
 export type TutorFeedbackKind = 'helpful' | 'confusing' | 'stuck';

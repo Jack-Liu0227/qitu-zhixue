@@ -45,11 +45,19 @@ export const parentApi = {
     get<{ data: ParentGrowthPageData }>(
       `/api/v1/parent/children/${encodeURIComponent(id)}/growth?limit=20`,
     ),
-  async post<T>(path: string, body: unknown): Promise<T> {
+  async post<T>(
+    path: string,
+    body: unknown,
+    options?: { idempotencyKey?: string },
+  ): Promise<T> {
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+      headers: {
+        'Content-Type': 'application/json',
+        // 复用调用方传入的幂等键：网络失败重试时不得生成新的键，否则会重复建单。
+        'Idempotency-Key': options?.idempotencyKey ?? crypto.randomUUID(),
+      },
       body: JSON.stringify(body),
     });
     if (!response.ok) {

@@ -158,10 +158,13 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
   useEffect(() => {
     if (projectStatus !== 'ready' || project === null) {
       // No session without a ready project. The left context panel owns the
-      // project's loading/empty/error surface; keep the conversation area in
-      // sync so it never spins forever on the no-project state.
-      setSessionStatus(projectStatus === 'loading' ? 'loading' : 'empty');
-      setSessionError(null);
+      // project's loading/empty/error surface; mirror that state into the
+      // conversation area so it never lies: a failed project load is an error
+      // (retryable), not an empty thread inviting the student to chat.
+      const sessionState: TutorLoadStatus =
+        projectStatus === 'loading' ? 'loading' : projectStatus === 'error' ? 'error' : 'empty';
+      setSessionStatus(sessionState);
+      setSessionError(projectStatus === 'error' ? projectError : null);
       setTurns([]);
       setSessionId(null);
       return;
@@ -201,7 +204,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     return () => {
       cancelled = true;
     };
-  }, [dataSource, project, projectStatus, sessionReloadKey, clearEchoes]);
+  }, [dataSource, project, projectStatus, projectError, sessionReloadKey, clearEchoes]);
 
   // Subscribe to the stream whenever a session exists.
   useEffect(() => {

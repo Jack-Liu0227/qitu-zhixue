@@ -17,6 +17,13 @@ export type ProjectStage =
   | 'published'
   | 'completed';
 
+export interface ProjectSummary {
+  id: string;
+  title: string;
+  stage: ProjectStage;
+  progress: number;
+}
+
 /**
  * A single stage of the frozen template used for the stage-progress bar.
  * `id` and `label` come from the frozen template version, not from global

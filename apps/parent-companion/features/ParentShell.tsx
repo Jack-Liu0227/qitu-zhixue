@@ -1,9 +1,11 @@
 'use client';
 import { AuthGuard, LogoutButton, useCurrentUser } from '@qitu/auth';
 import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
+import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { ParentFeedbackWidget } from './ParentFeedbackWidget';
 const BASE_PATH = '/parent';
 const specs = [
   { path: '/', label: '首页', icon: '⌂' },
@@ -58,11 +60,16 @@ export function ParentShell({ children }: { children: ReactNode }) {
             <div className="parent-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '演示家长'} size="sm" />
               <span>{user?.displayName ?? '演示家长'}</span>
-              <LogoutButton redirectTo="/parent/login" />
+              <PreferencesMenu />
+              <LogoutButton redirectTo="/" />
             </div>
           </header>
-          <main className="parent-content">{children}</main>
+          {/* key 绑定内部路径：客户端跳转时内容区重挂载，统一页面转场得以重播。 */}
+          <main className="parent-content qitu-page-transition" key={internal(pathname)}>
+            {children}
+          </main>
         </div>
+        <ParentFeedbackWidget />
       </div>
     </AuthGuard>
   );

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type {
   ChildRef,
   GrowthProjectOption,
@@ -13,6 +13,8 @@ import type {
   StudentGrowthSummary,
   StudentGrowthTimeline,
 } from '@qitu/contracts';
+import type { DirectoryService } from '../directory/directory.service';
+import { normaliseEvidenceIds, observationStateFor } from './growth.evidence';
 
 /**
  * 成长轨迹服务端。
@@ -26,17 +28,6 @@ import type {
  * 存储是进程内的：这符合当前「模块化单体 + 无数据库」的形态。换数据库时只需
  * 替换下面三个私有 Map，控制器与投影逻辑不用动。
  */
-
-/** 家长 → 孩子的绑定关系。对象级权限的唯一真相，前端不可扩展。 */
-const PARENT_CHILDREN: Record<string, string[]> = {
-  'parent-demo': ['student-demo', 'student-demo-3'],
-  'parent-demo-2': ['student-demo-2'],
-};
-
-const CHILD_DISPLAY_NAME: Record<string, string> = {
-  'student-demo': '小宇',
-  'student-demo-2': '小禾',
-};
 
 const PROJECT_TITLES: Record<string, string> = {
   'project-demo-001': '校园植物观察手册',
@@ -68,6 +59,11 @@ export interface GrowthRecordInput {
   artifactRef?: string | null;
   objectiveTitles?: string[];
   encouragement?: string | null;
+  /**
+   * 服务端证据引用（`sourceKind:opaqueId`）。调用方传入的值会经过白名单
+   * 归一化；非法 / 未知来源被静默丢弃，绝不影响记录本身的写入。
+   */
+  evidenceIds?: string[];
 }
 
 @Injectable()
@@ -78,7 +74,9 @@ export class GrowthService {
   /** 家长投影用的措辞与学生投影是两条独立文案，绝不互相兜底。 */
   private readonly parentWording = new Map<string, string>();
 
-  constructor() {
+  constructor(
+    @Inject('DirectoryService') private readonly directory: DirectoryService,
+  ) {
     this.seedDemoData();
   }
 
@@ -137,28 +135,37 @@ export class GrowthService {
   /* --------------------------- 读：家长投影 --------------------------- */
 
   /** 只返回**这个家长自己**的孩子。越权在服务端挡住，不靠前端隐藏。 */
-  getChildren(parentId: string): ChildRef[] {
-    const childIds = PARENT_CHILDREN[parentId] ?? [];
-    return childIds.map((childId) => ({
-      childId,
-      displayName: CHILD_DISPLAY_NAME[childId] ?? '孩子',
-      activeProjectCount: this.getProjects(childId).length,
+  async getChildren(parentId: string): Promise<ChildRef[]> {
+    const children = await this.directory.childrenOfParent(parentId);
+    return children.map((child) => ({
+      childId: child.userId,
+      displayName: child.displayName,
+      activeProjectCount: this.getProjects(child.userId).length,
     }));
   }
 
   /** 家长是否能看到这个孩子。控制器必须先问这个方法。 */
-  canParentReadChild(parentId: string, childId: string): boolean {
-    return (PARENT_CHILDREN[parentId] ?? []).includes(childId);
+  async canParentReadChild(parentId: string, childId: string): Promise<boolean> {
+    const children = await this.directory.childrenOfParent(parentId);
+    return children.some((c) => c.userId === childId);
   }
 
-  getParentPage(childId: string, query: StudentGrowthQuery): ParentGrowthPageData {
+  async getParentPage(childId: string, query: StudentGrowthQuery): Promise<ParentGrowthPageData> {
     const studentSummary = this.getSummary(childId);
     const all = this.entries(childId);
     const timeline = this.getTimeline(childId, query);
 
+    // 显示名从目录取，而不是本地硬编码。
+    //
+    // 之前这里是一张写死的 { student-demo: '小宇', student-demo-2: '小禾' } 表，
+    // 于是同一个孩子在家长端叫「小宇」、在教师名册和管理后台叫「演示学生」。
+    // 目录是身份的唯一真相，所以这里直接问它——多出一个 await 换来全站一致。
+    const child = await this.directory.findUser(childId);
+    const childDisplayName = child?.displayName ?? '孩子';
+
     const summary: ParentGrowthSummary = {
       childId,
-      childDisplayName: CHILD_DISPLAY_NAME[childId] ?? '孩子',
+      childDisplayName,
       streakDays: studentSummary.streakDays,
       projectsCompleted: studentSummary.projectsCompleted,
       objectivesMastered: studentSummary.objectivesMastered,
@@ -187,6 +194,9 @@ export class GrowthService {
         ? null
         : (PROJECT_TITLES[input.projectId] ?? input.projectId);
 
+    // 证据引用只走服务端白名单；观察状态由证据有无推导，客户端无法写入。
+    const evidenceIds = normaliseEvidenceIds(input.evidenceIds);
+
     const entry: StudentGrowthEntry = {
       id: `growth-${input.studentId}-${this.entries(input.studentId).length + 1}`,
       type: input.type,
@@ -200,6 +210,8 @@ export class GrowthService {
       objectiveTitles: input.objectiveTitles ?? [],
       icon: ICON_BY_TYPE[input.type],
       encouragement: input.encouragement ?? null,
+      evidenceIds,
+      observationState: observationStateFor(evidenceIds),
     };
 
     this.entries(input.studentId).push(entry);
@@ -297,6 +309,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'reflection',
       encouragement: '会发现好问题，比会背答案更重要。',
+      evidenceIds: ['reflection:reflection-demo-001'],
     });
 
     this.record({
@@ -309,6 +322,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'published',
       artifactRef: 'artifact-demo-001',
+      evidenceIds: ['artifact:artifact-demo-001'],
     });
 
     this.record({
@@ -321,6 +335,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'theory_check',
       objectiveTitles: ['光合作用的条件'],
+      evidenceIds: ['theory_check:theory-demo-001', 'student_answer:answer-demo-001'],
     });
 
     this.record({
@@ -332,6 +347,7 @@ export class GrowthService {
       summaryParent: '孩子完成了项目的理论阶段，进入实践准备。',
       projectId: 'project-demo-001',
       stage: 'practice_ready',
+      evidenceIds: ['theory_check:theory-demo-002'],
     });
 
     this.record({
@@ -344,6 +360,7 @@ export class GrowthService {
       projectId: 'project-demo-001',
       stage: 'theory_learning',
       objectiveTitles: ['观察记录的要素'],
+      evidenceIds: ['student_answer:answer-demo-002'],
     });
 
     this.record({

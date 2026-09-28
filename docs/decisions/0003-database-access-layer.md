@@ -61,10 +61,13 @@ packages/database/
 1. **迁移形态与仓库约定完全一致。** `database/README.md` 要求单向 SQL 迁移 + 回滚说明；
    `drizzle-kit generate` 产出的就是可读、可手改、可逐行评审的 `.sql` 文件。
    每个领域的 schema 是一个独立 TS 文件，正好对应「迁移必须与拥有该表的模块一起评审」。
-2. **零构建脚本。** Drizzle 是纯 TS，没有 postinstall。
+2. **Schema 包不引入生命周期脚本。** Drizzle 是纯 TS，没有 postinstall。
    选 Prisma 必须把 `@prisma/client` / `prisma` 加进 `pnpm-workspace.yaml` 的
    `onlyBuiltDependencies` 白名单（pnpm 10 默认阻止依赖生命周期脚本），
    而该仓库的既有取向是把这个白名单压到最小（目前 3 项）。这是供应链面。
+   （注意：`packages/database` **有一个显式 `build` 脚本**把 src 编译到 `dist/`，
+   那是**运行时**需要、不是类型需要，详见下方「实施补充 1」；
+   它不改变「没有 postinstall、不需要 codegen」这个结论。）
 3. **类型不依赖代码生成步骤。** 类型直接从 TS schema 推导，
    `pnpm typecheck` 不需要先跑 `prisma generate`。
    对「多 agent 并行写代码 + typecheck 作为验证门」这点很关键——
@@ -120,6 +123,82 @@ packages/database/
 - 不使用 ORM 的 schema 自动同步（`push`）作为生产迁移路径——生产只走 `database/migrations/`。
 - 不把向量、审计、outbox 的 SQL 抽象成"通用仓储"，它们各自语义不同。
 - 不在 M1 建任何项目业务表（遵守 `database/README.md`：identity 先行）。
+
+## 实施补充（2026-09-27）
+
+### 1. 「类型 import」与「运行时 import」是两件事（重要）
+
+ADR 原文写的是「`packages/database` 可被 `services/api` **直接 import 类型**」。
+实施时把它当成「可以直接 import」来写，**导致 API 启动即崩**：
+
+```
+file:///.../packages/database/src/index.ts:3
+export type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+^^^^^^
+SyntaxError: Unexpected token 'export'
+```
+
+原因是 `packages/database/package.json` 原本 `exports: "./src/index.ts"`，
+而 `services/api` 的构建边界是 `nest start --watch` + `tsconfig` 的
+`rootDir: "src"` / `include: ["src/**/*.ts"]` —— **workspace 包的 TS 源码从不参与编译**，
+Node 在运行时直接 `require` 到裸 TS，于是 ESM 语法炸掉。
+
+`@qitu/contracts` 用同样的 `exports` 却一直没事，是因为它**只导出类型**，
+编译期就被擦除了。这个差别是隐性的，必须在仓库层明确：
+
+> **规则：workspace 包只要导出任何运行时值（函数/对象/常量），
+> 就必须构建到 `dist/` 并把 `exports` 指向产物；
+> 纯类型的包才可以 `exports` 指向 `src/index.ts`。**
+
+因此 `packages/database` 现在有：
+
+- `tsconfig.build.json`（`module: Node16` → CJS，`outDir: dist`，排除 `src/seed.ts`）
+- `package.json` 的 `main` / `types` / `exports` 全部指向 `./dist`，并新增 `build` 脚本
+- `turbo.json` 的 `typecheck` 增加 `dependsOn: ["^build"]`，
+  保证在干净环境里 `pnpm typecheck` 不会因缺 `dist` 而假失败
+- `tooling/start-qitu-services.sh` 在启动 api 前重建该包（`nest --watch`
+  只监听 `services/api/src`，不会感知 `dist` 变化，所以重建后必须重启 api）
+
+代价：turbo 会对 `tsc --noEmit` 型 build 任务报
+`no output files found` 警告（无害噪声）。
+
+### 2. 迁移与种子落位
+
+- 迁移产物：`database/migrations/0000_clever_kang.sql`（+ 手写 `.down.sql`）。
+- 种子真源：`database/seeds/demo-identities.sql`（**唯一一份**），
+  由 `packages/database/src/seed.ts` 读取执行，避免 SQL/TS 两份数据漂移。
+- 已实测：空库重放迁移 → 连跑两次种子，第二次 `users 9 -> 9`（幂等）。
+- `password_hash` 目前存 `sha256(明文)` 十六进制，与现有
+  `safePasswordEqual()` 语义等价，便于 Stage 2 平滑切到查库校验；
+  **正式用户上线前必须换成带盐 KDF（scrypt/argon2）**。
+
+### 3. 已验证的产品级约束
+
+两个部分唯一索引在真实库中已生效（非仅存在于 schema 代码）：
+
+```sql
+CREATE UNIQUE INDEX mentor_assignments_one_active_per_student_idx
+  ON mentor_assignments USING btree (student_user_id) WHERE status = 'active';
+CREATE UNIQUE INDEX guardian_links_active_unique_idx
+  ON guardian_links USING btree (parent_user_id, student_user_id) WHERE status = 'active';
+```
+
+重复插入同一学生的 active 班主任会被数据库拒绝，而不是靠应用层自觉。
+
+### 4. 尚未解决的已知不一致（Stage 2 必须先定调）
+
+同一批演示账号的显示名在两处不同，`users` 表目前沿用了 auth 那一版：
+
+| id | `auth.service.ts` | `platform-data.service.ts`（班主任看到的名单） |
+|---|---|---|
+| `student-demo` | 演示学生 | 小宇 |
+| `student-demo-2` | 演示学生二 | 小禾 |
+| `student-demo-3` | 演示学生三 | 小满 |
+| `student-demo-4` | 演示学生四 | 小舟 |
+
+`apps/teacher-workspace` 还有第三套（`lib/mock-data.ts` 的 `林小宇/五年级`，
+`id` 是 `s-001`），且完全没有接 API。
+**「数据统一」在 Stage 2 必须选定唯一一套并删掉另外两套**，否则三处仍会各自漂移。
 
 ## 待确认
 

@@ -33,12 +33,22 @@ import type {
   ParentMessageFocus,
   ParentMessagesSummary,
   ParentServiceTicket,
-  ParentMessageTimelineStep,
+  ParentFeedbackListResponse,
+  ParentFeedbackDetailResponse,
+  ParentFeedbackMutationResponse,
+  SupplementParentFeedbackRequest,
+  ConfirmParentFeedbackRequest,
+  ParentGrowthExportRequest,
+  ParentGrowthExportResponse,
+  ParentGrowthExportDownloadResponse,
 } from '@qitu/contracts';
 import { pickFields, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
+import { DirectoryService } from '../directory/directory.service';
 import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { FeedbackService } from '../feedback/feedback.service';
+import { ParentGrowthExportService } from './growth-export.service';
 
 /**
  * 家长陪伴中心接口。
@@ -56,8 +66,11 @@ import { PlatformDataService } from '../platform-data/platform-data.service';
 export class ParentController {
   constructor(
     private readonly authService: AuthService,
+    private readonly directory: DirectoryService,
     private readonly growthService: GrowthService,
     private readonly platformData: PlatformDataService,
+    private readonly feedbackService: FeedbackService,
+    private readonly growthExportService: ParentGrowthExportService,
   ) {}
 
   /* ==================== 读接口 ==================== */
@@ -66,15 +79,17 @@ export class ParentController {
    * 首页：KPI、当前项目、需要关注、成长摘要、最近成果。
    */
   @Get('children/:childId/dashboard')
-  getDashboard(
+  async getDashboard(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('childId') childId: string,
-  ): { data: ParentHomePageData } {
+  ): Promise<{ data: ParentHomePageData }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
-    this.assertParentCanReadChild(user.id, childId);
+    await this.assertParentCanReadChild(user.id, childId);
 
-    const student = this.platformData.getStudent(childId);
-    if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
+    // 身份（含展示名）取自目录这个唯一真源；项目进度、卡片内容等只有演示数据才有的字段仍来自 platform-data。
+    const student = await this.directory.findUser(childId);
+    const demo = this.platformData.getStudent(childId);
+    if (student === null || demo === null) throw new ForbiddenException('无权查看该孩子的数据');
 
     const summary = this.growthService.getSummary(childId);
     const projects = this.platformData.getProjectsByStudent(childId);
@@ -99,8 +114,8 @@ export class ParentController {
       {
         id: 'current_progress',
         label: '当前项目进度',
-        value: `${student.progressPercent}%`,
-        hint: student.currentProjectTitle ?? null,
+        value: `${demo.progressPercent}%`,
+        hint: demo.currentProjectTitle ?? null,
         trend: 'up',
       },
       {
@@ -113,15 +128,15 @@ export class ParentController {
     ];
 
     // 当前项目
-    const currentProject: ParentCurrentProject | null = student.currentProjectId
+    const currentProject: ParentCurrentProject | null = demo.currentProjectId
       ? {
-          projectId: student.currentProjectId,
-          title: student.currentProjectTitle ?? '未命名项目',
+          projectId: demo.currentProjectId,
+          title: demo.currentProjectTitle ?? '未命名项目',
           summary: '通过观察校园植物，学习记录方法和科学思维。',
-          stage: student.currentStage ?? 'intent_confirmed',
-          stageLabel: this.getStageLabel(student.currentStage),
-          progressPercent: student.progressPercent,
-          todayTask: student.stuck ? null : '继续观察记录，完成第 7 种植物',
+          stage: demo.currentStage ?? 'intent_confirmed',
+          stageLabel: this.getStageLabel(demo.currentStage),
+          progressPercent: demo.progressPercent,
+          todayTask: demo.stuck ? null : '继续观察记录，完成第 7 种植物',
           lastCompleted: '写下第一次观察反思',
           nextStep: '邀请同学一起扩充植物库',
         }
@@ -129,7 +144,7 @@ export class ParentController {
 
     // 需要关注
     const attention: ParentAttentionItem[] = [];
-    if (student.stuck) {
+    if (demo.stuck) {
       attention.push({
         id: 'attention-stuck',
         level: 'attention',
@@ -147,10 +162,10 @@ export class ParentController {
     }
 
     // 建议提问
-    const suggestedQuestion: ParentSuggestedQuestion | null = student.currentProjectTitle
+    const suggestedQuestion: ParentSuggestedQuestion | null = demo.currentProjectTitle
       ? {
-          text: `${student.displayName}在做${student.currentProjectTitle}时，你觉得最有趣的是什么？`,
-          projectTitle: student.currentProjectTitle,
+          text: `${student.displayName}在做${demo.currentProjectTitle}时，你觉得最有趣的是什么？`,
+          projectTitle: demo.currentProjectTitle,
         }
       : null;
 
@@ -190,14 +205,15 @@ export class ParentController {
    * 学习进展：作品列表、焦点作品、成长标注、版本时间线。
    */
   @Get('children/:childId/progress')
-  getProgress(
+  async getProgress(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('childId') childId: string,
-  ): { data: ParentProgressPageData } {
+  ): Promise<{ data: ParentProgressPageData }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
-    this.assertParentCanReadChild(user.id, childId);
+    await this.assertParentCanReadChild(user.id, childId);
 
-    const student = this.platformData.getStudent(childId);
+    // 身份（含展示名）取自目录这个唯一真源。
+    const student = await this.directory.findUser(childId);
     if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
 
     const projects = this.platformData.getProjectsByStudent(childId);
@@ -260,18 +276,20 @@ export class ParentController {
    * 消息与反馈：消息列表、服务工单。
    */
   @Get('children/:childId/messages')
-  getMessages(
+  async getMessages(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('childId') childId: string,
-  ): { data: ParentMessagesPageData } {
+  ): Promise<{ data: ParentMessagesPageData }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
-    this.assertParentCanReadChild(user.id, childId);
+    await this.assertParentCanReadChild(user.id, childId);
 
-    const student = this.platformData.getStudent(childId);
+    // 身份（含展示名）取自目录这个唯一真源。
+    const student = await this.directory.findUser(childId);
     if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
 
     const demoMessages = this.platformData.getMessagesByChild(childId);
-    const demoTickets = this.platformData.getTicketsByChild(childId);
+    // 服务工单来自统一反馈服务，不再直读 platform-data（那里已经不再维护工单）。
+    const feedbackTickets = await this.feedbackService.listForParent(user.id, childId);
 
     // 消息列表
     const messages: ParentMessage[] = demoMessages.map((m) => {
@@ -307,12 +325,12 @@ export class ParentController {
     });
 
     // 服务工单
-    const tickets: ParentServiceTicket[] = demoTickets.map((t) => ({
+    const tickets: ParentServiceTicket[] = feedbackTickets.map((t) => ({
       id: t.id,
       problem: t.problem,
       projectTitle: t.projectTitle,
-      owner: t.owner,
-      status: t.status,
+      owner: t.owner ?? '待分配',
+      status: t.status === 'resolved' ? 'resolved' : 'processing',
       handledIn: t.handledIn,
     }));
 
@@ -342,14 +360,14 @@ export class ParentController {
    * 要求 `Idempotency-Key` 头；同 key 重放返回第一次的结果。
    */
   @Post('children/:childId/encouragements')
-  sendEncouragement(
+  async sendEncouragement(
     @Headers('cookie') cookieHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('childId') childId: string,
     @Body() body: unknown,
-  ): { data: SendEncouragementResponse } {
+  ): Promise<{ data: SendEncouragementResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
-    this.assertParentCanReadChild(user.id, childId);
+    await this.assertParentCanReadChild(user.id, childId);
 
     if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
       throw new BadRequestException({
@@ -392,15 +410,15 @@ export class ParentController {
    */
   @Post('children/:childId/messages/:messageId/ack')
   @HttpCode(200)
-  ackMessage(
+  async ackMessage(
     @Headers('cookie') cookieHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('childId') childId: string,
     @Param('messageId') messageId: string,
     @Body() body: unknown,
-  ): { data: ParentMessageAckResponse } {
+  ): Promise<{ data: ParentMessageAckResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
-    this.assertParentCanReadChild(user.id, childId);
+    await this.assertParentCanReadChild(user.id, childId);
 
     if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
       throw new BadRequestException({
@@ -441,78 +459,172 @@ export class ParentController {
 
   /**
    * 提交反馈。
+   *
+   * 目标孩子不再写死：关联孩子时服务端由 `childId` 或 message/project 推导并校验一致；
+   * 一般使用问题可以不关联孩子，服务端会进入受限待分配队列；有关联孩子时再次校验家长绑定关系。
    */
   @Post('feedback')
-  submitFeedback(
+  async submitFeedback(
     @Headers('cookie') cookieHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: unknown,
-  ): { data: SubmitParentFeedbackResponse } {
+  ): Promise<{ data: SubmitParentFeedbackResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
 
     if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
       throw new BadRequestException({
-        code: 'IDEMPOTENCY_CONFLICT',
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
         message: '缺少 Idempotency-Key 请求头',
       });
     }
 
     const input = pickFields<SubmitParentFeedbackRequest>(body, [
       'source',
+      'childId',
       'content',
       'messageId',
       'projectId',
+      'attachmentRefs',
     ]);
 
-    const content = input.content?.trim() ?? '';
-    if (content.length === 0 || content.length > 500) {
-      throw new BadRequestException({
-        code: 'FEEDBACK_INVALID',
-        message: '反馈内容长度必须在 1 到 500 字之间',
-      });
-    }
-
-    if (input.source === 'message' && !input.messageId) {
-      throw new BadRequestException('source 为 message 时 messageId 必填');
-    }
-
-    if (input.source === 'project' && !input.projectId) {
-      throw new BadRequestException('source 为 project 时 projectId 必填');
-    }
-
-    // 提取 childId（简化：从 messageId 或 projectId 推断；生产环境应从绑定关系查）
-    const childId = 'student-demo'; // 演示简化
-
-    const record = this.platformData.recordFeedback(
-      user.id,
-      childId,
-      input.source ?? 'general',
-      content,
-      input.messageId ?? null,
-      input.projectId ?? null,
-      idempotencyKey,
-    );
-
-    if (record === null) {
-      throw new ConflictException({
-        code: 'IDEMPOTENCY_CONFLICT',
-        message: '该幂等键已被使用',
-      });
-    }
+    const ticket = await this.feedbackService.submitParentFeedback(user.id, input, idempotencyKey);
 
     return {
       data: {
-        ticketId: record.id,
+        ticketId: ticket.id,
         status: 'processing',
-        createdAt: record.createdAt,
+        createdAt: ticket.createdAt,
       },
     };
   }
 
+  /** 某孩子名下的全部反馈工单（家长必须绑定该孩子）。 */
+  @Get('children/:childId/feedback')
+  async listFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('childId') childId: string,
+  ): Promise<{ data: ParentFeedbackListResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    const tickets = await this.feedbackService.listForParent(user.id, childId);
+    return { data: { tickets } };
+  }
+
+  /** 单条反馈工单详情（含完整时间线）。 */
+  @Get('feedback/:ticketId')
+  async getFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('ticketId') ticketId: string,
+  ): Promise<{ data: ParentFeedbackDetailResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    const ticket = await this.feedbackService.getForParent(user.id, ticketId);
+    return { data: { ticket } };
+  }
+
+  /** 家长补充说明（追问）；已解决的工单需先重新打开。 */
+  @Post('feedback/:ticketId/supplements')
+  @HttpCode(200)
+  async supplementFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: ParentFeedbackMutationResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<SupplementParentFeedbackRequest>(body, ['content', 'attachmentRefs']);
+    const ticket = await this.feedbackService.supplementParentFeedback(
+      user.id,
+      ticketId,
+      input,
+      idempotencyKey,
+    );
+    return { data: { ticket } };
+  }
+
+  /** 家长确认工单结果：`resolved=true` 关闭；`false` 重新打开。 */
+  @Post('feedback/:ticketId/confirm')
+  @HttpCode(200)
+  async confirmFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: ParentFeedbackMutationResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<ConfirmParentFeedbackRequest>(body, ['resolved', 'note']);
+    const ticket = await this.feedbackService.confirmParentFeedback(
+      user.id,
+      ticketId,
+      input,
+      idempotencyKey,
+    );
+    return { data: { ticket } };
+  }
+
+  /**
+   * 申请一次成长数据导出。
+   *
+   * 要求 `Idempotency-Key` 头；请求体必须同时确认 `confirmChildId`（与路径
+   * `:childId` 一致）与 `confirmGuardianEmail`（与登录家长邮箱一致），否则 400。
+   * 返回的是**任务元数据**，不含正文；正文通过下载接口读取。
+   */
+  @Post('children/:childId/growth-exports')
+  async requestGrowthExport(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('childId') childId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: ParentGrowthExportResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<ParentGrowthExportRequest>(body, [
+      'confirmChildId',
+      'confirmGuardianEmail',
+      'reason',
+    ]);
+    const job = await this.growthExportService.requestExport(user, childId, input, idempotencyKey);
+    return { data: { job } };
+  }
+
+  /**
+   * 下载导出正文。
+   *
+   * 每次下载都重新校验 active 监护关系：授权被撤销后返回 403，而不是空数据；
+   * 过期返回 410；不属于当前家长的任务返回 404（不泄露存在性）。
+   */
+  @Get('growth-exports/:exportId/download')
+  async downloadGrowthExport(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('exportId') exportId: string,
+  ): Promise<{ data: ParentGrowthExportDownloadResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    const document = await this.growthExportService.downloadExport(user, exportId);
+    return { data: { document } };
+  }
+
   /* ==================== 内部工具 ==================== */
 
-  private assertParentCanReadChild(parentId: string, childId: string): void {
-    if (!this.growthService.canParentReadChild(parentId, childId)) {
+  private async assertParentCanReadChild(parentId: string, childId: string): Promise<void> {
+    if (!(await this.growthService.canParentReadChild(parentId, childId))) {
       throw new ForbiddenException('无权查看该孩子的数据');
     }
   }

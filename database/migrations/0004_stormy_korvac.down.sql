@@ -1,0 +1,13 @@
+DROP INDEX IF EXISTS "projects_status_idx";
+DROP INDEX IF EXISTS "projects_student_idx";
+DROP INDEX IF EXISTS "projects_source_exploration_unique_idx";
+DROP INDEX IF EXISTS "intent_confirmations_exploration_unique_idx";
+DROP INDEX IF EXISTS "exploration_sessions_status_idx";
+DROP INDEX IF EXISTS "exploration_sessions_student_idx";
+ALTER TABLE "projects" DROP CONSTRAINT IF EXISTS "projects_source_exploration_id_exploration_sessions_id_fk";
+ALTER TABLE "projects" DROP CONSTRAINT IF EXISTS "projects_student_user_id_users_id_fk";
+ALTER TABLE "intent_confirmations" DROP CONSTRAINT IF EXISTS "intent_confirmations_exploration_id_exploration_sessions_id_fk";
+ALTER TABLE "exploration_sessions" DROP CONSTRAINT IF EXISTS "exploration_sessions_student_user_id_users_id_fk";
+DROP TABLE IF EXISTS "projects";
+DROP TABLE IF EXISTS "intent_confirmations";
+DROP TABLE IF EXISTS "exploration_sessions";

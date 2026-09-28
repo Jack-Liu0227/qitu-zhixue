@@ -1,20 +1,25 @@
+/*
+ * 教师端沿用 @qitu/ui 提供的全局设计 token（`--qitu-*`，由 styles.css 定义，
+ * 在 layout 中先于本文件引入）。这里只保留一层局部别名，避免同一套品牌色在
+ * 教师端被写成第二份真源。缺少 token 的中性/辅助色仍暂时保留原值。
+ */
 :root {
-  --qtx-bg: #f3f7fc;
+  --qtx-bg: var(--qitu-page);
   --qtx-sidebar-bg: rgba(255, 255, 255, 0.95);
   --qtx-card-bg: #ffffff;
-  --qtx-border: #e2e8f0;
+  --qtx-border: var(--qitu-border);
   --qtx-border-soft: #eef2f7;
-  --qtx-heading: #1e293b;
-  --qtx-text: #334155;
-  --qtx-muted: #64748b;
+  --qtx-heading: var(--qitu-heading);
+  --qtx-text: var(--qitu-text);
+  --qtx-muted: var(--qitu-muted);
   --qtx-faint: #94a3b8;
-  --qtx-blue: #2563eb;
-  --qtx-blue-600: #2563eb;
+  --qtx-blue: var(--qitu-primary);
+  --qtx-blue-600: var(--qitu-primary);
   --qtx-blue-700: #1d4ed8;
-  --qtx-blue-soft: #eff6ff;
-  --qtx-emerald: #059669;
-  --qtx-amber: #d97706;
-  --qtx-rose: #e11d48;
+  --qtx-blue-soft: var(--qitu-primary-soft);
+  --qtx-emerald: var(--qitu-completed);
+  --qtx-amber: var(--qitu-attention);
+  --qtx-rose: var(--qitu-danger);
   --qtx-indigo: #4f46e5;
   --qtx-purple: #7c3aed;
   --qtx-sky: #0284c7;
@@ -61,13 +66,13 @@ a { color: inherit; text-decoration: none; }
 .qtx-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 26px; }
 .qtx-brand-logo {
   width: 40px; height: 40px; border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  background: linear-gradient(135deg, var(--qtx-blue), var(--qtx-indigo));
   display: flex; align-items: center; justify-content: center;
   color: white; flex-shrink: 0;
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
 }
-.qtx-brand h1 { margin: 0; font-size: 18px; font-weight: 800; color: #1e293b; letter-spacing: -0.02em; }
-.qtx-brand p { margin: 4px 0 0; font-size: 10px; color: #94a3b8; letter-spacing: 0.08em; }
+.qtx-brand h1 { margin: 0; font-size: 18px; font-weight: 800; color: var(--qtx-heading); letter-spacing: -0.02em; }
+.qtx-brand p { margin: 4px 0 0; font-size: 10px; color: var(--qtx-faint); letter-spacing: 0.08em; }
 
 .qtx-nav { display: flex; flex-direction: column; gap: 6px; }
 .qtx-nav-item {
@@ -76,26 +81,26 @@ a { color: inherit; text-decoration: none; }
   color: #475569; font-size: 14px; font-weight: 500;
   transition: all 0.15s ease;
 }
-.qtx-nav-item svg { color: #94a3b8; transition: color 0.15s ease; }
-.qtx-nav-item:hover { background: #f8fafc; color: #1d4ed8; }
-.qtx-nav-item:hover svg { color: #2563eb; }
+.qtx-nav-item svg { color: var(--qtx-faint); transition: color 0.15s ease; }
+.qtx-nav-item:hover { background: #f8fafc; color: var(--qtx-blue-700); }
+.qtx-nav-item:hover svg { color: var(--qtx-blue); }
 .qtx-nav-item.active {
-  background: linear-gradient(135deg, #eff6ff, #e0eaff);
-  color: #1d4ed8; font-weight: 700;
+  background: linear-gradient(135deg, var(--qtx-blue-soft), #e0eaff);
+  color: var(--qtx-blue-700); font-weight: 700;
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
-.qtx-nav-item.active svg { color: #2563eb; }
+.qtx-nav-item.active svg { color: var(--qtx-blue); }
 .qtx-nav-badge {
   margin-left: auto; padding: 2px 8px; border-radius: 999px;
-  background: #e11d48; color: white; font-size: 12px; font-weight: 700;
+  background: var(--qtx-rose); color: white; font-size: 12px; font-weight: 700;
   line-height: 1.2;
 }
-.qtx-nav-item.active .qtx-nav-badge { background: #e11d48; }
+.qtx-nav-item.active .qtx-nav-badge { background: var(--qtx-rose); }
 
 .qtx-sidebar-bottom {
   margin-top: 32px; padding: 18px 14px 8px;
   border-top: 1px solid #eef2f7;
-  color: #94a3b8; font-size: 12px; line-height: 1.7;
+  color: var(--qtx-faint); font-size: 12px; line-height: 1.7;
 }
 .qtx-sidebar-bottom strong { color: #475569; font-weight: 600; }
 
@@ -107,33 +112,30 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
 }
 
-.qtx-bell {
-  position: relative; width: 40px; height: 40px; border-radius: 12px;
-  border: 1px solid #e2e8f0; background: #fff; color: #64748b;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-}
-.qtx-bell-dot {
-  position: absolute; top: 9px; right: 9px; width: 8px; height: 8px;
-  border-radius: 50%; background: #e11d48; border: 2px solid #fff;
-}
-
 .qtx-user {
-  display: flex; align-items: center; gap: 12px; cursor: pointer;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1px solid var(--qtx-border); border-radius: 14px;
   padding: 6px 12px 6px 6px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
+
+/* 会话尚未加载时的中性占位，避免显示任何编造的身份信息。 */
+.qtx-avatar.qtx-avatar-placeholder { background: var(--qtx-border); }
+
+/* @qitu/auth 的 LogoutButton 默认是固定定位的浮层按钮，在顶栏里需要回到常规流。 */
+.qtx-topbar .auth-logout {
+  position: static; padding: 6px 10px; border: 0; border-radius: 0;
+  background: transparent; color: var(--qtx-muted); font: inherit;
+  font-size: 12px; cursor: pointer;
+}
+.qtx-topbar .auth-logout:hover { border-color: transparent; color: var(--qtx-rose); }
 .qtx-avatar {
   width: 38px; height: 38px; border-radius: 10px;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  background: linear-gradient(135deg, var(--qtx-blue), var(--qtx-indigo));
   color: white; font-weight: 700; display: flex; align-items: center; justify-content: center;
   font-size: 14px;
 }
-.qtx-user-name { font-size: 13px; font-weight: 700; color: #1e293b; }
-.qtx-user-role { font-size: 11px; color: #94a3b8; }
-.qtx-logout {
-  border: 0; background: transparent; color: #64748b; font-size: 12px; cursor: pointer; padding: 6px 10px;
-}
-.qtx-logout:hover { color: #e11d48; }
+.qtx-user-name { font-size: 13px; font-weight: 700; color: var(--qtx-heading); }
+.qtx-user-role { font-size: 11px; color: var(--qtx-faint); }
 
 .qtx-content { padding: 0 28px 28px; display: flex; flex-direction: column; gap: 20px; }
 
@@ -164,12 +166,23 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; justify-content: space-between;
   padding-bottom: 14px; margin-bottom: 12px; border-bottom: 1px solid #eef2f7;
 }
-.qtx-panel-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: #1e293b; }
-.qtx-panel-title .dot { width: 8px; height: 18px; border-radius: 999px; background: #2563eb; }
+.qtx-panel-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--qtx-heading); }
+.qtx-panel-title .dot { width: 8px; height: 18px; border-radius: 999px; background: var(--qtx-blue); }
+.qtx-panel-hint { font-size: 11px; color: var(--qtx-faint); font-weight: 600; }
+
+/*
+ * 无后端动作时的非交互说明。刻意不用按钮样式：它不响应点击，也不应被
+ * 误认为可以执行某个操作。
+ */
+.qtx-note {
+  padding: 12px 14px; border-radius: var(--qtx-radius-sm);
+  background: #f8fafc; border: 1px solid var(--qtx-border-soft);
+  font-size: 12px; color: var(--qtx-muted); line-height: 1.7;
+}
 .qtx-muted { color: var(--qtx-muted); }
 .qtx-faint { color: var(--qtx-faint); }
 .qtx-small { font-size: 12px; }
-.qtx-link { color: #2563eb; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.qtx-link { color: var(--qtx-blue); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 
 /* ============ Hero / banner ============ */
 .qtx-banner {
@@ -192,7 +205,7 @@ a { color: inherit; text-decoration: none; }
 .qtx-banner-right { display: flex; align-items: center; gap: 12px; }
 .qtx-bubble {
   background: rgba(255, 255, 255, 0.95); padding: 10px 14px; border-radius: 14px 14px 0 14px;
-  font-size: 11px; font-weight: 600; color: #334155; border: 1px solid #fff;
+  font-size: 11px; font-weight: 600; color: var(--qtx-text); border: 1px solid #fff;
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08); max-width: 180px; line-height: 1.5;
 }
 
@@ -206,11 +219,11 @@ a { color: inherit; text-decoration: none; }
   width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
-.qtx-metric-label { font-size: 12px; font-weight: 600; color: #94a3b8; }
+.qtx-metric-label { font-size: 12px; font-weight: 600; color: var(--qtx-faint); }
 .qtx-metric-value { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1; margin-top: 2px; }
-.qtx-metric-delta { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-.qtx-metric-delta .up { color: #059669; font-weight: 700; }
-.qtx-metric-delta .down { color: #e11d48; font-weight: 700; }
+.qtx-metric-delta { font-size: 11px; color: var(--qtx-faint); margin-top: 3px; }
+.qtx-metric-delta .up { color: var(--qtx-emerald); font-weight: 700; }
+.qtx-metric-delta .down { color: var(--qtx-rose); font-weight: 700; }
 
 /* ============ Badges & tags ============ */
 .qtx-badge {
@@ -218,74 +231,76 @@ a { color: inherit; text-decoration: none; }
   padding: 3px 9px; border-radius: 8px; font-size: 11px; font-weight: 700;
   border: 1px solid transparent; white-space: nowrap;
 }
-.qtx-badge-blue { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
+.qtx-badge-blue { background: var(--qtx-blue-soft); color: var(--qtx-blue-700); border-color: #dbeafe; }
 .qtx-badge-amber { background: #fffbeb; color: #b45309; border-color: #fde68a; }
 .qtx-badge-rose { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
 .qtx-badge-emerald { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
 .qtx-badge-indigo { background: #eef2ff; color: #4338ca; border-color: #e0e7ff; }
-.qtx-badge-slate { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+.qtx-badge-slate { background: #f8fafc; color: #475569; border-color: var(--qtx-border); }
 .qtx-status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .qtx-tag {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
 }
 .qtx-tag-rose { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
-.qtx-tag-blue { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+.qtx-tag-blue { background: var(--qtx-blue-soft); color: var(--qtx-blue-700); border: 1px solid #dbeafe; }
 .qtx-tag-indigo { background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; }
 
 /* ============ Tables ============ */
-.qtx-table-wrap { overflow-x: auto; }
+/* 窄屏下表格横向滚动，而不是压缩列或溢出撑破卡片。 */
+.qtx-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.qtx-table-wrap .qtx-table { min-width: 520px; }
 .qtx-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
-.qtx-table th { padding: 10px 8px; color: #94a3b8; font-weight: 600; border-bottom: 1px solid #eef2f7; }
-.qtx-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.qtx-table th { padding: 10px 8px; color: var(--qtx-faint); font-weight: 600; border-bottom: 1px solid #eef2f7; }
+.qtx-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; color: var(--qtx-text); }
 .qtx-table tbody tr { transition: background 0.12s ease; }
 .qtx-table tbody tr:hover { background: #f8fafc; }
-.qtx-table tbody tr.selected { background: #eff6ff; }
+.qtx-table tbody tr.selected { background: var(--qtx-blue-soft); }
 .qtx-avatar-cell { width: 32px; height: 32px; border-radius: 10px; object-fit: cover; }
 
-.qtx-pagination { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; margin-top: 12px; border-top: 1px solid #eef2f7; font-size: 12px; color: #64748b; }
+.qtx-pagination { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; margin-top: 12px; border-top: 1px solid #eef2f7; font-size: 12px; color: var(--qtx-muted); }
 .qtx-page-btn {
   width: 28px; height: 28px; border-radius: 9px; border: 0; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; background: transparent; color: #64748b;
+  display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--qtx-muted);
 }
-.qtx-page-btn.active { background: #2563eb; color: white; font-weight: 700; }
+.qtx-page-btn.active { background: var(--qtx-blue); color: white; font-weight: 700; }
 .qtx-page-btn:hover:not(.active) { background: #f1f5f9; }
 
 /* ============ Inputs & buttons ============ */
 .qtx-input {
-  padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 10px;
-  background: #f8fafc; font-size: 12px; color: #334155; outline: none; width: 100%;
+  padding: 9px 12px; border: 1px solid var(--qtx-border); border-radius: 10px;
+  background: #f8fafc; font-size: 12px; color: var(--qtx-text); outline: none; width: 100%;
 }
 .qtx-input:focus { border-color: #93c5fd; background: #fff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
 .qtx-select {
-  appearance: none; padding: 9px 30px 9px 12px; border: 1px solid #e2e8f0; border-radius: 10px;
-  background: #f8fafc; font-size: 12px; color: #334155; outline: none; cursor: pointer;
+  appearance: none; padding: 9px 30px 9px 12px; border: 1px solid var(--qtx-border); border-radius: 10px;
+  background: #f8fafc; font-size: 12px; color: var(--qtx-text); outline: none; cursor: pointer;
 }
 .qtx-select:focus { border-color: #93c5fd; background: #fff; }
 .qtx-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 10px 14px; border-radius: 11px; border: 1px solid #e2e8f0;
-  background: #fff; color: #334155; font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 10px 14px; border-radius: 11px; border: 1px solid var(--qtx-border);
+  background: #fff; color: var(--qtx-text); font-size: 12px; font-weight: 600; cursor: pointer;
   transition: all 0.15s ease; font-family: inherit;
 }
 .qtx-btn:hover { background: #f8fafc; }
 .qtx-btn-primary {
-  background: #2563eb; border-color: #2563eb; color: white;
+  background: var(--qtx-blue); border-color: var(--qtx-blue); color: white;
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
 }
-.qtx-btn-primary:hover { background: #1d4ed8; }
-.qtx-btn-ghost-blue { background: #eff6ff; border-color: #dbeafe; color: #1d4ed8; }
+.qtx-btn-primary:hover { background: var(--qtx-blue-700); }
+.qtx-btn-ghost-blue { background: var(--qtx-blue-soft); border-color: #dbeafe; color: var(--qtx-blue-700); }
 .qtx-btn-ghost-blue:hover { background: #dbeafe; }
-.qtx-btn-danger { background: linear-gradient(135deg, #7c3aed, #4f46e5); border-color: transparent; color: white; }
+.qtx-btn-danger { background: linear-gradient(135deg, var(--qtx-purple), var(--qtx-indigo)); border-color: transparent; color: white; }
 .qtx-btn-danger:hover { filter: brightness(0.95); }
 
 /* ============ Tabs ============ */
 .qtx-tabs { display: flex; gap: 6px; padding: 4px; background: #f1f5f9; border-radius: 12px; }
 .qtx-tab {
   flex: 1; padding: 7px 10px; border: 0; border-radius: 9px; cursor: pointer;
-  background: transparent; color: #64748b; font-size: 12px; font-weight: 600; font-family: inherit;
+  background: transparent; color: var(--qtx-muted); font-size: 12px; font-weight: 600; font-family: inherit;
 }
-.qtx-tab.active { background: #2563eb; color: white; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3); }
+.qtx-tab.active { background: var(--qtx-blue); color: white; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3); }
 
 /* ============ Sidebar responsive ============ */
 @media (max-width: 960px) {
@@ -299,9 +314,21 @@ a { color: inherit; text-decoration: none; }
   .qtx-col-4, .qtx-col-5, .qtx-col-6, .qtx-col-7, .qtx-col-8 { grid-column: span 1; }
 }
 
-/* ============ Page transition ============ */
-@keyframes qtx-page-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ============ Page transition ============
+   复用 `@qitu/ui` 里统一的 `qitu-page-in` 关键帧，四端转场时长与缓动一致。 */
+.qtx-page { animation: qitu-page-in 0.28s ease both; display: flex; flex-direction: column; gap: 20px; }
+
+/* ============ Reduced motion ============ */
+@media (prefers-reduced-motion: reduce) {
+  /* 页面转场、导航与表格行的高亮过渡无需位移或渐变动画。 */
+  .qtx-page {
+    animation: none;
+  }
+
+  .qtx-nav-item,
+  .qtx-nav-item svg,
+  .qtx-tab,
+  .qtx-table tbody tr {
+    transition: none;
+  }
 }
-.qtx-page { animation: qtx-page-in 0.28s ease both; display: flex; flex-direction: column; gap: 20px; }

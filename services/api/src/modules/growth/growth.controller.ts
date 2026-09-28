@@ -94,13 +94,13 @@ export class ParentGrowthController {
   ) {}
 
   @Get()
-  getChildren(@Headers('cookie') cookieHeader: string | undefined): { data: ChildRef[] } {
+  async getChildren(@Headers('cookie') cookieHeader: string | undefined): Promise<{ data: ChildRef[] }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
-    return { data: this.growthService.getChildren(user.id) };
+    return { data: await this.growthService.getChildren(user.id) };
   }
 
   @Get(':childId/growth')
-  getChildGrowth(
+  async getChildGrowth(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('childId') childId: string,
     @Query('type') type?: string,
@@ -109,15 +109,20 @@ export class ParentGrowthController {
     @Query('to') to?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
-  ): { data: ParentGrowthPageData } {
+  ): Promise<{ data: ParentGrowthPageData }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
 
     // 对象级权限：前端隐藏不算数，这里必须再挡一次。
-    if (!this.growthService.canParentReadChild(user.id, childId)) {
+    if (!(await this.growthService.canParentReadChild(user.id, childId))) {
       throw new ForbiddenException('无权查看该孩子的成长轨迹');
     }
 
-    return { data: this.growthService.getParentPage(childId, parseQuery({ type, projectId, from, to, cursor, limit })) };
+    return {
+      data: await this.growthService.getParentPage(
+        childId,
+        parseQuery({ type, projectId, from, to, cursor, limit }),
+      ),
+    };
   }
 }
 

@@ -1,15 +1,19 @@
 // `Role` 与登录契约同源定义在 `./auth`，此处仅做 re-export。
 export * from './auth';
 
-import type { ProjectStage } from './project';
 export * from './project';
+export * from './exploration';
 export * from './tutor';
 export * from './realtime';
 export * from './growth';
+export * from './reminder';
 export * from './platform';
 export * from './parent';
 export * from './admin';
+export * from './directory';
+export * from './teacher';
 export * from './settings';
+export * from './preferences';
 export * from './models';
 export * from './errors';
 
@@ -17,11 +21,4 @@ export interface HealthResponse {
   service: string;
   status: 'ok';
   version: string;
-}
-
-export interface ProjectSummary {
-  id: string;
-  title: string;
-  stage: ProjectStage;
-  progress: number;
 }

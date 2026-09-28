@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ActivityIcon,
@@ -5,15 +8,96 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
   ClockIcon,
-  FileDownIcon,
   HeartIcon,
   SparklesIcon,
   UsersIcon,
 } from '../../../components/icons';
 import { MetricCard } from '../../../components/metric-card';
-import { issues, students } from '../../../lib/mock-data';
+import {
+  teacherApi,
+  TeacherOfflineError,
+  TeacherPermissionError,
+  type TeacherRosterPageData,
+  type TeacherInterventionListPageData,
+} from '../../../lib/teacherApi';
 
-export default function DashboardPage() {
+function ErrorState({ type }: { type: string }) {
+  if (type === 'permission') {
+    return (
+      <div className="qtx-page">
+        <div className="qtx-card" style={{ padding: 40, textAlign: 'center' }}>
+          <AlertIcon size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: 18, color: '#1e293b', marginBottom: 8 }}>权限不足</h2>
+          <p style={{ color: '#64748b', fontSize: 14 }}>您没有访问班主任工作台的权限。</p>
+        </div>
+      </div>
+    );
+  }
+  if (type === 'offline') {
+    return (
+      <div className="qtx-page">
+        <div className="qtx-card" style={{ padding: 40, textAlign: 'center' }}>
+          <AlertIcon size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: 18, color: '#1e293b', marginBottom: 8 }}>网络连接失败</h2>
+          <p style={{ color: '#64748b', fontSize: 14 }}>请检查网络连接后重试。</p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="qtx-page">
+      <div className="qtx-card" style={{ padding: 40, textAlign: 'center' }}>
+        <AlertIcon size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+        <h2 style={{ fontSize: 18, color: '#1e293b', marginBottom: 8 }}>加载失败</h2>
+        <p style={{ color: '#64748b', fontSize: 14 }}>数据加载时遇到问题，请稍后重试。</p>
+      </div>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="qtx-page">
+      <div className="qtx-card" style={{ padding: 40, textAlign: 'center' }}>
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            border: '4px solid #eef2f7',
+            borderTopColor: '#2563eb',
+            borderRadius: '50%',
+            margin: '0 auto 16px',
+            animation: 'qitu-spin 1s linear infinite',
+          }}
+        />
+        <p style={{ color: '#64748b', fontSize: 14 }}>加载中...</p>
+      </div>
+    </div>
+  );
+}
+
+function DashboardContent({
+  roster,
+  interventions,
+}: {
+  roster: TeacherRosterPageData;
+  interventions: TeacherInterventionListPageData;
+}) {
+  const recentStudents = roster.students.slice(0, 4);
+  const recentIssues = interventions.items.slice(0, 3);
+  const stageColors: Record<string, string> = {
+    Inspiration: '#2563eb',
+    Research: '#4f46e5',
+    Making: '#0d9488',
+    Showcase: '#d97706',
+  };
+  const stageLabels: Record<string, string> = {
+    Inspiration: '灵感探索',
+    Research: '深度研究',
+    Making: '制作测试',
+    Showcase: '成果展示',
+  };
+
   return (
     <div className="qtx-page">
       {/* 欢迎横幅 */}
@@ -26,8 +110,11 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <h2>早上好，陈老师！</h2>
-              <p>今天有 12 个待处理问题，其中 3 个需要重点关注。</p>
+              <h2>早上好，{roster.teacher.displayName}！</h2>
+              <p>
+                今天有 {interventions.totals.open} 个待处理问题
+                {roster.totals.stuckCount > 0 ? `，其中 ${roster.totals.stuckCount} 个需要重点关注` : ''}。
+              </p>
             </div>
           </div>
           <div className="qtx-banner-slogan">
@@ -36,7 +123,9 @@ export default function DashboardPage() {
             比给出标准答案更重要。
           </div>
           <div className="qtx-banner-right">
-            <div className="qtx-bubble">🤖 已为你整理今日待办，先处理 3 个情绪预警吧～</div>
+            <div className="qtx-bubble">
+              {roster.dataSource === 'demo' ? '🧪 演示数据' : '🤖 已为你整理今日待办～'}
+            </div>
             <div
               style={{
                 width: 54,
@@ -60,29 +149,29 @@ export default function DashboardPage() {
       <section className="qtx-grid qtx-grid-4">
         <MetricCard
           label="学生总数"
-          value="128"
-          delta={<>较上月 <span className="up">+12</span></>}
+          value={String(roster.totals.studentCount)}
+          delta={null}
           icon={<UsersIcon size={22} />}
           tone="#2563eb"
         />
         <MetricCard
           label="进行中的项目"
-          value="86"
-          delta={<>较上月 <span className="up">+8</span></>}
+          value={String(roster.students.filter((s) => s.currentProjectId).length)}
+          delta={null}
           icon={<ActivityIcon size={22} />}
           tone="#4f46e5"
         />
         <MetricCard
           label="待处理问题"
-          value="12"
-          delta={<>较昨日 <span className="down">-5</span></>}
+          value={String(interventions.totals.open)}
+          delta={null}
           icon={<AlertIcon size={22} />}
           tone="#d97706"
         />
         <MetricCard
-          label="今日已解决"
-          value="28"
-          delta={<>解决率 <span className="up">70%</span></>}
+          label="需要关注"
+          value={String(roster.totals.stuckCount)}
+          delta={null}
           icon={<CheckCircleIcon size={22} />}
           tone="#059669"
         />
@@ -93,117 +182,56 @@ export default function DashboardPage() {
         <div className="qtx-col-8 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
-              <span className="dot" /> 本周学习活跃趋势
+              <span className="dot" /> 阶段分布
             </div>
-            <button className="qtx-btn qtx-btn-ghost-blue" type="button">
-              导出周报
-              <FileDownIcon size={15} />
-            </button>
+            {/*
+              导出周报没有后端接口，不摆放一个点了没反应的按钮；
+              改成不具交互性的说明文字。
+            */}
+            <span className="qtx-panel-hint">周报导出暂未开放</span>
           </div>
-          <div className="qtx-grid qtx-grid-12" style={{ gap: 18 }}>
-            <div className="qtx-col-8">
-              <svg viewBox="0 0 560 200" style={{ width: '100%', height: 'auto', display: 'block' }}>
-                <defs>
-                  <linearGradient id="dashArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {[0, 1, 2, 3].map((i) => (
-                  <line key={i} x1="0" x2="560" y1={20 + i * 45} y2={20 + i * 45} stroke="#eef2f7" strokeWidth="1" />
-                ))}
-                <path
-                  d="M20,150 L100,120 L180,132 L260,86 L340,96 L420,54 L540,38 L540,160 L20,160 Z"
-                  fill="url(#dashArea)"
-                />
-                <path
-                  d="M20,150 L100,120 L180,132 L260,86 L340,96 L420,54 L540,38"
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M20,158 L100,140 L180,146 L260,116 L340,122 L420,88 L540,72"
-                  fill="none"
-                  stroke="#4f46e5"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeDasharray="6 6"
-                />
-                {[
-                  ['一', 20], ['二', 100], ['三', 180], ['四', 260], ['五', 340], ['六', 420], ['日', 540],
-                ].map(([label, x]) => (
-                  <text key={label} x={x} y="185" fill="#94a3b8" fontSize="11" textAnchor="middle">
-                    {label}
-                  </text>
-                ))}
-              </svg>
-              <div style={{ display: 'flex', gap: 18, marginTop: 10, fontSize: 12, color: '#64748b' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 12, height: 3, background: '#2563eb', borderRadius: 2, display: 'inline-block' }} />
-                  活跃学生
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 12, height: 3, background: '#4f46e5', borderRadius: 2, display: 'inline-block', opacity: 0.7 }} />
-                  完成任务
-                </span>
-              </div>
-            </div>
-            <div className="qtx-col-4">
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 12 }}>项目阶段分布</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <svg viewBox="0 0 120 120" style={{ width: 150, height: 150 }}>
-                  <circle cx="60" cy="60" r="46" fill="none" stroke="#eef2f7" strokeWidth="16" />
-                  {[
-                    ['#2563eb', 0, 0.38],
-                    ['#4f46e5', 0.38, 0.62],
-                    ['#0d9488', 0.62, 0.84],
-                    ['#d97706', 0.84, 1],
-                  ].map(([color, from, to]) => {
-                    const start = Number(from) * 100;
-                    const len = (Number(to) - Number(from)) * 100;
-                    return (
-                      <circle
-                        key={String(color)}
-                        cx="60"
-                        cy="60"
-                        r="46"
-                        fill="none"
-                        stroke={String(color)}
-                        strokeWidth="16"
-                        strokeDasharray={`${len} ${100 - len}`}
-                        strokeDashoffset={-start}
-                        transform="rotate(-90 60 60)"
-                        strokeLinecap="butt"
+          <div style={{ display: 'grid', gap: 14, padding: '8px 0' }}>
+            {Object.entries(stageLabels).map(([stage, label]) => {
+              const count = roster.students.filter((s) => s.currentStage === stage).length;
+              const total = roster.students.filter((s) => s.currentStage).length;
+              const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+              return (
+                <div key={stage} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 3,
+                      background: stageColors[stage],
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <strong style={{ color: '#1e293b' }}>{label}</strong>
+                      <span style={{ color: '#64748b' }}>{count} 人</span>
+                    </div>
+                    <div style={{ height: 8, background: '#eef2f7', borderRadius: 999 }}>
+                      <div
+                        style={{
+                          width: `${percent}%`,
+                          height: 8,
+                          borderRadius: 999,
+                          background: stageColors[stage],
+                        }}
                       />
-                    );
-                  })}
-                </svg>
-                <div style={{ position: 'absolute', textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>86</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>进行中</div>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                {[
-                  ['灵感探索', 33, '#2563eb'],
-                  ['深度研究', 21, '#4f46e5'],
-                  ['制作测试', 19, '#0d9488'],
-                  ['成果展示', 13, '#d97706'],
-                ].map(([label, count, color]) => (
-                  <div key={String(label)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 9, height: 9, borderRadius: 3, background: String(color), display: 'inline-block' }} />
-                      {label}
-                    </span>
-                    <strong style={{ color: '#334155' }}>{count}</strong>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -212,37 +240,69 @@ export default function DashboardPage() {
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#d97706' }} /> 待处理问题
             </div>
-            <Link className="qtx-link" href="/issues">
+            <Link className="qtx-link" href="/teacher/issues">
               查看全部 <ArrowRightIcon size={14} />
             </Link>
           </div>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {issues.slice(0, 3).map((issue) => (
-              <div key={issue.id} style={{ display: 'flex', gap: 10, padding: 10, borderRadius: 12, background: '#f8fafc', border: '1px solid #eef2f7' }}>
-                <span
+          {recentIssues.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
+              暂无待处理问题
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {recentIssues.map((issue) => (
+                <div
+                  key={issue.id}
                   style={{
-                    width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    background: issue.level === 'L1' ? '#fff1f2' : issue.level === 'L2' ? '#fffbeb' : '#eff6ff',
-                    color: issue.level === 'L1' ? '#be123c' : issue.level === 'L2' ? '#b45309' : '#1d4ed8',
+                    display: 'flex',
+                    gap: 10,
+                    padding: 10,
+                    borderRadius: 12,
+                    background: '#f8fafc',
+                    border: '1px solid #eef2f7',
                   }}
                 >
-                  <AlertIcon size={17} />
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: 13, color: '#1e293b' }}>{issue.studentName}</strong>
-                    <span className={`qtx-badge ${issue.level === 'L1' ? 'qtx-badge-rose' : issue.level === 'L2' ? 'qtx-badge-amber' : 'qtx-badge-blue'}`}>{issue.category}</span>
-                  </div>
-                  <p style={{ margin: '5px 0 0', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{issue.summary}</p>
-                  <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8', display: 'flex', gap: 10 }}>
-                    <span><ClockIcon size={12} /> {issue.time}</span>
-                    <span>{issue.channel}</span>
+                  <span
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: '#fffbeb',
+                      color: '#b45309',
+                    }}
+                  >
+                    <AlertIcon size={17} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 13, color: '#1e293b' }}>
+                        {issue.studentDisplayName}
+                      </strong>
+                      <span className="qtx-badge qtx-badge-amber">{issue.status}</span>
+                    </div>
+                    <p style={{ margin: '5px 0 0', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                      {issue.reason}
+                    </p>
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8', display: 'flex', gap: 10 }}>
+                      <span>
+                        <ClockIcon size={12} />{' '}
+                        {new Date(issue.createdAt).toLocaleString('zh-CN', {
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -253,54 +313,63 @@ export default function DashboardPage() {
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#4f46e5' }} /> 最近活跃学生
             </div>
-            <Link className="qtx-link" href="/students">
+            <Link className="qtx-link" href="/teacher/students">
               学生管理 <ArrowRightIcon size={14} />
             </Link>
           </div>
-          <div className="qtx-table-wrap">
-            <table className="qtx-table">
-              <thead>
-                <tr>
-                  <th>学生</th>
-                  <th>当前项目</th>
-                  <th>活跃天数</th>
-                  <th>专注度</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.slice(0, 4).map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span className="qtx-avatar" style={{ width: 32, height: 32, borderRadius: 10, fontSize: 13 }}>{s.avatar}</span>
-                        <div>
-                          <strong style={{ color: '#1e293b' }}>{s.name}</strong>
-                          <div className="qtx-small qtx-muted">{s.grade}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{s.projectStage}</td>
-                    <td>{s.activeDays} 天</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 70, height: 6, background: '#eef2f7', borderRadius: 999 }}>
-                          <div style={{ width: `${s.focusScore}%`, height: 6, background: s.focusScore >= 80 ? '#059669' : '#d97706', borderRadius: 999 }} />
-                        </div>
-                        <span>{s.focusScore}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`qtx-badge ${s.status === '在线' ? 'qtx-badge-emerald' : 'qtx-badge-slate'}`}>
-                        <span className="qtx-status-dot" style={{ background: s.status === '在线' ? '#059669' : '#94a3b8' }} />
-                        {s.status}
-                      </span>
-                    </td>
+          {recentStudents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
+              暂无学生数据
+            </div>
+          ) : (
+            <div className="qtx-table-wrap">
+              <table className="qtx-table">
+                <thead>
+                  <tr>
+                    <th>学生</th>
+                    <th>当前项目</th>
+                    <th>活跃天数</th>
+                    <th>本周任务</th>
+                    <th>状态</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentStudents.map((s) => (
+                    <tr key={s.studentId}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span
+                            className="qtx-avatar"
+                            style={{ width: 32, height: 32, borderRadius: 10, fontSize: 13 }}
+                          >
+                            {s.avatarInitial}
+                          </span>
+                          <div>
+                            <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>
+                            <div className="qtx-small qtx-muted">{s.gradeLabel ?? '—'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{s.currentProjectTitle ?? '—'}</td>
+                      <td>{s.activeDays} 天</td>
+                      <td>{s.weeklyTasks} 个</td>
+                      <td>
+                        <span
+                          className={`qtx-badge ${s.stuck ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
+                        >
+                          <span
+                            className="qtx-status-dot"
+                            style={{ background: s.stuck ? '#d97706' : '#059669' }}
+                          />
+                          {s.stuck ? '需要关注' : '正常'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="qtx-col-5 qtx-card qtx-panel">
@@ -310,40 +379,88 @@ export default function DashboardPage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[
-              ['📋', '发布本周任务', '向全班推送项目任务'],
-              ['🧑‍🏫', '分配导师', '调整学生导师关系'],
-              ['💬', '回复家长诉求', '处理家长端反馈'],
-              ['📊', '生成本周报告', '导出班级学习周报'],
-            ].map(([emoji, title, desc]) => (
-              <button
+            {([
+              ['📋', '查看问题', '处理介入请求', '/issues'],
+              ['👨‍🎓', '学生名册', '查看学生详情', '/students'],
+              ['📊', '数据统计', '班级学习概览', '/statistics'],
+              ['📚', '知识库', '理论材料与素材', '/knowledge'],
+            ] as const).map(([emoji, title, desc, href]) => (
+              <Link
                 key={title}
-                type="button"
+                href={href}
                 style={{
-                  display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start',
-                  padding: 14, borderRadius: 14, border: '1px solid #eef2f7', background: '#fff',
-                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                  padding: 14,
+                  borderRadius: 14,
+                  border: '1px solid #eef2f7',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
                   transition: 'all .15s ease',
+                  textDecoration: 'none',
                 }}
               >
                 <span style={{ fontSize: 22 }}>{emoji}</span>
                 <strong style={{ fontSize: 13, color: '#1e293b' }}>{title}</strong>
                 <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{desc}</span>
-              </button>
+              </Link>
             ))}
           </div>
           <div
             style={{
-              marginTop: 14, padding: 12, borderRadius: 12, background: '#f0f9ff',
-              border: '1px solid #dbeafe', fontSize: 12, color: '#1d4ed8', lineHeight: 1.6,
-              display: 'flex', gap: 8, alignItems: 'flex-start',
+              marginTop: 14,
+              padding: 12,
+              borderRadius: 12,
+              background: '#f0f9ff',
+              border: '1px solid #dbeafe',
+              fontSize: 12,
+              color: '#1d4ed8',
+              lineHeight: 1.6,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start',
             }}
           >
             <HeartIcon size={15} style={{ marginTop: 2, flexShrink: 0 }} />
-            今日已有 42 名学生保持连续探索，家长端满意度维持在 98%。
+            {roster.totals.withoutGuardianCount > 0
+              ? `${roster.totals.withoutGuardianCount} 名学生尚无监护人接入，建议推动家长绑定。`
+              : '所有学生均已绑定监护人。'}
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const [roster, setRoster] = useState<TeacherRosterPageData | null>(null);
+  const [interventions, setInterventions] = useState<TeacherInterventionListPageData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([teacherApi.roster(), teacherApi.interventions()])
+      .then(([rosterResponse, interventionsResponse]) => {
+        if (cancelled) return;
+        setRoster(rosterResponse.data);
+        setInterventions(interventionsResponse.data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof TeacherPermissionError) setError('permission');
+        else if (err instanceof TeacherOfflineError) setError('offline');
+        else setError('generic');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (error) return <ErrorState type={error} />;
+  if (!roster || !interventions) return <LoadingState />;
+  return <DashboardContent roster={roster} interventions={interventions} />;
 }
