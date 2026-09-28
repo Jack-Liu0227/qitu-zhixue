@@ -26,9 +26,6 @@ export default function HomePage() {
   const [childId, setChildId] = useState('');
   const [data, setData] = useState<ParentHomePageData | null>(null);
   const [state, setState] = useState('loading');
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackContent, setFeedbackContent] = useState('');
-  const [feedbackState, setFeedbackState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   const load = useCallback((id: string) => {
     setState('loading');
@@ -64,31 +61,6 @@ export default function HomePage() {
 
   const childName = data?.childDisplayName ?? '';
   const parentName = user?.displayName ?? user?.email ?? '家长';
-
-  const submitFeedback = async () => {
-    const content = feedbackContent.trim();
-    if (
-      content.length === 0 ||
-      content.length > 500 ||
-      !data?.currentProject ||
-      feedbackState === 'sending'
-    ) {
-      return;
-    }
-    setFeedbackState('sending');
-    try {
-      await parentApi.post('/api/v1/parent/feedback', {
-        source: 'project',
-        content,
-        messageId: null,
-        projectId: data.currentProject.projectId,
-      });
-      setFeedbackState('sent');
-      setFeedbackContent('');
-    } catch {
-      setFeedbackState('error');
-    }
-  };
 
   return (
     <PageFrame title="首页" subtitle="了解今天的学习状态，在需要时给予恰当支持" source={data?.dataSource}>
@@ -193,40 +165,14 @@ export default function HomePage() {
                         查看详情
                       </Link>
                       {data.currentProject ? (
-                        <Button onClick={() => setFeedbackOpen((v) => !v)}>我有疑问</Button>
+                        <Button
+                          onClick={() => window.dispatchEvent(new CustomEvent('qitu:open-parent-feedback'))}
+                        >
+                          我有疑问
+                        </Button>
                       ) : null}
                     </div>
-                    {feedbackOpen ? (
-                      <div className="feedback-form">
-                        <textarea
-                          value={feedbackContent}
-                          onChange={(e) => {
-                            setFeedbackContent(e.target.value);
-                            if (feedbackState !== 'sending') setFeedbackState('idle');
-                          }}
-                          maxLength={500}
-                          rows={3}
-                          placeholder="请描述您对当前项目的疑问（1-500 字）…"
-                          aria-label="疑问内容"
-                        />
-                        <div className="feedback-actions">
-                          <small>{feedbackContent.trim().length}/500</small>
-                          <Button
-                            onClick={submitFeedback}
-                            loading={feedbackState === 'sending'}
-                            disabled={feedbackContent.trim().length === 0 || feedbackState === 'sending'}
-                          >
-                            提交
-                          </Button>
-                        </div>
-                        {feedbackState === 'sent' ? (
-                          <p className="feedback-done">已记录，服务团队会跟进您的问题。</p>
-                        ) : null}
-                        {feedbackState === 'error' ? (
-                          <p className="inline-error">提交失败，请稍后重试。</p>
-                        ) : null}
-                      </div>
-                    ) : null}
+
                   </div>
                 </SectionCard>
               </div>

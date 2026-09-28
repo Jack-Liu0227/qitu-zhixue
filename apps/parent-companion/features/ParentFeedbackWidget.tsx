@@ -131,6 +131,13 @@ export function ParentFeedbackWidget() {
 
   const closePanel = useCallback(() => setOpen(false), []);
 
+  // 历史消息页/首页的入口只负责打开本组件，不再维护第二套反馈表单。
+  useEffect(() => {
+    const onOpenRequest = () => openPanel();
+    window.addEventListener('qitu:open-parent-feedback', onOpenRequest);
+    return () => window.removeEventListener('qitu:open-parent-feedback', onOpenRequest);
+  }, [openPanel]);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {

@@ -11,11 +11,6 @@ import {
 } from '../../../features/parentApi';
 import { ChildPicker, DataState, PageFrame } from '../../../features/ParentDataPage';
 import {
-  FEEDBACK_CONTENT_MAX,
-  FeedbackSubmitError,
-  submitParentFeedback,
-} from '../../../features/feedback';
-import {
   formatDayTime,
   parentMessageStatusLabel,
   parentTicketStatusLabel,
@@ -24,13 +19,9 @@ import {
 /**
  * 消息与反馈（参考稿 `消息与反馈.png`）。
  *
- * 「提交反馈」与「就此问题反馈」走同一个入口，只有 `source` 不同，
- * 这样服务端只需要一条工单链路。反馈用页面内的表单收集，不用
- * `window.prompt`/`alert`：原生弹窗会阻塞页面、无法做长度校验与错误展示，
- * 也不能在提交中禁用按钮（重复点击会开出两张工单）。
+ * 「提交反馈」与「就此问题反馈」都打开 AppShell 右下角的统一反馈窗口，
+ * 历史页只负责展示消息/工单状态，不维护第二套表单。
  */
-
-type FeedbackSource = 'general' | 'message';
 
 export default function MessagesPage() {
   const [children, setChildren] = useState<ChildRef[]>([]);
@@ -39,11 +30,6 @@ export default function MessagesPage() {
   const [state, setState] = useState('loading');
   const [selected, setSelected] = useState('');
 
-  const [feedbackOpen, setFeedbackOpen] = useState<FeedbackSource | null>(null);
-  const [feedbackContent, setFeedbackContent] = useState('');
-  const [feedbackState, setFeedbackState] = useState<
-    'idle' | 'sending' | 'sent' | 'offline' | 'error'
-  >('idle');
   const [acting, setActing] = useState(false);
 
   const load = useCallback((id: string) => {
@@ -83,9 +69,6 @@ export default function MessagesPage() {
 
   const selectChild = (id: string) => {
     setChildId(id);
-    setFeedbackOpen(null);
-    setFeedbackContent('');
-    setFeedbackState('idle');
     load(id);
   };
 
@@ -111,38 +94,8 @@ export default function MessagesPage() {
     }
   };
 
-  const submitFeedback = async () => {
-    const content = feedbackContent.trim();
-    if (content.length === 0 || content.length > FEEDBACK_CONTENT_MAX || feedbackState === 'sending') {
-      return;
-    }
-    if (!childId) {
-      setFeedbackState('error');
-      return;
-    }
-    setFeedbackState('sending');
-    try {
-      // 与右下角浮窗、首页共用同一套反馈服务：服务端只有一条工单链路。
-      await submitParentFeedback({
-        source: feedbackOpen === 'message' ? 'message' : 'general',
-        content,
-        childId,
-        messageId: feedbackOpen === 'message' ? selected : null,
-        projectId: null,
-      });
-      setFeedbackState('sent');
-      setFeedbackContent('');
-      load(childId);
-    } catch (error) {
-      setFeedbackState(
-        error instanceof FeedbackSubmitError && error.kind === 'offline' ? 'offline' : 'error',
-      );
-    }
-  };
-
-  const openFeedback = (source: FeedbackSource) => {
-    setFeedbackOpen(source);
-    setFeedbackState('idle');
+  const openFeedback = () => {
+    window.dispatchEvent(new CustomEvent('qitu:open-parent-feedback'));
   };
 
   return (
@@ -153,48 +106,8 @@ export default function MessagesPage() {
     >
       <div className="messages-toolbar">
         <ChildPicker children={children} value={childId} onChange={selectChild} />
-        <Button onClick={() => openFeedback('general')}>提交反馈</Button>
+        <Button onClick={openFeedback}>提交反馈</Button>
       </div>
-
-      {feedbackOpen ? (
-        <SectionCard title={feedbackOpen === 'message' ? '就此问题反馈' : '提交反馈'}>
-          <div className="feedback-form">
-            <textarea
-              value={feedbackContent}
-              onChange={(e) => {
-                setFeedbackContent(e.target.value);
-                if (feedbackState !== 'sending') setFeedbackState('idle');
-              }}
-              maxLength={FEEDBACK_CONTENT_MAX}
-              rows={3}
-              placeholder="请描述您遇到的问题或疑问（1-500 字）…"
-              aria-label="反馈内容"
-            />
-            <div className="feedback-actions">
-              <small>{feedbackContent.trim().length}/{FEEDBACK_CONTENT_MAX}</small>
-              <Button
-                onClick={submitFeedback}
-                loading={feedbackState === 'sending'}
-                disabled={feedbackContent.trim().length === 0 || feedbackState === 'sending'}
-              >
-                提交
-              </Button>
-              <Button variant="ghost" onClick={() => setFeedbackOpen(null)}>
-                取消
-              </Button>
-            </div>
-            {feedbackState === 'sent' ? (
-              <p className="feedback-done">反馈已记录，服务团队会继续处理。</p>
-            ) : null}
-            {feedbackState === 'error' ? (
-              <p className="inline-error">反馈没能提交，请稍后重试。</p>
-            ) : null}
-            {feedbackState === 'offline' ? (
-              <p className="inline-error">网络不可用，反馈尚未提交，请稍后重试。</p>
-            ) : null}
-          </div>
-        </SectionCard>
-      ) : null}
 
       <DataState state={{ status }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
         {data ? (
@@ -290,7 +203,7 @@ export default function MessagesPage() {
                       <Button variant="ghost" onClick={() => act('mute')} disabled={acting}>
                         暂不提醒
                       </Button>
-                      <Button variant="ghost" onClick={() => openFeedback('message')}>
+                      <Button variant="ghost" onClick={openFeedback}>
                         就此问题反馈
                       </Button>
                     </div>
