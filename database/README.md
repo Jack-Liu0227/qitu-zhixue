@@ -25,12 +25,29 @@ psql "$DATABASE_URL" -f database/migrations/0003_glamorous_ulik.sql
 # 身份/口令冲突时会被**修正**（DO UPDATE），关系冲突时**保留**（DO NOTHING）
 pnpm --filter @qitu/database seed
 
+# 不连库，只校验证种子文件存在与确定性执行顺序
+pnpm --filter @qitu/database exec tsx src/seed.ts --check
+
 # 修改 schema 后重新生成迁移（schema 在 packages/database/src/schema/）
 pnpm --filter @qitu/database generate
 ```
 
-`seeds/demo-identities.sql` 是种子数据的**唯一真源**，
-`packages/database/src/seed.ts` 只负责执行它，不要往 TS 里另写一份数据。
+### 种子执行顺序
+
+`packages/database/src/seed.ts` 只负责按下面的**确定性顺序**读取并执行 `seeds/*.sql`，
+种子内容只有 .sql 一份真源，不要往 TS 里另写一份数据：
+
+| 顺序 | 文件 | 内容 | 为什么必须在此时执行 |
+| --- | --- | --- | --- |
+| 1 | `seeds/demo-identities.sql` | `schools` / `users` / `guardian_links` / `mentor_assignments` | 建立 `school-demo` 与 `admin-demo` / `teacher-demo` / `student-demo` 等身份 |
+| 2 | `seeds/tutor-workspace.sql` | `tutor_partners` / `tutor_template_documents` / `tutor_knowledge_documents` | 领域表的 `student_memories.partner_id` 引用 `tutor_partners` |
+| 3 | `seeds/domain-foundation.sql` | 规范化领域表（模板 / 知识 / 计划 / 掌握度 / 成长 / 记忆 / 评审） | `created_by` / `student_user_id` / `mentor_user_id` / `partner_id` 引用前两步 |
+
+顺序由 `SEED_FILES` 常量的数组顺序固定，不可调换；`--check` 模式可在不连库的情况下
+校验三个文件存在并打印 `demo-identities.sql -> tutor-workspace.sql -> domain-foundation.sql`。
+
+`seeds/demo-identities.sql` 是身份种子数据的**唯一真源**；`domain-foundation.sql` 是
+规范化领域表的真源（迁移 `0008_domain_foundation`），两者均随 `pnpm seed` 自动执行。
 
 ## 横切基础表
 
