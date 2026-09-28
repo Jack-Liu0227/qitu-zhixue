@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Inject,
   Logger,
 } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
@@ -16,7 +17,7 @@ import {
 import { evaluateTemplateVerification } from './template-verification.evaluator';
 import {
   newVerificationRunId,
-  type TemplateVerificationStore,
+  TemplateVerificationStore,
   type VerificationRunRecord,
 } from './template-verification.store';
 import {
@@ -100,6 +101,7 @@ export class TemplateGovernanceService {
   constructor(
     private readonly store: TemplateStore,
     private readonly evidence: TemplateEvidenceSource,
+    @Inject(TemplateVerificationStore)
     private readonly verification: TemplateVerificationStore,
     private readonly directory: TemplateViewerDirectory,
     private readonly idempotency: IdempotencyStore,
