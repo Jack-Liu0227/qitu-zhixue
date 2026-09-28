@@ -4,6 +4,7 @@ import type {
   TutorHintLevel,
   TutorReplyBlock,
 } from '@qitu/contracts';
+import type { TutorContextPacket } from '@qitu/ai-client';
 
 /**
  * AI搭档的回合引擎接口（provider seam）。
@@ -25,6 +26,8 @@ export interface TutorTurnInput {
   previousHintLevel: TutorHintLevel | null;
   /** 本会话已出现的轮次数，用于卡顿窗口判断。 */
   turnCount: number;
+  /** Server-assembled context from the Tutor SDK; never supplied by the client. */
+  contextPacket?: TutorContextPacket;
 }
 
 /**

@@ -1,0 +1,140 @@
+.qitu-tutor-page {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.qitu-tutor-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 6vw 8px;
+}
+
+.qitu-tutor-header-mascot {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: 20px;
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-tutor-eyebrow {
+  margin: 0 0 3px;
+  color: var(--qitu-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.qitu-tutor-header h1 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.2;
+}
+
+.qitu-tutor-header-subtitle {
+  margin: 5px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.92rem;
+}
+
+.qitu-tutor-header-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.qitu-tutor-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--qitu-completed);
+  box-shadow: 0 0 0 3px var(--qitu-completed-soft);
+}
+
+.qitu-tutor-grid {
+  padding-top: 20px;
+}
+
+.qitu-chat-role {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0;
+}
+
+.qitu-chat-role .qitu-avatar {
+  flex: 0 0 auto;
+}
+
+.qitu-tutor-rail-subtitle {
+  margin: -6px 0 12px;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.qitu-capability-tile {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 96px;
+}
+
+.qitu-capability-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: 9px;
+  background: var(--qitu-primary-soft);
+  color: var(--qitu-primary);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.qitu-capability-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.qitu-capability-chevron {
+  color: var(--qitu-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.qitu-tutor-encouragement {
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  justify-items: start;
+  padding: 12px 4px;
+  text-align: left;
+}
+
+.qitu-tutor-encouragement .qitu-handwritten {
+  line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+  .qitu-tutor-header {
+    align-items: flex-start;
+    padding: 20px var(--qitu-space-lg) 4px;
+  }
+
+  .qitu-tutor-header-status {
+    display: none;
+  }
+}

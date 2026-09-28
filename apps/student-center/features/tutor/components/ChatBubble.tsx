@@ -1,4 +1,6 @@
+import { Avatar } from '@qitu/ui';
 import type { TutorReplyBlock, TutorToolCall, TutorTurn } from '@qitu/contracts';
+
 import { isTutorReplyBlock, isTutorToolCall } from '../state';
 import { SafeReplyFallback, TutorReplyBlockView } from './TutorReplyBlockView';
 import { StreamCaret, ToolCallTimeline } from './ToolCallTimeline';
@@ -42,7 +44,10 @@ export function ChatBubble({
 
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
-      <div className="qitu-chat-role">{isStudent ? '我' : 'AI搭档'}</div>
+      <div className="qitu-chat-role">
+        <Avatar name={isStudent ? '我' : '启'} size="sm" />
+        <span>{isStudent ? '我' : 'AI搭档'}</span>
+      </div>
       <div className="qitu-chat-body">
         {segments.map((segment, index) =>
           segment.kind === 'tools' ? (

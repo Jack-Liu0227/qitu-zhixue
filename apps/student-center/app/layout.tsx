@@ -3,13 +3,12 @@ import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
 import '@qitu/ui/preferences.css';
 import './globals.css';
-// 学生端各功能模块自己的样式（每个模块一个文件，放在 apps/student-center/styles/）。
-// 共用组件与设计令牌在 `@qitu/ui/styles.css`；这里只放 `qitu-<模块>-*` 这类模块专属类。
-// AI搭档（tutor）的样式仍在 `@qitu/ui/styles.css` 里，暂未按模块拆出。
+// AI搭档页的伙伴外壳样式放在 student-center，避免影响工作台共用的 tutor advice 组件。
 import '../styles/growth.css';
 import '../styles/inspiration.css';
 import '../styles/projects.css';
 import '../styles/today.css';
+import '../styles/tutor.css';
 import '../styles/voice.css';
 import '../styles/workbench.css';
 import { StudentShellHost } from './student-shell';

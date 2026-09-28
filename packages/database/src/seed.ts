@@ -28,7 +28,12 @@ async function seed(): Promise<void> {
     process.exit(1);
   }
 
-  const sql = await readFile(SEED_FILE, 'utf8');
+  const identitySql = await readFile(SEED_FILE, 'utf8');
+  const tutorWorkspaceSql = await readFile(
+    resolve(dirname(SEED_FILE), 'tutor-workspace.sql'),
+    'utf8',
+  );
+  const sql = `${identitySql}\n${tutorWorkspaceSql}`;
   const client = new pg.Client({ connectionString });
 
   try {

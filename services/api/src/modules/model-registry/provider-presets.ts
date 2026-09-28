@@ -26,10 +26,29 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
         input: ['text', 'audio'],
         output: ['text', 'audio'],
       },
+      { id: 'qwen3.8-flash', name: 'Qwen 3.8 Flash', input: ['text'], output: ['text'] },
       { id: 'qwen-plus', name: 'Qwen Plus', input: ['text'], output: ['text'] },
       { id: 'qwen-max', name: 'Qwen Max', input: ['text'], output: ['text'] },
       // 检索用：文本向量化，是知识库 RAG 的前置。
       { id: 'text-embedding-v3', name: 'Text Embedding v3', input: ['text'], output: ['text'] },
+    ],
+  },
+  {
+    id: 'qwen-token-plan',
+    name: '通义千问（百炼 Token Plan）',
+    baseUrl: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode',
+    api: 'openai-completions',
+    authHeader: true,
+    suggestedModels: [
+      { id: 'qwen3.8-flash', name: 'Qwen 3.8 Flash', input: ['text'], output: ['text'] },
+      { id: 'qwen3.8-max', name: 'Qwen 3.8 Max', input: ['text'], output: ['text'] },
+      { id: 'qwen3.7-plus', name: 'Qwen 3.7 Plus', input: ['text'], output: ['text'] },
+      {
+        id: 'qwen-audio-3.0-realtime-plus',
+        name: 'Qwen Audio 3.0 Realtime Plus',
+        input: ['text', 'audio'],
+        output: ['text', 'audio'],
+      },
     ],
   },
   {

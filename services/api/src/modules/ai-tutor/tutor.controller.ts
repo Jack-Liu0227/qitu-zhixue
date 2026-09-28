@@ -10,6 +10,7 @@ import {
   Query,
   Res,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
@@ -22,6 +23,7 @@ import type {
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { TutorWorkspaceService } from './tutor-workspace.service';
 import type { StreamedTutorEvent } from './tutor.service';
 
 const SESSION_COOKIE = 'qitu_session';
@@ -76,9 +78,42 @@ export class TutorController {
   constructor(
     private readonly authService: AuthService,
     private readonly tutorService: TutorService,
+    @Optional() private readonly workspace?: TutorWorkspaceService,
   ) {}
 
-  @Get('session')
+  @Get('templates')
+  async listTemplates(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('q') query?: string,
+  ): Promise<{ data: { templates: Array<Record<string, unknown>> } }> {
+    const actor = this.requireStudent(cookieHeader);
+    const results = this.workspace === undefined
+      ? []
+      : await this.workspace.searchTemplates({
+          studentId: actor.id,
+          projectId: null,
+          query: typeof query === 'string' ? query : '',
+          limit: 24,
+        });
+    return {
+      data: {
+        templates: results.map(({ document, score, matchedTerms }) => ({
+          id: document.id,
+          title: document.title,
+          summary: document.summary,
+          subject: document.tags[0] ?? '综合创作',
+          tags: document.tags,
+          difficulty: '入门',
+          durationWeeks: durationWeeksOf(document.content),
+          stages: [{ id: document.stage, label: stageLabelOf(document.stage) }],
+          outcome: document.summary,
+          score,
+          matchedTerms,
+        })),
+      },
+    };
+  }
+
   getSession(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('projectId') projectId?: string,
@@ -245,6 +280,26 @@ export class TutorController {
     }
     return session.user;
   }
+}
+
+function durationWeeksOf(content: string): number {
+  return /8\s*周计划/.test(content) ? 8 : 4;
+}
+
+function stageLabelOf(stage: string): string {
+  const labels: Record<string, string> = {
+    exploration: '探索与发现',
+    intent_confirmed: '意图确认',
+    theory_learning: '理论学习',
+    theory_check: '理论检验',
+    practice_ready: '实践制作',
+    practice_building: '实践制作',
+    artifact_review: '成果反思',
+    reflection: '成果反思',
+    published: '成果展示',
+    completed: '已完成',
+  };
+  return labels[stage] ?? '探索与发现';
 }
 
 function isMove(value: unknown): value is PedagogicMove {

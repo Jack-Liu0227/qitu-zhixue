@@ -5,6 +5,7 @@ import { CapabilityRail } from './components/CapabilityRail';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectContextPanel } from './components/ProjectContextPanel';
+import { TutorHeader } from './components/TutorHeader';
 import { useCapabilityInvoke } from './hooks/useCapabilityInvoke';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
@@ -53,6 +54,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   return (
     <div className="qitu-tutor-page">
+      <TutorHeader />
       <div className="qitu-tutor-grid">
         <ProjectContextPanel
           status={session.projectStatus}

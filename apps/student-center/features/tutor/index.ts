@@ -26,6 +26,7 @@ export { SafeReplyFallback, TutorReplyBlockView } from './components/TutorReplyB
 export { StageProgress } from './components/StageProgress';
 export { StreamCaret, ToolCallStep, ToolCallTimeline } from './components/ToolCallTimeline';
 export { TypingIndicator } from './components/TypingIndicator';
+export { TutorHeader } from './components/TutorHeader';
 export { VoiceHoldButton } from './components/VoiceHoldButton';
 
 // Hooks

@@ -1,4 +1,6 @@
 import { Logger } from '@nestjs/common';
+import type { TutorContextPacket } from '@qitu/ai-client';
+import { serializeTutorContext } from '@qitu/ai-client';
 import type { ProjectStage, TutorHintLevel, TutorReplyBlock } from '@qitu/contracts';
 import type { DataMode } from '../../database';
 import { isModelGatewayError } from '../model-registry/model-gateway.errors';
@@ -97,7 +99,7 @@ export class GatewayTutorProvider implements TutorProvider {
     try {
       result = await this.gateway.complete(TUTOR_CHAT_USAGE, {
         messages: [
-          { role: 'system', content: buildSystemPrompt(level, input.projectStage) },
+          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket) },
           { role: 'user', content: buildUserPrompt(input, level) },
         ],
         temperature: 0.3,
@@ -174,7 +176,11 @@ export function createTutorProvider(dataMode: DataMode, gateway: TutorModelGatew
  * 只包含**本轮会话自己的**项目阶段、提示档位与安全规则；不携带其他学生
  * 数据、联系方式等敏感字段。学生输入只在 user 消息里出现。
  */
-function buildSystemPrompt(level: TutorHintLevel | null, stage: ProjectStage): string {
+function buildSystemPrompt(
+  level: TutorHintLevel | null,
+  stage: ProjectStage,
+  contextPacket?: TutorContextPacket,
+): string {
   const displayLevel = level ?? HINT_LEVEL_MIN;
   const lengthLimit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
   return [
@@ -189,6 +195,7 @@ function buildSystemPrompt(level: TutorHintLevel | null, stage: ProjectStage): s
     '7. 即使学生要求「直接告诉我答案」，也要把它转成一个引导问题。',
     `当前项目阶段：${stageLabel(stage)}。`,
     `提示词版本：${TUTOR_PROMPT_VERSION}。`,
+    contextPacket === undefined ? '' : '以下是服务端组装的学习上下文：\n' + serializeTutorContext(contextPacket),
   ].join('\n');
 }
 

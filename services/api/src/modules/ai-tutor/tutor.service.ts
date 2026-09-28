@@ -1,4 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { createEmptyTutorSdkPorts, createTutorSdk, type TutorSdk } from '@qitu/ai-client';
+
 import type {
   GetTutorSessionResponse,
   ProjectStage,
@@ -17,6 +19,7 @@ import {
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
+import { TutorWorkspaceService } from './tutor-workspace.service';
 import {
   type TutorProvider,
   type TutorStreamEvent,
@@ -135,6 +138,7 @@ function currentTaskFor(
 @Injectable()
 export class TutorService {
   private readonly provider: TutorProvider;
+  private readonly tutorSdk: TutorSdk;
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
   private readonly auditLog: AuditEntry[] = [];
@@ -160,8 +164,12 @@ export class TutorService {
     @Optional()
     @Inject(LearningStallSignalSink)
     private readonly stallSink?: LearningStallSignalSink,
+    @Optional()
+    @Inject(TutorWorkspaceService)
+    workspace?: TutorWorkspaceService,
   ) {
     this.provider = createTutorProvider(dataMode, gateway);
+    this.tutorSdk = createTutorSdk(workspace ?? createEmptyTutorSdkPorts());
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
@@ -300,14 +308,32 @@ export class TutorService {
     }
 
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
+    await this.tutorSdk.initialize();
+    const liveProject = record.projectId === null || this.platformData === undefined
+      ? null
+      : this.platformData.getProject(record.projectId);
+    const projectTitle = liveProject?.title ?? DEMO_PROJECT.title;
+    const projectStage = liveProject?.stage ?? DEMO_PROJECT.stage;
+    const currentTask = currentTaskFor(record.projectId ?? DEMO_PROJECT.id, projectTitle, projectStage);
+    const currentTaskTitle = currentTask?.title ?? projectTitle;
+    const contextPacket = await this.tutorSdk.buildContext({
+      studentId: request.actorId,
+      projectId: record.projectId,
+      projectStage,
+      currentGoal: currentTaskTitle,
+      query: request.content ?? request.optionLabel ?? '当前学习任务',
+      recentActivity: record.turns.slice(-6).map((turn) => `${turn.role}:${turn.blocks.length}个内容块`),
+    });
+
     const input: TutorTurnInput = {
       projectId: record.projectId ?? DEMO_PROJECT.id,
       sessionId: record.sessionId,
-      projectTitle: DEMO_PROJECT.title,
-      projectStage: DEMO_PROJECT.stage,
-      currentTaskTitle: DEMO_PROJECT.currentTaskTitle,
+      projectTitle,
+      projectStage,
+      currentTaskTitle,
       previousHintLevel: record.lastHintLevel,
       turnCount,
+      contextPacket,
       ...(request.content !== undefined ? { content: request.content } : {}),
       ...(request.pedagogicMove !== undefined ? { pedagogicMove: request.pedagogicMove } : {}),
       ...(request.optionLabel !== undefined ? { optionLabel: request.optionLabel } : {}),
@@ -319,7 +345,7 @@ export class TutorService {
       role: 'student',
       blocks: buildStudentBlocks(request),
       hintLevel: null,
-      stageBefore: DEMO_PROJECT.stage,
+      stageBefore: projectStage,
       stageAfter: null,
       seq: (record.lastSeq += 1),
       createdAt: new Date().toISOString(),
@@ -380,8 +406,8 @@ export class TutorService {
       role: 'assistant',
       blocks: assistantBlocks,
       hintLevel: assistantHintLevel,
-      stageBefore: DEMO_PROJECT.stage,
-      stageAfter: DEMO_PROJECT.stage,
+      stageBefore: projectStage,
+      stageAfter: projectStage,
       seq: record.lastSeq,
       createdAt: new Date().toISOString(),
       modality: 'text',
@@ -399,6 +425,15 @@ export class TutorService {
       actorId: request.actorId,
       action: guardBlocked ? 'tutor.guard_block' : 'tutor.turn',
       detail: `回合 ${record.lastSeq}，提示等级 ${assistantHintLevel ?? '未变更'}`,
+    });
+    await this.tutorSdk.recordGrowthSignal({
+      idempotencyKey: `tutor-turn:${record.sessionId}:${record.lastSeq}`,
+      studentId: request.actorId,
+      projectId: record.projectId,
+      kind: 'question_asked',
+      summary: '学生完成了一次学习搭档对话回合',
+      evidenceRef: `tutor_turn:${record.sessionId}:${record.lastSeq}`,
+      occurredAt: new Date().toISOString(),
     });
     if (record.escalated) {
       this.record({

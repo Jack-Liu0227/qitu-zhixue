@@ -3,6 +3,7 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
 import { RemindersModule } from '../reminders/reminders.module';
+import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TutorController } from './tutor.controller';
 import { TutorService } from './tutor.service';
 
@@ -16,7 +17,7 @@ import { TutorService } from './tutor.service';
 @Module({
   imports: [AuthModule, ModelRegistryModule, PlatformDataModule, RemindersModule],
   controllers: [TutorController],
-  providers: [TutorService],
+  providers: [TutorService, TutorWorkspaceService],
   exports: [TutorService],
 })
 export class AiTutorModule {}

@@ -1,44 +1,30 @@
-/**
- * Module-local mirror of `@qitu/ai-client/pedagogy`.
- *
- * WHY THIS FILE EXISTS (and is not an import): `@qitu/ai-client` is not a
- * declared dependency of `@qitu/student-center` and its package `exports` map
- * only exposes the root (`"."` → `src/index.ts`), with no `./pedagogy` subpath.
- * It therefore cannot be resolved at typecheck/build time, and adding it would
- * mean editing `package.json` / `next.config.ts`, which is outside this
- * feature module's write scope. These values mirror the upstream constants
- * EXACTLY and are the ONLY place the ladder numbers appear; call sites read the
- * named constants and never repeat a literal. This is a reported contract /
- * dependency gap (see handoff), not a licence to drift.
- */
+import {
+  EXPLAIN_ONLY_LEVEL,
+  HINT_LEVEL_MAX,
+  HINT_LEVEL_MIN,
+  HINT_PATH_MAX_LEVEL,
+  MAX_HINT_RISE_PER_TURN,
+  PEDAGOGIC_MOVES,
+  SCAFFOLD_LEVEL,
+  STALL_WINDOW_SIZE,
+  CONTINUOUS_GUIDANCE_TURN_CAP,
+} from '@qitu/ai-client/pedagogy';
 import type { PedagogicMove, TutorHintLevel, TutorTurn } from '@qitu/contracts';
 
-/** Hint ladder floor. Every new question starts here. */
-export const HINT_LEVEL_MIN: TutorHintLevel = 1;
-/** Hint ladder ceiling (level 5 = 必要解释). */
-export const HINT_LEVEL_MAX: TutorHintLevel = 5;
-/** `hint` / `debug_guide` may climb at most to level 3. */
-export const HINT_PATH_MAX_LEVEL: TutorHintLevel = 3;
-/** `scaffold` renders level 4 (2–6 steps, one goal each). */
-export const SCAFFOLD_LEVEL: TutorHintLevel = 4;
-/** Level 5 is reachable ONLY through the `explain` move. */
-export const EXPLAIN_ONLY_LEVEL: TutorHintLevel = 5;
-/** The ladder rises by at most one step per turn (no skipping). */
-export const MAX_HINT_RISE_PER_TURN = 1;
-/** Single-question continuous-guidance cap: turns 1..6 guide, turn 7 does not. */
-export const CONTINUOUS_GUIDANCE_CAP = 6;
-/** Four-turn stall window that feeds the mentor escalation path. */
-export const STALL_WINDOW = 4;
+export {
+  EXPLAIN_ONLY_LEVEL,
+  HINT_LEVEL_MAX,
+  HINT_LEVEL_MIN,
+  HINT_PATH_MAX_LEVEL,
+  MAX_HINT_RISE_PER_TURN,
+  PEDAGOGIC_MOVES,
+  SCAFFOLD_LEVEL,
+} from '@qitu/ai-client/pedagogy';
 
-/** Canonical order of the six pedagogic moves. */
-export const PEDAGOGIC_MOVES = [
-  'hint',
-  'scaffold',
-  'explain',
-  'review_work',
-  'debug_guide',
-  'stall_signal',
-] as const satisfies readonly PedagogicMove[];
+/** Display-only aliases for the SDK policy. */
+export const CONTINUOUS_GUIDANCE_CAP = CONTINUOUS_GUIDANCE_TURN_CAP;
+export const STALL_WINDOW = STALL_WINDOW_SIZE;
+
 
 export type CapabilityKind = 'guidance' | 'scaffold' | 'explain' | 'review' | 'stall';
 

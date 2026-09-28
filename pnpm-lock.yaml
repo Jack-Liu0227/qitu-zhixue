@@ -218,7 +218,11 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/ai-client: {}
+  packages/ai-client:
+    dependencies:
+      '@qitu/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/analytics: {}
 
@@ -302,6 +306,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.2.6(@nestjs/common@11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.6)
+      '@qitu/ai-client':
+        specifier: workspace:*
+        version: link:../../packages/ai-client
       '@qitu/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

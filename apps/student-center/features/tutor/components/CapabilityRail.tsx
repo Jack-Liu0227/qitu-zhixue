@@ -1,5 +1,6 @@
 import type { PedagogicMove, TutorHintLevel } from '@qitu/contracts';
-import { HandwrittenNote, SectionCard } from '@qitu/ui';
+import { HandwrittenNote, RobotMascot, SectionCard } from '@qitu/ui';
+
 import {
   CAPABILITY_ENTRIES,
   CONTINUOUS_GUIDANCE_CAP,
@@ -50,6 +51,7 @@ export function CapabilityRail({
   return (
     <aside className="qitu-tutor-col qitu-tutor-col-right">
       <SectionCard title="我可以这样帮你">
+        <p className="qitu-tutor-rail-subtitle">你来决定下一步，我帮你把思路变得清楚</p>
         <div className="qitu-capability-rail">
           {CAPABILITY_ENTRIES.map((entry) => {
             const nextLevel = nextHintLevel(lastHintLevel, entry.move);
@@ -82,6 +84,7 @@ export function CapabilityRail({
         </div>
       </SectionCard>
       <div className="qitu-tutor-encouragement">
+        <RobotMascot size={72} mood="cheering" />
         <HandwrittenNote>每一次卡住，都是在长出新的思路。</HandwrittenNote>
       </div>
     </aside>

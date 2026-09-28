@@ -37,11 +37,27 @@ export function CapabilityTile({
       title={disabled && disabledReason ? disabledReason : undefined}
       onClick={() => onInvoke(move)}
     >
-      <span className="qitu-capability-label">{label}</span>
-      <span className="qitu-capability-desc">{description}</span>
-      <span className="qitu-capability-level">
-        {pending ? '发送中…' : levelPreview ?? `提示等级 ${levelNote}`}
+      <span className="qitu-capability-icon" aria-hidden="true">{iconFor(move)}</span>
+      <span className="qitu-capability-copy">
+        <span className="qitu-capability-label">{label}</span>
+        <span className="qitu-capability-desc">{description}</span>
+        <span className="qitu-capability-level">
+          {pending ? '发送中…' : levelPreview ?? `提示等级 ${levelNote}`}
+        </span>
       </span>
+      <span className="qitu-capability-chevron" aria-hidden="true">›</span>
     </button>
   );
+}
+
+function iconFor(move: PedagogicMove): string {
+  const icons: Record<PedagogicMove, string> = {
+    hint: '?',
+    scaffold: '≡',
+    explain: 'i',
+    review_work: '✓',
+    debug_guide: '⌕',
+    stall_signal: '!',
+  };
+  return icons[move];
 }
