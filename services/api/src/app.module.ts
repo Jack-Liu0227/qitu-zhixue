@@ -11,6 +11,7 @@ import { ModelRegistryModule } from './modules/model-registry/model-registry.mod
 import { PlatformDataModule } from './modules/platform-data/platform-data.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { DirectoryModule } from './modules/directory/directory.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
@@ -30,6 +31,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
     PlatformDataModule,
     ParentModule,
     ProjectsModule,
+    RemindersModule,
     AdminModule,
     TeacherModule,
   ],

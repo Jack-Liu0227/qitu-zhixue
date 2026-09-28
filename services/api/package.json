@@ -7,7 +7,8 @@
     "build": "nest build",
     "lint": "node -e \"console.log('api: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/common/access/**/*.test.js\" \".tmp/test-dist/modules/growth/**/*.test.js\""
+<<<<<<< HEAD
+    "test": "tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/common/access/**/*.test.js\" \".tmp/test-dist/modules/growth/**/*.test.js\" \".tmp/test-dist/modules/reminders/**/*.test.js\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*",

@@ -6,6 +6,7 @@ export * from './exploration';
 export * from './tutor';
 export * from './realtime';
 export * from './growth';
+export * from './reminder';
 export * from './platform';
 export * from './parent';
 export * from './admin';

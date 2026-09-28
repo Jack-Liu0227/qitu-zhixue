@@ -9,6 +9,11 @@ import type {
   TutorTurn,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
+import {
+  LEARNING_PROGRESS_STALL_SOURCE,
+  LEARNING_STALL_ESCALATION_THRESHOLD,
+  LearningStallSignalSink,
+} from '../reminders/learning-stall-signal';
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
@@ -146,6 +151,15 @@ export class TutorService {
     @Inject(DATA_MODE_TOKEN) dataMode: DataMode,
     @Inject(ModelGateway) gateway: TutorModelGateway,
     @Optional() private readonly platformData?: PlatformDataService,
+    /**
+     * 学习进度停滞信号接收端（ISSUE-T2）。
+     *
+     * 可选依赖：未接线时退化到不产生任何提醒（fail-closed）。提醒是否真的
+     * 投递由提醒模块的评审门禁决定，AI 搭档不直接投递、不读取聊天原文。
+     */
+    @Optional()
+    @Inject(LearningStallSignalSink)
+    private readonly stallSink?: LearningStallSignalSink,
   ) {
     this.provider = createTutorProvider(dataMode, gateway);
   }
@@ -516,7 +530,18 @@ export class TutorService {
     } else if (move !== undefined) {
       record.stallCount = 0;
     }
-    record.escalated = record.escalated || record.stallCount >= 4;
+    const crossedEscalation =
+      !record.escalated && record.stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD;
+    record.escalated = record.escalated || record.stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD;
+    if (crossedEscalation) {
+      // 只在**首次**越过阈值时上报一次，避免每多卡一轮就重复生成提醒。
+      // 提醒模块按 `source:studentId:stallCount` 去重，重复上报也是幂等的。
+      this.stallSink?.ingestStallSignal({
+        studentId: record.ownerId,
+        stallCount: record.stallCount,
+        source: LEARNING_PROGRESS_STALL_SOURCE,
+      });
+    }
   }
 
   private record(entry: Omit<AuditEntry, 'at'>): void {
