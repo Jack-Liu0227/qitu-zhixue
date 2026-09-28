@@ -101,7 +101,13 @@ export type ApiErrorCode =
    * 未配置 `DATABASE_URL`（无法落库任务元数据）或对象存储未接入时返回该码，
    * **绝不**退回内存假装成功。
    */
-  | 'PARENT_EXPORT_UNAVAILABLE';
+  | 'PARENT_EXPORT_UNAVAILABLE'
+  /** 探索会话不存在，或对当前学生不可见（404）。 */
+  | 'EXPLORATION_NOT_FOUND'
+  /** 当前探索状态不允许该迁移（409）。 */
+  | 'EXPLORATION_TRANSITION_INVALID'
+  /** 候选意图尚未形成、不足以确认（409）。 */
+  | 'INTENT_DRAFT_INCOMPLETE';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

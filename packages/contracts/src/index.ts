@@ -2,6 +2,7 @@
 export * from './auth';
 
 export * from './project';
+export * from './exploration';
 export * from './tutor';
 export * from './realtime';
 export * from './growth';
