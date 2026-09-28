@@ -234,11 +234,11 @@ describe('FeedbackService 授权', () => {
 
     const teacherRows = await harness.service.listForTeacher('teacher-demo');
     assert.equal(teacherRows.length, 1);
-    assert.equal(teacherRows[0].studentId, 'student-demo');
+    assert.equal(teacherRows[0]?.studentId, 'student-demo');
 
     const otherRows = await harness.service.listForTeacher('teacher-demo-2');
     assert.equal(otherRows.length, 1);
-    assert.equal(otherRows[0].studentId, 'student-demo-2');
+    assert.equal(otherRows[0]?.studentId, 'student-demo-2');
   });
 
   it('非本班班主任回复别的学生工单返回 STUDENT_NOT_ASSIGNED，且不泄露学生字段', async () => {
@@ -408,7 +408,7 @@ describe('FeedbackService 幂等与审计', () => {
     const retried = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'retry-key');
     const tickets = await harness.service.listForParent('parent-demo', 'student-demo');
     assert.equal(tickets.length, 1);
-    assert.equal(tickets[0].id, retried.id);
+    assert.equal(tickets[0]?.id, retried.id);
   });
 
   it('审计只记录过程事实，不落反馈原文', async () => {
@@ -420,8 +420,8 @@ describe('FeedbackService 幂等与审计', () => {
     );
     assert.ok(harness.audit.entries.length >= 1);
     assert.ok(!JSON.stringify(harness.audit.entries).includes(secret));
-    assert.equal(harness.audit.entries[0].action, 'feedback.submit');
-    assert.equal(harness.audit.entries[0].actorRole, 'parent');
+    assert.equal(harness.audit.entries[0]?.action, 'feedback.submit');
+    assert.equal(harness.audit.entries[0]?.actorRole, 'parent');
   });
 });
 
@@ -460,7 +460,7 @@ describe('FeedbackService 附件归属', () => {
       submitBody({ attachmentRefs: ['att-mine'] }),
       'k-1',
     );
-    assert.deepEqual(ticket.entries[0].attachmentRefs, ['att-mine']);
+    assert.deepEqual(ticket.entries[0]?.attachmentRefs, ['att-mine']);
   });
 
   it('班主任回复时同样校验附件归属', async () => {
