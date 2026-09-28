@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AdminModelUsagesResponse,
   AdminProvidersResponse,
@@ -8,9 +8,11 @@ import type {
   ConnectionTestResponse,
   ModelUsageBinding,
   ModelUsageSlot,
+  ProviderConfigPublic,
 } from '@qitu/contracts';
 import { Badge, Button, EmptyState, InfoRow, SectionCard } from '@qitu/ui';
 import { bindUsage, fetchProviders, fetchUsages, testUsageConnection } from '../../../../lib/api/modelRegistry';
+import { AdminPermissionError } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
@@ -108,6 +110,76 @@ function ConnectionTestResult({
   );
 }
 
+/** 供应商下拉选项：只带用途页需要的字段，密钥状态与启用状态单独透出。 */
+interface ProviderOption {
+  id: string;
+  name: string;
+  models: { id: string; name: string }[];
+  /** 服务端是否已持有可用密钥（`auth.configured`）。 */
+  authConfigured: boolean;
+  /** 供应商是否启用。契约当前未透出该字段，后端一旦返回 `enabled=false` 即生效。 */
+  enabled: boolean;
+}
+
+/**
+ * 供应商是否处于启用状态。
+ *
+ * `ProviderConfigPublic` 目前没有 `enabled`，但后端 `resolveRuntimeTarget` 会用
+ * `MODEL_PROVIDER_DISABLED` 拒绝停用的供应商。这里做兼容读取：字段缺失视为启用，
+ * 只有显式 `enabled === false` 才判停用，避免把正常供应商误判为停用。
+ */
+function isProviderEnabled(provider: ProviderConfigPublic): boolean {
+  return (provider as ProviderConfigPublic & { enabled?: boolean }).enabled !== false;
+}
+
+/**
+ * 模型下拉的禁用原因；返回 `null` 表示可以正常选模型。
+ *
+ * 覆盖「没有供应商 / 未选择供应商 / 供应商不存在 / 已停用 / 未配置密钥 / 没有模型」
+ * 六类阻塞，每种都给出「请先配置并保存服务提供方/模型」的可执行提示，而不是渲染一个
+ * 看似可选、实则没有数据的下拉框。
+ */
+function modelSelectionBlocker(
+  providerId: string,
+  provider: ProviderOption | null,
+  providerCount: number,
+): string | null {
+  if (providerCount === 0) {
+    return '还没有可用的服务提供方，请先到「模型供应商」配置并保存服务提供方/模型，再回来绑定。';
+  }
+  if (providerId === UNBOUND) {
+    return '请先选择服务提供方并配置保存模型；若该用途需要解绑，保持「不绑定」直接保存即可。';
+  }
+  if (provider === null) {
+    return '所选服务提供方已不存在，请先配置并保存服务提供方/模型。';
+  }
+  if (!provider.enabled) {
+    return '该服务提供方已停用，请先在「模型供应商」启用并保存服务提供方/模型。';
+  }
+  if (!provider.authConfigured) {
+    return '该服务提供方尚未配置密钥，请先在「模型供应商」配置并保存服务提供方/模型。';
+  }
+  if (provider.models.length === 0) {
+    return '该服务提供方还没有可用模型，请先拉取或添加模型并保存，再选择模型。';
+  }
+  return null;
+}
+
+/** 把写操作的异常归类为「权限失败」与普通错误；权限失败需要在按钮区显式呈现。 */
+function classifyActionError(
+  cause: unknown,
+  fallback: string,
+): { message: string; permissionDenied: boolean } {
+  if (cause instanceof AdminPermissionError) {
+    return {
+      message: '当前账号没有修改模型绑定的权限，请使用管理员账号登录后重试。',
+      permissionDenied: true,
+    };
+  }
+  if (cause instanceof Error) return { message: cause.message, permissionDenied: false };
+  return { message: fallback, permissionDenied: false };
+}
+
 function UsageCard({
   usage,
   binding,
@@ -116,48 +188,134 @@ function UsageCard({
 }: {
   usage: ModelUsageSlot;
   binding: ModelUsageBinding;
-  providers: { id: string; name: string; models: { id: string; name: string }[] }[];
+  providers: ProviderOption[];
   onSaved: (binding: ModelUsageBinding) => void;
 }) {
   const [providerId, setProviderId] = useState(binding.providerId ?? UNBOUND);
   const [modelId, setModelId] = useState(binding.modelId ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [testState, setTestState] = useState<ConnectionTestState>(IDLE_CONNECTION_TEST);
+  // 递增令牌：切换供应商或保存后作废仍在飞的测试，避免旧结果覆盖新状态。
+  const testRunRef = useRef(0);
 
-  const providerModels = useMemo(
-    () => providers.find((provider) => provider.id === providerId)?.models ?? [],
+  const selectedProvider = useMemo(
+    () => providers.find((provider) => provider.id === providerId) ?? null,
     [providers, providerId],
   );
+  const providerModels = selectedProvider?.models ?? [];
+  // 禁用原因；null 才表示「当前供应商可正常选模型」。
+  const blocker = modelSelectionBlocker(providerId, selectedProvider, providers.length);
+  // 只承认当前供应商 `models` 数组里真实存在的模型对象，绝不只凭字符串相等。
+  const selectedModel =
+    modelId === '' ? null : (providerModels.find((model) => model.id === modelId) ?? null);
+  const canSave =
+    providerId === UNBOUND
+      ? true
+      : selectedProvider !== null && blocker === null && selectedModel !== null;
+
+  /** 清空测试结果，并让仍在飞的测试请求作废。 */
+  function clearTestResult() {
+    testRunRef.current += 1;
+    setTestState(IDLE_CONNECTION_TEST);
+  }
+
+  /**
+   * 供应商 / 模型清单变化后收敛本地选择：供应商被删除或模型被下线时立即回退，
+   * 避免带着失效的字符串去提交。缺少密钥、无模型仍保留供应商，让用户就地看到原因。
+   */
+  useEffect(() => {
+    if (providerId === UNBOUND) return;
+    const provider = providers.find((item) => item.id === providerId);
+    if (provider === undefined) {
+      setProviderId(UNBOUND);
+      setModelId('');
+      clearTestResult();
+      return;
+    }
+    if (modelId !== '' && !provider.models.some((model) => model.id === modelId)) {
+      setModelId('');
+      clearTestResult();
+    }
+  }, [providers, providerId, modelId]);
 
   function selectProvider(id: string) {
     setProviderId(id);
     setModelId('');
     setSaved(false);
+    setError('');
+    clearTestResult();
+  }
+
+  function selectModel(id: string) {
+    // 只接受当前供应商模型清单里的 id，下拉之外的字符串一律拒绝。
+    const model = providerModels.find((candidate) => candidate.id === id) ?? null;
+    if (id !== '' && model === null) {
+      setModelId('');
+      setError('所选模型不属于当前服务提供方，请重新选择。');
+      return;
+    }
+    setModelId(model?.id ?? '');
+    setSaved(false);
+    setError('');
   }
 
   async function save() {
+    if (saving) return;
     setError('');
     setSaved(false);
 
-    const body: BindUsageRequest =
-      providerId === UNBOUND
-        ? { providerId: null, modelId: null }
-        : { providerId, modelId: modelId || null };
-
-    if (providerId !== UNBOUND && !modelId) {
-      setError('请先选择模型，或切换为「不绑定」。');
+    // 解绑：显式提交 null，仍是幂等写操作。
+    if (providerId === UNBOUND) {
+      setSaving(true);
+      try {
+        const updated = await bindUsage(usage.id, { providerId: null, modelId: null });
+        onSaved(updated);
+        setSaved(true);
+        clearTestResult();
+      } catch (cause) {
+        const failure = classifyActionError(cause, '保存失败，请稍后重试。');
+        setPermissionDenied(failure.permissionDenied);
+        setError(failure.permissionDenied ? '' : failure.message);
+      } finally {
+        setSaving(false);
+      }
       return;
     }
 
+    // 保存前的前端二次校验：命中的必须是真实存在的 provider 对象与其 models 成员。
+    const provider = providers.find((item) => item.id === providerId);
+    if (!provider) {
+      setError('所选服务提供方已不存在，请刷新后重新配置并保存服务提供方/模型。');
+      return;
+    }
+    const model = provider.models.find((item) => item.id === modelId);
+    if (!model) {
+      setError('请选择该服务提供方下的可用模型，或先配置并保存服务提供方/模型。');
+      return;
+    }
+    if (!provider.enabled) {
+      setError('该服务提供方已停用，请先启用并保存服务提供方/模型。');
+      return;
+    }
+    if (!provider.authConfigured) {
+      setError('该服务提供方尚未配置密钥，请先配置并保存服务提供方/模型。');
+      return;
+    }
+
+    const body: BindUsageRequest = { providerId: provider.id, modelId: model.id };
     setSaving(true);
     try {
       const updated = await bindUsage(usage.id, body);
       onSaved(updated);
       setSaved(true);
+      clearTestResult();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存失败，请稍后重试。');
+      const failure = classifyActionError(cause, '保存失败，请稍后重试。');
+      setPermissionDenied(failure.permissionDenied);
+      setError(failure.permissionDenied ? '' : failure.message);
     } finally {
       setSaving(false);
     }
@@ -169,16 +327,18 @@ function UsageCard({
    * 展示，**不**当作页面级错误。
    */
   async function handleTest() {
+    const runId = testRunRef.current + 1;
+    testRunRef.current = runId;
     setTestState({ running: true, result: null, transportError: '' });
     try {
       const result = await testUsageConnection(usage.id);
+      if (testRunRef.current !== runId) return; // 已被切换供应商 / 保存等操作作废
       setTestState({ running: false, result, transportError: '' });
     } catch (cause) {
-      setTestState({
-        running: false,
-        result: null,
-        transportError: cause instanceof Error ? cause.message : '测试失败，请稍后重试。',
-      });
+      if (testRunRef.current !== runId) return;
+      const failure = classifyActionError(cause, '测试失败，请稍后重试。');
+      setPermissionDenied(failure.permissionDenied);
+      setTestState({ running: false, result: null, transportError: failure.message });
     }
   }
 
@@ -225,7 +385,11 @@ function UsageCard({
       <div className="admin-usage-bind">
         <label className="admin-usage-select">
           <span>供应商</span>
-          <select value={providerId} onChange={(event) => selectProvider(event.target.value)}>
+          <select
+            value={providerId}
+            onChange={(event) => selectProvider(event.target.value)}
+            disabled={saving || providers.length === 0}
+          >
             <option value={UNBOUND}>不绑定</option>
             {providers.map((provider) => (
               <option key={provider.id} value={provider.id}>
@@ -239,8 +403,9 @@ function UsageCard({
           <span>模型</span>
           <select
             value={modelId}
-            onChange={(event) => setModelId(event.target.value)}
-            disabled={providerId === UNBOUND || providerModels.length === 0}
+            onChange={(event) => selectModel(event.target.value)}
+            disabled={saving || blocker !== null}
+            aria-describedby={blocker ? `${usage.id}-model-blocker` : undefined}
           >
             <option value="">选择模型</option>
             {providerModels.map((model) => (
@@ -252,7 +417,12 @@ function UsageCard({
         </label>
 
         <div className="admin-form-actions">
-          <Button size="sm" onClick={save} loading={saving} disabled={providers.length === 0 && providerId !== UNBOUND}>
+          <Button
+            size="sm"
+            onClick={save}
+            loading={saving}
+            disabled={saving || permissionDenied || !canSave}
+          >
             保存绑定
           </Button>
           {binding.providerId || binding.modelId ? (
@@ -264,6 +434,7 @@ function UsageCard({
                 setModelId('');
                 setSaved(false);
                 setError('');
+                clearTestResult();
               }}
               disabled={saving}
             >
@@ -273,9 +444,21 @@ function UsageCard({
         </div>
       </div>
 
+      {blocker ? (
+        <p id={`${usage.id}-model-blocker`} className="admin-usage-hint" role="status">
+          {blocker}
+        </p>
+      ) : null}
+
       <div className="admin-usage-test">
         <div className="admin-form-actions admin-form-actions-start">
-          <Button size="sm" variant="secondary" onClick={handleTest} loading={testState.running}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleTest}
+            loading={testState.running}
+            disabled={saving || permissionDenied}
+          >
             {usageTestFailed ? '重试测试' : '测试当前模型'}
           </Button>
         </div>
@@ -291,6 +474,11 @@ function UsageCard({
       {saved ? (
         <p className="admin-usage-saved" role="status">
           已保存
+        </p>
+      ) : null}
+      {permissionDenied ? (
+        <p className="qitu-field-error" role="alert">
+          当前账号没有修改模型绑定的权限，请使用管理员账号登录后重试。
         </p>
       ) : null}
       {error ? (
@@ -338,10 +526,12 @@ export default function AdminModelUsagesPage() {
 
   if (!usages || !providers) return null;
 
-  const providerOptions = providers.providers.map((provider) => ({
+  const providerOptions: ProviderOption[] = providers.providers.map((provider) => ({
     id: provider.id,
     name: provider.name,
     models: provider.models.map((model) => ({ id: model.id, name: model.name })),
+    authConfigured: provider.auth.configured,
+    enabled: isProviderEnabled(provider),
   }));
 
   const bindingMap = new Map(usages.bindings.map((binding) => [binding.usageId, binding]));
