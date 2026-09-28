@@ -22,6 +22,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
 import { AccountModule } from './modules/account/account.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { WorksModule } from './modules/works/works.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     AccountModule,
     TemplatesModule,
     KnowledgeModule,
+    WorksModule,
   ],
 })
 export class AppModule {}
