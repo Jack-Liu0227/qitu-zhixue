@@ -260,14 +260,110 @@ export type ParentFeedbackSource = 'general' | 'message' | 'project';
 
 export interface SubmitParentFeedbackRequest {
   source: ParentFeedbackSource;
+  /**
+   * 目标孩子。
+   *
+   * 修复说明：旧实现由服务端**写死** `student-demo`，任何家长提交的工单都会
+   * 挂到演示孩子名下，既是错误数据也是越权。现在 `general` 来源必填 `childId`；
+   * `message` / `project` 来源可由被关联对象推导，但仍会与推导结果校验一致。
+   */
+  childId: string | null;
   content: string;
   /** `source` 为 `message` 或 `project` 时必填，用于把工单关联到具体对象。 */
   messageId: string | null;
   projectId: string | null;
+  /** 已上传附件的 id 列表；服务端校验归属后才会写进工单。缺省视为无附件。 */
+  attachmentRefs?: string[] | null;
 }
 
 export interface SubmitParentFeedbackResponse {
   ticketId: string;
   status: 'processing';
   createdAt: string;
+}
+
+/* ------------------------------------------------------------------ *
+ * 统一反馈工单（家长与班主任共用同一份记录）
+ *
+ * 状态与时间线**只能由服务端迁移**：客户端的请求体里没有 `status` 字段，
+ * 也无法指定事件类型。班主任只能看到自己当前学生的工单；家长只能看到自己
+ * 绑定孩子的工单。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 统一工单状态。
+ *
+ * - `processing`：待班主任处理（家长刚提交或补充后）；
+ * - `replied`：班主任已公开回复，等待家长确认；
+ * - `resolved`：家长已确认问题解决；
+ * - `reopened`：家长确认未解决，重新打开等待班主任。
+ */
+export type ParentFeedbackStatus = 'processing' | 'replied' | 'resolved' | 'reopened';
+
+/** 工单时间线事件类型。全部由服务端根据动作写入，客户端不可指定。 */
+export type ParentFeedbackEventKind =
+  | 'submitted'
+  | 'supplemented'
+  | 'replied'
+  | 'confirmed'
+  | 'reopened';
+
+/** 时间线中的一条记录；措辞由服务端预审，不含任何原始 AI 对话。 */
+export interface ParentFeedbackEntry {
+  id: string;
+  kind: ParentFeedbackEventKind;
+  authorRole: 'parent' | 'teacher';
+  authorDisplayName: string;
+  content: string;
+  /** 附件引用 id；只包含已通过归属校验的附件。 */
+  attachmentRefs: string[];
+  /** 仅家长确认事件有值：true=确认已解决，false=确认未解决；其他事件为 null。 */
+  resolved: boolean | null;
+  createdAt: string;
+}
+
+/** 家长与班主任共用的工单投影。不含内部字段、负责人 id 与原始对话。 */
+export interface ParentFeedbackTicket {
+  id: string;
+  childId: string;
+  childDisplayName: string;
+  source: ParentFeedbackSource;
+  projectId: string | null;
+  projectTitle: string | null;
+  messageId: string | null;
+  status: ParentFeedbackStatus;
+  /** 家长首次提交的问题描述。 */
+  problem: string;
+  /** 当前负责人（班主任）展示名；尚未分配班主任时为 null。 */
+  owner: string | null;
+  /** 服务端格式化的处理时长，例如「2小时15分钟」。 */
+  handledIn: string;
+  entries: ParentFeedbackEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParentFeedbackListResponse {
+  tickets: ParentFeedbackTicket[];
+}
+
+export interface ParentFeedbackDetailResponse {
+  ticket: ParentFeedbackTicket;
+}
+
+/** 家长补充说明（追问）请求；内容与首次提交同规则校验。 */
+export interface SupplementParentFeedbackRequest {
+  content: string;
+  attachmentRefs?: string[] | null;
+}
+
+/** 家长确认结果请求。`resolved=true` 关闭工单；`false` 表示未解决，重新打开。 */
+export interface ConfirmParentFeedbackRequest {
+  resolved: boolean;
+  note: string | null;
+}
+
+/** 工单变更后的统一响应（补充 / 确认 / 回复）。 */
+export interface ParentFeedbackMutationResponse {
+  ticket: ParentFeedbackTicket;
 }

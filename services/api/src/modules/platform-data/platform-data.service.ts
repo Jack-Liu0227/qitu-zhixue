@@ -83,18 +83,6 @@ export interface DemoParentMessage {
   hasFocus: boolean;
 }
 
-/** 家长端服务工单。 */
-export interface DemoServiceTicket {
-  id: string;
-  childId: string;
-  problem: string;
-  projectTitle: string | null;
-  owner: string;
-  status: 'processing' | 'resolved';
-  handledIn: string;
-  createdAt: string;
-}
-
 /** 作品版本时间线的一步。 */
 export interface DemoVersionStep {
   id: string;
@@ -123,20 +111,6 @@ export interface DemoEncouragement {
   idempotencyKey: string;
 }
 
-/** 家长反馈/工单。 */
-export interface DemoFeedback {
-  id: string;
-  parentId: string;
-  childId: string | null;
-  source: 'general' | 'message' | 'project';
-  content: string;
-  messageId: string | null;
-  projectId: string | null;
-  status: 'processing' | 'resolved';
-  createdAt: string;
-  idempotencyKey: string;
-}
-
 /** 审计日志条目。 */
 export interface AuditLogEntry {
   id: string;
@@ -156,11 +130,9 @@ export class PlatformDataService {
   private readonly projects: DemoProject[];
   private readonly interventions: DemoIntervention[];
   private readonly messages: DemoParentMessage[];
-  private readonly tickets: DemoServiceTicket[];
   private readonly versions: DemoVersionStep[];
   private readonly workGrowth: DemoWorkGrowth[];
   private readonly encouragements: DemoEncouragement[] = [];
-  private readonly feedbacks: DemoFeedback[] = [];
   private readonly auditLog: AuditLogEntry[] = [];
 
   constructor(
@@ -348,20 +320,6 @@ export class PlatformDataService {
       },
     ];
 
-    // 服务工单
-    this.tickets = [
-      {
-        id: 'ticket-001',
-        childId: 'student-demo',
-        problem: '希望了解如何引导孩子更主动地提问',
-        projectTitle: '校园植物观察手册',
-        owner: '演示班主任',
-        status: 'resolved',
-        handledIn: '2小时15分钟',
-        createdAt: daysAgo(3),
-      },
-    ];
-
     // 作品版本时间线
     this.versions = [
       {
@@ -443,6 +401,11 @@ export class PlatformDataService {
     return this.projects.filter((p) => p.studentId === studentId);
   }
 
+  /** 按 id 取单个项目；工单关联校验用，不暴露其它学生信息。 */
+  getProject(projectId: string): DemoProject | null {
+    return this.projects.find((p) => p.projectId === projectId) ?? null;
+  }
+
   /* ==================== 介入请求 ==================== */
 
   getInterventionsByStudent(studentId: string): DemoIntervention[] {
@@ -476,12 +439,6 @@ export class PlatformDataService {
     if (message.status !== 'pending_confirm' && message.status !== 'unread') return false;
     message.status = action === 'read' ? 'resolved' : 'processing';
     return true;
-  }
-
-  /* ==================== 服务工单 ==================== */
-
-  getTicketsByChild(childId: string): DemoServiceTicket[] {
-    return this.tickets.filter((t) => t.childId === childId);
   }
 
   /* ==================== 作品版本 ==================== */
@@ -521,7 +478,11 @@ export class PlatformDataService {
     };
     this.encouragements.push(record);
 
-    // 写审计日志
+    // 写审计日志。
+    //
+    // 注意：家长反馈工单（原 `recordFeedback`）已迁到 `FeedbackService`，不再由
+    // 本演示数据服务兼管，避免出现第二份「服务工单」真相；这里仅保留仍在使用的
+    // 「鼓励」写操作。
     this.auditLog.push({
       id: `audit-${this.auditLog.length + 1}`,
       actorId: parentId,
@@ -529,48 +490,6 @@ export class PlatformDataService {
       targetId: childId,
       idempotencyKey,
       at: record.sentAt,
-    });
-
-    return record;
-  }
-
-  /**
-   * 提交家长反馈。
-   * 返回 null 表示幂等键冲突。
-   */
-  recordFeedback(
-    parentId: string,
-    childId: string | null,
-    source: 'general' | 'message' | 'project',
-    content: string,
-    messageId: string | null,
-    projectId: string | null,
-    idempotencyKey: string,
-  ): DemoFeedback | null {
-    const existing = this.feedbacks.find((f) => f.idempotencyKey === idempotencyKey);
-    if (existing !== undefined) return existing;
-
-    const record: DemoFeedback = {
-      id: `feedback-${this.feedbacks.length + 1}`,
-      parentId,
-      childId,
-      source,
-      content,
-      messageId,
-      projectId,
-      status: 'processing',
-      createdAt: new Date().toISOString(),
-      idempotencyKey,
-    };
-    this.feedbacks.push(record);
-
-    this.auditLog.push({
-      id: `audit-${this.auditLog.length + 1}`,
-      actorId: parentId,
-      action: 'feedback',
-      targetId: childId,
-      idempotencyKey,
-      at: record.createdAt,
     });
 
     return record;

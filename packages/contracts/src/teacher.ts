@@ -1,6 +1,7 @@
 import type { AdminInterventionStatus } from './admin';
 import type { DataSource } from './platform';
 import type { ProjectStage } from './project';
+import type { ParentFeedbackStatus, ParentFeedbackTicket } from './parent';
 
 /**
  * 班主任工作台契约。
@@ -208,4 +209,42 @@ export interface TeacherSettingsPageData {
   /** 本租户是否允许班主任覆盖平台默认策略。默认 false。 */
   teacherOverrideAllowed: boolean;
   dataSource: DataSource;
+}
+
+/* ------------------------------------------------------------------ *
+ * 家长反馈工单
+ *
+ * 班主任只能看到自己**当前**学生的工单（对象级授权在服务端，403 只返回
+ * `STUDENT_NOT_ASSIGNED`，不泄露任何学生字段）。回复是公开回复，会写进家长
+ * 可见的时间线；状态迁移由服务端负责，客户端只能提交内容。
+ * ------------------------------------------------------------------ */
+
+/** 工单列表行。只含过程性事实，没有针对学生或家长的评分。 */
+export interface TeacherFeedbackRow {
+  ticketId: string;
+  studentId: string;
+  studentDisplayName: string;
+  problem: string;
+  projectTitle: string | null;
+  status: ParentFeedbackStatus;
+  /** 是否已有班主任回复；仅用于列表徽标，不是工单状态。 */
+  replied: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeacherFeedbackListPageData {
+  items: TeacherFeedbackRow[];
+  totals: { processing: number; replied: number; resolved: number };
+  dataSource: DataSource;
+}
+
+export interface TeacherFeedbackDetail {
+  ticket: ParentFeedbackTicket;
+}
+
+/** 班主任公开回复请求；家长会在工单时间线上看到这条内容。 */
+export interface ReplyTeacherFeedbackRequest {
+  content: string;
+  attachmentRefs?: string[] | null;
 }

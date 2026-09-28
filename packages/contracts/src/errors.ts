@@ -59,7 +59,22 @@ export type ApiErrorCode =
    * 服务端在授权失败时**不得**返回该学生的任何字段——只给这个码，
    * 否则 403 本身就变成了信息泄露。
    */
-  | 'STUDENT_NOT_ASSIGNED';
+  | 'STUDENT_NOT_ASSIGNED'
+  /**
+   * 反馈工单不存在，或对当前账号不可见（404）。
+   *
+   * 两者共用同一个码：家长访问别的孩子的工单时也返回它，避免通过
+   * 「404 / 403」的差异探测工单是否存在。
+   */
+  | 'FEEDBACK_NOT_FOUND'
+  /** 当前工单状态不允许该迁移，例如已解决的工单不能直接回复（409）。 */
+  | 'FEEDBACK_TRANSITION_INVALID'
+  /**
+   * 附件不存在、不属于当前账号，或未被上传服务确认（400）。
+   *
+   * 三种原因共用同一个码与同一条消息，不区分原因，避免泄露他人附件是否存在。
+   */
+  | 'FEEDBACK_ATTACHMENT_INVALID';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

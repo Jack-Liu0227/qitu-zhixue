@@ -33,12 +33,18 @@ import type {
   ParentMessageFocus,
   ParentMessagesSummary,
   ParentServiceTicket,
+  ParentFeedbackListResponse,
+  ParentFeedbackDetailResponse,
+  ParentFeedbackMutationResponse,
+  SupplementParentFeedbackRequest,
+  ConfirmParentFeedbackRequest,
 } from '@qitu/contracts';
 import { pickFields, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { DirectoryService } from '../directory/directory.service';
 import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { FeedbackService } from '../feedback/feedback.service';
 
 /**
  * 家长陪伴中心接口。
@@ -59,6 +65,7 @@ export class ParentController {
     private readonly directory: DirectoryService,
     private readonly growthService: GrowthService,
     private readonly platformData: PlatformDataService,
+    private readonly feedbackService: FeedbackService,
   ) {}
 
   /* ==================== 读接口 ==================== */
@@ -276,7 +283,8 @@ export class ParentController {
     if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
 
     const demoMessages = this.platformData.getMessagesByChild(childId);
-    const demoTickets = this.platformData.getTicketsByChild(childId);
+    // 服务工单来自统一反馈服务，不再直读 platform-data（那里已经不再维护工单）。
+    const feedbackTickets = await this.feedbackService.listForParent(user.id, childId);
 
     // 消息列表
     const messages: ParentMessage[] = demoMessages.map((m) => {
@@ -312,12 +320,12 @@ export class ParentController {
     });
 
     // 服务工单
-    const tickets: ParentServiceTicket[] = demoTickets.map((t) => ({
+    const tickets: ParentServiceTicket[] = feedbackTickets.map((t) => ({
       id: t.id,
       problem: t.problem,
       projectTitle: t.projectTitle,
-      owner: t.owner,
-      status: t.status,
+      owner: t.owner ?? '待分配',
+      status: t.status === 'resolved' ? 'resolved' : 'processing',
       handledIn: t.handledIn,
     }));
 
@@ -446,72 +454,119 @@ export class ParentController {
 
   /**
    * 提交反馈。
+   *
+   * 目标孩子不再写死：`general` 必填 `childId`，`message`/`project` 由关联对象
+   * 推导并校验一致；服务端会再次校验家长确实绑定了该孩子（越权返回 403）。
    */
   @Post('feedback')
-  submitFeedback(
+  async submitFeedback(
     @Headers('cookie') cookieHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() body: unknown,
-  ): { data: SubmitParentFeedbackResponse } {
+  ): Promise<{ data: SubmitParentFeedbackResponse }> {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
 
     if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
       throw new BadRequestException({
-        code: 'IDEMPOTENCY_CONFLICT',
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
         message: '缺少 Idempotency-Key 请求头',
       });
     }
 
     const input = pickFields<SubmitParentFeedbackRequest>(body, [
       'source',
+      'childId',
       'content',
       'messageId',
       'projectId',
+      'attachmentRefs',
     ]);
 
-    const content = input.content?.trim() ?? '';
-    if (content.length === 0 || content.length > 500) {
-      throw new BadRequestException({
-        code: 'FEEDBACK_INVALID',
-        message: '反馈内容长度必须在 1 到 500 字之间',
-      });
-    }
-
-    if (input.source === 'message' && !input.messageId) {
-      throw new BadRequestException('source 为 message 时 messageId 必填');
-    }
-
-    if (input.source === 'project' && !input.projectId) {
-      throw new BadRequestException('source 为 project 时 projectId 必填');
-    }
-
-    // 提取 childId（简化：从 messageId 或 projectId 推断；生产环境应从绑定关系查）
-    const childId = 'student-demo'; // 演示简化
-
-    const record = this.platformData.recordFeedback(
-      user.id,
-      childId,
-      input.source ?? 'general',
-      content,
-      input.messageId ?? null,
-      input.projectId ?? null,
-      idempotencyKey,
-    );
-
-    if (record === null) {
-      throw new ConflictException({
-        code: 'IDEMPOTENCY_CONFLICT',
-        message: '该幂等键已被使用',
-      });
-    }
+    const ticket = await this.feedbackService.submitParentFeedback(user.id, input, idempotencyKey);
 
     return {
       data: {
-        ticketId: record.id,
+        ticketId: ticket.id,
         status: 'processing',
-        createdAt: record.createdAt,
+        createdAt: ticket.createdAt,
       },
     };
+  }
+
+  /** 某孩子名下的全部反馈工单（家长必须绑定该孩子）。 */
+  @Get('children/:childId/feedback')
+  async listFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('childId') childId: string,
+  ): Promise<{ data: ParentFeedbackListResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    const tickets = await this.feedbackService.listForParent(user.id, childId);
+    return { data: { tickets } };
+  }
+
+  /** 单条反馈工单详情（含完整时间线）。 */
+  @Get('feedback/:ticketId')
+  async getFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('ticketId') ticketId: string,
+  ): Promise<{ data: ParentFeedbackDetailResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    const ticket = await this.feedbackService.getForParent(user.id, ticketId);
+    return { data: { ticket } };
+  }
+
+  /** 家长补充说明（追问）；已解决的工单需先重新打开。 */
+  @Post('feedback/:ticketId/supplements')
+  @HttpCode(200)
+  async supplementFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: ParentFeedbackMutationResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<SupplementParentFeedbackRequest>(body, ['content', 'attachmentRefs']);
+    const ticket = await this.feedbackService.supplementParentFeedback(
+      user.id,
+      ticketId,
+      input,
+      idempotencyKey,
+    );
+    return { data: { ticket } };
+  }
+
+  /** 家长确认工单结果：`resolved=true` 关闭；`false` 重新打开。 */
+  @Post('feedback/:ticketId/confirm')
+  @HttpCode(200)
+  async confirmFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: ParentFeedbackMutationResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'parent', '该操作仅向家长开放');
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<ConfirmParentFeedbackRequest>(body, ['resolved', 'note']);
+    const ticket = await this.feedbackService.confirmParentFeedback(
+      user.id,
+      ticketId,
+      input,
+      idempotencyKey,
+    );
+    return { data: { ticket } };
   }
 
   /* ==================== 内部工具 ==================== */

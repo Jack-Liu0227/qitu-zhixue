@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Headers,
+  HttpCode,
   BadRequestException,
 } from '@nestjs/common';
 import type {
@@ -16,20 +17,25 @@ import type {
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
   TeacherSettingsPageData,
+  TeacherFeedbackListPageData,
+  TeacherFeedbackDetail,
+  ReplyTeacherFeedbackRequest,
 } from '@qitu/contracts';
 import { TeacherService } from './teacher.service';
 import { requireRole, pickFields } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
+import { FeedbackService } from '../feedback/feedback.service';
 
 /**
- * Teacher controller: roster, student detail, interventions, statistics.
- * All endpoints enforce object-level authorization via TeacherService.
+ * Teacher controller: roster, student detail, interventions, statistics, feedback.
+ * All endpoints enforce object-level authorization via TeacherService / FeedbackService.
  */
 @Controller('teacher')
 export class TeacherController {
   constructor(
     private readonly teacherService: TeacherService,
     private readonly authService: AuthService,
+    private readonly feedbackService: FeedbackService,
   ) {}
 
   @Get('roster')
@@ -153,5 +159,70 @@ export class TeacherController {
     const settings = await this.teacherService.getSettings(user.id);
 
     return { data: settings };
+  }
+
+  /** 家长反馈工单列表，只含当前班主任名下的学生。 */
+  @Get('feedback')
+  async listFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+  ): Promise<{ data: TeacherFeedbackListPageData }> {
+    const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
+
+    const items = await this.feedbackService.listForTeacher(user.id);
+
+    return {
+      data: {
+        items,
+        totals: {
+          processing: items.filter((i) => i.status === 'processing' || i.status === 'reopened')
+            .length,
+          replied: items.filter((i) => i.status === 'replied').length,
+          resolved: items.filter((i) => i.status === 'resolved').length,
+        },
+        dataSource: 'demo',
+      },
+    };
+  }
+
+  /** 单条反馈工单详情；非本班学生返回 403 `STUDENT_NOT_ASSIGNED`。 */
+  @Get('feedback/:ticketId')
+  async getFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('ticketId') ticketId: string,
+  ): Promise<{ data: TeacherFeedbackDetail }> {
+    const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
+
+    const ticket = await this.feedbackService.getForTeacher(user.id, ticketId);
+
+    return { data: { ticket } };
+  }
+
+  /** 班主任公开回复；已解决的工单需家长先重新打开。 */
+  @Post('feedback/:ticketId/replies')
+  @HttpCode(200)
+  async replyFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: TeacherFeedbackDetail }> {
+    const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
+
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = pickFields<ReplyTeacherFeedbackRequest>(body, ['content', 'attachmentRefs']);
+    const ticket = await this.feedbackService.replyToFeedback(
+      user.id,
+      ticketId,
+      input,
+      idempotencyKey,
+    );
+
+    return { data: { ticket } };
   }
 }
