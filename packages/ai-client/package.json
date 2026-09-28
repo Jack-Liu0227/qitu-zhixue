@@ -33,6 +33,18 @@
     "./context-packet": {
       "types": "./dist/context-packet.d.ts",
       "default": "./dist/context-packet.js"
+    },
+    "./mastery": {
+      "types": "./dist/mastery/index.d.ts",
+      "default": "./dist/mastery/index.js"
+    },
+    "./questions": {
+      "types": "./dist/questions/index.d.ts",
+      "default": "./dist/questions/index.js"
+    },
+    "./grading": {
+      "types": "./dist/grading/index.d.ts",
+      "default": "./dist/grading/index.js"
     }
   },
   "files": ["dist"],
@@ -40,7 +52,7 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "node -e \"console.log('ai-client: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm build && node --input-type=module -e \"import('./dist/sdk.test.js').then(({ runTutorSdkAssertions }) => runTutorSdkAssertions())\""
+    "test": "pnpm build && node --input-type=module -e \"const sdk = await import('./dist/sdk.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); await sdk.runTutorSdkAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions();\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*"

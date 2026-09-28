@@ -6,3 +6,6 @@ export * from './escalation/index.js';
 export * from './sdk.js';
 export * from './curriculum.js';
 export * from './context-packet.js';
+export * from './mastery/index.js';
+export * from './questions/index.js';
+export * from './grading/index.js';

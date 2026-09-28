@@ -9,6 +9,7 @@ import { RedisModule } from './common/redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { AiTutorModule } from './modules/ai-tutor/tutor.module';
 import { GrowthModule } from './modules/growth/growth.module';
+import { LearningPlanModule } from './modules/learning-plan/learning-plan.module';
 import { AuthModule } from './modules/identity-auth/auth.module';
 import { ModelRegistryModule } from './modules/model-registry/model-registry.module';
 import { PlatformDataModule } from './modules/platform-data/platform-data.module';
@@ -36,6 +37,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     AuthModule,
     AiTutorModule,
     GrowthModule,
+    LearningPlanModule,
     ModelRegistryModule,
     PlatformDataModule,
     ParentModule,
