@@ -75,17 +75,29 @@ function LoadingState() {
 }
 
 const stageColors: Record<string, string> = {
-  Inspiration: '#2563eb',
-  Research: '#4f46e5',
-  Making: '#0d9488',
-  Showcase: '#d97706',
+  exploration: '#2563eb',
+  intent_confirmed: '#3b82f6',
+  theory_learning: '#4f46e5',
+  theory_check: '#6366f1',
+  practice_ready: '#0d9488',
+  practice_building: '#14b8a6',
+  artifact_review: '#d97706',
+  reflection: '#f59e0b',
+  published: '#e11d48',
+  completed: '#16a34a',
 };
 
 const stageLabels: Record<string, string> = {
-  Inspiration: '灵感探索',
-  Research: '深度研究',
-  Making: '制作测试',
-  Showcase: '成果展示',
+  exploration: '灵感探索',
+  intent_confirmed: '确认意图',
+  theory_learning: '理论学习',
+  theory_check: '理论检验',
+  practice_ready: '实践就绪',
+  practice_building: '动手制作',
+  artifact_review: '作品评审',
+  reflection: '反思记录',
+  published: '已发布',
+  completed: '已完成',
 };
 
 export default function StatisticsPage() {
