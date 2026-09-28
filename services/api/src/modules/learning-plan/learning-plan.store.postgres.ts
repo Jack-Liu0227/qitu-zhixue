@@ -6,6 +6,7 @@ import {
   learningSessions,
   masteryAttempts,
   masteryRecords,
+  pendingQuestions,
   projectTemplateVersions,
   projectTemplates,
   projects as projectsTable,
@@ -22,9 +23,11 @@ import type {
   SessionBlock,
   SessionMode,
 } from '@qitu/contracts';
+import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 import {
   LearningPlanStore,
   LearningPlanStoreConflictError,
+  PendingQuestionConflictError,
   type AttemptRecord,
   type ConfirmPlanInput,
   type ConfirmPlanResult,
@@ -32,6 +35,7 @@ import {
   type MasteryRecord,
   type ModuleRecord,
   type ObjectiveRecord,
+  type PendingQuestionRecord,
   type PlanBundle,
   type PlanRecord,
   type SessionRecord,
@@ -50,6 +54,7 @@ type SessionRow = typeof learningSessions.$inferSelect;
 type MasteryRow = typeof masteryRecords.$inferSelect;
 type AttemptRow = typeof masteryAttempts.$inferSelect;
 type ProjectRow = typeof projectsTable.$inferSelect;
+type PendingQuestionRow = typeof pendingQuestions.$inferSelect;
 
 /**
  * live 持久化实现，映射迁移 0008 的六张表。
@@ -371,6 +376,79 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     });
   }
 
+  /* -------- 迁移 0009：pending_questions -------- */
+
+  async findAwaitingQuestion(
+    studentUserId: string,
+    planId: string,
+  ): Promise<PendingQuestionRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(pendingQuestions)
+      .where(
+        and(
+          eq(pendingQuestions.studentUserId, studentUserId),
+          eq(pendingQuestions.planId, planId),
+          eq(pendingQuestions.status, 'awaiting'),
+        ),
+      )
+      .limit(1);
+    return row === undefined ? null : mapPendingQuestion(row);
+  }
+
+  async findPendingQuestion(questionId: string): Promise<PendingQuestionRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(pendingQuestions)
+      .where(eq(pendingQuestions.id, questionId))
+      .limit(1);
+    return row === undefined ? null : mapPendingQuestion(row);
+  }
+
+  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+    try {
+      await this.db.insert(pendingQuestions).values({
+        id: record.id,
+        schoolId: record.schoolId,
+        studentUserId: record.studentUserId,
+        planId: record.planId,
+        sessionId: record.sessionId,
+        objectiveId: record.objectiveId,
+        questionType: record.questionType,
+        prompt: record.prompt,
+        options: record.options.map((option) => ({ ...option })),
+        expectedAnswer: record.expectedAnswer,
+        explanation: record.explanation,
+        difficulty: record.difficulty,
+        assessmentType: record.assessmentType,
+        status: record.status,
+        attempt: record.attempt,
+        hintsUsed: record.hintsUsed,
+        idempotencyKey: record.idempotencyKey,
+        askedAt: record.askedAt,
+        answeredAt: record.answeredAt,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new PendingQuestionConflictError(
+          `同一 (student, plan) 已存在未答题或 id 冲突：${record.id}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean> {
+    const rows = await this.db
+      .update(pendingQuestions)
+      .set({ status: 'answered', answeredAt, updatedAt: answeredAt })
+      .where(and(eq(pendingQuestions.id, questionId), eq(pendingQuestions.status, 'awaiting')))
+      .returning({ id: pendingQuestions.id });
+    return rows.length > 0;
+  }
+
   private async assembleBundle(executor: Database, plan: PlanRow): Promise<PlanBundle> {
     const modules = await executor
       .select()
@@ -479,6 +557,32 @@ function mapSession(row: SessionRow): SessionRecord {
     theoryObjectiveIds: row.theoryObjectiveIds ?? [],
     practiceObjectiveIds: row.practiceObjectiveIds ?? [],
     mode: row.mode as SessionMode,
+  };
+}
+
+function mapPendingQuestion(row: PendingQuestionRow): PendingQuestionRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    studentUserId: row.studentUserId,
+    planId: row.planId,
+    sessionId: row.sessionId,
+    objectiveId: row.objectiveId,
+    questionType: row.questionType as QuestionKind,
+    prompt: row.prompt,
+    options: (row.options ?? []).map((option) => ({ ...option })),
+    expectedAnswer: row.expectedAnswer,
+    explanation: row.explanation,
+    difficulty: (row.difficulty as QuestionDifficulty | null) ?? null,
+    assessmentType: row.assessmentType as PendingQuestionRecord['assessmentType'],
+    status: row.status as PendingQuestionRecord['status'],
+    attempt: row.attempt,
+    hintsUsed: row.hintsUsed,
+    idempotencyKey: row.idempotencyKey,
+    askedAt: row.askedAt,
+    answeredAt: row.answeredAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 

@@ -448,4 +448,128 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     );
     assert.equal(confirmed.plan.templateVersion, 'curriculum-plan-v1');
   });
+
+  it('未答题落库：重复 next-step 复用同一题，题面投影不含答案 / 解析', async () => {
+    const { service, store } = harness;
+    const user = student('student-1');
+    const generated = await service.generatePlan(user, { interest: '围棋', weeks: 4 });
+    const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
+    const plan = confirmed.plan;
+    const session = plan.sessions[0];
+    assert.ok(session);
+
+    const first = await service.getNextStep(user, plan.id, session.id);
+    // 首次出题是「生成动作 + 题面」，题面同时落库为 awaiting。
+    assert.ok(['probe', 'assess', 'practice'].includes(first.action));
+    assert.ok(first.question);
+    const questionId = first.question.questionId;
+
+    const stored = await store.findPendingQuestion(questionId);
+    assert.ok(stored, '题面必须落库到 pending_questions');
+    assert.equal(stored.status, 'awaiting');
+    assert.equal(stored.studentUserId, user.id);
+    assert.equal(stored.planId, plan.id);
+    assert.equal(stored.sessionId, session.id);
+    assert.ok(stored.expectedAnswer.length > 0, '服务端必须持有标准答案');
+    assert.ok(stored.explanation.length > 0, '服务端必须持有解析');
+
+    assert.equal('expectedAnswer' in first.question, false);
+    assert.equal('explanation' in first.question, false);
+    assert.deepEqual(
+      Object.keys(first.question).sort(),
+      ['allowFreeText', 'attempt', 'options', 'prompt', 'questionId', 'questionType'].sort(),
+    );
+
+    // 未作答时重复 next-step 命中同一道未答题，不产生第二道。
+    const second = await service.getNextStep(user, plan.id, session.id);
+    assert.equal(second.action, 'answer_pending');
+    assert.equal(second.question?.questionId, questionId);
+    assert.equal(second.objectiveId, first.objectiveId);
+  });
+
+  it('只能回答本人本计划的未答题；跨学生题 id 被拒', async () => {
+    const { service } = harness;
+    const owner = student('student-1');
+    const stranger = student('student-2');
+    const ownerPlan = (
+      await service.confirmPlan(
+        owner,
+        (await service.generatePlan(owner, { interest: '象棋', weeks: 4 })).plan.id,
+        'k-owner',
+      )
+    ).plan;
+    const strangerPlan = (
+      await service.confirmPlan(
+        stranger,
+        (await service.generatePlan(stranger, { interest: '象棋', weeks: 4 })).plan.id,
+        'k-stranger',
+      )
+    ).plan;
+    const ownerSession = ownerPlan.sessions[0];
+    const strangerSession = strangerPlan.sessions[0];
+    assert.ok(ownerSession && strangerSession);
+
+    const ownerNext = await service.getNextStep(owner, ownerPlan.id, ownerSession.id);
+    assert.ok(ownerNext.question);
+
+    await assertHttpError(
+      () =>
+        service.submitAnswer(
+          stranger,
+          strangerPlan.id,
+          strangerSession.id,
+          { questionId: ownerNext.question!.questionId, answer: 'x' },
+          'k-cross',
+        ),
+      409,
+      'QUESTION_NOT_AWAITING',
+    );
+  });
+
+  it('已作答题不再可答：换幂等键重复提交也被拒，attempt 只有一条', async () => {
+    const { service, store } = harness;
+    const user = student('student-1');
+    const plan = (
+      await service.confirmPlan(
+        user,
+        (await service.generatePlan(user, { interest: '陶艺', weeks: 4 })).plan.id,
+        'k-confirm',
+      )
+    ).plan;
+    const session = plan.sessions[0];
+    assert.ok(session);
+    const objective = session.theoryObjectiveIds[0];
+    assert.ok(objective);
+
+    const next = await service.getNextStep(user, plan.id, session.id);
+    assert.ok(next.question);
+    const questionId = next.question.questionId;
+    const answer = buildQuestion({
+      objective: {
+        id: objective,
+        name: flattenObjectives(plan).find((item) => item.id === objective)?.name ?? '',
+        type: 'memory',
+      },
+      index: Number(questionId.slice(questionId.lastIndexOf('-') + 1)),
+      seed: objective,
+    }).expectedAnswer;
+
+    const first = await service.submitAnswer(
+      user,
+      plan.id,
+      session.id,
+      { questionId, answer },
+      'k-first',
+    );
+    assert.equal(first.isCorrect, true);
+    assert.equal((await store.listAttempts(user.id, objective)).length, 1);
+
+    await assertHttpError(
+      () =>
+        service.submitAnswer(user, plan.id, session.id, { questionId, answer }, 'k-second'),
+      409,
+      'QUESTION_NOT_AWAITING',
+    );
+    assert.equal((await store.listAttempts(user.id, objective)).length, 1);
+  });
 });

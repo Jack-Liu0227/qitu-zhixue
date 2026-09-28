@@ -9,6 +9,7 @@ import type {
   SessionBlock,
   SessionMode,
 } from '@qitu/contracts';
+import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 
 /**
  * 学习计划的持久化边界。
@@ -106,6 +107,36 @@ export interface AttemptRecord {
   createdAt: Date;
 }
 
+/**
+ * 跨轮持久的未答题（迁移 0009 `pending_questions`）。
+ *
+ * `expectedAnswer` / `explanation` 是**服务端私密**字段：只经 `toPublicQuestion`
+ * 结构化投影下发，任何读接口都不会返回整条记录。
+ */
+export interface PendingQuestionRecord {
+  id: string;
+  schoolId: string | null;
+  studentUserId: string;
+  planId: string;
+  sessionId: string;
+  objectiveId: string;
+  questionType: QuestionKind;
+  prompt: string;
+  options: Array<{ id: string; label: string; body: string }>;
+  expectedAnswer: string;
+  explanation: string;
+  difficulty: QuestionDifficulty | null;
+  assessmentType: 'quiz' | 'qualitative' | 'review';
+  status: 'awaiting' | 'answered' | 'expired' | 'cancelled';
+  attempt: number;
+  hintsUsed: number;
+  idempotencyKey: string;
+  askedAt: Date;
+  answeredAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface LearningProjectRecord {
   id: string;
   studentId: string;
@@ -150,6 +181,14 @@ export class LearningPlanStoreConflictError extends Error {
   }
 }
 
+/** 同一路径已存在未答题（迁移 0009 的部分唯一索引）时抛出。 */
+export class PendingQuestionConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PendingQuestionConflictError';
+  }
+}
+
 export abstract class LearningPlanStore {
   abstract findPlanBySignature(
     studentUserId: string,
@@ -184,6 +223,21 @@ export abstract class LearningPlanStore {
   abstract listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]>;
 
   abstract appendAttempt(attempt: AttemptRecord): Promise<void>;
+
+  /* -------- 迁移 0009：pending_questions -------- */
+
+  /** 同一 `(student, plan)` 至多一道 `awaiting`（DB 部分唯一索引兜底）。 */
+  abstract findAwaitingQuestion(
+    studentUserId: string,
+    planId: string,
+  ): Promise<PendingQuestionRecord | null>;
+
+  abstract findPendingQuestion(questionId: string): Promise<PendingQuestionRecord | null>;
+
+  abstract createPendingQuestion(record: PendingQuestionRecord): Promise<void>;
+
+  /** `awaiting → answered` 的条件迁移；返回是否命中未答题（保证一次作答一条）。 */
+  abstract markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -203,6 +257,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   private readonly projects = new Map<string, LearningProjectRecord>();
   private readonly mastery = new Map<string, MasteryRecord>();
   private readonly attempts = new Map<string, AttemptRecord[]>();
+  private readonly pending = new Map<string, PendingQuestionRecord>();
 
   async findPlanBySignature(
     studentUserId: string,
@@ -327,6 +382,57 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     list.push({ ...attempt });
     this.attempts.set(key, list);
   }
+
+  async findAwaitingQuestion(
+    studentUserId: string,
+    planId: string,
+  ): Promise<PendingQuestionRecord | null> {
+    for (const record of this.pending.values()) {
+      if (
+        record.studentUserId === studentUserId &&
+        record.planId === planId &&
+        record.status === 'awaiting'
+      ) {
+        return clonePendingQuestion(record);
+      }
+    }
+    return null;
+  }
+
+  async findPendingQuestion(questionId: string): Promise<PendingQuestionRecord | null> {
+    const record = this.pending.get(questionId);
+    return record === undefined ? null : clonePendingQuestion(record);
+  }
+
+  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+    if (this.pending.has(record.id)) {
+      throw new PendingQuestionConflictError(`待答题 id 冲突：${record.id}`);
+    }
+    for (const existing of this.pending.values()) {
+      if (
+        existing.status === 'awaiting' &&
+        existing.studentUserId === record.studentUserId &&
+        existing.planId === record.planId
+      ) {
+        throw new PendingQuestionConflictError(
+          `同一 (student, plan) 只能有一道未答题：${existing.id}`,
+        );
+      }
+    }
+    this.pending.set(record.id, clonePendingQuestion(record));
+  }
+
+  async markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean> {
+    const record = this.pending.get(questionId);
+    if (record === undefined || record.status !== 'awaiting') return false;
+    this.pending.set(questionId, {
+      ...record,
+      status: 'answered',
+      answeredAt,
+      updatedAt: answeredAt,
+    });
+    return true;
+  }
 }
 
 function cloneBundle(bundle: PlanBundle): PlanBundle {
@@ -338,6 +444,13 @@ function cloneBundle(bundle: PlanBundle): PlanBundle {
       prerequisiteIds: [...objective.prerequisiteIds],
     })),
     sessions: bundle.sessions.map((session) => cloneSession(session)),
+  };
+}
+
+function clonePendingQuestion(record: PendingQuestionRecord): PendingQuestionRecord {
+  return {
+    ...record,
+    options: record.options.map((option) => ({ ...option })),
   };
 }
 

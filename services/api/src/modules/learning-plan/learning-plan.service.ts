@@ -52,10 +52,12 @@ import {
 import {
   LearningPlanStore,
   LearningPlanStoreConflictError,
+  PendingQuestionConflictError,
   newId,
   type AttemptRecord,
   type MasteryRecord,
   type ObjectiveRecord,
+  type PendingQuestionRecord,
   type PlanBundle,
   type PlanRecord,
   type SessionRecord,
@@ -351,28 +353,44 @@ export class LearningPlanService {
           const freshSession = await this.requireSession(fresh, sessionId);
           const freshStates = await this.loadStates(actor, fresh);
           this.assertPracticeGate(freshSession, freshStates);
-          // 题面归属必须在**服务端**重新解析：attempts.length 决定当前待答题序号，
-          // 重放时 handler 不会执行，因此重放不受序号漂移影响。
-          const resolved = await this.resolveQuestion(fresh, freshSession, questionId);
-          if (resolved === null) {
+          // 题面从 `pending_questions`（迁移 0009）按 id 解析：只有本人、本计划、
+          // 本会话的 `awaiting` 题可判分；服务端持有 expectedAnswer / explanation。
+          const pending = await this.store.findPendingQuestion(questionId);
+          if (
+            pending === null ||
+            pending.studentUserId !== fresh.plan.studentUserId ||
+            pending.planId !== planId ||
+            pending.sessionId !== sessionId ||
+            pending.status !== 'awaiting'
+          ) {
             throw new ConflictException({
               code: 'QUESTION_NOT_AWAITING',
               message: '该题不属于当前会话的待答题，或已作答',
             });
           }
-          const existing = await this.store.listAttempts(fresh.plan.studentUserId, resolved.objective.id);
-          if (existing.some((attempt) => attempt.questionId === questionId)) {
+          const objective = this.objectiveIndex(fresh).get(pending.objectiveId);
+          if (objective === undefined) {
+            throw new ConflictException({
+              code: 'QUESTION_NOT_AWAITING',
+              message: '该题引用的目标不存在（数据不一致）',
+            });
+          }
+          // 条件状态迁移 `awaiting → answered` 只成功一次，保证一题一 attempt。
+          const claimed = await this.store.markPendingQuestionAnswered(questionId, new Date());
+          if (!claimed) {
             throw new ConflictException({
               code: 'QUESTION_NOT_AWAITING',
               message: '该题已作答',
             });
           }
-          const grade = gradeAnswer(resolved.card, body.answer as string, 'awaiting');
+          const card = this.pendingToCard(pending);
+          const grade = gradeAnswer(card, body.answer as string, 'awaiting');
+          const existing = await this.store.listAttempts(fresh.plan.studentUserId, objective.id);
           const attempt = this.buildAttempt({
             studentId: fresh.plan.studentUserId,
             planId,
-            objective: resolved.objective,
-            card: resolved.card,
+            objective,
+            card,
             grade,
             attemptCount: existing.length + 1,
             now: new Date(),
@@ -380,7 +398,7 @@ export class LearningPlanService {
           await this.store.appendAttempt(attempt);
 
           const wasMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          const nextMastery = await this.recomputeMastery(fresh.plan.studentUserId, fresh, resolved.objective, {
+          const nextMastery = await this.recomputeMastery(fresh.plan.studentUserId, fresh, objective, {
             correctAnswer: grade.isCorrect,
           });
           const isMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
@@ -399,7 +417,7 @@ export class LearningPlanService {
               explanation: grade.explanation,
               errorType: grade.errorType,
               remediation: grade.remediation,
-              mastery: this.toMasterySummary(nextMastery, resolved.objective),
+              mastery: this.toMasterySummary(nextMastery, objective),
               theoryMastered: isMastered,
               practiceUnlocked: this.isPracticeUnlocked(freshSession, updatedStates),
               replayed: false,
@@ -866,6 +884,14 @@ export class LearningPlanService {
     const studentId = bundle.plan.studentUserId;
     const theoryMastered = computeTheoryMastered(session.theoryObjectiveIds, states);
     const practiceUnlocked = this.isPracticeUnlocked(session, states);
+
+    // `answer_pending` 是最高优先级：只要本计划还有一道未答题，就先把它发回去，
+    // 不推进到复习 / 探测 / 练习。未答题由 `pending_questions`（迁移 0009）持久化。
+    const awaiting = await this.store.findAwaitingQuestion(studentId, bundle.plan.id);
+    if (awaiting !== null) {
+      return this.pendingNextStepView(bundle, awaiting, theoryMastered, practiceUnlocked);
+    }
+
     const candidates =
       session.practiceObjectiveIds.length > 0
         ? session.practiceObjectiveIds
@@ -939,8 +965,9 @@ export class LearningPlanService {
     }
     const record = await this.store.findMastery(studentId, targetObjectiveId);
     const attempts = await this.store.listAttempts(studentId, targetObjectiveId);
-    const card = this.buildCard(objective, attempts.length);
-    const question: PublicQuestion = toPublicQuestion(card, attempts.length + 1);
+    // 出题时持久化题面（含服务端答案 / 解析），只返回结构化投影。
+    const pending = await this.ensurePendingQuestion(bundle, session, objective, attempts.length);
+    const question: PublicQuestion = toPublicQuestion(this.pendingToCard(pending), pending.attempt);
     return {
       action,
       objectiveId: objective.id,
@@ -953,6 +980,108 @@ export class LearningPlanService {
       theoryMastered,
       practiceUnlocked,
       question,
+    };
+  }
+
+  /**
+   * 已存在未答题时的 `answer_pending` 视图：题面来自 `pending_questions`，
+   * `expectedAnswer` / `explanation` 只用于服务端判分，绝不出现在响应里。
+   */
+  private async pendingNextStepView(
+    bundle: PlanBundle,
+    awaiting: PendingQuestionRecord,
+    theoryMastered: boolean,
+    practiceUnlocked: boolean,
+  ): Promise<NextStepView> {
+    const objective = this.objectiveIndex(bundle).get(awaiting.objectiveId);
+    if (objective === undefined) {
+      throw this.badRequest('LEARNING_PLAN_INVALID', '待答题引用的目标不存在（数据不一致）');
+    }
+    const record = await this.store.findMastery(bundle.plan.studentUserId, objective.id);
+    return {
+      action: 'answer_pending',
+      objectiveId: objective.id,
+      knowledgeType: objective.type,
+      status: record?.status ?? 'new',
+      gate: objective.type === 'concept' || objective.type === 'design' ? 'qualitative' : 'quantitative',
+      mastery: (record?.masteryBasisPoints ?? 0) / 10_000,
+      threshold: (record?.thresholdBasisPoints ?? THRESHOLD_BASIS_POINTS) / 10_000,
+      reason: this.actionReason('answer_pending'),
+      theoryMastered,
+      practiceUnlocked,
+      question: toPublicQuestion(this.pendingToCard(awaiting), awaiting.attempt),
+    };
+  }
+
+  /**
+   * 出题并落库。`(student, plan)` 至多一道未答题：若并发下已有未答题，
+   * 读取并复用，保证重试不产生第二道题。
+   */
+  private async ensurePendingQuestion(
+    bundle: PlanBundle,
+    session: SessionRecord,
+    objective: ObjectiveRecord,
+    attemptIndex: number,
+  ): Promise<PendingQuestionRecord> {
+    const existing = await this.store.findAwaitingQuestion(
+      bundle.plan.studentUserId,
+      bundle.plan.id,
+    );
+    if (existing !== null) return existing;
+
+    const card = this.buildCard(objective, attemptIndex);
+    const now = new Date();
+    const record: PendingQuestionRecord = {
+      id: card.questionId,
+      schoolId: null,
+      studentUserId: bundle.plan.studentUserId,
+      planId: bundle.plan.id,
+      sessionId: session.id,
+      objectiveId: objective.id,
+      questionType: card.questionType,
+      prompt: card.prompt,
+      options: card.options.map((option) => ({ ...option })),
+      expectedAnswer: card.expectedAnswer,
+      explanation: card.explanation,
+      difficulty: card.difficulty,
+      assessmentType: 'quiz',
+      status: 'awaiting',
+      attempt: attemptIndex + 1,
+      hintsUsed: 0,
+      idempotencyKey: `pending-question:${bundle.plan.id}:${session.id}:${objective.id}:${attemptIndex}`,
+      askedAt: now,
+      answeredAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      await this.store.createPendingQuestion(record);
+    } catch (error) {
+      if (error instanceof PendingQuestionConflictError) {
+        const raced = await this.store.findAwaitingQuestion(
+          bundle.plan.studentUserId,
+          bundle.plan.id,
+        );
+        if (raced !== null) return raced;
+      }
+      throw error;
+    }
+    return record;
+  }
+
+  /** 持久化记录 → 服务端题面（含答案 / 解析），仅供判分与投影，绝不下发。 */
+  private pendingToCard(record: PendingQuestionRecord): QuestionCard {
+    return {
+      questionId: record.id,
+      objectiveId: record.objectiveId,
+      prompt: record.prompt,
+      questionType: record.questionType,
+      expectedAnswer: record.expectedAnswer,
+      options: record.options.map((option) => ({ ...option })),
+      explanation: record.explanation,
+      difficulty: record.difficulty ?? 'medium',
+      // 判分函数直接从 `expectedAnswer` 重新提取开放题关键词，此处无需求值。
+      keywords: [],
     };
   }
 
@@ -979,23 +1108,6 @@ export class LearningPlanService {
       index,
       seed: objective.id,
     });
-  }
-
-  private async resolveQuestion(
-    bundle: PlanBundle,
-    session: SessionRecord,
-    questionId: string,
-  ): Promise<{ objective: ObjectiveRecord; card: QuestionCard } | null> {
-    const objectiveIndex = this.objectiveIndex(bundle);
-    const candidateIds = [...new Set([...session.theoryObjectiveIds, ...session.practiceObjectiveIds])];
-    for (const objectiveId of candidateIds) {
-      const objective = objectiveIndex.get(objectiveId);
-      if (objective === undefined) continue;
-      const attempts = await this.store.listAttempts(bundle.plan.studentUserId, objectiveId);
-      const card = this.buildCard(objective, attempts.length);
-      if (card.questionId === questionId) return { objective, card };
-    }
-    return null;
   }
 
   /* ==================== 内部：授权 / 校验 ==================== */
