@@ -368,6 +368,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--qitu-attention-border) 28%, transparent);
 }
 
+.qitu-task-item-main {
   flex: 1 1 220px;
   min-width: 0;
   display: flex;
