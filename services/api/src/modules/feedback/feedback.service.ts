@@ -640,6 +640,9 @@ export class FeedbackService {
     ticket: StoredTicket,
     students: Awaited<ReturnType<DirectoryService['studentsOfMentor']>>,
   ): Promise<TeacherFeedbackRow> {
+    if (ticket.childId === null) {
+      throw new Error('未关联孩子的反馈不能进入普通班主任列表');
+    }
     const student = students.find((s) => s.userId === ticket.childId);
     return {
       ticketId: ticket.id,
