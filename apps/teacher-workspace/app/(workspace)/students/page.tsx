@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
   ChevronRightIcon,
@@ -452,6 +453,8 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
 }
 
 export default function StudentsPage() {
+  const searchParams = useSearchParams();
+  const requestedStudentId = searchParams.get('studentId');
   const [data, setData] = useState<TeacherRosterPageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -464,7 +467,10 @@ export default function StudentsPage() {
       .then((response) => {
         setData(response.data);
         if (response.data.students.length > 0) {
-          setSelectedId(response.data.students[0]!.studentId);
+          const requestedStudent = requestedStudentId
+            ? response.data.students.find((student) => student.studentId === requestedStudentId)
+            : null;
+          setSelectedId(requestedStudent?.studentId ?? response.data.students[0]!.studentId);
         }
         setLoading(false);
       })
@@ -474,7 +480,7 @@ export default function StudentsPage() {
         else setError('generic');
         setLoading(false);
       });
-  }, []);
+  }, [requestedStudentId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState type={error} />;
