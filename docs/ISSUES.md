@@ -115,17 +115,17 @@ P2:  T1 → T4
 
 | ID | GitHub | 标题 | 优先级 | 顺序 | 状态 | 依赖 | 风险 |
 |---|---|---|---|---|---|---|---|
-| `ISSUE-T2` | [#6](https://github.com/Jack-Liu0227/qitu-zhixue/issues/6) | 轻量、非医疗式的身心状态提醒 | P1 | 1 | `Proposed` | 产品 / 隐私评审（R-T2） | 高 |
-| `ISSUE-T3` | [#5](https://github.com/Jack-Liu0227/qitu-zhixue/issues/5) | 基于证据的成长正向反馈 | P1 | 2 | `Proposed` | 产品文档 4.7 证据模型；AI 不得写档案（4.4） | 中 |
-| `ISSUE-FEEDBACK` | [#11](https://github.com/Jack-Liu0227/qitu-zhixue/issues/11) | 反馈闭环持久化和通知补齐 | P1 | 3 | `Proposed` | `ISSUE-P0`；outbox / audit 基础能力 | 高 |
-| `ISSUE-T5` | [#7](https://github.com/Jack-Liu0227/qitu-zhixue/issues/7) | 家长成长旅程 / 认知画像导出 | P1 | 4 | `Proposed` | 监护授权（`guardian_links`）；数据导出确认（11.1）；弱依赖 `ISSUE-T3` / `ISSUE-FEEDBACK` | 高 |
-| `ISSUE-T6` | [#4](https://github.com/Jack-Liu0227/qitu-zhixue/issues/4) | 今日意图分析与确认 | P1 | 5 | `Proposed` | 产品文档 4.3 意图确认模型 | 中 |
-| `ISSUE-T7` | [#8](https://github.com/Jack-Liu0227/qitu-zhixue/issues/8) | 班主任端平台设置迁移 | P1 | 6 | `Proposed` | `ISSUE-P0`（ADR 0008 + IA 评审）；账户面方向来自 `ISSUE-P0`（非阻塞关联 `ISSUE-T4`） | 中 |
-| `ISSUE-T8` | [#3](https://github.com/Jack-Liu0227/qitu-zhixue/issues/3) | 管理员职责收敛 | P1 | 7 | `Proposed` | `ISSUE-P0`；审计写入（PERMISSIONS §10） | 中–高 |
-| `ISSUE-T1` | [#10](https://github.com/Jack-Liu0227/qitu-zhixue/issues/10) | 页面转场与减弱动效 | P2 | 8 | `Proposed` | 跨端 UI 基线；与 T4 偏好实现可衔接但不阻塞 | 低 |
-| `ISSUE-T4` | [#9](https://github.com/Jack-Liu0227/qitu-zhixue/issues/9) | 四端基础偏好设置 | P2 | 9 | `Proposed` | `ISSUE-P0`（ADR 0008 决定 2：跨角色账户面） | 低–中 |
+| `ISSUE-T2` | [#6](https://github.com/Jack-Liu0227/qitu-zhixue/issues/6) | 轻量、非医疗式的身心状态提醒 | P1 | 1 | `Partial` | 产品 / 隐私评审；提醒持久化与 worker 尚未接入 | 高 |
+| `ISSUE-T3` | [#5](https://github.com/Jack-Liu0227/qitu-zhixue/issues/5) | 基于证据的成长正向反馈 | P1 | 2 | `In Review` | 产品文档 4.7 证据模型；AI 不得写档案（4.4） | 中 |
+| `ISSUE-FEEDBACK` | [#11](https://github.com/Jack-Liu0227/qitu-zhixue/issues/11) | 反馈闭环持久化和通知补齐 | P1 | 3 | `Partial` | worker 通知投递与真实附件对象存储尚未接入 | 高 |
+| `ISSUE-T5` | [#7](https://github.com/Jack-Liu0227/qitu-zhixue/issues/7) | 家长成长旅程 / 认知画像导出 | P1 | 4 | `Partial` | 异步 worker、对象存储、前端下载、清理任务和 step-up re-auth 尚未完成 | 高 |
+| `ISSUE-T6` | [#4](https://github.com/Jack-Liu0227/qitu-zhixue/issues/4) | 今日意图分析与确认 | P1 | 5 | `Partial` | 服务端确认链已完成；今天页/灵感页 UI 尚未接线 | 中 |
+| `ISSUE-T7` | [#8](https://github.com/Jack-Liu0227/qitu-zhixue/issues/8) | 班主任端平台设置迁移 | P1 | 6 | `Done` | `/teacher/settings` 已移除；账户偏好已归跨角色账户入口 | 中 |
+| `ISSUE-T8` | [#3](https://github.com/Jack-Liu0227/qitu-zhixue/issues/3) | 管理员职责收敛 | P1 | 7 | `Partial` | 默认聚合与 fail-closed 已完成；显式原因/二次确认/TTL grant 尚未实现 | 中–高 |
+| `ISSUE-T1` | [#10](https://github.com/Jack-Liu0227/qitu-zhixue/issues/10) | 页面转场与减弱动效 | P2 | 8 | `In Review` | 统一转场、reduced-motion 和静态 guard 已完成 | 低 |
+| `ISSUE-T4` | [#9](https://github.com/Jack-Liu0227/qitu-zhixue/issues/9) | 四端基础偏好设置 | P2 | 9 | `In Review` | API/UI/迁移已完成；真实 PostgreSQL 集成验证尚未执行 | 低–中 |
 
-> 说明：T7 / T8 的实现均以 `ISSUE-P0` 评审通过为前置；T2 的学生端提醒、T5 的导出字段与 T6 的确认链在产品/隐私/技术评审完成前保持 `Proposed`。
+> 当前实现状态以本表为准：`Done` 表示验收范围已满足；`In Review` 表示代码与自动化证据已具备，等待独立评审或真实环境验证；`Partial` 表示安全纵切已落地但仍有明确生产/产品 blocker。未完成项不得关闭 GitHub Issue。
 
 ### 3.1 实现归属与验证证据 (implementation owner area and validation evidence)
 
