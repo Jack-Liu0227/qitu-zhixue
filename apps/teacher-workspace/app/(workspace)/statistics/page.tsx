@@ -364,7 +364,7 @@ export default function StatisticsPage() {
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#d97706' }} /> 需要关注的学生
             </div>
-            <Link className="qtx-link" href="/teacher/students">
+            <Link className="qtx-link" href="/students">
               查看学生 <ArrowRightIcon size={14} />
             </Link>
           </div>

@@ -240,7 +240,7 @@ function DashboardContent({
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#d97706' }} /> 待处理问题
             </div>
-            <Link className="qtx-link" href="/teacher/issues">
+            <Link className="qtx-link" href="/issues">
               查看全部 <ArrowRightIcon size={14} />
             </Link>
           </div>
@@ -313,7 +313,7 @@ function DashboardContent({
             <div className="qtx-panel-title">
               <span className="dot" style={{ background: '#4f46e5' }} /> 最近活跃学生
             </div>
-            <Link className="qtx-link" href="/teacher/students">
+            <Link className="qtx-link" href="/students">
               学生管理 <ArrowRightIcon size={14} />
             </Link>
           </div>

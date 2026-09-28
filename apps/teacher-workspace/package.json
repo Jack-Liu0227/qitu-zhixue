@@ -7,7 +7,7 @@
     "build": "next build",
     "lint": "node -e \"console.log('teacher-workspace: lint rules pending M1')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('teacher-workspace: no tests yet')\""
+    "test": "node ../../tooling/validate-teacher-links.mjs"
   },
   "dependencies": {
     "@qitu/api-client": "workspace:*",
