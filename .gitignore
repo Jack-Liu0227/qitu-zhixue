@@ -53,6 +53,9 @@ tooling/dev-teacher-local.sh
 tooling/rebuild-teacher-3105.sh
 tooling/rebuild-teacher-3105-preview.sh
 
+# Reference repository kept outside the product repository
+DeepTutor/
+
 # Local demo docs (keep out of main)
 docs/teacher-workspace-testing.md
 docs/teacher_frontend_pictures/

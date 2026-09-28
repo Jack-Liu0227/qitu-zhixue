@@ -1,4 +1,4 @@
-import { PROJECT_ROUTE_BASE } from '../constants';
+import { projectDetailHref } from './links';
 import type { ProjectDetail, ProjectStage } from '../types';
 
 /**
@@ -19,10 +19,12 @@ export function isPracticeStage(stage: ProjectStage): boolean {
 }
 
 export function stageEntryHref(projectId: string, stage: ProjectStage): string | null {
-  if (THEORY_STAGES.includes(stage)) return `${PROJECT_ROUTE_BASE}/${projectId}/theory`;
-  if (isPracticeStage(stage)) return `${PROJECT_ROUTE_BASE}/${projectId}/practice`;
-  if (REFLECTION_STAGES.includes(stage)) return `${PROJECT_ROUTE_BASE}/${projectId}/reflection`;
-  return null;
+  if (THEORY_STAGES.includes(stage)) return projectDetailHref(projectId, { mode: 'learn' });
+  if (isPracticeStage(stage)) return projectDetailHref(projectId, { mode: 'practice' });
+  if (REFLECTION_STAGES.includes(stage)) {
+    return projectDetailHref(projectId, { mode: 'showcase' });
+  }
+  return projectDetailHref(projectId, { mode: 'overview' });
 }
 
 /**

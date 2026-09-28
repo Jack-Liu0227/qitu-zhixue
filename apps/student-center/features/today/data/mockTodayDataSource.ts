@@ -40,7 +40,7 @@ const READY_VIEW: TodayView = {
       description: '先看懂原理，再动手搭建。',
       isTodayFocus: true,
       status: 'todo',
-      actionTarget: '/student/projects/proj-1/theory',
+      actionTarget: '/student/projects/proj-1?task_id=task-1&mode=learn',
     },
     {
       id: 'task-2',

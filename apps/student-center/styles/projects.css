@@ -363,7 +363,11 @@
   border-radius: var(--qitu-radius-md);
 }
 
-.qitu-task-item-main {
+.qitu-task-item.is-focused {
+  border-color: var(--qitu-attention-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--qitu-attention-border) 28%, transparent);
+}
+
   flex: 1 1 220px;
   min-width: 0;
   display: flex;

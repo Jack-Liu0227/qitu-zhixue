@@ -17,6 +17,14 @@ export type ProjectStage =
   | 'published'
   | 'completed';
 
+export type ProjectViewMode = 'overview' | 'learn' | 'practice' | 'showcase';
+
+export interface ProjectDeepLink {
+  projectId: string;
+  taskId: string | null;
+  mode: ProjectViewMode | null;
+}
+
 export interface ProjectSummary {
   id: string;
   title: string;

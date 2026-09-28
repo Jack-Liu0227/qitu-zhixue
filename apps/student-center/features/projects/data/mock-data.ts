@@ -1,3 +1,4 @@
+import { projectDetailHref } from '../lib/links';
 import type { TemplateStage } from '@qitu/contracts';
 import type {
   MentorNoteView,
@@ -212,19 +213,19 @@ export const MOCK_NEXT_STEPS: Record<string, NextStep> = {
     title: '继续实践制作',
     description: '完成「让数据变成一句话」，做出可演示的第一版。',
     targetStage: 'practice_building',
-    deepLink: '/student/projects/p-1001/practice',
+    deepLink: projectDetailHref('p-1001', { mode: 'practice', taskId: 'task-1001-2' }),
   },
   'p-1002': {
     title: '先完成理论学习校验',
     description: '通过理论校验后，实践制作才会解锁。',
     targetStage: 'theory_check',
-    deepLink: '/student/projects/p-1002/theory',
+    deepLink: projectDetailHref('p-1002', { mode: 'learn', taskId: 'task-1002-1' }),
   },
   'p-1003': {
     title: '确认你的项目意图',
     description: '把「我想做」说清楚，才能进入理论学习。',
     targetStage: 'intent_confirmed',
-    deepLink: '/student/projects/p-1003',
+    deepLink: projectDetailHref('p-1003', { mode: 'overview' }),
   },
 };
 

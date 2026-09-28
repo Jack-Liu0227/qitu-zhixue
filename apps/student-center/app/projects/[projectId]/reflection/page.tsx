@@ -1,11 +1,11 @@
-import { ReflectionScreen } from '../../../../features/projects';
+import { redirect } from 'next/navigation';
 
-/** `/student/projects/:projectId/reflection` — reflection form. */
+/** 兼容旧入口，统一落到项目详情容器的成果模式。 */
 export default async function ProjectReflectionRoute({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <ReflectionScreen projectId={projectId} />;
+  redirect(`/projects/${encodeURIComponent(projectId)}?mode=showcase`);
 }

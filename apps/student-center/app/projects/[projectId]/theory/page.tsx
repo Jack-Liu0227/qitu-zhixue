@@ -1,11 +1,11 @@
-import { TheoryScreen } from '../../../../features/projects';
+import { redirect } from 'next/navigation';
 
-/** `/student/projects/:projectId/theory` — theory material + TheoryCheck. */
+/** 兼容旧入口，统一落到项目详情容器的学习模式。 */
 export default async function ProjectTheoryRoute({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <TheoryScreen projectId={projectId} />;
+  redirect(`/projects/${encodeURIComponent(projectId)}?mode=learn`);
 }

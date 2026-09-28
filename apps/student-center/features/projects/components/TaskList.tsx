@@ -10,6 +10,7 @@ export interface TaskListProps {
   readOnly?: boolean;
   completingTaskId?: string | null;
   onComplete?: (taskId: string) => void;
+  focusedTaskId?: string | null;
 }
 
 function taskLabel(status: TaskView['status']): string {
@@ -32,6 +33,7 @@ export function TaskList({
   readOnly = false,
   completingTaskId = null,
   onComplete,
+  focusedTaskId = null,
 }: TaskListProps) {
   return (
     <SectionCard title={title}>
@@ -40,7 +42,11 @@ export function TaskList({
           const locked = task.status === 'locked';
           const done = task.status === 'done';
           return (
-            <li key={task.id} className="qitu-task-item">
+            <li
+              key={task.id}
+              className={task.id === focusedTaskId ? 'qitu-task-item is-focused' : 'qitu-task-item'}
+              id={task.id === focusedTaskId ? `task-${task.id}` : undefined}
+            >
               <div className="qitu-task-item-main">
                 <h4>{task.title}</h4>
                 <p>{task.description}</p>

@@ -5,10 +5,17 @@
  * spec §4 明确标注为 `gap` 的「响应形状」视图模型，**不是**第二套 ProjectStatus。
  * 阶段/权限判定一律读 `ProjectStage`（见 `lib/stage.ts`）。
  */
-import type { ProjectStage, StageProgressDisplay } from '@qitu/contracts';
+import type {
+  ProjectDeepLink,
+  ProjectStage,
+  ProjectViewMode,
+  StageProgressDisplay,
+} from '@qitu/contracts';
 
 export type {
+  ProjectDeepLink,
   ProjectStage,
+  ProjectViewMode,
   TemplateStage,
   StageProgressDisplay,
   ProjectSummary,
