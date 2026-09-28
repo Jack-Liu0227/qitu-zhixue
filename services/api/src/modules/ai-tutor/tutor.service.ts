@@ -11,6 +11,8 @@ import type {
   TutorTurn,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
+import { hashRequest, IdempotencyStore } from '../../common/idempotency';
+import { AuditWriter } from '../../common/audit';
 import {
   LEARNING_PROGRESS_STALL_SOURCE,
   LEARNING_STALL_ESCALATION_THRESHOLD,
@@ -20,6 +22,12 @@ import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import { TutorWorkspaceService } from './tutor-workspace.service';
+import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
+import {
+  type AppendTurnsInput,
+  type TutorSessionSnapshot,
+  type TutorTurnRecord,
+} from './tutor-session.store';
 import {
   type TutorProvider,
   type TutorStreamEvent,
@@ -45,21 +53,14 @@ export interface StreamedTutorEvent {
   event: TutorStreamEvent;
 }
 
-interface TutorSessionRecord {
-  sessionId: string;
-  /**
-   * 会话归属的学生 user id。这是**会话级**的临时授权边界：
-   * 只要归属不一致就统一 403，且不返回任何会话字段。
-   *
-   * 未来 `projects` 模块落地后，还必须在此之上校验
-   * `project.studentUserId === ownerId`（以及班主任的当前分配关系），
-   * 不能把硬编码的 DEMO_PROJECT 当成授权真相。
-   */
-  ownerId: string;
-  projectId: string | null;
-  createdAt: string;
-  turns: TutorTurn[];
-  lastSeq: number;
+/**
+ * 会话的运行时记录：持久化快照 + 由回合序列**重放**出来的服务端判定状态。
+ *
+ * `lastHintLevel` / `stallCount` / `escalated` 在 `tutor_sessions` 表里没有列，
+ * 它们完全由已持久化回合的 `pedagogicMove` / `hintLevel` 推导，因此进程重启
+ * 或换实例后语义不变，客户端也永远无法写入。
+ */
+interface TutorSessionRecord extends TutorSessionSnapshot {
   lastHintLevel: TutorHintLevel | null;
   stallCount: number;
   escalated: boolean;
@@ -88,6 +89,12 @@ const DEMO_PROJECT = {
 };
 
 const DEMO_SESSION_ID = 'session-demo-001';
+
+/** 回合幂等的 operation 身份；再拼上 sessionId，避免同一 client key 跨会话复用。 */
+const TUTOR_TURN_SCOPE = 'tutor.turn';
+
+/** 租约必须长于一轮模型生成的最坏耗时，否则慢回合可能被并发回收。 */
+const TUTOR_TURN_LEASE_MS = 120_000;
 
 const PROJECT_STAGES = [
   { id: 'exploration', label: '探索' },
@@ -124,13 +131,16 @@ function currentTaskFor(
   };
 }
 
-
 /**
  * AI搭档的会话与回合服务。
  *
- * 存储是内存实现（M1 范围内），但**一切都是服务端权威**：提示等级、卡顿
- * 计数、升级状态、审计记录都不接受客户端写入。`seq` 由服务端分配，
- * 客户端只能从给定游标之后继续读取。
+ * 存储按 `QITU_DATA_MODE` 分流：
+ * - `live` → `PostgresTutorSessionStore`，会话、回合、序号、幂等全部落库；
+ * - `demo` / `test` → `InMemoryTutorSessionStore`，行为与旧内存实现一致。
+ *
+ * 无论哪种模式，**一切都是服务端权威**：提示等级、卡顿计数、升级状态、
+ * `stage_after`、审计记录都不接受客户端写入。`seq` 由服务端分配，客户端
+ * 只能从给定游标之后继续读取。
  *
  * 审计只记录动作元数据（谁、何时、哪个项目、哪个动作、面向学生的一句话
  * 结论），不落盘未成年人原始对话内容。
@@ -142,6 +152,7 @@ export class TutorService {
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
   private readonly auditLog: AuditEntry[] = [];
+  private readonly store: TutorSessionStore;
 
   /**
    * Provider 按 `QITU_DATA_MODE` 选择：
@@ -150,6 +161,9 @@ export class TutorService {
    *
    * live 下若 `tutor.chat` 未绑定，由 provider 显式返回
    * `MODEL_NOT_CONFIGURED`，不会静默回落到 Heuristic。
+   *
+   * `store` / `idempotencyStore` / `auditWriter` 是可选注入：直接 `new` 构造
+   * （单元测试、stall 接线测试）时缺省为内存实现，与旧行为完全一致。
    */
   constructor(
     @Inject(DATA_MODE_TOKEN) dataMode: DataMode,
@@ -167,9 +181,19 @@ export class TutorService {
     @Optional()
     @Inject(TutorWorkspaceService)
     workspace?: TutorWorkspaceService,
+    @Optional()
+    @Inject(TutorSessionStore)
+    store?: TutorSessionStore,
+    @Optional()
+    @Inject(IdempotencyStore)
+    private readonly idempotencyStore?: IdempotencyStore,
+    @Optional()
+    @Inject(AuditWriter)
+    private readonly auditWriter?: AuditWriter,
   ) {
     this.provider = createTutorProvider(dataMode, gateway);
     this.tutorSdk = createTutorSdk(workspace ?? createEmptyTutorSdkPorts());
+    this.store = store ?? new InMemoryTutorSessionStore();
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
@@ -207,16 +231,24 @@ export class TutorService {
     return this.auditLog;
   }
 
+  /** 是否为真实持久化存储；决定是否启用跨进程幂等与持久化审计。 */
+  private get durable(): boolean {
+    return this.store.durable;
+  }
+
   /**
-   * 取（或惰性创建）某个项目**属于该学生**的会话。一个项目对应一个持续会话，
-   * 这样掌握度阶梯可以跨刷新延续——学生重新打开页面时不会被「重置」。
+   * demo/test 的种子路径：只有**非持久化**的内存存储才回退到带历史种子的
+   * 同步实现；持久化存储（含测试用的 durable 内存替身）一律走真实读写。
+   */
+  private get usesSeededMemory(): boolean {
+    return !this.durable && this.store instanceof InMemoryTutorSessionStore;
+  }
+
+  /**
+   * 取（或惰性创建）某个项目**属于该学生**的会话。
    *
-   * 对象级授权：如果该项目已存在属于**其他学生**的会话，抛统一 403，
-   * 绝不返回该会话的任何字段。这样同一 `projectId` 无法被另一个学生取到。
-   *
-   * 注意：这里的归属只到「学生 ↔ 会话」这一层。等 `projects` 模块落地后，
-   * 仍需在服务端校验 `project.studentUserId`，当前硬编码的 `DEMO_PROJECT`
-   * 不是授权真相。
+   * 同步版本只在测试/demo 的内存路径上使用；HTTP 入口一律走
+   * `resolveSession`（会先从持久化存储读回权威状态）。
    */
   getOrCreateSession(projectId: string, ownerId: string): TutorSessionRecord {
     const existing = this.findByProject(projectId);
@@ -243,6 +275,56 @@ export class TutorService {
   }
 
   /**
+   * 持久化感知的取会话入口：HTTP 与流式回合都从这里拿权威状态。
+   *
+   * - 无存储（demo/test）→ 退回同步内存实现；
+   * - 有存储 → 先按项目查持久化会话，命中则校验归属并水合到内存缓存；
+   *   未命中则创建一条空会话（`last_seq = 0`）并写一次 `session_start` 审计。
+   *
+   * 归属不一致统一 403；创建/查回都以**服务端** owner 为准。
+   */
+  async resolveSession(projectId: string, ownerId: string): Promise<TutorSessionRecord> {
+    if (this.usesSeededMemory) {
+      return this.getOrCreateSession(projectId, ownerId);
+    }
+    const existing = await this.store.findByProject(projectId);
+    if (existing !== null) {
+      assertOwnedBy(existing, ownerId);
+      return this.hydrate(existing);
+    }
+    // 外键 `tutor_sessions.partner_id` 需要搭档档案先存在。
+    await this.tutorSdk.initialize();
+    const sessionId =
+      projectId === DEMO_PROJECT.id ? DEMO_SESSION_ID : `session-${projectId}`;
+    const createdAt = new Date().toISOString();
+    await this.store.create({
+      sessionId,
+      ownerId,
+      partnerId: this.tutorSdk.partner.id,
+      projectId,
+      source: 'project',
+      createdAt,
+    });
+    const record = this.hydrate({
+      sessionId,
+      ownerId,
+      projectId,
+      source: 'project',
+      createdAt,
+      lastSeq: 0,
+      turns: [],
+    });
+    await this.commitAudit({
+      sessionId: record.sessionId,
+      projectId: record.projectId,
+      actorId: ownerId,
+      action: 'tutor.session_start',
+      detail: '学生开启 AI搭档会话',
+    });
+    return record;
+  }
+
+  /**
    * 按 id 取会话，并校验归属。
    *
    * 授权先行的顺序：先按 id 查找，再校验 owner。归属不一致时统一 403，
@@ -255,18 +337,35 @@ export class TutorService {
     return record;
   }
 
+  /** 持久化感知的按 id 读取；HTTP `GET /sessions/:id` 使用。 */
+  async loadSession(sessionId: string, ownerId: string): Promise<TutorSessionRecord> {
+    if (this.usesSeededMemory) {
+      return this.getSession(sessionId, ownerId);
+    }
+    const snapshot = await this.store.findById(sessionId);
+    if (snapshot === null) throw new NotFoundException('会话不存在');
+    assertOwnedBy(snapshot, ownerId);
+    return this.hydrate(snapshot);
+  }
+
   /** 契约 `GetTutorSessionResponse` 投影；不含审计与内部字段。 */
   toSessionResponse(record: TutorSessionRecord): GetTutorSessionResponse {
     return {
       sessionId: record.sessionId,
       projectId: record.projectId,
-      turns: record.turns,
+      // 只回投影字段：`pedagogicMove` / `expectedEvidence` / `promptVersion` /
+      // `evidenceRef` 是服务端内部元数据，绝不进入学生响应。
+      turns: record.turns.map(toContractTurn),
       lastSeq: record.lastSeq,
     };
   }
 
   getSummary(sessionId: string, ownerId: string): TutorSessionSummary {
-    const record = this.getSession(sessionId, ownerId);
+    return this.toSummary(this.getSession(sessionId, ownerId));
+  }
+
+  /** 从已授权的运行时记录生成摘要；供异步入口复用。 */
+  toSummary(record: TutorSessionRecord): TutorSessionSummary {
     return {
       summary: summarise(record),
       lastHintLevel: record.lastHintLevel,
@@ -278,9 +377,13 @@ export class TutorService {
   /**
    * 执行一个回合并流式产出事件。
    *
-   * 幂等：同一个 `idempotencyKey` 再次提交时重放缓存的事件序列，既不重新
-   * 计算也不追加新回合。重放是**从头重放**，因为 SSE 客户端断线重连时会
-   * 用同一个 key 重放整轮，前端依靠 `callId` 去重。
+   * 幂等：
+   * - live（durable + `IdempotencyStore`）→ 走 `IdempotencyService`（scope 含
+   *   会话 id），服务重启/多实例重试同一 key 会命中已保存结果，不追加第二个回合；
+   * - demo/test → 沿用内存 Map，语义一致但只在本进程内有效。
+   *
+   * 两种路径都在**整轮回合完成后**才产出事件：这样审计、掌握度、序号推进
+   * 与事件流是一致原子单元，重连重放不会重复写入。
    */
   async *runTurn(
     record: TutorSessionRecord,
@@ -294,6 +397,39 @@ export class TutorService {
   ): AsyncGenerator<StreamedTutorEvent, void, undefined> {
     // 纵深防御：即使调用方绕过了按 id 的授权查询，回合执行前仍校验归属。
     assertOwnedBy(record, request.actorId);
+
+    if (this.durable && this.idempotencyStore !== undefined) {
+      const scope = `${TUTOR_TURN_SCOPE}:${record.sessionId}`;
+      const requestHash = hashRequest({
+        sessionId: record.sessionId,
+        actorId: request.actorId,
+        content: request.content ?? null,
+        pedagogicMove: request.pedagogicMove ?? null,
+        optionLabel: request.optionLabel ?? null,
+      });
+      const result = await this.idempotencyStore.execute(
+        scope,
+        request.idempotencyKey,
+        requestHash,
+        async () => {
+          const events = await this.executeTurn(record, request);
+          return { status: 200, body: { events } };
+        },
+        { processingLeaseMs: TUTOR_TURN_LEASE_MS },
+      );
+      if (result.replayed) {
+        await this.commitAudit({
+          sessionId: record.sessionId,
+          projectId: record.projectId,
+          actorId: request.actorId,
+          action: 'tutor.idempotent_replay',
+          detail: `重放回合（key ${request.idempotencyKey}）`,
+        });
+      }
+      for (const streamed of result.body.events) yield streamed;
+      return;
+    }
+
     const cached = this.idempotency.get(request.idempotencyKey);
     if (cached !== undefined && cached.turnId.startsWith(`${record.sessionId}:`)) {
       this.record({
@@ -307,6 +443,31 @@ export class TutorService {
       return;
     }
 
+    const events = await this.executeTurn(record, request);
+    this.idempotency.set(request.idempotencyKey, {
+      turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
+      events,
+    });
+    for (const streamed of events) yield streamed;
+  }
+
+  /**
+   * 一个回合的完整执行：调用 provider、组装服务端权威回合、持久化、审计。
+   *
+   * 返回已缓冲的事件流（不是生成器），因此调用方可以先把回合写库/写审计，
+   * 再决定如何回放——这正是重连不重复写入的关键。
+   */
+  private async executeTurn(
+    record: TutorSessionRecord,
+    request: {
+      content?: string;
+      pedagogicMove?: TutorTurnInput['pedagogicMove'];
+      optionLabel?: string;
+      idempotencyKey: string;
+      actorId: string;
+    },
+  ): Promise<StreamedTutorEvent[]> {
+    const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
     await this.tutorSdk.initialize();
     const liveProject = record.projectId === null || this.platformData === undefined
@@ -339,22 +500,27 @@ export class TutorService {
       ...(request.optionLabel !== undefined ? { optionLabel: request.optionLabel } : {}),
     };
 
-    // 学生回合先入账，seq 消耗 1 —— 这样前端本地回声也落在同一段区间里。
-    const studentTurn: TutorTurn = {
-      turnId: `${record.sessionId}:student:${record.lastSeq + 1}`,
+    const promptVersion = this.tutorSdk.partner.promptVersion;
+    const expectedEvidence = currentTask?.detail ?? null;
+
+    const studentTurn: TutorTurnRecord = {
+      turnId: `${record.sessionId}:student:${baseSeq + 1}`,
       role: 'student',
       blocks: buildStudentBlocks(request),
       hintLevel: null,
       stageBefore: projectStage,
       stageAfter: null,
-      seq: (record.lastSeq += 1),
+      seq: baseSeq + 1,
       createdAt: new Date().toISOString(),
       modality: 'text',
+      pedagogicMove: request.pedagogicMove ?? null,
+      expectedEvidence,
+      promptVersion,
+      evidenceRef: `tutor_turn:${record.sessionId}:${baseSeq + 1}`,
     };
-    record.turns.push(studentTurn);
 
     const events: StreamedTutorEvent[] = [];
-    let nextSeq = record.lastSeq;
+    let nextSeq = baseSeq + 1;
     let assistantBlocks: TutorTurn['blocks'] = [];
     let assistantHintLevel: TutorHintLevel | null = null;
     let guardBlocked = false;
@@ -397,46 +563,62 @@ export class TutorService {
         default:
           break;
       }
-      yield streamed;
     }
 
-    record.lastSeq = nextSeq;
-    record.turns.push({
-      turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
+    // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
+    const assistantSeq = nextSeq > baseSeq + 1 ? nextSeq : baseSeq + 2;
+    const assistantTurn: TutorTurnRecord = {
+      turnId: `${record.sessionId}:assistant:${assistantSeq}`,
       role: 'assistant',
       blocks: assistantBlocks,
       hintLevel: assistantHintLevel,
       stageBefore: projectStage,
+      // 服务端决定阶段推进；这里保持当前阶段，避免助手回合擅自改阶段。
       stageAfter: projectStage,
-      seq: record.lastSeq,
+      seq: assistantSeq,
       createdAt: new Date().toISOString(),
       modality: 'text',
-    });
-    if (assistantHintLevel !== null) record.lastHintLevel = assistantHintLevel;
-    this.trackStall(record, request.pedagogicMove);
+      // 教学动作属于学生输入；助手回合不重复记一次，避免重放时双重计数。
+      pedagogicMove: null,
+      expectedEvidence,
+      promptVersion,
+      evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
+    };
 
-    this.idempotency.set(request.idempotencyKey, {
-      turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
-      events,
-    });
-    this.record({
+    // 先落库再改内存：写失败（并发冲突）时运行时记录保持干净，可由上层重试。
+    if (this.durable) {
+      const append: AppendTurnsInput = {
+        sessionId: record.sessionId,
+        expectedLastSeq: baseSeq,
+        newLastSeq: assistantSeq,
+        turns: [studentTurn, assistantTurn],
+      };
+      await this.store.appendTurns(append);
+    }
+
+    record.lastSeq = assistantSeq;
+    record.turns.push(studentTurn, assistantTurn);
+    if (assistantHintLevel !== null) record.lastHintLevel = assistantHintLevel;
+    const escalatedNow = this.trackStall(record, request.pedagogicMove);
+
+    await this.commitAudit({
       sessionId: record.sessionId,
       projectId: record.projectId,
       actorId: request.actorId,
       action: guardBlocked ? 'tutor.guard_block' : 'tutor.turn',
-      detail: `回合 ${record.lastSeq}，提示等级 ${assistantHintLevel ?? '未变更'}`,
+      detail: `回合 ${assistantSeq}，提示等级 ${assistantHintLevel ?? '未变更'}`,
     });
     await this.tutorSdk.recordGrowthSignal({
-      idempotencyKey: `tutor-turn:${record.sessionId}:${record.lastSeq}`,
+      idempotencyKey: `tutor-turn:${record.sessionId}:${assistantSeq}`,
       studentId: request.actorId,
       projectId: record.projectId,
       kind: 'question_asked',
       summary: '学生完成了一次学习搭档对话回合',
-      evidenceRef: `tutor_turn:${record.sessionId}:${record.lastSeq}`,
+      evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
       occurredAt: new Date().toISOString(),
     });
-    if (record.escalated) {
-      this.record({
+    if (escalatedNow) {
+      await this.commitAudit({
         sessionId: record.sessionId,
         projectId: record.projectId,
         actorId: 'system',
@@ -444,6 +626,21 @@ export class TutorService {
         detail: `连续 ${record.stallCount} 轮卡顿，建议班主任介入`,
       });
     }
+    return events;
+  }
+
+  /** 把持久化快照水合为运行时记录，并从回合序列重放服务端判定状态。 */
+  private hydrate(snapshot: TutorSessionSnapshot): TutorSessionRecord {
+    const derived = deriveSessionState(snapshot.turns);
+    const record: TutorSessionRecord = {
+      ...snapshot,
+      turns: snapshot.turns.slice(),
+      lastHintLevel: derived.lastHintLevel,
+      stallCount: derived.stallCount,
+      escalated: derived.escalated,
+    };
+    this.sessions.set(record.sessionId, record);
+    return record;
   }
 
   /**
@@ -460,8 +657,15 @@ export class TutorService {
   ): TutorSessionRecord {
     const now = Date.now();
     const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
-    const turns: TutorTurn[] = [
+    const base: Omit<TutorTurnRecord, 'seq' | 'role' | 'blocks' | 'hintLevel' | 'stageBefore' | 'stageAfter' | 'turnId' | 'createdAt' | 'modality'> = {
+      pedagogicMove: null,
+      expectedEvidence: '找到 2 条证据，用自己的话说清楚光合作用。',
+      promptVersion: this.tutorSdk.partner.promptVersion,
+      evidenceRef: null,
+    };
+    const turns: TutorTurnRecord[] = [
       {
+        ...base,
         turnId: `${sessionId}:student:1`,
         role: 'student',
         blocks: [{ kind: 'text', text: '老师让我们做校园植物观察手册，我不知道从哪开始。' }],
@@ -473,6 +677,7 @@ export class TutorService {
         modality: 'text',
       },
       {
+        ...base,
         turnId: `${sessionId}:assistant:2`,
         role: 'assistant',
         blocks: [
@@ -484,8 +689,10 @@ export class TutorService {
         seq: 2,
         createdAt: at(-580_000),
         modality: 'text',
+        pedagogicMove: 'hint',
       },
       {
+        ...base,
         turnId: `${sessionId}:student:3`,
         role: 'student',
         blocks: [{ kind: 'text', text: '走廊那盆绿萝，放窗边就长得快，放教室后面就变黄。' }],
@@ -497,6 +704,7 @@ export class TutorService {
         modality: 'text',
       },
       {
+        ...base,
         turnId: `${sessionId}:assistant:4`,
         role: 'assistant',
         blocks: [
@@ -509,8 +717,10 @@ export class TutorService {
         seq: 4,
         createdAt: at(-400_000),
         modality: 'text',
+        pedagogicMove: 'hint',
       },
       {
+        ...base,
         turnId: `${sessionId}:student:5`,
         role: 'student',
         blocks: [{ kind: 'text', text: '我觉得是光，光多它就长得好。' }],
@@ -522,6 +732,7 @@ export class TutorService {
         modality: 'text',
       },
       {
+        ...base,
         turnId: `${sessionId}:assistant:6`,
         role: 'assistant',
         blocks: [
@@ -533,12 +744,14 @@ export class TutorService {
         seq: 6,
         createdAt: at(-180_000),
         modality: 'text',
+        pedagogicMove: 'hint',
       },
     ];
     return {
       sessionId,
       ownerId,
       projectId,
+      source: 'project',
       createdAt: at(-600_000),
       turns,
       lastSeq: 6,
@@ -555,19 +768,24 @@ export class TutorService {
     return undefined;
   }
 
-  /** 连续 4 轮出现卡顿信号 → 升级给班主任（服务端判定，客户端不可写）。 */
+  /**
+   * 连续 4 轮出现卡顿信号 → 升级给班主任（服务端判定，客户端不可写）。
+   *
+   * 返回**本次**是否首次越过阈值；`escalated` 一旦置位便粘住，重启后由
+   * `deriveSessionState` 从回合序列重放得到相同结果。
+   */
   private trackStall(
     record: TutorSessionRecord,
     move: TutorTurnInput['pedagogicMove'],
-  ): void {
+  ): boolean {
     if (move === 'stall_signal') {
       record.stallCount += 1;
     } else if (move !== undefined) {
       record.stallCount = 0;
     }
-    const crossedEscalation =
-      !record.escalated && record.stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD;
-    record.escalated = record.escalated || record.stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD;
+    const threshold = record.stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD;
+    const crossedEscalation = !record.escalated && threshold;
+    record.escalated = record.escalated || threshold;
     if (crossedEscalation) {
       // 只在**首次**越过阈值时上报一次，避免每多卡一轮就重复生成提醒。
       // 提醒模块按 `source:studentId:stallCount` 去重，重复上报也是幂等的。
@@ -577,11 +795,29 @@ export class TutorService {
         source: LEARNING_PROGRESS_STALL_SOURCE,
       });
     }
+    return crossedEscalation;
   }
 
   private record(entry: Omit<AuditEntry, 'at'>): void {
     this.auditLog.push({ at: new Date().toISOString(), ...entry });
     if (this.auditLog.length > 500) this.auditLog.splice(0, this.auditLog.length - 500);
+  }
+
+  /**
+   * 写一条审计：内存日志永远写（测试可见），durable 模式下再落
+   * `audit_logs`。两处都只记动作元数据，不记原始对话。
+   */
+  private async commitAudit(entry: Omit<AuditEntry, 'at'>): Promise<void> {
+    this.record(entry);
+    if (!this.durable || this.auditWriter === undefined) return;
+    await this.auditWriter.write({
+      actorId: entry.actorId === 'system' ? null : entry.actorId,
+      actorRole: entry.actorId === 'system' ? null : 'student',
+      action: entry.action,
+      targetType: 'tutor_session',
+      targetId: entry.sessionId,
+      detail: { projectId: entry.projectId, summary: entry.detail },
+    });
   }
 }
 
@@ -592,8 +828,43 @@ export class TutorService {
 const FORBIDDEN_MESSAGE = '无权访问该会话';
 
 /** 断言会话归属；不一致统一 403，且不泄露任何会话字段。 */
-function assertOwnedBy(record: TutorSessionRecord, ownerId: string): void {
+function assertOwnedBy(record: { ownerId: string }, ownerId: string): void {
   if (record.ownerId !== ownerId) throw new ForbiddenException(FORBIDDEN_MESSAGE);
+}
+
+/** 从回合序列重放会话级服务端状态（无专用列，重启后结果一致）。 */
+function deriveSessionState(turns: readonly TutorTurnRecord[]): {
+  lastHintLevel: TutorHintLevel | null;
+  stallCount: number;
+  escalated: boolean;
+} {
+  let lastHintLevel: TutorHintLevel | null = null;
+  let stallCount = 0;
+  let escalated = false;
+  for (const turn of turns) {
+    if (turn.hintLevel !== null) lastHintLevel = turn.hintLevel;
+    // 卡顿信号只记在学生回合上，且每个回合只重放一次，与实时 `trackStall` 对齐。
+    if (turn.role !== 'student') continue;
+    if (turn.pedagogicMove === 'stall_signal') {
+      stallCount += 1;
+    } else if (turn.pedagogicMove !== null) {
+      stallCount = 0;
+    }
+    if (stallCount >= LEARNING_STALL_ESCALATION_THRESHOLD) escalated = true;
+  }
+  return { lastHintLevel, stallCount, escalated };
+}
+
+/** 剥离服务端专用元数据，只回契约字段。 */
+function toContractTurn(turn: TutorTurnRecord): TutorTurn {
+  const {
+    pedagogicMove: _pedagogicMove,
+    expectedEvidence: _expectedEvidence,
+    promptVersion: _promptVersion,
+    evidenceRef: _evidenceRef,
+    ...contract
+  } = turn;
+  return contract;
 }
 
 function buildStudentBlocks(request: {

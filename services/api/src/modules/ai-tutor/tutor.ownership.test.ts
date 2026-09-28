@@ -160,39 +160,39 @@ function captureError(fn: () => unknown): unknown {
   return undefined;
 }
 
-test('控制器：B 访问 A 的 sessions/:id、summary、turns 全部 403', () => {
+test('控制器：B 访问 A 的 sessions/:id、summary、turns 全部 403', async () => {
   const { controller } = newController();
-  const created = controller.createSession(cookies('tok-a'), { projectId: 'prj-ctrl' });
+  const created = await controller.createSession(cookies('tok-a'), { projectId: 'prj-ctrl' });
   const id = created.data.sessionId;
 
-  assert.throws(() => controller.getSessionById(cookies('tok-b'), id), ForbiddenException);
-  assert.throws(() => controller.getSummary(cookies('tok-b'), id), ForbiddenException);
-  assert.throws(
-    () => controller.submitTurn(cookies('tok-b'), id, { content: 'hi', idempotencyKey: 'k' }),
+  await assert.rejects(controller.getSessionById(cookies('tok-b'), id), ForbiddenException);
+  await assert.rejects(controller.getSummary(cookies('tok-b'), id), ForbiddenException);
+  await assert.rejects(
+    controller.submitTurn(cookies('tok-b'), id, { content: 'hi', idempotencyKey: 'k' }),
     ForbiddenException,
   );
 
   // 本人不受影响。
-  assert.equal(controller.getSessionById(cookies('tok-a'), id).data.sessionId, id);
-  assert.equal(controller.getSummary(cookies('tok-a'), id).data.escalated, false);
+  assert.equal((await controller.getSessionById(cookies('tok-a'), id)).data.sessionId, id);
+  assert.equal((await controller.getSummary(cookies('tok-a'), id)).data.escalated, false);
 });
 
-test('控制器：B 用同一个 projectId 打开 session 时 403，不能读 A 的项目会话', () => {
+test('控制器：B 用同一个 projectId 打开 session 时 403，不能读 A 的项目会话', async () => {
   const { controller } = newController();
-  controller.createSession(cookies('tok-a'), { projectId: 'prj-shared-ctrl' });
+  await controller.createSession(cookies('tok-a'), { projectId: 'prj-shared-ctrl' });
 
-  assert.throws(
-    () => controller.getSession(cookies('tok-b'), 'prj-shared-ctrl'),
+  await assert.rejects(
+    controller.getSession(cookies('tok-b'), 'prj-shared-ctrl'),
     ForbiddenException,
   );
 
-  const own = controller.getSession(cookies('tok-a'), 'prj-shared-ctrl');
+  const own = await controller.getSession(cookies('tok-a'), 'prj-shared-ctrl');
   assert.equal(own.data.projectId, 'prj-shared-ctrl');
 });
 
 test('控制器：B 经 stream 访问 A 的会话在写响应前 403', async () => {
   const { controller } = newController();
-  const created = controller.createSession(cookies('tok-a'), { projectId: 'prj-stream' });
+  const created = await controller.createSession(cookies('tok-a'), { projectId: 'prj-stream' });
   const id = created.data.sessionId;
   const fakeResponse = {} as Response;
 
@@ -206,12 +206,12 @@ test('控制器：B 经 stream 访问 A 的会话在写响应前 403', async () 
   );
 });
 
-test('控制器：未登录 401、非学生 403；不存在会话 404 在授权之后', () => {
+test('控制器：未登录 401、非学生 403；不存在会话 404 在授权之后', async () => {
   const { controller } = newController();
 
-  assert.throws(() => controller.getSessionById(undefined, 'session-x'), UnauthorizedException);
-  assert.throws(
-    () => controller.getSessionById(cookies('tok-a'), 'session-missing'),
+  await assert.rejects(controller.getSessionById(undefined, 'session-x'), UnauthorizedException);
+  await assert.rejects(
+    controller.getSessionById(cookies('tok-a'), 'session-missing'),
     NotFoundException,
   );
 });

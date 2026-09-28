@@ -114,12 +114,16 @@ export class TutorController {
     };
   }
 
-  getSession(
+  @Get('session')
+  async getSession(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('projectId') projectId?: string,
-  ): { data: GetTutorSessionResponse } {
+  ): Promise<{ data: GetTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
-    const record = this.tutorService.getOrCreateSession(projectId ?? DEFAULT_PROJECT_ID, actor.id);
+    const record = await this.tutorService.resolveSession(
+      projectId ?? DEFAULT_PROJECT_ID,
+      actor.id,
+    );
     return { data: this.tutorService.toSessionResponse(record) };
   }
 
@@ -152,9 +156,9 @@ export class TutorController {
     // 若请求同时带了 sessionId，也先按归属校验一次：不能借 stream 读到
     // 别人的会话（即使它恰好映射到同一个 projectId）。
     if (typeof body.sessionId === 'string' && body.sessionId.length > 0) {
-      this.tutorService.getSession(body.sessionId, actor.id);
+      await this.tutorService.loadSession(body.sessionId, actor.id);
     }
-    const record = this.tutorService.getOrCreateSession(projectId, actor.id);
+    const record = await this.tutorService.resolveSession(projectId, actor.id);
     const idempotencyKey =
       typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0
         ? body.idempotencyKey
@@ -210,13 +214,16 @@ export class TutorController {
   /* ---------------- 契约中 REST 风格的等价路由 ---------------- */
 
   @Post('sessions')
-  createSession(
+  async createSession(
     @Headers('cookie') cookieHeader: string | undefined,
     @Body() body: { projectId?: unknown; source?: unknown },
-  ): { data: CreateTutorSessionResponse } {
+  ): Promise<{ data: CreateTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
     const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
-    const record = this.tutorService.getOrCreateSession(projectId ?? DEFAULT_PROJECT_ID, actor.id);
+    const record = await this.tutorService.resolveSession(
+      projectId ?? DEFAULT_PROJECT_ID,
+      actor.id,
+    );
     return {
       data: {
         sessionId: record.sessionId,
@@ -228,14 +235,13 @@ export class TutorController {
   }
 
   @Get('sessions/:id')
-  getSessionById(
+  async getSessionById(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
-  ): { data: GetTutorSessionResponse } {
+  ): Promise<{ data: GetTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
-    return {
-      data: this.tutorService.toSessionResponse(this.tutorService.getSession(id, actor.id)),
-    };
+    const record = await this.tutorService.loadSession(id, actor.id);
+    return { data: this.tutorService.toSessionResponse(record) };
   }
 
   /**
@@ -244,13 +250,13 @@ export class TutorController {
    */
   @Post('sessions/:id/turns')
   @HttpCode(202)
-  submitTurn(
+  async submitTurn(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
     @Body() _body: { content?: unknown; pedagogicMove?: unknown; optionLabel?: unknown; idempotencyKey?: unknown },
-  ): { data: CreateTutorTurnResponse } {
+  ): Promise<{ data: CreateTutorTurnResponse }> {
     const actor = this.requireStudent(cookieHeader);
-    const record = this.tutorService.getSession(id, actor.id);
+    const record = await this.tutorService.loadSession(id, actor.id);
     return {
       data: {
         turnId: `${record.sessionId}:pending:${record.lastSeq + 1}`,
@@ -261,12 +267,13 @@ export class TutorController {
   }
 
   @Get('sessions/:id/summary')
-  getSummary(
+  async getSummary(
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
-  ): { data: TutorSessionSummary } {
+  ): Promise<{ data: TutorSessionSummary }> {
     const actor = this.requireStudent(cookieHeader);
-    return { data: this.tutorService.getSummary(id, actor.id) };
+    const record = await this.tutorService.loadSession(id, actor.id);
+    return { data: this.tutorService.toSummary(record) };
   }
 
   /* ------------------------------ 内部 ------------------------------ */
