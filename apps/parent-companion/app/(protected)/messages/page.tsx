@@ -11,6 +11,11 @@ import {
 } from '../../../features/parentApi';
 import { ChildPicker, DataState, PageFrame } from '../../../features/ParentDataPage';
 import {
+  FEEDBACK_CONTENT_MAX,
+  FeedbackSubmitError,
+  submitParentFeedback,
+} from '../../../features/feedback';
+import {
   formatDayTime,
   parentMessageStatusLabel,
   parentTicketStatusLabel,
@@ -36,7 +41,9 @@ export default function MessagesPage() {
 
   const [feedbackOpen, setFeedbackOpen] = useState<FeedbackSource | null>(null);
   const [feedbackContent, setFeedbackContent] = useState('');
-  const [feedbackState, setFeedbackState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [feedbackState, setFeedbackState] = useState<
+    'idle' | 'sending' | 'sent' | 'offline' | 'error'
+  >('idle');
   const [acting, setActing] = useState(false);
 
   const load = useCallback((id: string) => {
@@ -106,20 +113,30 @@ export default function MessagesPage() {
 
   const submitFeedback = async () => {
     const content = feedbackContent.trim();
-    if (content.length === 0 || content.length > 500 || feedbackState === 'sending') return;
+    if (content.length === 0 || content.length > FEEDBACK_CONTENT_MAX || feedbackState === 'sending') {
+      return;
+    }
+    if (!childId) {
+      setFeedbackState('error');
+      return;
+    }
     setFeedbackState('sending');
     try {
-      await parentApi.post('/api/v1/parent/feedback', {
+      // 与右下角浮窗、首页共用同一套反馈服务：服务端只有一条工单链路。
+      await submitParentFeedback({
         source: feedbackOpen === 'message' ? 'message' : 'general',
         content,
+        childId,
         messageId: feedbackOpen === 'message' ? selected : null,
         projectId: null,
       });
       setFeedbackState('sent');
       setFeedbackContent('');
       load(childId);
-    } catch {
-      setFeedbackState('error');
+    } catch (error) {
+      setFeedbackState(
+        error instanceof FeedbackSubmitError && error.kind === 'offline' ? 'offline' : 'error',
+      );
     }
   };
 
@@ -148,13 +165,13 @@ export default function MessagesPage() {
                 setFeedbackContent(e.target.value);
                 if (feedbackState !== 'sending') setFeedbackState('idle');
               }}
-              maxLength={500}
+              maxLength={FEEDBACK_CONTENT_MAX}
               rows={3}
               placeholder="请描述您遇到的问题或疑问（1-500 字）…"
               aria-label="反馈内容"
             />
             <div className="feedback-actions">
-              <small>{feedbackContent.trim().length}/500</small>
+              <small>{feedbackContent.trim().length}/{FEEDBACK_CONTENT_MAX}</small>
               <Button
                 onClick={submitFeedback}
                 loading={feedbackState === 'sending'}
@@ -171,6 +188,9 @@ export default function MessagesPage() {
             ) : null}
             {feedbackState === 'error' ? (
               <p className="inline-error">反馈没能提交，请稍后重试。</p>
+            ) : null}
+            {feedbackState === 'offline' ? (
+              <p className="inline-error">网络不可用，反馈尚未提交，请稍后重试。</p>
             ) : null}
           </div>
         </SectionCard>

@@ -4,6 +4,7 @@ import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { ParentFeedbackWidget } from './ParentFeedbackWidget';
 const BASE_PATH = '/parent';
 const specs = [
   { path: '/', label: '首页', icon: '⌂' },
@@ -63,6 +64,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
           </header>
           <main className="parent-content">{children}</main>
         </div>
+        <ParentFeedbackWidget />
       </div>
     </AuthGuard>
   );
