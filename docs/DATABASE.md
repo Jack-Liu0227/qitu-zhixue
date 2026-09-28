@@ -73,6 +73,23 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
 -- 幂等键唯一（0008）：重试不会产生第二条业务记录
 --   learning_plans_idempotency_unique_idx / growth_records_idempotency_unique_idx /
 --   student_memories_idempotency_unique_idx / mentor_reviews_idempotency_unique_idx
+
+-- 同一学习路径同时只有一道未答题（0009）
+CREATE UNIQUE INDEX pending_questions_awaiting_unique_idx
+  ON pending_questions (student_user_id, plan_id) WHERE status = 'awaiting';
+
+-- 同一事实只物化一行项目证据（0009）：重复聚合不会产生第二条
+CREATE UNIQUE INDEX project_evidence_fact_unique_idx
+  ON project_evidence (project_id, column_kind, source_kind, source_id);
+
+-- 作品版本序号在作品内唯一（0009）
+CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
+  ON artifact_versions (artifact_id, ordinal);
+
+-- 幂等键唯一（0009）：
+--   template_verification_runs_idempotency_unique_idx（验证报告只落一条）/
+--   template_verification_evidence_ref_unique_idx（run + 检查 + 来源唯一）/
+--   artifacts_idempotency_unique_idx / pending_questions_idempotency_unique_idx
 ```
 
 ### 硬业务规则与其落表方式
@@ -83,6 +100,9 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
 | 学生未确认意图不得创建正式项目 | 服务端状态机：`intent_confirmations` + `learning_plans.confirmed_at`；确认后才写 `projects` / `learning_plans.project_id` |
 | `TheoryMastered` 之前不得进入实践 | 服务端根据 `mastery_records`（`mastery_basis_points >= threshold_basis_points` 或 `qualitative_mastered`）判定；`learning_sessions.practice_objective_ids` 只在门槛达成后由服务端解锁 |
 | 项目 / 计划绑定冻结模板版本 | `projects.template_version_id` / `learning_plans.template_version_id` 外键指向 `project_template_versions` |
+| 同一学习路径同时只有一道未答题 | `pending_questions` 部分唯一索引 `(student_user_id, plan_id) WHERE status='awaiting'`（DB 级兜底） |
+| 项目证据只能由服务端聚合产生 | `project_evidence` 无客户端写路径；`(project_id, column_kind, source_kind, source_id)` 唯一 |
+| 模板验证结论与证据不可变 | `template_verification_runs` 无 `updated_at`，`idempotency_key` 唯一；证据行随 run 级联，`(run_id, check_key, source_kind, source_id)` 唯一 |
 | 平台共享 vs 校域隔离 | `project_templates` 部分唯一 slug；`knowledge_documents.scope`（见 §3.1） |
 
 ## 3. 表归属（单一写入者）
@@ -94,13 +114,13 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
 | Identity & Access | **`users`**、**`households`**、**`guardian_links`**、**`mentor_assignments`**、`roles`、`identities`、`sessions`、`student_profiles`、`mentor_profiles`、`consents` |
 | Tenancy（校域） | **`schools`**、**`users.school_id`**（可空；`NULL` = 平台共享）、`student_profiles.school_id`（待建） |
 | Cross-cutting Operations | **`audit_logs`**、**`outbox`**、**`idempotency_keys`** |
-| Projects & Learning | **`project_templates`**、**`project_template_versions`**、**`exploration_sessions`**、**`intent_confirmations`**、**`projects`**、**`learning_plans`**、**`learning_modules`**、**`learning_objectives`**、**`learning_sessions`**、**`mastery_records`**、**`mastery_attempts`**、`recommendation_sessions`、`recommendation_items`、`exploration_turns`、`project_stages`、`project_tasks`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
+| Projects & Learning | **`project_templates`**、**`project_template_versions`**、**`exploration_sessions`**、**`intent_confirmations`**、**`projects`**、**`learning_plans`**、**`learning_modules`**、**`learning_objectives`**、**`learning_sessions`**、**`pending_questions`**（0009，跨轮待答题）、**`mastery_records`**、**`mastery_attempts`**、`recommendation_sessions`、`recommendation_items`、`exploration_turns`、`project_stages`、`project_tasks`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
 | AI Tutor | **`tutor_sessions`**、**`tutor_turns`**、**`tutor_partners`**、**`tutor_learner_profiles`**、**`tutor_memories`**、**`tutor_growth_signals`**、**`tutor_knowledge_documents`**、**`tutor_template_documents`**（0007 工作区适配层）、`context_snapshots` |
-| Works | `artifacts`、`artifact_versions`、`evidence`、`review_records` |
+| Works | **`artifacts`**、**`artifact_versions`**、**`project_evidence`**（0009，服务端聚合只读）、`review_records` |
 | Growth | **`growth_records`**、**`student_memories`**、`growth_snapshots`、`milestones` |
 | Mentor Ops | **`mentor_reviews`**、**`knowledge_documents`**、**`knowledge_chunks`**、`alerts`、`interventions`、`feedback_tickets` |
 | Parent Experience | `notifications`（读取投影，不建独立业务表）、**`parent_growth_exports`**（0003，家长成长导出任务 + 脱敏正文快照） |
-| Admin & Compliance | **`audit_logs`**、**`outbox`**、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
+| Admin & Compliance | **`audit_logs`**、**`outbox`**、**`template_verification_runs`**、**`template_verification_evidence`**（0009，模板验证报告与证据）、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
 | Model Registry | **`model_providers`**、**`model_models`**、**`model_usage_bindings`**（对应 Provider / Model / Usage，0002 已建） |
 
 > `model_usage`（产品文档 8.1）目前未建，由 `model_usage_bindings` 承担用途绑定。
@@ -112,12 +132,17 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
 - `schools` 为校域根表；`school_id` 可空列约定：**`NULL` = 平台共享**，非空 = 该校私有。
 - 已带 `school_id` 的落地表：`users`、`project_templates`、`knowledge_documents`、
   `learning_plans`、`mastery_records`、`mastery_attempts`、`growth_records`、`student_memories`、
-  `mentor_reviews`。
+  `mentor_reviews`；0009 新增 `artifacts`、`project_evidence`、`pending_questions`、
+  `template_verification_runs`、`template_verification_evidence`（后两者 `NULL` = 平台模板验证）。
 - 共享/私有边界：`project_templates` 用部分唯一索引区分平台 slug（`school_id IS NULL`）与
   校域 slug（`school_id IS NOT NULL`）；`knowledge_documents.scope` 取
   `system | school | project | student`，`student` 作用域必须绑定 `owner_user_id`。
 - **学生私有事实**（成长记录、学生记忆、掌握度）默认 `visibility = 'student_private'`，
   由服务端写入；家长/班主任只能读取允许投影的字段（`summary_parent` 等）。
+- **0009 新增表均为服务端写入**：`artifacts` / `artifact_versions`（作品与版本由项目阶段与发布流程写入）、
+  `project_evidence`（由任务提交 / AI turn / 升级事件 / 反思 / 判分**派生**，学生与客户端不能直接写）、
+  `pending_questions`（题面与 `expected_answer` / `explanation` 由服务端持有，下发前经 `PublicQuestion` 投影）、
+  `template_verification_runs` / `template_verification_evidence`（模板治理写入，只读审计）。
 - **尚未实现**：行级安全（RLS）/ `SET LOCAL` 会话变量、跨校写入强制校验、多校租户切换。
   当前 `school_id` 仅供应用层过滤，权限仍由后端逐对象校验。
 
@@ -136,6 +161,19 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
 
 合并方向见 `docs/decisions/0006-domain-module-storage.md`：先双写/迁移再下线适配层，
 不在本批直接删表。
+
+### 3.3 0009 表与 API 模块接线映射（数据层已就位，API 待接线）
+
+迁移 0009 只落**存储**；`services/api` 的写入路径由各 owner 模块接入（本批不改 API 代码）：
+
+| 表 | owner 模块 | 服务端写入时机 | 对应 API / 合同 |
+|---|---|---|---|
+| `template_verification_runs` / `template_verification_evidence` | Admin & Compliance（模板治理） | `verify` / `publish` 时把 `evaluateTemplateVerification()` 的确定性报告与证据冻结为一行 | `services/api/src/modules/templates/*`（`templates.module.ts` 注释标注待迁移）；形状与 `VerificationReport` / `VerificationCheck` 一致 |
+| `artifacts` / `artifact_versions` | Works | 项目阶段提交、学生确认发布时追加版本 / 置 `published_at` | Works 合同的 `Artifact` / `ArtifactVersion`（`docs/agents/student-frontend-backend-design.md`） |
+| `project_evidence` | Projects & Learning / Growth | 由任务提交、`tutor_turn`、升级事件、反思、判分等真实事实**派生**（重复聚合 `ON CONFLICT DO NOTHING`） | 当前 `template-evidence.store.postgres.ts` 只读聚合；接表后改为物化 |
+| `pending_questions` | Projects & Learning（学习计划） | 出题时写题面 + 服务端私密 `expected_answer`；作答后置 `answered` 并追加 `mastery_attempts` | `learning-plan.service.ts` 的 `PublicQuestion` / `NextAction='answer_pending'` / 错误码 `QUESTION_NOT_AWAITING` |
+
+接线前，`pending_questions` 只经 `toPublicQuestion` 投影下发，**不得**把 `expected_answer` / `explanation` 序列化给客户端。
 
 ## 4. 迁移顺序
 
@@ -177,6 +215,14 @@ CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
      并回填 users.school_id 与 projects / exploration_sessions.template_version_id 外键。
      注意：Postgres 标识符上限 63 字符，长外键名必须用显式短名（见 0008 的
      `exploration_sessions_template_version_id_fk` / `learning_plans_template_version_id_fk`）。
+
+第 6 批  验证 / 作品 / 待答题（0009，已建，纯增量）
+  ├─ template_verification_runs → template_verification_evidence
+  ├─ artifacts → artifact_versions
+  ├─ project_evidence
+  └─ pending_questions
+  只 CREATE 新表 / 新索引 / 新外键，不改动任何既有表；外键同样用显式短名
+  （`artifacts_template_version_id_fk`、`template_verification_runs_template_version_id_fk`）。
 ```
 
 **规则**：迁移编号单调递增；合并到主线后不可修改历史迁移；新迁移必须能对空库重放。
@@ -197,19 +243,19 @@ psql "$DATABASE_URL" -f database/migrations/0005_nostalgic_shotgun.sql
 psql "$DATABASE_URL" -f database/migrations/0006_yellow_pete_wisdom.sql
 psql "$DATABASE_URL" -f database/migrations/0007_tutor_workspace.sql
 psql "$DATABASE_URL" -f database/migrations/0008_domain_foundation.sql
+psql "$DATABASE_URL" -f database/migrations/0009_verification_evidence.sql
 
 # 确定性演示数据（幂等，可重复执行）
 pnpm --filter @qitu/database seed
 
-# 领域基础层演示数据（0008 表；幂等，需先跑 demo-identities.sql 建立演示账号）
-# 注：seed.ts 目前只执行 demo-identities.sql 与 tutor-workspace.sql，
-#     本文件在 seed.ts 扩展前需手动执行，或由 owner 模块接入。
+# 领域基础层 + 验证/作品/待答题演示数据（0008/0009 表；幂等）
+# seed.ts 的 SEED_FILES 已包含本文件，随 `pnpm seed` 在 demo-identities.sql 之后自动执行。
 psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 ```
 
 - 迁移产物必须与 owner 模块一起评审；每个 `.sql` 需配 `.down.sql`。
 - `database/seeds/demo-identities.sql` 是身份种子真源，`tutor-workspace.sql` 为工作区适配层种子，
-  `domain-foundation.sql` 为 0008 领域表演示数据；`packages/database/src/seed.ts` 目前执行前两者。
+  `domain-foundation.sql` 为 0008/0009 领域表演示数据；`packages/database/src/seed.ts` 依次执行三者。
 - 种子幂等语义：`users` / `schools` / 领域 fixture 冲突 `DO UPDATE`；
   `guardian_links` / `mentor_assignments` / 运行期记录冲突 `DO NOTHING`。详见 `database/README.md`。
 
@@ -224,9 +270,10 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 | 迁移 `0003_glamorous_ulik`（`parent_growth_exports`） | **已实现**（ISSUE-T5；仅任务元数据 + 脱敏正文，未接异步 worker / 对象存储） |
 | 迁移 `0004`–`0007`（偏好、反馈工单、模型绑定、AI 工作区） | **已实现** |
 | 迁移 `0008_domain_foundation`（学校/模板/知识/计划/掌握/成长/记忆/评审） | **已实现**（表结构 + 外键 + 幂等键；service 读写与 RLS 待接入） |
+| 迁移 `0009_verification_evidence`（验证报告/证据、作品与版本、项目证据、待答题） | **已实现**（表结构 + 外键 + 幂等/部分唯一索引；API 接线见 §3.3） |
 | 确定性种子与幂等语义 | **已实现** |
 | `DatabaseModule` 模式化接入（`QITU_DATA_MODE`，默认 live） | **已实现**：live 缺 `DATABASE_URL` fail-fast；仅 demo/test（非 production）允许内存引擎 |
-| 项目 / AI / 成长 / 知识库表 | **部分实现**：0008 已建领域经典表；`project_stages` / `project_tasks` / `artifacts` / `alerts` / `interventions` 等仍待建 |
+| 项目 / AI / 成长 / 知识库表 | **部分实现**：0008/0009 已建领域经典表与作品/版本/项目证据/验证/待答题表；`project_stages` / `project_tasks` / `alerts` / `interventions` 等仍待建 |
 | 校域隔离（RLS / 跨校强制校验） | **未实现**（`school_id` 列已就位，仅应用层过滤） |
 | pgvector 扩展与向量索引 | **未实现**（`knowledge_chunks.embedding` 暂用 JSONB 占位） |
 | 会话持久化（当前进程内） | **未实现** |
@@ -242,7 +289,11 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
   0008 新增业务表也内联幂等键唯一索引：`learning_plans`、`growth_records`、`student_memories`、
   `mentor_reviews` 的 `idempotency_key`，以及 `learning_modules` / `learning_objectives` /
   `learning_sessions` 的作用域序号唯一约束、`mastery_records` 的
-  `(student_user_id, objective_id)` 唯一约束。
+  `(student_user_id, objective_id)` 唯一约束。0009 继续内联：`template_verification_runs` /
+  `artifacts` / `pending_questions` 的 `idempotency_key`，并以标签唯一约束兜底
+  （`template_verification_evidence` 的 `(run_id, check_key, source_kind, source_id)`、
+  `project_evidence` 的 `(project_id, column_kind, source_kind, source_id)`、
+  `artifact_versions` 的 `(artifact_id, ordinal)`、`pending_questions` 的部分唯一索引）。
 - **回滚**：迁移只前向；回滚以 `.down.sql` 为载体，人工评审后在受控环境执行。
   关系表不做物理删除，用 `status=ended` + `endedAt` 保留历史。
 

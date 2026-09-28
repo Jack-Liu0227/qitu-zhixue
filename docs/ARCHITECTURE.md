@@ -51,13 +51,14 @@ flowchart TD
 | Identity & Access | 用户、角色、会话、家庭、监护关系、班主任分配、对象级访问策略 | `users`、`households`、`guardian_links`、`mentor_assignments` |
 | Tenancy | 校域根表与 `school_id` 归属（`NULL` = 平台共享） | `schools` |
 | Directory | 身份与关系的**单一真源**，双引擎（Postgres / 内存） | 只读汇总，写经 Identity & Access |
-| Projects & Learning | 模板版本、项目实例、阶段、任务、学习计划/模块/目标/课次、掌握度、状态机 | `project_templates*`、`projects*`、`learning_plans*`、`mastery_*`、`theory_*`、`practice_*` |
+| Projects & Learning | 模板版本、项目实例、阶段、任务、学习计划/模块/目标/课次、跨轮待答题、掌握度、状态机 | `project_templates*`、`projects*`、`learning_plans*`、`pending_questions`、`mastery_*`、`theory_*`、`practice_*` |
+| Works | 作品与版本历程、项目证据（服务端聚合，只读） | `artifacts`、`artifact_versions`、`project_evidence` |
 | AI Tutor | 会话、turn、context packet、提示等级、模型路由、卡顿检测 | `tutor_*`、`context_snapshots` |
 | Model Registry | Provider → Model → Usage 三层模型接入 | `model_providers`、`model_models`、`model_usage_bindings`（规划） |
 | Mentor Operations | 告警、问题、干预、笔记、知识库、班主任评审 | `alerts`、`interventions`、`knowledge_*`、`mentor_reviews` |
 | Parent Experience | 家长成长快照、消息与反馈（授权投影） | 只读投影 + `notifications` |
 | Growth | 成长记录、学生长期记忆与里程碑 | `growth_records`、`student_memories`、`growth_snapshots`、`milestones` |
-| Admin & Compliance | 平台配置、AI 策略版本、审计、数据保留、敏感访问审批 | `audit_logs`、`outbox`、`ai_*` |
+| Admin & Compliance | 平台配置、AI 策略版本、审计、数据保留、敏感访问审批、模板验证报告 | `audit_logs`、`outbox`、`template_verification_runs`、`template_verification_evidence`、`ai_*` |
 
 > **规则**：`projects` 是项目状态机的唯一写入者；`access`（目录）是对象级授权唯一入口；
 > `audit` 记录敏感读取与管理变更；`outbox` 保证事务与事件一致。
@@ -104,7 +105,7 @@ parent reads → authorized projection only
 
 - PostgreSQL 是 system of record；缓存 Redis；文件走私有对象存储 + 签名 URL；向量检索 pgvector。
 - 迁移前向、可对空库重放；`packages/database/src/schema/**` 是单一写入者资产。
-- 迁移顺序：基础设施/身份 → 项目与学习 → AI/成长 → 运营与模型 → 单一学校领域基础层（详见 `docs/DATABASE.md`）。
+- 迁移顺序：基础设施/身份 → 项目与学习 → AI/成长 → 运营与模型 → 单一学校领域基础层（0008）→ 验证/作品/待答题（0009，纯增量）（详见 `docs/DATABASE.md`）。
 - **校域范围**：`school_id` 可空列（`NULL` = 平台共享）；共享/私有边界与"领域真源 vs AI 工作区适配层"见 `docs/DATABASE.md` §3.1 / §3.2。
 - 初始化分 `demo`（迁移 + 种子）与 `live`（仅迁移）两档，绝不隐式混用（`docs/INITIALIZATION.md`）。
 
@@ -120,15 +121,17 @@ parent reads → authorized projection only
 
 **已实现（Stage 1，主工作树未提交）**
 
-- `packages/database` Drizzle schema + client + 幂等种子；迁移 `0000`–`0008` 已落地。
+- `packages/database` Drizzle schema + client + 幂等种子；迁移 `0000`–`0009` 已落地。
 - 迁移 `0008_domain_foundation`：`schools`、共享/校域项目模板与冻结版本、作用域知识文档/分块、学习计划/模块/目标/课次、掌握度记录/尝试、成长记录、学生记忆、班主任评审；并回填 `users.school_id` 与项目/探索会话的 `template_version_id` 外键。
+- 迁移 `0009_verification_evidence`（纯增量）：`template_verification_runs` / `template_verification_evidence`（不可变模板验证报告与证据）、`artifacts` / `artifact_versions`（作品与版本历程）、`project_evidence`（服务端聚合只读的项目证据）、`pending_questions`（跨轮持久待答题，答案服务端私有）。表结构 + 外键 + 幂等/部分唯一索引已就位，API 接线见 `docs/DATABASE.md` §3.3。
 - `DirectoryService` 双引擎；`DatabaseModule` 可选接入（无 URL 时 inert）。
 - 身份/关系管理、班主任端、家长端只读投影。
 - 模型注册表三层与自动拉取（仅内存）。
 
 **未实现（不在本文当作已完成）**
 
-- 0008 领域表的 service 读写接入（当前仅表结构与种子）；项目/任务/理论/实践/作品其余表与模块。
+- 0008/0009 领域表的 service 读写接入（当前仅表结构与种子）；项目/任务/理论/实践其余表与模块。
+- 模板验证落库接线：`services/api/src/modules/templates` 目前是确定性纯函数 + 只读证据聚合，尚未写 `template_verification_runs`；作品发布、项目证据物化、待答题持久化同样待接线。
 - AI 会话持久化；成长档案与 AI 总结接入。
 - 审计写入与查询；会话持久化与 MFA；pgvector 与知识库（`knowledge_chunks.embedding` 暂用 JSONB 占位）。
 - 校域行级隔离（RLS / 跨校强制校验）；`school_id` 目前仅供应用层过滤。
@@ -137,7 +140,8 @@ parent reads → authorized projection only
 
 ## 7. 待办（跨模块）
 
-- [ ] 模板库 / 知识库 / 成长轨迹接入时的表归属与命令边界（0008 已建表，service 接入待办）。
+- [ ] 模板库 / 知识库 / 成长轨迹接入时的表归属与命令边界（0008/0009 已建表，service 接入待办）。
+- [ ] 0009 表接线：验证报告落库（模板治理）、作品发布与版本、项目证据物化、待答题持久化与 `answer_pending` 状态机。
 - [ ] `tutor_*` 适配层与 0008 领域真源的合并/下线顺序。
 - [ ] 校域行级安全（RLS）与多校租户切换策略。
 - [ ] 项目状态机与「理论未掌握不得进入实践」的强校验。

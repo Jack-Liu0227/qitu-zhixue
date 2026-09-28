@@ -64,6 +64,13 @@
       "when": 1790628923230,
       "tag": "0008_domain_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790630804888,
+      "tag": "0009_verification_evidence",
+      "breakpoints": true
     }
   ]
 }

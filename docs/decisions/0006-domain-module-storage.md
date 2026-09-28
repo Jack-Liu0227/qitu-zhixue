@@ -74,6 +74,30 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 **已实现 vs 规划**：以上为**表结构与种子**；service 读写接入、RLS、pgvector 向量列、
 间隔复习算法落库均属后续工作。
 
+## 已落地：验证证据 / 作品 / 待答题（迁移 0009）
+
+`0009_verification_evidence` 在 0008 基础上补上「验证与作品」缺环，**纯增量**，不改动任何既有表：
+
+- **模板验证（Admin & Compliance）**：`template_verification_runs`（不可变报告：`passed` / `checks` /
+  `evidence_refs`，无 `updated_at`，`idempotency_key` 唯一）+ `template_verification_evidence`
+  （逐条证据引用，`(run_id, check_key, source_kind, source_id)` 唯一，随 run 级联）。结论与证据冻结，
+  后续掌握度变化不回写历史。
+- **作品（Works）**：`artifacts`（默认 `visibility='student_private'`，`published_at` 服务端写入）+
+  `artifact_versions`（`(artifact_id, ordinal)` 唯一，已发布版本不原地改写）。
+- **项目证据（服务端聚合，只读）**：`project_evidence` 三列 `independent | ai_helped | difficulty`，
+  由任务提交 / AI turn / 升级事件 / 反思 / 判分派生；**学生与客户端无写路径**，
+  `(project_id, column_kind, source_kind, source_id)` 唯一保证重复聚合幂等。
+- **待答题（Projects & Learning）**：`pending_questions` 跨轮持久未答题，`expected_answer` /
+  `explanation` 服务端私有；部分唯一索引 `(student_user_id, plan_id) WHERE status='awaiting'`
+  强制「同一路径同时只有一道未答题」；`idempotency_key` 唯一。
+
+接线映射（owner 模块、服务端写入时机、对应合同/错误码）见 `docs/DATABASE.md` §3.3。
+本批**不改 API 模块**：`services/api/src/modules/templates` 仍是确定性纯函数 + 只读证据聚合，
+学习计划的 `hasPendingQuestion` 仍为占位。
+
+**迁移注意（沿用 0008）**：外键用显式短名避免 63 字符截断
+（`artifacts_template_version_id_fk`、`template_verification_runs_template_version_id_fk`）。
+
 ## 明确不做
 
 - 不提前为每个模块建独立数据库。
@@ -86,3 +110,5 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
       0008 已提供 `school_id` 列，但隔离仍由应用层负责。
 - [ ] `tutor_*` 适配层与领域真源的合并/下线顺序。
 - [ ] `knowledge_chunks.embedding` 从 JSONB 迁移为 pgvector `vector` 列（维度/索引待定）。
+- [ ] 0009 表的 API 接线：验证报告落库（模板治理）、作品发布与版本、项目证据物化、
+      待答题持久化与 `answer_pending` 状态机（映射见 `docs/DATABASE.md` §3.3）。

@@ -2,15 +2,21 @@
 --
 -- 覆盖新增的规范化表：schools 之外的 project_templates / project_template_versions /
 -- knowledge_documents / knowledge_chunks / learning_plans(+modules/objectives/sessions) /
--- mastery_records / growth_records / student_memories / mentor_reviews。
+-- mastery_records / growth_records / student_memories / mentor_reviews；
+-- 以及迁移 0009 的 template_verification_runs / artifacts / artifact_versions /
+-- project_evidence / pending_questions。
 -- 所有内容均为虚构演示数据，不含未成年人真实对话、语音或个人信息。
 --
 -- 幂等：可重复执行（模板/知识/计划等固定 fixture 冲突时 DO UPDATE；运行期记录 DO NOTHING）。
 --
--- 说明：当前 seed.ts 只读取 demo-identities.sql 与 tutor-workspace.sql，
---       本文件在 seed.ts 扩展（或按需手动执行）前不会随 `pnpm seed` 自动运行：
+-- 说明：seed.ts 的 SEED_FILES 已包含本文件，会随 `pnpm seed` 在 demo-identities.sql 与
+--       tutor-workspace.sql 之后自动执行；也可手动执行：
 --       psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 --       演示账号需先由 demo-identities.sql 建立。
+--
+--       `template_verification_evidence` 由服务端在验证时按真实证据写入，种子没有可引用的
+--       已完成项目（demo 项目仍在进行中），因此只种 `template_verification_runs` 一条
+--       未通过报告，不虚构证据行。
 --
 -- 与 tutor_* 表的关系见 docs/decisions/0006-domain-module-storage.md：
 -- tutor_template_documents / tutor_knowledge_documents 为工作区适配层，
@@ -315,5 +321,123 @@ VALUES
   )
 ON CONFLICT (id) DO UPDATE SET
   status = EXCLUDED.status, comment = EXCLUDED.comment, updated_at = NOW();
+
+-- 9. 正式项目（由已确认计划派生；用于演示作品与项目证据；仍在进行中）
+INSERT INTO projects
+  (id, student_user_id, template_version_id, source_exploration_id, status,
+   current_stage_index, stage_total, progress_percent, title, subtitle, tags,
+   created_at, completed_at)
+VALUES
+  (
+    'project-demo-python', 'student-demo', 'ptv-python-mini-v1', NULL, 'practice',
+    1, 4, 35, '猜数字小游戏', '把兴趣做成能讲解的小作品',
+    '["python","游戏","演示"]'::jsonb, NOW() - interval '2 day', NULL
+  )
+ON CONFLICT (id) DO UPDATE SET
+  template_version_id = EXCLUDED.template_version_id,
+  status = EXCLUDED.status,
+  current_stage_index = EXCLUDED.current_stage_index,
+  stage_total = EXCLUDED.stage_total,
+  progress_percent = EXCLUDED.progress_percent,
+  title = EXCLUDED.title,
+  subtitle = EXCLUDED.subtitle,
+  tags = EXCLUDED.tags;
+
+-- 计划与正式项目互链；仅当计划尚无项目时写入，保持幂等（已有用户修改不覆盖）
+UPDATE learning_plans
+SET project_id = 'project-demo-python', updated_at = NOW()
+WHERE id = 'plan-demo-python' AND project_id IS NULL;
+
+-- 10. 作品 + 版本历程（草稿，学生私密；对象存储引用不含凭据）
+INSERT INTO artifacts
+  (id, school_id, student_user_id, project_id, template_version_id, title, summary,
+   status, visibility, current_version_index, tags, idempotency_key, published_at, created_at, updated_at)
+VALUES
+  (
+    'art-demo-python', 'school-demo', 'student-demo', 'project-demo-python', 'ptv-python-mini-v1',
+    '猜数字小游戏（草稿）', '第一版可运行的程序，还在根据试玩反馈修改。',
+    'draft', 'student_private', 2, '["python","游戏"]'::jsonb,
+    'seed:artifact:python-mini', NULL, NOW() - interval '1 day', NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title, summary = EXCLUDED.summary, status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility, current_version_index = EXCLUDED.current_version_index,
+  tags = EXCLUDED.tags, updated_at = NOW();
+
+INSERT INTO artifact_versions
+  (id, artifact_id, ordinal, title, note, object_key, thumbnail_ref, captured_at, created_at)
+VALUES
+  (
+    'artv-demo-python-1', 'art-demo-python', 1, '想法稿', '画出游戏界面和猜测流程。',
+    'seed/artifacts/python-mini/v1.txt', NULL, NOW() - interval '2 day', NOW()
+  ),
+  (
+    'artv-demo-python-2', 'art-demo-python', 2, '第一次原型', '可运行，但输入还没有校验。',
+    'seed/artifacts/python-mini/v2.txt', NULL, NOW() - interval '1 day', NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title, note = EXCLUDED.note, object_key = EXCLUDED.object_key,
+  thumbnail_ref = EXCLUDED.thumbnail_ref, captured_at = EXCLUDED.captured_at;
+
+-- 11. 项目证据（服务端聚合、只读；学生/客户端不能直接 POST）
+INSERT INTO project_evidence
+  (id, school_id, project_id, student_user_id, artifact_id, column_kind, source_kind,
+   source_id, label, detail, occurred_at, created_at)
+VALUES
+  (
+    'pe-demo-independent', 'school-demo', 'project-demo-python', 'student-demo', NULL,
+    'independent', 'task_submission', 'task-demo-input-check',
+    '自己完成输入校验', '在没有提示的情况下补上非数字输入处理。',
+    NOW() - interval '1 day', NOW()
+  ),
+  (
+    'pe-demo-ai-helped', 'school-demo', 'project-demo-python', 'student-demo', NULL,
+    'ai_helped', 'tutor_turn', 'turn-demo-hint-loop',
+    'AI 提示循环边界', '在提示等级 3 下定位到循环结束条件。',
+    NOW() - interval '2 day', NOW()
+  ),
+  (
+    'pe-demo-difficulty', 'school-demo', 'project-demo-python', 'student-demo', NULL,
+    'difficulty', 'escalation_event', 'esc-demo-debug',
+    '调试时卡住', '变量作用域理解偏差，已由班主任介入。',
+    NOW() - interval '2 day', NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  label = EXCLUDED.label, detail = EXCLUDED.detail, occurred_at = EXCLUDED.occurred_at;
+
+-- 12. 模板验证报告（不可变；demo 无已完成项目 → 检查未通过；证据由服务端另行写入）
+INSERT INTO template_verification_runs
+  (id, school_id, template_version_id, passed, checks, evidence_refs, evidence_count,
+   evaluated_by, idempotency_key, evaluated_at, created_at)
+VALUES
+  (
+    'tvr-demo-python-v1', NULL, 'ptv-python-mini-v1', false,
+    '[{"key":"project_completed","label":"项目完成","passed":false,"detail":"已完成项目 0 个"},{"key":"theory_mastered","label":"理论掌握","passed":false,"detail":"已掌握 0/0 个目标"},{"key":"practice_mastered","label":"实践掌握","passed":false,"detail":"已掌握 0/0 个目标"},{"key":"artifact_accepted","label":"作品通过","passed":false,"detail":"通过复核的作品 0 件"},{"key":"mentor_approved","label":"班主任复核通过","passed":false,"detail":"项目复核通过 0 次"}]'::jsonb,
+    '[]'::jsonb, 0, 'admin-demo', 'seed:verification:python-mini-v1',
+    NOW() - interval '1 day', NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  passed = EXCLUDED.passed, checks = EXCLUDED.checks, evidence_refs = EXCLUDED.evidence_refs,
+  evidence_count = EXCLUDED.evidence_count, evaluated_at = EXCLUDED.evaluated_at;
+
+-- 13. 待答题（跨轮持久；expected_answer / explanation 绝不下发客户端）
+INSERT INTO pending_questions
+  (id, school_id, student_user_id, plan_id, session_id, objective_id, question_type,
+   prompt, options, expected_answer, explanation, difficulty, assessment_type, status,
+   attempt, hints_used, idempotency_key, asked_at, answered_at, created_at, updated_at)
+VALUES
+  (
+    'pq-demo-input-guard', 'school-demo', 'student-demo', 'plan-demo-python', 'ls-demo-1',
+    'lo-demo-io', 'short', '输入一个非数字时，程序会发生什么？你会怎么处理？',
+    '[]'::jsonb,
+    '会抛出 ValueError；应先用 try/except 或字符串判断，再提示重新输入。',
+    '程序需要处理用户输入不是数字的情况，否则会中断。',
+    'medium', 'quiz', 'awaiting', 1, 0,
+    'seed:pending-question:input-guard', NOW(), NULL, NOW(), NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  prompt = EXCLUDED.prompt, options = EXCLUDED.options,
+  expected_answer = EXCLUDED.expected_answer, explanation = EXCLUDED.explanation,
+  difficulty = EXCLUDED.difficulty, status = EXCLUDED.status, updated_at = NOW();
 
 COMMIT;
