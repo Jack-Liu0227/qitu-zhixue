@@ -23,6 +23,7 @@ import type {
   AdminStudentFilter,
 } from '@qitu/contracts';
 import { requireRole } from '../../common/access/request-auth';
+import { AccessPolicy } from '../../common/access/access-policy';
 import { AuthService } from '../identity-auth/auth.service';
 import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
@@ -40,6 +41,12 @@ import { DirectoryService } from '../directory/directory.service';
  *
  * 全部要求 `role === 'admin'`。
  * `dataSource` 一律返回 `'demo'`，界面必须如实标注「演示数据」。
+ *
+ * 边界（ADR 0008 / 产品文档 7.0）：管理员的默认视图是聚合与治理（概览、
+ * 学生数据统计、关系绑定、设置），**不包含**个别学生的日常处理。
+ * `students/:studentId` 属于「管理员个别学生访问」，按产品要求必须携带
+ * 「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」；这些能力尚未落地，
+ * 因此这里通过 `AccessPolicy` fail closed（403），而不是默认放行。
  */
 @Controller('admin')
 export class AdminController {
@@ -49,6 +56,7 @@ export class AdminController {
     private readonly platformData: PlatformDataService,
     private readonly modelRegistry: ModelRegistryService,
     private readonly directory: DirectoryService,
+    private readonly accessPolicy: AccessPolicy,
   ) {}
 
   /* ==================== 概览 ==================== */
@@ -198,7 +206,14 @@ export class AdminController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('studentId') studentId: string,
   ): Promise<{ data: AdminStudentDetail }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+
+    // ADR 0008 决定 6 / 产品文档 7.0 / docs/PERMISSIONS.md §5：管理员读取个别学生
+    // 数据是「显式动作」，需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。
+    // 当前没有可持久化的授权与审计链路，所以这里调用唯一授权入口 fail closed：
+    // 即使前端仍渲染了入口，后端也返回 403，且不因学生是否存在而改变响应（防枚举）。
+    // 显式授权模型落地后，改 `canAdminReadIndividualStudent` 即可，此处无需改动。
+    await this.accessPolicy.assertCanReadStudent(admin, studentId);
 
     // 用统一的合并列表，而不是 platformData.getStudent：
     // 后者取的是与目录无关的硬编码副本，会让详情页名字与列表页不一致。

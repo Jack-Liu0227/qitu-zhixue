@@ -7,7 +7,7 @@
     "build": "nest build",
     "lint": "node -e \"console.log('api: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('api: no tests yet')\""
+    "test": "tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/common/access/**/*.test.js\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*",

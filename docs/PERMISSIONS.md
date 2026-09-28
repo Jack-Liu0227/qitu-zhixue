@@ -62,6 +62,8 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
 | `GET /students/me/*` | student | 只读「me」 | 已实现 |
 | `POST /ai-tutor/*` | student | **仅角色校验**；会话对象级归属尚未校验 | 已实现（内存会话，存在越权缺口） |
 | `GET/POST/PATCH /admin/guardian-links`、`/admin/mentor-assignments` | admin | — | 已实现 |
+| `GET /admin/overview`、`/admin/students`、`/admin/teachers`（列表）、`/admin/students/statistics` | admin | — | 已实现（聚合 / 治理投影） |
+| `GET /admin/students/:studentId` | admin | `AccessPolicy.assertCanReadStudent`（当前对 admin fail closed） | T8：显式授权模型未落地前统一 403 |
 | `GET/POST/PATCH/DELETE /admin/model-providers`、`/admin/model-usages` | admin | — | 已实现（内存） |
 | `GET/POST/PATCH/DELETE /admin/users`、`/admin/project-templates` 等 | admin | — | **未实现**（目标 M8） |
 | 审计日志查询 `GET /admin/audit-logs` | admin | — | **未实现** |
@@ -96,8 +98,11 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
    后端都必须按本节规则重新判定；隐藏只是体验，不是安全边界。
 
 > 实现前提（见 ADR 0008）：本节描述的是目标判定规则。对象级授权范围、目的 / 原因、
-> 二次确认、限时与审计的落表与接口**尚未实现**；当前 `/admin/students/:id` 仅做
-> `requireRole(admin)` 的粗粒度校验。在实现前，不得把管理员个别学生页当作已合规。
+> 二次确认、限时与审计的落表与接口**尚未实现**。T8（#3）已把 `/admin/students/:id`
+> 后端收紧为**失败关闭**：在显式授权模型落地前，管理员请求个别学生详情统一返回 403
+> （`AccessPolicy` 经 `canAdminReadIndividualStudent` 判定，规则见
+> `services/api/src/common/access/access-policy.rules.ts`）；聚合 / 治理视图与关系绑定不受影响。
+> 在授权模型实现前，不得把管理员个别学生页当作已合规。
 
 ## 6. 一句话规则
 
@@ -134,9 +139,9 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
 - [ ] 学生不能修改自己的成长指标或项目状态。
 - [ ] 管理员配置修改可追溯（审计）。
 - [ ] 写操作缺 `Idempotency-Key` 返回 422。
-- [ ] 管理员默认落地页为聚合 / 治理视图，不进入个别学生日常处理。
+- [x] 管理员默认落地页为聚合 / 治理视图，不进入个别学生日常处理（T8：导航与落地页已收敛）。
 - [ ] 管理员个别学生访问要求目的 / 原因、审计与限时；敏感读取需二次确认。
-- [ ] 前端隐藏入口时，直接请求后端仍返回 403。
+- [x] 前端隐藏入口时，直接请求后端仍返回 403（T8：管理员个别学生详情已 fail closed；其他缺口见第 10 节）。
 
 ## 10. 未决事项
 

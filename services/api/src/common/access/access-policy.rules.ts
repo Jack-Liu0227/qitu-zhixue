@@ -38,7 +38,7 @@ export interface StudentRelationship {
  * | student   | `studentId` 就是本人                                 |
  * | parent    | 存在指向该学生的 active 监护关系                     |
  * | teacher   | 存在指向该学生的 active 班主任分配（且班主任是本人） |
- * | admin     | 可管理平台（敏感读取另走 `assertSensitiveRead`）     |
+ * | admin     | **默认拒绝**；个别访问需显式授权（未落地前 fail closed） |
  * | support   | 暂不放行（授权范围未定，按最小可见范围处理）         |
  *
  * 兜底 `default` 一律拒绝：新增角色在明确策略前默认不可读，而不是默认放行。
@@ -56,10 +56,28 @@ export function canReadStudentByRelationship(
     case 'teacher':
       return relationship.mentorOfStudent;
     case 'admin':
-      return true;
+      // 平台治理放行的是聚合 / 治理视图，不等于可读「个别学生」。
+      // 管理员个别访问需要显式授权，授权模型落地前一律拒绝（fail closed）。
+      return canAdminReadIndividualStudent();
     case 'support':
       return false;
     default:
       return false;
   }
+}
+
+/**
+ * 管理员能否读取「个别学生」对象。
+ *
+ * ADR 0008 决定 6 / 产品文档 7.0 / `docs/PERMISSIONS.md` 第 5 节要求：管理员查看
+ * 个别学生数据必须同时满足「对象级授权范围 + 最小字段 + 目的 / 原因 + 敏感二次确认
+ * + 写审计 + 限时有效」。当前这些条件没有持久化与审计支撑
+ * （`audit_logs` 业务写入见 `docs/PERMISSIONS.md` 第 10 节仍未接入），
+ * 因此不得以「管理员角色更大」为由默认放行。
+ *
+ * 这是一个**显式 seam**：显式授权模型落地后在此接入，调用方（`AccessPolicy`
+ * 与控制器）无需改动；在那之前恒为 `false`，保证失败关闭。
+ */
+export function canAdminReadIndividualStudent(): boolean {
+  return false;
 }

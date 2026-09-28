@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { AdminOverviewPageData, AdminInterventionRow } from '@qitu/contracts';
-import { Badge } from '@qitu/ui';
+import type { AdminOverviewPageData } from '@qitu/contracts';
 import { fetchOverview } from '../../lib/api/overview';
 import { AdminStateViews } from '../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../lib/components/DataSourceBadge';
@@ -13,19 +12,6 @@ function formatDateTime(value: string | null): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString('zh-CN', { hour12: false });
-}
-
-function InterventionStatusBadge({ status }: { status: AdminInterventionRow['status'] }) {
-  switch (status) {
-    case 'open':
-      return <Badge tone="attention">待处理</Badge>;
-    case 'acknowledged':
-      return <Badge tone="primary">已接收</Badge>;
-    case 'resolved':
-      return <Badge tone="completed">已解决</Badge>;
-    default:
-      return <Badge tone="neutral">{status}</Badge>;
-  }
 }
 
 export default function AdminOverviewPage() {
@@ -92,46 +78,35 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
-      {data.recentInterventions.length > 0 ? (
-        <div className="admin-overview-interventions">
-          <h2>最近的介入请求</h2>
-          <div className="admin-data-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>学生</th>
-                  <th>项目</th>
-                  <th>原因</th>
-                  <th>状态</th>
-                  <th>指派班主任</th>
-                  <th>创建时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentInterventions.map((intervention) => (
-                  <tr key={intervention.id}>
-                    <td>
-                      <Link
-                        href={`/students/${intervention.studentId}`}
-                        className="admin-link"
-                      >
-                        {intervention.studentDisplayName}
-                      </Link>
-                    </td>
-                    <td>{intervention.projectTitle ?? '—'}</td>
-                    <td>{intervention.reason}</td>
-                    <td>
-                      <InterventionStatusBadge status={intervention.status} />
-                    </td>
-                    <td>{intervention.assigneeName ?? '—'}</td>
-                    <td className="admin-cell-time">{formatDateTime(intervention.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
+      {
+        /* 治理入口：不再把「个别学生的日常处理」（介入请求、学生详情）放在管理员默认落地页。
+           ADR 0008 / 产品文档 7.0 要求管理员默认只进入聚合与治理视图。 */
+      }
+      <div className="admin-overview-interventions">
+        <h2>治理入口</h2>
+        <p>
+          平台治理默认只呈现聚合数据；个别学生的日常处理由班主任在班主任工作台完成。
+          管理员查看个别学生数据需要显式授权（对象级范围 / 原因 / 二次确认 / 审计 / 限时），
+          该流程尚未开放：后端已按失败关闭处理，直接请求个别学生详情会返回 403。
+        </p>
+        <ul>
+          <li>
+            <Link href="/students/statistics" className="admin-link">
+              学生数据统计
+            </Link>
+          </li>
+          <li>
+            <Link href="/relationships" className="admin-link">
+              家庭与关系绑定
+            </Link>
+          </li>
+          <li>
+            <Link href="/settings" className="admin-link">
+              模型与 AI 设置
+            </Link>
+          </li>
+        </ul>
+      </div>
 
       <p className="admin-overview-generated">
         数据生成时间：{formatDateTime(data.generatedAt)}

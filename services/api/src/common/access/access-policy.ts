@@ -20,6 +20,9 @@ import { canReadStudentByRelationship } from './access-policy.rules';
  *   且**不得**通过响应差异泄露资源是否存在（存在 / 不存在都返回同一句 403）。
  * - 关系解析只读 `DirectoryService` 的 active `guardian_links` /
  *   `mentor_assignments`，不在授权层另建一份名单。
+ * - 管理员个别学生访问：显式授权模型（范围 / 原因 / 二次确认 / 审计 / 限时）
+ *   落地前 fail closed，见 `canAdminReadIndividualStudent`；管理员仍然正常使用
+ *   聚合 / 治理视图与关系绑定等平台功能。
  *
  * 与现有 `request-auth.ts` 的关系：
  * - `request-auth.ts` 的 `requireAnyRole` / `requireRole(authService, cookie, role, msg)`
@@ -89,8 +92,8 @@ export class AccessPolicy {
   /**
    * 主体能否读取该学生。返回布尔值，**不抛异常**。
    *
-   * 判定：student 本人 / parent 的 active 监护关系 / teacher 的 active 班主任分配 /
-   * admin 平台治理放行；support 与未知角色一律拒绝。
+   * 判定：student 本人 / parent 的 active 监护关系 / teacher 的 active 班主任分配；
+   * admin 默认拒绝（个别访问需显式授权，模型落地前 fail closed）；support 与未知角色拒绝。
    */
   async canReadStudent(actor: Actor, studentId: string): Promise<boolean> {
     const relationship = await this.resolveStudentRelationship(actor, studentId);
@@ -113,7 +116,7 @@ export class AccessPolicy {
    * 家长视角的“能否读取某个孩子”。
    *
    * 与 `canReadStudent` 共用同一套关系解析，避免两处判定漂移：
-   * parent 走 active 监护关系，admin 平台治理放行，其余拒绝。
+   * parent 走 active 监护关系，admin 默认拒绝（同 `canReadStudent`），其余拒绝。
    */
   async canReadChild(actor: Actor, childId: string): Promise<boolean> {
     return this.canReadStudent(actor, childId);

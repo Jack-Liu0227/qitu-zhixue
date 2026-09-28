@@ -17,11 +17,13 @@ const BASE_PATH = '/admin';
 const DENIED_KEY = 'qitu.admin.auth-denied';
 
 const NAV_SPECS = [
-  { path: '/', label: '概览' },
-  { path: '/students', label: '学生端数据' },
-  { path: '/teachers', label: '教师端数据' },
+  { path: '/', label: '治理概览' },
+  // 管理员默认只进入聚合与治理视图（ADR 0008 / 产品文档 7.0）。
+  // 「学生端数据 / 教师端数据」属于班主任日常处理，不再作为管理端默认导航；
+  // 个别学生详情需要显式授权，入口与后端一起收紧（后端 fail closed）。
+  { path: '/students/statistics', label: '学生数据统计' },
   { path: '/relationships', label: '关系绑定' },
-  { path: '/settings', label: '设置' },
+  { path: '/settings', label: '模型与设置' },
 ] as const;
 
 const NAV_ITEMS = NAV_SPECS.map((spec) => ({

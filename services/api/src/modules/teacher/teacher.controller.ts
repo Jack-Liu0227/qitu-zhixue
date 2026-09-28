@@ -27,7 +27,11 @@ import { FeedbackService } from '../feedback/feedback.service';
 
 /**
  * Teacher controller: roster, student detail, interventions, statistics, feedback.
- * All endpoints enforce object-level authorization via TeacherService / FeedbackService.
+ *
+ * 所有端点都要求 `role === 'teacher'`，因此管理员（`admin`）调用这些日常操作
+ * 接口会被后端直接 403（ADR 0008：个别学生的日常处理归班主任，管理员不代做）。
+ * 角色闸门之外还有对象级授权：只能访问自己名下的学生，见
+ * `TeacherService.assertTeacherCanAccessStudent`。
  */
 @Controller('teacher')
 export class TeacherController {

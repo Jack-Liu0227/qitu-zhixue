@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import type { AdminStudentDetail, AdminInterventionRow, AdminStudentProject } from '@qitu/contracts';
 import { Badge, SectionCard, InfoRow, ErrorState } from '@qitu/ui';
 import { fetchStudentDetail } from '../../../../lib/api/students';
+import { AdminPermissionError } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
 function formatDateTime(value: string | null): string {
@@ -82,6 +83,23 @@ export default async function AdminStudentDetailPage({ params }: { params: Promi
         <ErrorState
           title="学生不存在"
           description={`未找到 ID 为 ${studentId} 的学生`}
+        />
+      </div>
+    );
+  }
+
+  // 个别学生详情：后端在「显式授权模型」落地前 fail closed（403）。这里把 403
+  // 解释清楚，避免用户误以为是自己操作失误；前端不渲染入口不构成授权，
+  // 也不影响后端继续拒绝（见 ADR 0008）。
+  if (error instanceof AdminPermissionError) {
+    return (
+      <div className="admin-student-detail-page">
+        <Link href={backUrl} className="admin-back-link">
+          ← 返回列表
+        </Link>
+        <ErrorState
+          title="个别学生访问需要显式授权"
+          description="按 ADR 0008 / docs/PERMISSIONS.md §5，管理员查看个别学生数据需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。该授权流程尚未实现，后端已按失败关闭返回 403。日常学生处理请由班主任在班主任工作台完成。"
         />
       </div>
     );

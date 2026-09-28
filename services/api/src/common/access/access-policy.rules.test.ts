@@ -1,19 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canReadStudentByRelationship } from './access-policy.rules';
+import {
+  canAdminReadIndividualStudent,
+  canReadStudentByRelationship,
+} from './access-policy.rules';
 
 /**
  * `AccessPolicy` 判定矩阵的纯函数单测。
  *
- * 目前仓库尚未接入 TS 测试运行器（`pnpm test` 仍是占位脚本），
- * 因此这里只覆盖不依赖 Nest / 数据库的纯规则；关系解析（DirectoryService）
- * 的集成测试等测试运行器落地后补。
- *
- * 本地可临时编译后运行（项目 `tsconfig` 已是 `noEmit: false`，
- * `tsc -p tsconfig.json` 即可产出可执行 JS）：
- *   cd services/api
- *   npx tsc -p tsconfig.json --outDir /tmp/qitu-access
- *   node --test /tmp/qitu-access/common/access/access-policy.rules.test.js
+ * 本包已通过 `pnpm test` 运行本目录的纯规则单测（编译到 `.tmp/test-dist` 后用
+ * `node --test`，随 turbo test / CI 运行），覆盖 T8 的失败关闭回归；
+ * 关系解析（DirectoryService）的集成测试等测试运行器覆盖更广后补。
  */
 
 const noRelationship = { guardianOfStudent: false, mentorOfStudent: false };
@@ -57,11 +54,27 @@ test('teacher 只有被分配为学生当前班主任时才能读取', () => {
   );
 });
 
-test('admin 平台治理放行，support 未定范围一律拒绝', () => {
+test('admin 个别学生访问在显式授权模型落地前一律拒绝（fail closed）', () => {
+  // ADR 0008 决定 6 / 产品文档 7.0 / docs/PERMISSIONS.md §5：管理员查看个别学生
+  // 数据必须同时满足「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。
+  // 这些能力尚未落地，所以这里必须拒绝，而不是默认放行——否则「前端隐藏入口」
+  // 就成了唯一防线（见 ADR 0008「前端隐藏不构成授权」）。
+  assert.equal(canAdminReadIndividualStudent(), false);
   assert.equal(
     canReadStudentByRelationship({ id: 'a1', role: 'admin' }, 's1', noRelationship),
-    true,
+    false,
   );
+  // 即使存在监护 / 班主任关系，管理员也不会因此获得个别学生读取权。
+  assert.equal(
+    canReadStudentByRelationship({ id: 'a1', role: 'admin' }, 's1', {
+      guardianOfStudent: true,
+      mentorOfStudent: true,
+    }),
+    false,
+  );
+});
+
+test('support 未定范围一律拒绝', () => {
   assert.equal(
     canReadStudentByRelationship({ id: 'x1', role: 'support' }, 's1', {
       guardianOfStudent: true,
