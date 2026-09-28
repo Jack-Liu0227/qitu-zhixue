@@ -325,7 +325,8 @@ export interface ParentFeedbackEntry {
 /** 家长与班主任共用的工单投影。不含内部字段、负责人 id 与原始对话。 */
 export interface ParentFeedbackTicket {
   id: string;
-  childId: string;
+  /** 一般使用问题可以不关联孩子；其余来源必须由服务端推导并校验。 */
+  childId: string | null;
   childDisplayName: string;
   source: ParentFeedbackSource;
   projectId: string | null;

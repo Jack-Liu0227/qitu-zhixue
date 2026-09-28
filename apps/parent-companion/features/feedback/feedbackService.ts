@@ -13,10 +13,8 @@ import type { FeedbackDraft, FeedbackFailureKind, FeedbackType, FeedbackTypeOpti
  * 设计要点：
  *  - 右下角浮窗、消息页、首页三处**只走这一个入口**，服务端只有一条工单链路；
  *  - 幂等键由调用方传入（通常取自草稿），网络失败重试时复用，避免重复工单；
- *  - `childId` 会按契约提交，但**后端当前演示实现尚未消费该字段**
- *    （`parent.controller.ts` 里仍硬编码为 `student-demo`）。前端提交它是为了让
- *    「有效孩子」这一必填选择进入契约，待后端接入后即可生效；服务端必须
- *    再次校验家长与孩子的绑定关系，前端选择不作为权限依据。
+ *  - `childId` 会按契约提交；一般使用问题可以为空，服务端会将其放入受限待分配队列；
+ *    关联孩子的反馈仍必须由服务端再次校验家长与孩子的绑定关系。
  */
 
 export const FEEDBACK_CONTENT_MIN = 1;
@@ -24,24 +22,11 @@ export const FEEDBACK_CONTENT_MAX = 500;
 
 /** 界面「反馈类型」下拉的选项，同时声明各自映射到的服务端 `source`。 */
 export const FEEDBACK_TYPES: readonly FeedbackTypeOption[] = [
-  {
-    value: 'teacher',
-    label: '联系班主任',
-    description: '希望班主任了解或跟进孩子的情况',
-    source: 'general',
-  },
-  {
-    value: 'project',
-    label: '学习项目相关',
-    description: '针对某个具体项目的问题或建议',
-    source: 'project',
-  },
-  {
-    value: 'suggestion',
-    label: '意见与建议',
-    description: '对平台或服务的改进建议',
-    source: 'general',
-  },
+  { value: 'learning', label: '学习困难', description: '孩子在学习或任务推进中遇到困难', source: 'general' },
+  { value: 'project', label: '项目安排', description: '针对某个具体项目的问题或建议', source: 'project' },
+  { value: 'usage', label: '使用问题', description: '平台功能或操作遇到问题', source: 'general' },
+  { value: 'suggestion', label: '建议', description: '对平台或服务的改进建议', source: 'general' },
+  { value: 'other', label: '其他', description: '其他需要班主任了解的事项', source: 'general' },
 ];
 
 /** `project` 类型需要关联项目（服务端对 `source=project` 强制要求 `projectId`）。 */
@@ -185,7 +170,7 @@ export function createFeedbackIdempotencyKey(): string {
 
 export function createEmptyFeedbackDraft(childId = ''): FeedbackDraft {
   return {
-    type: 'teacher',
+    type: 'learning',
     content: '',
     childId,
     projectId: null,

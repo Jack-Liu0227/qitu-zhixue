@@ -8,7 +8,7 @@ import type { ParentFeedbackSource } from '@qitu/contracts';
  */
 
 /** 反馈类型（界面上的「反馈类型」下拉）。与契约的 `source` 不是一一对应，见 `feedbackSourceFor`。 */
-export type FeedbackType = 'teacher' | 'project' | 'suggestion';
+export type FeedbackType = 'learning' | 'project' | 'usage' | 'suggestion' | 'other';
 
 export interface FeedbackTypeOption {
   value: FeedbackType;
@@ -31,7 +31,7 @@ export interface FeedbackTypeOption {
 export interface FeedbackDraft {
   type: FeedbackType;
   content: string;
-  /** 反馈针对的孩子；未选择时为空串（提交前必须补齐）。 */
+  /** 反馈针对的孩子；一般使用问题允许为空串。 */
   childId: string;
   /** 可选关联项目；不关联时为 null。 */
   projectId: string | null;

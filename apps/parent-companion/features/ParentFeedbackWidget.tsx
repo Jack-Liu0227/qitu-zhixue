@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from '@qitu/auth';
-import { Button, EmptyState, ErrorState, Field, IconButton, OfflineBanner, PermissionDenied } from '@qitu/ui';
+import { Button, ErrorState, Field, IconButton, OfflineBanner, PermissionDenied } from '@qitu/ui';
 import { parentApi, ParentOfflineError, ParentPermissionError, type ChildRef } from './parentApi';
 import {
   FEEDBACK_CONTENT_MAX,
@@ -99,10 +99,6 @@ export function ParentFeedbackWidget() {
       .then((response) => {
         const list = response.data;
         setChildren(list);
-        if (list.length === 0) {
-          setPanelState('empty');
-          return;
-        }
         setDraft((prev) => {
           const preferred =
             prev.childId && list.some((child) => child.childId === prev.childId)
@@ -191,8 +187,8 @@ export function ParentFeedbackWidget() {
   const handleSubmit = async () => {
     if (submitting || panelState !== 'ready') return;
 
-    if (!draft.childId) {
-      setValidationMessage('请先选择要反馈的孩子。');
+    if (draft.type === 'project' && !draft.childId) {
+      setValidationMessage('项目安排反馈需要先选择一个已绑定的孩子。');
       setSubmitState('validation');
       return;
     }
@@ -252,14 +248,6 @@ export function ParentFeedbackWidget() {
         </p>
       );
     }
-    if (panelState === 'empty') {
-      return (
-        <EmptyState
-          title="还没有绑定孩子"
-          description="绑定孩子之后才能提交反馈，请联系学校确认绑定关系。"
-        />
-      );
-    }
     if (panelState === 'permission') {
       return (
         <PermissionDenied
@@ -316,25 +304,32 @@ export function ParentFeedbackWidget() {
               ))}
             </select>
           </Field>
-          <Field label="有效孩子" required>
-            <select
-              value={draft.childId}
-              disabled={submitting || children.length <= 1}
-              onChange={(event) => updateDraft({ childId: event.target.value, projectId: null })}
-            >
-              {children.map((child) => (
-                <option key={child.childId} value={child.childId}>
-                  {child.displayName}
-                </option>
-              ))}
-            </select>
+          <Field
+            label="关联孩子"
+            hint={children.length === 0 ? '未绑定孩子也可以提交一般使用问题；此类反馈会进入受限接待队列。' : undefined}
+          >
+            {children.length > 0 ? (
+              <select
+                value={draft.childId}
+                disabled={submitting || children.length <= 1}
+                onChange={(event) => updateDraft({ childId: event.target.value, projectId: null })}
+              >
+                {children.map((child) => (
+                  <option key={child.childId} value={child.childId}>
+                    {child.displayName}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="parent-feedback-status">未关联孩子（仅可提交一般使用问题）</p>
+            )}
           </Field>
         </div>
 
         <Field label="关联项目" hint={projectHint}>
           <select
             value={draft.projectId ?? ''}
-            disabled={submitting || projectsState === 'loading'}
+            disabled={submitting || !draft.childId || projectsState === 'loading'}
             onChange={(event) => updateDraft({ projectId: event.target.value || null })}
           >
             <option value="">不关联项目</option>

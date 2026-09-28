@@ -51,7 +51,7 @@ interface StoredEntry {
 
 interface StoredTicket {
   id: string;
-  childId: string;
+  childId: string | null;
   source: ParentFeedbackSource;
   projectId: string | null;
   projectTitle: string | null;
@@ -71,8 +71,8 @@ interface StoredTicket {
  * `/teacher/feedback` 系列都读写它，不再各自维护一份「服务工单」。
  *
  * 三件由服务端独占的事：
- *  1. **对象级授权**：家长必须实际绑定 `ticket.childId`；班主任必须是该学生
- *     **当前**的班主任（`DirectoryService.mentorOfStudent`，只认 active 分配）。
+ *  1. **对象级授权**：有关联孩子时，家长必须实际绑定 `ticket.childId`；班主任必须是该学生
+ *     **当前**的班主任（`DirectoryService.mentorOfStudent`，只认 active 分配）。无孩子的一般使用问题只绑定提交家长，进入待分配队列。
  *     授权失败不区分「不存在 / 无权限」，避免用差异探测他人数据。
  *  2. **状态机**：`status` 与时间线事件只由本服务迁移，客户端请求体里没有
  *     `status` 字段。非法迁移统一抛 `FEEDBACK_TRANSITION_INVALID`（409）。
@@ -116,7 +116,7 @@ export class FeedbackService {
   async getForParent(parentId: string, ticketId: string): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
     const ticket = this.requireTicket(ticketId);
-    if (!(await this.isParentOfChild(parentId, ticket.childId))) {
+    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
       feedbackNotFound();
     }
     return this.toTicket(ticket);
@@ -135,7 +135,9 @@ export class FeedbackService {
     const source = assertSource(input.source);
     const content = assertContent(input.content, '反馈内容');
     const resolved = this.resolveTarget(source, input);
-    await this.assertParentOfChild(parentId, resolved.childId);
+    if (resolved.childId !== null) {
+      await this.assertParentOfChild(parentId, resolved.childId);
+    }
     const attachmentRefs = await this.validatedAttachments(parentId, input.attachmentRefs);
 
     const scope = 'parent.feedback.submit';
@@ -220,7 +222,7 @@ export class FeedbackService {
     await this.ensureSeeded();
 
     const ticket = this.requireTicket(ticketId);
-    if (!(await this.isParentOfChild(parentId, ticket.childId))) {
+    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
       feedbackNotFound();
     }
 
@@ -293,7 +295,7 @@ export class FeedbackService {
     await this.ensureSeeded();
 
     const ticket = this.requireTicket(ticketId);
-    if (!(await this.isParentOfChild(parentId, ticket.childId))) {
+    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
       feedbackNotFound();
     }
 
@@ -366,7 +368,7 @@ export class FeedbackService {
     const students = await this.directory.studentsOfMentor(teacherId);
     const studentIds = new Set(students.map((s) => s.userId));
     const visible = this.tickets
-      .filter((t) => studentIds.has(t.childId))
+      .filter((t) => t.childId !== null && studentIds.has(t.childId))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
     return Promise.all(visible.map((t) => this.toRow(t, students)));
@@ -460,7 +462,14 @@ export class FeedbackService {
     }
   }
 
-  private async assertTeacherOfChild(teacherId: string, childId: string): Promise<void> {
+  private async assertTeacherOfChild(teacherId: string, childId: string | null): Promise<void> {
+    // 无孩子的一般使用问题进入受限接待队列，不暴露给普通班主任。
+    if (childId === null) {
+      throw new ForbiddenException({
+        code: 'STUDENT_NOT_ASSIGNED',
+        message: '该反馈尚未分配到当前学生班主任',
+      });
+    }
     // 复用目录真源：只认 active 的当前班主任分配，历史分配一律不算。
     const mentor = await this.directory.mentorOfStudent(childId);
     if (mentor === null || mentor.userId !== teacherId) {
@@ -477,7 +486,7 @@ export class FeedbackService {
     source: ParentFeedbackSource,
     input: SubmitParentFeedbackRequest,
   ): {
-    childId: string;
+    childId: string | null;
     messageId: string | null;
     projectId: string | null;
     projectTitle: string | null;
@@ -537,13 +546,7 @@ export class FeedbackService {
       };
     }
 
-    // general
-    if (declared === null) {
-      throw new BadRequestException({
-        code: 'FEEDBACK_INVALID',
-        message: 'source 为 general 时 childId 必填',
-      });
-    }
+    // general：可以关联有效孩子，也允许不带孩子的一般使用问题。
     return { childId: declared, messageId: null, projectId: null, projectTitle: null };
   }
 
@@ -597,10 +600,12 @@ export class FeedbackService {
   }
 
   private async toTicket(ticket: StoredTicket): Promise<ParentFeedbackTicket> {
-    const [child, mentor] = await Promise.all([
-      this.directory.findUser(ticket.childId),
-      this.directory.mentorOfStudent(ticket.childId),
-    ]);
+    const [child, mentor] = ticket.childId === null
+      ? [null, null] as const
+      : await Promise.all([
+          this.directory.findUser(ticket.childId),
+          this.directory.mentorOfStudent(ticket.childId),
+        ]);
 
     const entries: ParentFeedbackEntry[] = ticket.entries.map((e) => ({
       id: e.id,
@@ -616,7 +621,7 @@ export class FeedbackService {
     return {
       id: ticket.id,
       childId: ticket.childId,
-      childDisplayName: child?.displayName ?? '学生',
+      childDisplayName: child?.displayName ?? '未关联孩子',
       source: ticket.source,
       projectId: ticket.projectId,
       projectTitle: ticket.projectTitle,

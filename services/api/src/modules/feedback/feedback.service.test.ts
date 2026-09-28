@@ -176,15 +176,17 @@ describe('FeedbackService 授权', () => {
     assert.equal(harness.idempotency.executions, 0);
   });
 
-  it('general 来源必须携带 childId', async () => {
-    await expectCode(
-      harness.service.submitParentFeedback(
-        'parent-demo',
-        submitBody({ childId: null }),
-        'k-2',
-      ),
-      'FEEDBACK_INVALID',
+  it('general 来源允许不关联孩子，并保留家长对象归属', async () => {
+    const ticket = await harness.service.submitParentFeedback(
+      'parent-demo',
+      submitBody({ childId: null }),
+      'k-2',
     );
+    assert.equal(ticket.childId, null);
+    assert.equal(ticket.childDisplayName, '未关联孩子');
+    assert.equal(ticket.owner, null);
+    assert.equal((await harness.service.getForParent('parent-demo', ticket.id)).id, ticket.id);
+    await expectCode(harness.service.getForParent('parent-demo-2', ticket.id), 'FEEDBACK_NOT_FOUND');
   });
 
   it('message 来源从消息推导孩子，且拒绝与声明不一致的 childId', async () => {
