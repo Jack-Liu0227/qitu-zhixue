@@ -198,8 +198,8 @@ describe('FeedbackService 授权', () => {
 
     await expectCode(
       harness.service.submitParentFeedback(
-        'parent-demo-2',
-        submitBody({ source: 'message', childId: 'student-demo', messageId: 'message-1' }),
+        'parent-demo',
+        submitBody({ source: 'message', childId: 'student-demo-2', messageId: 'message-1' }),
         'k-4',
       ),
       'FEEDBACK_INVALID',
