@@ -45,6 +45,10 @@ pnpm --filter @qitu/database generate
   标签 / 邮箱 / 模型推断）；下载时重新校验 active 监护关系与有效期。由
   Parent Experience 模块独占写入，见
   `services/api/src/modules/parent/growth-export.md`。
+- `user_preferences`（`0005_t4_user_preferences`，ISSUE-T4）：四端账号基础偏好。
+  主键即 `user_id`（self-only，无跨账号写入路径）；只存字号 / 主题预设 id / 减弱动效 /
+  通知开关，**不存颜色值、不存未成年人敏感数据**；读取无记录时返回契约默认值且不落库。
+  由 Account 模块独占写入，见 `services/api/src/modules/account/account-preferences.md`。
 
 > 迁移只前向；每个迁移配 `.down.sql` 回滚说明。`0001` 的 DDL 对空库与已升级库均可重放
 > （`CREATE TABLE/INDEX IF NOT EXISTS`、`ADD COLUMN IF NOT EXISTS`）。schema 改动后必须

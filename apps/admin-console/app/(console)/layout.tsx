@@ -2,6 +2,7 @@
 
 import { AuthGuard, LogoutButton, useCurrentUser } from '@qitu/auth';
 import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
+import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -101,6 +102,7 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
               <span className="admin-console-identity-name">
                 {user?.displayName ?? user?.email ?? '管理员'}
               </span>
+              <PreferencesMenu />
               <LogoutButton redirectTo="/" />
             </div>
           </header>

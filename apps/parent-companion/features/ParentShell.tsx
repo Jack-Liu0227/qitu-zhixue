@@ -1,6 +1,7 @@
 'use client';
 import { AuthGuard, LogoutButton, useCurrentUser } from '@qitu/auth';
 import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
+import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -59,6 +60,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
             <div className="parent-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '演示家长'} size="sm" />
               <span>{user?.displayName ?? '演示家长'}</span>
+              <PreferencesMenu />
               <LogoutButton redirectTo="/" />
             </div>
           </header>

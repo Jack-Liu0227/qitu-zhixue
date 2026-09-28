@@ -16,6 +16,7 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { DirectoryModule } from './modules/directory/directory.module';
 import { TeacherModule } from './modules/teacher/teacher.module';
+import { AccountModule } from './modules/account/account.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
     RemindersModule,
     AdminModule,
     TeacherModule,
+    AccountModule,
   ],
 })
 export class AppModule {}

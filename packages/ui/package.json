@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "exports": {
     ".": "./src/index.tsx",
-    "./styles.css": "./src/styles.css"
+    "./preferences": "./src/preferences.tsx",
+    "./styles.css": "./src/styles.css",
+    "./preferences.css": "./src/preferences.css"
   },
   "scripts": {
     "build": "tsc --noEmit",

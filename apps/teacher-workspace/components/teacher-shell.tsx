@@ -1,6 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
+import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -139,6 +140,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
             通知入口没有对应的后端数据源，这里不摆放一个点了没反应的铃铛；
             真正有数据时再补入口，避免制造假的未读红点。
           */}
+          <PreferencesMenu />
           <LogoutButton />
         </header>
         <main className="qtx-content">{children}</main>

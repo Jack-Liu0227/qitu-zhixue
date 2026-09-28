@@ -4,4 +4,5 @@ export * from './idempotency';
 export * from './model-registry';
 export * from './ops';
 export * from './parent-export';
+export * from './preferences';
 export * from './projects';

@@ -1,0 +1,155 @@
+/*
+ * T4 / #9 四端基础偏好：根变量与顶栏「偏好」入口样式。
+ *
+ * - `--qitu-font-size` / 主题变量由 `preferences.tsx` 写到 `documentElement`；
+ *   这里只提供兜底值与菜单外观。
+ * - 用户选择「减弱动效」时给根元素加 `data-qitu-reduced-motion="true"`，
+ *   与 T1 的 `@media (prefers-reduced-motion: reduce)`（跟随操作系统）互补：
+ *   这条覆盖的是「系统没开、但用户在本产品里主动要求」的场景。
+ */
+
+html {
+  font-size: var(--qitu-font-size, 100%);
+}
+
+:root[data-qitu-reduced-motion='true'] *,
+:root[data-qitu-reduced-motion='true'] *::before,
+:root[data-qitu-reduced-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+.qitu-prefs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.qitu-prefs-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qitu-prefs-trigger:hover {
+  color: var(--qitu-heading);
+  border-color: var(--qitu-heading);
+}
+
+.qitu-prefs-trigger:focus-visible {
+  outline: 2px solid var(--qitu-primary, #2878f0);
+  outline-offset: 2px;
+}
+
+.qitu-prefs-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--qitu-text);
+  box-shadow: 0 14px 40px rgba(15, 40, 80, 0.16);
+  text-align: left;
+}
+
+.qitu-prefs-title {
+  margin: 0 0 10px;
+  color: var(--qitu-heading);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.qitu-prefs-field {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.qitu-prefs-legend {
+  padding: 0;
+  margin-bottom: 6px;
+  color: var(--qitu-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.qitu-prefs-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qitu-prefs-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.qitu-prefs-option input {
+  margin: 0;
+  accent-color: var(--qitu-primary, #2878f0);
+}
+
+.qitu-prefs-option:has(input:checked) {
+  border-color: var(--qitu-primary, #2878f0);
+  background: var(--qitu-primary-soft, #eaf2fe);
+  color: var(--qitu-heading);
+}
+
+.qitu-prefs-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+}
+
+.qitu-prefs-switch input {
+  margin: 0;
+  accent-color: var(--qitu-primary, #2878f0);
+}
+
+.qitu-prefs-note {
+  margin: 8px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.qitu-prefs-note[data-tone='warn'] {
+  color: var(--qitu-danger, #d64545);
+}
+
+.qitu-prefs-retry {
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qitu-heading);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}

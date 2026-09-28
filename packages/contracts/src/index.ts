@@ -13,6 +13,7 @@ export * from './admin';
 export * from './directory';
 export * from './teacher';
 export * from './settings';
+export * from './preferences';
 export * from './models';
 export * from './errors';
 

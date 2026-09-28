@@ -108,24 +108,18 @@ export type ApiErrorCode =
   | 'EXPLORATION_TRANSITION_INVALID'
   /** 候选意图尚未形成、不足以确认（409）。 */
   | 'INTENT_DRAFT_INCOMPLETE'
-  /**
-   * 提醒不存在，或对当前学生不可见（404）。
-   *
-   * 两种情况共用同一个码：跨学生访问提醒时也返回它，避免通过
-   * 「404 / 403」的差异探测提醒是否存在。
-   */
+  /** 提醒不存在，或对当前学生不可见（404）。 */
   | 'REMINDER_NOT_FOUND'
   /** 提醒已过期，当前动作不适用（409）。 */
   | 'REMINDER_ACTION_NOT_APPLICABLE'
-  /** 提醒偏好请求非法（400）：`optedOut` 缺失或不是布尔值。 */
+  /** 提醒偏好请求非法（400）。 */
   | 'REMINDER_PREFERENCE_INVALID'
-  /**
-   * 提醒所需的持久化 / 评审能力不可用（503）。
-   *
-   * T2 尚未通过产品 / 隐私评审（R-T2），或未配置 `DATABASE_URL`（写操作无法
-   * 落库幂等 / 审计）时返回该码；**绝不**退回内存假装成功。
-   */
-  | 'REMINDER_UNAVAILABLE';
+  /** 提醒所需的持久化 / 评审能力不可用（503）。 */
+  | 'REMINDER_UNAVAILABLE'
+  /** 基础偏好写入非法（400）：值不在允许集合内。 */
+  | 'PREFERENCE_INVALID'
+  /** 偏好持久化能力不可用（503）。 */
+  | 'PREFERENCE_UNAVAILABLE';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。
