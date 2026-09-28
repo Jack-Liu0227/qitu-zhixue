@@ -16,6 +16,7 @@ import type {
   CreateTutorSessionResponse,
   CreateTutorTurnResponse,
   GetTutorSessionResponse,
+  PedagogicMove,
   TutorProjectContext,
   TutorSessionSummary,
 } from '@qitu/contracts';

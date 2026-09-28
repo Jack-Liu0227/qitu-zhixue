@@ -79,6 +79,8 @@ const DEMO_PROJECT = {
   currentTaskTitle: '说明光合作用需要光',
 };
 
+const DEMO_SESSION_ID = 'session-demo-001';
+
 const PROJECT_STAGES = [
   { id: 'exploration', label: '探索' },
   { id: 'intent_confirmed', label: '确认意图' },
