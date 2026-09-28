@@ -55,3 +55,26 @@ export class InMemoryFeedbackAttachmentRegistry extends FeedbackAttachmentRegist
     this.owners.clear();
   }
 }
+
+/**
+ * live 模式的**失败关闭**实现。
+ *
+ * 对象存储与附件归属表尚未接入（见模块 README 的 blocker），live 下无法证明
+ * 任何附件确实属于当前账号，因此**一律拒绝**非空 `attachmentRefs`，而不是退回
+ * 进程内登记表——进程内登记表在多实例部署下不共享，会静默放过越权引用。
+ *
+ * 空引用不受影响；文本反馈照常写入。接入真实上传服务后，把本类替换为持久化
+ * 归属表实现即可，反馈服务无需改动。
+ */
+@Injectable()
+export class RejectingFeedbackAttachmentRegistry extends FeedbackAttachmentRegistry {
+  async assertOwnedBy(_ownerUserId: string, attachmentIds: readonly string[]): Promise<void> {
+    if (attachmentIds.length > 0) {
+      attachmentInvalid();
+    }
+  }
+
+  register(): void {
+    // 有意为空：live 下没有可信的附件归属来源。
+  }
+}

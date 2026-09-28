@@ -6,13 +6,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 import type {
   ConfirmParentFeedbackRequest,
   ParentFeedbackEntry,
-  ParentFeedbackEventKind,
   ParentFeedbackSource,
-  ParentFeedbackStatus,
   ParentFeedbackTicket,
   ReplyTeacherFeedbackRequest,
   SubmitParentFeedbackRequest,
@@ -22,14 +19,17 @@ import type {
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { FeedbackAttachmentRegistry } from './feedback.attachments';
+import { FeedbackStore, type FeedbackTicketRecord } from './feedback.store';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
-import { AuditWriter } from '../../common/audit/audit.service';
+import { FEEDBACK_OUTBOX_TOPICS } from '../../common/outbox/outbox.types';
 
 /** 反馈内容长度上限，与家长端契约（≤500 字）保持一致。 */
 export const FEEDBACK_CONTENT_MAX_LENGTH = 500;
+
+type ParentFeedbackStatus = ParentFeedbackTicket['status'];
 
 /** `processing` 之后、未被家长确认解决之前，家长都可以继续补充。 */
 const SUPPLEMENT_ALLOWED: readonly ParentFeedbackStatus[] = ['processing', 'replied', 'reopened'];
@@ -37,38 +37,13 @@ const SUPPLEMENT_ALLOWED: readonly ParentFeedbackStatus[] = ['processing', 'repl
 /** 班主任回复只在这些状态下允许（已解决需家长先重开）。 */
 const REPLY_ALLOWED: readonly ParentFeedbackStatus[] = ['processing', 'reopened'];
 
-interface StoredEntry {
-  id: string;
-  kind: ParentFeedbackEventKind;
-  authorRole: 'parent' | 'teacher';
-  authorId: string;
-  authorDisplayName: string;
-  content: string;
-  attachmentRefs: string[];
-  resolved: boolean | null;
-  createdAt: Date;
-}
-
-interface StoredTicket {
-  id: string;
-  childId: string | null;
-  source: ParentFeedbackSource;
-  projectId: string | null;
-  projectTitle: string | null;
-  messageId: string | null;
-  parentId: string;
-  status: ParentFeedbackStatus;
-  problem: string;
-  entries: StoredEntry[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 /**
  * 统一反馈工单服务。
  *
  * 这是家长端与班主任端**唯一**的工单真相：`/parent/feedback` 系列与
- * `/teacher/feedback` 系列都读写它，不再各自维护一份「服务工单」。
+ * `/teacher/feedback` 系列都读写它，不再各自维护一份「服务工单」。持久化落在
+ * `FeedbackStore`（`live` 为 PostgreSQL，`demo`/`test` 为内存），本服务只负责
+ * 业务规则。
  *
  * 三件由服务端独占的事：
  *  1. **对象级授权**：有关联孩子时，家长必须实际绑定 `ticket.childId`；班主任必须是该学生
@@ -79,27 +54,27 @@ interface StoredTicket {
  *  3. **附件归属**：写入前通过 `FeedbackAttachmentRegistry` 校验附件确实属于
  *     当前账号，防止把别人的附件挂到自己的工单上。
  *
- * 写操作全部经 `IdempotencyStore`（`(scope,key)` 唯一、同 key 不同载荷 409）与
- * `AuditWriter`（审计只记过程事实，不含反馈原文）。另有一张进程内
- * `(scope,key) → ticketId` 索引作为兜底：若业务写入成功但审计失败，重放同一
- * 幂等键会命中已有工单，而不会追加第二条记录。
+ * 幂等与副作用：
+ * - 写操作全部经 `IdempotencyStore`（`(scope,key)` 唯一、同 key 不同载荷 409）；
+ * - 工单 id 与时间线事件 id 由**请求指纹**派生（`ft-`/`fe-` + requestHash），
+ *   因此即使「业务事务已提交、幂等结果未写回」后崩溃，重放同一幂等键也会命中
+ *   同一 id，由 store 识别为已存在而不追加第二条记录；
+ * - store 在**同一事务**内写入业务行 + 审计 + outbox 事件，事件初态为
+ *   `pending`，由未来 worker 投递（当前无消费者，事件诚实停留 `pending`）。
  *
- * 存储目前是进程内 Map，与 Directory / PlatformData 的演示域一致；生产需要把
- * `feedback_tickets`（见 `docs/DATABASE.md` 规划）落库时，只需替换这一层。
+ * 审计只记过程事实（谁、对哪张工单、什么动作），不含反馈原文；outbox 载荷同样
+ * 只放路由所需 id 与状态，避免未成年人内容进入通知队列。
  */
 @Injectable()
 export class FeedbackService {
-  private readonly tickets: StoredTicket[] = [];
-  /** `(scope,key)` → `ticketId`，见类注释的兜底说明。 */
-  private readonly idempotencyIndex = new Map<string, string>();
   private demoSeeded = false;
 
   constructor(
     private readonly directory: DirectoryService,
     private readonly platformData: PlatformDataService,
     private readonly attachments: FeedbackAttachmentRegistry,
+    private readonly store: FeedbackStore,
     private readonly idempotency: IdempotencyStore,
-    private readonly audit: AuditWriter,
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
   ) {}
 
@@ -109,14 +84,19 @@ export class FeedbackService {
   async listForParent(parentId: string, childId: string): Promise<ParentFeedbackTicket[]> {
     await this.ensureSeeded();
     await this.assertParentOfChild(parentId, childId);
-    return this.mapAll(this.ticketsForChild(childId));
+    const tickets = await this.store.listTicketsForChild(childId);
+    return Promise.all(tickets.map((ticket) => this.toTicket(ticket)));
   }
 
   /** 工单详情；家长无权访问时同样返回 `FEEDBACK_NOT_FOUND`，不泄露存在性。 */
   async getForParent(parentId: string, ticketId: string): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
-    const ticket = this.requireTicket(ticketId);
-    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
+    const ticket = await this.requireTicket(ticketId);
+    if (
+      ticket.childId === null
+        ? ticket.parentId !== parentId
+        : !(await this.isParentOfChild(parentId, ticket.childId))
+    ) {
       feedbackNotFound();
     }
     return this.toTicket(ticket);
@@ -124,7 +104,7 @@ export class FeedbackService {
 
   /* ==================== 家长写接口 ==================== */
 
-  /** 提交反馈。`general` 必填 `childId`；`message`/`project` 由关联对象推导并校验。 */
+  /** 提交反馈。`general` 可关联孩子；`message`/`project` 由关联对象推导并校验。 */
   async submitParentFeedback(
     parentId: string,
     input: SubmitParentFeedbackRequest,
@@ -149,18 +129,15 @@ export class FeedbackService {
       projectId: resolved.projectId,
       attachmentRefs,
     });
+    const ticketId = derivedId('ft', requestHash);
+    const entryId = derivedId('fe', requestHash);
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
-        const existing = this.lookupIdempotent(scope, idempotencyKey);
-        if (existing) {
-          return { status: 201, body: await this.toTicket(existing) };
-        }
-
-        const now = new Date();
         const parent = await this.directory.findUser(parentId);
-        const ticket: StoredTicket = {
-          id: `ft-${randomUUID()}`,
+        const now = new Date();
+        const ticket: FeedbackTicketRecord = {
+          id: ticketId,
           childId: resolved.childId,
           source,
           projectId: resolved.projectId,
@@ -171,7 +148,7 @@ export class FeedbackService {
           problem: content,
           entries: [
             {
-              id: `fe-${randomUUID()}`,
+              id: entryId,
               kind: 'submitted',
               authorRole: 'parent',
               authorId: parentId,
@@ -185,25 +162,28 @@ export class FeedbackService {
           createdAt: now,
           updatedAt: now,
         };
-        this.tickets.push(ticket);
-        this.rememberIdempotent(scope, idempotencyKey, ticket.id);
 
-        await this.audit.write({
-          actorId: parentId,
-          actorRole: 'parent',
-          action: 'feedback.submit',
-          targetType: 'feedback_ticket',
-          targetId: ticket.id,
-          idempotencyKey: `${scope}:${idempotencyKey}`,
-          detail: {
-            childId: ticket.childId,
-            source: ticket.source,
-            projectId: ticket.projectId,
-            messageId: ticket.messageId,
+        const created = await this.store.createTicket({
+          ticket,
+          audit: {
+            actorId: parentId,
+            actorRole: 'parent',
+            action: 'feedback.submit',
+            targetType: 'feedback_ticket',
+            targetId: ticket.id,
+            idempotencyKey: `${scope}:${idempotencyKey}`,
+            detail: {
+              childId: ticket.childId,
+              source: ticket.source,
+              projectId: ticket.projectId,
+              messageId: ticket.messageId,
+              entryId,
+            },
           },
+          event: this.feedbackEvent('submitted', ticket, entryId),
         });
 
-        return { status: 201, body: await this.toTicket(ticket) };
+        return { status: 201, body: await this.toTicket(created) };
       });
 
       return result.body;
@@ -221,56 +201,60 @@ export class FeedbackService {
   ): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
 
-    const ticket = this.requireTicket(ticketId);
-    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
+    const ticket = await this.requireTicket(ticketId);
+    if (
+      ticket.childId === null
+        ? ticket.parentId !== parentId
+        : !(await this.isParentOfChild(parentId, ticket.childId))
+    ) {
       feedbackNotFound();
     }
 
     const content = assertContent(input.content, '补充内容');
     const attachmentRefs = await this.validatedAttachments(parentId, input.attachmentRefs);
-    if (!SUPPLEMENT_ALLOWED.includes(ticket.status)) {
-      transitionInvalid('该工单已确认解决，如需继续沟通请先重新打开');
-    }
 
     const scope = `parent.feedback.supplement:${ticketId}`;
     const requestHash = hashIdempotentInput(scope, { ticketId }, { content, attachmentRefs });
+    const entryId = derivedId('fe', requestHash);
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
-        const existing = this.lookupIdempotent(scope, idempotencyKey);
-        if (existing) {
-          return { status: 200, body: await this.toTicket(existing) };
+        if (hasEntry(ticket, entryId)) {
+          return { status: 200, body: await this.toTicket(ticket) };
+        }
+        if (!SUPPLEMENT_ALLOWED.includes(ticket.status)) {
+          transitionInvalid('该工单已确认解决，如需继续沟通请先重新打开');
         }
 
         const parent = await this.directory.findUser(parentId);
         const now = new Date();
-        ticket.entries.push({
-          id: `fe-${randomUUID()}`,
-          kind: 'supplemented',
-          authorRole: 'parent',
-          authorId: parentId,
-          authorDisplayName: parent?.displayName ?? '家长',
-          content,
-          attachmentRefs,
-          resolved: null,
-          createdAt: now,
+        const updated = await this.store.appendEntry({
+          ticketId,
+          entry: {
+            id: entryId,
+            kind: 'supplemented',
+            authorRole: 'parent',
+            authorId: parentId,
+            authorDisplayName: parent?.displayName ?? '家长',
+            content,
+            attachmentRefs,
+            resolved: null,
+            createdAt: now,
+          },
+          nextStatus: 'processing',
+          audit: {
+            actorId: parentId,
+            actorRole: 'parent',
+            action: 'feedback.supplement',
+            targetType: 'feedback_ticket',
+            targetId: ticketId,
+            idempotencyKey: `${scope}:${idempotencyKey}`,
+            detail: { childId: ticket.childId, entryId },
+          },
+          event: this.feedbackEvent('supplemented', ticket, entryId, 'processing'),
         });
-        ticket.updatedAt = now;
-        // 家长补充后回到待处理，等待班主任再次查看。
-        ticket.status = 'processing';
-        this.rememberIdempotent(scope, idempotencyKey, ticket.id);
-
-        await this.audit.write({
-          actorId: parentId,
-          actorRole: 'parent',
-          action: 'feedback.supplement',
-          targetType: 'feedback_ticket',
-          targetId: ticket.id,
-          idempotencyKey: `${scope}:${idempotencyKey}`,
-          detail: { childId: ticket.childId },
-        });
-
-        return { status: 200, body: await this.toTicket(ticket) };
+        if (updated === null) feedbackNotFound();
+        return { status: 200, body: await this.toTicket(updated) };
       });
 
       return result.body;
@@ -294,8 +278,12 @@ export class FeedbackService {
   ): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
 
-    const ticket = this.requireTicket(ticketId);
-    if (ticket.childId === null ? ticket.parentId !== parentId : !(await this.isParentOfChild(parentId, ticket.childId))) {
+    const ticket = await this.requireTicket(ticketId);
+    if (
+      ticket.childId === null
+        ? ticket.parentId !== parentId
+        : !(await this.isParentOfChild(parentId, ticket.childId))
+    ) {
       feedbackNotFound();
     }
 
@@ -305,53 +293,54 @@ export class FeedbackService {
     const resolved = input.resolved;
     const note = assertOptionalNote(input.note);
 
-    if (!resolved && !['replied', 'resolved'].includes(ticket.status)) {
-      transitionInvalid('当前工单状态不支持「重新打开」');
-    }
-
     const scope = `parent.feedback.confirm:${ticketId}`;
     const requestHash = hashIdempotentInput(scope, { ticketId }, { resolved, note });
+    const entryId = derivedId('fe', requestHash);
+    const nextStatus: ParentFeedbackStatus = resolved ? 'resolved' : 'reopened';
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
-        const existing = this.lookupIdempotent(scope, idempotencyKey);
-        if (existing) {
-          return { status: 200, body: await this.toTicket(existing) };
+        if (hasEntry(ticket, entryId)) {
+          return { status: 200, body: await this.toTicket(ticket) };
+        }
+        if (!resolved && !['replied', 'resolved'].includes(ticket.status)) {
+          transitionInvalid('当前工单状态不支持「重新打开」');
         }
 
         const parent = await this.directory.findUser(parentId);
         const now = new Date();
-        ticket.entries.push({
-          id: `fe-${randomUUID()}`,
-          kind: resolved ? 'confirmed' : 'reopened',
-          authorRole: 'parent',
-          authorId: parentId,
-          authorDisplayName: parent?.displayName ?? '家长',
-          content:
-            note.length > 0
-              ? note
-              : resolved
-                ? '家长确认问题已解决'
-                : '家长确认问题仍未解决',
-          attachmentRefs: [],
-          resolved,
-          createdAt: now,
+        const updated = await this.store.appendEntry({
+          ticketId,
+          entry: {
+            id: entryId,
+            kind: resolved ? 'confirmed' : 'reopened',
+            authorRole: 'parent',
+            authorId: parentId,
+            authorDisplayName: parent?.displayName ?? '家长',
+            content:
+              note.length > 0
+                ? note
+                : resolved
+                  ? '家长确认问题已解决'
+                  : '家长确认问题仍未解决',
+            attachmentRefs: [],
+            resolved,
+            createdAt: now,
+          },
+          nextStatus,
+          audit: {
+            actorId: parentId,
+            actorRole: 'parent',
+            action: resolved ? 'feedback.confirm' : 'feedback.reopen',
+            targetType: 'feedback_ticket',
+            targetId: ticketId,
+            idempotencyKey: `${scope}:${idempotencyKey}`,
+            detail: { childId: ticket.childId, resolved, entryId },
+          },
+          event: this.feedbackEvent(resolved ? 'confirmed' : 'reopened', ticket, entryId, nextStatus),
         });
-        ticket.updatedAt = now;
-        ticket.status = resolved ? 'resolved' : 'reopened';
-        this.rememberIdempotent(scope, idempotencyKey, ticket.id);
-
-        await this.audit.write({
-          actorId: parentId,
-          actorRole: 'parent',
-          action: resolved ? 'feedback.confirm' : 'feedback.reopen',
-          targetType: 'feedback_ticket',
-          targetId: ticket.id,
-          idempotencyKey: `${scope}:${idempotencyKey}`,
-          detail: { childId: ticket.childId, resolved },
-        });
-
-        return { status: 200, body: await this.toTicket(ticket) };
+        if (updated === null) feedbackNotFound();
+        return { status: 200, body: await this.toTicket(updated) };
       });
 
       return result.body;
@@ -366,18 +355,14 @@ export class FeedbackService {
   async listForTeacher(teacherId: string): Promise<TeacherFeedbackRow[]> {
     await this.ensureSeeded();
     const students = await this.directory.studentsOfMentor(teacherId);
-    const studentIds = new Set(students.map((s) => s.userId));
-    const visible = this.tickets
-      .filter((t) => t.childId !== null && studentIds.has(t.childId))
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-
-    return Promise.all(visible.map((t) => this.toRow(t, students)));
+    const tickets = await this.store.listTicketsForChildren(students.map((s) => s.userId));
+    return Promise.all(tickets.map((ticket) => this.toRow(ticket, students)));
   }
 
   /** 工单详情；班主任不是该学生当前班主任时返回 403 `STUDENT_NOT_ASSIGNED`。 */
   async getForTeacher(teacherId: string, ticketId: string): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
-    const ticket = this.requireTicket(ticketId);
+    const ticket = await this.requireTicket(ticketId);
     await this.assertTeacherOfChild(teacherId, ticket.childId);
     return this.toTicket(ticket);
   }
@@ -391,53 +376,54 @@ export class FeedbackService {
   ): Promise<ParentFeedbackTicket> {
     await this.ensureSeeded();
 
-    const ticket = this.requireTicket(ticketId);
+    const ticket = await this.requireTicket(ticketId);
     await this.assertTeacherOfChild(teacherId, ticket.childId);
 
     const content = assertContent(input.content, '回复内容');
     const attachmentRefs = await this.validatedAttachments(teacherId, input.attachmentRefs);
-    if (!REPLY_ALLOWED.includes(ticket.status)) {
-      transitionInvalid('该工单当前状态不允许回复，请先由家长重新打开');
-    }
 
     const scope = `teacher.feedback.reply:${ticketId}`;
     const requestHash = hashIdempotentInput(scope, { ticketId }, { content, attachmentRefs });
+    const entryId = derivedId('fe', requestHash);
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
-        const existing = this.lookupIdempotent(scope, idempotencyKey);
-        if (existing) {
-          return { status: 200, body: await this.toTicket(existing) };
+        if (hasEntry(ticket, entryId)) {
+          return { status: 200, body: await this.toTicket(ticket) };
+        }
+        if (!REPLY_ALLOWED.includes(ticket.status)) {
+          transitionInvalid('该工单当前状态不允许回复，请先由家长重新打开');
         }
 
         const teacher = await this.directory.findUser(teacherId);
         const now = new Date();
-        ticket.entries.push({
-          id: `fe-${randomUUID()}`,
-          kind: 'replied',
-          authorRole: 'teacher',
-          authorId: teacherId,
-          authorDisplayName: teacher?.displayName ?? '班主任',
-          content,
-          attachmentRefs,
-          resolved: null,
-          createdAt: now,
+        const updated = await this.store.appendEntry({
+          ticketId,
+          entry: {
+            id: entryId,
+            kind: 'replied',
+            authorRole: 'teacher',
+            authorId: teacherId,
+            authorDisplayName: teacher?.displayName ?? '班主任',
+            content,
+            attachmentRefs,
+            resolved: null,
+            createdAt: now,
+          },
+          nextStatus: 'replied',
+          audit: {
+            actorId: teacherId,
+            actorRole: 'teacher',
+            action: 'feedback.reply',
+            targetType: 'feedback_ticket',
+            targetId: ticketId,
+            idempotencyKey: `${scope}:${idempotencyKey}`,
+            detail: { childId: ticket.childId, entryId },
+          },
+          event: this.feedbackEvent('replied', ticket, entryId, 'replied'),
         });
-        ticket.updatedAt = now;
-        ticket.status = 'replied';
-        this.rememberIdempotent(scope, idempotencyKey, ticket.id);
-
-        await this.audit.write({
-          actorId: teacherId,
-          actorRole: 'teacher',
-          action: 'feedback.reply',
-          targetType: 'feedback_ticket',
-          targetId: ticket.id,
-          idempotencyKey: `${scope}:${idempotencyKey}`,
-          detail: { childId: ticket.childId },
-        });
-
-        return { status: 200, body: await this.toTicket(ticket) };
+        if (updated === null) feedbackNotFound();
+        return { status: 200, body: await this.toTicket(updated) };
       });
 
       return result.body;
@@ -571,41 +557,47 @@ export class FeedbackService {
 
   /* ==================== 内部：存取与映射 ==================== */
 
-  private ticketsForChild(childId: string): StoredTicket[] {
-    return this.tickets
-      .filter((t) => t.childId === childId)
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-  }
-
-  private requireTicket(ticketId: string): StoredTicket {
-    const ticket = this.tickets.find((t) => t.id === ticketId);
-    if (ticket === undefined) {
+  private async requireTicket(ticketId: string): Promise<FeedbackTicketRecord> {
+    const ticket = await this.store.findTicket(ticketId);
+    if (ticket === null) {
       feedbackNotFound();
     }
     return ticket;
   }
 
-  private lookupIdempotent(scope: string, key: string): StoredTicket | null {
-    const ticketId = this.idempotencyIndex.get(`${scope}::${key}`);
-    if (ticketId === undefined) return null;
-    return this.tickets.find((t) => t.id === ticketId) ?? null;
+  /**
+   * 构造一条最小化的反馈通知事件。
+   *
+   * 只放路由所需 id 与状态，**不放反馈正文 / 附件**，避免未成年人内容进入
+   * 通知队列；payload 落库前还会被 `OutboxService` 二次脱敏。
+   */
+  private feedbackEvent(
+    kind: keyof typeof FEEDBACK_OUTBOX_TOPICS,
+    ticket: FeedbackTicketRecord,
+    entryId: string,
+    status: ParentFeedbackStatus = ticket.status,
+  ) {
+    return {
+      id: derivedId('of', `${kind}:${ticket.id}:${entryId}`),
+      topic: FEEDBACK_OUTBOX_TOPICS[kind],
+      payload: {
+        ticketId: ticket.id,
+        childId: ticket.childId,
+        entryId,
+        status,
+        source: ticket.source,
+      },
+    };
   }
 
-  private rememberIdempotent(scope: string, key: string, ticketId: string): void {
-    this.idempotencyIndex.set(`${scope}::${key}`, ticketId);
-  }
-
-  private async mapAll(tickets: StoredTicket[]): Promise<ParentFeedbackTicket[]> {
-    return Promise.all(tickets.map((t) => this.toTicket(t)));
-  }
-
-  private async toTicket(ticket: StoredTicket): Promise<ParentFeedbackTicket> {
-    const [child, mentor] = ticket.childId === null
-      ? [null, null] as const
-      : await Promise.all([
-          this.directory.findUser(ticket.childId),
-          this.directory.mentorOfStudent(ticket.childId),
-        ]);
+  private async toTicket(ticket: FeedbackTicketRecord): Promise<ParentFeedbackTicket> {
+    const [child, mentor] =
+      ticket.childId === null
+        ? ([null, null] as const)
+        : await Promise.all([
+            this.directory.findUser(ticket.childId),
+            this.directory.mentorOfStudent(ticket.childId),
+          ]);
 
     const entries: ParentFeedbackEntry[] = ticket.entries.map((e) => ({
       id: e.id,
@@ -637,7 +629,7 @@ export class FeedbackService {
   }
 
   private async toRow(
-    ticket: StoredTicket,
+    ticket: FeedbackTicketRecord,
     students: Awaited<ReturnType<DirectoryService['studentsOfMentor']>>,
   ): Promise<TeacherFeedbackRow> {
     if (ticket.childId === null) {
@@ -660,10 +652,11 @@ export class FeedbackService {
   /* ==================== 内部：演示种子 ==================== */
 
   /**
-   * 演示种子：把旧版写死在 `platform-data` 里的 `ticket-001` 迁到这里。
+   * 演示种子：把旧版写死在 `platform-data` 里的 `ticket-001` 迁到 store。
    *
-   * 只在 `demo` / `test` 生效；`live` 下不注入任何演示数据。这样切换数据模式
-   * 的语义与 `DirectoryService` 的内存引擎保持一致。
+   * 只在 `demo` / `test` 生效；`live` 下不注入任何演示数据。种子不写审计、不写
+   * outbox（它不是一次真实用户写入）。这样切换数据模式的语义与
+   * `DirectoryService` 的内存引擎保持一致。
    */
   private async ensureSeeded(): Promise<void> {
     if (this.demoSeeded || this.mode === 'live') return;
@@ -677,7 +670,7 @@ export class FeedbackService {
     const createdAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
     const repliedAt = new Date(createdAt.getTime() + 2 * 60 * 60 * 1000 + 15 * 60 * 1000);
 
-    this.tickets.push({
+    await this.store.seed({
       id: 'ticket-001',
       childId: 'student-demo',
       source: 'project',
@@ -715,7 +708,7 @@ export class FeedbackService {
           kind: 'confirmed',
           authorRole: 'parent',
           authorId: parent?.userId ?? 'parent-demo',
-          authorDisplayName: parent?.displayName ?? '演示家长',
+          authorDisplayName: '演示家长',
           content: '家长确认问题已解决',
           attachmentRefs: [],
           resolved: true,
@@ -729,6 +722,21 @@ export class FeedbackService {
 }
 
 /* ==================== 纯函数工具 ==================== */
+
+/**
+ * 由请求指纹派生稳定 id。
+ *
+ * 用 `requestHash`（SHA-256）而非随机 UUID：同一幂等请求的重放会得到同一 id，
+ * store 据此识别「已存在」而不会追加第二条工单 / 事件。前缀区分对象类型
+ * （`ft` 工单、`fe` 时间线事件、`of` outbox 事件）。
+ */
+function derivedId(prefix: string, seed: string): string {
+  return `${prefix}-${seed}`;
+}
+
+function hasEntry(ticket: FeedbackTicketRecord, entryId: string): boolean {
+  return ticket.entries.some((entry) => entry.id === entryId);
+}
 
 function assertSource(source: ParentFeedbackSource): ParentFeedbackSource {
   if (source !== 'general' && source !== 'message' && source !== 'project') {
@@ -781,7 +789,11 @@ function transitionInvalid(message: string): never {
 }
 
 /** 服务端格式化处理时长，例如「2小时15分钟」「3天」「不到1分钟」。 */
-export function formatHandledIn(ticket: { createdAt: Date; updatedAt: Date; status: ParentFeedbackStatus }): string {
+export function formatHandledIn(ticket: {
+  createdAt: Date;
+  updatedAt: Date;
+  status: ParentFeedbackStatus;
+}): string {
   const end = ticket.status === 'resolved' ? ticket.updatedAt : new Date();
   const ms = Math.max(0, end.getTime() - ticket.createdAt.getTime());
   const minutes = Math.floor(ms / 60000);

@@ -3,6 +3,7 @@ import { DatabaseModule } from './database';
 import { AccessModule } from './common/access/access.module';
 import { AuditModule } from './common/audit/audit.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { OutboxModule } from './common/outbox/outbox.module';
 import { HealthModule } from './health/health.module';
 import { AiTutorModule } from './modules/ai-tutor/tutor.module';
 import { GrowthModule } from './modules/growth/growth.module';
@@ -22,6 +23,7 @@ import { TeacherModule } from './modules/teacher/teacher.module';
     AccessModule,
     AuditModule,
     IdempotencyModule,
+    OutboxModule,
     DirectoryModule,
     HealthModule,
     AuthModule,

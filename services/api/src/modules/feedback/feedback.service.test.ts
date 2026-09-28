@@ -6,10 +6,13 @@ import type { AuditEntry } from '../../common/audit/audit-entry';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { IdempotencyError } from '../../common/idempotency/idempotency.errors';
 import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
+import { OutboxWriter } from '../../common/outbox/outbox.service';
+import { FEEDBACK_OUTBOX_TOPICS, type OutboxEventInput } from '../../common/outbox/outbox.types';
 import type { DirectoryPersonRef } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
 import type { PlatformDataService } from '../platform-data/platform-data.service';
 import { InMemoryFeedbackAttachmentRegistry } from './feedback.attachments';
+import { InMemoryFeedbackStore } from './feedback.store';
 import { FeedbackService } from './feedback.service';
 
 /* ------------------------------------------------------------------ *
@@ -77,6 +80,14 @@ class FakeIdempotencyStore {
     this.records.set(id, { hash: requestHash, body: outcome.body });
     return { status: outcome.status ?? 200, body: outcome.body, replayed: false };
   }
+
+  /**
+   * 模拟「业务事务已提交、但幂等结果因崩溃未写回 / 租约被回收」：丢掉所有记录，
+   * 下一个同 key 请求会重新进入 handler。
+   */
+  forgetAll(): void {
+    this.records.clear();
+  }
 }
 
 class FakeAuditWriter {
@@ -92,10 +103,28 @@ class FakeAuditWriter {
   }
 }
 
+/**
+ * outbox 的内存替身：只记录事件，不投递（与 live 下「无 worker、事件停留 pending」
+ * 的语义一致）。用于断言「业务写入会产生 pending 事件」。
+ */
+class FakeOutboxWriter {
+  readonly events: OutboxEventInput[] = [];
+
+  async write(event: OutboxEventInput): Promise<string> {
+    this.events.push(event);
+    return event.id;
+  }
+
+  async markPublished(): Promise<void> {}
+
+  async markFailed(): Promise<void> {}
+}
+
 interface Harness {
   service: FeedbackService;
   idempotency: FakeIdempotencyStore;
   audit: FakeAuditWriter;
+  outbox: FakeOutboxWriter;
   attachments: InMemoryFeedbackAttachmentRegistry;
 }
 
@@ -121,16 +150,21 @@ function makeHarness(): Harness {
 
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
+  const outbox = new FakeOutboxWriter();
   const attachments = new InMemoryFeedbackAttachmentRegistry();
+  const store = new InMemoryFeedbackStore(
+    audit as unknown as AuditWriter,
+    outbox as unknown as OutboxWriter,
+  );
   const service = new FeedbackService(
     makeDirectory(),
     platformData,
     attachments,
+    store,
     idempotency as unknown as IdempotencyStore,
-    audit as unknown as AuditWriter,
     'live',
   );
-  return { service, idempotency, audit, attachments };
+  return { service, idempotency, audit, outbox, attachments };
 }
 
 async function expectCode(promise: Promise<unknown>, code: string): Promise<void> {
@@ -378,14 +412,29 @@ describe('FeedbackService 幂等与审计', () => {
     harness = makeHarness();
   });
 
-  it('相同幂等键重放不会产生第二张工单', async () => {
+  it('相同幂等键重放不会产生第二张工单，也不会重复写 outbox 事件', async () => {
     const first = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'same-key');
     const second = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'same-key');
     assert.equal(second.id, first.id);
     assert.equal(harness.idempotency.executions, 1);
+    assert.equal(harness.outbox.events.length, 1);
 
     const tickets = await harness.service.listForParent('parent-demo', 'student-demo');
     assert.equal(tickets.length, 1);
+  });
+
+  it('业务事务已提交但幂等结果未写回时，重放同 key 命中同一工单而不追加记录', async () => {
+    const first = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'crash-key');
+    assert.equal(harness.outbox.events.length, 1);
+
+    // 模拟崩溃 / 租约回收：幂等记录丢失，下一次请求会再次进入 handler。
+    harness.idempotency.forgetAll();
+    const replayed = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'crash-key');
+
+    assert.equal(replayed.id, first.id);
+    assert.equal(harness.outbox.events.length, 1, '重放不应追加 outbox 事件');
+    assert.equal(harness.audit.entries.length, 1, '重放不应追加审计');
+    assert.equal((await harness.service.listForParent('parent-demo', 'student-demo')).length, 1);
   });
 
   it('相同幂等键、不同载荷返回 IDEMPOTENCY_CONFLICT', async () => {
@@ -400,17 +449,57 @@ describe('FeedbackService 幂等与审计', () => {
     );
   });
 
-  it('业务写入成功但审计暂时失败时，重放同一幂等键不会追加第二条记录', async () => {
+  it('审计失败时整个写入回滚，重放同一幂等键只产生一条记录', async () => {
     harness.audit.failNext = true;
     await assert.rejects(
       harness.service.submitParentFeedback('parent-demo', submitBody(), 'retry-key'),
       /audit store unavailable/,
     );
+    // 审计失败 ⇒ 工单与 outbox 事件都不应残留在 store 中。
+    assert.equal((await harness.service.listForParent('parent-demo', 'student-demo')).length, 0);
+    assert.equal(harness.outbox.events.length, 0);
 
     const retried = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'retry-key');
     const tickets = await harness.service.listForParent('parent-demo', 'student-demo');
     assert.equal(tickets.length, 1);
     assert.equal(tickets[0]?.id, retried.id);
+  });
+
+  it('成功写入同时产生审计与 pending 通知事件，且事件不含反馈原文', async () => {
+    const secret = '孩子最近有点抵触学习，我很担心';
+    const ticket = await harness.service.submitParentFeedback(
+      'parent-demo',
+      submitBody({ content: secret }),
+      'k-outbox',
+    );
+
+    assert.equal(harness.outbox.events.length, 1);
+    const event = harness.outbox.events[0]!;
+    assert.equal(event.topic, FEEDBACK_OUTBOX_TOPICS.submitted);
+    assert.equal(event.payload.ticketId, ticket.id);
+    assert.equal(event.payload.childId, 'student-demo');
+    assert.equal(event.payload.status, 'processing');
+    assert.ok(!JSON.stringify(event).includes(secret), 'outbox 事件不应包含反馈原文');
+  });
+
+  it('提交 / 回复 / 确认各自产生 topic 正确的通知事件', async () => {
+    const ticket = await harness.service.submitParentFeedback('parent-demo', submitBody(), 'k-1');
+    await harness.service.replyToFeedback('teacher-demo', ticket.id, { content: '回复' }, 'r-1');
+    await harness.service.confirmParentFeedback(
+      'parent-demo',
+      ticket.id,
+      { resolved: true, note: null },
+      'c-1',
+    );
+
+    assert.deepEqual(
+      harness.outbox.events.map((event) => event.topic),
+      [
+        FEEDBACK_OUTBOX_TOPICS.submitted,
+        FEEDBACK_OUTBOX_TOPICS.replied,
+        FEEDBACK_OUTBOX_TOPICS.confirmed,
+      ],
+    );
   });
 
   it('审计只记录过程事实，不落反馈原文', async () => {

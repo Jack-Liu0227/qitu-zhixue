@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS "feedback_tickets_status_idx";
+DROP INDEX IF EXISTS "feedback_tickets_parent_idx";
+DROP INDEX IF EXISTS "feedback_tickets_child_idx";
+DROP INDEX IF EXISTS "feedback_ticket_entries_ticket_idx";
+DROP INDEX IF EXISTS "feedback_ticket_entries_ticket_seq_unique_idx";
+ALTER TABLE "feedback_tickets" DROP CONSTRAINT IF EXISTS "feedback_tickets_parent_user_id_users_id_fk";
+ALTER TABLE "feedback_tickets" DROP CONSTRAINT IF EXISTS "feedback_tickets_child_user_id_users_id_fk";
+ALTER TABLE "feedback_ticket_entries" DROP CONSTRAINT IF EXISTS "feedback_ticket_entries_ticket_id_feedback_tickets_id_fk";
+DROP TABLE IF EXISTS "feedback_ticket_entries";
+DROP TABLE IF EXISTS "feedback_tickets";
