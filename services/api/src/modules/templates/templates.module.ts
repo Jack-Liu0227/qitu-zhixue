@@ -5,6 +5,11 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { TemplateEvidenceSource, TemplateViewerDirectory } from './template-evidence.store';
 import { InMemoryTemplateEvidenceSource, InMemoryTemplateViewerDirectory } from './template-evidence.store';
 import { PostgresTemplateEvidenceSource, PostgresTemplateViewerDirectory } from './template-evidence.store.postgres';
+import {
+  InMemoryTemplateVerificationStore,
+  TemplateVerificationStore,
+} from './template-verification.store';
+import { PostgresTemplateVerificationStore } from './template-verification.store.postgres';
 import { TemplateGovernanceController } from './templates-governance.controller';
 import { TemplateGovernanceService } from './templates-governance.service';
 import { TemplateStore, InMemoryTemplateStore } from './templates.store';
@@ -22,10 +27,9 @@ import { TemplatesService } from './templates.service';
  *
  * `IdempotencyStore` / `AuditWriter` 由 `@Global()` 模块提供；这里直接注入抽象。
  *
- * 已知前提：当前 schema 只有 `project_templates` / `project_template_versions`；
- * `template_verification_runs` / `template_verification_evidence` 尚未迁移。因此
- * 验证评测是**确定性纯函数**，副作用只落在版本状态迁移 + 幂等记录 + 审计
- * （见最终交接说明），不写未迁移的验证表。
+ * 已知前提：`template_verification_runs` / `template_verification_evidence`
+ * 已由迁移 0009 落库；验证 run 走 `TemplateVerificationStore`，`live` 下为
+ * PostgreSQL 实现，未配置数据库时 fail fast。
  */
 @Module({
   imports: [AuthModule],
@@ -53,6 +57,17 @@ import { TemplatesService } from './templates.service';
           throw new Error('live 模式缺少 DATABASE_URL：模板验证证据不可用');
         }
         return new InMemoryTemplateEvidenceSource();
+      },
+    },
+    {
+      provide: TemplateVerificationStore,
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
+      useFactory: (db: Database | null, mode: DataMode): TemplateVerificationStore => {
+        if (db !== null) return new PostgresTemplateVerificationStore(db);
+        if (mode === 'live') {
+          throw new Error('live 模式缺少 DATABASE_URL：模板验证 run 存储不可用');
+        }
+        return new InMemoryTemplateVerificationStore();
       },
     },
     {

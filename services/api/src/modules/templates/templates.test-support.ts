@@ -7,6 +7,7 @@ import {
   InMemoryTemplateEvidenceSource,
   InMemoryTemplateViewerDirectory,
 } from './template-evidence.store';
+import { InMemoryTemplateVerificationStore } from './template-verification.store';
 import { TemplateGovernanceService } from './templates-governance.service';
 import { InMemoryTemplateStore } from './templates.store';
 import { TemplatesService } from './templates.service';
@@ -93,6 +94,7 @@ export interface GovernanceHarness {
   service: TemplateGovernanceService;
   store: InMemoryTemplateStore;
   evidence: InMemoryTemplateEvidenceSource;
+  verification: InMemoryTemplateVerificationStore;
   directory: InMemoryTemplateViewerDirectory;
   idempotency: FakeIdempotencyStore;
   audit: FakeAuditWriter;
@@ -101,17 +103,19 @@ export interface GovernanceHarness {
 export function makeGovernanceHarness(): GovernanceHarness {
   const store = new InMemoryTemplateStore();
   const evidence = new InMemoryTemplateEvidenceSource();
+  const verification = new InMemoryTemplateVerificationStore();
   const directory = new InMemoryTemplateViewerDirectory();
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
   const service = new TemplateGovernanceService(
     store,
     evidence,
+    verification,
     directory,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
   );
-  return { service, store, evidence, directory, idempotency, audit };
+  return { service, store, evidence, verification, directory, idempotency, audit };
 }
 
 export const VALID_CREATE_INPUT = {

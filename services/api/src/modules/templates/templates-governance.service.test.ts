@@ -217,6 +217,69 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
     assert.equal(first.version.publishedAt, replayNewKey.version.publishedAt);
   });
 
+  it('verify 落库 run + 证据行，审计携带 runId；同键重放同一报告不重复', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, {
+      slug: 'verify-persist',
+    });
+    harness.evidence.seed(fullEvidence(versionId));
+
+    const first = await harness.service.verifyVersion(ADMIN, templateId, versionId, 'k-verify-run');
+    assert.equal(first.report.passed, true);
+
+    const runs = await harness.verification.listByVersion(versionId);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0]!.report.evaluatedAt, first.report.evaluatedAt);
+    assert.equal(runs[0]!.evidenceCount, first.report.evidenceRefs.length);
+    assert.equal(runs[0]!.evidence.length, 7);
+    assert.deepEqual(runs[0]!.report.checks, first.report.checks);
+    assert.equal(harness.audit.entries.at(-1)?.detail?.runId, runs[0]!.id);
+
+    const replay = await harness.service.verifyVersion(ADMIN, templateId, versionId, 'k-verify-run');
+    assert.equal(replay.replayed, true);
+    assert.deepEqual(replay.report, first.report);
+    assert.equal((await harness.verification.listByVersion(versionId)).length, 1);
+  });
+
+  it('verify 失败也落只追加 run，供审计留痕', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, {
+      slug: 'verify-fail-persist',
+    });
+    const result = await harness.service.verifyVersion(ADMIN, templateId, versionId, 'k-verify-fail');
+    assert.equal(result.report.passed, false);
+    const runs = await harness.verification.listByVersion(versionId);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0]!.passed, false);
+  });
+
+  it('publish 通过后落 run；失败不落 publish run，同键可重试', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, {
+      slug: 'publish-run',
+    });
+
+    await assertHttpError(
+      () => harness.service.publishVersion(ADMIN, templateId, versionId, 'k-pub-run', null),
+      409,
+      'TEMPLATE_VERIFICATION_INCOMPLETE',
+    );
+    assert.equal((await harness.verification.listByVersion(versionId)).length, 0);
+
+    harness.evidence.seed(fullEvidence(versionId));
+    const published = await harness.service.publishVersion(
+      ADMIN,
+      templateId,
+      versionId,
+      'k-pub-run',
+      null,
+    );
+    assert.equal(published.report.passed, true);
+    assert.equal(published.version.status, 'published');
+
+    const runs = await harness.verification.listByVersion(versionId);
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0]!.report.passed, true);
+    assert.equal(runs[0]!.evidence.length, 7);
+  });
+
   it('已发布模板不可改元数据；可加新版本；回滚复制为新 draft 且历史版本不变', async () => {
     const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, { slug: 'freeze' });
     harness.evidence.seed(fullEvidence(versionId));

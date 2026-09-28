@@ -15,6 +15,11 @@ import {
 } from './template-evidence.store';
 import { evaluateTemplateVerification } from './template-verification.evaluator';
 import {
+  newVerificationRunId,
+  type TemplateVerificationStore,
+  type VerificationRunRecord,
+} from './template-verification.store';
+import {
   assertCanGovernTemplate,
   assertTemplateStatusTransition,
   resolveTemplateCreationScope,
@@ -41,6 +46,7 @@ import type {
   TemplateView,
   TemplateVersionView,
   UpdateTemplateInput,
+  VerificationEvidence,
   VerificationReport,
 } from './templates.types';
 
@@ -94,6 +100,7 @@ export class TemplateGovernanceService {
   constructor(
     private readonly store: TemplateStore,
     private readonly evidence: TemplateEvidenceSource,
+    private readonly verification: TemplateVerificationStore,
     private readonly directory: TemplateViewerDirectory,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
@@ -281,29 +288,46 @@ export class TemplateGovernanceService {
     versionId: string,
     idempotencyKey: string,
   ): Promise<VerifyVersionResult> {
-    await this.requireGovernableVersion(actor, templateId, versionId);
+    const { template } = await this.requireGovernableVersion(actor, templateId, versionId);
     const scope = `template.version.verify:${actor.id}:${versionId}`;
+    const runKey = `${scope}:${idempotencyKey}`;
     const requestHash = hashIdempotentInput(scope, { templateId, versionId }, {});
 
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      // 进程重启后幂等缓存丢失时，以持久化 run 为准回放同一份报告。
+      const replayedRun = await this.verification.findByIdempotencyKey(runKey);
+      if (replayedRun !== null) {
+        return { status: 200, body: { report: replayedRun.report, replayed: true } };
+      }
       const evaluatedAt = new Date();
       const evidence = await this.evidence.collect(versionId);
       const report = evaluateTemplateVerification(evidence, evaluatedAt);
+      const run = await this.recordVerification(
+        actor,
+        template,
+        versionId,
+        report,
+        evidence,
+        runKey,
+        evaluatedAt,
+      );
       await this.audit.write({
         actorId: actor.id,
         actorRole: actor.role,
         action: 'template.version.verify',
         targetType: 'project_template_version',
         targetId: versionId,
-        idempotencyKey: `${scope}:${idempotencyKey}`,
+        idempotencyKey: runKey,
         detail: {
           templateId,
-          passed: report.passed,
-          checks: report.checks,
-          evidenceRefs: report.evidenceRefs,
+          runId: run.id,
+          passed: run.report.passed,
+          checks: run.report.checks,
+          evidenceRefs: run.report.evidenceRefs,
+          evidenceCount: run.evidenceCount,
         },
       });
-      return { status: 200, body: { report, replayed: false } };
+      return { status: 200, body: { report: run.report, replayed: false } };
     });
 
     return result.replayed ? { ...result.body, replayed: true } : result.body;
@@ -324,6 +348,7 @@ export class TemplateGovernanceService {
   ): Promise<PublishVersionResult> {
     const { template, version } = await this.requireGovernableVersion(actor, templateId, versionId);
     const scope = `template.version.publish:${actor.id}:${versionId}`;
+    const runKey = `${scope}:${idempotencyKey}`;
     const requestHash = hashIdempotentInput(scope, { templateId, versionId }, { reason });
 
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
@@ -332,12 +357,23 @@ export class TemplateGovernanceService {
       const report = evaluateTemplateVerification(evidence, evaluatedAt);
 
       if (version.status === 'published') {
+        const run = report.passed
+          ? await this.recordVerification(
+              actor,
+              template,
+              versionId,
+              report,
+              evidence,
+              runKey,
+              evaluatedAt,
+            )
+          : null;
         return {
           status: 200,
           body: {
             template: await this.project(template),
             version: toTemplateVersionView(version),
-            report,
+            report: run?.report ?? report,
             replayed: true,
           },
         };
@@ -345,12 +381,24 @@ export class TemplateGovernanceService {
 
       assertTemplateStatusTransition(version.status, 'published');
       if (!report.passed) {
+        // 未通过时**不落 run**，保证修正证据后同键重试仍可发布。
         throw new ConflictException({
           code: 'TEMPLATE_VERIFICATION_INCOMPLETE',
           message: '模板验证未通过：项目完成 / 理论掌握 / 实践掌握 / 作品通过 / 班主任复核必须全部满足',
           report,
         });
       }
+
+      // 通过后先落不可变 run，再迁移状态：报告与晋升结果同源。
+      const run = await this.recordVerification(
+        actor,
+        template,
+        versionId,
+        report,
+        evidence,
+        runKey,
+        evaluatedAt,
+      );
 
       const published = await this.store.setVersionStatus(versionId, 'published', evaluatedAt, evaluatedAt);
       const publishedTemplate = await this.store.setTemplateStatus(
@@ -366,12 +414,14 @@ export class TemplateGovernanceService {
         action: 'template.version.publish',
         targetType: 'project_template_version',
         targetId: versionId,
-        idempotencyKey: `${scope}:${idempotencyKey}`,
+        idempotencyKey: runKey,
         reason,
         detail: {
           templateId,
           version: published.version,
-          evidenceRefs: report.evidenceRefs,
+          runId: run.id,
+          evidenceRefs: run.report.evidenceRefs,
+          evidenceCount: run.evidenceCount,
         },
       });
       this.logger.log(`发布模板版本 template=${templateId} version=${published.version}`);
@@ -380,7 +430,7 @@ export class TemplateGovernanceService {
         body: {
           template: await this.project(publishedTemplate),
           version: toTemplateVersionView(published),
-          report,
+          report: run.report,
           replayed: false,
         },
       };
@@ -455,6 +505,32 @@ export class TemplateGovernanceService {
   }
 
   /* ============================ 内部 ============================ */
+
+  /**
+   * 只在通过评测时落 run：未通过不写，保证修正证据后同键重试仍可发布。
+   * 持久层按 `idempotencyKey` 唯一，重启后重放不会产生第二条。
+   */
+  private async recordVerification(
+    actor: CurrentUser,
+    template: ProjectTemplateRecord,
+    templateVersionId: string,
+    report: VerificationReport,
+    evidence: VerificationEvidence,
+    idempotencyKey: string,
+    evaluatedAt: Date,
+  ): Promise<VerificationRunRecord> {
+    const recorded = await this.verification.record({
+      id: newVerificationRunId(),
+      schoolId: template.schoolId,
+      templateVersionId,
+      report,
+      evidence,
+      evaluatedBy: actor.id,
+      idempotencyKey,
+      evaluatedAt,
+    });
+    return recorded.run;
+  }
 
   private async requireGovernableTemplate(
     actor: CurrentUser,
