@@ -43,6 +43,13 @@
       "when": 1790592021439,
       "tag": "0005_nostalgic_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790592708499,
+      "tag": "0006_yellow_pete_wisdom",
+      "breakpoints": true
     }
   ]
 }
