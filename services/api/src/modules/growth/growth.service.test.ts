@@ -103,9 +103,9 @@ function collectKeys(value: unknown, into: Set<string> = new Set()): Set<string>
 
 /* ------------------------------- 用例 ------------------------------- */
 
-test('证据往返：合法的 evidenceIds 进入时间线，非法来源被白名单丢弃', () => {
+test('证据往返：合法的 evidenceIds 进入时间线，非法来源被白名单丢弃', async () => {
   const service = makeService();
-  service.record({
+  await service.record({
     ...baseInput,
     evidenceIds: [
       'student_answer:answer-001',
@@ -122,9 +122,9 @@ test('证据往返：合法的 evidenceIds 进入时间线，非法来源被白�
   assert.equal(entry.observationState, 'observed');
 });
 
-test('无证据 → 待观察：不产生 0 或任何数值判定', () => {
+test('无证据 → 待观察：不产生 0 或任何数值判定', async () => {
   const service = makeService();
-  service.record(baseInput); // 未提供 evidenceIds
+  await service.record(baseInput); // 未提供 evidenceIds
 
   const [entry] = service.getTimeline('student-test', EMPTY_QUERY).items;
   assert.ok(entry);
@@ -133,9 +133,9 @@ test('无证据 → 待观察：不产生 0 或任何数值判定', () => {
   assert.equal(typeof entry.observationState, 'string');
 });
 
-test('学生投影不含原始 / 成人 / 内部字段，也不含分数排名等级语义', () => {
+test('学生投影不含原始 / 成人 / 内部字段，也不含分数排名等级语义', async () => {
   const service = makeService();
-  service.record({
+  await service.record({
     ...baseInput,
     evidenceIds: ['artifact:artifact-001'],
     encouragement: '继续保持。',
@@ -154,7 +154,7 @@ test('学生投影不含原始 / 成人 / 内部字段，也不含分数排名�
 
 test('家长投影保持最小可见范围：无 evidenceIds / observationState / 原始字段', async () => {
   const service = makeService();
-  service.record({ ...baseInput, evidenceIds: ['artifact:artifact-001'] });
+  await service.record({ ...baseInput, evidenceIds: ['artifact:artifact-001'] });
 
   const page = await service.getParentPage('student-test', EMPTY_QUERY);
   const keys = collectKeys(page);

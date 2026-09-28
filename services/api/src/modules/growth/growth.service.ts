@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   ChildRef,
   GrowthProjectOption,
@@ -14,21 +14,43 @@ import type {
   StudentGrowthTimeline,
 } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
-import { normaliseEvidenceIds, observationStateFor } from './growth.evidence';
+import type { DataMode } from '../../database';
+import { DATA_MODE_TOKEN } from '../../database';
+import { observationStateFor } from './growth.evidence';
+import {
+  buildGrowthStoredRecord,
+  type GrowthRecordInput,
+  type GrowthStoredRecord,
+} from './growth.record';
+import {
+  GROWTH_RECORD_STORE,
+  GrowthRecordStore,
+  InMemoryGrowthRecordStore,
+} from './growth.persistence';
+
+export type { GrowthRecordInput } from './growth.record';
 
 /**
  * 成长轨迹服务端。
  *
  * 两条硬规则（AGENTS.md + growth-spec.md §8）：
  *  1. 成长档案**没有客户端写路径**。这个服务只对外暴露读接口；记录由服务端
- *     自己产生（`recordStageCompletion` / `recordArtifactPublished` / …）。
+ *     自己产生（`record`），HTTP 层永不提供写接口。
  *  2. 学生端与家长端读的是**同一个**存储，只是投影字段不同。所以「和家长端
  *     同步」不是靠两边各自刷新，而是构造上就只有一份真相。
  *
- * 存储是进程内的：这符合当前「模块化单体 + 无数据库」的形态。换数据库时只需
- * 替换下面三个私有 Map，控制器与投影逻辑不用动。
+ * 持久化（迁移 0008 `growth_records`，ADR 0006）：
+ *  - live（有 `DATABASE_URL`）：`PostgresGrowthRecordStore` 是真相，启动时
+ *    `onModuleInit` 把库中记录水合成**只读内存快照**，使既有同步读投影无需改成
+ *    async；写记录（`record`）先落库（`idempotency_key` 唯一、只追加），成功后
+ *    同步更新快照。
+ *  - demo / test：`InMemoryGrowthRecordStore` + 确定性演示 fixture，仅非 live。
+ *
+ * 这样控制器与家长导出服务的读契约（同步返回）保持不变；代价与收敛方案见
+ * `growth-persistence.md`（多实例快照滞后、`encouragement` 未落表等）。
  */
 
+/** 演示项目标题。正式环境下标题由读模型从 `projects` 表 join 补齐。 */
 const PROJECT_TITLES: Record<string, string> = {
   'project-demo-001': '校园植物观察手册',
   'project-demo-002': '天气数据小助手',
@@ -47,58 +69,63 @@ const ICON_BY_TYPE: Record<StudentGrowthEntryType, StudentGrowthIcon> = {
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
-export interface GrowthRecordInput {
-  studentId: string;
-  type: StudentGrowthEntryType;
-  occurredAt: string;
-  title: string;
-  summaryStudent: string;
-  summaryParent: string;
-  projectId?: string | null;
-  stage?: ProjectStage | null;
-  artifactRef?: string | null;
-  objectiveTitles?: string[];
-  encouragement?: string | null;
-  /**
-   * 服务端证据引用（`sourceKind:opaqueId`）。调用方传入的值会经过白名单
-   * 归一化；非法 / 未知来源被静默丢弃，绝不影响记录本身的写入。
-   */
-  evidenceIds?: string[];
-}
-
 @Injectable()
 export class GrowthService {
-  /** 唯一的成长记录真相。 */
-  private readonly records = new Map<string, StudentGrowthEntry[]>();
+  private readonly logger = new Logger(GrowthService.name);
 
-  /** 家长投影用的措辞与学生投影是两条独立文案，绝不互相兜底。 */
-  private readonly parentWording = new Map<string, string>();
+  /** 只读内存快照：live 下由启动水合 + 服务端写入填充；非 live 由 fixture 填充。 */
+  private readonly records = new Map<string, GrowthStoredRecord[]>();
 
   constructor(
     @Inject('DirectoryService') private readonly directory: DirectoryService,
+    @Inject(GROWTH_RECORD_STORE)
+    private readonly store: GrowthRecordStore = new InMemoryGrowthRecordStore(),
+    @Optional()
+    @Inject(DATA_MODE_TOKEN)
+    private readonly dataMode: DataMode = 'test',
   ) {
-    this.seedDemoData();
+    // 演示 / 测试 fixture 只在**非持久化**存储上灌入；live 永远不会写演示数据。
+    if (!this.store.persistent) {
+      const fixtures = this.buildDemoRecords();
+      this.store.seed(fixtures);
+      for (const record of fixtures) this.cacheRecord(record);
+    }
+  }
+
+  /**
+   * live 启动时从规范表水合只读快照。
+   *
+   * 水合失败会向上抛，让进程 fail-fast（而不是带着空快照对外服务、看起来像
+   * 「学生没有成长记录」）。
+   */
+  async onModuleInit(): Promise<void> {
+    if (!this.store.persistent) return;
+    const rows = await this.store.listAll();
+    for (const record of rows) this.cacheRecord(record);
+    this.logger.log(
+      `GrowthService：已从 growth_records 水合 ${rows.length} 条记录（只读快照）。`,
+    );
   }
 
   /* --------------------------- 读：学生投影 --------------------------- */
 
   getProjects(studentId: string): GrowthProjectOption[] {
     const seen = new Map<string, string>();
-    for (const entry of this.entries(studentId)) {
-      if (entry.projectId === null) continue;
-      if (seen.has(entry.projectId)) continue;
-      seen.set(entry.projectId, entry.projectTitle ?? entry.projectId);
+    for (const record of this.recordsFor(studentId)) {
+      if (record.projectId === null) continue;
+      if (seen.has(record.projectId)) continue;
+      seen.set(record.projectId, record.projectTitle ?? record.projectId);
     }
     return [...seen.entries()].map(([id, title]) => ({ id, title }));
   }
 
   getSummary(studentId: string): StudentGrowthSummary {
-    const all = this.entries(studentId);
+    const all = this.recordsFor(studentId);
     return {
       streakDays: this.computeStreak(all),
       projectsCompleted: this.countCompletedProjects(all),
-      objectivesMastered: new Set(all.flatMap((entry) => entry.objectiveTitles)).size,
-      artifactsPublished: all.filter((entry) => entry.type === 'artifact_published').length,
+      objectivesMastered: new Set(all.flatMap((record) => record.objectiveTitles)).size,
+      artifactsPublished: all.filter((record) => record.type === 'artifact_published').length,
     };
   }
 
@@ -107,27 +134,45 @@ export class GrowthService {
    * 排序是 `occurredAt` 降序、同时间按 id 降序，保证稳定不重复不跳过。
    */
   getTimeline(studentId: string, query: StudentGrowthQuery): StudentGrowthTimeline {
+    const page = this.queryRecords(studentId, query);
+    return {
+      items: page.records.map((record) => this.toStudentEntry(record)),
+      nextCursor: page.nextCursor,
+      hasNext: page.hasNext,
+    };
+  }
+
+  /**
+   * 分页查询规范记录。学生投影与家长投影都从这里取同一页，保证两端同步。
+   *
+   * 游标是「上一页最后一条的 id」，服务端在同一排序下反查下标；排序是
+   * `occurredAt` 降序、同时间按 id 降序，保证稳定不重复不跳过。
+   */
+  private queryRecords(
+    studentId: string,
+    query: StudentGrowthQuery,
+  ): { records: GrowthStoredRecord[]; nextCursor: string | null; hasNext: boolean } {
     const limit = this.normaliseLimit(query.limit);
-    const filtered = this.sorted(this.entries(studentId)).filter((entry) => {
-      if (query.type !== 'all' && entry.type !== query.type) return false;
-      if (query.projectId !== null && entry.projectId !== query.projectId) return false;
-      if (query.from !== null && entry.occurredAt < query.from) return false;
-      if (query.to !== null && entry.occurredAt > query.to) return false;
+    const filtered = this.sorted(this.recordsFor(studentId)).filter((record) => {
+      if (query.type !== 'all' && record.type !== query.type) return false;
+      if (query.projectId !== null && record.projectId !== query.projectId) return false;
+      if (query.from !== null && record.occurredAt < query.from) return false;
+      if (query.to !== null && record.occurredAt > query.to) return false;
       return true;
     });
 
     let start = 0;
     if (query.cursor !== null) {
-      const index = filtered.findIndex((entry) => entry.id === query.cursor);
+      const index = filtered.findIndex((record) => record.id === query.cursor);
       // 未知游标按「从头开始」处理，而不是报错：旧链接仍然可用。
       start = index === -1 ? 0 : index + 1;
     }
 
-    const page = filtered.slice(start, start + limit);
+    const records = filtered.slice(start, start + limit);
     const hasNext = start + limit < filtered.length;
     return {
-      items: page,
-      nextCursor: hasNext && page.length > 0 ? page[page.length - 1]!.id : null,
+      records,
+      nextCursor: hasNext && records.length > 0 ? records[records.length - 1]!.id : null,
       hasNext,
     };
   }
@@ -152,14 +197,10 @@ export class GrowthService {
 
   async getParentPage(childId: string, query: StudentGrowthQuery): Promise<ParentGrowthPageData> {
     const studentSummary = this.getSummary(childId);
-    const all = this.entries(childId);
-    const timeline = this.getTimeline(childId, query);
+    const all = this.recordsFor(childId);
+    const page = this.queryRecords(childId, query);
 
-    // 显示名从目录取，而不是本地硬编码。
-    //
-    // 之前这里是一张写死的 { student-demo: '小宇', student-demo-2: '小禾' } 表，
-    // 于是同一个孩子在家长端叫「小宇」、在教师名册和管理后台叫「演示学生」。
-    // 目录是身份的唯一真相，所以这里直接问它——多出一个 await 换来全站一致。
+    // 显示名从目录取，而不是本地硬编码——目录是身份的唯一真相。
     const child = await this.directory.findUser(childId);
     const childDisplayName = child?.displayName ?? '孩子';
 
@@ -176,9 +217,9 @@ export class GrowthService {
     return {
       summary,
       timeline: {
-        items: timeline.items.map((entry) => this.toParentEntry(entry)),
-        nextCursor: timeline.nextCursor,
-        hasNext: timeline.hasNext,
+        items: page.records.map((record) => this.toParentEntry(record)),
+        nextCursor: page.nextCursor,
+        hasNext: page.hasNext,
       },
     };
   }
@@ -187,67 +228,77 @@ export class GrowthService {
 
   /**
    * 服务端内部写入。控制器**不**暴露这个能力——成长档案不能由客户端写。
+   *
+   * 只追加 + 幂等：同一 `idempotencyKey`（缺省由内容派生）重试只落一条；命中
+   * 已存在记录时返回既有投影，不重复写入。
    */
-  record(input: GrowthRecordInput): StudentGrowthEntry {
+  async record(input: GrowthRecordInput): Promise<StudentGrowthEntry> {
     const projectTitle =
-      input.projectId === undefined || input.projectId === null
+      input.projectTitle ??
+      (input.projectId === undefined || input.projectId === null
         ? null
-        : (PROJECT_TITLES[input.projectId] ?? input.projectId);
+        : (PROJECT_TITLES[input.projectId] ?? input.projectId));
 
-    // 证据引用只走服务端白名单；观察状态由证据有无推导，客户端无法写入。
-    const evidenceIds = normaliseEvidenceIds(input.evidenceIds);
-
-    const entry: StudentGrowthEntry = {
-      id: `growth-${input.studentId}-${this.entries(input.studentId).length + 1}`,
-      type: input.type,
-      occurredAt: input.occurredAt,
-      title: input.title,
-      summaryStudent: input.summaryStudent,
-      projectId: input.projectId ?? null,
-      projectTitle,
-      stage: input.stage ?? null,
-      artifactRef: input.artifactRef ?? null,
-      objectiveTitles: input.objectiveTitles ?? [],
-      icon: ICON_BY_TYPE[input.type],
-      encouragement: input.encouragement ?? null,
-      evidenceIds,
-      observationState: observationStateFor(evidenceIds),
-    };
-
-    this.entries(input.studentId).push(entry);
-    this.parentWording.set(entry.id, input.summaryParent);
-    return entry;
+    const stored = buildGrowthStoredRecord({ ...input, projectTitle }, new Date().toISOString());
+    const { record } = await this.store.append(stored);
+    this.cacheRecord(record);
+    return this.toStudentEntry(record);
   }
 
   /* ------------------------------ 内部 ------------------------------ */
 
-  private entries(studentId: string): StudentGrowthEntry[] {
-    let list = this.records.get(studentId);
-    if (list === undefined) {
-      list = [];
-      this.records.set(studentId, list);
-    }
-    return list;
+  private recordsFor(studentId: string): GrowthStoredRecord[] {
+    return this.records.get(studentId) ?? [];
   }
 
-  private sorted(entries: StudentGrowthEntry[]): StudentGrowthEntry[] {
-    return [...entries].sort((a, b) => {
+  /** 把一条规范记录放进快照；按 id 去重，重复只追加不会产生两条。 */
+  private cacheRecord(record: GrowthStoredRecord): void {
+    let list = this.records.get(record.studentId);
+    if (list === undefined) {
+      list = [];
+      this.records.set(record.studentId, list);
+    }
+    if (list.some((existing) => existing.id === record.id)) return;
+    list.push(record);
+  }
+
+  private sorted(records: readonly GrowthStoredRecord[]): GrowthStoredRecord[] {
+    return [...records].sort((a, b) => {
       if (a.occurredAt !== b.occurredAt) return a.occurredAt < b.occurredAt ? 1 : -1;
       return a.id < b.id ? 1 : -1;
     });
   }
 
-  private toParentEntry(entry: StudentGrowthEntry): ParentGrowthEntry {
+  private toStudentEntry(record: GrowthStoredRecord): StudentGrowthEntry {
     return {
-      id: entry.id,
-      type: entry.type,
-      occurredAt: entry.occurredAt,
-      title: entry.title,
-      // 家长文案独立取用；缺失时用学生文案兜底也绝不带内部风险标签。
-      summaryParent: this.parentWording.get(entry.id) ?? entry.summaryStudent,
-      projectTitle: entry.projectTitle,
-      stage: entry.stage,
-      artifactRef: entry.artifactRef,
+      id: record.id,
+      type: record.type,
+      occurredAt: record.occurredAt,
+      title: record.title,
+      summaryStudent: record.summaryStudent,
+      projectId: record.projectId,
+      projectTitle: record.projectTitle,
+      stage: record.stage,
+      artifactRef: record.artifactRef,
+      objectiveTitles: [...record.objectiveTitles],
+      icon: ICON_BY_TYPE[record.type],
+      encouragement: record.encouragement,
+      evidenceIds: [...record.evidenceIds],
+      observationState: observationStateFor(record.evidenceIds),
+    };
+  }
+
+  private toParentEntry(record: GrowthStoredRecord): ParentGrowthEntry {
+    return {
+      id: record.id,
+      type: record.type,
+      occurredAt: record.occurredAt,
+      title: record.title,
+      // 家长文案独立取用；规范表里 `summary_parent` 与 `summary_student` 并列存放。
+      summaryParent: record.summaryParent,
+      projectTitle: record.projectTitle,
+      stage: record.stage,
+      artifactRef: record.artifactRef,
     };
   }
 
@@ -256,20 +307,20 @@ export class GrowthService {
     return Math.min(Math.floor(limit), MAX_LIMIT);
   }
 
-  private countCompletedProjects(entries: StudentGrowthEntry[]): number {
+  private countCompletedProjects(records: readonly GrowthStoredRecord[]): number {
     const completed = new Set<string>();
-    for (const entry of entries) {
-      if (entry.projectId === null) continue;
-      if (entry.stage === null) continue;
-      if (!TERMINAL_STAGES.has(entry.stage)) continue;
-      completed.add(entry.projectId);
+    for (const record of records) {
+      if (record.projectId === null) continue;
+      if (record.stage === null) continue;
+      if (!TERMINAL_STAGES.has(record.stage)) continue;
+      completed.add(record.projectId);
     }
     return completed.size;
   }
 
   /** 连续天数：从最近一天往回数，必须是连续的自然日。 */
-  private computeStreak(entries: StudentGrowthEntry[]): number {
-    const days = new Set(entries.map((entry) => entry.occurredAt.slice(0, 10)));
+  private computeStreak(records: readonly GrowthStoredRecord[]): number {
+    const days = new Set(records.map((record) => record.occurredAt.slice(0, 10)));
     if (days.size === 0) return 0;
 
     let streak = 0;
@@ -286,92 +337,101 @@ export class GrowthService {
   /* ------------------------------ 演示数据 ------------------------------ */
 
   /**
-   * 演示学生的既有成长档案。
+   * 演示学生的既有成长档案（仅非持久化 / 非 live）。
    *
    * 时间是**相对当前时间**生成的，所以「连续天数」在任何一天打开都不是 0，
-   * 也不会随着代码老化而变成几个月前。
+   * 也不会随着代码老化而变成几个月前。幂等键显式给出，因此这是一个确定性
+   * fixture，可由 `InMemoryGrowthRecordStore.seed` 幂等灌入。
    */
-  private seedDemoData(): void {
+  private buildDemoRecords(): GrowthStoredRecord[] {
     const daysAgo = (days: number, hour = 16): string => {
       const date = new Date();
       date.setUTCDate(date.getUTCDate() - days);
       date.setUTCHours(hour, 0, 0, 0);
       return date.toISOString();
     };
+    const demo = (input: GrowthRecordInput): GrowthStoredRecord =>
+      buildGrowthStoredRecord(
+        { ...input, projectTitle: input.projectId ? (PROJECT_TITLES[input.projectId] ?? null) : null },
+        input.occurredAt,
+      );
 
-    this.record({
-      studentId: 'student-demo',
-      type: 'reflection_created',
-      occurredAt: daysAgo(1, 17),
-      title: '写下第一次观察反思',
-      summaryStudent: '你把「叶子为什么朝光长」这个问题写下来了，还加了自己的猜想。',
-      summaryParent: '孩子主动记录了一次观察反思，提出了自己的猜想。',
-      projectId: 'project-demo-001',
-      stage: 'reflection',
-      encouragement: '会发现好问题，比会背答案更重要。',
-      evidenceIds: ['reflection:reflection-demo-001'],
-    });
-
-    this.record({
-      studentId: 'student-demo',
-      type: 'artifact_published',
-      occurredAt: daysAgo(2, 15),
-      title: '发布作品《校园植物观察手册（第 1 版）》',
-      summaryStudent: '你的观察手册第一次发布，里面有 6 种植物的记录。',
-      summaryParent: '孩子发布了一件作品，包含 6 种植物的观察记录。',
-      projectId: 'project-demo-001',
-      stage: 'published',
-      artifactRef: 'artifact-demo-001',
-      evidenceIds: ['artifact:artifact-demo-001'],
-    });
-
-    this.record({
-      studentId: 'student-demo',
-      type: 'objective_mastered',
-      occurredAt: daysAgo(3, 16),
-      title: '掌握「光合作用的条件」',
-      summaryStudent: '你用自己的话说明了光合作用需要光和水，并举出了反例。',
-      summaryParent: '孩子掌握了一个学习目标，并能举例说明。',
-      projectId: 'project-demo-001',
-      stage: 'theory_check',
-      objectiveTitles: ['光合作用的条件'],
-      evidenceIds: ['theory_check:theory-demo-001', 'student_answer:answer-demo-001'],
-    });
-
-    this.record({
-      studentId: 'student-demo',
-      type: 'project_stage_completed',
-      occurredAt: daysAgo(4, 14),
-      title: '完成「理论闯关」阶段',
-      summaryStudent: '理论部分全部通过，你准备好动手做观察手册了。',
-      summaryParent: '孩子完成了项目的理论阶段，进入实践准备。',
-      projectId: 'project-demo-001',
-      stage: 'practice_ready',
-      evidenceIds: ['theory_check:theory-demo-002'],
-    });
-
-    this.record({
-      studentId: 'student-demo',
-      type: 'objective_mastered',
-      occurredAt: daysAgo(5, 16),
-      title: '掌握「观察记录的要素」',
-      summaryStudent: '你记住了观察记录要写时间、地点和变化。',
-      summaryParent: '孩子掌握了一个学习目标。',
-      projectId: 'project-demo-001',
-      stage: 'theory_learning',
-      objectiveTitles: ['观察记录的要素'],
-      evidenceIds: ['student_answer:answer-demo-002'],
-    });
-
-    this.record({
-      studentId: 'student-demo',
-      type: 'project_stage_completed',
-      occurredAt: daysAgo(6, 11),
-      title: '确认项目方向：校园植物观察手册',
-      summaryStudent: '你决定做一个校园植物观察手册，方向是你自己选的。',
-      summaryParent: '孩子确认了自己的项目方向。',
-      projectId: 'project-demo-001',
-      stage: 'intent_confirmed',
-    });
+    return [
+      demo({
+        studentId: 'student-demo',
+        type: 'reflection_created',
+        occurredAt: daysAgo(1, 17),
+        title: '写下第一次观察反思',
+        summaryStudent: '你把「叶子为什么朝光长」这个问题写下来了，还加了自己的猜想。',
+        summaryParent: '孩子主动记录了一次观察反思，提出了自己的猜想。',
+        projectId: 'project-demo-001',
+        stage: 'reflection',
+        encouragement: '会发现好问题，比会背答案更重要。',
+        evidenceIds: ['reflection:reflection-demo-001'],
+        idempotencyKey: 'growth:demo:reflection:demo-001',
+      }),
+      demo({
+        studentId: 'student-demo',
+        type: 'artifact_published',
+        occurredAt: daysAgo(2, 15),
+        title: '发布作品《校园植物观察手册（第 1 版）》',
+        summaryStudent: '你的观察手册第一次发布，里面有 6 种植物的记录。',
+        summaryParent: '孩子发布了一件作品，包含 6 种植物的观察记录。',
+        projectId: 'project-demo-001',
+        stage: 'published',
+        artifactRef: 'artifact-demo-001',
+        evidenceIds: ['artifact:artifact-demo-001'],
+        idempotencyKey: 'growth:demo:artifact:demo-001',
+      }),
+      demo({
+        studentId: 'student-demo',
+        type: 'objective_mastered',
+        occurredAt: daysAgo(3, 16),
+        title: '掌握「光合作用的条件」',
+        summaryStudent: '你用自己的话说明了光合作用需要光和水，并举出了反例。',
+        summaryParent: '孩子掌握了一个学习目标，并能举例说明。',
+        projectId: 'project-demo-001',
+        stage: 'theory_check',
+        objectiveTitles: ['光合作用的条件'],
+        evidenceIds: ['theory_check:theory-demo-001', 'student_answer:answer-demo-001'],
+        idempotencyKey: 'growth:demo:objective:photosynthesis',
+      }),
+      demo({
+        studentId: 'student-demo',
+        type: 'project_stage_completed',
+        occurredAt: daysAgo(4, 14),
+        title: '完成「理论闯关」阶段',
+        summaryStudent: '理论部分全部通过，你准备好动手做观察手册了。',
+        summaryParent: '孩子完成了项目的理论阶段，进入实践准备。',
+        projectId: 'project-demo-001',
+        stage: 'practice_ready',
+        evidenceIds: ['theory_check:theory-demo-002'],
+        idempotencyKey: 'growth:demo:stage:practice_ready',
+      }),
+      demo({
+        studentId: 'student-demo',
+        type: 'objective_mastered',
+        occurredAt: daysAgo(5, 16),
+        title: '掌握「观察记录的要素」',
+        summaryStudent: '你记住了观察记录要写时间、地点和变化。',
+        summaryParent: '孩子掌握了一个学习目标。',
+        projectId: 'project-demo-001',
+        stage: 'theory_learning',
+        objectiveTitles: ['观察记录的要素'],
+        evidenceIds: ['student_answer:answer-demo-002'],
+        idempotencyKey: 'growth:demo:objective:observation-elements',
+      }),
+      demo({
+        studentId: 'student-demo',
+        type: 'project_stage_completed',
+        occurredAt: daysAgo(6, 11),
+        title: '确认项目方向：校园植物观察手册',
+        summaryStudent: '你决定做一个校园植物观察手册，方向是你自己选的。',
+        summaryParent: '孩子确认了自己的项目方向。',
+        projectId: 'project-demo-001',
+        stage: 'intent_confirmed',
+        idempotencyKey: 'growth:demo:stage:intent_confirmed',
+      }),
+    ];
   }
 }
