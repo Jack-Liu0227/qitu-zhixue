@@ -8,7 +8,6 @@ import type {
   TeacherInterventionAction,
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
-  TeacherSettingsPageData,
   TeacherIdentity,
   TeacherGuardianRef,
 } from '@qitu/contracts';
@@ -196,16 +195,4 @@ export class TeacherService {
     };
   }
 
-  /**
-   * Get settings for this teacher.
-   */
-  async getSettings(teacherUserId: string): Promise<TeacherSettingsPageData> {
-    // Demo: return minimal settings
-    return {
-      sections: [],
-      managedByRoute: '/admin/settings',
-      teacherOverrideAllowed: false,
-      dataSource: 'demo',
-    };
-  }
 }

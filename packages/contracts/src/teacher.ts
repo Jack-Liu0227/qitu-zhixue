@@ -188,30 +188,6 @@ export interface TeacherStatisticsPageData {
 }
 
 /* ------------------------------------------------------------------ *
- * 启发式策略设置（只读投影）
- *
- * 这些开关属于平台级配置，**唯一写入者是管理后台**。
- * 班主任端只做只读展示 + 跳转提示，避免两端各自改策略导致
- * 同一个学生的引导方式不一致。
- * ------------------------------------------------------------------ */
-
-export interface TeacherStrategySection {
-  id: string;
-  label: string;
-  description: string;
-  active: boolean;
-}
-
-export interface TeacherSettingsPageData {
-  sections: TeacherStrategySection[];
-  /** 该设置的实际管理入口（指向管理后台），前端据此给出跳转说明。 */
-  managedByRoute: string;
-  /** 本租户是否允许班主任覆盖平台默认策略。默认 false。 */
-  teacherOverrideAllowed: boolean;
-  dataSource: DataSource;
-}
-
-/* ------------------------------------------------------------------ *
  * 家长反馈工单
  *
  * 班主任只能看到自己**当前**学生的工单（对象级授权在服务端，403 只返回

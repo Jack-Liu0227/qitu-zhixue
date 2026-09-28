@@ -16,7 +16,6 @@ import type {
   TeacherInterventionActionRequest,
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
-  TeacherSettingsPageData,
   TeacherFeedbackListPageData,
   TeacherFeedbackDetail,
   ReplyTeacherFeedbackRequest,
@@ -148,17 +147,6 @@ export class TeacherController {
     const stats = await this.teacherService.getStatistics(user.id);
 
     return { data: stats };
-  }
-
-  @Get('settings')
-  async getSettings(
-    @Headers('cookie') cookieHeader: string | undefined,
-  ): Promise<{ data: TeacherSettingsPageData }> {
-    const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
-
-    const settings = await this.teacherService.getSettings(user.id);
-
-    return { data: settings };
   }
 
   /** 家长反馈工单列表，只含当前班主任名下的学生。 */
