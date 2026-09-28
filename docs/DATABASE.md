@@ -65,7 +65,25 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 --   model_models.provider_id                  -> model_providers.id
 --   model_usage_bindings.provider_id          -> model_providers.id
 --   model_usage_bindings (provider_id, model_id) -> model_models (provider_id, model_id)
+
+-- 同一学生同一目标只有一条掌握度状态（0008）
+CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
+  ON mastery_records (student_user_id, objective_id);
+
+-- 幂等键唯一（0008）：重试不会产生第二条业务记录
+--   learning_plans_idempotency_unique_idx / growth_records_idempotency_unique_idx /
+--   student_memories_idempotency_unique_idx / mentor_reviews_idempotency_unique_idx
 ```
+
+### 硬业务规则与其落表方式
+
+| 规则 | 强制方式 |
+|---|---|
+| 一名学生同一时间只能有一个当前班主任 | `mentor_assignments` 部分唯一索引（DB 级） |
+| 学生未确认意图不得创建正式项目 | 服务端状态机：`intent_confirmations` + `learning_plans.confirmed_at`；确认后才写 `projects` / `learning_plans.project_id` |
+| `TheoryMastered` 之前不得进入实践 | 服务端根据 `mastery_records`（`mastery_basis_points >= threshold_basis_points` 或 `qualitative_mastered`）判定；`learning_sessions.practice_objective_ids` 只在门槛达成后由服务端解锁 |
+| 项目 / 计划绑定冻结模板版本 | `projects.template_version_id` / `learning_plans.template_version_id` 外键指向 `project_template_versions` |
+| 平台共享 vs 校域隔离 | `project_templates` 部分唯一 slug；`knowledge_documents.scope`（见 §3.1） |
 
 ## 3. 表归属（单一写入者）
 
@@ -74,12 +92,13 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 | 模块（owner） | 表 |
 |---|---|
 | Identity & Access | **`users`**、**`households`**、**`guardian_links`**、**`mentor_assignments`**、`roles`、`identities`、`sessions`、`student_profiles`、`mentor_profiles`、`consents` |
+| Tenancy（校域） | **`schools`**、**`users.school_id`**（可空；`NULL` = 平台共享）、`student_profiles.school_id`（待建） |
 | Cross-cutting Operations | **`audit_logs`**、**`outbox`**、**`idempotency_keys`** |
-| Projects & Learning | `project_templates`、`project_template_versions`、`recommendation_sessions`、`recommendation_items`、`exploration_sessions`、`exploration_turns`、`intent_confirmations`、`projects`、`project_stages`、`project_tasks`、`learning_sessions`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
-| AI Tutor | `tutor_sessions`、`tutor_turns`、`context_snapshots` |
+| Projects & Learning | **`project_templates`**、**`project_template_versions`**、**`exploration_sessions`**、**`intent_confirmations`**、**`projects`**、**`learning_plans`**、**`learning_modules`**、**`learning_objectives`**、**`learning_sessions`**、**`mastery_records`**、**`mastery_attempts`**、`recommendation_sessions`、`recommendation_items`、`exploration_turns`、`project_stages`、`project_tasks`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
+| AI Tutor | **`tutor_sessions`**、**`tutor_turns`**、**`tutor_partners`**、**`tutor_learner_profiles`**、**`tutor_memories`**、**`tutor_growth_signals`**、**`tutor_knowledge_documents`**、**`tutor_template_documents`**（0007 工作区适配层）、`context_snapshots` |
 | Works | `artifacts`、`artifact_versions`、`evidence`、`review_records` |
-| Growth | `growth_snapshots`、`milestones` |
-| Mentor Ops | `alerts`、`interventions`、`feedback_tickets`、`knowledge_documents`、`knowledge_chunks` |
+| Growth | **`growth_records`**、**`student_memories`**、`growth_snapshots`、`milestones` |
+| Mentor Ops | **`mentor_reviews`**、**`knowledge_documents`**、**`knowledge_chunks`**、`alerts`、`interventions`、`feedback_tickets` |
 | Parent Experience | `notifications`（读取投影，不建独立业务表）、**`parent_growth_exports`**（0003，家长成长导出任务 + 脱敏正文快照） |
 | Admin & Compliance | **`audit_logs`**、**`outbox`**、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
 | Model Registry | **`model_providers`**、**`model_models`**、**`model_usage_bindings`**（对应 Provider / Model / Usage，0002 已建） |
@@ -87,6 +106,36 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 > `model_usage`（产品文档 8.1）目前未建，由 `model_usage_bindings` 承担用途绑定。
 > 三层配置表结构已建（0002）；但 `model-registry` service 仍只写进程内存，尚未读写这些表，
 > 密钥加密 / secret manager 也未接入（`secret_ref` / `encrypted_api_key` 仅为存储槽）。
+
+### 3.1 校域（school_id）与共享 / 私有边界
+
+- `schools` 为校域根表；`school_id` 可空列约定：**`NULL` = 平台共享**，非空 = 该校私有。
+- 已带 `school_id` 的落地表：`users`、`project_templates`、`knowledge_documents`、
+  `learning_plans`、`mastery_records`、`mastery_attempts`、`growth_records`、`student_memories`、
+  `mentor_reviews`。
+- 共享/私有边界：`project_templates` 用部分唯一索引区分平台 slug（`school_id IS NULL`）与
+  校域 slug（`school_id IS NOT NULL`）；`knowledge_documents.scope` 取
+  `system | school | project | student`，`student` 作用域必须绑定 `owner_user_id`。
+- **学生私有事实**（成长记录、学生记忆、掌握度）默认 `visibility = 'student_private'`，
+  由服务端写入；家长/班主任只能读取允许投影的字段（`summary_parent` 等）。
+- **尚未实现**：行级安全（RLS）/ `SET LOCAL` 会话变量、跨校写入强制校验、多校租户切换。
+  当前 `school_id` 仅供应用层过滤，权限仍由后端逐对象校验。
+
+### 3.2 领域真源 vs AI 工作区适配层（并存）
+
+0008 建立的是**正式领域真源**（`project_templates` / `knowledge_documents` /
+`growth_records` / `learning_plans` 等）。0007 的 `tutor_*` 表是 AI 搭档工作区适配层，
+当前仍被 `services/api/src/modules/ai-tutor/tutor-workspace.service.ts` 使用：
+
+| 领域真源（0008） | 工作区适配层（0007） | 说明 |
+|---|---|---|
+| `project_templates` / `project_template_versions` | `tutor_template_documents` | 适配层为单表文本版本，真源含冻结版本与 rubric |
+| `knowledge_documents` / `knowledge_chunks` | `tutor_knowledge_documents` | 真源含 scope / 校验状态 / 分块与 embedding |
+| `growth_records` | `tutor_growth_signals` | 真源含双份摘要（学生/家长）与可见性 |
+| `student_memories` | `tutor_memories` | 真源含置信度与可见性 |
+
+合并方向见 `docs/decisions/0006-domain-module-storage.md`：先双写/迁移再下线适配层，
+不在本批直接删表。
 
 ## 4. 迁移顺序
 
@@ -116,6 +165,18 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
   └─ alerts / interventions / feedback_tickets / notifications
      → parent_growth_exports （0003，已建，ISSUE-T5）
      → model_providers / model_models / model_usage_bindings （0002，已建）
+
+第 5 批  单一学校领域基础层（0008，已建）
+  └─ schools
+     → project_templates / project_template_versions
+     → knowledge_documents / knowledge_chunks
+     → learning_plans / learning_modules / learning_objectives / learning_sessions
+     → mastery_records / mastery_attempts
+     → growth_records / student_memories
+     → mentor_reviews
+     并回填 users.school_id 与 projects / exploration_sessions.template_version_id 外键。
+     注意：Postgres 标识符上限 63 字符，长外键名必须用显式短名（见 0008 的
+     `exploration_sessions_template_version_id_fk` / `learning_plans_template_version_id_fk`）。
 ```
 
 **规则**：迁移编号单调递增；合并到主线后不可修改历史迁移；新迁移必须能对空库重放。
@@ -131,15 +192,26 @@ psql "$DATABASE_URL" -f database/migrations/0000_clever_kang.sql
 psql "$DATABASE_URL" -f database/migrations/0001_cheerful_colossus.sql
 psql "$DATABASE_URL" -f database/migrations/0002_light_miracleman.sql
 psql "$DATABASE_URL" -f database/migrations/0003_glamorous_ulik.sql
+psql "$DATABASE_URL" -f database/migrations/0004_stormy_korvac.sql
+psql "$DATABASE_URL" -f database/migrations/0005_nostalgic_shotgun.sql
+psql "$DATABASE_URL" -f database/migrations/0006_yellow_pete_wisdom.sql
+psql "$DATABASE_URL" -f database/migrations/0007_tutor_workspace.sql
+psql "$DATABASE_URL" -f database/migrations/0008_domain_foundation.sql
 
 # 确定性演示数据（幂等，可重复执行）
 pnpm --filter @qitu/database seed
+
+# 领域基础层演示数据（0008 表；幂等，需先跑 demo-identities.sql 建立演示账号）
+# 注：seed.ts 目前只执行 demo-identities.sql 与 tutor-workspace.sql，
+#     本文件在 seed.ts 扩展前需手动执行，或由 owner 模块接入。
+psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 ```
 
 - 迁移产物必须与 owner 模块一起评审；每个 `.sql` 需配 `.down.sql`。
-- `database/seeds/demo-identities.sql` 是种子唯一真源；`packages/database/src/seed.ts` 只执行它。
-- 种子幂等语义：`users` 冲突 `DO UPDATE`；`guardian_links` / `mentor_assignments` 冲突 `DO NOTHING`。
-  详见 `database/README.md`。
+- `database/seeds/demo-identities.sql` 是身份种子真源，`tutor-workspace.sql` 为工作区适配层种子，
+  `domain-foundation.sql` 为 0008 领域表演示数据；`packages/database/src/seed.ts` 目前执行前两者。
+- 种子幂等语义：`users` / `schools` / 领域 fixture 冲突 `DO UPDATE`；
+  `guardian_links` / `mentor_assignments` / 运行期记录冲突 `DO NOTHING`。详见 `database/README.md`。
 
 ## 6. 当前已实现 vs 目标
 
@@ -150,10 +222,13 @@ pnpm --filter @qitu/database seed
 | 迁移 `0001_cheerful_colossus`（幂等键 + outbox 错误字段） | **已实现** |
 | 迁移 `0002_light_miracleman`（模型注册表三张表） | **已实现**（仅表结构） |
 | 迁移 `0003_glamorous_ulik`（`parent_growth_exports`） | **已实现**（ISSUE-T5；仅任务元数据 + 脱敏正文，未接异步 worker / 对象存储） |
+| 迁移 `0004`–`0007`（偏好、反馈工单、模型绑定、AI 工作区） | **已实现** |
+| 迁移 `0008_domain_foundation`（学校/模板/知识/计划/掌握/成长/记忆/评审） | **已实现**（表结构 + 外键 + 幂等键；service 读写与 RLS 待接入） |
 | 确定性种子与幂等语义 | **已实现** |
 | `DatabaseModule` 模式化接入（`QITU_DATA_MODE`，默认 live） | **已实现**：live 缺 `DATABASE_URL` fail-fast；仅 demo/test（非 production）允许内存引擎 |
-| 项目 / AI / 成长 / 知识库表 | **未实现**（按阶段推进） |
-| pgvector 扩展与向量索引 | **未实现** |
+| 项目 / AI / 成长 / 知识库表 | **部分实现**：0008 已建领域经典表；`project_stages` / `project_tasks` / `artifacts` / `alerts` / `interventions` 等仍待建 |
+| 校域隔离（RLS / 跨校强制校验） | **未实现**（`school_id` 列已就位，仅应用层过滤） |
+| pgvector 扩展与向量索引 | **未实现**（`knowledge_chunks.embedding` 暂用 JSONB 占位） |
 | 会话持久化（当前进程内） | **未实现** |
 | 模型注册表持久化 | **部分实现**：表结构已建（0002）；service 仍只写进程内存，尚未读写这些表 |
 
@@ -164,6 +239,10 @@ pnpm --filter @qitu/database seed
 - **幂等**：所有写操作携带 `Idempotency-Key`（项目创建、任务/作品提交、导师分配、干预发送）；
   横切结果落 `idempotency_keys`（`scope + key` 唯一，保存 request hash 和原响应），审计仍通过
   `audit_logs.idempotency_key` 关联；业务表的部分唯一约束继续作为最终一致性兜底。
+  0008 新增业务表也内联幂等键唯一索引：`learning_plans`、`growth_records`、`student_memories`、
+  `mentor_reviews` 的 `idempotency_key`，以及 `learning_modules` / `learning_objectives` /
+  `learning_sessions` 的作用域序号唯一约束、`mastery_records` 的
+  `(student_user_id, objective_id)` 唯一约束。
 - **回滚**：迁移只前向；回滚以 `.down.sql` 为载体，人工评审后在受控环境执行。
   关系表不做物理删除，用 `status=ended` + `endedAt` 保留历史。
 
@@ -182,5 +261,10 @@ pnpm --filter @qitu/database seed
       当前的 fail-fast 仅覆盖「未配置/无法创建 client」，不含连接探活。
 - [ ] `roles` / `identities` / `sessions` 的正式结构与迁移。
 - [x] 模型注册表三张表的字段与迁移（0002，表结构已建；service 读写与密钥加密待实现）。
-- [ ] pgvector 的维度与索引类型（HNSW / IVFFlat）在知识库接入时确定。
+- [ ] pgvector 的维度与索引类型（HNSW / IVFFlat）在知识库接入时确定；
+      当前 `knowledge_chunks.embedding` 为 JSONB 占位，接入后需迁移为 `vector` 列。
+- [ ] `tutor_*` 适配层与 0008 领域真源的合并/下线顺序（双写迁移方案）。
+- [ ] `school_id` 的行级安全（RLS）与会话变量策略；多校租户切换。
+- [ ] `mastery_records` 模型字段（difficulty/stability/retrievability）与
+      `docs/agents/tutor-curriculum-design.md` 的间隔复习算法对接。
 - [ ] 数据保留与删除策略、匿名化方案的落表方式。

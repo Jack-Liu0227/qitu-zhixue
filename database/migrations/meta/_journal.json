@@ -57,6 +57,13 @@
       "when": 1790625995334,
       "tag": "0007_tutor_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790628923230,
+      "tag": "0008_domain_foundation",
+      "breakpoints": true
     }
   ]
 }

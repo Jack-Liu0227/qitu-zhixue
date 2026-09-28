@@ -1,6 +1,7 @@
-import { pgTable, text, timestamp, jsonb, integer, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, integer, uniqueIndex, index, foreignKey } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './identity';
+import { projectTemplateVersions } from './project-templates';
 
 /**
  * Exploration sessions: the server-owned **pre-project** state.
@@ -31,6 +32,12 @@ export const explorationSessions = pgTable(
   (table) => ({
     studentIdx: index('exploration_sessions_student_idx').on(table.studentUserId),
     statusIdx: index('exploration_sessions_status_idx').on(table.status),
+    // 显式短名，避免 Postgres 63 字符截断（见 ADR 0006 迁移注意）。
+    templateVersionFk: foreignKey({
+      columns: [table.templateVersionId],
+      foreignColumns: [projectTemplateVersions.id],
+      name: 'exploration_sessions_template_version_id_fk',
+    }),
   }),
 );
 
@@ -89,7 +96,7 @@ export const projects = pgTable(
       .notNull()
       .references(() => users.id),
     /** 冻结引用；自由探索在生成方向卡前可为 null。 */
-    templateVersionId: text('template_version_id'),
+    templateVersionId: text('template_version_id').references(() => projectTemplateVersions.id),
     sourceExplorationId: text('source_exploration_id').references(() => explorationSessions.id),
     status: text('status').notNull(),
     currentStageIndex: integer('current_stage_index').notNull().default(0),

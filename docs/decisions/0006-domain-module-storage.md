@@ -49,6 +49,31 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 2. 每个新模块 PR 必须包含：领域实体、表归属、迁移、权限规则、幂等说明、验收。
 3. 未来模板库 / 知识库 / 成长轨迹接入时，先确认它们引用而非复制 owner 模块的数据。
 
+## 已落地：单一学校领域基础层（迁移 0008）
+
+`0008_domain_foundation` 把模板 / 知识 / 计划 / 掌握度 / 成长 / 记忆 / 评审表落为**领域真源**，
+并回填 `users.school_id`、`projects.template_version_id` / `exploration_sessions.template_version_id`
+外键（均为增量，不改旧表结构）：
+
+- **校域**：`schools`；`school_id` 可空（`NULL` = 平台共享）。
+- **模板**：`project_templates`（平台/校域部分唯一 slug）+ `project_template_versions`（冻结版本、rubric）。
+- **知识**：`knowledge_documents`（scope `system|school|project|student`）+ `knowledge_chunks`（embedding 暂为 JSONB）。
+- **学习计划**：`learning_plans` / `learning_modules` / `learning_objectives` / `learning_sessions`。
+- **掌握度**：`mastery_records`（含间隔复习字段）+ `mastery_attempts`。
+- **成长与记忆**：`growth_records`（学生/家长双摘要 + 可见性）+ `student_memories`。
+- **班主任评审**：`mentor_reviews`。
+- **幂等**：`learning_plans` / `growth_records` / `student_memories` / `mentor_reviews` 内联 `idempotency_key` 唯一索引。
+
+**迁移注意**：Postgres 标识符上限 63 字符；长外键名必须用显式短名
+（`exploration_sessions_template_version_id_fk` / `learning_plans_template_version_id_fk`），
+否则会被静默截断，导致 `.down.sql` 无法准确 `DROP CONSTRAINT`。
+
+**并存关系**：0007 的 `tutor_*` 表仍为 AI 工作区适配层，暂与领域真源并存，
+合并/下线需另立迁移（先双写，再切读，最后退役）。详见 `docs/DATABASE.md` §3.2。
+
+**已实现 vs 规划**：以上为**表结构与种子**；service 读写接入、RLS、pgvector 向量列、
+间隔复习算法落库均属后续工作。
+
 ## 明确不做
 
 - 不提前为每个模块建独立数据库。
@@ -57,4 +82,7 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 ## 未决事项
 
 - [ ] `support` 角色、`roles` / `identities` / `sessions` 表尚未建；当前会话在进程内。
-- [ ] 是否引入数据库层的 `SET ROLE` 或多租户行级安全（RLS）尚未决定。
+- [ ] 是否引入数据库层的 `SET ROLE` 或多租户行级安全（RLS）尚未决定；
+      0008 已提供 `school_id` 列，但隔离仍由应用层负责。
+- [ ] `tutor_*` 适配层与领域真源的合并/下线顺序。
+- [ ] `knowledge_chunks.embedding` 从 JSONB 迁移为 pgvector `vector` 列（维度/索引待定）。

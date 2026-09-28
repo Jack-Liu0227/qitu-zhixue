@@ -1,10 +1,15 @@
 import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { schools } from './tenancy';
 
 /**
  * Users table: the single identity source for all roles.
  * Product constraint: email must be unique (case-insensitive).
  * We use a unique index on lower(email) instead of citext to avoid extension dependencies.
+ *
+ * `school_id` is the tenancy anchor for the shared single-school model: nullable today
+ * (existing rows / system accounts may have no school), with the active school resolved
+ * server-side on future writes. See `tenancy.ts` and ADR 0006.
  */
 export const users = pgTable(
   'users',
@@ -14,12 +19,14 @@ export const users = pgTable(
     displayName: text('display_name').notNull(),
     role: text('role').notNull(), // 'student' | 'parent' | 'teacher' | 'admin'
     passwordHash: text('password_hash').notNull(),
+    schoolId: text('school_id').references(() => schools.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     disabledAt: timestamp('disabled_at', { withTimezone: true }),
   },
   (table) => ({
     emailLowerIdx: uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`),
+    schoolIdx: index('users_school_idx').on(table.schoolId),
   }),
 );
 
