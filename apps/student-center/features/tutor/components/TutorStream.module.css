@@ -116,4 +116,10 @@
   .caret {
     animation: none;
   }
+
+  /* 静止的旋转弧线看起来像卡死；改为完整圆环 + 圆心点，仍表示「进行中」。 */
+  .spinner {
+    border-color: #2878f0;
+    background: radial-gradient(circle, #2878f0 0 26%, transparent 28%);
+  }
 }

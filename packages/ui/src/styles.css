@@ -742,6 +742,16 @@ summary:focus-visible,
   .qitu-greeting-mascot { align-self: flex-end; }
 }
 
+/* ---- 统一页面转场 ----
+   四端内容区共用同一个短转场：进入页面时轻微上浮淡入，280ms 内结束。
+   动画不设置 `pointer-events`，页面内容在转场期间依然可读、可点。
+   减弱动效偏好下整段动画关闭（见下方 `@media`）。 */
+@keyframes qitu-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.qitu-page-transition { animation: qitu-page-in 0.28s ease both; }
+
 /* ---- 减少动效偏好 ---- */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -752,8 +762,37 @@ summary:focus-visible,
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-  .qitu-nav-item:hover { transform: none; }
-  .qitu-button:not(:disabled):active { transform: none; }
+
+  /* 纯装饰性动画（转场、骨架微光、脉冲、打字点）直接停用，避免停在某个中间帧。 */
+  .qitu-page-transition,
+  .qitu-skeleton-line,
+  .qitu-offline-dot,
+  .qitu-typing-dot {
+    animation: none !important;
+  }
+
+  /* 位移 / 缩放是纯装饰运动，减弱动效时不再发生；颜色、边框、阴影等状态
+     反馈照常立即生效（`transition-duration` 已在上方压到近 0）。 */
+  .qitu-nav-item:hover,
+  .qitu-button:not(:disabled):active,
+  .qitu-tutor-option-chip:hover:not(:disabled),
+  .qitu-capability-tile:hover:not(:disabled) {
+    transform: none;
+  }
+
+  /* 旋转圆圈静止后会留下一个缺口，看起来像卡死；减弱动效时改为完整圆环 +
+     圆心点，仍然明确表示「进行中」，且完全不依赖动画。 */
+  .qitu-spinner-circle {
+    animation: none !important;
+    border-color: currentColor;
+    background: radial-gradient(circle, currentColor 0 26%, transparent 28%);
+  }
+
+  .qitu-sidebar,
+  .qitu-sidebar-toggle-icon,
+  .qitu-progress-fill {
+    transition: none !important;
+  }
 }
 
 /* ================================================================== *

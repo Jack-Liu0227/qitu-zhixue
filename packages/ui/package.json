@@ -10,7 +10,7 @@
     "build": "tsc --noEmit",
     "lint": "node -e \"console.log('ui: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('ui: no tests yet')\""
+    "test": "node ../../tooling/validate-reduced-motion.mjs"
   },
   "dependencies": {
     "@qitu/design-tokens": "workspace:*",

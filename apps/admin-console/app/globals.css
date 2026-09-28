@@ -937,3 +937,15 @@ body { min-height: 100vh; }
   .admin-settings-panels { grid-template-columns: minmax(0, 1fr); }
   .admin-usage-bind { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ============ Reduced motion ============
+   页面转场（`.qitu-page-transition`）与进度条填充都是纯运动，减弱动效时关闭；
+   颜色、边框等状态反馈不受影响，仍会立即呈现最终状态。 */
+@media (prefers-reduced-motion: reduce) {
+  .admin-console-content,
+  .admin-stage-bar-fill,
+  .admin-activity-bar-fill {
+    animation: none;
+    transition: none;
+  }
+}

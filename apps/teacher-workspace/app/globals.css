@@ -314,9 +314,21 @@ a { color: inherit; text-decoration: none; }
   .qtx-col-4, .qtx-col-5, .qtx-col-6, .qtx-col-7, .qtx-col-8 { grid-column: span 1; }
 }
 
-/* ============ Page transition ============ */
-@keyframes qtx-page-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ============ Page transition ============
+   复用 `@qitu/ui` 里统一的 `qitu-page-in` 关键帧，四端转场时长与缓动一致。 */
+.qtx-page { animation: qitu-page-in 0.28s ease both; display: flex; flex-direction: column; gap: 20px; }
+
+/* ============ Reduced motion ============ */
+@media (prefers-reduced-motion: reduce) {
+  /* 页面转场、导航与表格行的高亮过渡无需位移或渐变动画。 */
+  .qtx-page {
+    animation: none;
+  }
+
+  .qtx-nav-item,
+  .qtx-nav-item svg,
+  .qtx-tab,
+  .qtx-table tbody tr {
+    transition: none;
+  }
 }
-.qtx-page { animation: qtx-page-in 0.28s ease both; display: flex; flex-direction: column; gap: 20px; }

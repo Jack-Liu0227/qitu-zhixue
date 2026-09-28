@@ -102,7 +102,10 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
               <LogoutButton redirectTo="/" />
             </div>
           </header>
-          <main className="admin-console-content">{children}</main>
+          {/* key 绑定内部路径：客户端跳转时内容区重挂载，统一页面转场得以重播。 */}
+          <main className="admin-console-content qitu-page-transition" key={internalPath}>
+            {children}
+          </main>
         </div>
       </div>
     </AuthGuard>

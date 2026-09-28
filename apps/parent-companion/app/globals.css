@@ -670,6 +670,11 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* 页面转场与卡片悬浮位移都是纯装饰运动；颜色、边框、阴影反馈照常生效。 */
+  .parent-content {
+    animation: none;
+  }
+
   .kpi-card:hover,
   .work-card:hover,
   .artifact-tile:hover {

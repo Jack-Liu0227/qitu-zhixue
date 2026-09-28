@@ -62,7 +62,10 @@ export function ParentShell({ children }: { children: ReactNode }) {
               <LogoutButton redirectTo="/" />
             </div>
           </header>
-          <main className="parent-content">{children}</main>
+          {/* key 绑定内部路径：客户端跳转时内容区重挂载，统一页面转场得以重播。 */}
+          <main className="parent-content qitu-page-transition" key={internal(pathname)}>
+            {children}
+          </main>
         </div>
         <ParentFeedbackWidget />
       </div>

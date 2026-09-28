@@ -265,6 +265,7 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
       renderLink={renderNavLink}
       navCollapsed={navCollapsed}
       onToggleNav={toggleNav}
+      contentKey={internalPath}
     >
       {children}
     </StudentShell>

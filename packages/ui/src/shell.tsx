@@ -51,6 +51,7 @@ export function StudentShell({
   activeHref,
   header,
   children,
+  contentKey,
   bannerSlot,
   renderLink,
   navCollapsed,
@@ -61,6 +62,11 @@ export function StudentShell({
   activeHref: string;
   header: ReactNode;
   children: ReactNode;
+  /**
+   * 内容区的重挂载键：调用方传入当前路由（如 `/today`）即可让统一页面转场
+   * 在客户端跳转时重新播放。不传时只在首次挂载播放一次。
+   */
+  contentKey?: string;
   bannerSlot?: ReactNode;
   /** 见 `NavLinkRenderer`：传入后导航改为客户端跳转。 */
   renderLink?: NavLinkRenderer;
@@ -82,7 +88,9 @@ export function StudentShell({
       <div className="qitu-student-main">
         {/* bannerSlot 是真正的插槽：传入即整体替换 header（如工作台用面包屑替换问候语）。 */}
         <div className="qitu-student-banner-slot">{bannerSlot !== undefined ? bannerSlot : header}</div>
-        <main className="qitu-student-content">{children}</main>
+        <main className="qitu-student-content qitu-page-transition" key={contentKey}>
+          {children}
+        </main>
       </div>
     </div>
   );
