@@ -6,6 +6,15 @@ ENV_FILE="${QITU_ENV_FILE:-$ROOT/tooling/qitu-ports.env}"
 RUNTIME_DIR="${QITU_RUNTIME_DIR:-$ROOT/.runtime/qitu}"
 mkdir -p "$RUNTIME_DIR/logs" "$RUNTIME_DIR/pids"
 
+# 本机生成的模型密钥加密主密钥只放运行时目录；不进入 Git、日志或响应。
+SECRET_ENV_FILE="${QITU_SECRET_ENV_FILE:-$RUNTIME_DIR/model-secret.env}"
+if [[ -f "$SECRET_ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$SECRET_ENV_FILE"
+  set +a
+fi
+
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$ENV_FILE"
