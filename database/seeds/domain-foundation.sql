@@ -343,6 +343,27 @@ ON CONFLICT (id) DO UPDATE SET
   subtitle = EXCLUDED.subtitle,
   tags = EXCLUDED.tags;
 
+-- Tutor UI 的历史演示项目 id，保留为同一学生的兼容别名，满足 tutor_sessions 外键。
+INSERT INTO projects
+  (id, student_user_id, template_version_id, source_exploration_id, status,
+   current_stage_index, stage_total, progress_percent, title, subtitle, tags,
+   created_at, completed_at)
+VALUES
+  (
+    'project-demo-001', 'student-demo', 'ptv-python-mini-v1', NULL, 'reflection',
+    2, 4, 40, '校园植物观察手册', '把观察变成可以分享的作品',
+    '["植物","观察","演示"]'::jsonb, NOW() - interval '2 day', NULL
+  )
+ON CONFLICT (id) DO UPDATE SET
+  template_version_id = EXCLUDED.template_version_id,
+  status = EXCLUDED.status,
+  current_stage_index = EXCLUDED.current_stage_index,
+  stage_total = EXCLUDED.stage_total,
+  progress_percent = EXCLUDED.progress_percent,
+  title = EXCLUDED.title,
+  subtitle = EXCLUDED.subtitle,
+  tags = EXCLUDED.tags;
+
 -- 计划与正式项目互链；仅当计划尚无项目时写入，保持幂等（已有用户修改不覆盖）
 UPDATE learning_plans
 SET project_id = 'project-demo-python', updated_at = NOW()
