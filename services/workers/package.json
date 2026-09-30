@@ -9,6 +9,10 @@
     "typecheck": "tsc --noEmit",
     "test": "node -e \"console.log('workers: no tests yet')\""
   },
+  "dependencies": {
+    "@qitu/agent-memory": "workspace:*",
+    "@qitu/database": "workspace:*"
+  },
   "devDependencies": {
     "tsx": "^4.19.0",
     "typescript": "^5.8.3"

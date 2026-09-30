@@ -34,6 +34,12 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
       lines.push(`  证据：${bounded(evidence.document.content)}`);
     }
   }
+  if (packet.recentMessages && packet.recentMessages.length > 0) {
+    lines.push('近期对话摘要：');
+    for (const message of packet.recentMessages.slice(-6)) {
+      lines.push(`- ${message.role === 'user' ? '学生' : '搭档'}：${bounded(message.content)}`);
+    }
+  }
   if (packet.recentActivity.length > 0) {
     lines.push(`近期活动：${packet.recentActivity.slice(-6).join('；')}`);
   }

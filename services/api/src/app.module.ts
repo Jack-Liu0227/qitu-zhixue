@@ -8,6 +8,7 @@ import { QueueModule } from './common/queue/queue.module';
 import { RedisModule } from './common/redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { AiTutorModule } from './modules/ai-tutor/tutor.module';
+import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { LearningPlanModule } from './modules/learning-plan/learning-plan.module';
 import { AuthModule } from './modules/identity-auth/auth.module';
@@ -37,6 +38,7 @@ import { WorksModule } from './modules/works/works.module';
     HealthModule,
     AuthModule,
     AiTutorModule,
+    AgentMemoryModule,
     GrowthModule,
     LearningPlanModule,
     ModelRegistryModule,

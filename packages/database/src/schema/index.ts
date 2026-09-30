@@ -1,3 +1,4 @@
+export * from './agent-memory';
 export * from './feedback';
 export * from './growth-records';
 export * from './identity';

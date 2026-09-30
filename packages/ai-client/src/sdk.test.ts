@@ -44,10 +44,12 @@ export async function runTutorSdkAssertions(): Promise<void> {
   const packet = await sdk.buildContext({
     studentId: 'student-1', projectId: null, projectStage: 'exploration',
     currentGoal: null, query: '植物', recentActivity: ['开始探索'],
+    recentMessages: [{ role: 'user', content: '我想观察校园植物' }],
   });
   assert(packet.partner.id === 'qitu-learning-partner', 'partner id missing');
   assert(packet.memories.length === 1, 'memory not included');
   assert(serializeTutorContext(packet).includes('植物观察'), 'template evidence missing');
+  assert(serializeTutorContext(packet).includes('我想观察校园植物'), 'recent message missing');
 
   const draft = {
     templateVersion: 'v1', weeks: 4 as const, title: '计划', interest: '机器人',

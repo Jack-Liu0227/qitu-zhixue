@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { profileFromGrowthSignal } from '@qitu/ai-client';
 import type {
   TutorGrowthSignal,
   TutorKnowledgeDocument,
@@ -20,6 +21,7 @@ import {
   tutorMemories,
   tutorPartners,
   tutorTemplateDocuments,
+  agentMemoryRecords,
 } from '@qitu/database';
 import { DATABASE_TOKEN } from '../../database';
 
@@ -53,28 +55,31 @@ export class TutorWorkspaceService implements TutorSdkPorts {
 
   async listMemories(input: {
     studentId: string;
-    partnerId: 'qitu-learning-partner';
+    partnerId: string;
     limit: number;
   }): Promise<readonly TutorMemory[]> {
     if (this.db === null) return [];
-    const rows = await this.db
-      .select()
-      .from(tutorMemories)
-      .where(eq(tutorMemories.studentId, input.studentId))
-      .limit(Math.max(1, Math.min(input.limit, 20)));
-    return rows
-      .filter((row) => row.partnerId === input.partnerId)
+    const [legacyRows, agentRows] = await Promise.all([
+      this.db.select().from(tutorMemories)
+        .where(and(eq(tutorMemories.studentId, input.studentId), eq(tutorMemories.partnerId, input.partnerId)))
+        .orderBy(desc(tutorMemories.updatedAt)).limit(Math.max(1, Math.min(input.limit, 20))),
+      this.db.select().from(agentMemoryRecords).where(and(
+        eq(agentMemoryRecords.studentId, input.studentId), eq(agentMemoryRecords.partnerId, input.partnerId),
+        eq(agentMemoryRecords.scope, 'relationship'), eq(agentMemoryRecords.status, 'active'),
+        or(isNull(agentMemoryRecords.expiresAt), gt(agentMemoryRecords.expiresAt, new Date())),
+      )).orderBy(desc(agentMemoryRecords.updatedAt)).limit(Math.max(1, Math.min(input.limit, 20))),
+    ]);
+    const legacy = legacyRows.map((row) => ({
+      id: row.id, studentId: row.studentId, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
+      confidence: row.confidence / 10000, source: row.source as TutorMemory['source'], visibility: row.visibility as TutorMemory['visibility'], updatedAt: row.updatedAt.toISOString(),
+    }));
+    const agent = agentRows
+      .filter((row): row is typeof row & { kind: 'preference' | 'interest' | 'goal' } => row.kind === 'preference' || row.kind === 'interest' || row.kind === 'goal')
       .map((row) => ({
-        id: row.id,
-        studentId: row.studentId,
-        partnerId: 'qitu-learning-partner' as const,
-        kind: row.kind as TutorMemory['kind'],
-        content: row.content,
-        confidence: row.confidence / 10000,
-        source: row.source as TutorMemory['source'],
-        visibility: row.visibility as TutorMemory['visibility'],
-        updatedAt: row.updatedAt.toISOString(),
+        id: row.id, studentId: row.studentId!, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
+        confidence: 1, source: 'student' as const, visibility: 'student_private' as const, updatedAt: row.updatedAt.toISOString(),
       }));
+    return [...agent, ...legacy].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
   }
 
   async searchTemplates(input: {
@@ -88,7 +93,9 @@ export class TutorWorkspaceService implements TutorSdkPorts {
     const terms = input.query.toLowerCase().split(/\s+/).filter(Boolean);
     return rows
       .filter((row) => row.active)
-      .filter((row) => row.scope === 'system' || row.studentId === input.studentId || row.projectId === input.projectId)
+      .filter((row) => row.scope === 'system' ||
+        (row.scope === 'student' && row.studentId === input.studentId) ||
+        (row.scope === 'project' && input.projectId !== null && row.projectId === input.projectId))
       .map((row) => {
         const haystack = `${row.title} ${row.summary} ${row.tags.join(' ')} ${row.content}`.toLowerCase();
         const matchedTerms = terms.filter((term) => haystack.includes(term));
@@ -121,11 +128,7 @@ export class TutorWorkspaceService implements TutorSdkPorts {
   }): Promise<readonly TutorKnowledgeSearchResult[]> {
     if (this.db === null) return [];
     const rows = await this.db.select().from(tutorKnowledgeDocuments);
-    return rankDocuments(rows, input).slice(0, Math.max(1, Math.min(input.limit, 8))).map((result) => ({
-      document: result.document,
-      score: result.score,
-      matchedTerms: result.matchedTerms,
-    }));
+    return rankDocuments(rows, input).slice(0, Math.max(1, Math.min(input.limit, 8)));
   }
 
   async ensurePartner(partner: TutorPartnerProfile): Promise<void> {
@@ -237,9 +240,9 @@ export class TutorWorkspaceService implements TutorSdkPorts {
     });
   }
 
-  async appendGrowthSignal(signal: TutorGrowthSignal): Promise<void> {
-    if (this.db === null) return;
-    await this.db
+  async appendGrowthSignal(signal: TutorGrowthSignal): Promise<boolean> {
+    if (this.db === null) return false;
+    const inserted = await this.db
       .insert(tutorGrowthSignals)
       .values({
         id: `growth-signal-${signal.idempotencyKey}`,
@@ -251,7 +254,32 @@ export class TutorWorkspaceService implements TutorSdkPorts {
         evidenceRef: signal.evidenceRef,
         occurredAt: new Date(signal.occurredAt),
       })
-      .onConflictDoNothing({ target: tutorGrowthSignals.idempotencyKey });
+      .onConflictDoNothing({ target: tutorGrowthSignals.idempotencyKey })
+      .returning({ id: tutorGrowthSignals.id });
+    return inserted.length > 0;
+  }
+
+  async commitGrowthSignal(signal: TutorGrowthSignal): Promise<void> {
+    if (this.db === null) return;
+    await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`growth:${signal.studentId}`}, 0))`);
+      const inserted = await tx.insert(tutorGrowthSignals).values({
+        id: `growth-signal-${signal.idempotencyKey}`, idempotencyKey: signal.idempotencyKey,
+        studentId: signal.studentId, projectId: signal.projectId, kind: signal.kind,
+        summary: signal.summary, evidenceRef: signal.evidenceRef, occurredAt: new Date(signal.occurredAt),
+      }).onConflictDoNothing({ target: tutorGrowthSignals.idempotencyKey }).returning({ id: tutorGrowthSignals.id });
+      if (inserted.length === 0) return;
+      const rows = await tx.select().from(tutorLearnerProfiles).where(eq(tutorLearnerProfiles.studentId, signal.studentId)).limit(1);
+      const row = rows[0];
+      const profile: TutorLearnerProfile = row === undefined ? {
+        studentId: signal.studentId, priorKnowledge: null, targetLevel: null, timeBudgetMinutesPerWeek: null,
+        preferences: [], interests: [], strengths: [], nextQuestions: [], version: 0, updatedAt: signal.occurredAt,
+      } : { ...row, updatedAt: row.updatedAt.toISOString() };
+      const next = profileFromGrowthSignal(profile, signal);
+      const values = { ...next, preferences: [...next.preferences], interests: [...next.interests],
+        strengths: [...next.strengths], nextQuestions: [...next.nextQuestions], updatedAt: new Date(next.updatedAt) };
+      await tx.insert(tutorLearnerProfiles).values(values).onConflictDoUpdate({ target: tutorLearnerProfiles.studentId, set: values });
+    });
   }
 
   async upsertMemory(memory: TutorMemory): Promise<void> {
@@ -277,7 +305,9 @@ function rankDocuments(
   const terms = input.query.toLowerCase().split(/\s+/).filter(Boolean);
   return rows
     .filter((row) => row.active)
-    .filter((row) => row.scope === 'system' || row.studentId === input.studentId || row.projectId === input.projectId)
+    .filter((row) => row.scope === 'system' ||
+      (row.scope === 'student' && row.studentId === input.studentId) ||
+      (row.scope === 'project' && input.projectId !== null && row.projectId === input.projectId))
     .map((row) => {
       const haystack = `${row.title} ${row.summary} ${row.tags.join(' ')} ${row.content}`.toLowerCase();
       const matchedTerms = terms.filter((term) => haystack.includes(term));

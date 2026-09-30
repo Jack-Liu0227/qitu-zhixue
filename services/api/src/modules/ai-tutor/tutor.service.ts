@@ -484,6 +484,16 @@ export class TutorService {
       currentGoal: currentTaskTitle,
       query: request.content ?? request.optionLabel ?? '当前学习任务',
       recentActivity: record.turns.slice(-6).map((turn) => `${turn.role}:${turn.blocks.length}个内容块`),
+      recentMessages: record.turns.slice(-6).flatMap((turn) => {
+        const content = turn.blocks
+          .filter((block): block is { kind: 'text'; text: string } => block.kind === 'text')
+          .map((block) => block.text)
+          .join(' ')
+          .trim();
+        return content.length > 0 && (turn.role === 'student' || turn.role === 'assistant')
+          ? [{ role: turn.role === 'student' ? 'user' as const : 'assistant' as const, content }]
+          : [];
+      }),
     });
 
     const input: TutorTurnInput = {

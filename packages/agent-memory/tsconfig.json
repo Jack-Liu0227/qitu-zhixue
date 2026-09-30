@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist", "rootDir": "src", "noEmit": false, "declaration": true },
+  "include": ["src/index.ts", "src/mem0-index.ts", "src/assertions.ts"],
+  "exclude": ["dist", "node_modules", "src/**/*.test.ts"]
+}

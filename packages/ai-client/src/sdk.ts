@@ -1,6 +1,6 @@
 import type { ProjectStage } from '@qitu/contracts';
 
-export type TutorPartnerId = 'qitu-learning-partner';
+export type TutorPartnerId = string;
 export type TutorMemoryKind =
   | 'preference'
   | 'interest'
@@ -64,7 +64,7 @@ export interface TutorKnowledgeDocument {
   tags: readonly string[];
   content: string;
   source: string;
-  scope: TutorTemplateScope;
+  scope: TutorTemplateScope | 'school';
   active: boolean;
 }
 
@@ -104,6 +104,7 @@ export interface TutorContextInput {
   currentGoal: string | null;
   query: string;
   recentActivity: readonly string[];
+  recentMessages?: readonly { role: 'user' | 'assistant'; content: string }[];
 }
 
 export interface TutorContextPacket {
@@ -120,6 +121,7 @@ export interface TutorContextPacket {
   templateEvidence: readonly Pick<TutorTemplateSearchResult, 'document' | 'score' | 'matchedTerms'>[];
   knowledgeEvidence: readonly Pick<TutorKnowledgeSearchResult, 'document' | 'score' | 'matchedTerms'>[];
   recentActivity: readonly string[];
+  recentMessages?: readonly { role: 'user' | 'assistant'; content: string }[];
 }
 
 export interface TutorSdkPorts {
@@ -145,7 +147,8 @@ export interface TutorSdkPorts {
   upsertTemplate(document: TutorTemplateDocument): Promise<void>;
   upsertKnowledge(document: TutorKnowledgeDocument): Promise<void>;
   upsertLearnerProfile(profile: TutorLearnerProfile): Promise<void>;
-  appendGrowthSignal(signal: TutorGrowthSignal): Promise<void>;
+  appendGrowthSignal(signal: TutorGrowthSignal): Promise<boolean | void>;
+  commitGrowthSignal?(signal: TutorGrowthSignal): Promise<void>;
   upsertMemory(memory: TutorMemory): Promise<void>;
 }
 
@@ -240,6 +243,7 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
           matchedTerms,
         })),
         recentActivity: input.recentActivity.slice(-6),
+        recentMessages: input.recentMessages?.slice(-6).map((message) => ({ ...message, content: message.content.slice(0, 360) })),
       };
     },
     async initialize() {
@@ -247,7 +251,8 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
     },
     recordMemory: ports.upsertMemory,
     async recordGrowthSignal(signal) {
-      await ports.appendGrowthSignal(signal);
+      if (ports.commitGrowthSignal !== undefined) return ports.commitGrowthSignal(signal);
+      if (await ports.appendGrowthSignal(signal) === false) return;
       const profile = await ports.loadLearnerProfile(signal.studentId) ?? {
         studentId: signal.studentId,
         priorKnowledge: null,
@@ -268,7 +273,7 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
   };
 }
 
-function profileFromGrowthSignal(profile: TutorLearnerProfile, signal: TutorGrowthSignal): TutorLearnerProfile {
+export function profileFromGrowthSignal(profile: TutorLearnerProfile, signal: TutorGrowthSignal): TutorLearnerProfile {
   const interests = signal.kind === 'interest_signal'
     ? unique([...profile.interests, signal.summary]).slice(-12)
     : profile.interests;
