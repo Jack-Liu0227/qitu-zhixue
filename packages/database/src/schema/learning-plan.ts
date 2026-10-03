@@ -186,6 +186,9 @@ export const masteryRecords = pgTable(
     studentUserId: text('student_user_id')
       .notNull()
       .references(() => users.id),
+    /** 跨项目稳定知识点 ID；历史记录迁移前可为空。 */
+    knowledgePointId: text('knowledge_point_id'),
+    courseVersion: text('course_version'),
     planId: text('plan_id').references(() => learningPlans.id, { onDelete: 'cascade' }),
     objectiveId: text('objective_id')
       .notNull()
@@ -209,6 +212,11 @@ export const masteryRecords = pgTable(
     desiredRetentionBasisPoints: integer('desired_retention_basis_points').notNull().default(9000),
     reviewCount: integer('review_count').notNull().default(0),
     lapseCount: integer('lapse_count').notNull().default(0),
+    /** 当前投影来源的不可变事件。 */
+    sourceEventId: text('source_event_id'),
+    sourceSequence: integer('source_sequence'),
+    assessmentVersion: text('assessment_version'),
+    validFrom: timestamp('valid_from', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -217,11 +225,96 @@ export const masteryRecords = pgTable(
       table.studentUserId,
       table.objectiveId,
     ),
+    studentKnowledgePointIdx: index('mastery_records_student_knowledge_point_idx').on(
+      table.studentUserId,
+      table.knowledgePointId,
+      table.courseVersion,
+    ),
     studentStatusIdx: index('mastery_records_student_status_idx').on(
       table.studentUserId,
       table.status,
     ),
     nextReviewIdx: index('mastery_records_next_review_idx').on(table.nextReviewAt),
+  }),
+);
+
+/**
+ * Append-only掌握度评估事件。历史事件不更新、不删除；时间线的 validTo 由下一条
+ * 有效事件的 validFrom 推导。Graphiti 只消费本表的 outbox 投影事件。
+ */
+export const masteryEvents = pgTable(
+  'mastery_events',
+  {
+    id: text('id').primaryKey(),
+    schoolId: text('school_id').references(() => schools.id, { onDelete: 'restrict' }),
+    studentUserId: text('student_user_id').notNull().references(() => users.id),
+    knowledgePointId: text('knowledge_point_id').notNull(),
+    courseVersion: text('course_version').notNull(),
+    objectiveId: text('objective_id').references(() => learningObjectives.id, { onDelete: 'restrict' }),
+    planId: text('plan_id').references(() => learningPlans.id, { onDelete: 'restrict' }),
+    projectId: text('project_id').references(() => projects.id, { onDelete: 'restrict' }),
+    eventType: text('event_type').notNull(),
+    knowledgeType: text('knowledge_type').notNull(),
+    scoreBasisPoints: integer('score_basis_points'),
+    confidenceBasisPoints: integer('confidence_basis_points'),
+    qualitativeMastered: boolean('qualitative_mastered'),
+    validFrom: timestamp('valid_from', { withTimezone: true }).notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+    sequence: integer('sequence').notNull(),
+    evidenceRefs: jsonb('evidence_refs').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    sourceType: text('source_type').notNull(),
+    sourceEventId: text('source_event_id').notNull(),
+    causationId: text('causation_id'),
+    correlationId: text('correlation_id'),
+    supersedesEventId: text('supersedes_event_id'),
+    assessmentVersion: text('assessment_version').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    idempotencyUniqueIdx: uniqueIndex('mastery_events_idempotency_unique_idx').on(table.idempotencyKey),
+    aggregateSequenceUniqueIdx: uniqueIndex('mastery_events_aggregate_sequence_unique_idx').on(
+      table.studentUserId,
+      table.knowledgePointId,
+      table.courseVersion,
+      table.sequence,
+    ),
+    aggregateIdx: index('mastery_events_aggregate_idx').on(
+      table.studentUserId,
+      table.knowledgePointId,
+      table.courseVersion,
+      table.validFrom,
+    ),
+    knownAtIdx: index('mastery_events_known_at_idx').on(table.studentUserId, table.recordedAt),
+  }),
+);
+
+/** Explicit plan objective -> canonical knowledge point mapping. */
+export const masteryObjectiveMappings = pgTable(
+  'mastery_objective_mappings',
+  {
+    id: text('id').primaryKey(),
+    schoolId: text('school_id').references(() => schools.id, { onDelete: 'restrict' }),
+    planId: text('plan_id').notNull().references(() => learningPlans.id, { onDelete: 'cascade' }),
+    objectiveId: text('objective_id').notNull().references(() => learningObjectives.id, { onDelete: 'cascade' }),
+    templateVersion: text('template_version').notNull(),
+    contentVersion: text('content_version').notNull(),
+    knowledgePointId: text('knowledge_point_id').notNull(),
+    courseVersion: text('course_version').notNull(),
+    source: text('source').notNull().default('explicit'),
+    mappedAt: timestamp('mapped_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    mappingUniqueIdx: uniqueIndex('mastery_objective_mapping_unique_idx').on(
+      table.planId,
+      table.objectiveId,
+      table.templateVersion,
+      table.contentVersion,
+    ),
+    knowledgePointIdx: index('mastery_objective_mapping_kp_idx').on(
+      table.knowledgePointId,
+      table.courseVersion,
+    ),
   }),
 );
 

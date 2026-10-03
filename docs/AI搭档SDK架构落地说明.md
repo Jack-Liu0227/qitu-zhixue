@@ -20,7 +20,29 @@ SDK 端口覆盖：伙伴初始化、模板和知识文档 upsert、记忆写入
 
 Agent 专属记忆现在由 `agent_memory_records` 作为权威表：学生与 Partner 的关系记忆和管理员评审后的 Partner 策略记忆分开；关系记忆默认 90 天有效，纠错/删除先在本地失效，再通过 `agent-memory.index` Outbox 任务清理外部索引。Mem0 仅作为可替换的索引端口，本轮不自动抽取完整对话，也不允许模型直接写成长档案。
 
-## 数据初始化
+## 统一 SDK 接入
+
+当前 SDK 分为两个安全边界：
+
+- 服务端 `QituSDKFactory` / `createQituSDK()`：绑定 `studentId + projectId`，组合
+  `mastery.evaluate/checkThreshold`、`agent.run`、`project.canAdvance/advance`、
+  `profile.get`。所有写入仍由领域 owner、幂等、审计和 outbox 控制。
+- 浏览器 `createQituReadSDK()` / `createApiClient().mastery`：只提供 current、timeline、
+  snapshot、threshold、regressions 读取，不提供评估、写事件或项目阶段写入口。
+
+Graphiti 不出现在浏览器 SDK 类型中。它通过 `mastery.assessed` outbox 进入 Worker，
+再由受控 bridge 投影；`QITU_GRAPHITI_ENABLED` 未开启时，核心学习流程继续使用
+PostgreSQL 事实和当前投影。
+
+
+掌握度不是 Agent 关系记忆。当前和后续实现必须遵守：
+
+- Mem0 只索引偏好、兴趣、目标和学习风格等非掌握类长期事实。
+- 掌握度事件、当前 level、`TheoryMastered` 和项目阶段由 Projects & Learning 服务端维护。
+- 时间线通过 `MasteryTimelinePort` 读取；Graphiti 如接入，只是异步可重建投影。
+- Agent、模型和客户端都不能写 `mastery_events`、`mastery_records` 或项目阶段。
+- 详细事件模型、双时间语义和 M0-M5 计划见 [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+
 
 执行迁移后运行：
 

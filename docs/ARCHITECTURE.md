@@ -51,7 +51,7 @@ flowchart TD
 | Identity & Access | 用户、角色、会话、家庭、监护关系、班主任分配、对象级访问策略 | `users`、`households`、`guardian_links`、`mentor_assignments` |
 | Tenancy | 校域根表与 `school_id` 归属（`NULL` = 平台共享） | `schools` |
 | Directory | 身份与关系的**单一真源**，双引擎（Postgres / 内存） | 只读汇总，写经 Identity & Access |
-| Projects & Learning | 模板版本、项目实例、阶段、任务、学习计划/模块/目标/课次、跨轮待答题、掌握度、状态机 | `project_templates*`、`projects*`、`learning_plans*`、`pending_questions`、`mastery_*`、`theory_*`、`practice_*` |
+| Projects & Learning | 模板版本、项目实例、阶段、任务、学习计划/模块/目标/课次、掌握度事件与当前投影、成长时间线门槛 | `project_templates*`、`projects*`、`learning_plans*`、`pending_questions`、`mastery_events`、`mastery_records`、`mastery_*`、`theory_*`、`practice_*` |
 | Works | 作品与版本历程、项目证据（服务端聚合，只读） | `artifacts`、`artifact_versions`、`project_evidence` |
 | AI Tutor | 会话、turn、context packet、提示等级、模型路由、卡顿检测 | `tutor_*`、`context_snapshots` |
 | Model Registry | Provider → Model → Usage 三层模型接入 | `model_providers`、`model_models`、`model_usage_bindings`（规划） |
@@ -103,7 +103,7 @@ parent reads → authorized projection only
 
 ## 4. 数据与迁移
 
-- PostgreSQL 是 system of record；缓存 Redis；文件走私有对象存储 + 签名 URL；向量检索 pgvector。
+- PostgreSQL 是业务事实、掌握度事件和当前门槛投影的 system of record；缓存 Redis；文件走私有对象存储 + 签名 URL；向量检索 pgvector。Graphiti 如接入，只作为由 outbox 驱动的掌握度时间线投影，不能决定 `TheoryMastered`、实践解锁、项目状态或权限。
 - 迁移前向、可对空库重放；`packages/database/src/schema/**` 是单一写入者资产。
 - 迁移顺序：基础设施/身份 → 项目与学习 → AI/成长 → 运营与模型 → 单一学校领域基础层（0008）→ 验证/作品/待答题（0009，纯增量）（详见 `docs/DATABASE.md`）。
 - **校域范围**：`school_id` 可空列（`NULL` = 平台共享）；共享/私有边界与"领域真源 vs AI 工作区适配层"见 `docs/DATABASE.md` §3.1 / §3.2。
@@ -116,6 +116,31 @@ parent reads → authorized projection only
 - 三层：Provider（网关 + 协议 + 凭证）→ Model（能力 + 显示名）→ Usage（绑定）。
 - 显式支持三种协议：OpenAI Compatible / Chat Completions、OpenAI Responses、Anthropic Messages。
 - 详见 `docs/LLM_MODEL_REGISTRY.md` 与 ADR 0007。
+
+## 5.1 掌握度时间线边界
+
+掌握度时间线是 Projects & Learning 的一等领域能力，详细协议见
+[`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+
+- `mastery_events` 是不可变评估事件，必须带有效时间、记录时间、算法版本、幂等键和证据引用。
+- `mastery_records` 是当前掌握度投影，`TheoryMastered` 和项目门槛只读取该投影。
+- `KnowledgePoint` 使用跨项目稳定 ID；学习计划 `objectiveId` 只表示计划内教学目标。
+- Graphiti 只由 Worker 异步写入，作为可重建时间线查询投影；Graphiti 不可用时核心学习流程继续运行。
+- 成长轨迹、家长端和教师端读取授权后的时间线/快照投影，不直接读取 Graphiti。
+- Mem0 只保存非掌握类长期偏好，禁止写入掌握 level 或项目阶段。
+
+### 5.2 当前落地状态（诚实标注）
+
+**已存在**：`mastery_records`、`mastery_attempts`、掌握度纯函数和服务端
+`TheoryMastered` 判定。
+
+**已实现但尚未提交**：`mastery_events`、显式 objective→KnowledgePoint mapping、0011
+迁移、assessment transaction、统一 `QituSDKFactory/createQituSDK`、只读 API/SDK、项目
+can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold、timeline/snapshot
+从事件账本派生；不同 courseVersion 分组隔离，unknown/revoked 不填零。
+
+**待实施/验收**：课程治理/映射回填、快照物化、完整 correction/revoke 写命令、前端曲线、
+真实 Graphiti/Neo4j round-trip、备份恢复、性能和成本验收。
 
 ## 6. 当前落地状态（诚实标注）
 
@@ -136,11 +161,18 @@ parent reads → authorized projection only
 - 审计写入与查询；会话持久化与 MFA；pgvector 与知识库（`knowledge_chunks.embedding` 暂用 JSONB 占位）。
 - 校域行级隔离（RLS / 跨校强制校验）；`school_id` 目前仅供应用层过滤。
 - 模型注册表落库、连接测试、手工模型、显示名编辑；密钥管理服务。
-- 未来接入：项目模板库、知识库、成长轨迹的 AI 总结（入口与契约位置先保留）。
+- `mastery_records` 当前投影、`mastery_events` append-only 事件和显式 objective→KnowledgePoint mapping（**已实现 schema + 0011 migration + store 窄接口 + answer/evidence assessment transaction + audit/outbox 同事务**）。
+- `mastery_graph_receipts`、`services/workers/src/mastery-projection-worker.ts` 和 `services/graphiti/bridge.py` 已提供 projection scaffold；外部 Graphiti 未配置时核心流程继续使用 PostgreSQL。
+- 后续需继续验证：映射回填覆盖、真实 PostgreSQL 并发回滚、纠错/撤销写命令和完整 FSRS 字段接线。
+
 
 ## 7. 待办（跨模块）
 
-- [ ] 模板库 / 知识库 / 成长轨迹接入时的表归属与命令边界（0008/0009 已建表，service 接入待办）。
+- [ ] 掌握度时间线接线：`mastery_events`、canonical KnowledgePoint、历史快照、`MasteryTimelinePort` 和 Graphiti shadow projection（见 ADR 0009）。
+- [x] 掌握度事件/mapping schema、0011 migration 和 learning-plan store 窄接口。
+- [x] 答题/实践证据的 event + projection + audit/outbox 同事务；重复请求和事务失败回滚有测试。
+- [x] mastery 只读查询的课程版本隔离、历史时刻、游标、未知/撤销和查询白名单；标准测试命令包含新用例。
+- [ ] 模板库 / 知识库 / 成长轨迹接入时的表归属与命令边界（0008/0009 已建表，service 读写与投影接入待完成）。
 - [ ] 0009 表接线：验证报告落库（模板治理）、作品发布与版本、项目证据物化、待答题持久化与 `answer_pending` 状态机。
 - [ ] `tutor_*` 适配层与 0008 领域真源的合并/下线顺序。
 - [ ] 校域行级安全（RLS）与多校租户切换策略。

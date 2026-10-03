@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
+import { MasteryModule } from '../mastery/mastery.module';
 import { GrowthController, ParentGrowthController } from './growth.controller';
 import { GrowthService } from './growth.service';
 import { DirectoryModule } from '../directory/directory.module';
@@ -26,7 +27,7 @@ import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
  * 但 HTTP 层永远不提供写接口。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule],
+  imports: [DirectoryModule, AuthModule, MasteryModule],
   controllers: [GrowthController, ParentGrowthController],
   providers: [
     GrowthService,

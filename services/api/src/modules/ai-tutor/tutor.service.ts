@@ -1,4 +1,5 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import { createEmptyTutorSdkPorts, createTutorSdk, type TutorSdk } from '@qitu/ai-client';
 
 import type {
@@ -190,6 +191,7 @@ export class TutorService {
     @Optional()
     @Inject(AuditWriter)
     private readonly auditWriter?: AuditWriter,
+    @Optional() private readonly sdkFactory?: QituSDKFactory,
   ) {
     this.provider = createTutorProvider(dataMode, gateway);
     this.tutorSdk = createTutorSdk(workspace ?? createEmptyTutorSdkPorts());
@@ -496,6 +498,19 @@ export class TutorService {
       }),
     });
 
+    const unifiedSDK = this.sdkFactory?.create(
+      { id: request.actorId, role: 'student', email: '', displayName: '' },
+      { studentId: request.actorId, projectId: record.projectId },
+      async (providerInput: TutorTurnInput) => {
+        const generated: TutorStreamEvent[] = [];
+        for await (const event of this.provider.generateTurn(providerInput)) generated.push(event);
+        return generated;
+      },
+    );
+    if (unifiedSDK) {
+      contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
+    }
+
     const input: TutorTurnInput = {
       projectId: record.projectId ?? DEMO_PROJECT.id,
       sessionId: record.sessionId,
@@ -536,7 +551,8 @@ export class TutorService {
     let guardBlocked = false;
     const pending = new Map<string, TutorToolCall>();
 
-    for await (const event of this.provider.generateTurn(input)) {
+    const generated = unifiedSDK ? await unifiedSDK.agent.run(input) : this.provider.generateTurn(input);
+    for await (const event of generated) {
       nextSeq += 1;
       const streamed: StreamedTutorEvent = { seq: nextSeq, event };
       events.push(streamed);

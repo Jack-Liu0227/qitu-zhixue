@@ -226,7 +226,11 @@ importers:
 
   packages/analytics: {}
 
-  packages/api-client: {}
+  packages/api-client:
+    dependencies:
+      '@qitu/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/auth:
     dependencies:
@@ -367,7 +371,20 @@ importers:
         version: 5.9.3
 
   services/workers:
+    dependencies:
+      '@qitu/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@qitu/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.23.1)(@types/react@19.3.0)(pg@8.23.0)(react@19.3.0)
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.4
       tsx:
         specifier: ^4.19.0
         version: 4.23.15

@@ -1,3 +1,4 @@
+import { computeStageProgress } from '../projects/intent-confirmation.state-machine';
 import { randomUUID } from 'node:crypto';
 import type {
   GradeValue,
@@ -8,8 +9,11 @@ import type {
   ProjectStage,
   SessionBlock,
   SessionMode,
+  MasteryAssessmentEvent,
+  MasteryObjectiveMapping,
 } from '@qitu/contracts';
 import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
+import type { AuditTransaction } from '../../common/audit/audit.service';
 
 /**
  * 学习计划的持久化边界。
@@ -87,8 +91,27 @@ export interface MasteryRecord {
   nextReviewAt: Date | null;
   reviewCount: number;
   lapseCount: number;
+  schoolId?: string | null;
+  knowledgePointId?: string | null;
+  courseVersion?: string | null;
+  sourceEventId?: string | null;
+  sourceSequence?: number | null;
+  assessmentVersion?: string | null;
+  validFrom?: Date | null;
   updatedAt: Date;
 }
+
+export interface MasteryEventRecord extends Omit<MasteryAssessmentEvent, 'validFrom' | 'recordedAt'> {
+  validFrom: Date;
+  recordedAt: Date;
+}
+
+export interface MasteryObjectiveMappingRecord extends Omit<MasteryObjectiveMapping, 'mappedAt'> {
+  id: string;
+  schoolId: string | null;
+  mappedAt: Date;
+}
+
 
 export interface AttemptRecord {
   id: string;
@@ -157,6 +180,17 @@ export interface CompletePendingQuestionInput {
   answeredAt: Date;
   attempt: AttemptRecord;
   mastery: MasteryRecord;
+  /** null keeps the legacy objective path when no explicit canonical mapping exists. */
+  masteryEvent: MasteryEventRecord | null;
+  /** Runs inside the Postgres transaction after all learning rows are staged. */
+  commit?: (tx?: AuditTransaction) => Promise<void>;
+}
+
+export interface CompleteAssessmentInput {
+  attempt: AttemptRecord;
+  mastery: MasteryRecord;
+  masteryEvent: MasteryEventRecord | null;
+  commit?: (tx?: AuditTransaction) => Promise<void>;
 }
 
 export interface PlanBundle {
@@ -197,6 +231,11 @@ export class PendingQuestionConflictError extends Error {
 }
 
 export abstract class LearningPlanStore {
+  abstract transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean>;
+  abstract studentSchoolId(studentId: string): Promise<string | null>;
+  abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
+  abstract findMasteryEvent(id: string): Promise<MasteryEventRecord | null>;
+  abstract withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
   abstract findPlanBySignature(
     studentUserId: string,
     interest: string,
@@ -231,6 +270,26 @@ export abstract class LearningPlanStore {
 
   abstract appendAttempt(attempt: AttemptRecord): Promise<void>;
 
+  abstract completeAssessment(input: CompleteAssessmentInput): Promise<void>;
+
+  abstract appendMasteryEvent(event: MasteryEventRecord): Promise<void>;
+  abstract findMasteryEventByIdempotency(idempotencyKey: string): Promise<MasteryEventRecord | null>;
+  abstract listMasteryEvents(input: {
+    studentUserId: string;
+    knowledgePointId?: string | null;
+    courseVersion?: string | null;
+    validFrom?: Date | null;
+    validTo?: Date | null;
+    recordedAt?: Date | null;
+  }): Promise<MasteryEventRecord[]>;
+  abstract findObjectiveMapping(input: {
+    planId: string;
+    objectiveId: string;
+    templateVersion: string;
+    contentVersion: string;
+  }): Promise<MasteryObjectiveMappingRecord | null>;
+  abstract upsertObjectiveMapping(mapping: MasteryObjectiveMappingRecord): Promise<void>;
+
   /* -------- 迁移 0009：pending_questions -------- */
 
   /** 同一 `(student, plan)` 至多一道 `awaiting`（DB 部分唯一索引兜底）。 */
@@ -263,11 +322,66 @@ function attemptKey(studentUserId: string, objectiveId: string): string {
 }
 
 export class InMemoryLearningPlanStore extends LearningPlanStore {
+  private readonly assessmentLocks = new Map<string, Promise<void>>();
   private readonly plans = new Map<string, PlanBundle>();
   private readonly projects = new Map<string, LearningProjectRecord>();
   private readonly mastery = new Map<string, MasteryRecord>();
   private readonly attempts = new Map<string, AttemptRecord[]>();
   private readonly pending = new Map<string, PendingQuestionRecord>();
+  private readonly masteryEvents = new Map<string, MasteryEventRecord>();
+  private readonly objectiveMappings = new Map<string, MasteryObjectiveMappingRecord>();
+
+  async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    const project = this.projects.get(projectId);
+    if (!project || project.studentId !== studentId || project.status !== expected) return false;
+    const previous = { ...project };
+    try {
+      this.projects.set(projectId, { ...project, status: next, ...computeStageProgress(next) });
+      await commit();
+      return true;
+    } catch (error) {
+      this.projects.set(projectId, previous);
+      throw error;
+    }
+  }
+
+  async studentSchoolId(_studentId: string): Promise<string | null> { return null; }
+
+  async findMasteryEvent(id: string): Promise<MasteryEventRecord | null> {
+    const value = this.masteryEvents.get(id);
+    return value ? { ...value, evidenceRefs: [...value.evidenceRefs] } : null;
+  }
+
+  async commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    const key = projection ? masteryKey(projection.studentUserId, projection.objectiveId) : null;
+    const previous = key ? this.mastery.get(key) : undefined;
+    try {
+      await this.appendMasteryEvent(event);
+      if (projection) await this.upsertMastery(projection);
+      await commit();
+    } catch (error) {
+      this.masteryEvents.delete(event.id);
+      if (key) {
+        if (previous) this.mastery.set(key, previous);
+        else this.mastery.delete(key);
+      }
+      throw error;
+    }
+  }
+
+  async withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    const previous = this.assessmentLocks.get(studentId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => { release = resolve; });
+    this.assessmentLocks.set(studentId, current);
+    await previous;
+    try {
+      return await work(this);
+    } finally {
+      release();
+      if (this.assessmentLocks.get(studentId) === current) this.assessmentLocks.delete(studentId);
+    }
+  }
 
   async findPlanBySignature(
     studentUserId: string,
@@ -303,6 +417,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       throw new LearningPlanStoreConflictError(`学习计划 id 冲突：${bundle.plan.id}`);
     }
     this.plans.set(bundle.plan.id, cloneBundle(bundle));
+    for (const mapping of planObjectiveMappings(bundle, null)) await this.upsertObjectiveMapping(mapping);
   }
 
   async findPlan(planId: string): Promise<PlanRecord | null> {
@@ -393,6 +508,78 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     this.attempts.set(key, list);
   }
 
+  async appendMasteryEvent(event: MasteryEventRecord): Promise<void> {
+    if (this.masteryEvents.has(event.id) || [...this.masteryEvents.values()].some((item) => item.idempotencyKey === event.idempotencyKey)) {
+      throw new Error('MASTERY_IDEMPOTENCY_CONFLICT');
+    }
+    this.masteryEvents.set(event.id, { ...event, evidenceRefs: [...event.evidenceRefs] });
+  }
+
+  async findMasteryEventByIdempotency(idempotencyKey: string): Promise<MasteryEventRecord | null> {
+    const event = [...this.masteryEvents.values()].find((item) => item.idempotencyKey === idempotencyKey);
+    return event === undefined ? null : { ...event, evidenceRefs: [...event.evidenceRefs] };
+  }
+
+  async listMasteryEvents(input: {
+    studentUserId: string;
+    knowledgePointId?: string | null;
+    courseVersion?: string | null;
+    validFrom?: Date | null;
+    validTo?: Date | null;
+    recordedAt?: Date | null;
+  }): Promise<MasteryEventRecord[]> {
+    return [...this.masteryEvents.values()]
+      .filter((event) => event.studentId === input.studentUserId && (!input.knowledgePointId || event.knowledgePointId === input.knowledgePointId))
+      .filter((event) => input.courseVersion === undefined || input.courseVersion === null || event.courseVersion === input.courseVersion)
+      .filter((event) => input.validFrom === undefined || input.validFrom === null || event.validFrom >= input.validFrom)
+      .filter((event) => input.validTo === undefined || input.validTo === null || event.validFrom <= input.validTo)
+      .filter((event) => input.recordedAt === undefined || input.recordedAt === null || event.recordedAt <= input.recordedAt)
+      .sort((left, right) => left.validFrom.getTime() - right.validFrom.getTime() || left.sequence - right.sequence)
+      .map((event) => ({ ...event, validFrom: new Date(event.validFrom), recordedAt: new Date(event.recordedAt), evidenceRefs: [...event.evidenceRefs] }));
+  }
+
+  private mappingKey(input: { planId: string; objectiveId: string; templateVersion: string; contentVersion: string }): string {
+    return [input.planId, input.objectiveId, input.templateVersion, input.contentVersion].join('::');
+  }
+
+  async findObjectiveMapping(input: {
+    planId: string;
+    objectiveId: string;
+    templateVersion: string;
+    contentVersion: string;
+  }): Promise<MasteryObjectiveMappingRecord | null> {
+    const mapping = this.objectiveMappings.get(this.mappingKey(input));
+    return mapping === undefined ? null : { ...mapping };
+  }
+
+  async upsertObjectiveMapping(mapping: MasteryObjectiveMappingRecord): Promise<void> {
+    this.objectiveMappings.set(this.mappingKey(mapping), { ...mapping });
+  }
+
+  async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
+    const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
+    const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
+    const previousMastery = this.mastery.get(masteryKeyValue);
+    const previousEvent = input.masteryEvent === null ? undefined : this.masteryEvents.get(input.masteryEvent.id);
+    try {
+      await this.appendAttempt(input.attempt);
+      await this.upsertMastery(input.mastery);
+      if (input.masteryEvent !== null) await this.appendMasteryEvent(input.masteryEvent);
+      if (input.commit !== undefined) await input.commit(undefined);
+    } catch (error) {
+      if (previousAttempts.length === 0) this.attempts.delete(attemptKeyValue);
+      else this.attempts.set(attemptKeyValue, previousAttempts);
+      if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
+      else this.mastery.set(masteryKeyValue, previousMastery);
+      if (input.masteryEvent !== null) {
+        if (previousEvent === undefined) this.masteryEvents.delete(input.masteryEvent.id);
+        else this.masteryEvents.set(input.masteryEvent.id, previousEvent);
+      }
+      throw error;
+    }
+  }
+
   async findAwaitingQuestion(
     studentUserId: string,
     planId: string,
@@ -435,15 +622,38 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
     const record = this.pending.get(input.questionId);
     if (record === undefined || record.status !== 'awaiting') return false;
-    this.pending.set(input.questionId, {
-      ...record,
-      status: 'answered',
-      answeredAt: input.answeredAt,
-      updatedAt: input.answeredAt,
-    });
-    await this.appendAttempt(input.attempt);
-    await this.upsertMastery(input.mastery);
-    return true;
+
+    // Keep the in-memory adapter's all-or-nothing behavior aligned with Postgres.
+    const previousPending = clonePendingQuestion(record);
+    const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
+    const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
+    const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
+    const previousMastery = this.mastery.get(masteryKeyValue);
+    const previousEvent = input.masteryEvent === null ? undefined : this.masteryEvents.get(input.masteryEvent.id);
+    try {
+      this.pending.set(input.questionId, {
+        ...record,
+        status: 'answered',
+        answeredAt: input.answeredAt,
+        updatedAt: input.answeredAt,
+      });
+      await this.appendAttempt(input.attempt);
+      await this.upsertMastery(input.mastery);
+      if (input.masteryEvent !== null) await this.appendMasteryEvent(input.masteryEvent);
+      if (input.commit !== undefined) await input.commit(undefined);
+      return true;
+    } catch (error) {
+      this.pending.set(input.questionId, previousPending);
+      if (previousAttempts.length === 0) this.attempts.delete(attemptKeyValue);
+      else this.attempts.set(attemptKeyValue, previousAttempts);
+      if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
+      else this.mastery.set(masteryKeyValue, previousMastery);
+      if (input.masteryEvent !== null) {
+        if (previousEvent === undefined) this.masteryEvents.delete(input.masteryEvent.id);
+        else this.masteryEvents.set(input.masteryEvent.id, previousEvent);
+      }
+      throw error;
+    }
   }
 
   async markPendingQuestionAnswered(questionId: string, answeredAt: Date): Promise<boolean> {
@@ -485,6 +695,21 @@ function cloneSession(session: SessionRecord): SessionRecord {
     theoryObjectiveIds: [...session.theoryObjectiveIds],
     practiceObjectiveIds: [...session.practiceObjectiveIds],
   };
+}
+
+export function planObjectiveMappings(bundle: PlanBundle, schoolId: string | null): MasteryObjectiveMappingRecord[] {
+  return bundle.objectives.map((objective) => ({
+    id: `mapping:${objective.id}`,
+    schoolId,
+    planId: bundle.plan.id,
+    objectiveId: objective.id,
+    templateVersion: bundle.plan.templateVersion,
+    contentVersion: bundle.plan.templateVersion,
+    knowledgePointId: `local:${objective.id}`,
+    courseVersion: bundle.plan.templateVersion,
+    source: 'explicit',
+    mappedAt: bundle.plan.createdAt,
+  }));
 }
 
 /** 供服务层构造稳定 id；测试可注入固定值。 */

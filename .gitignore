@@ -60,3 +60,7 @@ DeepTutor/
 docs/teacher-workspace-testing.md
 docs/teacher_frontend_pictures/
 /AI教育平台前后端开发文档_v1.0.md
+
+# Python
+__pycache__/
+*.pyc

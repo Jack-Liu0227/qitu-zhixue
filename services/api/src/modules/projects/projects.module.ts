@@ -5,6 +5,10 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { ExplorationStore, InMemoryExplorationStore } from './exploration.store';
 import { PostgresExplorationStore } from './exploration.store.postgres';
 import { ExplorationsController } from './explorations.controller';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { MasteryModule } from '../mastery/mastery.module';
+import { ProjectLifecycleController } from './project-lifecycle.controller';
+import { ProjectLifecycleService } from './project-lifecycle.service';
 import { ProjectsService } from './projects.service';
 
 /**
@@ -19,10 +23,11 @@ import { ProjectsService } from './projects.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule],
-  controllers: [ExplorationsController],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule],
+  controllers: [ExplorationsController, ProjectLifecycleController],
   providers: [
     ProjectsService,
+    ProjectLifecycleService,
     {
       provide: ExplorationStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
@@ -36,6 +41,6 @@ import { ProjectsService } from './projects.service';
       },
     },
   ],
-  exports: [ProjectsService],
+  exports: [ProjectsService, ProjectLifecycleService],
 })
 export class ProjectsModule {}

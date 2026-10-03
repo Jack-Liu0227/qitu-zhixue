@@ -13,6 +13,8 @@ import { GrowthModule } from './modules/growth/growth.module';
 import { LearningPlanModule } from './modules/learning-plan/learning-plan.module';
 import { AuthModule } from './modules/identity-auth/auth.module';
 import { ModelRegistryModule } from './modules/model-registry/model-registry.module';
+import { MasteryModule } from './modules/mastery/mastery.module';
+import { QituSDKModule } from './modules/qitu-sdk/qitu-sdk.module';
 import { PlatformDataModule } from './modules/platform-data/platform-data.module';
 import { ParentModule } from './modules/parent/parent.module';
 import { ProjectsModule } from './modules/projects/projects.module';
@@ -41,6 +43,8 @@ import { WorksModule } from './modules/works/works.module';
     AgentMemoryModule,
     GrowthModule,
     LearningPlanModule,
+    MasteryModule,
+    QituSDKModule,
     ModelRegistryModule,
     PlatformDataModule,
     ParentModule,

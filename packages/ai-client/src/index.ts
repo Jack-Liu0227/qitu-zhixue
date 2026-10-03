@@ -4,6 +4,7 @@ export * from './pedagogy/index.js';
 export * from './context/index.js';
 export * from './escalation/index.js';
 export * from './sdk.js';
+export * from './qitu-sdk.js';
 export * from './curriculum.js';
 export * from './context-packet.js';
 export * from './mastery/index.js';

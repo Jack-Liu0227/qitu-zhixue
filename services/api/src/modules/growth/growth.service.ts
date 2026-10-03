@@ -1,3 +1,5 @@
+import type { CurrentUser } from '@qitu/contracts';
+import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   ChildRef,
@@ -83,6 +85,7 @@ export class GrowthService {
     @Optional()
     @Inject(DATA_MODE_TOKEN)
     private readonly dataMode: DataMode = 'test',
+    @Optional() private readonly mastery?: MasteryDomainService,
   ) {
     // 演示 / 测试 fixture 只在**非持久化**存储上灌入；live 永远不会写演示数据。
     if (!this.store.persistent) {
@@ -105,6 +108,12 @@ export class GrowthService {
     this.logger.log(
       `GrowthService：已从 growth_records 水合 ${rows.length} 条记录（只读快照）。`,
     );
+  }
+
+  async getMasteryProfile(actor: CurrentUser, studentId: string) {
+    if (!this.mastery) throw new Error('MASTERY_PORT_NOT_CONFIGURED');
+    const snapshot = await this.mastery.forActor(actor).snapshot({ studentId, validAt: new Date().toISOString(), knownAt: null });
+    return { studentId, growth: this.getSummary(studentId), mastery: snapshot };
   }
 
   /* --------------------------- 读：学生投影 --------------------------- */

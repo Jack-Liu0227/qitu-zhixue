@@ -1,4 +1,4 @@
-import type { ProjectStage } from '@qitu/contracts';
+import type { ProjectStage, MasterySnapshot } from '@qitu/contracts';
 
 export type TutorPartnerId = string;
 export type TutorMemoryKind =
@@ -108,6 +108,7 @@ export interface TutorContextInput {
 }
 
 export interface TutorContextPacket {
+  masterySnapshot?: MasterySnapshot;
   partner: TutorPartnerProfile;
   studentId: string;
   projectId: string | null;

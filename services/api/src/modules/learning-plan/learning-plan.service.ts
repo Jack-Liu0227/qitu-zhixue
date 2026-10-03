@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Optional,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -42,9 +43,11 @@ import {
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
-import { AuditWriter } from '../../common/audit/audit.service';
+import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { AccessPolicy } from '../../common/access/access-policy';
+import { MasteryDomainService } from '../mastery/mastery-domain.service';
+import { MasteryReadService } from '../mastery/mastery.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -55,6 +58,7 @@ import {
   PendingQuestionConflictError,
   newId,
   type AttemptRecord,
+  type MasteryEventRecord,
   type MasteryRecord,
   type ObjectiveRecord,
   type PendingQuestionRecord,
@@ -108,6 +112,7 @@ type ServiceErrorCode =
 export class LearningPlanService {
   private readonly logger = new Logger(LearningPlanService.name);
 
+  private readonly masteryDomain: MasteryDomainService;
   constructor(
     private readonly store: LearningPlanStore,
     private readonly generator: PlanGenerator,
@@ -115,7 +120,10 @@ export class LearningPlanService {
     private readonly audit: AuditWriter,
     private readonly outbox: OutboxWriter,
     private readonly access: AccessPolicy,
-  ) {}
+    @Optional() mastery?: MasteryDomainService,
+  ) {
+    this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
+  }
 
   /* ==================== 生成（draft，无项目） ==================== */
 
@@ -292,7 +300,7 @@ export class LearningPlanService {
     this.assertActive(bundle.plan);
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
-    this.assertPracticeGate(session, states);
+    await this.assertPracticeGate(session, states, actor, bundle);
     return {
       session: this.toSessionView(bundle, session, states),
       nextStep: await this.nextStepView(bundle, session, states),
@@ -309,7 +317,7 @@ export class LearningPlanService {
     this.assertActive(bundle.plan);
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
-    this.assertPracticeGate(session, states);
+    await this.assertPracticeGate(session, states, actor, bundle);
     return this.nextStepView(bundle, session, states);
   }
 
@@ -327,7 +335,7 @@ export class LearningPlanService {
     this.assertActive(bundle.plan);
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
-    this.assertPracticeGate(session, states);
+    await this.assertPracticeGate(session, states, actor, bundle);
 
     const questionId = typeof body.questionId === 'string' ? body.questionId.trim() : '';
     if (questionId.length === 0) {
@@ -348,14 +356,14 @@ export class LearningPlanService {
         scope,
         idempotencyKey,
         requestHash,
-        async () => {
-          const fresh = await this.requireBundle(planId);
-          const freshSession = await this.requireSession(fresh, sessionId);
-          const freshStates = await this.loadStates(actor, fresh);
-          this.assertPracticeGate(freshSession, freshStates);
+        async () => this.withAssessmentStore(actor.id, async (scoped) => {
+          const fresh = await scoped.requireBundle(planId);
+          const freshSession = await scoped.requireSession(fresh, sessionId);
+          const freshStates = await scoped.loadStates(actor, fresh);
+          await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
           // 题面从 `pending_questions`（迁移 0009）按 id 解析：只有本人、本计划、
           // 本会话的 `awaiting` 题可判分；服务端持有 expectedAnswer / explanation。
-          const pending = await this.store.findPendingQuestion(questionId);
+          const pending = await scoped.store.findPendingQuestion(questionId);
           if (
             pending === null ||
             pending.studentUserId !== fresh.plan.studentUserId ||
@@ -368,17 +376,17 @@ export class LearningPlanService {
               message: '该题不属于当前会话的待答题，或已作答',
             });
           }
-          const objective = this.objectiveIndex(fresh).get(pending.objectiveId);
+          const objective = scoped.objectiveIndex(fresh).get(pending.objectiveId);
           if (objective === undefined) {
             throw new ConflictException({
               code: 'QUESTION_NOT_AWAITING',
               message: '该题引用的目标不存在（数据不一致）',
             });
           }
-          const card = this.pendingToCard(pending);
+          const card = scoped.pendingToCard(pending);
           const grade = gradeAnswer(card, body.answer as string, 'awaiting');
-          const existing = await this.store.listAttempts(fresh.plan.studentUserId, objective.id);
-          const attempt = this.buildAttempt({
+          const existing = await scoped.store.listAttempts(fresh.plan.studentUserId, objective.id);
+          const attempt = scoped.buildAttempt({
             studentId: fresh.plan.studentUserId,
             planId,
             objective,
@@ -387,8 +395,8 @@ export class LearningPlanService {
             attemptCount: existing.length + 1,
             now: new Date(),
           });
-          const wasMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          const nextMastery = await this.recomputeMastery(
+          const wasMastered = computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates);
+          const nextMastery = await scoped.recomputeMastery(
             fresh.plan.studentUserId,
             fresh,
             objective,
@@ -396,11 +404,45 @@ export class LearningPlanService {
             false,
             attempt,
           );
-          const completed = await this.store.completePendingQuestion({
-            questionId,
-            answeredAt: new Date(),
+          const answeredAt = new Date();
+          const masteryEvent = await scoped.buildMasteryEvent({
+            bundle: fresh,
+            pending,
+            objective,
             attempt,
             mastery: nextMastery,
+            answeredAt,
+            idempotencyKey,
+          });
+          const masteryToPersist = masteryEvent === null
+            ? nextMastery
+            : {
+                ...nextMastery,
+                knowledgePointId: masteryEvent.knowledgePointId,
+                courseVersion: masteryEvent.courseVersion,
+                sourceEventId: masteryEvent.id,
+                sourceSequence: masteryEvent.sequence,
+                assessmentVersion: masteryEvent.assessmentVersion,
+                validFrom: masteryEvent.validFrom,
+              };
+          const isMastered = scoped.theoryMasteredWithCandidate(
+            freshSession,
+            freshStates,
+            masteryToPersist,
+          );
+          const shouldEmitTheoryMastered = !wasMastered && isMastered;
+          const completed = await scoped.store.completePendingQuestion({
+            questionId,
+            answeredAt,
+            attempt,
+            mastery: masteryToPersist,
+            masteryEvent,
+            commit: async (tx) => {
+              await scoped.emitMasteryAssessed(masteryEvent, tx as AuditTransaction);
+              if (shouldEmitTheoryMastered) {
+                await scoped.emitTheoryMastered(actor, fresh, freshSession, tx as AuditTransaction);
+              }
+            },
           });
           if (!completed) {
             throw new ConflictException({
@@ -409,12 +451,7 @@ export class LearningPlanService {
             });
           }
 
-          const isMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          if (!wasMastered && isMastered) {
-            await this.emitTheoryMastered(actor, fresh, freshSession);
-          }
-
-          const updatedStates = await this.loadStates(actor, fresh);
+          const updatedStates = await scoped.loadStates(actor, fresh);
           return {
             status: 200,
             body: {
@@ -425,13 +462,13 @@ export class LearningPlanService {
               explanation: grade.explanation,
               errorType: grade.errorType,
               remediation: grade.remediation,
-              mastery: this.toMasterySummary(nextMastery, objective),
+              mastery: scoped.toMasterySummary(masteryToPersist, objective),
               theoryMastered: isMastered,
-              practiceUnlocked: this.isPracticeUnlocked(freshSession, updatedStates),
+              practiceUnlocked: scoped.isPracticeUnlocked(freshSession, updatedStates),
               replayed: false,
             } satisfies SubmitAnswerResponse,
           };
-        },
+        }),
       );
       const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
@@ -454,7 +491,7 @@ export class LearningPlanService {
     this.assertActive(bundle.plan);
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
-    this.assertPracticeGate(session, states);
+    await this.assertPracticeGate(session, states, actor, bundle);
 
     const objectiveId = typeof body.objectiveId === 'string' ? body.objectiveId.trim() : '';
     if (!session.practiceObjectiveIds.includes(objectiveId)) {
@@ -482,12 +519,14 @@ export class LearningPlanService {
         scope,
         idempotencyKey,
         requestHash,
-        async () => {
-          const fresh = await this.requireBundle(planId);
-          const freshSession = await this.requireSession(fresh, sessionId);
-          const existing = await this.store.listAttempts(fresh.plan.studentUserId, objectiveId);
-          const wasMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          await this.store.appendAttempt({
+        async () => this.withAssessmentStore(actor.id, async (scoped) => {
+          const fresh = await scoped.requireBundle(planId);
+          const freshSession = await scoped.requireSession(fresh, sessionId);
+          const existing = await scoped.store.listAttempts(fresh.plan.studentUserId, objectiveId);
+          const freshStates = await scoped.loadStates(actor, fresh);
+          await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
+          const wasMastered = computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates);
+          const attempt: AttemptRecord = {
             id: newId('attempt'),
             studentUserId: fresh.plan.studentUserId,
             planId,
@@ -502,35 +541,70 @@ export class LearningPlanService {
             qualityBasisPoints: qualityBasisPoints(1),
             userAnswer: evidenceRef,
             createdAt: new Date(),
+          };
+          const nextMastery = await scoped.recomputeMastery(
+            fresh.plan.studentUserId,
+            fresh,
+            objective,
+            { correctAnswer: true },
+            false,
+            attempt,
+          );
+          const masteryEvent = await scoped.buildMasteryEvent({
+            bundle: fresh,
+            objective,
+            attempt,
+            mastery: nextMastery,
+            answeredAt: attempt.createdAt,
+            idempotencyKey,
+            evidenceRefs: [`evidence:${evidenceRef}`],
+            sourceType: 'practice',
           });
-          const nextMastery = await this.recomputeMastery(fresh.plan.studentUserId, fresh, objective, {
-            correctAnswer: true,
+          const masteryToPersist = masteryEvent === null
+            ? nextMastery
+            : {
+                ...nextMastery,
+                knowledgePointId: masteryEvent.knowledgePointId,
+                courseVersion: masteryEvent.courseVersion,
+                sourceEventId: masteryEvent.id,
+                sourceSequence: masteryEvent.sequence,
+                assessmentVersion: masteryEvent.assessmentVersion,
+                validFrom: masteryEvent.validFrom,
+              };
+          const isMastered = scoped.theoryMasteredWithCandidate(freshSession, freshStates, masteryToPersist);
+          const shouldEmitTheoryMastered = !wasMastered && isMastered;
+          await scoped.store.completeAssessment({
+            attempt,
+            mastery: masteryToPersist,
+            masteryEvent,
+            commit: async (tx) => {
+              await scoped.emitMasteryAssessed(masteryEvent, tx as AuditTransaction);
+              if (shouldEmitTheoryMastered) {
+                await scoped.emitTheoryMastered(actor, fresh, freshSession, tx as AuditTransaction);
+              }
+              await scoped.audit.write({
+                actorId: actor.id,
+                actorRole: actor.role,
+                action: 'learning_plan.evidence',
+                targetType: 'learning_objective',
+                targetId: objectiveId,
+                idempotencyKey: `${scope}:${idempotencyKey}`,
+                detail: { planId, sessionId, knowledgeType: objective.type },
+              }, tx as AuditTransaction);
+            },
           });
-          const isMastered = await this.theoryMastered(fresh.plan.studentUserId, freshSession);
-          if (!wasMastered && isMastered) {
-            await this.emitTheoryMastered(actor, fresh, freshSession);
-          }
-          await this.audit.write({
-            actorId: actor.id,
-            actorRole: actor.role,
-            action: 'learning_plan.evidence',
-            targetType: 'learning_objective',
-            targetId: objectiveId,
-            idempotencyKey: `${scope}:${idempotencyKey}`,
-            detail: { planId, sessionId, knowledgeType: objective.type },
-          });
-          const updatedStates = await this.loadStates(actor, fresh);
+          const updatedStates = await scoped.loadStates(actor, fresh);
           return {
             status: 201,
             body: {
               objectiveId,
               accepted: true,
               theoryMastered: isMastered,
-              practiceUnlocked: this.isPracticeUnlocked(freshSession, updatedStates),
+              practiceUnlocked: scoped.isPracticeUnlocked(freshSession, updatedStates),
               replayed: false,
             } satisfies SubmitEvidenceResponse,
           };
-        },
+        }),
       );
       const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
@@ -539,14 +613,28 @@ export class LearningPlanService {
     }
   }
 
+  private async withAssessmentStore<T>(studentId: string, work: (scoped: LearningPlanService) => Promise<T>): Promise<T> {
+    return this.store.withAssessmentTransaction(studentId, async (scopedStore) => {
+      const scoped = new LearningPlanService(
+        scopedStore,
+        this.generator,
+        this.idempotency,
+        this.audit,
+        this.outbox,
+        this.access,
+      );
+      return work(scoped);
+    });
+  }
+
   /* ==================== 内部：构造 / 映射 ==================== */
 
   private buildBundle(studentId: string, generated: GeneratedPlan, now: Date): PlanBundle {
     const planId = newId('plan');
     const moduleIdMap = new Map<string, string>();
     const objectiveIdMap = new Map<string, string>();
-    for (const module of generated.modules) moduleIdMap.set(module.id, module.id);
-    for (const objective of generated.objectives) objectiveIdMap.set(objective.id, objective.id);
+    for (const module of generated.modules) moduleIdMap.set(module.id, `${planId}:${module.id}`);
+    for (const objective of generated.objectives) objectiveIdMap.set(objective.id, `${planId}:${objective.id}`);
     const remap = (id: string): string => objectiveIdMap.get(id) ?? id;
 
     const plan: PlanRecord = {
@@ -751,12 +839,14 @@ export class LearningPlanService {
     return computeTheoryMastered(session.theoryObjectiveIds, states);
   }
 
-  private assertPracticeGate(
+  private async assertPracticeGate(
     session: SessionRecord,
-    states: Map<string, ObjectiveMasteryState>,
-  ): void {
+    _states: Map<string, ObjectiveMasteryState>,
+    actor: CurrentUser,
+    bundle: PlanBundle,
+  ): Promise<void> {
     if (session.practiceObjectiveIds.length === 0) return;
-    if (!computeTheoryMastered(session.theoryObjectiveIds, states)) {
+    if (!await this.masteryDomain.checkRequiredObjectives(actor, bundle.plan.studentUserId, bundle.plan.id, session.theoryObjectiveIds, this.store)) {
       throw new ForbiddenException({
         code: 'THEORY_MASTERED_REQUIRED',
         message: '理论目标全部掌握前，实践分块保持锁定',
@@ -855,34 +945,92 @@ export class LearningPlanService {
     };
   }
 
+  private async buildMasteryEvent(input: {
+    bundle: PlanBundle;
+    pending?: PendingQuestionRecord;
+    objective: ObjectiveRecord;
+    attempt: AttemptRecord;
+    mastery: MasteryRecord;
+    answeredAt: Date;
+    idempotencyKey: string;
+    evidenceRefs?: string[];
+    sourceType?: MasteryEventRecord['sourceType'];
+  }): Promise<MasteryEventRecord | null> {
+    return this.masteryDomain.prepareAssessment(this.store, input);
+  }
+
+  private theoryMasteredWithCandidate(
+    session: SessionRecord,
+    states: Map<string, ObjectiveMasteryState>,
+    candidate: MasteryRecord,
+  ): boolean {
+    const projected = new Map(states);
+    projected.set(candidate.objectiveId, this.toState(candidate, candidate.knowledgeType));
+    return computeTheoryMastered(session.theoryObjectiveIds, projected);
+  }
+
+  private async emitMasteryAssessed(
+    event: MasteryEventRecord | null,
+    tx: AuditTransaction,
+  ): Promise<void> {
+    if (event === null) return;
+    await this.audit.write({
+      actorId: event.studentId, actorRole: 'student', action: 'mastery.assessed', targetType: 'mastery_event',
+      targetId: event.id, idempotencyKey: `audit:${event.id}`, detail: { sourceEventId: event.sourceEventId, evidenceRefs: event.evidenceRefs },
+    }, tx);
+    await this.outbox.write({
+      id: `mastery-assessed:${event.id}`,
+      topic: 'mastery.assessed',
+      payload: {
+        eventId: event.id,
+        studentId: event.studentId,
+        knowledgePointId: event.knowledgePointId,
+        courseVersion: event.courseVersion,
+        eventType: event.eventType,
+        sequence: event.sequence,
+        validFrom: event.validFrom.toISOString(),
+        recordedAt: event.recordedAt.toISOString(),
+        evidenceRefs: [...event.evidenceRefs],
+        assessmentVersion: event.assessmentVersion,
+      },
+    }, tx);
+  }
+
   private async emitTheoryMastered(
     actor: CurrentUser,
     bundle: PlanBundle,
     session: SessionRecord,
+    tx?: AuditTransaction,
   ): Promise<void> {
-    await this.audit.write({
-      actorId: actor.id,
-      actorRole: actor.role,
-      action: 'learning_plan.theory_mastered',
-      targetType: 'learning_session',
-      targetId: session.id,
-      idempotencyKey: `theory-mastered:${session.id}`,
-      detail: {
-        planId: bundle.plan.id,
-        theoryObjectiveIds: [...session.theoryObjectiveIds],
-        practiceObjectiveIds: [...session.practiceObjectiveIds],
+    await this.audit.write(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'learning_plan.theory_mastered',
+        targetType: 'learning_session',
+        targetId: session.id,
+        idempotencyKey: `theory-mastered:${session.id}`,
+        detail: {
+          planId: bundle.plan.id,
+          theoryObjectiveIds: [...session.theoryObjectiveIds],
+          practiceObjectiveIds: [...session.practiceObjectiveIds],
+        },
       },
-    });
-    await this.outbox.write({
-      id: newId('evt'),
-      topic: 'learning.theory_mastered',
-      payload: {
-        planId: bundle.plan.id,
-        sessionId: session.id,
-        studentUserId: bundle.plan.studentUserId,
-        theoryObjectiveIds: [...session.theoryObjectiveIds],
+      tx,
+    );
+    await this.outbox.write(
+      {
+        id: `theory-mastered:${session.id}`,
+        topic: 'learning.theory_mastered',
+        payload: {
+          planId: bundle.plan.id,
+          sessionId: session.id,
+          studentUserId: bundle.plan.studentUserId,
+          theoryObjectiveIds: [...session.theoryObjectiveIds],
+        },
       },
-    });
+      tx,
+    );
   }
 
   /* ==================== 内部：下一步 / 題面 ==================== */

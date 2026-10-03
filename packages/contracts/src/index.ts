@@ -17,6 +17,7 @@ export * from './preferences';
 export * from './models';
 export * from './errors';
 export * from './learning-plan';
+export * from './mastery';
 
 export interface HealthResponse {
   service: string;

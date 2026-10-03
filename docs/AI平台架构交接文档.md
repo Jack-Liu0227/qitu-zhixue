@@ -94,6 +94,39 @@ admin   -> 学校治理和审计范围，敏感学生数据需要明确授权
 
 关系创建和读取都需要 school scope。`school_id` 当前是应用层约束，RLS 尚未启用。
 
+### 掌握度时间线（ADR 0009）
+
+掌握度时间线是 Projects & Learning 的一等领域能力，但 Graphiti 不是掌握度权威层。
+
+```text
+mastery_events（不可变事实）
+  -> mastery_records（当前投影 / TheoryMastered 门槛）
+  -> mastery timeline API / growth projections
+  -> outbox -> Graphiti（可选、异步、可重建读模型）
+```
+
+当前代码已实现（尚未提交）：
+
+- `mastery_events`、显式 objective→KnowledgePoint mapping、0011 migration；
+- quiz / practice evidence 的 assessment transaction 和 `TheoryMastered` audit/outbox 同事务；
+- 五个只读 mastery API 和 `@qitu/api-client` facade；
+- current/snapshot/timeline/threshold 从事件账本按 `validAt`、`knownAt` 派生，课程版本独立；
+- `LearningPlanModule` 导出同一个 `LearningPlanStore`，demo/test 不重复创建 store。
+
+- `mastery_graph_receipts`、`services/workers/src/mastery-projection-worker.ts` 和 `services/graphiti/bridge.py` scaffold 已落地；外部 Graphiti 未配置时保持 disabled，receipt、租约、失败重试和重建命令有状态边界。
+
+读接口规则：
+
+- 全量 current/snapshot/regressions 可省略知识点筛选，不依赖当前 projection 枚举事件。
+- timeline 用事件 ID 游标分页；同一 KP 的不同 courseVersion 不互相关闭有效区间。
+- threshold 若有多个课程版本必须指定版本，不任意选择；无已知评估返回 404。
+- 撤销/未知保留 null，不能通过门槛，也不解释成实测退步；家长响应移除 evidenceRefs。
+- controller 拒绝未知字段、重复参数、掌握写入字段；关系授权在读取前执行。
+- 本查询模块提供只读结果，尚未替换项目状态机的现有门槛路径。
+
+所有掌握度时间线任务先读 [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+
+
 ## 4. 关键 API
 
 ### Tutor
@@ -123,7 +156,26 @@ POST /api/v1/learning-plans/:id/sessions/:sid/answers
 POST /api/v1/learning-plans/:id/sessions/:sid/evidence
 ```
 
-`POST` 写操作需要 `Idempotency-Key`。答案和 pending question 的持久化通过 store 完成；当前最新修复已将 pending 状态、mastery attempt、mastery record 收拢为原子完成操作。
+`POST` 写操作需要 `Idempotency-Key`。当前 answer/evidence 处理在学生级 assessment
+锁内读取与评估，pending（answer）、attempt、mastery、映射存在时的 mastery event 及
+commit callback 共用事务；`TheoryMastered` audit/outbox 通过该 callback 写入。
+缺少显式映射时保持旧 objective 路径，不伪造 canonical KP 或历史事件。
+
+### Mastery（只读）
+
+```text
+GET /api/v1/mastery/current
+GET /api/v1/mastery/timeline
+GET /api/v1/mastery/snapshot
+GET /api/v1/mastery/threshold
+GET /api/v1/mastery/regressions
+```
+
+API 对 `studentId` 做当前关系授权；浏览器默认 facade 只读当前学生。
+授权家长/教师指定学生需由业务调用层传入目标，不能把学生身份当授权凭据。
+时间参数要求带时区 ISO 格式。`knownAt` 为记录截止，`validAt` 为业务时刻。
+标准 API 测试命令现已包含 mastery 测试；本次复验 250/250 通过。
+
 
 ### Templates
 

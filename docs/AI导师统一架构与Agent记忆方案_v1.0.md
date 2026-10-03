@@ -1,11 +1,14 @@
 # AI 导师统一架构与 Agent 记忆方案 v1.0
 
-- 状态：待评审的架构提案，不代表运行链路已经实现。
-- 分析日期：2026-09-30。
+> 文档状态：**当前补充设计**。Agent/Mem0/上下文边界继续以本文为准；掌握度时间线、mastery events、项目门槛和 Graphiti 定位以 [`docs/decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md) 为准。
+>
+> 本文不再把 Graphiti 视为“当前没有需求的候选组件”，而是将其限定为通过 outbox 异步构建的可重建掌握度时间线投影。Graphiti 不是 `TheoryMastered`、项目状态或权限的权威来源。
+
 - 项目基线：`b88dd5b287f11580d341a69fa375ea00f1b0d604`；分析开始及正文编写前工作区均为 clean。
 - 本地 DeepTutor 基线：`a053fecf6eeca51ded680de8b8fc41ef63857b11`。
 - 本轮范围：统一实现方向、开源选型、Agent 专属记忆合同与实施计划；不修改导航，不安装依赖，不迁移数据库，不调用真实学生数据。
-- 产品约束仍以 `AGENTS.md` 和 `docs/AI教育平台前后端开发文档_v1.0.md` 为准。本文拟作为后续技术基线，需评审后再修订旧文档。
+- 产品约束仍以 `AGENTS.md` 和 `docs/AI教育平台前后端开发文档_v1.0.md` 为准；掌握度时间线和 Graphiti 具体决策以 ADR 0009 为准。
+
 
 ## 1. 架构决策
 
@@ -34,7 +37,7 @@
 | Workers | `services/workers/src/index.ts` 仅启动占位 | 落地首个可靠记忆消费者 |
 | 模型网关 | 文本 complete；尚无可调用 embedding 接口 | 增加有用途绑定、凭证隔离和计费的 embedding port |
 
-`docs/AI搭档功能技术设计文档_v2.0.md` 中 FastAPI/LangGraph、直接复用三层记忆等内容不能作为当前代码说明。评审后应明确其为历史提案，避免两套架构同时指导实现。
+`archive/legacy-2024-2025/AI搭档功能技术设计文档_v2.0.md` 中 FastAPI/LangGraph、直接复用三层记忆等内容不能作为当前代码说明。评审后已归档，当前实现以 NestJS 模块化单体、PostgreSQL 和本文的 Mem0 边界为准。
 
 ## 3. 统一职责
 
@@ -154,7 +157,8 @@ Agent 专属记忆不是仅给学生记忆加 `agentId`。本轮需具备关系�
 | 项目 | 适合的职责 | 本项目判断 |
 | --- | --- | --- |
 | Mem0 OSS | 可插拔长期事实记忆、索引与召回；Python/TS 入口 | 本轮优先：能保留现有运行时和 PostgreSQL 基线 |
-| Graphiti | 时态实体关系图、事实关系的有效期与历史 | 有价值的后续候选；当前没有必须引入图数据库的业务需求 |
+| Graphiti | 掌握度时间线的异步、可重建查询投影 | M4 PoC / M5 非阻塞读取灰度；不参与门槛、项目状态或权限 |
+
 | Letta / Letta Code | 有记忆和自我修改能力的完整 stateful Agent harness | 思路可借；本轮不引入第二套回合/工具/身份运行时 |
 | Cognee | 多来源摄取、结构化记忆、图与向量处理 | 后续跨资料知识处理候选；当前需求窄，不先引入更宽处理系统 |
 

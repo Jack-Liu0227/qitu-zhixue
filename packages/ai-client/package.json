@@ -22,6 +22,10 @@
       "types": "./dist/escalation/index.d.ts",
       "default": "./dist/escalation/index.js"
     },
+    "./qitu-sdk": {
+      "types": "./dist/qitu-sdk.d.ts",
+      "default": "./dist/qitu-sdk.js"
+    },
     "./sdk": {
       "types": "./dist/sdk.d.ts",
       "default": "./dist/sdk.js"
@@ -47,12 +51,14 @@
       "default": "./dist/grading/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "node -e \"console.log('ai-client: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm build && node --input-type=module -e \"const sdk = await import('./dist/sdk.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); await sdk.runTutorSdkAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions();\""
+    "test": "pnpm build && node --input-type=module -e \"const sdk = await import('./dist/sdk.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); const qitu = await import('./dist/qitu-sdk.test.js'); await qitu.runQituSDKAssertions(); await sdk.runTutorSdkAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions();\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*"

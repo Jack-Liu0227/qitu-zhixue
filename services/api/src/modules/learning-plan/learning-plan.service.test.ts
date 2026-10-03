@@ -11,7 +11,10 @@ import type { IdempotencyStore } from '../../common/idempotency/idempotency.serv
 import type { OutboxEventInput } from '../../common/outbox/outbox.types';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 import type { AccessPolicy } from '../../common/access/access-policy';
-import { InMemoryLearningPlanStore } from './learning-plan.store';
+import {
+  InMemoryLearningPlanStore,
+  type MasteryObjectiveMappingRecord,
+} from './learning-plan.store';
 import { LearningPlanService } from './learning-plan.service';
 import {
   assertGenerateInput,
@@ -76,8 +79,15 @@ class FakeOutboxWriter {
 class FakeAccessPolicy {
   mentorOf = new Set<string>();
   async canReadStudent(actor: CurrentUser, studentId: string): Promise<boolean> {
+    if (actor.role === 'student') return actor.id === studentId;
     if (actor.role !== 'teacher') return false;
     return this.mentorOf.has(`${actor.id}::${studentId}`);
+  }
+}
+
+class FailingAssessmentStore extends InMemoryLearningPlanStore {
+  override async appendMasteryEvent(_event: Parameters<InMemoryLearningPlanStore['appendMasteryEvent']>[0]): Promise<void> {
+    throw new Error('assessment transaction failure');
   }
 }
 
@@ -90,8 +100,10 @@ interface Harness {
   access: FakeAccessPolicy;
 }
 
-function makeHarness(generator: DeterministicPlanGenerator = new DeterministicPlanGenerator()): Harness {
-  const store = new InMemoryLearningPlanStore();
+function makeHarness(
+  generator: DeterministicPlanGenerator = new DeterministicPlanGenerator(),
+  store: InMemoryLearningPlanStore = new InMemoryLearningPlanStore(),
+): Harness {
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
   const outbox = new FakeOutboxWriter();
@@ -343,6 +355,123 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     assert.equal(outbox.events.filter((event) => event.topic === 'learning.theory_mastered').length, 1);
   });
 
+  it('显式 mapping 时写入 append-only mastery event，重复提交不重复写事件', async () => {
+    const { service, store } = harness;
+    const user = student('student-1');
+    const plan = (
+      await service.confirmPlan(
+        user,
+        (await service.generatePlan(user, { interest: '编程', weeks: 4 })).plan.id,
+        'k-confirm',
+      )
+    ).plan;
+    const session = plan.sessions[0];
+    assert.ok(session);
+    const objectiveId = session.theoryObjectiveIds[0];
+    assert.ok(objectiveId);
+    const mapping: MasteryObjectiveMappingRecord = {
+      id: 'mapping-programming-1',
+      schoolId: null,
+      planId: plan.id,
+      objectiveId,
+      templateVersion: plan.templateVersion,
+      contentVersion: plan.templateVersion,
+      knowledgePointId: 'kp-programming-1',
+      courseVersion: 'course-v1',
+      source: 'explicit',
+      mappedAt: new Date(),
+    };
+    await store.upsertObjectiveMapping(mapping);
+
+    const next = await service.getNextStep(user, plan.id, session.id);
+    assert.ok(next.question);
+    const questionId = next.question.questionId;
+    const answer = buildQuestion({
+      objective: {
+        id: objectiveId,
+        name: flattenObjectives(plan).find((item) => item.id === objectiveId)?.name ?? '',
+        type: 'memory',
+      },
+      index: 0,
+      seed: objectiveId,
+    }).expectedAnswer;
+    const first = await service.submitAnswer(
+      user,
+      plan.id,
+      session.id,
+      { questionId, answer },
+      'k-answer',
+    );
+    const replay = await service.submitAnswer(
+      user,
+      plan.id,
+      session.id,
+      { questionId, answer },
+      'k-answer',
+    );
+    assert.equal(replay.replayed, true);
+    assert.equal(replay.result, first.result);
+    const events = await store.listMasteryEvents({
+      studentUserId: user.id,
+      knowledgePointId: mapping.knowledgePointId,
+      courseVersion: mapping.courseVersion,
+    });
+    assert.equal(events.length, 1);
+    assert.equal(events[0]?.id, `mastery-event:${questionId}`);
+    assert.notEqual(events[0]?.score, null);
+    assert.equal(events[0]?.qualitativeMastered, null);
+  });
+
+  it('评估事务失败时回滚 pending、attempt、mastery 和 event', async () => {
+    const failing = makeHarness(new DeterministicPlanGenerator(), new FailingAssessmentStore());
+    const user = student('student-1');
+    const plan = (
+      await failing.service.confirmPlan(
+        user,
+        (await failing.service.generatePlan(user, { interest: '数学', weeks: 4 })).plan.id,
+        'k-confirm',
+      )
+    ).plan;
+    const session = plan.sessions[0];
+    assert.ok(session);
+    const objectiveId = session.theoryObjectiveIds[0];
+    assert.ok(objectiveId);
+    await failing.store.upsertObjectiveMapping({
+      id: 'mapping-math-1',
+      schoolId: null,
+      planId: plan.id,
+      objectiveId,
+      templateVersion: plan.templateVersion,
+      contentVersion: plan.templateVersion,
+      knowledgePointId: 'kp-math-1',
+      courseVersion: 'course-v1',
+      source: 'explicit',
+      mappedAt: new Date(),
+    });
+    const next = await failing.service.getNextStep(user, plan.id, session.id);
+    assert.ok(next.question);
+    await assert.rejects(
+      () => failing.service.submitAnswer(user, plan.id, session.id, {
+        questionId: next.question!.questionId,
+        answer: buildQuestion({
+          objective: { id: objectiveId, name: '数学', type: 'memory' },
+          index: 0,
+          seed: objectiveId,
+        }).expectedAnswer,
+      }, 'k-failing'),
+      /assessment transaction failure/,
+    );
+    const pending = await failing.store.findPendingQuestion(next.question.questionId);
+    assert.equal(pending?.status, 'awaiting');
+    assert.equal((await failing.store.listAttempts(user.id, objectiveId)).length, 0);
+    assert.equal(await failing.store.findMastery(user.id, objectiveId), null);
+    assert.equal((await failing.store.listMasteryEvents({
+      studentUserId: user.id,
+      knowledgePointId: 'kp-math-1',
+      courseVersion: 'course-v1',
+    })).length, 0);
+  });
+
   it('重试作答只产生一次 attempt，重放返回原判分', async () => {
     const { service, store } = harness;
     const user = student('student-1');
@@ -384,6 +513,11 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     assert.equal(replay.replayed, true);
     assert.equal(replay.result, first.result);
     assert.equal((await store.listAttempts(user.id, objective)).length, 1);
+    assert.equal((await store.listMasteryEvents({
+      studentUserId: user.id,
+      knowledgePointId: objective,
+      courseVersion: plan.templateVersion,
+    })).length, 0, 'mapping 缺失时不能把 objectiveId 猜成 canonical KP');
 
     // 同键不同答案 → 409。
     await assertHttpError(

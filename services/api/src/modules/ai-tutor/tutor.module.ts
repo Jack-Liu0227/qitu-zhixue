@@ -9,6 +9,7 @@ import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TutorController } from './tutor.controller';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import { PostgresTutorSessionStore } from './tutor-session.store.postgres';
+import { QituSDKModule } from '../qitu-sdk/qitu-sdk.module';
 import { TutorService } from './tutor.service';
 
 /**
@@ -27,7 +28,7 @@ import { TutorService } from './tutor.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, RemindersModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, RemindersModule, QituSDKModule],
   controllers: [TutorController],
   providers: [
     TutorService,

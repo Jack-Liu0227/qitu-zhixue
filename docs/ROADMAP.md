@@ -71,6 +71,23 @@
 - AI 策略与模型路由
 - 审计、监控和备份
 
+## 掌握度时间线专项路线（ADR 0009）
+
+掌握度时间线是 M3 项目引擎和 M6 成长轨迹之间的共享领域能力。它不改变既有导航，
+先建设服务端事件和授权投影，再接学生、家长、教师的成长轨迹展示。
+
+| 阶段 | 内容 | 退出条件 |
+|---|---|---|
+| M0 | 掌握度事件合同、KnowledgePoint、算法版本、幂等和事务修复 | 答题/证据/门槛事件与 audit/outbox 同事务 |
+| M1 | PostgreSQL `mastery_events`、当前投影、快照和时间线 API | 当前值、90 天曲线、`asOf` 快照、退步和跨项目聚合可重放 |
+| M2 | 统一 quiz / qualitative / practice / correction 评估流水线 | 乱序、并发、重试、补录、撤销测试通过 |
+| M3 | 成长轨迹主路径和 `project.checkThreshold()` 收敛 | `TheoryMastered` 前实践不可达，权限投影完整 |
+| M4 | Graphiti bridge、Worker、receipt、租约/重试、影子投影、对账和全量重建 | scaffold 已完成；外部 Graphiti round-trip、成本和恢复达标后才可灰度 |
+| M5 | 仅对非阻塞时间线查询做灰度 | Graphiti 故障可回退，绝不影响项目门槛 |
+
+Graphiti 不直接决定 `TheoryMastered`、项目状态、权限或审计结论。详细数据模型和验收
+指标见 [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+
 ## 首个迭代建议
 
 先完成 M0 中的仓库、CI、Monorepo 边界和 API 合同，再进入 M1。不要四个平台同时铺开页面；优先打通一条最小闭环：

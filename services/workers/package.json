@@ -7,14 +7,20 @@
     "build": "tsc --outDir dist --noEmit false",
     "lint": "node -e \"console.log('workers: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('workers: no tests yet')\""
+    "test": "pnpm --filter @qitu/database build && tsx --test src/*.test.ts",
+    "mastery:once": "tsx src/index.ts once",
+    "mastery:rebuild": "tsx src/index.ts rebuild",
+    "mastery:reconcile": "tsx src/index.ts reconcile"
   },
   "dependencies": {
     "@qitu/agent-memory": "workspace:*",
-    "@qitu/database": "workspace:*"
+    "@qitu/database": "workspace:*",
+    "@qitu/contracts": "workspace:*",
+    "drizzle-orm": "^0.36.4"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/node": "^22.0.0"
   }
 }

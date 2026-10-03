@@ -1,6 +1,8 @@
 # 数据库与表归属
 
-> 状态：PostgreSQL 为唯一 system of record（ADR 0001 第 5 条、产品文档 1.2 / 8.2）。
+> 状态：PostgreSQL 为唯一 system of record（ADR 0001 第 5 条、ADR 0009、产品文档 1.2 / 8.2）。
+> 掌握度时间线是领域能力；Graphiti 仅是异步、可重建的查询投影，不是事务真源。
+
 > 本文描述**目标结构**与**当前已落地部分**，未实现的部分明确标注。
 > 关联：`docs/decisions/0003-database-access-layer.md`（Drizzle 选型）、
 > `docs/decisions/0006-domain-module-storage.md`（表归属）、`database/README.md`。
@@ -66,9 +68,14 @@ CREATE UNIQUE INDEX idempotency_keys_scope_key_idx
 --   model_usage_bindings.provider_id          -> model_providers.id
 --   model_usage_bindings (provider_id, model_id) -> model_models (provider_id, model_id)
 
--- 同一学生同一目标只有一条掌握度状态（0008）
+-- 同一学生同一目标只有一条掌握度状态（0008，当前投影）
 CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
   ON mastery_records (student_user_id, objective_id);
+
+-- 掌握度当前投影（兼容现有 mastery_records）
+--   当前状态可从不可变 mastery_events 重建；Graphiti 不是门槛真源
+--   计划新增：mastery_events、mastery_snapshots、graph_projection_receipts
+
 
 -- 幂等键唯一（0008）：重试不会产生第二条业务记录
 --   learning_plans_idempotency_unique_idx / growth_records_idempotency_unique_idx /
@@ -114,7 +121,7 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
 | Identity & Access | **`users`**、**`households`**、**`guardian_links`**、**`mentor_assignments`**、`roles`、`identities`、`sessions`、`student_profiles`、`mentor_profiles`、`consents` |
 | Tenancy（校域） | **`schools`**、**`users.school_id`**（可空；`NULL` = 平台共享）、`student_profiles.school_id`（待建） |
 | Cross-cutting Operations | **`audit_logs`**、**`outbox`**、**`idempotency_keys`** |
-| Projects & Learning | **`project_templates`**、**`project_template_versions`**、**`exploration_sessions`**、**`intent_confirmations`**、**`projects`**、**`learning_plans`**、**`learning_modules`**、**`learning_objectives`**、**`learning_sessions`**、**`pending_questions`**（0009，跨轮待答题）、**`mastery_records`**、**`mastery_attempts`**、`recommendation_sessions`、`recommendation_items`、`exploration_turns`、`project_stages`、`project_tasks`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
+| Projects & Learning | **`project_templates`**、**`project_template_versions`**、**`exploration_sessions`**、**`intent_confirmations`**、**`projects`**、**`learning_plans`**、**`learning_modules`**、**`learning_objectives`**、**`learning_sessions`**、**`pending_questions`**（0009，跨轮待答题）、**`mastery_events`**（规划）、**`mastery_records`**、**`mastery_attempts`**、`mastery_snapshots`（规划）、`graph_projection_receipts`（规划）、`recommendation_sessions`、`recommendation_items`、`exploration_turns`、`project_stages`、`project_tasks`、`learning_events`、`theory_modules`、`theory_checks`、`practice_tasks` |
 | AI Tutor | **`tutor_sessions`**、**`tutor_turns`**、**`tutor_partners`**、**`tutor_learner_profiles`**、**`tutor_memories`**、**`tutor_growth_signals`**、**`tutor_knowledge_documents`**、**`tutor_template_documents`**（0007 工作区适配层）、`context_snapshots` |
 | Works | **`artifacts`**、**`artifact_versions`**、**`project_evidence`**（0009，服务端聚合只读）、`review_records` |
 | Growth | **`growth_records`**、**`student_memories`**、`growth_snapshots`、`milestones` |
@@ -173,7 +180,18 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
 | `project_evidence` | Projects & Learning / Growth | 由任务提交、`tutor_turn`、升级事件、反思、判分等真实事实**派生**（重复聚合 `ON CONFLICT DO NOTHING`） | 当前 `template-evidence.store.postgres.ts` 只读聚合；接表后改为物化 |
 | `pending_questions` | Projects & Learning（学习计划） | 出题时写题面 + 服务端私密 `expected_answer`；作答后置 `answered` 并追加 `mastery_attempts` | `learning-plan.service.ts` 的 `PublicQuestion` / `NextAction='answer_pending'` / 错误码 `QUESTION_NOT_AWAITING` |
 
-接线前，`pending_questions` 只经 `toPublicQuestion` 投影下发，**不得**把 `expected_answer` / `explanation` 序列化给客户端。
+### 3.4 掌握度时间线表（ADR 0009，规划）
+
+| 表 | owner | 作用 | 写入规则 |
+|---|---|---|---|
+| `mastery_events` | Projects & Learning | 不可变评估事实：有效时间、记录时间、level、证据、算法版本、因果关系 | 只追加；唯一 `idempotency_key`；按学生 + KnowledgePoint 校验序列 |
+| `mastery_records` | Projects & Learning | 当前掌握度投影和项目门槛读取模型 | 只能由评估事务更新；必须能从 `mastery_events` 重建 |
+| `mastery_snapshots` | Growth / Projects & Learning | 按日或按事件序列的时间切片缓存 | 可删除重建；返回 `sourceSequence` 和新鲜度 |
+| `graph_projection_receipts` / `mastery_graph_receipts` | Projects & Learning | Graphiti 投影版本、租约、状态、失败原因和最后成功序列 | Worker 通过 owner 命令幂等更新；不作为业务授权依据 |
+
+Graphiti、Neo4j/FalkorDB 和外部 embedding 不属于 PostgreSQL 业务真源。Graphiti
+只能通过 `mastery.assessed` outbox 事件异步写入；丢失 Graphiti 后必须能从
+`mastery_events` 完整重建。
 
 ## 4. 迁移顺序
 
@@ -223,6 +241,12 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
   └─ pending_questions
   只 CREATE 新表 / 新索引 / 新外键，不改动任何既有表；外键同样用显式短名
   （`artifacts_template_version_id_fk`、`template_verification_runs_template_version_id_fk`）。
+第 7 批  掌握度时间线（ADR 0009，规划）
+  ├─ knowledge_points / learning_objectives.knowledge_point_id
+  ├─ mastery_events（不可变评估事件）
+  ├─ mastery_records 投影元数据 / mastery_snapshots
+  └─ graph_projection_receipts / mastery_graph_receipts（Graphiti 投影 receipt、租约、重试和对账）
+  事件、当前投影、audit_logs、outbox 必须由同一 owner 事务写入；Graphiti 由 Worker 异步重建。
 ```
 
 **规则**：迁移编号单调递增；合并到主线后不可修改历史迁移；新迁移必须能对空库重放。
@@ -244,6 +268,8 @@ psql "$DATABASE_URL" -f database/migrations/0006_yellow_pete_wisdom.sql
 psql "$DATABASE_URL" -f database/migrations/0007_tutor_workspace.sql
 psql "$DATABASE_URL" -f database/migrations/0008_domain_foundation.sql
 psql "$DATABASE_URL" -f database/migrations/0009_verification_evidence.sql
+psql "$DATABASE_URL" -f database/migrations/0011_mastery_timeline.sql
+psql "$DATABASE_URL" -f database/migrations/0012_mastery_graph_receipts.sql
 
 # 确定性演示数据（幂等，可重复执行）
 pnpm --filter @qitu/database seed
@@ -278,6 +304,7 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 | pgvector 扩展与向量索引 | **未实现**（`knowledge_chunks.embedding` 暂用 JSONB 占位） |
 | 会话持久化（当前进程内） | **未实现** |
 | 模型注册表持久化 | **部分实现**：表结构已建（0002）；service 仍只写进程内存，尚未读写这些表 |
+| 掌握度时间线事件账本、快照和 Graphiti 投影 | **M0-M3 完成，M4 scaffold**（`mastery_events` / mapping / 0011、assessment transaction、只读 API/SDK、0012 receipt、Worker projection scaffold 已落地；外部 Graphiti round-trip、对账和恢复演练待完成） |
 
 ## 7. 空态、幂等与回滚
 

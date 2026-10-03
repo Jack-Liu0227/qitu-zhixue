@@ -2,7 +2,12 @@
   "name": "@qitu/api-client",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@qitu/contracts": "workspace:*"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "node -e \"console.log('api-client: lint placeholder')\"",

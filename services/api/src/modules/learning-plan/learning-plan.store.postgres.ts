@@ -1,11 +1,16 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { computeStageProgress } from '../projects/intent-confirmation.state-machine';
+import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
+import type { AuditTransaction } from '../../common/audit/audit.service';
 import {
   learningModules,
   learningObjectives,
   learningPlans,
   learningSessions,
   masteryAttempts,
+  masteryEvents,
+  masteryObjectiveMappings,
   masteryRecords,
+  users,
   pendingQuestions,
   projectTemplateVersions,
   projectTemplates,
@@ -26,13 +31,17 @@ import type {
 import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 import {
   LearningPlanStore,
+  planObjectiveMappings,
   LearningPlanStoreConflictError,
   PendingQuestionConflictError,
   type AttemptRecord,
+  type CompleteAssessmentInput,
   type CompletePendingQuestionInput,
   type ConfirmPlanInput,
   type ConfirmPlanResult,
   type LearningProjectRecord,
+  type MasteryEventRecord,
+  type MasteryObjectiveMappingRecord,
   type MasteryRecord,
   type ModuleRecord,
   type ObjectiveRecord,
@@ -53,6 +62,8 @@ type ModuleRow = typeof learningModules.$inferSelect;
 type ObjectiveRow = typeof learningObjectives.$inferSelect;
 type SessionRow = typeof learningSessions.$inferSelect;
 type MasteryRow = typeof masteryRecords.$inferSelect;
+type MasteryEventRow = typeof masteryEvents.$inferSelect;
+type MasteryMappingRow = typeof masteryObjectiveMappings.$inferSelect;
 type AttemptRow = typeof masteryAttempts.$inferSelect;
 type ProjectRow = typeof projectsTable.$inferSelect;
 type PendingQuestionRow = typeof pendingQuestions.$inferSelect;
@@ -71,8 +82,53 @@ type PendingQuestionRow = typeof pendingQuestions.$inferSelect;
  * 明确交接点。
  */
 export class PostgresLearningPlanStore extends LearningPlanStore {
-  constructor(private readonly db: Database) {
+  constructor(private readonly db: Database, private readonly assessmentTransaction = false) {
     super();
+  }
+
+  async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    return this.commitAssessment(async (tx) => {
+      const rows = await tx.update(projectsTable).set({ status: next, ...computeStageProgress(next) }).where(and(
+        eq(projectsTable.id, projectId), eq(projectsTable.studentUserId, studentId), eq(projectsTable.status, expected),
+      )).returning({ id: projectsTable.id });
+      if (!rows.length) return false;
+      await commit(tx);
+      return true;
+    });
+  }
+
+  async studentSchoolId(studentId: string): Promise<string | null> {
+    const [user] = await this.db.select({ schoolId: users.schoolId }).from(users).where(eq(users.id, studentId));
+    if (!user) throw new Error('MASTERY_NOT_FOUND');
+    return user.schoolId;
+  }
+
+  async findMasteryEvent(id: string): Promise<MasteryEventRecord | null> {
+    const [row] = await this.db.select().from(masteryEvents).where(eq(masteryEvents.id, id)).limit(1);
+    return row ? mapMasteryEvent(row) : null;
+  }
+
+  async commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    await this.commitAssessment(async (tx) => {
+      const scoped = new PostgresLearningPlanStore(tx as unknown as Database, true);
+      await scoped.appendMasteryEvent(event);
+      if (projection) await scoped.upsertMastery(projection);
+      await commit(tx);
+    });
+  }
+
+  async withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    return withTransaction(this.db, async (tx) => {
+      // A student-wide lock also serializes gates spanning several theory objectives.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['mastery', studentId])}, 0))`);
+      return work(new PostgresLearningPlanStore(tx as unknown as Database, true));
+    });
+  }
+
+  private commitAssessment<T>(work: (tx: AuditTransaction) => Promise<T>): Promise<T> {
+    return this.assessmentTransaction
+      ? work(this.db as unknown as AuditTransaction)
+      : withTransaction(this.db, work);
   }
 
   async findPlanBySignature(
@@ -100,10 +156,12 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   async createPlan(bundle: PlanBundle): Promise<void> {
     try {
       await withTransaction(this.db, async (tx) => {
+        const schoolId = await this.studentSchoolId(bundle.plan.studentUserId);
         await ensureCurriculumTemplate(tx, bundle.plan.templateVersion);
         await tx.insert(learningPlans).values({
           id: bundle.plan.id,
           studentUserId: bundle.plan.studentUserId,
+          schoolId,
           projectId: null,
           interest: bundle.plan.interest,
           goal: bundle.plan.goal,
@@ -158,6 +216,8 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
             })),
           );
         }
+        const mappings = planObjectiveMappings(bundle, schoolId);
+        if (mappings.length) await tx.insert(masteryObjectiveMappings).values(mappings);
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -308,9 +368,12 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       .insert(masteryRecords)
       .values({
         id: record.id,
+        schoolId: record.schoolId,
         studentUserId: record.studentUserId,
         planId: record.planId,
         objectiveId: record.objectiveId,
+        knowledgePointId: record.knowledgePointId,
+        courseVersion: record.courseVersion,
         knowledgeType: record.knowledgeType,
         status: record.status,
         masteryBasisPoints: record.masteryBasisPoints,
@@ -322,12 +385,18 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         nextReviewAt: record.nextReviewAt,
         reviewCount: record.reviewCount,
         lapseCount: record.lapseCount,
+        sourceEventId: record.sourceEventId,
+        sourceSequence: record.sourceSequence,
+        assessmentVersion: record.assessmentVersion,
+        validFrom: record.validFrom,
         updatedAt: record.updatedAt,
       })
       .onConflictDoUpdate({
         target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
         set: {
           planId: record.planId,
+          knowledgePointId: record.knowledgePointId,
+          courseVersion: record.courseVersion,
           knowledgeType: record.knowledgeType,
           status: record.status,
           masteryBasisPoints: record.masteryBasisPoints,
@@ -339,6 +408,10 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           nextReviewAt: record.nextReviewAt,
           reviewCount: record.reviewCount,
           lapseCount: record.lapseCount,
+          sourceEventId: record.sourceEventId,
+          sourceSequence: record.sourceSequence,
+          assessmentVersion: record.assessmentVersion,
+          validFrom: record.validFrom,
           updatedAt: record.updatedAt,
         },
       });
@@ -374,6 +447,201 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       qualityBasisPoints: attempt.qualityBasisPoints,
       userAnswer: attempt.userAnswer,
       createdAt: attempt.createdAt,
+    });
+  }
+
+  async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    await this.commitAssessment(async (tx) => {
+      await tx.insert(masteryAttempts).values({
+        id: input.attempt.id,
+        studentUserId: input.attempt.studentUserId,
+        planId: input.attempt.planId,
+        objectiveId: input.attempt.objectiveId,
+        questionId: input.attempt.questionId,
+        result: input.attempt.result,
+        isCorrect: input.attempt.isCorrect,
+        assessmentType: input.attempt.assessmentType,
+        errorType: input.attempt.errorType,
+        hintsUsed: input.attempt.hintsUsed,
+        attemptCount: input.attempt.attemptCount,
+        qualityBasisPoints: input.attempt.qualityBasisPoints,
+        userAnswer: input.attempt.userAnswer,
+        createdAt: input.attempt.createdAt,
+      });
+      await tx.insert(masteryRecords).values({
+        id: input.mastery.id,
+        studentUserId: input.mastery.studentUserId,
+        planId: input.mastery.planId,
+        objectiveId: input.mastery.objectiveId,
+        knowledgePointId: input.mastery.knowledgePointId ?? null,
+        courseVersion: input.mastery.courseVersion ?? null,
+        knowledgeType: input.mastery.knowledgeType,
+        status: input.mastery.status,
+        masteryBasisPoints: input.mastery.masteryBasisPoints,
+        thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+        qualitativeMastered: input.mastery.qualitativeMastered,
+        consecutiveCorrect: input.mastery.consecutiveCorrect,
+        consecutiveWrong: input.mastery.consecutiveWrong,
+        intervalIndex: input.mastery.intervalIndex,
+        nextReviewAt: input.mastery.nextReviewAt,
+        reviewCount: input.mastery.reviewCount,
+        lapseCount: input.mastery.lapseCount,
+        sourceEventId: input.mastery.sourceEventId ?? null,
+        sourceSequence: input.mastery.sourceSequence ?? null,
+        assessmentVersion: input.mastery.assessmentVersion ?? null,
+        validFrom: input.mastery.validFrom ?? null,
+        updatedAt: input.mastery.updatedAt,
+      }).onConflictDoUpdate({
+        target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
+        set: {
+          planId: input.mastery.planId,
+          knowledgePointId: input.mastery.knowledgePointId ?? null,
+          courseVersion: input.mastery.courseVersion ?? null,
+          knowledgeType: input.mastery.knowledgeType,
+          status: input.mastery.status,
+          masteryBasisPoints: input.mastery.masteryBasisPoints,
+          thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+          qualitativeMastered: input.mastery.qualitativeMastered,
+          consecutiveCorrect: input.mastery.consecutiveCorrect,
+          consecutiveWrong: input.mastery.consecutiveWrong,
+          intervalIndex: input.mastery.intervalIndex,
+          nextReviewAt: input.mastery.nextReviewAt,
+          reviewCount: input.mastery.reviewCount,
+          lapseCount: input.mastery.lapseCount,
+          sourceEventId: input.mastery.sourceEventId ?? null,
+          sourceSequence: input.mastery.sourceSequence ?? null,
+          assessmentVersion: input.mastery.assessmentVersion ?? null,
+          validFrom: input.mastery.validFrom ?? null,
+          updatedAt: input.mastery.updatedAt,
+        },
+      });
+      if (input.masteryEvent !== null) {
+        await tx.insert(masteryEvents).values({
+          id: input.masteryEvent.id,
+          schoolId: input.masteryEvent.schoolId,
+          studentUserId: input.masteryEvent.studentId,
+          knowledgePointId: input.masteryEvent.knowledgePointId,
+          courseVersion: input.masteryEvent.courseVersion,
+          objectiveId: input.masteryEvent.objectiveId,
+          planId: input.masteryEvent.planId,
+          projectId: input.masteryEvent.projectId,
+          eventType: input.masteryEvent.eventType,
+          knowledgeType: input.masteryEvent.knowledgeType,
+          scoreBasisPoints: input.masteryEvent.score === null ? null : Math.round(input.masteryEvent.score * 10_000),
+          confidenceBasisPoints: input.masteryEvent.confidence === null ? null : Math.round(input.masteryEvent.confidence * 10_000),
+          qualitativeMastered: input.masteryEvent.qualitativeMastered,
+          validFrom: input.masteryEvent.validFrom,
+          recordedAt: input.masteryEvent.recordedAt,
+          sequence: input.masteryEvent.sequence,
+          evidenceRefs: [...input.masteryEvent.evidenceRefs],
+          sourceType: input.masteryEvent.sourceType,
+          sourceEventId: input.masteryEvent.sourceEventId,
+          causationId: input.masteryEvent.causationId,
+          correlationId: input.masteryEvent.correlationId,
+          supersedesEventId: input.masteryEvent.supersedesEventId,
+          assessmentVersion: input.masteryEvent.assessmentVersion,
+          idempotencyKey: input.masteryEvent.idempotencyKey,
+          createdAt: input.masteryEvent.recordedAt,
+        });
+      }
+      if (input.commit !== undefined) await input.commit(tx);
+    });
+  }
+
+  async appendMasteryEvent(event: MasteryEventRecord): Promise<void> {
+    await this.db.insert(masteryEvents).values({
+      id: event.id,
+      schoolId: event.schoolId,
+      studentUserId: event.studentId,
+      knowledgePointId: event.knowledgePointId,
+      courseVersion: event.courseVersion,
+      objectiveId: event.objectiveId,
+      planId: event.planId,
+      projectId: event.projectId,
+      eventType: event.eventType,
+      knowledgeType: event.knowledgeType,
+      scoreBasisPoints: event.score === null ? null : Math.round(event.score * 10_000),
+      confidenceBasisPoints: event.confidence === null ? null : Math.round(event.confidence * 10_000),
+      qualitativeMastered: event.qualitativeMastered,
+      validFrom: event.validFrom,
+      recordedAt: event.recordedAt,
+      sequence: event.sequence,
+      evidenceRefs: [...event.evidenceRefs],
+      sourceType: event.sourceType,
+      sourceEventId: event.sourceEventId,
+      causationId: event.causationId,
+      correlationId: event.correlationId,
+      supersedesEventId: event.supersedesEventId,
+      assessmentVersion: event.assessmentVersion,
+      idempotencyKey: event.idempotencyKey,
+      createdAt: event.recordedAt,
+    });
+  }
+
+  async findMasteryEventByIdempotency(idempotencyKey: string): Promise<MasteryEventRecord | null> {
+    const [row] = await this.db.select().from(masteryEvents).where(eq(masteryEvents.idempotencyKey, idempotencyKey)).limit(1);
+    return row === undefined ? null : mapMasteryEvent(row);
+  }
+
+  async listMasteryEvents(input: {
+    studentUserId: string;
+    knowledgePointId?: string | null;
+    courseVersion?: string | null;
+    validFrom?: Date | null;
+    validTo?: Date | null;
+    recordedAt?: Date | null;
+  }): Promise<MasteryEventRecord[]> {
+    const rows = await this.db.select().from(masteryEvents).where(and(
+      eq(masteryEvents.studentUserId, input.studentUserId),
+      ...(input.knowledgePointId ? [eq(masteryEvents.knowledgePointId, input.knowledgePointId)] : []),
+      ...(input.courseVersion ? [eq(masteryEvents.courseVersion, input.courseVersion)] : []),
+      ...(input.validFrom ? [gte(masteryEvents.validFrom, input.validFrom)] : []),
+      ...(input.validTo ? [lte(masteryEvents.validFrom, input.validTo)] : []),
+      ...(input.recordedAt ? [lte(masteryEvents.recordedAt, input.recordedAt)] : []),
+    )).orderBy(asc(masteryEvents.validFrom), asc(masteryEvents.sequence));
+    return rows.map(mapMasteryEvent);
+  }
+
+  async findObjectiveMapping(input: {
+    planId: string;
+    objectiveId: string;
+    templateVersion: string;
+    contentVersion: string;
+  }): Promise<MasteryObjectiveMappingRecord | null> {
+    const [row] = await this.db.select().from(masteryObjectiveMappings).where(and(
+      eq(masteryObjectiveMappings.planId, input.planId),
+      eq(masteryObjectiveMappings.objectiveId, input.objectiveId),
+      eq(masteryObjectiveMappings.templateVersion, input.templateVersion),
+      eq(masteryObjectiveMappings.contentVersion, input.contentVersion),
+    )).limit(1);
+    return row === undefined ? null : mapMasteryMapping(row);
+  }
+
+  async upsertObjectiveMapping(mapping: MasteryObjectiveMappingRecord): Promise<void> {
+    await this.db.insert(masteryObjectiveMappings).values({
+      id: mapping.id,
+      schoolId: mapping.schoolId,
+      planId: mapping.planId,
+      objectiveId: mapping.objectiveId,
+      templateVersion: mapping.templateVersion,
+      contentVersion: mapping.contentVersion,
+      knowledgePointId: mapping.knowledgePointId,
+      courseVersion: mapping.courseVersion,
+      source: mapping.source,
+      mappedAt: mapping.mappedAt,
+    }).onConflictDoUpdate({
+      target: [
+        masteryObjectiveMappings.planId,
+        masteryObjectiveMappings.objectiveId,
+        masteryObjectiveMappings.templateVersion,
+        masteryObjectiveMappings.contentVersion,
+      ],
+      set: {
+        knowledgePointId: mapping.knowledgePointId,
+        courseVersion: mapping.courseVersion,
+        source: mapping.source,
+        mappedAt: mapping.mappedAt,
+      },
     });
   }
 
@@ -442,7 +710,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   }
 
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
-    return withTransaction(this.db, async (tx) => {
+    return this.commitAssessment(async (tx) => {
       const claimed = await tx
         .update(pendingQuestions)
         .set({ status: 'answered', answeredAt: input.answeredAt, updatedAt: input.answeredAt })
@@ -478,6 +746,8 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           studentUserId: input.mastery.studentUserId,
           planId: input.mastery.planId,
           objectiveId: input.mastery.objectiveId,
+          knowledgePointId: input.mastery.knowledgePointId ?? null,
+          courseVersion: input.mastery.courseVersion ?? null,
           knowledgeType: input.mastery.knowledgeType,
           status: input.mastery.status,
           masteryBasisPoints: input.mastery.masteryBasisPoints,
@@ -489,12 +759,18 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           nextReviewAt: input.mastery.nextReviewAt,
           reviewCount: input.mastery.reviewCount,
           lapseCount: input.mastery.lapseCount,
+          sourceEventId: input.mastery.sourceEventId ?? null,
+          sourceSequence: input.mastery.sourceSequence ?? null,
+          assessmentVersion: input.mastery.assessmentVersion ?? null,
+          validFrom: input.mastery.validFrom ?? null,
           updatedAt: input.mastery.updatedAt,
         })
         .onConflictDoUpdate({
           target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
           set: {
             planId: input.mastery.planId,
+            knowledgePointId: input.mastery.knowledgePointId ?? null,
+            courseVersion: input.mastery.courseVersion ?? null,
             knowledgeType: input.mastery.knowledgeType,
             status: input.mastery.status,
             masteryBasisPoints: input.mastery.masteryBasisPoints,
@@ -506,9 +782,47 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
             nextReviewAt: input.mastery.nextReviewAt,
             reviewCount: input.mastery.reviewCount,
             lapseCount: input.mastery.lapseCount,
+            sourceEventId: input.mastery.sourceEventId ?? null,
+            sourceSequence: input.mastery.sourceSequence ?? null,
+            assessmentVersion: input.mastery.assessmentVersion ?? null,
+            validFrom: input.mastery.validFrom ?? null,
             updatedAt: input.mastery.updatedAt,
           },
         });
+      if (input.masteryEvent !== null) {
+        await tx.insert(masteryEvents).values({
+          id: input.masteryEvent.id,
+          schoolId: input.masteryEvent.schoolId,
+          studentUserId: input.masteryEvent.studentId,
+          knowledgePointId: input.masteryEvent.knowledgePointId,
+          courseVersion: input.masteryEvent.courseVersion,
+          objectiveId: input.masteryEvent.objectiveId,
+          planId: input.masteryEvent.planId,
+          projectId: input.masteryEvent.projectId,
+          eventType: input.masteryEvent.eventType,
+          knowledgeType: input.masteryEvent.knowledgeType,
+          scoreBasisPoints:
+            input.masteryEvent.score === null ? null : Math.round(input.masteryEvent.score * 10_000),
+          confidenceBasisPoints:
+            input.masteryEvent.confidence === null
+              ? null
+              : Math.round(input.masteryEvent.confidence * 10_000),
+          qualitativeMastered: input.masteryEvent.qualitativeMastered,
+          validFrom: input.masteryEvent.validFrom,
+          recordedAt: input.masteryEvent.recordedAt,
+          sequence: input.masteryEvent.sequence,
+          evidenceRefs: [...input.masteryEvent.evidenceRefs],
+          sourceType: input.masteryEvent.sourceType,
+          sourceEventId: input.masteryEvent.sourceEventId,
+          causationId: input.masteryEvent.causationId,
+          correlationId: input.masteryEvent.correlationId,
+          supersedesEventId: input.masteryEvent.supersedesEventId,
+          assessmentVersion: input.masteryEvent.assessmentVersion,
+          idempotencyKey: input.masteryEvent.idempotencyKey,
+          createdAt: input.masteryEvent.recordedAt,
+        });
+      }
+      if (input.commit !== undefined) await input.commit(tx);
       return true;
     });
   }
@@ -663,6 +977,7 @@ function mapPendingQuestion(row: PendingQuestionRow): PendingQuestionRecord {
 function mapMastery(row: MasteryRow): MasteryRecord {
   return {
     id: row.id,
+    schoolId: row.schoolId,
     studentUserId: row.studentUserId,
     planId: row.planId,
     objectiveId: row.objectiveId,
@@ -677,7 +992,57 @@ function mapMastery(row: MasteryRow): MasteryRecord {
     nextReviewAt: row.nextReviewAt,
     reviewCount: row.reviewCount,
     lapseCount: row.lapseCount,
+    knowledgePointId: row.knowledgePointId,
+    courseVersion: row.courseVersion,
+    sourceEventId: row.sourceEventId,
+    sourceSequence: row.sourceSequence,
+    assessmentVersion: row.assessmentVersion,
+    validFrom: row.validFrom,
     updatedAt: row.updatedAt,
+  };
+}
+
+function mapMasteryEvent(row: MasteryEventRow): MasteryEventRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    studentId: row.studentUserId,
+    knowledgePointId: row.knowledgePointId,
+    courseVersion: row.courseVersion,
+    objectiveId: row.objectiveId,
+    planId: row.planId,
+    projectId: row.projectId,
+    eventType: row.eventType as MasteryEventRecord['eventType'],
+    knowledgeType: row.knowledgeType as KnowledgeType,
+    score: row.scoreBasisPoints === null ? null : row.scoreBasisPoints / 10_000,
+    confidence: row.confidenceBasisPoints === null ? null : row.confidenceBasisPoints / 10_000,
+    qualitativeMastered: row.qualitativeMastered,
+    validFrom: row.validFrom,
+    recordedAt: row.recordedAt,
+    sequence: row.sequence,
+    evidenceRefs: row.evidenceRefs ?? [],
+    sourceType: row.sourceType as MasteryEventRecord['sourceType'],
+    sourceEventId: row.sourceEventId,
+    causationId: row.causationId,
+    correlationId: row.correlationId,
+    supersedesEventId: row.supersedesEventId,
+    assessmentVersion: row.assessmentVersion,
+    idempotencyKey: row.idempotencyKey,
+  };
+}
+
+function mapMasteryMapping(row: MasteryMappingRow): MasteryObjectiveMappingRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    planId: row.planId,
+    objectiveId: row.objectiveId,
+    templateVersion: row.templateVersion,
+    contentVersion: row.contentVersion,
+    knowledgePointId: row.knowledgePointId,
+    courseVersion: row.courseVersion,
+    source: row.source as MasteryObjectiveMappingRecord['source'],
+    mappedAt: row.mappedAt,
   };
 }
 

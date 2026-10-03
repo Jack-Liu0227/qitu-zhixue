@@ -136,4 +136,40 @@ Review 指出的 P2 仍需后续处理：
 
 ## Worktree 合并状态
 
-本轮所有有代码提交的实现 worktree 均已 cherry-pick 到 `main`。只读 review worktree 和未产生提交的 tutor-redis worktree 没有代码需要合并。
+
+## 后续基线（2026-10-02）
+
+掌握度时间线已提升为一等领域能力，但 Graphiti 不作为权威层。后续优先级为：
+
+1. 修复掌握度事件、审计和 outbox 的事务闭环；
+2. 增加不可变 `mastery_events`、canonical KnowledgePoint 和历史快照；
+3. 将成长轨迹和项目门槛统一接入 `MasteryTimelinePort`；
+4. 通过独立 PoC 决定是否启用 Graphiti shadow projection。
+
+
+## 掌握度时间线接入进度（2026-10-02）
+
+已完成：
+
+- `@qitu/contracts` 掌握度事件、双时态查询、投影和浏览器只读合同；
+- `mastery_events`、显式 objective→KnowledgePoint mapping、当前投影字段和 0011 migration；
+- `@qitu/api-client` 的 `sdk.mastery` 只读 facade；
+- Nest mastery current/timeline/snapshot/threshold/regression 查询模块；
+- quiz / practice evidence 的 attempt、mastery、event、audit、outbox 同事务提交；
+- 历史 current/threshold、跨课程版本区间、未知/撤销语义、cursor、参数白名单、授权和共享 store 回归测试已纳入标准命令。
+
+- Graphiti projection scaffold 已落地：`services/graphiti/bridge.py`、`services/workers/src/mastery-projection-worker.ts`、`mastery_graph_receipts` 和 0012 migration；外部 Graphiti/Neo4j 未配置时保持 disabled；
+- [x] 统一 `QituSDKFactory/createQituSDK`：scope 绑定、mastery/agent/project/profile ports、浏览器只读 facade。
+- [x] 项目 can-advance/advance：服务端门槛、幂等、审计和 outbox。
+- [x] Graphiti projection scaffold：bridge、receipt、租约、重试、rebuild/reconcile；真实图库环境验收待完成。
+
+未完成：
+
+- 真实 Graphiti/Neo4j round-trip、外部图库备份恢复和生产规模性能；
+- canonical KnowledgePoint 的课程治理和历史数据回填；
+- 更细粒度的 KnowledgePoint 聚合锁和真实 PostgreSQL 并发压力测试。
+
+当前验证：`pnpm --filter @qitu/api test` 通过 **250/250**（236 项原有/事务用例 + 14 项
+mastery 只读回归用例）；API/contracts/api-client/workers typecheck 通过。此前 236 项结果不包含
+mastery 查询测试，不能替代本次复验。数据库 `0000..0012` 临时空库 replay、`0011` 和
+`0012` down migration 已通过；真实 Graphiti 依赖未安装，因此未声称 round-trip 已通过。

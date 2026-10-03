@@ -2,6 +2,8 @@ import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema/index';
 
+const connections = new WeakMap<object, pg.Pool>();
+
 export type Database = ReturnType<typeof createDb>;
 
 /**
@@ -9,7 +11,17 @@ export type Database = ReturnType<typeof createDb>;
  */
 export function createDb(connectionString: string) {
   const pool = new pg.Pool({ connectionString });
-  return drizzle(pool, { schema });
+  const db = drizzle(pool, { schema });
+  connections.set(db, pool);
+  return db;
+}
+
+export async function closeDb(db: Database): Promise<void> {
+  const pool = connections.get(db);
+  if (pool) {
+    await pool.end();
+    connections.delete(db);
+  }
 }
 
 /**

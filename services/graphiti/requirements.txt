@@ -1,0 +1,2 @@
+# PoC pin verified against PyPI metadata. No default LLM/embedding is used by the bridge.
+graphiti-core==0.30.2

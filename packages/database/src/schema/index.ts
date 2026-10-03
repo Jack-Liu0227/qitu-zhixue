@@ -4,6 +4,7 @@ export * from './growth-records';
 export * from './identity';
 export * from './idempotency';
 export * from './knowledge';
+export * from './mastery-graph';
 export * from './learning-plan';
 export * from './mentor-review';
 export * from './model-registry';
