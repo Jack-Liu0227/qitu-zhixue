@@ -188,20 +188,6 @@ export interface TutorAgentToolRegistry {
   list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[];
 }
 
-export function createTutorAgentToolRegistry(
-  descriptors: readonly TutorAgentToolDescriptor[],
-): TutorAgentToolRegistry {
-  const frozen = descriptors.map((descriptor) => Object.freeze({
-    ...descriptor,
-    capabilities: Object.freeze([...descriptor.capabilities]),
-  }));
-  return Object.freeze({
-    list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[] {
-      return frozen.filter((descriptor) => descriptor.capabilities.includes(input.capability));
-    },
-  });
-}
-
 
 export interface TutorAgentRunRequest<TData = Record<string, never>> {
   requestId: string;

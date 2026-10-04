@@ -4,7 +4,7 @@ import type {
   TutorAgentToolDescriptor,
   TutorAgentToolRegistry,
 } from '@qitu/contracts';
-import { createTutorAgentToolRegistry } from '@qitu/contracts';
+
 
 /**
  * Server-owned metadata for built-in tutor tools.
@@ -120,13 +120,27 @@ const BUILTIN_TOOL_REGISTRY: readonly AdminRuntimeBuiltinTool[] = [
   },
 ];
 
+function createToolRegistry(
+  descriptors: readonly TutorAgentToolDescriptor[],
+): TutorAgentToolRegistry {
+  const frozen = descriptors.map((descriptor) => Object.freeze({
+    ...descriptor,
+    capabilities: Object.freeze([...descriptor.capabilities]),
+  }));
+  return Object.freeze({
+    list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[] {
+      return frozen.filter((descriptor) => descriptor.capabilities.includes(input.capability));
+    },
+  });
+}
+
 export class BuiltinToolRegistry {
   list(): AdminRuntimeBuiltinTool[] {
     return BUILTIN_TOOL_REGISTRY.map((tool) => ({ ...tool, agentIds: [...tool.agentIds] }));
   }
 
   asAgentRegistry(): TutorAgentToolRegistry {
-    return createTutorAgentToolRegistry(BUILTIN_TOOL_DESCRIPTORS);
+    return createToolRegistry(BUILTIN_TOOL_DESCRIPTORS);
   }
 
   listForCapability(capability: TutorAgentCapability): readonly TutorAgentToolDescriptor[] {
