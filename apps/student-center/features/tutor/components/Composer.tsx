@@ -144,6 +144,7 @@ export function Composer({
       const interimParts: string[] = [];
       for (let index = 0; index < event.results.length; index += 1) {
         const result = event.results[index];
+        if (result === undefined) continue;
         const transcript = result?.[0]?.transcript?.trim();
         if (!transcript) continue;
         (result.isFinal ? finalParts : interimParts).push(transcript);
