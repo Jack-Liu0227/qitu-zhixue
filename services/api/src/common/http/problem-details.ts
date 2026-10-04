@@ -157,8 +157,7 @@ function isSafeHttpDetail(detail: string | undefined): detail is string {
   if (detail === undefined) return false;
   return !/(?:postgres(?:ql)?:\/\/|mysql:\/\/|redis:\/\/|advisory_lock|ECONNREFUSED|relation\s+["']|secret|password|api[_ -]?key|bearer\s+)/iu.test(detail);
 }
-
-
+function fallbackDetail(status: number): string {
   if (status >= 500) return '服务器暂时无法完成该请求，请稍后重试。';
   if (status === 404) return '请求的资源不存在。';
   if (status === 401) return '未登录或会话已失效。';
