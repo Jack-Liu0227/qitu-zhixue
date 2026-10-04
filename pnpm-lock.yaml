@@ -372,6 +372,9 @@ importers:
 
   services/workers:
     dependencies:
+      '@qitu/agent-memory':
+        specifier: workspace:*
+        version: link:../../packages/agent-memory
       '@qitu/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
