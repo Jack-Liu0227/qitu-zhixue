@@ -9,6 +9,7 @@ export * from './growth';
 export * from './reminder';
 export * from './platform';
 export * from './parent';
+export * from './admin';
 export * from './agent-runtime';
 export * from './directory';
 export * from './teacher';
