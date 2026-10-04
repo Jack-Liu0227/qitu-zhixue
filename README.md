@@ -9,19 +9,19 @@
 
 1. [`AGENTS.md`](./AGENTS.md)：项目协作、安全和领域硬规则。
 2. [`docs/README.md`](./docs/README.md)：五端与 SDK 文档索引、优先级和读取顺序。
-3. 按责任域阅读 [`ADMIN.md`](./docs/admin/ADMIN.md)、[`STUDENT.md`](./docs/student/STUDENT.md)、[`TEACHER.md`](./docs/teacher/TEACHER.md)、[`PARENT.md`](./docs/parent/PARENT.md) 或 [`SDK.md`](./docs/sdk/SDK.md)。
-4. [`docs/shared/ARCHITECTURE.md`](./docs/shared/ARCHITECTURE.md) 和 [`docs/shared/DATABASE.md`](./docs/shared/DATABASE.md)：跨模块边界、数据真源和迁移。
-5. [`docs/decisions/`](./docs/decisions/)：已接受的架构决策记录。
+3. 按责任域阅读 [`docs/admin/platform-governance.md`](./docs/admin/platform-governance.md)、[`docs/student/today.md`](./docs/student/today.md)、[`docs/teacher/dashboard.md`](./docs/teacher/dashboard.md)、[`docs/parent/home.md`](./docs/parent/home.md) 或 [`docs/sdk/overview.md`](./docs/sdk/overview.md)。
+4. [`docs/admin/database.md`](./docs/admin/database.md)：数据真源、表归属和迁移。
+5. [`docs/admin/permissions.md`](./docs/admin/permissions.md)：角色、对象级授权、错误码与审计。
 
 ## 当前文档分组
 
-- [Admin](./docs/admin/ADMIN.md)：平台控制面、AI 运行时、知识库、模板库、数据库和审计。
-- [Student](./docs/student/STUDENT.md)：学生导航、探索、AI 搭档、项目、作品和成长轨迹。
-- [Teacher](./docs/teacher/TEACHER.md)：班主任工作台、负责学生、问题处理和人工干预。
-- [Parent](./docs/parent/PARENT.md)：家长授权投影、成长快照、消息和反馈。
-- [SDK](./docs/sdk/SDK.md)：Agent Runtime、Tutor adapter、领域 facade 和浏览器 client。
+按平台二级目录组织，**每个具体功能一份 `.md`**：
 
-详细系统文档：[`docs/shared/ARCHITECTURE.md`](./docs/shared/ARCHITECTURE.md)、[`docs/shared/DATABASE.md`](./docs/shared/DATABASE.md)、[`docs/shared/DEPLOYMENT_AND_AGENTS.md`](./docs/shared/DEPLOYMENT_AND_AGENTS.md)、[`docs/shared/ROADMAP.md`](./docs/shared/ROADMAP.md)。
+- [Admin](./docs/admin/)：平台治理、控制面、模型注册表、权限、认证、目录与关系、数据库、初始化、部署。
+- [Student](./docs/student/)：今天、灵感空间、AI搭档、我的项目、制作工作台、作品展厅、成长轨迹、学习计划。
+- [Teacher](./docs/teacher/)：工作台、学生管理、问题处理、数据统计、知识库（planned）。
+- [Parent](./docs/parent/)：首页、学习进展、消息与反馈、成长导出。
+- [SDK](./docs/sdk/)：总览、Agent Runtime、浏览器客户端、领域 facade、Agent 记忆。
 
 ## 运行服务
 
@@ -53,8 +53,12 @@ pnpm --filter @qitu/workers mastery:once
 ```
 
 Graphiti 不直接决定 `TheoryMastered`、实践解锁、项目状态或权限；Mem0 不保存掌握
-level。具体事件模型、时间语义、迁移阶段和验收门以 ADR 0009 为准。
+level。具体事件模型、时间语义、迁移阶段和验收门以
+[`docs/student/growth.md`](./docs/student/growth.md) §3 与
+[`docs/sdk/agent-memory.md`](./docs/sdk/agent-memory.md) 为准。
 
-## 历史资料
+## 文档维护
 
-旧历史文档已清理；归档目录只保留清理政策说明。当前实现不应引用不存在的旧归档路径。
+- 当前事实文档只放在 `docs/{admin,student,teacher,parent,sdk}/` 与 `docs/README.md`。
+- 兼容文档、历史 ADR 与归档目录已删除；历史版本通过 git 历史保留。
+- 新增能力必须是「当前实现事实」或明确标注的「planned」，并在对应平台的功能文档中维护。

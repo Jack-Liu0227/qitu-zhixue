@@ -5,7 +5,7 @@ import type { ConnectionTestResponse } from '@qitu/contracts';
  *
  * 与具体供应商协议、数据库无关，因此可以脱离 Nest / 网络单测。
  *
- * 安全边界（对应 `docs/admin/LLM_MODEL_REGISTRY.md` §5）：
+ * 安全边界（对应 `docs/admin/model-registry.md` §5）：
  * - 只返回**配置 / 鉴权 / 模型发现连通性**结论，**不**执行、也不暗示任何推理；
  * - 错误信息绝不包含明文密钥、上游原始响应体或带凭证的 URL；
  * - `redactConnectionError` 是纵深防御：上游 fetcher 已不带密钥，这里仍按已知

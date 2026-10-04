@@ -16,7 +16,7 @@ making further design decisions**. You do not write application code.
 
 ## Read first
 
-- The repository `AGENTS.md` and `docs/student/STUDENT.md` sections that name this module (routes, 前端模块, 接口, 验收标准, 核心规则).
+- The repository `AGENTS.md` and `docs/student/today.md` sections that name this module (routes, 前端模块, 接口, 验收标准, 核心规则).
 - The frozen student navigation: 今天、灵感空间、**AI搭档**、我的项目、作品展厅.
   (Navigation label is 「AI搭档」. Since 2026-09-26 「AI搭档」 is the only product name in
    the repo; the approved image file `AI导师.png` keeps its original name.)

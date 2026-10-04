@@ -26,7 +26,7 @@ Do not edit `packages/contracts/**` (contract-owner), `curriculum/**`
 ## Read first
 
 - `AGENTS.md`; product doc 9.4 (提示等级) and the `TheoryMastered` gate in 4.5.
-- `docs/student/tutor-curriculum-design.md` — your source of truth, sections 2 and 4.
+- `docs/student/learning-plan.md` — your source of truth, sections 2 and 4.
 - `.pi/skills/tutor-engine/references/contracts.md`.
 
 ## Required behavior

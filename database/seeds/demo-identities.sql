@@ -15,7 +15,7 @@
 --   services/api/src/modules/growth/growth.service.ts        (家长关系)
 --
 -- 校域说明：演示账号统一挂到 school-demo。school_id 为 NULL 表示平台共享数据
--- （见 docs/decisions/0006-domain-module-storage.md）。
+-- （见 docs/admin/database.md）。
 --
 -- 密码方案说明（重要）：
 --   password_hash 存的是 sha256(明文) 的十六进制，与当前 auth.service.ts 的

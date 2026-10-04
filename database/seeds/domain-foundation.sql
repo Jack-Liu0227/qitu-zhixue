@@ -18,7 +18,7 @@
 --       已完成项目（demo 项目仍在进行中），因此只种 `template_verification_runs` 一条
 --       未通过报告，不虚构证据行。
 --
--- 与 tutor_* 表的关系见 docs/decisions/0006-domain-module-storage.md：
+-- 与 tutor_* 表的关系见 docs/admin/database.md：
 -- tutor_template_documents / tutor_knowledge_documents 为工作区适配层，
 -- 本文件的表为正式领域真源（两者暂时并存，合并计划见文档）。
 

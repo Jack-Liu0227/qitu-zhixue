@@ -27,7 +27,7 @@ Do not edit `packages/contracts/**` (contract-owner), `mastery/**` (mastery-engi
 ## Read first
 
 - `AGENTS.md`; product doc 4.3 (兴趣探测) and 4.5 (项目模板与工作台).
-- `docs/student/tutor-curriculum-design.md` — your source of truth, sections 1, 3, 7.
+- `docs/student/learning-plan.md` — your source of truth, sections 1, 3, 7.
 - The run directory's `curriculum-spec.md`, then
   `.pi/skills/tutor-engine/references/contracts.md`.
 

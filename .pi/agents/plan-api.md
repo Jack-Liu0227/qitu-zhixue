@@ -29,7 +29,7 @@ Do not edit `services/api/src/modules/ai-tutor/**` (tutor-api),
 - `AGENTS.md`; product doc 4.3, 4.5, 9.3–9.4.
 - `services/api/src/modules/identity-auth/**` for the NestJS module pattern and
   `services/api/src/common/{access,audit,idempotency,outbox}/`.
-- `docs/student/tutor-curriculum-design.md` — your source of truth, sections 4, 5, 7.
+- `docs/student/learning-plan.md` — your source of truth, sections 4, 5, 7.
 - The run directory's `api-spec.md` and
   `.pi/skills/tutor-engine/references/contracts.md`.
 

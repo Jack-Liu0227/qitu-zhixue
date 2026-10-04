@@ -3,7 +3,7 @@
 ## 项目基线
 
 - 产品名称：启途智学
-- 主要开发文档：`docs/README.md`；按责任域阅读 `docs/admin/ADMIN.md`、`docs/student/STUDENT.md`、`docs/teacher/TEACHER.md`、`docs/parent/PARENT.md`、`docs/sdk/SDK.md`。
+- 主要开发文档：`docs/README.md`；按责任域阅读 `docs/admin/platform-governance.md`、`docs/student/today.md`、`docs/teacher/dashboard.md`、`docs/parent/home.md`、`docs/sdk/overview.md`。
 - 代码结构采用 Monorepo。
 - 四个平台共享认证、API 合同、权限和数据模型。
 - 首期采用模块化单体后端与异步任务，不提前拆分大量微服务。

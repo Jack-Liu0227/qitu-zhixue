@@ -21,13 +21,14 @@ jobs:
           test -f AGENTS.md
           test -f CONTRIBUTING.md
           test -f docs/README.md
-          test -f docs/admin/ADMIN.md
-          test -f docs/student/STUDENT.md
-          test -f docs/teacher/TEACHER.md
-          test -f docs/parent/PARENT.md
-          test -f docs/sdk/SDK.md
-          test -f docs/shared/ARCHITECTURE.md
-          test -f docs/shared/DATABASE.md
+          test -f docs/admin/platform-governance.md
+          test -f docs/student/today.md
+          test -f docs/teacher/dashboard.md
+          test -f docs/parent/home.md
+          test -f docs/sdk/overview.md
+          test -f docs/README.md
+          test -f docs/admin/database.md
+          test -f docs/admin/permissions.md
           test -f package.json
           test -f pnpm-workspace.yaml
           for dir in apps packages services database docs tooling; do

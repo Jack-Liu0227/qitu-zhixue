@@ -14,7 +14,7 @@ import { index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-cor
  *   `school_id`，客户端不能指定其它学校。
  *
  * 当前只种一行演示学校；真正的多校切换、RLS / SET ROLE 见
- * `docs/decisions/0006-domain-module-storage.md` 的未决事项。
+ * `docs/admin/database.md` 的未决事项。
  */
 export const schools = pgTable(
   'schools',

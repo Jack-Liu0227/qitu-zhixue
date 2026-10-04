@@ -17,7 +17,7 @@ import { projectTemplateVersions } from './project-templates';
 
 /**
  * Learning plans: 「兴趣 → 4/8 周学习计划」的服务端真源
- * (docs/student/tutor-curriculum-design.md §3 / §9).
+ * (docs/student/learning-plan.md §3 / §9).
  *
  * 硬规则衔接：
  * - 计划先生成，**学生确认意图后才创建正式项目**并冻结 `template_version_id`；

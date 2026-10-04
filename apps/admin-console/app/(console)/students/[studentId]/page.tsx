@@ -99,7 +99,7 @@ export default async function AdminStudentDetailPage({ params }: { params: Promi
         </Link>
         <ErrorState
           title="个别学生访问需要显式授权"
-          description="按 ADR 0008 / docs/shared/PERMISSIONS.md §5，管理员查看个别学生数据需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。该授权流程尚未实现，后端已按失败关闭返回 403。日常学生处理请由班主任在班主任工作台完成。"
+          description="按 ADR 0008 / docs/admin/permissions.md §5，管理员查看个别学生数据需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。该授权流程尚未实现，后端已按失败关闭返回 403。日常学生处理请由班主任在班主任工作台完成。"
         />
       </div>
     );

@@ -92,5 +92,5 @@ pnpm --filter @qitu/database generate
 - `packages/database/` 是**代码包**（schema + client）。
   它导出运行时值，因此必须 `pnpm --filter @qitu/database build` 出 `dist/`
   才能被 `services/api` 在运行时 require；原因见
-  `docs/decisions/0003-database-access-layer.md` 的「实施补充 1」。
+  `docs/admin/database.md` 的「实施补充 1」。
 - 本目录（`database/`）是**产物目录**：迁移 / 种子 / fixture。

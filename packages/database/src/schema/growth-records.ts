@@ -26,7 +26,7 @@ import { projects } from './projects';
  * - `idempotency_key` 唯一：同一阶段完成 / 同一作品发布重试时只落一条。
  *
  * 与 `tutor_growth_signals` 的关系：后者是 AI 搭档工作区的轻量信号（已有 0007）。
- * 本表是成长档案真源，字段更完整；两者暂时并存，收敛见 `docs/shared/DATABASE.md`。
+ * 本表是成长档案真源，字段更完整；两者暂时并存，收敛见 `docs/admin/database.md`。
  */
 export const growthRecords = pgTable(
   'growth_records',

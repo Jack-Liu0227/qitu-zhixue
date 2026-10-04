@@ -16,7 +16,7 @@ description: >
 **开场声明：** "我先确认这一期做哪个切片，然后侦察现状、出教学策略规格请你确认，再补合同、并行实现、验证和对抗评审。"
 
 参考实现：`HKUDS/DeepTutor`（只借鉴教学机制，不照搬其 Python / RAG / 向量库结构）。
-学习计划设计基线：[`docs/student/tutor-curriculum-design.md`](../../../docs/student/tutor-curriculum-design.md)。
+学习计划设计基线：[`docs/student/learning-plan.md`](../../../docs/student/learning-plan.md)。
 
 ## 流程
 
@@ -73,7 +73,7 @@ Phase 8  交付     父会话
 
 只移植**教学机制**，不移植其 Python 服务、向量库或前端。以下每条都带**已核实路径**；
 没有证据的机制不写进规格。完整设计见
-[`docs/student/tutor-curriculum-design.md`](../../../docs/student/tutor-curriculum-design.md)。
+[`docs/student/learning-plan.md`](../../../docs/student/learning-plan.md)。
 
 **关键结论：DeepTutor 没有分级提示阶梯。** 全仓库不存在 graduated hint/scaffold ladder；
 `hints_used:int`（`deeptutor/learning/models.py:178`、`learning/assessment.py:104`）
@@ -172,7 +172,7 @@ embedding/indexing-version 选择器、KB manifest）、`services/memory/**` L1�
 （`pedagogy` / `context` / `api` / `escalation` / `curriculum`（4/8 周学习计划）/ `all`）、
 做/不做、验收重点。写 `brief.json`。
 
-**含 `curriculum` 时**先读 `docs/student/tutor-curriculum-design.md`，并在 Phase 2 后
+**含 `curriculum` 时**先读 `docs/student/learning-plan.md`，并在 Phase 2 后
 过它的第 8 节确认门（课时密度、先理论后实践的含义、计划宿主页面、模板范围）。
 
 ## Phase 1 — 侦察（并行，只读）
@@ -257,7 +257,7 @@ subagent({
   thinking: "off",
   task: `Mode: spec (no code).
 Run directory: <ABSOLUTE run dir>
-Read brief.json, recon-deeptutor.md, docs/student/tutor-curriculum-design.md, and
+Read brief.json, recon-deeptutor.md, docs/student/learning-plan.md, and
 .pi/skills/tutor-engine/references/contracts.md.
 Write curriculum-spec.md. It must define:
 - the LearningPlan / Module / Session / Objective shapes and templateVersion freezing
@@ -318,9 +318,9 @@ subagent({ name: "Tutor api",        agent: "tutor-api",        model: "deepseek
 同理，五个目录零重叠。`curriculum-spec.md` 已在 Phase 3 冻结合同。
 
 ```typescript
-subagent({ name: "Curriculum planner", agent: "curriculum-planner", model: "deepseek/deepseek-flash", thinking: "off", worktree: { branch: "agent/curriculum-planner", base: "HEAD" }, task: `Slice: curriculum. You own EXACTLY packages/ai-client/src/curriculum/**. Read curriculum-spec.md, docs/student/tutor-curriculum-design.md and .pi/skills/tutor-engine/references/contracts.md. Implement the two-phase explore -> plan generator and strict validation (weeks in {4,8}, blocks sum to 60, <=4 objectives/session, acyclic prerequisites, never schedule practice before its theory prerequisite). Untrusted model output must be rejected, never silently repaired. Deterministic given profile+interest+weeks+seed. No persistence, no I/O. Add focused tests. Verify: pnpm --filter @qitu/ai-client typecheck && pnpm --filter @qitu/ai-client test. Commit and report the SHA. Do not push or merge. Return: files, generator signature, validation rules, test output.` });
+subagent({ name: "Curriculum planner", agent: "curriculum-planner", model: "deepseek/deepseek-flash", thinking: "off", worktree: { branch: "agent/curriculum-planner", base: "HEAD" }, task: `Slice: curriculum. You own EXACTLY packages/ai-client/src/curriculum/**. Read curriculum-spec.md, docs/student/learning-plan.md and .pi/skills/tutor-engine/references/contracts.md. Implement the two-phase explore -> plan generator and strict validation (weeks in {4,8}, blocks sum to 60, <=4 objectives/session, acyclic prerequisites, never schedule practice before its theory prerequisite). Untrusted model output must be rejected, never silently repaired. Deterministic given profile+interest+weeks+seed. No persistence, no I/O. Add focused tests. Verify: pnpm --filter @qitu/ai-client typecheck && pnpm --filter @qitu/ai-client test. Commit and report the SHA. Do not push or merge. Return: files, generator signature, validation rules, test output.` });
 
-subagent({ name: "Mastery engine", agent: "mastery-engine", model: "deepseek/deepseek-flash", thinking: "off", worktree: { branch: "agent/mastery-engine", base: "HEAD" }, task: `Slice: mastery. You own EXACTLY packages/ai-client/src/mastery/**. Read curriculum-spec.md, docs/student/tutor-curriculum-design.md and .pi/skills/tutor-engine/references/contracts.md. Implement the typed gates (memory/procedure >= 0.9; concept/design stored boolean), recency weights (0.5,0.7,0.85,0.95,1.0), confidence cap {1:0.5, 2:0.8}, the fixed next-step precedence, the spaced-review scheduler mapped onto session indices, and the hint/attempt quality penalties. Never write state. Add focused tests. Verify: pnpm --filter @qitu/ai-client typecheck && pnpm --filter @qitu/ai-client test. Commit and report the SHA. Do not push or merge. Return: files, signatures, constants used, test output.` });
+subagent({ name: "Mastery engine", agent: "mastery-engine", model: "deepseek/deepseek-flash", thinking: "off", worktree: { branch: "agent/mastery-engine", base: "HEAD" }, task: `Slice: mastery. You own EXACTLY packages/ai-client/src/mastery/**. Read curriculum-spec.md, docs/student/learning-plan.md and .pi/skills/tutor-engine/references/contracts.md. Implement the typed gates (memory/procedure >= 0.9; concept/design stored boolean), recency weights (0.5,0.7,0.85,0.95,1.0), confidence cap {1:0.5, 2:0.8}, the fixed next-step precedence, the spaced-review scheduler mapped onto session indices, and the hint/attempt quality penalties. Never write state. Add focused tests. Verify: pnpm --filter @qitu/ai-client typecheck && pnpm --filter @qitu/ai-client test. Commit and report the SHA. Do not push or merge. Return: files, signatures, constants used, test output.` });
 
 subagent({ name: "Question bank", agent: "question-bank", model: "deepseek/deepseek-flash", thinking: "off", worktree: { branch: "agent/question-bank", base: "HEAD" }, task: `Slice: questions. You own EXACTLY packages/ai-client/src/questions/**. Read curriculum-spec.md and .pi/skills/tutor-engine/references/contracts.md. Implement QuestionCard (server-only, holds expectedAnswer/explanation), toPublicQuestion (structural projection that cannot include the answer), the closed question-kind union, misconception-bearing matched-length distractors, and the difficulty template generation (unique topics, no repeated stems). Add a serialized-projection scan test. Verify: pnpm --filter @qitu/ai-client typecheck && pnpm --filter @qitu/ai-client test. Commit and report the SHA. Do not push or merge. Return: files, signatures, boundary enforcement, test output.` });
 

@@ -39,7 +39,7 @@ export const MODEL_RUNTIME_RESOLVER = Symbol('MODEL_RUNTIME_RESOLVER');
  *
  * 本任务只交付**非流式** `complete`；`stream` 已预留事件形状但**未接线**，
  * 并在调用时抛 `MODEL_STREAM_NOT_IMPLEMENTED`，绝不假装支持流式。也**尚未**
- * 接入 AI搭档 / 成长 / 知识库任何业务（见 `docs/admin/LLM_MODEL_REGISTRY.md` §8）。
+ * 接入 AI搭档 / 成长 / 知识库任何业务（见 `docs/admin/model-registry.md` §8）。
  */
 @Injectable()
 export class ModelGateway {

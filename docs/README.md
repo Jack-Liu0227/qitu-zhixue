@@ -1,73 +1,94 @@
-# 启途智学文档入口
+# 启途智学文档总入口
 
-> 更新：2026-10-04
+> 更新：2026-10-05
+> 当前实现基线：NestJS 模块化单体 + PostgreSQL + Redis/Worker + 四个 Next.js 前端。
 >
-> 本目录按责任域组织：`admin`、`student`、`teacher`、`parent`、`sdk` 五个二级目录是规范落点，`shared` 放跨责任域的系统基线，`decisions` 放 ADR，`archive` 只保留归档政策。实现、评审和部署默认从本页进入。
+> 本目录按**责任域**组织：`docs/<平台>/<功能>.md`。每个功能一个文件，
+> 不再保留 ADR、设计稿、路线图、归档等历史/兼容文档。
 
-## 目录结构
+## 阅读顺序
+
+1. [`AGENTS.md`](../AGENTS.md)：项目协作、安全与领域硬规则（最高优先级）。
+2. 本文件：产品基线、仓库架构、跨域硬规则、平台索引。
+3. 按角色阅读对应平台入口：
+   - 管理端：[`admin/platform-governance.md`](./admin/platform-governance.md)
+   - 学生端：[`student/today.md`](./student/today.md)
+   - 班主任端：[`teacher/dashboard.md`](./teacher/dashboard.md)
+   - 家长端：[`parent/home.md`](./parent/home.md)
+   - SDK：[`sdk/overview.md`](./sdk/overview.md)
+
+## 平台与责任域
+
+| 平台 | 目录 | 角色 | 说明 |
+|---|---|---|---|
+| 学生端 | `docs/student/` | `student` | 探索、AI搭档、项目、理论学习、制作工作台、作品、成长轨迹 |
+| 班主任端 | `docs/teacher/` | `teacher` | 工作台、学生管理、问题处理、数据统计 |
+| 家长端 | `docs/parent/` | `parent` | 授权投影下的成长快照、消息与反馈、导出 |
+| 管理端 | `docs/admin/` | `admin` | 平台治理控制面、模型注册表、关系绑定、数据库、部署、权限 |
+| SDK | `docs/sdk/` | — | Agent Runtime、领域 facade、浏览器 client、记忆 |
+
+跨域基线（架构、权限、数据库、初始化、部署、登录）**不是**独立目录，而是分别归入
+`docs/README.md`（架构与不变量）与 `docs/admin/`（权限、登录、数据库、初始化、部署）。
+
+## 仓库架构
+
+Monorepo（`pnpm workspace + Turborepo`），四端共用一套认证、API 合同、权限与数据模型。
 
 ```text
-docs/
-├── admin/       平台控制面、AI 运行时、模型注册表
-├── student/     学生学习中心、AI 搭档、课程与掌握度设计
-├── teacher/     班主任工作台
-├── parent/      家长陪伴中心
-├── sdk/         SDK 合同与 Agent 记忆设计
-├── shared/      跨责任域系统基线：架构、数据库、权限、初始化、部署、路线、Issue、登录、团队与协作
-├── decisions/   已接受的架构决策记录（ADR）
-├── archive/     仅保留归档政策，不保留旧方案副本
-└── README.md    唯一文档索引
+apps/            四个 Next.js 应用（student-center / teacher-workspace / parent-companion / admin-console）
+packages/        共享能力（contracts / permissions / database / ai-client / auth / ui / design-tokens …）
+services/        api（模块化单体）/ workers（异步任务）/ realtime-gateway / graphiti（可选投影）
+database/        迁移产物 migrations/、确定性种子 seeds/、fixtures/
+tooling/         启动、同步、端口约定
 ```
 
-| 文档 | 责任域 | 当前实现入口 |
+**硬边界：**
+
+- 应用之间**禁止**互相导入业务代码；跨端共享只经 `packages/*`。
+- 后端是模块化单体，按领域模块拆分，不提前拆微服务。
+- 项目状态转换由 `projects` 领域统一写入；其他模块只能通过命令/领域事件请求变更。
+- 家长授权、班主任分配、审计、幂等属于横切基础设施，业务页面不得各自实现。
+
+## 领域边界（单一写入者）
+
+每个领域模块是**各自数据的唯一写入者**；跨模块写只能走命令/事件/outbox。
+
+| 领域 | 服务目录 | 负责 |
 |---|---|---|
-| [admin/ADMIN.md](./admin/ADMIN.md) | 平台管理后台、AI 运行时、知识库、模板库、数据库状态、审计 | `apps/admin-console`、`services/api/src/modules/admin`、`platform-registry` |
-| [student/STUDENT.md](./student/STUDENT.md) | 学生学习中心、探索、AI 搭档、项目、作品、成长轨迹 | `apps/student-center`、`services/api/src/modules/ai-tutor`、`projects` |
-| [teacher/TEACHER.md](./teacher/TEACHER.md) | 班主任工作台、负责学生、问题处理、干预和项目复核 | `apps/teacher-workspace`、`services/api/src/modules/reminders`、`interventions` |
-| [parent/PARENT.md](./parent/PARENT.md) | 家长授权投影、成长快照、反馈和消息 | `apps/parent-companion`、`services/api/src/modules/parent` |
-| [sdk/SDK.md](./sdk/SDK.md) | Agent Runtime、Tutor context adapter、Qitu domain facade、浏览器只读 client | `packages/contracts`、`packages/ai-client`、`packages/api-client` |
+| Identity & Access | `identity-auth` / `account` / `directory` | 用户、角色、会话、家庭、监护关系、班主任分配、对象级授权 |
+| Projects & Learning | `projects` / `learning-plan` / `mastery` | 模板版本、项目实例、阶段、任务、理论检查、状态机 |
+| AI Tutor | `ai-tutor` / `agent-memory` | 会话、turn、context packet、提示等级、模型路由、卡顿检测 |
+| Mentor Operations | `mentor` / `teacher` | 告警、问题、干预、班主任笔记、知识库 |
+| Parent Experience | `parent` / `growth` | 授权脱敏投影、成长快照、消息与反馈、导出 |
+| Admin & Compliance | `admin` / `platform-registry` / `platform-data` / `settings` / `templates` / `model-registry` / `knowledge` | 平台配置、AI 策略、审计、数据保留、敏感访问审批 |
 
-各责任域目录内的补充文档：
+依赖规则：
 
-- `admin/PLATFORM_CONTROL_PLANE.md`：Admin 控制面和运行时投影。
-- `admin/LLM_MODEL_REGISTRY.md`：Provider、Model、Usage 和凭证边界。
-- `student/student-agent-design.md`：学生 Agent 职责与边界设计。
-- `student/student-frontend-backend-design.md`：学生端前后端模块和接口设计。
-- `student/tutor-curriculum-design.md`：兴趣 → 4/8 周计划 → 先理论后实践的课程引擎设计。
-- `student/deeptutor-source-verification.md`：课程设计的开源来源核对记录（2026-09-25，DeepTutor v1.6.11）。
-- `sdk/AGENT_MEMORY.md`：Agent 记忆、上下文和策略边界设计。
+```text
+apps → packages/contracts + packages/api-client + packages/ui
+apps ✕ apps/* 业务代码
+api modules → domain / application / infrastructure / presentation
+api modules ✕ 直接写其他模块的表
+cross-domain writes → command / event / outbox
+parent reads → authorized projection only
+```
 
-## 系统基线（`shared/`）
+## 跨域硬规则（所有平台必须遵守）
 
-- [ARCHITECTURE.md](./shared/ARCHITECTURE.md)：模块边界、依赖规则和数据权威。
-- [DATABASE.md](./shared/DATABASE.md)：数据库、表 owner、迁移和数据权限。
-- [PERMISSIONS.md](./shared/PERMISSIONS.md)：认证、角色和对象级授权。
-- [INITIALIZATION.md](./shared/INITIALIZATION.md)：初始化、迁移和正式/演示模式。
-- [DEPLOYMENT_AND_AGENTS.md](./shared/DEPLOYMENT_AND_AGENTS.md)：部署、运行时来源和 Agent 协作边界。
-- [HANDOVER.md](./shared/HANDOVER.md)：模块清单、关键 API、环境配置和接手顺序。
-- [ROADMAP.md](./shared/ROADMAP.md)：里程碑和迭代顺序。
-- [ISSUES.md](./shared/ISSUES.md)：Issue 登记、验收标准和风险。
-- [LOGIN.md](./shared/LOGIN.md)：统一登录入口和演示账号。
-- [TEAM_SETUP.md](./shared/TEAM_SETUP.md)、[SHARED_PI_HERDR_AGENTS.md](./shared/SHARED_PI_HERDR_AGENTS.md)：团队分工、远程目录和 Agent 协作设置。
+以下规则来自 `AGENTS.md`，任何平台文档与实现都不得违反：
 
-## 决策记录
+1. **前端权限只负责显示**；所有对象级权限必须在后端再次校验（前端隐藏不是授权）。
+2. 项目状态转换、AI 决策、成长档案、审计日志**不能由客户端直接写入**。
+3. 一个学生同一时间只能有一个当前班主任（部分唯一索引保证）。
+4. 学生**未确认意图**时不得创建正式项目。
+5. `TheoryMastered` 之前不得进入实践阶段。
+6. 涉及未成年人数据时，默认最小化可见范围并保留审计记录。
+7. 所有写操作考虑幂等性，尤其项目、任务、作品、导师分配和干预操作。
+8. 页面必须覆盖 loading / empty / error / 断网 / 权限失败五种状态。
 
-- [ADR 0001–0010](./decisions/)：工程架构、领域边界、数据库访问层、成长轨迹导航、初始化与演示数据、领域模块存储、LLM Provider Registry、Admin/Teacher 边界、掌握度时间线、统一 Tutor 探索上下文。
-- 重点：[ADR 0008](./decisions/0008-admin-teacher-boundary.md)、[ADR 0009](./decisions/0009-mastery-timeline-and-graphiti.md)、[ADR 0010](./decisions/0010-unified-tutor-exploration-context.md)。
+## 文档维护规则
 
-## 读取规则
-
-1. 先阅读 `AGENTS.md` 和本页。
-2. 按任务责任域阅读对应目录的主文档。
-3. 涉及跨模块边界时补读 `shared/ARCHITECTURE.md`、`shared/DATABASE.md` 和相关 ADR。
-4. 涉及未成年人数据时必须同时检查 `shared/PERMISSIONS.md`、审计和字段投影要求。
-5. 旧提案、旧技术栈、旧任务清单和兼容入口已删除，不再作为实现依据。
-
-## 当前不变量
-
-- 学生未确认意图不得创建正式项目。
-- `TheoryMastered` 之前不得进入实践阶段。
-- 项目状态、掌握度、成长档案、画像和审计不能由客户端或模型直接写入。
-- 前端权限只负责显示，后端每次请求都重新做对象级授权。
-- 一个学生同一时间只能有一个当前班主任。
-- AI Agent 只能读取授权 projection，并返回结构化结果；不能持有数据库句柄。
+- 文档只能是「当前事实」或「明确标注的规划项」，不保留历史决策记录。
+- 新增功能 → 在对应平台目录新增一个功能文件，并在本文件与平台入口登记。
+- 不再使用的文档直接删除，不建立 `archive/`、`decisions/`、`shared/` 等兼容目录。
+- 代码里的 `@see docs/...` 引用必须指向本目录中真实存在的文件。

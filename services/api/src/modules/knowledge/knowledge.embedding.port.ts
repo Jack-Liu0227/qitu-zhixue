@@ -3,7 +3,7 @@ import { KNOWLEDGE_EMBED_USAGE_ID } from './knowledge.types';
 /**
  * 向量化端口 —— 为 `ModelGateway` 的 `knowledge.embed` 用途预留。
  *
- * 边界说明（`docs/shared/ARCHITECTURE.md` §5、`docs/admin/LLM_MODEL_REGISTRY.md` §8.6）：
+ * 边界说明（`docs/README.md` §5、`docs/admin/model-registry.md` §8.6）：
  * - 当前 `ModelGateway` 只实现非流式 `complete`，**没有** embedding 能力；
  * - 因此本模块先用确定性关键词检索，向量化通过本端口预留，**不**在知识模块内
  *   自造 HTTP 调用或复制凭证；
