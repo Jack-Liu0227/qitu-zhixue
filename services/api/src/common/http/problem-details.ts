@@ -153,8 +153,12 @@ function readRawProblem(payload: unknown): RawProblem {
   };
 }
 
-/** 兜底 detail：5xx 一律给固定文案，避免把内部实现细节漏出去。 */
-function fallbackDetail(status: number): string {
+function isSafeHttpDetail(detail: string | undefined): detail is string {
+  if (detail === undefined) return false;
+  return !/(?:postgres(?:ql)?:\/\/|mysql:\/\/|redis:\/\/|advisory_lock|ECONNREFUSED|relation\s+["']|secret|password|api[_ -]?key|bearer\s+)/iu.test(detail);
+}
+
+
   if (status >= 500) return '服务器暂时无法完成该请求，请稍后重试。';
   if (status === 404) return '请求的资源不存在。';
   if (status === 401) return '未登录或会话已失效。';
@@ -173,8 +177,10 @@ export function buildProblemDetails(exception: unknown, context: ProblemContext 
   const raw = readRawProblem(isHttpException ? safeGetResponse(exception) : undefined);
 
   // 5xx 不回传业务侧的原文（可能是 SQL 片段、连接串、外部服务响应）。
+  // 5xx 默认脱敏；显式业务异常可以保留面向用户的稳定文案，但任何
+  // 连接串、SQL、凭据或内部错误关键词都继续使用固定文案。
   const detail = status >= 500
-    ? (isHttpException && raw.detail !== undefined ? raw.detail : fallbackDetail(status))
+    ? (isHttpException && isSafeHttpDetail(raw.detail) ? raw.detail : fallbackDetail(status))
     : (raw.detail ?? fallbackDetail(status));
 
   return {
