@@ -324,8 +324,8 @@ export class ModelRegistryService implements OnModuleInit {
       availableModalities,
     };
   }
-
-
+  /**
+   * Runtime `ModelGateway` 的解析入口：把用途解析为 provider / model / baseUrl /
    * 协议 / **解密后的凭证**。
    *
    * ⚠️ 返回值里的 `credential` 是明文。它**只允许** `ModelGateway` 用来构造
