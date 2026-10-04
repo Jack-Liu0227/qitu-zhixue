@@ -9,7 +9,7 @@
  *    且只返回模型标识，不返回任何密钥材料。
  */
 
-import type { TutorInputModality, TutorModalityMode, TutorOutputModality } from './tutor';
+import type { TutorInputModality, TutorModalityMode, TutorOutputModality } from './tutor.js';
 
 /** 两个插槽：普通文本对话，与实时语音（Live）。 */
 export type ModelSlot = 'text' | 'live';

@@ -1,24 +1,24 @@
 // `Role` 与登录契约同源定义在 `./auth`，此处仅做 re-export。
-export * from './auth';
+export * from './auth.js';
 
-export * from './project';
-export * from './exploration';
-export * from './tutor';
-export * from './realtime';
-export * from './growth';
-export * from './reminder';
-export * from './platform';
-export * from './parent';
-export * from './admin';
-export * from './agent-runtime';
-export * from './directory';
-export * from './teacher';
-export * from './settings';
-export * from './preferences';
-export * from './models';
-export * from './errors';
-export * from './learning-plan';
-export * from './mastery';
+export * from './project.js';
+export * from './exploration.js';
+export * from './tutor.js';
+export * from './realtime.js';
+export * from './growth.js';
+export * from './reminder.js';
+export * from './platform.js';
+export * from './parent.js';
+export * from './admin.js';
+export * from './agent-runtime.js';
+export * from './directory.js';
+export * from './teacher.js';
+export * from './settings.js';
+export * from './preferences.js';
+export * from './models.js';
+export * from './errors.js';
+export * from './learning-plan.js';
+export * from './mastery.js';
 
 export interface HealthResponse {
   service: string;

@@ -1,4 +1,4 @@
-import type { KnowledgeType, ObjectiveStatus } from './learning-plan';
+import type { KnowledgeType, ObjectiveStatus } from './learning-plan.js';
 
 /**
  * Mastery 共享合同（ADR 0009 + 本轮 M0 修正）。

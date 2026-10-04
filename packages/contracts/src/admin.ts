@@ -1,5 +1,5 @@
-import type { ProjectStage } from './project';
-import type { DataSource } from './platform';
+import type { ProjectStage } from './project.js';
+import type { DataSource } from './platform.js';
 
 /**
  * 平台管理后台契约。

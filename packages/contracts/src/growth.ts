@@ -1,4 +1,4 @@
-import type { ProjectStage } from './project';
+import type { ProjectStage } from './project.js';
 
 /**
  * Shared growth-record model (growth-spec.md §3) — STUDENT projection only.

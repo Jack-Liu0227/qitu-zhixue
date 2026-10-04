@@ -1,7 +1,7 @@
-import type { AdminInterventionStatus } from './admin';
-import type { DataSource } from './platform';
-import type { ProjectStage } from './project';
-import type { ParentFeedbackStatus, ParentFeedbackTicket } from './parent';
+import type { AdminInterventionStatus } from './admin.js';
+import type { DataSource } from './platform.js';
+import type { ProjectStage } from './project.js';
+import type { ParentFeedbackStatus, ParentFeedbackTicket } from './parent.js';
 
 /**
  * 班主任工作台契约。

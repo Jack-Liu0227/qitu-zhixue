@@ -1,4 +1,4 @@
-import type { TutorModalityMode } from './tutor';
+import type { TutorModalityMode } from './tutor.js';
 
 /**
  * Stable, string-literal error-code union shared across all student-center
