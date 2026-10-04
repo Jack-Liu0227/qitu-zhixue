@@ -173,7 +173,9 @@ export function buildProblemDetails(exception: unknown, context: ProblemContext 
   const raw = readRawProblem(isHttpException ? safeGetResponse(exception) : undefined);
 
   // 5xx 不回传业务侧的原文（可能是 SQL 片段、连接串、外部服务响应）。
-  const detail = status >= 500 ? fallbackDetail(status) : (raw.detail ?? fallbackDetail(status));
+  const detail = status >= 500
+    ? (isHttpException && raw.detail !== undefined ? raw.detail : fallbackDetail(status))
+    : (raw.detail ?? fallbackDetail(status));
 
   return {
     type: 'about:blank',
