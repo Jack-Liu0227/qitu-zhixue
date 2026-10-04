@@ -1,30 +1,75 @@
 /**
- * Server-owned coordination contracts for the future project-learning Agent SDK.
+ * Versioned, server-owned contract for project-learning agents.
  *
- * Agents may propose bounded outputs, but only domain services can commit project
- * state, mastery, growth, profile, audit, or memory changes. Knowledge, template,
- * and database access is expressed as read ports so an agent never receives a
- * database handle or unrestricted query capability.
+ * This file is deliberately transport- and database-agnostic. The browser may
+ * consume projections derived from these types, but it must never construct a
+ * trusted scope or commit one of the domain commands represented here.
  */
 
-export type TutorAgentCapability = 'explore' | 'plan' | 'teach' | 'review' | 'reflect' | 'summarize';
-export type TutorAgentOutputKind = 'reply' | 'plan' | 'growth_projection' | 'learner_profile_projection' | 'teacher_follow_up';
+export const TUTOR_AGENT_RUNTIME_VERSION = 'qitu.agent-runtime.v1' as const;
 
+export type TutorAgentCapability =
+  | 'explore'
+  | 'plan'
+  | 'teach'
+  | 'review'
+  | 'reflect'
+  | 'summarize';
+
+export type TutorAgentOutputKind =
+  | 'reply'
+  | 'plan'
+  | 'growth_projection'
+  | 'learner_profile_projection'
+  | 'teacher_follow_up';
+
+export type TutorAgentActorRole = 'student' | 'teacher' | 'admin' | 'parent' | 'support';
+
+/** The scope is issued by the API after authorization, never trusted from a client. */
 export interface TutorAgentScope {
+  actorId: string;
   studentId: string;
   partnerId: string;
   projectId: string | null;
   sessionId: string | null;
-  actorRole: 'student' | 'teacher' | 'admin' | 'parent' | 'support';
+  schoolId: string | null;
+  actorRole: TutorAgentActorRole;
 }
 
-export interface TutorAgentContext {
+export interface TutorAgentContext<TData = Record<string, never>> {
+  contextId: string;
+  runtimeVersion: typeof TUTOR_AGENT_RUNTIME_VERSION;
+  builtAt: string;
   scope: TutorAgentScope;
   capability: TutorAgentCapability;
   query: string;
   projectStage: string | null;
   goal: string | null;
   evidenceRefs: readonly string[];
+  /** Optional bounded, already-authorized domain projection for the agent adapter. */
+  data: TData;
+}
+
+export interface TutorAgentContextInput {
+  requestId: string;
+  capability: TutorAgentCapability;
+  query: string;
+  projectStage: string | null;
+  goal: string | null;
+  evidenceRefs?: readonly string[];
+}
+
+export interface TutorAgentRuntimeRunInput extends TutorAgentContextInput {
+  idempotencyKey: string;
+}
+
+export interface TutorKnowledgeEvidence {
+  id: string;
+  version: string;
+  title: string;
+  summary: string;
+  evidence: string;
+  sourceRef: string | null;
 }
 
 export interface TutorKnowledgeReadPort {
@@ -32,56 +77,37 @@ export interface TutorKnowledgeReadPort {
     scope: TutorAgentScope;
     query: string;
     limit: number;
-  }): Promise<readonly {
-    id: string;
-    version: string;
-    title: string;
-    summary: string;
-    evidence: string;
-    sourceRef: string | null;
-  }[]>;
+  }): Promise<readonly TutorKnowledgeEvidence[]>;
+}
+
+export interface TutorTemplateEvidence {
+  id: string;
+  versionId: string;
+  title: string;
+  summary: string;
+  stageIds: readonly string[];
 }
 
 export interface TutorTemplateReadPort {
   listPublished(input: {
     scope: TutorAgentScope;
     capability: TutorAgentCapability;
-  }): Promise<readonly {
-    id: string;
-    versionId: string;
-    title: string;
-    summary: string;
-    stageIds: readonly string[];
-  }[]>;
+  }): Promise<readonly TutorTemplateEvidence[]>;
 }
 
-export interface TutorDatabaseReadPort {
-  readProjection(input: {
-    scope: TutorAgentScope;
-    projection: 'project_context' | 'mastery_snapshot' | 'learner_profile' | 'growth_timeline';
-  }): Promise<unknown>;
+export interface TutorProjectContextProjection {
+  projectId: string;
+  title: string;
+  stage: string;
+  progressPercent: number;
 }
 
-export interface TutorAgentOutput<TPayload = unknown> {
-  id: string;
-  kind: TutorAgentOutputKind;
-  agentId: string;
-  agentVersion: string;
-  generatedAt: string;
-  sourceRefs: readonly string[];
-  payload: TPayload;
-}
-
-export interface TutorGrowthProjection {
+export interface TutorMasterySnapshotProjection {
   studentId: string;
-  period: { from: string; to: string };
-  strengths: readonly string[];
-  evidenceCount: number;
-  nextQuestions: readonly string[];
-  studentSummary: string;
-  parentSummary: string | null;
-  teacherSummary: string | null;
-  confidence: 'low' | 'medium' | 'high';
+  freshness: 'fresh' | 'stale' | 'unavailable';
+  sourceSequence: number;
+  masteredCount: number;
+  totalCount: number;
 }
 
 export interface TutorLearnerProfileProjection {
@@ -95,9 +121,123 @@ export interface TutorLearnerProfileProjection {
   summary: string;
 }
 
-export interface TutorAgentSdk {
-  run<TPayload = unknown>(input: {
-    context: TutorAgentContext;
-    capability: TutorAgentCapability;
-  }): Promise<TutorAgentOutput<TPayload>>;
+export interface TutorGrowthTimelineProjection {
+  studentId: string;
+  from: string;
+  to: string;
+  signalCount: number;
+  milestones: readonly string[];
+  studentSummary: string;
+}
+
+export interface TutorDatabaseProjectionMap {
+  project_context: TutorProjectContextProjection | null;
+  mastery_snapshot: TutorMasterySnapshotProjection;
+  learner_profile: TutorLearnerProfileProjection | null;
+  growth_timeline: TutorGrowthTimelineProjection;
+}
+
+export type TutorDatabaseProjectionName = keyof TutorDatabaseProjectionMap;
+
+export interface TutorDatabaseReadPort {
+  readProjection<K extends TutorDatabaseProjectionName>(input: {
+    scope: TutorAgentScope;
+    projection: K;
+  }): Promise<TutorDatabaseProjectionMap[K]>;
+}
+
+export interface TutorAgentReadPorts {
+  knowledge: TutorKnowledgeReadPort;
+  templates: TutorTemplateReadPort;
+  database: TutorDatabaseReadPort;
+}
+
+/** Read ports after the authorized scope has been bound by the runtime. */
+export interface TutorAgentBoundReadPorts {
+  knowledge: {
+    search(input: { query: string; limit: number }): Promise<readonly TutorKnowledgeEvidence[]>;
+  };
+  templates: {
+    listPublished(input: { capability: TutorAgentCapability }): Promise<readonly TutorTemplateEvidence[]>;
+  };
+  database: {
+    readProjection<K extends TutorDatabaseProjectionName>(input: {
+      projection: K;
+    }): Promise<TutorDatabaseProjectionMap[K]>;
+  };
+}
+
+export interface TutorAgentToolDescriptor {
+  id: string;
+  version: string;
+  capabilities: readonly TutorAgentCapability[];
+  riskLevel: 'low' | 'medium' | 'high';
+  execution: 'server_owned';
+  requiresTheoryMastered: boolean;
+}
+
+export interface TutorAgentToolCall {
+  callId: string;
+  toolId: string;
+  toolVersion: string;
+  status: 'requested' | 'completed' | 'rejected' | 'failed';
+  sourceRefs: readonly string[];
+}
+
+export interface TutorAgentToolRegistry {
+  list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[];
+}
+
+export function createTutorAgentToolRegistry(
+  descriptors: readonly TutorAgentToolDescriptor[],
+): TutorAgentToolRegistry {
+  const frozen = descriptors.map((descriptor) => Object.freeze({
+    ...descriptor,
+    capabilities: Object.freeze([...descriptor.capabilities]),
+  }));
+  return Object.freeze({
+    list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[] {
+      return frozen.filter((descriptor) => descriptor.capabilities.includes(input.capability));
+    },
+  });
+}
+
+
+export interface TutorAgentRunRequest<TData = Record<string, never>> {
+  requestId: string;
+  idempotencyKey: string;
+  capability: TutorAgentCapability;
+  context: TutorAgentContext<TData>;
+}
+
+export interface TutorAgentPayload {
+  text?: string;
+  blocks?: readonly { kind: string; text?: string }[];
+  projection?: TutorAgentOutputKind;
+}
+
+export interface TutorAgentOutput<TPayload extends TutorAgentPayload = TutorAgentPayload> {
+  id: string;
+  runId: string;
+  requestId: string;
+  kind: TutorAgentOutputKind;
+  agentId: string;
+  agentVersion: string;
+  runtimeVersion: typeof TUTOR_AGENT_RUNTIME_VERSION;
+  generatedAt: string;
+  sourceRefs: readonly string[];
+  toolCalls: readonly TutorAgentToolCall[];
+  payload: TPayload;
+}
+
+export interface TutorGrowthProjection {
+  studentId: string;
+  period: { from: string; to: string };
+  strengths: readonly string[];
+  evidenceCount: number;
+  nextQuestions: readonly string[];
+  studentSummary: string;
+  parentSummary: string | null;
+  teacherSummary: string | null;
+  confidence: 'low' | 'medium' | 'high';
 }

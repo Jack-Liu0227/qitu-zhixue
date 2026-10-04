@@ -22,13 +22,17 @@
       "types": "./dist/escalation/index.d.ts",
       "default": "./dist/escalation/index.js"
     },
+    "./agent-runtime": {
+      "types": "./dist/agent-runtime.d.ts",
+      "default": "./dist/agent-runtime.js"
+    },
+    "./agent-context-adapter": {
+      "types": "./dist/agent-context-adapter.d.ts",
+      "default": "./dist/agent-context-adapter.js"
+    },
     "./qitu-sdk": {
       "types": "./dist/qitu-sdk.d.ts",
       "default": "./dist/qitu-sdk.js"
-    },
-    "./sdk": {
-      "types": "./dist/sdk.d.ts",
-      "default": "./dist/sdk.js"
     },
     "./curriculum": {
       "types": "./dist/curriculum.d.ts",
@@ -58,7 +62,7 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "node -e \"console.log('ai-client: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm build && node --input-type=module -e \"const sdk = await import('./dist/sdk.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); const qitu = await import('./dist/qitu-sdk.test.js'); const curriculum = await import('./dist/curriculum.test.js'); await qitu.runQituSDKAssertions(); await sdk.runTutorSdkAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions(); await curriculum.runCurriculumAssertions();\""
+    "test": "pnpm build && node --input-type=module -e \"const tutorContext = await import('./dist/tutor-context.test.js'); const agentRuntime = await import('./dist/agent-runtime.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); const qitu = await import('./dist/qitu-sdk.test.js'); const curriculum = await import('./dist/curriculum.test.js'); await agentRuntime.runAgentRuntimeAssertions(); await tutorContext.runTutorContextAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions(); await curriculum.runCurriculumAssertions();\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*"

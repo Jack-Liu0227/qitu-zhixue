@@ -1,13 +1,13 @@
 import { validateLearningPlanDraft } from './curriculum.js';
-import { createTutorSdk } from './sdk.js';
+import { createTutorContextReader } from './tutor-context.js';
 import { serializeTutorContext } from './context-packet.js';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-export async function runTutorSdkAssertions(): Promise<void> {
-  const sdk = createTutorSdk({
+export async function runTutorContextAssertions(): Promise<void> {
+  const sdk = createTutorContextReader({
     async loadLearnerProfile() {
       return {
         studentId: 'student-1', priorKnowledge: null,
@@ -34,12 +34,6 @@ export async function runTutorSdkAssertions(): Promise<void> {
     async searchKnowledge() {
       return [];
     },
-    async ensurePartner() {},
-    async upsertTemplate() {},
-    async upsertKnowledge() {},
-    async upsertLearnerProfile() {},
-    async appendGrowthSignal() {},
-    async upsertMemory() {},
   });
   const packet = await sdk.buildContext({
     studentId: 'student-1', projectId: null, projectStage: 'exploration',

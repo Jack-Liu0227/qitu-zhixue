@@ -263,9 +263,8 @@ Read ports
   loadLearnerProfile
 
 Fact write ports
-  appendLearningFact
-  appendGrowthSignal
-  appendMemory
+  commitGrowthSignal
+  recordMemory
 
 Pure engines
   curriculum validation

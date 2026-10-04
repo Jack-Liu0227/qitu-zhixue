@@ -126,7 +126,7 @@ export interface TutorContextPacket {
   recentMessages?: readonly { role: 'user' | 'assistant'; content: string }[];
 }
 
-export interface TutorSdkPorts {
+export interface TutorContextReadPorts {
   loadLearnerProfile(studentId: string): Promise<TutorLearnerProfile | null>;
   listMemories(input: {
     studentId: string;
@@ -149,23 +149,11 @@ export interface TutorSdkPorts {
     query: string;
     limit: number;
   }): Promise<readonly TutorKnowledgeSearchResult[]>;
-  ensurePartner(partner: TutorPartnerProfile): Promise<void>;
-  upsertTemplate(document: TutorTemplateDocument): Promise<void>;
-  upsertKnowledge(document: TutorKnowledgeDocument): Promise<void>;
-  upsertLearnerProfile(profile: TutorLearnerProfile): Promise<void>;
-  appendGrowthSignal(signal: TutorGrowthSignal): Promise<boolean | void>;
-  commitGrowthSignal?(signal: TutorGrowthSignal): Promise<void>;
-  upsertMemory(memory: TutorMemory): Promise<void>;
 }
 
-export interface TutorSdk {
-  readonly partner: TutorPartnerProfile;
-  initialize(): Promise<void>;
-  buildContext(input: TutorContextInput): Promise<TutorContextPacket>;
-  recordMemory(memory: TutorMemory): Promise<void>;
-  recordGrowthSignal(signal: TutorGrowthSignal): Promise<void>;
-  upsertTemplate(document: TutorTemplateDocument): Promise<void>;
-  upsertKnowledge(document: TutorKnowledgeDocument): Promise<void>;
+export interface TutorDomainWritePorts {
+  ensurePartner(partner: TutorPartnerProfile): Promise<void>;
+  commitGrowthSignal(signal: TutorGrowthSignal): Promise<void>;
 }
 
 export const QITU_LEARNING_PARTNER: TutorPartnerProfile = {
@@ -177,7 +165,19 @@ export const QITU_LEARNING_PARTNER: TutorPartnerProfile = {
   capabilities: ['explore', 'plan', 'teach', 'review', 'reflect'],
 };
 
-export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PARTNER): TutorSdk {
+export interface TutorContextReader {
+  readonly partner: TutorPartnerProfile;
+  buildContext(input: TutorContextInput): Promise<TutorContextPacket>;
+}
+
+export interface TutorDomainWriter {
+  readonly partner: TutorPartnerProfile;
+  initialize(): Promise<void>;
+  recordGrowthSignal(signal: TutorGrowthSignal): Promise<void>;
+}
+
+
+export function createTutorContextReader(ports: TutorContextReadPorts, partner = QITU_LEARNING_PARTNER): TutorContextReader {
   return {
     partner,
     async buildContext(input) {
@@ -254,68 +254,33 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
         recentMessages: input.recentMessages?.slice(-6).map((message) => ({ ...message, content: message.content.slice(0, 360) })),
       };
     },
-    async initialize() {
-      await ports.ensurePartner(partner);
-    },
-    recordMemory: ports.upsertMemory,
-    async recordGrowthSignal(signal) {
-      if (ports.commitGrowthSignal !== undefined) return ports.commitGrowthSignal(signal);
-      if (await ports.appendGrowthSignal(signal) === false) return;
-      const profile = await ports.loadLearnerProfile(signal.studentId) ?? {
-        studentId: signal.studentId,
-        priorKnowledge: null,
-        targetLevel: null,
-        timeBudgetMinutesPerWeek: null,
-        preferences: [],
-        interests: [],
-        strengths: [],
-        nextQuestions: [],
-        version: 0,
-        updatedAt: signal.occurredAt,
-      };
-      const next = profileFromGrowthSignal(profile, signal);
-      await ports.upsertLearnerProfile(next);
-    },
-    upsertTemplate: ports.upsertTemplate,
-    upsertKnowledge: ports.upsertKnowledge,
   };
 }
 
-export function profileFromGrowthSignal(profile: TutorLearnerProfile, signal: TutorGrowthSignal): TutorLearnerProfile {
-  const interests = signal.kind === 'interest_signal'
-    ? unique([...profile.interests, signal.summary]).slice(-12)
-    : profile.interests;
-  const strengths = signal.kind === 'artifact_created' || signal.kind === 'theory_mastered'
-    ? unique([...profile.strengths, signal.summary]).slice(-12)
-    : profile.strengths;
-  const nextQuestions = signal.kind === 'question_asked'
-    ? unique([...profile.nextQuestions, signal.summary]).slice(-12)
-    : profile.nextQuestions;
-  return {
-    ...profile,
-    interests,
-    strengths,
-    nextQuestions,
-    version: profile.version + 1,
-    updatedAt: signal.occurredAt,
-  };
+export function createTutorDomainWriter(
+  ports: TutorDomainWritePorts,
+  partner = QITU_LEARNING_PARTNER,
+): TutorDomainWriter {
+  return Object.freeze({
+    partner,
+    initialize: () => ports.ensurePartner(partner),
+    recordGrowthSignal: (signal: TutorGrowthSignal) => ports.commitGrowthSignal(signal),
+  });
 }
 
-function unique(values: readonly string[]): string[] {
-  return [...new Set(values.filter((value) => value.trim().length > 0))];
-}
-
-export function createEmptyTutorSdkPorts(): TutorSdkPorts {
-  return {
+export function createNoopTutorContextReader(partner = QITU_LEARNING_PARTNER): TutorContextReader {
+  return createTutorContextReader({
     loadLearnerProfile: async () => null,
     listMemories: async () => [],
     searchTemplates: async () => [],
     searchKnowledge: async () => [],
-    ensurePartner: async () => undefined,
-    upsertTemplate: async () => undefined,
-    upsertKnowledge: async () => undefined,
-    upsertLearnerProfile: async () => undefined,
-    appendGrowthSignal: async () => undefined,
-    upsertMemory: async () => undefined,
+  }, partner);
+}
+
+export function createNoopTutorDomainWriter(partner = QITU_LEARNING_PARTNER): TutorDomainWriter {
+  return {
+    partner,
+    initialize: async () => undefined,
+    recordGrowthSignal: async () => undefined,
   };
 }

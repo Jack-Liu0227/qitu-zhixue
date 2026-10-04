@@ -156,7 +156,7 @@
 | `FREE_EXPLORE_SESSION_ID` 与 `freeExploreHref(sessionId)` 带参签名 | `grep -rn "FREE_EXPLORE_SESSION_ID" apps services packages` 无命中；`freeExploreHref()` 现为无参、返回 `/student/tutor` |
 | 语音模块 `apps/student-center/features/voice/**` | `grep -rn "features/voice" apps services packages` 无命中 |
 | `CapabilityRail` / `CapabilityTile` / `useCapabilityInvoke` | `grep -rn "CapabilityRail\|CapabilityTile\|useCapabilityInvoke" apps services packages` 无命中 |
-| `@qitu/ai-client` 的 `createMemory()` / `clampMemoryConfidence()` | `grep -rn "createMemory\|clampMemoryConfidence" services apps packages` 无命中（仅 `sdk.ts` 中原定义已删） |
+| 历史内存辅助函数 | 已删除；记忆写入只由服务端领域 owner 负责 |
 
 **残留不一致（未在本切片修代码）**：`services/api/src/modules/ai-tutor/tutor.controller.ts`、
 `apps/student-center/features/tutor/data/tutorApiDataSource.ts`、

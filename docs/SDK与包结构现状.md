@@ -45,7 +45,7 @@ NestJS API
 
 ### `@qitu/ai-client`（服务端纯逻辑边界）
 
-- 子入口导出：`.`、`./pedagogy`、`./context`、`./escalation`、`./qitu-sdk`、`./sdk`、
+- 子入口导出：`.`、`./pedagogy`、`./context`、`./escalation`、`./agent-runtime`、`./agent-context-adapter`、`./qitu-sdk`、`./curriculum`、
   `./curriculum`、`./context-packet`、`./mastery`、`./questions`、`./grading`。
 - `./qitu-sdk` 现在导出显式 `QituSDK<Input, Result, Profile>` 接口：`scope`、`mastery`
   （`evaluate` / `getCurrent` / `getTimeline` / `snapshot` / `checkThreshold` /
@@ -61,8 +61,7 @@ NestJS API
 
 ### 已删除的导出（附调用方证据）
 
-`@qitu/ai-client` `packages/ai-client/src/sdk.ts` 删除了 `createMemory()` 和 `clampMemoryConfidence()`：
-`grep -rn "createMemory\|clampMemoryConfidence" services apps packages` 无命中。
+`@qitu/ai-client` 的 Tutor context/domain adapter 位于 `packages/ai-client/src/tutor-context.ts`；历史内存辅助函数已删除，仓库无源码命中。
 记忆写入现在只走 `agent_memory_records`（服务端 owner），SDK 不再自带信心度夹取工具。
 
 ## 与预期结构的差异
@@ -109,6 +108,39 @@ await sdk.profile.get();
 
 这些端口都必须由调用方提供，缺少 port 会 fail closed；不会退回 noop 或内存假成功。
 
+## SDK 底座重设计（2026-10-04）
+
+当前 SDK 不是三套等价 SDK，而是三层职责：
+
+| 层 | 入口 | 唯一职责 | 是否允许写领域事实 |
+|---|---|---|---|
+| Agent runtime | `createTutorAgentRuntime(scope, ports)` | 绑定授权 scope、构建 bounded context、限制读取端口、校验结构化输出 | 否；只能返回 output/projection |
+| Tutor adapter | `createTutorContextReader` / `createTutorDomainWriter` | 把现有 Tutor workspace 适配为读端口和领域命令端口 | 仅通过 owner port 写成长、记忆等命令 |
+| Domain facade | `QituSDKFactory` / `createQituSDK` | 绑定 mastery、项目推进和 profile 的服务端领域能力 | 由对应领域服务校验、幂等、审计后写入 |
+
+### 新 Agent runtime 合同
+
+`packages/contracts/src/agent-runtime.ts` 冻结 `qitu.agent-runtime.v1`：
+
+- `TutorAgentScope` 由 API 授权后产生，包含 actor、student、school、partner、project、session 和 role；客户端不能构造可信 scope。
+- `TutorAgentBoundReadPorts` 对外不再接受 `studentId` / `projectId`，读取调用只能使用创建 runtime 时绑定的 scope。底层 adapter 仍需按 scope 做对象级授权。
+- Knowledge、Template 和数据库只通过 `readProjection` / `search` / `listPublished` 暴露；不暴露 ORM、数据库连接、任意 SQL 或原始会话。
+- `TutorAgentOutput` 必须带 `runId`、`requestId`、runtime/agent 版本、来源引用和工具调用记录；runtime 会拒绝版本、agent 或 request 不匹配的输出。
+- `idempotencyKey` 是 Agent run 的必填字段。幂等存储、审计、outbox 和领域命令仍由 API owner 实现，runtime 不自行伪造写入成功。
+- `createTutorAgentToolRegistry` 只返回匹配 capability 的 server-owned descriptor；工具函数、凭证和学生数据不进入 registry。
+
+### 迁移与兼容策略
+
+- `createTutorAgentRuntime` 是唯一 Agent runtime 入口，负责 scope 绑定、读取端口和结构化输出校验。
+- `TutorContextReader` / `TutorDomainWriter` 是 Tutor 适配层；API 的 `TutorService` 分别依赖两者，避免读写端口混用。
+- `QituSDK` 不与 Agent runtime 合并。它负责 mastery/project/profile 的领域 facade，不能被 Agent 或浏览器直接替代。
+- `agent-context-adapter.ts` 将旧 Tutor bounded packet 转换为 runtime `data`，只读 packet 进入模型适配层；后续真实 executor 接入时不需要重新设计上下文合同。
+
+### 已识别的冗余与暂不删除项
+
+- 冗余已清理：旧聚合入口和早期未版本化运行入口已删除，统一使用窄适配器和版本化 runtime。
+- 暂不删除：`QituSDK`、旧 Tutor workspace 表和 `api-client` 只读 facade。仓库仍有明确 API/测试/文档引用，删除前需要外部消费者和数据库迁移证据。
+- 待补：真实 runtime resolver、capability 配置持久化、tool execution owner、growth/profile projection worker，以及把 Tutor provider executor 接入新 runtime。它们不在本次纯合同底座改造中伪装成已完成。
 ## Graphiti 配置状态
 
 仓库已经配置：

@@ -1,16 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { profileFromGrowthSignal } from '@qitu/ai-client';
 import type {
   TutorGrowthSignal,
   TutorKnowledgeDocument,
   TutorKnowledgeSearchResult,
+  TutorTemplateSearchResult,
   TutorLearnerProfile,
   TutorMemory,
   TutorPartnerProfile,
-  TutorSdkPorts,
-  TutorTemplateDocument,
-  TutorTemplateSearchResult,
+  TutorContextReadPorts,
+  TutorDomainWritePorts,
 } from '@qitu/ai-client';
 
 import type { Database } from '@qitu/database';
@@ -27,7 +26,7 @@ import { DATABASE_TOKEN } from '../../database';
 
 /** PostgreSQL adapter for the pure Tutor SDK. */
 @Injectable()
-export class TutorWorkspaceService implements TutorSdkPorts {
+export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomainWritePorts {
   constructor(@Inject(DATABASE_TOKEN) private readonly db: Database | null) {}
 
   async loadLearnerProfile(studentId: string): Promise<TutorLearnerProfile | null> {
@@ -59,7 +58,7 @@ export class TutorWorkspaceService implements TutorSdkPorts {
     limit: number;
   }): Promise<readonly TutorMemory[]> {
     if (this.db === null) return [];
-    const [legacyRows, agentRows] = await Promise.all([
+    const [tutorRows, agentRows] = await Promise.all([
       this.db.select().from(tutorMemories)
         .where(and(eq(tutorMemories.studentId, input.studentId), eq(tutorMemories.partnerId, input.partnerId)))
         .orderBy(desc(tutorMemories.updatedAt)).limit(Math.max(1, Math.min(input.limit, 20))),
@@ -69,7 +68,7 @@ export class TutorWorkspaceService implements TutorSdkPorts {
         or(isNull(agentMemoryRecords.expiresAt), gt(agentMemoryRecords.expiresAt, new Date())),
       )).orderBy(desc(agentMemoryRecords.updatedAt)).limit(Math.max(1, Math.min(input.limit, 20))),
     ]);
-    const legacy = legacyRows.map((row) => ({
+    const tutorMemories = tutorRows.map((row) => ({
       id: row.id, studentId: row.studentId, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
       confidence: row.confidence / 10000, source: row.source as TutorMemory['source'], visibility: row.visibility as TutorMemory['visibility'], updatedAt: row.updatedAt.toISOString(),
     }));
@@ -79,7 +78,7 @@ export class TutorWorkspaceService implements TutorSdkPorts {
         id: row.id, studentId: row.studentId!, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
         confidence: 1, source: 'student' as const, visibility: 'student_private' as const, updatedAt: row.updatedAt.toISOString(),
       }));
-    return [...agent, ...legacy].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
+    return [...agent, ...tutorMemories].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
   }
 
   async listAgentStrategies(input: {
@@ -172,112 +171,6 @@ export class TutorWorkspaceService implements TutorSdkPorts {
     });
   }
 
-  async upsertTemplate(document: TutorTemplateDocument): Promise<void> {
-    if (this.db === null) return;
-    await this.db.insert(tutorTemplateDocuments).values({
-      id: document.id,
-      version: document.version,
-      title: document.title,
-      summary: document.summary,
-      tags: [...document.tags],
-      stage: document.stage,
-      content: document.content,
-      scope: document.scope,
-      active: document.active,
-      studentId: document.scope === 'student' ? undefined : null,
-      projectId: document.scope === 'project' ? undefined : null,
-    }).onConflictDoUpdate({
-      target: tutorTemplateDocuments.id,
-      set: {
-        version: document.version,
-        title: document.title,
-        summary: document.summary,
-        tags: [...document.tags],
-        stage: document.stage,
-        content: document.content,
-        scope: document.scope,
-        active: document.active,
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  async upsertKnowledge(document: TutorKnowledgeDocument): Promise<void> {
-    if (this.db === null) return;
-    await this.db.insert(tutorKnowledgeDocuments).values({
-      id: document.id,
-      version: document.version,
-      title: document.title,
-      summary: document.summary,
-      tags: [...document.tags],
-      content: document.content,
-      source: document.source,
-      scope: document.scope,
-      active: document.active,
-    }).onConflictDoUpdate({
-      target: tutorKnowledgeDocuments.id,
-      set: {
-        version: document.version,
-        title: document.title,
-        summary: document.summary,
-        tags: [...document.tags],
-        content: document.content,
-        source: document.source,
-        scope: document.scope,
-        active: document.active,
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  async upsertLearnerProfile(profile: TutorLearnerProfile): Promise<void> {
-    if (this.db === null) return;
-    await this.db.insert(tutorLearnerProfiles).values({
-      studentId: profile.studentId,
-      priorKnowledge: profile.priorKnowledge,
-      targetLevel: profile.targetLevel,
-      timeBudgetMinutesPerWeek: profile.timeBudgetMinutesPerWeek,
-      preferences: [...profile.preferences],
-      interests: [...profile.interests],
-      strengths: [...profile.strengths],
-      nextQuestions: [...profile.nextQuestions],
-      version: profile.version,
-      updatedAt: new Date(profile.updatedAt),
-    }).onConflictDoUpdate({
-      target: tutorLearnerProfiles.studentId,
-      set: {
-        priorKnowledge: profile.priorKnowledge,
-        targetLevel: profile.targetLevel,
-        timeBudgetMinutesPerWeek: profile.timeBudgetMinutesPerWeek,
-        preferences: [...profile.preferences],
-        interests: [...profile.interests],
-        strengths: [...profile.strengths],
-        nextQuestions: [...profile.nextQuestions],
-        version: profile.version,
-        updatedAt: new Date(profile.updatedAt),
-      },
-    });
-  }
-
-  async appendGrowthSignal(signal: TutorGrowthSignal): Promise<boolean> {
-    if (this.db === null) return false;
-    const inserted = await this.db
-      .insert(tutorGrowthSignals)
-      .values({
-        id: `growth-signal-${signal.idempotencyKey}`,
-        idempotencyKey: signal.idempotencyKey,
-        studentId: signal.studentId,
-        projectId: signal.projectId,
-        kind: signal.kind,
-        summary: signal.summary,
-        evidenceRef: signal.evidenceRef,
-        occurredAt: new Date(signal.occurredAt),
-      })
-      .onConflictDoNothing({ target: tutorGrowthSignals.idempotencyKey })
-      .returning({ id: tutorGrowthSignals.id });
-    return inserted.length > 0;
-  }
-
   async commitGrowthSignal(signal: TutorGrowthSignal): Promise<void> {
     if (this.db === null) return;
     await this.db.transaction(async (tx) => {
@@ -294,27 +187,36 @@ export class TutorWorkspaceService implements TutorSdkPorts {
         studentId: signal.studentId, priorKnowledge: null, targetLevel: null, timeBudgetMinutesPerWeek: null,
         preferences: [], interests: [], strengths: [], nextQuestions: [], version: 0, updatedAt: signal.occurredAt,
       } : { ...row, updatedAt: row.updatedAt.toISOString() };
-      const next = profileFromGrowthSignal(profile, signal);
+      const next = applyGrowthSignalToProfile(profile, signal);
       const values = { ...next, preferences: [...next.preferences], interests: [...next.interests],
         strengths: [...next.strengths], nextQuestions: [...next.nextQuestions], updatedAt: new Date(next.updatedAt) };
       await tx.insert(tutorLearnerProfiles).values(values).onConflictDoUpdate({ target: tutorLearnerProfiles.studentId, set: values });
     });
   }
+}
 
-  async upsertMemory(memory: TutorMemory): Promise<void> {
-    if (this.db === null) return;
-    await this.db.insert(tutorMemories).values({
-      id: memory.id,
-      studentId: memory.studentId,
-      partnerId: memory.partnerId,
-      kind: memory.kind,
-      content: memory.content,
-      confidence: Math.round(memory.confidence * 10000),
-      source: memory.source,
-      visibility: memory.visibility,
-      updatedAt: new Date(memory.updatedAt),
-    }).onConflictDoNothing({ target: tutorMemories.id });
-  }
+function applyGrowthSignalToProfile(profile: TutorLearnerProfile, signal: TutorGrowthSignal): TutorLearnerProfile {
+  const interests = signal.kind === 'interest_signal'
+    ? unique([...profile.interests, signal.summary]).slice(-12)
+    : profile.interests;
+  const strengths = signal.kind === 'artifact_created' || signal.kind === 'theory_mastered'
+    ? unique([...profile.strengths, signal.summary]).slice(-12)
+    : profile.strengths;
+  const nextQuestions = signal.kind === 'question_asked'
+    ? unique([...profile.nextQuestions, signal.summary]).slice(-12)
+    : profile.nextQuestions;
+  return {
+    ...profile,
+    interests,
+    strengths,
+    nextQuestions,
+    version: profile.version + 1,
+    updatedAt: signal.occurredAt,
+  };
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
 }
 
 function rankDocuments(

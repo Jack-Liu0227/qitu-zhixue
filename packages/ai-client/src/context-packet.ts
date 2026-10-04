@@ -1,4 +1,5 @@
-import type { TutorContextPacket } from './sdk.js';
+import type { TutorContextPacket } from './tutor-context.js';
+
 
 
 /** Build bounded, auditable prompt context without replaying raw chat history. */

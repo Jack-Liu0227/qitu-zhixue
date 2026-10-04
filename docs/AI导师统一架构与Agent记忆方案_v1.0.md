@@ -26,7 +26,7 @@
 
 | 事项 | 当前实际情况 | 本轮目标方向 |
 | --- | --- | --- |
-| 后端与 SDK | NestJS、`TutorSdkPorts`、PostgreSQL adapter | 保留并拆分记忆/画像/知识职责 |
+| 后端与 SDK | NestJS、`TutorContextReadPorts` / `TutorDomainWritePorts`、PostgreSQL adapter | Tutor 读取与领域命令分离 |
 | Partner | 固定 `qitu-learning-partner` 和描述性 capabilities | 版本化 Partner 配置、能力注册及准入 |
 | 回合生成 | 一次 `ModelGateway.complete`，回答后分片，服务层缓冲 | 先统一回合合同；真实流式作为后续独立切片 |
 | 会话上下文 | 本轮输入，近期活动为内容块计数 | 待答问题、学生尝试、有限近期历史/经校验摘要 |
@@ -194,7 +194,7 @@ pgvector 使用业务库之外的独立 schema/数据库权限与命名空间。
 
 1. `tutor-workspace.service.ts:91` 与 `:280` 使用 scope 不分支的 OR；当 query 的 `projectId=null` 时，记录的空 projectId 可能错误满足可读条件。先按 scope 验证必要字段、对象归属和非空项目访问权，再检索；接到 KnowledgeService 的统一规则。
 2. 同文件 `:63-66` 先按 student 取 limit 后才按 partner 过滤。扩展多 Partner 前改为 SQL 中同时过滤，排序、有效版本和 limit 在授权候选内执行。
-3. `sdk.ts:249-264` 追加成长信号后仍无条件生成投影，而 `appendGrowthSignal` 冲突时不报告是否真正写入。重复事件可能再次推进画像版本，并发读改写可能丢更新。交由领域事务及消费去重，不作为普通记忆写入的副作用。
+3. `tutor-context.ts` 的成长信号现在只走服务端原子 `commitGrowthSignal`，重复事件不会再次推进画像版本；事务提交失败时不会留下半成品画像。
 4. `TutorMemory` 没有具体 `sourceRefs` 和有效版本字段；记忆 content 不能仅凭字符串进入模型上下文。
 5. 待答问题、近期历史、摘要和提示状态必须恢复自持久会话。不能用向量 topK 猜“上一轮到底在问什么”。
 6. 输出关键词/问号护栏只是有限检查，不是答案语义安全保证。新增记忆不能扩大提示注入面；检索正文作为不可信数据，不作为系统规则。
@@ -245,7 +245,7 @@ pgvector 使用业务库之外的独立 schema/数据库权限与命名空间。
 
 本地来源：
 
-- `packages/ai-client/src/sdk.ts`、`context-packet.ts`。
+- `packages/ai-client/src/tutor-context.ts`、`context-packet.ts`。
 - `services/api/src/modules/ai-tutor/{tutor.service,tutor-workspace.service,gateway-tutor.provider}.ts`。
 - `services/api/src/modules/knowledge/README.md` 与 scope/retrieval 实现。
 - `services/api/src/common/outbox/outbox.service.ts`、`services/workers/src/index.ts`。

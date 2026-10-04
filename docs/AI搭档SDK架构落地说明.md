@@ -8,7 +8,7 @@
 student-center
   -> /api/v1/tutor/sessions/:id/stream
   -> TutorService
-  -> TutorSdk.buildContext()
+  -> TutorContextReader.buildContext()
   -> PostgreSQL adapter
      -> learner profile / memories
      -> template documents
@@ -58,6 +58,17 @@ DATABASE_URL=postgresql://... pnpm --filter @qitu/database seed
 
 种子会同时初始化 `qitu-learning-partner`、系统模板和核心教学知识文档。学生端灵感空间默认读取 `/api/v1/tutor/templates`，不会在真实模式静默退回 fixture。
 
+## SDK 底座重设计说明（2026-10-04）
+
+本轮将原先重叠的三个入口明确为不同层级：
+
+1. `TutorAgentRuntime`：Agent 编排底座。绑定 server-issued scope，提供绑定后的 read facade、capability tool registry、context builder 和带幂等键的 structured run。
+2. `TutorContextReader` / `TutorDomainWriter`：现有 Tutor workspace 的兼容适配层。读取与领域写命令分离，仍由 `TutorWorkspaceService` 提供数据库适配。
+3. `QituSDK`：mastery、project、profile 的服务端领域 facade，不向浏览器或 Agent 暴露数据库能力。
+
+`TutorAgentScope`、`TutorAgentContext`、`TutorAgentOutput` 和 `TutorAgentBoundReadPorts` 位于 `packages/contracts/src/agent-runtime.ts`，版本为 `qitu.agent-runtime.v1`。`packages/ai-client/src/agent-runtime.ts` 负责 scope 绑定和输出校验；`agent-context-adapter.ts` 将现有 Tutor bounded packet 适配为 runtime data。
+
+当前明确不实现的部分：真实 Agent Runtime Resolver、持久化 capability 配置、工具执行 owner、成长/画像 projection worker 和真实模型 executor 接线。它们需要独立的权限、幂等、审计和运维合同，不能由 SDK facade 直接代替。
 ## Qwen 3.8 Flash
 
 模型注册表预置了 `qwen3.8-flash`，兼容 OpenAI Chat Completions 协议。管理员仍需在模型注册表中配置供应商凭证并将用途 `tutor.chat` 绑定到该模型；凭证只能通过 `QITU_MODEL_SECRET_KEY` 加密存储，代码和种子不包含密钥。

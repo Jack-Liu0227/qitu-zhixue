@@ -1,6 +1,13 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
-import { createEmptyTutorSdkPorts, createTutorSdk, type TutorSdk } from '@qitu/ai-client';
+import {
+  createNoopTutorContextReader,
+  createNoopTutorDomainWriter,
+  createTutorContextReader,
+  createTutorDomainWriter,
+  type TutorContextReader,
+  type TutorDomainWriter,
+} from '@qitu/ai-client';
 
 import type {
   GetTutorSessionResponse,
@@ -138,7 +145,9 @@ function currentTaskFor(
 @Injectable()
 export class TutorService {
   private readonly provider: TutorProvider;
-  private readonly tutorSdk: TutorSdk;
+  private readonly contextReader: TutorContextReader;
+  private readonly domainWriter: TutorDomainWriter;
+
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
   private readonly auditLog: AuditEntry[] = [];
@@ -185,8 +194,10 @@ export class TutorService {
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime));
-    this.tutorSdk = createTutorSdk(workspace ?? createEmptyTutorSdkPorts());
+    this.contextReader = workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(workspace);
+    this.domainWriter = workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(workspace);
     this.store = store ?? new InMemoryTutorSessionStore();
+
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
@@ -294,13 +305,13 @@ export class TutorService {
         return this.hydrate(projectSession);
       }
     }
-    await this.tutorSdk.initialize();
+    await this.domainWriter.initialize();
     const createdAt = new Date().toISOString();
     const source = projectId === null ? 'exploration' : 'project';
     await this.store.create({
       sessionId,
       ownerId,
-      partnerId: this.tutorSdk.partner.id,
+      partnerId: this.contextReader.partner.id,
       projectId,
       explorationId: explorationId ?? null,
       source,
@@ -477,7 +488,7 @@ export class TutorService {
   ): Promise<StreamedTutorEvent[]> {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
-    await this.tutorSdk.initialize();
+    await this.domainWriter.initialize();
     const liveProject = record.projectId === null || this.platformData === undefined
       ? null
       : this.platformData.getProject(record.projectId);
@@ -485,7 +496,7 @@ export class TutorService {
     const projectStage = liveProject?.stage ?? EXPLORATION_CONTEXT.stage;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
-    const contextPacket = await this.tutorSdk.buildContext({
+    const contextPacket = await this.contextReader.buildContext({
       studentId: request.actorId,
       projectId: record.projectId,
       projectStage,
@@ -531,7 +542,7 @@ export class TutorService {
       ...(request.optionLabel !== undefined ? { optionLabel: request.optionLabel } : {}),
     };
 
-    const promptVersion = this.tutorSdk.partner.promptVersion;
+    const promptVersion = this.contextReader.partner.promptVersion;
     const expectedEvidence = currentTask?.detail ?? null;
 
     const studentTurn: TutorTurnRecord = {
@@ -640,7 +651,7 @@ export class TutorService {
       action: guardBlocked ? 'tutor.guard_block' : 'tutor.turn',
       detail: `回合 ${assistantSeq}，提示等级 ${assistantHintLevel ?? '未变更'}`,
     });
-    await this.tutorSdk.recordGrowthSignal({
+    await this.domainWriter.recordGrowthSignal({
       idempotencyKey: `tutor-turn:${record.sessionId}:${assistantSeq}`,
       studentId: request.actorId,
       projectId: record.projectId,
@@ -694,7 +705,7 @@ export class TutorService {
     const base: Omit<TutorTurnRecord, 'seq' | 'role' | 'blocks' | 'hintLevel' | 'stageBefore' | 'stageAfter' | 'turnId' | 'createdAt' | 'modality'> = {
       pedagogicMove: null,
       expectedEvidence: '找到 2 条证据，用自己的话说清楚光合作用。',
-      promptVersion: this.tutorSdk.partner.promptVersion,
+      promptVersion: this.contextReader.partner.promptVersion,
       evidenceRef: null,
     };
     const turns: TutorTurnRecord[] = [

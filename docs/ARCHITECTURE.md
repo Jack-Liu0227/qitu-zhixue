@@ -146,6 +146,17 @@ Admin 发布知识 / 模板 / Agent / Skill / 模型版本
   -> growth/profile/student/parent/teacher projections
 ```
 
+### 5.4 SDK 底座分层（2026-10-04）
+
+SDK 采用三层分工，禁止把它们作为同一个万能 SDK 使用：
+
+- `TutorAgentRuntime`（`@qitu/ai-client/agent-runtime`）是 Agent 编排底座。它绑定 API 已授权的 `TutorAgentScope`，只暴露绑定后的知识、模板和数据库 projection 读取端口，校验 runtime/agent/request 版本和结构化输出，并要求每次 run 携带幂等键。
+- `TutorContextReader` / `TutorDomainWriter` 是 Tutor 适配层。前者只组装有界 context packet，后者只调用领域 owner 暴露的成长和记忆命令。
+- `QituSDKFactory` / `QituSDK` 是服务端领域 facade，只负责 scope-bound mastery、项目推进和 profile 访问；项目状态、掌握度和审计仍由对应领域服务决定。
+
+Agent runtime 的读取 facade 不接受调用者传入 `studentId`、`projectId` 或数据库句柄，防止模型适配层通过参数替换越权。Agent 输出必须带 `runId`、`requestId`、版本、来源引用和工具调用记录；它不能直接提交项目状态、掌握度、成长事实、画像、记忆或审计写操作。
+
+工具 registry 只保存 server-owned 描述和 capability 白名单。Admin 可以查看脱敏元数据，但工具实际执行仍由 Tutor、Projects、Mastery、Growth 或 Worker owner 负责。后续 resolver、真实 executor、projection worker 和持久化 capability registry 按独立 Issue 接入，不在合同底座中预先模拟。
 ## 5.1 掌握度时间线边界
 
 掌握度时间线是 Projects & Learning 的一等领域能力，详细协议见
