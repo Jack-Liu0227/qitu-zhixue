@@ -101,7 +101,7 @@ export class GatewayTutorProvider implements TutorProvider {
 
     let result: ModelCompletionResult;
     try {
-      result = await this.gateway.complete(TUTOR_CHAT_USAGE, {
+      result = await this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
           { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks) },
           { role: 'user', content: buildUserPrompt(input, level) },
@@ -112,7 +112,7 @@ export class GatewayTutorProvider implements TutorProvider {
     } catch (error) {
       const failure = toModelFailure(error);
       // 只记录稳定错误码，绝不记录提示词、学生输入或上游正文。
-      this.logger.warn(`tutor.chat 调用失败 code=${failure.code}`);
+      this.logger.warn(`${input.modelUsage ?? TUTOR_CHAT_USAGE} 调用失败 code=${failure.code}`);
       yield { type: 'tool_result', callId, status: 'error', result: failure.toolResult };
       yield {
         type: 'error',

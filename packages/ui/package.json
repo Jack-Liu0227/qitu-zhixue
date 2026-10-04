@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "node -e \"console.log('ui: lint placeholder')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node ../../tooling/validate-reduced-motion.mjs"
   },

@@ -1,4 +1,4 @@
-import type { TutorModalityMode } from './tutor';
+import type { TutorModalityMode } from './tutor.js';
 
 /**
  * Stable, string-literal error-code union shared across all student-center
@@ -110,6 +110,8 @@ export type ApiErrorCode =
    * **绝不**退回内存假装成功。
    */
   | 'PARENT_EXPORT_UNAVAILABLE'
+  /** 推荐模板版本不存在、未发布或当前学生不可见（400）。 */
+  | 'TEMPLATE_VERSION_UNAVAILABLE'
   /** 探索会话不存在，或对当前学生不可见（404）。 */
   | 'EXPLORATION_NOT_FOUND'
   /** 当前探索状态不允许该迁移（409）。 */
@@ -142,12 +144,60 @@ export interface ModalityUnavailableDetails {
 }
 
 /**
- * RFC 9457-style problem details. `details` carries code-specific context,
- * e.g. `WorkbenchConflictDetails` for `WORKBENCH_OPTIMISTIC_LOCK_CONFLICT`.
+ * 字段级校验错误（`ProblemDetails.errors` 的条目）。
+ */
+export interface ProblemFieldError {
+  path?: string;
+  message: string;
+}
+
+/**
+ * `ProblemDetails.code` 的类型。
+ *
+ * 以 `ApiErrorCode` 提供字面量补全，同时允许任意字符串（兜底码、尚未
+ * 纳入联合的新码）。注意 `ApiErrorCode | string` 会被 TS 直接简化成
+ * `string` 而丢掉补全，因此用 `(string & {})` 保留提示。
+ */
+export type ProblemCode = ApiErrorCode | (string & {});
+
+/**
+ * RFC 9457 problem details —— **全局唯一的 HTTP 错误响应契约**。
+ *
+ * 历史形态只有 `{ code, message, details? }`：既缺 RFC 9457 的 canonical
+ * 成员，又因为 Nest 默认过滤器会原样透传响应体，导致
+ * `{ statusCode, message, error }` 与它并存 —— 同一个 API 的错误形状
+ * 取决于「抛的人怎么写」（Issue #23）。现在服务端只发这一种形态：
+ *
+ * - canonical：`type` / `title` / `status` / `detail` / `instance`；
+ * - `code`：机器可读的稳定错误码，优先取 `ApiErrorCode`；
+ * - `message`：`detail` 的兼容别名。**不要删**——
+ *   `apps/admin-console/lib/api/settings.ts` 等既有调用方读的是它；
+ * - `details`：码专属上下文，例如 `WorkbenchConflictDetails`；
+ * - `traceId`：与后端日志对齐，用户在报障时可以直接引用。
+ *
+ * 响应头为 `Content-Type: application/problem+json`。服务端实现见
+ * `services/api/src/common/http/problem-details.ts`。
  */
 export interface ProblemDetails<TDetails = unknown> {
-  code: ApiErrorCode;
+  /** RFC 9457 `type`：当前统一为 `about:blank`，机器可读语义放在 `code`。 */
+  type: string;
+  /** RFC 9457 `title`：HTTP 状态短语。 */
+  title: string;
+  /** RFC 9457 `status`：HTTP 状态码。 */
+  status: number;
+  /** RFC 9457 `detail`：给人看的一句话。 */
+  detail: string;
+  /** RFC 9457 `instance`：出错的具体路径（不含 query）。 */
+  instance?: string;
+  /** 稳定错误码。 */
+  code: ProblemCode;
+  /** 兼容别名，值恒等于 `detail`。 */
   message: string;
+  /** 请求追踪 id，同时回写 `x-request-id` 响应头。 */
+  traceId?: string;
+  /** 字段级校验错误。 */
+  errors?: ProblemFieldError[];
+  /** 码专属上下文，例如 `WorkbenchConflictDetails`。 */
   details?: TDetails;
 }
 

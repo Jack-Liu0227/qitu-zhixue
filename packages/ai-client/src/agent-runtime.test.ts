@@ -52,6 +52,11 @@ export async function runAgentRuntimeAssertions(): Promise<void> {
   const runtime = createTutorAgentRuntime(scope(), {
     read,
     tools,
+    modelPurpose: {
+      async resolve() {
+        return { usageId: 'tutor.chat', available: true, input: ['text'], output: ['text'], modelId: 'heuristic-v1' };
+      },
+    },
     context: {
       async build(input) {
         return {
@@ -60,6 +65,7 @@ export async function runAgentRuntimeAssertions(): Promise<void> {
           builtAt: '2026-01-01T00:00:00.000Z',
           scope: input.scope,
           capability: input.request.capability,
+          modelUsage: input.request.modelUsage ?? 'tutor.chat',
           query: input.request.query,
           projectStage: input.request.projectStage,
           goal: input.request.goal,

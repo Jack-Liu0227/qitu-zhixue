@@ -1,5 +1,5 @@
-import type { DataSource } from './platform';
-import type { ProjectStage } from './project';
+import type { DataSource } from './platform.js';
+import type { ProjectStage } from './project.js';
 
 /**
  * 目录与关系绑定契约（Stage 2 单一真源）。

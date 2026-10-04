@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3102",
     "build": "next build",
-    "lint": "node -e \"console.log('parent-companion: lint rules pending M1')\"",
-    "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('parent-companion: no tests yet')\""
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@qitu/api-client": "workspace:*",

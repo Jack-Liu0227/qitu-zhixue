@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc --outDir dist --noEmit false",
-    "lint": "node -e \"console.log('realtime-gateway: lint placeholder')\"",
-    "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('realtime-gateway: no tests yet')\""
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

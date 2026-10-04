@@ -1,6 +1,6 @@
-import type { ProjectStage } from './project';
-import type { TutorHintLevel, TutorReplyBlock, TutorTurnModality } from './tutor';
-import type { ApiErrorCode } from './errors';
+import type { ProjectStage } from './project.js';
+import type { TutorHintLevel, TutorReplyBlock, TutorTurnModality } from './tutor.js';
+import type { ApiErrorCode } from './errors.js';
 
 export type RealtimeClientType =
   | 'subscribe'

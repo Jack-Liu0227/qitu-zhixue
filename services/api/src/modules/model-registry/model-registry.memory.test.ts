@@ -29,7 +29,7 @@ test('内存模式：预置供应商自带手工模型，密钥只留在进程�
   assert.equal(provider.auth.keyFingerprint, fingerprintModelSecret('sk-memory'));
   assert.deepEqual(
     provider.models.map((model) => model.id).sort(),
-    ['qwen-audio-3.0-realtime-plus', 'qwen-max', 'qwen-plus', 'text-embedding-v3'],
+    ['qwen-audio-3.0-realtime-plus', 'qwen-max', 'qwen-plus', 'qwen3.8-flash', 'text-embedding-v3'],
   );
   assert.ok(provider.models.every((model) => model.source === 'manual'));
 });

@@ -1,4 +1,4 @@
-import type { ProjectSummary } from './project';
+import type { ProjectSummary } from './project.js';
 
 /**
  * 探索来源：推荐项目 / 自由探索。

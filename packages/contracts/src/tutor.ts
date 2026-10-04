@@ -3,7 +3,7 @@ import type {
   ProjectSummary,
   StageProgressDisplay,
   TemplateStage,
-} from './project';
+} from './project.js';
 
 /**
  * The pedagogic move a student requests through the tutor interaction. The client

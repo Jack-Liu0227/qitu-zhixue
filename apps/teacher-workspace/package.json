@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3103",
     "build": "next build",
-    "lint": "node -e \"console.log('teacher-workspace: lint rules pending M1')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node ../../tooling/validate-teacher-links.mjs"
   },

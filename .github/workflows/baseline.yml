@@ -29,16 +29,43 @@ jobs:
           test -f docs/README.md
           test -f docs/admin/database.md
           test -f docs/admin/permissions.md
+          test -f docs/admin/deployment.md
+          test -f docs/student/learning-plan.md
+          test -f docs/teacher/issues.md
+          test -f docs/sdk/agent-memory.md
           test -f package.json
           test -f pnpm-workspace.yaml
+          test -f .env.example
+          test -f tooling/check-basepath.mjs
           for dir in apps packages services database docs tooling; do
             test -d "$dir"
           done
-          if find . -type f \( -name '*.pem' -o -name '*.key' -o -name 'auth.json' \) | grep -q .; then
+          echo 'Repository baseline OK'
+
+      - name: Check basePath prefixes
+        run: node tooling/check-basepath.mjs
+
+      # 安全闸门：文件名 + 内容双维度扫描。
+      # 见 docs/admin/deployment.md「密钥与凭据」。
+      - name: Secret scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \
+               \( -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' \
+                  -o -name 'auth.json' -o -name 'id_rsa' -o -name 'id_ed25519' \
+                  -o -name '.env' -o -name '.env.local' \) \
+               -not -path './node_modules/*' -not -path './.git/*' | grep -q .; then
             echo 'Credential-like file detected'
             exit 1
           fi
-          echo 'Repository baseline OK'
+          if grep -rInE 'BEGIN (RSA|OPENSSH|EC|PGP|DSA) PRIVATE KEY|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}' \
+               --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.next \
+               --exclude-dir=dist --exclude-dir=.tmp . ; then
+            echo 'Secret-like content detected'
+            exit 1
+          fi
+          echo 'Secret scan OK'
 
   quality:
     runs-on: ubuntu-latest
@@ -53,6 +80,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Lint (baseline)
+        run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
       - name: Build

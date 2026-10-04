@@ -19,7 +19,8 @@ import {
   tutorLearnerProfiles,
   tutorMemories,
   tutorPartners,
-  tutorTemplateDocuments,
+  projectTemplates,
+  projectTemplateVersions,
   agentMemoryRecords,
 } from '@qitu/database';
 import { DATABASE_TOKEN } from '../../database';
@@ -107,27 +108,39 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
     limit: number;
   }): Promise<readonly TutorTemplateSearchResult[]> {
     if (this.db === null) return [];
-    const rows = await this.db.select().from(tutorTemplateDocuments);
+    const rows = await this.db
+      .select({ template: projectTemplates, version: projectTemplateVersions })
+      .from(projectTemplateVersions)
+      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
+      .where(and(
+        eq(projectTemplates.status, 'published'),
+        eq(projectTemplateVersions.status, 'published'),
+        // 平台模板是所有学生都可见的安全基础；校级模板待接入 student school projection。
+        isNull(projectTemplates.schoolId),
+      ));
     const terms = input.query.toLowerCase().split(/\s+/).filter(Boolean);
     return rows
-      .filter((row) => row.active)
-      .filter((row) => row.scope === 'system' ||
-        (row.scope === 'student' && row.studentId === input.studentId) ||
-        (row.scope === 'project' && input.projectId !== null && row.projectId === input.projectId))
-      .map((row) => {
-        const haystack = `${row.title} ${row.summary} ${row.tags.join(' ')} ${row.content}`.toLowerCase();
+      .map(({ template, version }) => {
+        const tags = [template.domain, template.difficulty].filter((value): value is string => value !== null && value.length > 0);
+        const content = JSON.stringify({
+          stages: version.stages,
+          content: version.content,
+          rubric: version.rubric,
+        });
+        const haystack = `${template.title} ${template.summary} ${tags.join(' ')} ${content}`.toLowerCase();
         const matchedTerms = terms.filter((term) => haystack.includes(term));
         return {
           document: {
-            id: row.id,
-            version: row.version,
-            title: row.title,
-            summary: row.summary,
-            tags: row.tags,
-            stage: row.stage as TutorTemplateSearchResult['document']['stage'],
-            content: row.content,
-            scope: row.scope as TutorTemplateSearchResult['document']['scope'],
-            active: row.active,
+            // The student must carry the governed version id into exploration creation.
+            id: version.id,
+            version: version.version,
+            title: template.title,
+            summary: template.summary,
+            tags,
+            stage: 'exploration' as const,
+            content,
+            scope: 'system' as const,
+            active: true,
           },
           score: terms.length === 0 ? 0 : matchedTerms.length / terms.length,
           matchedTerms,

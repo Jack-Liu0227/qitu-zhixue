@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
+import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { ModelConfigController } from './model-config.controller';
 import { ModelConfigService } from './model-config.service';
 
@@ -10,7 +11,7 @@ import { ModelConfigService } from './model-config.service';
  * provider seam 通过它拿模型标识与密钥，密钥永远不经过 HTTP 层。
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ModelRegistryModule],
   controllers: [ModelConfigController],
   providers: [ModelConfigService],
   exports: [ModelConfigService],

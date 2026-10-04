@@ -16,6 +16,15 @@ export type TutorAgentCapability =
   | 'reflect'
   | 'summarize';
 
+/** Server-resolved model purpose; never contains a provider URL or credential. */
+export interface TutorAgentModelPurpose {
+  usageId: string;
+  available: boolean;
+  input: readonly ('text' | 'image' | 'audio')[];
+  output: readonly ('text' | 'image' | 'audio')[];
+  modelId: string | null;
+}
+
 export type TutorAgentOutputKind =
   | 'reply'
   | 'plan'
@@ -42,6 +51,8 @@ export interface TutorAgentContext<TData = Record<string, never>> {
   builtAt: string;
   scope: TutorAgentScope;
   capability: TutorAgentCapability;
+  /** Server-resolved usage identity; never supplied by the browser. */
+  modelUsage: string;
   query: string;
   projectStage: string | null;
   goal: string | null;
@@ -56,6 +67,8 @@ export interface TutorAgentContextInput {
   query: string;
   projectStage: string | null;
   goal: string | null;
+  /** Populated by the server runtime; callers must not use it to select a provider. */
+  modelUsage?: string;
   evidenceRefs?: readonly string[];
 }
 
@@ -200,6 +213,8 @@ export interface TutorAgentPayload {
   text?: string;
   blocks?: readonly { kind: string; text?: string }[];
   projection?: TutorAgentOutputKind;
+  /** Internal SDK payload; not a browser response by itself. */
+  data?: unknown;
 }
 
 export interface TutorAgentOutput<TPayload extends TutorAgentPayload = TutorAgentPayload> {

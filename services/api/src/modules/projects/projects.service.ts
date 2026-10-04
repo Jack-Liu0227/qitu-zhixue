@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -23,6 +24,10 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { AuditWriter } from '../../common/audit/audit.service';
+import type { Database } from '@qitu/database';
+import { projectTemplateVersions, projectTemplates } from '@qitu/database';
+import { and, eq, isNull } from 'drizzle-orm';
+import { DATABASE_TOKEN } from '../../database';
 import {
   canCreateFormalProject,
   closeExploration as closeExplorationState,
@@ -79,6 +84,7 @@ export class ProjectsService {
     private readonly store: ExplorationStore,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
   ) {}
 
   /* ------------------------------ 读 ------------------------------ */
@@ -104,6 +110,7 @@ export class ProjectsService {
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
         const now = new Date();
+        await this.assertPublishedTemplateVersion(templateVersionId);
         const record = await this.store.createExploration({
           id: `exp-${randomUUID()}`,
           studentId,
@@ -287,6 +294,27 @@ export class ProjectsService {
   }
 
   /* ------------------------------ 内部 ------------------------------ */
+
+  private async assertPublishedTemplateVersion(templateVersionId: string | null): Promise<void> {
+    if (templateVersionId === null || this.db === null) return;
+    const rows = await this.db
+      .select({ versionId: projectTemplateVersions.id })
+      .from(projectTemplateVersions)
+      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
+      .where(and(
+        eq(projectTemplateVersions.id, templateVersionId),
+        eq(projectTemplateVersions.status, 'published'),
+        eq(projectTemplates.status, 'published'),
+        isNull(projectTemplates.schoolId),
+      ))
+      .limit(1);
+    if (rows.length === 0) {
+      throw new BadRequestException({
+        code: 'TEMPLATE_VERSION_UNAVAILABLE',
+        message: '推荐模板版本不存在、未发布或当前账号不可见',
+      });
+    }
+  }
 
   private async requireOwned(
     studentId: string,

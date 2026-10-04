@@ -1,4 +1,4 @@
-import type { ProjectSummary } from './project';
+import type { ProjectSummary } from './project.js';
 
 /**
  * 4/8 周学习计划与掌握度契约。

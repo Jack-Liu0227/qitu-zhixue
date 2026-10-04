@@ -17,8 +17,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "node -e \"console.log('api-client: lint placeholder')\"",
-    "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit"
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
   }
 }

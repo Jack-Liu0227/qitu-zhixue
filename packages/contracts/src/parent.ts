@@ -1,6 +1,6 @@
-import type { StudentGrowthEntryType } from './growth';
-import type { ProjectStage } from './project';
-import type { DataSource } from './platform';
+import type { StudentGrowthEntryType } from './growth.js';
+import type { ProjectStage } from './project.js';
+import type { DataSource } from './platform.js';
 
 /**
  * 家长陪伴中心契约 —— 对照已批准的参考稿 `UI图片/家长仪表盘/` 三个页面：

@@ -66,6 +66,26 @@
       "researcher": {
         "model": "deepseek/deepseek-flash",
         "thinking": "off"
+      },
+      "contract-owner": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "student-qa": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "student-reviewer": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "pedagogy-reviewer": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "release-reviewer": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
       }
     }
   }

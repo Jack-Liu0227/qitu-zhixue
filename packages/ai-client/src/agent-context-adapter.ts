@@ -34,6 +34,7 @@ export function createTutorAgentContextBuilder(
         builtAt: new Date().toISOString(),
         scope: input.scope,
         capability: input.request.capability,
+        modelUsage: input.request.modelUsage ?? 'tutor.chat',
         query: input.request.query,
         projectStage: input.request.projectStage,
         goal: input.request.goal,

@@ -117,6 +117,8 @@ export interface ModelUsageSlot {
   agent: AgentId;
   label: string;
   description: string;
+  /** 该用途至少需要模型具备的输入模态。未声明表示只校验输出。 */
+  requiresInput?: ModelModality[];
   /** 该用途至少需要模型具备的输出模态。 */
   requiresOutput: ModelModality[];
   /**
@@ -155,6 +157,8 @@ export interface ModelUsageRuntimeSummary {
   usageId: string;
   modelId: string | null;
   available: boolean;
+  input: ModelModality[];
+  output: ModelModality[];
 }
 
 /* ------------------------------------------------------------------ *

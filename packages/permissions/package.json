@@ -2,14 +2,15 @@
   "name": "@qitu/permissions",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "dependencies": {
     "@qitu/contracts": "workspace:*"
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "node -e \"console.log('permissions: lint placeholder')\"",
-    "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('permissions: no tests yet')\""
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
   }
 }

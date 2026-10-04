@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "lint": "node -e \"console.log('infra: lint placeholder')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "pnpm build && node --test \"dist/**/*.test.js\""
   },

@@ -256,10 +256,13 @@ export class TutorService {
    */
   getOrCreateSession(projectId: string | null, ownerId: string, explorationId?: string): TutorSessionRecord {
     const existing = [...this.sessions.values()].find(
-      (session) => session.projectId === projectId && session.explorationId === (explorationId ?? null) && session.ownerId === ownerId,
+      (session) => session.projectId === projectId && session.explorationId === (explorationId ?? null),
     );
-    if (existing !== undefined) return existing;
-    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : `session-${projectId}`;
+    if (existing !== undefined) {
+      assertOwnedBy(existing, ownerId);
+      return existing;
+    }
+    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : projectId === 'project-demo-001' ? 'session-demo-001' : `session-${projectId}`;
     const record = this.seedSession(sessionId, projectId, ownerId, explorationId);
     this.sessions.set(record.sessionId, record);
     this.record({
@@ -493,7 +496,7 @@ export class TutorService {
       ? null
       : this.platformData.getProject(record.projectId);
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
-    const projectStage = liveProject?.stage ?? EXPLORATION_CONTEXT.stage;
+    const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
     const contextPacket = await this.contextReader.buildContext({
@@ -518,9 +521,12 @@ export class TutorService {
     const unifiedSDK = this.sdkFactory?.create(
       { id: request.actorId, role: 'student', email: '', displayName: '' },
       { studentId: request.actorId, projectId: record.projectId },
-      async (providerInput: TutorTurnInput) => {
+      async (providerInput: TutorTurnInput, purpose) => {
         const generated: TutorStreamEvent[] = [];
-        for await (const event of this.provider.generateTurn(providerInput)) generated.push(event);
+        for await (const event of this.provider.generateTurn({
+          ...providerInput,
+          modelUsage: purpose.usageId,
+        })) generated.push(event);
         return generated;
       },
     );
@@ -529,6 +535,8 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
+      modelUsage: undefined,
+      idempotencyKey: request.idempotencyKey,
       projectId: record.projectId ?? '',
       sessionId: record.sessionId,
       projectTitle,
