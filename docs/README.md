@@ -4,7 +4,31 @@
 >
 > 本目录按五个责任域组织当前文档：`Admin`、`Student`、`Teacher`、`Parent`、`SDK`。实现、评审和部署默认从本页进入，不再把历史归档文档当作规范来源。
 
-## 五端与 SDK
+## 目录结构
+
+```text
+docs/
+├── agents/       Agent、课程、学生端设计输入；被实现和合同引用
+├── archive/      仅保留归档政策，不保留旧方案副本
+├── decisions/    已接受的架构决策记录（ADR）
+├── ADMIN.md      Admin 责任域主文档
+├── STUDENT.md    Student 责任域主文档
+├── TEACHER.md    Teacher 责任域主文档
+├── PARENT.md     Parent 责任域主文档
+├── SDK.md        SDK 与 Agent Runtime 主文档
+├── README.md     唯一文档索引
+└── 其他根文档    架构、数据库、部署、权限、路线和实现补充
+```
+
+根目录文档按用途分为：
+
+- **责任域主文档**：`ADMIN.md`、`STUDENT.md`、`TEACHER.md`、`PARENT.md`、`SDK.md`。
+- **系统基线**：`ARCHITECTURE.md`、`DATABASE.md`、`PERMISSIONS.md`、`DEPLOYMENT_AND_AGENTS.md`、`INITIALIZATION.md`、`LLM_MODEL_REGISTRY.md`。
+- **项目管理**：`ISSUES.md`、`ROADMAP.md`、`LOGIN.md`、`TEAM_SETUP.md`、`SHARED_PI_HERDR_AGENTS.md`。
+- **实现补充**：`AI导师统一架构与Agent记忆方案_v1.0.md`、`AI平台架构交接文档.md`、`AI搭档SDK架构落地说明.md`、`SDK与包结构现状.md`、`AI平台任务完成进度.md`、`AI教育平台前后端开发文档_v1.0.md`。
+
+实现、评审和部署优先阅读责任域主文档；根目录补充文档不得重新定义主文档中的责任边界。
+
 
 | 文档 | 责任域 | 当前实现入口 |
 |---|---|---|
