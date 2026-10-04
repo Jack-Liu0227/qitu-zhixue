@@ -19,6 +19,7 @@ import type {
   ModelModality,
   ModelUsageBinding,
   ModelUsageSlot,
+  ModelRuntimeResponse,
   TutorAgentModelPurpose,
   ProviderConfigPublic,
   RefreshProviderResponse,
@@ -303,8 +304,28 @@ export class ModelRegistryService implements OnModuleInit {
     return { usageId, available, input, output, modelId: resolved.modelId };
   }
 
-  /**
-   * Runtime `ModelGateway` 的解析入口：把用途解析为 provider / model / baseUrl /
+  /** Compatibility projection for existing four-client runtime status consumers. */
+  getRuntimeSummary(): ModelRuntimeResponse {
+    const text = this.resolvePurpose('tutor.chat');
+    const live = this.resolvePurpose('tutor.live');
+    const availableModalities: ModelRuntimeResponse['availableModalities'] = [];
+    if (text.available && text.input.includes('text') && text.output.includes('text')) {
+      availableModalities.push('text_text');
+    }
+    const canHear = live.available && live.input.includes('audio');
+    const canSpeak = live.available && live.output.includes('audio');
+    if (canHear && canSpeak) availableModalities.push('voice_voice');
+    if (canHear && live.output.includes('text')) availableModalities.push('voice_text');
+    if (live.input.includes('text') && canSpeak) availableModalities.push('text_voice');
+    return {
+      textModelId: text.modelId ?? 'unavailable',
+      liveModelId: live.modelId ?? 'unavailable',
+      liveAvailable: live.available,
+      availableModalities,
+    };
+  }
+
+
    * 协议 / **解密后的凭证**。
    *
    * ⚠️ 返回值里的 `credential` 是明文。它**只允许** `ModelGateway` 用来构造

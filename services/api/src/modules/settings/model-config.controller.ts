@@ -9,6 +9,7 @@ import type {
 import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { ModelConfigService } from './model-config.service';
+import { ModelRegistryService } from '../model-registry/model-registry.service';
 
 const SLOTS = new Set<ModelSlot>(['text', 'live']);
 
@@ -26,6 +27,7 @@ const SLOTS = new Set<ModelSlot>(['text', 'live']);
 export class ModelConfigController {
   constructor(
     private readonly models: ModelConfigService,
+    private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
   ) {}
 
@@ -52,7 +54,7 @@ export class ModelConfigController {
   @Get('models/runtime')
   getRuntime(@Headers('cookie') cookieHeader: string | undefined): { data: ModelRuntimeResponse } {
     requireAnyRole(this.authService, cookieHeader);
-    return { data: this.models.getRuntime() };
+    return { data: this.registry.getRuntimeSummary() };
   }
 }
 
