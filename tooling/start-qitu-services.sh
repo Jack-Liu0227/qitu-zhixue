@@ -28,16 +28,38 @@ QITU_TEACHER_PORT="${QITU_TEACHER_PORT:-3103}"
 QITU_ADMIN_PORT="${QITU_ADMIN_PORT:-3104}"
 QITU_API_PORT="${QITU_API_PORT:-4100}"
 
+service_filter() {
+  case "$1" in
+    api) echo '@qitu/api' ;;
+    auth) echo '@qitu/auth-portal' ;;
+    student) echo '@qitu/student-center' ;;
+    parent) echo '@qitu/parent-companion' ;;
+    teacher) echo '@qitu/teacher-workspace' ;;
+    admin) echo '@qitu/admin-console' ;;
+  esac
+}
+
+pid_matches_service() {
+  local name="$1" pid="$2"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null || return 1
+  ps -p "$pid" -o args= 2>/dev/null | grep -F -- "pnpm --filter $(service_filter "$name")" >/dev/null
+}
+
 start_one() {
   local name="$1" port="$2" filter="$3" mode="$4"
   local pid_file="$RUNTIME_DIR/pids/$name.pid"
   local log_file="$RUNTIME_DIR/logs/$name.log"
 
-  if [[ -f "$pid_file" ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
-    echo "$name already running (pid $(cat "$pid_file"))"
-    return
+  if [[ -f "$pid_file" ]]; then
+    local existing_pid
+    existing_pid="$(cat "$pid_file")"
+    if pid_matches_service "$name" "$existing_pid"; then
+      echo "$name already running (pid $existing_pid)"
+      return
+    fi
+    echo "$name has a stale PID file; removing it"
+    rm -f "$pid_file"
   fi
-  rm -f "$pid_file"
 
   local root_q
   printf -v root_q '%q' "$ROOT"
@@ -48,7 +70,11 @@ start_one() {
     command="cd $root_q && exec env HOST=$QITU_BIND_HOST PORT=$port pnpm --filter $filter dev"
   fi
 
-  setsid bash -c "$command" >"$log_file" 2>&1 &
+  if [[ "$name" == api && "$(id -u)" == 0 && "$(id -un 2>/dev/null)" != postgres ]]; then
+    runuser -u postgres -- setsid bash -c "$command" >"$log_file" 2>&1 &
+  else
+    setsid bash -c "$command" >"$log_file" 2>&1 &
+  fi
   echo $! >"$pid_file"
   echo "started $name on 127.0.0.1:$port (pid $!)"
 }
@@ -56,18 +82,20 @@ start_one() {
 stop_one() {
   local name="$1"
   local pid_file="$RUNTIME_DIR/pids/$name.pid"
-  [[ -f "$pid_file" ]] || return 0
   local pid
-  pid="$(cat "$pid_file")"
-  if kill -0 "$pid" 2>/dev/null; then
-    kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
-    for _ in {1..20}; do
-      kill -0 "$pid" 2>/dev/null || break
-      sleep 0.25
-    done
+    pid="$(cat "$pid_file")"
+    if pid_matches_service "$name" "$pid"; then
+      kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+      for _ in {1..20}; do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.25
+      done
+    else
+      echo "$name has a stale PID file; removing it"
+    fi
+    rm -f "$pid_file"
+    echo "stopped $name"
   fi
-  rm -f "$pid_file"
-  echo "stopped $name"
 }
 
 port_for() {
@@ -134,7 +162,11 @@ ensure_shared_packages() {
   # runtime, so any package that exports *runtime values* must be built to dist
   # first. Type-only packages (e.g. @qitu/contracts) are erased and need no build.
   echo "building @qitu/database (runtime dependency of api)..."
-  (cd "$ROOT" && pnpm --filter @qitu/database build)
+  if [[ "$(id -u)" == 0 ]] && command -v runuser >/dev/null 2>&1; then
+    runuser -u postgres -- bash -c "cd '$ROOT' && pnpm --filter @qitu/database build"
+  else
+    (cd "$ROOT" && pnpm --filter @qitu/database build)
+  fi
 }
 
 require_database_env_for_api() {
