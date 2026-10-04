@@ -62,7 +62,7 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm build && node --input-type=module -e \"const tutorContext = await import('./dist/tutor-context.test.js'); const agentRuntime = await import('./dist/agent-runtime.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); const qitu = await import('./dist/qitu-sdk.test.js'); const curriculum = await import('./dist/curriculum.test.js'); await agentRuntime.runAgentRuntimeAssertions(); await tutorContext.runTutorContextAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions(); await curriculum.runCurriculumAssertions();\""
+    "test": "pnpm --filter @qitu/contracts build && pnpm build && node --input-type=module -e \"const tutorContext = await import('./dist/tutor-context.test.js'); const agentRuntime = await import('./dist/agent-runtime.test.js'); const mastery = await import('./dist/mastery/mastery.test.js'); const questions = await import('./dist/questions/questions.test.js'); const grading = await import('./dist/grading/grading.test.js'); const qitu = await import('./dist/qitu-sdk.test.js'); const curriculum = await import('./dist/curriculum.test.js'); await agentRuntime.runAgentRuntimeAssertions(); await tutorContext.runTutorContextAssertions(); mastery.runMasteryAssertions(); questions.runQuestionAssertions(); grading.runGradingAssertions(); await curriculum.runCurriculumAssertions(); await qitu.runQituSDKAssertions();\""
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*"
