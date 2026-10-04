@@ -14,7 +14,7 @@ import { users } from './identity';
 import { projects } from './projects';
 import { projectTemplateVersions } from './project-templates';
 
-/** 项目证据三列，对应 `docs/agents/student-frontend-backend-design.md` 的
+/** 项目证据三列，对应 `docs/student/student-frontend-backend-design.md` 的
  * `ProjectEvidence { independent, aiHelped, difficulties }`。 */
 export const PROJECT_EVIDENCE_COLUMN_KINDS = ['independent', 'ai_helped', 'difficulty'] as const;
 

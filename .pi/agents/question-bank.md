@@ -26,7 +26,7 @@ Do not edit `packages/contracts/**` (contract-owner), `grading/**`
 ## Read first
 
 - `AGENTS.md`; product doc 9.4 and the minor-data minimization rules.
-- `docs/agents/tutor-curriculum-design.md` — your source of truth, sections 2 and 3.
+- `docs/student/tutor-curriculum-design.md` — your source of truth, sections 2 and 3.
 - `.pi/skills/tutor-engine/references/contracts.md`.
 
 ## Required behavior

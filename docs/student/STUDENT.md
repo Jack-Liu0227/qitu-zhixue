@@ -60,8 +60,8 @@ Student 面向学生，承载兴趣探索、AI 搭档、项目式学习、制作
 
 ## 关联文档
 
-- [SDK.md](./SDK.md)
-- [TEACHER.md](./TEACHER.md)
-- [PARENT.md](./PARENT.md)
-- [0009 mastery ADR](./decisions/0009-mastery-timeline-and-graphiti.md)
-- [0010 unified tutor context ADR](./decisions/0010-unified-tutor-exploration-context.md)
+- [SDK.md](../sdk/SDK.md)
+- [TEACHER.md](../teacher/TEACHER.md)
+- [PARENT.md](../parent/PARENT.md)
+- [0009 mastery ADR](../decisions/0009-mastery-timeline-and-graphiti.md)
+- [0010 unified tutor context ADR](../decisions/0010-unified-tutor-exploration-context.md)

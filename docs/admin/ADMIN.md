@@ -36,8 +36,8 @@ Admin 页面和 API 必须覆盖 `loading`、`empty`、`error`、`offline`、`pe
 
 ## 关联文档
 
-- [SDK.md](./SDK.md)
+- [SDK.md](../sdk/SDK.md)
 - [PLATFORM_CONTROL_PLANE.md](./PLATFORM_CONTROL_PLANE.md)
-- [INITIALIZATION.md](./INITIALIZATION.md)
-- [PERMISSIONS.md](./PERMISSIONS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [INITIALIZATION.md](../shared/INITIALIZATION.md)
+- [PERMISSIONS.md](../shared/PERMISSIONS.md)
+- [ARCHITECTURE.md](../shared/ARCHITECTURE.md)

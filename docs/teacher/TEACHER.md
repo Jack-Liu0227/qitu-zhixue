@@ -49,7 +49,7 @@ Teacher 不能直接：
 
 ## 关联文档
 
-- [ADMIN.md](./ADMIN.md)
-- [PARENT.md](./PARENT.md)
-- [PERMISSIONS.md](./PERMISSIONS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [ADMIN.md](../admin/ADMIN.md)
+- [PARENT.md](../parent/PARENT.md)
+- [PERMISSIONS.md](../shared/PERMISSIONS.md)
+- [ARCHITECTURE.md](../shared/ARCHITECTURE.md)

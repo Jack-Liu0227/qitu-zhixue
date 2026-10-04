@@ -27,7 +27,7 @@ import { projects } from './projects';
  *
  * 与 `tutor_knowledge_documents` 的关系：后者是 AI 搭档工作区的轻量适配层
  * （已有 0007 迁移与 seed）。本表是正式知识库，带版本、校验状态与分块索引；
- * 两者暂时并存，迁移计划见 `docs/DATABASE.md`。
+ * 两者暂时并存，迁移计划见 `docs/shared/DATABASE.md`。
  *
  * 向量检索：pgvector 尚未接入，`knowledge_chunks.embedding` 暂以 JSONB 保存
  * 占位向量，待维度 / HNSW 方案确定后由新迁移改为 `vector(n)` 列（见 ADR 0006

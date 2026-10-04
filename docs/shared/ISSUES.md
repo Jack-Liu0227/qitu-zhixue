@@ -4,7 +4,7 @@
 > 对应一个独立分支（见 `CONTRIBUTING.md`）。未在本登记册登记的大范围重构不予受理
 > （`AGENTS.md`：「不在没有 Issue 的情况下进行大范围重构」）。
 >
-> 关联：`docs/ARCHITECTURE.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`。
+> 关联：`docs/shared/ARCHITECTURE.md`、`docs/admin/ADMIN.md`、`docs/student/STUDENT.md`、`docs/teacher/TEACHER.md`、`docs/parent/PARENT.md`。
 >
 > **GitHub 跟踪**（`Jack-Liu0227/qitu-zhixue`）：父级 `#2`；T8 `#3`、T6 `#4`、T3 `#5`、
 > T2 `#6`、T5 `#7`、T7 `#8`、T4 `#9`、T1 `#10`。
@@ -67,7 +67,7 @@
 | 状态 | `In Review`（本次文档任务产出，待评审） |
 | 依赖 | 无。它是 T7 / T8 的前置 |
 | 风险 | 低（仅文档）；但若评审未通过，T7 / T8 不得开工 |
-| 影响面 | 产品文档 0.3 / 0.4 / 3.1 / 6.1 / 7.0 / 11.3、`docs/ARCHITECTURE.md`、`docs/PERMISSIONS.md`、新增 ADR 0008、本登记册 |
+| 影响面 | 产品文档 0.3 / 0.4 / 3.1 / 6.1 / 7.0 / 11.3、`docs/shared/ARCHITECTURE.md`、`docs/shared/PERMISSIONS.md`、新增 ADR 0008、本登记册 |
 
 **交付内容**
 
@@ -77,7 +77,7 @@
 2. 明确管理员默认只进入聚合 / 治理视图，不得默认进入个别学生日常处理；
    个别学生日常操作归班主任；管理员个别访问需对象级范围、最小字段、目的 / 原因、
    敏感二次确认、审计、限时。
-3. `docs/ARCHITECTURE.md`、`docs/PERMISSIONS.md` 落地该边界，并明确「前端隐藏不是授权」。
+3. `docs/shared/ARCHITECTURE.md`、`docs/shared/PERMISSIONS.md` 落地该边界，并明确「前端隐藏不是授权」。
 4. 新增 `docs/decisions/0008-admin-teacher-boundary.md`（Proposed / Accepted for planning），
    标注实现前提且声明本任务不改任何代码。
 5. 新增本登记册，登记 T1–T8、顺序、依赖、风险与 Given/When/Then 验收。

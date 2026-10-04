@@ -36,7 +36,7 @@ Parent 面向已授权监护人，提供孩子学习过程的最小化投影：�
 
 ## 关联文档
 
-- [STUDENT.md](./STUDENT.md)
-- [TEACHER.md](./TEACHER.md)
-- [PERMISSIONS.md](./PERMISSIONS.md)
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [STUDENT.md](../student/STUDENT.md)
+- [TEACHER.md](../teacher/TEACHER.md)
+- [PERMISSIONS.md](../shared/PERMISSIONS.md)
+- [ARCHITECTURE.md](../shared/ARCHITECTURE.md)

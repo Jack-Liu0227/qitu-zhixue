@@ -3,8 +3,8 @@
 - 状态：**Accepted（领域能力确定；Graphiti 权威层否决）**
 - 日期：2026-10-02
 - 范围：掌握度事件、当前门槛、成长轨迹、Graphiti 时序投影、Mem0 边界
-- 关联：ADR 0001、ADR 0002、ADR 0003、ADR 0006、ADR 0008、`docs/ARCHITECTURE.md`、`docs/DATABASE.md`
-- 实施计划：本文第 9 节；详细接手顺序见 `docs/AI平台架构交接文档.md`
+- 关联：ADR 0001、ADR 0002、ADR 0003、ADR 0006、ADR 0008、`docs/shared/ARCHITECTURE.md`、`docs/shared/DATABASE.md`
+- 实施计划：本文第 9 节；详细接手顺序见 `docs/shared/HANDOVER.md`
 
 ## 1. 决策摘要
 
@@ -410,6 +410,6 @@ threshold 和 regressions；无需 KnowledgePoint 参数即可枚举学生事件
 - 本 ADR 是掌握度时间线和 Graphiti 定位的唯一决策源。
 - 当前已落地 Graphiti projection scaffold：`services/graphiti/bridge.py`（固定结构化 HTTP bridge，禁用 telemetry/LLM 抽取）、`services/workers/src/mastery-projection-worker.ts`、`mastery_graph_receipts` 和 0012 migration。
 - 真实 Graphiti/Neo4j round-trip、备份恢复和生产规模性能仍需 M4 外部环境验收。
-- `docs/ARCHITECTURE.md` 描述稳定模块边界；`docs/DATABASE.md` 描述表 owner 和迁移顺序；本文描述掌握度具体协议。
-- `docs/AI导师统一架构与Agent记忆方案_v1.0.md` 保留 Agent/Mem0 设计，但 Graphiti 相关表述以本文为准。
+- `docs/shared/ARCHITECTURE.md` 描述稳定模块边界；`docs/shared/DATABASE.md` 描述表 owner 和迁移顺序；本文描述掌握度具体协议。
+- `docs/sdk/AGENT_MEMORY.md` 保留 Agent/Mem0 设计，但 Graphiti 相关表述以本文为准。
 - 历史 FastAPI/LangGraph 提案已移除，不作为当前实现依据。

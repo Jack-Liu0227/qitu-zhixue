@@ -45,7 +45,7 @@ export const MAX_KNOWLEDGE_SOURCE_LENGTH = 200;
 export const MAX_CHUNK_CHARS = 400;
 
 /**
- * 预留的模型用途 id（`docs/ARCHITECTURE.md` §5 / `docs/LLM_MODEL_REGISTRY.md` §8.6）。
+ * 预留的模型用途 id（`docs/shared/ARCHITECTURE.md` §5 / `docs/admin/LLM_MODEL_REGISTRY.md` §8.6）。
  * 向量检索接入 `ModelGateway` 时使用该用途，而不是在知识模块内自造模型调用。
  */
 export const KNOWLEDGE_EMBED_USAGE_ID = 'knowledge.embed';

@@ -208,7 +208,7 @@ export class AdminController {
   ): Promise<{ data: AdminStudentDetail }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
-    // ADR 0008 决定 6 / 产品文档 7.0 / docs/PERMISSIONS.md §5：管理员读取个别学生
+    // ADR 0008 决定 6 / 产品文档 7.0 / docs/shared/PERMISSIONS.md §5：管理员读取个别学生
     // 数据是「显式动作」，需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。
     // 当前没有可持久化的授权与审计链路，所以这里调用唯一授权入口 fail closed：
     // 即使前端仍渲染了入口，后端也返回 403，且不因学生是否存在而改变响应（防枚举）。

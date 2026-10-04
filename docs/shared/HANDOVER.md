@@ -1,4 +1,6 @@
-# AI 平台架构交接文档
+# AI 平台交接记录
+
+> 文档状态：交接与接手记录。模块边界和依赖规则以 [ARCHITECTURE.md](./ARCHITECTURE.md) 为准，表归属和迁移以 [DATABASE.md](./DATABASE.md) 为准；本文只记录模块清单、关键 API、环境配置和接手顺序，不重新定义领域责任。
 
 ## 1. 交接目标
 
@@ -135,7 +137,7 @@ mastery_events（不可变事实）
 - controller 拒绝未知字段、重复参数、掌握写入字段；关系授权在读取前执行。
 - 本查询模块提供只读结果，尚未替换项目状态机的现有门槛路径。
 
-所有掌握度时间线任务先读 [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+所有掌握度时间线任务先读 [`decisions/0009-mastery-timeline-and-graphiti.md`](../decisions/0009-mastery-timeline-and-graphiti.md)。
 
 
 ## 4. 关键 API
@@ -201,8 +203,8 @@ POST /api/v1/admin/initialization/database/execute             # 恒 409 INITIAL
 
 全部路由仅向 `admin` 开放；`POST` 写入与 `audit_logs` 同事务，错误码前缀 `INITIALIZATION_*`。
 投影当前读取 `.pi/agents/*.md` / `.pi/skills` 的安全摘要并合并 `tutor_partners`，MCP 无配置时为空，
-内置工具来自服务端脱敏注册表；尚未提供运行时配置写入口，详见 `docs/PLATFORM_CONTROL_PLANE.md`。
-`migrationVersion` 为 `null`（API 不探测迁移）。完整语义见 `docs/PLATFORM_CONTROL_PLANE.md`。
+内置工具来自服务端脱敏注册表；尚未提供运行时配置写入口，详见 `docs/admin/PLATFORM_CONTROL_PLANE.md`。
+`migrationVersion` 为 `null`（API 不探测迁移）。完整语义见 `docs/admin/PLATFORM_CONTROL_PLANE.md`。
 
 ### Templates
 
@@ -352,7 +354,7 @@ pnpm --filter @qitu/database exec tsx src/seed.ts --check
 
 修改数据 schema 前：
 
-1. 先更新 `docs/DATABASE.md` 表归属。
+1. 先更新 `docs/shared/DATABASE.md` 表归属。
 2. 只允许一个 schema writer 修改 `packages/database/src/schema/**`。
 3. 生成 forward/down migration 和 snapshot。
 4. 做空库 replay、down/up 和 seed 幂等测试。

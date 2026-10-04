@@ -2,7 +2,7 @@
 
 > 输入基线：
 > - UI 图片：`../qitu-zhixue/UI图片/学生区/` 共 7 张（dashboard、灵感空间、灵感空间2、AI搭档、我的项目、我的项目2、作品展厅）
-> - 产品文档：`docs/STUDENT.md`。
+> - 产品文档：`docs/student/STUDENT.md`。
 > - 导师引擎与学习计划设计：`tutor-curriculum-design.md`、`student-agent-design.md`
 >
 > **图片与文档冲突时，本文标注为「确认门」，不自行裁决。**第 9 节列了裁决状态。

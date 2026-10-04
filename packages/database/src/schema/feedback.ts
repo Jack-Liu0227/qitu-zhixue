@@ -17,7 +17,7 @@ import { users } from './identity';
  * - `problem`：首条反馈正文快照，方便列表投影；完整时间线见
  *   `feedback_ticket_entries`。
  *
- * 表归属：Mentor Ops 独占写入（见 `docs/DATABASE.md` §3）。审计 / outbox / 幂等
+ * 表归属：Mentor Ops 独占写入（见 `docs/shared/DATABASE.md` §3）。审计 / outbox / 幂等
  * 是横切能力，不和本表混写。
  */
 export const feedbackTickets = pgTable(

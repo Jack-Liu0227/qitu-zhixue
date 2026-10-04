@@ -69,10 +69,10 @@ export function canReadStudentByRelationship(
 /**
  * 管理员能否读取「个别学生」对象。
  *
- * ADR 0008 决定 6 / 产品文档 7.0 / `docs/PERMISSIONS.md` 第 5 节要求：管理员查看
+ * ADR 0008 决定 6 / 产品文档 7.0 / `docs/shared/PERMISSIONS.md` 第 5 节要求：管理员查看
  * 个别学生数据必须同时满足「对象级授权范围 + 最小字段 + 目的 / 原因 + 敏感二次确认
  * + 写审计 + 限时有效」。当前这些条件没有持久化与审计支撑
- * （`audit_logs` 业务写入见 `docs/PERMISSIONS.md` 第 10 节仍未接入），
+ * （`audit_logs` 业务写入见 `docs/shared/PERMISSIONS.md` 第 10 节仍未接入），
  * 因此不得以「管理员角色更大」为由默认放行。
  *
  * 这是一个**显式 seam**：显式授权模型落地后在此接入，调用方（`AccessPolicy`

@@ -86,4 +86,4 @@ node --test dist/modules/parent/growth-export.projection.test.js \
 - **step-up 重新认证**：更强的二次认证（重新输入口令 / OTP）依赖跨角色账户面
   （见 `ISSUE-T4`），当前用「路径 childId + 登录邮箱」双确认替代。
 - **保留与彻底删除策略**：`expires_at` 提供限时读取；到期行的清理 / 物理删除
-  尚未接入定时任务（见 `docs/DATABASE.md` §9 未决事项）。
+  尚未接入定时任务（见 `docs/shared/DATABASE.md` §9 未决事项）。

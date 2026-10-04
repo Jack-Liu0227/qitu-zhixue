@@ -24,7 +24,7 @@
 >
 > **数据模式**：`services/api` 由 `QITU_DATA_MODE=live|demo|test` 决定引擎（默认 `live`）。
 > `live` 必须有 `DATABASE_URL`，缺失或 client 无法创建则 **fail-fast**；只有显式 `demo`/`test`
-> 且非 production 才允许无库的内存 Directory 引擎。详见 `docs/INITIALIZATION.md` §5。
+> 且非 production 才允许无库的内存 Directory 引擎。详见 `docs/shared/INITIALIZATION.md` §5。
 
 ## 2. Schema 约定
 
@@ -180,7 +180,7 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
 | 表 | owner 模块 | 服务端写入时机 | 对应 API / 合同 |
 |---|---|---|---|
 | `template_verification_runs` / `template_verification_evidence` | Admin & Compliance（模板治理） | `verify` / `publish` 时把 `evaluateTemplateVerification()` 的确定性报告与证据冻结为一行 | `services/api/src/modules/templates/*`（`templates.module.ts` 注释标注待迁移）；形状与 `VerificationReport` / `VerificationCheck` 一致 |
-| `artifacts` / `artifact_versions` | Works | 项目阶段提交、学生确认发布时追加版本 / 置 `published_at` | Works 合同的 `Artifact` / `ArtifactVersion`（`docs/agents/student-frontend-backend-design.md`） |
+| `artifacts` / `artifact_versions` | Works | 项目阶段提交、学生确认发布时追加版本 / 置 `published_at` | Works 合同的 `Artifact` / `ArtifactVersion`（`docs/student/student-frontend-backend-design.md`） |
 | `project_evidence` | Projects & Learning / Growth | 由任务提交、`tutor_turn`、升级事件、反思、判分等真实事实**派生**（重复聚合 `ON CONFLICT DO NOTHING`） | 当前 `template-evidence.store.postgres.ts` 只读聚合；接表后改为物化 |
 | `pending_questions` | Projects & Learning（学习计划） | 出题时写题面 + 服务端私密 `expected_answer`；作答后置 `answered` 并追加 `mastery_attempts` | `learning-plan.service.ts` 的 `PublicQuestion` / `NextAction='answer_pending'` / 错误码 `QUESTION_NOT_AWAITING` |
 
@@ -315,7 +315,7 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 | 迁移 `0004`–`0007`（偏好、反馈工单、模型绑定、AI 工作区） | **已实现** |
 | 迁移 `0008_domain_foundation`（学校/模板/知识/计划/掌握/成长/记忆/评审） | **已实现**（表结构 + 外键 + 幂等键；service 读写与 RLS 待接入） |
 | 迁移 `0009_verification_evidence`（验证报告/证据、作品与版本、项目证据、待答题） | **已实现**（表结构 + 外键 + 幂等/部分唯一索引；API 接线见 §3.3） |
-| 迁移 `0010_agent_memory`（`agent_memory_records`） | **已实现**（表结构 + 外键 + 两个部分唯一/普通索引；API owner 见 `docs/PLATFORM_CONTROL_PLANE.md` §4.2） |
+| 迁移 `0010_agent_memory`（`agent_memory_records`） | **已实现**（表结构 + 外键 + 两个部分唯一/普通索引；API owner 见 `docs/admin/PLATFORM_CONTROL_PLANE.md` §4.2） |
 | 迁移 `0011_mastery_timeline`（`mastery_events`、`mastery_objective_mappings`、`mastery_records` 时间线列） | **已实现**（表结构 + 幂等键 / aggregate sequence 唯一索引） |
 | 迁移 `0012_mastery_graph_receipts`（`mastery_graph_receipts`） | **已实现**（表结构 + 状态索引；Graphiti 投影 scaffold） |
 | 迁移 `0013_tutor_exploration_context`（`tutor_sessions.exploration_id` + 探索/项目部分唯一索引） | **已实现**（工作树未提交；Drizzle `meta/_journal.json` 仍停在 `0009`，重放用裸 `psql`） |
@@ -324,14 +324,14 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 | 项目 / AI / 成长 / 知识库表 | **部分实现**：0008/0009 已建领域经典表与作品/版本/项目证据/验证/待答题表；`project_stages` / `project_tasks` / `alerts` / `interventions` 等仍待建 |
 | 校域隔离（RLS / 跨校强制校验） | **未实现**（`school_id` 列已就位，仅应用层过滤） |
 | pgvector 扩展与向量索引 | **未实现**（`knowledge_chunks.embedding` 暂用 JSONB 占位） |
-| 登录会话持久化（身份 `sessions` 表，当前进程内） | **未实现**（与已落库的 Tutor 会话/回合不同；见 `docs/PLATFORM_CONTROL_PLANE.md` §4.2） |
+| 登录会话持久化（身份 `sessions` 表，当前进程内） | **未实现**（与已落库的 Tutor 会话/回合不同；见 `docs/admin/PLATFORM_CONTROL_PLANE.md` §4.2） |
 | 模型注册表持久化 | **部分实现**：表结构已建（0002）；service 仍只写进程内存，尚未读写这些表 |
 | 掌握度时间线事件账本、快照和 Graphiti 投影 | **M0-M3 完成，M4 scaffold**（`mastery_events` / mapping / 0011、assessment transaction、只读 API/SDK、0012 receipt、Worker projection scaffold 已落地；外部 Graphiti round-trip、对账和恢复演练待完成） |
 
 ## 7. 空态、幂等与回滚
 
 - **空态**：无数据时 API 必须返回空列表 / 空箭头，而不是报错；前端展示 empty 状态。
-  种子缺失时登录会失败（无演示账号），这是预期行为，见 `docs/INITIALIZATION.md`。
+  种子缺失时登录会失败（无演示账号），这是预期行为，见 `docs/shared/INITIALIZATION.md`。
 - **幂等**：所有写操作携带 `Idempotency-Key`（项目创建、任务/作品提交、导师分配、干预发送）；
   横切结果落 `idempotency_keys`（`scope + key` 唯一，保存 request hash 和原响应），审计仍通过
   `audit_logs.idempotency_key` 关联；业务表的部分唯一约束继续作为最终一致性兜底。
@@ -369,5 +369,5 @@ psql "$DATABASE_URL" -f database/seeds/domain-foundation.sql
 - [ ] `tutor_*` 适配层与 0008 领域真源的合并/下线顺序（双写迁移方案）。
 - [ ] `school_id` 的行级安全（RLS）与会话变量策略；多校租户切换。
 - [ ] `mastery_records` 模型字段（difficulty/stability/retrievability）与
-      `docs/agents/tutor-curriculum-design.md` 的间隔复习算法对接。
+      `docs/student/tutor-curriculum-design.md` 的间隔复习算法对接。
 - [ ] 数据保留与删除策略、匿名化方案的落表方式。

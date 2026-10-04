@@ -3,7 +3,7 @@
 - 状态：**Accepted**
 - 日期：2026-09-27
 - 范围：表归属、跨模块写入规则、迁移顺序
-- 关联：ADR 0002（领域边界与单一写入者）、ADR 0003（数据库访问层）、`docs/DATABASE.md`、`docs/ARCHITECTURE.md`
+- 关联：ADR 0002（领域边界与单一写入者）、ADR 0003（数据库访问层）、`docs/shared/DATABASE.md`、`docs/shared/ARCHITECTURE.md`
 
 ## 背景
 
@@ -13,11 +13,11 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 
 ## 决策
 
-1. **每张表只有一个 owner 模块**，owner 是该表唯一的写入者。归属见 `docs/DATABASE.md`
+1. **每张表只有一个 owner 模块**，owner 是该表唯一的写入者。归属见 `docs/shared/DATABASE.md`
    的「表归属」表；新增表必须先登记归属再建迁移。
 2. **跨模块写只能走命令 / 事件 / outbox**，不得直接 `INSERT/UPDATE` 其他模块的表。
 3. **迁移顺序按依赖分组推进**：基础设施与身份先行，项目业务表随后，AI/成长/知识库最后。
-   具体顺序见 `docs/DATABASE.md` 的「迁移顺序」。
+   具体顺序见 `docs/shared/DATABASE.md` 的「迁移顺序」。
 4. **`packages/database/src/schema/**` 是单一写入者资产**：并行开发时只读不写，
    schema 变更由一个角色合并，避免多份 schema 冲突。
 5. **`projects` 独占项目状态转换**；`access`（目录/关系）独占对象级授权判定入口；
@@ -45,7 +45,7 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 
 ## 落地步骤
 
-1. 在 `docs/DATABASE.md` 落地表归属与迁移顺序。
+1. 在 `docs/shared/DATABASE.md` 落地表归属与迁移顺序。
 2. 每个新模块 PR 必须包含：领域实体、表归属、迁移、权限规则、幂等说明、验收。
 3. 未来模板库 / 知识库 / 成长轨迹接入时，先确认它们引用而非复制 owner 模块的数据。
 
@@ -69,7 +69,7 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 否则会被静默截断，导致 `.down.sql` 无法准确 `DROP CONSTRAINT`。
 
 **并存关系**：0007 的 `tutor_*` 表仍为 AI 工作区适配层，暂与领域真源并存，
-合并/下线需另立迁移（先双写，再切读，最后退役）。详见 `docs/DATABASE.md` §3.2。
+合并/下线需另立迁移（先双写，再切读，最后退役）。详见 `docs/shared/DATABASE.md` §3.2。
 
 **已实现 vs 规划**：以上为**表结构与种子**；service 读写接入、RLS、pgvector 向量列、
 间隔复习算法落库均属后续工作。
@@ -91,7 +91,7 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
   `explanation` 服务端私有；部分唯一索引 `(student_user_id, plan_id) WHERE status='awaiting'`
   强制「同一路径同时只有一道未答题」；`idempotency_key` 唯一。
 
-接线映射（owner 模块、服务端写入时机、对应合同/错误码）见 `docs/DATABASE.md` §3.3。
+接线映射（owner 模块、服务端写入时机、对应合同/错误码）见 `docs/shared/DATABASE.md` §3.3。
 本批**不改 API 模块**：`services/api/src/modules/templates` 仍是确定性纯函数 + 只读证据聚合，
 学习计划的 `hasPendingQuestion` 仍为占位。
 
@@ -111,4 +111,4 @@ ADR 0002 已定「领域模块是各自数据的单一写入者」。但「哪�
 - [ ] `tutor_*` 适配层与领域真源的合并/下线顺序。
 - [ ] `knowledge_chunks.embedding` 从 JSONB 迁移为 pgvector `vector` 列（维度/索引待定）。
 - [ ] 0009 表的 API 接线：验证报告落库（模板治理）、作品发布与版本、项目证据物化、
-      待答题持久化与 `answer_pending` 状态机（映射见 `docs/DATABASE.md` §3.3）。
+      待答题持久化与 `answer_pending` 状态机（映射见 `docs/shared/DATABASE.md` §3.3）。

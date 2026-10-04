@@ -1,7 +1,7 @@
 # 初始化与演示数据（demo → live）
 
 > 目标：让任何人从零把平台跑起来，并且明确区分「演示」与「正式」两条初始化路径。
-> 关联：ADR 0005、`docs/DATABASE.md`、`docs/PLATFORM_CONTROL_PLANE.md`、`database/README.md`、`docs/DEPLOYMENT_AND_AGENTS.md`。
+> 关联：ADR 0005、`docs/shared/DATABASE.md`、`docs/admin/PLATFORM_CONTROL_PLANE.md`、`database/README.md`、`docs/shared/DEPLOYMENT_AND_AGENTS.md`。
 >
 > 变更说明（Wave 4）：数据模式改为显式 `QITU_DATA_MODE`（默认 `live`）。本次只改代码/脚本/文档，
 > **未重启任何正在运行的服务**；若要让新默认生效，需在配置好 `DATABASE_URL` 后由操作者自行重启。
@@ -134,7 +134,7 @@ POST /api/v1/admin/initialization/database/execute         # 恒 409，必须走
 - `GET /api/v1/admin/initialization` 只读状态来自 `platform-registry` 的只读投影；
   `database.schema` 恒为 `unknown`，`migrationVersion` 恒为 `null`（API 不探测迁移）。
 
-完整字段语义、检查项判定和界面状态见 `docs/PLATFORM_CONTROL_PLANE.md`。
+完整字段语义、检查项判定和界面状态见 `docs/admin/PLATFORM_CONTROL_PLANE.md`。
 
 ## 5. 数据模式与引擎切换机制（重要）
 
@@ -160,7 +160,7 @@ POST /api/v1/admin/initialization/database/execute         # 恒 409，必须走
 
 `createDb()` 是惰性连接：`DATABASE_URL` 已设置但库**不可达**时，`DatabaseModule` 返回非空 client，
 查询在**运行时报错**，不会自动回退内存引擎（这一层不在本次 fail-fast 范围内）。
-「库不可达」的启动策略仍待定稿（见 ADR 0005 / `docs/DATABASE.md` 未决事项）。
+「库不可达」的启动策略仍待定稿（见 ADR 0005 / `docs/shared/DATABASE.md` 未决事项）。
 
 ## 6. 空态策略
 

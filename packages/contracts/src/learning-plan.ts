@@ -8,7 +8,7 @@ import type { ProjectSummary } from './project';
  * 证据引用），**没有任何** `stage` / `mastery` / `theoryMastered` / `projectId` 字段；
  * 客户端塞入这些字段不会生效，服务端按白名单拒绝。
  *
- * 形状对齐 `docs/agents/tutor-curriculum-design.md` §3，并与迁移 0008 的
+ * 形状对齐 `docs/student/tutor-curriculum-design.md` §3，并与迁移 0008 的
  * `learning_plans` / `learning_modules` / `learning_objectives` / `learning_sessions`
  * / `mastery_records` / `mastery_attempts` 一一对应。
  */

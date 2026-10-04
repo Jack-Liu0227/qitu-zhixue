@@ -3,7 +3,7 @@
 - 状态：**Accepted**
 - 日期：2026-09-27
 - 范围：空库初始化、演示种子、内存引擎与 Postgres 引擎的切换、凭据处理
-- 关联：ADR 0001（第 5 条：PostgreSQL 通过基础设施边界接入）、ADR 0003（数据库访问层）、`database/README.md`、`docs/INITIALIZATION.md`、`docs/DATABASE.md`
+- 关联：ADR 0001（第 5 条：PostgreSQL 通过基础设施边界接入）、ADR 0003（数据库访问层）、`database/README.md`、`docs/shared/INITIALIZATION.md`、`docs/shared/DATABASE.md`
 
 ## 背景
 
@@ -35,7 +35,7 @@
 5. **演示凭据是公开 fixture，不是秘密**：可以写入仓库与文档，但必须满足：
    - 口令只用于本地/演示库；
    - 正式库上线前必须重置为带盐 KDF（scrypt/argon2），当前 `sha256(明文)` 仅作为 Stage 2 平滑过渡。
-6. **禁止把演示数据带进 live**：`live` 初始化不执行 `pnpm seed`，且种子脚本对非本地库需显式二次确认（见 `docs/INITIALIZATION.md` 的护栏）。
+6. **禁止把演示数据带进 live**：`live` 初始化不执行 `pnpm seed`，且种子脚本对非本地库需显式二次确认（见 `docs/shared/INITIALIZATION.md` 的护栏）。
 
 ## 后果
 
@@ -55,7 +55,7 @@
 
 1. 保留 `database/migrations/` 作为唯一迁移真源；`packages/database` 用 `drizzle-kit generate` 生成。
 2. `packages/database/src/seed.ts` 只读取并执行 `database/seeds/demo-identities.sql`，不在 TS 里另写一份数据。
-3. `docs/INITIALIZATION.md` 给出 demo 与 live 两套命令、空态行为与验收。
+3. `docs/shared/INITIALIZATION.md` 给出 demo 与 live 两套命令、空态行为与验收。
 4. CI 增加一步：对空库重放全部迁移；再连跑两次种子，第二次必须无新增。
 
 ## 明确不做

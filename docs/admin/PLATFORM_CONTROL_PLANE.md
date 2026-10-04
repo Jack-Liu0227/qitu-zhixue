@@ -1,8 +1,8 @@
 # 平台控制面：AI 运行时投影与初始化
 
 > 状态：当前基线（第一切片，只读投影 + 受限幂等初始化）。
-> 关联：`docs/ARCHITECTURE.md`、`docs/INITIALIZATION.md`、`docs/PERMISSIONS.md`、
-> `docs/DEPLOYMENT_AND_AGENTS.md`、ADR 0008（管理员与班主任边界）。
+> 关联：`docs/shared/ARCHITECTURE.md`、`docs/shared/INITIALIZATION.md`、`docs/shared/PERMISSIONS.md`、
+> `docs/shared/DEPLOYMENT_AND_AGENTS.md`、ADR 0008（管理员与班主任边界）。
 >
 > 本文描述**已经实现**的行为。尚未实现的能力在 §7 明确标注为「未实现」。
 

@@ -12,7 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 /**
- * LLM model registry: Provider -> Model -> Usage (ADR 0007 / docs/LLM_MODEL_REGISTRY.md).
+ * LLM model registry: Provider -> Model -> Usage (ADR 0007 / docs/admin/LLM_MODEL_REGISTRY.md).
  *
  * Layering rule (pi-ai): credentials belong to the provider, capabilities belong to
  * the model, selection belongs to the usage.

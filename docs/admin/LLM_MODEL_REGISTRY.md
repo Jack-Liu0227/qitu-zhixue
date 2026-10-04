@@ -3,7 +3,7 @@
 > 管理员接入多家 LLM：配置网关与密钥、拉取/手工维护模型、为每个用途绑定模型。
 > 本文描述目标设计与当前实现，**未实现项已明确标注**。
 > 关联：ADR 0007、`packages/contracts/src/models.ts`、
-> `services/api/src/modules/model-registry/`、`docs/PERMISSIONS.md`。
+> `services/api/src/modules/model-registry/`、`docs/shared/PERMISSIONS.md`。
 
 ## 1. 三层模型
 

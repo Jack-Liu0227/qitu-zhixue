@@ -30,7 +30,7 @@ is `contract-owner`'s — if you need a change there, report it, do not write it
 
 ## Read first
 
-- `docs/agents/student-frontend-backend-design.md` sections 5 and 6.
+- `docs/student/student-frontend-backend-design.md` sections 5 and 6.
 - Product doc 3.4 (permission principles) and 4.2–4.6.
 - `services/api/src/modules/identity-auth/**` for the NestJS module pattern.
 

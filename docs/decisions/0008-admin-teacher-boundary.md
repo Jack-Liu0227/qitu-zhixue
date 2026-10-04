@@ -4,7 +4,7 @@
 - 日期：2026-09-28
 - 范围：四个平台的角色职责、导航与个别学生数据访问边界（文档层面）
 - 关联：产品文档 0.3 / 0.4 / 3.1 / 3.4 / 6 / 7.0 / 11.3、ADR 0002（领域边界与单一写入者）、
-  ADR 0004（信息架构变更须先改文档）、`docs/PERMISSIONS.md` 第 5 节、`docs/ARCHITECTURE.md` 2.1、`docs/ISSUES.md`
+  ADR 0004（信息架构变更须先改文档）、`docs/shared/PERMISSIONS.md` 第 5 节、`docs/shared/ARCHITECTURE.md` 2.1、`docs/shared/ISSUES.md`
 - 本任务类型：**仅文档**。本 ADR 与相关文档更新**没有修改任何应用代码、数据库 schema、迁移或包契约**。
 
 ## 背景
@@ -44,7 +44,7 @@
    - 写 `audit_logs`；
    - 限时有效。
 7. **前端隐藏不构成授权**：入口是否渲染只是体验；后端必须对每个请求重新做对象级判定
-   （产品文档 3.4、`docs/PERMISSIONS.md`）。
+   （产品文档 3.4、`docs/shared/PERMISSIONS.md`）。
 
 ## 边界表
 
@@ -63,7 +63,7 @@
 - 班主任导航与实现一致，消除「文档说有、代码里没有」的漂移。
 - 账号与安全能力不再与班级业务耦合，四个平台可以共享同一套账户面。
 - 管理员个别学生访问有了明确的判定清单（范围 / 最小字段 / 原因 / 二次确认 / 审计 / 限时），
-  可以直接映射为 `docs/PERMISSIONS.md` 的验收标准与后续 Issue。
+  可以直接映射为 `docs/shared/PERMISSIONS.md` 的验收标准与后续 Issue。
 
 **负面 / 风险**
 
@@ -83,8 +83,8 @@
 - [ ] 产品 / 设计书面确认「账号与安全放顶栏账户入口」这一信息架构
       （班主任端代码已移除 `settings`，文档已同步）。
 
-本次文档任务已先更新产品文档 0.3 / 0.4 / 6.1 / 7.0 / 11.3、`docs/ARCHITECTURE.md`、
-`docs/PERMISSIONS.md`，并新增本 ADR；这些属于文档交付，不是实现。
+本次文档任务已先更新产品文档 0.3 / 0.4 / 6.1 / 7.0 / 11.3、`docs/shared/ARCHITECTURE.md`、
+`docs/shared/PERMISSIONS.md`，并新增本 ADR；这些属于文档交付，不是实现。
 
 在上述前提满足前，任何 PR 不得声称「管理员个别学生访问已合规」或「跨角色账户面已完成」。
 
@@ -93,7 +93,7 @@
 1. 产品 / 设计评审确认账号与安全入口的位置、文案与四端一致性。
 2. 在 API `access` 层建立「个别学生访问授权」对象：范围、原因、有效期、二次确认状态。
 3. 接入 `audit_logs` 写入，并让管理端个别学生页先校验授权再返回最小字段。
-4. 按 `docs/ISSUES.md` 的顺序推进 T8（管理员职责收敛）与 T7（班主任端平台设置迁移）。
+4. 按 `docs/shared/ISSUES.md` 的顺序推进 T8（管理员职责收敛）与 T7（班主任端平台设置迁移）。
 
 ## 明确不做
 
@@ -102,7 +102,7 @@
 - 不因为「管理员权限更大」就允许其绕过对象级授权与审计做个别学生日常处理。
 - 不把账号安全能力重新塞回班主任业务导航。
 
-## 范围规则 (project-specific, recorded in this ADR and `docs/ISSUES.md`, no `AGENTS.md` change)
+## 范围规则 (project-specific, recorded in this ADR and `docs/shared/ISSUES.md`, no `AGENTS.md` change)
 
 1. **No fifth client**: only four clients exist
    (`student-center`, `parent-companion`, `teacher-workspace`, `admin-console`).

@@ -1,9 +1,9 @@
 # 启途智学架构
 
 > 本文是工程架构的入口页，描述模块边界、表归属、依赖规则与迁移顺序。
-> 细化内容见：`docs/DATABASE.md`、`docs/PERMISSIONS.md`、`docs/INITIALIZATION.md`、
-> `docs/PLATFORM_CONTROL_PLANE.md`、`docs/LLM_MODEL_REGISTRY.md`、`docs/decisions/`。
-> 产品与端能力基线按责任域维护：`docs/README.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`、`docs/SDK.md`。
+> 细化内容见：`docs/shared/DATABASE.md`、`docs/shared/PERMISSIONS.md`、`docs/shared/INITIALIZATION.md`、
+> `docs/admin/PLATFORM_CONTROL_PLANE.md`、`docs/admin/LLM_MODEL_REGISTRY.md`、`docs/decisions/`。
+> 产品与端能力基线按责任域维护：`docs/README.md`、`docs/admin/ADMIN.md`、`docs/student/STUDENT.md`、`docs/teacher/TEACHER.md`、`docs/parent/PARENT.md`、`docs/sdk/SDK.md`。
 > **出现冲突时，先更新文档和 Issue，再修改实现。**
 
 ## 0. 一句话
@@ -43,7 +43,7 @@ flowchart TD
 - `services/api/`：模块化单体 API；Admin 是知识库、模板库、模型和运行时治理的控制面。
 - `services/workers/`：转写、摘要、成长计算、画像投影和索引等异步 Agent 任务。
 - `services/realtime-gateway/`：Live 语音与流式网关（规划）。
-- `database/`：**产物目录**——迁移、种子、fixture（见 `docs/DATABASE.md` 分工）。
+- `database/`：**产物目录**——迁移、种子、fixture（见 `docs/shared/DATABASE.md` 分工）。
 
 ## 2. 领域模块与边界
 
@@ -81,9 +81,9 @@ flowchart TD
 - 四个平台都把**账号与安全**（凭证、MFA、设备会话、退出）放在**跨角色账户面**
   （顶栏账户入口），它不是任何平台的业务导航项；平台 / AI 设置归管理后台。
 - **前端隐藏不构成授权**：入口是否渲染只是体验，后端必须对每个请求重新做对象级校验
-  （见 `docs/PERMISSIONS.md`）。
+  （见 `docs/shared/PERMISSIONS.md`）。
 
-表归属与迁移顺序的完整清单见 `docs/DATABASE.md`。
+表归属与迁移顺序的完整清单见 `docs/shared/DATABASE.md`。
 
 ## 3. 依赖规则
 
@@ -98,7 +98,7 @@ parent reads → authorized projection only
 
 1. 四个前端只依赖 `packages` 和 API 合同，不互相导入业务代码。
 2. 页面只负责组合模块，业务逻辑放入 `features` / `hooks` / `services`。
-3. 前端权限只控制显示，后端必须执行对象级权限校验（`docs/PERMISSIONS.md`）；
+3. 前端权限只控制显示，后端必须执行对象级权限校验（`docs/shared/PERMISSIONS.md`）；
    **隐藏入口不是授权**：后端不得因为「前端没渲染按钮」而放行。
 4. 核心业务规则只能由后端领域模块修改。
 5. AI、语音、项目状态转换不能由客户端直接写数据库。
@@ -109,9 +109,9 @@ parent reads → authorized projection only
 
 - PostgreSQL 是业务事实、掌握度事件和当前门槛投影的 system of record；缓存 Redis；文件走私有对象存储 + 签名 URL；向量检索 pgvector。Graphiti 如接入，只作为由 outbox 驱动的掌握度时间线投影，不能决定 `TheoryMastered`、实践解锁、项目状态或权限。
 - 迁移前向、可对空库重放；`packages/database/src/schema/**` 是单一写入者资产。
-- 迁移顺序：基础设施/身份 → 项目与学习 → AI/成长 → 运营与模型 → 单一学校领域基础层（0008）→ 验证/作品/待答题（0009，纯增量）（详见 `docs/DATABASE.md`）。
-- **校域范围**：`school_id` 可空列（`NULL` = 平台共享）；共享/私有边界与"领域真源 vs AI 工作区适配层"见 `docs/DATABASE.md` §3.1 / §3.2。
-- 初始化分 `demo`（迁移 + 种子）与 `live`（仅迁移）两档，绝不隐式混用（`docs/INITIALIZATION.md`）。
+- 迁移顺序：基础设施/身份 → 项目与学习 → AI/成长 → 运营与模型 → 单一学校领域基础层（0008）→ 验证/作品/待答题（0009，纯增量）（详见 `docs/shared/DATABASE.md`）。
+- **校域范围**：`school_id` 可空列（`NULL` = 平台共享）；共享/私有边界与"领域真源 vs AI 工作区适配层"见 `docs/shared/DATABASE.md` §3.1 / §3.2。
+- 初始化分 `demo`（迁移 + 种子）与 `live`（仅迁移）两档，绝不隐式混用（`docs/shared/INITIALIZATION.md`）。
 
 ## 5. AI 与模型接入
 
@@ -121,7 +121,7 @@ parent reads → authorized projection only
 - Agent SDK 不暴露数据库连接；由 API 提供知识、模板、项目、掌握度、成长和画像的有界读取端口。
 - 生成链路：Agent 读取授权投影 → 输出带 `sourceRefs` 的结构化结果 → 领域服务校验/幂等落库 → Worker 生成各端投影。
 - 显式支持三种协议：OpenAI Compatible / Chat Completions、OpenAI Responses、Anthropic Messages。
-- 详见 `docs/LLM_MODEL_REGISTRY.md` 与 ADR 0007。
+- 详见 `docs/admin/LLM_MODEL_REGISTRY.md` 与 ADR 0007。
 
 ### 5.3 Agent SDK 与前后端协同
 
@@ -160,7 +160,7 @@ Agent runtime 的读取 facade 不接受调用者传入 `studentId`、`projectId
 ## 5.1 掌握度时间线边界
 
 掌握度时间线是 Projects & Learning 的一等领域能力，详细协议见
-[`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+[`decisions/0009-mastery-timeline-and-graphiti.md`](../decisions/0009-mastery-timeline-and-graphiti.md)。
 
 - `mastery_events` 是不可变评估事件，必须带有效时间、记录时间、算法版本、幂等键和证据引用。
 - `mastery_records` 是当前掌握度投影，`TheoryMastered` 和项目门槛只读取该投影。
@@ -190,9 +190,9 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
   `database/migrations/`（`0010_agent_memory`、`0011_mastery_timeline`、`0012_mastery_graph_receipts`、
   `0013_tutor_exploration_context`）。
   **注意**：Drizzle `database/migrations/meta/_journal.json` / `meta/*_snapshot.json` 仍停在 `0009`，
-  且 `0013` 尚未提交（untracked），因此当前只能按文件名顺序用裸 `psql` 重放（见 `docs/INITIALIZATION.md` §3）。
+  且 `0013` 尚未提交（untracked），因此当前只能按文件名顺序用裸 `psql` 重放（见 `docs/shared/INITIALIZATION.md` §3）。
 - 迁移 `0008_domain_foundation`：`schools`、共享/校域项目模板与冻结版本、作用域知识文档/分块、学习计划/模块/目标/课次、掌握度记录/尝试、成长记录、学生记忆、班主任评审；并回填 `users.school_id` 与项目/探索会话的 `template_version_id` 外键。
-- 迁移 `0009_verification_evidence`（纯增量）：`template_verification_runs` / `template_verification_evidence`（不可变模板验证报告与证据）、`artifacts` / `artifact_versions`（作品与版本历程）、`project_evidence`（服务端聚合只读的项目证据）、`pending_questions`（跨轮持久待答题，答案服务端私有）。表结构 + 外键 + 幂等/部分唯一索引已就位，API 接线见 `docs/DATABASE.md` §3.3。
+- 迁移 `0009_verification_evidence`（纯增量）：`template_verification_runs` / `template_verification_evidence`（不可变模板验证报告与证据）、`artifacts` / `artifact_versions`（作品与版本历程）、`project_evidence`（服务端聚合只读的项目证据）、`pending_questions`（跨轮持久待答题，答案服务端私有）。表结构 + 外键 + 幂等/部分唯一索引已就位，API 接线见 `docs/shared/DATABASE.md` §3.3。
 - `DirectoryService` 双引擎；`DatabaseModule` 可选接入（无 URL 时 inert）。
 - 身份/关系管理、班主任端、家长端只读投影。
 - 模型注册表三层与自动拉取（仅内存）。
@@ -200,7 +200,7 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
   `GET /api/v1/admin/ai-runtime`、`GET /api/v1/admin/initialization`、
   `POST /api/v1/admin/initialization/{knowledge|template|tutor}/execute`；
   `agents` 只读取 Tutor Partner/服务端 Agent Registry，`skills` 读取 `.agents/skills`，
-  MCP 在安全 Registry 接入前为空，内置工具来自服务端脱敏注册表（详见 `docs/PLATFORM_CONTROL_PLANE.md`）。
+  MCP 在安全 Registry 接入前为空，内置工具来自服务端脱敏注册表（详见 `docs/admin/PLATFORM_CONTROL_PLANE.md`）。
 
 **未实现（不在本文当作已完成）**
 
@@ -235,4 +235,4 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
 - [ ] 管理员个别学生访问的范围 / 原因 / 二次确认 / 限时授权模型（ADR 0008）。
 - [ ] 跨角色账户面（凭证、MFA、设备会话、退出）尚未实现。
 
-> Issue 登记册与执行顺序见 `docs/ISSUES.md`。
+> Issue 登记册与执行顺序见 `docs/shared/ISSUES.md`。

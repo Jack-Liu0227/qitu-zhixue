@@ -86,7 +86,7 @@
 | M5 | 仅对非阻塞时间线查询做灰度 | Graphiti 故障可回退，绝不影响项目门槛 |
 
 Graphiti 不直接决定 `TheoryMastered`、项目状态、权限或审计结论。详细数据模型和验收
-指标见 [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md)。
+指标见 [`decisions/0009-mastery-timeline-and-graphiti.md`](../decisions/0009-mastery-timeline-and-graphiti.md)。
 
 ## 首个迭代建议
 

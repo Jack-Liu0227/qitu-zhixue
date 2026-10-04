@@ -7,7 +7,7 @@ description: >
   "student module", or "学生端功能".
 ---
 
-> 页面与数据模型基线：`docs/agents/student-frontend-backend-design.md`（由 UI 图片 + 产品文档 4.x 推导）；
+> 页面与数据模型基线：`docs/student/student-frontend-backend-design.md`（由 UI 图片 + 产品文档 4.x 推导）；
 > 数据库访问层见 `docs/decisions/0003-database-access-layer.md`。
 > 上述文档第 9 节的待定项未答完前，不要开工——品牌名与工作台范围会改变路由与数据模型。
 

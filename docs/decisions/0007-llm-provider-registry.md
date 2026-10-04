@@ -3,7 +3,7 @@
 - 状态：**Accepted（协议分层与三层模型）**；持久化与连接测试为规划项
 - 日期：2026-09-27
 - 范围：模型接入（Provider → Model → Usage）、协议适配、密钥与拉取模型
-- 关联：ADR 0002（AI Tutor 边界）、ADR 0003、`docs/LLM_MODEL_REGISTRY.md`、产品文档 7.5
+- 关联：ADR 0002（AI Tutor 边界）、ADR 0003、`docs/admin/LLM_MODEL_REGISTRY.md`、产品文档 7.5
 
 ## 背景
 

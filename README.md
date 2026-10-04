@@ -9,19 +9,19 @@
 
 1. [`AGENTS.md`](./AGENTS.md)：项目协作、安全和领域硬规则。
 2. [`docs/README.md`](./docs/README.md)：五端与 SDK 文档索引、优先级和读取顺序。
-3. 按责任域阅读 [`ADMIN.md`](./docs/ADMIN.md)、[`STUDENT.md`](./docs/STUDENT.md)、[`TEACHER.md`](./docs/TEACHER.md)、[`PARENT.md`](./docs/PARENT.md) 或 [`SDK.md`](./docs/SDK.md)。
-4. [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) 和 [`docs/DATABASE.md`](./docs/DATABASE.md)：跨模块边界、数据真源和迁移。
+3. 按责任域阅读 [`ADMIN.md`](./docs/admin/ADMIN.md)、[`STUDENT.md`](./docs/student/STUDENT.md)、[`TEACHER.md`](./docs/teacher/TEACHER.md)、[`PARENT.md`](./docs/parent/PARENT.md) 或 [`SDK.md`](./docs/sdk/SDK.md)。
+4. [`docs/shared/ARCHITECTURE.md`](./docs/shared/ARCHITECTURE.md) 和 [`docs/shared/DATABASE.md`](./docs/shared/DATABASE.md)：跨模块边界、数据真源和迁移。
 5. [`docs/decisions/`](./docs/decisions/)：已接受的架构决策记录。
 
 ## 当前文档分组
 
-- [Admin](./docs/ADMIN.md)：平台控制面、AI 运行时、知识库、模板库、数据库和审计。
-- [Student](./docs/STUDENT.md)：学生导航、探索、AI 搭档、项目、作品和成长轨迹。
-- [Teacher](./docs/TEACHER.md)：班主任工作台、负责学生、问题处理和人工干预。
-- [Parent](./docs/PARENT.md)：家长授权投影、成长快照、消息和反馈。
-- [SDK](./docs/SDK.md)：Agent Runtime、Tutor adapter、领域 facade 和浏览器 client。
+- [Admin](./docs/admin/ADMIN.md)：平台控制面、AI 运行时、知识库、模板库、数据库和审计。
+- [Student](./docs/student/STUDENT.md)：学生导航、探索、AI 搭档、项目、作品和成长轨迹。
+- [Teacher](./docs/teacher/TEACHER.md)：班主任工作台、负责学生、问题处理和人工干预。
+- [Parent](./docs/parent/PARENT.md)：家长授权投影、成长快照、消息和反馈。
+- [SDK](./docs/sdk/SDK.md)：Agent Runtime、Tutor adapter、领域 facade 和浏览器 client。
 
-详细系统文档：[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)、[`docs/DATABASE.md`](./docs/DATABASE.md)、[`docs/DEPLOYMENT_AND_AGENTS.md`](./docs/DEPLOYMENT_AND_AGENTS.md)、[`docs/ROADMAP.md`](./docs/ROADMAP.md)。
+详细系统文档：[`docs/shared/ARCHITECTURE.md`](./docs/shared/ARCHITECTURE.md)、[`docs/shared/DATABASE.md`](./docs/shared/DATABASE.md)、[`docs/shared/DEPLOYMENT_AND_AGENTS.md`](./docs/shared/DEPLOYMENT_AND_AGENTS.md)、[`docs/shared/ROADMAP.md`](./docs/shared/ROADMAP.md)。
 
 ## 运行服务
 

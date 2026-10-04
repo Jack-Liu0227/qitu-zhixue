@@ -2,7 +2,7 @@
 
 > 原则：**前端只负责显示，后端必须执行对象级权限校验**（AGENTS.md、产品文档 1.4 / 3.4）。
 > 本文定义角色、关系、判定顺序与各接口的准入规则，并标注当前已实现与待实现。
-> 关联：ADR 0002（`access` 是对象级授权唯一政策入口）、ADR 0008（管理员与班主任边界）、`packages/permissions`、`docs/DATABASE.md`。
+> 关联：ADR 0002（`access` 是对象级授权唯一政策入口）、ADR 0008（管理员与班主任边界）、`packages/permissions`、`docs/shared/DATABASE.md`。
 
 ## 1. 角色
 
@@ -23,7 +23,7 @@ student ← guardian_links(status=active) → parent     家长—孩子
 student ← mentor_assignments(status=active) → teacher  学生—班主任（同一时间唯一）
 ```
 
-- 一个学生同一时间只能有一个当前班主任（数据库部分唯一索引兜底，见 `docs/DATABASE.md`）。
+- 一个学生同一时间只能有一个当前班主任（数据库部分唯一索引兜底，见 `docs/shared/DATABASE.md`）。
 - 家长只能访问 `guardian_links` 中 `status=active` 的孩子。
 - 班主任只能访问 `mentor_assignments` 中 `status=active`、`mentor_user_id=自己` 的学生。
 - 关系变更保留历史（`status=ended` + `endedAt`），不做物理删除。
@@ -113,7 +113,7 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
 - 越权返回 **403**，且不应通过响应差异泄露资源是否存在。
 - 管理控制面只读优先：`/admin/ai-runtime` 与 `/admin/initialization` 是投影，不是配置写入口；
   受限初始化（`INITIALIZATION_*` 错误码）仅向 admin 开放，且数据库迁移永远不经 HTTP
-  （`docs/PLATFORM_CONTROL_PLANE.md`）。
+  （`docs/admin/PLATFORM_CONTROL_PLANE.md`）。
 - 管理员默认只看到聚合 / 治理数据（第 5 节）；查看任何个别学生数据需
   「目的 / 原因 → 二次确认（敏感时）→ 写审计 → 限时范围 → 最小字段」。
 - 涉及未成年人数据时默认最小化可见范围，并保留审计记录。

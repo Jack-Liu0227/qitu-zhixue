@@ -2,69 +2,66 @@
 
 > 更新：2026-10-04
 >
-> 本目录按五个责任域组织当前文档：`Admin`、`Student`、`Teacher`、`Parent`、`SDK`。实现、评审和部署默认从本页进入，不再把历史归档文档当作规范来源。
+> 本目录按责任域组织：`admin`、`student`、`teacher`、`parent`、`sdk` 五个二级目录是规范落点，`shared` 放跨责任域的系统基线，`decisions` 放 ADR，`archive` 只保留归档政策。实现、评审和部署默认从本页进入。
 
 ## 目录结构
 
 ```text
 docs/
-├── agents/       Agent、课程、学生端设计输入；被实现和合同引用
-├── archive/      仅保留归档政策，不保留旧方案副本
-├── decisions/    已接受的架构决策记录（ADR）
-├── ADMIN.md      Admin 责任域主文档
-├── STUDENT.md    Student 责任域主文档
-├── TEACHER.md    Teacher 责任域主文档
-├── PARENT.md     Parent 责任域主文档
-├── SDK.md        SDK 与 Agent Runtime 主文档
-├── README.md     唯一文档索引
-└── 其他根文档    架构、数据库、部署、权限、路线和实现补充
+├── admin/       平台控制面、AI 运行时、模型注册表
+├── student/     学生学习中心、AI 搭档、课程与掌握度设计
+├── teacher/     班主任工作台
+├── parent/      家长陪伴中心
+├── sdk/         SDK 合同与 Agent 记忆设计
+├── shared/      跨责任域系统基线：架构、数据库、权限、初始化、部署、路线、Issue、登录、团队与协作
+├── decisions/   已接受的架构决策记录（ADR）
+├── archive/     仅保留归档政策，不保留旧方案副本
+└── README.md    唯一文档索引
 ```
-
-根目录文档按用途分为：
-
-- **责任域主文档**：`ADMIN.md`、`STUDENT.md`、`TEACHER.md`、`PARENT.md`、`SDK.md`。
-- **系统基线**：`ARCHITECTURE.md`、`DATABASE.md`、`PERMISSIONS.md`、`DEPLOYMENT_AND_AGENTS.md`、`INITIALIZATION.md`、`LLM_MODEL_REGISTRY.md`。
-- **项目管理**：`ISSUES.md`、`ROADMAP.md`、`LOGIN.md`、`TEAM_SETUP.md`、`SHARED_PI_HERDR_AGENTS.md`。
-- **实现补充**：`AI导师统一架构与Agent记忆方案_v1.0.md`、`AI平台架构交接文档.md`、`AI搭档SDK架构落地说明.md`、`SDK与包结构现状.md`、`AI平台任务完成进度.md`、`AI教育平台前后端开发文档_v1.0.md`。
-
-实现、评审和部署优先阅读责任域主文档；根目录补充文档不得重新定义主文档中的责任边界。
-
 
 | 文档 | 责任域 | 当前实现入口 |
 |---|---|---|
-| [ADMIN.md](./ADMIN.md) | 平台管理后台、AI 运行时、知识库、模板库、数据库状态、审计 | `apps/admin-console`、`services/api/src/modules/admin`、`platform-registry` |
-| [STUDENT.md](./STUDENT.md) | 学生学习中心、探索、AI 搭档、项目、作品、成长轨迹 | `apps/student-center`、`services/api/src/modules/ai-tutor`、`projects` |
-| [TEACHER.md](./TEACHER.md) | 班主任工作台、负责学生、问题处理、干预和项目复核 | `apps/teacher-workspace`、`services/api/src/modules/reminders`、`interventions` |
-| [PARENT.md](./PARENT.md) | 家长授权投影、成长快照、反馈和消息 | `apps/parent-companion`、`services/api/src/modules/parent` |
-| [SDK.md](./SDK.md) | Agent Runtime、Tutor context adapter、Qitu domain facade、浏览器只读 client | `packages/contracts`、`packages/ai-client`、`packages/api-client` |
+| [admin/ADMIN.md](./admin/ADMIN.md) | 平台管理后台、AI 运行时、知识库、模板库、数据库状态、审计 | `apps/admin-console`、`services/api/src/modules/admin`、`platform-registry` |
+| [student/STUDENT.md](./student/STUDENT.md) | 学生学习中心、探索、AI 搭档、项目、作品、成长轨迹 | `apps/student-center`、`services/api/src/modules/ai-tutor`、`projects` |
+| [teacher/TEACHER.md](./teacher/TEACHER.md) | 班主任工作台、负责学生、问题处理、干预和项目复核 | `apps/teacher-workspace`、`services/api/src/modules/reminders`、`interventions` |
+| [parent/PARENT.md](./parent/PARENT.md) | 家长授权投影、成长快照、反馈和消息 | `apps/parent-companion`、`services/api/src/modules/parent` |
+| [sdk/SDK.md](./sdk/SDK.md) | Agent Runtime、Tutor context adapter、Qitu domain facade、浏览器只读 client | `packages/contracts`、`packages/ai-client`、`packages/api-client` |
 
-## 系统基线
+各责任域目录内的补充文档：
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md)：模块边界、依赖规则和数据权威。
-- [DATABASE.md](./DATABASE.md)：数据库、表 owner、迁移和数据权限。
-- [PERMISSIONS.md](./PERMISSIONS.md)：认证、角色和对象级授权。
-- [PLATFORM_CONTROL_PLANE.md](./PLATFORM_CONTROL_PLANE.md)：Admin 控制面和运行时投影。
-- [INITIALIZATION.md](./INITIALIZATION.md)：初始化、迁移和正式/演示模式。
-- [DEPLOYMENT_AND_AGENTS.md](./DEPLOYMENT_AND_AGENTS.md)：部署、运行时来源和 Agent 协作边界。
-- [LLM_MODEL_REGISTRY.md](./LLM_MODEL_REGISTRY.md)：Provider、Model、Usage 和凭证边界。
-- [AI搭档SDK架构落地说明.md](./AI搭档SDK架构落地说明.md)：Tutor 链路和代码位置补充。
-- [SDK与包结构现状.md](./SDK与包结构现状.md)：包结构实现盘点。
-- [AI导师统一架构与Agent记忆方案_v1.0.md](./AI导师统一架构与Agent记忆方案_v1.0.md)：记忆、上下文和 Agent 策略补充。
-- [AI平台架构交接文档.md](./AI平台架构交接文档.md)：交接与运行链路补充。
+- `admin/PLATFORM_CONTROL_PLANE.md`：Admin 控制面和运行时投影。
+- `admin/LLM_MODEL_REGISTRY.md`：Provider、Model、Usage 和凭证边界。
+- `student/student-agent-design.md`：学生 Agent 职责与边界设计。
+- `student/student-frontend-backend-design.md`：学生端前后端模块和接口设计。
+- `student/tutor-curriculum-design.md`：兴趣 → 4/8 周计划 → 先理论后实践的课程引擎设计。
+- `student/deeptutor-source-verification.md`：课程设计的开源来源核对记录（2026-09-25，DeepTutor v1.6.11）。
+- `sdk/AGENT_MEMORY.md`：Agent 记忆、上下文和策略边界设计。
+
+## 系统基线（`shared/`）
+
+- [ARCHITECTURE.md](./shared/ARCHITECTURE.md)：模块边界、依赖规则和数据权威。
+- [DATABASE.md](./shared/DATABASE.md)：数据库、表 owner、迁移和数据权限。
+- [PERMISSIONS.md](./shared/PERMISSIONS.md)：认证、角色和对象级授权。
+- [INITIALIZATION.md](./shared/INITIALIZATION.md)：初始化、迁移和正式/演示模式。
+- [DEPLOYMENT_AND_AGENTS.md](./shared/DEPLOYMENT_AND_AGENTS.md)：部署、运行时来源和 Agent 协作边界。
+- [HANDOVER.md](./shared/HANDOVER.md)：模块清单、关键 API、环境配置和接手顺序。
+- [ROADMAP.md](./shared/ROADMAP.md)：里程碑和迭代顺序。
+- [ISSUES.md](./shared/ISSUES.md)：Issue 登记、验收标准和风险。
+- [LOGIN.md](./shared/LOGIN.md)：统一登录入口和演示账号。
+- [TEAM_SETUP.md](./shared/TEAM_SETUP.md)、[SHARED_PI_HERDR_AGENTS.md](./shared/SHARED_PI_HERDR_AGENTS.md)：团队分工、远程目录和 Agent 协作设置。
 
 ## 决策记录
 
-- [ADR 0008：Admin 与 Teacher 边界](./decisions/0008-admin-teacher-boundary.md)
-- [ADR 0009：掌握度时间线与 Graphiti 投影](./decisions/0009-mastery-timeline-and-graphiti.md)
-- [ADR 0010：统一 Tutor 探索上下文](./decisions/0010-unified-tutor-exploration-context.md)
+- [ADR 0001–0010](./decisions/)：工程架构、领域边界、数据库访问层、成长轨迹导航、初始化与演示数据、领域模块存储、LLM Provider Registry、Admin/Teacher 边界、掌握度时间线、统一 Tutor 探索上下文。
+- 重点：[ADR 0008](./decisions/0008-admin-teacher-boundary.md)、[ADR 0009](./decisions/0009-mastery-timeline-and-graphiti.md)、[ADR 0010](./decisions/0010-unified-tutor-exploration-context.md)。
 
 ## 读取规则
 
 1. 先阅读 `AGENTS.md` 和本页。
-2. 按任务责任域阅读五端文档或 `SDK.md`。
-3. 涉及跨模块边界时补读 `ARCHITECTURE.md`、`DATABASE.md` 和相关 ADR。
-4. 涉及未成年人数据时必须同时检查 `PERMISSIONS.md`、审计和字段投影要求。
-5. 旧提案、旧技术栈和旧任务清单不再作为实现依据；当前仓库不保留历史 Markdown 副本。
+2. 按任务责任域阅读对应目录的主文档。
+3. 涉及跨模块边界时补读 `shared/ARCHITECTURE.md`、`shared/DATABASE.md` 和相关 ADR。
+4. 涉及未成年人数据时必须同时检查 `shared/PERMISSIONS.md`、审计和字段投影要求。
+5. 旧提案、旧技术栈、旧任务清单和兼容入口已删除，不再作为实现依据。
 
 ## 当前不变量
 

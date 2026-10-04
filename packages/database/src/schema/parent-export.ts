@@ -12,7 +12,7 @@ import { users } from './identity';
  * - `expires_at` 提供限时机制；到期后不再可下载，可被清理任务删除。
  * - `status` 为 text 枚举：`'pending' | 'ready' | 'expired'`（见 contracts）。
  *
- * 该表由 Parent Experience 模块独占写入（见 `docs/DATABASE.md` §3）。
+ * 该表由 Parent Experience 模块独占写入（见 `docs/shared/DATABASE.md` §3）。
  */
 export const parentGrowthExports = pgTable(
   'parent_growth_exports',

@@ -10,7 +10,7 @@ import type {
  * 检索实现与授权 / 持久化解耦：服务层先按作用域与 `verified` 过滤出候选，
  * 再把候选交给 `RetrievalPort` 排序。当前默认实现是**确定性关键词检索**；
  * pgvector 接入后，用同一接口替换为向量或混合检索，服务层与对 AI 搭档暴露的
- * 证据合同都不需要改（见 `docs/AI搭档SDK架构落地说明.md` 检索边界）。
+ * 证据合同都不需要改（见 `docs/sdk/SDK.md` 检索边界）。
  */
 export abstract class RetrievalPort {
   abstract retrieve(

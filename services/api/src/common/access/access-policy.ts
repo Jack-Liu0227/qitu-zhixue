@@ -14,7 +14,7 @@ import { canReadStudentByRelationship } from './access-policy.rules';
 /**
  * `AccessPolicy` —— 后端**对象级授权的唯一入口**。
  *
- * 设计约束（ADR 0002 / `docs/PERMISSIONS.md`）：
+ * 设计约束（ADR 0002 / `docs/shared/PERMISSIONS.md`）：
  * - 前端隐藏按钮不构成授权；每个对象级读/写都必须先经过这里。
  * - 判定顺序：会话 → 角色 → 关系成立 → 可见性。越权统一抛 403，
  *   且**不得**通过响应差异泄露资源是否存在（存在 / 不存在都返回同一句 403）。
@@ -149,7 +149,7 @@ export class AccessPolicy {
   /**
    * 敏感数据读取。**接口保留，但当前一律拒绝**。
    *
-   * 产品与 `docs/PERMISSIONS.md` 要求：管理员查看原始对话 / 语音等敏感数据，
+   * 产品与 `docs/shared/PERMISSIONS.md` 要求：管理员查看原始对话 / 语音等敏感数据，
    * 必须走「说明原因 → 二次确认 → 写审计 → 限时范围」。审计链路尚未实现，
    * 因此这里不能放行；等审批 + 审计落地后，在此处接入并保持调用方不变。
    */

@@ -19,7 +19,7 @@
 `.pi/extensions/student-workflow.ts`（`/student-module`、`/tutor-engine`、`/learning-plan`
 斜杠命令）提供。它们是 Pi/Herdr **开发期**制品；Admin 控制面只读取安全摘要用于治理预览，
 不把它们当作应用运行时的可执行配置注册表。与 `tutor_partners` / 模型注册表的区别见
-`docs/PLATFORM_CONTROL_PLANE.md` §4.1。
+`docs/admin/PLATFORM_CONTROL_PLANE.md` §4.1。
 
 `.pi/settings.json` 固定开发期模型与思考档位（**不含任何密钥**）：
 

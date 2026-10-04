@@ -1,13 +1,11 @@
-# AI 导师统一架构与 Agent 记忆方案 v1.0
+# Agent 记忆与上下文设计
 
-> 文档状态：**当前补充设计**。Agent/Mem0/上下文边界继续以本文为准；掌握度时间线、mastery events、项目门槛和 Graphiti 定位以 [`docs/decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md) 为准。
+> 文档状态：实现补充设计。Agent/Mem0/上下文边界以本文为准；掌握度时间线、mastery events、项目门槛和 Graphiti 定位以 [ADR 0009](../decisions/0009-mastery-timeline-and-graphiti.md) 为准；SDK 与 Agent Runtime 合同以 [SDK.md](./SDK.md) 为准。
 >
-> 本文不再把 Graphiti 视为“当前没有需求的候选组件”，而是将其限定为通过 outbox 异步构建的可重建掌握度时间线投影。Graphiti 不是 `TheoryMastered`、项目状态或权限的权威来源。
+> Graphiti 不是 `TheoryMastered`、项目状态或权限的权威来源，只是通过 outbox 异步构建的可重建掌握度时间线投影。
 
-- 项目基线：`b88dd5b287f11580d341a69fa375ea00f1b0d604`；分析开始及正文编写前工作区均为 clean。
-- 本地 DeepTutor 基线：`a053fecf6eeca51ded680de8b8fc41ef63857b11`。
-- 本轮范围：统一实现方向、开源选型、Agent 专属记忆合同与实施计划；不修改导航，不安装依赖，不迁移数据库，不调用真实学生数据。
-- 产品与端能力基线：`AGENTS.md`、`docs/README.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`、`docs/SDK.md`。
+- 本地 DeepTutor 基线：`a053fecf6eeca51ded680de8b8fc41ef63857b11`（仅用于教学机制来源核对）。
+- 产品与责任域基线：`AGENTS.md`、`docs/README.md`、`admin/ADMIN.md`、`student/STUDENT.md`、`teacher/TEACHER.md`、`parent/PARENT.md`、`SDK.md`。
 
 
 ## 1. 架构决策

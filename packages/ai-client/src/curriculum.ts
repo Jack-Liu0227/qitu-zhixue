@@ -9,7 +9,7 @@ import type {
 /**
  * 兴趣 → 4/8 周学习计划（纯函数，零 I/O，不写状态）。
  *
- * 设计基线：`docs/agents/tutor-curriculum-design.md` §1 / §3 / §7，产物契约
+ * 设计基线：`docs/student/tutor-curriculum-design.md` §1 / §3 / §7，产物契约
  * `.pi/skills/tutor-engine/references/contracts.md` 的 `curriculum-spec.md` 小节。
  *
  * 三条不可协商的硬规则：

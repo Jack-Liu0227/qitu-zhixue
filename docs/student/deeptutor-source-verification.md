@@ -30,7 +30,7 @@ GitHub 可达。用户随后自行把仓库放到 `/root/team-workspaces/DeepTut
 
 ## 1. 上一轮设计文档引用复核（逐条通过）
 
-`docs/agents/tutor-curriculum-design.md` 与 `student-agent-design.md` 里的 DeepTutor 引用，
+`docs/student/tutor-curriculum-design.md` 与 `student-agent-design.md` 里的 DeepTutor 引用，
 在 v1.6.11 上**全部成立，连行号都对上**：
 
 | 上一轮引用 | v1.6.11 实测 | 结论 |
