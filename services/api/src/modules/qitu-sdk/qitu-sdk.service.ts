@@ -59,7 +59,7 @@ export class QituSDKFactory {
     };
 
     const runThroughAgentRuntime = async (input: Input): Promise<Result> => {
-      const shape = isRecord(input) ? input : {};
+      const shape: RuntimeInputShape = isRecord(input) ? input : {};
       const requestId = readString(shape.requestId) ?? `sdk-request-${Date.now()}`;
       const idempotencyKey = readString(shape.idempotencyKey) ?? `sdk:${requestId}`;
       const query = readString(shape.query) ?? readString(shape.content) ?? '当前学习任务';

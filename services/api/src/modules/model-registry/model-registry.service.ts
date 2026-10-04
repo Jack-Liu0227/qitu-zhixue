@@ -643,8 +643,8 @@ export class ModelRegistryService implements OnModuleInit {
         `供应商 ${body.providerId} 下没有可用模型 ${body.modelId}，请先自动拉取或确认模型未下线`,
       );
     }
-    const missingInput = (usage.requiresInput ?? []).filter((modality) => !model.descriptor.input.includes(modality));
-    const missingOutput = usage.requiresOutput.filter((modality) => !model.descriptor.output.includes(modality));
+    const missingInput = (usage.requiresInput ?? []).filter((modality) => !model.input.includes(modality));
+    const missingOutput = usage.requiresOutput.filter((modality) => !model.output.includes(modality));
     if (missingInput.length > 0 || missingOutput.length > 0) {
       const requirements = [
         ...(missingInput.length > 0 ? [`输入：${missingInput.join('、')}`] : []),
