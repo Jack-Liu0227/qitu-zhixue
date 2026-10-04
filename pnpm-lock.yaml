@@ -314,6 +314,9 @@ importers:
 
   services/api:
     dependencies:
+      '@qitu/agent-memory':
+        specifier: workspace:*
+        version: link:../../packages/agent-memory
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
