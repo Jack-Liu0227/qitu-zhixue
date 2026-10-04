@@ -7,7 +7,7 @@
 - 项目基线：`b88dd5b287f11580d341a69fa375ea00f1b0d604`；分析开始及正文编写前工作区均为 clean。
 - 本地 DeepTutor 基线：`a053fecf6eeca51ded680de8b8fc41ef63857b11`。
 - 本轮范围：统一实现方向、开源选型、Agent 专属记忆合同与实施计划；不修改导航，不安装依赖，不迁移数据库，不调用真实学生数据。
-- 产品约束仍以 `AGENTS.md` 和 `docs/AI教育平台前后端开发文档_v1.0.md` 为准；掌握度时间线和 Graphiti 具体决策以 ADR 0009 为准。
+- 产品与端能力基线：`AGENTS.md`、`docs/README.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`、`docs/SDK.md`。
 
 
 ## 1. 架构决策
@@ -37,7 +37,7 @@
 | Workers | `services/workers/src/index.ts` 仅启动占位 | 落地首个可靠记忆消费者 |
 | 模型网关 | 文本 complete；尚无可调用 embedding 接口 | 增加有用途绑定、凭证隔离和计费的 embedding port |
 
-`archive/legacy-2024-2025/AI搭档功能技术设计文档_v2.0.md` 中 FastAPI/LangGraph、直接复用三层记忆等内容不能作为当前代码说明。评审后已归档，当前实现以 NestJS 模块化单体、PostgreSQL 和本文的 Mem0 边界为准。
+当前实现以 NestJS 模块化单体、PostgreSQL 和本文定义的 Agent 记忆边界为准，不再引用旧归档提案作为设计依据。
 
 ## 3. 统一职责
 

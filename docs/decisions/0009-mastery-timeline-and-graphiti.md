@@ -412,4 +412,4 @@ threshold 和 regressions；无需 KnowledgePoint 参数即可枚举学生事件
 - 真实 Graphiti/Neo4j round-trip、备份恢复和生产规模性能仍需 M4 外部环境验收。
 - `docs/ARCHITECTURE.md` 描述稳定模块边界；`docs/DATABASE.md` 描述表 owner 和迁移顺序；本文描述掌握度具体协议。
 - `docs/AI导师统一架构与Agent记忆方案_v1.0.md` 保留 Agent/Mem0 设计，但 Graphiti 相关表述以本文为准。
-- `docs/archive/legacy-2024-2025/AI搭档功能技术设计文档_v2.0.md`、`docs/archive/legacy-2024-2025/架构速查表.md` 中的 FastAPI/LangGraph/三层记忆内容属于历史提案，不得作为当前实现依据。
+- 历史 FastAPI/LangGraph 提案已移除，不作为当前实现依据。

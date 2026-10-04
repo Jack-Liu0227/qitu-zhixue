@@ -20,7 +20,10 @@ jobs:
           test -f README.md
           test -f AGENTS.md
           test -f CONTRIBUTING.md
-          test -f docs/AI教育平台前后端开发文档_v1.0.md
+          test -f docs/README.md
+          for doc in ADMIN STUDENT TEACHER PARENT SDK; do
+            test -f "docs/${doc}.md"
+          done
           test -f package.json
           test -f pnpm-workspace.yaml
           for dir in apps packages services database docs tooling; do

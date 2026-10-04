@@ -3,7 +3,7 @@
 > 本文是工程架构的入口页，描述模块边界、表归属、依赖规则与迁移顺序。
 > 细化内容见：`docs/DATABASE.md`、`docs/PERMISSIONS.md`、`docs/INITIALIZATION.md`、
 > `docs/PLATFORM_CONTROL_PLANE.md`、`docs/LLM_MODEL_REGISTRY.md`、`docs/decisions/`。
-> 产品开发基线：`docs/AI教育平台前后端开发文档_v1.0.md`。
+> 产品与端能力基线按责任域维护：`docs/README.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`、`docs/SDK.md`。
 > **出现冲突时，先更新文档和 Issue，再修改实现。**
 
 ## 0. 一句话

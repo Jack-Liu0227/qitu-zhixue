@@ -4,8 +4,7 @@
 > 对应一个独立分支（见 `CONTRIBUTING.md`）。未在本登记册登记的大范围重构不予受理
 > （`AGENTS.md`：「不在没有 Issue 的情况下进行大范围重构」）。
 >
-> 关联：`docs/decisions/0008-admin-teacher-boundary.md`、`docs/PERMISSIONS.md`、
-> `docs/ARCHITECTURE.md`、产品文档 `docs/AI教育平台前后端开发文档_v1.0.md`。
+> 关联：`docs/ARCHITECTURE.md`、`docs/ADMIN.md`、`docs/STUDENT.md`、`docs/TEACHER.md`、`docs/PARENT.md`。
 >
 > **GitHub 跟踪**（`Jack-Liu0227/qitu-zhixue`）：父级 `#2`；T8 `#3`、T6 `#4`、T3 `#5`、
 > T2 `#6`、T5 `#7`、T7 `#8`、T4 `#9`、T1 `#10`。

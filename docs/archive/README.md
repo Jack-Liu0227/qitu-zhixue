@@ -1,13 +1,13 @@
-# 历史文档归档
+# 历史文档归档说明
 
-这里保存 2024-2025 期间的需求澄清、FastAPI/DeepTutor 架构提案、数据库草案、任务清单和交付总结。
+2024–2025 年的旧需求、旧技术栈提案、数据库草案和任务清单已从仓库中移除，不再保留可被误读为当前规范的 Markdown 副本。
 
-这些文件用于追溯当时的背景，不代表当前实现。当前开发必须先阅读：
+当前文档统一从 [../README.md](../README.md) 进入，并按以下责任域维护：
 
-- `../../README.md`
-- `../README.md`
-- `../ARCHITECTURE.md`
-- `../DATABASE.md`
-- `../decisions/0009-mastery-timeline-and-graphiti.md`
+- [Admin](../ADMIN.md)
+- [Student](../STUDENT.md)
+- [Teacher](../TEACHER.md)
+- [Parent](../PARENT.md)
+- [SDK](../SDK.md)
 
-归档文档中的路径、技术栈和状态可能已经失效，不应直接执行其中的 SQL、部署命令或任务安排。
+历史内容如需恢复，必须经过文档 owner 评审，并以明确的 `historical` 标记存放，不能重新放入当前文档入口。
