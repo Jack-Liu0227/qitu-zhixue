@@ -68,7 +68,7 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
         or(isNull(agentMemoryRecords.expiresAt), gt(agentMemoryRecords.expiresAt, new Date())),
       )).orderBy(desc(agentMemoryRecords.updatedAt)).limit(Math.max(1, Math.min(input.limit, 20))),
     ]);
-    const tutorMemories = tutorRows.map((row) => ({
+    const workspaceMemories = tutorRows.map((row) => ({
       id: row.id, studentId: row.studentId, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
       confidence: row.confidence / 10000, source: row.source as TutorMemory['source'], visibility: row.visibility as TutorMemory['visibility'], updatedAt: row.updatedAt.toISOString(),
     }));
@@ -78,7 +78,7 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
         id: row.id, studentId: row.studentId!, partnerId: row.partnerId, kind: row.kind as TutorMemory['kind'], content: row.content,
         confidence: 1, source: 'student' as const, visibility: 'student_private' as const, updatedAt: row.updatedAt.toISOString(),
       }));
-    return [...agent, ...tutorMemories].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
+    return [...agent, ...workspaceMemories].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
   }
 
   async listAgentStrategies(input: {
