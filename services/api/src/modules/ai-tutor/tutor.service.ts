@@ -518,9 +518,12 @@ export class TutorService {
     const unifiedSDK = this.sdkFactory?.create(
       { id: request.actorId, role: 'student', email: '', displayName: '' },
       { studentId: request.actorId, projectId: record.projectId },
-      async (providerInput: TutorTurnInput) => {
+      async (providerInput: TutorTurnInput, purpose) => {
         const generated: TutorStreamEvent[] = [];
-        for await (const event of this.provider.generateTurn(providerInput)) generated.push(event);
+        for await (const event of this.provider.generateTurn({
+          ...providerInput,
+          modelUsage: purpose.usageId,
+        })) generated.push(event);
         return generated;
       },
     );
@@ -529,6 +532,8 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
+      modelUsage: undefined,
+      idempotencyKey: request.idempotencyKey,
       projectId: record.projectId ?? '',
       sessionId: record.sessionId,
       projectTitle,

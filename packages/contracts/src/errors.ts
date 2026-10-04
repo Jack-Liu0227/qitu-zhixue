@@ -110,6 +110,8 @@ export type ApiErrorCode =
    * **绝不**退回内存假装成功。
    */
   | 'PARENT_EXPORT_UNAVAILABLE'
+  /** 推荐模板版本不存在、未发布或当前学生不可见（400）。 */
+  | 'TEMPLATE_VERSION_UNAVAILABLE'
   /** 探索会话不存在，或对当前学生不可见（404）。 */
   | 'EXPLORATION_NOT_FOUND'
   /** 当前探索状态不允许该迁移（409）。 */

@@ -19,6 +19,7 @@ import type {
   ModelModality,
   ModelUsageBinding,
   ModelUsageSlot,
+  TutorAgentModelPurpose,
   ProviderConfigPublic,
   RefreshProviderResponse,
   UpsertProviderRequest,
@@ -144,6 +145,7 @@ const USAGES: readonly ModelUsageSlot[] = [
     agent: 'tutor',
     label: 'AI搭档 · 对话',
     description: '启发式追问的主体模型，决定教学语气与提示阶梯。',
+    requiresInput: ['text'],
     requiresOutput: ['text'],
     fallbackTo: null,
   },
@@ -152,7 +154,8 @@ const USAGES: readonly ModelUsageSlot[] = [
     agent: 'tutor',
     label: 'AI搭档 · 实时语音',
     description: '实时语音通道。需同时具备 audio 输入与输出才能启用「语音入→语音出」。',
-    requiresOutput: ['text'],
+    requiresInput: ['audio'],
+    requiresOutput: ['audio'],
     fallbackTo: 'tutor.chat',
   },
   {
@@ -272,6 +275,35 @@ export class ModelRegistryService implements OnModuleInit {
   }
 
   /**
+   * Agent Runtime 使用的无密钥用途投影。
+   *
+   * 与 `resolveRuntimeTarget` 分开：运行时只需要知道「这项能力是否可用、
+   * 采用哪个用途/模型、输入输出模态」，绝不能为了做路由判断而拿到凭证。
+   */
+  resolvePurpose(usageId: string): TutorAgentModelPurpose {
+    const usage = USAGES.find((candidate) => candidate.id === usageId);
+    if (usage === undefined) throw new NotFoundException(`未知的模型用途：${usageId}`);
+    const unavailable: TutorAgentModelPurpose = {
+      usageId,
+      available: false,
+      input: [],
+      output: [],
+      modelId: null,
+    };
+    const resolved = this.toBinding(usage).resolved;
+    if (resolved === null) return unavailable;
+    const state = this.providers.get(resolved.providerId);
+    const entry = state === undefined ? null : this.modelEntry(state, resolved.modelId);
+    if (state === undefined || entry === null) return unavailable;
+    const input = [...entry.descriptor.input];
+    const output = [...entry.descriptor.output];
+    const missingInput = (usage.requiresInput ?? []).some((modality) => !input.includes(modality));
+    const missingOutput = usage.requiresOutput.some((modality) => !output.includes(modality));
+    const available = state.enabled && entry.enabled && state.apiKey !== null && !missingInput && !missingOutput;
+    return { usageId, available, input, output, modelId: resolved.modelId };
+  }
+
+  /**
    * Runtime `ModelGateway` 的解析入口：把用途解析为 provider / model / baseUrl /
    * 协议 / **解密后的凭证**。
    *
@@ -336,6 +368,8 @@ export class ModelRegistryService implements OnModuleInit {
       baseUrl: state.baseUrl,
       api: state.api,
       authHeader: state.authHeader,
+      input: [...entry.descriptor.input],
+      output: [...entry.descriptor.output],
       credential: state.apiKey,
     };
   }
@@ -609,11 +643,15 @@ export class ModelRegistryService implements OnModuleInit {
         `供应商 ${body.providerId} 下没有可用模型 ${body.modelId}，请先自动拉取或确认模型未下线`,
       );
     }
-    const missing = usage.requiresOutput.filter((modality) => !model.output.includes(modality));
-    if (missing.length > 0) {
-      // 明确拒绝，而不是绑定后运行时才炸。
+    const missingInput = (usage.requiresInput ?? []).filter((modality) => !model.descriptor.input.includes(modality));
+    const missingOutput = usage.requiresOutput.filter((modality) => !model.descriptor.output.includes(modality));
+    if (missingInput.length > 0 || missingOutput.length > 0) {
+      const requirements = [
+        ...(missingInput.length > 0 ? [`输入：${missingInput.join('、')}`] : []),
+        ...(missingOutput.length > 0 ? [`输出：${missingOutput.join('、')}`] : []),
+      ];
       throw new BadRequestException(
-        `模型 ${body.modelId} 不具备「${usage.label}」需要的输出模态：${missing.join('、')}`,
+        `模型 ${body.modelId} 不具备「${usage.label}」需要的模态：${requirements.join('；')}`,
       );
     }
 

@@ -26,6 +26,10 @@ export interface TutorTurnInput {
   previousHintLevel: TutorHintLevel | null;
   /** 本会话已出现的轮次数，用于卡顿窗口判断。 */
   turnCount: number;
+  /** Runtime-resolved model purpose; never supplied by the browser. */
+  modelUsage?: string;
+  /** Server-owned replay key used by the SDK/runtime boundary. */
+  idempotencyKey?: string;
   /** Server-assembled context from the Tutor SDK; never supplied by the client. */
   contextPacket?: TutorContextPacket;
 }

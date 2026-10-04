@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import type { AdminSettingsIndexData, AdminSettingsPanel, ModelConfigPublic } from '@qitu/contracts';
+import type { AdminSettingsIndexData, AdminSettingsPanel } from '@qitu/contracts';
 import { Badge, Button, Field, InfoRow, SectionCard } from '@qitu/ui';
 import {
   bindUsage,
   createManualModel,
   fetchProviders,
+  fetchUsages,
   newIdempotencyKey,
   refreshProvider,
   testModelConnection,
   upsertProvider,
 } from '../../../lib/api/modelRegistry';
-import { updateModelConfig, fetchSettings } from '../../../lib/api/settings';
+import { fetchSettings } from '../../../lib/api/settings';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../lib/components/DataSourceBadge';
 
@@ -30,10 +31,7 @@ function QwenQuickSetup() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [runtime, setRuntime] = useState<{ text: ModelConfigPublic | null; live: ModelConfigPublic | null }>({
-    text: null,
-    live: null,
-  });
+  const [runtime, setRuntime] = useState({ text: false, live: false });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,22 +107,13 @@ function QwenQuickSetup() {
       await bindUsage('tutor.chat', { providerId: QWEN_PROVIDER_ID, modelId: textModel.trim() });
       await bindUsage('tutor.live', { providerId: QWEN_PROVIDER_ID, modelId: voiceModel.trim() });
 
-      // 同步旧的 Live 能力入口；AI 搭档主体走上面的持久化用途绑定。
-      const [textConfig, liveConfig] = await Promise.all([
-        updateModelConfig('text', {
-          provider: 'qwen',
-          modelId: textModel.trim(),
-          baseUrl: baseUrl.trim(),
-          apiKey,
-        }),
-        updateModelConfig('live', {
-          provider: 'qwen',
-          modelId: voiceModel.trim(),
-          baseUrl: baseUrl.trim(),
-          apiKey,
-        }),
-      ]);
-      setRuntime({ text: textConfig, live: liveConfig });
+      // 用途绑定是唯一运行时事实源；不再同步写入旧的 text/live 内存插槽。
+      const usages = await fetchUsages();
+      const bindingMap = new Map(usages.bindings.map((binding) => [binding.usageId, binding]));
+      setRuntime({
+        text: bindingMap.get('tutor.chat')?.resolved !== null && bindingMap.get('tutor.chat')?.resolved !== undefined,
+        live: bindingMap.get('tutor.live')?.resolved !== null && bindingMap.get('tutor.live')?.resolved !== undefined,
+      });
       if (apiKeyRef.current) apiKeyRef.current.value = '';
 
       const tests = await Promise.all([
@@ -174,11 +163,11 @@ function QwenQuickSetup() {
         {notice ? <p className="admin-settings-quick-success" role="status">{notice}</p> : null}
         {runtime.text || runtime.live ? (
           <div className="admin-settings-quick-status">
-            <Badge tone={runtime.text?.configured ? 'completed' : 'danger'} size="sm">
-              文本 {runtime.text?.configured ? '已配置' : '未配置'}
+            <Badge tone={runtime.text ? 'completed' : 'danger'} size="sm">
+              文本 {runtime.text ? '已配置' : '未配置'}
             </Badge>
-            <Badge tone={runtime.live?.configured ? 'completed' : 'danger'} size="sm">
-              语音 {runtime.live?.configured ? '已配置' : '未配置'}
+            <Badge tone={runtime.live ? 'completed' : 'danger'} size="sm">
+              语音 {runtime.live ? '已配置' : '未配置'}
             </Badge>
           </div>
         ) : null}

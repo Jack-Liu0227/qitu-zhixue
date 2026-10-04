@@ -61,11 +61,8 @@ import { ModelSettingsModule } from './modules/settings/model-config.module';
     WorksModule,
     PlatformRegistryModule,
     InitializationModule,
-    // 「我的模型 / Live 模型」两个插槽。
-    // 管理员端 `apps/admin-console/lib/api/settings.ts` 会 PATCH `/api/v1/admin/models/:slot`，
-    // 在学生/家长/班主任端读取「当前跑哪个模型」。本模块构造无依赖
-    // （`ModelConfigService` 只读环境变量与内存态），注册后会从「隐式 404」
-    // 变为真实可用；密钥只进内存、不落盘（见 `model-config.service.ts`）。
+    // 旧 `/admin/models/:slot` 兼容读取模块；新运行时事实源是
+    // ModelRegistryModule 的用途绑定与 Agent Runtime，不再从这里路由模型。
     ModelSettingsModule,
   ],
 })

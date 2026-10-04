@@ -25,7 +25,7 @@ test('foundation execution requires the corresponding migrated tables first', as
   assert.equal(executions, 0);
 });
 
-test('tutor foundation inserts only synthetic strategy memory and its pending index event', async () => {
+test('tutor foundation inserts the partner, synthetic strategy memory, and pending index event', async () => {
   const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
   const tx = {
     insert: (table: unknown) => ({
@@ -52,9 +52,12 @@ test('tutor foundation inserts only synthetic strategy memory and its pending in
 
   const result = await service.execute('tutor', ADMIN, 'foundation-key');
   assert.equal(result.area, 'tutor');
-  assert.equal(inserts.length, 2);
-  const memory = inserts[0]!.values;
-  const event = inserts[1]!.values;
+  assert.equal(inserts.length, 3);
+  const partner = inserts[0]!.values;
+  const memory = inserts[1]!.values;
+  const event = inserts[2]!.values;
+  assert.equal(partner.id, 'qitu-learning-partner');
+  assert.equal(partner.modelUsage, 'tutor.chat');
   assert.equal(memory.studentId, null);
   assert.equal(memory.scope, 'agent');
   assert.equal(memory.status, 'active');

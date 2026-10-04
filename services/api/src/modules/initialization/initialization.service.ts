@@ -12,6 +12,7 @@ import {
   outbox,
   projectTemplateVersions,
   projectTemplates,
+  tutorPartners,
   type Database,
 } from '@qitu/database';
 import { DATABASE_TOKEN } from '../../database';
@@ -99,6 +100,7 @@ export class InitializationService {
       } else {
         await db.select({ id: agentMemoryRecords.id }).from(agentMemoryRecords).limit(0);
         await db.select({ id: outbox.id }).from(outbox).limit(0);
+        await db.select({ id: tutorPartners.id }).from(tutorPartners).limit(0);
       }
     } catch {
       throw new ConflictException({
@@ -130,6 +132,14 @@ async function seedKnowledgeFoundation(tx: Parameters<Parameters<Database['trans
 
 async function seedTutorFoundation(tx: Parameters<Parameters<Database['transaction']>[0]>[0]): Promise<void> {
   const now = new Date();
+  await tx.insert(tutorPartners).values({
+    id: 'qitu-learning-partner',
+    displayName: '启途学习搭档',
+    soul: '用一个问题打开好奇心，用一个小行动让学习变得可见。',
+    modelUsage: 'tutor.chat',
+    promptVersion: 'qitu.partner.v1',
+    capabilities: ['explore', 'plan', 'teach', 'review', 'reflect'],
+  }).onConflictDoNothing();
   const memoryId = 'foundation-agent-memory-strategy';
   await tx.insert(agentMemoryRecords).values({
     id: memoryId,
@@ -171,7 +181,7 @@ async function seedTemplateFoundation(tx: Parameters<Parameters<Database['transa
     domain: 'general', ageRange: null, difficulty: 'beginner', estimatedDurationMinutes: null,
     requiredMaterials: [], learningObjectives: ['Confirm intent before creating a project', 'Master theory before practice'],
     outcomeForm: null, safetyNotes: 'Practice is gated by server-confirmed theory mastery.',
-    status: 'draft', createdBy: null, verifiedBy: null, verifiedAt: null, createdAt: now, updatedAt: now,
+    status: 'published', createdBy: null, verifiedBy: null, verifiedAt: now, createdAt: now, updatedAt: now,
   }).onConflictDoNothing();
   await tx.insert(projectTemplateVersions).values({
     id: 'foundation-template-project-learning-v1', templateId: 'foundation-template-project-learning', version: 'v1',
@@ -180,6 +190,6 @@ async function seedTemplateFoundation(tx: Parameters<Parameters<Database['transa
       { id: 'practice', label: 'Practice' }, { id: 'showcase', label: 'Showcase' },
     ],
     content: { intentConfirmationRequired: true, theoryMasteryRequiredBeforePractice: true },
-    rubric: [], status: 'draft', createdBy: null, publishedAt: null, createdAt: now,
+    rubric: [], status: 'published', createdBy: null, publishedAt: now, createdAt: now,
   }).onConflictDoNothing();
 }

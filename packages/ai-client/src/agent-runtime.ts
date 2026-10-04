@@ -6,6 +6,7 @@ import type {
   TutorAgentReadPorts,
   TutorAgentCapability,
   TutorAgentBoundReadPorts,
+  TutorAgentModelPurpose,
   TutorDatabaseProjectionName,
   TutorAgentRuntimeRunInput,
   TutorAgentRunRequest,
@@ -28,12 +29,20 @@ export interface TutorAgentExecutor<
   run(input: TutorAgentRunRequest<TData>): Promise<TutorAgentOutput<TPayload>>;
 }
 
+export interface TutorAgentModelPurposePort {
+  resolve(input: {
+    scope: TutorAgentScope;
+    capability: TutorAgentCapability;
+  }): Promise<TutorAgentModelPurpose>;
+}
+
 export interface TutorAgentRuntimePorts<
   TData = Record<string, never>,
   TPayload extends TutorAgentPayload = TutorAgentPayload,
 > {
   context: TutorAgentContextBuilder<TData>;
   executor: TutorAgentExecutor<TData, TPayload>;
+  modelPurpose: TutorAgentModelPurposePort;
   read: TutorAgentReadPorts;
   tools: TutorAgentToolRegistry;
 }
@@ -64,7 +73,7 @@ export function createTutorAgentRuntime<
   ports: TutorAgentRuntimePorts<TData, TPayload>,
 ): TutorAgentRuntime<TData, TPayload> {
   assertScope(scope);
-  if (!ports.context?.build || !ports.executor?.run || !ports.read || !ports.tools) {
+  if (!ports.context?.build || !ports.executor?.run || !ports.modelPurpose?.resolve || !ports.read || !ports.tools) {
     throw new Error('AGENT_RUNTIME_PORT_NOT_CONFIGURED');
   }
 
@@ -84,7 +93,9 @@ export function createTutorAgentRuntime<
 
   const buildContext = async (input: TutorAgentContextInput) => {
     assertRequest(input);
-    const context = await ports.context.build({ scope: bound, request: input });
+    const purpose = await ports.modelPurpose.resolve({ scope: bound, capability: input.capability });
+    if (!purpose.usageId || !purpose.available) throw new Error('AGENT_MODEL_PURPOSE_UNAVAILABLE');
+    const context = await ports.context.build({ scope: bound, request: { ...input, modelUsage: purpose.usageId } });
     assertContextScope(context, bound);
     if (context.runtimeVersion !== 'qitu.agent-runtime.v1') {
       throw new Error('AGENT_RUNTIME_VERSION_MISMATCH');

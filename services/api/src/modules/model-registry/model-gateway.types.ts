@@ -1,4 +1,4 @@
-import type { ModelApi } from '@qitu/contracts';
+import type { ModelApi, ModelModality } from '@qitu/contracts';
 
 /**
  * Runtime ModelGateway 的统一输入 / 输出 / 解析目标类型。
@@ -77,6 +77,9 @@ export interface ModelRuntimeTarget {
   baseUrl: string;
   api: ModelApi;
   authHeader: boolean;
+  /** Declared capabilities of the resolved model; credentials remain private. */
+  input?: ModelModality[];
+  output?: ModelModality[];
   credential: string;
 }
 
