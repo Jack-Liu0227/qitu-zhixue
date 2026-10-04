@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node ../../tooling/fix-esm-extensions.mjs dist",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit"
   }
