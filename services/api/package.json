@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
-    "lint": "node -e \"console.log('api: lint placeholder')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm --filter @qitu/database build && pnpm --filter @qitu/infra build && tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/common/access/**/*.test.js\" \".tmp/test-dist/common/outbox/**/*.test.js\" \".tmp/test-dist/common/queue/**/*.test.js\" \".tmp/test-dist/common/redis/**/*.test.js\" \".tmp/test-dist/modules/account/**/*.test.js\" \".tmp/test-dist/modules/feedback/**/*.test.js\" \".tmp/test-dist/modules/growth/**/*.test.js\" \".tmp/test-dist/modules/learning-plan/**/*.test.js\" \".tmp/test-dist/modules/mastery/**/*.test.js\" \".tmp/test-dist/modules/parent/growth-export*.test.js\" \".tmp/test-dist/modules/projects/**/*.test.js\" \".tmp/test-dist/modules/reminders/**/*.test.js\" \".tmp/test-dist/modules/templates/**/*.test.js\" \".tmp/test-dist/modules/works/**/*.test.js\""
+    "test": "pnpm --filter @qitu/database build && pnpm --filter @qitu/infra build && tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/**/*.test.js\""
   },
   "dependencies": {
     "@qitu/agent-memory": "workspace:*",

@@ -2,10 +2,12 @@
   "name": "@qitu/design-tokens",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "node -e \"console.log('design-tokens: lint placeholder')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node ../../tooling/validate-preferences.mjs"
   }

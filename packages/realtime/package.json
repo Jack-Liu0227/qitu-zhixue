@@ -2,6 +2,12 @@
   "name": "@qitu/realtime",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc --noEmit", "lint": "node -e \"console.log('realtime: lint placeholder')\"", "typecheck": "tsc --noEmit", "test": "node -e \"console.log('realtime: no tests yet')\"" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
+  }
 }

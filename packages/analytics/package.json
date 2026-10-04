@@ -2,6 +2,12 @@
   "name": "@qitu/analytics",
   "private": true,
   "version": "0.1.0",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "build": "tsc --noEmit", "lint": "node -e \"console.log('analytics: lint placeholder')\"", "typecheck": "tsc --noEmit", "test": "node -e \"console.log('analytics: no tests yet')\"" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "typecheck": "tsc --noEmit"
+  }
 }

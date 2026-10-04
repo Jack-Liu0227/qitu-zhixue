@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc --outDir dist --noEmit false",
-    "lint": "node -e \"console.log('workers: lint placeholder')\"",
+    "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "pnpm --filter @qitu/database build && tsx --test src/*.test.ts",
     "mastery:once": "tsx src/index.ts once",
