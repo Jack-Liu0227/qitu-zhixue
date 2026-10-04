@@ -2,7 +2,7 @@
 
 > 本文是工程架构的入口页，描述模块边界、表归属、依赖规则与迁移顺序。
 > 细化内容见：`docs/DATABASE.md`、`docs/PERMISSIONS.md`、`docs/INITIALIZATION.md`、
-> `docs/LLM_MODEL_REGISTRY.md`、`docs/decisions/`。
+> `docs/PLATFORM_CONTROL_PLANE.md`、`docs/LLM_MODEL_REGISTRY.md`、`docs/decisions/`。
 > 产品开发基线：`docs/AI教育平台前后端开发文档_v1.0.md`。
 > **出现冲突时，先更新文档和 Issue，再修改实现。**
 
@@ -39,8 +39,9 @@ flowchart TD
 - `packages/permissions/`：纯策略 seam；数据库支撑的对象级授权属于 API `access` 层。
 - `packages/database/`：Drizzle schema + client（**代码包**，导出运行时值，需 build 到 `dist/`）。
 - `packages/ui` / `design-tokens` / `auth` / `api-client` / `realtime` / `ai-client` / `file-uploader` / `validation` / `analytics`：共享能力。
-- `services/api/`：模块化单体 API。
-- `services/workers/`：转写、摘要、成长计算、告警和通知等异步任务（规划）。
+- `packages/ai-client`：Tutor Agent SDK 的纯合同和端口；Agent 只能通过知识库、模板库、数据库投影端口读取，不能获得数据库句柄。
+- `services/api/`：模块化单体 API；Admin 是知识库、模板库、模型和运行时治理的控制面。
+- `services/workers/`：转写、摘要、成长计算、画像投影和索引等异步 Agent 任务。
 - `services/realtime-gateway/`：Live 语音与流式网关（规划）。
 - `database/`：**产物目录**——迁移、种子、fixture（见 `docs/DATABASE.md` 分工）。
 
@@ -55,10 +56,12 @@ flowchart TD
 | Works | 作品与版本历程、项目证据（服务端聚合，只读） | `artifacts`、`artifact_versions`、`project_evidence` |
 | AI Tutor | 会话、turn、context packet、提示等级、模型路由、卡顿检测 | `tutor_*`、`context_snapshots` |
 | Model Registry | Provider → Model → Usage 三层模型接入 | `model_providers`、`model_models`、`model_usage_bindings`（规划） |
-| Mentor Operations | 告警、问题、干预、笔记、知识库、班主任评审 | `alerts`、`interventions`、`knowledge_*`、`mentor_reviews` |
+| Mentor Operations | 班级日常问题、干预、教师评审读取；不直接治理平台知识库/模板库/数据库 | `alerts`、`interventions`、`mentor_reviews` |
 | Parent Experience | 家长成长快照、消息与反馈（授权投影） | 只读投影 + `notifications` |
 | Growth | 成长记录、学生长期记忆与里程碑 | `growth_records`、`student_memories`、`growth_snapshots`、`milestones` |
 | Admin & Compliance | 平台配置、AI 策略版本、审计、数据保留、敏感访问审批、模板验证报告 | `audit_logs`、`outbox`、`template_verification_runs`、`template_verification_evidence`、`ai_*` |
+| Platform Registry | AI 运行时**只读投影**：skills / MCP 服务器 / agents / 内置工具 / 初始化状态；不新增运行时注册表 | 无写入对象（只读投影） |
+| Initialization | 受限 foundation 初始化命令（`knowledge` / `template` / `tutor`），幂等 + 审计同事务；`database` area 恒拒绝 | 经 owner 表写 foundation 行（`knowledge_*`、`project_templates*`、`agent_memory_records`、`outbox`） |
 
 > **规则**：`projects` 是项目状态机的唯一写入者；`access`（目录）是对象级授权唯一入口；
 > `audit` 记录敏感读取与管理变更；`outbox` 保证事务与事件一致。
@@ -70,7 +73,8 @@ flowchart TD
 
 - **班级日常 = 班主任**：个别学生的日常处理（学生管理、问题处理、人工干预、项目复核、
   班主任笔记）归班主任，权限来自 `mentor_assignments(status=active, mentor_user_id=自己)`。
-- **平台治理 = 管理员**：账户、家庭与关系、模板与版本、AI 策略与模型路由、审计与数据保留。
+- **平台治理 = 管理员**：账户、家庭与关系、知识库与模板版本、AI 策略与模型路由、审计与数据保留。
+- **教师端 = 班级日常**：学生管理、问题处理、人工干预、项目复核和统计；不提供知识库、模板库或数据库管理入口。基础库的读取由服务端按授权投影提供。
 - **管理员默认只进入聚合 / 治理视图**，不得把个别学生的日常处理流设为默认落地页。
 - 管理员查看个别学生数据（含 `/admin/students/:id`）必须：对象级授权范围、最小字段可见性、
   目的 / 原因、敏感场景二次确认、写审计、限时有效。
@@ -112,10 +116,35 @@ parent reads → authorized projection only
 ## 5. AI 与模型接入
 
 - Agent 需要模型：`tutor.chat`、`tutor.live`、`inspiration.recommend`、`curriculum.plan`、
-  `growth.summarize`、`knowledge.embed`。
+  `growth.summarize`、`profile.summarize`、`knowledge.embed`。
 - 三层：Provider（网关 + 协议 + 凭证）→ Model（能力 + 显示名）→ Usage（绑定）。
+- Agent SDK 不暴露数据库连接；由 API 提供知识、模板、项目、掌握度、成长和画像的有界读取端口。
+- 生成链路：Agent 读取授权投影 → 输出带 `sourceRefs` 的结构化结果 → 领域服务校验/幂等落库 → Worker 生成各端投影。
 - 显式支持三种协议：OpenAI Compatible / Chat Completions、OpenAI Responses、Anthropic Messages。
 - 详见 `docs/LLM_MODEL_REGISTRY.md` 与 ADR 0007。
+
+### 5.3 Agent SDK 与前后端协同
+
+`packages/contracts/src/agent-runtime.ts` 定义 Agent 运行上下文、能力、知识/模板/数据库读取端口和输出投影。它不是数据库 ORM，也不是让前端直接调用模型的 SDK。
+
+- `TutorAgentContext`：绑定学生、Partner、项目、会话、能力和证据引用。
+- `TutorAgentOutput`：必须带 Agent 版本、输出类型、生成时间和来源引用。
+- `TutorGrowthProjection` / `TutorLearnerProfileProjection`：分别面向成长轨迹和个人画像的安全显示模型；家长/教师字段不能进入学生投影。
+- 项目状态、掌握度、成长事实、画像版本、审计和记忆写入仍由服务端领域模块执行，Agent 只能提出结果。
+- 知识库、模板库和数据库初始化/治理由 Admin 控制面负责；Tutor/Worker 通过只读端口使用已发布版本。
+
+推荐链路：
+
+```text
+Admin 发布知识 / 模板 / Agent / Skill / 模型版本
+  -> Agent Runtime resolver
+  -> ContextBuilder 组装授权投影
+  -> capability agent（explore / plan / teach / review / reflect）
+  -> structured output + sourceRefs
+  -> domain validation + idempotent command
+  -> outbox / Worker
+  -> growth/profile/student/parent/teacher projections
+```
 
 ## 5.1 掌握度时间线边界
 
@@ -146,12 +175,21 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
 
 **已实现（Stage 1，主工作树未提交）**
 
-- `packages/database` Drizzle schema + client + 幂等种子；迁移 `0000`–`0009` 已落地。
+- `packages/database` Drizzle schema + client + 幂等种子；迁移 `0000`–`0013` 存在于
+  `database/migrations/`（`0010_agent_memory`、`0011_mastery_timeline`、`0012_mastery_graph_receipts`、
+  `0013_tutor_exploration_context`）。
+  **注意**：Drizzle `database/migrations/meta/_journal.json` / `meta/*_snapshot.json` 仍停在 `0009`，
+  且 `0013` 尚未提交（untracked），因此当前只能按文件名顺序用裸 `psql` 重放（见 `docs/INITIALIZATION.md` §3）。
 - 迁移 `0008_domain_foundation`：`schools`、共享/校域项目模板与冻结版本、作用域知识文档/分块、学习计划/模块/目标/课次、掌握度记录/尝试、成长记录、学生记忆、班主任评审；并回填 `users.school_id` 与项目/探索会话的 `template_version_id` 外键。
 - 迁移 `0009_verification_evidence`（纯增量）：`template_verification_runs` / `template_verification_evidence`（不可变模板验证报告与证据）、`artifacts` / `artifact_versions`（作品与版本历程）、`project_evidence`（服务端聚合只读的项目证据）、`pending_questions`（跨轮持久待答题，答案服务端私有）。表结构 + 外键 + 幂等/部分唯一索引已就位，API 接线见 `docs/DATABASE.md` §3.3。
 - `DirectoryService` 双引擎；`DatabaseModule` 可选接入（无 URL 时 inert）。
 - 身份/关系管理、班主任端、家长端只读投影。
 - 模型注册表三层与自动拉取（仅内存）。
+- 管理后台 AI 运行时只读投影与受限幂等初始化：
+  `GET /api/v1/admin/ai-runtime`、`GET /api/v1/admin/initialization`、
+  `POST /api/v1/admin/initialization/{knowledge|template|tutor}/execute`；
+  `agents` 只读取 Tutor Partner/服务端 Agent Registry，`skills` 读取 `.agents/skills`，
+  MCP 在安全 Registry 接入前为空，内置工具来自服务端脱敏注册表（详见 `docs/PLATFORM_CONTROL_PLANE.md`）。
 
 **未实现（不在本文当作已完成）**
 
@@ -160,6 +198,8 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
 - AI 会话持久化；成长档案与 AI 总结接入。
 - 审计写入与查询；会话持久化与 MFA；pgvector 与知识库（`knowledge_chunks.embedding` 暂用 JSONB 占位）。
 - 校域行级隔离（RLS / 跨校强制校验）；`school_id` 目前仅供应用层过滤。
+- 可执行的运行时 skill / MCP 配置写入口与 MCP 健康探测尚未实现；当前已有安全的只读元数据发现和内置工具注册表。
+- 迁移版本探测（`initialization.migrationVersion` 恒为 `null`）。
 - 模型注册表落库、连接测试、手工模型、显示名编辑；密钥管理服务。
 - `mastery_records` 当前投影、`mastery_events` append-only 事件和显式 objective→KnowledgePoint mapping（**已实现 schema + 0011 migration + store 窄接口 + answer/evidence assessment transaction + audit/outbox 同事务**）。
 - `mastery_graph_receipts`、`services/workers/src/mastery-projection-worker.ts` 和 `services/graphiti/bridge.py` 已提供 projection scaffold；外部 Graphiti 未配置时核心流程继续使用 PostgreSQL。
@@ -179,6 +219,8 @@ can-advance/advance 和 Graphiti projection scaffold。历史 current/threshold�
 - [ ] 项目状态机与「理论未掌握不得进入实践」的强校验。
 - [ ] 审计、幂等、outbox 从占位变为普遍能力。
 - [ ] `support` 角色与敏感访问审批。
+- [x] 管理后台 AI 运行时只读投影（`platform-registry`）与受限幂等初始化端点（`initialization`）。
+- [ ] 生产运行时 skill / MCP server / 内置工具注册表与配置写入口；运行时健康探测接入 `overall`。
 - [ ] 管理员个别学生访问的范围 / 原因 / 二次确认 / 限时授权模型（ADR 0008）。
 - [ ] 跨角色账户面（凭证、MFA、设备会话、退出）尚未实现。
 

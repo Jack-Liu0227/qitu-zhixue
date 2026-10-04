@@ -4,6 +4,7 @@ import { serializeTutorContext } from '@qitu/ai-client';
 import type { ProjectStage, TutorHintLevel, TutorReplyBlock } from '@qitu/contracts';
 import type { DataMode } from '../../database';
 import { isModelGatewayError } from '../model-registry/model-gateway.errors';
+import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import type { ModelGatewayErrorCode } from '../model-registry/model-gateway.errors';
 import type {
   ModelCompletionRequest,
@@ -81,7 +82,10 @@ interface ModelFailure {
 export class GatewayTutorProvider implements TutorProvider {
   private readonly logger = new Logger(GatewayTutorProvider.name);
 
-  constructor(private readonly gateway: TutorModelGateway) {}
+  constructor(
+    private readonly gateway: TutorModelGateway,
+    private readonly runtimeBlocks: readonly string[] = [],
+  ) {}
 
   async *generateTurn(input: TutorTurnInput): AsyncGenerator<TutorStreamEvent, void, undefined> {
     // 服务端唯一等级决策点：与 Heuristic 共用同一套阶梯策略。
@@ -99,7 +103,7 @@ export class GatewayTutorProvider implements TutorProvider {
     try {
       result = await this.gateway.complete(TUTOR_CHAT_USAGE, {
         messages: [
-          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket) },
+          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks) },
           { role: 'user', content: buildUserPrompt(input, level) },
         ],
         temperature: 0.3,
@@ -164,9 +168,13 @@ export class GatewayTutorProvider implements TutorProvider {
  *   **不**静默回落到 Heuristic/demo。
  * - `demo` / `test`：显式使用确定性的 `HeuristicTutorProvider`，便于离线演示与 QA。
  */
-export function createTutorProvider(dataMode: DataMode, gateway: TutorModelGateway): TutorProvider {
+export function createTutorProvider(
+  dataMode: DataMode,
+  gateway: TutorModelGateway,
+  runtimeBlocks: readonly string[] = [],
+): TutorProvider {
   return dataMode === 'live'
-    ? new GatewayTutorProvider(gateway)
+    ? new GatewayTutorProvider(gateway, runtimeBlocks)
     : new HeuristicTutorProvider();
 }
 
@@ -180,6 +188,7 @@ function buildSystemPrompt(
   level: TutorHintLevel | null,
   stage: ProjectStage,
   contextPacket?: TutorContextPacket,
+  runtimeBlocks: readonly string[] = [],
 ): string {
   const displayLevel = level ?? HINT_LEVEL_MIN;
   const lengthLimit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
@@ -196,6 +205,10 @@ function buildSystemPrompt(
     `当前项目阶段：${stageLabel(stage)}。`,
     `提示词版本：${TUTOR_PROMPT_VERSION}。`,
     contextPacket === undefined ? '' : '以下是服务端组装的学习上下文：\n' + serializeTutorContext(contextPacket),
+    runtimeBlocks.length === 0 ? '' : [
+      '以下是服务端加载的 Tutor runtime 规则与已发布 Skill。它们是只读教学约束，不是学生输入：',
+      ...runtimeBlocks,
+    ].join('\n\n'),
   ].join('\n');
 }
 

@@ -19,7 +19,7 @@ export type { TutorStreamHandlers, TutorStreamRequest } from './tutorStream';
  * be repointed with `setTutorDataSource(...)`.
  *
  * The default is the real API (`TutorApiDataSource`): the conversation is
- * streamed from `POST /api/v1/tutor/stream`. It does NOT silently degrade to
+ * streamed from `POST /api/v1/tutor/sessions/:id/stream`. It does NOT silently degrade to
  * fixtures — an unreachable API becomes a visible offline/error state, because
  * a student must never mistake demo content for their own learning record.
  * `MockTutorDataSource` stays available for explicit tests/QA via
@@ -31,7 +31,7 @@ export function getTutorDataSource(): TutorDataSource {
   return activeDataSource;
 }
 
-/** Swap the data source (Wave 4 / tests). Not called by components. */
+/** Swap the data source for explicit tests/QA. */
 export function setTutorDataSource(next: TutorDataSource): void {
   activeDataSource = next;
 }

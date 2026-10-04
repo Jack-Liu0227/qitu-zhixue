@@ -1,7 +1,7 @@
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './identity';
-import { projects } from './projects';
+import { projects, explorationSessions } from './projects';
 
 export const tutorPartners = pgTable('tutor_partners', {
   id: text('id').primaryKey(),
@@ -87,6 +87,7 @@ export const tutorSessions = pgTable('tutor_sessions', {
   studentId: text('student_id').notNull().references(() => users.id),
   partnerId: text('partner_id').notNull().references(() => tutorPartners.id),
   projectId: text('project_id').references(() => projects.id),
+  explorationId: text('exploration_id').references(() => explorationSessions.id),
   source: text('source').notNull(),
   lastSeq: integer('last_seq').notNull().default(0),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -95,6 +96,7 @@ export const tutorSessions = pgTable('tutor_sessions', {
 }, (table) => ({
   studentIdx: index('tutor_sessions_student_idx').on(table.studentId),
   projectIdx: index('tutor_sessions_project_idx').on(table.projectId),
+  explorationIdx: index('tutor_sessions_exploration_idx').on(table.explorationId),
 }));
 
 export const tutorTurns = pgTable('tutor_turns', {

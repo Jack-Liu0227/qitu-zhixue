@@ -9,7 +9,6 @@ import '../styles/inspiration.css';
 import '../styles/projects.css';
 import '../styles/today.css';
 import '../styles/tutor.css';
-import '../styles/voice.css';
 import '../styles/workbench.css';
 import { StudentShellHost } from './student-shell';
 

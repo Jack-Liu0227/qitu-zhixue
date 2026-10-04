@@ -1,6 +1,6 @@
 # 启途智学文档索引
 
-> 更新：2026-10-02
+> 更新：2026-10-04
 >
 > 本页定义文档优先级，避免历史提案与当前工程基线同时指导实现。
 
@@ -9,8 +9,10 @@
 | 文档 | 用途 | 状态 |
 |---|---|---|
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 模块边界、依赖规则、系统总架构 | 当前基线 |
+| [`PLATFORM_CONTROL_PLANE.md`](./PLATFORM_CONTROL_PLANE.md) | 管理后台 AI 运行时只读投影、受限初始化端点、保留的开发期制品（`.pi`）与删除记录 | 当前基线 |
 | [`DATABASE.md`](./DATABASE.md) | PostgreSQL、表 owner、迁移顺序和数据权限 | 当前基线 |
 | [`decisions/0009-mastery-timeline-and-graphiti.md`](./decisions/0009-mastery-timeline-and-graphiti.md) | 掌握度时间线、事件、门槛和 Graphiti 定位 | 当前决策源 |
+| [`decisions/0010-unified-tutor-exploration-context.md`](./decisions/0010-unified-tutor-exploration-context.md) | 学生端自由探索与项目辅导统一会话上下文 | 提案（待独立评审 + 全量构建后定稿） |
 | [`AI平台架构交接文档.md`](./AI平台架构交接文档.md) | Agent 接手、运行链路、当前缺口和实施顺序 | 当前交接文档 |
 | [`AI导师统一架构与Agent记忆方案_v1.0.md`](./AI导师统一架构与Agent记忆方案_v1.0.md) | Mem0、关系记忆、上下文和 Agent 边界 | 当前补充设计 |
 | [`ROADMAP.md`](./ROADMAP.md) | 产品与工程阶段路线 | 当前路线图 |
@@ -23,8 +25,9 @@
 1. `AGENTS.md` 和本索引；
 2. `ARCHITECTURE.md`、`DATABASE.md`；
 3. `decisions/0009-mastery-timeline-and-graphiti.md`；
-4. 目标模块对应的交接文档、合同和测试；
-5. 历史设计文档仅用于了解背景，不用于推翻当前决策。
+4. 管理后台、初始化或运行时投影任务：`PLATFORM_CONTROL_PLANE.md`、`INITIALIZATION.md`；
+5. 目标模块对应的交接文档、合同和测试；
+6. 历史设计文档仅用于了解背景，不用于推翻当前决策。
 
 ## 当前记忆与掌握度分工
 

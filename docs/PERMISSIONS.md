@@ -66,6 +66,9 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
 | `GET /admin/students/:studentId` | admin | `AccessPolicy.assertCanReadStudent`（当前对 admin fail closed） | T8：显式授权模型未落地前统一 403 |
 | `GET/POST/PATCH/DELETE /admin/model-providers`、`/admin/model-usages` | admin | — | 已实现（内存） |
 | `GET/POST/PATCH/DELETE /admin/users`、`/admin/project-templates` 等 | admin | — | **未实现**（目标 M8） |
+| `GET /admin/ai-runtime`、`GET /admin/initialization` | admin | `requireRole(..., 'admin')` | 已实现（只读投影；不返回密钥/凭证/原始对话） |
+| `POST /admin/initialization/{knowledge\|template\|tutor}/execute` | admin | `requireRole(..., 'admin')` + `Idempotency-Key` | 已实现（同一事务写 `audit_logs`，action `admin.initialization.<area>.execute`） |
+| `POST /admin/initialization/database/execute` | admin | `requireRole(..., 'admin')` | 恒 409 `INITIALIZATION_OPERATOR_REQUIRED`（schema 迁移不得走 HTTP） |
 | 审计日志查询 `GET /admin/audit-logs` | admin | — | **未实现** |
 
 ## 5. 管理员与班主任边界（ADR 0008）
@@ -108,6 +111,9 @@ student ← mentor_assignments(status=active) → teacher  学生—班主任（
 
 - 前端隐藏按钮**不构成授权依据**；后端必须重新判定。
 - 越权返回 **403**，且不应通过响应差异泄露资源是否存在。
+- 管理控制面只读优先：`/admin/ai-runtime` 与 `/admin/initialization` 是投影，不是配置写入口；
+  受限初始化（`INITIALIZATION_*` 错误码）仅向 admin 开放，且数据库迁移永远不经 HTTP
+  （`docs/PLATFORM_CONTROL_PLANE.md`）。
 - 管理员默认只看到聚合 / 治理数据（第 5 节）；查看任何个别学生数据需
   「目的 / 原因 → 二次确认（敏感时）→ 写审计 → 限时范围 → 最小字段」。
 - 涉及未成年人数据时默认最小化可见范围，并保留审计记录。

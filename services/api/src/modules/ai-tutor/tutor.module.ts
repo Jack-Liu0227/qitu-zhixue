@@ -4,6 +4,7 @@ import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
 import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
+import { ProjectsModule } from '../projects/projects.module';
 import { RemindersModule } from '../reminders/reminders.module';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TutorController } from './tutor.controller';
@@ -28,7 +29,7 @@ import { TutorService } from './tutor.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, RemindersModule, QituSDKModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule],
   controllers: [TutorController],
   providers: [
     TutorService,

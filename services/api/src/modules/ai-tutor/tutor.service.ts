@@ -21,7 +21,9 @@ import {
 } from '../reminders/learning-stall-signal';
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { ProjectsService } from '../projects/projects.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
+import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
@@ -81,17 +83,12 @@ export interface AuditEntry {
   detail: string;
 }
 
-/** 演示项目上下文。真实实现应在 Wave-4 接 `projects` 模块。 */
-const DEMO_PROJECT = {
-  id: 'project-demo-001',
-  title: '校园植物观察手册',
-  stage: 'theory_learning' as ProjectStage,
-  currentTaskTitle: '说明光合作用需要光',
+/** No-project sessions are exploration sessions; they never inherit a demo project. */
+const EXPLORATION_CONTEXT = {
+  title: '自由探索',
+  stage: 'exploration' as ProjectStage,
 };
 
-const DEMO_SESSION_ID = 'session-demo-001';
-
-/** 回合幂等的 operation 身份；再拼上 sessionId，避免同一 client key 跨会话复用。 */
 const TUTOR_TURN_SCOPE = 'tutor.turn';
 
 /** 租约必须长于一轮模型生成的最坏耗时，否则慢回合可能被并发回收。 */
@@ -111,19 +108,11 @@ const PROJECT_STAGES = [
 ] satisfies TutorProjectContext['stages'];
 
 function currentTaskFor(
-  projectId: string,
+  projectId: string | null,
   title: string,
   stage: ProjectStage,
 ): TutorProjectContext['currentTask'] {
-  if (stage === 'completed' || stage === 'published') return null;
-  if (projectId === 'project-demo-001') {
-    return {
-      id: 'task-photosynthesis',
-      title: '查一查：植物为什么需要阳光',
-      detail: '找到 2 条证据，用自己的话说清楚光合作用。',
-      isTodayFocus: true,
-    };
-  }
+  if (projectId === null || stage === 'exploration' || stage === 'completed' || stage === 'published') return null;
   return {
     id: `${projectId}-current-task`,
     title: `继续推进「${title}」`,
@@ -192,8 +181,10 @@ export class TutorService {
     @Inject(AuditWriter)
     private readonly auditWriter?: AuditWriter,
     @Optional() private readonly sdkFactory?: QituSDKFactory,
+    @Optional() private readonly projects?: ProjectsService,
   ) {
-    this.provider = createTutorProvider(dataMode, gateway);
+    const runtime = loadTutorRuntimeSource();
+    this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime));
     this.tutorSdk = createTutorSdk(workspace ?? createEmptyTutorSdkPorts());
     this.store = store ?? new InMemoryTutorSessionStore();
   }
@@ -252,26 +243,20 @@ export class TutorService {
    * 同步版本只在测试/demo 的内存路径上使用；HTTP 入口一律走
    * `resolveSession`（会先从持久化存储读回权威状态）。
    */
-  getOrCreateSession(projectId: string, ownerId: string): TutorSessionRecord {
-    const existing = this.findByProject(projectId);
-    if (existing !== undefined) {
-      assertOwnedBy(existing, ownerId);
-      return existing;
-    }
-    // The demo project keeps its documented id so the frontend's fixture
-    // fallback (`MOCK_SESSION_ID`) still lines up; every other project gets a
-    // derived id instead of all colliding on the single demo id.
-    const sessionId =
-      projectId === DEMO_PROJECT.id ? DEMO_SESSION_ID : `session-${projectId}`;
-    const record = this.seedSession(sessionId, projectId, ownerId);
+  getOrCreateSession(projectId: string | null, ownerId: string, explorationId?: string): TutorSessionRecord {
+    const existing = [...this.sessions.values()].find(
+      (session) => session.projectId === projectId && session.explorationId === (explorationId ?? null) && session.ownerId === ownerId,
+    );
+    if (existing !== undefined) return existing;
+    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : `session-${projectId}`;
+    const record = this.seedSession(sessionId, projectId, ownerId, explorationId);
     this.sessions.set(record.sessionId, record);
-    // 会话开始即写审计，且只在真正创建时写一次：同 owner 重复取用不会重复记录。
     this.record({
       sessionId: record.sessionId,
       projectId: record.projectId,
       actorId: ownerId,
       action: 'tutor.session_start',
-      detail: '学生开启 AI搭档会话',
+      detail: projectId === null ? '学生开启自由探索会话' : '学生开启 AI搭档会话',
     });
     return record;
   }
@@ -285,33 +270,48 @@ export class TutorService {
    *
    * 归属不一致统一 403；创建/查回都以**服务端** owner 为准。
    */
-  async resolveSession(projectId: string, ownerId: string): Promise<TutorSessionRecord> {
-    if (this.usesSeededMemory) {
-      return this.getOrCreateSession(projectId, ownerId);
+  async resolveSession(projectId: string | null, ownerId: string, explorationId?: string): Promise<TutorSessionRecord> {
+    if (projectId !== null && this.platformData !== undefined && this.getProjectContext(projectId, ownerId) === null) {
+      throw new NotFoundException('项目不存在');
     }
-    const existing = await this.store.findByProject(projectId);
+    if (projectId === null && explorationId !== undefined) {
+      if (this.projects === undefined) throw new NotFoundException('探索会话不存在');
+      await this.projects.getExploration(ownerId, explorationId);
+    }
+    if (this.usesSeededMemory) {
+      return this.getOrCreateSession(projectId, ownerId, explorationId);
+    }
+    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : `session-${projectId}`;
+    const existing = await this.store.findById(sessionId);
     if (existing !== null) {
       assertOwnedBy(existing, ownerId);
       return this.hydrate(existing);
     }
-    // 外键 `tutor_sessions.partner_id` 需要搭档档案先存在。
+    if (projectId !== null) {
+      const projectSession = await this.store.findByProject(projectId);
+      if (projectSession !== null) {
+        assertOwnedBy(projectSession, ownerId);
+        return this.hydrate(projectSession);
+      }
+    }
     await this.tutorSdk.initialize();
-    const sessionId =
-      projectId === DEMO_PROJECT.id ? DEMO_SESSION_ID : `session-${projectId}`;
     const createdAt = new Date().toISOString();
+    const source = projectId === null ? 'exploration' : 'project';
     await this.store.create({
       sessionId,
       ownerId,
       partnerId: this.tutorSdk.partner.id,
       projectId,
-      source: 'project',
+      explorationId: explorationId ?? null,
+      source,
       createdAt,
     });
     const record = this.hydrate({
       sessionId,
       ownerId,
       projectId,
-      source: 'project',
+      explorationId: explorationId ?? null,
+      source,
       createdAt,
       lastSeq: 0,
       turns: [],
@@ -321,7 +321,7 @@ export class TutorService {
       projectId: record.projectId,
       actorId: ownerId,
       action: 'tutor.session_start',
-      detail: '学生开启 AI搭档会话',
+      detail: projectId === null ? '学生开启自由探索会话' : '学生开启 AI搭档会话',
     });
     return record;
   }
@@ -355,8 +355,14 @@ export class TutorService {
     return {
       sessionId: record.sessionId,
       projectId: record.projectId,
-      // 只回投影字段：`pedagogicMove` / `expectedEvidence` / `promptVersion` /
-      // `evidenceRef` 是服务端内部元数据，绝不进入学生响应。
+      explorationId: record.explorationId ?? null,
+      source: record.source,
+      context: {
+        kind: record.source,
+        label: record.source === 'exploration' ? '自由探索' : '项目学习',
+        status: record.source === 'exploration' ? 'active' : 'confirmed',
+        projectId: record.projectId,
+      },
       turns: record.turns.map(toContractTurn),
       lastSeq: record.lastSeq,
     };
@@ -475,9 +481,9 @@ export class TutorService {
     const liveProject = record.projectId === null || this.platformData === undefined
       ? null
       : this.platformData.getProject(record.projectId);
-    const projectTitle = liveProject?.title ?? DEMO_PROJECT.title;
-    const projectStage = liveProject?.stage ?? DEMO_PROJECT.stage;
-    const currentTask = currentTaskFor(record.projectId ?? DEMO_PROJECT.id, projectTitle, projectStage);
+    const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
+    const projectStage = liveProject?.stage ?? EXPLORATION_CONTEXT.stage;
+    const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
     const contextPacket = await this.tutorSdk.buildContext({
       studentId: request.actorId,
@@ -512,7 +518,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
-      projectId: record.projectId ?? DEMO_PROJECT.id,
+      projectId: record.projectId ?? '',
       sessionId: record.sessionId,
       projectTitle,
       projectStage,
@@ -678,11 +684,13 @@ export class TutorService {
    */
   private seedSession(
     sessionId: string,
-    projectId: string,
+    projectId: string | null,
     ownerId: string,
+    explorationId?: string,
   ): TutorSessionRecord {
     const now = Date.now();
     const at = (offsetMs: number) => new Date(now + offsetMs).toISOString();
+    const seedStage = projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning';
     const base: Omit<TutorTurnRecord, 'seq' | 'role' | 'blocks' | 'hintLevel' | 'stageBefore' | 'stageAfter' | 'turnId' | 'createdAt' | 'modality'> = {
       pedagogicMove: null,
       expectedEvidence: '找到 2 条证据，用自己的话说清楚光合作用。',
@@ -696,7 +704,7 @@ export class TutorService {
         role: 'student',
         blocks: [{ kind: 'text', text: '老师让我们做校园植物观察手册，我不知道从哪开始。' }],
         hintLevel: null,
-        stageBefore: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
         stageAfter: null,
         seq: 1,
         createdAt: at(-600_000),
@@ -710,8 +718,8 @@ export class TutorService {
           { kind: 'hint', level: 1, text: '你观察过的植物里，哪一株让你最好奇？先说说它哪里特别。' },
         ],
         hintLevel: 1,
-        stageBefore: DEMO_PROJECT.stage,
-        stageAfter: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
+        stageAfter: seedStage,
         seq: 2,
         createdAt: at(-580_000),
         modality: 'text',
@@ -723,7 +731,7 @@ export class TutorService {
         role: 'student',
         blocks: [{ kind: 'text', text: '走廊那盆绿萝，放窗边就长得快，放教室后面就变黄。' }],
         hintLevel: null,
-        stageBefore: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
         stageAfter: null,
         seq: 3,
         createdAt: at(-420_000),
@@ -738,8 +746,8 @@ export class TutorService {
           { kind: 'hint', level: 2, text: '如果只能用一句话描述你猜到的原因，你会怎么说？' },
         ],
         hintLevel: 2,
-        stageBefore: DEMO_PROJECT.stage,
-        stageAfter: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
+        stageAfter: seedStage,
         seq: 4,
         createdAt: at(-400_000),
         modality: 'text',
@@ -751,7 +759,7 @@ export class TutorService {
         role: 'student',
         blocks: [{ kind: 'text', text: '我觉得是光，光多它就长得好。' }],
         hintLevel: null,
-        stageBefore: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
         stageAfter: null,
         seq: 5,
         createdAt: at(-200_000),
@@ -765,33 +773,28 @@ export class TutorService {
           { kind: 'hint', level: 2, text: '「光多就长得好」是个可以检验的说法。你打算怎么让别人也看到光在起作用？' },
         ],
         hintLevel: 2,
-        stageBefore: DEMO_PROJECT.stage,
-        stageAfter: DEMO_PROJECT.stage,
+        stageBefore: seedStage,
+        stageAfter: seedStage,
         seq: 6,
         createdAt: at(-180_000),
         modality: 'text',
         pedagogicMove: 'hint',
       },
     ];
+    const seededTurns = projectId === null ? [] : turns;
     return {
       sessionId,
       ownerId,
       projectId,
-      source: 'project',
+      explorationId: explorationId ?? null,
+      source: projectId === null ? 'exploration' : 'project',
       createdAt: at(-600_000),
-      turns,
-      lastSeq: 6,
-      lastHintLevel: 2,
+      turns: seededTurns,
+      lastSeq: seededTurns.length,
+      lastHintLevel: projectId === null ? null : 2,
       stallCount: 0,
       escalated: false,
     };
-  }
-
-  private findByProject(projectId: string): TutorSessionRecord | undefined {
-    for (const record of this.sessions.values()) {
-      if (record.projectId === projectId) return record;
-    }
-    return undefined;
   }
 
   /**

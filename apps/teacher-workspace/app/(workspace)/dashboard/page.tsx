@@ -383,7 +383,6 @@ function DashboardContent({
               ['📋', '查看问题', '处理介入请求', '/issues'],
               ['👨‍🎓', '学生名册', '查看学生详情', '/students'],
               ['📊', '数据统计', '班级学习概览', '/statistics'],
-              ['📚', '知识库', '理论材料与素材', '/knowledge'],
             ] as const).map(([emoji, title, desc, href]) => (
               <Link
                 key={title}

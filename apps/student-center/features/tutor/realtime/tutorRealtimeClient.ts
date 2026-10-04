@@ -23,7 +23,7 @@ export type TutorRealtimeStatus = 'idle' | 'connecting' | 'open' | 'offline' | '
 
 export interface TutorRealtimeOptions {
   sessionId: string;
-  /** Cursor seeded from `GET /tutor/sessions/:id` `lastSeq`. */
+  /** Cursor seeded from `GET /tutor/session` `lastSeq`. */
   initialSeq: number;
   createSocket: TutorSocketFactory;
   onEvent: (event: RealtimeServerEvent) => void;

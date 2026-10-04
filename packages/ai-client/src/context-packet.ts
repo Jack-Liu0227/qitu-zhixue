@@ -20,6 +20,12 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
       lines.push(`- [${memory.kind}] ${memory.content}`);
     }
   }
+  if (packet.agentStrategies.length > 0) {
+    lines.push('搭档教学策略（服务端已审核）：');
+    for (const strategy of packet.agentStrategies.slice(0, 4)) {
+      lines.push(`- ${bounded(strategy.content)}（来源：${strategy.source}）`);
+    }
+  }
   if (packet.templateEvidence.length > 0) {
     lines.push('相关模板证据：');
     for (const evidence of packet.templateEvidence.slice(0, 4)) {

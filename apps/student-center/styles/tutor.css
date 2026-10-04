@@ -84,35 +84,152 @@
   line-height: 1.5;
 }
 
-.qitu-capability-tile {
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 96px;
+.qitu-composer {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid var(--qitu-border);
+  background: var(--qitu-surface);
 }
 
-.qitu-capability-icon {
+.qitu-composer-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--qitu-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--qitu-heading);
+  background: var(--qitu-background);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.qitu-composer-input:focus {
+  outline: 2px solid var(--qitu-primary-border);
+  outline-offset: 1px;
+}
+
+.qitu-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qitu-composer-mode,
+.qitu-composer-voice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--qitu-muted);
+  background: var(--qitu-background);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.qitu-composer-mode:hover:not(:disabled),
+.qitu-composer-voice-button:hover:not(:disabled) {
+  border-color: var(--qitu-primary-border);
+  color: var(--qitu-primary);
+}
+
+.qitu-composer-mode.is-active,
+.qitu-composer-voice-button.is-listening {
+  border-color: var(--qitu-primary);
+  color: var(--qitu-primary);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-composer-mode:focus-visible,
+.qitu-composer-voice-button:focus-visible,
+.qitu-composer-submit:focus-visible {
+  outline: 2px solid var(--qitu-primary-border);
+  outline-offset: 2px;
+}
+
+.qitu-composer-mode:disabled,
+.qitu-composer-voice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.qitu-composer-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.qitu-composer-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.qitu-composer-voice-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--qitu-primary-border);
+  border-radius: 10px;
+  color: var(--qitu-heading);
+  background: var(--qitu-primary-soft);
+}
+
+.qitu-composer-voice-panel strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.qitu-composer-voice-panel p {
+  margin: 4px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.qitu-composer-voice-orb {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--qitu-primary-border);
-  border-radius: 9px;
-  background: var(--qitu-primary-soft);
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
   color: var(--qitu-primary);
-  font-size: 0.95rem;
-  font-weight: 800;
+  background: var(--qitu-surface);
 }
 
-.qitu-capability-copy {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
+.qitu-composer-voice-orb.is-listening {
+  animation: qitu-composer-pulse 1.4s ease-in-out infinite;
+  color: var(--qitu-danger, #c65353);
 }
 
-.qitu-capability-chevron {
+.qitu-composer-error {
+  margin: 0;
+  color: var(--qitu-danger, #c65353);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+@keyframes qitu-composer-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--qitu-primary) 20%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--qitu-primary) 0%, transparent); }
+}
+
+.qitu-composer-hint {
+  margin: 0;
   color: var(--qitu-muted);
-  font-size: 1.35rem;
-  line-height: 1;
+  font-size: 0.8rem;
 }
 
 .qitu-tutor-encouragement {
@@ -134,7 +251,17 @@
     padding: 20px var(--qitu-space-lg) 4px;
   }
 
-  .qitu-tutor-header-status {
-    display: none;
+  .qitu-composer-actions {
+    justify-content: stretch;
+  }
+
+  .qitu-composer-mode,
+  .qitu-composer-voice-button,
+  .qitu-composer-submit {
+    flex: 1 1 auto;
+  }
+
+  .qitu-composer-submit {
+    justify-content: center;
   }
 }

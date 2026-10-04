@@ -17,11 +17,29 @@ export interface QituSDKPorts<Input, Result, Profile> {
   profile: { get(scope: Readonly<QituSDKScope>): Promise<Profile> };
 }
 
+export interface QituSDK<Input, Result, Profile> {
+  readonly scope: Readonly<QituSDKScope>;
+  readonly mastery: {
+    evaluate(input: Omit<EvaluateMasteryInput, 'studentId' | 'projectId'>): ReturnType<MasteryTimelinePort['evaluate']>;
+    getCurrent(input?: Omit<Parameters<MasteryTimelinePort['getCurrent']>[0], 'studentId'>): ReturnType<MasteryTimelinePort['getCurrent']>;
+    getTimeline(input: Omit<Parameters<MasteryTimelinePort['getTimeline']>[0], 'studentId'>): ReturnType<MasteryTimelinePort['getTimeline']>;
+    snapshot(input: Omit<Parameters<MasteryTimelinePort['snapshot']>[0], 'studentId'>): ReturnType<MasteryTimelinePort['snapshot']>;
+    checkThreshold(input: Omit<Parameters<MasteryTimelinePort['checkThreshold']>[0], 'studentId'>): ReturnType<MasteryTimelinePort['checkThreshold']>;
+    getRegressionAlerts(input?: Omit<Parameters<MasteryTimelinePort['getRegressionAlerts']>[0], 'studentId'>): ReturnType<MasteryTimelinePort['getRegressionAlerts']>;
+  };
+  readonly agent: { run(input: Input): Promise<Result> };
+  readonly project: {
+    canAdvance(): Promise<QituProjectGate>;
+    advance(idempotencyKey: string): Promise<QituProjectGate>;
+  };
+  readonly profile: { get(): Promise<Profile> };
+}
+
 /** Server composition only. All permissions and writes remain in the supplied domain ports. */
 export function createQituSDK<Input, Result, Profile>(
   scope: QituSDKScope,
   ports: QituSDKPorts<Input, Result, Profile>,
-) {
+): QituSDK<Input, Result, Profile> {
   if (!scope.studentId || !ports.mastery || !ports.agent?.run || !ports.project?.advance || !ports.project?.canAdvance || !ports.profile?.get) {
     throw new Error('SDK_PORT_NOT_CONFIGURED');
   }

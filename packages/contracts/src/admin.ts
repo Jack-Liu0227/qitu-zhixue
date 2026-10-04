@@ -223,3 +223,187 @@ export interface AdminSettingsIndexData {
   configuredUsageCount: number;
   dataSource: AdminDataSource;
 }
+
+/* ------------------------------------------------------------------ *
+ * AI 运行时治理（只读控制面）
+ *
+ * 管理员可见的只读聚合视图，覆盖：
+ *  1. skills（能力/技能注册）
+ *  2. MCP 服务器注册
+ *  3. 项目 Agent 角色与设置
+ *  4. 内置工具注册
+ *  5. 数据库 / 知识库 / 模板 / Tutor 的初始化状态
+ *
+ * 安全边界（AGENTS.md + ADR 0008 / 产品文档 7.0）：
+ *  - registry 与初始化状态投影均已脱敏：服务端不得返回 API Key、MCP 凭据、
+ *    完整系统提示词或未成年人原始对话。
+ *  - 无法证实的信息一律返回 `'unknown'`，前端不得推断成 `ready`。
+ *  - registry snapshot 与初始化 GET 为只读；初始化 POST 仅由服务端 admin
+ *    授权并通过幂等边界执行受限 foundation 操作，客户端不能直接写状态。
+ *  - 数据库 schema migration 永远不通过 HTTP 执行。
+ * ------------------------------------------------------------------ */
+
+/** 运行时整体健康度；`unknown` 表示证据不足，不得当作正常。 */
+export type AdminRuntimeHealth = 'ready' | 'degraded' | 'not_ready' | 'unknown';
+
+/** 单个运行时条目的状态；语义与 `enabled` 分开，避免把「已配置」误当成「可用」。 */
+export type AdminRuntimeItemStatus =
+  | 'enabled'
+  | 'disabled'
+  | 'ready'
+  | 'unavailable'
+  | 'error'
+  | 'unknown';
+
+/** 条目来源：内置 / 管理员配置 / 未知（旧数据或探测失败）。 */
+export type AdminRuntimeSource = 'builtin' | 'configured' | 'runtime' | 'development' | 'unknown';
+
+export interface AdminRuntimePolicy {
+  id: string;
+  version: string | null;
+  contentHash: string | null;
+  status: 'ready' | 'missing';
+}
+
+/* ---- skills ---- */
+
+export interface AdminRuntimeSkill {
+  id: string;
+  label: string;
+  description: string | null;
+  version: string | null;
+  source: AdminRuntimeSource;
+  status: AdminRuntimeItemStatus;
+  /** 声明使用该 skill 的 agent id；无来源时为空数组。 */
+  agentIds: string[];
+}
+
+/* ---- MCP 服务器 ---- */
+
+export type AdminMcpTransport = 'stdio' | 'sse' | 'streamable_http' | 'unknown';
+
+export type AdminMcpConnectionStatus =
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'not_configured'
+  | 'unknown';
+
+export interface AdminRuntimeMcpServer {
+  id: string;
+  label: string;
+  transport: AdminMcpTransport;
+  status: AdminMcpConnectionStatus;
+  enabled: boolean;
+  /** 已发现工具数；未知时为 null，不得用 0 冒充「无工具」。 */
+  toolCount: number | null;
+  /**
+   * 端点来源（scheme + host + port）。服务端必须剥掉路径、查询串与凭据；
+   * 本地 stdio 传输为 null。
+   */
+  endpointOrigin: string | null;
+  lastCheckedAt: string | null;
+  /** 已脱敏的错误摘要；服务端保证不含凭据或原始响应体。 */
+  lastError: string | null;
+}
+
+/* ---- 项目 Agent 角色与设置 ---- */
+
+export interface AdminRuntimeAgent {
+  id: string;
+  label: string;
+  description: string | null;
+  /** 项目 Agent 角色名（如 tutor / planner）；无法确定时为 null。 */
+  role: string | null;
+  enabled: boolean;
+  status: AdminRuntimeItemStatus;
+  /** 绑定的模型用途 id（如 `tutor.chat`）；未绑定时为 null。 */
+  modelUsage: string | null;
+  promptVersion: string | null;
+  /** 能力范围（如 explore / plan / teach / review / reflect）。 */
+  capabilities: string[];
+  skillIds: string[];
+  toolIds: string[];
+  mcpServerIds: string[];
+}
+
+/* ---- 内置工具 ---- */
+
+export type AdminRuntimeToolRiskLevel = 'low' | 'medium' | 'high' | 'unknown';
+
+export interface AdminRuntimeBuiltinTool {
+  id: string;
+  label: string;
+  description: string | null;
+  status: AdminRuntimeItemStatus;
+  /** 注册了该工具的 agent id。 */
+  agentIds: string[];
+  /** 是否受「实践前必须 TheoryMastered」门禁约束；未知时为 null。 */
+  requiresTheoryMastered: boolean | null;
+  riskLevel: AdminRuntimeToolRiskLevel;
+}
+
+/* ---- 初始化状态 ---- */
+
+export type AdminInitializationCheckStatus =
+  | 'ready'
+  | 'missing'
+  | 'failed'
+  | 'not_applicable'
+  | 'unknown';
+
+/** 初始化检查所属领域。 */
+export type AdminInitializationArea =
+  | 'database'
+  | 'knowledge'
+  | 'template'
+  | 'tutor'
+  | 'registry'
+  | 'other';
+
+export interface AdminInitializationCheck {
+  id: string;
+  label: string;
+  area: AdminInitializationArea;
+  status: AdminInitializationCheckStatus;
+  detail: string | null;
+  checkedAt: string;
+  /** 失败时可执行的人工修复建议；无建议时为 null。 */
+  remediation: string | null;
+  /** 最近一次成功初始化时间；无审计证据时为 null。 */
+  lastRun?: string | null;
+  /** true 表示必须由部署或 CLI 运维流程执行。 */
+  operatorRequired?: boolean;
+  /** 当前服务是否允许通过管理 API 执行。 */
+  executeAllowed?: boolean;
+}
+
+export type AdminRuntimeDataMode = 'live' | 'demo' | 'test' | 'unknown';
+
+export type AdminRuntimeDatabaseStatus =
+  | 'connected'
+  | 'in_memory'
+  | 'unavailable'
+  | 'unknown';
+
+export interface AdminInitializationStatus {
+  overall: AdminRuntimeHealth;
+  dataMode: AdminRuntimeDataMode;
+  database: AdminRuntimeDatabaseStatus;
+  /** 已应用的迁移版本（如 `0013`）；无法确定时为 null。 */
+  migrationVersion: string | null;
+  checks: AdminInitializationCheck[];
+}
+
+/** `GET /api/v1/admin/ai-runtime` 的响应 `data`。 */
+export interface AdminRuntimeSnapshot {
+  generatedAt: string;
+  overall: AdminRuntimeHealth;
+  dataSource: AdminDataSource;
+  policy: AdminRuntimePolicy;
+  skills: AdminRuntimeSkill[];
+  mcpServers: AdminRuntimeMcpServer[];
+  agents: AdminRuntimeAgent[];
+  builtInTools: AdminRuntimeBuiltinTool[];
+  initialization: AdminInitializationStatus;
+}

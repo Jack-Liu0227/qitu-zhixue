@@ -199,6 +199,8 @@ test('控制器：B 经 stream 访问 A 的会话在写响应前 403', async () 
   await assert.rejects(
     controller.stream(
       { projectId: 'prj-stream', sessionId: id, content: 'hi', idempotencyKey: 'k' },
+      id,
+      undefined,
       cookies('tok-b'),
       fakeResponse,
     ),

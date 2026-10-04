@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   ForbiddenException,
   Get,
@@ -28,12 +29,10 @@ import type { StreamedTutorEvent } from './tutor.service';
 
 const SESSION_COOKIE = 'qitu_session';
 
-/** 未绑定项目时的演示项目 id（与前端 fixture 回退保持一致）。 */
-const DEFAULT_PROJECT_ID = 'project-demo-001';
-
 interface StreamBody {
   projectId?: unknown;
   sessionId?: unknown;
+  explorationId?: unknown;
   content?: unknown;
   pedagogicMove?: unknown;
   optionLabel?: unknown;
@@ -63,12 +62,10 @@ const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
 /**
  * AI搭档 HTTP 接口。
  *
- * 两个「工作」端点，安全边界完全一致：
- * - `GET  /api/v1/tutor/session?projectId=`  取回会话历史与游标。
- * - `POST /api/v1/tutor/stream`              流式执行一轮（SSE）。
+ * - `GET  /api/v1/tutor/session?projectId=&explorationId=` 取回会话历史与游标。
+ * - `POST /api/v1/tutor/sessions/:id/stream` 流式执行一轮（SSE）。
  *
- * 另外提供契约文档中 REST 风格的等价路由（`/tutor/sessions…`），
- * 两者共用同一个 `TutorService`，不存在第二套逻辑。
+ * `/tutor/stream` 仅保留为服务端路由别名，学生端 SDK 不再调用它。
  *
  * 权限：只有 `student` 角色可以调用；对象级校验在服务端完成（`qitu_session`
  * 是 httpOnly cookie，前端拿不到也不应拿得到 token）。
@@ -118,11 +115,16 @@ export class TutorController {
   async getSession(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('projectId') projectId?: string,
+    @Query('explorationId') explorationId?: string,
   ): Promise<{ data: GetTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
+    if (projectId === undefined && explorationId === undefined) {
+      throw new BadRequestException({ code: 'TUTOR_CONTEXT_REQUIRED', message: '需要 projectId 或 explorationId' });
+    }
     const record = await this.tutorService.resolveSession(
-      projectId ?? DEFAULT_PROJECT_ID,
+      projectId ?? null,
       actor.id,
+      explorationId,
     );
     return { data: this.tutorService.toSessionResponse(record) };
   }
@@ -145,24 +147,32 @@ export class TutorController {
    * 响应头在写第一帧之前全部设置完毕；401/403 会在 SSE 开始之前以普通
    * JSON 抛出，客户端据此走正常的错误分支而不是「流断了」。
    */
-  @Post('stream')
+  @Post('sessions/:id/stream')
   async stream(
     @Body() body: StreamBody,
+    @Param('id') pathSessionId: string | undefined,
+    @Headers('idempotency-key') headerIdempotencyKey: string | undefined,
     @Headers('cookie') cookieHeader: string | undefined,
     @Res() response: Response,
   ): Promise<void> {
     const actor = this.requireStudent(cookieHeader);
-    const projectId = typeof body.projectId === 'string' ? body.projectId : DEFAULT_PROJECT_ID;
-    // 若请求同时带了 sessionId，也先按归属校验一次：不能借 stream 读到
-    // 别人的会话（即使它恰好映射到同一个 projectId）。
-    if (typeof body.sessionId === 'string' && body.sessionId.length > 0) {
-      await this.tutorService.loadSession(body.sessionId, actor.id);
+    const projectId = typeof body.projectId === 'string' ? body.projectId : null;
+    const requestedSessionId = typeof body.sessionId === 'string' && body.sessionId.length > 0
+      ? body.sessionId
+      : pathSessionId;
+    const explorationId = typeof body.explorationId === 'string' ? body.explorationId : undefined;
+    if (requestedSessionId === undefined && projectId === null && explorationId === undefined) {
+      throw new BadRequestException({ code: 'TUTOR_CONTEXT_REQUIRED', message: '需要 sessionId、projectId 或 explorationId' });
     }
-    const record = await this.tutorService.resolveSession(projectId, actor.id);
+    const record = requestedSessionId !== undefined
+      ? await this.tutorService.loadSession(requestedSessionId, actor.id)
+      : await this.tutorService.resolveSession(projectId, actor.id, explorationId);
     const idempotencyKey =
-      typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0
-        ? body.idempotencyKey
-        : `${record.sessionId}:${record.lastSeq + 1}`;
+      typeof headerIdempotencyKey === 'string' && headerIdempotencyKey.trim().length > 0
+        ? headerIdempotencyKey.trim()
+        : typeof body.idempotencyKey === 'string' && body.idempotencyKey.length > 0
+          ? body.idempotencyKey
+          : `${record.sessionId}:${record.lastSeq + 1}`;
 
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -216,20 +226,35 @@ export class TutorController {
   @Post('sessions')
   async createSession(
     @Headers('cookie') cookieHeader: string | undefined,
-    @Body() body: { projectId?: unknown; source?: unknown },
+    @Body() body: { projectId?: unknown; explorationId?: unknown; source?: unknown },
   ): Promise<{ data: CreateTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
     const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
-    const record = await this.tutorService.resolveSession(
-      projectId ?? DEFAULT_PROJECT_ID,
-      actor.id,
-    );
+    const explorationId = typeof body.explorationId === 'string' ? body.explorationId : undefined;
+    const source = body.source === 'project' || body.source === 'exploration'
+      ? body.source
+      : projectId === undefined ? 'exploration' : 'project';
+    if (source === 'project' && (projectId === undefined || explorationId !== undefined)) {
+      throw new BadRequestException({ code: 'TUTOR_PROJECT_CONTEXT_REQUIRED', message: '项目会话必须只提供经授权的 projectId' });
+    }
+    if (source === 'exploration' && (explorationId === undefined || projectId !== undefined)) {
+      throw new BadRequestException({ code: 'TUTOR_EXPLORATION_CONTEXT_REQUIRED', message: '探索会话必须只提供已创建的 explorationId' });
+    }
+    const record = await this.tutorService.resolveSession(projectId ?? null, actor.id, explorationId);
     return {
       data: {
         sessionId: record.sessionId,
         projectId: record.projectId,
+        explorationId: record.explorationId ?? null,
+        source: record.source,
         createdAt: record.createdAt,
         lastSeq: record.lastSeq,
+        context: {
+          kind: record.source,
+          label: record.source === 'exploration' ? '自由探索' : '项目学习',
+          status: record.source === 'exploration' ? 'active' : 'confirmed',
+          projectId: record.projectId,
+        },
       },
     };
   }
@@ -246,7 +271,7 @@ export class TutorController {
 
   /**
    * 非流式提交：只返回受理确认（`seq` 是本次回合的日志基线）。
-   * 真正的回复通过 `POST /tutor/stream` 流式取回——与前端 `submitTurn` 一致。
+   * 真正的回复通过 `POST /tutor/sessions/:id/stream` 流式取回——与前端 `submitTurn` 一致。
    */
   @Post('sessions/:id/turns')
   @HttpCode(202)

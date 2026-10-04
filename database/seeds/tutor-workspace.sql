@@ -17,6 +17,28 @@ ON CONFLICT (id) DO UPDATE SET
   capabilities = EXCLUDED.capabilities,
   updated_at = now();
 
+-- Agent session-memory foundation: synthetic strategy only; no student id, conversation, transcript, or voice data.
+INSERT INTO agent_memory_records
+  (id, student_id, partner_id, scope, kind, content, source_ref, source_event_id,
+   status, version, expires_at, index_backend, index_id, index_status, metadata, created_at, updated_at)
+VALUES
+  (
+    'foundation-agent-memory-strategy', NULL, 'qitu-learning-partner', 'agent', 'teaching_strategy',
+    'Use one observable learning goal and one question at a time.', 'policy:foundation-memory-v1',
+    'foundation-agent-memory-strategy', 'active', 1, NULL, NULL, NULL, 'pending',
+    '{"foundationVersion":"v1","approvedBy":"platform-foundation"}'::jsonb, NOW(), NOW()
+  )
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO outbox
+  (id, topic, payload, status, attempts, last_error, created_at, published_at)
+VALUES
+  (
+    'agent-memory-index:foundation-agent-memory-strategy:1', 'agent-memory.index',
+    '{"memoryId":"foundation-agent-memory-strategy"}'::jsonb, 'pending', 0, NULL, NOW(), NULL
+  )
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO tutor_template_documents (id, version, title, summary, tags, stage, content, scope, active)
 VALUES
   (

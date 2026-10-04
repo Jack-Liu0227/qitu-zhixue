@@ -61,6 +61,11 @@ export class PostgresKnowledgeStore extends KnowledgeStore {
     super();
   }
 
+  async listDocuments(): Promise<KnowledgeDocument[]> {
+    const rows = await this.db.select().from(knowledgeDocuments);
+    return rows.map(toDocument).sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+  }
+
   async listVerifiedCandidates(query: KnowledgeCandidateQuery): Promise<RetrievalCandidate[]> {
     const scopeConditions = [
       eq(knowledgeDocuments.scope, 'system'),

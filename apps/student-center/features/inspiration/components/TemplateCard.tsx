@@ -5,9 +5,9 @@ import { TagChips } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import type { InspirationTemplate } from '../types';
 
-/** 「我想做这个」只进入探索确认流程；用 `template-<id>` 作为确定性 sessionId。 */
+/** 推荐卡保留独立推荐项目详情；自由探索才进入统一 AI搭档。 */
 export function templateExploreHref(templateId: string): string {
-  return `/student/inspiration/explore/template-${templateId}`;
+  return `/student/inspiration/recommended/${encodeURIComponent(templateId)}`;
 }
 
 export interface TemplateCardProps {
@@ -18,7 +18,7 @@ export interface TemplateCardProps {
 
 /**
  * 推荐项目模板卡。只读展示，不写项目状态、不创建正式项目；
- * 唯一动作是跳转到 `/student/inspiration/explore/template-<id>` 进行意图确认。
+ * 唯一动作是进入推荐项目详情，推荐确认流程仍属于灵感空间/Projects owner。
  *
  * 样式全部在 `styles/inspiration.css`（qitu-inspiration-* 类），不用内联样式，
  * 这样悬停/焦点/窄屏响应式才能生效。
@@ -61,18 +61,18 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
       <footer className="qitu-inspiration-template-footer">
         {readOnly ? (
           <button type="button" className="qitu-button qitu-button-primary" disabled>
-            我想做这个
+            查看推荐项目
           </button>
         ) : (
           <StudentLink
             className="qitu-button qitu-button-primary"
             href={templateExploreHref(template.id)}
           >
-            我想做这个
+            查看推荐项目
           </StudentLink>
         )}
         <span className="qitu-inspiration-template-hint">
-          {readOnly ? '恢复网络后再进入探索' : '先和 AI搭档确认想法，暂不创建项目'}
+          {readOnly ? '恢复网络后再查看推荐详情' : '查看推荐详情并确认方向'}
         </span>
       </footer>
     </article>

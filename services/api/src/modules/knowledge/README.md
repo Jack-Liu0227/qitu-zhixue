@@ -64,6 +64,8 @@
 
 ## 向量检索（pgvector 后续）
 
+- **初始化 flow integration**：管理员 `tutor` 初始化只写入无学生归属的 synthetic strategy record，并在同一事务追加 `agent-memory.index` pending outbox 事件；不会写入原始未成年人对话 / 语音，也不会进入 admin runtime projection。关系记忆仍由 `agent-memory` API 写入，保持 90 天过期与纠错/删除后的索引清理语义。
+
 - 当前默认 `KeywordRetrievalPort`：确定性关键词检索（字段加权 + 中文二元组），同分按文档 id 升序，跨进程可复现。
 - `knowledge_chunks.embedding` 现为 **JSONB 占位**，`EmbeddingProvider` 绑定为 `ReservedEmbeddingProvider`（`isConfigured() === false`，调用即抛 `KNOWLEDGE_UNAVAILABLE`）；`knowledge.embed` 尚未接入 `ModelGateway`。
 - 后续任务（不在本切片）：

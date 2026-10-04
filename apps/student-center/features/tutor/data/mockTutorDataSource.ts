@@ -37,8 +37,7 @@ export interface MockTutorScenario {
 }
 
 /**
- * The default mock implementation of `TutorDataSource`. Everything here is
- * disposable; Wave 4 replaces it with the real API client via
+ * This mock is disposable and is available for explicit tests/QA through
  * `setTutorDataSource`.
  */
 export class MockTutorDataSource implements TutorDataSource {
@@ -84,8 +83,16 @@ export class MockTutorDataSource implements TutorDataSource {
     return {
       sessionId: MOCK_SESSION_ID,
       projectId: request.projectId ?? null,
+      explorationId: request.explorationId ?? null,
+      source: request.source,
       createdAt: new Date().toISOString(),
       lastSeq: MOCK_SESSION.lastSeq,
+      context: {
+        kind: request.source,
+        label: request.source === 'exploration' ? '自由探索' : '项目学习',
+        status: request.source === 'exploration' ? 'active' : 'confirmed',
+        projectId: request.projectId ?? null,
+      },
     };
   }
 

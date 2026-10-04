@@ -1,8 +1,8 @@
 /**
  * Public surface of the student-center 「AI搭档」 (tutor) feature module.
  *
- * Wave 4 imports these into `app/student/tutor/...`; it should not import any
- * deep path, so the module boundary stays swappable.
+ * The public boundary is intentionally small: routes compose the feature through
+ * this index while components stay independent of transport details.
  */
 
 // Page container
@@ -10,8 +10,6 @@ export { TutorPage } from './TutorPage';
 export { TutorDataSourceProvider, useTutorDataSource } from './TutorDataSourceProvider';
 
 // Components
-export { CapabilityRail } from './components/CapabilityRail';
-export { CapabilityTile } from './components/CapabilityTile';
 export { ChatBubble } from './components/ChatBubble';
 export { ChatThread } from './components/ChatThread';
 export { Composer } from './components/Composer';
@@ -27,10 +25,8 @@ export { StageProgress } from './components/StageProgress';
 export { StreamCaret, ToolCallStep, ToolCallTimeline } from './components/ToolCallTimeline';
 export { TypingIndicator } from './components/TypingIndicator';
 export { TutorHeader } from './components/TutorHeader';
-export { VoiceHoldButton } from './components/VoiceHoldButton';
 
 // Hooks
-export { useCapabilityInvoke } from './hooks/useCapabilityInvoke';
 export { useComposer } from './hooks/useComposer';
 export { useTutorSession } from './hooks/useTutorSession';
 
@@ -58,8 +54,7 @@ export type { TutorDataSource, MockTutorScenario, TutorStreamHandlers, TutorStre
 
 // Pure logic / contracts
 export {
-  CAPABILITY_ENTRIES,
-  CONTINUOUS_GUIDANCE_CAP,
+  CONTINUOUS_GUIDANCE_TURN_CAP,
   EXPLAIN_ONLY_LEVEL,
   HINT_LEVEL_MAX,
   HINT_LEVEL_MIN,
@@ -67,14 +62,9 @@ export {
   MAX_HINT_RISE_PER_TURN,
   PEDAGOGIC_MOVES,
   SCAFFOLD_LEVEL,
-  STALL_WINDOW,
-  canRequestGuidance,
+  STALL_WINDOW_SIZE,
   deriveGuidanceRun,
-  isGuidanceMove,
-  isLevelFiveReachable,
-  nextHintLevel,
 } from './pedagogy';
-export type { CapabilityEntry, CapabilityKind } from './pedagogy';
 export {
   applyServerEventToTurns,
   isDuplicateSeq,

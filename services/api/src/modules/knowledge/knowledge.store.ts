@@ -29,6 +29,9 @@ export abstract class KnowledgeStore {
 
   abstract findDocument(id: string): Promise<KnowledgeDocument | null>;
 
+  /** Admin 控制面按治理用途读取有界文档投影；不返回全文正文。 */
+  abstract listDocuments(): Promise<KnowledgeDocument[]>;
+
   /** 读取某文档的全部分块（按 ordinal 升序）。 */
   abstract findChunks(documentId: string): Promise<KnowledgeChunk[]>;
 
@@ -88,6 +91,10 @@ export class InMemoryKnowledgeStore extends KnowledgeStore {
   seed(document: KnowledgeDocument, chunks: readonly KnowledgeChunk[] = []): void {
     this.documents.set(document.id, cloneDocument(document));
     this.chunks.set(document.id, chunks.map(cloneChunk));
+  }
+
+  async listDocuments(): Promise<KnowledgeDocument[]> {
+    return [...this.documents.values()].map(cloneDocument).sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
   }
 
   async listVerifiedCandidates(query: KnowledgeCandidateQuery): Promise<RetrievalCandidate[]> {

@@ -1,9 +1,7 @@
 import type { TutorHintLevel } from '../index';
 
 /**
- * The six pedagogic moves mapped from the tutor page capability entries.
- * `stall_signal` feeds the 4-turn stall window and never produces a hint
- * level by itself.
+ * The shared tutor pedagogic moves and their hint-level policy.
  */
 export type PedagogicMove =
   | 'hint'

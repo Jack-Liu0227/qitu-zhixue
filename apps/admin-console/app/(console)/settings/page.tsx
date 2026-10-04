@@ -236,6 +236,27 @@ export default function AdminSettingsPage() {
           <SettingsPanelCard key={panel.id} panel={panel} />
         ))}
       </div>
+
+      <SectionCard title="AI 运行时治理">
+        <p className="admin-settings-panel-description">
+          只读查看 skills、MCP 服务器、项目 Agent 角色与设置、内置工具，以及数据库 / 知识库 / 模板 /
+          Tutor 的初始化状态。不展示密钥、凭据、完整提示词或未成年人原始对话。
+        </p>
+        <div className="admin-form-actions admin-form-actions-start">
+          <Link className="admin-link" href="/settings/knowledge">
+            管理知识库
+          </Link>
+          <Link className="admin-link" href="/settings/templates">
+            管理模板库
+          </Link>
+          <Link className="admin-link" href="/settings/database">
+            查看数据库状态
+          </Link>
+          <Link className="admin-link" href="/settings/ai-runtime">
+            打开 AI 运行时与初始化
+          </Link>
+        </div>
+      </SectionCard>
     </div>
   );
 }

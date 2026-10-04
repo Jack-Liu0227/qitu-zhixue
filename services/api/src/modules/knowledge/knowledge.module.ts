@@ -3,6 +3,7 @@ import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
 import { KnowledgeController } from './knowledge.controller';
+import { KnowledgeAdminController } from './knowledge-admin.controller';
 import {
   EmbeddingProvider,
   ReservedEmbeddingProvider,
@@ -33,7 +34,7 @@ import { PostgresKnowledgeStore } from './knowledge.store.postgres';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [KnowledgeController],
+  controllers: [KnowledgeController, KnowledgeAdminController],
   providers: [
     KnowledgeService,
     { provide: RetrievalPort, useClass: KeywordRetrievalPort },

@@ -14,9 +14,6 @@ export interface CurrentUser {
   role: Role;
 }
 
-/** @deprecated 使用 `CurrentUser`；保留旧名以免破坏既有引用。 */
-export type AuthLoginResponse = CurrentUser;
-
 export interface LoginRequest {
   email: string;
   password: string;

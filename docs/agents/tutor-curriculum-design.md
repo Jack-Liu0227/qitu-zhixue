@@ -7,7 +7,50 @@
 > 参考实现：`HKUDS/DeepTutor`（下称 DT）。本文只借鉴其**教学机制**，
 > 不照搬其 Python 服务、RAG/向量库、L1–L3 记忆子系统与 14 个 tool 的接口形态。
 >
-> 状态：设计基线 v1。落地角色见 `.pi/agents/`，工作流见 `/tutor-engine`（切片 `curriculum`）。
+> 状态：设计基线 v1（生成引擎已实现，见 §0.5）。落地角色见 `.pi/agents/`，工作流见 `/tutor-engine`（切片 `curriculum`）。
+
+---
+
+## 0.5 实现状态（2026-10-04）
+
+**已实现**：`packages/ai-client/src/curriculum.ts`（+ `packages/ai-client/src/curriculum.test.ts`，已并入
+`pnpm --filter @qitu/ai-client test`）：
+
+- 两阶段 `explore → plan`：`exploreCurriculumInterest` / `planCurriculum` /
+  `generateCurriculumPlan`；确定性 `seed`，`now` 缺省回落 `CURRICULUM_EPOCH`（不用系统时钟）。
+- 常量：`SESSIONS_PER_WEEK = 5`、`MINUTES_PER_SESSION = 60`（4 周 20 节，8 周 40 节）、
+  `CURRICULUM_TEMPLATE_VERSION = 'curriculum-plan-v1'`、`CURRICULUM_PROMPT_VERSIONS`、
+  `CURRICULUM_EXPLORATION_BRAND`。
+- 60 分钟分块 `blockShapeFor()`：首节课 `0/40/20/0`（不排复习与实践，先立理论门禁）；
+  4 周第 1–2 周 `10/25/10/15`、3–4 周 `10/20/10/20`；8 周第 1–5 周 `10/20/10/20`、6–8 周
+  `10/15/10/25`。四段之和恒为 60。
+- **理论门禁实践**：实践 objective 的 `prerequisiteIds` 只指向**更早**课次的理论 objective，
+  同节理论再由 `check` 分块卡住；结构上不可能“实践排在其理论之前”。
+- 严格校验 `validateCurriculumPlan()` / `assertValidCurriculumPlan()`：只报错、不修补。
+- 确定性推进 `selectNextCurriculumStep()`：优先级固定 `answer_pending → review → 首个未完成课次 → complete`；
+  `practiceUnlocked` 恒等于 `theoryMastered`，调用方不能绕过。
+- 意图确认与冻结 `confirmCurriculumPlan()`：计划必须 `projectId === null`；确认时间不得早于
+  `exploredAt`；同幂等键重放返回 `replayed: true`；模板版本漂移拒绝。**纯函数，不落库**。
+- 兼容层：`toLegacyLearningPlanDraft()` / `validateLearningPlanDraft()` 供仍在跑旧形状的 plan-api。
+- 追问字段 `missingIntakeFields` / `clarifyingQuestions`：缺字段降级但留痕，不静默丢弃。
+
+**未实现 / 待接线**：
+
+- plan-api（`services/api/src/modules/learning-plan`）**仍用旧生成器**
+  `services/api/src/modules/learning-plan/plan-generator.ts`，
+  尚未切到 curriculum 模块；两套实现共存，靠兼容层对齐。
+- 数值掌握度门槛（近期加权、置信上限）与间隔复习调度在 `mastery/` 切片，不在 `curriculum.ts`。
+- 本模块**不计算掌握度**，只消费服务端传来的 `masteredObjectiveIds`。
+
+**与 §1 示例的差异（重要）**：§1 的「默认按每周 1 节、共 8 节」是**设计稿待确认项**；
+已实现代码固定为**每周 5 节**（周一至周五，第 5 节 `mode='review'`，首节 `mode='outline'`）。
+§8 确认门 #1（课时密度）在代码上已选 5 节/周，产品侧确认仍需登记。
+
+**验证命令**：
+
+```bash
+pnpm --filter @qitu/ai-client test   # 含 runCurriculumAssertions
+```
 
 ---
 
@@ -58,7 +101,7 @@ LearningGoal          兴趣 + 目标作品 + 4|8 周 + 每节 60 分钟
 | 检查 | 10 min | 10 min | 出题 + 服务端判分 → 决定本节实践是否解锁 |
 | 实践 | 15 min | 20 min | 动手任务 + 证据（截图/代码/文字） |
 
-### 8 周 Python 小游戏示例（默认按每周 1 节，共 8 节）
+### 8 周 Python 小游戏示例（**设计稿建议**：每周 1 节，共 8 节；实现为每周 5 节，见 §0.5）
 
 | 周 | 理论目标（memory / concept） | 实践目标（procedure / design） | 本节产出 |
 |---|---|---|---|
@@ -285,6 +328,7 @@ DT 的 `ask_hints` 只生成「一个学习者会问的问题」，且 `_sanitiz
 
 1. **课时密度**：「1 小时 × 4/8 周」是**每周 1 节**（→ 4/8 节课），还是每周 2–3 节
    （→ 更多课时）？这直接决定目标数量和每周理论/实践配比。
+   _代码现状：`SESSIONS_PER_WEEK = 5`，即每周 5 节（见 §0.5）；产品侧尚未正式确认。_
 2. **先理论后实践的含义**：是**每节课内**先理论再实践（本设计的默认），
    还是**整个项目**前几周纯理论、后几周纯实践？两者是很不同的产品。
 3. **计划宿主页面**：计划落在「我的项目」工作台内（不改导航），

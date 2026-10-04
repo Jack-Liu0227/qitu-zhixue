@@ -82,6 +82,25 @@ export class TutorWorkspaceService implements TutorSdkPorts {
     return [...agent, ...legacy].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, Math.max(1, Math.min(input.limit, 20)));
   }
 
+  async listAgentStrategies(input: {
+    partnerId: string;
+    limit: number;
+  }): Promise<readonly { content: string; source: string }[]> {
+    if (this.db === null) return [];
+    const rows = await this.db.select({ content: agentMemoryRecords.content, source: agentMemoryRecords.sourceRef })
+      .from(agentMemoryRecords)
+      .where(and(
+        eq(agentMemoryRecords.partnerId, input.partnerId),
+        isNull(agentMemoryRecords.studentId),
+        eq(agentMemoryRecords.scope, 'agent'),
+        eq(agentMemoryRecords.status, 'active'),
+        or(isNull(agentMemoryRecords.expiresAt), gt(agentMemoryRecords.expiresAt, new Date())),
+      ))
+      .orderBy(desc(agentMemoryRecords.updatedAt))
+      .limit(Math.max(1, Math.min(input.limit, 8)));
+    return rows.map((row) => ({ content: row.content, source: row.source ?? 'agent-memory' }));
+  }
+
   async searchTemplates(input: {
     studentId: string;
     projectId: string | null;

@@ -4,11 +4,8 @@ import { SectionCard } from '@qitu/ui';
 
 import { StudentLink } from '../../../components/student-link';
 
-/** 自由探索保留已有入口：`/student/inspiration/explore/demo-session`。 */
-export const FREE_EXPLORE_SESSION_ID = 'demo-session';
-
-export function freeExploreHref(sessionId: string): string {
-  return `/student/inspiration/explore/${sessionId}`;
+export function freeExploreHref(): string {
+  return '/student/tutor';
 }
 
 /**
@@ -24,7 +21,7 @@ export function FreeExplorePanel() {
         </p>
         <StudentLink
           className="qitu-button qitu-button-primary"
-          href={freeExploreHref(FREE_EXPLORE_SESSION_ID)}
+          href={freeExploreHref()}
         >
           开始自由探索
         </StudentLink>

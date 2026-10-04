@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  BookIcon,
   ChartIcon,
   HomeIcon,
   SparklesIcon,
@@ -24,7 +23,6 @@ const NAV_ITEMS = [
   { href: '/students', label: '学生管理', icon: UsersIcon },
   { href: '/issues', label: '问题处理', icon: TicketIcon, badgeKey: 'openInterventions' as const },
   { href: '/statistics', label: '数据统计', icon: ChartIcon },
-  { href: '/knowledge', label: '知识库', icon: BookIcon },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

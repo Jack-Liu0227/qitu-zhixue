@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  PedagogicMove,
   RealtimeServerEvent,
   TutorHintLevel,
   TutorTurn,
@@ -42,7 +41,6 @@ export interface TutorSessionApi {
   streamNotice: TutorViewError | null;
   dismissStreamNotice: () => void;
   submitText: (content: string, idempotencyKey: string) => Promise<void>;
-  invokeCapability: (move: PedagogicMove, idempotencyKey: string) => Promise<void>;
   selectOption: (label: string) => Promise<void>;
   retryProject: () => void;
   retrySession: () => void;
@@ -156,7 +154,11 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
 
   // Create (idempotently) and load the tutor session for the resolved project.
   useEffect(() => {
-    if (projectStatus !== 'ready' || project === null) {
+    if (
+      projectStatus === 'loading' ||
+      projectStatus === 'error' ||
+      (project === null && projectId !== undefined)
+    ) {
       // No session without a ready project. The left context panel owns the
       // project's loading/empty/error surface; mirror that state into the
       // conversation area so it never lies: a failed project load is an error
@@ -179,8 +181,8 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
       try {
         sessionKeyRef.current ??= createIdempotencyKey();
         const created = await dataSource.createSession({
-          projectId: project.project.id,
-          source: 'project',
+          ...(project === null ? {} : { projectId: project.project.id }),
+          source: project === null ? 'exploration' : 'project',
           idempotencyKey: sessionKeyRef.current,
         });
         const session = await dataSource.getSession(created.sessionId);
@@ -259,7 +261,6 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
       sessionIdValue: string,
       payload: {
         content?: string;
-        pedagogicMove?: PedagogicMove;
         optionLabel?: string;
         idempotencyKey: string;
       },
@@ -316,18 +317,6 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     [runSubmission, sessionId],
   );
 
-  const invokeCapability = useCallback(
-    async (move: PedagogicMove, idempotencyKey: string) => {
-      if (sessionId === null) return;
-      await runSubmission(
-        sessionId,
-        { pedagogicMove: move, idempotencyKey },
-        move === 'stall_signal' ? () => setStallCount((count) => count + 1) : undefined,
-      );
-    },
-    [runSubmission, sessionId],
-  );
-
   const selectOption = useCallback(
     async (label: string) => {
       if (sessionId === null) return;
@@ -380,7 +369,6 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     streamNotice,
     dismissStreamNotice,
     submitText,
-    invokeCapability,
     selectOption,
     retryProject,
     retrySession,

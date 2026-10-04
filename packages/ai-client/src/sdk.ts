@@ -119,6 +119,7 @@ export interface TutorContextPacket {
     'priorKnowledge' | 'targetLevel' | 'timeBudgetMinutesPerWeek' | 'preferences' | 'interests' | 'strengths'
   > | null;
   memories: readonly Pick<TutorMemory, 'kind' | 'content' | 'confidence' | 'source'>[];
+  agentStrategies: readonly { content: string; source: string }[];
   templateEvidence: readonly Pick<TutorTemplateSearchResult, 'document' | 'score' | 'matchedTerms'>[];
   knowledgeEvidence: readonly Pick<TutorKnowledgeSearchResult, 'document' | 'score' | 'matchedTerms'>[];
   recentActivity: readonly string[];
@@ -132,6 +133,10 @@ export interface TutorSdkPorts {
     partnerId: TutorPartnerId;
     limit: number;
   }): Promise<readonly TutorMemory[]>;
+  listAgentStrategies?(input: {
+    partnerId: TutorPartnerId;
+    limit: number;
+  }): Promise<readonly { content: string; source: string }[]>;
   searchTemplates(input: {
     studentId: string;
     projectId: string | null;
@@ -176,9 +181,10 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
   return {
     partner,
     async buildContext(input) {
-      const [learnerProfile, memories, templateEvidence, knowledgeEvidence] = await Promise.all([
+      const [learnerProfile, memories, agentStrategies, templateEvidence, knowledgeEvidence] = await Promise.all([
         ports.loadLearnerProfile(input.studentId),
         ports.listMemories({ studentId: input.studentId, partnerId: partner.id, limit: 8 }),
+        ports.listAgentStrategies?.({ partnerId: partner.id, limit: 4 }) ?? Promise.resolve([]),
         ports.searchTemplates({
           studentId: input.studentId,
           projectId: input.projectId,
@@ -213,6 +219,7 @@ export function createTutorSdk(ports: TutorSdkPorts, partner = QITU_LEARNING_PAR
           confidence,
           source,
         })),
+        agentStrategies: agentStrategies.map(({ content, source }) => ({ content, source })),
         templateEvidence: templateEvidence.map(({ document, score, matchedTerms }) => ({
           document: {
             id: document.id,
@@ -310,17 +317,5 @@ export function createEmptyTutorSdkPorts(): TutorSdkPorts {
     upsertLearnerProfile: async () => undefined,
     appendGrowthSignal: async () => undefined,
     upsertMemory: async () => undefined,
-  };
-}
-
-export function clampMemoryConfidence(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(1, Math.max(0, value));
-}
-
-export function createMemory(input: Omit<TutorMemory, 'confidence'> & { confidence?: number }): TutorMemory {
-  return {
-    ...input,
-    confidence: clampMemoryConfidence(input.confidence ?? 0.6),
   };
 }

@@ -162,6 +162,12 @@ export class KnowledgeService {
     return toView(document);
   }
 
+  async listAdminDocuments(actor: CurrentUser): Promise<KnowledgeDocumentView[]> {
+    if (actor.role !== 'admin') throw new ForbiddenException('知识库治理仅向管理员开放');
+    const documents = await this.store.listDocuments();
+    return documents.map(toView);
+  }
+
   /* ============================== 写 ============================== */
 
   /**

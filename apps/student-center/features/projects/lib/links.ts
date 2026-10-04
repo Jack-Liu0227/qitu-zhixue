@@ -57,7 +57,3 @@ export function projectTheoryHref(projectId: string, taskId?: string): string {
 export function projectPracticeHref(projectId: string, taskId?: string): string {
   return projectDetailHref(projectId, { taskId, mode: 'practice' });
 }
-
-export function projectReflectionHref(projectId: string): string {
-  return projectDetailHref(projectId, { mode: 'showcase' });
-}

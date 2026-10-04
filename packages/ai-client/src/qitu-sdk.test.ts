@@ -5,7 +5,7 @@ const assert = {
     throw new Error('Expected SDK rejection');
   },
 };
-import { createQituSDK, type QituSDKPorts } from './qitu-sdk.js';
+import { createQituSDK, type QituSDK, type QituSDKPorts } from './qitu-sdk.js';
 import type { MasteryTimelinePort } from '@qitu/contracts';
 
 export async function runQituSDKAssertions() {
@@ -22,6 +22,7 @@ export async function runQituSDKAssertions() {
   };
   const scope = { studentId: 'student', projectId: 'project' };
   const sdk = createQituSDK(scope, ports);
+  const typedSdk: QituSDK<string, string, { studentId: string }> = sdk;
   scope.studentId = 'changed';
   await sdk.mastery.getCurrent();
   assert.equal((calls[0] as { studentId: string }).studentId, 'student');

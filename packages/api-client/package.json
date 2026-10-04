@@ -3,7 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./readonly": {
+      "types": "./src/qitu-sdk.ts",
+      "default": "./src/qitu-sdk.ts"
+    }
   },
   "dependencies": {
     "@qitu/contracts": "workspace:*"
@@ -12,6 +19,6 @@
     "build": "tsc --noEmit",
     "lint": "node -e \"console.log('api-client: lint placeholder')\"",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('api-client: no tests yet')\""
+    "test": "tsc --noEmit"
   }
 }

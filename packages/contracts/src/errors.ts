@@ -51,6 +51,14 @@ export type ApiErrorCode =
    * 而不是在这里重试或忽略错误。
    */
   | 'MENTOR_ALREADY_ASSIGNED'
+  /** 初始化操作需要由部署 / CLI 执行，不能通过 HTTP 触发（409）。 */
+  | 'INITIALIZATION_OPERATOR_REQUIRED'
+  /** 初始化目标不存在（400）。 */
+  | 'INITIALIZATION_AREA_INVALID'
+  /** 初始化依赖持久化数据库不可用（503）。 */
+  | 'INITIALIZATION_DATABASE_UNAVAILABLE'
+  /** 初始化执行失败；相同幂等键可重试（503）。 */
+  | 'INITIALIZATION_EXECUTION_FAILED'
   /** 写操作缺少 `Idempotency-Key` 请求头（400）。 */
   | 'IDEMPOTENCY_KEY_REQUIRED'
   /**

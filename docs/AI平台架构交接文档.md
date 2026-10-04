@@ -28,7 +28,9 @@ apps
 | Works | `services/api/src/modules/works` | 作品、版本、发布、项目证据 |
 | Redis/Queue | `services/api/src/common/redis`, `common/queue` | 缓存、锁、队列和 outbox 投递基础设施 |
 | Model Registry | `services/api/src/modules/model-registry` | Provider → Model → Usage 和密钥隔离 |
-| AI SDK | `packages/ai-client` | 纯策略、上下文、伙伴、检索端口、计划辅助逻辑 |
+| Platform Registry | `services/api/src/modules/platform-registry` | 管理后台 AI 运行时**只读**投影（skills / MCP / agents / 内置工具 / 初始化状态） |
+| Initialization | `services/api/src/modules/initialization` | 受限、幂等的 foundation 初始化（knowledge / template / tutor；database 恒拒绝） |
+| AI SDK | `packages/ai-client` | 纯策略、上下文、伙伴、检索端口、计划辅助逻辑（含 `curriculum.ts`） |
 | Database | `packages/database` | Drizzle schema、数据库 client、迁移边界 |
 | Infra | `packages/infra` | Redis/缓存/锁/队列的 framework-agnostic 实现 |
 
@@ -94,6 +96,15 @@ admin   -> 学校治理和审计范围，敏感学生数据需要明确授权
 
 关系创建和读取都需要 school scope。`school_id` 当前是应用层约束，RLS 尚未启用。
 
+### 开发期制品与运行时边界
+
+`.pi/skills/**`、`.pi/agents/*.md`、`.pi/settings.json` 和 `.pi/extensions/student-workflow.ts` 是
+Pi/Herdr **开发期**工作流与角色元数据，本次清理明确保留；控制面只读取它们的安全
+frontmatter 摘要，不投影完整 skill 正文或 agent system prompt。
+仓库内当前没有 MCP server 注册文件，因此 `mcpServers` 为空；内置工具由
+`platform-registry/built-in-tools.ts` 提供脱敏注册表。持久化会话（`tutor_sessions` /
+`tutor_turns`）与 `agent_memory_records` 保留不变。
+
 ### 掌握度时间线（ADR 0009）
 
 掌握度时间线是 Projects & Learning 的一等领域能力，但 Graphiti 不是掌握度权威层。
@@ -132,16 +143,16 @@ mastery_events（不可变事实）
 ### Tutor
 
 ```text
-GET  /api/v1/tutor/session?projectId=...
+GET  /api/v1/tutor/session?projectId=...&explorationId=...
 GET  /api/v1/tutor/project-context
 GET  /api/v1/tutor/templates
-POST /api/v1/tutor/stream
 GET  /api/v1/tutor/sessions/:id
-POST /api/v1/tutor/sessions/:id/turns
+POST /api/v1/tutor/sessions
+POST /api/v1/tutor/sessions/:id/stream
 GET  /api/v1/tutor/sessions/:id/summary
 ```
 
-live Tutor session/turn 使用 PostgreSQL；demo/test 使用内存 adapter。SSE 仍是主要传输，Redis 尚未接入 Tutor 回合锁和跨实例 stream replay。
+live Tutor session/turn 使用 PostgreSQL；demo/test 使用内存 adapter。统一学生端探索与项目入口后，浏览器只使用 `/student/tutor`，通过 `source` + `explorationId/projectId` 选择上下文。SSE 仍是主要传输，Redis 尚未接入 Tutor 回合锁和跨实例 stream replay。
 
 ### Learning Plan
 
@@ -176,6 +187,22 @@ API 对 `studentId` 做当前关系授权；浏览器默认 facade 只读当前�
 时间参数要求带时区 ISO 格式。`knownAt` 为记录截止，`validAt` 为业务时刻。
 标准 API 测试命令现已包含 mastery 测试；本次复验 250/250 通过。
 
+
+### Admin 控制面（`platform-registry` + `initialization`）
+
+```text
+GET  /api/v1/admin/ai-runtime                                  # AdminRuntimeSnapshot（只读）
+GET  /api/v1/admin/initialization                              # AdminInitializationStatus（只读）
+POST /api/v1/admin/initialization/knowledge/execute            # 需 Idempotency-Key
+POST /api/v1/admin/initialization/template/execute             # 需 Idempotency-Key
+POST /api/v1/admin/initialization/tutor/execute                # 需 Idempotency-Key
+POST /api/v1/admin/initialization/database/execute             # 恒 409 INITIALIZATION_OPERATOR_REQUIRED
+```
+
+全部路由仅向 `admin` 开放；`POST` 写入与 `audit_logs` 同事务，错误码前缀 `INITIALIZATION_*`。
+投影当前读取 `.pi/agents/*.md` / `.pi/skills` 的安全摘要并合并 `tutor_partners`，MCP 无配置时为空，
+内置工具来自服务端脱敏注册表；尚未提供运行时配置写入口，详见 `docs/PLATFORM_CONTROL_PLANE.md`。
+`migrationVersion` 为 `null`（API 不探测迁移）。完整语义见 `docs/PLATFORM_CONTROL_PLANE.md`。
 
 ### Templates
 

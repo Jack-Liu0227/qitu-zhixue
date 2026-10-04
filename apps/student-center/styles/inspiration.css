@@ -8,9 +8,41 @@
  * 模板卡里的「我想做这个」只是跳到探索确认流程，不创建正式项目。
  */
 
-.qitu-inspiration-tabs {
+.qitu-inspiration-detail {
   display: grid;
   gap: var(--qitu-space-lg);
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.qitu-inspiration-detail-panel {
+  display: grid;
+  gap: var(--qitu-space-lg);
+  padding: var(--qitu-space-xl);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-surface);
+}
+
+.qitu-inspiration-detail-panel h2 {
+  margin: 0 0 10px;
+  color: var(--qitu-heading);
+  font-size: 1rem;
+}
+
+.qitu-inspiration-detail-summary,
+.qitu-inspiration-detail-panel section p,
+.qitu-inspiration-detail-note {
+  margin: 0;
+  color: var(--qitu-muted);
+  line-height: 1.7;
+}
+
+.qitu-inspiration-eyebrow {
+  margin: 0 0 4px;
+  color: var(--qitu-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 /* ---------- 标签栏 ---------- */

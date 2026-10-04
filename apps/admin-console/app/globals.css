@@ -959,6 +959,101 @@ body { min-height: 100vh; }
   overflow-wrap: anywhere;
 }
 
+/* ---- AI 运行时与初始化（只读治理） ---- */
+.admin-runtime-generated {
+  margin: 8px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+.admin-runtime-summary {
+  display: grid;
+  gap: 0;
+  margin: 20px 0;
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-runtime-tabs { margin-bottom: 20px; }
+.admin-runtime-panel { display: grid; gap: 16px; }
+.admin-runtime-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.admin-runtime-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-runtime-row {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  background: white;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+}
+.admin-runtime-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-runtime-row-title { color: var(--qitu-heading); font-size: 0.98rem; }
+.admin-runtime-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 999px;
+  color: var(--qitu-muted);
+  background: var(--qitu-background);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+.admin-runtime-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+.admin-runtime-row-meta-spaced { margin-bottom: 12px; }
+.admin-runtime-idlist { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.admin-runtime-muted { color: var(--qitu-muted); }
+.admin-runtime-description {
+  margin: 8px 0 0;
+  color: var(--qitu-text);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.admin-runtime-error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--qitu-danger);
+  background: var(--qitu-danger-soft);
+  color: var(--qitu-text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.admin-runtime-remediation {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--qitu-attention);
+  background: var(--qitu-attention-soft);
+  color: var(--qitu-text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 860px) {
   .admin-console-shell { flex-direction: column; }
   .admin-console-topbar { flex-wrap: wrap; padding: 14px 18px; }
@@ -970,6 +1065,7 @@ body { min-height: 100vh; }
   .admin-detail-grid { grid-template-columns: minmax(0, 1fr); }
   .admin-settings-panels { grid-template-columns: minmax(0, 1fr); }
   .admin-usage-bind { grid-template-columns: minmax(0, 1fr); }
+  .admin-runtime-cards { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ============ Reduced motion ============

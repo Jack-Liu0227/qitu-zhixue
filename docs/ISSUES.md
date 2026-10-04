@@ -164,7 +164,7 @@ validate it. Evidence must be reproducible in the PR that closes the Issue.
 - **Given** 学生在今天页表达意图，**When** AI 分析出候选意图，**Then** 展示候选意图并等待学生确认。
 - **Given** 学生尚未确认，**When** 系统继续流程，**Then** 不创建正式项目（仅保留探索 / 草稿）。
 - **Given** 学生确认，**When** 提交，**Then** 只创建一个项目实例；重复提交因幂等键不产生第二条。
-- **Given** 推荐项目与自由 Live 两条路径，**When** 确认意图，**Then** 保留来源类型并汇入统一项目实例。
+- **Given** 推荐项目保留独立详情/确认、自由探索进入统一 AI搭档，**When** 学生确认意图，**Then** 保留来源类型并由 Projects owner 幂等创建统一项目实例。
 
 ### ISSUE-T3 基于证据的成长正向反馈（P1，[#5](https://github.com/Jack-Liu0227/qitu-zhixue/issues/5)）
 
@@ -241,3 +241,11 @@ validate it. Evidence must be reproducible in the PR that closes the Issue.
 | 2026-09-28 | 建立登记册；登记 `ISSUE-P0` 与 T1–T8；确定执行顺序与验收 | ADR 0008 |
 | 2026-09-28 | 在 GitHub 建立父级 `#2` 与 T1–T8 对应 Issue `#3`–`#10`，并回填本表 | GitHub |
 | 2026-09-28 | 增加项目级范围规则、T1–T8 实现归属与验证证据、gh CLI 不可用时的创建/关联回填方式 | GitHub |
+
+## 7. 新增重构 Issue
+
+| ID | GitHub | 标题 | 状态 | 范围 |
+|---|---|---|---|---|
+| `ISSUE-STUDENT-SDK-UNIFICATION` | [#14](https://github.com/Jack-Liu0227/qitu-zhixue/issues/14) | 学生端自由探索与 AI搭档统一及 SDK/文档收敛重构 | `In Progress`（实现与清理验证阶段） | 仅 SDK、学生端探索/导师主链路及对应合同、文档；需先完成 IA/架构独立评审。不得据此重写无关平台，也不得删除仍有外部消费者或数据迁移依赖的兼容实现。 |
+
+本 Issue 验收前不得关闭；Issue #2–#11 的状态和关闭条件独立，不因 #14 创建或 PR 合并而自动完成。

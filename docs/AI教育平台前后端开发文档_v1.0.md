@@ -31,8 +31,8 @@
 
 - `dashboard.png`：今天
 - `灵感空间.png`：推荐项目
-- `灵感空间2.png`：自由 Live 探索
-- `AI导师.png`：AI搭档（图片为已批准资产，文件名保留不改）
+- `灵感空间2.png`：自由探索交互的历史视觉参考；自由探索不再是独立页面/导航目的地，其方向摘要与对话内容合并到 AI搭档统一页面。
+- `AI导师.png`：AI搭档（已批准视觉资产；页面以左侧项目/探索进度 + 单一对话区为准，文件名保留不改）
 - `我的项目.png`：项目列表
 - `我的项目2.png`：项目制作工作台
 - `作品展厅.png`：作品展厅
@@ -51,13 +51,13 @@
 - `数据统计.png`：数据统计
 - `系统设置.png`：历史系统设置视觉基准（**不是**班主任业务导航项；账号与安全属跨角色账户面，平台与 AI 设置归平台管理后台）
 
-### 0.4 不改变的产品框架
+### 0.4 产品框架（导航冻结；流程变更见 ADR 0010）
 
 - 学生端导航为“今天、灵感空间、AI搭档、我的项目、作品展厅、成长轨迹”。前五项保持原有名称与顺序；**成长轨迹于 2026-09-26 从“由今天页侧向进入的明细页”提升为与 AI搭档同级的一级导航项**（见 `docs/decisions/0004-growth-trajectory-as-nav-item.md`）。
 - 家长端继续使用“首页、学习进展、消息与反馈”导航。
 - 班主任端业务导航为“工作台、学生管理、问题处理、数据统计、知识库”五项，**不包含“系统设置”**。账号与安全（登录凭证、MFA、设备会话、退出登录）是**跨角色账户面**，从各端顶栏账户入口进入，不属于任何平台的业务导航；平台治理与 AI 策略设置归平台管理后台。
 - 管理后台在现有 `系统设置.png` 视觉和壳层内扩展管理功能。
-- 灵感空间分为“推荐项目”和“自由 Live 探索”两条业务路径，最终都创建统一的项目实例。
+- 灵感空间承载推荐项目与自由探索发起动作；推荐项目保留独立详情/确认流程，只有自由探索进入 AI搭档统一对话。两类来源均由服务端保留，并须学生明确确认后才由 Projects owner 创建正式项目。自由探索不再有独立 Live 页面或第二套会话链路。
 - 一个学生同一时间只能有一名当前班主任。
 - 家长端显示脱敏成长快照和过程证据，不默认显示原始 AI 对话。
 - AI搭档默认使用苏格拉底式提问，不直接代替学生完成项目。
@@ -352,9 +352,7 @@ WHERE status = 'active';
 /student/today
 /student/inspiration
 /student/inspiration/recommended/:id
-/student/inspiration/explore
-/student/inspiration/explore/:sessionId
-/student/tutor
+/student/tutor                       AI搭档统一对话入口
 /student/projects
 /student/projects/:projectId
 /student/projects/:projectId/theory
@@ -364,6 +362,9 @@ WHERE status = 'active';
 /student/works/:artifactId
 /student/growth
 ```
+
+推荐项目继续从灵感空间进入独立推荐详情/确认流程；自由探索从灵感空间进入 `/student/tutor` 统一对话界面。两条路径共享 Projects owner 的确认和项目创建规则，但不共用学生端页面或第二套自由探索会话链路。
+
 
 ## 4.2 今日页面 `dashboard.png`
 
@@ -380,7 +381,7 @@ features/today/
 ├── TodayTaskCard
 ├── RecentWorks
 ├── LearningSummary
-├── QuickStartLive
+├── QuickStartTutor
 └── NotificationEntry
 ```
 
@@ -406,19 +407,14 @@ error
 - 页面结构和 `dashboard.png` 保持一致。
 - 学生可以继续上次项目。
 - 今日任务显示当前阶段任务。
-- 无项目时显示进入灵感空间的入口。
-- 语音入口可以启动 Live 探索。
+- 无项目时显示进入灵感空间或开始自由探索的入口。
+- 快速开始进入 AI搭档文字对话；服务端语音能力与权限链路通过准入前不展示真实 Live 控件。
 
-## 4.3 灵感空间 `灵感空间.png`、`灵感空间2.png`
+## 4.3 灵感空间 `灵感空间.png`（`灵感空间2.png` 为历史交互参考）
 
 ### 页面结构
 
-灵感空间分为两个区域：
-
-1. 推荐项目
-2. 自由 Live 探索
-
-推荐项目使用项目卡片展示，不能和正式项目混在一起。自由探索使用 Live 对话入口。
+灵感空间展示推荐项目。自由探索是该页面的一个发起动作，不再作为独立 Live 页面：学生点击「自由探索」后进入 AI搭档统一对话页。推荐卡片进入 `/student/inspiration/recommended/:id` 独立详情，保留推荐理由和模板版本；正式确认仍由 Projects owner 的既有幂等接口负责，不转入 Tutor。
 
 ### 前端模块
 
@@ -428,94 +424,98 @@ features/inspiration/
 ├── ProjectCard
 ├── RecommendationReason
 ├── InterestTag
-├── FreeExploreEntry
-├── LivePanel
-├── IntentCandidateCard
-├── IntentConfirmDialog
-└── ProjectDirectionCard
+└── FreeExploreEntry
 ```
 
 ### 推荐项目接口
 
 ```http
-GET /api/v1/inspiration/recommendations
-GET /api/v1/project-templates/:id
-POST /api/v1/recommendations/:id/start
-POST /api/v1/recommendations/:id/decline
+GET /api/v1/tutor/templates
 ```
 
-### 自由探索接口
+### 统一 AI搭档入口
 
 ```http
-POST /api/v1/explorations
-GET /api/v1/explorations/:id
-POST /api/v1/explorations/:id/turns
-POST /api/v1/explorations/:id/confirm-intent
-POST /api/v1/explorations/:id/close
+POST  /api/v1/explorations
+GET   /api/v1/explorations/:id
+PATCH /api/v1/explorations/:id
+POST  /api/v1/explorations/:id/confirm-intent
+POST  /api/v1/explorations/:id/close
+
+POST /api/v1/tutor/sessions
+GET  /api/v1/tutor/sessions/:id
+POST /api/v1/tutor/sessions/:id/stream (SSE)
+GET  /api/v1/tutor/sessions/:id/summary
 ```
 
-### 状态
+推荐项目使用独立详情/确认流程；只有自由探索需要创建 `free` 来源的探索草稿并进入 Tutor session。推荐来源的 `recommended` 与固定 `templateVersionId` 由推荐流程保留，正式项目仍只能由 Projects owner 的幂等 `confirm-intent` 创建。Tutor 只负责自由探索会话编排，不直接写探索草稿或项目。
 
-```text
-idle
-listening
-transcribing
-clarifying
-awaiting_confirmation
-confirmed
-paused
-reconnecting
-ended
-```
+SSE 回合只按已授权 session ID 执行。客户端不提交 studentId、项目阶段、探索状态或 pedagogic move；服务端从持久会话读取并再次校验上下文。
+
+### 页面状态
+
+| 状态 | 灵感空间 | AI搭档对话 |
+|---|---|---|
+| loading | 模板/会话骨架，禁用重复提交 | 左侧上下文与对话分别显示骨架 |
+| empty | 无推荐仍可开始自由探索 | 无回合时显示可输入的起始提示 |
+| error | 明确错误和重试 | 稳定错误和重试，保留未发送文本 |
+| offline | 保留文本，不伪装发送成功，恢复网络后可重试 | 保留未发送文本并提供重连/重试 |
+| permission-denied | 统一拒绝且不泄露资源存在性 | 会话和上下文统一拒绝，不泄露资源存在性 |
 
 ### 核心规则
 
 - 学生没有明确确认时，不创建正式项目。
-- 推荐项目和自由探索可以共用 AI搭档，但必须保留来源类型。
-- 推荐项目确认后引用固定的模板版本。
-- 自由探索确认后生成项目方向卡，再创建项目实例。
+- 推荐项目保留独立详情/确认流程；自由探索确认前只保存 `free` 来源的 exploration 草稿，学生明确确认后，Projects owner 才幂等创建项目实例。
+- 自由探索使用 Tutor 的统一会话 UI、回合流和服务端策略；推荐项目不进入 Tutor 页面。
 - AI 生成的兴趣变化不能直接覆盖长期兴趣档案。
 
 ### 验收标准
 
-- 推荐区域和自由 Live 区域视觉上清晰分开。
-- 学生可以选择、跳过或重新探索。
-- Live 中断后可恢复。
-- 学生确认后只创建一个项目实例。
-- 推荐理由、难度、时间和能力标签可见。
+- 灵感空间保留推荐项目与自由探索发起入口；只有自由探索按钮打开 AI搭档统一对话页。
+- 推荐项目详情保留推荐理由、难度、预计时长、能力标签和模板版本；正式确认继续由 Projects owner 处理，不跳转 Tutor。
+- 自由探索刷新后可根据服务端 session 恢复上下文与对话；探索未确认时不显示虚构项目阶段。
 
 ## 4.4 AI搭档页面 `AI导师.png`
 
 ### 页面目标
 
-让 AI搭档围绕当前项目阶段，用苏格拉底式提问帮助学生学习和实践。
+AI搭档只承载自由探索和已有项目辅导；推荐项目保留在灵感空间自己的详情/确认流程。页面仅由左侧项目/探索进度与主对话区组成。
 
 ### 前端模块
 
 ```text
-features/ai-tutor/
+features/tutor/
 ├── TutorHeader
-├── TutorContextBanner
+├── ProjectOrExplorationProgress
 ├── MessageList
 ├── MessageBubble
 ├── HintLevelIndicator
-├── VoiceToggle
-├── LiveComposer
-├── TheoryCheck
-├── TaskEvidencePanel
+├── Composer
 └── EscalationNotice
 ```
+
+不提供第二个 Live 对话页或右侧能力入口。学生通过同一个 Composer 自然表达需求；教学动作、提示等级和允许使用的能力由服务端策略决定，客户端不能指定阶段、教学决策或项目状态。
 
 ### 接口
 
 ```http
 POST /api/v1/tutor/sessions
-GET /api/v1/tutor/sessions/:id
-POST /api/v1/tutor/sessions/:id/turns
-GET /api/v1/tutor/sessions/:id/summary
-POST /api/v1/tutor/sessions/:id/feedback
-WS  /api/v1/tutor/sessions/:id/stream
+GET  /api/v1/tutor/sessions/:id
+POST /api/v1/tutor/sessions/:id/stream   (SSE)
+GET  /api/v1/tutor/sessions/:id/summary
 ```
+
+创建请求使用 `source: 'exploration' | 'project'`，并分别携带 `explorationId` 或经对象级授权的 `projectId`；探索 ID 必须先由 Projects owner 创建。客户端生成 `idempotencyKey`，服务端按上下文确定性恢复/创建 session，并返回 session owner 可见的 `explorationId`、`projectId` 和进度投影。缺失/无效上下文返回稳定错误，不回退到 demo project。恢复、流式回合与摘要均按 session owner 重新校验；本期不定义或调用未实现的 session feedback endpoint。
+
+### 页面状态
+
+| 状态 | 表现 |
+|---|---|
+| loading | 左侧上下文与对话分别显示结构化骨架 |
+| empty | 可输入第一条消息；左侧按服务端状态展示探索待澄清或项目状态 |
+| error | 显示稳定错误和重试，保留未发送文本 |
+| offline | 保留未发送文本，展示离线状态并支持重连后重试 |
+| permission-denied | 会话和上下文统一拒绝，不泄露资源是否存在 |
 
 ### AI 提示等级
 
@@ -531,11 +531,11 @@ WS  /api/v1/tutor/sessions/:id/stream
 
 ### 验收标准
 
-- 文本和语音可以切换。
-- 刷新后会话和项目阶段可恢复。
-- 每一轮消息带有阶段和提示等级。
+- 一个 Composer 同时承载自由探索与项目辅导；刷新后按服务端会话恢复。
+- 左侧在探索上下文展示探索/待确认进度，在项目上下文展示服务端项目阶段与当前任务。
+- AI 每一轮消息带有服务端阶段和提示等级；探索阶段无项目时阶段字段为空/探索语义，不构造 demo 项目。
 - AI搭档不能直接修改成长档案。
-- 触发升级后班主任端出现待处理问题。
+- 触发升级后班主任端出现待处理问题；前端不能指定 pedagogic move 来绕开服务端策略。
 
 ## 4.5 我的项目 `我的项目.png`、`我的项目2.png`
 
@@ -1249,9 +1249,35 @@ POST  /api/v1/admin/project-templates/:id/rollback
 GET /api/v1/admin/audit-logs?actor=&resource=&action=&from=&to=
 ```
 
+## 7.7 AI 运行时与初始化（平台控制面，已实现）
+
+管理后台在既有系统设置壳层与子导航内提供一个**只读**的 AI 运行时视图，以及受限的
+foundation 初始化动作；不新增一级导航。
+
+```http
+GET  /api/v1/admin/ai-runtime
+GET  /api/v1/admin/initialization
+POST /api/v1/admin/initialization/knowledge/execute   # 需 Idempotency-Key
+POST /api/v1/admin/initialization/template/execute    # 需 Idempotency-Key
+POST /api/v1/admin/initialization/tutor/execute       # 需 Idempotency-Key
+POST /api/v1/admin/initialization/database/execute    # 恒 409，必须走部署/CLI
+```
+
+- 全部路由仅向 `admin` 开放；`POST` 幂等、与 `audit_logs` 同事务；
+  错误码前缀 `INITIALIZATION_*`（详见 `docs/PLATFORM_CONTROL_PLANE.md`）。
+- 投影中的 skills / MCP / 内置工具现在由安全只读发现和服务端内置工具注册表提供；MCP 无配置时为空，
+  不提供配置写入口或凭据回显。
+  `migrationVersion` 为 `null`。界面必须如实展示，不得把种子/空数据画成真实运营状态。
+- 数据库 schema 迁移**永不走 HTTP**；项目、会话、成长档案、审计仍只能由服务端 owner 写入。
+
 ---
 
 # 8. 后端领域模块
+
+模块的实际落地目录以仓库为准（当前已实现：`identity-auth`、`directory`、`admin`、`projects`、
+`learning-plan`、`ai-tutor`、`mastery`、`agent-memory`、`templates`、`knowledge`、`growth`、
+`works`、`model-registry`、`settings`、`reminders`、`platform-registry`、`initialization`、`qitu-sdk` 等）；
+下列清单是 M0–M8 的计划目标，不表示已存在。
 
 ```text
 services/api/src/modules/
@@ -1278,7 +1304,7 @@ services/api/src/modules/
 └── audit-compliance/
 ```
 
-每个模块遵循：
+每个模块内部遵循统一分层：
 
 ```text
 domain/
@@ -1480,30 +1506,25 @@ evidence_ref
 
 连续 4 轮卡顿、情绪挫败或 AI 无法推进时，生成班主任问题。
 
-## 9.5 语音 Live
+## 9.5 统一对话与语音输入
 
-语音链路：
+自由探索和已有项目辅导使用 AI搭档会话与文字流式回合 API；推荐项目不进入 Tutor，继续使用灵感空间的独立详情/确认流程。Tutor session 由后端 context 绑定 exploration 或已授权 project。语音是同一对话 composer 的可选输入适配器，不另建会话、教学决策或项目写入链路；当前版本未接通服务端语音能力时不得展示为可用的真实 Live 功能。
 
 ```text
-客户端录音
-→ VAD / ASR
-→ 意图识别
-→ AI搭档编排
-→ LLM
-→ 安全检查
-→ TTS
-→ 客户端播放
+AI搭档 Composer（文字；语音能力仅在后端明确可用时启用）
+→ POST /api/v1/tutor/sessions/:id/stream (SSE)
+→ session owner / context authorization
+→ Tutor runtime + context builder + teaching policy
+→ 项目或探索领域 owner
 ```
-
-语音助手负责实时交互和控制指令，AI搭档负责教学决策。语音助手不能直接修改项目状态或成长档案。
 
 断线策略：
 
-- 保存流式游标。
-- 使用会话序列号防止重复写入。
-- 自动重连。
-- 失败后降级为文字输入。
-- 作品和项目变更必须由幂等命令确认。
+- 服务端会话保存流式游标；客户端用序号去重并从持久化回合恢复。
+- 自动重连；失败后保留输入并提供文字重试。
+- 探索草稿仅由 exploration API 更新；项目、掌握度、成长档案、审计由其领域 owner 写入。
+- 意图确认必须通过独立幂等命令；模型输出或回合结束本身不能创建项目。
+- 缺少 project context 时不得退回 demo project，也不得以空数据伪装为真实项目。
 
 ---
 
@@ -1642,11 +1663,13 @@ delete-data
 
 - 三个初始项目模板
 - 推荐项目列表
-- 自由 Live 探索入口
+- 学生可从灵感空间查看推荐项目详情；只有自由探索入口进入 AI搭档，服务端持久化自由探索草稿与意图确认。
 - 意图确认
 - 项目方向卡
 
-验收：推荐和自由探索都能创建统一项目，但未确认时不创建正式项目。
+- M2：自由探索进入 AI搭档统一对话页；推荐项目保留独立详情/确认流程。Tutor session 关联自由探索草稿或项目上下文。
+
+- M2：两类来源都必须经学生明确确认后创建一个正式项目；重复确认不产生第二个项目。
 
 ## M3：项目引擎和学生端
 
@@ -1674,18 +1697,11 @@ delete-data
 
 验收：AI 能围绕当前项目阶段连续指导，干预内容能进入下一轮上下文。
 
-## M5：Live 语音
+## M5：语音输入适配（独立准入）
 
-交付：
+交付：仅在服务端 ASR/TTS、鉴权、未成年人隐私同意与审计链路验证通过后，将语音作为同一 Composer 的输入适配开放。准入前不展示可用 Live 控件，不以 mock transport 伪装真实服务。
 
-- ASR
-- TTS
-- WebSocket/SSE
-- 打断
-- 重连
-- 文字降级
-
-验收：语音断线后可以恢复或切换文字，不能重复创建项目或任务。
+验收：语音与文字共用已授权 tutor session；断线后可恢复或保留文字输入；不能重复创建项目或任务。
 
 ## M6：家长陪伴中心
 
@@ -1783,12 +1799,14 @@ delete-data
 - [ ] 四个平台路由完整，且保持现有 UI 框架。
 - [ ] 认证、角色和关系权限统一。
 - [ ] 一个学生只能有一个当前班主任。
-- [ ] 推荐项目和自由 Live 探索分开存储。
-- [ ] 两条路径最终汇入统一项目实例。
+- [ ] 灵感空间保留推荐项目详情/确认入口；只有自由探索进入 AI搭档对话表面，探索草稿与 Tutor session 分别由各自领域 owner 持久化。
+- [ ] 推荐项目和自由探索保留各自来源；两条路径均须学生确认后才创建统一项目实例。
+- [ ] AI搭档只有单一对话 Composer 和左侧项目/探索进度；没有独立 mock Live 对话入口。
+- [ ] 语音只在真实服务端链路通过准入后作为同一 Composer 的输入适配开放。
 - [ ] 学生确认意图后才创建项目。
 - [ ] 理论完成后才能进入实践。
-- [ ] AI搭档使用苏格拉底式启发等级。
-- [ ] Live 支持断线恢复和文字降级。
+- [ ] AI搭档使用服务端苏格拉底式教学策略；客户端不指定 pedagogic move。
+- [ ] 统一对话支持会话恢复与文字输入错误恢复；语音能力未准入时不对学生开放。
 - [ ] 家长只能读取授权成长快照。
 - [ ] 班主任只能访问自己的学生。
 - [ ] 班主任干预会影响 AI 下一轮教学。

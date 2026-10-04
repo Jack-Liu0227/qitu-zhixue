@@ -49,7 +49,7 @@ export const MOCK_PROJECT_CONTEXT: TutorProjectContext = {
 };
 
 /**
- * Initial persisted turns returned by `GET /tutor/sessions/:id`. They exercise
+ * Initial persisted turns returned by `GET /tutor/session`. They exercise
  * the `questions` / `text` / `options` / `evidence` reply variants and carry
  * seq 1..6; live replay continues from seq 7.
  */
@@ -139,6 +139,14 @@ export const MOCK_TURNS: TutorTurn[] = [
 export const MOCK_SESSION: GetTutorSessionResponse = {
   sessionId: MOCK_SESSION_ID,
   projectId: MOCK_PROJECT_ID,
+  explorationId: null,
+  source: 'project',
+  context: {
+    kind: 'project',
+    label: '项目学习',
+    status: 'confirmed',
+    projectId: MOCK_PROJECT_ID,
+  },
   turns: MOCK_TURNS,
   lastSeq: 6,
 };

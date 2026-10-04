@@ -40,11 +40,10 @@ pnpm --filter @qitu/database generate
 | 顺序 | 文件 | 内容 | 为什么必须在此时执行 |
 | --- | --- | --- | --- |
 | 1 | `seeds/demo-identities.sql` | `schools` / `users` / `guardian_links` / `mentor_assignments` | 建立 `school-demo` 与 `admin-demo` / `teacher-demo` / `student-demo` 等身份 |
-| 2 | `seeds/tutor-workspace.sql` | `tutor_partners` / `tutor_template_documents` / `tutor_knowledge_documents` | 领域表的 `student_memories.partner_id` 引用 `tutor_partners` |
+| 2 | `seeds/tutor-workspace.sql` | `tutor_partners` / `tutor_template_documents` / `tutor_knowledge_documents` / synthetic agent session-memory foundation | 领域表的 `student_memories.partner_id` 引用 `tutor_partners`；memory fixture is student-independent and emits one idempotent index outbox event |
 | 3 | `seeds/domain-foundation.sql` | 规范化领域表（模板 / 知识 / 计划 / 掌握度 / 成长 / 记忆 / 评审） | `created_by` / `student_user_id` / `mentor_user_id` / `partner_id` 引用前两步 |
 
-顺序由 `SEED_FILES` 常量的数组顺序固定，不可调换；`--check` 模式可在不连库的情况下
-校验三个文件存在并打印 `demo-identities.sql -> tutor-workspace.sql -> domain-foundation.sql`。
+种子执行前必须完成 `0010_agent_memory.sql`（以及其前置迁移）；否则 tutor-workspace 的 session-memory foundation 无法落库。管理员初始化 API 也会先检查该 schema，不会静默降级。
 
 `seeds/demo-identities.sql` 是身份种子数据的**唯一真源**；`domain-foundation.sql` 是
 规范化领域表的真源（迁移 `0008_domain_foundation`），两者均随 `pnpm seed` 自动执行。

@@ -1,0 +1,72 @@
+{
+  "projectRootResolution": "git-root",
+  "defaultProvider": "jaycue-gpt",
+  "defaultModel": "gpt-6.1-sol",
+  "subagents": {
+    "defaultProvider": "deepseek",
+    "defaultModel": "deepseek/deepseek-flash",
+    "defaultThinking": "off",
+    "modelScope": {
+      "enforce": true,
+      "strict": true,
+      "allow": [
+        "jaycue-gpt/gpt-6.1-sol",
+        "deepseek/deepseek-flash"
+      ]
+    },
+    "agentOverrides": {
+      "frontend": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "backend-database": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "knowledge-base": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "sdk-manager": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "architect": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "docs-manager": {
+        "model": "deepseek/deepseek-flash",
+        "thinking": "off"
+      },
+      "code-cleaner": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "reviewer": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "oracle": {
+        "model": "jaycue-gpt/gpt-6.1-sol",
+        "thinking": "high"
+      },
+      "worker": {
+        "model": "deepseek/deepseek-flash",
+        "thinking": "off"
+      },
+      "scout": {
+        "model": "deepseek/deepseek-flash",
+        "thinking": "off"
+      },
+      "delegate": {
+        "model": "deepseek/deepseek-flash",
+        "thinking": "off"
+      },
+      "researcher": {
+        "model": "deepseek/deepseek-flash",
+        "thinking": "off"
+      }
+    }
+  }
+}

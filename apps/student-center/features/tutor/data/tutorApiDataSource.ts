@@ -19,7 +19,7 @@ import type { TutorProjectContext } from '../types';
  * The tutor data source the app actually runs on.
  *
  * WHAT IS REAL: the conversation. `GET /tutor/session` supplies the persisted
- * history and the journal cursor, and `POST /tutor/stream` streams every turn
+ * history and the journal cursor, and `POST /tutor/sessions/:id/stream` streams every turn
  * as `tool_call → tool_result → delta → block → done`.
  *
  * The project context is served by the same API projection used by the
@@ -30,7 +30,8 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
-  private readonly projectIdBySession = new Map<string, string>();
+  private readonly projectIdBySession = new Map<string, string | null>();
+  private readonly explorationIdBySession = new Map<string, string | null>();
   private readonly sockets = new Map<string, LiveTutorSocket>();
   private readonly sessionCursor = new Map<string, number>();
   private sessionCounter = 0;
@@ -59,17 +60,38 @@ export class TutorApiDataSource implements TutorDataSource {
     request: CreateTutorSessionRequest,
   ): Promise<CreateTutorSessionResponse> {
     const projectId = request.projectId;
-    if (projectId === undefined) {
-      // Never bind a session to the server's demo project implicitly.
-      throw new TutorDataError('还没有进行中的项目', undefined, 'NO_ACTIVE_PROJECT');
+    let explorationId = request.explorationId;
+    if (request.source === 'exploration' && explorationId === undefined) {
+      const payload = await this.fetchJson('/api/v1/explorations', '探索会话创建失败', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': request.idempotencyKey,
+        },
+        body: JSON.stringify({ source: 'free' }),
+      });
+      const data = unwrapData(payload);
+      if (!isExplorationPayload(data)) {
+        throw new TutorDataError('探索会话数据格式不正确', undefined, 'BAD_EXPLORATION_PAYLOAD');
+      }
+      explorationId = data.id;
     }
-    const session = await this.fetchSession(projectId);
-    this.projectIdBySession.set(session.sessionId, projectId);
+    const session = await this.fetchSession(projectId, explorationId);
+    this.projectIdBySession.set(session.sessionId, projectId ?? null);
+    this.explorationIdBySession.set(session.sessionId, explorationId ?? null);
     return {
       sessionId: session.sessionId,
-      projectId,
+      projectId: projectId ?? null,
+      explorationId: explorationId ?? null,
+      source: request.source,
       createdAt: new Date().toISOString(),
       lastSeq: session.lastSeq,
+      context: {
+        kind: request.source,
+        label: request.source === 'exploration' ? '自由探索' : '项目学习',
+        status: request.source === 'exploration' ? 'active' : 'confirmed',
+        projectId: projectId ?? null,
+      },
     };
   }
 
@@ -78,9 +100,13 @@ export class TutorApiDataSource implements TutorDataSource {
     if (projectId === undefined) {
       throw new TutorDataError('会话不存在或已过期', 404, 'SESSION_NOT_FOUND');
     }
-    const session = await this.fetchSession(projectId);
+    const session = await this.fetchSession(
+      projectId ?? undefined,
+      this.explorationIdBySession.get(sessionId) ?? undefined,
+    );
     this.projectIdBySession.set(session.sessionId, projectId);
     this.sessionCursor.set(session.sessionId, session.lastSeq);
+    this.explorationIdBySession.set(session.sessionId, session.explorationId);
     return session;
   }
 
@@ -134,7 +160,7 @@ export class TutorApiDataSource implements TutorDataSource {
     const existing = this.sockets.get(sessionId);
     if (existing !== undefined) return existing;
     const socket = new LiveTutorSocket(sessionId, {
-      projectId: this.projectIdBySession.get(sessionId),
+      projectId: this.projectIdBySession.get(sessionId) ?? undefined,
       initialSeq: this.sessionCursor.get(sessionId) ?? 0,
       onUnreachable: (error) => {
         // Surface the failure on the thread (the student sees a retry) and
@@ -148,9 +174,13 @@ export class TutorApiDataSource implements TutorDataSource {
     return socket;
   }
 
-  private async fetchSession(projectId: string): Promise<GetTutorSessionResponse> {
+  private async fetchSession(projectId?: string, explorationId?: string): Promise<GetTutorSessionResponse> {
+    const params = new URLSearchParams();
+    if (projectId !== undefined) params.set('projectId', projectId);
+    if (explorationId !== undefined) params.set('explorationId', explorationId);
+    const query = params.toString();
     const body = await this.fetchJson(
-      `/api/v1/tutor/session?projectId=${encodeURIComponent(projectId)}`,
+      `/api/v1/tutor/session${query.length > 0 ? `?${query}` : ''}`,
       '会话加载失败',
     );
     const data = unwrapData(body);
@@ -161,12 +191,20 @@ export class TutorApiDataSource implements TutorDataSource {
     return data;
   }
 
-  private async fetchJson(path: string, failureLabel = '请求失败'): Promise<unknown> {
+  private async fetchJson(
+    path: string,
+    failureLabel = '请求失败',
+    init: RequestInit = {},
+  ): Promise<unknown> {
     let response: Response;
     try {
       response = await fetch(path, {
+        ...init,
         credentials: 'same-origin',
-        headers: { accept: 'application/json' },
+        headers: {
+          accept: 'application/json',
+          ...init.headers,
+        },
       });
     } catch (error) {
       throw new TutorDataError(
@@ -184,6 +222,10 @@ export class TutorApiDataSource implements TutorDataSource {
     }
     return response.json();
   }
+}
+
+function isExplorationPayload(value: unknown): value is { id: string } {
+  return typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string';
 }
 
 function isTutorProjectContext(value: unknown): value is TutorProjectContext {

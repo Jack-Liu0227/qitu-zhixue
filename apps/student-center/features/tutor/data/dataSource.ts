@@ -16,9 +16,8 @@ import type { TutorProjectContext } from '../types';
  * The ONE swappable data source for the tutor module.
  *
  * Every network read/write on the AI搭档 page goes through this interface; no
- * component calls `fetch` directly. Wave 4 (or the API team) repoints
- * `setTutorDataSource` at the real client without touching components. All
- * shapes are the shared `@qitu/contracts` types.
+ * component calls `fetch` directly. The API-backed implementation is the
+ * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
   /** GET /students/me/active-project — `null` means no active project (empty state). */
@@ -27,7 +26,7 @@ export interface TutorDataSource {
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
   /** POST /tutor/sessions — idempotent session creation. */
   createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse>;
-  /** GET /tutor/sessions/:id — initial turns + `lastSeq` cursor seed. */
+  /** GET /tutor/session — initial turns + `lastSeq` cursor seed. */
   getSession(sessionId: string): Promise<GetTutorSessionResponse>;
   /** POST /tutor/sessions/:id/turns — idempotent turn submission. */
   submitTurn(
@@ -41,7 +40,7 @@ export interface TutorDataSource {
     sessionId: string,
     request: CreateTutorFeedbackRequest,
   ): Promise<CreateTutorFeedbackResponse>;
-  /** Open the WS transport for `WS /tutor/sessions/:id/stream`. */
+  /** POST /tutor/sessions/:id/stream — SSE turn transport. */
   createSocket(sessionId: string): TutorSocket;
 }
 

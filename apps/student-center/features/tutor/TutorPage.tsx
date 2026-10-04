@@ -1,29 +1,21 @@
 'use client';
 
 import { PermissionDenied } from '@qitu/ui';
-import { CapabilityRail } from './components/CapabilityRail';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectContextPanel } from './components/ProjectContextPanel';
 import { TutorHeader } from './components/TutorHeader';
-import { useCapabilityInvoke } from './hooks/useCapabilityInvoke';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import type { TutorLoadStatus } from './types';
 
 /**
- * 「AI搭档」 route shell: left = project context, center = conversation,
- * right = the six capability entries.
- *
- * It resolves the optional `:projectId` and owns nothing that the server owns:
- * project stage, AI decisions, growth records and audit events are read-only
- * projections here. Route wiring (app/student/tutor/…) is Wave 4's job; this
- * component only needs the resolved `projectId`.
+ * 「AI搭档」统一对话页：左侧为项目/探索进度，中间为唯一对话区。
+ * 项目阶段、探索状态、AI 决策、成长记录和审计均为服务端只读投影。
  */
 export function TutorPage({ projectId }: { projectId?: string }) {
   const session = useTutorSession(projectId);
   const composer = useComposer();
-  const capability = useCapabilityInvoke(session.invokeCapability);
 
   if (session.permissionDenied) {
     return (
@@ -89,22 +81,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               onSubmit={() => {
                 void composer.submit(composer.draft, session.submitText);
               }}
-              onAudio={() => {
-                // Voice shell: the audio Blob is handed over in memory only and
-                // is never persisted. ASR/TTS is out of this module's scope.
-              }}
             />
           }
-        />
-
-        <CapabilityRail
-          sessionReady={sessionReady}
-          lastHintLevel={session.lastHintLevel}
-          guidanceRun={session.guidanceRun}
-          pendingMove={capability.pendingMove}
-          onInvoke={(move) => {
-            void capability.invokeMove(move);
-          }}
         />
       </div>
     </div>

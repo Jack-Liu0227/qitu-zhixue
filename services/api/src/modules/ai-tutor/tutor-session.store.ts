@@ -51,6 +51,7 @@ export interface TutorSessionSnapshot {
   /** 归属学生 user id；对象级授权的唯一真相。 */
   ownerId: string;
   projectId: string | null;
+  explorationId?: string | null;
   source: TutorSessionSource;
   createdAt: string;
   /** 服务端分配的最后序号；重连游标与去重的基准。 */
@@ -64,6 +65,7 @@ export interface CreateTutorSessionInput {
   /** `tutor_sessions.partner_id` 外键目标；由 SDK 的搭档档案提供。 */
   partnerId: string;
   projectId: string | null;
+  explorationId?: string | null;
   source: TutorSessionSource;
   createdAt: string;
 }

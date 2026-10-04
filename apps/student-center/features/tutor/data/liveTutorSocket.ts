@@ -4,7 +4,7 @@ import { TutorDataError } from './dataSource';
 import { openTutorStream, type TutorStreamRequest } from './tutorStream';
 
 /**
- * `TutorSocket` backed by `POST /api/v1/tutor/stream` (SSE).
+ * `TutorSocket` backed by `POST /api/v1/tutor/sessions/:id/stream` (SSE).
  *
  * It keeps the exact contract the components already rely on:
  * - `onOpen` fires once, asynchronously, like a real socket handshake.
@@ -44,7 +44,7 @@ export class LiveTutorSocket implements TutorSocket {
     readonly sessionId: string,
     options: {
       projectId?: string;
-      /** The client's applied cursor, i.e. `GET /tutor/session` `lastSeq`. */
+      /** The client's applied cursor from `GET /tutor/session`. */
       initialSeq?: number;
       onUnreachable: (error: TutorDataError) => void;
     },

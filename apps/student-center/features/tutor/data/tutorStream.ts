@@ -9,7 +9,7 @@ import { isTutorReplyBlock } from '../state';
 import { TutorDataError } from './dataSource';
 
 /**
- * Transport for `POST /api/v1/tutor/stream` (Server-Sent Events).
+ * Transport for `POST /api/v1/tutor/sessions/:id/stream` (Server-Sent Events).
  *
  * WHY SSE AND NOT A WEBSOCKET: the tutor turn is one request/one response —
  * the student asks, the server streams progress and ends. SSE over HTTP gives
@@ -21,7 +21,8 @@ import { TutorDataError } from './dataSource';
  * The credentials are only ever the httpOnly `qitu_session` cookie; no token
  * is read or stored in JavaScript.
  */
-export const TUTOR_STREAM_PATH = '/api/v1/tutor/stream';
+export const TUTOR_STREAM_PATH = (sessionId: string) =>
+  `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/stream`;
 
 export interface TutorStreamRequest {
   projectId?: string;
@@ -78,7 +79,12 @@ export function openTutorStream(
   void (async () => {
     let response: Response;
     try {
-      response = await fetch(TUTOR_STREAM_PATH, {
+      if (request.sessionId === undefined || request.sessionId.length === 0) {
+        handlers.onFailure(new TutorDataError('会话尚未建立，请稍后重试。', undefined, 'SESSION_NOT_FOUND'));
+        settle();
+        return;
+      }
+      response = await fetch(TUTOR_STREAM_PATH(request.sessionId), {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
         body: JSON.stringify(request),
@@ -173,7 +179,7 @@ function dispatchFrame(rawFrame: string, handlers: TutorStreamHandlers): void {
 /**
  * Map one `event:`/`data:` frame onto the shared realtime envelope.
  *
- * Both the short names emitted by `POST /tutor/stream` (`tool_call`, `delta`,
+ * Both the short names emitted by the SSE tutor stream (`tool_call`, `delta`,
  * `block`, `done`) and the fully-qualified `RealtimeServerType` names are
  * accepted, so an implementation that reuses the realtime vocabulary does not
  * need a second parser.

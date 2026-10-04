@@ -26,6 +26,8 @@ import { AccountModule } from './modules/account/account.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { WorksModule } from './modules/works/works.module';
+import { PlatformRegistryModule } from './modules/platform-registry/platform-registry.module';
+import { InitializationModule } from './modules/initialization/initialization.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { WorksModule } from './modules/works/works.module';
     TemplatesModule,
     KnowledgeModule,
     WorksModule,
+    PlatformRegistryModule,
+    InitializationModule,
   ],
 })
 export class AppModule {}

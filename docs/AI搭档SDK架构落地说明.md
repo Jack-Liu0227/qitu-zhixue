@@ -6,7 +6,7 @@
 
 ```
 student-center
-  -> /api/v1/tutor/stream
+  -> /api/v1/tutor/sessions/:id/stream
   -> TutorService
   -> TutorSdk.buildContext()
   -> PostgreSQL adapter
@@ -20,15 +20,21 @@ SDK 端口覆盖：伙伴初始化、模板和知识文档 upsert、记忆写入
 
 Agent 专属记忆现在由 `agent_memory_records` 作为权威表：学生与 Partner 的关系记忆和管理员评审后的 Partner 策略记忆分开；关系记忆默认 90 天有效，纠错/删除先在本地失效，再通过 `agent-memory.index` Outbox 任务清理外部索引。Mem0 仅作为可替换的索引端口，本轮不自动抽取完整对话，也不允许模型直接写成长档案。
 
-## 统一 SDK 接入
+学生端推荐项目保留灵感空间独立详情/确认流程；只有自由探索和项目辅导共用 AI搭档会话入口 `/student/tutor`。自由探索先通过 `/api/v1/explorations` 幂等创建 `free` 草稿，再由 Tutor session 以 `source: 'exploration'` 和 `explorationId` 关联；项目辅导使用 `source: 'project'` 和经授权的 `projectId`。Tutor 页面只保留左侧上下文进度、文字对话和 Composer。
 
 当前 SDK 分为两个安全边界：
 
 - 服务端 `QituSDKFactory` / `createQituSDK()`：绑定 `studentId + projectId`，组合
   `mastery.evaluate/checkThreshold`、`agent.run`、`project.canAdvance/advance`、
-  `profile.get`。所有写入仍由领域 owner、幂等、审计和 outbox 控制。
+  `profile.get`，返回显式类型 `QituSDK<Input, Result, Profile>`。所有写入仍由领域 owner、幂等、审计和 outbox 控制。
 - 浏览器 `createQituReadSDK()` / `createApiClient().mastery`：只提供 current、timeline、
-  snapshot、threshold、regressions 读取，不提供评估、写事件或项目阶段写入口。
+  snapshot、threshold、regressions 读取（返回类型 `QituReadSDK`），不提供评估、写事件或项目阶段写入口。
+
+两阶段学习计划引擎已在 `@qitu/ai-client/curriculum` 落地：`exploreCurriculumInterest` →
+`planCurriculum` / `generateCurriculumPlan`，加 `selectNextCurriculumStep`、
+`validateCurriculumPlan`、`confirmCurriculumPlan`。它是**纯函数 + 确定性 seed**（无网络、无 DB），
+生成期就保证「实践目标的 prereq 只指向更早课次的理论目标」，并保留 `toLegacyLearningPlanDraft`
+兼容层给仍在跑旧形状的 plan-api。
 
 Graphiti 不出现在浏览器 SDK 类型中。它通过 `mastery.assessed` outbox 进入 Worker，
 再由受控 bridge 投影；`QITU_GRAPHITI_ENABLED` 未开启时，核心学习流程继续使用

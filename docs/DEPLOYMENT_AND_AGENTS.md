@@ -2,14 +2,33 @@
 
 ## Pi 子 Agent 角色
 
-项目角色定义位于 `.pi/agents/`，通过 `pi-herdr-agents` 在 Herdr 中加载：
+项目角色定义位于 `.pi/agents/`（当前 30 个 `.md`），通过 `pi-herdr-agents` 在 Herdr 中加载。
+按用途分组：
 
-- `student`：只负责 `apps/student-center` 及直接依赖的共享契约。
-- `parent`：负责授权后的家长成长投影和反馈流程。
-- `teacher`：负责当前分配学生、问题处理和人工干预流程。
-- `admin`：负责账户、策略、模型路由、配置和审计界面。
-- `platform-backend`：负责 API、权限、契约、认证、Worker 和实时网关。
-- `release-reviewer`：只读审查同步、路由、安全和发布验证。
+- **平台/边界角色**：`architect`、`frontend`、`backend-database`、`sdk-manager`、
+  `knowledge-base`、`docs-manager`、`code-cleaner`、`contract-owner`、`platform-backend`、
+  `release-reviewer`。
+- **四端角色**：`student`、`parent`、`teacher`、`admin`。
+- **学生端切片**：`student-planner`、`student-feature`、`student-api`、`student-integrator`、
+  `student-qa`、`student-reviewer`。
+- **Tutor/curriculum 切片**：`tutor-pedagogy`、`tutor-context`、`tutor-escalation`、`tutor-api`、
+  `pedagogy-reviewer`、`curriculum-planner`、`mastery-engine`、`question-bank`、
+  `grading-remediation`、`plan-api`。
+
+开发期工作流由 `.pi/skills/`（`student-module`、`tutor-engine`）和
+`.pi/extensions/student-workflow.ts`（`/student-module`、`/tutor-engine`、`/learning-plan`
+斜杠命令）提供。它们是 Pi/Herdr **开发期**制品；Admin 控制面只读取安全摘要用于治理预览，
+不把它们当作应用运行时的可执行配置注册表。与 `tutor_partners` / 模型注册表的区别见
+`docs/PLATFORM_CONTROL_PLANE.md` §4.1。
+
+`.pi/settings.json` 固定开发期模型与思考档位（**不含任何密钥**）：
+
+- 父会话：`jaycue-gpt/gpt-6.1-sol`；`projectRootResolution = git-root`。
+- 子代理默认：`deepseek/deepseek-flash` + `thinking: off`；`modelScope` 严格限于
+  `jaycue-gpt/gpt-6.1-sol` 与 `deepseek/deepseek-flash`。
+- `agentOverrides`：`frontend`、`backend-database`、`knowledge-base`、`sdk-manager`、
+  `architect`、`code-cleaner`、`reviewer`、`oracle` 用 `gpt-6.1-sol` + `thinking: high`；
+  `docs-manager`、`worker`、`scout`、`delegate`、`researcher` 用 `deepseek-flash` + `off`。
 
 在项目根目录启动 Pi 后运行：
 

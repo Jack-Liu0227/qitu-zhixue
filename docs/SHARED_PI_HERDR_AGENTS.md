@@ -6,6 +6,12 @@ Tracked role definitions live in `.pi/agents/`. `tooling/install-shared-pi-agent
 
 Project-local `.pi/agents` definitions have higher discovery precedence than global definitions. Do not create role overrides in individual worktrees. Update the tracked source, run the installer in the local and remote environments, and reload Pi.
 
+These role files, `.pi/skills/**`, `.pi/settings.json` and `.pi/extensions/*` are **development-time**
+Pi/Herdr artifacts. They are intentionally preserved and are **not** part of the application runtime
+registry (no skill / MCP / built-in-tool registry is exposed by the API; see
+`docs/PLATFORM_CONTROL_PLANE.md` §4.1). Never treat a dev-time role or skill as an application
+`tutor_partners` / model-registry record.
+
 ## Local Windows setup
 
 From the repository root in Git Bash:

@@ -6,9 +6,8 @@ import type {
 } from './project';
 
 /**
- * The pedagogic move a student requests through the six capability entries on
- * the AI搭档 page. The client only sends intent; the server records the final
- * `pedagogic_move` value.
+ * The pedagogic move a student requests through the tutor interaction. The client
+ * only sends intent; the server records the final `pedagogic_move` value.
  */
 export type PedagogicMove =
   | 'hint'
@@ -135,14 +134,22 @@ export interface TutorProjectContext {
 }
 
 
-export type TutorSessionSource = 'project' | 'unbound';
+export type TutorSessionSource = 'project' | 'exploration';
+
+export interface TutorContextProgress {
+  kind: TutorSessionSource;
+  label: string;
+  status: 'active' | 'awaiting_confirmation' | 'confirmed';
+  projectId: string | null;
+}
 
 export type TutorFeedbackKind = 'helpful' | 'confusing' | 'stuck';
 
 /** POST /tutor/sessions */
 export interface CreateTutorSessionRequest {
-  /** Omit to create an unbound (no-project) session. */
+  /** Project sessions carry a projectId; exploration sessions omit it. */
   projectId?: string;
+  explorationId?: string;
   source: TutorSessionSource;
   idempotencyKey: string;
 }
@@ -150,8 +157,11 @@ export interface CreateTutorSessionRequest {
 export interface CreateTutorSessionResponse {
   sessionId: string;
   projectId: string | null;
+  explorationId: string | null;
+  source: TutorSessionSource;
   createdAt: string;
   lastSeq: number;
+  context: TutorContextProgress;
 }
 
 /** GET /tutor/sessions/:id */
@@ -177,6 +187,9 @@ export interface TutorTurn {
 export interface GetTutorSessionResponse {
   sessionId: string;
   projectId: string | null;
+  explorationId: string | null;
+  source: TutorSessionSource;
+  context: TutorContextProgress;
   turns: TutorTurn[];
   lastSeq: number;
 }
