@@ -83,6 +83,7 @@ stop_one() {
   local name="$1"
   local pid_file="$RUNTIME_DIR/pids/$name.pid"
   local pid
+  if [[ -f "$pid_file" ]]; then
     pid="$(cat "$pid_file")"
     if pid_matches_service "$name" "$pid"; then
       kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
