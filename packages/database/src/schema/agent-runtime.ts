@@ -8,6 +8,9 @@ export const agentConfigs = pgTable('agent_configs', {
   role: text('role'),
   roleDefinition: text('role_definition').notNull(),
   agentDefinition: text('agent_definition').notNull().default(''),
+  modelProviderId: text('model_provider_id'),
+  modelId: text('model_id'),
+  // Kept for compatibility with pre-direct-selection rows and old runtime callers.
   modelUsage: text('model_usage').notNull().default('tutor.chat'),
   capabilities: jsonb('capabilities').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   parentAgentId: text('parent_agent_id'),
@@ -19,6 +22,7 @@ export const agentConfigs = pgTable('agent_configs', {
 }, (table) => ({
   parentIdx: index('agent_configs_parent_idx').on(table.parentAgentId),
   enabledIdx: index('agent_configs_enabled_idx').on(table.enabled),
+  modelIdx: index('agent_configs_model_idx').on(table.modelProviderId, table.modelId),
 }));
 
 export const agentSkillBindings = pgTable('agent_skill_bindings', {

@@ -167,7 +167,7 @@ export class TutorService {
    * （单元测试、stall 接线测试）时缺省为内存实现，与旧行为完全一致。
    */
   constructor(
-    @Inject(DATA_MODE_TOKEN) dataMode: DataMode,
+    @Inject(DATA_MODE_TOKEN) private readonly dataMode: DataMode,
     @Inject(ModelGateway) gateway: TutorModelGateway,
     @Optional() private readonly platformData?: PlatformDataService,
     /**
@@ -510,7 +510,6 @@ export class TutorService {
       partner.displayName = effectiveRuntime.agent.label;
       partner.roleDefinition = effectiveRuntime.agent.roleDefinition;
       partner.enabled = effectiveRuntime.agent.enabled;
-      partner.modelUsage = effectiveRuntime.agent.modelUsage ?? partner.modelUsage;
       partner.promptVersion = effectiveRuntime.agent.promptVersion ?? partner.promptVersion;
       partner.capabilities = effectiveRuntime.agent.capabilities.filter((capability): capability is typeof partner.capabilities[number] =>
         capability === 'explore' || capability === 'plan' || capability === 'teach' || capability === 'review' || capability === 'reflect');
@@ -549,7 +548,9 @@ export class TutorService {
     }
 
     if (!contextPacket.partner.capabilities.includes('teach')) throw new ConflictException({ code: 'AGENT_CAPABILITY_DISABLED', message: 'AI 学习搭档当前不提供教学能力' });
-    const unifiedSDK = this.sdkFactory?.create(
+    const useUnifiedSDK = this.sdkFactory !== undefined
+      && (this.dataMode !== 'live' || effectiveRuntime === null || effectiveRuntime.agent.modelAvailable);
+    const unifiedSDK = useUnifiedSDK ? this.sdkFactory!.create(
       { id: request.actorId, role: 'student', email: '', displayName: '' },
       { studentId: request.actorId, projectId: record.projectId },
       async (providerInput: TutorTurnInput, purpose) => {
@@ -557,17 +558,26 @@ export class TutorService {
         for await (const event of this.provider.generateTurn({
           ...providerInput,
           modelUsage: purpose.usageId,
+          modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
+          modelId: effectiveRuntime?.agent.modelId ?? undefined,
         })) generated.push(event);
         return generated;
       },
       contextPacket.partner.modelUsage,
-    );
+      effectiveRuntime === null
+        ? undefined
+        : effectiveRuntime.agent.modelProviderId !== null && effectiveRuntime.agent.modelId !== null
+          ? { providerId: effectiveRuntime.agent.modelProviderId, modelId: effectiveRuntime.agent.modelId }
+      : null,
+    ) : undefined;
     if (unifiedSDK) {
       contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
     }
 
     const input: TutorTurnInput = {
-      modelUsage: undefined,
+      modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
+      modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
+      modelId: effectiveRuntime?.agent.modelId ?? undefined,
       idempotencyKey: request.idempotencyKey,
       projectId: record.projectId ?? '',
       sessionId: record.sessionId,

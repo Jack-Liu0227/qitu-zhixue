@@ -400,6 +400,20 @@ test('绑定后 resolveRuntimeTarget 返回解密凭证；结果只经 gateway �
   assert.equal(target.credential, SECRET);
 });
 
+test('Agent 直选模型不依赖旧用途绑定即可解析运行时目标', async () => {
+  const registry = memoryRegistry();
+  await registry.upsertProvider(
+    'openai',
+    { baseUrl: 'http://127.0.0.1:9', api: 'openai-responses', apiKey: SECRET },
+    'admin',
+  );
+
+  const target = registry.resolveRuntimeTargetByModel({ providerId: 'openai', modelId: 'gpt-4.1' });
+  assert.equal(target.providerId, 'openai');
+  assert.equal(target.modelId, 'gpt-4.1');
+  assert.equal(target.credential, SECRET);
+});
+
 test('usage fallback：tutor.live 未直接绑定，回落到 tutor.chat 的模型', async () => {
   const registry = memoryRegistry();
   await registry.upsertProvider(

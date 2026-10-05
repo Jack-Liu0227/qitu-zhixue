@@ -62,7 +62,7 @@ import { ModelSettingsModule } from './modules/settings/model-config.module';
     PlatformRegistryModule,
     InitializationModule,
     // 旧 `/admin/models/:slot` 兼容读取模块；新运行时事实源是
-    // ModelRegistryModule 的用途绑定与 Agent Runtime，不再从这里路由模型。
+    // ModelRegistryModule 保存供应商/模型；Agent Runtime 负责最终模型选择。
     ModelSettingsModule,
   ],
 })

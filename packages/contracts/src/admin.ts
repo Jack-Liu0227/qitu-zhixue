@@ -1,11 +1,12 @@
 import type { ProjectStage } from './project.js';
 import type { DataSource } from './platform.js';
+import type { ModelModality } from './models.js';
 
 /**
  * 平台管理后台契约。
  *
  * 首期必须有三个板块（用户明确要求）：
- *  1. **设置** —— 模型供应商 / 模型 / 用途绑定（复用 `models.ts`）
+ *  1. **设置** —— 模型供应商与 AI 运行时 Agent 配置（复用 `models.ts`）
  *  2. **学生端数据查看**
  *  3. **教师端数据查看**
  *
@@ -203,7 +204,6 @@ export interface AdminInterventionRow {
 
 export type AdminSettingsPanelId =
   | 'model_providers'
-  | 'model_usages'
   | 'model_slots'
   | 'platform'
   | 'security'
@@ -222,7 +222,7 @@ export interface AdminSettingsIndexData {
   panels: AdminSettingsPanel[];
   /** 已配置的供应商数与已绑定的用途数，供设置页概览展示。 */
   configuredProviderCount: number;
-  configuredUsageCount: number;
+  configuredAgentModelCount: number;
   dataSource: AdminDataSource;
 }
 
@@ -326,8 +326,14 @@ export interface AdminRuntimeAgent {
   parentAgentId: string | null;
   enabled: boolean;
   status: AdminRuntimeItemStatus;
-  /** 绑定的模型用途 id（如 `tutor.chat`）；未绑定时为 null。 */
-  modelUsage: string | null;
+  /** Directly selected provider for this Agent; null means no model is configured. */
+  modelProviderId: string | null;
+  /** Directly selected upstream model for this Agent; null means no model is configured. */
+  modelId: string | null;
+  /** Display-only model label returned by the server. */
+  modelLabel: string | null;
+  /** Whether the selected provider/model can currently be used. */
+  modelAvailable: boolean;
   promptVersion: string | null;
   /** 能力范围（如 explore / plan / teach / review / reflect）。 */
   capabilities: string[];
@@ -346,6 +352,9 @@ export interface AdminRuntimeAgentUpdateRequest {
   roleDefinition?: string;
   agentDefinition?: string;
   parentAgentId?: string | null;
+  modelProviderId?: string | null;
+  modelId?: string | null;
+  /** @deprecated compatibility only; model selection is Agent-scoped now. */
   modelUsage?: string;
   capabilities?: string[];
   skillIds?: string[];
@@ -423,12 +432,17 @@ export interface AdminInitializationStatus {
   checks: AdminInitializationCheck[];
 }
 
-/** Resolved model purposes available to an Agent role. */
-export interface AdminRuntimeModelUsageOption {
-  id: string;
-  label: string;
+/** Provider/model pairs available for direct selection in an Agent role. */
+export interface AdminRuntimeModelOption {
+  providerId: string;
+  providerLabel: string;
+  modelId: string;
+  modelLabel: string;
+  /** Compatibility display label for older admin clients. */
+  label?: string;
   available: boolean;
-  modelId: string | null;
+  input: ModelModality[];
+  output: ModelModality[];
 }
 export interface AdminRuntimeSnapshot {
   generatedAt: string;
@@ -438,7 +452,7 @@ export interface AdminRuntimeSnapshot {
   skills: AdminRuntimeSkill[];
   mcpServers: AdminRuntimeMcpServer[];
   agents: AdminRuntimeAgent[];
-  modelUsageOptions: AdminRuntimeModelUsageOption[];
+  modelOptions: AdminRuntimeModelOption[];
   builtInTools: AdminRuntimeBuiltinTool[];
   initialization: AdminInitializationStatus;
 }

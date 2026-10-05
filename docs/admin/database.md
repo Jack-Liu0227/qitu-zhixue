@@ -50,7 +50,7 @@ CREATE UNIQUE INDEX audit_logs_idempotency_key_idx ON audit_logs (idempotency_ke
 CREATE UNIQUE INDEX idempotency_keys_scope_key_idx ON idempotency_keys (scope, key);
 
 -- 同一供应商下模型 id 唯一：PRIMARY KEY (provider_id, model_id)
--- 删除供应商 / 模型不得静默破坏用途绑定：外键均 ON DELETE RESTRICT
+-- 删除供应商 / 模型不得静默破坏 Agent 直接选择：服务端引用检查 + 外键均 ON DELETE RESTRICT
 
 -- 同一学生同一目标只有一条掌握度状态
 CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
@@ -98,7 +98,7 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
 | Mentor Ops | **`mentor_reviews`**、**`knowledge_documents`**、**`knowledge_chunks`**、`alerts`、`interventions`、`feedback_tickets` |
 | Parent Experience | **`parent_growth_exports`**、`notifications`（读取投影） |
 | Admin & Compliance | **`audit_logs`**、**`outbox`**、**`template_verification_runs`**、**`template_verification_evidence`**、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
-| Model Registry | **`model_providers`**、**`model_models`**、**`model_usage_bindings`** |
+| Model Registry | **`model_providers`**、**`model_models`**、`model_usage_bindings`（旧用途兼容与迁移） |
 | Agent Memory | **`agent_memory_records`**（`(source_event_id, version)` 唯一，`index_status` 驱动外部索引重建） |
 
 ### 3.1 校域（school_id）与共享 / 私有边界

@@ -5,33 +5,30 @@ import Link from 'next/link';
 import type { AdminSettingsIndexData, AdminSettingsPanel } from '@qitu/contracts';
 import { Badge, Button, Field, InfoRow, SectionCard } from '@qitu/ui';
 import {
-  bindUsage,
   createManualModel,
   fetchProviders,
-  fetchUsages,
   newIdempotencyKey,
   refreshProvider,
   testModelConnection,
   upsertProvider,
 } from '../../../lib/api/modelRegistry';
 import { fetchSettings } from '../../../lib/api/settings';
+import { fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../lib/api/runtime';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../lib/components/DataSourceBadge';
 
 const QWEN_PROVIDER_ID = 'qwen-token-plan';
 const QWEN_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode';
 const QWEN_TEXT_MODEL = 'qwen3.8-flash';
-const QWEN_VOICE_MODEL = 'qwen-audio-3.0-realtime-plus';
 
 function QwenQuickSetup() {
   const apiKeyRef = useRef<HTMLInputElement>(null);
   const [baseUrl, setBaseUrl] = useState(QWEN_BASE_URL);
   const [textModel, setTextModel] = useState(QWEN_TEXT_MODEL);
-  const [voiceModel, setVoiceModel] = useState(QWEN_VOICE_MODEL);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [runtime, setRuntime] = useState({ text: false, live: false });
+  const [runtime, setRuntime] = useState({ configured: false, agentLabel: '' });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,8 +43,8 @@ function QwenQuickSetup() {
       setError('网关地址必须以 http:// 或 https:// 开头。');
       return;
     }
-    if (textModel.trim().length === 0 || voiceModel.trim().length === 0) {
-      setError('请填写文本模型和语音模型 ID。');
+    if (textModel.trim().length === 0) {
+      setError('请填写 Agent 使用的模型 ID。');
       return;
     }
 
@@ -73,12 +70,6 @@ function QwenQuickSetup() {
 
       const models = [
         { id: textModel.trim(), name: 'Qwen 文本搭档', input: ['text'], output: ['text'] },
-        {
-          id: voiceModel.trim(),
-          name: 'Qwen 实时语音搭档',
-          input: ['text', 'audio'],
-          output: ['text', 'audio'],
-        },
       ] as const;
       for (const model of models) {
         if (!provider.models.some((item) => item.id === model.id)) {
@@ -104,28 +95,24 @@ function QwenQuickSetup() {
         }
       }
 
-      await bindUsage('tutor.chat', { providerId: QWEN_PROVIDER_ID, modelId: textModel.trim() });
-      await bindUsage('tutor.live', { providerId: QWEN_PROVIDER_ID, modelId: voiceModel.trim() });
-
-      // 用途绑定是唯一运行时事实源；不再同步写入旧的 text/live 内存插槽。
-      const usages = await fetchUsages();
-      const bindingMap = new Map(usages.bindings.map((binding) => [binding.usageId, binding]));
-      setRuntime({
-        text: bindingMap.get('tutor.chat')?.resolved !== null && bindingMap.get('tutor.chat')?.resolved !== undefined,
-        live: bindingMap.get('tutor.live')?.resolved !== null && bindingMap.get('tutor.live')?.resolved !== undefined,
-      });
+      const snapshot = await fetchRuntimeSnapshot();
+      const tutor = snapshot.agents.find((agent) => agent.id === 'qitu-learning-partner')
+        ?? snapshot.agents.find((agent) => agent.role === 'tutor' || agent.capabilities.includes('teach'));
+      if (!tutor) throw new Error('没有可配置的 AI 导师 Agent，请先在 AI 运行时与初始化中创建 Agent。');
+      const updated = await updateRuntimeAgent(tutor.id, {
+        modelProviderId: QWEN_PROVIDER_ID,
+        modelId: textModel.trim(),
+      }, newIdempotencyKey());
+      setRuntime({ configured: updated.modelAvailable, agentLabel: updated.label });
       if (apiKeyRef.current) apiKeyRef.current.value = '';
 
       const tests = await Promise.all([
         testModelConnection(QWEN_PROVIDER_ID, textModel.trim()),
-        testModelConnection(QWEN_PROVIDER_ID, voiceModel.trim()),
       ]);
       const failed = tests.filter((result) => !result.ok);
-      setNotice(
-        failed.length === 0
-          ? 'Qwen 文本和语音模型已保存、绑定并通过连通性测试。'
-          : `配置已保存并绑定；${failed.length} 个模型连通性测试未通过，请检查 Key、额度或模型权限。`,
-      );
+      setNotice(failed.length === 0
+        ? 'Qwen 模型已保存并分配给 AI 导师 Agent，连通性测试通过。'
+        : `模型已分配给 AI 导师 Agent，但有 ${failed.length} 个连通性测试未通过，请检查 Key、额度或模型权限。`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '配置失败，请重试。');
     } finally {
@@ -136,7 +123,7 @@ function QwenQuickSetup() {
   return (
     <SectionCard title="Qwen Plan 快速配置">
       <p className="admin-settings-quick-description">
-        在这里一次配置 AI 搭档的文本和实时语音模型。API Key 只写入服务端加密存储，页面不会保存或显示明文。
+        在这里配置 AI 搭档 Agent 使用的模型。API Key 只写入服务端加密存储，页面不会保存或显示明文。
       </p>
       <form className="admin-settings-quick-form" onSubmit={submit}>
         <div className="admin-settings-quick-grid">
@@ -149,9 +136,6 @@ function QwenQuickSetup() {
           <Field label="文本模型 ID">
             <input value={textModel} onChange={(event) => setTextModel(event.target.value)} />
           </Field>
-          <Field label="语音模型 ID">
-            <input value={voiceModel} onChange={(event) => setVoiceModel(event.target.value)} />
-          </Field>
         </div>
         <div className="admin-form-actions admin-form-actions-start">
           <Button type="submit" disabled={saving}>
@@ -161,13 +145,10 @@ function QwenQuickSetup() {
         </div>
         {error ? <p className="admin-error-banner" role="alert">{error}</p> : null}
         {notice ? <p className="admin-settings-quick-success" role="status">{notice}</p> : null}
-        {runtime.text || runtime.live ? (
+        {runtime.agentLabel ? (
           <div className="admin-settings-quick-status">
-            <Badge tone={runtime.text ? 'completed' : 'danger'} size="sm">
-              文本 {runtime.text ? '已配置' : '未配置'}
-            </Badge>
-            <Badge tone={runtime.live ? 'completed' : 'danger'} size="sm">
-              语音 {runtime.live ? '已配置' : '未配置'}
+            <Badge tone={runtime.configured ? 'completed' : 'danger'} size="sm">
+              {runtime.agentLabel} {runtime.configured ? '模型已配置' : '模型不可用'}
             </Badge>
           </div>
         ) : null}
@@ -217,7 +198,7 @@ export default function AdminSettingsPage() {
 
       <div className="admin-settings-overview">
         <InfoRow label="已配置的模型供应商" value={`${data.configuredProviderCount} 个`} />
-        <InfoRow label="已绑定的模型用途" value={`${data.configuredUsageCount} 个`} />
+        <InfoRow label="已配置 Agent 模型" value={`${data.configuredAgentModelCount} 个`} />
       </div>
 
       <div className="admin-settings-panels">
@@ -228,7 +209,7 @@ export default function AdminSettingsPage() {
 
       <SectionCard title="AI 运行时治理">
         <p className="admin-settings-panel-description">
-          只读查看 Skills、MCP 服务器和初始化状态，并在「AI 导师 Agent」中编辑角色定义、Agent-local agents.md、能力、模型用途及 Skill/Tool/MCP binding；开发协作角色不会进入运行时。不展示密钥、凭据、完整提示词或未成年人原始对话。
+          查看 Skills、MCP 服务器和初始化状态，并在「AI 导师 Agent」中集中编辑角色定义、Agent-local AGENTS.md、模型、能力及 Skill/Tool/MCP 配置；开发协作角色不会进入运行时。不展示密钥、凭据、完整提示词或未成年人原始对话。
         </p>
         <div className="admin-form-actions admin-form-actions-start">
           <Link className="admin-link" href="/settings/knowledge">

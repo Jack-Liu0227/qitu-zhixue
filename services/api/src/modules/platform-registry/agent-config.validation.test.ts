@@ -14,6 +14,15 @@ test('Agent update parser rejects unknown fields and duplicate bindings', () => 
   });
 });
 
+test('Agent model provider and model must be submitted as a pair', () => {
+  assert.throws(() => parseAgentUpdate({ modelProviderId: 'openai' }));
+  assert.throws(() => parseAgentUpdate({ modelId: 'gpt-4.1' }));
+  assert.deepEqual(parseAgentUpdate({ modelProviderId: null, modelId: null }), {
+    modelProviderId: null,
+    modelId: null,
+  });
+});
+
 test('Agent parent graph rejects self and cyclic inheritance', () => {
   assert.throws(() => assertParentGraph('child', 'child', []));
   assert.throws(() => assertParentGraph('child', 'parent', [

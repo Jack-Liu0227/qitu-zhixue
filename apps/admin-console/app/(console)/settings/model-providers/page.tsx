@@ -553,7 +553,7 @@ function ManualModelForm({
           />
         </Field>
 
-        <Field label="启用状态" hint="停用后该模型会从启用列表移除，不再参与用途绑定。">
+        <Field label="启用状态" hint="停用后该模型会从启用列表移除，不再参与 Agent 运行时。">
           <label className="admin-checkbox-row">
             <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
             启用该模型
@@ -822,7 +822,7 @@ function ProviderCard({
                     {isManual ? (
                       confirmingModelId === model.id ? (
                         <>
-                          <span className="admin-confirm-text">确认删除？已绑定用途的模型无法删除。</span>
+                          <span className="admin-confirm-text">确认删除？仍被 Agent 运行时引用的模型无法删除。</span>
                           <Button
                             size="sm"
                             variant="danger"
@@ -911,7 +911,7 @@ function ProviderCard({
         </Button>
         {confirmingDelete ? (
           <>
-            <span className="admin-confirm-text">确认删除？引用它的用途会被解绑。</span>
+            <span className="admin-confirm-text">确认删除？引用它的 Agent 配置会被拒绝，需先清理配置。</span>
             <Button size="sm" variant="danger" onClick={handleDelete} loading={deleting}>
               确认删除
             </Button>

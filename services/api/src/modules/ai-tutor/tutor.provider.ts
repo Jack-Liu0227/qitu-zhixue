@@ -28,6 +28,8 @@ export interface TutorTurnInput {
   turnCount: number;
   /** Runtime-resolved model purpose; never supplied by the browser. */
   modelUsage?: string;
+  modelProviderId?: string;
+  modelId?: string;
   /** Server-owned replay key used by the SDK/runtime boundary. */
   idempotencyKey?: string;
   /** Server-assembled context from the Tutor SDK; never supplied by the client. */
@@ -41,7 +43,7 @@ export interface TutorTurnInput {
  * 不可用 / 本轮调用失败」，绝不会把这些情况静默降级成 Heuristic/demo 回复。
  */
 export type TutorModelErrorCode =
-  /** `tutor.chat` 未绑定，或供应商 / 模型 / 凭证不可用。 */
+  /** Agent 未配置模型，或供应商 / 模型 / 凭证不可用。 */
   | 'MODEL_NOT_CONFIGURED'
   /** 上游超时 / 网络错误 / 5xx 等可重试故障。 */
   | 'MODEL_UNAVAILABLE'

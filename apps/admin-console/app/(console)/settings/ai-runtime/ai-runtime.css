@@ -48,6 +48,30 @@
   border-radius: 4px;
 }
 
+.admin-agent-model-config {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 4px;
+  background: var(--qitu-page);
+}
+
+.admin-agent-model-config legend {
+  padding: 0 5px;
+  color: var(--qitu-heading);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.admin-agent-hint {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .admin-agent-capabilities legend {
   padding: 0 5px;
   color: var(--qitu-heading);

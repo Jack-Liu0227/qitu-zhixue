@@ -10,7 +10,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Database } from '@qitu/database';
-import { artifacts, auditLogs, projects } from '@qitu/database';
+import { agentConfigs, artifacts, auditLogs, projects } from '@qitu/database';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
 import type {
@@ -432,13 +432,6 @@ export class AdminController {
         status: 'available',
       },
       {
-        id: 'model_usages',
-        title: '模型用途绑定',
-        description: '为 AI搭档、灵感推荐、成长总结等用途指定模型',
-        route: '/settings/model-usages',
-        status: 'available',
-      },
-      {
         id: 'platform',
         title: '平台配置',
         description: '全局开关、功能门禁、安全策略',
@@ -463,16 +456,24 @@ export class AdminController {
 
     // 已配置的供应商数与用途数（从 ModelRegistryService 读取）
     const providers = this.modelRegistry.listProviders();
-    const usages = this.modelRegistry.getUsages();
-
     const configuredProviderCount = providers.providers.filter((p) => p.auth.configured).length;
-    const configuredUsageCount = usages.bindings.filter((b) => b.resolved !== null).length;
+    let configuredAgentModelCount = 0;
+    if (this.db) {
+      try {
+        const rows = await this.db
+          .select({ modelProviderId: agentConfigs.modelProviderId, modelId: agentConfigs.modelId })
+          .from(agentConfigs);
+        configuredAgentModelCount = rows.filter((row) => row.modelProviderId !== null && row.modelId !== null).length;
+      } catch {
+        configuredAgentModelCount = 0;
+      }
+    }
 
     return {
       data: {
         panels,
         configuredProviderCount,
-        configuredUsageCount,
+        configuredAgentModelCount,
         dataSource: this.dataSource(),
       },
     };

@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { AdminRuntimeAgentUpdateRequest } from '@qitu/contracts';
 
-const fields = new Set(['label', 'roleDefinition', 'agentDefinition', 'parentAgentId', 'modelUsage', 'capabilities', 'skillIds', 'skillBindings', 'toolIds', 'mcpBindings', 'enabled']);
+const fields = new Set(['label', 'roleDefinition', 'agentDefinition', 'parentAgentId', 'modelUsage', 'modelProviderId', 'modelId', 'capabilities', 'skillIds', 'skillBindings', 'toolIds', 'mcpBindings', 'enabled']);
 const capabilities = new Set(['explore', 'plan', 'teach', 'review', 'reflect']);
 
 function invalid(): never {
@@ -26,6 +26,17 @@ export function parseAgentUpdate(body: unknown): AdminRuntimeAgentUpdateRequest 
       out[key] = (input[key] as string).trim();
     }
   }
+  for (const key of ['modelProviderId', 'modelId'] as const) {
+    if (key in input) {
+      if (input[key] !== null && typeof input[key] !== 'string') invalid();
+      out[key] = input[key] === null ? null : (input[key] as string).trim();
+      if (out[key] !== null && !out[key]) invalid();
+    }
+  }
+  const providerSpecified = 'modelProviderId' in input;
+  const modelSpecified = 'modelId' in input;
+  if (providerSpecified !== modelSpecified) invalid();
+  if (providerSpecified && ((out.modelProviderId === null) !== (out.modelId === null))) invalid();
   if (out.label !== undefined && (out.label.length < 2 || out.label.length > 80)) invalid();
   if (out.roleDefinition !== undefined && (out.roleDefinition.length < 20 || out.roleDefinition.length > 4000)) invalid();
   if (out.agentDefinition !== undefined && out.agentDefinition.length > 12000) invalid();

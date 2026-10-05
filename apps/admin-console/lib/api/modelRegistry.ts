@@ -15,7 +15,8 @@ import type {
 import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
 
 /**
- * 模型接入（供应商 / 用途绑定）API 层。
+ * 模型接入（供应商 / 模型目录）API 层。Agent 直接模型选择由 runtime API 负责；
+ * 这里保留用途方法仅为旧客户端与迁移兼容。
  *
  * 写接口全部只对 `admin` 开放；明文密钥只在写请求里出现一次（见
  * `packages/contracts/src/models.ts` 与 `settings.ts` 的安全约定），这里同样

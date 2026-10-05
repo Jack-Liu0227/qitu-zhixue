@@ -83,6 +83,11 @@ export interface ModelRuntimeTarget {
   credential: string;
 }
 
+export interface ModelRuntimeModelSelection {
+  providerId: string;
+  modelId: string;
+}
+
 /**
  * `ModelGateway` 依赖的最小解析接口。
  *
@@ -98,6 +103,7 @@ export interface ModelRuntimeResolver {
    * 让业务方把功能显式标记为不可用，而不是静默回落到硬编码默认模型。
    */
   resolveRuntimeTarget(usageId: string): ModelRuntimeTarget;
+  resolveRuntimeTargetByModel?(selection: ModelRuntimeModelSelection): ModelRuntimeTarget;
 }
 
 /** 默认单次补全超时。比 `/models` 发现（12s）长，给生成留足时间。 */

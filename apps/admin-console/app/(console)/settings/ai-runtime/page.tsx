@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdminInitializationStatus,
   AdminRuntimeAgent,
-  AdminRuntimeModelUsageOption,
+  AdminRuntimeModelOption,
   AdminRuntimeBuiltinTool,
   AdminRuntimeMcpServer,
   AdminRuntimePolicy,
@@ -147,14 +147,14 @@ const AGENT_CAPABILITIES = ['explore', 'plan', 'teach', 'review', 'reflect'] as 
 
 function AgentEditorCard({
   agent,
-  modelUsageOptions,
+  modelOptions,
   skills,
   tools,
   mcpServers,
   onSaved,
 }: {
   agent: AdminRuntimeAgent;
-  modelUsageOptions: AdminRuntimeModelUsageOption[];
+  modelOptions: AdminRuntimeModelOption[];
   skills: AdminRuntimeSkill[];
   tools: AdminRuntimeBuiltinTool[];
   mcpServers: AdminRuntimeMcpServer[];
@@ -163,7 +163,8 @@ function AgentEditorCard({
   const [label, setLabel] = useState(agent.label);
   const [definition, setDefinition] = useState(agent.roleDefinition);
   const [agentDefinition, setAgentDefinition] = useState(agent.agentDefinition);
-  const [modelUsage, setModelUsage] = useState(agent.modelUsage ?? '');
+  const [modelProviderId, setModelProviderId] = useState(agent.modelProviderId ?? '');
+  const [modelId, setModelId] = useState(agent.modelId ?? '');
   const [capabilities, setCapabilities] = useState(agent.capabilities);
   const [skillIds, setSkillIds] = useState(agent.skillIds);
   const [toolIds, setToolIds] = useState(agent.toolIds);
@@ -173,13 +174,42 @@ function AgentEditorCard({
   const [error, setError] = useState('');
   const pending = useRef<{ signature: string; key: string } | null>(null);
 
+  useEffect(() => {
+    setLabel(agent.label);
+    setDefinition(agent.roleDefinition);
+    setAgentDefinition(agent.agentDefinition);
+    setModelProviderId(agent.modelProviderId ?? '');
+    setModelId(agent.modelId ?? '');
+    setCapabilities(agent.capabilities);
+    setSkillIds(agent.skillIds);
+    setToolIds(agent.toolIds);
+    setMcpServerIds(agent.mcpServerIds);
+    setEnabled(agent.enabled);
+    setError('');
+    pending.current = null;
+  }, [
+    agent.id,
+    agent.label,
+    agent.roleDefinition,
+    agent.agentDefinition,
+    agent.modelProviderId,
+    agent.modelId,
+    agent.capabilities,
+    agent.skillIds,
+    agent.toolIds,
+    agent.mcpServerIds,
+    agent.enabled,
+  ]);
+
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     const input = {
       label,
       roleDefinition: definition,
       agentDefinition,
-      modelUsage,
+      ...((modelProviderId || null) !== agent.modelProviderId || (modelId || null) !== agent.modelId
+        ? { modelProviderId: modelProviderId || null, modelId: modelId || null }
+        : {}),
       capabilities,
       skillIds,
       toolIds,
@@ -217,7 +247,7 @@ function AgentEditorCard({
           <textarea value={definition} onChange={(event) => setDefinition(event.target.value)} minLength={20} maxLength={4000} rows={6} required />
         </label>
         <label className="admin-agent-field">
-          <span>Agent 定义（agents.md）</span>
+          <span>Agent 定义（AGENTS.md）</span>
           <textarea value={agentDefinition} onChange={(event) => setAgentDefinition(event.target.value)} maxLength={12000} rows={8} />
         </label>
         <fieldset className="admin-agent-capabilities">
@@ -247,17 +277,36 @@ function AgentEditorCard({
             </label>
           ))}
         </fieldset>
-        <label className="admin-agent-field">
-          <span>模型用途</span>
-          <select value={modelUsage} onChange={(event) => setModelUsage(event.target.value)} required>
-            <option value="">选择已配置用途</option>
-            {modelUsageOptions.map((option) => (
-              <option key={option.id} value={option.id} disabled={!option.available && option.id !== agent.modelUsage}>
-                {option.label} · {option.available ? option.modelId : '未绑定模型'}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="admin-agent-model-config">
+          <legend>模型</legend>
+          <p className="admin-agent-hint">模型直接归属此 Agent；清空服务商即可移除模型配置。</p>
+          <label className="admin-agent-field">
+            <span>服务商</span>
+            <select value={modelProviderId} onChange={(event) => { setModelProviderId(event.target.value); setModelId(''); }}>
+              <option value="">未配置</option>
+              {modelProviderId && !modelOptions.some((option) => option.providerId === modelProviderId) ? (
+                <option value={modelProviderId}>{modelProviderId}（当前不可用）</option>
+              ) : null}
+              {[...new Map(modelOptions.map((option) => [option.providerId, option.providerLabel])).entries()].map(([id, label]) => (
+                <option key={id} value={id}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-agent-field">
+            <span>模型</span>
+            <select value={modelId} onChange={(event) => setModelId(event.target.value)} disabled={!modelProviderId}>
+              <option value="">选择服务端已登记的模型</option>
+              {modelId && !modelOptions.some((option) => option.providerId === modelProviderId && option.modelId === modelId) ? (
+                <option value={modelId}>{agent.modelLabel ?? modelId}（当前不可用）</option>
+              ) : null}
+              {modelOptions.filter((option) => option.providerId === modelProviderId).map((option) => (
+                <option key={option.modelId} value={option.modelId} disabled={!option.available}>
+                  {option.modelLabel} · {option.available ? option.modelId : '当前不可用'}
+                </option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
         <fieldset className="admin-agent-capabilities">
           <legend>能力范围</legend>
           {AGENT_CAPABILITIES.map((capability) => (
@@ -282,7 +331,7 @@ function AgentEditorCard({
         <RuntimeIdList label="已绑定 Tools" ids={toolIds} />
         <RuntimeIdList label="已绑定 MCP" ids={mcpServerIds} />
         {error ? <p role="alert" className="admin-runtime-error">{error}</p> : null}
-        <Button type="submit" loading={saving} disabled={saving || !label.trim() || definition.trim().length < 20 || !modelUsage}>
+        <Button type="submit" loading={saving} disabled={saving || !label.trim() || definition.trim().length < 20 || (modelProviderId !== '' && modelId === '')}>
           保存角色
         </Button>
       </form>
@@ -290,11 +339,15 @@ function AgentEditorCard({
   );
 }
 
-function CreateAgentForm({ onCreated }: { onCreated: (agent: AdminRuntimeAgent) => void }) {
+function CreateAgentForm({ onCreated, modelOptions }: {
+  onCreated: (agent: AdminRuntimeAgent) => void;
+  modelOptions: AdminRuntimeModelOption[];
+}) {
   const [id, setId] = useState('');
   const [label, setLabel] = useState('');
   const [definition, setDefinition] = useState('');
-  const [modelUsage, setModelUsage] = useState('tutor.chat');
+  const [modelProviderId, setModelProviderId] = useState('');
+  const [modelId, setModelId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -304,11 +357,11 @@ function CreateAgentForm({ onCreated }: { onCreated: (agent: AdminRuntimeAgent) 
     setError('');
     try {
       const created = await createRuntimeAgent(id.trim(), {
-        label: label.trim(), roleDefinition: definition.trim(), modelUsage,
+        label: label.trim(), roleDefinition: definition.trim(), modelProviderId: modelProviderId || null, modelId: modelId || null,
         capabilities: ['teach'], skillIds: [], toolIds: [], mcpBindings: [], enabled: true,
       }, crypto.randomUUID());
       onCreated(created);
-      setId(''); setLabel(''); setDefinition('');
+      setId(''); setLabel(''); setDefinition(''); setModelProviderId(''); setModelId('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '角色创建失败');
     } finally {
@@ -322,9 +375,29 @@ function CreateAgentForm({ onCreated }: { onCreated: (agent: AdminRuntimeAgent) 
         <label className="admin-agent-field"><span>Agent ID</span><input value={id} onChange={(event) => setId(event.target.value)} pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{1,79}" required /></label>
         <label className="admin-agent-field"><span>显示名称</span><input value={label} onChange={(event) => setLabel(event.target.value)} maxLength={80} required /></label>
         <label className="admin-agent-field"><span>角色定义</span><textarea value={definition} onChange={(event) => setDefinition(event.target.value)} minLength={20} maxLength={4000} rows={4} required /></label>
-        <label className="admin-agent-field"><span>模型用途</span><input value={modelUsage} onChange={(event) => setModelUsage(event.target.value)} required /></label>
+        <fieldset className="admin-agent-model-config">
+          <legend>模型（可选）</legend>
+          <label className="admin-agent-field">
+            <span>服务商</span>
+            <select value={modelProviderId} onChange={(event) => { setModelProviderId(event.target.value); setModelId(''); }}>
+              <option value="">未配置</option>
+              {[...new Map(modelOptions.map((option) => [option.providerId, option.providerLabel])).entries()].map(([id, providerLabel]) => (
+                <option key={id} value={id}>{providerLabel}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-agent-field">
+            <span>模型</span>
+            <select value={modelId} onChange={(event) => setModelId(event.target.value)} disabled={!modelProviderId}>
+              <option value="">选择模型</option>
+              {modelOptions.filter((option) => option.providerId === modelProviderId).map((option) => (
+                <option key={option.modelId} value={option.modelId} disabled={!option.available}>{option.modelLabel} · {option.modelId}</option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
         {error ? <p role="alert" className="admin-runtime-error">{error}</p> : null}
-        <Button type="submit" loading={saving} disabled={saving}>创建 Agent</Button>
+        <Button type="submit" loading={saving} disabled={saving || (modelProviderId !== '' && modelId === '')}>创建 Agent</Button>
       </form>
     </SectionCard>
   );
@@ -332,14 +405,14 @@ function CreateAgentForm({ onCreated }: { onCreated: (agent: AdminRuntimeAgent) 
 
 function AgentsPanel({
   agents,
-  modelUsageOptions,
+  modelOptions,
   skills,
   tools,
   mcpServers,
   onSaved,
 }: {
   agents: AdminRuntimeAgent[];
-  modelUsageOptions: AdminRuntimeModelUsageOption[];
+  modelOptions: AdminRuntimeModelOption[];
   skills: AdminRuntimeSkill[];
   tools: AdminRuntimeBuiltinTool[];
   mcpServers: AdminRuntimeMcpServer[];
@@ -348,12 +421,12 @@ function AgentsPanel({
   return (
     <div className="admin-runtime-cards">
       {agents.length === 0 ? <EmptyState title="暂无 AI 导师 Agent 注册" description="服务端没有返回已发布的 Agent。" /> : null}
-      <CreateAgentForm onCreated={onSaved} />
+      <CreateAgentForm onCreated={onSaved} modelOptions={modelOptions} />
       {agents.map((agent) => (
         <AgentEditorCard
           key={agent.id}
           agent={agent}
-          modelUsageOptions={modelUsageOptions}
+          modelOptions={modelOptions}
           skills={skills}
           tools={tools}
           mcpServers={mcpServers}
@@ -506,7 +579,7 @@ export default function AdminRuntimePage() {
           <RuntimeHealthBadge health={snapshot.overall} />
         </div>
         <p>
-          Skills 来自服务端加载的 `.agents/skills/*/SKILL.md`，全局教学规则从仓库根 `AGENTS.md` 加载且在此只读。可在「AI 导师 Agent」中编辑角色定义、能力和模型用途；开发协作角色不会进入运行时。
+          Skills 来自服务端加载的 `.agents/skills/*/SKILL.md`，全局教学规则从仓库根 `AGENTS.md` 加载且在此只读。AI 导师 Agent 在这里集中配置 AGENTS.md、模型、能力和 Skill/Tool/MCP；开发协作角色不会进入运行时。
         </p>
         <p className="admin-runtime-generated">数据生成于 {formatRuntimeTime(snapshot.generatedAt)}</p>
       </div>
@@ -533,7 +606,7 @@ export default function AdminRuntimePage() {
         {tab === 'agents' ? (
           <AgentsPanel
             agents={snapshot.agents}
-            modelUsageOptions={snapshot.modelUsageOptions}
+            modelOptions={snapshot.modelOptions}
             skills={snapshot.skills}
             tools={snapshot.builtInTools}
             mcpServers={snapshot.mcpServers}

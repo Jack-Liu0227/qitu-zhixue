@@ -15,6 +15,7 @@
     "@qitu/database": "workspace:*",
     "@qitu/infra": "workspace:*",
     "@qitu/ai-client": "workspace:*",
+    "@qitu/model-runtime": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",

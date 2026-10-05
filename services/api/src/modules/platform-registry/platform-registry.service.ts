@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import type { AdminRuntimeAgent, AdminRuntimeModelUsageOption, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
+import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
 import { desc, eq, sql } from 'drizzle-orm';
 import { agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
@@ -17,6 +17,17 @@ export interface EffectiveAgentRuntime {
   skills: readonly TutorRuntimeSkill[];
   tools: readonly TutorAgentToolDescriptor[];
   mcpServers: readonly TutorAgentMcpDescriptor[];
+}
+
+function assertModelSelectionPair(input: AdminRuntimeAgentUpdateRequest): void {
+  const providerSpecified = input.modelProviderId !== undefined;
+  const modelSpecified = input.modelId !== undefined;
+  if (providerSpecified !== modelSpecified) {
+    throw new BadRequestException('模型供应商和模型必须同时提交或同时省略');
+  }
+  if (providerSpecified && ((input.modelProviderId === null) !== (input.modelId === null))) {
+    throw new BadRequestException('模型供应商和模型必须同时选择或同时清空');
+  }
 }
 
 @Injectable()
@@ -64,12 +75,6 @@ export class PlatformRegistryService {
       agentIds: agents.filter((agent) => agent.skillIds.includes(skill.id)).map((agent) => agent.id),
     }));
 
-    const usages = this.models.getUsages();
-    const modelUsageOptions: AdminRuntimeModelUsageOption[] = usages.bindings.map((binding) => {
-      const usage = usages.usages.find((item) => item.id === binding.usageId);
-      return { id: binding.usageId, label: usage?.label ?? binding.usageId, available: binding.resolved !== null, modelId: binding.resolved?.modelId ?? null };
-    });
-
     return {
       generatedAt: new Date().toISOString(),
       overall: initialization.overall,
@@ -84,7 +89,7 @@ export class PlatformRegistryService {
       skills,
       mcpServers: await this.listMcpServers(),
       agents: agents.sort((a, b) => a.label.localeCompare(b.label)),
-      modelUsageOptions,
+      modelOptions: this.models.listAgentModelOptions?.() ?? [],
       builtInTools: builtinToolRegistry.list(),
       initialization,
     };
@@ -109,10 +114,33 @@ export class PlatformRegistryService {
 
   private async listAgentsFromDatabase(): Promise<AdminRuntimeAgent[]> {
     if (!this.db) return [];
+    const modelOptions = this.models.listAgentModelOptions?.() ?? [];
+    const legacyTutorModel = this.models.getUsages().bindings.find((binding) => binding.usageId === 'tutor.chat')?.resolved ?? null;
+    const toLegacyAgent = (partner: typeof tutorPartners.$inferSelect): AdminRuntimeAgent => ({
+      id: partner.id,
+      label: partner.displayName,
+      description: null,
+      role: 'tutor',
+      roleDefinition: partner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
+      agentDefinition: '',
+      parentAgentId: null,
+      enabled: partner.enabled,
+      status: partner.enabled ? 'enabled' as const : 'disabled' as const,
+      modelProviderId: legacyTutorModel?.providerId ?? null,
+      modelId: legacyTutorModel?.modelId ?? null,
+      modelLabel: modelOptions.find((option) => option.providerId === legacyTutorModel?.providerId && option.modelId === legacyTutorModel?.modelId)?.modelLabel ?? null,
+      modelAvailable: modelOptions.some((option) => option.providerId === legacyTutorModel?.providerId && option.modelId === legacyTutorModel?.modelId && option.available),
+      promptVersion: partner.promptVersion,
+      capabilities: Array.isArray(partner.capabilities) ? partner.capabilities : [],
+      skillIds: [],
+      toolIds: [],
+      mcpServerIds: [],
+      mcpToolIds: {},
+    });
     try {
       const configs = await this.db.select().from(agentConfigs);
       if (configs.length > 0) {
-        return Promise.all(configs.map(async (config) => {
+        const configAgents = await Promise.all(configs.map(async (config) => {
           const [skills, tools, mcp] = await Promise.all([
             this.db!.select().from(agentSkillBindings).where(eq(agentSkillBindings.agentId, config.id)),
             this.db!.select().from(agentToolBindings).where(eq(agentToolBindings.agentId, config.id)),
@@ -128,7 +156,10 @@ export class PlatformRegistryService {
             parentAgentId: config.parentAgentId,
             enabled: config.enabled,
             status: config.enabled ? 'enabled' as const : 'disabled' as const,
-            modelUsage: config.modelUsage,
+            modelProviderId: config.modelProviderId ?? null,
+            modelId: config.modelId ?? null,
+            modelLabel: modelOptions.find((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId)?.modelLabel ?? null,
+            modelAvailable: modelOptions.some((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId && option.available),
             promptVersion: `agent-config.v${config.configVersion}`,
             capabilities: Array.isArray(config.capabilities) ? config.capabilities : [],
             skillIds: skills.filter((binding) => binding.enabled).map((binding) => binding.skillId),
@@ -137,6 +168,18 @@ export class PlatformRegistryService {
             mcpToolIds: Object.fromEntries(mcp.filter((binding) => binding.enabled).map((binding) => [binding.mcpServerId, binding.allowedToolIds])),
           };
         }));
+        // A partially migrated database can contain only some Agent rows. Keep
+        // the remaining legacy partners visible until the migration catches up.
+        try {
+          const partners = await this.db.select().from(tutorPartners);
+          const configIds = new Set(configs.map((config) => config.id));
+          return [
+            ...configAgents,
+            ...partners.filter((partner) => !configIds.has(partner.id)).map(toLegacyAgent),
+          ];
+        } catch {
+          return configAgents;
+        }
       }
     } catch {
       // Pre-0015 databases use Tutor Partner as the compatibility projection.
@@ -144,24 +187,7 @@ export class PlatformRegistryService {
 
     try {
       const partners = await this.db.select().from(tutorPartners);
-      return partners.map((partner) => ({
-        id: partner.id,
-        label: partner.displayName,
-        description: null,
-        role: 'tutor',
-        roleDefinition: partner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
-        agentDefinition: '',
-        parentAgentId: null,
-        enabled: partner.enabled,
-        status: partner.enabled ? 'enabled' as const : 'disabled' as const,
-        modelUsage: partner.modelUsage,
-        promptVersion: partner.promptVersion,
-        capabilities: Array.isArray(partner.capabilities) ? partner.capabilities : [],
-        skillIds: [],
-        toolIds: [],
-        mcpServerIds: [],
-        mcpToolIds: {},
-      }));
+      return partners.map(toLegacyAgent);
     } catch {
       return [];
     }
@@ -203,6 +229,11 @@ export class PlatformRegistryService {
     if (input.capabilities && (input.capabilities.length === 0 || input.capabilities.length > 5 || input.capabilities.some((item) => !allowedCapabilities.has(item)))) {
       throw new BadRequestException('角色能力列表无效');
     }
+    assertModelSelectionPair(input);
+    if (input.modelProviderId !== undefined && input.modelProviderId !== null && input.modelId !== undefined && input.modelId !== null) {
+      const selected = (this.models.listAgentModelOptions?.() ?? []).some((option) => option.providerId === input.modelProviderId && option.modelId === input.modelId && option.available);
+      if (!selected) throw new BadRequestException('所选模型不存在或已下线');
+    }
     if (input.modelUsage !== undefined && !this.models.getUsages().usages.some((item) => item.id === input.modelUsage)) {
       throw new BadRequestException('未知的模型用途');
     }
@@ -234,14 +265,42 @@ export class PlatformRegistryService {
     }
 
     await withTransaction(this.db, async (tx) => {
-      const [existing] = await tx.select().from(agentConfigs).where(eq(agentConfigs.id, agentId)).limit(1);
-      if (!existing) throw new NotFoundException('Agent 配置不存在');
+      let [existing] = await tx.select().from(agentConfigs).where(eq(agentConfigs.id, agentId)).limit(1);
+      if (!existing) {
+        // 0015 already creates these rows for normal upgrades. This branch keeps
+        // a partially migrated database writable when the compatibility view
+        // still comes from tutor_partners.
+        const [legacyPartner] = await tx.select().from(tutorPartners).where(eq(tutorPartners.id, agentId)).limit(1);
+        if (!legacyPartner) throw new NotFoundException('Agent 配置不存在');
+        const legacyModel = this.models.getUsages().bindings.find((binding) => binding.usageId === legacyPartner.modelUsage)?.resolved ?? null;
+        const now = new Date();
+        await tx.insert(agentConfigs).values({
+          id: legacyPartner.id,
+          displayName: legacyPartner.displayName,
+          role: 'tutor',
+          roleDefinition: legacyPartner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
+          agentDefinition: '',
+          modelProviderId: legacyModel?.providerId ?? null,
+          modelId: legacyModel?.modelId ?? null,
+          modelUsage: legacyPartner.modelUsage,
+          capabilities: Array.isArray(legacyPartner.capabilities) ? legacyPartner.capabilities : [],
+          enabled: legacyPartner.enabled,
+          configVersion: 1,
+          updatedBy: actor.id,
+          createdAt: legacyPartner.createdAt,
+          updatedAt: now,
+        });
+        [existing] = await tx.select().from(agentConfigs).where(eq(agentConfigs.id, agentId)).limit(1);
+      }
+      if (!existing) throw new ServiceUnavailableException('Agent 配置迁移后未返回记录');
       const now = new Date();
       await tx.update(agentConfigs).set({
         ...(label !== undefined ? { displayName: label } : {}),
         ...(definition !== undefined ? { roleDefinition: definition } : {}),
         ...(agentDefinition !== undefined ? { agentDefinition } : {}),
         ...(input.modelUsage !== undefined ? { modelUsage: input.modelUsage } : {}),
+        ...(input.modelProviderId !== undefined ? { modelProviderId: input.modelProviderId } : {}),
+        ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
         ...(input.capabilities !== undefined ? { capabilities: [...new Set(input.capabilities)] } : {}),
         ...(input.parentAgentId !== undefined ? { parentAgentId: input.parentAgentId } : {}),
         ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
@@ -294,6 +353,10 @@ export class PlatformRegistryService {
     const agents = await this.listAgentsFromDatabase();
     assertParentGraph(agentId, parentId, agents);
     const capabilities = input.capabilities ?? ['teach'];
+    assertModelSelectionPair(input);
+    if (input.modelProviderId && input.modelId && !(this.models.listAgentModelOptions?.() ?? []).some((option) => option.providerId === input.modelProviderId && option.modelId === input.modelId && option.available)) {
+      throw new BadRequestException('所选模型不存在或已下线');
+    }
     const now = new Date();
     await withTransaction(this.db, async (tx) => {
       await tx.insert(agentConfigs).values({
@@ -302,6 +365,8 @@ export class PlatformRegistryService {
         role: 'custom',
         roleDefinition: input.roleDefinition!,
         agentDefinition: input.agentDefinition ?? '',
+        modelProviderId: input.modelProviderId ?? null,
+        modelId: input.modelId ?? null,
         modelUsage: input.modelUsage ?? 'tutor.chat',
         capabilities: [...new Set(capabilities)],
         parentAgentId: parentId,
