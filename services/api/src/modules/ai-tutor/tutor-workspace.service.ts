@@ -177,8 +177,7 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
       capabilities: capabilities.length > 0 ? capabilities : QITU_LEARNING_PARTNER.capabilities,
     };
   }
-
-
+  async ensurePartner(partner: TutorPartnerProfile): Promise<void> {
     if (this.db === null) return;
     await this.db.insert(tutorPartners).values({
       id: partner.id,
