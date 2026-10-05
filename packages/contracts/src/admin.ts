@@ -94,6 +94,7 @@ export interface AdminStudentDetail {
   sessionsThisWeek: number;
   minutesThisWeek: number;
   dataSource: AdminDataSource;
+}
 
 export interface AdminStudentProject {
   projectId: string;
