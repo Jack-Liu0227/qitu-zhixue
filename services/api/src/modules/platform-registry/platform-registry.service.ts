@@ -249,7 +249,8 @@ export class PlatformRegistryService {
       }).where(eq(agentConfigs.id, agentId));
       if (skillIds !== undefined) {
         await tx.delete(agentSkillBindings).where(eq(agentSkillBindings.agentId, agentId));
-        const bindingMap = new Map((input.skillBindings ?? skillIds.map((skillId) => ({ skillId }))).map((binding) => [binding.skillId, binding]));
+        const requestedSkillBindings: Array<{ skillId: string; inheritToChildren?: boolean }> = input.skillBindings ?? skillIds.map((skillId) => ({ skillId }));
+        const bindingMap = new Map(requestedSkillBindings.map((binding) => [binding.skillId, binding]));
         if (bindingMap.size > 0) await tx.insert(agentSkillBindings).values([...bindingMap.values()].map((binding) => ({
           agentId, skillId: binding.skillId, enabled: true, inheritToChildren: binding.inheritToChildren === true, updatedAt: now,
         })));
