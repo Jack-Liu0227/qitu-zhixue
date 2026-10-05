@@ -16,7 +16,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "generate": "node ../../tooling/manual-migrations-disabled.mjs",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {

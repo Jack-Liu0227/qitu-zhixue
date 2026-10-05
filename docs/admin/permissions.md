@@ -69,7 +69,7 @@ student ← mentor_assignments(status=active) → teacher   学生—班主任�
 | `GET /admin/ai-runtime`、`GET /admin/initialization` | admin | `requireRole(..., 'admin')` | 已实现（只读投影；不返回密钥 / 凭证 / 原始对话） |
 | `POST /admin/initialization/{knowledge\|template\|tutor}/execute` | admin | `requireRole(..., 'admin')` + `Idempotency-Key` | 已实现（同事务写 `audit_logs`） |
 | `POST /admin/initialization/database/execute` | admin | `requireRole(..., 'admin')` | 恒 409 `INITIALIZATION_OPERATOR_REQUIRED` |
-| `GET /admin/audit-logs` | admin | — | **未实现** |
+| `GET /admin/audit-logs` | admin | `requireRole` + PostgreSQL audit filters | 已实现（分页、actor/target/time 过滤） |
 
 ## 5. 管理员与班主任边界
 
@@ -91,8 +91,7 @@ student ← mentor_assignments(status=active) → teacher   学生—班主任�
 - 登录 / 退出；家长绑定 / 解绑；班主任分配 / 转派；原始对话查看；
   作品导出 / 删除；AI 策略修改；模型配置修改；管理员越权授权。
 
-当前状态：`audit_logs` 表已建（含 `idempotency_key` 唯一索引），
-模型注册表写操作与控制面初始化已接入审计；其余业务写入**尚未接入**。
+当前状态：`audit_logs` 表已建（含 `idempotency_key` 唯一索引），模型注册表写操作、控制面初始化和 live 管理端敏感读已接入审计；demo 无数据库时明确不伪造持久审计。
 
 ## 8. 幂等
 
@@ -108,7 +107,8 @@ student ← mentor_assignments(status=active) → teacher   学生—班主任�
 - [ ] 家长访问未授权孩子返回 403。
 - [ ] 给已有当前班主任的学生再分配返回 409（`MENTOR_ALREADY_ASSIGNED`），换班主任只能走 transfer。
 - [ ] 学生不能修改自己的成长指标或项目状态。
-- [ ] 管理员配置修改可追溯（审计）。
+- [x] 管理员敏感读写入审计；`GET /admin/audit-logs` 可查询。
+
 - [ ] 写操作缺 `Idempotency-Key` 返回 422。
 - [x] 管理员默认落地页为聚合 / 治理视图，不进入个别学生日常处理。
 - [ ] 管理员个别学生访问要求目的 / 原因、审计与限时；敏感读取需二次确认。
@@ -116,7 +116,7 @@ student ← mentor_assignments(status=active) → teacher   学生—班主任�
 
 ## 10. 未决事项
 
-- [ ] 审计写入与查询接口尚未实现。
+- [x] 审计写入与查询接口已实现（敏感读查询在 live 模式要求数据库可用）。
 - [ ] `support` 角色的具体授权范围未定。
 - [ ] MFA、会话轮换与撤销（当前会话在进程内，过期即失效）尚未实现。
 - [ ] AI 搭档会话的**对象级归属校验**（当前只校验 `student` 角色）。

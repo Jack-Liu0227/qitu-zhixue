@@ -34,7 +34,15 @@
 
 实现入口：`apps/admin-console/app/(console)`、`services/api/src/modules/{admin,platform-registry,platform-data,initialization,model-registry,settings,templates,knowledge}`。
 
-## 3. 管理员与班主任的边界（硬规则）
+## 2.1 数据来源与指标边界
+
+管理端响应都带 `dataSource`：`live` 表示来自 PostgreSQL 的身份、项目和作品投影，`demo` 只表示显式演示模式的 `PlatformDataService` 种子数据。
+
+当前 `live` 已接通：学生名册、班主任关系、正式项目数量、当前项目、项目阶段/进度、已完成项目数量、已发布作品数量。项目活动时间暂使用项目创建时间作为保守投影，不代表完整学习会话活跃度。
+
+以下指标依赖尚未建成的干预/活动聚合表，在 `live` 中不再读取 demo 值：卡顿学生、待处理介入、教师近期开工时间、学生本周学习会话与分钟数。对应页面应显示“计划中/暂无数据”，不能把 `0` 解读为平台没有事件。审计与个别学生访问仍按本文件第 3 节的失败关闭规则执行。
+
+
 
 平台治理与班级日常是两类工作，不能因为两者都能读到学生数据就混为一谈。
 

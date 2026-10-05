@@ -1,11 +1,18 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Headers,
+  Inject,
   NotFoundException,
   Param,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import type { Database } from '@qitu/database';
+import { artifacts, auditLogs, projects } from '@qitu/database';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { DATABASE_TOKEN } from '../../database';
 import type {
   AdminOverviewPageData,
   AdminStudentListPageData,
@@ -29,6 +36,7 @@ import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { DirectoryService } from '../directory/directory.service';
+import { AuditWriter } from '../../common/audit/audit.service';
 
 /**
  * 平台管理后台接口。
@@ -57,6 +65,8 @@ export class AdminController {
     private readonly modelRegistry: ModelRegistryService,
     private readonly directory: DirectoryService,
     private readonly accessPolicy: AccessPolicy,
+    private readonly audit: AuditWriter,
+    @Inject(DATABASE_TOKEN) private readonly db: Database | null,
   ) {}
 
   /* ==================== 概览 ==================== */
@@ -65,10 +75,10 @@ export class AdminController {
   async getOverview(
     @Headers('cookie') cookieHeader: string | undefined,
   ): Promise<{ data: AdminOverviewPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
-
-    const stats = this.platformData.getOverviewStats();
-    const allInterventions = this.platformData.getAllInterventions();
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.overview', 'admin-overview');
+    const stats = this.db === null ? this.platformData.getOverviewStats() : await this.getLiveOverviewStats();
+    const allInterventions = this.db === null ? this.platformData.getAllInterventions() : [];
 
     // 最近的介入请求。展示名从目录解析，否则这里会显示演示数据里的「小满」，
     // 而其他页面显示「演示学生三」——同一份数据两个名字。
@@ -84,7 +94,7 @@ export class AdminController {
         stats,
         recentInterventions,
         generatedAt: new Date().toISOString(),
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -101,8 +111,8 @@ export class AdminController {
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
   ): Promise<{ data: AdminStudentListPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
-
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.students', null);
     const validFilter = this.parseStudentFilter(filter);
     const limit = this.parseLimit(limitStr, 20, 100);
 
@@ -196,7 +206,7 @@ export class AdminController {
         totals,
         classOptions,
         mentors,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -207,6 +217,8 @@ export class AdminController {
     @Param('studentId') studentId: string,
   ): Promise<{ data: AdminStudentDetail }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+
+    await this.auditRead(admin.id, 'admin.read.student.detail', studentId);
 
     // ADR 0008 决定 6 / 产品文档 7.0 / docs/admin/permissions.md §5：管理员读取个别学生
     // 数据是「显式动作」，需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。
@@ -239,25 +251,26 @@ export class AdminController {
       summary: entry.summaryStudent, // 管理员看学生措辞
     }));
 
-    // 介入请求
-    const interventions = await Promise.all(
-      this.platformData.getInterventionsByStudent(studentId).map((i) => this.toInterventionRow(i)),
-    );
+    // 介入请求：live 尚无规范化介入表，不借用 demo 数据。
+    const interventions = this.db === null
+      ? await Promise.all(this.platformData.getInterventionsByStudent(studentId).map((i) => this.toInterventionRow(i)))
+      : [];
 
-    // 项目列表
-    const projects: AdminStudentProject[] = this.platformData
-      .getProjectsByStudent(studentId)
-      .map((p) => ({
-        projectId: p.projectId,
-        title: p.title,
-        stage: p.stage,
-        progressPercent: p.progressPercent,
-        updatedAt: p.updatedAt,
-      }));
+    // 项目列表：live 从 PostgreSQL 读取，demo 才使用演示投影。
+    const liveStudentProjects = this.db === null ? [] : (await this.getProjectsByStudent()).get(studentId) ?? [];
+    const projects: AdminStudentProject[] = this.db === null
+      ? this.platformData.getProjectsByStudent(studentId).map((p) => ({
+          projectId: p.projectId, title: p.title, stage: p.stage,
+          progressPercent: p.progressPercent, updatedAt: p.updatedAt,
+        }))
+      : liveStudentProjects.map((p) => ({
+          projectId: p.id, title: p.title, stage: p.status as AdminStudentProject['stage'],
+          progressPercent: p.progressPercent, updatedAt: p.createdAt.toISOString(),
+        }));
 
-    // 本周会话与时长（演示数据）
-    const sessionsThisWeek = 4;
-    const minutesThisWeek = 200;
+    // 会话时长依赖尚未建成的 activity 聚合表；live 不借用 demo 数字。
+    const sessionsThisWeek = this.db === null ? 4 : 0;
+    const minutesThisWeek = this.db === null ? 200 : 0;
 
     return {
       data: {
@@ -284,20 +297,20 @@ export class AdminController {
         projects,
         sessionsThisWeek,
         minutesThisWeek,
+        dataSource: this.dataSource(),
       },
     };
   }
 
   /* ==================== 教师数据 ==================== */
-
-  @Get('teachers')
   async getTeachers(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('search') search?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
   ): Promise<{ data: AdminTeacherListPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.teachers', null);
 
     const limit = this.parseLimit(limitStr, 20, 100);
 
@@ -352,7 +365,7 @@ export class AdminController {
         nextCursor: hasNext && page.length > 0 ? page[page.length - 1]!.teacherId : null,
         hasNext,
         totals,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -362,7 +375,8 @@ export class AdminController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('teacherId') teacherId: string,
   ): Promise<{ data: AdminTeacherDetail }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.teacher.detail', teacherId);
 
     const teacher = (await this.listUnifiedTeachers()).find((t) => t.teacherId === teacherId);
     if (teacher === undefined) {
@@ -374,9 +388,9 @@ export class AdminController {
     const students = (await this.listUnifiedStudents()).filter((s) => s.mentorId === teacherId);
 
     // 该教师的介入请求
-    const interventions = await Promise.all(
-      this.platformData.getInterventionsByTeacher(teacherId).map((i) => this.toInterventionRow(i)),
-    );
+    const interventions = this.db === null
+      ? await Promise.all(this.platformData.getInterventionsByTeacher(teacherId).map((i) => this.toInterventionRow(i)))
+      : [];
 
     const stuckStudentCount = teacher.stuckStudentCount;
 
@@ -395,15 +409,15 @@ export class AdminController {
         },
         students,
         interventions,
+        dataSource: this.dataSource(),
       },
     };
   }
 
   /* ==================== 设置 ==================== */
-
-  @Get('settings')
-  getSettings(@Headers('cookie') cookieHeader: string | undefined): { data: AdminSettingsIndexData } {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+  async getSettings(@Headers('cookie') cookieHeader: string | undefined): Promise<{ data: AdminSettingsIndexData }> {
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.settings', 'admin-settings');
 
     // 设置面板（只列出真实可用的）。
     // `route` 是相对 basePath（`/admin`）的子路由：前端用 `next/link` 跳转时
@@ -458,12 +472,47 @@ export class AdminController {
         panels,
         configuredProviderCount,
         configuredUsageCount,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
 
-  /* ==================== 内部工具 ==================== */
+  @Get('audit-logs')
+  async getAuditLogs(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('actorId') actorId?: string,
+    @Query('targetType') targetType?: string,
+    @Query('targetId') targetId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limitStr?: string,
+  ) {
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    if (this.db === null) throw new ServiceUnavailableException('审计查询不可用：未配置 DATABASE_URL');
+    const limit = this.parseLimit(limitStr, 50, 200);
+    const conditions = [
+      actorId ? eq(auditLogs.actorId, actorId) : undefined,
+      targetType ? eq(auditLogs.targetType, targetType) : undefined,
+      targetId ? eq(auditLogs.targetId, targetId) : undefined,
+      from ? gte(auditLogs.at, parseDate(from, 'from')) : undefined,
+      to ? lte(auditLogs.at, parseDate(to, 'to')) : undefined,
+      cursor ? lte(auditLogs.at, parseDate(cursor, 'cursor')) : undefined,
+    ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
+    const rows = await this.db.select().from(auditLogs).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(auditLogs.at)).limit(limit + 1);
+    await this.auditRead(admin.id, 'admin.read.audit_logs', null);
+    const page = rows.slice(0, limit);
+    return {
+      data: {
+        items: page.map((row) => ({ id: row.id, actorId: row.actorId, action: row.action, targetType: row.targetType, targetId: row.targetId, at: row.at.toISOString(), detail: row.detail })),
+        nextCursor: rows.length > limit && page.length > 0 ? page[page.length - 1]!.at.toISOString() : null,
+        hasNext: rows.length > limit,
+        dataSource: 'live' as const,
+      },
+    };
+  }
+
+
 
   private async toInterventionRow(intervention: {
     id: string;
@@ -533,10 +582,10 @@ export class AdminController {
           email: u.email,
           studentCount: students.length,
           classLabels: demo?.classLabels ?? [],
-          pendingInterventionCount: demo?.pendingInterventionCount ?? 0,
-          resolvedThisWeek: demo?.resolvedThisWeek ?? 0,
-          stuckStudentCount,
-          lastActivityAt: demo?.lastActivityAt ?? null,
+          pendingInterventionCount: this.db === null ? demo?.pendingInterventionCount ?? 0 : 0,
+          resolvedThisWeek: this.db === null ? demo?.resolvedThisWeek ?? 0 : 0,
+          stuckStudentCount: this.db === null ? stuckStudentCount : 0,
+          lastActivityAt: this.db === null ? demo?.lastActivityAt ?? null : null,
         };
       }),
     );
@@ -547,10 +596,16 @@ export class AdminController {
     const demoContent = new Map(this.platformData.getAllStudents().map((s) => [s.studentId, s]));
     const activeAssignments = await this.directory.listMentorAssignments('active');
     const mentorByStudent = new Map(activeAssignments.map((a) => [a.student.userId, a.mentor]));
+    const liveProjects = this.db === null ? new Map<string, typeof projects.$inferSelect[]>() : await this.getProjectsByStudent();
 
     return directoryStudents.map((u) => {
       const demo = demoContent.get(u.userId);
       const mentor = mentorByStudent.get(u.userId) ?? null;
+      const rows = liveProjects.get(u.userId) ?? [];
+      const active = rows.filter((p) => p.status !== 'completed' && p.status !== 'published');
+      const completed = rows.filter((p) => p.status === 'completed' || p.status === 'published');
+      const current = [...active].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+      const latestAt = rows.length === 0 ? null : new Date(Math.max(...rows.map((p) => p.createdAt.getTime()))).toISOString();
       return {
         studentId: u.userId,
         displayName: u.displayName,
@@ -559,18 +614,52 @@ export class AdminController {
         classLabel: demo?.classLabel ?? null,
         mentorId: mentor?.userId ?? null,
         mentorName: mentor?.displayName ?? null,
-        activeProjectCount: demo?.activeProjectCount ?? 0,
-        projectsCompleted: demo?.projectsCompleted ?? 0,
-        currentProjectId: demo?.currentProjectId ?? null,
-        currentProjectTitle: demo?.currentProjectTitle ?? null,
-        currentStage: demo?.currentStage ?? null,
-        progressPercent: demo?.progressPercent ?? 0,
-        lastActivityAt: demo?.lastActivityAt ?? null,
-        stuck: demo?.stuck ?? false,
-        attentionCount: demo?.attentionCount ?? 0,
+        activeProjectCount: this.db === null ? demo?.activeProjectCount ?? 0 : active.length,
+        projectsCompleted: this.db === null ? demo?.projectsCompleted ?? 0 : completed.length,
+        currentProjectId: this.db === null ? demo?.currentProjectId ?? null : current?.id ?? null,
+        currentProjectTitle: this.db === null ? demo?.currentProjectTitle ?? null : current?.title ?? null,
+        currentStage: this.db === null ? demo?.currentStage ?? null : (current?.status as AdminStudentRow['currentStage'] ?? null),
+        progressPercent: this.db === null ? demo?.progressPercent ?? 0 : current?.progressPercent ?? 0,
+        lastActivityAt: this.db === null ? demo?.lastActivityAt ?? null : latestAt,
+        // interventions and inactivity signals have no normalized live table yet;
+        // never import demo values into a live response.
+        stuck: this.db === null ? demo?.stuck ?? false : false,
+        attentionCount: this.db === null ? demo?.attentionCount ?? 0 : 0,
       };
     });
   }
+
+  private async getProjectsByStudent(): Promise<Map<string, typeof projects.$inferSelect[]>> {
+    if (this.db === null) return new Map();
+    const rows = await this.db.select().from(projects);
+    const grouped = new Map<string, typeof projects.$inferSelect[]>();
+    for (const row of rows) grouped.set(row.studentUserId, [...(grouped.get(row.studentUserId) ?? []), row]);
+    return grouped;
+  }
+
+  private async getLiveOverviewStats() {
+    const students = await this.listUnifiedStudents();
+    const teachers = await this.directory.listUsersByRole('teacher');
+    const [published] = this.db === null ? [{ count: 0 }] : await this.db.select({ count: sql<number>`count(*)` }).from(artifacts).where(eq(artifacts.status, 'published'));
+    return {
+      studentCount: students.length,
+      activeProjectCount: students.reduce((total, student) => total + student.activeProjectCount, 0),
+      stuckStudentCount: 0,
+      teacherCount: teachers.length,
+      pendingInterventionCount: 0,
+      publishedArtifactCount: Number(published?.count ?? 0),
+    };
+  }
+
+  private async auditRead(actorId: string, action: string, targetId: string | null): Promise<void> {
+    if (this.db === null) return;
+    await this.audit.write({ actorId, actorRole: 'admin', action, targetType: targetId ? 'admin_resource' : 'admin_collection', targetId, detail: { purpose: 'governance_read' } });
+  }
+
+  private dataSource(): 'demo' | 'live' {
+    return this.db === null ? 'demo' : 'live';
+  }
+
 
   private parseStudentFilter(filter: string | undefined): AdminStudentFilter {
     if (filter === 'active' || filter === 'stuck' || filter === 'no_project') return filter;
@@ -582,4 +671,10 @@ export class AdminController {
     if (!Number.isFinite(limit) || limit <= 0) return defaultLimit;
     return Math.min(Math.floor(limit), maxLimit);
   }
+}
+
+function parseDate(value: string, field: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new BadRequestException(`INVALID_${field.toUpperCase()}_DATE`);
+  return date;
 }

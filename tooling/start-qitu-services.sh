@@ -36,6 +36,7 @@ service_filter() {
     parent) echo '@qitu/parent-companion' ;;
     teacher) echo '@qitu/teacher-workspace' ;;
     admin) echo '@qitu/admin-console' ;;
+    workers) echo '@qitu/workers' ;;
   esac
 }
 
@@ -66,17 +67,23 @@ start_one() {
   local command
   if [[ "$mode" == "next" ]]; then
     command="cd $root_q && exec env HOST=$QITU_BIND_HOST PORT=$port pnpm --filter $filter exec next dev --hostname $QITU_BIND_HOST --port $port"
+  elif [[ "$mode" == "worker" ]]; then
+    command="cd $root_q && exec pnpm --filter $filter dev"
   else
     command="cd $root_q && exec env HOST=$QITU_BIND_HOST PORT=$port pnpm --filter $filter dev"
   fi
 
-  if [[ "$name" == api && "$(id -u)" == 0 && "$(id -un 2>/dev/null)" != postgres ]]; then
+  if [[ ("$name" == api || "$name" == workers) && "$(id -u)" == 0 && "$(id -un 2>/dev/null)" != postgres ]]; then
     runuser -u postgres -- setsid bash -c "$command" >"$log_file" 2>&1 &
   else
     setsid bash -c "$command" >"$log_file" 2>&1 &
   fi
   echo $! >"$pid_file"
-  echo "started $name on 127.0.0.1:$port (pid $!)"
+  if [[ -n "$port" ]]; then
+    echo "started $name on 127.0.0.1:$port (pid $!)"
+  else
+    echo "started $name (pid $!)"
+  fi
 }
 
 stop_one() {
@@ -124,6 +131,14 @@ probe_path_for() {
 }
 
 status_one() {
+  local name="$1"
+  if [[ "$name" == workers ]]; then
+    local pid_file="$RUNTIME_DIR/pids/$name.pid"
+    local pid=""
+    if [[ -f "$pid_file" ]] && pid_matches_service "$name" "$(cat "$pid_file")"; then pid="$(cat "$pid_file")"; fi
+    if [[ -n "$pid" ]]; then echo "$name: ok (pid $pid)"; return 0; fi
+    echo "$name: stopped (worker process not found)"; return 1
+  fi
   # 进程存活 ≠ 服务可用：services/api 跑在 `nest start --watch` 下，编译失败时
   # 进程仍然活着但端口根本没监听；Next dev 也可能启动到一半就崩掉。
   # 之前只看 pid 的写法会把这种状态报成 “running”，已经误导过一次排查，
@@ -214,6 +229,7 @@ require_database_env_for_api() {
 start_all() {
   ensure_shared_packages
   start_one api "$QITU_API_PORT" '@qitu/api' api
+  start_one workers "" '@qitu/workers' worker
   start_one auth "$QITU_AUTH_PORT" '@qitu/auth-portal' next
   start_one student "$QITU_STUDENT_PORT" '@qitu/student-center' next
   start_one parent "$QITU_PARENT_PORT" '@qitu/parent-companion' next
@@ -227,6 +243,7 @@ stop_all() {
   stop_one parent
   stop_one student
   stop_one auth
+  stop_one workers
   stop_one api
 }
 
@@ -245,7 +262,7 @@ case "${1:-status}" in
     ;;
   status)
     status_failed=0
-    for svc in api auth student parent teacher admin; do
+    for svc in api workers auth student parent teacher admin; do
       status_one "$svc" || status_failed=1
     done
     exit "$status_failed"
