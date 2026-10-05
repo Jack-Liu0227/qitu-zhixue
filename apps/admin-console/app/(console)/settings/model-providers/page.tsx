@@ -169,6 +169,7 @@ function ProviderForm({ initial, preset, onSaved, onCancel }: ProviderFormProps)
   const [error, setError] = useState('');
   // 密钥输入完全不进入 React state：提交时读一次，成功后清空。
   const apiKeyRef = useRef<HTMLInputElement>(null);
+  const pendingSaveRef = useRef<{ signature: string; key: string } | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,10 +207,16 @@ function ProviderForm({ initial, preset, onSaved, onCancel }: ProviderFormProps)
     // 密钥只在本次提交的请求体里出现一次；留空表示不修改已保存的密钥。
     const apiKey = apiKeyRef.current?.value ?? '';
     if (apiKey.length > 0) body.apiKey = apiKey;
+    const signature = JSON.stringify({ ...body, apiKey: apiKey.length > 0 ? apiKey : null });
+    if (pendingSaveRef.current?.signature !== signature) {
+      pendingSaveRef.current = { signature, key: newIdempotencyKey() };
+    }
+    const idempotencyKey = pendingSaveRef.current.key;
 
     setSaving(true);
     try {
-      const updated = await upsertProvider(trimmedId, body);
+      const updated = await upsertProvider(trimmedId, body, idempotencyKey);
+      pendingSaveRef.current = null;
       if (apiKeyRef.current) apiKeyRef.current.value = '';
       let provider = updated;
       try {

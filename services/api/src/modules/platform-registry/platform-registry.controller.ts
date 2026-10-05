@@ -50,9 +50,19 @@ function pickAgentFields(body: unknown): AdminRuntimeAgentUpdateRequest {
   const out: AdminRuntimeAgentUpdateRequest = {};
   if (typeof value.label === 'string') out.label = value.label;
   if (typeof value.roleDefinition === 'string') out.roleDefinition = value.roleDefinition;
+  if (typeof value.agentDefinition === 'string') out.agentDefinition = value.agentDefinition;
+  if (typeof value.parentAgentId === 'string' || value.parentAgentId === null) out.parentAgentId = value.parentAgentId;
   if (typeof value.modelUsage === 'string') out.modelUsage = value.modelUsage;
   if (typeof value.enabled === 'boolean') out.enabled = value.enabled;
   if (Array.isArray(value.capabilities) && value.capabilities.every((item) => typeof item === 'string')) out.capabilities = value.capabilities;
+  if (Array.isArray(value.skillIds) && value.skillIds.every((item) => typeof item === 'string')) out.skillIds = value.skillIds;
+  if (Array.isArray(value.skillBindings) && value.skillBindings.every((item) => typeof item === 'object' && item !== null && typeof (item as Record<string, unknown>).skillId === 'string')) {
+    out.skillBindings = value.skillBindings as AdminRuntimeAgentUpdateRequest['skillBindings'];
+  }
+  if (Array.isArray(value.toolIds) && value.toolIds.every((item) => typeof item === 'string')) out.toolIds = value.toolIds;
+  if (Array.isArray(value.mcpBindings) && value.mcpBindings.every((item) => typeof item === 'object' && item !== null && typeof (item as Record<string, unknown>).serverId === 'string')) {
+    out.mcpBindings = value.mcpBindings as AdminRuntimeAgentUpdateRequest['mcpBindings'];
+  }
   if (Object.keys(out).length === 0) throw new BadRequestException('Agent 更新内容无效');
   return out;
 }

@@ -11,7 +11,7 @@ import type {
   ProviderConfigPublic,
 } from '@qitu/contracts';
 import { Badge, Button, EmptyState, InfoRow, SectionCard } from '@qitu/ui';
-import { bindUsage, fetchProviders, fetchUsages, testUsageConnection } from '../../../../lib/api/modelRegistry';
+import { bindUsage, fetchProviders, fetchUsages, newIdempotencyKey, testUsageConnection } from '../../../../lib/api/modelRegistry';
 import { AdminPermissionError } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
@@ -195,6 +195,7 @@ function UsageCard({
   const [testState, setTestState] = useState<ConnectionTestState>(IDLE_CONNECTION_TEST);
   // 递增令牌：切换供应商或保存后作废仍在飞的测试，避免旧结果覆盖新状态。
   const testRunRef = useRef(0);
+  const pendingSaveRef = useRef<{ signature: string; key: string } | null>(null);
 
   const selectedProvider = useMemo(
     () => providers.find((provider) => provider.id === providerId) ?? null,
@@ -262,12 +263,21 @@ function UsageCard({
     setError('');
     setSaved(false);
 
+    const saveInput: BindUsageRequest = providerId === UNBOUND
+      ? { providerId: null, modelId: null }
+      : { providerId, modelId };
+    const signature = JSON.stringify(saveInput);
+    if (pendingSaveRef.current?.signature !== signature) {
+      pendingSaveRef.current = { signature, key: newIdempotencyKey() };
+    }
+
     // 解绑：显式提交 null，仍是幂等写操作。
     if (providerId === UNBOUND) {
       setSaving(true);
       try {
-        const updated = await bindUsage(usage.id, { providerId: null, modelId: null });
+        const updated = await bindUsage(usage.id, { providerId: null, modelId: null }, pendingSaveRef.current.key);
         onSaved(updated);
+        pendingSaveRef.current = null;
         setSaved(true);
         clearTestResult();
       } catch (cause) {
@@ -298,8 +308,9 @@ function UsageCard({
     const body: BindUsageRequest = { providerId: provider.id, modelId: model.id };
     setSaving(true);
     try {
-      const updated = await bindUsage(usage.id, body);
+      const updated = await bindUsage(usage.id, body, pendingSaveRef.current.key);
       onSaved(updated);
+      pendingSaveRef.current = null;
       setSaved(true);
       clearTestResult();
     } catch (cause) {

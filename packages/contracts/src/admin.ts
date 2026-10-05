@@ -321,6 +321,9 @@ export interface AdminRuntimeAgent {
   role: string | null;
   /** Admin-governed concise role definition used in each Tutor context. */
   roleDefinition: string;
+  /** Agent-local agents.md definition; bounded and server-owned. */
+  agentDefinition: string;
+  parentAgentId: string | null;
   enabled: boolean;
   status: AdminRuntimeItemStatus;
   /** 绑定的模型用途 id（如 `tutor.chat`）；未绑定时为 null。 */
@@ -328,16 +331,27 @@ export interface AdminRuntimeAgent {
   promptVersion: string | null;
   /** 能力范围（如 explore / plan / teach / review / reflect）。 */
   capabilities: string[];
+  /** Explicitly bound runtime skill ids. */
   skillIds: string[];
+  /** Explicitly bound built-in tool ids. */
   toolIds: string[];
+  /** Explicitly bound MCP server ids. */
   mcpServerIds: string[];
+  /** Explicitly allowed MCP tool ids by server. */
+  mcpToolIds: Record<string, string[]>;
 }
 
 export interface AdminRuntimeAgentUpdateRequest {
   label?: string;
   roleDefinition?: string;
+  agentDefinition?: string;
+  parentAgentId?: string | null;
   modelUsage?: string;
   capabilities?: string[];
+  skillIds?: string[];
+  skillBindings?: Array<{ skillId: string; inheritToChildren?: boolean }>;
+  toolIds?: string[];
+  mcpBindings?: Array<{ serverId: string; toolIds?: string[] }>;
   enabled?: boolean;
 }
 

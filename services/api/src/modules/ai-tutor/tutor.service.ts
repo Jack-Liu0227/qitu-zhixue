@@ -7,6 +7,7 @@ import {
   createTutorDomainWriter,
   type TutorContextReader,
   type TutorDomainWriter,
+  type TutorRuntimeContextMetadata,
 } from '@qitu/ai-client';
 
 import type {
@@ -32,6 +33,7 @@ import { ProjectsService } from '../projects/projects.service';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
+import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
   type AppendTurnsInput,
@@ -191,9 +193,10 @@ export class TutorService {
     private readonly auditWriter?: AuditWriter,
     @Optional() private readonly sdkFactory?: QituSDKFactory,
     @Optional() private readonly projects?: ProjectsService,
+    @Optional() private readonly platformRegistry?: PlatformRegistryService,
   ) {
     const runtime = loadTutorRuntimeSource();
-    this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime));
+    this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []));
     this.contextReader = this.workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(this.workspace);
     this.domainWriter = this.workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(this.workspace);
     this.store = store ?? new InMemoryTutorSessionStore();
@@ -502,6 +505,16 @@ export class TutorService {
     const partner = this.workspace === undefined
       ? this.contextReader.partner
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
+    const effectiveRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAgentRuntime(partner.id);
+    if (effectiveRuntime !== null) {
+      partner.displayName = effectiveRuntime.agent.label;
+      partner.roleDefinition = effectiveRuntime.agent.roleDefinition;
+      partner.enabled = effectiveRuntime.agent.enabled;
+      partner.modelUsage = effectiveRuntime.agent.modelUsage ?? partner.modelUsage;
+      partner.promptVersion = effectiveRuntime.agent.promptVersion ?? partner.promptVersion;
+      partner.capabilities = effectiveRuntime.agent.capabilities.filter((capability): capability is typeof partner.capabilities[number] =>
+        capability === 'explore' || capability === 'plan' || capability === 'teach' || capability === 'review' || capability === 'reflect');
+    }
     const contextReader = this.workspace === undefined
       ? this.contextReader
       : createTutorContextReader(this.workspace, partner);
@@ -524,6 +537,16 @@ export class TutorService {
           : [];
       }),
     });
+
+    if (effectiveRuntime !== null) {
+      contextPacket.runtime = {
+        policyVersion: effectiveRuntime.policy.version,
+        agentDefinition: effectiveRuntime.agent.agentDefinition,
+        skills: effectiveRuntime.skills.map((skill) => ({ id: skill.id, version: skill.version, content: skill.content })),
+        tools: effectiveRuntime.tools,
+        mcpServers: effectiveRuntime.mcpServers,
+      } satisfies TutorRuntimeContextMetadata;
+    }
 
     if (!contextPacket.partner.capabilities.includes('teach')) throw new ConflictException({ code: 'AGENT_CAPABILITY_DISABLED', message: 'AI 学习搭档当前不提供教学能力' });
     const unifiedSDK = this.sdkFactory?.create(

@@ -45,12 +45,29 @@ export interface TutorAgentScope {
   actorRole: TutorAgentActorRole;
 }
 
+export interface TutorAgentMcpDescriptor {
+  serverId: string;
+  label: string;
+  transport: 'stdio' | 'sse' | 'streamable_http' | 'unknown';
+  toolIds: readonly string[];
+}
+
 export interface TutorAgentContext<TData = Record<string, never>> {
   contextId: string;
   runtimeVersion: typeof TUTOR_AGENT_RUNTIME_VERSION;
   builtAt: string;
   scope: TutorAgentScope;
   capability: TutorAgentCapability;
+  /** Server-loaded global policy version/hash, never selected by the browser. */
+  policyVersion: string;
+  /** Agent-local bounded agents.md / role instructions. */
+  agentDefinition: string;
+  /** Explicitly selected Skill ids and bounded definitions. */
+  skills: readonly { id: string; version: string | null; content: string }[];
+  /** Effective server-owned Tool descriptors after binding authorization. */
+  tools: readonly TutorAgentToolDescriptor[];
+  /** Effective MCP metadata after binding authorization; no credentials. */
+  mcpServers: readonly TutorAgentMcpDescriptor[];
   /** Server-resolved usage identity; never supplied by the browser. */
   modelUsage: string;
   query: string;

@@ -1,4 +1,4 @@
-import type { ProjectStage, MasterySnapshot } from '@qitu/contracts';
+import type { ProjectStage, MasterySnapshot, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
 
 export type TutorPartnerId = string;
 export type TutorMemoryKind =
@@ -110,7 +110,16 @@ export interface TutorContextInput {
   recentMessages?: readonly { role: 'user' | 'assistant'; content: string }[];
 }
 
+export interface TutorRuntimeContextMetadata {
+  policyVersion: string;
+  agentDefinition: string;
+  skills: readonly { id: string; version: string | null; content: string }[];
+  tools: readonly TutorAgentToolDescriptor[];
+  mcpServers: readonly TutorAgentMcpDescriptor[];
+}
+
 export interface TutorContextPacket {
+  runtime?: TutorRuntimeContextMetadata;
   masterySnapshot?: MasterySnapshot;
   partner: TutorPartnerProfile;
   studentId: string;
@@ -205,6 +214,7 @@ export function createTutorContextReader(ports: TutorContextReadPorts, partner =
       ]);
 
       return {
+        runtime: { policyVersion: 'unconfigured', agentDefinition: '', skills: [], tools: [], mcpServers: [] },
         partner,
         studentId: input.studentId,
         projectId: input.projectId,

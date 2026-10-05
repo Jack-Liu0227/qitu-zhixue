@@ -148,16 +148,26 @@ const AGENT_CAPABILITIES = ['explore', 'plan', 'teach', 'review', 'reflect'] as 
 function AgentEditorCard({
   agent,
   modelUsageOptions,
+  skills,
+  tools,
+  mcpServers,
   onSaved,
 }: {
   agent: AdminRuntimeAgent;
   modelUsageOptions: AdminRuntimeModelUsageOption[];
+  skills: AdminRuntimeSkill[];
+  tools: AdminRuntimeBuiltinTool[];
+  mcpServers: AdminRuntimeMcpServer[];
   onSaved: (agent: AdminRuntimeAgent) => void;
 }) {
   const [label, setLabel] = useState(agent.label);
   const [definition, setDefinition] = useState(agent.roleDefinition);
+  const [agentDefinition, setAgentDefinition] = useState(agent.agentDefinition);
   const [modelUsage, setModelUsage] = useState(agent.modelUsage ?? '');
   const [capabilities, setCapabilities] = useState(agent.capabilities);
+  const [skillIds, setSkillIds] = useState(agent.skillIds);
+  const [toolIds, setToolIds] = useState(agent.toolIds);
+  const [mcpServerIds, setMcpServerIds] = useState(agent.mcpServerIds);
   const [enabled, setEnabled] = useState(agent.enabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -165,7 +175,17 @@ function AgentEditorCard({
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    const input = { label, roleDefinition: definition, modelUsage, capabilities, enabled };
+    const input = {
+      label,
+      roleDefinition: definition,
+      agentDefinition,
+      modelUsage,
+      capabilities,
+      skillIds,
+      toolIds,
+      mcpBindings: mcpServerIds.map((serverId) => ({ serverId, toolIds: agent.mcpToolIds[serverId] ?? [] })),
+      enabled,
+    };
     const signature = JSON.stringify(input);
     if (pending.current?.signature !== signature) pending.current = { signature, key: crypto.randomUUID() };
     setSaving(true);
@@ -197,6 +217,37 @@ function AgentEditorCard({
           <textarea value={definition} onChange={(event) => setDefinition(event.target.value)} minLength={20} maxLength={4000} rows={6} required />
         </label>
         <label className="admin-agent-field">
+          <span>Agent 定义（agents.md）</span>
+          <textarea value={agentDefinition} onChange={(event) => setAgentDefinition(event.target.value)} maxLength={12000} rows={8} />
+        </label>
+        <fieldset className="admin-agent-capabilities">
+          <legend>Skills</legend>
+          {skills.map((skill) => (
+            <label key={skill.id}>
+              <input type="checkbox" checked={skillIds.includes(skill.id)} onChange={(event) => setSkillIds((current) => event.target.checked ? [...current, skill.id] : current.filter((id) => id !== skill.id))} />
+              <span>{skill.label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="admin-agent-capabilities">
+          <legend>内置 Tools</legend>
+          {tools.map((tool) => (
+            <label key={tool.id}>
+              <input type="checkbox" checked={toolIds.includes(tool.id)} onChange={(event) => setToolIds((current) => event.target.checked ? [...current, tool.id] : current.filter((id) => id !== tool.id))} />
+              <span>{tool.label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="admin-agent-capabilities">
+          <legend>MCP Servers</legend>
+          {mcpServers.length === 0 ? <span>暂无安全注册的 MCP Server</span> : mcpServers.map((server) => (
+            <label key={server.id}>
+              <input type="checkbox" checked={mcpServerIds.includes(server.id)} onChange={(event) => setMcpServerIds((current) => event.target.checked ? [...current, server.id] : current.filter((id) => id !== server.id))} />
+              <span>{server.label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <label className="admin-agent-field">
           <span>模型用途</span>
           <select value={modelUsage} onChange={(event) => setModelUsage(event.target.value)} required>
             <option value="">选择已配置用途</option>
@@ -227,7 +278,9 @@ function AgentEditorCard({
           <span>启用此角色</span>
         </label>
         <InfoRow label="提示词版本" value={agent.promptVersion ?? '—'} />
-        <RuntimeIdList label="已加载 Skills" ids={agent.skillIds} />
+        <RuntimeIdList label="已加载 Skills" ids={skillIds} />
+        <RuntimeIdList label="已绑定 Tools" ids={toolIds} />
+        <RuntimeIdList label="已绑定 MCP" ids={mcpServerIds} />
         {error ? <p role="alert" className="admin-runtime-error">{error}</p> : null}
         <Button type="submit" loading={saving} disabled={saving || !label.trim() || definition.trim().length < 20 || !modelUsage}>
           保存角色
@@ -240,10 +293,16 @@ function AgentEditorCard({
 function AgentsPanel({
   agents,
   modelUsageOptions,
+  skills,
+  tools,
+  mcpServers,
   onSaved,
 }: {
   agents: AdminRuntimeAgent[];
   modelUsageOptions: AdminRuntimeModelUsageOption[];
+  skills: AdminRuntimeSkill[];
+  tools: AdminRuntimeBuiltinTool[];
+  mcpServers: AdminRuntimeMcpServer[];
   onSaved: (agent: AdminRuntimeAgent) => void;
 }) {
   if (agents.length === 0) {
@@ -258,7 +317,15 @@ function AgentsPanel({
   return (
     <div className="admin-runtime-cards">
       {agents.map((agent) => (
-        <AgentEditorCard key={agent.id} agent={agent} modelUsageOptions={modelUsageOptions} onSaved={onSaved} />
+        <AgentEditorCard
+          key={agent.id}
+          agent={agent}
+          modelUsageOptions={modelUsageOptions}
+          skills={skills}
+          tools={tools}
+          mcpServers={mcpServers}
+          onSaved={onSaved}
+        />
       ))}
     </div>
   );
@@ -434,6 +501,9 @@ export default function AdminRuntimePage() {
           <AgentsPanel
             agents={snapshot.agents}
             modelUsageOptions={snapshot.modelUsageOptions}
+            skills={snapshot.skills}
+            tools={snapshot.builtInTools}
+            mcpServers={snapshot.mcpServers}
             onSaved={(updated) => setSnapshot((current) => current ? {
               ...current,
               agents: current.agents.map((agent) => agent.id === updated.id ? updated : agent),
