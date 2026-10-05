@@ -409,15 +409,14 @@ export interface AdminInitializationStatus {
   checks: AdminInitializationCheck[];
 }
 
-/** `GET /api/v1/admin/ai-runtime` 的响应 `data`。 */
+/** Resolved model purposes available to an Agent role. */
 export interface AdminRuntimeModelUsageOption {
   id: string;
   label: string;
   available: boolean;
   modelId: string | null;
 }
-
-
+export interface AdminRuntimeSnapshot {
   generatedAt: string;
   overall: AdminRuntimeHealth;
   dataSource: AdminDataSource;
@@ -429,3 +428,4 @@ export interface AdminRuntimeModelUsageOption {
   builtInTools: AdminRuntimeBuiltinTool[];
   initialization: AdminInitializationStatus;
 }
+
