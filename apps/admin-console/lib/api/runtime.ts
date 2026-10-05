@@ -41,8 +41,7 @@ export async function updateRuntimeAgent(
   }
   return ((await response.json()) as DataEnvelope<AdminRuntimeAgent>).data;
 }
-
-
+export async function fetchRuntimeSnapshot(): Promise<AdminRuntimeSnapshot> {
   try {
     const response = await client.get<DataEnvelope<AdminRuntimeSnapshot>>('/api/v1/admin/ai-runtime');
     return response.data;
