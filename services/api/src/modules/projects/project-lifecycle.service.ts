@@ -68,10 +68,9 @@ export class ProjectLifecycleService {
 
   async listProjects(actor: CurrentUser): Promise<LearningProjectRecord[]> {
     if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可读取项目列表');
-    return (await this.store.listPlansByStudent(actor.id))
-      .filter((plan) => plan.projectId !== null)
-      .then(async (plans) => Promise.all(plans.flatMap((plan) => plan.projectId ? [this.store.findProject(plan.projectId)] : [])))
-      .then((projects) => projects.filter((project): project is LearningProjectRecord => project !== null));
+    const plans = await this.store.listPlansByStudent(actor.id);
+    const projects = await Promise.all(plans.filter((plan) => plan.projectId !== null).map((plan) => this.store.findProject(plan.projectId as string)));
+    return projects.filter((project): project is LearningProjectRecord => project !== null);
   }
 
   async getProjectOverview(actor: CurrentUser, projectId: string): Promise<ProjectOverviewProjection> {
