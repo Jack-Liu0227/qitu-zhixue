@@ -415,6 +415,7 @@ export class AdminController {
   }
 
   /* ==================== 设置 ==================== */
+  @Get('settings')
   async getSettings(@Headers('cookie') cookieHeader: string | undefined): Promise<{ data: AdminSettingsIndexData }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
     await this.auditRead(admin.id, 'admin.read.settings', 'admin-settings');
