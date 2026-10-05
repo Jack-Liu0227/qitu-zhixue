@@ -2,10 +2,14 @@ import {
   Controller,
   Get,
   Headers,
+  Inject,
   NotFoundException,
   Param,
   Query,
 } from '@nestjs/common';
+import type { Database } from '@qitu/database';
+import { artifacts, projects } from '@qitu/database';
+import { eq, sql } from 'drizzle-orm';
 import type {
   AdminOverviewPageData,
   AdminStudentListPageData,
@@ -57,6 +61,7 @@ export class AdminController {
     private readonly modelRegistry: ModelRegistryService,
     private readonly directory: DirectoryService,
     private readonly accessPolicy: AccessPolicy,
+    @Inject(DATABASE_TOKEN) private readonly db: Database | null,
   ) {}
 
   /* ==================== 概览 ==================== */
@@ -67,7 +72,7 @@ export class AdminController {
   ): Promise<{ data: AdminOverviewPageData }> {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
-    const stats = this.platformData.getOverviewStats();
+    const stats = this.db === null ? this.platformData.getOverviewStats() : await this.getLiveOverviewStats();
     const allInterventions = this.platformData.getAllInterventions();
 
     // 最近的介入请求。展示名从目录解析，否则这里会显示演示数据里的「小满」，
@@ -84,7 +89,7 @@ export class AdminController {
         stats,
         recentInterventions,
         generatedAt: new Date().toISOString(),
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -196,7 +201,7 @@ export class AdminController {
         totals,
         classOptions,
         mentors,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -239,25 +244,26 @@ export class AdminController {
       summary: entry.summaryStudent, // 管理员看学生措辞
     }));
 
-    // 介入请求
-    const interventions = await Promise.all(
-      this.platformData.getInterventionsByStudent(studentId).map((i) => this.toInterventionRow(i)),
-    );
+    // 介入请求：live 尚无规范化介入表，不借用 demo 数据。
+    const interventions = this.db === null
+      ? await Promise.all(this.platformData.getInterventionsByStudent(studentId).map((i) => this.toInterventionRow(i)))
+      : [];
 
-    // 项目列表
-    const projects: AdminStudentProject[] = this.platformData
-      .getProjectsByStudent(studentId)
-      .map((p) => ({
-        projectId: p.projectId,
-        title: p.title,
-        stage: p.stage,
-        progressPercent: p.progressPercent,
-        updatedAt: p.updatedAt,
-      }));
+    // 项目列表：live 从 PostgreSQL 读取，demo 才使用演示投影。
+    const liveStudentProjects = this.db === null ? [] : (await this.getProjectsByStudent()).get(studentId) ?? [];
+    const projects: AdminStudentProject[] = this.db === null
+      ? this.platformData.getProjectsByStudent(studentId).map((p) => ({
+          projectId: p.projectId, title: p.title, stage: p.stage,
+          progressPercent: p.progressPercent, updatedAt: p.updatedAt,
+        }))
+      : liveStudentProjects.map((p) => ({
+          projectId: p.id, title: p.title, stage: p.status as AdminStudentProject['stage'],
+          progressPercent: p.progressPercent, updatedAt: p.createdAt.toISOString(),
+        }));
 
-    // 本周会话与时长（演示数据）
-    const sessionsThisWeek = 4;
-    const minutesThisWeek = 200;
+    // 会话时长依赖尚未建成的 activity 聚合表；live 不借用 demo 数字。
+    const sessionsThisWeek = this.db === null ? 4 : 0;
+    const minutesThisWeek = this.db === null ? 200 : 0;
 
     return {
       data: {
@@ -284,11 +290,7 @@ export class AdminController {
         projects,
         sessionsThisWeek,
         minutesThisWeek,
-      },
-    };
-  }
-
-  /* ==================== 教师数据 ==================== */
+        dataSource: this.dataSource(),
 
   @Get('teachers')
   async getTeachers(
@@ -352,7 +354,7 @@ export class AdminController {
         nextCursor: hasNext && page.length > 0 ? page[page.length - 1]!.teacherId : null,
         hasNext,
         totals,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -374,9 +376,9 @@ export class AdminController {
     const students = (await this.listUnifiedStudents()).filter((s) => s.mentorId === teacherId);
 
     // 该教师的介入请求
-    const interventions = await Promise.all(
-      this.platformData.getInterventionsByTeacher(teacherId).map((i) => this.toInterventionRow(i)),
-    );
+    const interventions = this.db === null
+      ? await Promise.all(this.platformData.getInterventionsByTeacher(teacherId).map((i) => this.toInterventionRow(i)))
+      : [];
 
     const stuckStudentCount = teacher.stuckStudentCount;
 
@@ -395,11 +397,7 @@ export class AdminController {
         },
         students,
         interventions,
-      },
-    };
-  }
-
-  /* ==================== 设置 ==================== */
+        dataSource: this.dataSource(),
 
   @Get('settings')
   getSettings(@Headers('cookie') cookieHeader: string | undefined): { data: AdminSettingsIndexData } {
@@ -458,7 +456,7 @@ export class AdminController {
         panels,
         configuredProviderCount,
         configuredUsageCount,
-        dataSource: 'demo',
+        dataSource: this.dataSource(),
       },
     };
   }
@@ -533,10 +531,10 @@ export class AdminController {
           email: u.email,
           studentCount: students.length,
           classLabels: demo?.classLabels ?? [],
-          pendingInterventionCount: demo?.pendingInterventionCount ?? 0,
-          resolvedThisWeek: demo?.resolvedThisWeek ?? 0,
-          stuckStudentCount,
-          lastActivityAt: demo?.lastActivityAt ?? null,
+          pendingInterventionCount: this.db === null ? demo?.pendingInterventionCount ?? 0 : 0,
+          resolvedThisWeek: this.db === null ? demo?.resolvedThisWeek ?? 0 : 0,
+          stuckStudentCount: this.db === null ? stuckStudentCount : 0,
+          lastActivityAt: this.db === null ? demo?.lastActivityAt ?? null : null,
         };
       }),
     );
@@ -547,10 +545,16 @@ export class AdminController {
     const demoContent = new Map(this.platformData.getAllStudents().map((s) => [s.studentId, s]));
     const activeAssignments = await this.directory.listMentorAssignments('active');
     const mentorByStudent = new Map(activeAssignments.map((a) => [a.student.userId, a.mentor]));
+    const liveProjects = this.db === null ? new Map<string, typeof projects.$inferSelect[]>() : await this.getProjectsByStudent();
 
     return directoryStudents.map((u) => {
       const demo = demoContent.get(u.userId);
       const mentor = mentorByStudent.get(u.userId) ?? null;
+      const rows = liveProjects.get(u.userId) ?? [];
+      const active = rows.filter((p) => p.status !== 'completed' && p.status !== 'published');
+      const completed = rows.filter((p) => p.status === 'completed' || p.status === 'published');
+      const current = [...active].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+      const latestAt = rows.length === 0 ? null : new Date(Math.max(...rows.map((p) => p.createdAt.getTime()))).toISOString();
       return {
         studentId: u.userId,
         displayName: u.displayName,
@@ -559,18 +563,47 @@ export class AdminController {
         classLabel: demo?.classLabel ?? null,
         mentorId: mentor?.userId ?? null,
         mentorName: mentor?.displayName ?? null,
-        activeProjectCount: demo?.activeProjectCount ?? 0,
-        projectsCompleted: demo?.projectsCompleted ?? 0,
-        currentProjectId: demo?.currentProjectId ?? null,
-        currentProjectTitle: demo?.currentProjectTitle ?? null,
-        currentStage: demo?.currentStage ?? null,
-        progressPercent: demo?.progressPercent ?? 0,
-        lastActivityAt: demo?.lastActivityAt ?? null,
-        stuck: demo?.stuck ?? false,
-        attentionCount: demo?.attentionCount ?? 0,
+        activeProjectCount: this.db === null ? demo?.activeProjectCount ?? 0 : active.length,
+        projectsCompleted: this.db === null ? demo?.projectsCompleted ?? 0 : completed.length,
+        currentProjectId: this.db === null ? demo?.currentProjectId ?? null : current?.id ?? null,
+        currentProjectTitle: this.db === null ? demo?.currentProjectTitle ?? null : current?.title ?? null,
+        currentStage: this.db === null ? demo?.currentStage ?? null : (current?.status as AdminStudentRow['currentStage'] ?? null),
+        progressPercent: this.db === null ? demo?.progressPercent ?? 0 : current?.progressPercent ?? 0,
+        lastActivityAt: this.db === null ? demo?.lastActivityAt ?? null : latestAt,
+        // interventions and inactivity signals have no normalized live table yet;
+        // never import demo values into a live response.
+        stuck: this.db === null ? demo?.stuck ?? false : false,
+        attentionCount: this.db === null ? demo?.attentionCount ?? 0 : 0,
       };
     });
   }
+
+  private async getProjectsByStudent(): Promise<Map<string, typeof projects.$inferSelect[]>> {
+    if (this.db === null) return new Map();
+    const rows = await this.db.select().from(projects);
+    const grouped = new Map<string, typeof projects.$inferSelect[]>();
+    for (const row of rows) grouped.set(row.studentUserId, [...(grouped.get(row.studentUserId) ?? []), row]);
+    return grouped;
+  }
+
+  private async getLiveOverviewStats() {
+    const students = await this.listUnifiedStudents();
+    const teachers = await this.directory.listUsersByRole('teacher');
+    const [published] = this.db === null ? [{ count: 0 }] : await this.db.select({ count: sql<number>`count(*)` }).from(artifacts).where(eq(artifacts.status, 'published'));
+    return {
+      studentCount: students.length,
+      activeProjectCount: students.reduce((total, student) => total + student.activeProjectCount, 0),
+      stuckStudentCount: 0,
+      teacherCount: teachers.length,
+      pendingInterventionCount: 0,
+      publishedArtifactCount: Number(published?.count ?? 0),
+    };
+  }
+
+  private dataSource(): 'demo' | 'live' {
+    return this.db === null ? 'demo' : 'live';
+  }
+
 
   private parseStudentFilter(filter: string | undefined): AdminStudentFilter {
     if (filter === 'active' || filter === 'stuck' || filter === 'no_project') return filter;

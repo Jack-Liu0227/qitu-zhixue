@@ -93,7 +93,7 @@ export interface AdminStudentDetail {
   projects: AdminStudentProject[];
   sessionsThisWeek: number;
   minutesThisWeek: number;
-}
+  dataSource: AdminDataSource;
 
 export interface AdminStudentProject {
   projectId: string;
@@ -160,6 +160,7 @@ export interface AdminTeacherDetail {
   teacher: AdminTeacherRow;
   students: AdminStudentRow[];
   interventions: AdminInterventionRow[];
+  dataSource: AdminDataSource;
 }
 
 export interface AdminTeacherListPageData {
