@@ -7,8 +7,8 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { AccessPolicy } from '../../common/access/access-policy';
 import {
+  LearningPlanStore,
   type LearningProjectRecord,
-  type LearningPlanStore,
 } from '../learning-plan/learning-plan.store';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { PROJECT_STAGE_ORDER } from './intent-confirmation.state-machine';
