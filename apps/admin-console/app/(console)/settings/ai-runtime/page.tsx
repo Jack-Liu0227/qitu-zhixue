@@ -34,20 +34,14 @@ import {
 } from '../../../../lib/components/RuntimeViews';
 
 /**
- * AI 运行时与初始化治理页（只读）。
+ * AI 运行时治理页。
  *
- * 单页承载五类治理数据：skills、MCP 服务器、项目 Agent 角色/设置、内置工具、
- * 以及数据库 / 知识库 / 模板 / Tutor 的初始化状态。页面只消费服务端已脱敏的
- * 只读投影，没有任何写入口：默认不展示密钥、MCP 凭据、完整系统提示词或未成年
- * 人原始对话（契约本身不含这些字段）。
+ * 单页承载五类治理数据：skills、MCP 服务器、项目 Agent 角色/设置、内置工具，
+ * 以及数据库 / 知识库 / 模板 / Tutor 的初始化状态。读取数据是服务端脱敏投影；
+ * Agent 角色支持受权限、幂等和审计保护的编辑，不展示密钥、MCP 凭据、完整私有
+ * system prompt 或未成年人原始对话。
  *
- * 五种状态均有显式呈现：
- *  - loading：`AdminStateViews` 的骨架；
- *  - empty：每个分类独立的 `EmptyState`；
- *  - error：`ErrorState` + 重试；
- *  - offline：`OfflineBanner`（readOnly）；
- *  - permission-denied：401/403 → `AdminPermissionError`；
- *  - 接口尚未部署：404 → `RuntimeUnavailableState`（与上述四类区分）。
+ * 页面显式呈现 loading、empty、error、offline、permission-denied 和接口未启用状态。
  */
 
 type RuntimeTab = 'skills' | 'mcp' | 'agents' | 'tools' | 'init';
