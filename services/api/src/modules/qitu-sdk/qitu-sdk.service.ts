@@ -47,6 +47,7 @@ export class QituSDKFactory {
     actor: CurrentUser,
     scope: { studentId: string; projectId: string | null },
     runner: (input: Input, purpose: TutorAgentModelPurpose) => Promise<Result>,
+    modelUsageOverride?: string,
   ) {
     const runtimeScope: TutorAgentScope = {
       actorId: actor.id,
@@ -65,7 +66,7 @@ export class QituSDKFactory {
       const query = readString(shape.query) ?? readString(shape.content) ?? '当前学习任务';
       const runtime = createTutorAgentRuntime<Record<string, never>, { data: Result }>(runtimeScope, {
         modelPurpose: {
-          resolve: async ({ capability }) => this.resolvePurpose(capability),
+          resolve: async ({ capability }) => this.resolvePurpose(capability, modelUsageOverride),
         },
         context: {
           async build({ scope: bound, request }) {
@@ -149,8 +150,8 @@ export class QituSDKFactory {
     });
   }
 
-  private async resolvePurpose(capability: TutorAgentCapability): Promise<TutorAgentModelPurpose> {
-    const usageId = USAGE_BY_CAPABILITY[capability];
+  private async resolvePurpose(capability: TutorAgentCapability, modelUsageOverride?: string): Promise<TutorAgentModelPurpose> {
+    const usageId = modelUsageOverride ?? USAGE_BY_CAPABILITY[capability];
     if (this.dataMode !== 'live') {
       return { usageId, available: true, input: ['text'], output: ['text'], modelId: 'heuristic-v1' };
     }

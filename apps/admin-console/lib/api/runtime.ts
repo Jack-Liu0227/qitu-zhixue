@@ -1,5 +1,5 @@
 import { createApiClient } from '@qitu/api-client';
-import type { AdminRuntimeSnapshot } from '@qitu/contracts';
+import type { AdminRuntimeAgentUpdateRequest, AdminRuntimeSnapshot, AdminRuntimeAgent } from '@qitu/contracts';
 import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
 
 /**
@@ -22,7 +22,27 @@ export class AdminRuntimeUnavailableError extends Error {
 
 const client = createApiClient('');
 
-export async function fetchRuntimeSnapshot(): Promise<AdminRuntimeSnapshot> {
+export async function updateRuntimeAgent(
+  agentId: string,
+  input: AdminRuntimeAgentUpdateRequest,
+  idempotencyKey: string,
+): Promise<AdminRuntimeAgent> {
+  const response = await fetch(`/api/v1/admin/ai-runtime/agents/${encodeURIComponent(agentId)}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { detail?: string; message?: string } | null;
+    const error = new Error(payload?.detail ?? payload?.message ?? '角色保存失败') as Error & { status: number };
+    error.status = response.status;
+    throw error;
+  }
+  return ((await response.json()) as DataEnvelope<AdminRuntimeAgent>).data;
+}
+
+
   try {
     const response = await client.get<DataEnvelope<AdminRuntimeSnapshot>>('/api/v1/admin/ai-runtime');
     return response.data;

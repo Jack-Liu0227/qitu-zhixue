@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdminInitializationStatus,
   AdminRuntimeAgent,
+  AdminRuntimeModelUsageOption,
   AdminRuntimeBuiltinTool,
   AdminRuntimeMcpServer,
   AdminRuntimePolicy,
@@ -11,10 +12,11 @@ import type {
   AdminRuntimeSnapshot,
 } from '@qitu/contracts';
 import { EmptyState, InfoRow, SectionCard, SegmentedControl } from '@qitu/ui';
-import { AdminRuntimeUnavailableError, fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
+import { AdminRuntimeUnavailableError, fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../../lib/api/runtime';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
+import './ai-runtime.css';
 import {
   InitializationCheckBadge,
   McpConnectionBadge,
@@ -91,6 +93,10 @@ function SkillsPanel({ skills }: { skills: AdminRuntimeSkill[] }) {
             </div>
             {skill.description ? <p className="admin-runtime-description">{skill.description}</p> : null}
             <RuntimeIdList label="关联 Agent" ids={skill.agentIds} />
+            <details className="admin-runtime-definition">
+              <summary>查看已加载定义</summary>
+              <pre>{skill.content}</pre>
+            </details>
           </li>
         ))}
       </ul>
@@ -143,7 +149,109 @@ function McpPanel({ servers }: { servers: AdminRuntimeMcpServer[] }) {
 
 /* ---------------------------- 项目 Agent ---------------------------- */
 
-function AgentsPanel({ agents }: { agents: AdminRuntimeAgent[] }) {
+const AGENT_CAPABILITIES = ['explore', 'plan', 'teach', 'review', 'reflect'] as const;
+
+function AgentEditorCard({
+  agent,
+  modelUsageOptions,
+  onSaved,
+}: {
+  agent: AdminRuntimeAgent;
+  modelUsageOptions: AdminRuntimeModelUsageOption[];
+  onSaved: (agent: AdminRuntimeAgent) => void;
+}) {
+  const [label, setLabel] = useState(agent.label);
+  const [definition, setDefinition] = useState(agent.roleDefinition);
+  const [modelUsage, setModelUsage] = useState(agent.modelUsage ?? '');
+  const [capabilities, setCapabilities] = useState(agent.capabilities);
+  const [enabled, setEnabled] = useState(agent.enabled);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef<{ signature: string; key: string } | null>(null);
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const input = { label, roleDefinition: definition, modelUsage, capabilities, enabled };
+    const signature = JSON.stringify(input);
+    if (pending.current?.signature !== signature) pending.current = { signature, key: crypto.randomUUID() };
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await updateRuntimeAgent(agent.id, input, pending.current.key);
+      pending.current = null;
+      onSaved(updated);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '角色保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard key={agent.id} title={agent.label} action={<RuntimeItemStatusBadge status={agent.status} />}>
+      <form className="admin-agent-editor" onSubmit={save}>
+        <div className="admin-runtime-row-meta admin-runtime-row-meta-spaced">
+          <code className="admin-console-fingerprint">{agent.id}</code>
+          <span>运行角色：{agent.role ?? '未知'}</span>
+        </div>
+        <label className="admin-agent-field">
+          <span>显示名称</span>
+          <input value={label} onChange={(event) => setLabel(event.target.value)} maxLength={80} required />
+        </label>
+        <label className="admin-agent-field">
+          <span>角色定义</span>
+          <textarea value={definition} onChange={(event) => setDefinition(event.target.value)} minLength={20} maxLength={4000} rows={6} required />
+        </label>
+        <label className="admin-agent-field">
+          <span>模型用途</span>
+          <select value={modelUsage} onChange={(event) => setModelUsage(event.target.value)} required>
+            <option value="">选择已配置用途</option>
+            {modelUsageOptions.map((option) => (
+              <option key={option.id} value={option.id} disabled={!option.available && option.id !== agent.modelUsage}>
+                {option.label} · {option.available ? option.modelId : '未绑定模型'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="admin-agent-capabilities">
+          <legend>能力范围</legend>
+          {AGENT_CAPABILITIES.map((capability) => (
+            <label key={capability}>
+              <input
+                type="checkbox"
+                checked={capabilities.includes(capability)}
+                onChange={(event) => setCapabilities((current) => event.target.checked
+                  ? [...current, capability]
+                  : current.filter((value) => value !== capability))}
+              />
+              <span>{capability}</span>
+            </label>
+          ))}
+        </fieldset>
+        <label className="admin-agent-toggle">
+          <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+          <span>启用此角色</span>
+        </label>
+        <InfoRow label="提示词版本" value={agent.promptVersion ?? '—'} />
+        <RuntimeIdList label="已加载 Skills" ids={agent.skillIds} />
+        {error ? <p role="alert" className="admin-runtime-error">{error}</p> : null}
+        <Button type="submit" loading={saving} disabled={saving || !label.trim() || definition.trim().length < 20 || !modelUsage}>
+          保存角色
+        </Button>
+      </form>
+    </SectionCard>
+  );
+}
+
+function AgentsPanel({
+  agents,
+  modelUsageOptions,
+  onSaved,
+}: {
+  agents: AdminRuntimeAgent[];
+  modelUsageOptions: AdminRuntimeModelUsageOption[];
+  onSaved: (agent: AdminRuntimeAgent) => void;
+}) {
   if (agents.length === 0) {
     return (
       <EmptyState
@@ -156,24 +264,7 @@ function AgentsPanel({ agents }: { agents: AdminRuntimeAgent[] }) {
   return (
     <div className="admin-runtime-cards">
       {agents.map((agent) => (
-        <SectionCard
-          key={agent.id}
-          title={agent.label}
-          action={<RuntimeItemStatusBadge status={agent.status} />}
-        >
-          <div className="admin-runtime-row-meta admin-runtime-row-meta-spaced">
-            <code className="admin-console-fingerprint">{agent.id}</code>
-            <span>{agent.enabled ? '已启用' : '已停用'}</span>
-          </div>
-          {agent.description ? <p className="admin-runtime-description">{agent.description}</p> : null}
-          <InfoRow label="角色" value={agent.role ?? '未知'} muted={agent.role === null} />
-          <InfoRow label="模型用途" value={agent.modelUsage ?? '未绑定'} muted={agent.modelUsage === null} />
-          <InfoRow label="提示词版本" value={agent.promptVersion ?? '—'} />
-          <RuntimeIdList label="能力范围" ids={agent.capabilities} />
-          <RuntimeIdList label="关联 Skills" ids={agent.skillIds} />
-          <RuntimeIdList label="关联工具" ids={agent.toolIds} />
-          <RuntimeIdList label="关联 MCP" ids={agent.mcpServerIds} />
-        </SectionCard>
+        <AgentEditorCard key={agent.id} agent={agent} modelUsageOptions={modelUsageOptions} onSaved={onSaved} />
       ))}
     </div>
   );
@@ -234,6 +325,7 @@ function InitializationPanel({
         <InfoRow label="数据库" value={databaseLabel(initialization.database)} />
         <InfoRow label="全局规则" value={policy.status === 'ready' ? `已加载 · ${policy.version ?? 'unknown'}` : '未配置'} muted={policy.status !== 'ready'} />
         <InfoRow label="规则校验摘要" value={policy.contentHash?.slice(0, 12) ?? '—'} muted={policy.contentHash === null} />
+        {policy.content ? <details className="admin-runtime-definition"><summary>查看 AGENTS.md 运行规则</summary><pre>{policy.content}</pre></details> : null}
         <InfoRow label="迁移版本" value={initialization.migrationVersion ?? '未知'} muted={initialization.migrationVersion === null} />
       </SectionCard>
 
@@ -320,7 +412,7 @@ export default function AdminRuntimePage() {
           <RuntimeHealthBadge health={snapshot.overall} />
         </div>
         <p>
-          只读治理视图：Tutor Skills、MCP 服务器、AI 导师 Agent、内置工具与初始化状态。不展示开发协作 Agent、密钥、凭据、完整提示词或未成年人原始对话；无法证实的信息一律标为「未知」。
+          Skills 来自服务端加载的 `.agents/skills/*/SKILL.md`，全局教学规则从仓库根 `AGENTS.md` 加载且在此只读。可在「AI 导师 Agent」中编辑角色定义、能力和模型用途；开发协作角色不会进入运行时。
         </p>
         <p className="admin-runtime-generated">数据生成于 {formatRuntimeTime(snapshot.generatedAt)}</p>
       </div>
@@ -344,7 +436,16 @@ export default function AdminRuntimePage() {
       <div className="admin-runtime-panel">
         {tab === 'skills' ? <SkillsPanel skills={snapshot.skills} /> : null}
         {tab === 'mcp' ? <McpPanel servers={snapshot.mcpServers} /> : null}
-        {tab === 'agents' ? <AgentsPanel agents={snapshot.agents} /> : null}
+        {tab === 'agents' ? (
+          <AgentsPanel
+            agents={snapshot.agents}
+            modelUsageOptions={snapshot.modelUsageOptions}
+            onSaved={(updated) => setSnapshot((current) => current ? {
+              ...current,
+              agents: current.agents.map((agent) => agent.id === updated.id ? updated : agent),
+            } : current)}
+          />
+        ) : null}
         {tab === 'tools' ? <ToolsPanel tools={snapshot.builtInTools} /> : null}
         {tab === 'init' ? <InitializationPanel initialization={snapshot.initialization} policy={snapshot.policy} /> : null}
       </div>

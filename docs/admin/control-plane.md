@@ -15,8 +15,8 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 - **读写分离**：`GET` 是投影；`POST` 只执行 4 个固定 area 中的受限 foundation 操作，且必须带 `Idempotency-Key`。
 - **数据库 schema 迁移永远不通过 HTTP 执行**：`/database/execute` 恒定返回 `409 INITIALIZATION_OPERATOR_REQUIRED`。
 - **仅 admin**：两个 controller 的每个路由都调用 `requireRole(auth, cookie, 'admin', ...)`；前端隐藏入口不是授权。
-- **运行时元数据可见性**：`skills` 只从 `.agents/skills/*/SKILL.md` 读取；`agents` 只来自 Tutor Partner / 服务端 Agent Registry；`.pi` 开发角色永远不进入快照；MCP 在安全 Registry 接入前为空。`policy` 显示 `AGENTS.md` 的版本 / hash / 加载状态，不返回全文。
-- **脱敏**：投影不得返回 API Key、MCP 凭证、完整系统提示词或未成年人原始对话。
+- **运行时元数据可见性**：`skills` 只从 `.agents/skills/*/SKILL.md` 读取并在 Admin 展示已加载定义；`agents` 只来自 Tutor Partner / 服务端 Agent Registry；`.pi` 开发角色永远不进入快照；MCP 在安全 Registry 接入前为空。`policy` 显示并提供只读查看仓库根 `AGENTS.md`，修改仍经仓库评审与部署发布。
+- **角色治理**：Admin 可编辑 Tutor Partner 的显示名称、独立角色定义、能力范围、启用状态和模型用途；写入通过 `Idempotency-Key` 与同事务审计。私有 `soul`/system prompt 不返回，编辑后的 role definition 每轮从 PostgreSQL 读取并进入 Tutor context；模型用途经 ModelRegistry 解析，未配置时仍 fail closed。
 - **无法证实即 `unknown`**：前端不得把 `unknown` 渲染成 `ready`。
 
 ## 3. 管理 API
@@ -24,6 +24,7 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 | 方法 | 路径 | 权限 | 幂等键 | 响应 `data` |
 |---|---|---|---|---|
 | `GET` | `/api/v1/admin/ai-runtime` | admin | 不需要 | `AdminRuntimeSnapshot` |
+| `PATCH` | `/api/v1/admin/ai-runtime/agents/:agentId` | admin | **必填** | `AdminRuntimeAgent` |
 | `GET` | `/api/v1/admin/initialization` | admin | 不需要 | `AdminInitializationStatus` |
 | `POST` | `/api/v1/admin/initialization/knowledge/execute` | admin | **必填** | `InitializationExecutionResult` |
 | `POST` | `/api/v1/admin/initialization/template/execute` | admin | **必填** | `InitializationExecutionResult` |
@@ -66,11 +67,11 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 
 | 字段 | 来源 | 约束 |
 |---|---|---|
-| `policy` | 根目录 `AGENTS.md` 的版本、SHA-256 摘要、加载状态 | 不返回规则全文 |
-| `skills` | `.agents/skills/*/SKILL.md` 的安全 frontmatter | 缺失时为空且**不回退到 `.pi`** |
+| `policy` | 根目录 `AGENTS.md` 的版本、SHA-256 摘要、加载状态和有界规则正文 | 规则正文只读，不返回密钥或运行时凭证 |
+| `skills` | `.agents/skills/*/SKILL.md` 的安全 frontmatter 与有界正文 | Admin 展示 Tutor runtime 实际加载版本；缺失时为空且**不回退到 `.pi`** |
 | `mcpServers` | 无服务端 MCP Registry 时为空 | 不读取仓库开发配置 |
 | `builtInTools` | `platform-registry/built-in-tools.ts` 的服务端注册表 | 只描述能力边界，执行仍由领域服务负责 |
-| `agents` | `tutor_partners` 行或未来服务端 Agent Registry | 不返回完整 system prompt；不含 `.pi` 开发角色 |
+| `agents` | `tutor_partners` 行或未来服务端 Agent Registry | 暴露独立、可治理的角色定义；私有 `soul`/完整 system prompt 不返回；不含 `.pi` 开发角色 |
 
 `generatedAt` / `overall` / `dataSource` / `initialization` 同属快照。数据库不可达时返回明确的不可用 / 未知状态，**不以开发文件填充**。
 
@@ -94,7 +95,7 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 ## 5. 管理后台界面
 
 - 页面：`apps/admin-console/app/(console)/settings/ai-runtime/page.tsx`，五个 tab：`skills` / `mcp` / `agents` / `tools` / `init`。
-- 数据层：`apps/admin-console/lib/api/runtime.ts`，只读。`404`/`ApiError.status===404` 抛 `AdminRuntimeUnavailableError`，页面显示「未启用」而不是把空数据画成「无配置」。
+- 数据层：`apps/admin-console/lib/api/runtime.ts`，唯一读取路径是 `GET /api/v1/admin/ai-runtime`；角色写入通过 Admin-only `PATCH` 并带幂等键。
 - 入口：`SettingsSubNav` 中的「AI 运行时」子导航，`/admin/settings` 页面同步。
 - **冻结导航未变**：仍只有 `/admin/settings` 一个设置入口，AI 运行时是它的子导航。
 

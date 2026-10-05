@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import {
   createNoopTutorContextReader,
@@ -179,7 +179,7 @@ export class TutorService {
     private readonly stallSink?: LearningStallSignalSink,
     @Optional()
     @Inject(TutorWorkspaceService)
-    workspace?: TutorWorkspaceService,
+    private readonly workspace?: TutorWorkspaceService,
     @Optional()
     @Inject(TutorSessionStore)
     store?: TutorSessionStore,
@@ -194,8 +194,8 @@ export class TutorService {
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime));
-    this.contextReader = workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(workspace);
-    this.domainWriter = workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(workspace);
+    this.contextReader = this.workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(this.workspace);
+    this.domainWriter = this.workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(this.workspace);
     this.store = store ?? new InMemoryTutorSessionStore();
 
   }
@@ -499,7 +499,14 @@ export class TutorService {
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
-    const contextPacket = await this.contextReader.buildContext({
+    const partner = this.workspace === undefined
+      ? this.contextReader.partner
+      : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
+    const contextReader = this.workspace === undefined
+      ? this.contextReader
+      : createTutorContextReader(this.workspace, partner);
+    if (!partner.enabled) throw new ConflictException({ code: 'AGENT_ROLE_DISABLED', message: 'AI 学习搭档当前不可用' });
+    const contextPacket = await contextReader.buildContext({
       studentId: request.actorId,
       projectId: record.projectId,
       projectStage,
@@ -518,6 +525,7 @@ export class TutorService {
       }),
     });
 
+    if (!contextPacket.partner.capabilities.includes('teach')) throw new ConflictException({ code: 'AGENT_CAPABILITY_DISABLED', message: 'AI 学习搭档当前不提供教学能力' });
     const unifiedSDK = this.sdkFactory?.create(
       { id: request.actorId, role: 'student', email: '', displayName: '' },
       { studentId: request.actorId, projectId: record.projectId },
@@ -529,6 +537,7 @@ export class TutorService {
         })) generated.push(event);
         return generated;
       },
+      contextPacket.partner.modelUsage,
     );
     if (unifiedSDK) {
       contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
@@ -550,7 +559,7 @@ export class TutorService {
       ...(request.optionLabel !== undefined ? { optionLabel: request.optionLabel } : {}),
     };
 
-    const promptVersion = this.contextReader.partner.promptVersion;
+    const promptVersion = contextPacket.partner.promptVersion;
     const expectedEvidence = currentTask?.detail ?? null;
 
     const studentTurn: TutorTurnRecord = {

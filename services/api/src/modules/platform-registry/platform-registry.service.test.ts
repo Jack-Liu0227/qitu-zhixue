@@ -8,6 +8,7 @@ function fakeDatabase() {
   const partner = {
     id: 'tutor-default', displayName: 'Tutor', soul: 'private prompt body', modelUsage: 'tutor.chat',
     promptVersion: 'v3', capabilities: ['explore', 'teach'], enabled: true,
+    roleDefinition: '教学伙伴定义，使用问题支持学生理解与反思。',
   };
   let query: {
     from: () => Promise<typeof partner[]> | typeof query;
@@ -31,12 +32,18 @@ function fakeDatabase() {
 }
 
 test('runtime projection uses persisted partner metadata and excludes prompt contents', async () => {
-  const service = new PlatformRegistryService(fakeDatabase(), 'live');
+  const service = new PlatformRegistryService(
+    fakeDatabase(),
+    'live',
+    { write: async () => 'audit-id' } as never,
+    { getUsages: () => ({ usages: [], bindings: [] }) } as never,
+  );
   const snapshot = await service.getSnapshot();
   assert.equal(snapshot.dataSource, 'live');
   assert.equal(snapshot.agents.length, 1);
   assert.equal(snapshot.agents[0]?.promptVersion, 'v3');
   assert.deepEqual(snapshot.agents[0]?.capabilities, ['explore', 'teach']);
+  assert.equal(snapshot.agents[0]?.roleDefinition, '教学伙伴定义，使用问题支持学生理解与反思。');
   const serialized = JSON.stringify(snapshot);
   assert.equal(serialized.includes('private prompt body'), false);
   assert.equal(snapshot.policy.id, 'AGENTS.md');

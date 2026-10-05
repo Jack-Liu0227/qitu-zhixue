@@ -6,6 +6,7 @@ import type { TutorContextPacket } from './tutor-context.js';
 export function serializeTutorContext(packet: TutorContextPacket): string {
   const lines = [
     `伙伴：${packet.partner.displayName}`,
+    `伙伴职责定义：${boundedDefinition(packet.partner.roleDefinition)}`,
     `伙伴策略：${packet.partner.soul}`,
     `学习阶段：${packet.projectStage ?? 'exploration'}`,
     `当前目标：${packet.currentGoal ?? '尚未确认'}`,
@@ -53,6 +54,10 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
   return lines.join('\n');
 }
 
+function boundedDefinition(value: string): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > 1500 ? `${normalized.slice(0, 1500)}…` : normalized;
+}
 function bounded(value: string): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   return normalized.length > 360 ? `${normalized.slice(0, 360)}…` : normalized;

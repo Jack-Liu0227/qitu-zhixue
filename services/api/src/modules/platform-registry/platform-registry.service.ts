@@ -1,16 +1,21 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot } from '@qitu/contracts';
+import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import type { AdminRuntimeAgent, AdminRuntimeModelUsageOption, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser } from '@qitu/contracts';
 import { desc, eq, sql } from 'drizzle-orm';
-import { agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, tutorPartners, type Database } from '@qitu/database';
+import { agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { builtinToolRegistry } from './built-in-tools';
+import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
+import { AuditWriter } from '../../common/audit/audit.service';
+import { ModelRegistryService } from '../model-registry/model-registry.service';
 
 @Injectable()
 export class PlatformRegistryService {
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
+    private readonly audit: AuditWriter,
+    private readonly models: ModelRegistryService,
   ) {}
 
   async getSnapshot(): Promise<AdminRuntimeSnapshot> {
@@ -33,6 +38,7 @@ export class PlatformRegistryService {
             label: partner.displayName,
             description: null,
             role: 'tutor',
+            roleDefinition: partner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
             enabled: partner.enabled,
             status: partner.enabled ? 'enabled' as const : 'disabled' as const,
             modelUsage: partner.modelUsage,
@@ -65,8 +71,15 @@ export class PlatformRegistryService {
       version: skill.version,
       source: 'runtime',
       status: skill.status === 'ready' ? 'ready' : 'unavailable',
-      agentIds: [],
+      content: skill.content,
+      agentIds: skill.id === 'tutor-guided-learning' ? ['qitu-learning-partner'] : [],
     }));
+
+    const usages = this.models.getUsages();
+    const modelUsageOptions: AdminRuntimeModelUsageOption[] = usages.bindings.map((binding) => {
+      const usage = usages.usages.find((item) => item.id === binding.usageId);
+      return { id: binding.usageId, label: usage?.label ?? binding.usageId, available: binding.resolved !== null, modelId: binding.resolved?.modelId ?? null };
+    });
 
     return {
       generatedAt: new Date().toISOString(),
@@ -77,17 +90,61 @@ export class PlatformRegistryService {
         version: runtime.policy.version,
         contentHash: runtime.policy.contentHash,
         status: runtime.policy.status,
+        content: runtime.policy.content || null,
       },
       skills,
       // MCP is intentionally empty until a server-owned runtime registry exists.
       // Repository development config must never be promoted into this snapshot.
       mcpServers: [],
       agents: agents.sort((a, b) => a.label.localeCompare(b.label)),
+      modelUsageOptions,
       builtInTools: builtinToolRegistry.list(),
       initialization,
     };
   }
 
+  async updateAgent(actor: CurrentUser, agentId: string, input: AdminRuntimeAgentUpdateRequest): Promise<AdminRuntimeAgent> {
+    if (!this.db) throw new ServiceUnavailableException('角色治理存储不可用');
+    const allowedCapabilities = new Set(['explore', 'plan', 'teach', 'review', 'reflect']);
+    const label = input.label?.trim();
+    const definition = input.roleDefinition?.trim();
+    if (label !== undefined && (label.length < 2 || label.length > 80)) throw new BadRequestException('角色名称长度须为 2 至 80 个字符');
+    if (definition !== undefined && (definition.length < 20 || definition.length > 4000)) throw new BadRequestException('角色定义长度须为 20 至 4000 个字符');
+    if (input.capabilities && (input.capabilities.length === 0 || input.capabilities.length > 5 || input.capabilities.some((item) => !allowedCapabilities.has(item)))) {
+      throw new BadRequestException('角色能力列表无效');
+    }
+    if (input.modelUsage !== undefined && !this.models.getUsages().usages.some((item) => item.id === input.modelUsage)) {
+      throw new BadRequestException('未知的模型用途');
+    }
+
+    const [updated] = await withTransaction(this.db, async (tx) => {
+      const [existing] = await tx.select().from(tutorPartners).where(eq(tutorPartners.id, agentId)).limit(1);
+      if (!existing) throw new NotFoundException('Agent 角色不存在');
+      const values = {
+        ...(label !== undefined ? { displayName: label } : {}),
+        ...(definition !== undefined ? { roleDefinition: definition } : {}),
+        ...(input.modelUsage !== undefined ? { modelUsage: input.modelUsage } : {}),
+        ...(input.capabilities !== undefined ? { capabilities: [...new Set(input.capabilities)] } : {}),
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        promptVersion: `admin-${new Date().toISOString()}`,
+        updatedAt: new Date(),
+      };
+      const [row] = await tx.update(tutorPartners).set(values).where(eq(tutorPartners.id, agentId)).returning();
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.agent_role.update',
+        targetType: 'tutor_partner', targetId: agentId,
+        detail: { changedFields: Object.keys(input).filter((key) => key !== 'roleDefinition'), roleDefinitionChanged: definition !== undefined, modelUsage: input.modelUsage },
+      }, tx);
+      return [row];
+    });
+    return {
+      id: updated.id, label: updated.displayName, description: null, role: 'tutor',
+      roleDefinition: updated.roleDefinition, enabled: updated.enabled,
+      status: updated.enabled ? 'enabled' : 'disabled', modelUsage: updated.modelUsage,
+      promptVersion: updated.promptVersion, capabilities: updated.capabilities,
+      skillIds: [], toolIds: [], mcpServerIds: [],
+    };
+  }
   private async readChecks(databaseAvailable: boolean): Promise<AdminRuntimeSnapshot['initialization']['checks']> {
     const checkedAt = new Date().toISOString();
     const checks: AdminRuntimeSnapshot['initialization']['checks'] = [

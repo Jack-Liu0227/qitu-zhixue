@@ -265,6 +265,7 @@ export interface AdminRuntimePolicy {
   version: string | null;
   contentHash: string | null;
   status: 'ready' | 'missing';
+  content: string | null;
 }
 
 /* ---- skills ---- */
@@ -276,6 +277,7 @@ export interface AdminRuntimeSkill {
   version: string | null;
   source: AdminRuntimeSource;
   status: AdminRuntimeItemStatus;
+  content: string;
   /** 声明使用该 skill 的 agent id；无来源时为空数组。 */
   agentIds: string[];
 }
@@ -317,6 +319,8 @@ export interface AdminRuntimeAgent {
   description: string | null;
   /** 项目 Agent 角色名（如 tutor / planner）；无法确定时为 null。 */
   role: string | null;
+  /** Admin-governed concise role definition used in each Tutor context. */
+  roleDefinition: string;
   enabled: boolean;
   status: AdminRuntimeItemStatus;
   /** 绑定的模型用途 id（如 `tutor.chat`）；未绑定时为 null。 */
@@ -329,7 +333,15 @@ export interface AdminRuntimeAgent {
   mcpServerIds: string[];
 }
 
-/* ---- 内置工具 ---- */
+export interface AdminRuntimeAgentUpdateRequest {
+  label?: string;
+  roleDefinition?: string;
+  modelUsage?: string;
+  capabilities?: string[];
+  enabled?: boolean;
+}
+
+
 
 export type AdminRuntimeToolRiskLevel = 'low' | 'medium' | 'high' | 'unknown';
 
@@ -398,7 +410,14 @@ export interface AdminInitializationStatus {
 }
 
 /** `GET /api/v1/admin/ai-runtime` 的响应 `data`。 */
-export interface AdminRuntimeSnapshot {
+export interface AdminRuntimeModelUsageOption {
+  id: string;
+  label: string;
+  available: boolean;
+  modelId: string | null;
+}
+
+
   generatedAt: string;
   overall: AdminRuntimeHealth;
   dataSource: AdminDataSource;
@@ -406,6 +425,7 @@ export interface AdminRuntimeSnapshot {
   skills: AdminRuntimeSkill[];
   mcpServers: AdminRuntimeMcpServer[];
   agents: AdminRuntimeAgent[];
+  modelUsageOptions: AdminRuntimeModelUsageOption[];
   builtInTools: AdminRuntimeBuiltinTool[];
   initialization: AdminInitializationStatus;
 }
