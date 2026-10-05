@@ -10,6 +10,7 @@ import {
 import type { Database } from '@qitu/database';
 import { artifacts, projects } from '@qitu/database';
 import { eq, sql } from 'drizzle-orm';
+import { DATABASE_TOKEN } from '../../database';
 import type {
   AdminOverviewPageData,
   AdminStudentListPageData,
