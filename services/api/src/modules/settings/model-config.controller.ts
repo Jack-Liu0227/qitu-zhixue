@@ -41,7 +41,7 @@ export class ModelConfigController {
   }
 
   @Patch('admin/models/:slot')
-  updateModel(
+  async updateModel(
     @Headers('cookie') cookieHeader: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('slot') slot: string,
@@ -53,7 +53,8 @@ export class ModelConfigController {
     }
     if (!idempotencyKey?.trim() || idempotencyKey.length > 160) throw new BadRequestException('Idempotency-Key 必填');
     const scope = `legacy-model-config:${slot}`;
-    const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, sanitiseBody(body), {}), async () => ({ status: 200, body: this.models.update(slot as ModelSlot, sanitiseBody(body), admin.id) }));
+    const input = sanitiseBody(body);
+    const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { ...input }, {}), async () => ({ status: 200, body: this.models.update(slot as ModelSlot, input, admin.id) }));
     return { data: result.body };
   }
 
