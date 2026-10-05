@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Headers,
@@ -6,10 +7,11 @@ import {
   NotFoundException,
   Param,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Database } from '@qitu/database';
-import { artifacts, projects } from '@qitu/database';
-import { eq, sql } from 'drizzle-orm';
+import { artifacts, auditLogs, projects } from '@qitu/database';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
 import type {
   AdminOverviewPageData,
@@ -34,6 +36,7 @@ import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { DirectoryService } from '../directory/directory.service';
+import { AuditWriter } from '../../common/audit/audit.service';
 
 /**
  * 平台管理后台接口。
@@ -62,6 +65,7 @@ export class AdminController {
     private readonly modelRegistry: ModelRegistryService,
     private readonly directory: DirectoryService,
     private readonly accessPolicy: AccessPolicy,
+    private readonly audit: AuditWriter,
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
   ) {}
 
@@ -71,10 +75,10 @@ export class AdminController {
   async getOverview(
     @Headers('cookie') cookieHeader: string | undefined,
   ): Promise<{ data: AdminOverviewPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
-
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.overview', 'admin-overview');
     const stats = this.db === null ? this.platformData.getOverviewStats() : await this.getLiveOverviewStats();
-    const allInterventions = this.platformData.getAllInterventions();
+    const allInterventions = this.db === null ? this.platformData.getAllInterventions() : [];
 
     // 最近的介入请求。展示名从目录解析，否则这里会显示演示数据里的「小满」，
     // 而其他页面显示「演示学生三」——同一份数据两个名字。
@@ -107,8 +111,8 @@ export class AdminController {
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
   ): Promise<{ data: AdminStudentListPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
-
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.students', null);
     const validFilter = this.parseStudentFilter(filter);
     const limit = this.parseLimit(limitStr, 20, 100);
 
@@ -214,6 +218,8 @@ export class AdminController {
   ): Promise<{ data: AdminStudentDetail }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
+    await this.auditRead(admin.id, 'admin.read.student.detail', studentId);
+
     // ADR 0008 决定 6 / 产品文档 7.0 / docs/admin/permissions.md §5：管理员读取个别学生
     // 数据是「显式动作」，需要「对象级范围 + 最小字段 + 原因 + 二次确认 + 审计 + 限时」。
     // 当前没有可持久化的授权与审计链路，所以这里调用唯一授权入口 fail closed：
@@ -303,7 +309,8 @@ export class AdminController {
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
   ): Promise<{ data: AdminTeacherListPageData }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.teachers', null);
 
     const limit = this.parseLimit(limitStr, 20, 100);
 
@@ -368,7 +375,8 @@ export class AdminController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('teacherId') teacherId: string,
   ): Promise<{ data: AdminTeacherDetail }> {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.teacher.detail', teacherId);
 
     const teacher = (await this.listUnifiedTeachers()).find((t) => t.teacherId === teacherId);
     if (teacher === undefined) {
@@ -408,7 +416,8 @@ export class AdminController {
 
   /* ==================== 设置 ==================== */
   getSettings(@Headers('cookie') cookieHeader: string | undefined): { data: AdminSettingsIndexData } {
-    requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    await this.auditRead(admin.id, 'admin.read.settings', 'admin-settings');
 
     // 设置面板（只列出真实可用的）。
     // `route` 是相对 basePath（`/admin`）的子路由：前端用 `next/link` 跳转时
@@ -468,7 +477,42 @@ export class AdminController {
     };
   }
 
-  /* ==================== 内部工具 ==================== */
+  @Get('audit-logs')
+  async getAuditLogs(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('actorId') actorId?: string,
+    @Query('targetType') targetType?: string,
+    @Query('targetId') targetId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limitStr?: string,
+  ) {
+    const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
+    if (this.db === null) throw new ServiceUnavailableException('审计查询不可用：未配置 DATABASE_URL');
+    const limit = this.parseLimit(limitStr, 50, 200);
+    const conditions = [
+      actorId ? eq(auditLogs.actorId, actorId) : undefined,
+      targetType ? eq(auditLogs.targetType, targetType) : undefined,
+      targetId ? eq(auditLogs.targetId, targetId) : undefined,
+      from ? gte(auditLogs.at, parseDate(from, 'from')) : undefined,
+      to ? lte(auditLogs.at, parseDate(to, 'to')) : undefined,
+      cursor ? lte(auditLogs.at, parseDate(cursor, 'cursor')) : undefined,
+    ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
+    const rows = await this.db.select().from(auditLogs).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(auditLogs.at)).limit(limit + 1);
+    await this.auditRead(admin.id, 'admin.read.audit_logs', null);
+    const page = rows.slice(0, limit);
+    return {
+      data: {
+        items: page.map((row) => ({ id: row.id, actorId: row.actorId, action: row.action, targetType: row.targetType, targetId: row.targetId, at: row.at.toISOString(), detail: row.detail })),
+        nextCursor: rows.length > limit && page.length > 0 ? page[page.length - 1]!.at.toISOString() : null,
+        hasNext: rows.length > limit,
+        dataSource: 'live' as const,
+      },
+    };
+  }
+
+
 
   private async toInterventionRow(intervention: {
     id: string;
@@ -607,6 +651,11 @@ export class AdminController {
     };
   }
 
+  private async auditRead(actorId: string, action: string, targetId: string | null): Promise<void> {
+    if (this.db === null) return;
+    await this.audit.write({ actorId, actorRole: 'admin', action, targetType: targetId ? 'admin_resource' : 'admin_collection', targetId, detail: { purpose: 'governance_read' } });
+  }
+
   private dataSource(): 'demo' | 'live' {
     return this.db === null ? 'demo' : 'live';
   }
@@ -622,4 +671,10 @@ export class AdminController {
     if (!Number.isFinite(limit) || limit <= 0) return defaultLimit;
     return Math.min(Math.floor(limit), maxLimit);
   }
+}
+
+function parseDate(value: string, field: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new BadRequestException(`INVALID_${field.toUpperCase()}_DATE`);
+  return date;
 }
