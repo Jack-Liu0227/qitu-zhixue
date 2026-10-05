@@ -1,5 +1,5 @@
 import { createDb, closeDb, type Database } from '@qitu/database';
-import { Mem0HttpIndex } from '@qitu/agent-memory';
+import { Mem0HttpIndex } from '@qitu/agent-memory/mem0';
 import type { MemoryIndexPort } from '@qitu/agent-memory';
 import { MemoryOutboxHandler } from './memory-outbox-handler';
 import { PostgresMemoryRecordSource, memoryIndexConfig } from './memory-outbox-source';

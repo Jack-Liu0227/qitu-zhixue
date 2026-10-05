@@ -103,8 +103,7 @@ export class ProjectLifecycleService {
     const overview = await this.getProjectOverview(actor, projectId);
     return overview.nextStep;
   }
-
-
+  async canAdvance(actor: CurrentUser, studentId: string, projectId: string, store = this.store): Promise<QituProjectGate> {
     if (!(await this.access.canReadStudent(actor, studentId))) throw new ForbiddenException('无权访问项目');
     const project = await store.findProject(projectId);
     if (!project || project.studentId !== studentId) throw new NotFoundException('项目不存在');
