@@ -137,6 +137,7 @@ export class PlatformRegistryService {
       }, tx);
       return [row];
     });
+    if (!updated) throw new ServiceUnavailableException('角色更新未返回记录');
     return {
       id: updated.id, label: updated.displayName, description: null, role: 'tutor',
       roleDefinition: updated.roleDefinition, enabled: updated.enabled,
