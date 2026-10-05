@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { and, eq, lte, ne, or } from 'drizzle-orm';
 import { idempotencyKeys, type Database } from '@qitu/database';
@@ -55,11 +55,26 @@ export abstract class IdempotencyStore {
  * - **不接线任何控制器**：本服务只提供基础能力，接入由业务模块按 README 指引进行。
  */
 @Injectable()
-export class IdempotencyService extends IdempotencyStore {
+export class IdempotencyService extends IdempotencyStore implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(IdempotencyService.name);
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(@Inject(DATABASE_TOKEN) private readonly db: Database | null) {
     super();
+  }
+
+  onModuleInit(): void {
+    this.cleanupTimer = setInterval(() => {
+      void this.cleanupExpired().then((deleted) => {
+        if (deleted > 0) this.logger.log(`expired idempotency records removed=${deleted}`);
+      }).catch(() => this.logger.warn('idempotency cleanup failed; will retry on next interval'));
+    }, 60 * 60 * 1000);
+    this.cleanupTimer.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    this.cleanupTimer = null;
   }
 
   async execute<T>(

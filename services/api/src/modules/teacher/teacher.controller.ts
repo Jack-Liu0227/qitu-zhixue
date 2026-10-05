@@ -24,6 +24,9 @@ import { TeacherService } from './teacher.service';
 import { requireRole, pickFields } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { FeedbackService } from '../feedback/feedback.service';
+import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
+import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
+import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 
 /**
  * Teacher controller: roster, student detail, interventions, statistics, feedback.
@@ -39,6 +42,7 @@ export class TeacherController {
     private readonly teacherService: TeacherService,
     private readonly authService: AuthService,
     private readonly feedbackService: FeedbackService,
+    private readonly idempotency: IdempotencyStore,
   ) {}
 
   @Get('roster')
@@ -117,6 +121,7 @@ export class TeacherController {
   @Post('interventions/:id/actions')
   async recordInterventionAction(
     @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('id') id: string,
     @Body() body: unknown,
   ): Promise<{ data: TeacherInterventionActionResponse }> {
@@ -135,11 +140,21 @@ export class TeacherController {
       throw new BadRequestException('action 必须为 acknowledge 或 resolve');
     }
 
-    const result = await this.teacherService.recordInterventionAction(user.id, id, input.action);
-
-    return {
-      data: result,
-    };
+    if (idempotencyKey === undefined || idempotencyKey.trim().length === 0 || idempotencyKey.length > 160) {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少或无效的 Idempotency-Key 请求头' });
+    }
+    const scope = `teacher.intervention.action:${id}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        idempotencyKey,
+        hashIdempotentInput(scope, { interventionId: id }, input),
+        async () => ({ status: 200, body: await this.teacherService.recordInterventionAction(user.id, id, input.action!) }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
   }
 
   @Get('statistics')
