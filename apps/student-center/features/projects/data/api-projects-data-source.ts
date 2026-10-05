@@ -1,9 +1,10 @@
 import type { TemplateStage } from '@qitu/contracts';
+import type { ProjectsDataSource } from './data-source';
 import type {
   MentorNoteView, NextStep, PresignRequest, PresignResponse, ProjectDetail, ProjectListItem,
-  ProjectStageView, ProjectTab, ProjectsDataSource, ReflectionInput, TaskSubmission, TaskView,
+  ProjectStageView, ProjectTab, ReflectionInput, TaskSubmission, TaskView,
   TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
-} from './data-source';
+} from '../types';
 import { ProjectsDataError } from './data-source';
 
 export class ApiProjectsDataSource implements ProjectsDataSource {
@@ -22,7 +23,9 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
   async getNextStep(projectId: string): Promise<NextStep | null> { return (await this.request<{ data: NextStep | null }>(`/api/v1/projects/${encodeURIComponent(projectId)}/next-step`)).data; }
 
   async getTemplateStages(templateVersionId: string): Promise<TemplateStage[]> {
-    const [templateId, versionId] = templateVersionId.includes(':') ? templateVersionId.split(':', 2) : [templateVersionId, templateVersionId];
+    const parts = templateVersionId.split(':', 2);
+    const templateId = parts[0] || templateVersionId;
+    const versionId = parts[1] || templateVersionId;
     const payload = await this.request<{ data: { stages?: TemplateStage[] } }>(`/api/v1/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}`);
     return payload.data.stages ?? [];
   }
