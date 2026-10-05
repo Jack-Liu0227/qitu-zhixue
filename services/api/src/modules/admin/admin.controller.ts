@@ -291,8 +291,11 @@ export class AdminController {
         sessionsThisWeek,
         minutesThisWeek,
         dataSource: this.dataSource(),
+      },
+    };
+  }
 
-  @Get('teachers')
+  /* ==================== 教师数据 ==================== */
   async getTeachers(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('search') search?: string,
@@ -398,8 +401,11 @@ export class AdminController {
         students,
         interventions,
         dataSource: this.dataSource(),
+      },
+    };
+  }
 
-  @Get('settings')
+  /* ==================== 设置 ==================== */
   getSettings(@Headers('cookie') cookieHeader: string | undefined): { data: AdminSettingsIndexData } {
     requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
 
