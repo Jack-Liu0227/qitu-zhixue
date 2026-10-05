@@ -51,20 +51,32 @@ export class ModelRegistryController {
   @Post('admin/model-providers/:id')
   async upsertProvider(
     @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
     @Param('id') id: string,
     @Body() body: UpsertProviderRequest,
   ): Promise<{ data: ProviderConfigPublic }> {
     const admin = requireAdmin(this.authService, cookieHeader);
-    return { data: await this.registry.upsertProvider(id, sanitiseProvider(body), admin.id) };
+    const key = resolveIdempotencyKey(idempotencyHeader, undefined);
+    const scope = `admin.model-registry.provider.upsert:${id}`;
+    try {
+      const result = await this.idempotency.execute(scope, key, hashIdempotentInput(scope, {}, sanitiseProvider(body)), async () => ({ body: await this.registry.upsertProvider(id, sanitiseProvider(body), admin.id) }));
+      return { data: result.body };
+    } catch (error) { throwHttpForIdempotencyError(error); }
   }
 
   @Delete('admin/model-providers/:id')
   async deleteProvider(
     @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
     @Param('id') id: string,
   ): Promise<{ data: { id: string } }> {
     const admin = requireAdmin(this.authService, cookieHeader);
-    return { data: await this.registry.deleteProvider(id, admin.id) };
+    const key = resolveIdempotencyKey(idempotencyHeader, undefined);
+    const scope = `admin.model-registry.provider.delete:${id}`;
+    try {
+      const result = await this.idempotency.execute(scope, key, hashIdempotentInput(scope, {}, {}), async () => ({ body: await this.registry.deleteProvider(id, admin.id) }));
+      return { data: result.body };
+    } catch (error) { throwHttpForIdempotencyError(error); }
   }
 
   /**
@@ -204,11 +216,18 @@ export class ModelRegistryController {
   @Patch('admin/model-usages/:usageId')
   async bindUsage(
     @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
     @Param('usageId') usageId: string,
     @Body() body: BindUsageRequest,
   ): Promise<{ data: ModelUsageBinding }> {
     const admin = requireAdmin(this.authService, cookieHeader);
-    return { data: await this.registry.bindUsage(usageId, sanitiseBinding(body), admin.id) };
+    const key = resolveIdempotencyKey(idempotencyHeader, undefined);
+    const input = sanitiseBinding(body);
+    const scope = `admin.model-registry.usage.bind:${usageId}`;
+    try {
+      const result = await this.idempotency.execute(scope, key, hashIdempotentInput(scope, {}, input), async () => ({ body: await this.registry.bindUsage(usageId, input, admin.id) }));
+      return { data: result.body };
+    } catch (error) { throwHttpForIdempotencyError(error); }
   }
 
   /**

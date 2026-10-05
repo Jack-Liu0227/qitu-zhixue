@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Headers, Param, Patch } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, Param, Patch } from '@nestjs/common';
 import type {
   AdminModelsResponse,
   ModelConfigPublic,
@@ -10,6 +10,8 @@ import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { ModelConfigService } from './model-config.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
+import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 
 const SLOTS = new Set<ModelSlot>(['text', 'live']);
 
@@ -29,6 +31,7 @@ export class ModelConfigController {
     private readonly models: ModelConfigService,
     private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
+    private readonly idempotency: IdempotencyStore,
   ) {}
 
   @Get('admin/models')
@@ -40,14 +43,18 @@ export class ModelConfigController {
   @Patch('admin/models/:slot')
   updateModel(
     @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Param('slot') slot: string,
     @Body() body: UpdateModelConfigRequest,
-  ): { data: ModelConfigPublic } {
+  ): Promise<{ data: ModelConfigPublic }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '模型配置仅向管理员开放');
     if (!SLOTS.has(slot as ModelSlot)) {
       throw new ForbiddenException('未知的模型插槽');
     }
-    return { data: this.models.update(slot as ModelSlot, sanitiseBody(body), admin.id) };
+    if (!idempotencyKey?.trim() || idempotencyKey.length > 160) throw new BadRequestException('Idempotency-Key 必填');
+    const scope = `legacy-model-config:${slot}`;
+    const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, sanitiseBody(body), {}), async () => ({ status: 200, body: this.models.update(slot as ModelSlot, sanitiseBody(body), admin.id) }));
+    return { data: result.body };
   }
 
   /** 学生端 / 家长端 / 班主任端用来显示「当前跑的是哪个模型、Live 能不能用」。 */
