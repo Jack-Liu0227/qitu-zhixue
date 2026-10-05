@@ -1,6 +1,6 @@
 # AI 运行时投影与受限初始化（平台控制面）
 
-> 状态：当前基线（只读投影 + 受限幂等初始化）。
+> 状态：运行时来源、Agent binding 与受限初始化已实现；MCP transport 执行器仍未接入。
 > 实现：`services/api/src/modules/platform-registry/`、`services/api/src/modules/initialization/`、
 > `apps/admin-console/app/(console)/settings/ai-runtime/`。
 
@@ -15,8 +15,8 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 - **读写分离**：`GET` 是投影；`POST` 只执行 4 个固定 area 中的受限 foundation 操作，且必须带 `Idempotency-Key`。
 - **数据库 schema 迁移永远不通过 HTTP 执行**：`/database/execute` 恒定返回 `409 INITIALIZATION_OPERATOR_REQUIRED`。
 - **仅 admin**：两个 controller 的每个路由都调用 `requireRole(auth, cookie, 'admin', ...)`；前端隐藏入口不是授权。
-- **运行时元数据可见性**：`skills` 只从 `.agents/skills/*/SKILL.md` 读取并在 Admin 展示已加载定义；`agents` 只来自 Tutor Partner / 服务端 Agent Registry；`.pi` 开发角色永远不进入快照；MCP 在安全 Registry 接入前为空。`policy` 显示并提供只读查看仓库根 `AGENTS.md`，修改仍经仓库评审与部署发布。
-- **角色治理**：Admin 可编辑 Tutor Partner 的显示名称、独立角色定义、能力范围、启用状态和模型用途；写入通过 `Idempotency-Key` 与同事务审计。私有 `soul`/system prompt 不返回，编辑后的 role definition 每轮从 PostgreSQL 读取并进入 Tutor context；模型用途经 ModelRegistry 解析，未配置时仍 fail closed。
+- **运行时元数据可见性**：`skills` 从 `.agents/skills/*/SKILL.md` 加载；`agents` 来自独立 `agent_configs`，Tutor Partner 只作为兼容来源；`.pi` 开发角色永远不进入快照。Agent 只能使用显式 binding 的 Skill、Tool 和 MCP 元数据；MCP 凭证与未接通的 transport 不会进入 prompt 或调用路径。`policy` 显示根 `AGENTS.md`，Agent-local `agents.md` 由 Admin 在 Agent 配置中维护。
+- **角色治理与 binding**：Admin 可编辑 Agent 的显示名称、角色定义、Agent-local `agents.md`、启用状态、模型用途，以及 Skill/Tool/MCP 显式绑定。配置位于 `agent_configs` 与 binding 表，不继续扩展 `tutor_partners`；写入通过 `Idempotency-Key` 与同事务审计。子 Agent 不默认继承 Tool/MCP，Skill 继承必须显式声明。
 - **无法证实即 `unknown`**：前端不得把 `unknown` 渲染成 `ready`。
 
 ## 3. 管理 API
@@ -24,6 +24,7 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 | 方法 | 路径 | 权限 | 幂等键 | 响应 `data` |
 |---|---|---|---|---|
 | `GET` | `/api/v1/admin/ai-runtime` | admin | 不需要 | `AdminRuntimeSnapshot` |
+| `POST` | `/api/v1/admin/ai-runtime/agents/:agentId` | admin | **必填** | `AdminRuntimeAgent` |
 | `PATCH` | `/api/v1/admin/ai-runtime/agents/:agentId` | admin | **必填** | `AdminRuntimeAgent` |
 | `GET` | `/api/v1/admin/initialization` | admin | 不需要 | `AdminInitializationStatus` |
 | `POST` | `/api/v1/admin/initialization/knowledge/execute` | admin | **必填** | `InitializationExecutionResult` |
@@ -69,9 +70,9 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 |---|---|---|
 | `policy` | 根目录 `AGENTS.md` 的版本、SHA-256 摘要、加载状态和有界规则正文 | 规则正文只读，不返回密钥或运行时凭证 |
 | `skills` | `.agents/skills/*/SKILL.md` 的安全 frontmatter 与有界正文 | Admin 展示 Tutor runtime 实际加载版本；缺失时为空且**不回退到 `.pi`** |
-| `mcpServers` | 无服务端 MCP Registry 时为空 | 不读取仓库开发配置 |
-| `builtInTools` | `platform-registry/built-in-tools.ts` 的服务端注册表 | 只描述能力边界，执行仍由领域服务负责 |
-| `agents` | `tutor_partners` 行或未来服务端 Agent Registry | 暴露独立、可治理的角色定义；私有 `soul`/完整 system prompt 不返回；不含 `.pi` 开发角色 |
+| `mcpServers` | `runtime_mcp_servers` 的安全元数据 | 不返回 `secretRef` 内容；未注册或未接通 transport 不可调用 |
+| `builtInTools` | `platform-registry/built-in-tools.ts` 的服务端注册表 | 只描述能力边界；实际可用工具由 Agent Tool binding 过滤 |
+| `agents` | `agent_configs` + Skill/Tool/MCP binding；旧库回退 `tutor_partners` | 返回有效配置摘要；私有 system prompt、凭证和原始对话不返回 |
 
 `generatedAt` / `overall` / `dataSource` / `initialization` 同属快照。数据库不可达时返回明确的不可用 / 未知状态，**不以开发文件填充**。
 
@@ -95,7 +96,7 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 ## 5. 管理后台界面
 
 - 页面：`apps/admin-console/app/(console)/settings/ai-runtime/page.tsx`，五个 tab：`skills` / `mcp` / `agents` / `tools` / `init`。
-- 数据层：`apps/admin-console/lib/api/runtime.ts`，唯一读取路径是 `GET /api/v1/admin/ai-runtime`；角色写入通过 Admin-only `PATCH` 并带幂等键。
+- 数据层：`apps/admin-console/lib/api/runtime.ts`，读取 `GET /api/v1/admin/ai-runtime`；Agent 创建 / 更新使用 Admin-only `POST` / `PATCH` 并带幂等键。模型供应商、模型和用途绑定使用 `apps/admin-console/lib/api/modelRegistry.ts` 的 `/api/v1/admin/model-*` 路径，所有写操作都传稳定的 `Idempotency-Key`。
 - 入口：`SettingsSubNav` 中的「AI 运行时」子导航，`/admin/settings` 页面同步。
 - **冻结导航未变**：仍只有 `/admin/settings` 一个设置入口，AI 运行时是它的子导航。
 
@@ -120,7 +121,7 @@ Tutor policy、`.agents/skills`、Tutor Partner、真实工具描述和初始化
 
 ## 6. 未实现 / 未决（不得当作已完成）
 
-- 可执行的运行时 Skill / MCP 配置写入口与 MCP 健康探测尚未实现；Tutor Skill 从 `.agents/skills` 读取并以有界规则块装配。
+- Agent 配置与显式 Skill/Tool/MCP binding 已实现；MCP Server 的安全元数据可登记和绑定，但真正的 MCP transport、凭证解析和健康探测仍未接入，因此当前不会把 MCP 当成可执行工具。
 - 知识库与模板库 Admin 可视化已提供；编辑、校验、发布复用服务端幂等治理 API。
 - 多 Agent 编排、成长 / 画像异步生成、Worker 消费需分阶段接入。
 - `initialization.migrationVersion` 恒为 `null`；`database.schema` 检查恒为 `unknown`。

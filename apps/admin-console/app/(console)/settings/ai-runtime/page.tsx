@@ -12,7 +12,7 @@ import type {
   AdminRuntimeSnapshot,
 } from '@qitu/contracts';
 import { EmptyState, InfoRow, SectionCard, SegmentedControl, Button } from '@qitu/ui';
-import { AdminRuntimeUnavailableError, fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../../lib/api/runtime';
+import { AdminRuntimeUnavailableError, createRuntimeAgent, fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../../lib/api/runtime';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
@@ -290,6 +290,46 @@ function AgentEditorCard({
   );
 }
 
+function CreateAgentForm({ onCreated }: { onCreated: (agent: AdminRuntimeAgent) => void }) {
+  const [id, setId] = useState('');
+  const [label, setLabel] = useState('');
+  const [definition, setDefinition] = useState('');
+  const [modelUsage, setModelUsage] = useState('tutor.chat');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const created = await createRuntimeAgent(id.trim(), {
+        label: label.trim(), roleDefinition: definition.trim(), modelUsage,
+        capabilities: ['teach'], skillIds: [], toolIds: [], mcpBindings: [], enabled: true,
+      }, crypto.randomUUID());
+      onCreated(created);
+      setId(''); setLabel(''); setDefinition('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '角色创建失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <SectionCard title="新建子 Agent">
+      <form className="admin-agent-editor" onSubmit={submit}>
+        <label className="admin-agent-field"><span>Agent ID</span><input value={id} onChange={(event) => setId(event.target.value)} pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{1,79}" required /></label>
+        <label className="admin-agent-field"><span>显示名称</span><input value={label} onChange={(event) => setLabel(event.target.value)} maxLength={80} required /></label>
+        <label className="admin-agent-field"><span>角色定义</span><textarea value={definition} onChange={(event) => setDefinition(event.target.value)} minLength={20} maxLength={4000} rows={4} required /></label>
+        <label className="admin-agent-field"><span>模型用途</span><input value={modelUsage} onChange={(event) => setModelUsage(event.target.value)} required /></label>
+        {error ? <p role="alert" className="admin-runtime-error">{error}</p> : null}
+        <Button type="submit" loading={saving} disabled={saving}>创建 Agent</Button>
+      </form>
+    </SectionCard>
+  );
+}
+
 function AgentsPanel({
   agents,
   modelUsageOptions,
@@ -305,17 +345,10 @@ function AgentsPanel({
   mcpServers: AdminRuntimeMcpServer[];
   onSaved: (agent: AdminRuntimeAgent) => void;
 }) {
-  if (agents.length === 0) {
-    return (
-      <EmptyState
-        title="暂无 AI 导师 Agent 注册"
-        description="服务端没有返回已发布的 Tutor Partner。开发协作 Agent 不属于此列表，前端不会读取本地开发配置。"
-      />
-    );
-  }
-
   return (
     <div className="admin-runtime-cards">
+      {agents.length === 0 ? <EmptyState title="暂无 AI 导师 Agent 注册" description="服务端没有返回已发布的 Agent。" /> : null}
+      <CreateAgentForm onCreated={onSaved} />
       {agents.map((agent) => (
         <AgentEditorCard
           key={agent.id}
@@ -506,7 +539,9 @@ export default function AdminRuntimePage() {
             mcpServers={snapshot.mcpServers}
             onSaved={(updated) => setSnapshot((current) => current ? {
               ...current,
-              agents: current.agents.map((agent) => agent.id === updated.id ? updated : agent),
+              agents: current.agents.some((agent) => agent.id === updated.id)
+                ? current.agents.map((agent) => agent.id === updated.id ? updated : agent)
+                : [...current.agents, updated],
             } : current)}
           />
         ) : null}

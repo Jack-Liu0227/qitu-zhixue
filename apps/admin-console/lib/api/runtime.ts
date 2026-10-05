@@ -20,6 +20,26 @@ export class AdminRuntimeUnavailableError extends Error {
 
 const client = createApiClient('');
 
+export async function createRuntimeAgent(
+  agentId: string,
+  input: AdminRuntimeAgentUpdateRequest,
+  idempotencyKey: string,
+): Promise<AdminRuntimeAgent> {
+  const response = await fetch(`/api/v1/admin/ai-runtime/agents/${encodeURIComponent(agentId)}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { detail?: string; message?: string } | null;
+    const error = new Error(payload?.detail ?? payload?.message ?? '角色创建失败') as Error & { status: number };
+    error.status = response.status;
+    throw error;
+  }
+  return ((await response.json()) as DataEnvelope<AdminRuntimeAgent>).data;
+}
+
 export async function updateRuntimeAgent(
   agentId: string,
   input: AdminRuntimeAgentUpdateRequest,
