@@ -8,6 +8,7 @@ import { builtinToolRegistry } from './built-in-tools';
 import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { assertParentGraph } from './agent-config.validation';
 import type { TutorRuntimePolicy, TutorRuntimeSkill } from '../../common/tutor-runtime/runtime-source';
 
 export interface EffectiveAgentRuntime {
@@ -229,6 +230,7 @@ export class PlatformRegistryService {
       if (input.parentAgentId !== null && !(await this.listAgentsFromDatabase()).some((agent) => agent.id === input.parentAgentId)) {
         throw new BadRequestException('父 Agent 不存在');
       }
+      assertParentGraph(agentId, input.parentAgentId ?? null, await this.listAgentsFromDatabase());
     }
 
     await withTransaction(this.db, async (tx) => {
@@ -283,6 +285,46 @@ export class PlatformRegistryService {
     if (!updated) throw new ServiceUnavailableException('角色更新未返回记录');
     return updated;
   }
+  async createAgent(actor: CurrentUser, agentId: string, input: AdminRuntimeAgentUpdateRequest): Promise<AdminRuntimeAgent> {
+    if (!this.db) throw new ServiceUnavailableException('角色治理存储不可用');
+    if (!/^[a-z0-9][a-z0-9._-]{1,79}$/i.test(agentId)) throw new BadRequestException('Agent ID 无效');
+    if (!input.label || !input.roleDefinition) throw new BadRequestException('新 Agent 必须提供名称和角色定义');
+    if ((await this.listAgentsFromDatabase()).some((agent) => agent.id === agentId)) throw new BadRequestException('Agent 已存在');
+    const parentId = input.parentAgentId ?? null;
+    const agents = await this.listAgentsFromDatabase();
+    assertParentGraph(agentId, parentId, agents);
+    const capabilities = input.capabilities ?? ['teach'];
+    const now = new Date();
+    await withTransaction(this.db, async (tx) => {
+      await tx.insert(agentConfigs).values({
+        id: agentId,
+        displayName: input.label!,
+        role: 'custom',
+        roleDefinition: input.roleDefinition!,
+        agentDefinition: input.agentDefinition ?? '',
+        modelUsage: input.modelUsage ?? 'tutor.chat',
+        capabilities: [...new Set(capabilities)],
+        parentAgentId: parentId,
+        enabled: input.enabled ?? true,
+        configVersion: 1,
+        updatedBy: actor.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (input.skillIds && input.skillIds.length > 0) await tx.insert(agentSkillBindings).values(input.skillIds.map((skillId) => ({ agentId, skillId, enabled: true, inheritToChildren: false, updatedAt: now })));
+      if (input.toolIds && input.toolIds.length > 0) await tx.insert(agentToolBindings).values(input.toolIds.map((toolId) => ({ agentId, toolId, enabled: true, updatedAt: now })));
+      if (input.mcpBindings && input.mcpBindings.length > 0) await tx.insert(agentMcpBindings).values(input.mcpBindings.map((binding) => ({ agentId, mcpServerId: binding.serverId, allowedToolIds: binding.toolIds ?? [], enabled: true, updatedAt: now })));
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.agent_config.create',
+        targetType: 'agent_config', targetId: agentId,
+        detail: { modelUsage: input.modelUsage ?? 'tutor.chat', skillCount: input.skillIds?.length ?? 0, toolCount: input.toolIds?.length ?? 0, mcpCount: input.mcpBindings?.length ?? 0 },
+      }, tx);
+    });
+    const created = (await this.listAgentsFromDatabase()).find((agent) => agent.id === agentId);
+    if (!created) throw new ServiceUnavailableException('Agent 创建未返回记录');
+    return created;
+  }
+
   getAgentRuntimeTools(runtime: EffectiveAgentRuntime) {
     return builtinToolRegistry.asAgentRegistryForIds(runtime.agent.toolIds);
   }
