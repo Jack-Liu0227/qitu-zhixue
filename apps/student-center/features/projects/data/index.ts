@@ -1,10 +1,10 @@
-import { MockProjectsDataSource } from './mock-projects-data-source';
+import { ApiProjectsDataSource } from './api-projects-data-source';
 import type { ProjectsDataSource } from './data-source';
 
 export * from './data-source';
 
 /** 当前数据源实例。组件一律通过它取数，绝不直接 fetch。 */
-export let projectsDataSource: ProjectsDataSource = new MockProjectsDataSource();
+export let projectsDataSource: ProjectsDataSource = new ApiProjectsDataSource();
 
 /**
  * 唯一换源入口：Wave 4 用真实 API 客户端替换。

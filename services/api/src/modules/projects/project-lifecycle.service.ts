@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CurrentUser, ProjectStage } from '@qitu/contracts';
 import type { QituProjectGate } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -6,9 +6,54 @@ import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { AccessPolicy } from '../../common/access/access-policy';
-import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import {
+  type LearningProjectRecord,
+  type LearningPlanStore,
+} from '../learning-plan/learning-plan.store';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { PROJECT_STAGE_ORDER } from './intent-confirmation.state-machine';
+
+export interface ProjectNextStepProjection {
+  title: string;
+  description: string;
+  targetStage: ProjectStage;
+  deepLink: string;
+}
+
+export interface ProjectOverviewProjection {
+  project: ReturnType<typeof toProjectProjection>;
+  stages: Array<{ id: string; index: number; name: string; description: string; status: 'done' | 'active' | 'pending'; stage: ProjectStage }>;
+  tasks: Array<{ id: string; stageId: string; title: string; description: string; status: 'todo' | 'doing' | 'done' | 'locked'; isTodayFocus: boolean; order: number }>;
+  nextStep: ProjectNextStepProjection | null;
+}
+
+function toProjectProjection(project: LearningProjectRecord) {
+  return {
+    id: project.id,
+    title: project.title,
+    subtitle: project.subtitle ?? '',
+    tags: [...project.tags],
+    status: project.status,
+    templateVersionId: project.templateVersionId ?? 'unknown',
+    currentStageIndex: project.currentStageIndex,
+    stageTotal: project.stageTotal,
+    progressPercent: project.progressPercent,
+    theoryMastered: project.currentStageIndex >= PROJECT_STAGE_ORDER.indexOf('practice_ready'),
+    completedAt: project.completedAt?.toISOString() ?? null,
+    sourceExplorationId: null,
+  };
+}
+
+function buildStages(project: LearningProjectRecord) {
+  return PROJECT_STAGE_ORDER.map((stage, index) => ({
+    id: stage,
+    index,
+    name: stage,
+    description: index <= project.currentStageIndex ? '已由服务端记录' : '等待前置阶段完成',
+    status: index < project.currentStageIndex ? 'done' as const : index === project.currentStageIndex ? 'active' as const : 'pending' as const,
+    stage,
+  }));
+}
 
 @Injectable()
 export class ProjectLifecycleService {
@@ -21,7 +66,45 @@ export class ProjectLifecycleService {
     private readonly idempotency: IdempotencyStore,
   ) {}
 
-  async canAdvance(actor: CurrentUser, studentId: string, projectId: string, store = this.store): Promise<QituProjectGate> {
+  async listProjects(actor: CurrentUser): Promise<LearningProjectRecord[]> {
+    if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可读取项目列表');
+    return (await this.store.listPlansByStudent(actor.id))
+      .filter((plan) => plan.projectId !== null)
+      .then(async (plans) => Promise.all(plans.flatMap((plan) => plan.projectId ? [this.store.findProject(plan.projectId)] : [])))
+      .then((projects) => projects.filter((project): project is LearningProjectRecord => project !== null));
+  }
+
+  async getProjectOverview(actor: CurrentUser, projectId: string): Promise<ProjectOverviewProjection> {
+    const project = await this.store.findProject(projectId);
+    if (project === null) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: '项目不存在' });
+    if (!(await this.access.canReadStudent(actor, project.studentId))) throw new ForbiddenException({ code: 'PROJECT_FORBIDDEN', message: '无权访问项目' });
+    const plan = (await this.store.listPlansByStudent(project.studentId)).find((item) => item.projectId === projectId);
+    const bundle = plan ? await this.store.findBundle(plan.id) : null;
+    const stages = buildStages(project);
+    const tasks = bundle?.sessions.map((session, index) => ({
+      id: session.id,
+      stageId: session.mode === 'review' ? 'theory_check' : session.mode === 'study' ? 'theory_learning' : 'exploration',
+      title: `第 ${session.index + 1} 次学习`,
+      description: session.blocks.map((block) => block.kind).join('、') || '完成本次学习活动并留下证据。',
+      status: index < Math.max(0, project.currentStageIndex) ? 'done' as const : index === project.currentStageIndex ? 'doing' as const : 'locked' as const,
+      isTodayFocus: index === project.currentStageIndex,
+      order: session.index,
+    })) ?? [];
+    const nextStage = PROJECT_STAGE_ORDER[PROJECT_STAGE_ORDER.indexOf(project.status) + 1] ?? null;
+    return {
+      project: toProjectProjection(project),
+      stages,
+      tasks,
+      nextStep: nextStage ? { title: `继续推进「${project.title}」`, description: '完成当前阶段的服务端任务后再请求推进。', targetStage: nextStage, deepLink: `/student/projects/${project.id}?mode=${nextStage === 'practice_ready' || nextStage === 'practice_building' ? 'practice' : 'learn'}` } : null,
+    };
+  }
+
+  async getNextStep(actor: CurrentUser, projectId: string): Promise<ProjectNextStepProjection | null> {
+    const overview = await this.getProjectOverview(actor, projectId);
+    return overview.nextStep;
+  }
+
+
     if (!(await this.access.canReadStudent(actor, studentId))) throw new ForbiddenException('无权访问项目');
     const project = await store.findProject(projectId);
     if (!project || project.studentId !== studentId) throw new NotFoundException('项目不存在');

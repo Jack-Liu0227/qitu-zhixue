@@ -15,21 +15,23 @@ The initial repository does not create business tables. M1 will introduce identi
 连接串只从环境变量读取，仓库内不保存任何口令（`.env.local` 已被 `.gitignore` 覆盖）：
 
 ```bash
-# 建库后按编号顺序重放迁移（对空库可重放，forward-only）
-psql "$DATABASE_URL" -f database/migrations/0000_clever_kang.sql
-psql "$DATABASE_URL" -f database/migrations/0001_cheerful_colossus.sql
-psql "$DATABASE_URL" -f database/migrations/0002_light_miracleman.sql
-psql "$DATABASE_URL" -f database/migrations/0003_glamorous_ulik.sql
+# 数据库迁移使用 reviewed manual migrations；不要运行 drizzle-kit generate。
+pnpm --filter @qitu/database migrate
 
-# 确定性演示数据，幂等，可重复执行
-# 身份/口令冲突时会被**修正**（DO UPDATE），关系冲突时**保留**（DO NOTHING）
-pnpm --filter @qitu/database seed
-
-# 不连库，只校验证种子文件存在与确定性执行顺序
+# 校验种子文件存在，不连接数据库
 pnpm --filter @qitu/database exec tsx src/seed.ts --check
 
-# 修改 schema 后重新生成迁移（schema 在 packages/database/src/schema/）
-pnpm --filter @qitu/database generate
+# 加密备份（备份目录必须在仓库外）
+DATABASE_URL="$DATABASE_URL" \
+QITU_BACKUP_PASSPHRASE_FILE=/etc/qitu/backup.pass \
+QITU_BACKUP_DIR=/root/qitu-backups \
+./tooling/backup-qitu-db.sh
+
+# 恢复演练：先指向临时数据库，再执行；不会读取仓库内凭据
+DATABASE_URL="$RESTORE_DATABASE_URL" \
+QITU_BACKUP_PASSPHRASE_FILE=/etc/qitu/backup.pass \
+QITU_BACKUP_FILE=/root/qitu-backups/qitu-<timestamp>.dump.enc \
+./tooling/restore-qitu-db.sh
 ```
 
 ### 种子执行顺序
@@ -47,6 +49,16 @@ pnpm --filter @qitu/database generate
 
 `seeds/demo-identities.sql` 是身份种子数据的**唯一真源**；`domain-foundation.sql` 是
 规范化领域表的真源（迁移 `0008_domain_foundation`），两者均随 `pnpm seed` 自动执行。
+
+## 迁移与灾备策略
+
+本仓库使用 `database/migrations/` 中经过评审的 forward-only SQL 迁移；`drizzle-kit generate` 已显式禁用，避免 schema snapshot 与 0010–0013 手写迁移再次漂移。`pnpm --filter @qitu/database migrate` 是唯一推荐的执行入口。
+
+迁移编号目前连续覆盖 `0000`–`0013`。新表必须新增编号 SQL 和对应 `.down.sql` 说明，并在 `qitu_test` 临时库执行迁移与测试后再合并。
+
+生产备份由 `tooling/backup-qitu-db.sh` 执行：使用 `pg_dump --format=custom`，再用 AES-256-CBC/PBKDF2 加密，输出到仓库外目录并按保留天数清理。密码文件只由部署主机提供，禁止进入 Git。
+
+恢复演练由 `tooling/restore-qitu-db.sh` 执行，必须指向临时数据库；演练记录填写时间、备份文件和冒烟查询结果。恢复脚本不会修改仓库目录，也不会打印连接串或密码。
 
 ## 横切基础表
 
@@ -68,7 +80,8 @@ pnpm --filter @qitu/database generate
 
 > 迁移只前向；每个迁移配 `.down.sql` 回滚说明。`0001` 的 DDL 对空库与已升级库均可重放
 > （`CREATE TABLE/INDEX IF NOT EXISTS`、`ADD COLUMN IF NOT EXISTS`）。schema 改动后必须
-> 重新生成迁移，并用 `pnpm exec drizzle-kit generate` 确认「No schema changes」。
+> 新增 reviewed manual migration；`pnpm --filter @qitu/database generate` 会明确失败，禁止
+> 直接让 drizzle-kit 生成未评审 SQL。
 
 ## 幂等语义（重要）
 
