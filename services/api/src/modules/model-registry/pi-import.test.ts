@@ -108,3 +108,16 @@ test('sanitisePiImportBaseUrl removes URL credential material', () => {
   );
   assert.equal(sanitisePiImportBaseUrl('file:///tmp/provider'), null);
 });
+
+test('readPiImportManifest rejects an empty copied catalog', async () => {
+  await withPiConfig(
+    {
+      'models.json': { providers: {} },
+      'models-store.json': {},
+      'auth.json': {},
+    },
+    async (directory) => {
+      await assert.rejects(() => readPiImportManifest(directory), /PI_CONFIG_EMPTY/);
+    },
+  );
+});

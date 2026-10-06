@@ -117,7 +117,9 @@ export async function readPiImportManifest(configDir = process.env.QITU_PI_CONFI
     const key = auth?.type === 'api_key' || auth?.type === 'key' ? asString(auth.key) : null;
     if (key) provider.apiKey = key;
   }
-  return { providers: [...providers.values()] };
+  const result = [...providers.values()];
+  if (result.length === 0) throw new Error('PI_CONFIG_EMPTY');
+  return { providers: result };
 }
 
 async function readJson(path: string): Promise<unknown | null> {

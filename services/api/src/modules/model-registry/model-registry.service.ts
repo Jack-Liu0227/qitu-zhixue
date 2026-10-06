@@ -259,6 +259,16 @@ export class ModelRegistryService implements OnModuleInit {
     this.logger.log(
       `ModelRegistryService：已从数据库恢复 ${this.providers.size} 个供应商、${this.bindings.size} 条用途绑定。`,
     );
+
+    // Pi remains a desktop-only source. An operator can explicitly stage a
+    // copy of its catalog on the server for first-time initialization; normal
+    // restarts stay database-only unless this opt-in flag is present.
+    if (process.env.QITU_PI_IMPORT_ON_STARTUP?.trim().toLowerCase() === 'true') {
+      const result = await this.importPiConfigFromDirectory('system:pi-import');
+      this.logger.log(
+        `ModelRegistryService：Pi 初始化导入完成 ${result.providers.length} 个供应商、${result.importedModels} 个模型，跳过 ${result.skippedModels} 个模型。`,
+      );
+    }
   }
 
   /* ----------------------------- 读 ----------------------------- */
@@ -282,6 +292,12 @@ export class ModelRegistryService implements OnModuleInit {
   }
 
   async importPiManifest(manifest: PiImportManifest, actor: string): Promise<PiImportResult> {
+    if (manifest.providers.length === 0) {
+      throw new BadRequestException({
+        code: 'PI_CONFIG_EMPTY',
+        message: 'Pi 配置中没有可导入的供应商',
+      });
+    }
     let importedModels = 0;
     let skippedModels = 0;
     // A model declaration alone cannot enable voice. The VoiceGateway adapter
