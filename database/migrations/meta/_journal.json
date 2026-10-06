@@ -75,26 +75,54 @@
     {
       "idx": 10,
       "version": "7",
+      "when": 1790767277000,
+      "tag": "0010_agent_memory",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791033587000,
+      "tag": "0011_mastery_timeline",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791045678000,
+      "tag": "0012_mastery_graph_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791072119000,
+      "tag": "0013_tutor_exploration_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
       "when": 1791145000000,
       "tag": "0014_tutor_partner_governance",
       "breakpoints": true
     },
     {
-      "idx": 11,
+      "idx": 15,
       "version": "7",
       "when": 1791146000000,
       "tag": "0015_agent_runtime_bindings",
       "breakpoints": true
     },
     {
-      "idx": 12,
+      "idx": 16,
       "version": "7",
       "when": 1791177600000,
       "tag": "0016_agent_direct_model_selection",
       "breakpoints": true
     },
     {
-      "idx": 13,
+      "idx": 17,
       "version": "7",
       "when": 1791264000000,
       "tag": "0017_agent_team_runtime",
