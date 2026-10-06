@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "nest start --watch",
+    "prebuild": "pnpm --filter @qitu/database build",
     "build": "nest build",
     "lint": "node ../../tooling/lint-baseline.mjs",
+    "pretypecheck": "pnpm --filter @qitu/database build",
     "typecheck": "tsc --noEmit",
     "test": "pnpm --filter @qitu/database build && pnpm --filter @qitu/infra build && tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/**/*.test.js\""
   },
