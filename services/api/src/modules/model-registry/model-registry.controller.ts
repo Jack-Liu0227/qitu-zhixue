@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, Optional, Param, Patch, Post } from '@nestjs/common';
 import type {
   AdminModelResponse,
   AdminModelUsagesResponse,
@@ -41,7 +41,7 @@ export class ModelRegistryController {
     private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
     private readonly idempotency: IdempotencyStore,
-    private readonly voice: QwenVoiceGatewayService,
+    @Optional() private readonly voice?: QwenVoiceGatewayService,
   ) {}
 
   /** 供应商列表 + 预置模板（不区分是否已配置）。 */
@@ -268,11 +268,11 @@ export class ModelRegistryController {
   @Get('admin/model-voice')
   async listVoiceModels(@Headers('cookie') cookieHeader: string | undefined) {
     requireAdmin(this.authService, cookieHeader);
-    return { data: await this.voice.listModels() };
+    return { data: await (this.voice?.listModels() ?? Promise.resolve(this.registry.listVoiceModels())) };
   }
 
   private async withVoiceDefault(result: PiImportResult): Promise<PiImportResult> {
-    return { ...result, defaultVoiceModel: await this.voice.defaultModel() };
+    return { ...result, defaultVoiceModel: await (this.voice?.defaultModel() ?? Promise.resolve(null)) };
   }
 
   /** 用途列表与当前绑定（含回落后的实际生效模型）。 */

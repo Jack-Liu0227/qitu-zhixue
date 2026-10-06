@@ -220,7 +220,9 @@ function audioBlob(audio: VoiceAudioInput): Blob {
     throw new QwenVoiceGatewayError('VOICE_AUDIO_INVALID', '语音数据无效');
   }
   if (bytes.length === 0) throw new QwenVoiceGatewayError('VOICE_AUDIO_INVALID', '语音数据为空');
-  return new Blob([bytes], { type: audio.mimeType });
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Blob([copy.buffer], { type: audio.mimeType });
 }
 
 function fileNameFor(audio: VoiceAudioInput): string {
