@@ -78,6 +78,12 @@ import {
 import { ModelGatewayError } from './model-gateway.errors';
 import type { ModelRuntimeTarget } from './model-gateway.types';
 import { PROVIDER_PRESETS } from './provider-presets';
+import {
+  readPiImportManifest,
+  type PiImportManifest,
+  type PiImportResult,
+  type VoiceModelOption,
+} from './pi-import';
 
 /**
  * 模型供应商注册表 + Agent 直选模型解析。
@@ -262,6 +268,165 @@ export class ModelRegistryService implements OnModuleInit {
       providers: [...this.providers.values()].map((state) => this.toPublic(state)),
       presets: PROVIDER_PRESETS.map((preset) => ({ ...preset })),
     };
+  }
+
+  /**
+   * Import the server-side pi catalog through the same provider/key path used
+   * by the admin provider form. Credentials are accepted only from the
+   * server-mounted manifest and are encrypted by `upsertProvider` before they
+   * reach persistence.
+   */
+  async importPiConfigFromDirectory(actor: string): Promise<PiImportResult> {
+    const manifest = await readPiImportManifest();
+    return this.importPiManifest(manifest, actor);
+  }
+
+  async importPiManifest(manifest: PiImportManifest, actor: string): Promise<PiImportResult> {
+    let importedModels = 0;
+    let skippedModels = 0;
+    // A model declaration alone cannot enable voice. The VoiceGateway adapter
+    // is a separate server capability, so imports never bind tutor.live.
+    const defaultVoiceModel: PiImportResult['defaultVoiceModel'] = null;
+    const providers: PiImportResult['providers'] = [];
+
+    for (const input of manifest.providers) {
+      const provider = await this.upsertProvider(
+        input.id,
+        {
+          name: input.name,
+          baseUrl: input.baseUrl,
+          api: input.api,
+          authHeader: input.authHeader,
+          apiKey: input.apiKey,
+        },
+        actor,
+        false,
+      );
+      const state = this.providers.get(input.id);
+      if (state === undefined) {
+        throw new ServiceUnavailableException(`PI 导入后供应商状态不可用：${input.id}`);
+      }
+
+      const seenModelIds = new Set<string>();
+      const descriptors: ModelDescriptor[] = [];
+      let providerSkipped = 0;
+      for (const model of input.models) {
+        const modelId = model.modelId.trim();
+        if (modelId.length === 0 || seenModelIds.has(modelId)) {
+          providerSkipped += 1;
+          continue;
+        }
+        seenModelIds.add(modelId);
+
+        try {
+          // The storage schema keeps the protocol at provider scope, so a pi
+          // model declaring another protocol cannot be represented safely.
+          const api = normaliseApi(model.api, provider.api);
+          descriptors.push({
+            id: modelId,
+            name: model.displayName?.trim() || modelId,
+            api,
+            input: normaliseModalities(model.input, 'input'),
+            output: normaliseModalities(model.output, 'output'),
+            contextWindow: model.contextWindow ?? null,
+            maxTokens: model.maxTokens ?? null,
+            source: 'manual',
+          });
+        } catch (error) {
+          providerSkipped += 1;
+          this.logger.warn(
+            `PI 模型已跳过 provider=${input.id} model=${modelId} 原因=${
+              error instanceof Error ? error.message : '模型声明无效'
+            }`,
+          );
+        }
+      }
+
+      skippedModels += providerSkipped;
+
+      if (this.db && descriptors.length > 0) {
+        const now = new Date();
+        await withTransaction(this.db, async (tx) => {
+          for (const descriptor of descriptors) {
+            await upsertManualModelRow(
+              tx,
+              {
+                providerId: input.id,
+                modelId: descriptor.id,
+                displayName: descriptor.name,
+                input: [...descriptor.input],
+                output: [...descriptor.output],
+                contextWindow: descriptor.contextWindow,
+                maxTokens: descriptor.maxTokens,
+              },
+              now,
+            );
+          }
+          await this.audit.write(
+            {
+              actorId: actor,
+              action: 'model_provider.pi_import',
+              targetType: 'model_provider',
+              targetId: input.id,
+              detail: {
+                importedModels: descriptors.map((descriptor) => descriptor.id),
+                skippedModels: providerSkipped,
+              },
+            },
+            tx,
+          );
+        });
+      }
+
+      // Commit the in-memory snapshot only after persistence succeeds. The
+      // import deliberately uses the manual bucket so a later remote refresh
+      // cannot erase the pi-declared capabilities (especially audio).
+      for (const descriptor of descriptors) {
+        this.applyModelToMemory(input.id, descriptor, true);
+      }
+      importedModels += descriptors.length;
+
+      const voiceModelIds = descriptors
+        .filter((descriptor) => isAudioModel(descriptor))
+        .map((descriptor) => descriptor.id);
+      providers.push({
+        id: input.id,
+        configured: provider.auth.configured,
+        modelsImported: descriptors.length,
+        modelsSkipped: providerSkipped,
+        voiceModelIds,
+      });
+    }
+
+    return {
+      providers,
+      importedModels,
+      skippedModels,
+      defaultVoiceModel,
+    };
+  }
+
+  /** Return an audio-capable catalog without provider credentials. */
+  listVoiceModels(): VoiceModelOption[] {
+    const result: VoiceModelOption[] = [];
+    for (const state of this.providers.values()) {
+      const publicProvider = this.toPublic(state);
+      for (const model of publicProvider.models) {
+        if (!isAudioModel(model)) continue;
+        result.push({
+          providerId: state.id,
+          providerName: state.name,
+          modelId: model.id,
+          modelName: model.name || model.id,
+          configured: state.keyFingerprint !== null,
+          available: false,
+          availabilityReason: 'voice_adapter_not_configured',
+          input: [...model.input],
+          output: [...model.output],
+        });
+      }
+    }
+    return result;
   }
 
   getUsages(): AdminModelUsagesResponse {
@@ -471,6 +636,7 @@ export class ModelRegistryService implements OnModuleInit {
     id: string,
     body: UpsertProviderRequest,
     actor: string,
+    seedPresetModels = true,
   ): Promise<ProviderConfigPublic> {
     const existing = this.providers.get(id);
     if (existing === undefined && body.baseUrl === undefined) {
@@ -510,7 +676,7 @@ export class ModelRegistryService implements OnModuleInit {
 
     // 兼容预置手选：新供应商先带上模板建议的模型，管理员可随后自动拉取覆盖。
     const newManualModels: ModelDescriptor[] = [];
-    if (created && preset !== undefined && state.manual.size === 0) {
+    if (seedPresetModels && created && preset !== undefined && state.manual.size === 0) {
       for (const model of preset.suggestedModels) {
         const descriptor: ModelDescriptor = {
           id: model.id,
@@ -1637,6 +1803,10 @@ export class ModelRegistryService implements OnModuleInit {
 }
 
 /** 去掉结尾斜杠，避免拼出 `//v1/models`。 */
+function isAudioModel(model: Pick<ModelDescriptor, 'input' | 'output'>): boolean {
+  return model.input.includes('audio') || model.output.includes('audio');
+}
+
 function normaliseBaseUrl(value: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) return '';

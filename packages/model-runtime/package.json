@@ -27,6 +27,7 @@
     "test": "pnpm build && node --test dist/*.test.js"
   },
   "dependencies": {
+    "@qitu/contracts": "workspace:*",
     "@anthropic-ai/sdk": "0.124.0",
     "@earendil-works/pi-telemetry": "0.87.1",
     "openai": "6.40.0",

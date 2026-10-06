@@ -23,7 +23,10 @@ export interface ModelRuntimeTarget {
   modelId: string;
   baseUrl: string;
   api: QituModelApi;
-  credential: string;
+  /** Decrypted server-side credential, if this provider requires one. */
+  credential?: string | null;
+  /** OpenAI-compatible providers may explicitly opt out of Bearer auth. */
+  authHeader?: boolean;
   input?: readonly ('text' | 'image' | 'audio')[];
   contextWindow?: number | null;
   maxTokens?: number | null;
@@ -177,7 +180,11 @@ function createPiModels(target: ModelRuntimeTarget): {
   models: ReturnType<typeof createModels>;
   model: Model<Api>;
 } {
-  if (!target.credential.trim()) {
+  // Anthropic uses `x-api-key` (or its OAuth variant) inside the adapter,
+  // so `authHeader=false` only disables the OpenAI-compatible Bearer header.
+  // It must never turn a missing Anthropic credential into a keyless request.
+  const credentialRequired = target.api === 'anthropic-messages' || target.authHeader !== false;
+  if (credentialRequired && !target.credential?.trim()) {
     throw new ModelRuntimeError('MODEL_CREDENTIAL_MISSING', '模型凭证不可用');
   }
 
@@ -190,7 +197,13 @@ function createPiModels(target: ModelRuntimeTarget): {
     auth: {
       apiKey: {
         name: `${target.providerName} runtime credential`,
-        resolve: async () => ({ auth: { apiKey: target.credential }, source: 'qitu-model-registry' }),
+        resolve: async () => ({
+          // The resolver still returns a configured result for keyless
+          // gateways; API adapters omit this placeholder when authHeader is
+          // false, before constructing the HTTP client.
+          auth: { apiKey: target.credential?.trim() || 'unused' },
+          source: 'qitu-model-registry',
+        }),
       },
     },
     api: apiFor(target.api),
@@ -219,6 +232,7 @@ function toPiModel(target: ModelRuntimeTarget): Model<Api> {
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: positiveInt(target.contextWindow) ?? DEFAULT_CONTEXT_WINDOW,
     maxTokens: positiveInt(target.maxTokens) ?? DEFAULT_MAX_TOKENS,
+    authHeader: target.authHeader !== false,
   } as Model<Api>;
 }
 
@@ -374,6 +388,15 @@ function mapRuntimeError(error: unknown, signal?: AbortSignal): ModelRuntimeErro
 function normalizeBaseUrl(value: string): string {
   try {
     const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error('unsupported protocol');
+    }
+    // Credentials and URL query/fragment values are a second credential
+    // channel. The registry must provide a clean origin/path instead of
+    // letting them reach fetch or appear in diagnostics.
+    if (url.username || url.password || url.search || url.hash) {
+      throw new Error('credential-bearing URL');
+    }
     const pathname = url.pathname.replace(/\/+$/, '');
     if (!pathname.endsWith('/v1')) url.pathname = `${pathname}/v1`;
     return url.toString().replace(/\/$/, '');

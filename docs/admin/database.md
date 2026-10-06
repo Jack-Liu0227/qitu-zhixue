@@ -154,6 +154,8 @@ Graphiti 只能通过 `mastery.assessed` outbox 事件异步写入；丢失后�
 第 7 批  代理记忆（0010）
 第 8 批  掌握度时间线（0011、0012）
 第 9 批  统一导师探索上下文（0013：tutor_sessions.exploration_id + 探索/项目部分唯一索引）
+第 10 批 Agent Runtime 治理（0014–0016：Agent 绑定与直接模型选择）
+第 11 批 Team Runtime（0017：TeamRun / Task / Message / Event、mailbox、routes、候选投影与 outbox lease）
 ```
 
 **规则**：迁移编号单调递增；合并到主线后不可修改历史迁移；新迁移必须能对空库重放。
@@ -179,7 +181,7 @@ pnpm --filter @qitu/database seed
 - `packages/database/src/seed.ts` 的 `SEED_FILES` 依次执行三个种子文件。
 - 种子幂等：`users` / `schools` / 领域 fixture 冲突 `DO UPDATE`；
   `guardian_links` / `mentor_assignments` / 运行期记录冲突 `DO NOTHING`。
-- `0013` 的 Drizzle `meta/_journal.json` 仍停在 `0009`，重放用裸 `psql`。
+- 手写迁移 `0010`–`0017` 已纳入执行序列；`0017` 的 Team Runtime 表和 outbox lease 字段由 `meta/_journal.json` 中的 `0017_agent_team_runtime` 登记。迁移执行仍通过 reviewed SQL 文件完成，不在 HTTP 初始化接口中运行。
 
 ## 6. 空态、幂等与回滚
 

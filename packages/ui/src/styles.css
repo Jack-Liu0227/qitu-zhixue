@@ -1405,3 +1405,265 @@ summary:focus-visible,
   /* Composer stacks vertically once the row no longer fits. */
   .qitu-composer { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ================================================================== *
+ * Agent Team projections
+ * Read-only views shared by student, teacher and admin surfaces. The
+ * runtime owns topology and activity; these styles only render its projection.
+ * ================================================================== */
+.qitu-team-graph,
+.qitu-team-run-graph,
+.qitu-team-activity {
+  display: grid;
+  gap: var(--qitu-space-md);
+  padding: var(--qitu-space-lg);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-surface);
+}
+
+.qitu-team-graph-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--qitu-space-md);
+}
+
+.qitu-team-graph-header h3 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 0.96rem;
+}
+
+.qitu-team-graph-header p {
+  margin: 4px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.qitu-team-graph-count,
+.qitu-team-node-model,
+.qitu-team-run-meta,
+.qitu-team-edge-kind,
+.qitu-team-activity-type {
+  color: var(--qitu-muted);
+  font-size: 0.74rem;
+}
+
+.qitu-team-node-lanes {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.6fr);
+  gap: var(--qitu-space-md);
+}
+
+.qitu-team-lane {
+  display: grid;
+  gap: var(--qitu-space-sm);
+  align-content: start;
+  min-width: 0;
+}
+
+.qitu-team-lane-label {
+  color: var(--qitu-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.qitu-team-node-list {
+  display: grid;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-team-node {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: var(--qitu-space-md);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  background: white;
+}
+
+.qitu-team-node-leader {
+  border-color: var(--qitu-primary-border);
+  box-shadow: 0 0 0 3px var(--qitu-primary-soft);
+}
+
+.qitu-team-node-head,
+.qitu-team-run-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-team-node-head strong,
+.qitu-team-run-head strong {
+  color: var(--qitu-heading);
+  font-size: 0.84rem;
+}
+
+.qitu-team-node-id,
+.qitu-team-run-content > code {
+  overflow: hidden;
+  color: var(--qitu-muted);
+  font: 0.7rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qitu-team-node p,
+.qitu-team-run-content p,
+.qitu-team-activity-item p {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.qitu-team-node p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.qitu-team-node-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.qitu-team-node-capabilities span {
+  padding: 2px 6px;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-page);
+  color: var(--qitu-muted);
+  font-size: 0.68rem;
+}
+
+.qitu-team-node-meta { color: var(--qitu-muted); font-size: 0.75rem; }
+
+.qitu-team-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: var(--qitu-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.qitu-team-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.qitu-team-status-ready,
+.qitu-team-status-succeeded { color: var(--qitu-completed); }
+.qitu-team-status-running { color: var(--qitu-primary); }
+.qitu-team-status-waiting,
+.qitu-team-status-queued { color: var(--qitu-muted); }
+.qitu-team-status-blocked { color: var(--qitu-attention); }
+.qitu-team-status-failed,
+.qitu-team-status-cancelled { color: var(--qitu-danger); }
+.qitu-team-status-disabled { color: var(--qitu-muted); opacity: 0.7; }
+.qitu-team-status-offline { color: var(--qitu-attention); }
+
+.qitu-team-edges {
+  display: grid;
+  gap: 6px;
+  padding-top: var(--qitu-space-sm);
+  border-top: 1px solid var(--qitu-border);
+}
+
+.qitu-team-edge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--qitu-text);
+  font-size: 0.75rem;
+}
+
+.qitu-team-edge code {
+  overflow: hidden;
+  padding: 4px 6px;
+  border-radius: var(--qitu-radius-xs);
+  background: var(--qitu-page);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qitu-team-edge-arrow { color: var(--qitu-primary); font-size: 1rem; }
+.qitu-team-muted,
+.qitu-team-empty { margin: 0; color: var(--qitu-muted); font-size: 0.8rem; line-height: 1.5; }
+
+.qitu-team-run-list,
+.qitu-team-activity-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-team-run-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--qitu-space-sm);
+  padding: 0 0 var(--qitu-space-md);
+}
+
+.qitu-team-run-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 0;
+  left: 7px;
+  width: 1px;
+  background: var(--qitu-border);
+}
+
+.qitu-team-run-marker {
+  z-index: 1;
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--qitu-primary-border);
+  border-radius: 50%;
+  background: var(--qitu-surface);
+}
+
+.qitu-team-run-content { display: grid; gap: 4px; min-width: 0; }
+.qitu-team-graph-action { flex: 0 0 auto; }
+
+.qitu-team-activity-item {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: var(--qitu-space-sm);
+  align-items: start;
+  padding: var(--qitu-space-sm) 0;
+  border-bottom: 1px solid var(--qitu-border);
+}
+
+.qitu-team-activity-item:last-child { border-bottom: 0; }
+.qitu-team-activity-item time { color: var(--qitu-muted); font-size: 0.72rem; }
+.qitu-team-activity-item > div { display: grid; gap: 3px; min-width: 0; }
+.qitu-team-activity-item strong { color: var(--qitu-heading); font-size: 0.8rem; }
+.qitu-team-activity-item small { color: var(--qitu-muted); font-size: 0.72rem; }
+
+@media (max-width: 700px) {
+  .qitu-team-node-lanes { grid-template-columns: minmax(0, 1fr); }
+  .qitu-team-edge { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .qitu-team-edge-kind { grid-column: 1 / -1; }
+  .qitu-team-activity-item { grid-template-columns: 44px minmax(0, 1fr); }
+  .qitu-team-activity-item > .qitu-team-status { grid-column: 2; }
+}

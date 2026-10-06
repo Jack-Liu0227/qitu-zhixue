@@ -177,6 +177,9 @@ export function ParentGrowthPage({ childId, dataSource }: ParentGrowthPageProps)
 
   return (
     <div className="qitu-parent-growth-page">
+      <p className="qitu-parent-projection-note" role="note">
+        这里显示的是服务端审核后的成长投影，仅包含已授权、已脱敏的过程记录。
+      </p>
       {growthState.status === 'offline' ? (
         <OfflineBanner readOnly onRetry={handleRetry} />
       ) : null}

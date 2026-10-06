@@ -5,9 +5,10 @@ import { DirectoryModule } from '../directory/directory.module';
 import { AuthModule } from '../identity-auth/auth.module';
 import { FeedbackModule } from '../feedback/feedback.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
+import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 
 @Module({
-  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule],
+  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule],
   controllers: [TeacherController],
   providers: [TeacherService],
   exports: [TeacherService],

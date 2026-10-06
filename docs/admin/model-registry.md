@@ -33,6 +33,8 @@ Agent Runtime
 - Agent 快照只返回供应商名、模型名、能力和可用状态，不返回 API Key、密文或原始上游响应。
 - 旧 `agent_configs.model_usage` 和 `model_usage_bindings` 只用于一次性迁移及兼容旧 SDK；读取旧 Agent 时可回退 `tutor.chat`，保存 Agent 后以直接选择字段为准。
 
+直接选择是 Agent 的运行时事实源：服务端把 `modelProviderId + modelId` 解析为 `agent.model`，调用前再次检查供应商、模型启用状态、能力和凭证。客户端只能提交管理员表单中的脱敏 ID，不能提交 provider URL、凭证或替代模型；清空选择时运行时返回 `MODEL_NOT_CONFIGURED`。
+
 ## API
 
 ```http
@@ -44,6 +46,8 @@ POST  /api/v1/admin/model-providers/:id/models/:modelId/test
 GET   /api/v1/admin/ai-runtime
 POST  /api/v1/admin/ai-runtime/agents/:agentId
 PATCH /api/v1/admin/ai-runtime/agents/:agentId
+POST  /api/v1/admin/model-providers/import/pi/server
+GET   /api/v1/admin/model-voice
 ```
 
 Agent 创建和更新必须携带 `Idempotency-Key`。写入在服务端完成字段白名单、模型存在性、父 Agent 环、Skill/Tool/MCP 绑定和管理员权限校验，并写审计日志。
@@ -53,6 +57,10 @@ Agent 创建和更新必须携带 `Idempotency-Key`。写入在服务端完成�
 业务模块只调用 `ModelGateway.complete(usageId, request, selection?)`。当 Agent 传入 `selection={ providerId, modelId }` 时，网关调用 `resolveRuntimeTargetByModel`；旧调用方仍可按 `usageId` 解析。Agent 调用使用 `agent.model` 标识，清空模型后直接返回 `MODEL_NOT_CONFIGURED`，不会继续使用旧 `tutor.chat` 绑定。网关负责协议适配、超时、取消、响应大小限制、错误脱敏和结果归一化。
 
 模型注册表仍保留 `tutor.chat` 等用途定义，是旧业务和迁移期的兼容边界，不是管理员配置页面，也不是 Agent 模型选择的事实源。
+
+## Team Runtime 与候选投影
+
+Team Runtime 的 Team Leader 和子 Agent 都使用各自 Agent 配置的直接模型。Leader 只能通过服务端 route 委派任务；任务消息进入 Agent mailbox，由 worker 租约领取，执行状态通过 `TeamEvent` 和 outbox 传播。profile、growth 等子 Agent 只能产生 `agent_projection_candidates`，领域服务负责校验、幂等接受、正式写入和审计。
 
 ## 安全与持久化
 

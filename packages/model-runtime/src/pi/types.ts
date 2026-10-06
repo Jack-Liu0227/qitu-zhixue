@@ -979,7 +979,10 @@ export interface Model<TApi extends Api> {
 	maxTokens: number;
 	/** Default sampling parameters for this model. See {@link StreamOptions.samplingParams}; per-request keys override these. */
 	samplingParams?: Record<string, unknown>;
-	headers?: Record<string, string>;
+	/** Provider-owned headers. A null value removes an inherited header. */
+	headers?: ProviderHeaders;
+	/** Whether the runtime should pass the resolved credential as provider auth. */
+	authHeader?: boolean;
 	/** Compatibility overrides for OpenAI-compatible APIs. If not set, auto-detected from baseUrl. */
 	compat?: TApi extends "openai-completions"
 		? OpenAICompletionsCompat

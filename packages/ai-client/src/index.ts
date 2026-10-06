@@ -6,6 +6,7 @@ export * from './escalation/index.js';
 export * from './tutor-context.js';
 export * from './agent-runtime.js';
 export * from './agent-context-adapter.js';
+export * from './team-runtime.js';
 export * from './qitu-sdk.js';
 export * from './curriculum.js';
 export * from './context-packet.js';

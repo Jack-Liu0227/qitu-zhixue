@@ -41,7 +41,13 @@ function hasHeader(headers: ProviderHeaders | undefined, name: string): boolean 
 	return false;
 }
 
-function getClientApiKey(provider: string, apiKey: string | undefined, headers: ProviderHeaders | undefined): string {
+function getClientApiKey(
+	provider: string,
+	apiKey: string | undefined,
+	headers: ProviderHeaders | undefined,
+	authHeader = true,
+): string {
+	if (!authHeader) return "unused";
 	if (apiKey) return apiKey;
 	if (hasHeader(headers, "authorization") || hasHeader(headers, "cf-aig-authorization")) return "unused";
 	throw new Error(`No API key for provider: ${provider}`);
@@ -140,7 +146,7 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 
 		try {
 			// Create OpenAI client
-			const apiKey = getClientApiKey(model.provider, options?.apiKey, options?.headers);
+			const apiKey = getClientApiKey(model.provider, options?.apiKey, options?.headers, model.authHeader);
 			const cacheRetention = resolveCacheRetention(options?.cacheRetention, options?.env);
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
 			const compat = getCompat(model);
@@ -221,7 +227,7 @@ export const streamSimple: StreamFunction<"openai-responses", SimpleStreamOption
 	context: TranscriptContext,
 	options?: SimpleStreamOptions,
 ): AssistantMessageEventStream => {
-	getClientApiKey(model.provider, options?.apiKey, options?.headers);
+	getClientApiKey(model.provider, options?.apiKey, options?.headers, model.authHeader);
 
 	const base = {
 		...buildBaseOptions(model, context, options, options?.apiKey),
@@ -271,8 +277,16 @@ function createClient(
 		Object.assign(headers, optionsHeaders);
 	}
 
+	const keyless = model.authHeader === false;
+	if (keyless && !hasHeader(headers, "authorization") && !hasHeader(headers, "api-key")) {
+		// The OpenAI SDK requires a constructor credential even when a gateway
+		// intentionally has no auth. A nullable default header clears the
+		// placeholder Bearer header before fetch and satisfies its validation.
+		headers.Authorization = null;
+	}
+
 	return new OpenAI({
-		apiKey,
+		apiKey: keyless ? "unused" : apiKey,
 		baseURL: model.baseUrl,
 		dangerouslyAllowBrowser: true,
 		fetch,

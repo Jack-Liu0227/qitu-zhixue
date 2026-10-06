@@ -177,11 +177,11 @@ ensure_shared_packages() {
   # (tsconfig rootDir=src). It therefore cannot transpile workspace packages at
   # runtime, so any package that exports *runtime values* must be built to dist
   # first. Type-only packages (e.g. @qitu/contracts) are erased and need no build.
-  echo "building @qitu/database (runtime dependency of api)..."
+  echo "building shared runtime packages (database, model-runtime, agent-memory)..."
   if [[ "$(id -u)" == 0 ]] && command -v runuser >/dev/null 2>&1; then
-    runuser -u postgres -- bash -c "cd '$ROOT' && pnpm --filter @qitu/database build"
+    runuser -u postgres -- bash -c "cd '$ROOT' && pnpm --filter @qitu/database build && pnpm --filter @qitu/model-runtime build && pnpm --filter @qitu/agent-memory build"
   else
-    (cd "$ROOT" && pnpm --filter @qitu/database build)
+    (cd "$ROOT" && pnpm --filter @qitu/database build && pnpm --filter @qitu/model-runtime build && pnpm --filter @qitu/agent-memory build)
   fi
 }
 

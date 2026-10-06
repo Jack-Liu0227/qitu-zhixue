@@ -3,6 +3,7 @@ import { GraphitiMasteryProvider } from './mastery-graph-provider';
 import { PostgresMasteryProjectionSource } from './mastery-projection-source';
 import { MasteryProjectionWorker } from './mastery-projection-worker';
 import { runMemoryWorker } from './memory-worker';
+import { runTeamRuntimeWorker } from './team-runtime-worker';
 
 export async function runMasteryWorker(options = process.env, args = process.argv.slice(2)): Promise<void> {
   if (options.QITU_GRAPHITI_ENABLED !== 'true') {
@@ -38,14 +39,24 @@ export async function runMasteryWorker(options = process.env, args = process.arg
 export async function runAllWorkers(options = process.env, args = process.argv.slice(2)): Promise<void> {
   const command = args[0] ?? 'consume';
   if (command === 'once') {
-    await Promise.all([runMasteryWorker(options, args), runMemoryWorker(options, args)]);
+    await Promise.all([runOptionalMasteryWorker(options, args), runMemoryWorker(options, args), runTeamRuntimeWorker(options, args)]);
     return;
   }
   if (command === 'rebuild' || command === 'reconcile') {
     await runMasteryWorker(options, args);
     return;
   }
-  await Promise.all([runMasteryWorker(options, args), runMemoryWorker(options, args)]);
+  await Promise.all([runOptionalMasteryWorker(options, args), runMemoryWorker(options, args), runTeamRuntimeWorker(options, args)]);
+}
+
+/** Graphiti is an optional projection; mailbox and memory workers must start with only the database. */
+async function runOptionalMasteryWorker(options: NodeJS.ProcessEnv, args: string[]): Promise<void> {
+  if (options.QITU_GRAPHITI_ENABLED !== 'true') return;
+  if (!options.DATABASE_URL || !options.QITU_GRAPHITI_URL || !options.QITU_GRAPHITI_TOKEN) {
+    console.log('[qitu-workers] mastery graph projection skipped: Graphiti configuration is incomplete');
+    return;
+  }
+  await runMasteryWorker(options, args);
 }
 
 if (!process.env.NODE_TEST_CONTEXT) runAllWorkers().then(() => {

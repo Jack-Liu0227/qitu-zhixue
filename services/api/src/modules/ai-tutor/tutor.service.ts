@@ -34,6 +34,7 @@ import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.pro
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
   type AppendTurnsInput,
@@ -116,6 +117,17 @@ const PROJECT_STAGES = [
   { id: 'completed', label: '完成' },
 ] satisfies TutorProjectContext['stages'];
 
+/** PBL planning is meaningful only while a project is still active. */
+const PBL_PLAN_STAGES = new Set<ProjectStage>([
+  'intent_confirmed',
+  'theory_learning',
+  'theory_check',
+  'practice_ready',
+  'practice_building',
+  'artifact_review',
+  'reflection',
+]);
+
 function currentTaskFor(
   projectId: string | null,
   title: string,
@@ -194,6 +206,7 @@ export class TutorService {
     @Optional() private readonly sdkFactory?: QituSDKFactory,
     @Optional() private readonly projects?: ProjectsService,
     @Optional() private readonly platformRegistry?: PlatformRegistryService,
+    @Optional() private readonly teamRuntime?: TeamRuntimeService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []));
@@ -494,6 +507,29 @@ export class TutorService {
   ): Promise<StreamedTutorEvent[]> {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
+    // Team Runtime is an observability/delegation boundary. Tutor turns remain
+    // usable when the optional runtime tables are not migrated yet; failures
+    // are intentionally fail-closed and never expose student content.
+    let teamRunId: string | null = null;
+    if (this.teamRuntime !== undefined) {
+      try {
+        const run = await this.teamRuntime.startRun(
+          { id: request.actorId, email: '', displayName: '', role: 'student' },
+          {
+            studentUserId: request.actorId,
+            projectId: record.projectId,
+            tutorSessionId: record.sessionId,
+            trigger: 'tutor.turn',
+            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null },
+            idempotencyKey: `tutor-team-run:${record.sessionId}:${request.idempotencyKey}`,
+          },
+        );
+        teamRunId = typeof run.id === 'string' ? run.id : null;
+      } catch {
+        // Existing Tutor behavior must not regress because Team Runtime is
+        // being rolled out independently from the conversation path.
+      }
+    }
     await this.domainWriter.initialize();
     const liveProject = record.projectId === null || this.platformData === undefined
       ? null
@@ -710,6 +746,72 @@ export class TutorService {
       evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
       occurredAt: new Date().toISOString(),
     });
+    if (this.teamRuntime !== undefined && teamRunId !== null) {
+      try {
+        await this.teamRuntime.recordEvent({
+          runId: teamRunId,
+          topic: 'tutor.turn.completed',
+          payload: {
+            studentUserId: request.actorId,
+            projectId: record.projectId,
+            sessionId: record.sessionId,
+            assistantSeq,
+            stage: projectStage,
+            evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
+          },
+          idempotencyKey: `tutor-team-event:${record.sessionId}:${assistantSeq}`,
+        });
+        const delegationInput = buildTeamDelegationInput(record, request, assistantSeq, projectStage);
+        const leaderActor = { id: request.actorId, email: '', displayName: '', role: 'student' as const };
+        const tasks = record.projectId === null
+          ? [
+              {
+                recipientAgentId: 'interest-confirmation',
+                taskType: 'interest.confirm',
+                input: {
+                  studentId: request.actorId,
+                  sessionId: record.sessionId,
+                  turnCount: delegationInput.turnCount,
+                  projectStage,
+                  pedagogicMove: request.pedagogicMove ?? null,
+                  // Never persist raw turns in Team Runtime. The child Agent
+                  // receives only an approved metadata marker and evidence ref.
+                  conversationSummary: delegationInput.summary,
+                  evidenceRefs: delegationInput.evidenceRefs,
+                },
+              },
+            ]
+          : PBL_PLAN_STAGES.has(projectStage)
+            ? [
+              {
+                recipientAgentId: 'pbl-orchestrator',
+                taskType: 'pbl.plan',
+                input: {
+                  studentId: request.actorId,
+                  projectId: record.projectId,
+                  turnCount: delegationInput.turnCount,
+                  pedagogicMove: request.pedagogicMove ?? null,
+                  intent: delegationInput.summary,
+                  currentStage: projectStage,
+                  evidenceRefs: delegationInput.evidenceRefs,
+                },
+              },
+            ]
+            : [];
+        for (const task of tasks) {
+          await this.teamRuntime.delegateIfAvailable(leaderActor, teamRunId, {
+            senderAgentId: 'qitu-learning-partner',
+            recipientAgentId: task.recipientAgentId,
+            taskType: task.taskType,
+            input: task.input,
+            idempotencyKey: `tutor-team-task:${record.sessionId}:${assistantSeq}:${task.taskType}`,
+          });
+        }
+      } catch {
+        // Outbox failure is observable separately; do not turn a successful
+        // student conversation into HTTP 500 during a partial rollout.
+      }
+    }
     if (escalatedNow) {
       await this.commitAudit({
         sessionId: record.sessionId,
@@ -909,6 +1011,21 @@ export class TutorService {
       detail: { projectId: entry.projectId, summary: entry.detail },
     });
   }
+}
+
+function buildTeamDelegationInput(
+  record: TutorSessionRecord,
+  _request: { pedagogicMove?: TutorTurnInput['pedagogicMove'] },
+  assistantSeq: number,
+  projectStage: ProjectStage,
+): { summary: string; evidenceRefs: string[]; turnCount: number } {
+  return {
+    // The worker can correlate this marker with authorized evidence refs. It
+    // intentionally contains no student or assistant utterance.
+    summary: `服务端已记录一次 ${projectStage} 阶段回合；请仅依据证据引用处理。`,
+    evidenceRefs: [`tutor_turn:${record.sessionId}:${assistantSeq}`],
+    turnCount: record.turns.filter((turn) => turn.role === 'student').length,
+  };
 }
 
 /**

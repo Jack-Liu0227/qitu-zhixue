@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import type {
   AdminModelResponse,
   AdminModelUsagesResponse,
@@ -23,6 +23,7 @@ import {
   type UpdateManualModelInput,
 } from './model-registry.service';
 import { resolveIdempotencyKey } from './manual-model.validation';
+import { readPiImportManifest, sanitisePiImportBaseUrl, type PiImportManifest, type PiImportModel, type PiImportProvider, type PiImportResult } from './pi-import';
 
 /**
  * 管理员端「模型接入」接口。
@@ -206,6 +207,62 @@ export class ModelRegistryController {
     return { data: await this.registry.refreshProvider(id, admin.id) };
   }
 
+  /**
+   * Import a redacted pi provider/model manifest. The desktop must send
+   * metadata only; credentials stay in the server-side provider upsert flow.
+   * Unknown fields (including apiKey/token/auth) are intentionally ignored.
+   */
+  @Post('admin/model-providers/import/pi')
+  async importPiManifest(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+    @Body() body: unknown,
+  ): Promise<{ data: PiImportResult }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const input = parsePiImport(body, idempotencyHeader);
+    const scope = 'admin.model-registry.import.pi';
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        input.idempotencyKey,
+        hashIdempotentInput(scope, { actorId: admin.id }, input.manifest),
+        async () => ({ status: 200, body: await this.registry.importPiManifest(input.manifest, admin.id) }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /** Read a server-mounted QITU_PI_CONFIG_DIR (models*.json + auth.json). */
+  @Post('admin/model-providers/import/pi/server')
+  async importPiServerConfig(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+  ): Promise<{ data: PiImportResult }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const key = resolveIdempotencyKey(idempotencyHeader, undefined);
+    const scope = 'admin.model-registry.import.pi.server';
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        key,
+        hashIdempotentInput(scope, { actorId: admin.id, configDir: process.env.QITU_PI_CONFIG_DIR ?? null }, {}),
+        async () => ({ status: 200, body: await this.registry.importPiConfigFromDirectory(admin.id) }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /** Read-only audio-capable catalog; no credentials are returned. */
+  @Get('admin/model-voice')
+  listVoiceModels(@Headers('cookie') cookieHeader: string | undefined) {
+    requireAdmin(this.authService, cookieHeader);
+    return { data: this.registry.listVoiceModels() };
+  }
+
   /** 用途列表与当前绑定（含回落后的实际生效模型）。 */
   @Get('admin/model-usages')
   listUsages(@Headers('cookie') cookieHeader: string | undefined): { data: AdminModelUsagesResponse } {
@@ -279,6 +336,74 @@ export class ModelRegistryController {
 
 function requireAdmin(authService: AuthService, cookieHeader: string | undefined) {
   return requireRole(authService, cookieHeader, 'admin', '模型接入配置仅向管理员开放');
+}
+
+interface ParsedPiImport {
+  idempotencyKey: string;
+  manifest: PiImportManifest;
+}
+
+function parsePiImport(body: unknown, headerKey: string | undefined): ParsedPiImport {
+  const value = body !== null && typeof body === 'object' ? body as Record<string, unknown> : {};
+  const rawKey = typeof value.idempotencyKey === 'string' ? value.idempotencyKey : headerKey;
+  if (!rawKey || rawKey.trim().length === 0 || rawKey.length > 160) {
+    throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少 Idempotency-Key' });
+  }
+  const providersValue = Array.isArray(value.providers) ? value.providers : [];
+  if (providersValue.length === 0 || providersValue.length > 100) throw new BadRequestException('providers 数量无效');
+  const providers = providersValue.map((entry, index) => parsePiProvider(entry, index));
+  return { idempotencyKey: rawKey.trim(), manifest: { providers } };
+}
+
+function parsePiProvider(value: unknown, index: number): PiImportProvider {
+  if (!value || typeof value !== 'object') throw new BadRequestException(`providers[${index}] 无效`);
+  const row = value as Record<string, unknown>;
+  const id = typeof row.id === 'string' ? row.id.trim() : '';
+  const baseUrl = sanitisePiImportBaseUrl(row.baseUrl);
+  const models = Array.isArray(row.models) ? row.models : [];
+  if (!/^[a-z0-9][a-z0-9._-]{1,79}$/iu.test(id)) throw new BadRequestException(`providers[${index}].id 无效`);
+  if (baseUrl === null || baseUrl.length > 500) throw new BadRequestException(`providers[${index}].baseUrl 无效`);
+  if (models.length > 500) throw new BadRequestException(`providers[${index}].models 数量无效`);
+  return {
+    id,
+    name: typeof row.name === 'string' ? row.name.slice(0, 120) : undefined,
+    baseUrl,
+    api: isModelApi(row.api) ? row.api : undefined,
+    authHeader: typeof row.authHeader === 'boolean' ? row.authHeader : undefined,
+    models: models.map((model, modelIndex) => parsePiModel(model, modelIndex, id)),
+  };
+}
+
+function parsePiModel(value: unknown, index: number, providerId: string): PiImportModel {
+  if (!value || typeof value !== 'object') throw new BadRequestException(`${providerId}.models[${index}] 无效`);
+  const row = value as Record<string, unknown>;
+  const modelId = typeof row.modelId === 'string' ? row.modelId.trim() : '';
+  if (modelId.length < 1 || modelId.length > 200) throw new BadRequestException(`${providerId}.models[${index}].modelId 无效`);
+  return {
+    modelId,
+    displayName: typeof row.displayName === 'string' ? row.displayName.slice(0, 200) : undefined,
+    api: isModelApi(row.api) ? row.api : undefined,
+    input: parseModalities(row.input),
+    output: parseModalities(row.output),
+    contextWindow: parseOptionalNumber(row.contextWindow),
+    maxTokens: parseOptionalNumber(row.maxTokens),
+  };
+}
+
+function parseModalities(value: unknown): Array<'text' | 'image' | 'audio'> | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const allowed = new Set(['text', 'image', 'audio']);
+  const result = [...new Set(value.filter((item): item is 'text' | 'image' | 'audio' => typeof item === 'string' && allowed.has(item)))];
+  return result.length > 0 ? result : undefined;
+}
+
+function parseOptionalNumber(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
+function isModelApi(value: unknown): value is PiImportProvider['api'] {
+  return value === 'openai-completions' || value === 'openai-responses' || value === 'anthropic-messages';
 }
 
 /**

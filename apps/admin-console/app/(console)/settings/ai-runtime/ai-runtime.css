@@ -108,3 +108,58 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.admin-runtime-team {
+  display: grid;
+  gap: var(--qitu-space-lg);
+}
+
+.admin-runtime-team > .qitu-section-card {
+  min-width: 0;
+}
+
+.admin-agent-run-lookup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.admin-route-editor {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.admin-route-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-route-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(160px, 1.5fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 4px;
+  background: var(--qitu-page);
+}
+
+.admin-route-list li > span:not([aria-hidden]) {
+  color: var(--qitu-muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 680px) {
+  .admin-agent-run-lookup { grid-template-columns: minmax(0, 1fr); }
+  .admin-route-editor { grid-template-columns: minmax(0, 1fr); }
+  .admin-route-list li { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .admin-route-list li > span:not([aria-hidden]) { grid-column: 1 / -1; }
+}

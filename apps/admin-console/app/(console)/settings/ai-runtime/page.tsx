@@ -11,8 +11,35 @@ import type {
   AdminRuntimeSkill,
   AdminRuntimeSnapshot,
 } from '@qitu/contracts';
-import { EmptyState, InfoRow, SectionCard, SegmentedControl, Button } from '@qitu/ui';
+import {
+  AgentActivityFeed,
+  AgentRunGraph,
+  AgentTopologyGraph,
+  EmptyState,
+  SkeletonBlock,
+  InfoRow,
+  SectionCard,
+  SegmentedControl,
+  Button,
+  type TeamActivityItem,
+  type TeamGraphEdge,
+  type TeamGraphNode,
+} from '@qitu/ui';
 import { AdminRuntimeUnavailableError, createRuntimeAgent, fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../../lib/api/runtime';
+import {
+  AgentRunOfflineError,
+  AgentRunPermissionError,
+  AgentRunUnavailableError,
+  createAgentRoute,
+  fetchAgentRoutes,
+  fetchAgentRunGraph,
+  fetchStaticAgentGraph,
+  startAgentTestRun,
+  updateAgentRoute,
+  type AdminAgentRoute,
+  type AdminStaticAgentGraphProjection,
+  type AdminAgentRunProjection,
+} from '../../../../lib/api/agentTeam';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
 import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
@@ -44,12 +71,13 @@ import {
  * 页面显式呈现 loading、empty、error、offline、permission-denied 和接口未启用状态。
  */
 
-type RuntimeTab = 'skills' | 'mcp' | 'agents' | 'tools' | 'init';
+type RuntimeTab = 'skills' | 'mcp' | 'agents' | 'team' | 'tools' | 'init';
 
 const TAB_ITEMS: { value: RuntimeTab; label: string }[] = [
   { value: 'skills', label: 'Skills' },
   { value: 'mcp', label: 'MCP 服务器' },
   { value: 'agents', label: 'AI 导师 Agent' },
+  { value: 'team', label: 'Team 协作' },
   { value: 'tools', label: '内置工具' },
   { value: 'init', label: '初始化状态' },
 ];
@@ -437,6 +465,229 @@ function AgentsPanel({
   );
 }
 
+/* ----------------------------- Team 图 ----------------------------- */
+
+function TeamPanel({ agents }: { agents: AdminRuntimeAgent[] }) {
+  const [staticGraph, setStaticGraph] = useState<AdminStaticAgentGraphProjection | null>(null);
+  const [staticLoading, setStaticLoading] = useState(true);
+  const [staticError, setStaticError] = useState<string | null>(null);
+  const [routes, setRoutes] = useState<AdminAgentRoute[]>([]);
+  const [routesLoading, setRoutesLoading] = useState(true);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeSaving, setRouteSaving] = useState(false);
+  const [routeFrom, setRouteFrom] = useState('');
+  const [routeTo, setRouteTo] = useState('');
+  const [routeTrigger, setRouteTrigger] = useState<AdminAgentRoute['trigger']>('delegate');
+  const [routeTaskType, setRouteTaskType] = useState('');
+  const [run, setRun] = useState<AdminAgentRunProjection | null>(null);
+  const [runLoading, setRunLoading] = useState(false);
+  const [testRunLoading, setTestRunLoading] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runId, setRunId] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.allSettled([fetchStaticAgentGraph(), fetchAgentRoutes()]).then(([graphResult, routesResult]) => {
+      if (cancelled) return;
+      setStaticLoading(false);
+      if (graphResult.status === 'fulfilled') {
+        setStaticGraph(graphResult.value);
+        setStaticError(null);
+      } else {
+        setStaticGraph(null);
+        const cause = graphResult.reason;
+        setStaticError(cause instanceof AgentRunUnavailableError ? '协作图接口尚未启用，当前显示已保存的 Agent 层级配置。' : cause instanceof Error ? cause.message : '协作图加载失败');
+      }
+      if (routesResult.status === 'fulfilled') {
+        setRoutes(routesResult.value);
+        setRouteError(null);
+      } else {
+        setRoutes([]);
+        const cause = routesResult.reason;
+        setRouteError(cause instanceof AgentRunUnavailableError ? '路由接口尚未启用，当前无法编辑 Team 路由。' : cause instanceof Error ? cause.message : 'Agent 路由加载失败');
+      }
+      setRoutesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const loadRun = useCallback(async () => {
+    if (runId.trim().length === 0) {
+      setRunError('请输入要查看的 Run ID');
+      return;
+    }
+    setRunLoading(true);
+    setRunError(null);
+    try {
+      setRun(await fetchAgentRunGraph(runId.trim()));
+    } catch (cause) {
+      setRun(null);
+      if (cause instanceof AgentRunUnavailableError) setRunError('执行图接口尚未启用，Team Runtime 部署后这里会显示真实运行记录。');
+      else if (cause instanceof AgentRunPermissionError) setRunError(cause.message);
+      else if (cause instanceof AgentRunOfflineError) setRunError(cause.message);
+      else setRunError(cause instanceof Error ? cause.message : '执行图加载失败');
+    } finally {
+      setRunLoading(false);
+    }
+  }, [runId]);
+
+  const startTestRun = useCallback(async () => {
+    const leader = agents.find((agent) => agent.role === 'tutor' || agent.id === 'qitu-learning-partner') ?? agents[0];
+    if (!leader) {
+      setRunError('当前没有可用的 Team Leader');
+      return;
+    }
+    setTestRunLoading(true);
+    setRunError(null);
+    try {
+      const createdRunId = await startAgentTestRun(leader.id);
+      setRunId(createdRunId);
+      setRun(await fetchAgentRunGraph(createdRunId));
+    } catch (cause) {
+      setRun(null);
+      if (cause instanceof AgentRunUnavailableError) setRunError('测试 Run 接口尚未启用');
+      else if (cause instanceof AgentRunPermissionError) setRunError(cause.message);
+      else if (cause instanceof AgentRunOfflineError) setRunError(cause.message);
+      else setRunError(cause instanceof Error ? cause.message : '测试 Run 创建失败');
+    } finally {
+      setTestRunLoading(false);
+    }
+  }, [agents]);
+
+  const saveRoute = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!routeFrom || !routeTo || !routeTaskType.trim() || routeFrom === routeTo) {
+      setRouteError('请选择不同的来源和目标 Agent，并填写任务类型');
+      return;
+    }
+    setRouteSaving(true);
+    setRouteError(null);
+    try {
+      const route = await createAgentRoute({
+        fromAgentId: routeFrom,
+        toAgentId: routeTo,
+        trigger: routeTrigger,
+        taskType: routeTaskType.trim(),
+        enabled: true,
+      });
+      setRoutes((current) => [...current.filter((item) => item.id !== route.id), route]);
+      setStaticGraph(await fetchStaticAgentGraph());
+      setRouteTaskType('');
+    } catch (cause) {
+      setRouteError(cause instanceof Error ? cause.message : 'Agent 路由保存失败');
+    } finally {
+      setRouteSaving(false);
+    }
+  }, [routeFrom, routeTo, routeTaskType, routeTrigger]);
+
+  const toggleRoute = useCallback(async (route: AdminAgentRoute) => {
+    setRouteSaving(true);
+    setRouteError(null);
+    try {
+      const updated = await updateAgentRoute(route.id, { enabled: !route.enabled });
+      setRoutes((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setStaticGraph(await fetchStaticAgentGraph());
+    } catch (cause) {
+      setRouteError(cause instanceof Error ? cause.message : 'Agent 路由更新失败');
+    } finally {
+      setRouteSaving(false);
+    }
+  }, []);
+
+  const fallbackGraph = buildTeamGraph(agents);
+  const nodes = staticGraph?.nodes ?? fallbackGraph.nodes;
+  const edges = staticGraph?.edges ?? fallbackGraph.edges;
+  const activity: TeamActivityItem[] = [];
+
+  return (
+    <div className="admin-runtime-team">
+      <SectionCard title="Team Leader / Teammates" action={<span className="admin-runtime-generated">只读拓扑投影</span>}>
+        <p className="admin-runtime-description">
+          AI 导师是面向学生的唯一入口。子 Agent 通过服务端委派或事件触发参与，图中的路由来自当前已保存的 Agent 层级配置。
+        </p>
+        {staticError ? <p className="admin-runtime-remediation" role="status">{staticError}</p> : null}
+        {staticLoading ? (
+          <SkeletonBlock lines={6} />
+        ) : (
+          <AgentTopologyGraph
+            nodes={nodes}
+            edges={edges}
+            description="Leader 负责对话和任务编排；Teammates 返回结构化结果，不直接建立学生会话。"
+          />
+        )}
+      </SectionCard>
+
+      <SectionCard title="接入 Team 路由">
+        <p className="admin-runtime-description">新 Agent 创建后，在这里声明来源、目标、触发方式和任务类型。路由是服务端委派权限白名单。</p>
+        <form className="admin-route-editor" onSubmit={(event) => void saveRoute(event)}>
+          <label className="admin-agent-field"><span>来源 Agent</span><select value={routeFrom} onChange={(event) => setRouteFrom(event.target.value)} required><option value="">选择来源</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.label}</option>)}</select></label>
+          <label className="admin-agent-field"><span>目标 Agent</span><select value={routeTo} onChange={(event) => setRouteTo(event.target.value)} required><option value="">选择目标</option>{agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.label}</option>)}</select></label>
+          <label className="admin-agent-field"><span>触发方式</span><select value={routeTrigger} onChange={(event) => setRouteTrigger(event.target.value as AdminAgentRoute['trigger'])}><option value="delegate">委派</option><option value="event">事件</option><option value="schedule">计划</option></select></label>
+          <label className="admin-agent-field"><span>任务类型</span><input value={routeTaskType} onChange={(event) => setRouteTaskType(event.target.value)} placeholder="例如 interest.confirm" maxLength={160} required /></label>
+          <Button type="submit" variant="secondary" loading={routeSaving} disabled={routeSaving}>新增路由</Button>
+        </form>
+        {routeError ? <p className="admin-runtime-error" role="alert">{routeError}</p> : null}
+        {routesLoading ? <SkeletonBlock lines={3} /> : routes.length > 0 ? <ul className="admin-route-list">{routes.map((route) => <li key={route.id}><code>{route.fromAgentId}</code><span aria-hidden="true">→</span><code>{route.toAgentId}</code><span>{route.trigger} · {route.taskType}</span><Button type="button" variant="ghost" size="sm" loading={routeSaving} onClick={() => void toggleRoute(route)}>{route.enabled ? '停用' : '启用'}</Button></li>)}</ul> : <p className="admin-runtime-description">暂无可配置路由。</p>}
+      </SectionCard>
+
+      <SectionCard title="动态执行图" action={<Button variant="primary" size="sm" loading={testRunLoading} onClick={() => void startTestRun()}>创建测试 Run</Button>}>
+        <div className="admin-agent-run-lookup">
+          <label className="admin-agent-field">
+            <span>Run ID</span>
+            <input value={runId} onChange={(event) => setRunId(event.target.value)} placeholder="粘贴服务端返回的 runId" />
+          </label>
+          <Button variant="secondary" size="sm" loading={runLoading} onClick={() => void loadRun()}>加载执行图</Button>
+        </div>
+        {runError ? <p className="admin-runtime-error" role="status">{runError}</p> : null}
+        {runLoading ? <SkeletonBlock lines={5} /> : null}
+        <AgentRunGraph
+          nodes={run?.nodes ?? []}
+          description={run ? `Run ${run.runId} · ${run.generatedAt ?? '时间未知'}` : '输入 Run ID 后查看真实任务、Mailbox 和事件。'}
+          emptyMessage={runError ?? '暂无可查看的执行记录'}
+        />
+      </SectionCard>
+
+      <SectionCard title="Activity / Mailbox">
+        <AgentActivityFeed
+          items={run?.activity ?? activity}
+          emptyMessage="暂无可展示的 Agent 活动；学生原始对话不会在此处直接展开。"
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+function buildTeamGraph(agents: readonly AdminRuntimeAgent[]): { nodes: TeamGraphNode[]; edges: TeamGraphEdge[] } {
+  const root = agents.find((agent) => agent.role === 'tutor' || agent.id === 'qitu-learning-partner') ?? agents[0];
+  const nodes: TeamGraphNode[] = agents.map((agent) => ({
+    id: agent.id,
+    label: agent.label,
+    kind: agent.id === root?.id ? 'leader' : 'teammate',
+    status: agent.enabled ? mapAgentStatus(agent.status) : 'disabled',
+    description: agent.roleDefinition,
+    modelLabel: agent.modelLabel,
+    capabilities: agent.capabilities,
+    meta: agent.parentAgentId ? <span>上级：{agent.parentAgentId}</span> : undefined,
+  }));
+  const edges: TeamGraphEdge[] = agents
+    .filter((agent) => agent.parentAgentId !== null)
+    .map((agent) => ({
+      id: `${agent.parentAgentId}->${agent.id}`,
+      from: agent.parentAgentId as string,
+      to: agent.id,
+      kind: 'delegate',
+      label: '委派',
+    }));
+  return { nodes, edges };
+}
+
+function mapAgentStatus(status: AdminRuntimeAgent['status']): TeamGraphNode['status'] {
+  if (status === 'enabled' || status === 'ready') return 'ready';
+  if (status === 'disabled') return 'disabled';
+  if (status === 'error') return 'failed';
+  return 'unknown';
+}
+
 /* ---------------------------- 内置工具 ----------------------------- */
 
 function ToolsPanel({ tools }: { tools: AdminRuntimeBuiltinTool[] }) {
@@ -618,6 +869,7 @@ export default function AdminRuntimePage() {
             } : current)}
           />
         ) : null}
+        {tab === 'team' ? <TeamPanel agents={snapshot.agents} /> : null}
         {tab === 'tools' ? <ToolsPanel tools={snapshot.builtInTools} /> : null}
         {tab === 'init' ? <InitializationPanel initialization={snapshot.initialization} policy={snapshot.policy} /> : null}
       </div>

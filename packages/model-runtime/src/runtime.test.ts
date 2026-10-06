@@ -49,6 +49,37 @@ test('Qitu runtime calls a registry-resolved OpenAI compatible model', async () 
   });
 });
 
+test('Qitu runtime preserves authHeader=false for OpenAI-compatible providers', async () => {
+  await withMockOpenAI((headers) => {
+    assert.equal(headers.authorization, undefined);
+    return [
+      'data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}',
+      'data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+      'data: [DONE]',
+      '',
+    ].join('\n\n');
+  }, async (baseUrl) => {
+    const runtime = createModelRuntime({
+      resolveRuntimeTarget: () => ({
+        providerId: 'custom-gateway',
+        providerName: 'Custom Gateway',
+        modelId: 'custom-model',
+        baseUrl,
+        api: 'openai-completions',
+        authHeader: false,
+        // A gateway with authHeader=false is allowed to run without a model
+        // credential. The runtime must not manufacture a Bearer header.
+        credential: null,
+      }),
+    });
+    const result = await runtime.complete({
+      usageId: 'agent.custom',
+      messages: [{ role: 'user', content: 'hello' }],
+    });
+    assert.equal(result.text, 'ok');
+  });
+});
+
 test('Qitu runtime fails closed when the credential is missing', async () => {
   const runtime = createModelRuntime({
     resolveRuntimeTarget: () => ({
@@ -58,6 +89,24 @@ test('Qitu runtime fails closed when the credential is missing', async () => {
       baseUrl: 'https://example.invalid',
       api: 'openai-completions',
       credential: '',
+    }),
+  });
+  await assert.rejects(
+    runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: 'hi' }] }),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_CREDENTIAL_MISSING',
+  );
+});
+
+test('Qitu runtime requires an Anthropic credential even when authHeader is false', async () => {
+  const runtime = createModelRuntime({
+    resolveRuntimeTarget: () => ({
+      providerId: 'anthropic-provider',
+      providerName: 'Anthropic',
+      modelId: 'claude-test',
+      baseUrl: 'https://example.invalid',
+      api: 'anthropic-messages',
+      authHeader: false,
+      credential: null,
     }),
   });
   await assert.rejects(
@@ -81,6 +130,23 @@ test('Qitu runtime rejects a partial Agent model selection', async () => {
       providerId: 'test-provider',
       messages: [{ role: 'user', content: 'hi' }],
     }),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_INVALID',
+  );
+});
+
+test('Qitu runtime rejects credential-bearing model gateway URLs', async () => {
+  const runtime = createModelRuntime({
+    resolveRuntimeTarget: () => ({
+      providerId: 'test-provider',
+      providerName: 'Test Provider',
+      modelId: 'test-model',
+      baseUrl: 'https://user:secret@example.invalid/v1?api_key=leak',
+      api: 'openai-completions',
+      credential: 'test-credential',
+    }),
+  });
+  await assert.rejects(
+    runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: 'hi' }] }),
     (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_INVALID',
   );
 });

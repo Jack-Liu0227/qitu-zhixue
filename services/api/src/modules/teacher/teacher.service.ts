@@ -1,6 +1,7 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { TeamRuntimeService, type TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 import type {
   TeacherStudentRow,
   TeacherStudentDetail,
@@ -23,6 +24,7 @@ export class TeacherService {
   constructor(
     private readonly directory: DirectoryService,
     private readonly platformData: PlatformDataService,
+    @Optional() private readonly teamRuntime?: TeamRuntimeService,
   ) {}
 
   /**
@@ -156,6 +158,24 @@ export class TeacherService {
       })),
       sessionsThisWeek: 0,
       minutesThisWeek: 0,
+    };
+  }
+
+  /** Return the latest server-owned Team Run for a currently assigned student. */
+  async getStudentAgentRuns(
+    teacherUserId: string,
+    studentUserId: string,
+  ): Promise<TeacherAgentRunProjection> {
+    await this.assertTeacherCanAccessStudent(teacherUserId, studentUserId);
+    if (this.teamRuntime !== undefined) {
+      return this.teamRuntime.getLatestRunProjection(studentUserId);
+    }
+    return {
+      runId: null,
+      status: 'idle',
+      nodes: [],
+      activity: [],
+      generatedAt: null,
     };
   }
 
