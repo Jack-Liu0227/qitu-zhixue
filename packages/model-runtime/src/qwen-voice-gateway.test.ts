@@ -102,32 +102,37 @@ test('qwen voice gateway sends server-side credentials and normalises ASR', asyn
 test('qwen audio realtime rejects assistant response text as an ASR transcript', async () => {
   FakeRealtimeSocket.emitInputTranscript = false;
   const gateway = createQwenVoiceGateway({ target, webSocketImpl: fakeWebSocket });
-  await assert.rejects(
-    gateway.transcribe({
-      requestId: 'r1-fallback',
-      idempotencyKey: 'i1-fallback',
-      model: { providerId: target.providerId, modelId: target.modelId },
-      audio: {
-        codec: 'pcm_s16le',
-        mimeType: 'audio/pcm',
-        sampleRateHz: 16_000,
-        channels: 1,
-        durationMs: 500,
-        dataBase64: 'AA==',
+  try {
+    await assert.rejects(
+      gateway.transcribe({
+        requestId: 'r1-fallback',
+        idempotencyKey: 'i1-fallback',
+        model: { providerId: target.providerId, modelId: target.modelId },
+        audio: {
+          codec: 'pcm_s16le',
+          mimeType: 'audio/pcm',
+          sampleRateHz: 16_000,
+          channels: 1,
+          durationMs: 500,
+          dataBase64: 'AA==',
+        },
+        language: 'zh-CN',
       },
-      language: 'zh-CN',
-    }),
-    (error: unknown) => error instanceof Error && error.message === 'VOICE_TRANSCRIPTION_UNAVAILABLE',
-  );
-  assert.deepEqual(FakeRealtimeSocket.lastSession, {
-    modalities: ['text', 'audio'],
-    turn_detection: null,
-    input_audio_format: 'pcm',
-    output_audio_format: 'pcm',
-    voice: 'longanqian',
-    input_audio_transcription: { model: 'fun-asr', language: 'zh' },
-  });
-  FakeRealtimeSocket.emitInputTranscript = true;
+      (error: unknown) => error instanceof Error
+        && 'code' in error
+        && error.code === 'VOICE_TRANSCRIPTION_UNAVAILABLE',
+    );
+    assert.deepEqual(FakeRealtimeSocket.lastSession, {
+      modalities: ['text', 'audio'],
+      turn_detection: null,
+      input_audio_format: 'pcm',
+      output_audio_format: 'pcm',
+      voice: 'longanqian',
+      input_audio_transcription: { model: 'fun-asr', language: 'zh' },
+    });
+  } finally {
+    FakeRealtimeSocket.emitInputTranscript = true;
+  }
 });
 
 test('qwen voice gateway returns binary TTS as a final audio chunk', async () => {
