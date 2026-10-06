@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, SectionCard } from '@qitu/ui';
 import {
   parentApi,
@@ -31,6 +31,7 @@ export default function MessagesPage() {
   const [selected, setSelected] = useState('');
 
   const [acting, setActing] = useState(false);
+  const pendingAction = useRef<{ key: string; resource: string; action: 'read' | 'mute' } | null>(null);
 
   const load = useCallback((id: string) => {
     setState('loading');
@@ -75,11 +76,17 @@ export default function MessagesPage() {
   const act = async (action: 'read' | 'mute') => {
     if (!childId || !selected || acting) return;
     setActing(true);
+    const resource = `${childId}:${selected}`;
+    if (pendingAction.current?.resource !== resource || pendingAction.current.action !== action) {
+      pendingAction.current = { key: crypto.randomUUID(), resource, action };
+    }
     try {
       await parentApi.post(
         `/api/v1/parent/children/${encodeURIComponent(childId)}/messages/${encodeURIComponent(selected)}/ack`,
         { action },
+        { idempotencyKey: pendingAction.current.key },
       );
+      pendingAction.current = null;
       load(childId);
     } catch (e) {
       setState(

@@ -63,3 +63,4 @@ pnpm build
 - [`browser-client.md`](./browser-client.md)
 - [`domain-facade.md`](./domain-facade.md)
 - [`agent-memory.md`](./agent-memory.md)
+- [`model-runtime.md`](./model-runtime.md)

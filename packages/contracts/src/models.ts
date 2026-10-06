@@ -1,5 +1,5 @@
 /**
- * 模型供应商注册表与「用途 → 模型」绑定。
+ * 模型供应商注册表与 Agent 运行时模型选择。
  *
  * 设计参照 Pi 的 `pi-ai` 模块，把一个「模型」拆成**三层**，而不是让管理员
  * 在一个输入框里填一串模型名：
@@ -8,12 +8,12 @@
  *      一家网关或自己的中转，密钥只挂在这一层。
  *   2. 模型列表 ModelDescriptor[] —— 可以从 `baseUrl` **自动拉取**
  *      （见 `RefreshProviderResponse`），也可以手填。
- *   3. 用途绑定 ModelUsageBinding —— 「AI搭档的普通回复」「灵感空间推荐」
+ *   3. 兼容用途 ModelUsageBinding —— 旧版「AI搭档的普通回复」「灵感空间推荐」
  *      「成长总结」各自可以指到不同供应商/模型。
  *
  * 为什么值得拆三层：`pi-ai` 的 `createProvider({ baseUrl, auth, models,
- * fetchModels })` 就是这么做的——**凭证属于供应商，能力属于模型，选择属于
- * 用途**。混在一起以后，「换一个模型」会变成「改一堆地方」。
+ * fetchModels })` 就是这么做的——凭证属于供应商，能力属于模型，选择属于
+ * Agent Runtime。旧用途结构保留用于迁移与兼容，不再是管理端事实源。
  *
  * 安全规则（沿用 `settings.ts`）：
  *  - 明文密钥只在写请求里出现一次，对外只给 `keyFingerprint`。
@@ -61,6 +61,8 @@ export interface ProviderConfigPublic {
   api: ModelApi;
   /** true 时把密钥作为 `Authorization: Bearer` 头发送。 */
   authHeader: boolean;
+  /** 是否允许运行时使用该供应商。 */
+  enabled: boolean;
   auth: ProviderAuthPublic;
   models: ModelDescriptor[];
   /** 最近一次成功自动拉取的时间。 */
@@ -106,7 +108,7 @@ export interface RefreshProviderResponse {
   fetched: number;
 }
 
-/* ------------------------------ 用途绑定 ------------------------------ */
+/* ------------------------------ 兼容用途绑定 ------------------------------ */
 
 /** 归属的 agent，仅用于后台分组显示。 */
 export type AgentId = 'tutor' | 'inspiration' | 'curriculum' | 'growth' | 'knowledge';
@@ -200,7 +202,7 @@ export interface CreateManualModelRequest {
  * `PATCH /admin/model-providers/:id/models/:modelId` —— 更新手工模型。
  *
  * **故意不含 `modelId`**：`modelId` 是不可变主键，改 ID 等于换了一个模型，
- * 会让已有用途绑定与审计记录指向不存在的东西。需要换上游模型时先禁用再新建。
+ * 会让已有 Agent 选择、兼容用途绑定与审计记录指向不存在的东西。需要换上游模型时先禁用再新建。
  */
 export interface UpdateManualModelRequest {
   /** 仅改展示名；`modelId`（实际请求用）保持不变。 */
@@ -226,7 +228,7 @@ export interface UpdateManualModelRequest {
 export interface AdminModelResponse {
   providerId: string;
   model: ModelDescriptor;
-  /** 是否参与用途绑定与实际调用。 */
+  /** 是否参与兼容用途解析与实际调用。 */
   enabled: boolean;
   /** 最近一次在上游列表中见到的时间；手工模型恒为 `null`。 */
   lastSeenAt: string | null;

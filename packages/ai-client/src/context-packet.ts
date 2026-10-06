@@ -4,8 +4,15 @@ import type { TutorContextPacket } from './tutor-context.js';
 
 /** Build bounded, auditable prompt context without replaying raw chat history. */
 export function serializeTutorContext(packet: TutorContextPacket): string {
+  const runtime = packet.runtime;
   const lines = [
+    runtime === undefined ? '' : `全局策略版本：${runtime.policyVersion}`,
+    runtime === undefined ? '' : `Agent 定义：${boundedDefinition(runtime.agentDefinition)}`,
+    ...(runtime?.skills ?? []).map((skill) => `Skill ${skill.id}（${skill.version ?? 'unknown'}）：${boundedDefinition(skill.content)}`),
+    ...(runtime?.tools ?? []).map((tool) => `可用工具：${tool.id}（风险 ${tool.riskLevel}）`),
+    ...(runtime?.mcpServers ?? []).map((server) => `可用 MCP：${server.serverId}（${server.label}，工具 ${server.toolIds.join(', ') || '无'}）`),
     `伙伴：${packet.partner.displayName}`,
+    `伙伴职责定义：${boundedDefinition(packet.partner.roleDefinition)}`,
     `伙伴策略：${packet.partner.soul}`,
     `学习阶段：${packet.projectStage ?? 'exploration'}`,
     `当前目标：${packet.currentGoal ?? '尚未确认'}`,
@@ -53,6 +60,10 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
   return lines.join('\n');
 }
 
+function boundedDefinition(value: string): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > 1500 ? `${normalized.slice(0, 1500)}…` : normalized;
+}
 function bounded(value: string): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   return normalized.length > 360 ? `${normalized.slice(0, 360)}…` : normalized;

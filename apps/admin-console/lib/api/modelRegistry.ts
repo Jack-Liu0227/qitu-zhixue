@@ -15,7 +15,8 @@ import type {
 import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
 
 /**
- * 模型接入（供应商 / 用途绑定）API 层。
+ * 模型接入（供应商 / 模型目录）API 层。Agent 直接模型选择由 runtime API 负责；
+ * 这里保留用途方法仅为旧客户端与迁移兼容。
  *
  * 写接口全部只对 `admin` 开放；明文密钥只在写请求里出现一次（见
  * `packages/contracts/src/models.ts` 与 `settings.ts` 的安全约定），这里同样
@@ -72,11 +73,12 @@ async function mutate<T>(
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as
-      | { error?: { code?: string; message?: string } }
-      | { message?: string }
+      | { error?: { code?: string; message?: string; detail?: string } }
+      | { message?: string; detail?: string }
       | null;
     const message =
-      (payload && 'error' in payload && payload.error?.message) ||
+      (payload && 'error' in payload && (payload.error?.detail || payload.error?.message)) ||
+      (payload && 'detail' in payload && payload.detail) ||
       (payload && 'message' in payload && payload.message) ||
       `请求失败（HTTP ${response.status}）`;
     throw new ApiError(message, response.status);
@@ -94,16 +96,22 @@ export function fetchUsages(): Promise<AdminModelUsagesResponse> {
   return get<AdminModelUsagesResponse>('/api/v1/admin/model-usages');
 }
 
-export function upsertProvider(id: string, body: UpsertProviderRequest): Promise<ProviderConfigPublic> {
+export function upsertProvider(id: string, body: UpsertProviderRequest, idempotencyKey = newIdempotencyKey()): Promise<ProviderConfigPublic> {
   return mutate<ProviderConfigPublic>(
     'POST',
     `/api/v1/admin/model-providers/${encodeURIComponent(id)}`,
     body,
+    idempotencyKey,
   );
 }
 
-export function deleteProvider(id: string): Promise<{ id: string }> {
-  return mutate<{ id: string }>('DELETE', `/api/v1/admin/model-providers/${encodeURIComponent(id)}`);
+export function deleteProvider(id: string, idempotencyKey = newIdempotencyKey()): Promise<{ id: string }> {
+  return mutate<{ id: string }>(
+    'DELETE',
+    `/api/v1/admin/model-providers/${encodeURIComponent(id)}`,
+    undefined,
+    idempotencyKey,
+  );
 }
 
 /* ------------------------------ 连接测试 ------------------------------ */
@@ -208,10 +216,11 @@ export function refreshProvider(id: string): Promise<RefreshProviderResponse> {
   );
 }
 
-export function bindUsage(usageId: string, body: BindUsageRequest): Promise<ModelUsageBinding> {
+export function bindUsage(usageId: string, body: BindUsageRequest, idempotencyKey = newIdempotencyKey()): Promise<ModelUsageBinding> {
   return mutate<ModelUsageBinding>(
     'PATCH',
     `/api/v1/admin/model-usages/${encodeURIComponent(usageId)}`,
     body,
+    idempotencyKey,
   );
 }

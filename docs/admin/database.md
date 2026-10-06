@@ -50,7 +50,7 @@ CREATE UNIQUE INDEX audit_logs_idempotency_key_idx ON audit_logs (idempotency_ke
 CREATE UNIQUE INDEX idempotency_keys_scope_key_idx ON idempotency_keys (scope, key);
 
 -- 同一供应商下模型 id 唯一：PRIMARY KEY (provider_id, model_id)
--- 删除供应商 / 模型不得静默破坏用途绑定：外键均 ON DELETE RESTRICT
+-- 删除供应商 / 模型不得静默破坏 Agent 直接选择：服务端引用检查 + 外键均 ON DELETE RESTRICT
 
 -- 同一学生同一目标只有一条掌握度状态
 CREATE UNIQUE INDEX mastery_records_student_objective_unique_idx
@@ -98,7 +98,7 @@ CREATE UNIQUE INDEX artifact_versions_artifact_ordinal_unique_idx
 | Mentor Ops | **`mentor_reviews`**、**`knowledge_documents`**、**`knowledge_chunks`**、`alerts`、`interventions`、`feedback_tickets` |
 | Parent Experience | **`parent_growth_exports`**、`notifications`（读取投影） |
 | Admin & Compliance | **`audit_logs`**、**`outbox`**、**`template_verification_runs`**、**`template_verification_evidence`**、`ai_jobs`、`ai_runs`、`ai_events`、`ai_artifacts`、`ai_approvals`、`model_usage` |
-| Model Registry | **`model_providers`**、**`model_models`**、**`model_usage_bindings`** |
+| Model Registry | **`model_providers`**、**`model_models`**、`model_usage_bindings`（旧用途兼容与迁移） |
 | Agent Memory | **`agent_memory_records`**（`(source_event_id, version)` 唯一，`index_status` 驱动外部索引重建） |
 
 ### 3.1 校域（school_id）与共享 / 私有边界
@@ -154,6 +154,8 @@ Graphiti 只能通过 `mastery.assessed` outbox 事件异步写入；丢失后�
 第 7 批  代理记忆（0010）
 第 8 批  掌握度时间线（0011、0012）
 第 9 批  统一导师探索上下文（0013：tutor_sessions.exploration_id + 探索/项目部分唯一索引）
+第 10 批 Agent Runtime 治理（0014–0016：Agent 绑定与直接模型选择）
+第 11 批 Team Runtime（0017：TeamRun / Task / Message / Event、mailbox、routes、候选投影与 outbox lease）
 ```
 
 **规则**：迁移编号单调递增；合并到主线后不可修改历史迁移；新迁移必须能对空库重放。
@@ -179,7 +181,7 @@ pnpm --filter @qitu/database seed
 - `packages/database/src/seed.ts` 的 `SEED_FILES` 依次执行三个种子文件。
 - 种子幂等：`users` / `schools` / 领域 fixture 冲突 `DO UPDATE`；
   `guardian_links` / `mentor_assignments` / 运行期记录冲突 `DO NOTHING`。
-- `0013` 的 Drizzle `meta/_journal.json` 仍停在 `0009`，重放用裸 `psql`。
+- 手写迁移 `0010`–`0017` 已纳入执行序列；`0017` 的 Team Runtime 表和 outbox lease 字段由 `meta/_journal.json` 中的 `0017_agent_team_runtime` 登记。迁移执行仍通过 reviewed SQL 文件完成，不在 HTTP 初始化接口中运行。
 
 ## 6. 空态、幂等与回滚
 

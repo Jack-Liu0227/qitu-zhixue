@@ -1,5 +1,5 @@
 import { and, eq, notInArray } from 'drizzle-orm';
-import { modelModels, modelProviders, modelUsageBindings, type Database } from '@qitu/database';
+import { agentConfigs, modelModels, modelProviders, modelUsageBindings, type Database } from '@qitu/database';
 import type { ModelDescriptor } from '@qitu/contracts';
 import type { AuditTransaction } from '../../common/audit';
 
@@ -81,6 +81,31 @@ export async function listBindingUsageIdsForModel(
       and(eq(modelUsageBindings.providerId, providerId), eq(modelUsageBindings.modelId, modelId)),
     );
   return rows.map((row) => row.usageId);
+}
+
+/** Find Agent configs that directly select a model. */
+export async function listAgentIdsForModel(
+  executor: RegistryExecutor,
+  providerId: string,
+  modelId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ agentId: agentConfigs.id })
+    .from(agentConfigs)
+    .where(and(eq(agentConfigs.modelProviderId, providerId), eq(agentConfigs.modelId, modelId)));
+  return rows.map((row) => row.agentId);
+}
+
+/** Find Agent configs that directly select any model from a provider. */
+export async function listAgentIdsForProvider(
+  executor: RegistryExecutor,
+  providerId: string,
+): Promise<string[]> {
+  const rows = await executor
+    .select({ agentId: agentConfigs.id })
+    .from(agentConfigs)
+    .where(eq(agentConfigs.modelProviderId, providerId));
+  return rows.map((row) => row.agentId);
 }
 
 /* ------------------------------ 写供应商 ------------------------------ */

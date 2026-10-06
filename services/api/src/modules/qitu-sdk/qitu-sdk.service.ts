@@ -16,6 +16,7 @@ import { ProjectLifecycleService } from '../projects/project-lifecycle.service';
 import { GrowthService } from '../growth/growth.service';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 
 const USAGE_BY_CAPABILITY: Readonly<Record<TutorAgentCapability, string>> = {
   explore: 'tutor.chat',
@@ -40,6 +41,7 @@ export class QituSDKFactory {
     private readonly projects: ProjectLifecycleService,
     private readonly growth: GrowthService,
     private readonly registry: ModelRegistryService,
+    private readonly platformRegistry: PlatformRegistryService,
     @Inject(DATA_MODE_TOKEN) private readonly dataMode: DataMode,
   ) {}
 
@@ -47,6 +49,8 @@ export class QituSDKFactory {
     actor: CurrentUser,
     scope: { studentId: string; projectId: string | null },
     runner: (input: Input, purpose: TutorAgentModelPurpose) => Promise<Result>,
+    modelUsageOverride?: string,
+    modelSelectionOverride?: { providerId: string; modelId: string } | null,
   ) {
     const runtimeScope: TutorAgentScope = {
       actorId: actor.id,
@@ -63,9 +67,12 @@ export class QituSDKFactory {
       const requestId = readString(shape.requestId) ?? `sdk-request-${Date.now()}`;
       const idempotencyKey = readString(shape.idempotencyKey) ?? `sdk:${requestId}`;
       const query = readString(shape.query) ?? readString(shape.content) ?? '当前学习任务';
+      const agentRuntime = await this.platformRegistry.getAgentRuntime(runtimeScope.partnerId);
+      if (!agentRuntime.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
+      const usageOverride = modelUsageOverride ?? 'tutor.chat';
       const runtime = createTutorAgentRuntime<Record<string, never>, { data: Result }>(runtimeScope, {
         modelPurpose: {
-          resolve: async ({ capability }) => this.resolvePurpose(capability),
+          resolve: async ({ capability }) => this.resolvePurpose(capability, usageOverride, modelSelectionOverride),
         },
         context: {
           async build({ scope: bound, request }) {
@@ -73,9 +80,14 @@ export class QituSDKFactory {
               contextId: request.requestId,
               runtimeVersion: 'qitu.agent-runtime.v1',
               builtAt: new Date().toISOString(),
+              policyVersion: agentRuntime.policy.version,
+              agentDefinition: agentRuntime.agent.agentDefinition,
+              skills: agentRuntime.skills.map((skill) => ({ id: skill.id, version: skill.version, content: skill.content })),
+              tools: agentRuntime.tools,
+              mcpServers: agentRuntime.mcpServers,
               scope: bound,
               capability: request.capability,
-              modelUsage: request.modelUsage ?? 'tutor.chat',
+              modelUsage: request.modelUsage ?? (modelSelectionOverride !== undefined ? 'agent.model' : 'tutor.chat'),
               query: request.query,
               projectStage: request.projectStage,
               goal: request.goal,
@@ -88,7 +100,11 @@ export class QituSDKFactory {
           run: async (request) => {
             // The runtime has already validated the server-owned usage identity.
             // Re-resolve only the redacted capability projection; no credential enters this closure.
-            const purpose = await this.resolvePurposeByUsage(request.context.modelUsage);
+            const purpose = modelSelectionOverride === null
+              ? { usageId: 'agent.model', available: false, input: [], output: [], modelId: null }
+              : modelSelectionOverride !== undefined
+                ? await this.resolvePurposeByModel(modelSelectionOverride)
+                : await this.resolvePurposeByUsage(request.context.modelUsage);
             const result = await runner(input, purpose);
             return {
               id: `${request.requestId}:output`,
@@ -110,7 +126,7 @@ export class QituSDKFactory {
           templates: { listPublished: async () => [] },
           database: { readProjection: async () => null as never },
         },
-        tools: { list: () => [] },
+        tools: this.platformRegistry.getAgentRuntimeTools(agentRuntime),
       });
 
       const output = await runtime.run({
@@ -149,12 +165,32 @@ export class QituSDKFactory {
     });
   }
 
-  private async resolvePurpose(capability: TutorAgentCapability): Promise<TutorAgentModelPurpose> {
-    const usageId = USAGE_BY_CAPABILITY[capability];
+  private async resolvePurpose(
+    capability: TutorAgentCapability,
+    modelUsageOverride?: string,
+    modelSelectionOverride?: { providerId: string; modelId: string } | null,
+  ): Promise<TutorAgentModelPurpose> {
+    if (modelSelectionOverride !== undefined) {
+      if (this.dataMode !== 'live') {
+        return { usageId: 'agent.model', available: true, input: ['text'], output: ['text'], modelId: 'heuristic-v1' };
+      }
+      if (modelSelectionOverride === null) {
+        return { usageId: 'agent.model', available: false, input: [], output: [], modelId: null };
+      }
+      return this.resolvePurposeByModel(modelSelectionOverride);
+    }
+    const usageId = modelUsageOverride ?? USAGE_BY_CAPABILITY[capability];
     if (this.dataMode !== 'live') {
       return { usageId, available: true, input: ['text'], output: ['text'], modelId: 'heuristic-v1' };
     }
     return this.registry.resolvePurpose(usageId);
+  }
+
+  private async resolvePurposeByModel(selection: { providerId: string; modelId: string }): Promise<TutorAgentModelPurpose> {
+    if (this.dataMode !== 'live') {
+      return { usageId: 'agent.model', available: true, input: ['text'], output: ['text'], modelId: 'heuristic-v1' };
+    }
+    return this.registry.resolvePurposeByModel(selection);
   }
 
   private async resolvePurposeByUsage(usageId: string): Promise<TutorAgentModelPurpose> {

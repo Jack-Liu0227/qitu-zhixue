@@ -318,6 +318,16 @@ a { color: inherit; text-decoration: none; }
    复用 `@qitu/ui` 里统一的 `qitu-page-in` 关键帧，四端转场时长与缓动一致。 */
 .qtx-page { animation: qitu-page-in 0.28s ease both; display: flex; flex-direction: column; gap: 20px; }
 
+.qtx-agent-run-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.qtx-agent-run-panel .qtx-panel-header { margin: 0; }
+.qtx-agent-run-content { display: grid; gap: 12px; }
+
 /* ============ Reduced motion ============ */
 @media (prefers-reduced-motion: reduce) {
   /* 页面转场、导航与表格行的高亮过渡无需位移或渐变动画。 */

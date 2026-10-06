@@ -64,7 +64,7 @@ student ← mentor_assignments(status=active) → teacher   学生—班主任�
 | `GET/POST/PATCH /admin/guardian-links`、`/admin/mentor-assignments` | admin | — | 已实现 |
 | `GET /admin/overview`、`/admin/students`、`/admin/teachers`、`/admin/students/statistics` | admin | — | 已实现（聚合 / 治理投影） |
 | `GET /admin/students/:studentId` | admin | `AccessPolicy.assertCanReadStudent`（当前对 admin **fail closed**） | 显式授权模型未落地前统一 403 |
-| `GET/POST/PATCH/DELETE /admin/model-providers`、`/admin/model-usages` | admin | — | 已实现（见 [`model-registry.md`](./model-registry.md)） |
+| `GET/POST/PATCH/DELETE /admin/model-providers`、`GET/POST/PATCH /admin/ai-runtime/agents` | admin | — | 已实现（见 [`model-registry.md`](./model-registry.md)） |
 | `GET/POST/PATCH/DELETE /admin/users`、`/admin/project-templates` 等 | admin | — | **未实现**（目标 M8） |
 | `GET /admin/ai-runtime`、`GET /admin/initialization` | admin | `requireRole(..., 'admin')` | 已实现（只读投影；不返回密钥 / 凭证 / 原始对话） |
 | `POST /admin/initialization/{knowledge\|template\|tutor}/execute` | admin | `requireRole(..., 'admin')` + `Idempotency-Key` | 已实现（同事务写 `audit_logs`） |

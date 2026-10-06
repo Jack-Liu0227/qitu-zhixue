@@ -10,7 +10,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Database } from '@qitu/database';
-import { artifacts, auditLogs, projects } from '@qitu/database';
+import { agentConfigs, artifacts, auditLogs, projects } from '@qitu/database';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
 import type {
@@ -415,6 +415,7 @@ export class AdminController {
   }
 
   /* ==================== 设置 ==================== */
+  @Get('settings')
   async getSettings(@Headers('cookie') cookieHeader: string | undefined): Promise<{ data: AdminSettingsIndexData }> {
     const admin = requireRole(this.authService, cookieHeader, 'admin', '管理后台仅向管理员开放');
     await this.auditRead(admin.id, 'admin.read.settings', 'admin-settings');
@@ -428,13 +429,6 @@ export class AdminController {
         title: '模型供应商',
         description: '配置 OpenAI、Anthropic 等 LLM 供应商的网关地址与密钥，并自动拉取模型列表',
         route: '/settings/model-providers',
-        status: 'available',
-      },
-      {
-        id: 'model_usages',
-        title: '模型用途绑定',
-        description: '为 AI搭档、灵感推荐、成长总结等用途指定模型',
-        route: '/settings/model-usages',
         status: 'available',
       },
       {
@@ -462,16 +456,24 @@ export class AdminController {
 
     // 已配置的供应商数与用途数（从 ModelRegistryService 读取）
     const providers = this.modelRegistry.listProviders();
-    const usages = this.modelRegistry.getUsages();
-
     const configuredProviderCount = providers.providers.filter((p) => p.auth.configured).length;
-    const configuredUsageCount = usages.bindings.filter((b) => b.resolved !== null).length;
+    let configuredAgentModelCount = 0;
+    if (this.db) {
+      try {
+        const rows = await this.db
+          .select({ modelProviderId: agentConfigs.modelProviderId, modelId: agentConfigs.modelId })
+          .from(agentConfigs);
+        configuredAgentModelCount = rows.filter((row) => row.modelProviderId !== null && row.modelId !== null).length;
+      } catch {
+        configuredAgentModelCount = 0;
+      }
+    }
 
     return {
       data: {
         panels,
         configuredProviderCount,
-        configuredUsageCount,
+        configuredAgentModelCount,
         dataSource: this.dataSource(),
       },
     };

@@ -7,6 +7,7 @@ export const tutorPartners = pgTable('tutor_partners', {
   id: text('id').primaryKey(),
   displayName: text('display_name').notNull(),
   soul: text('soul').notNull(),
+  roleDefinition: text('role_definition').notNull().default(''),
   modelUsage: text('model_usage').notNull().default('tutor.chat'),
   promptVersion: text('prompt_version').notNull(),
   capabilities: jsonb('capabilities').$type<string[]>().notNull().default(sql`'[]'::jsonb`),

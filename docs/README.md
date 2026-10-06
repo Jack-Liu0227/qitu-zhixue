@@ -17,6 +17,8 @@
    - 家长端：[`parent/home.md`](./parent/home.md)
    - SDK：[`sdk/overview.md`](./sdk/overview.md)
 
+AI 运行时的管理与 SDK 合同：[`admin/control-plane.md`](./admin/control-plane.md)、[`admin/model-registry.md`](./admin/model-registry.md)、[`sdk/agent-runtime.md`](./sdk/agent-runtime.md)、[`sdk/team-runtime.md`](./sdk/team-runtime.md)。
+
 ## 平台与责任域
 
 | 平台 | 目录 | 角色 | 说明 |
@@ -48,6 +50,8 @@ tooling/         启动、同步、端口约定
 - 后端是模块化单体，按领域模块拆分，不提前拆微服务。
 - 项目状态转换由 `projects` 领域统一写入；其他模块只能通过命令/领域事件请求变更。
 - 家长授权、班主任分配、审计、幂等属于横切基础设施，业务页面不得各自实现。
+
+Agent Runtime 由服务端加载根 `AGENTS.md` 作为全局策略，并为每个 Agent 直接解析 `providerId + modelId`；浏览器不能替换策略、选择凭证或绕过对象级授权。Team Runtime 的任务通信经过 route、mailbox、租约和 outbox，画像与成长结果只能先进入候选投影，再由领域 owner 校验、幂等接受并审计写入正式数据。
 
 ## 领域边界（单一写入者）
 

@@ -13,6 +13,7 @@ import type {
 } from '@qitu/ai-client';
 
 import type { Database } from '@qitu/database';
+import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
 import {
   tutorGrowthSignals,
   tutorKnowledgeDocuments,
@@ -162,26 +163,32 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
     return rankDocuments(rows, input).slice(0, Math.max(1, Math.min(input.limit, 8)));
   }
 
+  async getPartnerProfile(partnerId: string): Promise<TutorPartnerProfile> {
+    if (this.db === null) return QITU_LEARNING_PARTNER;
+    const [row] = await this.db.select().from(tutorPartners).where(eq(tutorPartners.id, partnerId)).limit(1);
+    if (!row) return QITU_LEARNING_PARTNER;
+    const capabilities = row.capabilities.filter((item): item is TutorPartnerProfile['capabilities'][number] =>
+      item === 'explore' || item === 'plan' || item === 'teach' || item === 'review' || item === 'reflect');
+    return {
+      id: row.id, displayName: row.displayName, soul: row.soul,
+      roleDefinition: row.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
+      enabled: row.enabled,
+      modelUsage: row.modelUsage, promptVersion: row.promptVersion,
+      capabilities: capabilities.length > 0 ? capabilities : QITU_LEARNING_PARTNER.capabilities,
+    };
+  }
   async ensurePartner(partner: TutorPartnerProfile): Promise<void> {
     if (this.db === null) return;
     await this.db.insert(tutorPartners).values({
       id: partner.id,
       displayName: partner.displayName,
       soul: partner.soul,
+      roleDefinition: partner.roleDefinition,
+      enabled: partner.enabled,
       modelUsage: partner.modelUsage,
       promptVersion: partner.promptVersion,
       capabilities: [...partner.capabilities],
-    }).onConflictDoUpdate({
-      target: tutorPartners.id,
-      set: {
-        displayName: partner.displayName,
-        soul: partner.soul,
-        modelUsage: partner.modelUsage,
-        promptVersion: partner.promptVersion,
-        capabilities: [...partner.capabilities],
-        updatedAt: new Date(),
-      },
-    });
+    }).onConflictDoNothing({ target: tutorPartners.id });
   }
 
   async commitGrowthSignal(signal: TutorGrowthSignal): Promise<void> {

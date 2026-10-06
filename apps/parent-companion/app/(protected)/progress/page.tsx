@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, ProgressBar, SectionCard, TagChips } from '@qitu/ui';
 import type {
   ParentVersionStep,
@@ -122,16 +122,22 @@ function VersionTimelinePanel({ versions }: { versions: ParentVersionStep[] }) {
 function EncouragementCard({ childId }: { childId: string }) {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const pending = useRef<{ childId: string; message: string; key: string } | null>(null);
 
   async function send() {
     const message = text.trim();
     if (message.length === 0 || message.length > 200 || state === 'sending') return;
     setState('sending');
+    if (pending.current?.childId !== childId || pending.current.message !== message) {
+      pending.current = { childId, message, key: crypto.randomUUID() };
+    }
     try {
       await parentApi.post(
         `/api/v1/parent/children/${encodeURIComponent(childId)}/encouragements`,
         { message },
+        { idempotencyKey: pending.current.key },
       );
+      pending.current = null;
       setState('sent');
       setText('');
     } catch {
@@ -148,7 +154,9 @@ function EncouragementCard({ childId }: { childId: string }) {
         className="encourage-input"
         value={text}
         onChange={(e) => {
-          setText(e.target.value);
+          const next = e.target.value;
+          setText(next);
+          if (pending.current && pending.current.message !== next.trim()) pending.current = null;
           if (state !== 'sending') setState('idle');
         }}
         maxLength={200}

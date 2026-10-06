@@ -139,8 +139,21 @@ export class BuiltinToolRegistry {
     return BUILTIN_TOOL_REGISTRY.map((tool) => ({ ...tool, agentIds: [...tool.agentIds] }));
   }
 
+  listForAgentIds(toolIds: readonly string[]): readonly TutorAgentToolDescriptor[] {
+    const allowed = new Set(toolIds);
+    return BUILTIN_TOOL_DESCRIPTORS.filter((descriptor) => allowed.has(descriptor.id)).map((descriptor) => ({
+      ...descriptor,
+      capabilities: [...descriptor.capabilities],
+    }));
+  }
+
   asAgentRegistry(): TutorAgentToolRegistry {
     return createToolRegistry(BUILTIN_TOOL_DESCRIPTORS);
+  }
+
+  asAgentRegistryForIds(toolIds: readonly string[]): TutorAgentToolRegistry {
+    const allowed = new Set(toolIds);
+    return createToolRegistry(BUILTIN_TOOL_DESCRIPTORS.filter((descriptor) => allowed.has(descriptor.id)));
   }
 
   listForCapability(capability: TutorAgentCapability): readonly TutorAgentToolDescriptor[] {

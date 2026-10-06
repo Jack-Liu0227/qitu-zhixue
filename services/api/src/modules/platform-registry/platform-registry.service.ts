@@ -1,16 +1,42 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot } from '@qitu/contracts';
+import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
 import { desc, eq, sql } from 'drizzle-orm';
-import { agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, tutorPartners, type Database } from '@qitu/database';
+import { agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { builtinToolRegistry } from './built-in-tools';
+import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
+import { AuditWriter } from '../../common/audit/audit.service';
+import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { assertParentGraph } from './agent-config.validation';
+import type { TutorRuntimePolicy, TutorRuntimeSkill } from '../../common/tutor-runtime/runtime-source';
+
+export interface EffectiveAgentRuntime {
+  agent: AdminRuntimeAgent;
+  policy: TutorRuntimePolicy;
+  skills: readonly TutorRuntimeSkill[];
+  tools: readonly TutorAgentToolDescriptor[];
+  mcpServers: readonly TutorAgentMcpDescriptor[];
+}
+
+function assertModelSelectionPair(input: AdminRuntimeAgentUpdateRequest): void {
+  const providerSpecified = input.modelProviderId !== undefined;
+  const modelSpecified = input.modelId !== undefined;
+  if (providerSpecified !== modelSpecified) {
+    throw new BadRequestException('模型供应商和模型必须同时提交或同时省略');
+  }
+  if (providerSpecified && ((input.modelProviderId === null) !== (input.modelId === null))) {
+    throw new BadRequestException('模型供应商和模型必须同时选择或同时清空');
+  }
+}
 
 @Injectable()
 export class PlatformRegistryService {
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
+    private readonly audit: AuditWriter,
+    private readonly models: ModelRegistryService,
   ) {}
 
   async getSnapshot(): Promise<AdminRuntimeSnapshot> {
@@ -25,27 +51,7 @@ export class PlatformRegistryService {
       } catch {
         databaseAvailable = false;
       }
-      if (databaseAvailable) {
-        try {
-          const partners = await this.db.select().from(tutorPartners);
-          agents = partners.map((partner) => ({
-            id: partner.id,
-            label: partner.displayName,
-            description: null,
-            role: 'tutor',
-            enabled: partner.enabled,
-            status: partner.enabled ? 'enabled' as const : 'disabled' as const,
-            modelUsage: partner.modelUsage,
-            promptVersion: partner.promptVersion,
-            capabilities: Array.isArray(partner.capabilities) ? partner.capabilities : [],
-            skillIds: [],
-            toolIds: [],
-            mcpServerIds: [],
-          }));
-        } catch {
-          // Keep the runtime source projection available when the partner table is unavailable.
-        }
-      }
+      if (databaseAvailable) agents = await this.listAgentsFromDatabase();
     }
 
     const checks = await this.readChecks(databaseAvailable);
@@ -65,7 +71,8 @@ export class PlatformRegistryService {
       version: skill.version,
       source: 'runtime',
       status: skill.status === 'ready' ? 'ready' : 'unavailable',
-      agentIds: [],
+      content: skill.content,
+      agentIds: agents.filter((agent) => agent.skillIds.includes(skill.id)).map((agent) => agent.id),
     }));
 
     return {
@@ -77,15 +84,314 @@ export class PlatformRegistryService {
         version: runtime.policy.version,
         contentHash: runtime.policy.contentHash,
         status: runtime.policy.status,
+        content: runtime.policy.content || null,
       },
       skills,
-      // MCP is intentionally empty until a server-owned runtime registry exists.
-      // Repository development config must never be promoted into this snapshot.
-      mcpServers: [],
+      mcpServers: await this.listMcpServers(),
       agents: agents.sort((a, b) => a.label.localeCompare(b.label)),
+      modelOptions: this.models.listAgentModelOptions?.() ?? [],
       builtInTools: builtinToolRegistry.list(),
       initialization,
     };
+  }
+
+  async getAgentRuntime(agentId: string): Promise<EffectiveAgentRuntime> {
+    const runtime = loadTutorRuntimeSource();
+    const agent = (await this.listAgentsFromDatabase()).find((item) => item.id === agentId);
+    if (!agent) throw new NotFoundException('Agent 角色不存在');
+    const selectedSkills = runtime.skills.filter((skill) => agent.skillIds.includes(skill.id) && skill.status === 'ready');
+    const tools = builtinToolRegistry.listForAgentIds(agent.toolIds);
+    const mcpServers = (await this.listMcpServerRows())
+      .filter((server) => agent.mcpServerIds.includes(server.id) && server.enabled)
+      .map((server) => ({
+        serverId: server.id,
+        label: server.label,
+        transport: server.transport as TutorAgentMcpDescriptor['transport'],
+        toolIds: (agent.mcpToolIds[server.id] ?? server.toolIds).filter((toolId) => server.toolIds.includes(toolId)),
+      }));
+    return { agent, policy: runtime.policy, skills: selectedSkills, tools, mcpServers };
+  }
+
+  private async listAgentsFromDatabase(): Promise<AdminRuntimeAgent[]> {
+    if (!this.db) return [];
+    const modelOptions = this.models.listAgentModelOptions?.() ?? [];
+    const legacyTutorModel = this.models.getUsages().bindings.find((binding) => binding.usageId === 'tutor.chat')?.resolved ?? null;
+    const toLegacyAgent = (partner: typeof tutorPartners.$inferSelect): AdminRuntimeAgent => ({
+      id: partner.id,
+      label: partner.displayName,
+      description: null,
+      role: 'tutor',
+      roleDefinition: partner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
+      agentDefinition: '',
+      parentAgentId: null,
+      enabled: partner.enabled,
+      status: partner.enabled ? 'enabled' as const : 'disabled' as const,
+      modelProviderId: legacyTutorModel?.providerId ?? null,
+      modelId: legacyTutorModel?.modelId ?? null,
+      modelLabel: modelOptions.find((option) => option.providerId === legacyTutorModel?.providerId && option.modelId === legacyTutorModel?.modelId)?.modelLabel ?? null,
+      modelAvailable: modelOptions.some((option) => option.providerId === legacyTutorModel?.providerId && option.modelId === legacyTutorModel?.modelId && option.available),
+      promptVersion: partner.promptVersion,
+      capabilities: Array.isArray(partner.capabilities) ? partner.capabilities : [],
+      skillIds: [],
+      toolIds: [],
+      mcpServerIds: [],
+      mcpToolIds: {},
+    });
+    try {
+      const configs = await this.db.select().from(agentConfigs);
+      if (configs.length > 0) {
+        const configAgents = await Promise.all(configs.map(async (config) => {
+          const [skills, tools, mcp] = await Promise.all([
+            this.db!.select().from(agentSkillBindings).where(eq(agentSkillBindings.agentId, config.id)),
+            this.db!.select().from(agentToolBindings).where(eq(agentToolBindings.agentId, config.id)),
+            this.db!.select().from(agentMcpBindings).where(eq(agentMcpBindings.agentId, config.id)),
+          ]);
+          return {
+            id: config.id,
+            label: config.displayName,
+            description: null,
+            role: config.role,
+            roleDefinition: config.roleDefinition,
+            agentDefinition: config.agentDefinition,
+            parentAgentId: config.parentAgentId,
+            enabled: config.enabled,
+            status: config.enabled ? 'enabled' as const : 'disabled' as const,
+            modelProviderId: config.modelProviderId ?? null,
+            modelId: config.modelId ?? null,
+            modelLabel: modelOptions.find((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId)?.modelLabel ?? null,
+            modelAvailable: modelOptions.some((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId && option.available),
+            promptVersion: `agent-config.v${config.configVersion}`,
+            capabilities: Array.isArray(config.capabilities) ? config.capabilities : [],
+            skillIds: skills.filter((binding) => binding.enabled).map((binding) => binding.skillId),
+            toolIds: tools.filter((binding) => binding.enabled).map((binding) => binding.toolId),
+            mcpServerIds: mcp.filter((binding) => binding.enabled).map((binding) => binding.mcpServerId),
+            mcpToolIds: Object.fromEntries(mcp.filter((binding) => binding.enabled).map((binding) => [binding.mcpServerId, binding.allowedToolIds])),
+          };
+        }));
+        // A partially migrated database can contain only some Agent rows. Keep
+        // the remaining legacy partners visible until the migration catches up.
+        try {
+          const partners = await this.db.select().from(tutorPartners);
+          const configIds = new Set(configs.map((config) => config.id));
+          return [
+            ...configAgents,
+            ...partners.filter((partner) => !configIds.has(partner.id)).map(toLegacyAgent),
+          ];
+        } catch {
+          return configAgents;
+        }
+      }
+    } catch {
+      // Pre-0015 databases use Tutor Partner as the compatibility projection.
+    }
+
+    try {
+      const partners = await this.db.select().from(tutorPartners);
+      return partners.map(toLegacyAgent);
+    } catch {
+      return [];
+    }
+  }
+
+  private async listMcpServerRows() {
+    if (!this.db) return [];
+    try {
+      return await this.db.select().from(runtimeMcpServers);
+    } catch {
+      return [];
+    }
+  }
+
+  private async listMcpServers(): Promise<AdminRuntimeSnapshot['mcpServers']> {
+    const rows = await this.listMcpServerRows();
+    return rows.map((server) => ({
+      id: server.id,
+      label: server.label,
+      transport: server.transport as AdminRuntimeSnapshot['mcpServers'][number]['transport'],
+      status: server.status as AdminRuntimeSnapshot['mcpServers'][number]['status'],
+      enabled: server.enabled,
+      toolCount: server.toolCount,
+      endpointOrigin: server.endpointOrigin,
+      lastCheckedAt: server.lastCheckedAt?.toISOString() ?? null,
+      lastError: server.lastError,
+    }));
+  }
+
+  async updateAgent(actor: CurrentUser, agentId: string, input: AdminRuntimeAgentUpdateRequest): Promise<AdminRuntimeAgent> {
+    if (!this.db) throw new ServiceUnavailableException('角色治理存储不可用');
+    const allowedCapabilities = new Set(['explore', 'plan', 'teach', 'review', 'reflect']);
+    const label = input.label?.trim();
+    const definition = input.roleDefinition?.trim();
+    const agentDefinition = input.agentDefinition?.trim();
+    if (label !== undefined && (label.length < 2 || label.length > 80)) throw new BadRequestException('角色名称长度须为 2 至 80 个字符');
+    if (definition !== undefined && (definition.length < 20 || definition.length > 4000)) throw new BadRequestException('角色定义长度须为 20 至 4000 个字符');
+    if (agentDefinition !== undefined && agentDefinition.length > 12000) throw new BadRequestException('agents.md 定义不能超过 12000 个字符');
+    if (input.capabilities && (input.capabilities.length === 0 || input.capabilities.length > 5 || input.capabilities.some((item) => !allowedCapabilities.has(item)))) {
+      throw new BadRequestException('角色能力列表无效');
+    }
+    assertModelSelectionPair(input);
+    if (input.modelProviderId !== undefined && input.modelProviderId !== null && input.modelId !== undefined && input.modelId !== null) {
+      const selected = (this.models.listAgentModelOptions?.() ?? []).some((option) => option.providerId === input.modelProviderId && option.modelId === input.modelId && option.available);
+      if (!selected) throw new BadRequestException('所选模型不存在或已下线');
+    }
+    if (input.modelUsage !== undefined && !this.models.getUsages().usages.some((item) => item.id === input.modelUsage)) {
+      throw new BadRequestException('未知的模型用途');
+    }
+    const runtime = loadTutorRuntimeSource();
+    const skillIds = input.skillIds ?? input.skillBindings?.map((binding) => binding.skillId);
+    if (skillIds !== undefined) {
+      const knownSkills = new Set(runtime.skills.map((skill) => skill.id));
+      if (skillIds.some((skillId) => !knownSkills.has(skillId))) throw new BadRequestException('未知的 Skill');
+    }
+    if (input.toolIds !== undefined) {
+      const knownTools = new Set(builtinToolRegistry.listForAgentIds(input.toolIds).map((tool) => tool.id));
+      if (knownTools.size !== input.toolIds.length) throw new BadRequestException('未知的内置 Tool');
+    }
+    const mcpRows = await this.listMcpServerRows();
+    const mcpBindings = input.mcpBindings?.map((binding) => ({
+      serverId: binding.serverId,
+      toolIds: [...new Set(binding.toolIds ?? [])],
+    }));
+    if (mcpBindings?.some((binding) => {
+      const server = mcpRows.find((row) => row.id === binding.serverId);
+      return !server || binding.toolIds.some((toolId) => !server.toolIds.includes(toolId));
+    })) throw new BadRequestException('未知的 MCP Server 或 Tool');
+    if (input.parentAgentId !== undefined) {
+      if (input.parentAgentId === agentId) throw new BadRequestException('Agent 不能将自己设为父 Agent');
+      if (input.parentAgentId !== null && !(await this.listAgentsFromDatabase()).some((agent) => agent.id === input.parentAgentId)) {
+        throw new BadRequestException('父 Agent 不存在');
+      }
+      assertParentGraph(agentId, input.parentAgentId ?? null, await this.listAgentsFromDatabase());
+    }
+
+    await withTransaction(this.db, async (tx) => {
+      let [existing] = await tx.select().from(agentConfigs).where(eq(agentConfigs.id, agentId)).limit(1);
+      if (!existing) {
+        // 0015 already creates these rows for normal upgrades. This branch keeps
+        // a partially migrated database writable when the compatibility view
+        // still comes from tutor_partners.
+        const [legacyPartner] = await tx.select().from(tutorPartners).where(eq(tutorPartners.id, agentId)).limit(1);
+        if (!legacyPartner) throw new NotFoundException('Agent 配置不存在');
+        const legacyModel = this.models.getUsages().bindings.find((binding) => binding.usageId === legacyPartner.modelUsage)?.resolved ?? null;
+        const now = new Date();
+        await tx.insert(agentConfigs).values({
+          id: legacyPartner.id,
+          displayName: legacyPartner.displayName,
+          role: 'tutor',
+          roleDefinition: legacyPartner.roleDefinition || QITU_LEARNING_PARTNER.roleDefinition,
+          agentDefinition: '',
+          modelProviderId: legacyModel?.providerId ?? null,
+          modelId: legacyModel?.modelId ?? null,
+          modelUsage: legacyPartner.modelUsage,
+          capabilities: Array.isArray(legacyPartner.capabilities) ? legacyPartner.capabilities : [],
+          enabled: legacyPartner.enabled,
+          configVersion: 1,
+          updatedBy: actor.id,
+          createdAt: legacyPartner.createdAt,
+          updatedAt: now,
+        });
+        [existing] = await tx.select().from(agentConfigs).where(eq(agentConfigs.id, agentId)).limit(1);
+      }
+      if (!existing) throw new ServiceUnavailableException('Agent 配置迁移后未返回记录');
+      const now = new Date();
+      await tx.update(agentConfigs).set({
+        ...(label !== undefined ? { displayName: label } : {}),
+        ...(definition !== undefined ? { roleDefinition: definition } : {}),
+        ...(agentDefinition !== undefined ? { agentDefinition } : {}),
+        ...(input.modelUsage !== undefined ? { modelUsage: input.modelUsage } : {}),
+        ...(input.modelProviderId !== undefined ? { modelProviderId: input.modelProviderId } : {}),
+        ...(input.modelId !== undefined ? { modelId: input.modelId } : {}),
+        ...(input.capabilities !== undefined ? { capabilities: [...new Set(input.capabilities)] } : {}),
+        ...(input.parentAgentId !== undefined ? { parentAgentId: input.parentAgentId } : {}),
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        configVersion: existing.configVersion + 1,
+        updatedBy: actor.id,
+        updatedAt: now,
+      }).where(eq(agentConfigs.id, agentId));
+      if (skillIds !== undefined) {
+        await tx.delete(agentSkillBindings).where(eq(agentSkillBindings.agentId, agentId));
+        const requestedSkillBindings: Array<{ skillId: string; inheritToChildren?: boolean }> = input.skillBindings ?? skillIds.map((skillId) => ({ skillId }));
+        const bindingMap = new Map(requestedSkillBindings.map((binding) => [binding.skillId, binding]));
+        if (bindingMap.size > 0) await tx.insert(agentSkillBindings).values([...bindingMap.values()].map((binding) => ({
+          agentId, skillId: binding.skillId, enabled: true, inheritToChildren: binding.inheritToChildren === true, updatedAt: now,
+        })));
+      }
+      if (input.toolIds !== undefined) {
+        await tx.delete(agentToolBindings).where(eq(agentToolBindings.agentId, agentId));
+        if (input.toolIds.length > 0) await tx.insert(agentToolBindings).values(input.toolIds.map((toolId) => ({ agentId, toolId, enabled: true, updatedAt: now })));
+      }
+      if (mcpBindings !== undefined) {
+        await tx.delete(agentMcpBindings).where(eq(agentMcpBindings.agentId, agentId));
+        if (mcpBindings.length > 0) await tx.insert(agentMcpBindings).values(mcpBindings.map((binding) => ({
+          agentId, mcpServerId: binding.serverId, allowedToolIds: binding.toolIds, enabled: true, updatedAt: now,
+        })));
+      }
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.agent_config.update',
+        targetType: 'agent_config', targetId: agentId,
+        detail: {
+          changedFields: Object.keys(input).filter((key) => key !== 'roleDefinition' && key !== 'agentDefinition'),
+          roleDefinitionChanged: definition !== undefined,
+          agentDefinitionChanged: agentDefinition !== undefined,
+          modelUsage: input.modelUsage,
+          skillCount: skillIds?.length,
+          toolCount: input.toolIds?.length,
+          mcpCount: mcpBindings?.length,
+        },
+      }, tx);
+    });
+    const updated = (await this.listAgentsFromDatabase()).find((agent) => agent.id === agentId);
+    if (!updated) throw new ServiceUnavailableException('角色更新未返回记录');
+    return updated;
+  }
+  async createAgent(actor: CurrentUser, agentId: string, input: AdminRuntimeAgentUpdateRequest): Promise<AdminRuntimeAgent> {
+    if (!this.db) throw new ServiceUnavailableException('角色治理存储不可用');
+    if (!/^[a-z0-9][a-z0-9._-]{1,79}$/i.test(agentId)) throw new BadRequestException('Agent ID 无效');
+    if (!input.label || !input.roleDefinition) throw new BadRequestException('新 Agent 必须提供名称和角色定义');
+    if ((await this.listAgentsFromDatabase()).some((agent) => agent.id === agentId)) throw new BadRequestException('Agent 已存在');
+    const parentId = input.parentAgentId ?? null;
+    const agents = await this.listAgentsFromDatabase();
+    assertParentGraph(agentId, parentId, agents);
+    const capabilities = input.capabilities ?? ['teach'];
+    assertModelSelectionPair(input);
+    if (input.modelProviderId && input.modelId && !(this.models.listAgentModelOptions?.() ?? []).some((option) => option.providerId === input.modelProviderId && option.modelId === input.modelId && option.available)) {
+      throw new BadRequestException('所选模型不存在或已下线');
+    }
+    const now = new Date();
+    await withTransaction(this.db, async (tx) => {
+      await tx.insert(agentConfigs).values({
+        id: agentId,
+        displayName: input.label!,
+        role: 'custom',
+        roleDefinition: input.roleDefinition!,
+        agentDefinition: input.agentDefinition ?? '',
+        modelProviderId: input.modelProviderId ?? null,
+        modelId: input.modelId ?? null,
+        modelUsage: input.modelUsage ?? 'tutor.chat',
+        capabilities: [...new Set(capabilities)],
+        parentAgentId: parentId,
+        enabled: input.enabled ?? true,
+        configVersion: 1,
+        updatedBy: actor.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (input.skillIds && input.skillIds.length > 0) await tx.insert(agentSkillBindings).values(input.skillIds.map((skillId) => ({ agentId, skillId, enabled: true, inheritToChildren: false, updatedAt: now })));
+      if (input.toolIds && input.toolIds.length > 0) await tx.insert(agentToolBindings).values(input.toolIds.map((toolId) => ({ agentId, toolId, enabled: true, updatedAt: now })));
+      if (input.mcpBindings && input.mcpBindings.length > 0) await tx.insert(agentMcpBindings).values(input.mcpBindings.map((binding) => ({ agentId, mcpServerId: binding.serverId, allowedToolIds: binding.toolIds ?? [], enabled: true, updatedAt: now })));
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.agent_config.create',
+        targetType: 'agent_config', targetId: agentId,
+        detail: { modelUsage: input.modelUsage ?? 'tutor.chat', skillCount: input.skillIds?.length ?? 0, toolCount: input.toolIds?.length ?? 0, mcpCount: input.mcpBindings?.length ?? 0 },
+      }, tx);
+    });
+    const created = (await this.listAgentsFromDatabase()).find((agent) => agent.id === agentId);
+    if (!created) throw new ServiceUnavailableException('Agent 创建未返回记录');
+    return created;
+  }
+
+  getAgentRuntimeTools(runtime: EffectiveAgentRuntime) {
+    return builtinToolRegistry.asAgentRegistryForIds(runtime.agent.toolIds);
   }
 
   private async readChecks(databaseAvailable: boolean): Promise<AdminRuntimeSnapshot['initialization']['checks']> {

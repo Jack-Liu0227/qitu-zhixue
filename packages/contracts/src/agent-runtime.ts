@@ -28,6 +28,10 @@ export interface TutorAgentModelPurpose {
 export type TutorAgentOutputKind =
   | 'reply'
   | 'plan'
+  | 'interest_confirmation'
+  | 'project_recommendation'
+  | 'pbl_plan'
+  | 'project_review'
   | 'growth_projection'
   | 'learner_profile_projection'
   | 'teacher_follow_up';
@@ -45,12 +49,40 @@ export interface TutorAgentScope {
   actorRole: TutorAgentActorRole;
 }
 
+export interface TutorAgentMcpDescriptor {
+  serverId: string;
+  label: string;
+  transport: 'stdio' | 'sse' | 'streamable_http' | 'unknown';
+  toolIds: readonly string[];
+}
+
 export interface TutorAgentContext<TData = Record<string, never>> {
   contextId: string;
   runtimeVersion: typeof TUTOR_AGENT_RUNTIME_VERSION;
   builtAt: string;
   scope: TutorAgentScope;
   capability: TutorAgentCapability;
+  /** Server-loaded global policy version/hash, never selected by the browser. */
+  policyVersion: string;
+  /** Resolved Agent mission; optional for compatibility with older contexts. */
+  mission?: string;
+  /** Structured constraints resolved from AgentConfig; prompt text is not authority. */
+  constraints?: readonly {
+    id: string;
+    text: string;
+    severity: 'must' | 'must_not' | 'should';
+    enforcement: 'prompt' | 'server' | 'domain';
+  }[];
+  /** The single global AGENTS.md policy reference. */
+  globalPolicy?: { id: string; version: string; contentHash: string | null };
+  /** Agent-local bounded agents.md / role instructions. */
+  agentDefinition: string;
+  /** Explicitly selected Skill ids and bounded definitions. */
+  skills: readonly { id: string; version: string | null; content: string }[];
+  /** Effective server-owned Tool descriptors after binding authorization. */
+  tools: readonly TutorAgentToolDescriptor[];
+  /** Effective MCP metadata after binding authorization; no credentials. */
+  mcpServers: readonly TutorAgentMcpDescriptor[];
   /** Server-resolved usage identity; never supplied by the browser. */
   modelUsage: string;
   query: string;
@@ -171,7 +203,9 @@ export interface TutorAgentBoundReadPorts {
     search(input: { query: string; limit: number }): Promise<readonly TutorKnowledgeEvidence[]>;
   };
   templates: {
-    listPublished(input: { capability: TutorAgentCapability }): Promise<readonly TutorTemplateEvidence[]>;
+    listPublished(input: {
+      capability: TutorAgentCapability;
+    }): Promise<readonly TutorTemplateEvidence[]>;
   };
   database: {
     readProjection<K extends TutorDatabaseProjectionName>(input: {
@@ -200,7 +234,6 @@ export interface TutorAgentToolCall {
 export interface TutorAgentToolRegistry {
   list(input: { capability: TutorAgentCapability }): readonly TutorAgentToolDescriptor[];
 }
-
 
 export interface TutorAgentRunRequest<TData = Record<string, never>> {
   requestId: string;

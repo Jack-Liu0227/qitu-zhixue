@@ -16,6 +16,7 @@
     "@qitu/agent-memory": "workspace:*",
     "@qitu/database": "workspace:*",
     "@qitu/contracts": "workspace:*",
+    "@qitu/model-runtime": "workspace:*",
     "drizzle-orm": "^0.36.4"
   },
   "devDependencies": {

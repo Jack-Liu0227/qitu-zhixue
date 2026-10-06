@@ -1,4 +1,4 @@
-import type { ProjectStage, MasterySnapshot } from '@qitu/contracts';
+import type { ProjectStage, MasterySnapshot, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
 
 export type TutorPartnerId = string;
 export type TutorMemoryKind =
@@ -21,7 +21,10 @@ export interface TutorPartnerProfile {
   id: TutorPartnerId;
   displayName: string;
   soul: string;
-  modelUsage: 'tutor.chat';
+  /** Admin-governed role definition; kept separate from internal runtime prompt material. */
+  roleDefinition: string;
+  enabled: boolean;
+  modelUsage: string;
   promptVersion: string;
   capabilities: readonly ('explore' | 'plan' | 'teach' | 'review' | 'reflect')[];
 }
@@ -107,7 +110,16 @@ export interface TutorContextInput {
   recentMessages?: readonly { role: 'user' | 'assistant'; content: string }[];
 }
 
+export interface TutorRuntimeContextMetadata {
+  policyVersion: string;
+  agentDefinition: string;
+  skills: readonly { id: string; version: string | null; content: string }[];
+  tools: readonly TutorAgentToolDescriptor[];
+  mcpServers: readonly TutorAgentMcpDescriptor[];
+}
+
 export interface TutorContextPacket {
+  runtime?: TutorRuntimeContextMetadata;
   masterySnapshot?: MasterySnapshot;
   partner: TutorPartnerProfile;
   studentId: string;
@@ -160,6 +172,8 @@ export const QITU_LEARNING_PARTNER: TutorPartnerProfile = {
   id: 'qitu-learning-partner',
   displayName: '启途学习搭档',
   soul: '用一个问题打开好奇心，用一个小行动让学习变得可见。',
+  roleDefinition: '以苏格拉底式提问支持学生探索、理解、练习与反思；不替学生完成作品，不绕过理论掌握门槛。',
+  enabled: true,
   modelUsage: 'tutor.chat',
   promptVersion: 'qitu.partner.v1',
   capabilities: ['explore', 'plan', 'teach', 'review', 'reflect'],
@@ -200,6 +214,7 @@ export function createTutorContextReader(ports: TutorContextReadPorts, partner =
       ]);
 
       return {
+        runtime: { policyVersion: 'unconfigured', agentDefinition: '', skills: [], tools: [], mcpServers: [] },
         partner,
         studentId: input.studentId,
         projectId: input.projectId,

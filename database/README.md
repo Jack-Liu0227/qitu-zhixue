@@ -52,9 +52,9 @@ QITU_BACKUP_FILE=/root/qitu-backups/qitu-<timestamp>.dump.enc \
 
 ## 迁移与灾备策略
 
-本仓库使用 `database/migrations/` 中经过评审的 forward-only SQL 迁移；`drizzle-kit generate` 已显式禁用，避免 schema snapshot 与 0010–0013 手写迁移再次漂移。`pnpm --filter @qitu/database migrate` 是唯一推荐的执行入口。
+本仓库使用 `database/migrations/` 中经过评审的 forward-only SQL 迁移；`drizzle-kit generate` 已显式禁用，避免 schema snapshot 与 0010–0017 手写迁移再次漂移。`pnpm --filter @qitu/database migrate` 是唯一推荐的执行入口。
 
-迁移编号目前连续覆盖 `0000`–`0013`。新表必须新增编号 SQL 和对应 `.down.sql` 说明，并在 `qitu_test` 临时库执行迁移与测试后再合并。
+迁移编号目前连续覆盖 `0000`–`0017`。新表必须新增编号 SQL 和对应 `.down.sql` 说明，并在 `qitu_test` 临时库执行迁移与测试后再合并。`0014`–`0017` 已登记到 `meta/_journal.json`；执行迁移前仍须按 owner 模块完成 SQL 与回滚说明评审。
 
 生产备份由 `tooling/backup-qitu-db.sh` 执行：使用 `pg_dump --format=custom`，再用 AES-256-CBC/PBKDF2 加密，输出到仓库外目录并按保留天数清理。密码文件只由部署主机提供，禁止进入 Git。
 

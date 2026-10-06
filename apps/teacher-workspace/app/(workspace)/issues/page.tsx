@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   AlertIcon,
   CheckCircleIcon,
@@ -243,6 +243,12 @@ function InterventionWorkbench({
   const [suggestion, setSuggestion] = useState('');
   const [guidanceText, setGuidanceText] = useState('');
   const [sending, setSending] = useState(false);
+  const pendingKey = useRef<{ signature: string; key: string } | null>(null);
+  const keyFor = (action: 'acknowledge' | 'resolve') => {
+    const signature = JSON.stringify([intervention.id, action, guidanceText || null]);
+    if (pendingKey.current?.signature !== signature) pendingKey.current = { signature, key: crypto.randomUUID() };
+    return pendingKey.current.key;
+  };
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
   /** 成功提示要说清做的是哪个动作，否则完成闭环后显示「建议已保存」会误导。 */
@@ -287,7 +293,7 @@ function InterventionWorkbench({
     setSending(true);
     setSendError(null);
     setSendSuccess(false);
-    const idempotencyKey = `inj_${intervention.id}_acknowledge`;
+    const idempotencyKey = keyFor('acknowledge');
     try {
       const response = await teacherApi.interventionAction(
         intervention.id,
@@ -295,6 +301,7 @@ function InterventionWorkbench({
         idempotencyKey,
       );
       setSendSuccess(true);
+      pendingKey.current = null;
       setSucceededAction('acknowledge');
       setLastActionAt(response.data.changedAt);
       setSending(false);
@@ -323,9 +330,10 @@ function InterventionWorkbench({
       const response = await teacherApi.interventionAction(
         intervention.id,
         { action: 'resolve', note: guidanceText || null },
-        `inj_${intervention.id}_resolve`,
+        keyFor('resolve'),
       );
       setSendSuccess(true);
+      pendingKey.current = null;
       setSucceededAction('resolve');
       setLastActionAt(response.data.changedAt);
       setSending(false);
