@@ -764,6 +764,15 @@ export default function AdminRelationshipsPage() {
 
   return (
     <div className="admin-relationships-page">
+      <section className="admin-hero-banner admin-relationships-hero">
+        <div className="admin-hero-copy">
+          <div className="admin-hero-badges"><span className="admin-live-badge"><i />AI 智慧守护已在线</span><span className="admin-hero-note">家校协同治理节点运行中</span></div>
+          <h1>家校协同守护，共筑成长桥梁</h1>
+          <p>统一管理监护关系与班主任分配，帮助每位学生获得清晰、可靠且最小化的支持链路。</p>
+        </div>
+        <div className="admin-hero-mascot"><span className="admin-hero-bubble">关系治理实时同步</span><img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" /></div>
+      </section>
+
       <div className="admin-page-header">
         <div className="admin-page-header-title">
           <h1>关系绑定</h1>
