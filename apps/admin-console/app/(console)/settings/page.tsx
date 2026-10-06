@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { AdminSettingsIndexData, AdminSettingsPanel } from '@qitu/contracts';
-import { Badge, Button, Field, InfoRow } from '@qitu/ui';
+import { Badge, Button, Field } from '@qitu/ui';
 import {
   createManualModel,
   fetchProviders,
@@ -16,19 +16,23 @@ import { fetchSettings } from '../../../lib/api/settings';
 import { fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../lib/api/runtime';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../lib/components/DataSourceBadge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../lib/components/AdminCard';
+import { AdminMetricIcon } from '../../../lib/components/AdminMetricIcon';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../../lib/components/AdminCard';
 
 const QWEN_PROVIDER_ID = 'qwen-token-plan';
 const QWEN_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode';
 const QWEN_TEXT_MODEL = 'qwen3.8-flash';
 
-function QwenQuickSetup() {
+type SettingsToast = { tone: 'success' | 'error'; message: string } | null;
+
+function QwenQuickSetup({ onToast }: { onToast: (toast: SettingsToast) => void }) {
   const apiKeyRef = useRef<HTMLInputElement>(null);
   const [baseUrl, setBaseUrl] = useState(QWEN_BASE_URL);
   const [textModel, setTextModel] = useState(QWEN_TEXT_MODEL);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [runtime, setRuntime] = useState({ configured: false, agentLabel: '' });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -48,8 +52,16 @@ function QwenQuickSetup() {
       setError('请填写 Agent 使用的模型 ID。');
       return;
     }
+    setConfirmOpen(true);
+  }
 
+  async function confirmSubmit() {
+    setConfirmOpen(false);
     setSaving(true);
+    setError('');
+    setNotice('');
+    onToast(null);
+    const apiKey = apiKeyRef.current?.value.trim() ?? '';
     try {
       await upsertProvider(QWEN_PROVIDER_ID, {
         name: '通义千问（百炼 Token Plan）',
@@ -111,11 +123,15 @@ function QwenQuickSetup() {
         testModelConnection(QWEN_PROVIDER_ID, textModel.trim()),
       ]);
       const failed = tests.filter((result) => !result.ok);
-      setNotice(failed.length === 0
+      const message = failed.length === 0
         ? 'Qwen 模型已保存并分配给 AI 导师 Agent，连通性测试通过。'
-        : `模型已分配给 AI 导师 Agent，但有 ${failed.length} 个连通性测试未通过，请检查 Key、额度或模型权限。`);
+        : `模型已分配给 AI 导师 Agent，但有 ${failed.length} 个连通性测试未通过，请检查 Key、额度或模型权限。`;
+      setNotice(message);
+      onToast({ tone: failed.length === 0 ? 'success' : 'error', message });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '配置失败，请重试。');
+      const message = cause instanceof Error ? cause.message : '配置失败，请重试。';
+      setError(message);
+      onToast({ tone: 'error', message });
     } finally {
       setSaving(false);
     }
@@ -143,12 +159,12 @@ function QwenQuickSetup() {
             <input value={textModel} onChange={(event) => setTextModel(event.target.value)} />
           </Field>
         </div>
-        <div className="admin-form-actions admin-form-actions-start">
-          <Button type="submit" disabled={saving}>
-            {saving ? '正在保存并测试…' : '保存并启用 Qwen'}
+        <CardFooter className="admin-settings-quick-actions">
+          <Button type="submit" variant="primary" loading={saving} disabled={saving}>
+            保存并启用 Qwen
           </Button>
-          <Link className="admin-link" href="/settings/model-providers">打开高级模型配置</Link>
-        </div>
+          <Link className="admin-settings-secondary-link" href="/settings/model-providers">打开高级模型配置 <span aria-hidden="true">→</span></Link>
+        </CardFooter>
         {error ? <p className="admin-error-banner" role="alert">{error}</p> : null}
         {notice ? <p className="admin-settings-quick-success" role="status">{notice}</p> : null}
         {runtime.agentLabel ? (
@@ -160,6 +176,19 @@ function QwenQuickSetup() {
         ) : null}
       </form>
       </CardContent>
+      {confirmOpen ? (
+        <div className="admin-dialog-backdrop" role="presentation" onClick={() => setConfirmOpen(false)}>
+          <section className="admin-dialog admin-settings-confirm" role="alertdialog" aria-modal="true" aria-labelledby="qwen-confirm-title" onClick={(event) => event.stopPropagation()}>
+            <span className="admin-settings-confirm-icon" aria-hidden="true">Q</span>
+            <h3 id="qwen-confirm-title">确认启用 Qwen 模型？</h3>
+            <p>将保存供应商凭证、注册模型，并分配给 AI 导师 Agent。已保存的 API Key 不会回显。</p>
+            <div className="admin-dialog-actions">
+              <Button variant="ghost" onClick={() => setConfirmOpen(false)}>返回检查</Button>
+              <Button variant="primary" loading={saving} onClick={() => void confirmSubmit()}>确认并启用</Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -168,6 +197,7 @@ export default function AdminSettingsPage() {
   const [data, setData] = useState<AdminSettingsIndexData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [toast, setToast] = useState<SettingsToast>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,11 +231,26 @@ export default function AdminSettingsPage() {
         <p>管理平台配置与模型接入</p>
       </div>
 
-      <QwenQuickSetup />
+      <QwenQuickSetup onToast={setToast} />
 
-      <div className="admin-settings-overview">
-        <InfoRow label="已配置的模型供应商" value={`${data.configuredProviderCount} 个`} />
-        <InfoRow label="已配置 Agent 模型" value={`${data.configuredAgentModelCount} 个`} />
+      {toast ? (
+        <div className={`admin-settings-toast is-${toast.tone}`} role="status">
+          <span className="admin-settings-toast-dot" aria-hidden="true" />
+          <span>{toast.message}</span>
+          <button type="button" aria-label="关闭提示" onClick={() => setToast(null)}>×</button>
+        </div>
+      ) : null}
+
+      <div className="admin-settings-overview admin-settings-metrics">
+        <Card variant="soft" className="admin-settings-metric-card">
+          <span className="admin-settings-metric-icon is-blue"><AdminMetricIcon name="project" /></span>
+          <span className="admin-settings-metric-copy"><small>模型供应商</small><strong>{data.configuredProviderCount}</strong><em>个已配置</em></span>
+        </Card>
+        <Card variant="soft" className="admin-settings-metric-card">
+          <span className="admin-settings-metric-icon is-teal"><AdminMetricIcon name="coverage" /></span>
+          <span className="admin-settings-metric-copy"><small>Agent 模型</small><strong>{data.configuredAgentModelCount}</strong><em className={data.configuredAgentModelCount === 0 ? 'is-pending' : ''}>{data.configuredAgentModelCount === 0 ? '待配置' : '个已配置'}</em></span>
+          <Link className="admin-settings-metric-link" href="/settings/ai-runtime">去配置 <span aria-hidden="true">→</span></Link>
+        </Card>
       </div>
 
       <div className="admin-settings-panels">
@@ -246,19 +291,16 @@ export default function AdminSettingsPage() {
 function SettingsPanelCard({ panel }: { panel: AdminSettingsPanel }) {
   const isAvailable = panel.status === 'available' && panel.route !== null;
 
+  const statusLabel = panel.status === 'available' ? '已开放' : '未开放';
   const content = (
-    <Card variant={isAvailable ? 'interactive' : 'default'} className={isAvailable ? 'admin-settings-panel clickable' : 'admin-settings-panel'}>
+    <Card variant={isAvailable ? 'interactive' : 'default'} className={isAvailable ? 'admin-settings-panel clickable' : 'admin-settings-panel is-disabled'}>
       <CardHeader className="admin-settings-panel-header">
-        <CardTitle>{panel.title}</CardTitle>
-        {panel.status === 'planned' ? (
-          <Badge tone="neutral" size="sm">
-            未开放
-          </Badge>
-        ) : null}
+        <div className="admin-settings-panel-title-row"><CardTitle>{panel.title}</CardTitle><span className={`admin-settings-status is-${panel.status}`}>{statusLabel}</span></div>
       </CardHeader>
       <CardContent>
         <p className="admin-settings-panel-description">{panel.description}</p>
       </CardContent>
+      {isAvailable ? <CardFooter className="admin-settings-panel-footer"><span>进入配置</span><span aria-hidden="true">→</span></CardFooter> : null}
     </Card>
   );
 
