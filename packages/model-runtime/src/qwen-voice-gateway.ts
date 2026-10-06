@@ -390,7 +390,6 @@ async function nextRealtimeMessage(messages: AsyncGenerator<Record<string, unkno
 
 async function collectTranscript(messages: AsyncGenerator<Record<string, unknown>>, socket: QwenWebSocketLike): Promise<string> {
   let inputTranscript = '';
-  let responseTranscript = '';
   while (true) {
     const event = await nextRealtimeMessage(messages);
     if (
@@ -403,47 +402,15 @@ async function collectTranscript(messages: AsyncGenerator<Record<string, unknown
       if (!complete.trim()) throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容为空');
       return complete.trim();
     }
-    if (
-      (event.type === 'response.text.delta'
-        || event.type === 'response.output_text.delta'
-        || event.type === 'response.audio_transcript.delta'
-        || event.type === 'response.output_audio_transcript.delta')
-      && typeof event.delta === 'string'
-    ) responseTranscript += event.delta;
-    if (
-      (event.type === 'response.text.done'
-        || event.type === 'response.output_text.done'
-        || event.type === 'response.audio_transcript.done'
-        || event.type === 'response.output_audio_transcript.done')
-      && typeof event.text === 'string'
-    ) responseTranscript = event.text;
     if (event.type === 'conversation.item.input_audio_transcription.failed' || event.type === 'error') throw realtimeError(event);
     if (event.type === 'response.done') {
-      const complete = inputTranscript.trim() || responseTranscript.trim() || responseText(event.response);
-      if (complete) return complete;
-      break;
+      closeQuietly(socket);
+      throw new QwenVoiceGatewayError(
+        'VOICE_TRANSCRIPTION_UNAVAILABLE',
+        '当前 Qwen Realtime 模型没有返回用户语音转写',
+      );
     }
   }
-  closeQuietly(socket);
-  throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容无效');
-}
-
-function responseText(value: unknown): string {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return '';
-  const response = value as { output?: unknown; text?: unknown; transcript?: unknown };
-  if (typeof response.text === 'string') return response.text.trim();
-  if (typeof response.transcript === 'string') return response.transcript.trim();
-  if (!Array.isArray(response.output)) return '';
-  return response.output
-    .filter((item): item is { content?: unknown } => item !== null && typeof item === 'object' && !Array.isArray(item))
-    .flatMap((item) => Array.isArray(item.content) ? item.content : [])
-    .map((part) => {
-      if (part === null || typeof part !== 'object' || Array.isArray(part)) return '';
-      const value = part as { text?: unknown; transcript?: unknown };
-      return typeof value.text === 'string' ? value.text : typeof value.transcript === 'string' ? value.transcript : '';
-    })
-    .join('')
-    .trim();
 }
 
 function realtimeError(event: Record<string, unknown>): QwenVoiceGatewayError {

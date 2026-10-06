@@ -99,24 +99,26 @@ test('qwen voice gateway sends server-side credentials and normalises ASR', asyn
   assert.equal(FakeRealtimeSocket.lastAuthorization, 'Bearer server-secret');
 });
 
-test('qwen audio realtime uses the legacy PCM session and response text fallback for ASR', async () => {
+test('qwen audio realtime rejects assistant response text as an ASR transcript', async () => {
   FakeRealtimeSocket.emitInputTranscript = false;
   const gateway = createQwenVoiceGateway({ target, webSocketImpl: fakeWebSocket });
-  const result = await gateway.transcribe({
-    requestId: 'r1-fallback',
-    idempotencyKey: 'i1-fallback',
-    model: { providerId: target.providerId, modelId: target.modelId },
-    audio: {
-      codec: 'pcm_s16le',
-      mimeType: 'audio/pcm',
-      sampleRateHz: 16_000,
-      channels: 1,
-      durationMs: 500,
-      dataBase64: 'AA==',
-    },
-    language: 'zh-CN',
-  });
-  assert.equal(result.transcript, '你好');
+  await assert.rejects(
+    gateway.transcribe({
+      requestId: 'r1-fallback',
+      idempotencyKey: 'i1-fallback',
+      model: { providerId: target.providerId, modelId: target.modelId },
+      audio: {
+        codec: 'pcm_s16le',
+        mimeType: 'audio/pcm',
+        sampleRateHz: 16_000,
+        channels: 1,
+        durationMs: 500,
+        dataBase64: 'AA==',
+      },
+      language: 'zh-CN',
+    }),
+    (error: unknown) => error instanceof Error && error.message === 'VOICE_TRANSCRIPTION_UNAVAILABLE',
+  );
   assert.deepEqual(FakeRealtimeSocket.lastSession, {
     modalities: ['text', 'audio'],
     turn_detection: null,

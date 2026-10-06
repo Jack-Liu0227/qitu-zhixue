@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
   VoiceGatewayCapabilities,
+  VoiceGatewayOperation,
   VoiceModelSelection,
   VoiceSynthesisRequest,
   VoiceTranscriptionRequest,
@@ -50,12 +51,13 @@ export class QwenVoiceGatewayService {
     const result: VoiceModelOption[] = [];
 
     for (const option of options) {
+      const operations = supportedOperations(option);
       const provider = providerById.get(option.providerId);
       if (provider === undefined || !option.configured) {
         result.push({ ...option, available: false, availabilityReason: 'provider_not_configured' });
         continue;
       }
-      if (option.operations.length === 0) {
+      if (operations.length === 0) {
         result.push({ ...option, available: false, availabilityReason: 'voice_capability_not_declared' });
         continue;
       }
@@ -69,6 +71,7 @@ export class QwenVoiceGatewayService {
         const probe = await this.probe(target);
         result.push({
           ...option,
+          operations,
           available: probe.ok,
           availabilityReason: probe.ok ? null : probe.reason,
         });
@@ -176,4 +179,17 @@ function isQwenProvider(providerId: string, baseUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Qwen Audio Realtime is a speech-to-speech model. Its response text is the
+ * assistant's reply, so it cannot safely implement the transcription contract.
+ * Keep synthesis available while waiting for a dedicated ASR model or a true
+ * browser realtime session adapter.
+ */
+function supportedOperations(option: VoiceModelOption): VoiceGatewayOperation[] {
+  if (/^qwen-audio-3\.0-realtime(?:-|$)/u.test(option.modelId)) {
+    return option.operations.filter((operation) => operation !== 'transcribe');
+  }
+  return [...option.operations];
 }
