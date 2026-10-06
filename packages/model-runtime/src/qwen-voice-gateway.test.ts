@@ -117,7 +117,7 @@ test('qwen audio realtime rejects assistant response text as an ASR transcript',
           dataBase64: 'AA==',
         },
         language: 'zh-CN',
-      },
+      }),
       (error: unknown) => error instanceof Error
         && 'code' in error
         && error.code === 'VOICE_TRANSCRIPTION_UNAVAILABLE',
