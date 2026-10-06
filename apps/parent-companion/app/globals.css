@@ -776,6 +776,16 @@ body {
 .parent-feedback-status { margin: 8px 0; color: var(--qitu-muted); font-size: 0.85rem; line-height: 1.5; }
 .parent-feedback-success { margin: 0; color: var(--qitu-completed); font-size: 0.82rem; line-height: 1.5; }
 .parent-feedback-error { margin: 0; color: var(--qitu-danger, #c33); font-size: 0.82rem; line-height: 1.5; }
+
+.qitu-parent-projection-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--qitu-primary);
+  color: var(--qitu-muted);
+  background: var(--qitu-primary-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
 @media (max-width: 650px) {
   .parent-feedback {
     right: 12px;

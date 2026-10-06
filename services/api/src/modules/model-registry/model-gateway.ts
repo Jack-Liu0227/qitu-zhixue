@@ -1,12 +1,14 @@
+import { createModelRuntime, isModelRuntimeError, type ModelRuntime } from '@qitu/model-runtime';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { adapterFor } from './model-gateway.adapters';
-import { ModelGatewayError } from './model-gateway.errors';
+import { ModelGatewayError, type ModelGatewayErrorCode } from './model-gateway.errors';
 import {
   DEFAULT_COMPLETION_TIMEOUT_MS,
   MAX_COMPLETION_RESPONSE_BYTES,
   MAX_COMPLETION_TIMEOUT_MS,
   type ModelCompletionRequest,
   type ModelCompletionResult,
+  type ModelRuntimeModelSelection,
   type ModelRuntimeResolver,
   type ModelRuntimeTarget,
   type ModelStreamEvent,
@@ -44,8 +46,11 @@ export const MODEL_RUNTIME_RESOLVER = Symbol('MODEL_RUNTIME_RESOLVER');
 @Injectable()
 export class ModelGateway {
   private readonly logger = new Logger(ModelGateway.name);
+  private readonly runtime: ModelRuntime;
 
-  constructor(@Inject(MODEL_RUNTIME_RESOLVER) private readonly resolver: ModelRuntimeResolver) {}
+  constructor(@Inject(MODEL_RUNTIME_RESOLVER) private readonly resolver: ModelRuntimeResolver) {
+    this.runtime = createModelRuntime(resolver);
+  }
 
   /**
    * 按用途发起一次非流式补全。
@@ -58,8 +63,12 @@ export class ModelGateway {
   async complete(
     usageId: string,
     request: ModelCompletionRequest,
+    selection?: ModelRuntimeModelSelection,
   ): Promise<ModelCompletionResult> {
-    const target = this.resolver.resolveRuntimeTarget(usageId);
+    if (runtimeEngine() === 'qitu') return this.completeWithQituRuntime(usageId, request, selection);
+    const target = selection
+      ? this.resolveSelectedTarget(selection)
+      : this.resolver.resolveRuntimeTarget(usageId);
     return this.execute(usageId, target, request);
   }
 
@@ -71,13 +80,50 @@ export class ModelGateway {
    * 当前实现直接抛 `MODEL_STREAM_NOT_IMPLEMENTED`，避免让调用方误以为
    * 已支持流式而写出依赖增量的逻辑。
    */
-  async *stream(usageId: string, request: ModelCompletionRequest): AsyncGenerator<ModelStreamEvent> {
+  async *stream(
+    usageId: string,
+    request: ModelCompletionRequest,
+    selection?: ModelRuntimeModelSelection,
+  ): AsyncGenerator<ModelStreamEvent> {
+    if (runtimeEngine() === 'qitu') {
+      for await (const event of this.runtime.stream({ usageId, ...request, ...selection })) {
+        if (event.type === 'text-delta') yield { type: 'text-delta', text: event.text };
+        else if (event.type === 'done') yield { type: 'done', result: event.result };
+        else if (event.type === 'error') yield event;
+      }
+      return;
+    }
     void usageId;
     void request;
     throw new ModelGatewayError(
       'MODEL_STREAM_NOT_IMPLEMENTED',
       '流式模型调用尚未接线；本任务只交付非流式 complete()。',
     );
+  }
+
+  private async completeWithQituRuntime(
+    usageId: string,
+    request: ModelCompletionRequest,
+    selection?: ModelRuntimeModelSelection,
+  ): Promise<ModelCompletionResult> {
+    try {
+      return await this.runtime.complete({ usageId, ...request, ...selection });
+    } catch (error) {
+      if (isModelRuntimeError(error)) {
+        throw new ModelGatewayError(error.code as ModelGatewayErrorCode, error.message, {
+          retryable: error.retryable,
+          upstreamStatus: error.upstreamStatus,
+        });
+      }
+      throw error;
+    }
+  }
+
+  private resolveSelectedTarget(selection: ModelRuntimeModelSelection): ModelRuntimeTarget {
+    if (!this.resolver.resolveRuntimeTargetByModel) {
+      throw new ModelGatewayError('MODEL_NOT_FOUND', '当前运行时不支持 Agent 级模型选择');
+    }
+    return this.resolver.resolveRuntimeTargetByModel(selection);
   }
 
   private async execute(
@@ -142,7 +188,10 @@ export class ModelGateway {
   }
 }
 
-/** 至少一条消息，角色与内容类型合法。调用方传错属于编程错误，立即暴露。 */
+export function runtimeEngine(): 'qitu' | 'legacy' {
+  return process.env.QITU_MODEL_RUNTIME_ENGINE === 'qitu' ? 'qitu' : 'legacy';
+}
+
 function assertRequest(request: ModelCompletionRequest): void {
   if (!Array.isArray(request.messages) || request.messages.length === 0) {
     throw new ModelGatewayError('MODEL_REQUEST_INVALID', '至少需要一条消息');

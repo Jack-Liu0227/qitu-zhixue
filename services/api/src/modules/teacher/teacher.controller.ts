@@ -27,6 +27,7 @@ import { FeedbackService } from '../feedback/feedback.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
+import type { TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 
 /**
  * Teacher controller: roster, student detail, interventions, statistics, feedback.
@@ -83,6 +84,16 @@ export class TeacherController {
     const detail = await this.teacherService.getStudentDetail(user.id, studentId);
 
     return { data: detail };
+  }
+
+  @Get('students/:studentId/agent-runs')
+  async getStudentAgentRuns(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('studentId') studentId: string,
+  ): Promise<{ data: TeacherAgentRunProjection }> {
+    const user = requireRole(this.authService, cookieHeader, 'teacher', '教师权限不足');
+    const data = await this.teacherService.getStudentAgentRuns(user.id, studentId);
+    return { data };
   }
 
   @Get('interventions')

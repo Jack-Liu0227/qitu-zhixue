@@ -36,11 +36,14 @@ export const outbox = pgTable(
     status: text('status').notNull(), // 'pending' | 'published' | 'failed'
     attempts: integer('attempts').notNull().default(0),
     lastError: text('last_error'), // diagnostics for status='failed'; null before first failure
+    leaseOwner: text('lease_owner'),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     publishedAt: timestamp('published_at', { withTimezone: true }),
   },
   (table) => ({
     statusIdx: index('outbox_status_idx').on(table.status),
     createdAtIdx: index('outbox_created_at_idx').on(table.createdAt),
+    leaseIdx: index('outbox_lease_idx').on(table.status, table.leaseUntil),
   }),
 );

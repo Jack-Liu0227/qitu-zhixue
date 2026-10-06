@@ -11,6 +11,7 @@ import {
   AlertIcon,
 } from '../../../components/icons';
 import { MetricCard } from '../../../components/metric-card';
+import { AgentRunPanel } from '../../../components/agent-run-panel';
 import {
   teacherApi,
   TeacherOfflineError,
@@ -447,6 +448,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
         <div className="qtx-note" style={{ marginTop: 16 }}>
           当前支持查看学生名册与学习概览；完整档案、家长周报推送与沟通记录暂未开放。
         </div>
+        <AgentRunPanel studentId={student.studentId} />
       </div>
     </div>
   );

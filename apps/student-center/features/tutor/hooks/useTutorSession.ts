@@ -111,6 +111,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
   // Load the active project (or the routed project) context.
   useEffect(() => {
     let cancelled = false;
+    setPermissionDenied(false);
     setProjectStatus('loading');
     setProjectError(null);
     // A new project needs a fresh, idempotent session-creation key.
@@ -172,6 +173,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
       return;
     }
     let cancelled = false;
+    setPermissionDenied(false);
     setSessionStatus('loading');
     setSessionError(null);
     setTurns([]);

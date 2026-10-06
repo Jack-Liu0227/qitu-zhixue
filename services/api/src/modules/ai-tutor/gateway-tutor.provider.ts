@@ -3,12 +3,13 @@ import type { TutorContextPacket } from '@qitu/ai-client';
 import { serializeTutorContext } from '@qitu/ai-client';
 import type { ProjectStage, TutorHintLevel, TutorReplyBlock } from '@qitu/contracts';
 import type { DataMode } from '../../database';
-import { isModelGatewayError } from '../model-registry/model-gateway.errors';
+import { isModelGatewayError, ModelGatewayError } from '../model-registry/model-gateway.errors';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import type { ModelGatewayErrorCode } from '../model-registry/model-gateway.errors';
 import type {
   ModelCompletionRequest,
   ModelCompletionResult,
+  ModelRuntimeModelSelection,
 } from '../model-registry/model-gateway.types';
 import {
   checkAnswerLeak,
@@ -31,7 +32,7 @@ import {
  * 单测可直接传桩，不必启动 Nest 或数据库。
  */
 export interface TutorModelGateway {
-  complete(usageId: string, request: ModelCompletionRequest): Promise<ModelCompletionResult>;
+  complete(usageId: string, request: ModelCompletionRequest, selection?: ModelRuntimeModelSelection): Promise<ModelCompletionResult>;
 }
 
 /** AI搭档对话用途的注册表 id（`ModelRegistryService.USAGES`）。 */
@@ -101,6 +102,12 @@ export class GatewayTutorProvider implements TutorProvider {
 
     let result: ModelCompletionResult;
     try {
+      const selection = input.modelProviderId && input.modelId
+        ? { providerId: input.modelProviderId, modelId: input.modelId }
+        : undefined;
+      if (input.modelUsage === 'agent.model' && selection === undefined) {
+        throw new ModelGatewayError('MODEL_USAGE_NOT_BOUND', 'Agent 尚未配置模型');
+      }
       result = await this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
           { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks) },
@@ -108,7 +115,7 @@ export class GatewayTutorProvider implements TutorProvider {
         ],
         temperature: 0.3,
         maxTokens: level === EXPLAIN_ONLY_LEVEL ? 512 : 256,
-      });
+      }, selection);
     } catch (error) {
       const failure = toModelFailure(error);
       // 只记录稳定错误码，绝不记录提示词、学生输入或上游正文。
@@ -252,9 +259,9 @@ function toModelFailure(error: unknown): ModelFailure {
   if (code !== null && CONFIG_ERROR_CODES.has(code)) {
     return {
       code: 'MODEL_NOT_CONFIGURED',
-      message: 'AI 模型尚未配置或不可用：请联系管理员为「AI搭档 · 对话」绑定可用模型与凭证。',
+      message: 'AI 模型尚未配置或不可用，请联系管理员检查 AI 运行时中的 Agent 模型配置。',
       retryable: false,
-      toolResult: '未执行模型调用：tutor.chat 未绑定，或供应商 / 模型 / 凭证不可用',
+      toolResult: '未执行模型调用：Agent 未配置模型，或供应商 / 模型 / 凭证不可用',
     };
   }
   if (retryable) {

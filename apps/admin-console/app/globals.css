@@ -361,7 +361,7 @@ body { min-height: 100vh; }
   color: white;
 }
 
-/* ---- 模型供应商 / 用途绑定通用 ---- */
+/* ---- 模型供应商 / Agent 模型配置通用 ---- */
 .admin-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -534,7 +534,7 @@ body { min-height: 100vh; }
 }
 
 
-/* ---- 模型用途绑定 ---- */
+/* ---- 旧模型目录兼容样式 ---- */
 .admin-usage-description {
   margin: 0 0 12px;
   color: var(--qitu-muted);

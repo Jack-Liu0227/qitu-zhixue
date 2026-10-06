@@ -42,7 +42,9 @@ export type ModelGatewayErrorCode =
   | 'MODEL_RESPONSE_INVALID'
   /** 上游结构合法但没有文本内容。 */
   | 'MODEL_EMPTY_RESPONSE'
-  /** 流式接口尚未接线（本任务只交付非流式 complete）。 */
+  /** pi-ai 流式生命周期失败。 */
+  | 'MODEL_STREAM_ERROR'
+  /** 流式接口尚未接线（旧实现兼容错误）。 */
   | 'MODEL_STREAM_NOT_IMPLEMENTED';
 
 export interface ModelGatewayErrorOptions {

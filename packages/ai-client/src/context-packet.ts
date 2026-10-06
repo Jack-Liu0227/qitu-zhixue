@@ -4,7 +4,13 @@ import type { TutorContextPacket } from './tutor-context.js';
 
 /** Build bounded, auditable prompt context without replaying raw chat history. */
 export function serializeTutorContext(packet: TutorContextPacket): string {
+  const runtime = packet.runtime;
   const lines = [
+    runtime === undefined ? '' : `全局策略版本：${runtime.policyVersion}`,
+    runtime === undefined ? '' : `Agent 定义：${boundedDefinition(runtime.agentDefinition)}`,
+    ...(runtime?.skills ?? []).map((skill) => `Skill ${skill.id}（${skill.version ?? 'unknown'}）：${boundedDefinition(skill.content)}`),
+    ...(runtime?.tools ?? []).map((tool) => `可用工具：${tool.id}（风险 ${tool.riskLevel}）`),
+    ...(runtime?.mcpServers ?? []).map((server) => `可用 MCP：${server.serverId}（${server.label}，工具 ${server.toolIds.join(', ') || '无'}）`),
     `伙伴：${packet.partner.displayName}`,
     `伙伴职责定义：${boundedDefinition(packet.partner.roleDefinition)}`,
     `伙伴策略：${packet.partner.soul}`,

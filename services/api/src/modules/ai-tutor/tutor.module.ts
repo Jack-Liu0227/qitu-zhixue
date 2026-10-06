@@ -11,7 +11,9 @@ import { TutorController } from './tutor.controller';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import { PostgresTutorSessionStore } from './tutor-session.store.postgres';
 import { QituSDKModule } from '../qitu-sdk/qitu-sdk.module';
+import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 import { TutorService } from './tutor.service';
+import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 
 /**
  * AI 搭档模块。
@@ -29,7 +31,7 @@ import { TutorService } from './tutor.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule],
   controllers: [TutorController],
   providers: [
     TutorService,

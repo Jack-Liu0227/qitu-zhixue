@@ -24,7 +24,7 @@ import {
  * 全部用桩替换 `ModelGateway`，不触碰网络、数据库或 Nest 容器。覆盖：
  * - 正常回复 → deltas / hint 块 / done，且工具事件只反映真实两步；
  * - 答案泄露 / 超长 → 触发安全改写，块内不含泄露措辞；
- * - `tutor.chat` 未绑定 → `MODEL_NOT_CONFIGURED`，**不**静默回落；
+ * - Agent 未配置模型 → `MODEL_NOT_CONFIGURED`，**不**静默回落；
  * - 可重试上游故障 → `MODEL_UNAVAILABLE` 且 retryable=true；
  * - 错误事件**绝不**透出密钥或上游正文；
  * - provider 选择：live → Gateway，demo/test → Heuristic。
@@ -173,6 +173,20 @@ test('tutor.chat 未绑定：返回 MODEL_NOT_CONFIGURED，不产生任何引导
   const done = events.find((e) => e.type === 'done');
   assert.ok(done && done.type === 'done');
   assert.equal(done.turnSummary.hintLevel, null);
+});
+
+test('Agent 清空模型：不回落到旧 tutor.chat 绑定', async () => {
+  const gateway = new StubGateway(() => result('不应执行'));
+  const events = await collect(new GatewayTutorProvider(gateway), {
+    ...BASE_INPUT,
+    modelUsage: 'agent.model',
+  });
+
+  const error = events.find((event) => event.type === 'error');
+  assert.ok(error && error.type === 'error');
+  assert.equal(error.code, 'MODEL_NOT_CONFIGURED');
+  assert.equal(gateway.calls.length, 0);
+  assert.equal(blocksOf(events).length, 0);
 });
 
 test('可重试上游故障：返回 MODEL_UNAVAILABLE 且 retryable=true', async () => {

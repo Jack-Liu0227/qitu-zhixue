@@ -226,6 +226,93 @@
   50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--qitu-primary) 0%, transparent); }
 }
 
+/* Student-safe projection of the server Team. Detailed mailbox payloads stay
+ * out of this surface; only role and high-level execution state are shown. */
+.qitu-tutor-team-rail { gap: 12px; }
+
+.qitu-tutor-team-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-surface);
+  box-shadow: var(--qitu-shadow-sm);
+}
+
+.qitu-tutor-team-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.qitu-tutor-team-eyebrow {
+  margin: 0 0 3px;
+  color: var(--qitu-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.qitu-tutor-team-header h2 {
+  margin: 0;
+  color: var(--qitu-heading);
+  font-size: 0.98rem;
+}
+
+.qitu-tutor-team-lock {
+  padding: 3px 7px;
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-pill);
+  color: var(--qitu-muted);
+  font-size: 0.68rem;
+}
+
+.qitu-tutor-team-description,
+.qitu-tutor-team-footnote {
+  margin: 0;
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.qitu-tutor-team-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qitu-tutor-team-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--qitu-border);
+}
+
+.qitu-tutor-team-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qitu-tutor-team-item strong {
+  color: var(--qitu-heading);
+  font-size: 0.8rem;
+}
+
+.qitu-tutor-team-item div span {
+  overflow: hidden;
+  color: var(--qitu-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .qitu-composer-hint {
   margin: 0;
   color: var(--qitu-muted);

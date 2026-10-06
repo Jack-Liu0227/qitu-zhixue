@@ -169,6 +169,7 @@ function ProviderForm({ initial, preset, onSaved, onCancel }: ProviderFormProps)
   const [error, setError] = useState('');
   // 密钥输入完全不进入 React state：提交时读一次，成功后清空。
   const apiKeyRef = useRef<HTMLInputElement>(null);
+  const pendingSaveRef = useRef<{ signature: string; key: string } | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,10 +207,16 @@ function ProviderForm({ initial, preset, onSaved, onCancel }: ProviderFormProps)
     // 密钥只在本次提交的请求体里出现一次；留空表示不修改已保存的密钥。
     const apiKey = apiKeyRef.current?.value ?? '';
     if (apiKey.length > 0) body.apiKey = apiKey;
+    const signature = JSON.stringify({ ...body, apiKey: apiKey.length > 0 ? apiKey : null });
+    if (pendingSaveRef.current?.signature !== signature) {
+      pendingSaveRef.current = { signature, key: newIdempotencyKey() };
+    }
+    const idempotencyKey = pendingSaveRef.current.key;
 
     setSaving(true);
     try {
-      const updated = await upsertProvider(trimmedId, body);
+      const updated = await upsertProvider(trimmedId, body, idempotencyKey);
+      pendingSaveRef.current = null;
       if (apiKeyRef.current) apiKeyRef.current.value = '';
       let provider = updated;
       try {
@@ -546,7 +553,7 @@ function ManualModelForm({
           />
         </Field>
 
-        <Field label="启用状态" hint="停用后该模型会从启用列表移除，不再参与用途绑定。">
+        <Field label="启用状态" hint="停用后该模型会从启用列表移除，不再参与 Agent 运行时。">
           <label className="admin-checkbox-row">
             <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
             启用该模型
@@ -815,7 +822,7 @@ function ProviderCard({
                     {isManual ? (
                       confirmingModelId === model.id ? (
                         <>
-                          <span className="admin-confirm-text">确认删除？已绑定用途的模型无法删除。</span>
+                          <span className="admin-confirm-text">确认删除？仍被 Agent 运行时引用的模型无法删除。</span>
                           <Button
                             size="sm"
                             variant="danger"
@@ -904,7 +911,7 @@ function ProviderCard({
         </Button>
         {confirmingDelete ? (
           <>
-            <span className="admin-confirm-text">确认删除？引用它的用途会被解绑。</span>
+            <span className="admin-confirm-text">确认删除？引用它的 Agent 配置会被拒绝，需先清理配置。</span>
             <Button size="sm" variant="danger" onClick={handleDelete} loading={deleting}>
               确认删除
             </Button>

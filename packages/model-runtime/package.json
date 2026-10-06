@@ -1,0 +1,44 @@
+{
+  "name": "@qitu/model-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "description": "启途智学服务端模型运行时（基于 Pi AI 源码适配）",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "UPSTREAM.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "node ../../tooling/lint-baseline.mjs",
+    "test": "pnpm build && node --test dist/*.test.js"
+  },
+  "dependencies": {
+    "@qitu/contracts": "workspace:*",
+    "@anthropic-ai/sdk": "0.124.0",
+    "@earendil-works/pi-telemetry": "0.87.1",
+    "openai": "6.40.0",
+    "partial-json": "0.1.7",
+    "typebox": "1.3.27"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "22.20.4"
+  }
+}

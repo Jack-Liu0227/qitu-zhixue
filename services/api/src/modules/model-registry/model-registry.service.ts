@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import type {
   AdminModelResponse,
+  AdminRuntimeModelOption,
   AdminModelUsagesResponse,
   AdminProvidersResponse,
   BindUsageRequest,
@@ -41,6 +42,8 @@ import {
   deleteProviderRows,
   insertManualModelRow,
   listBindingUsageIdsForModel,
+  listAgentIdsForModel,
+  listAgentIdsForProvider,
   loadModelRow,
   loadModelRows,
   loadProviderRow,
@@ -75,15 +78,21 @@ import {
 import { ModelGatewayError } from './model-gateway.errors';
 import type { ModelRuntimeTarget } from './model-gateway.types';
 import { PROVIDER_PRESETS } from './provider-presets';
+import {
+  readPiImportManifest,
+  type PiImportManifest,
+  type PiImportResult,
+  type VoiceModelOption,
+} from './pi-import';
 
 /**
- * 模型供应商注册表 + 「用途 → 模型」绑定。
+ * 模型供应商注册表 + Agent 直选模型解析。
  *
- * 参照 `pi-ai` 的分层：**凭证属于供应商、能力属于模型、选择属于用途**。
+ * 参照 `pi-ai` 的分层：凭证属于供应商、能力属于模型、选择属于 Agent Runtime。
  *
  * 持久化（本任务）：
  * - `live` + `DATABASE_URL`：三张表 `model_providers` / `model_models` /
- *   `model_usage_bindings` 是唯一真相。进程启动时 `onModuleInit` 从库中
+ *   `model_usage_bindings` 只作为迁移与兼容边界。进程启动时 `onModuleInit` 从库中
  *   **水合**内存快照；所有写操作落库后同步更新快照。这样重启后状态恢复，
  *   同时 `admin.controller` 的同步只读调用（`listProviders` / `getUsages`）
  *   无需改动。
@@ -261,6 +270,165 @@ export class ModelRegistryService implements OnModuleInit {
     };
   }
 
+  /**
+   * Import the server-side pi catalog through the same provider/key path used
+   * by the admin provider form. Credentials are accepted only from the
+   * server-mounted manifest and are encrypted by `upsertProvider` before they
+   * reach persistence.
+   */
+  async importPiConfigFromDirectory(actor: string): Promise<PiImportResult> {
+    const manifest = await readPiImportManifest();
+    return this.importPiManifest(manifest, actor);
+  }
+
+  async importPiManifest(manifest: PiImportManifest, actor: string): Promise<PiImportResult> {
+    let importedModels = 0;
+    let skippedModels = 0;
+    // A model declaration alone cannot enable voice. The VoiceGateway adapter
+    // is a separate server capability, so imports never bind tutor.live.
+    const defaultVoiceModel: PiImportResult['defaultVoiceModel'] = null;
+    const providers: PiImportResult['providers'] = [];
+
+    for (const input of manifest.providers) {
+      const provider = await this.upsertProvider(
+        input.id,
+        {
+          name: input.name,
+          baseUrl: input.baseUrl,
+          api: input.api,
+          authHeader: input.authHeader,
+          apiKey: input.apiKey,
+        },
+        actor,
+        false,
+      );
+      const state = this.providers.get(input.id);
+      if (state === undefined) {
+        throw new ServiceUnavailableException(`PI 导入后供应商状态不可用：${input.id}`);
+      }
+
+      const seenModelIds = new Set<string>();
+      const descriptors: ModelDescriptor[] = [];
+      let providerSkipped = 0;
+      for (const model of input.models) {
+        const modelId = model.modelId.trim();
+        if (modelId.length === 0 || seenModelIds.has(modelId)) {
+          providerSkipped += 1;
+          continue;
+        }
+        seenModelIds.add(modelId);
+
+        try {
+          // The storage schema keeps the protocol at provider scope, so a pi
+          // model declaring another protocol cannot be represented safely.
+          const api = normaliseApi(model.api, provider.api);
+          descriptors.push({
+            id: modelId,
+            name: model.displayName?.trim() || modelId,
+            api,
+            input: normaliseModalities(model.input, 'input'),
+            output: normaliseModalities(model.output, 'output'),
+            contextWindow: model.contextWindow ?? null,
+            maxTokens: model.maxTokens ?? null,
+            source: 'manual',
+          });
+        } catch (error) {
+          providerSkipped += 1;
+          this.logger.warn(
+            `PI 模型已跳过 provider=${input.id} model=${modelId} 原因=${
+              error instanceof Error ? error.message : '模型声明无效'
+            }`,
+          );
+        }
+      }
+
+      skippedModels += providerSkipped;
+
+      if (this.db && descriptors.length > 0) {
+        const now = new Date();
+        await withTransaction(this.db, async (tx) => {
+          for (const descriptor of descriptors) {
+            await upsertManualModelRow(
+              tx,
+              {
+                providerId: input.id,
+                modelId: descriptor.id,
+                displayName: descriptor.name,
+                input: [...descriptor.input],
+                output: [...descriptor.output],
+                contextWindow: descriptor.contextWindow,
+                maxTokens: descriptor.maxTokens,
+              },
+              now,
+            );
+          }
+          await this.audit.write(
+            {
+              actorId: actor,
+              action: 'model_provider.pi_import',
+              targetType: 'model_provider',
+              targetId: input.id,
+              detail: {
+                importedModels: descriptors.map((descriptor) => descriptor.id),
+                skippedModels: providerSkipped,
+              },
+            },
+            tx,
+          );
+        });
+      }
+
+      // Commit the in-memory snapshot only after persistence succeeds. The
+      // import deliberately uses the manual bucket so a later remote refresh
+      // cannot erase the pi-declared capabilities (especially audio).
+      for (const descriptor of descriptors) {
+        this.applyModelToMemory(input.id, descriptor, true);
+      }
+      importedModels += descriptors.length;
+
+      const voiceModelIds = descriptors
+        .filter((descriptor) => isAudioModel(descriptor))
+        .map((descriptor) => descriptor.id);
+      providers.push({
+        id: input.id,
+        configured: provider.auth.configured,
+        modelsImported: descriptors.length,
+        modelsSkipped: providerSkipped,
+        voiceModelIds,
+      });
+    }
+
+    return {
+      providers,
+      importedModels,
+      skippedModels,
+      defaultVoiceModel,
+    };
+  }
+
+  /** Return an audio-capable catalog without provider credentials. */
+  listVoiceModels(): VoiceModelOption[] {
+    const result: VoiceModelOption[] = [];
+    for (const state of this.providers.values()) {
+      const publicProvider = this.toPublic(state);
+      for (const model of publicProvider.models) {
+        if (!isAudioModel(model)) continue;
+        result.push({
+          providerId: state.id,
+          providerName: state.name,
+          modelId: model.id,
+          modelName: model.name || model.id,
+          configured: state.keyFingerprint !== null,
+          available: false,
+          availabilityReason: 'voice_adapter_not_configured',
+          input: [...model.input],
+          output: [...model.output],
+        });
+      }
+    }
+    return result;
+  }
+
   getUsages(): AdminModelUsagesResponse {
     return {
       usages: USAGES.map((usage) => ({ ...usage })),
@@ -302,6 +470,20 @@ export class ModelRegistryService implements OnModuleInit {
     const missingOutput = usage.requiresOutput.some((modality) => !output.includes(modality));
     const available = state.enabled && entry.enabled && state.apiKey !== null && !missingInput && !missingOutput;
     return { usageId, available, input, output, modelId: resolved.modelId };
+  }
+
+  /** Resolve a provider/model pair selected directly on an Agent. */
+  resolvePurposeByModel(selection: { providerId: string; modelId: string }): TutorAgentModelPurpose {
+    const option = this.listAgentModelOptions().find(
+      (candidate) => candidate.providerId === selection.providerId && candidate.modelId === selection.modelId,
+    );
+    return {
+      usageId: 'agent.model',
+      available: option?.available ?? false,
+      input: option?.input ?? [],
+      output: option?.output ?? [],
+      modelId: option?.modelId ?? null,
+    };
   }
 
   /** Compatibility projection for existing four-client runtime status consumers. */
@@ -346,7 +528,7 @@ export class ModelRegistryService implements OnModuleInit {
     if (resolved === null) {
       throw new ModelGatewayError(
         'MODEL_USAGE_NOT_BOUND',
-        `用途「${usage.label}」尚未绑定可用模型（含回落），请先在模型用途页绑定`,
+        `用途「${usage.label}」未绑定或尚未解析到可用模型，请在 AI 运行时为 Agent 配置模型`,
       );
     }
 
@@ -397,10 +579,64 @@ export class ModelRegistryService implements OnModuleInit {
 
   /* ----------------------------- 写 ----------------------------- */
 
+  resolveRuntimeTargetByModel(selection: { providerId: string; modelId: string }): ModelRuntimeTarget {
+    const state = this.providers.get(selection.providerId);
+    if (state === undefined) {
+      throw new ModelGatewayError('MODEL_PROVIDER_NOT_FOUND', `模型供应商不存在：${selection.providerId}`);
+    }
+    if (!state.enabled) {
+      throw new ModelGatewayError('MODEL_PROVIDER_DISABLED', `供应商已停用：${state.id}`);
+    }
+    if (state.baseUrl.length === 0) {
+      throw new ModelGatewayError('MODEL_BASE_URL_MISSING', `供应商 ${state.id} 未配置网关地址`);
+    }
+    const entry = this.modelEntry(state, selection.modelId);
+    if (entry === null) {
+      throw new ModelGatewayError('MODEL_NOT_FOUND', `模型不存在：${state.id}/${selection.modelId}`);
+    }
+    if (!entry.enabled) {
+      throw new ModelGatewayError('MODEL_DISABLED', `模型已停用：${state.id}/${selection.modelId}`);
+    }
+    if (state.apiKey === null || state.apiKey.length === 0) {
+      throw new ModelGatewayError('MODEL_CREDENTIAL_MISSING', `供应商 ${state.id} 未配置可用密钥，或已存密文无法解密`);
+    }
+    return {
+      providerId: state.id,
+      providerName: state.name,
+      modelId: selection.modelId,
+      baseUrl: state.baseUrl,
+      api: state.api,
+      authHeader: state.authHeader,
+      input: [...entry.descriptor.input],
+      output: [...entry.descriptor.output],
+      credential: state.apiKey,
+    };
+  }
+
+  listAgentModelOptions(): AdminRuntimeModelOption[] {
+    return this.listProviders().providers.flatMap((provider) => provider.models.map((model) => ({
+      providerId: provider.id,
+      providerLabel: provider.name,
+      modelId: model.id,
+      modelLabel: model.name || model.id,
+      label: `${provider.name} · ${model.name || model.id}`,
+      // `configured` only means that a fingerprint exists. A key can still be
+      // undecryptable after a deployment, so runtime availability must use the
+      // in-process secret as the source of truth.
+      available: provider.enabled
+        && this.providers.get(provider.id)?.apiKey !== null
+        && this.providers.get(provider.id)?.apiKey !== undefined
+        && provider.baseUrl.trim().length > 0,
+      input: [...model.input],
+      output: [...model.output],
+    })));
+  }
+
   async upsertProvider(
     id: string,
     body: UpsertProviderRequest,
     actor: string,
+    seedPresetModels = true,
   ): Promise<ProviderConfigPublic> {
     const existing = this.providers.get(id);
     if (existing === undefined && body.baseUrl === undefined) {
@@ -440,7 +676,7 @@ export class ModelRegistryService implements OnModuleInit {
 
     // 兼容预置手选：新供应商先带上模板建议的模型，管理员可随后自动拉取覆盖。
     const newManualModels: ModelDescriptor[] = [];
-    if (created && preset !== undefined && state.manual.size === 0) {
+    if (seedPresetModels && created && preset !== undefined && state.manual.size === 0) {
       for (const model of preset.suggestedModels) {
         const descriptor: ModelDescriptor = {
           id: model.id,
@@ -527,6 +763,13 @@ export class ModelRegistryService implements OnModuleInit {
   async deleteProvider(id: string, actor: string): Promise<{ id: string }> {
     const state = this.providers.get(id);
     if (state === undefined) throw new NotFoundException(`供应商不存在：${id}`);
+
+    if (this.db) {
+      const directAgentIds = await listAgentIdsForProvider(this.db, id);
+      if (directAgentIds.length > 0) {
+        throw new ConflictException(`供应商仍被 Agent 配置引用（${directAgentIds.join('、')}），请先在 AI 运行时清空模型选择`);
+      }
+    }
 
     // 引用它的用途先显式解绑；前端文案承诺「引用它的用途会被解绑」。
     const unboundUsages = [...this.bindings.entries()]
@@ -876,9 +1119,10 @@ export class ModelRegistryService implements OnModuleInit {
         }
         if (enabled === false) {
           const usageIds = await listBindingUsageIdsForModel(tx, providerId, modelId);
-          if (usageIds.length > 0) {
+          const agentIds = await listAgentIdsForModel(tx, providerId, modelId);
+          if (usageIds.length > 0 || agentIds.length > 0) {
             throw new ConflictException(
-              `模型 ${providerId}/${modelId} 已被用途绑定（${usageIds.join('、')}），请先解绑再停用`,
+              `模型 ${providerId}/${modelId} 已被 Agent 配置引用（${agentIds.join('、')}），请先在 AI 运行时清空模型选择`,
             );
           }
         }
@@ -955,9 +1199,10 @@ export class ModelRegistryService implements OnModuleInit {
           );
         }
         const usageIds = await listBindingUsageIdsForModel(tx, providerId, modelId);
-        if (usageIds.length > 0) {
+        const agentIds = await listAgentIdsForModel(tx, providerId, modelId);
+        if (usageIds.length > 0 || agentIds.length > 0) {
           throw new ConflictException(
-            `模型 ${providerId}/${modelId} 已被用途绑定（${usageIds.join('、')}），不能删除，请先解绑`,
+            `模型 ${providerId}/${modelId} 已被 Agent 配置引用（${agentIds.join('、')}），不能删除，请先在 AI 运行时清空模型选择`,
           );
         }
         await deleteManualModelRow(tx, providerId, modelId);
@@ -1123,7 +1368,7 @@ export class ModelRegistryService implements OnModuleInit {
         'usage',
         usageId,
         actor,
-        this.failedTest(testedAt, `用途「${usage.label}」尚未绑定可用模型（含回落），请先在模型用途页绑定`, {
+        this.failedTest(testedAt, `用途「${usage.label}」未绑定或尚未解析到可用模型，请在 AI 运行时为 Agent 配置模型`, {
           usageId,
         }),
       );
@@ -1524,6 +1769,7 @@ export class ModelRegistryService implements OnModuleInit {
       baseUrl: state.baseUrl,
       api: state.api,
       authHeader: state.authHeader,
+      enabled: state.enabled,
       auth: {
         configured: state.keyFingerprint !== null,
         keyFingerprint: state.keyFingerprint,
@@ -1557,6 +1803,10 @@ export class ModelRegistryService implements OnModuleInit {
 }
 
 /** 去掉结尾斜杠，避免拼出 `//v1/models`。 */
+function isAudioModel(model: Pick<ModelDescriptor, 'input' | 'output'>): boolean {
+  return model.input.includes('audio') || model.output.includes('audio');
+}
+
 function normaliseBaseUrl(value: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) return '';

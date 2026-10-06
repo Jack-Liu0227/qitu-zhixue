@@ -5,6 +5,7 @@ import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectContextPanel } from './components/ProjectContextPanel';
 import { TutorHeader } from './components/TutorHeader';
+import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import type { TutorLoadStatus } from './types';
@@ -83,6 +84,12 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               }}
             />
           }
+        />
+        <TutorTeamRail
+          streaming={session.streaming}
+          ready={session.sessionStatus === 'ready'}
+          failed={session.sessionStatus === 'error' || session.submitError !== null || session.streamNotice !== null}
+          offline={session.offline}
         />
       </div>
     </div>

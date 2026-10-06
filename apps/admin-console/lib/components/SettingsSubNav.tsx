@@ -13,7 +13,6 @@ import { usePathname } from 'next/navigation';
 const ITEMS = [
   { href: '/settings', label: '设置总览', exact: true },
   { href: '/settings/model-providers', label: '模型供应商', exact: false },
-  { href: '/settings/model-usages', label: '模型用途绑定', exact: false },
   { href: '/settings/ai-runtime', label: 'AI 运行时', exact: false },
   { href: '/settings/knowledge', label: '知识库', exact: false },
   { href: '/settings/templates', label: '模板库', exact: false },

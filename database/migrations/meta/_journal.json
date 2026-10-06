@@ -78,6 +78,27 @@
       "when": 1791145000000,
       "tag": "0014_tutor_partner_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791146000000,
+      "tag": "0015_agent_runtime_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791177600000,
+      "tag": "0016_agent_direct_model_selection",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791264000000,
+      "tag": "0017_agent_team_runtime",
+      "breakpoints": true
     }
   ]
 }

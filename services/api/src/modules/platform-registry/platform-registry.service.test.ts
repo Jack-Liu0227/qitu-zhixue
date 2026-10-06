@@ -1,33 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Database } from '@qitu/database';
+import { agentConfigs, runtimeMcpServers, tutorPartners, type Database } from '@qitu/database';
 import { PlatformRegistryService } from './platform-registry.service';
 
 function fakeDatabase() {
-  let selectCount = 0;
   const partner = {
     id: 'tutor-default', displayName: 'Tutor', soul: 'private prompt body', modelUsage: 'tutor.chat',
     promptVersion: 'v3', capabilities: ['explore', 'teach'], enabled: true,
     roleDefinition: '教学伙伴定义，使用问题支持学生理解与反思。',
   };
-  let query: {
-    from: () => Promise<typeof partner[]> | typeof query;
-    where: () => typeof query;
-    orderBy: () => typeof query;
-    limit: () => Promise<never[]>;
-  };
-  query = {
-    from: () => selectCount === 1 ? Promise.resolve([partner]) : query,
-    where: () => query,
-    orderBy: () => query,
+  const chain = {
+    where() { return this; },
+    orderBy() { return this; },
     limit: async () => [],
   };
   return {
     execute: async () => ({ rows: [{ '?column?': 1 }] }),
-    select: () => {
-      selectCount += 1;
-      return query;
-    },
+    select: () => ({
+      from(table: unknown) {
+        if (table === tutorPartners) return Promise.resolve([partner]);
+        if (table === agentConfigs || table === runtimeMcpServers) return Promise.resolve([]);
+        return chain;
+      },
+    }),
   } as unknown as Database;
 }
 
