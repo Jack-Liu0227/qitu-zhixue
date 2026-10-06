@@ -430,7 +430,19 @@ function realtimeError(event: Record<string, unknown>): QwenVoiceGatewayError {
   const message = error !== null && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string'
     ? (error as { message: string }).message
     : '语音服务请求失败';
-  return new QwenVoiceGatewayError('VOICE_UPSTREAM_ERROR', message);
+  const upstreamCode = error !== null && typeof error === 'object' && typeof (error as { code?: unknown }).code === 'string'
+    ? (error as { code: string }).code
+    : '';
+  const normalisedCode = upstreamCode
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]+/gu, '_')
+    .replace(/^_+|_+$/gu, '')
+    .slice(0, 80);
+  const code = normalisedCode.length > 0
+    ? (normalisedCode.startsWith('VOICE_') ? normalisedCode : `VOICE_UPSTREAM_${normalisedCode}`)
+    : 'VOICE_UPSTREAM_ERROR';
+  return new QwenVoiceGatewayError(code, message);
 }
 
 function parseRealtimeMessage(value: unknown): Record<string, unknown> | null {
