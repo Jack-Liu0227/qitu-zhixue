@@ -3,6 +3,8 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { ModelGateway, MODEL_RUNTIME_RESOLVER } from './model-gateway';
 import { ModelRegistryController } from './model-registry.controller';
 import { ModelRegistryService } from './model-registry.service';
+import { QwenVoiceGatewayService } from './qwen-voice-gateway.service';
+import { VoiceController } from './voice.controller';
 
 /**
  * 模型供应商注册表模块。
@@ -16,12 +18,13 @@ import { ModelRegistryService } from './model-registry.service';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [ModelRegistryController],
+  controllers: [ModelRegistryController, VoiceController],
   providers: [
     ModelRegistryService,
+    QwenVoiceGatewayService,
     { provide: MODEL_RUNTIME_RESOLVER, useExisting: ModelRegistryService },
     ModelGateway,
   ],
-  exports: [ModelRegistryService, ModelGateway],
+  exports: [ModelRegistryService, ModelGateway, QwenVoiceGatewayService],
 })
 export class ModelRegistryModule {}

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { VoiceGatewayOperation } from '@qitu/contracts';
 
 export type PiModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
 export type PiModelModality = 'text' | 'image' | 'audio';
@@ -50,7 +51,14 @@ export interface VoiceModelOption {
   modelName: string;
   configured: boolean;
   available: boolean;
-  availabilityReason: 'voice_adapter_not_configured' | 'provider_not_configured';
+  availabilityReason:
+    | 'voice_adapter_not_configured'
+    | 'provider_not_configured'
+    | 'voice_capability_not_declared'
+    | 'voice_model_not_found'
+    | 'voice_provider_unreachable'
+    | null;
+  operations: VoiceGatewayOperation[];
   input: PiModelModality[];
   output: PiModelModality[];
 }

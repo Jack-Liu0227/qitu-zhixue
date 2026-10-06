@@ -429,6 +429,7 @@ export class ModelRegistryService implements OnModuleInit {
       const publicProvider = this.toPublic(state);
       for (const model of publicProvider.models) {
         if (!isAudioModel(model)) continue;
+        const operations = voiceOperationsFor(model.input, model.output);
         result.push({
           providerId: state.id,
           providerName: state.name,
@@ -436,7 +437,13 @@ export class ModelRegistryService implements OnModuleInit {
           modelName: model.name || model.id,
           configured: state.keyFingerprint !== null,
           available: false,
-          availabilityReason: 'voice_adapter_not_configured',
+          availabilityReason:
+            operations.length === 0
+              ? 'voice_capability_not_declared'
+              : state.keyFingerprint === null
+                ? 'provider_not_configured'
+                : 'voice_adapter_not_configured',
+          operations,
           input: [...model.input],
           output: [...model.output],
         });
@@ -1821,6 +1828,16 @@ export class ModelRegistryService implements OnModuleInit {
 /** 去掉结尾斜杠，避免拼出 `//v1/models`。 */
 function isAudioModel(model: Pick<ModelDescriptor, 'input' | 'output'>): boolean {
   return model.input.includes('audio') || model.output.includes('audio');
+}
+
+function voiceOperationsFor(
+  input: readonly ModelModality[],
+  output: readonly ModelModality[],
+): ('transcribe' | 'synthesize')[] {
+  const operations: ('transcribe' | 'synthesize')[] = [];
+  if (input.includes('audio')) operations.push('transcribe');
+  if (output.includes('audio')) operations.push('synthesize');
+  return operations;
 }
 
 function normaliseBaseUrl(value: string): string {

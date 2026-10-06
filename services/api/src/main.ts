@@ -1,10 +1,15 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { ProblemDetailsFilter } from './common/http/problem-details.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Voice transcription transports a short base64 audio payload in JSON. Set
+  // the limit explicitly while keeping the parser bounded for every route.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(json({ limit: '20mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
   app.setGlobalPrefix('api/v1');
 
   // 所有未捕获异常统一成 RFC 9457 Problem Details（见 common/http/problem-details.ts）。

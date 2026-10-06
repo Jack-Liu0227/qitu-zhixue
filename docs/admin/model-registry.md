@@ -48,6 +48,9 @@ POST  /api/v1/admin/ai-runtime/agents/:agentId
 PATCH /api/v1/admin/ai-runtime/agents/:agentId
 POST  /api/v1/admin/model-providers/import/pi/server
 GET   /api/v1/admin/model-voice
+GET   /api/v1/voice/capabilities
+POST  /api/v1/voice/transcriptions
+POST  /api/v1/voice/synthesis
 ```
 
 Agent 创建和更新必须携带 `Idempotency-Key`。写入在服务端完成字段白名单、模型存在性、父 Agent 环、Skill/Tool/MCP 绑定和管理员权限校验，并写审计日志。

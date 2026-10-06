@@ -22,6 +22,7 @@ import {
   type CreateManualModelInput,
   type UpdateManualModelInput,
 } from './model-registry.service';
+import { QwenVoiceGatewayService } from './qwen-voice-gateway.service';
 import { resolveIdempotencyKey } from './manual-model.validation';
 import { readPiImportManifest, sanitisePiImportBaseUrl, type PiImportManifest, type PiImportModel, type PiImportProvider, type PiImportResult } from './pi-import';
 
@@ -40,6 +41,7 @@ export class ModelRegistryController {
     private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
     private readonly idempotency: IdempotencyStore,
+    private readonly voice: QwenVoiceGatewayService,
   ) {}
 
   /** 供应商列表 + 预置模板（不区分是否已配置）。 */
@@ -226,7 +228,10 @@ export class ModelRegistryController {
         scope,
         input.idempotencyKey,
         hashIdempotentInput(scope, { actorId: admin.id }, input.manifest),
-        async () => ({ status: 200, body: await this.registry.importPiManifest(input.manifest, admin.id) }),
+        async () => ({
+          status: 200,
+          body: await this.withVoiceDefault(await this.registry.importPiManifest(input.manifest, admin.id)),
+        }),
       );
       return { data: result.body };
     } catch (error) {
@@ -248,7 +253,10 @@ export class ModelRegistryController {
         scope,
         key,
         hashIdempotentInput(scope, { actorId: admin.id, configDir: process.env.QITU_PI_CONFIG_DIR ?? null }, {}),
-        async () => ({ status: 200, body: await this.registry.importPiConfigFromDirectory(admin.id) }),
+        async () => ({
+          status: 200,
+          body: await this.withVoiceDefault(await this.registry.importPiConfigFromDirectory(admin.id)),
+        }),
       );
       return { data: result.body };
     } catch (error) {
@@ -258,9 +266,13 @@ export class ModelRegistryController {
 
   /** Read-only audio-capable catalog; no credentials are returned. */
   @Get('admin/model-voice')
-  listVoiceModels(@Headers('cookie') cookieHeader: string | undefined) {
+  async listVoiceModels(@Headers('cookie') cookieHeader: string | undefined) {
     requireAdmin(this.authService, cookieHeader);
-    return { data: this.registry.listVoiceModels() };
+    return { data: await this.voice.listModels() };
+  }
+
+  private async withVoiceDefault(result: PiImportResult): Promise<PiImportResult> {
+    return { ...result, defaultVoiceModel: await this.voice.defaultModel() };
   }
 
   /** 用途列表与当前绑定（含回落后的实际生效模型）。 */

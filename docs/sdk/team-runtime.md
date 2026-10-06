@@ -51,11 +51,11 @@ separate operation.
 server-owned provider adapter. Voice model descriptors expose capabilities and
 credential status, never credentials.
 
-Voice presets are catalog metadata only. A preset that names a Qwen audio model
-does not mean a Qwen ASR/TTS/realtime adapter is installed or reachable; this
-package currently ships no Qwen voice adapter. The server must report voice as
-unavailable until a `VoiceGatewayProvider` is deployed and its credential and
-capability checks succeed. A preset must not by itself bind `tutor.live` or
+Voice presets are catalog metadata only. The API now deploys a Qwen
+OpenAI-compatible `VoiceGatewayProvider` for explicitly declared audio models.
+The server still reports a model as unavailable until the provider credential is
+present, the model declares audio input/output, and the upstream `/models`
+probe confirms that model. A preset must not by itself bind `tutor.live` or
 claim that audio requests can run.
 
 When a Qwen (or other) model catalog omits input/output modality metadata, the
