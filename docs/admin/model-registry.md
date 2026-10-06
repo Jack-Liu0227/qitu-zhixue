@@ -68,3 +68,16 @@ Team Runtime 的 Team Leader 和子 Agent 都使用各自 Agent 配置的直接�
 - Provider、Model、Agent 配置变更写入审计；测试请求不写入密钥或原始响应。
 - `0016_agent_direct_model_selection.sql` 为已有 Agent 从旧 `tutor.chat` 绑定填充直接模型字段。
 - 删除或停用供应商、模型前，服务端检查 Agent 直接引用和旧兼容绑定，避免运行时产生悬空配置。
+
+## 从本地 Pi 复制初始化配置
+
+Pi 是桌面开发环境，不挂载到服务器，也不把 `auth.json`、API Key 或 OAuth 文件提交到 Git。首次初始化时，运维人员把本地 Pi 的 `models.json`、`models-store.json` 和 `auth.json` 复制到服务器受限目录，并在服务进程中临时设置 `QITU_PI_CONFIG_DIR`。然后以管理员身份调用：
+
+```text
+POST /api/v1/admin/model-providers/import/pi/server
+Idempotency-Key: <fresh-key>
+```
+
+导入会复用 provider 的加密存储路径，重复导入同一个 provider/model 会更新已有记录。API Key 只在导入请求和服务端进程内出现，数据库只保存加密值与指纹；OAuth access/refresh token 会被忽略。导入完成后应清除暂存目录和 `QITU_PI_CONFIG_DIR`，正常重启只从数据库恢复 provider/model。
+
+如果暂存目录未配置、文件无效或没有可导入 provider，接口会返回 `PI_CONFIG_NOT_CONFIGURED`、`PI_CONFIG_INVALID` 或 `PI_CONFIG_EMPTY`，不会生成一个看似成功的空配置。

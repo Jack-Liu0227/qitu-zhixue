@@ -252,7 +252,7 @@ export class ModelRegistryController {
       );
       return { data: result.body };
     } catch (error) {
-      throwHttpForIdempotencyError(error);
+      throwPiImportConfigError(error);
     }
   }
 
@@ -336,6 +336,24 @@ export class ModelRegistryController {
 
 function requireAdmin(authService: AuthService, cookieHeader: string | undefined) {
   return requireRole(authService, cookieHeader, 'admin', '模型接入配置仅向管理员开放');
+}
+
+function throwPiImportConfigError(error: unknown): never {
+  if (error instanceof Error) {
+    const code = error.message;
+    if (code === 'PI_CONFIG_NOT_CONFIGURED' || code === 'PI_CONFIG_INVALID' || code === 'PI_CONFIG_EMPTY') {
+      throw new BadRequestException({
+        code,
+        message:
+          code === 'PI_CONFIG_NOT_CONFIGURED'
+            ? '服务器没有配置 Pi 导入目录'
+            : code === 'PI_CONFIG_EMPTY'
+              ? 'Pi 配置中没有可导入的供应商'
+              : 'Pi 配置文件无效，未执行导入',
+      });
+    }
+  }
+  throwHttpForIdempotencyError(error);
 }
 
 interface ParsedPiImport {
