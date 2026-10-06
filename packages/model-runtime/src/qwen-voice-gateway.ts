@@ -14,6 +14,11 @@ import { createVoiceGateway, type VoiceGatewayProvider } from './voice-gateway.j
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+const QWEN_TRANSCRIPTION_LANGUAGES = new Set([
+  'zh', 'en', 'ja', 'ko', 'vi', 'th', 'id', 'ms', 'tl', 'hi', 'ar', 'fr',
+  'de', 'es', 'pt', 'ru', 'it', 'nl', 'sv', 'da', 'fi', 'no', 'el', 'pl',
+  'cs', 'hu', 'ro', 'bg', 'hr', 'sk',
+]);
 
 export interface QwenVoiceTarget extends VoiceModelSelection {
   providerName: string;
@@ -281,11 +286,27 @@ function buildRealtimeSession(
     };
   }
 
+  if (request.kind === 'transcribe') {
+    const language = qwenLanguage(request.language);
+    session.input_audio_transcription = {
+      model: 'fun-asr',
+      ...(language ? { language } : {}),
+    };
+  }
+
   return session;
 }
 
 function isLegacyAudioModel(modelId: string): boolean {
   return /^qwen-audio-/u.test(modelId);
+}
+
+function qwenLanguage(language: string | null): string | null {
+  const value = language?.trim().toLowerCase().replace(/_/gu, '-') ?? '';
+  const base = value.split('-', 1)[0] ?? '';
+  return QWEN_TRANSCRIPTION_LANGUAGES.has(base)
+    ? base
+    : null;
 }
 
 async function probeRealtimeSession(

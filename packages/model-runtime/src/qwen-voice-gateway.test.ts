@@ -123,6 +123,7 @@ test('qwen audio realtime uses the legacy PCM session and response text fallback
     input_audio_format: 'pcm',
     output_audio_format: 'pcm',
     voice: 'longanqian',
+    input_audio_transcription: { model: 'fun-asr', language: 'zh' },
   });
   FakeRealtimeSocket.emitInputTranscript = true;
 });
