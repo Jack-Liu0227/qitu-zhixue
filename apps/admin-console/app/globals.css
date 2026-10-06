@@ -1447,6 +1447,39 @@ body { min-height: 100vh; }
   .admin-settings-panels { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ---- Opaque blue card palette ---- */
+.admin-card,
+.admin-card-default { background: #f7fbff; backdrop-filter: none; }
+.admin-card-soft { background: #edf7ff; backdrop-filter: none; }
+.admin-card-gradient { background: linear-gradient(135deg, #eaf3ff 0%, #f2f8ff 52%, #e9faf7 100%); backdrop-filter: none; }
+.admin-hero-banner.admin-card { background: linear-gradient(110deg, #f2f9ff 0%, #edf7ff 62%, #e7f8f3 100%); }
+.admin-stat-card { background: linear-gradient(145deg, var(--admin-stat-tint), #f8fcff 78%); }
+.admin-stat-card-blue { --admin-stat-tint: #e7f1ff; }
+.admin-stat-card-teal { --admin-stat-tint: #e5f8f5; }
+.admin-stat-card-orange { --admin-stat-tint: #fff1e5; }
+.admin-stat-card-violet { --admin-stat-tint: #f0edff; }
+.admin-stat-card-rose { --admin-stat-tint: #ffedf0; }
+.admin-stat-card-green { --admin-stat-tint: #e8f8ed; }
+.admin-overview-interventions { background: #f1f8ff; backdrop-filter: none; }
+.admin-governance-info,
+.admin-governance-info.admin-card { background: #eaf5ff; }
+.admin-governance-link { background: #f7fbff; }
+.admin-governance-link:nth-child(2) { background: #f3f0ff; }
+.admin-governance-link:nth-child(3) { background: #eaf9f6; }
+.admin-relationships-page .admin-relationship-panel { background: #f1f8ff; backdrop-filter: none; }
+.admin-relationships-page .admin-stat-item { background: #eaf4ff; }
+.admin-form-card { background: #edf6ff; }
+.admin-alert-card { background: #fff6df; }
+.admin-chart-section { background: #f3f9ff; backdrop-filter: none; }
+.admin-data-section { background: #f7fbff; backdrop-filter: none; }
+.admin-data-table { background: #ffffff; }
+.admin-settings-overview { background: #eaf5ff; }
+.admin-settings-panel { background: #f1f8ff; }
+.admin-settings-panel.clickable:hover { background: #e7f3ff; }
+.admin-runtime-summary { background: #eaf5ff; }
+.admin-runtime-row { background: #f5faff; }
+.admin-runtime-status-chip { background: #eaf3ff; }
+
 @media (prefers-reduced-motion: reduce) {
   .admin-console-content,
   .admin-console-content.qitu-page-transition > * > *,
