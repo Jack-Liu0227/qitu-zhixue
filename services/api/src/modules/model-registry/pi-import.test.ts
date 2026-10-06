@@ -89,6 +89,28 @@ test('readPiImportManifest prefers one consistent model-store protocol', async (
   );
 });
 
+test('readPiImportManifest uses an explicit models.json model protocol', async () => {
+  await withPiConfig(
+    {
+      'models.json': {
+        providers: {
+          gateway: {
+            baseUrl: 'https://gateway.example/v1',
+            api: 'openai-responses',
+            models: [{ id: 'completion-model', api: 'openai-completions' }],
+          },
+        },
+      },
+      'models-store.json': {},
+      'auth.json': {},
+    },
+    async (directory) => {
+      const manifest = await readPiImportManifest(directory);
+      assert.equal(manifest.providers[0]?.api, 'openai-completions');
+    },
+  );
+});
+
 test('readPiImportManifest excludes OAuth access and refresh tokens', async () => {
   await withPiConfig(
     {

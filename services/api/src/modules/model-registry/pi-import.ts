@@ -88,19 +88,12 @@ export async function readPiImportManifest(configDir = process.env.QITU_PI_CONFI
       const entry = asRecord(raw);
       const models = asArray(entry?.models).map(parseModel).filter((model): model is PiImportModel => model !== null);
       if (models.length === 0) continue;
-      const modelApis = [
-        ...new Set(
-          models
-            .map((model) => model.api)
-            .filter((api): api is PiModelApi => api !== undefined),
-        ),
-      ];
+      const consistentModelApi = getConsistentModelApi(models);
       // Pi's model store carries the protocol that was actually used for each
       // model. When every explicit declaration agrees, prefer it over a stale
       // provider-level value from models.json. The server schema stores one
       // protocol per provider, so this is the only safe way to preserve a
       // complete single-protocol catalog without guessing for mixed catalogs.
-      const consistentModelApi = modelApis.length === 1 ? modelApis[0] : undefined;
       const current = providers.get(id);
       const first = asRecord(asArray(entry?.models)[0]);
       const baseUrl = current?.baseUrl || sanitisePiImportBaseUrl(first?.baseUrl) || '';
@@ -153,16 +146,28 @@ function parseProvider(id: string, raw: unknown): PiImportProvider | null {
   const baseUrl = sanitisePiImportBaseUrl(value?.baseUrl);
   if (!value || !baseUrl) return null;
   const models = asArray(value.models).map(parseModel).filter((model): model is PiImportModel => model !== null);
+  const consistentModelApi = getConsistentModelApi(models);
   return {
     id,
     name: asString(value.name) ?? undefined,
     baseUrl,
-    api: normalizeApi(value.api),
+    api: consistentModelApi ?? normalizeApi(value.api),
     authHeader: typeof value.authHeader === 'boolean' ? value.authHeader : undefined,
     // models.json may contain an API key; it remains in this server-only object.
     apiKey: asString(value.apiKey) ?? undefined,
     models,
   };
+}
+
+function getConsistentModelApi(models: readonly PiImportModel[]): PiModelApi | undefined {
+  const modelApis = [
+    ...new Set(
+      models
+        .map((model) => model.api)
+        .filter((api): api is PiModelApi => api !== undefined),
+    ),
+  ];
+  return modelApis.length === 1 ? modelApis[0] : undefined;
 }
 
 /** Keep provider URLs free of userinfo, query credentials and fragments. */
