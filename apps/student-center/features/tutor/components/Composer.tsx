@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 type ComposerMode = 'text' | 'voice';
 type VoiceStatus = 'idle' | 'starting' | 'recording' | 'transcribing' | 'error';
 type VoiceSelection = { providerId: string; modelId: string };
+type VoiceCapability = VoiceSelection & { operations?: string[] };
 
 function getRecorderMimeType(): string {
   if (typeof MediaRecorder === 'undefined') return 'audio/webm';
@@ -131,10 +132,20 @@ export function Composer({
     void fetch('/api/v1/voice/capabilities', { credentials: 'same-origin', cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error('VOICE_CAPABILITIES_UNAVAILABLE');
-        return response.json() as Promise<{ data?: { defaultModel?: VoiceSelection | null } }>;
+        return response.json() as Promise<{
+          data?: { defaultModel?: VoiceSelection | null; models?: VoiceCapability[] };
+        }>;
       })
       .then((payload) => {
-        if (!disposed) setVoiceModel(payload.data?.defaultModel ?? null);
+        if (disposed) return;
+        // Voice input requires a model that explicitly supports transcription;
+        // a synthesis-only realtime model must not enable the recorder.
+        const transcriptionModel = payload.data?.models?.find((model) =>
+          Array.isArray(model.operations) && model.operations.includes('transcribe'),
+        );
+        setVoiceModel(transcriptionModel
+          ? { providerId: transcriptionModel.providerId, modelId: transcriptionModel.modelId }
+          : null);
       })
       .catch(() => {
         if (!disposed) setVoiceModel(null);
@@ -297,7 +308,7 @@ export function Composer({
           disabled={disabled || (mode === 'text' && (offline || voiceUnavailable))}
           aria-pressed={mode === 'voice'}
           aria-label={mode === 'voice' ? '切换为文字输入' : '切换为语音输入'}
-          title={voiceUnavailable ? '语音服务暂不可用' : mode === 'voice' ? '切换为文字输入' : '切换为语音输入'}
+          title={voiceUnavailable ? '当前没有可用的语音转写模型' : mode === 'voice' ? '切换为文字输入' : '切换为语音输入'}
         >
           {mode === 'voice' ? <KeyboardIcon /> : <MicIcon />}
           <span>{mode === 'voice' ? '打字' : '语音'}</span>
