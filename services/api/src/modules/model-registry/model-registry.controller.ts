@@ -230,7 +230,7 @@ export class ModelRegistryController {
         hashIdempotentInput(scope, { actorId: admin.id }, input.manifest),
         async () => ({
           status: 200,
-          body: await this.withVoiceDefault(await this.registry.importPiManifest(input.manifest, admin.id)),
+          body: await this.withVoiceDefault(await this.registry.importPiManifest(input.manifest, admin.id), admin.id),
         }),
       );
       return { data: result.body };
@@ -255,7 +255,7 @@ export class ModelRegistryController {
         hashIdempotentInput(scope, { actorId: admin.id, configDir: process.env.QITU_PI_CONFIG_DIR ?? null }, {}),
         async () => ({
           status: 200,
-          body: await this.withVoiceDefault(await this.registry.importPiConfigFromDirectory(admin.id)),
+          body: await this.withVoiceDefault(await this.registry.importPiConfigFromDirectory(admin.id), admin.id),
         }),
       );
       return { data: result.body };
@@ -271,7 +271,8 @@ export class ModelRegistryController {
     return { data: await (this.voice?.listModels() ?? Promise.resolve(this.registry.listVoiceModels())) };
   }
 
-  private async withVoiceDefault(result: PiImportResult): Promise<PiImportResult> {
+  private async withVoiceDefault(result: PiImportResult, actor: string): Promise<PiImportResult> {
+    await this.voice?.refreshAvailableModels(actor);
     return { ...result, defaultVoiceModel: await (this.voice?.defaultModel() ?? Promise.resolve(null)) };
   }
 

@@ -28,6 +28,21 @@ export class QwenVoiceGatewayService {
 
   constructor(private readonly registry: ModelRegistryService) {}
 
+  /** Refresh Qwen's server catalog once during Pi initialization. */
+  async refreshAvailableModels(actor: string): Promise<void> {
+    const providers = this.registry.listProviders().providers;
+    for (const provider of providers) {
+      if (!isQwenProvider(provider.id, provider.baseUrl)) continue;
+      try {
+        await this.registry.refreshProvider(provider.id, actor);
+      } catch {
+        // Keep the imported catalog when an upstream refresh is unavailable;
+        // capability probing below will report the model as unavailable.
+      }
+    }
+    this.probeCache.clear();
+  }
+
   async listModels(): Promise<VoiceModelOption[]> {
     const providers = this.registry.listProviders().providers;
     const providerById = new Map(providers.map((provider) => [provider.id, provider]));
