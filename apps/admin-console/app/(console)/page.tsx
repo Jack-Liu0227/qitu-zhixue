@@ -6,6 +6,7 @@ import type { AdminOverviewPageData } from '@qitu/contracts';
 import { fetchOverview } from '../../lib/api/overview';
 import { AdminStateViews } from '../../lib/components/AdminStateViews';
 import { AdminMetricIcon, type AdminMetricIconName } from '../../lib/components/AdminMetricIcon';
+import { Card } from '../../lib/components/AdminCard';
 import { DataSourceBadge } from '../../lib/components/DataSourceBadge';
 
 function formatDateTime(value: string | null): string {
@@ -53,7 +54,7 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="admin-overview-page">
-      <section className="admin-hero-banner">
+      <Card variant="soft" className="admin-hero-banner">
         <div className="admin-hero-copy">
           <div className="admin-hero-badges">
             <span className="admin-live-badge"><i />AI 智学领航管家</span>
@@ -70,7 +71,7 @@ export default function AdminOverviewPage() {
           <span className="admin-hero-bubble">一起守护智慧教育生态</span>
           <img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" />
         </div>
-      </section>
+      </Card>
 
       <div className="admin-page-header admin-page-header-refresh">
         <div className="admin-page-header-title">
@@ -109,12 +110,12 @@ export default function AdminOverviewPage() {
           <span className="admin-governance-status"><i />聚合视图</span>
         </div>
         <div className="admin-governance-grid">
-          <div className="admin-governance-info">
+          <Card variant="soft" className="admin-governance-info">
             <div className="admin-governance-watermark"><AdminMetricIcon name="coverage" /></div>
             <div className="admin-governance-info-title"><span className="admin-governance-icon"><AdminMetricIcon name="activity" /></span><div><strong>数据治理及权限说明</strong><small>合规与隐私隔离机制</small></div></div>
             <p>平台治理默认呈现聚合数据。个别学生的日常处理由班主任工作台完成；管理员查看个别学生数据需要显式授权，相关流程当前保持关闭。</p>
             <div className="admin-governance-tags"><span><AdminMetricIcon name="unbound" />最小可见范围</span><span><AdminMetricIcon name="coverage" />审计日志追踪中</span></div>
-          </div>
+          </Card>
           <div className="admin-governance-links">
             <Link href="/students/statistics" className="admin-governance-link"><span className="admin-governance-link-icon blue"><AdminMetricIcon name="activity" /></span><span className="admin-governance-link-copy"><strong>学生数据统计</strong><small>查看学习成效与活跃态势</small></span><b>→</b></Link>
             <Link href="/relationships" className="admin-governance-link"><span className="admin-governance-link-icon violet"><AdminMetricIcon name="guardian" /></span><span className="admin-governance-link-copy"><strong>家庭与关系绑定</strong><small>管理家校互通与监护关系</small></span><b>→</b></Link>

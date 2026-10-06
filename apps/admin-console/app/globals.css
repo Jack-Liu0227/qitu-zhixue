@@ -1354,6 +1354,54 @@ body { min-height: 100vh; }
   .admin-range-label { padding-left: 5px; white-space: nowrap; }
 }
 
+/* ---- Admin Card primitive ---- */
+.admin-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 84%);
+  box-shadow: 0 8px 24px rgb(16 42 92 / 5%);
+  backdrop-filter: blur(14px);
+}
+.admin-card-default { color: var(--qitu-text); }
+.admin-card-soft { background: linear-gradient(145deg, rgb(247 251 255 / 92%), rgb(255 255 255 / 78%)); }
+.admin-card-gradient {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7356c8 0%, #2878f0 55%, #18b7ac 100%);
+  color: white;
+  box-shadow: 0 12px 28px rgb(40 120 240 / 18%);
+}
+.admin-card-interactive {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.admin-card-interactive:hover {
+  border-color: #b8d4f6;
+  box-shadow: 0 14px 30px rgb(27 104 248 / 11%);
+  transform: translateY(-2px);
+}
+.admin-card-header { display: grid; gap: 5px; padding: 20px 22px 0; }
+.admin-card-title { margin: 0; color: #27364e; font-size: 1rem; font-weight: 750; line-height: 1.4; }
+.admin-card-description { margin: 0; color: #73839b; font-size: 0.8rem; line-height: 1.65; }
+.admin-card-content { padding: 18px 22px; }
+.admin-card-header + .admin-card-content { padding-top: 14px; }
+.admin-card-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 22px 20px; }
+.admin-card-gradient .admin-card-title,
+.admin-card-gradient .admin-card-description { color: white; }
+
+.admin-hero-banner.admin-card {
+  min-height: 244px;
+  border-color: rgb(255 255 255 / 94%);
+  background: linear-gradient(110deg, rgb(255 255 255 / 91%) 0%, rgb(244 250 255 / 86%) 62%, rgb(229 249 244 / 78%) 100%);
+}
+.admin-governance-info.admin-card { min-height: 252px; padding: 20px; border-color: #d6e5f7; }
+.admin-tabs-card { width: fit-content; padding: 5px; }
+.admin-tabs-card .admin-tabs { margin: 0; }
+.admin-settings-quick-card .admin-card-content { padding-top: 16px; }
+.admin-settings-quick-card .admin-card-description { color: rgb(255 255 255 / 78%); }
+.admin-runtime-governance-card .admin-card-content { padding-top: 10px; }
+
 @media (prefers-reduced-motion: reduce) {
   .admin-console-content,
   .admin-stage-bar-fill,

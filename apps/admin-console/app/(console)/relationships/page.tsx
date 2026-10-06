@@ -20,6 +20,7 @@ import {
   transferMentor,
 } from '../../../lib/api/relationships';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';
+import { Card } from '../../../lib/components/AdminCard';
 import { DataSourceBadge } from '../../../lib/components/DataSourceBadge';
 import type { ErrorEnvelope } from '../../../lib/api/types';
 
@@ -781,7 +782,8 @@ export default function AdminRelationshipsPage() {
         <p>管理家长↔学生监护关系和班主任分配</p>
       </div>
 
-      <div className="admin-tabs">
+      <Card variant="soft" className="admin-tabs-card">
+        <div className="admin-tabs">
         <button
           className={activeTab === 'guardians' ? 'admin-tab active' : 'admin-tab'}
           onClick={() => setActiveTab('guardians')}
@@ -794,7 +796,8 @@ export default function AdminRelationshipsPage() {
         >
           班主任分配
         </button>
-      </div>
+        </div>
+      </Card>
 
       {activeTab === 'guardians' ? (
         <GuardianPanel data={guardianData} onReload={load} />

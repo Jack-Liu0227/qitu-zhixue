@@ -12,6 +12,7 @@ import { Badge, Button, EmptyState } from '@qitu/ui';
 import { fetchStudentStatistics } from '../../../../lib/api/statistics';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { AdminMetricIcon } from '../../../../lib/components/AdminMetricIcon';
+import { Card } from '../../../../lib/components/AdminCard';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
 
 function formatDateTime(value: string | null): string {
@@ -88,7 +89,7 @@ export default function AdminStudentStatisticsPage() {
 
   return (
     <div className="admin-statistics-page">
-      <section className="admin-hero-banner admin-stats-hero">
+      <Card variant="soft" className="admin-hero-banner admin-stats-hero">
         <div className="admin-hero-copy">
           <div className="admin-hero-badges"><span className="admin-live-badge"><i />AI 智学领航管家</span><span className="admin-hero-note">数据治理节点实时巡检守护中</span></div>
           <h1>你好，管理员！<em>学情数据</em> 正在持续汇聚</h1>
@@ -96,7 +97,7 @@ export default function AdminStudentStatisticsPage() {
           <div className="admin-hero-signals"><span><AdminMetricIcon name="activity" />学习态势实时同步</span><span><AdminMetricIcon name="coverage" />数据权限隔离运行</span></div>
         </div>
         <div className="admin-hero-mascot"><span className="admin-hero-bubble">每一次专注学习，都是智慧萌芽</span><img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" /></div>
-      </section>
+      </Card>
 
       <div className="admin-page-header admin-statistics-heading">
         <div className="admin-page-header-title">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import type { AdminSettingsIndexData, AdminSettingsPanel } from '@qitu/contracts';
-import { Badge, Button, Field, InfoRow, SectionCard } from '@qitu/ui';
+import { Badge, Button, Field, InfoRow } from '@qitu/ui';
 import {
   createManualModel,
   fetchProviders,
@@ -16,6 +16,7 @@ import { fetchSettings } from '../../../lib/api/settings';
 import { fetchRuntimeSnapshot, updateRuntimeAgent } from '../../../lib/api/runtime';
 import { AdminStateViews } from '../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../lib/components/DataSourceBadge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../lib/components/AdminCard';
 
 const QWEN_PROVIDER_ID = 'qwen-token-plan';
 const QWEN_BASE_URL = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode';
@@ -121,7 +122,12 @@ function QwenQuickSetup() {
   }
 
   return (
-    <SectionCard title="Qwen Plan 快速配置">
+    <Card variant="gradient" className="admin-settings-quick-card">
+      <CardHeader>
+        <CardTitle>Qwen Plan 快速配置</CardTitle>
+        <CardDescription>安全配置 AI 搭档 Agent 使用的模型</CardDescription>
+      </CardHeader>
+      <CardContent>
       <p className="admin-settings-quick-description">
         在这里配置 AI 搭档 Agent 使用的模型。API Key 只写入服务端加密存储，页面不会保存或显示明文。
       </p>
@@ -153,7 +159,8 @@ function QwenQuickSetup() {
           </div>
         ) : null}
       </form>
-    </SectionCard>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -207,7 +214,12 @@ export default function AdminSettingsPage() {
         ))}
       </div>
 
-      <SectionCard title="AI 运行时治理">
+      <Card className="admin-runtime-governance-card">
+        <CardHeader>
+          <CardTitle>AI 运行时治理</CardTitle>
+          <CardDescription>集中管理运行时能力、Agent 配置和初始化状态</CardDescription>
+        </CardHeader>
+        <CardContent>
         <p className="admin-settings-panel-description">
           查看 Skills、MCP 服务器和初始化状态，并在「AI 导师 Agent」中集中编辑角色定义、Agent-local AGENTS.md、模型、能力及 Skill/Tool/MCP 配置；开发协作角色不会进入运行时。不展示密钥、凭据、完整提示词或未成年人原始对话。
         </p>
@@ -225,7 +237,8 @@ export default function AdminSettingsPage() {
             打开 AI 运行时与初始化
           </Link>
         </div>
-      </SectionCard>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -234,17 +247,19 @@ function SettingsPanelCard({ panel }: { panel: AdminSettingsPanel }) {
   const isAvailable = panel.status === 'available' && panel.route !== null;
 
   const content = (
-    <div className={isAvailable ? 'admin-settings-panel clickable' : 'admin-settings-panel'}>
-      <div className="admin-settings-panel-header">
-        <h3>{panel.title}</h3>
+    <Card variant={isAvailable ? 'interactive' : 'default'} className={isAvailable ? 'admin-settings-panel clickable' : 'admin-settings-panel'}>
+      <CardHeader className="admin-settings-panel-header">
+        <CardTitle>{panel.title}</CardTitle>
         {panel.status === 'planned' ? (
           <Badge tone="neutral" size="sm">
             未开放
           </Badge>
         ) : null}
-      </div>
-      <p className="admin-settings-panel-description">{panel.description}</p>
-    </div>
+      </CardHeader>
+      <CardContent>
+        <p className="admin-settings-panel-description">{panel.description}</p>
+      </CardContent>
+    </Card>
   );
 
   if (isAvailable && panel.route) {
