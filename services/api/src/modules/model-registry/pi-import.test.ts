@@ -47,6 +47,48 @@ test('readPiImportManifest imports canonical api_key credentials', async () => {
   );
 });
 
+test('readPiImportManifest prefers one consistent model-store protocol', async () => {
+  await withPiConfig(
+    {
+      'models.json': {
+        providers: {
+          deepseek: {
+            baseUrl: 'https://api.deepseek.example/v1',
+            api: 'openai-responses',
+            models: [{ id: 'deepseek-chat' }],
+          },
+        },
+      },
+      'models-store.json': {
+        deepseek: {
+          models: [
+            {
+              id: 'deepseek-chat',
+              api: 'openai-completions',
+              baseUrl: 'https://api.deepseek.example',
+            },
+            {
+              id: 'deepseek-reasoner',
+              api: 'openai-completions',
+              baseUrl: 'https://api.deepseek.example',
+            },
+          ],
+        },
+      },
+      'auth.json': {},
+    },
+    async (directory) => {
+      const manifest = await readPiImportManifest(directory);
+      const provider = manifest.providers[0];
+      assert.equal(provider?.api, 'openai-completions');
+      assert.deepEqual(
+        provider?.models.map((model) => model.modelId),
+        ['deepseek-chat', 'deepseek-reasoner'],
+      );
+    },
+  );
+});
+
 test('readPiImportManifest excludes OAuth access and refresh tokens', async () => {
   await withPiConfig(
     {
