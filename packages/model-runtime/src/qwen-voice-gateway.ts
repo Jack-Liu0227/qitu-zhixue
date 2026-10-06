@@ -217,25 +217,15 @@ async function runRealtimeSession(
   const messages = receiveRealtimeMessages(socket, timeoutMs);
   await waitForRealtimeEvent(messages, 'session.created');
 
-  const session = request.kind === 'transcribe'
-    ? {
-        modalities: ['text'],
-        turn_detection: null,
-        input_audio_transcription: { model: 'fun-asr', ...(request.language ? { language: request.language } : {}) },
-        audio: { input: pcmInputFormat() },
-      }
-    : {
-        modalities: ['text', 'audio'],
-        turn_detection: null,
-        voice: request.voice || 'longanqian',
-        audio: { output: pcmOutputFormat() },
-      };
+  const session = buildRealtimeSession(target, request);
   socket.send(JSON.stringify({ type: 'session.update', session }));
   await waitForRealtimeEvent(messages, 'session.updated');
 
   if (request.kind === 'transcribe') {
     socket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcmAudio(request.audio) }));
     socket.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    await waitForRealtimeEvent(messages, 'input_audio_buffer.committed');
+    socket.send(JSON.stringify({ type: 'response.create', response: { modalities: ['text'] } }));
     const transcript = await collectTranscript(messages, socket);
     closeQuietly(socket);
     return { transcript, audioBase64: '' };
@@ -262,6 +252,40 @@ async function runRealtimeSession(
     throw new QwenVoiceGatewayError('VOICE_FORMAT_UNSUPPORTED', '当前语音服务仅支持 PCM 或 WAV 输出');
   }
   return { transcript, audioBase64: (request.format === 'wav' ? pcmToWav(pcm) : pcm).toString('base64') };
+}
+
+function buildRealtimeSession(
+  target: QwenVoiceTarget,
+  request: RealtimeRequest,
+): Record<string, unknown> {
+  const voice = request.kind === 'synthesize' && request.voice
+    ? request.voice
+    : 'longanqian';
+  const session: Record<string, unknown> = {
+    // Qwen Audio 3.0 requires both output modalities during session setup.
+    // A transcription request narrows the individual response to text below.
+    modalities: ['text', 'audio'],
+    turn_detection: null,
+  };
+
+  if (isLegacyAudioModel(target.modelId)) {
+    // Qwen Audio 3.0 follows the original OpenAI Realtime field names.
+    session.input_audio_format = 'pcm';
+    session.output_audio_format = 'pcm';
+    session.voice = voice;
+  } else {
+    // Qwen Omni 3.8 uses the nested audio format introduced by its API.
+    session.audio = {
+      input: pcmInputFormat(),
+      output: { ...pcmOutputFormat(), voice },
+    };
+  }
+
+  return session;
+}
+
+function isLegacyAudioModel(modelId: string): boolean {
+  return /^qwen-audio-/u.test(modelId);
 }
 
 async function probeRealtimeSession(
@@ -344,20 +368,61 @@ async function nextRealtimeMessage(messages: AsyncGenerator<Record<string, unkno
 }
 
 async function collectTranscript(messages: AsyncGenerator<Record<string, unknown>>, socket: QwenWebSocketLike): Promise<string> {
-  let transcript = '';
+  let inputTranscript = '';
+  let responseTranscript = '';
   while (true) {
     const event = await nextRealtimeMessage(messages);
-    if (event.type === 'conversation.item.input_audio_transcription.delta' && typeof event.delta === 'string') transcript += event.delta;
+    if (
+      (event.type === 'conversation.item.input_audio_transcription.delta'
+        || event.type === 'conversation.item.input_audio_transcription.text')
+      && typeof event.delta === 'string'
+    ) inputTranscript += event.delta;
     if (event.type === 'conversation.item.input_audio_transcription.completed') {
-      const complete = typeof event.transcript === 'string' ? event.transcript : transcript;
+      const complete = typeof event.transcript === 'string' ? event.transcript : inputTranscript;
       if (!complete.trim()) throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容为空');
       return complete.trim();
     }
+    if (
+      (event.type === 'response.text.delta'
+        || event.type === 'response.output_text.delta'
+        || event.type === 'response.audio_transcript.delta'
+        || event.type === 'response.output_audio_transcript.delta')
+      && typeof event.delta === 'string'
+    ) responseTranscript += event.delta;
+    if (
+      (event.type === 'response.text.done'
+        || event.type === 'response.output_text.done'
+        || event.type === 'response.audio_transcript.done'
+        || event.type === 'response.output_audio_transcript.done')
+      && typeof event.text === 'string'
+    ) responseTranscript = event.text;
     if (event.type === 'conversation.item.input_audio_transcription.failed' || event.type === 'error') throw realtimeError(event);
-    if (event.type === 'response.done') break;
+    if (event.type === 'response.done') {
+      const complete = inputTranscript.trim() || responseTranscript.trim() || responseText(event.response);
+      if (complete) return complete;
+      break;
+    }
   }
   closeQuietly(socket);
   throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容无效');
+}
+
+function responseText(value: unknown): string {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return '';
+  const response = value as { output?: unknown; text?: unknown; transcript?: unknown };
+  if (typeof response.text === 'string') return response.text.trim();
+  if (typeof response.transcript === 'string') return response.transcript.trim();
+  if (!Array.isArray(response.output)) return '';
+  return response.output
+    .filter((item): item is { content?: unknown } => item !== null && typeof item === 'object' && !Array.isArray(item))
+    .flatMap((item) => Array.isArray(item.content) ? item.content : [])
+    .map((part) => {
+      if (part === null || typeof part !== 'object' || Array.isArray(part)) return '';
+      const value = part as { text?: unknown; transcript?: unknown };
+      return typeof value.text === 'string' ? value.text : typeof value.transcript === 'string' ? value.transcript : '';
+    })
+    .join('')
+    .trim();
 }
 
 function realtimeError(event: Record<string, unknown>): QwenVoiceGatewayError {

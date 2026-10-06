@@ -20,6 +20,8 @@ const target: QwenVoiceTarget = {
 class FakeRealtimeSocket {
   static lastUrl = '';
   static lastAuthorization = '';
+  static lastSession: Record<string, unknown> | null = null;
+  static emitInputTranscript = true;
   readonly readyState = 1;
   private readonly listeners = new Map<string, Array<(event: { data?: unknown }) => void>>();
 
@@ -36,13 +38,22 @@ class FakeRealtimeSocket {
   }
 
   send(data: string): void {
-    const event = JSON.parse(data) as { type: string };
+    const event = JSON.parse(data) as { type: string; session?: Record<string, unknown> };
     if (event.type === 'session.update') {
+      FakeRealtimeSocket.lastSession = event.session ?? null;
       setTimeout(() => this.emit('message', { data: JSON.stringify({ type: 'session.updated' }) }), 0);
     } else if (event.type === 'input_audio_buffer.commit') {
       setTimeout(() => {
         this.emit('message', { data: JSON.stringify({ type: 'input_audio_buffer.committed' }) });
-        this.emit('message', { data: JSON.stringify({ type: 'conversation.item.input_audio_transcription.completed', transcript: '你好' }) });
+        if (FakeRealtimeSocket.emitInputTranscript) {
+          this.emit('message', { data: JSON.stringify({ type: 'conversation.item.input_audio_transcription.completed', transcript: '你好' }) });
+        }
+      }, 0);
+    } else if (event.type === 'response.create' && !FakeRealtimeSocket.emitInputTranscript) {
+      setTimeout(() => {
+        this.emit('message', { data: JSON.stringify({ type: 'response.text.delta', delta: '你好' }) });
+        this.emit('message', { data: JSON.stringify({ type: 'response.text.done', text: '你好' }) });
+        this.emit('message', { data: JSON.stringify({ type: 'response.done' }) });
       }, 0);
     } else if (event.type === 'response.create') {
       setTimeout(() => {
@@ -63,6 +74,7 @@ class FakeRealtimeSocket {
 const fakeWebSocket = FakeRealtimeSocket as unknown as QwenWebSocketConstructor;
 
 test('qwen voice gateway sends server-side credentials and normalises ASR', async () => {
+  FakeRealtimeSocket.emitInputTranscript = true;
   const gateway = createQwenVoiceGateway({
     target,
     webSocketImpl: fakeWebSocket,
@@ -85,6 +97,34 @@ test('qwen voice gateway sends server-side credentials and normalises ASR', asyn
   assert.equal(result.durationMs, 500);
   assert.equal(FakeRealtimeSocket.lastUrl, 'wss://qwen.example/api-ws/v1/realtime?model=qwen-audio-test');
   assert.equal(FakeRealtimeSocket.lastAuthorization, 'Bearer server-secret');
+});
+
+test('qwen audio realtime uses the legacy PCM session and response text fallback for ASR', async () => {
+  FakeRealtimeSocket.emitInputTranscript = false;
+  const gateway = createQwenVoiceGateway({ target, webSocketImpl: fakeWebSocket });
+  const result = await gateway.transcribe({
+    requestId: 'r1-fallback',
+    idempotencyKey: 'i1-fallback',
+    model: { providerId: target.providerId, modelId: target.modelId },
+    audio: {
+      codec: 'pcm_s16le',
+      mimeType: 'audio/pcm',
+      sampleRateHz: 16_000,
+      channels: 1,
+      durationMs: 500,
+      dataBase64: 'AA==',
+    },
+    language: 'zh-CN',
+  });
+  assert.equal(result.transcript, '你好');
+  assert.deepEqual(FakeRealtimeSocket.lastSession, {
+    modalities: ['text', 'audio'],
+    turn_detection: null,
+    input_audio_format: 'pcm',
+    output_audio_format: 'pcm',
+    voice: 'longanqian',
+  });
+  FakeRealtimeSocket.emitInputTranscript = true;
 });
 
 test('qwen voice gateway returns binary TTS as a final audio chunk', async () => {

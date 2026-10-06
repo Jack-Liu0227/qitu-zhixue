@@ -94,7 +94,9 @@ export class QwenVoiceGatewayService {
         label: `${model.providerName} · ${model.modelName}`,
         operations: model.operations,
         languages: [],
-        codecs: ['webm', 'wav', 'mp3'],
+        // The browser converts microphone audio to mono 16 kHz PCM before it
+        // reaches this gateway; synthesis returns PCM or a server-wrapped WAV.
+        codecs: ['pcm_s16le', 'wav'],
         available: true,
         credential: { configured: true, keyFingerprint: null },
       })),
