@@ -47,13 +47,50 @@ function createIdempotencyKey(): string {
     : `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = '';
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+interface PcmAudioPayload {
+  codec: 'pcm_s16le';
+  mimeType: 'audio/pcm';
+  sampleRateHz: 16000;
+  channels: 1;
+  dataBase64: string;
+}
+
+/** Qwen Realtime accepts raw 16 kHz mono PCM, while MediaRecorder emits WebM/Opus. */
+async function blobToPcm16(blob: Blob): Promise<PcmAudioPayload> {
+  const AudioContextConstructor = window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) throw new Error('VOICE_AUDIO_CONVERSION_UNSUPPORTED');
+  const context = new AudioContextConstructor();
+  try {
+    const decoded = await context.decodeAudioData(await blob.arrayBuffer());
+    const frameCount = Math.max(1, Math.ceil(decoded.duration * 16_000));
+    const offline = new OfflineAudioContext(1, frameCount, 16_000);
+    const source = offline.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offline.destination);
+    source.start();
+    const rendered = await offline.startRendering();
+    const samples = rendered.getChannelData(0);
+    const pcm = new Int16Array(samples.length);
+    for (let index = 0; index < samples.length; index += 1) {
+      const sample = Math.max(-1, Math.min(1, samples[index] ?? 0));
+      pcm[index] = sample < 0 ? Math.round(sample * 0x8000) : Math.round(sample * 0x7fff);
+    }
+    const bytes = new Uint8Array(pcm.buffer);
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
+    return {
+      codec: 'pcm_s16le',
+      mimeType: 'audio/pcm',
+      sampleRateHz: 16_000,
+      channels: 1,
+      dataBase64: btoa(binary),
+    };
+  } finally {
+    await context.close().catch(() => undefined);
   }
-  return btoa(binary);
 }
 
 /** Tutor voice input uses the server Qwen gateway and never stores raw audio in browser storage. */
@@ -126,7 +163,7 @@ export function Composer({
 
   const transcribe = useCallback(async (blob: Blob) => {
     if (voiceModel === null) throw new Error('VOICE_MODEL_UNAVAILABLE');
-    const dataBase64 = await blobToBase64(blob);
+    const audio = await blobToPcm16(blob);
     const response = await fetch('/api/v1/voice/transcriptions', {
       method: 'POST',
       credentials: 'same-origin',
@@ -134,7 +171,7 @@ export function Composer({
       body: JSON.stringify({
         requestId: createIdempotencyKey(),
         model: voiceModel,
-        audio: { codec: 'webm', mimeType: blob.type || 'audio/webm', sampleRateHz: null, channels: null, durationMs: null, dataBase64 },
+        audio,
         language: 'zh-CN',
       }),
     });

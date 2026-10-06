@@ -30,7 +30,30 @@ export interface QwenVoiceProviderOptions {
   target: QwenVoiceTarget;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  webSocketImpl?: QwenWebSocketConstructor;
 }
+
+export interface QwenWebSocketLike {
+  readonly readyState: number;
+  addEventListener(type: 'open' | 'error' | 'close', listener: (event: QwenWebSocketEvent) => void): void;
+  addEventListener(type: 'message', listener: (event: QwenWebSocketMessageEvent) => void): void;
+  send(data: string): void;
+  close(): void;
+}
+
+export interface QwenWebSocketEvent {
+  readonly code?: number;
+  readonly reason?: string;
+}
+
+export interface QwenWebSocketMessageEvent {
+  readonly data: unknown;
+}
+
+export type QwenWebSocketConstructor = new (
+  url: string,
+  options?: { headers?: Record<string, string> },
+) => QwenWebSocketLike;
 
 export interface QwenVoiceProbeResult {
   ok: boolean;
@@ -64,6 +87,7 @@ export function createQwenVoiceProvider(options: QwenVoiceProviderOptions): Voic
   const target = options.target;
   const fetcher = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const webSocket = options.webSocketImpl ?? defaultWebSocketConstructor();
 
   return {
     async capabilities(): Promise<VoiceGatewayCapabilities> {
@@ -89,58 +113,34 @@ export function createQwenVoiceProvider(options: QwenVoiceProviderOptions): Voic
 
     async transcribe(input: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult> {
       requireOperation(target, 'transcribe');
-      const form = new FormData();
-      form.append('model', target.modelId);
-      if (input.language) form.append('language', input.language);
-      form.append('file', audioBlob(input.audio), fileNameFor(input.audio));
-
-      const response = await request(fetcher, endpoint(target.baseUrl, '/audio/transcriptions'), {
-        method: 'POST',
-        headers: authHeaders(target),
-        body: form,
-        timeoutMs,
+      const result = await runRealtimeSession(target, webSocket, timeoutMs, {
+        kind: 'transcribe',
+        audio: input.audio,
+        language: input.language,
       });
-      const payload = await readJson(response);
-      const transcript = firstString(payload, ['text', 'transcript', 'output.text', 'output.transcript']);
-      if (!transcript) {
-        throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容无效');
-      }
-      const duration = firstNumber(payload, ['duration', 'duration_ms', 'output.duration_ms']);
       return {
         requestId: input.requestId,
-        transcript: transcript.trim(),
+        transcript: result.transcript,
         language: input.language,
-        durationMs: duration === null ? input.audio.durationMs : duration > 10_000 ? duration : duration * 1000,
+        durationMs: input.audio.durationMs,
         model: input.model,
       };
     },
 
     async *synthesize(input: VoiceSynthesisRequest): AsyncGenerator<VoiceSynthesisEvent> {
       requireOperation(target, 'synthesize');
-      const response = await request(fetcher, endpoint(target.baseUrl, '/audio/speech'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', ...authHeaders(target) },
-        body: JSON.stringify({
-          model: target.modelId,
-          input: input.text,
-          ...(input.voice ? { voice: input.voice } : {}),
-          response_format: input.format,
-        }),
-        timeoutMs,
+      const result = await runRealtimeSession(target, webSocket, timeoutMs, {
+        kind: 'synthesize',
+        text: input.text,
+        voice: input.voice,
+        format: input.format,
       });
-      const contentType = response.headers.get('content-type') ?? '';
-      const dataBase64 = contentType.toLowerCase().includes('json')
-        ? readAudioBase64(await readJson(response))
-        : Buffer.from(await readBytes(response)).toString('base64');
-      if (!dataBase64) {
-        throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音合成返回内容无效');
-      }
       yield {
         type: 'audio',
         chunk: {
           requestId: input.requestId,
           sequence: 0,
-          dataBase64,
+          dataBase64: result.audioBase64,
           codec: input.format,
           isFinal: true,
         },
@@ -170,6 +170,7 @@ export async function probeQwenVoiceModel(
   target: QwenVoiceTarget,
   fetchImpl: typeof fetch = fetch,
   timeoutMs = 12_000,
+  webSocketImpl?: QwenWebSocketConstructor,
 ): Promise<QwenVoiceProbeResult> {
   try {
     const response = await request(fetchImpl, endpoint(target.baseUrl, '/models'), {
@@ -180,9 +181,9 @@ export async function probeQwenVoiceModel(
     const payload = await readJson(response);
     const ids = modelIds(payload);
     if (ids.length === 0) return { ok: false, reason: 'invalid_response' };
-    return ids.includes(target.modelId)
-      ? { ok: true, reason: 'ok' }
-      : { ok: false, reason: 'model_not_found' };
+    if (!ids.includes(target.modelId)) return { ok: false, reason: 'model_not_found' };
+    await probeRealtimeSession(target, webSocketImpl ?? defaultWebSocketConstructor(), timeoutMs);
+    return { ok: true, reason: 'ok' };
   } catch (error) {
     if (error instanceof QwenVoiceGatewayError && error.upstreamStatus === 404) {
       return { ok: false, reason: 'model_not_found' };
@@ -198,6 +199,226 @@ function requireOperation(target: QwenVoiceTarget, operation: VoiceGatewayOperat
   if (!target.credential.trim()) {
     throw new QwenVoiceGatewayError('VOICE_CREDENTIAL_MISSING', '语音模型凭证不可用');
   }
+}
+
+type RealtimeRequest =
+  | { kind: 'transcribe'; audio: VoiceAudioInput; language: string | null }
+  | { kind: 'synthesize'; text: string; voice: string | null; format: string };
+
+type RealtimeResult = { transcript: string; audioBase64: string };
+
+async function runRealtimeSession(
+  target: QwenVoiceTarget,
+  webSocket: QwenWebSocketConstructor,
+  timeoutMs: number,
+  request: RealtimeRequest,
+): Promise<RealtimeResult> {
+  const socket = openRealtimeSocket(target, webSocket);
+  const messages = receiveRealtimeMessages(socket, timeoutMs);
+  await waitForRealtimeEvent(messages, 'session.created');
+
+  const session = request.kind === 'transcribe'
+    ? {
+        modalities: ['text'],
+        turn_detection: null,
+        input_audio_transcription: { model: 'fun-asr', ...(request.language ? { language: request.language } : {}) },
+        audio: { input: pcmInputFormat() },
+      }
+    : {
+        modalities: ['text', 'audio'],
+        turn_detection: null,
+        voice: request.voice || 'longanqian',
+        audio: { output: pcmOutputFormat() },
+      };
+  socket.send(JSON.stringify({ type: 'session.update', session }));
+  await waitForRealtimeEvent(messages, 'session.updated');
+
+  if (request.kind === 'transcribe') {
+    socket.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcmAudio(request.audio) }));
+    socket.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    const transcript = await collectTranscript(messages, socket);
+    closeQuietly(socket);
+    return { transcript, audioBase64: '' };
+  }
+
+  socket.send(JSON.stringify({
+    type: 'conversation.item.create',
+    item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: request.text }] },
+  }));
+  socket.send(JSON.stringify({ type: 'response.create' }));
+  const audioChunks: string[] = [];
+  let transcript = '';
+  while (true) {
+    const event = await nextRealtimeMessage(messages);
+    if (event.type === 'response.audio.delta' && typeof event.delta === 'string') audioChunks.push(event.delta);
+    if (event.type === 'response.audio_transcript.delta' && typeof event.delta === 'string') transcript += event.delta;
+    if (event.type === 'response.done') break;
+    if (event.type === 'error') throw realtimeError(event);
+  }
+  closeQuietly(socket);
+  const pcm = Buffer.concat(audioChunks.map((chunk) => Buffer.from(chunk, 'base64')));
+  if (pcm.length === 0) throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音合成返回内容无效');
+  if (request.format !== 'pcm_s16le' && request.format !== 'wav') {
+    throw new QwenVoiceGatewayError('VOICE_FORMAT_UNSUPPORTED', '当前语音服务仅支持 PCM 或 WAV 输出');
+  }
+  return { transcript, audioBase64: (request.format === 'wav' ? pcmToWav(pcm) : pcm).toString('base64') };
+}
+
+async function probeRealtimeSession(
+  target: QwenVoiceTarget,
+  webSocket: QwenWebSocketConstructor,
+  timeoutMs: number,
+): Promise<void> {
+  const socket = openRealtimeSocket(target, webSocket);
+  const messages = receiveRealtimeMessages(socket, timeoutMs);
+  await waitForRealtimeEvent(messages, 'session.created');
+  closeQuietly(socket);
+}
+
+function openRealtimeSocket(target: QwenVoiceTarget, webSocket: QwenWebSocketConstructor): QwenWebSocketLike {
+  if (typeof webSocket !== 'function') throw new QwenVoiceGatewayError('VOICE_REALTIME_UNAVAILABLE', '服务器未配置 WebSocket 运行时');
+  try {
+    return new webSocket(realtimeEndpoint(target.baseUrl, target.modelId), { headers: authHeaders(target) });
+  } catch {
+    throw new QwenVoiceGatewayError('VOICE_TRANSPORT_ERROR', '语音服务暂时不可用', { retryable: true });
+  }
+}
+
+async function* receiveRealtimeMessages(socket: QwenWebSocketLike, timeoutMs: number): AsyncGenerator<Record<string, unknown>> {
+  const queue: Record<string, unknown>[] = [];
+  let wake: (() => void) | null = null;
+  let failure: QwenVoiceGatewayError | null = null;
+  let closed = false;
+  socket.addEventListener('message', (event) => {
+    const value = parseRealtimeMessage(event.data);
+    if (value !== null) queue.push(value);
+    wake?.();
+    wake = null;
+  });
+  socket.addEventListener('error', () => {
+    failure = new QwenVoiceGatewayError('VOICE_TRANSPORT_ERROR', '语音服务暂时不可用', { retryable: true });
+    wake?.();
+    wake = null;
+  });
+  socket.addEventListener('close', (event) => {
+    if (!failure && !closed) failure = new QwenVoiceGatewayError('VOICE_TRANSPORT_ERROR', '语音服务连接已关闭', { retryable: true });
+    wake?.();
+    wake = null;
+    void event;
+  });
+  try {
+    while (true) {
+      if (failure) throw failure;
+      if (queue.length > 0) {
+        yield queue.shift() as Record<string, unknown>;
+        continue;
+      }
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new QwenVoiceGatewayError('VOICE_TIMEOUT', '语音服务响应超时', { retryable: true })), timeoutMs);
+        wake = () => { clearTimeout(timer); resolve(); };
+      });
+    }
+  } finally {
+    closed = true;
+    closeQuietly(socket);
+  }
+}
+
+async function waitForRealtimeEvent(
+  messages: AsyncGenerator<Record<string, unknown>>,
+  type: string,
+): Promise<Record<string, unknown>> {
+  while (true) {
+    const next = await messages.next();
+    if (next.done) throw new QwenVoiceGatewayError('VOICE_TRANSPORT_ERROR', '语音服务连接已关闭', { retryable: true });
+    const event = next.value;
+    if (event.type === 'error') throw realtimeError(event);
+    if (event.type === type) return event;
+  }
+}
+
+async function nextRealtimeMessage(messages: AsyncGenerator<Record<string, unknown>>): Promise<Record<string, unknown>> {
+  const next = await messages.next();
+  if (next.done) throw new QwenVoiceGatewayError('VOICE_TRANSPORT_ERROR', '语音服务连接已关闭', { retryable: true });
+  return next.value;
+}
+
+async function collectTranscript(messages: AsyncGenerator<Record<string, unknown>>, socket: QwenWebSocketLike): Promise<string> {
+  let transcript = '';
+  while (true) {
+    const event = await nextRealtimeMessage(messages);
+    if (event.type === 'conversation.item.input_audio_transcription.delta' && typeof event.delta === 'string') transcript += event.delta;
+    if (event.type === 'conversation.item.input_audio_transcription.completed') {
+      const complete = typeof event.transcript === 'string' ? event.transcript : transcript;
+      if (!complete.trim()) throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容为空');
+      return complete.trim();
+    }
+    if (event.type === 'conversation.item.input_audio_transcription.failed' || event.type === 'error') throw realtimeError(event);
+    if (event.type === 'response.done') break;
+  }
+  closeQuietly(socket);
+  throw new QwenVoiceGatewayError('VOICE_RESPONSE_INVALID', '语音识别返回内容无效');
+}
+
+function realtimeError(event: Record<string, unknown>): QwenVoiceGatewayError {
+  const error = event.error;
+  const message = error !== null && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string'
+    ? (error as { message: string }).message
+    : '语音服务请求失败';
+  return new QwenVoiceGatewayError('VOICE_UPSTREAM_ERROR', message);
+}
+
+function parseRealtimeMessage(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function defaultWebSocketConstructor(): QwenWebSocketConstructor {
+  const constructor = (globalThis as unknown as { WebSocket?: QwenWebSocketConstructor }).WebSocket;
+  if (!constructor) throw new QwenVoiceGatewayError('VOICE_REALTIME_UNAVAILABLE', '服务器未配置 WebSocket 运行时');
+  return constructor;
+}
+
+function realtimeEndpoint(baseUrl: string, modelId: string): string {
+  const base = new URL(baseUrl);
+  base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
+  base.pathname = '/api-ws/v1/realtime';
+  base.search = '';
+  base.searchParams.set('model', modelId);
+  return base.toString();
+}
+
+function pcmInputFormat() {
+  return { format: { type: 'pcm', sample_rate: 16_000, sample_format: 's16le', channels: 1, packing: 'interleaved', channel_layout: 'mono' } };
+}
+
+function pcmOutputFormat() {
+  return { format: { type: 'pcm', sample_rate: 24_000, sample_format: 's16le', channels: 1, packing: 'interleaved', channel_layout: 'mono' } };
+}
+
+function pcmAudio(audio: VoiceAudioInput): string {
+  if (audio.codec !== 'pcm_s16le' || audio.sampleRateHz !== 16_000 || audio.channels !== 1) {
+    throw new QwenVoiceGatewayError('VOICE_AUDIO_FORMAT_UNSUPPORTED', '语音识别仅支持 16 kHz 单声道 PCM');
+  }
+  return audio.dataBase64;
+}
+
+function pcmToWav(pcm: Buffer): Buffer {
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVE', 8);
+  header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(24_000, 24); header.writeUInt32LE(48_000, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+  header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
+}
+
+function closeQuietly(socket: QwenWebSocketLike): void {
+  try { socket.close(); } catch { /* ignore close races */ }
 }
 
 function endpoint(baseUrl: string, path: string): string {

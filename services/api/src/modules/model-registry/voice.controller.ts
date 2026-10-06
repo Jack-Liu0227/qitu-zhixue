@@ -16,6 +16,7 @@ import type {
   VoiceSynthesisRequest,
   VoiceTranscriptionRequest,
 } from '@qitu/contracts';
+import { QwenVoiceGatewayError } from '@qitu/model-runtime';
 import { randomUUID } from 'node:crypto';
 import { AuthService } from '../identity-auth/auth.service';
 import { QwenVoiceGatewayService } from './qwen-voice-gateway.service';
@@ -142,14 +143,19 @@ function parseAudio(value: unknown): VoiceAudioInput {
 }
 
 function mapVoiceError(error: unknown): Error {
-  const code = error instanceof Error ? error.message : '';
-  if (code === 'VOICE_MODEL_UNAVAILABLE' || code === 'VOICE_OPERATION_UNAVAILABLE') {
+  const code = error instanceof QwenVoiceGatewayError
+    ? error.code
+    : error instanceof Error
+      ? error.message
+      : '';
+  if (code === 'VOICE_MODEL_UNAVAILABLE' || code === 'VOICE_OPERATION_UNAVAILABLE' || code === 'VOICE_FORMAT_UNSUPPORTED' || code === 'VOICE_AUDIO_FORMAT_UNSUPPORTED') {
     return new BadRequestException({ code, message: '当前语音模型不可用' });
   }
   if (code === 'VOICE_CREDENTIAL_MISSING' || code === 'VOICE_CREDENTIAL_REJECTED') {
     return new ServiceUnavailableException({ code, message: '语音服务凭证不可用' });
   }
-  return new ServiceUnavailableException({ code: 'VOICE_SERVICE_UNAVAILABLE', message: '语音服务暂时不可用' });
+  const safeCode = /^VOICE_[A-Z0-9_]+$/u.test(code) ? code : 'VOICE_SERVICE_UNAVAILABLE';
+  return new ServiceUnavailableException({ code: safeCode, message: '语音服务暂时不可用' });
 }
 
 function readCookie(header: string | undefined, name: string): string | undefined {
