@@ -11,6 +11,7 @@ import type {
 import { Badge, Button, EmptyState } from '@qitu/ui';
 import { fetchStudentStatistics } from '../../../../lib/api/statistics';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
+import { AdminMetricIcon } from '../../../../lib/components/AdminMetricIcon';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
 
 function formatDateTime(value: string | null): string {
@@ -87,15 +88,26 @@ export default function AdminStudentStatisticsPage() {
 
   return (
     <div className="admin-statistics-page">
-      <div className="admin-page-header">
+      <section className="admin-hero-banner admin-stats-hero">
+        <div className="admin-hero-copy">
+          <div className="admin-hero-badges"><span className="admin-live-badge"><i />AI 智学领航管家</span><span className="admin-hero-note">数据治理节点实时巡检守护中</span></div>
+          <h1>你好，管理员！<em>学情数据</em> 正在持续汇聚</h1>
+          <p>从学习活跃度、项目阶段到家校绑定，用一张清晰的数据全景图支持日常治理。</p>
+          <div className="admin-hero-signals"><span><AdminMetricIcon name="activity" />学习态势实时同步</span><span><AdminMetricIcon name="coverage" />数据权限隔离运行</span></div>
+        </div>
+        <div className="admin-hero-mascot"><span className="admin-hero-bubble">每一次专注学习，都是智慧萌芽</span><img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" /></div>
+      </section>
+
+      <div className="admin-page-header admin-statistics-heading">
         <div className="admin-page-header-title">
-          <h1>学生数据统计</h1>
+          <div><span className="admin-section-eyebrow">LEARNING INSIGHTS</span><h1>学生数据统计</h1></div>
           <DataSourceBadge dataSource={data.dataSource} />
         </div>
         <p>查看学生学习活跃度、阶段分布和绑定覆盖情况</p>
       </div>
 
       <div className="admin-range-selector">
+        <span className="admin-range-label"><AdminMetricIcon name="time" />统计周期</span>
         <button
           className={currentRange === '7d' ? 'admin-range-btn active' : 'admin-range-btn'}
           onClick={() => changeRange('7d')}
@@ -116,55 +128,18 @@ export default function AdminStudentStatisticsPage() {
         </button>
       </div>
 
-      <div className="admin-stats-grid">
-        <div className="admin-stat-card">
-          <span className="admin-stat-label">学生总数</span>
-          <span className="admin-stat-value">{data.totals.studentCount}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-label">活跃学生</span>
-          <span className="admin-stat-value">{data.totals.activeStudentCount}</span>
-          <span className="admin-stat-sub">
-            {data.totals.studentCount > 0
-              ? Math.round((data.totals.activeStudentCount / data.totals.studentCount) * 100)
-              : 0}
-            % 活跃率
-          </span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-label">学习会话</span>
-          <span className="admin-stat-value">{data.totals.sessions}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-label">学习时长</span>
-          <span className="admin-stat-value">{formatMinutes(data.totals.minutes)}</span>
-        </div>
-        <div className="admin-stat-card">
-          <span className="admin-stat-label">完成任务数</span>
-          <span className="admin-stat-value">{data.totals.tasksCompleted}</span>
-        </div>
+      <div className="admin-stats-grid admin-stats-grid-primary">
+        <div className="admin-stat-card admin-stat-card-blue"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="student" /></span><span className="admin-stat-kicker">人群规模</span></div><span className="admin-stat-label">学生总数</span><span className="admin-stat-value">{data.totals.studentCount}</span></div>
+        <div className="admin-stat-card admin-stat-card-teal"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="activity" /></span><span className="admin-stat-kicker">学习参与</span></div><span className="admin-stat-label">活跃学生</span><span className="admin-stat-value">{data.totals.activeStudentCount}</span><span className="admin-stat-sub">{data.totals.studentCount > 0 ? Math.round((data.totals.activeStudentCount / data.totals.studentCount) * 100) : 0}% 活跃率</span></div>
+        <div className="admin-stat-card admin-stat-card-violet"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="session" /></span><span className="admin-stat-kicker">过程记录</span></div><span className="admin-stat-label">学习会话</span><span className="admin-stat-value">{data.totals.sessions}</span></div>
+        <div className="admin-stat-card admin-stat-card-orange"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="time" /></span><span className="admin-stat-kicker">投入时间</span></div><span className="admin-stat-label">学习时长</span><span className="admin-stat-value">{formatMinutes(data.totals.minutes)}</span></div>
+        <div className="admin-stat-card admin-stat-card-green"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="task" /></span><span className="admin-stat-kicker">学习产出</span></div><span className="admin-stat-label">完成任务数</span><span className="admin-stat-value">{data.totals.tasksCompleted}</span></div>
       </div>
 
-      <div className="admin-stats-grid">
-        <div className="admin-stat-card admin-stat-highlight">
-          <span className="admin-stat-label">班主任覆盖率</span>
-          <span className="admin-stat-value">{data.totals.mentorCoveredPercent}%</span>
-          <span className="admin-stat-sub">
-            {data.totals.studentCount - Math.round((data.totals.mentorCoveredPercent / 100) * data.totals.studentCount)} 名学生待分配
-          </span>
-        </div>
-        <div className="admin-stat-card admin-stat-highlight">
-          <span className="admin-stat-label">家长覆盖率</span>
-          <span className="admin-stat-value">{data.totals.guardianCoveredPercent}%</span>
-          <span className="admin-stat-sub">
-            {data.totals.studentCount - Math.round((data.totals.guardianCoveredPercent / 100) * data.totals.studentCount)} 名学生待绑定
-          </span>
-        </div>
-        <div className="admin-stat-card admin-stat-alert">
-          <span className="admin-stat-label">完全未绑定</span>
-          <span className="admin-stat-value">{data.totals.unboundStudentCount}</span>
-          <span className="admin-stat-sub">既无班主任也无家长</span>
-        </div>
+      <div className="admin-stats-grid admin-stats-grid-coverage">
+        <div className="admin-stat-card admin-stat-highlight admin-stat-card-blue"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="coverage" /></span><span className="admin-stat-kicker">关系治理</span></div><span className="admin-stat-label">班主任覆盖率</span><span className="admin-stat-value">{data.totals.mentorCoveredPercent}%</span><span className="admin-stat-sub">{data.totals.studentCount - Math.round((data.totals.mentorCoveredPercent / 100) * data.totals.studentCount)} 名学生待分配</span></div>
+        <div className="admin-stat-card admin-stat-highlight admin-stat-card-teal"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="guardian" /></span><span className="admin-stat-kicker">家庭治理</span></div><span className="admin-stat-label">家长覆盖率</span><span className="admin-stat-value">{data.totals.guardianCoveredPercent}%</span><span className="admin-stat-sub">{data.totals.studentCount - Math.round((data.totals.guardianCoveredPercent / 100) * data.totals.studentCount)} 名学生待绑定</span></div>
+        <div className="admin-stat-card admin-stat-alert admin-stat-card-rose"><div className="admin-stat-card-topline"><span className="admin-stat-icon"><AdminMetricIcon name="unbound" /></span><span className="admin-stat-kicker">待处理事项</span></div><span className="admin-stat-label">完全未绑定</span><span className="admin-stat-value">{data.totals.unboundStudentCount}</span><span className="admin-stat-sub">既无班主任也无家长</span></div>
       </div>
 
       {unboundRows.length > 0 && (
