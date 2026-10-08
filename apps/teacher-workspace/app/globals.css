@@ -65,11 +65,9 @@ a { color: inherit; text-decoration: none; }
 
 .qtx-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 26px; }
 .qtx-brand-logo {
-  width: 40px; height: 40px; border-radius: 14px;
-  background: linear-gradient(135deg, var(--qtx-blue), var(--qtx-indigo));
+  width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
-  color: white; flex-shrink: 0;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
 }
 .qtx-brand h1 { margin: 0; font-size: 18px; font-weight: 800; color: var(--qtx-heading); letter-spacing: -0.02em; }
 .qtx-brand p { margin: 4px 0 0; font-size: 10px; color: var(--qtx-faint); letter-spacing: 0.08em; }

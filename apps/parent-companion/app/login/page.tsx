@@ -3,7 +3,7 @@
 import { writeCachedSession } from '@qitu/auth';
 import type { LoginResponse } from '@qitu/contracts';
 import { colors } from '@qitu/design-tokens';
-import { AppShell, Button, Field, OfflineBanner, PermissionDenied, SectionCard } from '@qitu/ui';
+import { AppShell, BrandLogo, Button, Field, OfflineBanner, PermissionDenied, SectionCard } from '@qitu/ui';
 import { useEffect, useState } from 'react';
 
 const PARENT_HOME_HREF = '/parent';
@@ -96,6 +96,7 @@ export default function ParentLoginPage() {
   return (
     <AppShell title="家长登录" accent={colors.primary}>
       <div className="qitu-parent-login">
+        <BrandLogo width={160} className="qitu-parent-login-logo" />
         <SectionCard title="家长账号由学校发放">
           <p className="qitu-parent-login-note">
             启途智学的家长账号由学校统一发放，暂不支持自助注册。请使用学校提供的账号登录。

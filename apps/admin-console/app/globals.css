@@ -1135,9 +1135,8 @@ body { min-height: 100vh; }
 .admin-console-shell .qitu-sidebar-logo {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #1b68f8, #2878f0);
-  box-shadow: 0 4px 12px rgb(27 104 248 / 28%);
+  background: none;
+  box-shadow: none;
 }
 .admin-console-shell .qitu-sidebar-name { color: #17243b; font-size: 1rem; }
 .admin-console-shell .qitu-sidebar-tagline { color: #8290a6; font-size: 0.69rem; }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { colors } from '@qitu/design-tokens';
-import { HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
+import { BrandLogo, BrandMark, HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
 import { readCachedSession, writeCachedSession } from '@qitu/auth';
 
@@ -232,7 +232,9 @@ export default function LoginPage() {
         <p className="eyebrow" style={{ color: colors.primary }}>
           QITU SMART LEARNING
         </p>
-        <h1 id="login-intro-title">启途智学</h1>
+        <h1 id="login-intro-title" className="login-intro-logo">
+          <BrandLogo width={220} />
+        </h1>
         <p className="login-positioning">面向中小学的项目式 AI 学习平台。</p>
         <p className="login-desc">
           学生探索和创作，家长看见成长过程，班主任及时提供支持。
@@ -256,7 +258,10 @@ export default function LoginPage() {
 
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-brand-row">
-          <div className="login-brand">启途智学</div>
+          <div className="login-brand">
+            <BrandMark size={36} decorative />
+            <span>启途智学</span>
+          </div>
           <RobotMascot size={56} mood="happy" />
         </div>
         <h2 id="login-title">登录你的工作空间</h2>

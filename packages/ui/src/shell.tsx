@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { PRODUCT_NAME, colors } from '@qitu/design-tokens';
+import { BrandMark } from './brand';
 
 export interface NavItem {
   href: string;
@@ -117,8 +118,8 @@ export function NavSidebar({
   return (
     <aside className={collapsed ? 'qitu-sidebar is-collapsed' : 'qitu-sidebar'}>
       <div className="qitu-sidebar-brand">
-        <span className="qitu-sidebar-logo" aria-hidden="true">
-          {brand.charAt(0)}
+        <span className="qitu-sidebar-logo">
+          <BrandMark size={40} decorative />
         </span>
         <div className="qitu-sidebar-brand-text">
           <strong className="qitu-sidebar-name">{brand}</strong>

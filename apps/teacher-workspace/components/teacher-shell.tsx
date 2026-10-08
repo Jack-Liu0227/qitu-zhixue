@@ -1,6 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
+import { BrandMark } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,7 +9,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   ChartIcon,
   HomeIcon,
-  SparklesIcon,
   TicketIcon,
   UsersIcon,
 } from './icons';
@@ -74,7 +74,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
         <div>
           <Link href="/dashboard" className="qtx-brand">
             <span className="qtx-brand-logo">
-              <SparklesIcon size={22} />
+              <BrandMark size={40} decorative />
             </span>
             <span>
               <h1>启途智学</h1>
