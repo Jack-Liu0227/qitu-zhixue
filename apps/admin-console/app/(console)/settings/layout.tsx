@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import './settings-aion.css';
 
 interface NavItem {
@@ -26,9 +26,9 @@ const SETTINGS_NAV: NavGroup[] = [
   {
     group: 'AI 核心',
     items: [
-      { href: '/settings/assistants', label: 'Agents', icon: '🤖' },
-      { href: '/settings/models', label: '模型', icon: '☁️' },
+      { href: '/settings/assistants', label: '助手', icon: '🤖' },
       { href: '/settings/teams', label: '团队', icon: '👥' },
+      { href: '/settings/models', label: '模型', icon: '☁️' },
       { href: '/settings/skills', label: '技能', icon: '⚡' },
       { href: '/settings/tools', label: '工具', icon: '🧰' },
     ],
@@ -63,10 +63,14 @@ function toInternal(pathname: string): string {
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '';
   const internal = toInternal(pathname);
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
 
   const isItemActive = (href: string) => {
     if (href === '/settings/assistants') {
       return internal === '/settings/assistants' || internal.startsWith('/settings/assistants/') || internal === '/settings/agents';
+    }
+    if (href === '/settings/teams') {
+      return internal === '/settings/teams' || internal.startsWith('/settings/teams/');
     }
     if (href === '/settings/models') {
       return internal === '/settings/models' || internal.startsWith('/settings/models/') || internal === '/settings/model-providers' || internal === '/settings';
@@ -75,27 +79,42 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="settings-shell">
-      <aside className="settings-sider" aria-label="设置导航">
-        {SETTINGS_NAV.map((grp) => (
-          <div key={grp.group}>
-            <div className="settings-sider-group">{grp.group}</div>
-            {grp.items.map((item) => {
-              const active = isItemActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`settings-sider-item ${active ? 'is-active' : ''}`}
-                  aria-current={active ? 'page' : undefined}
-                >
-                  <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+    <div className={`settings-shell ${siderCollapsed ? 'is-sider-collapsed' : ''}`}>
+      <aside className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
+        <div className="settings-sider-head">
+          {!siderCollapsed && <span className="settings-sider-title">系统偏好设置</span>}
+          <button
+            type="button"
+            className="settings-sider-toggle-btn"
+            onClick={() => setSiderCollapsed((prev) => !prev)}
+            title={siderCollapsed ? '展开导航' : '折叠导航'}
+            aria-label={siderCollapsed ? '展开导航' : '折叠导航'}
+          >
+            {siderCollapsed ? '»' : '«'}
+          </button>
+        </div>
+        <div className="settings-sider-scroll">
+          {SETTINGS_NAV.map((grp) => (
+            <div key={grp.group} className="settings-sider-section">
+              {!siderCollapsed && <div className="settings-sider-group">{grp.group}</div>}
+              {grp.items.map((item) => {
+                const active = isItemActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`settings-sider-item ${active ? 'is-active' : ''}`}
+                    title={siderCollapsed ? `${grp.group} · ${item.label}` : undefined}
+                    aria-current={active ? 'page' : undefined}
+                  >
+                    <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
+                    {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </aside>
       <main className="settings-main">{children}</main>
     </div>

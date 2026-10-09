@@ -5,7 +5,7 @@ import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 /**
  * `next.config.ts` 设置了 `basePath: '/admin'`，所以 `app/(console)/models/page.tsx`
@@ -69,6 +69,8 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
     : '';
   const pageTitle = active?.label ?? '平台管理后台';
 
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <AuthGuard
       expectedRole="admin"
@@ -83,13 +85,15 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
         }
       }}
     >
-      <div className="admin-console-shell">
+      <div className={`admin-console-shell ${collapsed ? 'is-sidebar-collapsed' : ''}`}>
         <NavSidebar
           brandName="启途智学"
           tagline="平台管理后台"
           items={NAV_ITEMS}
           activeHref={activeHref}
           renderLink={renderNavLink}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((prev) => !prev)}
         />
         <div className="admin-console-main">
           <header className="admin-console-topbar">
