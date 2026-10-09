@@ -17,7 +17,13 @@
   height: 72px;
   border: 1px solid var(--qitu-primary-border);
   border-radius: 20px;
-  background: var(--qitu-primary-soft);
+  background: linear-gradient(135deg, var(--qitu-primary-soft, #eaf2fe), #ffffff);
+  box-shadow: 0 4px 14px rgba(40, 120, 240, 0.12);
+  transition: transform 0.2s ease;
+}
+
+.qitu-tutor-header-mascot:hover {
+  transform: scale(1.04) rotate(-2deg);
 }
 
 .qitu-tutor-eyebrow {
@@ -46,12 +52,14 @@
   align-items: center;
   gap: 7px;
   margin-left: auto;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border: 1px solid var(--qitu-border);
   border-radius: var(--qitu-radius-pill);
+  background: #ffffff;
   color: var(--qitu-muted);
   font-size: 0.8rem;
   white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(16, 42, 92, 0.03);
 }
 
 .qitu-tutor-status-dot {
@@ -60,6 +68,12 @@
   border-radius: 50%;
   background: var(--qitu-completed);
   box-shadow: 0 0 0 3px var(--qitu-completed-soft);
+  animation: qituDotPulse 2s infinite;
+}
+
+@keyframes qituDotPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--qitu-completed-soft); }
+  50% { box-shadow: 0 0 0 5px rgba(24, 183, 172, 0.25); }
 }
 
 .qitu-tutor-grid {
@@ -232,12 +246,12 @@
 
 .qitu-tutor-team-panel {
   display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-lg);
-  background: var(--qitu-surface);
-  box-shadow: var(--qitu-shadow-sm);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(228, 236, 247, 0.9);
+  border-radius: var(--qitu-radius-lg, 16px);
+  background: linear-gradient(180deg, #ffffff 0%, #fafdff 100%);
+  box-shadow: 0 4px 16px rgba(16, 42, 92, 0.04);
 }
 
 .qitu-tutor-team-header {
@@ -262,11 +276,13 @@
 }
 
 .qitu-tutor-team-lock {
-  padding: 3px 7px;
-  border: 1px solid var(--qitu-border);
+  padding: 3px 8px;
+  border: 1px solid rgba(228, 236, 247, 0.9);
   border-radius: var(--qitu-radius-pill);
+  background: #ffffff;
   color: var(--qitu-muted);
   font-size: 0.68rem;
+  box-shadow: 0 1px 3px rgba(16, 42, 92, 0.03);
 }
 
 .qitu-tutor-team-description,
@@ -290,8 +306,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 0;
+  padding: 10px 8px;
+  margin: 0 -8px;
   border-top: 1px solid var(--qitu-border);
+  border-radius: 8px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.qitu-tutor-team-item:hover {
+  background: rgba(40, 120, 240, 0.04);
+  transform: translateX(2px);
 }
 
 .qitu-tutor-team-item > div {

@@ -1,27 +1,137 @@
-body { min-height: 100vh; }
+body {
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- 优化全局滚动条 (精致圆润风格) ---- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(115, 131, 155, 0.25);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(115, 131, 155, 0.45);
+}
+
+/* ---- 页面内容平滑入场微动画 ---- */
+@keyframes qituFadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qitu-student-content {
+  animation: qituFadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* ---- 学生端身份区 ----
    问候 Banner 上方的静态账号行。@qitu/ui 里的 `.auth-logout` 默认是
    `position: fixed`，会浮在 Banner 上；这里在学生壳的账号区内覆盖成静态，
    让「当前学生 + 退出登录」随页面正常排版。移动端改为左对齐并允许换行，
    避免与问候 Banner 重叠。 */
-.qitu-student-identity { display: grid; gap: 12px; }
+.qitu-student-identity {
+  display: grid;
+  gap: 14px;
+}
+
 .qitu-student-account {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(228, 236, 247, 0.8);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(16, 42, 92, 0.03);
+  transition: all 0.2s ease;
 }
-.qitu-student-account-text { display: flex; flex-direction: column; line-height: 1.25; }
-.qitu-student-account-label { color: var(--qitu-muted); font-size: 0.72rem; }
-.qitu-student-account-name { color: var(--qitu-heading); font-weight: 600; font-size: 0.9rem; }
-.qitu-student-account .auth-logout { position: static; }
+
+.qitu-student-account:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 16px rgba(16, 42, 92, 0.06);
+  border-color: var(--qitu-primary-border, #d1e2fc);
+}
+
+.qitu-student-account-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.qitu-student-account-label {
+  color: var(--qitu-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.qitu-student-account-name {
+  color: var(--qitu-heading);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.qitu-student-account .auth-logout {
+  position: static;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  border: 1px solid var(--qitu-border);
+  background: #ffffff;
+  color: var(--qitu-muted);
+  transition: all 0.15s ease;
+}
+
+.qitu-student-account .auth-logout:hover {
+  color: var(--qitu-danger, #e95b68);
+  border-color: var(--qitu-danger-border, #fca5a5);
+  background: var(--qitu-danger-soft, #fef2f2);
+}
 
 @media (max-width: 760px) {
-  .qitu-student-account { justify-content: flex-start; }
+  .qitu-student-account {
+    justify-content: flex-start;
+    border-radius: 14px;
+    padding: 8px 12px;
+  }
 }
 
 /* ---- 作品展厅 ---- */
-.qitu-works-page { padding: 12px 0; }
-.qitu-works-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.qitu-works-page {
+  padding: 16px 0;
+}
+
+.qitu-works-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.qitu-works-actions a {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qitu-works-actions a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(40, 120, 240, 0.18);
+}

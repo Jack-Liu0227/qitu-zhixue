@@ -91,14 +91,15 @@
   background: #fff;
   border: 1px solid var(--qitu-border);
   border-radius: var(--qitu-radius-lg);
-  box-shadow: var(--qitu-shadow-sm);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .qitu-inspiration-template-card:hover {
-  border-color: var(--qitu-primary-border);
-  box-shadow: var(--qitu-shadow-md);
-  transform: translateY(-2px);
+  border-color: var(--qitu-primary-border, #bfdbfe);
+  box-shadow: 0 12px 28px rgba(16, 42, 92, 0.08);
+  transform: translateY(-3px);
 }
 
 .qitu-inspiration-template-header {
