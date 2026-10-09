@@ -1151,6 +1151,10 @@ html {
   line-height: 1.85;
 }
 
+.home-about-more {
+  margin-top: 22px;
+}
+
 .home-about-footnote {
   color: var(--hp-outline) !important;
   font-size: 0.84rem;
