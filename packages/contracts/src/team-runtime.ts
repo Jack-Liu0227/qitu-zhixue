@@ -783,3 +783,216 @@ export interface AdminTeamConfig {
   updatedAt: string;
 }
 
+/* ========================================================================== */
+/*  Admin 助手 / 团队 CRUD —— 写入侧 DTO（T1 冻结契约）                        */
+/*                                                                            */
+/*  对应接口（响应信封统一 `{ data: ... }`）：                                  */
+/*    GET   /api/v1/admin/ai-runtime/assistants                               */
+/*    POST  /api/v1/admin/ai-runtime/assistants                               */
+/*    PATCH /api/v1/admin/ai-runtime/assistants/:id                            */
+/*    GET   /api/v1/admin/ai-runtime/teams                                     */
+/*    POST  /api/v1/admin/ai-runtime/teams                                     */
+/*    PATCH /api/v1/admin/ai-runtime/teams/:id                                 */
+/*                                                                            */
+/*  冻结规则：                                                                 */
+/*  1. 写入 DTO 不含 `id` / `createdAt` / `updatedAt`：全部由服务端生成。       */
+/*  2. 幂等键只走 HTTP 头 `Idempotency-Key`，**不放进 body**（与               */
+/*     `services/api/src/modules/team-runtime/team-runtime.controller.ts` 一致）。*/
+/*  3. 运行态与服务端派生字段不可由客户端写入：`source`、`deletable`、           */
+/*     `agentStatus` / `agentStatusMessage`、成员的 `assistantName` / `avatar` /  */
+/*     `status`。                                                               */
+/*  4. PBL 门禁只可被**加强**、不可被削弱：写入形状的 `theoryMasteredGate` 恒为  */
+/*     字面量 `true`，`allowAutonomousAdvance` 只允许 `false` 或省略。          */
+/*  5. 这些类型是纯类型（除下方常量外无运行时产物），T2 服务端解析、T3 种子、     */
+/*     T4 前端调用必须逐字照抄名称与字段。                                       */
+/* ========================================================================== */
+
+/** 写操作幂等头名称。 */
+export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key' as const;
+
+/**
+ * 幂等作用域（服务端 `IdempotencyStore.execute(scope, key, hash, fn)` 使用）。
+ * 更新类作用域必须拼上资源 id：`${ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES.teamUpdate}:${id}`。
+ */
+export const ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES = {
+  assistantCreate: 'admin.ai-runtime.assistant.create',
+  assistantUpdate: 'admin.ai-runtime.assistant.update',
+  teamCreate: 'admin.ai-runtime.team.create',
+  teamUpdate: 'admin.ai-runtime.team.update',
+} as const;
+
+/** PBL 阶段门禁条件（与 `@qitu/ai-client` 的雷霆战机种子逐字一致）。 */
+export type PblGateCondition =
+  | 'student_confirmed_intent'
+  | 'TheoryMastered'
+  | 'code_playable_run_verified'
+  | 'review_completed_and_archived';
+
+/**
+ * 创建助手。**必填**：`name`、`description`、`role`、`instructions`。
+ * 服务端补全：`id`（生成）、`source: 'user'`、`deletable: true`、
+ * `agentStatus: 'unchecked'`、`createdAt` / `updatedAt`。
+ */
+export interface AdminAssistantCreateInput {
+  /** 展示名；服务端裁剪空白后要求 1–40 字符。 */
+  name: string;
+  /** 一句话职责说明。 */
+  description: string;
+  /** 职责标签，例如 `Concept Coach / 概念教练`。 */
+  role: string;
+  /** 教师指令（提示词正文）。客户端不得写入项目状态或审计字段。 */
+  instructions: string;
+  avatar?: string;
+  modelProviderId?: string | null;
+  modelId?: string | null;
+  /** 采样温度；服务端要求 0–2。 */
+  temperature?: number;
+  enabledSkills?: readonly string[];
+  toolIds?: readonly string[];
+  mcpServerIds?: readonly string[];
+  /** 只允许覆盖已知默认项；缺省字段由服务端 `AssistantDefaults` 兜底。 */
+  defaults?: Partial<AssistantDefaults>;
+  /** 默认为 `true`；`false` 时不出现在团队可选助手列表。 */
+  teamSelectable?: boolean;
+  /** 默认追加到列表末尾。 */
+  sortOrder?: number;
+  /** 默认为 `true`。 */
+  enabled?: boolean;
+}
+
+/**
+ * 更新助手（PATCH）。**字段全部可选**，但至少需要 1 个字段，空补丁必须被服务端拒绝。
+ * `id` / `source` / `deletable` / `agentStatus` 不可写；内置助手（`source: 'builtin'`）
+ * 只允许改展示与模型相关字段，`instructions` 的改写需要服务端审计记录。
+ */
+export interface AdminAssistantUpdateInput {
+  name?: string;
+  description?: string;
+  role?: string;
+  instructions?: string;
+  avatar?: string;
+  modelProviderId?: string | null;
+  modelId?: string | null;
+  temperature?: number;
+  enabledSkills?: readonly string[];
+  toolIds?: readonly string[];
+  mcpServerIds?: readonly string[];
+  defaults?: Partial<AssistantDefaults>;
+  teamSelectable?: boolean;
+  sortOrder?: number;
+  enabled?: boolean;
+}
+
+/**
+ * 团队成员的写入形状。
+ * `assistantName` / `avatar` 由服务端按 `assistantId` 解析后回填；
+ * `status`（idle / active / …）属于运行态，**不在写侧暴露**。
+ */
+export interface AdminTeamMemberInput {
+  /** 省略时由服务端生成稳定 slotId；PATCH 建议回填既有 slotId 以保持引用不变。 */
+  slotId?: string;
+  assistantId: string;
+  role: TeammateRole;
+  /** 缺省时取该助手配置的 `role`。 */
+  roleLabel?: string;
+  /** 缺省时取解析出的模型 id。 */
+  model?: string;
+  color?: string;
+  pblPhase?: PblPhase;
+}
+
+/**
+ * PBL 工作流写入形状。与 `PblTeamWorkflowSpec` 的差异是刻意的：
+ * `theoryMasteredGate` 固定为字面量 `true`，客户端无法关闭「实践前必须
+ * TheoryMastered」这条硬门禁；`allowAutonomousAdvance` 只接受 `false`。
+ */
+export interface AdminTeamPblSpecInput {
+  projectId: string;
+  projectName: string;
+  targetDomain: string;
+  phases: readonly AdminTeamPblPhaseInput[];
+  /** 硬门禁：恒为 `true`。服务端必须拒绝任何将其写成 `false` 的载荷。 */
+  theoryMasteredGate: true;
+  /** 预留字段：当前管理端不允许开启自动推进。 */
+  allowAutonomousAdvance?: false;
+}
+
+/** PBL 单阶段写入形状。 */
+export interface AdminTeamPblPhaseInput {
+  phase: PblPhase;
+  title: string;
+  assignedAssistantId: string;
+  assignedRoleLabel?: string;
+  learningObjectives?: readonly string[];
+  /**
+   * 缺省时服务端按阶段补默认门禁：
+   * exploration→`student_confirmed_intent`、concept_mastery→`TheoryMastered`、
+   * guided_practice→`code_playable_run_verified`、deliverable_review→`review_completed_and_archived`。
+   * `concept_mastery` 阶段的门禁**必须**是 `TheoryMastered`，服务端强校验。
+   */
+  gateCondition?: PblGateCondition;
+  deliverableType?: string;
+}
+
+/**
+ * 创建团队。**必填**：`name`、`description`、`leaderAssistantId`、`members`。
+ * 服务端补全：`id`、`createdAt` / `updatedAt`、成员的派生字段。
+ * 服务端校验：`members.length >= 1`、`leaderAssistantId` 必须命中某个成员、
+ * 每个 `assistantId` 必须存在且 `teamSelectable` 且 `enabled`、`concurrencyLimit` 在 1–8。
+ */
+export interface AdminTeamCreateInput {
+  name: string;
+  description: string;
+  leaderAssistantId: string;
+  members: readonly AdminTeamMemberInput[];
+  /** 默认 `'shared'`。 */
+  workspaceMode?: WorkspaceMode;
+  /** 默认 `'supervised'`。 */
+  sessionMode?: TeamSessionMode;
+  /** 默认 `1`；服务端上限校验。 */
+  concurrencyLimit?: number;
+  pblSpec?: AdminTeamPblSpecInput;
+  /** 默认 `true`。 */
+  enabled?: boolean;
+}
+
+/**
+ * 更新团队（PATCH）。**字段全部可选**，但至少需要 1 个字段。
+ * `members` 为整体替换语义（不是增量 diff）；`id` / `createdAt` 不可写。
+ */
+export interface AdminTeamUpdateInput {
+  name?: string;
+  description?: string;
+  leaderAssistantId?: string;
+  members?: readonly AdminTeamMemberInput[];
+  workspaceMode?: WorkspaceMode;
+  sessionMode?: TeamSessionMode;
+  concurrencyLimit?: number;
+  pblSpec?: AdminTeamPblSpecInput;
+  enabled?: boolean;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  读取侧响应信封（与 apps/admin-console/lib/api/types.ts 的 DataEnvelope 对齐）*/
+/* -------------------------------------------------------------------------- */
+
+/** `GET /api/v1/admin/ai-runtime/assistants` */
+export interface AdminAssistantListResponse {
+  data: AdminAssistantConfig[];
+}
+
+/** `POST /api/v1/admin/ai-runtime/assistants`、`PATCH /api/v1/admin/ai-runtime/assistants/:id` */
+export interface AdminAssistantResponse {
+  data: AdminAssistantConfig;
+}
+
+/** `GET /api/v1/admin/ai-runtime/teams` */
+export interface AdminTeamListResponse {
+  data: AdminTeamConfig[];
+}
+
+/** `POST /api/v1/admin/ai-runtime/teams`、`PATCH /api/v1/admin/ai-runtime/teams/:id` */
+export interface AdminTeamResponse {
+  data: AdminTeamConfig;
+}
+
