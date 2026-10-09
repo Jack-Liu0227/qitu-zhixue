@@ -475,7 +475,13 @@
   place-items: center;
   background: var(--qitu-gradient-primary);
   border-radius: var(--qitu-radius-lg);
-  box-shadow: var(--qitu-shadow-sm);
+  box-shadow: 0 4px 12px rgba(40, 120, 240, 0.15);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.qitu-artifact-cover:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 20px rgba(40, 120, 240, 0.25);
 }
 
 .qitu-artifact-cover-mark {
