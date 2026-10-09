@@ -24,7 +24,7 @@ export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
     role: 'Team Leader / 总导师',
     enabled: true,
     sortOrder: 1,
-    modelProviderId: 'bailian',
+    modelProviderId: 'qwen-token-plan-cn',
     modelId: 'qwen3.8-flash',
     temperature: 0.7,
     instructions:
@@ -51,7 +51,7 @@ export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
     role: 'Concept Coach / 概念教练',
     enabled: true,
     sortOrder: 2,
-    modelProviderId: 'bailian',
+    modelProviderId: 'qwen-token-plan-cn',
     modelId: 'qwen3.8-flash',
     temperature: 0.6,
     instructions:
@@ -78,7 +78,7 @@ export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
     role: 'Code Guide / 架构向导',
     enabled: true,
     sortOrder: 3,
-    modelProviderId: 'bailian',
+    modelProviderId: 'qwen-token-plan-cn',
     modelId: 'qwen3.8-flash',
     temperature: 0.5,
     instructions:
@@ -105,7 +105,7 @@ export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
     role: 'Reviewer / 评审导师',
     enabled: true,
     sortOrder: 4,
-    modelProviderId: 'bailian',
+    modelProviderId: 'qwen-token-plan-cn',
     modelId: 'qwen3.8-flash',
     temperature: 0.7,
     instructions:
