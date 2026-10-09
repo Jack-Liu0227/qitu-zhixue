@@ -85,3 +85,18 @@ test('内存模式：未知用途与未知供应商被拒绝', async () => {
     /供应商不存在/,
   );
 });
+
+test('供应商启停是服务端状态，并影响 Agent 模型可用性', async () => {
+  const service = memoryService();
+  await service.upsertProvider(
+    'qwen-dashscope',
+    { name: 'Runtime Provider', baseUrl: 'https://runtime.example.com', apiKey: 'sk-runtime' },
+    'admin-1',
+  );
+  assert.equal(service.listAgentModelOptions().some((option) => option.providerId === 'qwen-dashscope' && option.available), true);
+
+  await service.upsertProvider('qwen-dashscope', { enabled: false } as never, 'admin-1');
+  const disabled = service.listProviders().providers.find((provider) => provider.id === 'qwen-dashscope');
+  assert.equal(disabled?.enabled, false);
+  assert.equal(service.listAgentModelOptions().some((option) => option.providerId === 'qwen-dashscope' && option.available), false);
+});

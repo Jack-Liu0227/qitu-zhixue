@@ -450,6 +450,9 @@ function sanitiseProvider(body: UpsertProviderRequest | undefined): UpsertProvid
     out.api = body.api;
   }
   if (typeof body.authHeader === 'boolean') out.authHeader = body.authHeader;
+  if (typeof (body as UpsertProviderRequest & { enabled?: unknown }).enabled === 'boolean') {
+    (out as UpsertProviderRequest & { enabled?: boolean }).enabled = (body as UpsertProviderRequest & { enabled: boolean }).enabled;
+  }
   // 明文密钥只在这里被读取一次，随后由 service 加密落库并只对外暴露指纹。
   if (typeof body.apiKey === 'string') out.apiKey = body.apiKey;
   return out;

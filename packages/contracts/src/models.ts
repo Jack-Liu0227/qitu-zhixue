@@ -97,6 +97,8 @@ export interface UpsertProviderRequest {
   baseUrl?: string;
   api?: ModelApi;
   authHeader?: boolean;
+  /** 是否允许运行时使用该供应商。 */
+  enabled?: boolean;
   /** 明文密钥，只在请求体出现一次；传空串表示清除。 */
   apiKey?: string;
 }

@@ -696,6 +696,8 @@ export class ModelRegistryService implements OnModuleInit {
     if (body.baseUrl !== undefined) state.baseUrl = normaliseBaseUrl(body.baseUrl);
     if (body.api !== undefined) state.api = body.api;
     if (body.authHeader !== undefined) state.authHeader = body.authHeader;
+    const providerEnabled = (body as UpsertProviderRequest & { enabled?: boolean }).enabled;
+    if (providerEnabled !== undefined) state.enabled = providerEnabled;
 
     // 兼容预置手选：新供应商先带上模板建议的模型，管理员可随后自动拉取覆盖。
     const newManualModels: ModelDescriptor[] = [];

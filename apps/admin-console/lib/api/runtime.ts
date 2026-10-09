@@ -25,19 +25,7 @@ export async function createRuntimeAgent(
   input: AdminRuntimeAgentUpdateRequest,
   idempotencyKey: string,
 ): Promise<AdminRuntimeAgent> {
-  const response = await fetch(`/api/v1/admin/ai-runtime/agents/${encodeURIComponent(agentId)}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
-    body: JSON.stringify(input),
-  });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { detail?: string; message?: string } | null;
-    const error = new Error(payload?.detail ?? payload?.message ?? '角色创建失败') as Error & { status: number };
-    error.status = response.status;
-    throw error;
-  }
-  return ((await response.json()) as DataEnvelope<AdminRuntimeAgent>).data;
+  return mutateRuntimeAgent('POST', agentId, input, idempotencyKey);
 }
 
 export async function updateRuntimeAgent(
@@ -45,19 +33,35 @@ export async function updateRuntimeAgent(
   input: AdminRuntimeAgentUpdateRequest,
   idempotencyKey: string,
 ): Promise<AdminRuntimeAgent> {
-  const response = await fetch(`/api/v1/admin/ai-runtime/agents/${encodeURIComponent(agentId)}`, {
-    method: 'PATCH',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
-    body: JSON.stringify(input),
-  });
+  return mutateRuntimeAgent('PATCH', agentId, input, idempotencyKey);
+}
+
+async function mutateRuntimeAgent(
+  method: 'POST' | 'PATCH',
+  agentId: string,
+  input: AdminRuntimeAgentUpdateRequest,
+  idempotencyKey: string,
+): Promise<AdminRuntimeAgent> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/admin/ai-runtime/agents/${encodeURIComponent(agentId)}`, {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    throw new AdminOfflineError();
+  }
+  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
+  const payload = await response.json().catch(() => null) as DataEnvelope<AdminRuntimeAgent> & { detail?: string; message?: string } | null;
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { detail?: string; message?: string } | null;
-    const error = new Error(payload?.detail ?? payload?.message ?? '角色保存失败') as Error & { status: number };
+    const error = new Error(payload?.detail ?? payload?.message ?? (method === 'POST' ? '角色创建失败' : '角色保存失败')) as Error & { status: number };
     error.status = response.status;
     throw error;
   }
-  return ((await response.json()) as DataEnvelope<AdminRuntimeAgent>).data;
+  if (!payload || !payload.data) throw new Error('服务端未返回角色配置');
+  return payload.data;
 }
 export async function fetchRuntimeSnapshot(): Promise<AdminRuntimeSnapshot> {
   try {

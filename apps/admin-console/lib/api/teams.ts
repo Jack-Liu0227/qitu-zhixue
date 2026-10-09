@@ -1,54 +1,147 @@
-import type { AdminTeamConfig } from '@qitu/contracts';
-import { THUNDER_FIGHTER_TEAM_CONFIG } from '@qitu/ai-client';
-import type { DataEnvelope } from './types';
+import type { AdminRuntimeAgent, AdminRuntimeSnapshot } from '@qitu/contracts';
+import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
+import { newIdempotencyKey } from './modelRegistry';
+import { fetchRuntimeSnapshot } from './runtime';
 
-export async function fetchAdminTeams(): Promise<AdminTeamConfig[]> {
-  try {
-    const response = await fetch('/api/v1/admin/ai-runtime/teams', {
-      method: 'GET',
-      credentials: 'include',
-    });
-    if (response.ok) {
-      const data = ((await response.json()) as DataEnvelope<AdminTeamConfig[]>).data;
-      if (Array.isArray(data) && data.length > 0) {
-        return data;
-      }
-    }
-  } catch {
-    // Fall back to built-in registered teams
-  }
-  return [THUNDER_FIGHTER_TEAM_CONFIG];
+export interface AgentGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  trigger: string;
+  taskType: string;
+  enabled: boolean;
 }
 
-export async function updateAdminTeam(
-  id: string,
-  patch: Partial<AdminTeamConfig>,
-  idempotencyKey: string,
-): Promise<AdminTeamConfig> {
+export interface AgentGraphData {
+  generatedAt: string;
+  nodes: Array<AdminRuntimeAgent & { role: string | null }>;
+  edges: AgentGraphEdge[];
+}
+
+export interface TeamRuntimeSnapshot {
+  runtime: AdminRuntimeSnapshot;
+  graph: AgentGraphData;
+  routes: AgentGraphEdge[];
+}
+
+async function get<T>(path: string): Promise<T> {
+  let response: Response;
   try {
-    const response = await fetch(`/api/v1/admin/ai-runtime/teams/${encodeURIComponent(id)}`, {
+    response = await fetch(path, { credentials: 'include' });
+  } catch {
+    throw new AdminOfflineError();
+  }
+  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
+  if (!response.ok) throw new Error(`协作运行时请求失败（HTTP ${response.status}）`);
+  const payload = await response.json() as DataEnvelope<T>;
+  return payload.data;
+}
+
+export async function fetchAdminTeams(): Promise<TeamRuntimeSnapshot> {
+  const [runtime, graph, rawRoutes] = await Promise.all([
+    fetchRuntimeSnapshot(),
+    get<AgentGraphData>('/api/v1/admin/agent-graph'),
+    get<Array<AgentGraphEdge & { fromAgentId?: string; toAgentId?: string }>>('/api/v1/admin/ai-runtime/routes'),
+  ]);
+  const runtimeById = new Map(runtime.agents.map((agent) => [agent.id, agent]));
+  const routes = rawRoutes.map((route) => ({
+    id: route.id,
+    source: route.source ?? route.fromAgentId ?? '',
+    target: route.target ?? route.toAgentId ?? '',
+    trigger: route.trigger,
+    taskType: route.taskType,
+    enabled: route.enabled,
+  }));
+  return {
+    runtime,
+    graph: {
+      ...graph,
+      nodes: graph.nodes.map((node) => ({ ...runtimeById.get(node.id), ...node })),
+    },
+    routes,
+  };
+}
+
+export async function updateAgentRoute(
+  routeId: string,
+  patch: Partial<Pick<AgentGraphEdge, 'enabled' | 'taskType' | 'trigger'>>,
+  idempotencyKey = newIdempotencyKey(),
+): Promise<AgentGraphEdge> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/admin/ai-runtime/routes/${encodeURIComponent(routeId)}`, {
       method: 'PATCH',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
-      },
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(patch),
     });
-    if (response.ok) {
-      return ((await response.json()) as DataEnvelope<AdminTeamConfig>).data;
-    }
   } catch {
-    // If backend endpoint is offline in mock/demo, return merged object
+    throw new AdminOfflineError();
   }
-
-  if (id !== THUNDER_FIGHTER_TEAM_CONFIG.id) {
-    throw new Error(`TEAM_NOT_FOUND: ${id}`);
-  }
+  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
+  const payload = await response.json().catch(() => null) as DataEnvelope<AgentGraphEdge & { fromAgentId?: string; toAgentId?: string }> & { message?: string } | null;
+  if (!response.ok) throw new Error(payload?.message ?? `路由更新失败（HTTP ${response.status}）`);
+  if (!payload?.data) throw new Error('服务端未返回路由配置');
   return {
-    ...THUNDER_FIGHTER_TEAM_CONFIG,
-    ...patch,
-    id: THUNDER_FIGHTER_TEAM_CONFIG.id,
-    updatedAt: new Date().toISOString(),
+    id: payload.data.id,
+    source: payload.data.source ?? payload.data.fromAgentId ?? '',
+    target: payload.data.target ?? payload.data.toAgentId ?? '',
+    trigger: payload.data.trigger,
+    taskType: payload.data.taskType,
+    enabled: payload.data.enabled,
   };
+}
+
+export async function startTeamRun(leaderAgentId: string): Promise<{ id: string; leaderAgentId: string; status: string }> {
+  const key = newIdempotencyKey();
+  let response: Response;
+  try {
+    response = await fetch('/api/v1/tutor/team-runs', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify({ leaderAgentId, trigger: 'admin.team.test', context: { source: 'admin-console' } }),
+    });
+  } catch {
+    throw new AdminOfflineError();
+  }
+  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
+  const payload = await response.json().catch(() => null) as DataEnvelope<{ id: string; leaderAgentId: string; status: string }> & { message?: string } | null;
+  if (!response.ok) throw new Error(payload?.message ?? `Team Run 创建失败（HTTP ${response.status}）`);
+  if (!payload?.data) throw new Error('服务端未返回 Team Run');
+  return payload.data;
+}
+
+export async function delegateTeamTask(input: {
+  runId: string;
+  senderAgentId: string;
+  recipientAgentId: string;
+  taskType: string;
+}): Promise<{ id: string; status: string; taskType: string }> {
+  const key = newIdempotencyKey();
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/admin/agent-runs/${encodeURIComponent(input.runId)}/delegate`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify({
+        senderAgentId: input.senderAgentId,
+        recipientAgentId: input.recipientAgentId,
+        taskType: input.taskType,
+        input: { source: 'admin-console', test: true },
+      }),
+    });
+  } catch {
+    throw new AdminOfflineError();
+  }
+  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
+  const payload = await response.json().catch(() => null) as DataEnvelope<{ id: string; status: string; taskType: string }> & { message?: string } | null;
+  if (!response.ok) throw new Error(payload?.message ?? `Agent 委派失败（HTTP ${response.status}）`);
+  if (!payload?.data) throw new Error('服务端未返回 Team Task');
+  return payload.data;
+}
+
+export async function fetchTeamRun(runId: string): Promise<unknown> {
+  return get(`/api/v1/admin/agent-graphs/${encodeURIComponent(runId)}`);
 }
