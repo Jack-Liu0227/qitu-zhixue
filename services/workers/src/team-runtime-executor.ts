@@ -1,6 +1,7 @@
 import {
   createModelRuntime,
   decryptModelRuntimeSecret,
+  isModelRuntimeError,
   ModelRuntimeError,
   parseModelRuntimeSecretKey,
 } from '@qitu/model-runtime';
@@ -193,7 +194,9 @@ async function executeTeamAgentJob(
     });
   } catch (error) {
     if (error instanceof TeamAgentExecutionError) throw error;
-    if (error instanceof ModelRuntimeError) throw new TeamAgentExecutionError(`TEAM_AGENT_${error.code}`, error.code);
+    if (isModelRuntimeError(error) || error instanceof ModelRuntimeError) {
+      throw new TeamAgentExecutionError(`TEAM_AGENT_${error.code}`, error.code);
+    }
     throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CALL_FAILED');
   }
   return parseStructuredAgentOutput(result.text, route.outputSchema);
