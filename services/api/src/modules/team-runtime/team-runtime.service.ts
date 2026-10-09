@@ -571,7 +571,7 @@ export class TeamRuntimeService {
       });
     } catch (error) {
       // F2 DB 层兜底：并发的第二个 startRun 通过了上面的 check-then-insert，
-      // 命中迁移 0020 的部分唯一索引 agent_team_runs_active_mentor_unique_idx
+      // 命中迁移 0021 的部分唯一索引 agent_team_runs_active_mentor_unique_idx
       // （Postgres 23505）。注意 insert 语句的 ON CONFLICT DO NOTHING 只仲裁
       // idempotencyKey，其他唯一索引冲突仍会报错，因此 23505 只会来自班主任
       // 唯一索引。事务已整体回滚：本次未留下任何 run 行、邮箱或审计。

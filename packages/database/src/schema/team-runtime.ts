@@ -46,7 +46,7 @@ export const agentTeamRuns = pgTable(
   (table) => ({
     idempotencyUniqueIdx: uniqueIndex('agent_team_runs_idempotency_unique_idx').on(table.idempotencyKey),
     // F2 DB-layer backstop for AGENTS.md “one current mentor per student”:
-    // at most one *active* row per student_user_id. Matches migration 0020;
+    // at most one *active* row per student_user_id. Matches migration 0021;
     // NULL student_user_id rows are unconstrained (Postgres NULLS DISTINCT).
     activeMentorUniqueIdx: uniqueIndex('agent_team_runs_active_mentor_unique_idx')
       .on(table.studentUserId)
