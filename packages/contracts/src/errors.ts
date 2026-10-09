@@ -129,7 +129,11 @@ export type ApiErrorCode =
   /** 基础偏好写入非法（400）：值不在允许集合内。 */
   | 'PREFERENCE_INVALID'
   /** 偏好持久化能力不可用（503）。 */
-  | 'PREFERENCE_UNAVAILABLE';
+  | 'PREFERENCE_UNAVAILABLE'
+  /** 公开咨询表单内容不合法（400）：必填缺失、字段未知或格式不符。 */
+  | 'CONSULTATION_INVALID'
+  /** 公开咨询所需持久化 / 审计能力不可用（503）。 */
+  | 'CONSULTATION_UNAVAILABLE';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

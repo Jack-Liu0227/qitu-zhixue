@@ -22,6 +22,7 @@ export * from './models.js';
 export * from './errors.js';
 export * from './learning-plan.js';
 export * from './mastery.js';
+export * from './public-content.js';
 
 export interface HealthResponse {
   service: string;

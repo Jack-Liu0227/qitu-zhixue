@@ -1,406 +1,650 @@
-'use client';
+import Link from 'next/link';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { colors } from '@qitu/design-tokens';
-import { BrandLogo, BrandMark, HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
-import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
-import { readCachedSession, writeCachedSession } from '@qitu/auth';
+import type { PublicHomeStats, PublicHomeTemplate, PublicHomeView } from '@qitu/contracts';
 
-const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
+import { ConsultationForm } from './home/consult-form';
+import { DemoModal } from './home/demo-modal';
+import { countLabel } from './home/format';
+import { HeroTutorDemo } from './home/hero-demo';
+import { Icon, type IconName } from './home/icons';
+import { TemplateShowcase } from './home/showcase';
+import { SiteNav } from './home/site-nav';
 
-type LoginRole = Exclude<Role, 'support'>;
+/**
+ * 营销首页（服务端渲染）。
+ *
+ * 数据来源：`GET /api/v1/public/home`（公开只读，只回聚合计数与平台共享模板）。
+ * 后端不可用时**不伪造数字**：统计位显示 `—` 并给出降级提示，展厅回到空状态。
+ */
+export const revalidate = 60;
 
-interface RoleOption {
-  role: LoginRole;
-  label: string;
-  destination: string;
-  demoEmail: string;
-  demoPassword: string;
+const API_ORIGIN = process.env.QITU_API_ORIGIN ?? 'http://127.0.0.1:4100';
+const HOME_FETCH_TIMEOUT_MS = 3_000;
+
+interface PblStep {
+  index: string;
+  icon: IconName;
+  title: string;
+  detail: string;
+  outcome: string;
 }
 
-const ROLE_OPTIONS: RoleOption[] = [
+interface Competency {
+  icon: IconName;
+  name: string;
+  en: string;
+  detail: string;
+  metrics: string;
+}
+
+const PBL_STEPS: readonly PblStep[] = [
   {
-    role: 'student',
-    label: '学生',
-    destination: '/student',
-    demoEmail: 'student@qtzx.local',
-    demoPassword: 'student123',
+    index: '01',
+    icon: 'search',
+    title: '真实问题精准定义',
+    detail:
+      '从碳足迹量化、城市潮汐车道优化到历史档案重构。学生在多元社会图景中捕捉痛点，明确核心研究议题。',
+    outcome: '立项意向与研究假设书',
   },
   {
-    role: 'parent',
-    label: '家长',
-    destination: '/parent',
-    demoEmail: 'parent@qtzx.local',
-    demoPassword: 'parent123',
+    index: '02',
+    icon: 'brain',
+    title: 'AI 协同探究与验证',
+    detail:
+      '对话定制化领域智能体。借助多维文献检索、数据仿真与逆向推演，快速验证初步假设的严密性与可行性。',
+    outcome: '多变量数据仿真图谱',
   },
   {
-    role: 'teacher',
-    label: '班主任',
-    destination: '/teacher',
-    demoEmail: 'teacher@qtzx.local',
-    demoPassword: 'teacher123',
+    index: '03',
+    icon: 'wrench',
+    title: '原型作品构建与迭代',
+    detail:
+      '告别纸上谈兵。结合低代码开发、3D 建模、硬件原型或交互式大模型问答引擎，将理论转化为可交互工程实体。',
+    outcome: '高保真原型系统与代码库',
   },
   {
-    role: 'admin',
-    label: '管理员',
-    destination: '/admin',
-    demoEmail: 'admin@qtzx.local',
-    demoPassword: 'admin123',
+    index: '04',
+    icon: 'award',
+    title: '多元复盘与能力认证',
+    detail:
+      '组织同行评审答辩，AI 全流程评估推演日志，自动沉淀形成可追溯的个人成长能力档案与数字学术徽章。',
+    outcome: '可追溯的能力认证记录',
   },
 ];
 
-function destinationFor(role: Role): string {
-  const option = ROLE_OPTIONS.find((item) => item.role === role);
-  return option?.destination ?? '/';
-}
+const COMPETENCIES: readonly Competency[] = [
+  {
+    icon: 'brain',
+    name: '批判性思维与深度问辨',
+    en: 'Critical Thinking & Prompt Inquiry',
+    detail:
+      '拒绝轻信标准答案，掌握向生成式大模型提出高质量反思性 Prompt 的技能。学会识别逻辑漏洞、因果颠倒及认知偏见。',
+    metrics: '逻辑链深度 / 逆向追问频次',
+  },
+  {
+    icon: 'terminal',
+    name: '计算思维与跨学科建模',
+    en: 'Computational & Algorithmic Mindset',
+    detail:
+      '将混沌复杂的大千世界拆解为可计算的数据结构与算法流程。融汇物理原理、社会学规律与统计学模型解决现实挑战。',
+    metrics: '抽象建模能力 / 参数鲁棒性',
+  },
+  {
+    icon: 'wrench',
+    name: '复杂问题解决与工程创造',
+    en: 'Complex Problem Solving',
+    detail:
+      '具备强韧的「动手做」精神，完成智能物联网硬件打样、定制软件开发或实地调研论文，从 0 到 1 产出具有实用价值的物化作品。',
+    metrics: '工程实操完整度 / 迭代抗挫力',
+  },
+  {
+    icon: 'refresh',
+    name: '自主元认知与终身学习力',
+    en: 'Metacognition & Adaptive Learning',
+    detail:
+      '清晰洞察「我知道什么」与「我不知道什么」。借助平台即时认知回溯树，实时审视思维盲区，自发制定学习补强计划。',
+    metrics: '自我反思深度 / 策略敏捷调整率',
+  },
+  {
+    icon: 'hub',
+    name: '人机协作与数字共创素养',
+    en: 'AI Synergy & Future Literacy',
+    detail:
+      '不再将 AI 视作替身，而是将之作为第二大脑与智囊团。熟练运用协同编码、生成式图像推演与文献聚类加速研究进程。',
+    metrics: '人机工作流效率 / AI 伦理合规',
+  },
+  {
+    icon: 'forum',
+    name: '同理心沟通与共情领导力',
+    en: 'Empathic Leadership & Storytelling',
+    detail:
+      '在团队协作中换位思考、倾听异见，将晦涩的科技方案转译为打动人心的叙事。在公开答辩与路演中展现自信与领导力。',
+    metrics: '团队同行评价 / 演讲说服力指数',
+  },
+];
 
-function resolveNextPath(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null;
-  if (typeof window === 'undefined') return null;
-  try {
-    const url = new URL(raw, window.location.origin);
-    if (url.origin !== window.location.origin) return null;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return null;
-  }
-}
+const TESTIMONIALS = [
+  {
+    initial: '陈',
+    name: '陈思齐（高二年级）',
+    note: '完成 3 项 PBL 课题 · 获 ISEF 省级选拔推荐',
+    quote:
+      '以前做题总是只看考卷给的标准答案，在启途做完《微塑料降解菌种环境模拟》项目后，我发现真实世界的科学没有唯一解。AI 导师从不直接告诉我答案，而是一步步追问，逼我自己理顺实验因果逻辑。',
+  },
+  {
+    initial: '张',
+    name: '张工（资深算法架构师 / 初中生家长）',
+    note: '持续伴学 180 天',
+    quote:
+      '作为计算机系家长，我最抗拒把 AI 当作「偷懒作弊工具」。启途智学的引导机制太妙了，它把孩子培养成驾驭 AI 的领航员，教孩子自己提问、自查逻辑，这种自主元认知是课本里学不到的无价之宝。',
+  },
+  {
+    initial: '李',
+    name: '李建荣 特级教师',
+    note: '重点示范高中科创教研组长',
+    quote:
+      '我们学校引入启途的项目工作坊后，孩子们的课堂参与度有了飞跃。特别是「能力罗盘报告」，每学期生成的多维雷达评估能清晰展示出学生的跨学科整合力，是面向新高考与综合素质评价的重器。',
+  },
+] as const;
 
-function makeIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `login-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+const CONTACT_ROWS: ReadonlyArray<{ icon: IconName; label: string; value: string; hint?: string }> = [
+  {
+    icon: 'location',
+    label: '总部研发中心',
+    value: '北京市海淀区中关村前沿科技创新中心 A 座 12 层',
+  },
+  {
+    icon: 'mail',
+    label: '商务与生态合作邮箱',
+    value: 'partner@qituzhixue.com',
+  },
+  {
+    icon: 'phone',
+    label: '全国课程与研学热线',
+    value: '400-820-9188',
+    hint: '周一至周日 09:00 - 21:00',
+  },
+  {
+    icon: 'qr',
+    label: '微信公众号',
+    value: '启途智学科创智库',
+    hint: '关注后回复「样章」获取课程样章',
+  },
+];
 
-type SubmitStatus = 'idle' | 'submitting' | 'error';
-type ErrorKind = 'invalid' | 'role' | 'network' | 'rate' | 'other' | null;
+const FOOTER_COLUMNS = [
+  {
+    title: '创新产品',
+    links: [
+      { label: 'AI 驱动 PBL 项目工坊', href: '/login' },
+      { label: '21 世纪核心能力罗盘', href: '/login' },
+      { label: '苏格拉底式导师引擎', href: '/login' },
+      { label: '高校与实验室互联链', href: '/login' },
+    ],
+  },
+  {
+    title: '关于生态',
+    links: [
+      { label: '关于启途智学', href: '#about' },
+      { label: '研学基地合作', href: '#contact' },
+      { label: '学术导师智库', href: '#contact' },
+      { label: '教育公平公益计划', href: '#contact' },
+      { label: '热门项目展厅', href: '#showcase' },
+    ],
+  },
+] as const;
 
-const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
-  invalid: '账号或密码错误，请检查后重试。',
-  role: '当前账号角色与所选身份不匹配，请切换身份后重试。',
-  network: '网络不可达，请检查网络连接后重试。',
-  rate: '尝试过于频繁，请稍后再试。',
-  other: '登录失败，请稍后重试。',
+const FALLBACK_STATS: PublicHomeStats = {
+  learners: 0,
+  schools: 0,
+  publishedTemplates: 0,
+  publishedWorks: 0,
 };
 
-export default function LoginPage() {
-  const [role, setRole] = useState<LoginRole>('student');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberAccount, setRememberAccount] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [status, setStatus] = useState<SubmitStatus>('idle');
-  const [errorKind, setErrorKind] = useState<ErrorKind>(null);
-  const [offline, setOffline] = useState(false);
-  const [cachedUser, setCachedUser] = useState<CurrentUser | null>(null);
-
-  const nextPath = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    const params = new URLSearchParams(window.location.search);
-    return resolveNextPath(params.get('next'));
-  }, []);
-
-  // 挂载时：预填记住的邮箱 + 读取可能存在的有效会话。
-  useEffect(() => {
-    let rememberedEmail = '';
-    try {
-      rememberedEmail = window.localStorage.getItem(REMEMBERED_ACCOUNT_KEY) ?? '';
-    } catch {
-      rememberedEmail = '';
+async function loadHomeView(): Promise<{ view: PublicHomeView | null; degraded: boolean }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HOME_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_ORIGIN}/api/v1/public/home`, {
+      headers: { accept: 'application/json' },
+      next: { revalidate: 60 },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return { view: null, degraded: true };
     }
-    if (rememberedEmail) {
-      setEmail(rememberedEmail);
-      setRememberAccount(true);
+    const payload = (await response.json()) as { data?: PublicHomeView };
+    if (payload.data === undefined) {
+      return { view: null, degraded: true };
     }
-
-    const session = readCachedSession();
-    const now = Date.now();
-    const valid =
-      session !== null &&
-      Number.isFinite(new Date(session.expiresAt).getTime()) &&
-      new Date(session.expiresAt).getTime() > now;
-    setCachedUser(valid ? session.user : null);
-  }, []);
-
-  // 断网检测：断网时禁用提交并提示。
-  useEffect(() => {
-    function update(): void {
-      setOffline(typeof navigator !== 'undefined' && navigator.onLine === false);
-    }
-    update();
-    window.addEventListener('online', update);
-    window.addEventListener('offline', update);
-    return () => {
-      window.removeEventListener('online', update);
-      window.removeEventListener('offline', update);
-    };
-  }, []);
-
-  function persistRememberedEmail(nextEmail: string, nextRemember: boolean): void {
-    try {
-      if (nextRemember) {
-        window.localStorage.setItem(REMEMBERED_ACCOUNT_KEY, nextEmail);
-      } else {
-        window.localStorage.removeItem(REMEMBERED_ACCOUNT_KEY);
-      }
-    } catch {
-      // localStorage 不可用时静默降级：本次登录仍可用，只是无法记住账号。
-    }
+    return { view: payload.data, degraded: false };
+  } catch {
+    // 后端未就绪 / 超时：降级渲染，不阻塞首屏。
+    return { view: null, degraded: true };
+  } finally {
+    clearTimeout(timer);
   }
+}
 
-  function fillDemoAccount(option: RoleOption): void {
-    setRole(option.role);
-    setEmail(option.demoEmail);
-    setPassword(option.demoPassword);
-    setStatus('idle');
-    setErrorKind(null);
-    persistRememberedEmail(option.demoEmail, rememberAccount);
-  }
+export default async function HomePage() {
+  const { view, degraded } = await loadHomeView();
+  const stats = view?.stats ?? FALLBACK_STATS;
+  const templates: PublicHomeTemplate[] = view?.templates ?? [];
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (offline) {
-      setErrorKind('network');
-      setStatus('error');
-      return;
-    }
+  const heroStats = [
+    {
+      icon: 'group' as IconName,
+      value: countLabel(stats.learners),
+      label: '名在册学习者',
+      hint: '平台在册学生账号，实时统计',
+    },
+    {
+      icon: 'school' as IconName,
+      value: countLabel(stats.schools),
+      label: '所已接入学校',
+      hint: '已完成接入并处于启用状态',
+    },
+    {
+      icon: 'layers' as IconName,
+      value: countLabel(stats.publishedTemplates),
+      label: '个公开项目模板',
+      hint: '平台共享且已发布的模板',
+    },
+  ];
 
-    setStatus('submitting');
-    setErrorKind(null);
-
-    const idempotencyKey = makeIdempotencyKey();
-    try {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'X-Idempotency-Key': idempotencyKey,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-          rememberMe: rememberAccount,
-        } satisfies LoginRequest),
-      });
-
-      const payload = (await response.json().catch(() => null)) as {
-        data?: LoginResponse;
-        message?: string;
-      } | null;
-
-      if (!response.ok) {
-        if (response.status === 401) setErrorKind('invalid');
-        else if (response.status === 429) setErrorKind('rate');
-        else setErrorKind('other');
-        setStatus('error');
-        return;
-      }
-
-      const data = payload?.data;
-      if (!data?.user) {
-        setErrorKind('other');
-        setStatus('error');
-        return;
-      }
-
-      if (data.user.role !== role) {
-        setErrorKind('role');
-        setStatus('error');
-        return;
-      }
-
-      writeCachedSession(data);
-      persistRememberedEmail(email, rememberAccount);
-      // 登录成功后由浏览器执行跳转，避免把未确认身份的 next 当作可信目标。
-      window.location.assign(nextPath ?? destinationFor(data.user.role));
-    } catch (cause) {
-      if (cause instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-        setErrorKind('network');
-      } else {
-        setErrorKind('other');
-      }
-      setStatus('error');
-    }
-  }
+  const aboutStats = [
+    {
+      icon: 'group' as IconName,
+      value: countLabel(stats.learners),
+      label: '在册学习者',
+      hint: '正在平台上开展项目的学生账号',
+    },
+    {
+      icon: 'school' as IconName,
+      value: countLabel(stats.schools),
+      label: '已接入学校',
+      hint: '与平台完成接入并处于启用状态',
+    },
+    {
+      icon: 'layers' as IconName,
+      value: countLabel(stats.publishedTemplates),
+      label: '公开项目模板',
+      hint: '平台共享、可直接发起项目的模板',
+    },
+    {
+      icon: 'rocket' as IconName,
+      value: countLabel(stats.publishedWorks),
+      label: '公开作品',
+      hint: '学生作品中选择公开分享的数量',
+    },
+  ];
 
   return (
-    <main className="login-page">
-      <section className="login-intro" aria-labelledby="login-intro-title">
-        <p className="eyebrow" style={{ color: colors.primary }}>
-          QITU SMART LEARNING
-        </p>
-        <h1 id="login-intro-title" className="login-intro-logo">
-          <BrandLogo width={220} />
-        </h1>
-        <p className="login-positioning">面向中小学的项目式 AI 学习平台。</p>
-        <p className="login-desc">
-          学生探索和创作，家长看见成长过程，班主任及时提供支持。
-        </p>
+    <div className="home-page">
+      <div className="home-orbs" aria-hidden="true">
+        <span className="home-orb home-orb--primary" />
+        <span className="home-orb home-orb--mint" />
+        <span className="home-orb home-orb--violet" />
+      </div>
 
-        <ul className="login-feature-list">
-          <li>AI搭档启发式引导，先思考再动手</li>
-          <li>先理论后实践，稳步进入项目创作</li>
-          <li>作品与成长档案沉淀每一步学习轨迹</li>
-          <li>安全与最小可见范围，守护未成年人数据</li>
-        </ul>
+      <SiteNav />
 
-        <div className="login-how">
-          <HandwrittenNote rotate={-2}>如何登录？</HandwrittenNote>
-          <p>
-            本平台使用学校统一发放的账号（邮箱）与密码登录，不支持自助注册。
-            如忘记密码，请联系班主任或管理员重置。
-          </p>
-        </div>
-      </section>
+      <main className="home-main">
+        <section className="home-hero" id="top">
+          <div className="home-shell home-hero-grid">
+            <div className="home-hero-copy">
+              <p className="home-badge">
+                <span className="home-badge-pill">NEW</span>
+                全新发布 · AI 驱动的沉浸式个性化项目学习平台 3.0
+              </p>
+              <h1 className="home-hero-title">
+                让每一次学习
+                <span className="home-hero-title-accent">都有明确方向</span>
+              </h1>
+              <p className="home-hero-sub">与 AI 共成长，启发真实世界新思维</p>
+              <p className="home-hero-lead">
+                在苏格拉底式启发对话中与 AI 导师一同探究真实挑战，在动手实践中让灵感成形。
+                启途智学为你生成动态成长路径，并沉淀 6 维核心能力图谱。
+              </p>
+              <div className="home-hero-actions">
+                <Link className="home-btn home-btn--primary home-btn--lg" href="/login">
+                  立即开启 AI 探索之旅
+                  <Icon name="arrowRight" size={18} />
+                </Link>
+                <DemoModal
+                  label="观看 PBL 项目演示"
+                  variant="outline"
+                  icon="play"
+                  className="home-btn--lg"
+                />
+              </div>
+              <p className="home-trust">
+                <span>
+                  <Icon name="school" size={16} /> 校本课程与校本模板
+                </span>
+                <span>
+                  <Icon name="brain" size={16} /> 苏格拉底式启发提问
+                </span>
+                <span>
+                  <Icon name="bolt" size={16} /> 理论达标才解锁实践
+                </span>
+              </p>
 
-      <section className="login-panel" aria-labelledby="login-title">
-        <div className="login-brand-row">
-          <div className="login-brand">
-            <BrandMark size={36} decorative />
-            <span>启途智学</span>
+              {degraded ? (
+                <p className="home-data-note" role="status">
+                  <Icon name="sensors" size={18} />
+                  平台实时数据暂时无法获取，下方统计显示为「—」。稍后刷新页面即可重新获取，
+                  你也可以直接登录查看自己的项目数据。
+                </p>
+              ) : null}
+
+              <dl className="home-hero-stats">
+                {heroStats.map((item) => (
+                  <div className="home-stat" key={item.label}>
+                    <dt>
+                      <Icon name={item.icon} size={16} /> {item.label}
+                    </dt>
+                    <dd>
+                      <strong>{degraded ? '—' : item.value}</strong>
+                      <span>{item.hint}</span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            <HeroTutorDemo />
           </div>
-          <RobotMascot size={56} mood="happy" />
-        </div>
-        <h2 id="login-title">登录你的工作空间</h2>
-        <p className="login-muted">选择身份后，将进入对应的学习系统。</p>
+        </section>
 
-        {cachedUser ? (
-          <div className="login-session-banner" role="status">
-            <span>检测到上次登录的会话</span>
-            <button
-              type="button"
-              className="login-continue"
-              onClick={() => window.location.assign(destinationFor(cachedUser.role))}
-            >
-              继续进入上次的空间
-            </button>
+        <section className="home-section" id="pbl">
+          <div className="home-shell">
+            <div className="home-section-head">
+              <p className="home-eyebrow">
+                <Icon name="layers" size={16} /> PBL 教学范式革新
+              </p>
+              <h2 className="home-section-title">打破被动死记硬背，以真实项目激活内驱力</h2>
+              <p className="home-section-lead">
+                真实挑战不会附带现成标准答案。启途智学将前沿 AI 工具与建构主义学习法深度融合，
+                带领学生经历完整的「研究 — 假设 — 验证 — 落地」闭环。
+              </p>
+            </div>
+
+            <ol className="home-step-grid">
+              {PBL_STEPS.map((step) => (
+                <li className="home-step-card" key={step.index}>
+                  <span className="home-step-index">{step.index}</span>
+                  <span className="home-step-icon" aria-hidden="true">
+                    <Icon name={step.icon} size={22} />
+                  </span>
+                  <h3>{step.title}</h3>
+                  <p>{step.detail}</p>
+                  <p className="home-deliverable">
+                    <Icon name="verified" size={16} />
+                    交付物：{step.outcome}
+                  </p>
+                </li>
+              ))}
+            </ol>
           </div>
-        ) : null}
+        </section>
 
-        {offline ? (
-          <div className="login-offline">
-            <OfflineBanner readOnly={false} />
+        <section className="home-section home-section--tinted" id="competency">
+          <div className="home-shell">
+            <div className="home-section-head">
+              <p className="home-eyebrow home-eyebrow--mint">
+                <Icon name="target" size={16} /> 21 世纪素养罗盘
+              </p>
+              <h2 className="home-section-title">学生高阶核心能力拓展矩阵</h2>
+              <p className="home-section-lead">
+                超越单一分数考评，启途智学通过细分项目场景持续哺育并动态量化 6 大不可被 AI 替代的元能力。
+              </p>
+              <p className="home-metric-strip">
+                <Icon name="chart" size={18} />
+                能力雷达与掌握度由平台按学习行为记录计算，全过程留痕、可回溯。
+              </p>
+            </div>
+
+            <div className="home-quad-grid">
+              {COMPETENCIES.map((item) => (
+                <article className="home-quad-card" key={item.name}>
+                  <span className="home-quad-icon" aria-hidden="true">
+                    <Icon name={item.icon} size={22} />
+                  </span>
+                  <h3 className="home-quad-name">{item.name}</h3>
+                  <p className="home-quad-en">{item.en}</p>
+                  <p className="home-quad-detail">{item.detail}</p>
+                  <p className="home-quad-metrics">
+                    <span>认知测评维度</span>
+                    {item.metrics}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
-        ) : null}
+        </section>
 
-        <div className="role-tabs" role="tablist" aria-label="选择身份">
-          {ROLE_OPTIONS.map((option) => (
-            <button
-              className={role === option.role ? 'role-tab active' : 'role-tab'}
-              key={option.role}
-              type="button"
-              onClick={() => {
-                setRole(option.role);
-                setErrorKind(null);
-                setStatus('idle');
-              }}
-              role="tab"
-              aria-selected={role === option.role}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <section className="home-section" id="showcase">
+          <div className="home-shell">
+            <div className="home-section-head home-section-head--row">
+              <div>
+                <p className="home-eyebrow">
+                  <Icon name="compass" size={16} /> Project Showcases
+                </p>
+                <h2 className="home-section-title">热门沉浸式项目展厅</h2>
+                <p className="home-section-lead">
+                  以下卡片来自平台真实发布的公开模板（含学科、适龄、难度与阶段安排），
+                  登录后即可基于任意模板发起自己的项目。
+                </p>
+              </div>
+              <div className="home-showcase-meta">
+                <span className="home-showcase-count">
+                  共 {degraded ? '—' : countLabel(templates.length)} 个公开模板
+                </span>
+                <Link className="home-btn home-btn--ghost" href="/login">
+                  登录后探索全部
+                  <Icon name="arrowRight" size={18} />
+                </Link>
+              </div>
+            </div>
 
-        <form onSubmit={submit} aria-busy={status === 'submitting'}>
-          <label htmlFor="login-email">
-            邮箱
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setStatus('idle');
-                setErrorKind(null);
-                persistRememberedEmail(event.target.value, rememberAccount);
-              }}
-              placeholder="请输入学校统一发放的登录邮箱"
-            />
-          </label>
+            <TemplateShowcase templates={templates} />
+          </div>
+        </section>
 
-          <label htmlFor="login-password">
-            密码
-            <span className="login-password-wrap">
-              <input
-                id="login-password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setStatus('idle');
-                  setErrorKind(null);
-                }}
-                placeholder="请输入密码"
-              />
-              <button
-                type="button"
-                className="login-password-toggle"
-                aria-label={showPassword ? '隐藏密码' : '显示密码'}
-                aria-pressed={showPassword}
-                onClick={() => setShowPassword((value) => !value)}
-              >
-                {showPassword ? '隐藏' : '显示'}
-              </button>
-            </span>
-          </label>
+        <section className="home-section home-section--deep" id="about">
+          <div className="home-shell">
+            <div className="home-about-grid">
+              <div className="home-about-copy">
+                <p className="home-eyebrow">
+                  <Icon name="verified" size={16} /> 关于启途智学（QiTu Smart Learning）
+                </p>
+                <h2 className="home-section-title">
+                  源自顶级 AI 实验室，
+                  <br />
+                  为培育面向智能时代的青年领袖而生
+                </h2>
+                <p>
+                  启途智学由清华大学交叉信息研究院与斯坦福大学学习科技实验室团队成员联合创立。
+                  我们坚信：AI 时代的教育核心不是让孩子比拼算力与题库，而是唤醒深植于内心的探究欲、
+                  同理心与跨学科工程创造力。
+                </p>
+                <p>
+                  通过自主研发的「苏格拉底认知启发大模型」与「PBL 项目数字工坊」，我们把过去专属高校
+                  研讨室的高阶导师制项目研学，普惠给每一个渴望探索的学习者。
+                </p>
+                <p className="home-about-footnote">
+                  下方数字为平台实时统计口径，随真实使用情况变化。
+                </p>
+              </div>
 
-          <label className="login-remember">
-            <input
-              type="checkbox"
-              name="rememberAccount"
-              checked={rememberAccount}
-              onChange={(event) => {
-                setRememberAccount(event.target.checked);
-                persistRememberedEmail(email, event.target.checked);
-              }}
-            />
-            <span>记住账号（仅在本机保存邮箱，不保存密码）</span>
-          </label>
+              <dl className="home-stat-grid">
+                {aboutStats.map((item) => (
+                  <div className="home-stat-tile" key={item.label}>
+                    <dt>
+                      <span className="home-stat-tile-icon" aria-hidden="true">
+                        <Icon name={item.icon} size={20} />
+                      </span>
+                      {item.label}
+                    </dt>
+                    <dd>
+                      <strong>{degraded ? '—' : item.value}</strong>
+                      <span>{item.hint}</span>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
 
-          {status === 'error' && errorKind ? (
-            <p className="login-error" role="alert">
-              {ERROR_MESSAGES[errorKind]}
-            </p>
-          ) : null}
+            <div className="home-quotes">
+              <h3 className="home-quotes-title">听听来自探索者与家长的真实声音</h3>
+              <div className="home-quote-grid">
+                {TESTIMONIALS.map((item) => (
+                  <figure className="home-quote-card" key={item.name}>
+                    <span className="home-stars" aria-label="五星评价">
+                      {[0, 1, 2, 3, 4].map((star) => (
+                        <Icon name="star" size={15} key={star} />
+                      ))}
+                    </span>
+                    <blockquote>{item.quote}</blockquote>
+                    <figcaption>
+                      <span className="home-quote-avatar" aria-hidden="true">
+                        {item.initial}
+                      </span>
+                      <span className="home-quote-body">
+                        <strong>{item.name}</strong>
+                        <span>{item.note}</span>
+                      </span>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
-          <button
-            className="login-submit"
-            disabled={status === 'submitting' || offline}
-            type="submit"
-            aria-busy={status === 'submitting'}
-          >
-            {status === 'submitting' ? '登录中…' : offline ? '离线，无法登录' : '进入系统'}
-          </button>
-        </form>
+        <section className="home-section" id="contact">
+          <div className="home-shell">
+            <div className="home-section-head">
+              <p className="home-eyebrow home-eyebrow--mint">
+                <Icon name="hub" size={16} /> 生态共赢合作
+              </p>
+              <h2 className="home-section-title">
+                与启途智学同行，
+                <br />
+                共筑未来教育新生态
+              </h2>
+              <p className="home-section-lead">
+                欢迎基础教育学校、高校实验室、研学机构及家庭学习者与我们取得联系，
+                我们会为你定制项目式 AI 探索方案。
+              </p>
+            </div>
 
-        <p className="login-forgot">
-          忘记密码？本平台不提供自助重置，请联系班主任或管理员重置密码。
-        </p>
+            <div className="home-contact-grid">
+              <div className="home-contact-aside">
+                <ul className="home-contact-list">
+                  {CONTACT_ROWS.map((row) => (
+                    <li key={row.label}>
+                      <span className="home-contact-icon" aria-hidden="true">
+                        <Icon name={row.icon} size={20} />
+                      </span>
+                      <span className="home-contact-body">
+                        <strong>{row.label}</strong>
+                        <span>{row.value}</span>
+                        {row.hint !== undefined ? <em>{row.hint}</em> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="home-contact-note">
+                  <Icon name="headset" size={18} />
+                  工作日 09:00 - 19:00 在线客服；紧急问题可直接致电课程热线。
+                </p>
+              </div>
 
-        <div className="login-demo">
-          <p className="login-demo-title">演示环境账号（点击填充）</p>
-          <div className="login-demo-buttons">
-            {ROLE_OPTIONS.map((option) => (
-              <button key={option.role} type="button" onClick={() => fillDemoAccount(option)}>
-                {option.label}演示
-              </button>
+              <div className="home-contact-card">
+                <h3>一键预约体验课 / 院校机构合作洽谈</h3>
+                <p className="home-contact-card-lead">
+                  提交信息后，我们的教育顾问会在 1 个工作日内与你联系，并提供适配的方案建议。
+                </p>
+                <ConsultationForm />
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="home-footer">
+        <div className="home-shell">
+          <div className="home-footer-grid">
+            <div className="home-footer-brand">
+              <p className="home-brand-name">启途智学</p>
+              <p className="home-footer-desc">
+                启途智学是专注于下一代认知进化与探究式学习的智能教育平台。融合大语言模型评估、
+                生成式 PBL 工坊与多维能力图谱，助力每一位学习者探索热爱、构建未来竞争力。
+              </p>
+              <p className="home-footer-social" aria-hidden="true">
+                <span>
+                  <Icon name="forum" size={18} />
+                </span>
+                <span>
+                  <Icon name="mic" size={18} />
+                </span>
+                <span>
+                  <Icon name="share" size={18} />
+                </span>
+                <span>
+                  <Icon name="mail" size={18} />
+                </span>
+              </p>
+            </div>
+
+            {FOOTER_COLUMNS.map((column) => (
+              <nav className="home-footer-col" key={column.title} aria-label={column.title}>
+                <h3>{column.title}</h3>
+                <ul>
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      {link.href.startsWith('/') ? (
+                        <Link href={link.href}>{link.label}</Link>
+                      ) : (
+                        <a href={link.href}>{link.label}</a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </nav>
             ))}
+
+            <div className="home-footer-col">
+              <h3>联系与支持</h3>
+              <ul className="home-footer-contact">
+                <li>
+                  <Icon name="phone" size={16} /> 400-820-9188
+                </li>
+                <li>
+                  <Icon name="mail" size={16} /> partner@qituzhixue.com
+                </li>
+                <li>
+                  <Icon name="location" size={16} /> 西安市雁塔区创智天地科创中心 12 栋
+                </li>
+                <li>
+                  <Icon name="headset" size={16} /> 工作日 09:00 - 19:00 在线客服
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="login-demo-note">
-            演示口令写在前端代码里，任何人都能看到，只能用在校内演示环境。正式环境必须改为由服务器环境变量下发，并在上线前移除这里的演示账号。
-          </p>
+
+          <div className="home-footer-bottom">
+            <p>© 2025 启途智学（西安）智能科技有限公司. 保留所有权利。</p>
+            <p className="home-footer-legal">
+              <span>陕ICP备2024018899号-1</span>
+              <span>公网安备 61011302005520号</span>
+              <span>服务条款与隐私政策整理中</span>
+            </p>
+          </div>
         </div>
-      </section>
-    </main>
+      </footer>
+    </div>
   );
 }

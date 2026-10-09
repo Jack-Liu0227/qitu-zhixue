@@ -9,7 +9,8 @@
 
 | 公共路径 | 内部服务 | 角色 |
 |---|---:|---|
-| `/` | `127.0.0.1:3100` | 统一登录 |
+| `/` | `127.0.0.1:3100` | 官网首页 |
+| `/login` | `127.0.0.1:3100` | 统一登录 |
 | `/student/` | `127.0.0.1:3101` | 学生 |
 | `/parent/` | `127.0.0.1:3102` | 家长 |
 | `/teacher/` | `127.0.0.1:3103` | 班主任 |
@@ -20,6 +21,7 @@
 
 ```text
 http://qtzx.jaycue.tech:3000/
+http://qtzx.jaycue.tech:3000/login
 http://qtzx.jaycue.tech:3000/student/
 http://qtzx.jaycue.tech:3000/parent/
 http://qtzx.jaycue.tech:3000/teacher/
@@ -29,6 +31,7 @@ http://qtzx.jaycue.tech:3000/api/v1/health
 
 前端调用相对路径 `/api/v1/*`，因此**必须**经统一入口访问，不能直连应用端口。
 域名与 IP 回退见 [`authentication.md`](./authentication.md) §4。
+官网首页与公开接口见 [`public-site.md`](./public-site.md)。
 `tooling/qitu-ports.env.example` 是端口约定；**禁止把真实 `.env` 或密码提交到仓库**。
 
 ## 2. 本地开发启动
@@ -114,4 +117,5 @@ sudo systemctl reload nginx
 
 - [`initialization.md`](./initialization.md)
 - [`authentication.md`](./authentication.md)
+- [`public-site.md`](./public-site.md)
 - [`control-plane.md`](./control-plane.md)
