@@ -7,6 +7,11 @@ import type {
 } from '@qitu/contracts';
 import { isTutorReplyBlock } from '../state';
 import { TutorDataError } from './dataSource';
+import {
+  TUTOR_TEAM_FRAME_NAME_LIST,
+  teamFrameKind,
+  teamFrameToReplyBlock,
+} from './teamFrames';
 
 /**
  * Transport for `POST /api/v1/tutor/sessions/:id/stream` (Server-Sent Events).
@@ -45,7 +50,13 @@ export interface TutorStreamHandlers {
   onSettled?: () => void;
 }
 
-/** Server-sent frame names this client understands. */
+/**
+ * Server-sent frame names this client understands.
+ *
+ * `TUTOR_TEAM_FRAME_NAME_LIST` 是团队帧常量的唯一出处（data/teamFrames.ts，
+ * 与服务端 TEAM_FRAME_NAMES 逐字对齐）；新增帧名只改那一处。
+ * 独立验证官 F5：team.* 帧曾被这里白名单外静默丢弃，现已全部收录。
+ */
 const KNOWN_FRAMES = new Set([
   'tool_call',
   'tool_result',
@@ -58,6 +69,7 @@ const KNOWN_FRAMES = new Set([
   'tutor.delta',
   'tutor.tool_call',
   'tutor.tool_result',
+  ...TUTOR_TEAM_FRAME_NAME_LIST,
 ]);
 
 /**
@@ -197,6 +209,24 @@ function toServerEvent(
   const base = { sessionId, turnId, seq, timestamp } as const;
 
   switch (name) {
+    case 'team.phase_advanced':
+    case 'team.gate_blocked':
+    case 'team.member_delegated':
+    case 'team.tool_invoked':
+    case 'team.thinking': {
+      // 团队帧（F5）：借用已冻结的 `tutor.block` 信封投递，块型限定在
+      // pbl_card / tool / think 三种既有变体，渲染为 PblStageCard /
+      // ToolCallTimeline / ModelThinkingCard。字段逐字对齐服务端
+      // writeTeamFrame + buildTeamFrameData 的扁平 payload；缺必需字段时
+      // 返回 null（与其他坏帧处理一致），不伪造内容、不静默替换。
+      const kind = teamFrameKind(name);
+      if (kind === null) return null;
+      // frameId 由服务端 writeTeamFrame 信封固定写入（tutor.controller.ts:417-430）。
+      const frameId = readString(payload, 'frameId') ?? `team-${kind}-${base.seq}`;
+      const block = teamFrameToReplyBlock(kind, payload, frameId);
+      if (block === null || !isTutorReplyBlock(block)) return null;
+      return { ...base, type: 'tutor.block', block };
+    }
     case 'tool_call':
     case 'tutor.tool_call': {
       const callId = readString(payload, 'callId');
