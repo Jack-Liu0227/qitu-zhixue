@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
 import './globals.css';
 import './home.css';
+import './public-pages.css';
 
 export const metadata: Metadata = {
   title: {

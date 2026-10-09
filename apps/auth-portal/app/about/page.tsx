@@ -13,12 +13,12 @@ export default function AboutPage() {
     <div className="about-page">
       <header className="header shell">
       <Link className="brand" href="/" aria-label="启途智学首页"><span className="logo" aria-hidden="true"><BrandMark size={40} decorative /></span><span>启途智学</span></Link>
-      <nav aria-label="主导航"><Link href="/">首页</Link><Link className="active" href="/about" aria-current="page">关于我们</Link></nav>
+      <nav aria-label="主导航"><Link href="/">首页</Link><Link href="/learning">项目式学习</Link><Link className="active" href="/about" aria-current="page">关于我们</Link><Link href="/contact">合作联系</Link></nav>
       <Link className="login-button" href="/login">登录 <span aria-hidden="true">↗</span></Link>
       </header>
       <main>
       <section className="about-hero shell">
-      <div className="hero-intro reveal visible"><h1>让好奇发生，<br />让<span>成长留下。</span></h1><p>每一个“为什么”，<br />都可能是一段了不起的旅程的开始。</p><a className="text-link" href="#who">认识启途智学 <span>↓</span></a></div>
+      <div className="hero-intro reveal visible"><h1>让好奇发生，<br />让<span>成长留下。</span></h1><p>每一个“为什么”，<br />都可能是一段了不起的旅程的开始。</p><Link className="text-link" href="/learning">看看学习如何开始 <span>↗</span></Link></div>
       <div className="exploration-art reveal delay-1 visible" aria-label="从一个问题，经过探索，完成自己的作品">
       <div className="exploration-grid" aria-hidden="true"></div>
       <div className="exploration-top"><span><i></i> 一段成长，正在发生</span><small>01 → 02 → 03</small></div>

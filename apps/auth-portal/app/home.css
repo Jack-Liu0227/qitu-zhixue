@@ -10,11 +10,6 @@
  * - 移动优先：默认单列，`768px` / `1024px` / `1200px` 逐级增强。
  */
 
-/* 锚点跳转时给固定导航留出空间。 */
-html {
-  scroll-padding-top: 88px;
-}
-
 .home-page {
   --hp-primary: #0038b2;
   --hp-primary-container: #1e4fd9;
@@ -1342,10 +1337,18 @@ html {
   opacity: 0.85;
 }
 
-.home-contact-body span {
+.home-contact-body span,
+.home-contact-body a {
   font-size: 0.98rem;
   font-weight: 600;
   line-height: 1.5;
+}
+
+.home-contact-body a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgb(67 70 85 / 30%);
+  text-underline-offset: 3px;
 }
 
 .home-contact-body em {
@@ -1686,6 +1689,13 @@ html {
   gap: 8px;
   color: rgb(255 255 255 / 72%);
   font-size: 0.86rem;
+}
+
+.home-footer-contact a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 30%);
+  text-underline-offset: 3px;
 }
 
 .home-footer-contact svg {
