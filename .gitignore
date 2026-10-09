@@ -65,3 +65,7 @@ docs/teacher_frontend_pictures/
 # Python
 __pycache__/
 *.pyc
+
+# Worktrees
+.worktrees/
+worktrees/
