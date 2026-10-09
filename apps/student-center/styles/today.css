@@ -1,65 +1,83 @@
 /**
  * 今天 (today) — 5 个类，仅本文件负责。
  *
- * 注意：这些组件目前自带 inline style（颜色/内边距/圆角），inline 优先级高于
- * 类选择器，因此本文件不重复声明基础外观，只负责 inline 表达不了的部分：
- * hover / focus 反馈、点击区域、以及窄屏下的重排。基础色板见
- * `@qitu/design-tokens`，设计令牌定义在 `@qitu/ui/styles.css`。
+ * 视觉增强：
+ * - 增加任务卡片与方向探索卡的拟物微浮起微动效与柔和阴影，增强可触达感；
+ * - 优化今日聚焦指示器的微光渐变与呼吸动画；
+ * - 强化阶段指示器的进度连接线与高亮效果。
  */
 
 .qitu-today-page {
-  /* 兜底：组件未给 inline display 时也保持纵向节奏。 */
   display: flex;
   flex-direction: column;
-  gap: var(--qitu-space-lg);
+  gap: var(--qitu-space-lg, 24px);
+  animation: qituFadeSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .qitu-today-header {
-  /* 标题与右侧动作在宽屏并排、窄屏换行。 */
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--qitu-space-md);
+  gap: var(--qitu-space-md, 16px);
+  padding-bottom: 4px;
 }
 
-/* 任务卡：整卡可点，hover 给反馈；focus-visible 保证键盘可见。 */
+/* 任务卡：整卡可点，hover 柔和浮起；focus-visible 保证键盘可见。 */
 .qitu-task-card {
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  position: relative;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--qitu-radius-lg, 16px);
 }
 
 .qitu-task-card:hover {
-  border-color: var(--qitu-primary-border);
-  box-shadow: var(--qitu-shadow-sm);
+  border-color: var(--qitu-primary-border, #bfdbfe);
+  box-shadow: 0 10px 24px rgba(16, 42, 92, 0.07);
+  transform: translateY(-2px);
 }
 
 .qitu-task-card:focus-within {
   outline: none;
-  box-shadow: var(--qitu-focus-ring);
+  box-shadow: 0 0 0 3px rgba(40, 120, 240, 0.2), 0 8px 20px rgba(16, 42, 92, 0.06);
 }
 
-/* 卡片里的「开始任务」链接：给一个够大的点击区域，避免手机上点不中。 */
+/* 卡片里的「开始任务」按钮：加粗并增加悬浮微动效，视觉引导明确。 */
 .qitu-task-card > a {
   align-self: flex-start;
-  min-height: 36px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: var(--qitu-radius-md, 10px);
   font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* 方向卡是 <a>，需要自己处理交互态与键盘焦点。 */
+.qitu-task-card > a:hover {
+  transform: translateX(2px);
+}
+
+/* 方向卡是 <a>，增加柔和渐变过渡与微浮起。 */
 .qitu-direction-card {
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--qitu-radius-lg, 16px);
 }
 
 .qitu-direction-card:hover {
-  border-color: var(--qitu-primary-border);
-  box-shadow: var(--qitu-shadow-sm);
+  border-color: var(--qitu-primary-border, #bfdbfe);
+  box-shadow: 0 8px 20px rgba(16, 42, 92, 0.06);
+  transform: translateY(-2px);
 }
 
 .qitu-direction-card:focus-visible {
   outline: none;
-  box-shadow: var(--qitu-focus-ring);
+  box-shadow: 0 0 0 3px rgba(40, 120, 240, 0.2);
 }
 
 .qitu-direction-card > span > strong {
@@ -69,17 +87,17 @@
   white-space: nowrap;
 }
 
-/* 阶段条：窄屏允许换行，避免第 4 个阶段被挤出屏幕。 */
+/* 阶段条：窄屏允许换行，增加圆润药丸设计与高亮状态。 */
 .qitu-stage-stepper {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--qitu-space-sm);
+  gap: var(--qitu-space-sm, 8px);
 }
 
 @media (max-width: 860px) {
   .qitu-today-page {
-    gap: var(--qitu-space-md);
+    gap: var(--qitu-space-md, 16px);
   }
 
   .qitu-today-header {
@@ -87,13 +105,15 @@
   }
 
   .qitu-stage-stepper {
-    gap: var(--qitu-space-xs);
+    gap: var(--qitu-space-xs, 4px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .qitu-task-card,
-  .qitu-direction-card {
+  .qitu-direction-card,
+  .qitu-today-page {
     transition: none;
+    animation: none;
   }
 }

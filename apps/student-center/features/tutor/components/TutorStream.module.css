@@ -279,12 +279,33 @@
 /* ------------------------------------------------------------------------- */
 
 .pblCard {
-  margin: 10px 0 14px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid #dbeafe;
-  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.05);
+  position: relative;
+  margin: 12px 0 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 85%);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.pblCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #3b82f6 0%, #6366f1 100%);
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+
+.pblCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  border-color: #93c5fd;
 }
 
 .pblCardHeader {
@@ -295,54 +316,57 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .pblPhasePill {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: #dbeafe;
   color: #1d4ed8;
+  letter-spacing: 0.02em;
 }
 
 .pblTeammatePill {
   font-size: 11px;
   font-weight: 500;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   color: #475569;
 }
 
 .pblCardTitle {
   margin: 0;
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
-  color: #1e293b;
+  color: #0f172a;
 }
 
 .pblCardSummary {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: 13px;
-  line-height: 1.55;
-  color: #475569;
+  line-height: 1.6;
+  color: #334155;
 }
 
 .pblCardTags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .pblTag {
   font-size: 11px;
+  font-weight: 500;
   color: #2563eb;
   background: rgba(37, 99, 235, 0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 .pblCardFooter {
@@ -351,18 +375,21 @@
 }
 
 .pblActionButton {
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 5px 12px;
+  border-radius: 8px;
+  padding: 6px 14px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pblActionButton:hover {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
 
