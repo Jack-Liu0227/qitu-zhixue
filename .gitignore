@@ -69,3 +69,6 @@ __pycache__/
 # Worktrees
 .worktrees/
 worktrees/
+
+# Stitch designs
+.stitch/
