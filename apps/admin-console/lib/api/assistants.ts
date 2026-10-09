@@ -42,7 +42,7 @@ export async function updateAdminAssistant(
     // If backend endpoint is offline in mock/demo, return merged object
   }
 
-  const existing = BUILTIN_ASSISTANTS.find((a) => a.id === id);
+  const existing = (BUILTIN_ASSISTANTS as AdminAssistantConfig[]).find((a: AdminAssistantConfig) => a.id === id);
   if (!existing) throw new Error(`ASSISTANT_NOT_FOUND: ${id}`);
   return {
     ...existing,
