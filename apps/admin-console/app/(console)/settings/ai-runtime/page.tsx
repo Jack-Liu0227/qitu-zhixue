@@ -787,6 +787,13 @@ export default function AdminRuntimePage() {
   const [error, setError] = useState<Error | null>(null);
   const [tab, setTab] = useState<RuntimeTab>('skills');
 
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (TAB_ITEMS.some(({ value }) => value === requestedTab)) {
+      setTab(requestedTab as RuntimeTab);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);

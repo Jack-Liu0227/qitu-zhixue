@@ -12,6 +12,8 @@ import { usePathname } from 'next/navigation';
 
 const ITEMS = [
   { href: '/settings', label: '设置总览', exact: true },
+  { href: '/settings/assistants', label: 'AI 助手', exact: false },
+  { href: '/settings/teams', label: '团队设置', exact: false },
   { href: '/settings/model-providers', label: '模型供应商', exact: false },
   { href: '/settings/ai-runtime', label: 'AI 运行时', exact: false },
   { href: '/settings/knowledge', label: '知识库', exact: false },

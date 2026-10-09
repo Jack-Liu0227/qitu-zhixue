@@ -1,15 +1,11 @@
+'use client';
+
+import { useState } from 'react';
 import type { TutorToolCall } from '@qitu/contracts';
 import styles from './TutorStream.module.css';
 
 /**
- * One step of the tutor's execution, rendered as a student-visible row.
- *
- * WHY THIS IS IN THE UI AT ALL: 「先读项目上下文、再查掌握度、再决定提示等级、
- * 最后做答案泄露校验」 are real decisions. Showing them as discrete, ordered
- * steps is what makes the AI's help auditable — the student (and later a
- * parent or teacher) can see WHAT it looked at before it spoke, instead of
- * trusting a wall of prose. The result text is the server's short,
- * student-safe summary; nothing is composed client-side.
+ * Single step of tool execution.
  */
 export function ToolCallStep({ call }: { call: TutorToolCall }) {
   const statusText =
@@ -29,7 +25,7 @@ export function ToolCallStep({ call }: { call: TutorToolCall }) {
           </span>
         ) : null}
       </span>
-      <span>
+      <span className={styles.stepContent}>
         <span className={styles.label}>{call.label}</span>
         {call.result !== undefined && call.result.length > 0 ? (
           <span className={styles.result}>{call.result}</span>
@@ -40,25 +36,40 @@ export function ToolCallStep({ call }: { call: TutorToolCall }) {
 }
 
 /**
- * A run of consecutive tool calls, presented as one 「执行过程」 panel.
- *
- * `aria-live="polite"` is inherited from the thread container, so each new step
- * and each settled result is announced once — a screen-reader user hears the
- * same progression a sighted user watches.
+ * Collapsible Process Fold referencing DeepTutor ProcessFold & ActivityFold.
  */
 export function ToolCallTimeline({ calls }: { calls: TutorToolCall[] }) {
   if (calls.length === 0) return null;
   const running = calls.some((call) => call.status === 'running');
+  // Auto-expand when running, fold when settled; user click overrides
+  const [userOpen, setUserOpen] = useState<boolean | null>(null);
+  const open = userOpen ?? running;
+
   return (
-    <ol className={styles.timeline} data-testid="tutor-tool-timeline">
-      <li className={styles.timelineHeader} aria-hidden="true">
-        <span className={styles.timelineHeaderDot} />
-        {running ? 'AI搭档正在处理' : 'AI搭档的执行过程'}
-      </li>
-      {calls.map((call) => (
-        <ToolCallStep key={call.callId} call={call} />
-      ))}
-    </ol>
+    <div className={styles.toolFoldContainer} data-testid="tutor-tool-timeline">
+      <button
+        type="button"
+        onClick={() => setUserOpen(!open)}
+        aria-expanded={open}
+        className={styles.toolFoldButton}
+      >
+        <span className={running ? `${styles.toolStatusDot} ${styles.dotRunning}` : styles.toolStatusDot} />
+        <span className={styles.toolFoldTitle}>
+          {running ? 'AI搭档正在执行工具...' : `${calls.length} 次工具与环境调用`}
+        </span>
+        <span className={`${styles.toolFoldCaret} ${open ? styles.caretRotated : ''}`} aria-hidden="true">
+          ▶
+        </span>
+      </button>
+
+      {open && (
+        <ol className={styles.timeline}>
+          {calls.map((call) => (
+            <ToolCallStep key={call.callId} call={call} />
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }
 

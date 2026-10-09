@@ -1,0 +1,95 @@
+.prototype {
+  --ink: #27364e;
+  --muted: #73839b;
+  --line: #dce8f6;
+  --focus: #2878f0;
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.prototype *, .prototype *::before, .prototype *::after { box-sizing: border-box; }
+.header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; min-height: 154px; margin: 0; padding: 24px 28px; border: 1px solid #cfe1f3; border-radius: 16px; background: linear-gradient(110deg, #f2f9ff 0%, #edf7ff 62%, #e7f8f3 100%); }
+.eyebrow { margin: 0 0 7px; color: #1b68f8; font-size: 0.68rem; font-weight: 800; }
+.header h2 { margin: 0; color: #17243b; font-size: 1.45rem; font-weight: 750; line-height: 1.3; }
+.subtitle { margin: 8px 0 0; color: #5f6e83; font-size: 0.86rem; line-height: 1.65; }
+.headerLink, .prototypeFooter a { display: inline-flex; align-items: center; gap: 8px; color: #2878f0; font-size: 0.82rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.headerLink:hover, .prototypeFooter a:hover { color: #1b68f8; }
+.sections { display: grid; gap: 16px; }
+.section { display: grid; grid-template-columns: minmax(210px, 0.72fr) minmax(0, 1.8fr); gap: 26px; padding: 22px 24px; border: 1px solid #dce8f6; border-radius: 16px; background: #f7fbff; box-shadow: 0 7px 20px rgb(16 42 92 / 5%); }
+.sectionHeading { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
+.sectionHeading > div { flex: 1; min-width: 0; }
+.sectionHeading h3 { margin: 2px 0 5px; color: #27364e; font-size: 0.94rem; font-weight: 750; }
+.sectionHeading p { margin: 0; color: #8190a5; font-size: 0.75rem; line-height: 1.55; }
+.icon { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 11px; background: #eaf2fe; color: #2878f0; }
+.icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.badge { display: inline-flex; align-items: center; min-height: 23px; flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; font-size: 0.67rem; font-weight: 700; white-space: nowrap; }
+.badgeLive { border: 1px solid #b8e5d8; background: #e5f8f1; color: #11866f; }
+.badgeSession { border: 1px solid #f0d8b6; background: #fff5e8; color: #a66a22; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 18px; }
+.field { display: grid; align-content: start; gap: 7px; min-width: 0; color: #52637a; font-size: 0.78rem; font-weight: 650; }
+.field input, .field select { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid #cfdced; border-radius: 7px; outline: none; background: #fff; color: #33445c; font: inherit; font-size: 0.82rem; font-weight: 450; }
+.field input:focus, .field select:focus, .editor:focus { border-color: #2878f0; box-shadow: 0 0 0 3px rgb(40 120 240 / 12%); }
+.field small { min-height: 1.2em; color: #8794a8; font-size: 0.68rem; font-weight: 400; line-height: 1.45; }
+.field small a, .policyHint a { color: #2878f0; text-decoration: none; }
+.field small a:hover, .policyHint a:hover { text-decoration: underline; }
+.auxiliaryLink { color: #8794a8 !important; }
+.auxiliaryLink:hover { color: #2878f0 !important; }
+.wide { grid-column: 1 / -1; }
+.multiSelect { position: relative; min-width: 0; }
+.multiSelect > summary { list-style: none; }
+.multiSelect > summary::-webkit-details-marker { display: none; }
+.multiSelectTrigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid #cfdced; border-radius: 7px; background: #fff; color: #33445c; cursor: pointer; font-size: 0.82rem; font-weight: 450; }
+.multiSelect[open] .multiSelectTrigger { border-color: #2878f0; box-shadow: 0 0 0 3px rgb(40 120 240 / 12%); }
+.selectChevron { color: #728197; font-size: 1rem; }
+.multiSelectOptions { position: absolute; z-index: 5; top: calc(100% + 5px); right: 0; left: 0; display: grid; gap: 2px; padding: 6px; border: 1px solid #cfdced; border-radius: 8px; background: #fff; box-shadow: 0 8px 20px rgb(16 42 92 / 12%); }
+.multiSelectOptions label { display: flex; align-items: center; gap: 9px; min-height: 34px; padding: 5px 8px; border-radius: 5px; color: #52637a; cursor: pointer; font-size: 0.76rem; font-weight: 500; }
+.multiSelectOptions label:hover { background: #edf4ff; }
+.multiSelectOptions input { width: 15px; height: 15px; accent-color: #2878f0; }
+.inlineControl { display: flex; align-items: center; gap: 12px; }
+.inlineControl input { flex: 1; }
+.inlineControl > span { width: 32px; color: #728197; font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.policyList { display: grid; align-content: start; }
+.policy { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid #e1ebf7; cursor: pointer; }
+.policy:first-child { padding-top: 2px; }
+.policy > span { display: grid; gap: 4px; }
+.policy strong { color: #52637a; font-size: 0.78rem; font-weight: 700; }
+.policy small { color: #8794a8; font-size: 0.69rem; line-height: 1.45; }
+.policy input { width: 16px; height: 16px; flex: 0 0 auto; accent-color: #2878f0; }
+.policyHint { padding-top: 10px; color: #8794a8; font-size: 0.69rem; }
+.promptSection { display: block; }
+.promptHeading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+.promptHeading .sectionHeading { flex: 1; }
+.editorActions { display: flex; align-items: center; gap: 5px; padding: 5px; border: 1px solid #c6dcfb; border-radius: 12px; background: rgb(255 255 255 / 78%); box-shadow: 0 3px 10px rgb(16 42 92 / 4%); }
+.editorActions button { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #5c6b80; cursor: pointer; font: inherit; font-size: 0.72rem; }
+.editorActions button:hover, .editorActions button.activeAction { background: #1b68f8; color: #fff; }
+.editor { display: block; width: 100%; min-height: 190px; padding: 14px 15px; resize: vertical; border: 1px solid #cfdced; border-radius: 8px; outline: none; background: #fff; color: #52637a; font: 0.78rem/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.preview { overflow: auto; min-height: 190px; margin: 0; padding: 14px 15px; border: 1px solid #cfdced; border-radius: 8px; background: #fff; color: #52637a; font: 0.78rem/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; }
+.editorExpanded { min-height: 420px; }
+.editorFooter { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: #8794a8; font-size: 0.68rem; }
+.prototypeFooter { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 0 2px; color: #8794a8; font-size: 0.72rem; }
+
+@media (max-width: 760px) {
+  .section { grid-template-columns: 1fr; gap: 18px; }
+}
+
+@media (max-width: 640px) {
+  .header { min-height: 0; align-items: flex-start; flex-direction: column; padding: 22px 20px; }
+  .section { padding: 18px; }
+}
+
+@media (max-width: 520px) {
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .wide { grid-column: auto; }
+  .sectionHeading { flex-wrap: wrap; }
+  .sectionHeading > div { min-width: calc(100% - 50px); }
+  .promptHeading { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .editorActions { align-self: flex-end; }
+  .editorFooter, .prototypeFooter { align-items: flex-start; flex-direction: column; }
+}

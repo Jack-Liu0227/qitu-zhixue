@@ -1,0 +1,441 @@
+/* AionUI Unified Settings Paradigm Styles */
+
+:root {
+  --aion-primary: #165dff;
+  --aion-primary-soft: rgba(22, 93, 255, 0.1);
+  --aion-success: #00b42a;
+  --aion-success-soft: rgba(0, 180, 42, 0.1);
+  --aion-warning: #f77234;
+  --aion-warning-soft: rgba(247, 114, 52, 0.1);
+  --aion-danger: #f53f3f;
+  --aion-danger-soft: rgba(245, 63, 63, 0.08);
+  --aion-t-primary: #1d2129;
+  --aion-t-secondary: #4e5969;
+  --aion-t-tertiary: #86909c;
+  --aion-t-quaternary: #c9cdd4;
+  --aion-border: #e5e6eb;
+  --aion-fill-1: #f7f8fa;
+  --aion-fill-2: #f2f3f5;
+  --aion-bg-card: #ffffff;
+}
+
+.settings-shell {
+  display: flex;
+  min-height: calc(100vh - 65px);
+  background: #ffffff;
+  border-top: 1px solid var(--aion-border);
+}
+
+/* ---------- 侧边栏 ---------- */
+.settings-sider {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--aion-border);
+  padding: 16px 12px;
+  background: #ffffff;
+  user-select: none;
+}
+
+.settings-sider-group {
+  font-size: 12px;
+  color: var(--aion-t-tertiary);
+  padding: 10px 10px 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.settings-sider-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--aion-t-primary);
+  font-weight: 500;
+  font-size: 13.5px;
+  margin-bottom: 2px;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-sider-item:hover {
+  background: var(--aion-fill-1);
+}
+
+.settings-sider-item.is-active {
+  background: var(--aion-fill-2);
+  color: var(--aion-primary);
+  font-weight: 600;
+}
+
+.settings-sider-item.is-active .settings-sider-icon {
+  color: var(--aion-primary);
+}
+
+.settings-sider-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--aion-t-secondary);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ---------- 内容区 ---------- */
+.settings-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 32px 40px 48px;
+  max-width: 1040px;
+}
+
+/* ====== 1. 页头 ====== */
+.settings-pagehead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.settings-titlebox {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-titlebox h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--aion-t-primary);
+}
+
+.settings-titlebox .settings-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--aion-t-secondary);
+}
+
+.settings-titlebox .settings-desc a {
+  color: var(--aion-primary);
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.settings-titlebox .settings-desc a:hover {
+  text-decoration: underline;
+}
+
+.settings-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.settings-search-box {
+  height: 34px;
+  width: 210px;
+  border: 1px solid var(--aion-border);
+  border-radius: 8px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--aion-fill-1);
+  font-size: 13px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-search-box:focus-within {
+  border-color: var(--aion-primary);
+  background: #ffffff;
+}
+
+.settings-search-box input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+}
+
+.settings-search-box input::placeholder {
+  color: var(--aion-t-tertiary);
+}
+
+.settings-action-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--aion-border);
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.settings-action-btn:hover {
+  background: var(--aion-fill-1);
+}
+
+.settings-action-btn.is-primary {
+  background: var(--aion-primary);
+  color: #ffffff;
+  border-color: var(--aion-primary);
+}
+
+.settings-action-btn.is-primary:hover {
+  background: #114ddb;
+}
+
+/* ====== 2. 选项卡 ====== */
+.settings-tabs-row {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--aion-border);
+  margin-top: 20px;
+}
+
+.settings-tab-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px 12px;
+  font-size: 13.5px;
+  color: var(--aion-t-tertiary);
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.settings-tab-btn:hover {
+  color: var(--aion-t-secondary);
+}
+
+.settings-tab-btn.is-active {
+  color: var(--aion-t-primary);
+  font-weight: 600;
+}
+
+.settings-tab-cnt {
+  margin-left: 6px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--aion-fill-2);
+  color: var(--aion-t-tertiary);
+}
+
+.settings-tab-btn.is-active .settings-tab-cnt {
+  background: var(--aion-primary-soft);
+  color: var(--aion-primary);
+}
+
+.settings-tab-btn.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--aion-primary);
+}
+
+/* ====== 3. 统一列表容器与卡片行 ====== */
+.settings-list-container {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--aion-border);
+  border-radius: 16px;
+  background: var(--aion-fill-1);
+  padding: 10px;
+}
+
+.settings-row-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--aion-bg-card);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-row-card:hover {
+  border-color: var(--aion-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.settings-row-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.settings-row-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-row-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--aion-t-primary);
+}
+
+.settings-chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  text-transform: uppercase;
+}
+
+.settings-chip.is-ok {
+  background: var(--aion-success-soft);
+  color: var(--aion-success);
+}
+
+.settings-chip.is-custom {
+  background: var(--aion-warning-soft);
+  color: var(--aion-warning);
+}
+
+.settings-chip.is-off {
+  background: var(--aion-danger-soft);
+  color: var(--aion-danger);
+}
+
+.settings-chip.is-muted {
+  background: var(--aion-fill-2);
+  color: var(--aion-t-tertiary);
+}
+
+.settings-chip-info {
+  font-size: 10px;
+  opacity: 0.8;
+  cursor: help;
+}
+
+.settings-row-sub {
+  color: var(--aion-t-secondary);
+  font-size: 12.5px;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-row-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 头像堆叠 */
+.settings-avatar-stack {
+  display: flex;
+  align-items: center;
+}
+
+.settings-avatar-stack-item {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  margin-left: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #60a5fa;
+}
+
+.settings-avatar-stack-item:first-child {
+  margin-left: 0;
+}
+
+.settings-pill-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--aion-border);
+  background: #ffffff;
+  color: var(--aion-t-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.settings-pill-btn:hover {
+  background: var(--aion-fill-1);
+  color: var(--aion-t-primary);
+  border-color: #d0d3d9;
+}
+
+.settings-pill-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 空状态 */
+.settings-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--aion-t-tertiary);
+  font-size: 13.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}

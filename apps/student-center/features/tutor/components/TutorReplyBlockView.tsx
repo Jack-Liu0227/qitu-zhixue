@@ -4,6 +4,8 @@ import { HintLevelIndicator } from './HintLevelIndicator';
 import { NumberedQuestionList } from './NumberedQuestionList';
 import { OptionChips } from './OptionChips';
 import { ToolCallTimeline } from './ToolCallTimeline';
+import { ModelThinkingCard } from './ModelThinkingCard';
+import { PblStageCard } from './PblStageCard';
 
 /**
  * Safe fallback for a reply block that is not one of the five modelled
@@ -67,6 +69,20 @@ export function TutorReplyBlockView({
       // A lone step; a run of consecutive steps is grouped into one panel by
       // `ChatBubble` so the student reads one 「执行过程」 card, not N of them.
       return <ToolCallTimeline calls={[block.call]} />;
+    case 'think':
+      return <ModelThinkingCard content={block.content} closed={block.closed} />;
+    case 'pbl_card':
+      return (
+        <PblStageCard
+          phase={block.phase}
+          title={block.title}
+          teammateLabel={block.teammateLabel}
+          summary={block.summary}
+          tags={block.tags}
+          actionLabel={block.actionLabel}
+          onAction={() => block.actionLabel && onSelectOption?.(block.actionLabel, block.actionLabel)}
+        />
+      );
     default: {
       // Compile-time exhaustiveness: a new variant must be handled here.
       const neverBlock: never = block;

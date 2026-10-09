@@ -57,7 +57,24 @@ export type TutorReplyBlock =
    * 独立单元呈现，而不是藏在模型的自然语言里——学生与家长都要能看见
    * AI 到底做了什么、依据是什么。
    */
-  | { kind: 'tool'; call: TutorToolCall };
+  | { kind: 'tool'; call: TutorToolCall }
+  /**
+   * 模型思考过程 (Thinking scratchpad)，遵循 DeepTutor ModelThinkingCard 设计。
+   * 包含思考内容及是否收拢闭合状态。
+   */
+  | { kind: 'think'; content: string; closed: boolean }
+  /**
+   * PBL 阶段指导卡片（基于 OpenMAIC 课堂阶段理念）。
+   */
+  | {
+      kind: 'pbl_card';
+      phase: 'exploration' | 'concept_mastery' | 'guided_practice' | 'deliverable_review';
+      title: string;
+      teammateLabel?: string;
+      summary: string;
+      tags?: readonly string[];
+      actionLabel?: string;
+    };
 
 /** 工具调用的生命周期状态。 */
 export type TutorToolCallStatus = 'running' | 'done' | 'error';

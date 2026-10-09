@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@qitu/ai-client": "workspace:*",
     "@qitu/api-client": "workspace:*",
     "@qitu/auth": "workspace:*",
     "@qitu/contracts": "workspace:*",

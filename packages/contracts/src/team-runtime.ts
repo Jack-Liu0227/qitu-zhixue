@@ -643,3 +643,143 @@ export interface AgentModelCapabilitySummary {
   supportsVoice: boolean;
   api: ModelApi;
 }
+
+/* ========================================================================== */
+/*  AionUi Migration: Assistant & Team Domain Contracts                       */
+/*  Multica Reference: Workspace Team & Agent Settings                        */
+/*  OpenMAIC Reference: Multi-Agent PBL Learning Contracts                    */
+/* ========================================================================== */
+
+export type AssistantSource = 'builtin' | 'generated' | 'user';
+export type AssistantAgentStatus = 'missing' | 'online' | 'offline' | 'unchecked';
+
+export interface AssistantDefaultScalar {
+  mode: string;
+  value?: string;
+}
+
+export interface AssistantDefaultList {
+  mode: string;
+  value: readonly string[];
+}
+
+export interface AssistantDefaults {
+  model: AssistantDefaultScalar;
+  permission: AssistantDefaultScalar;
+  thought_level: AssistantDefaultScalar;
+  skills: AssistantDefaultList;
+  mcps: AssistantDefaultList;
+}
+
+export interface AssistantRules {
+  content: string;
+  storage_mode: string;
+}
+
+/**
+ * Assistant definition migrated from AionUi backend, integrated into Qitu SDK.
+ */
+export interface AdminAssistantConfig {
+  id: string;
+  source: AssistantSource;
+  name: string;
+  avatar?: string;
+  description: string;
+  role: string;
+  enabled: boolean;
+  sortOrder: number;
+  modelProviderId: string | null;
+  modelId: string | null;
+  temperature?: number;
+  instructions: string;
+  enabledSkills: readonly string[];
+  toolIds: readonly string[];
+  mcpServerIds: readonly string[];
+  defaults: AssistantDefaults;
+  agentStatus: AssistantAgentStatus;
+  agentStatusMessage?: string;
+  teamSelectable: boolean;
+  deletable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Workspace sharing strategy for the team (AionUi & Multica) */
+export type WorkspaceMode = 'shared' | 'isolated';
+
+/** Session permission execution mode */
+export type TeamSessionMode = 'auto' | 'plan' | 'supervised';
+
+/** Teammate role within a collaborative team */
+export type TeammateRole = 'leader' | 'teammate' | 'reviewer' | 'coach';
+
+export type TeammateStatus = 'pending' | 'idle' | 'active' | 'completed' | 'failed' | 'dormant';
+
+/**
+ * Persisted assistant assignment within a Team.
+ */
+export interface AdminTeamMember {
+  slotId: string;
+  assistantId: string;
+  assistantName: string;
+  role: TeammateRole;
+  roleLabel: string;
+  avatar?: string;
+  status: TeammateStatus;
+  model?: string;
+  color?: string;
+  pblPhase?: PblPhase;
+}
+
+/**
+ * PBL (Project-Based Learning) Phases inspired by OpenMAIC & Qitu pedagogical rules.
+ */
+export type PblPhase =
+  | 'exploration'          // 兴趣启发与意图确认 (Intent confirmation)
+  | 'concept_mastery'     // 核心概念与规律探索 (Theory & Knowledge, OpenMAIC classroom)
+  | 'guided_practice'     // 任务拆解与分步构建 (Implementation, TheoryMastered gated)
+  | 'deliverable_review';  // 成果评审与成长归档 (Review, Self-assessment, Archival)
+
+/**
+ * Phase specification in a PBL workflow.
+ */
+export interface PblPhaseSpec {
+  phase: PblPhase;
+  title: string;
+  assignedAssistantId: string;
+  assignedRoleLabel: string;
+  learningObjectives: readonly string[];
+  gateCondition: string;
+  deliverableType?: string;
+}
+
+/**
+ * PBL Team Workflow Specification.
+ */
+export interface PblTeamWorkflowSpec {
+  projectId: string;
+  projectName: string;
+  targetDomain: string;
+  phases: readonly PblPhaseSpec[];
+  theoryMasteredGate: boolean;
+  allowAutonomousAdvance: boolean;
+}
+
+/**
+ * Team Configuration migrated from AionUi & structured referencing Multica.
+ */
+export interface AdminTeamConfig {
+  id: string;
+  name: string;
+  description: string;
+  workspaceMode: WorkspaceMode;
+  sessionMode: TeamSessionMode;
+  leaderAssistantId: string;
+  members: readonly AdminTeamMember[];
+  concurrencyLimit: number;
+  pblSpec?: PblTeamWorkflowSpec;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
