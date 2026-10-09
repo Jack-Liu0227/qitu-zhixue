@@ -141,6 +141,13 @@
       "when": 1791436800000,
       "tag": "0019_admin_ai_config",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791590400000,
+      "tag": "0020_enable_team_agents",
+      "breakpoints": true
     }
   ]
 }
