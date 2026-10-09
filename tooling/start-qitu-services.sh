@@ -53,6 +53,12 @@ start_one() {
   local pid_file="$RUNTIME_DIR/pids/$name.pid"
   local log_file="$RUNTIME_DIR/logs/$name.log"
 
+  if systemctl is-active --quiet "qitu-$name.service" 2>/dev/null; then
+    echo "$name is managed by systemd (qitu-$name.service); restarting via systemctl..."
+    systemctl restart "qitu-$name.service"
+    return
+  fi
+
   if [[ -f "$pid_file" ]]; then
     local existing_pid
     existing_pid="$(cat "$pid_file")"
@@ -90,6 +96,11 @@ start_one() {
 
 stop_one() {
   local name="$1"
+  if systemctl is-active --quiet "qitu-$name.service" 2>/dev/null; then
+    echo "$name is managed by systemd (qitu-$name.service); stopping via systemctl..."
+    systemctl stop "qitu-$name.service"
+    return
+  fi
   local pid_file="$RUNTIME_DIR/pids/$name.pid"
   local pid
   if [[ -f "$pid_file" ]]; then
@@ -105,6 +116,14 @@ stop_one() {
     fi
     rm -f "$pid_file"
     echo "stopped $name"
+  fi
+  local port
+  port="$(port_for "$name")"
+  if [[ -n "$port" ]]; then
+    fuser -k -n tcp "$port" 2>/dev/null || true
+  fi
+  if [[ "$name" == workers ]]; then
+    pkill -f "tsx.*watch src/index.ts" 2>/dev/null || true
   fi
 }
 
@@ -153,6 +172,8 @@ status_one() {
 
   if [[ -f "$pid_file" ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
     pid="$(cat "$pid_file")"
+  elif systemctl is-active --quiet "qitu-$name.service" 2>/dev/null; then
+    pid="$(systemctl show --property MainPID --value "qitu-$name.service" 2>/dev/null || echo '?')"
   fi
 
   local code
