@@ -1130,6 +1130,66 @@ body { min-height: 100vh; }
   border-right: 1px solid rgb(209 227 247 / 82%);
   box-shadow: 0 4px 28px rgb(27 104 248 / 7%);
   backdrop-filter: blur(22px);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed {
+  width: 74px;
+  padding: 16px 6px;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-brand {
+  padding: 14px 6px 12px;
+  justify-content: center;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-brand-text {
+  display: none;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-nav::before {
+  display: none;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-nav {
+  padding: 0 2px;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-item {
+  justify-content: center;
+  padding: 12px 0;
+  gap: 0;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-label {
+  display: none;
+}
+.admin-console-shell .qitu-sidebar-toggle {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 12px 14px;
+  border: 1px solid rgb(209 227 247 / 80%);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #59677c;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.admin-console-shell .qitu-sidebar-toggle:hover {
+  background: rgb(222 236 255 / 72%);
+  color: #1b68f8;
+  border-color: #1b68f8;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-toggle {
+  padding: 10px 0;
+  margin: 12px 6px;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-toggle-label {
+  display: none;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-sidebar-toggle-icon {
+  transform: rotate(180deg);
 }
 .admin-console-shell .qitu-sidebar-brand { padding: 24px 24px 16px; }
 .admin-console-shell .qitu-sidebar-logo {

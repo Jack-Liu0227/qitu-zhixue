@@ -439,3 +439,417 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ====== 4. 侧边栏折叠规则 ====== */
+.settings-sider.is-collapsed {
+  width: 58px;
+  padding: 12px 6px;
+}
+.settings-sider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--aion-border);
+  margin-bottom: 10px;
+}
+.settings-sider.is-collapsed .settings-sider-head {
+  justify-content: center;
+  padding: 0 0 10px;
+}
+.settings-sider-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--aion-t-primary);
+}
+.settings-sider-toggle-btn {
+  background: var(--aion-fill-1);
+  border: 1px solid var(--aion-border);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--aion-t-secondary);
+  transition: all 0.15s ease;
+}
+.settings-sider-toggle-btn:hover {
+  background: var(--aion-fill-2);
+  color: var(--aion-primary);
+}
+.settings-sider.is-collapsed .settings-sider-item {
+  justify-content: center;
+  padding: 0;
+}
+.settings-sider.is-collapsed .settings-sider-group {
+  display: none;
+}
+.settings-sider-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ====== 5. 折叠卡片与密集表单排版 (无大空白) ====== */
+.settings-collapsible-card {
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.settings-collapsible-card:hover {
+  border-color: #d0d3d9;
+}
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #f2f3f5;
+  cursor: pointer;
+  user-select: none;
+}
+.settings-card-header.is-collapsed {
+  border-bottom: none;
+}
+.settings-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+}
+.badge-immediate {
+  background: #059669;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.badge-new-session {
+  background: #d97706;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.badge-advanced {
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.settings-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-card-chevron {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--aion-t-tertiary);
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+.settings-card-chevron.is-open {
+  transform: rotate(90deg);
+}
+.settings-card-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #ffffff;
+}
+
+/* 紧凑字段行 */
+.settings-form-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.settings-form-label {
+  width: 84px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--aion-t-secondary);
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-form-label .req {
+  color: var(--aion-danger);
+  font-weight: 700;
+}
+.settings-form-content {
+  flex: 1;
+  min-width: 0;
+}
+.settings-input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.settings-input:focus {
+  border-color: var(--aion-primary);
+  box-shadow: 0 0 0 2px var(--aion-primary-soft);
+}
+.settings-textarea {
+  width: 100%;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.15s ease;
+}
+.settings-textarea:focus {
+  border-color: var(--aion-primary);
+  box-shadow: 0 0 0 2px var(--aion-primary-soft);
+}
+.settings-select {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.settings-select:focus {
+  border-color: var(--aion-primary);
+}
+.settings-hint {
+  font-size: 11.5px;
+  color: var(--aion-t-tertiary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* ====== 6. Multica 风格团队工作台排版 ====== */
+.multica-breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--aion-border);
+  margin-bottom: 18px;
+}
+.multica-crumb-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--aion-t-secondary);
+}
+.multica-crumb-link {
+  color: var(--aion-t-tertiary);
+  cursor: pointer;
+  text-decoration: none;
+}
+.multica-crumb-link:hover {
+  color: var(--aion-primary);
+}
+.multica-team-grid {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.multica-profile-card {
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+.multica-profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f2f3f5;
+}
+.multica-profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+.multica-profile-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--aion-t-primary);
+}
+.multica-profile-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--aion-t-secondary);
+}
+.multica-meta-list {
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.multica-meta-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.multica-meta-k {
+  color: var(--aion-t-tertiary);
+}
+.multica-meta-v {
+  color: var(--aion-t-primary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 团队成员列表卡片 */
+.multica-member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: all 0.15s ease;
+}
+.multica-member-row:hover {
+  border-color: #c9cdd4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+.multica-member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  color: #ffffff;
+  font-weight: 600;
+}
+.multica-member-info {
+  flex: 1;
+  min-width: 0;
+}
+.multica-member-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.multica-member-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+}
+.multica-member-tag {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--aion-fill-2);
+  color: var(--aion-t-secondary);
+}
+.multica-member-tag.is-leader {
+  background: #fef3c7;
+  color: #d97706;
+  font-weight: 600;
+}
+.multica-member-tag.is-online {
+  background: #dcfce7;
+  color: #15803d;
+}
+.multica-member-role {
+  font-size: 12px;
+  color: var(--aion-t-secondary);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.multica-member-activity {
+  font-size: 11px;
+  color: var(--aion-t-tertiary);
+  margin-top: 2px;
+}
+.multica-member-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.multica-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: var(--aion-t-secondary);
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+.multica-icon-btn:hover {
+  background: var(--aion-fill-1);
+  border-color: #e5e6eb;
+  color: var(--aion-t-primary);
+}
+.multica-icon-btn.is-danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
