@@ -186,6 +186,7 @@ const FOOTER_COLUMNS = [
     title: '关于生态',
     links: [
       { label: '关于启途智学', href: '#about' },
+      { label: '品牌与教育理念', href: '/about' },
       { label: '研学基地合作', href: '#contact' },
       { label: '学术导师智库', href: '#contact' },
       { label: '教育公平公益计划', href: '#contact' },
@@ -473,6 +474,12 @@ export default async function HomePage() {
                   通过自主研发的「苏格拉底认知启发大模型」与「PBL 项目数字工坊」，我们把过去专属高校
                   研讨室的高阶导师制项目研学，普惠给每一个渴望探索的学习者。
                 </p>
+                <div className="home-about-more">
+                  <Link className="home-btn home-btn--ghost" href="/about">
+                    了解教育主张与品牌历程
+                    <Icon name="arrowRight" size={18} />
+                  </Link>
+                </div>
                 <p className="home-about-footnote">
                   下方数字为平台实时统计口径，随真实使用情况变化。
                 </p>
