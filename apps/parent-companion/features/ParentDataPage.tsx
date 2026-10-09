@@ -51,19 +51,33 @@ export function ChildPicker({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="child-picker">
-      {children.map((c) => (
-        <button
-          type="button"
-          className={c.childId === value ? 'selected' : ''}
-          aria-pressed={c.childId === value}
-          key={c.childId}
-          onClick={() => onChange(c.childId)}
-        >
-          {c.displayName}
-          <small>{c.activeProjectCount} 个项目</small>
-        </button>
-      ))}
+    <div className="child-picker" role="radiogroup" aria-label="选择绑定的孩子">
+      {children.map((c) => {
+        const isSelected = c.childId === value;
+        const initial = c.displayName ? c.displayName.slice(0, 1).toUpperCase() : '学';
+        return (
+          <button
+            type="button"
+            className={isSelected ? 'child-chip selected' : 'child-chip'}
+            aria-pressed={isSelected}
+            key={c.childId}
+            onClick={() => onChange(c.childId)}
+          >
+            <span className="child-avatar-badge" aria-hidden="true">
+              {initial}
+            </span>
+            <span className="child-info">
+              <span className="child-name">{c.displayName}</span>
+              <small className="child-sub">{c.activeProjectCount} 个进行中项目</small>
+            </span>
+            {isSelected && (
+              <span className="child-selected-check" aria-hidden="true">
+                ✓
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

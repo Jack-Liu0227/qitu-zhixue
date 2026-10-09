@@ -121,47 +121,62 @@ export default function MessagesPage() {
           <>
             <div className="message-summary">
               {[
-                ['全部消息', data.summary.total],
-                ['待您确认', data.summary.pendingConfirm],
-                ['处理中', data.summary.processing],
-                ['已解决', data.summary.resolved],
-              ].map(([label, value]) => (
-                <div key={String(label)}>
-                  <span>{label}</span>
+                { label: '全部消息', value: data.summary.total, icon: '📬', tone: 'neutral' },
+                { label: '待您确认', value: data.summary.pendingConfirm, icon: '⚠️', tone: 'amber' },
+                { label: '处理中', value: data.summary.processing, icon: '⏳', tone: 'blue' },
+                { label: '已解决', value: data.summary.resolved, icon: '✅', tone: 'green' },
+              ].map(({ label, value, icon, tone }) => (
+                <div className={`summary-card tone-${tone}`} key={label}>
+                  <div className="summary-card-head">
+                    <span>{label}</span>
+                    <span className="summary-icon" aria-hidden="true">{icon}</span>
+                  </div>
                   <strong>{String(value)}</strong>
                 </div>
               ))}
             </div>
             <div className="messages-grid">
               <section className="message-list">
-                {data.messages.map((m) => (
-                  <button
-                    type="button"
-                    className={m.id === selected ? 'message-row selected' : 'message-row'}
-                    key={m.id}
-                    onClick={() => setSelected(m.id)}
-                  >
-                    <span className="message-icon" aria-hidden="true">
-                      {m.kind === 'attention' ? '!' : '◈'}
-                    </span>
-                    <span>
-                      <strong>{m.title}</strong>
-                      <small>{m.summary}</small>
-                    </span>
-                    <time dateTime={m.occurredAt}>{formatDayTime(m.occurredAt)}</time>
-                    <Badge
-                      tone={
-                        m.status === 'resolved'
-                          ? 'completed'
-                          : m.status === 'pending_confirm'
-                            ? 'attention'
-                            : 'primary'
-                      }
+                {data.messages.map((m) => {
+                  const icon =
+                    m.kind === 'attention'
+                      ? '⚠️'
+                      : m.kind === 'stage_update'
+                        ? '🚀'
+                        : m.kind === 'artifact'
+                          ? '🎨'
+                          : m.kind === 'resolved'
+                            ? '✅'
+                            : '◈';
+                  return (
+                    <button
+                      type="button"
+                      className={m.id === selected ? 'message-row selected' : 'message-row'}
+                      key={m.id}
+                      onClick={() => setSelected(m.id)}
                     >
-                      {parentMessageStatusLabel(m.status)}
-                    </Badge>
-                  </button>
-                ))}
+                      <span className="message-icon" aria-hidden="true">
+                        {icon}
+                      </span>
+                      <span className="message-main-col">
+                        <strong className="message-title">{m.title}</strong>
+                        <small className="message-snippet">{m.summary}</small>
+                      </span>
+                      <time dateTime={m.occurredAt}>{formatDayTime(m.occurredAt)}</time>
+                      <Badge
+                        tone={
+                          m.status === 'resolved'
+                            ? 'completed'
+                            : m.status === 'pending_confirm'
+                              ? 'attention'
+                              : 'primary'
+                        }
+                      >
+                        {parentMessageStatusLabel(m.status)}
+                      </Badge>
+                    </button>
+                  );
+                })}
               </section>
               <SectionCard title={focus?.headline ?? '选择一条消息'}>
                 {focus ? (
@@ -173,28 +188,28 @@ export default function MessagesPage() {
                       ) : null}
                     </div>
                     <div className="focus-grid">
-                      <div>
-                        <h3>发生了什么</h3>
+                      <div className="focus-quadrant">
+                        <h3>📌 发生了什么</h3>
                         <p>{focus.whatHappened}</p>
                       </div>
-                      <div>
-                        <h3>系统已经做了什么</h3>
+                      <div className="focus-quadrant">
+                        <h3>🤖 系统已经做了什么</h3>
                         <p>{focus.whatSystemDid}</p>
                       </div>
-                      <div>
-                        <h3>是否需要家长介入</h3>
+                      <div className="focus-quadrant">
+                        <h3>👨‍👩‍👧 是否需要家长介入</h3>
                         <p>
                           {focus.needParent
                             ? focus.needParentNote
                             : '暂时不需要立即处理，可以等待孩子继续尝试'}
                         </p>
                       </div>
-                      <div>
-                        <h3>您可以提供的支持</h3>
+                      <div className="focus-quadrant">
+                        <h3>💡 您可以提供的支持</h3>
                         <p>{focus.howYouCanHelp}</p>
                       </div>
                     </div>
-                    <h3>处理时间线</h3>
+                    <h3 className="timeline-section-title">处理时间线</h3>
                     <div className="message-timeline">
                       {focus.timeline.map((t) => (
                         <div key={t.label} className={t.state}>

@@ -119,6 +119,13 @@ function VersionTimelinePanel({ versions }: { versions: ParentVersionStep[] }) {
   );
 }
 
+const PRESET_ENCOURAGEMENTS = [
+  '认真修改的过程，比一次就做到完美更重要！',
+  '今天独立完成了挑战，为你骄傲！',
+  '保持好奇心，遇到困难我们一起想办法！',
+  '看到你的专注和探索精神，继续加油！',
+] as const;
+
 function EncouragementCard({ childId }: { childId: string }) {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -145,11 +152,28 @@ function EncouragementCard({ childId }: { childId: string }) {
     }
   }
 
+  const selectPreset = (preset: string) => {
+    setText(preset);
+    if (state !== 'sending') setState('idle');
+  };
+
   return (
     <SectionCard title="给孩子一句鼓励">
-      <p className="encourage-example">
-        “认真修改的过程，比一次就做到完美更重要。”
-      </p>
+      <div className="encourage-presets">
+        <span className="presets-label">快捷灵感：</span>
+        <div className="presets-chips">
+          {PRESET_ENCOURAGEMENTS.map((p) => (
+            <button
+              type="button"
+              className="preset-chip"
+              key={p}
+              onClick={() => selectPreset(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
       <textarea
         className="encourage-input"
         value={text}
@@ -165,17 +189,17 @@ function EncouragementCard({ childId }: { childId: string }) {
         aria-label="鼓励内容"
       />
       <div className="feedback-actions">
-        <small>{text.trim().length}/200</small>
+        <small className="char-counter">{text.trim().length} / 200</small>
         <Button
           onClick={send}
           loading={state === 'sending'}
           disabled={text.trim().length === 0 || state === 'sending'}
         >
-          发送鼓励
+          {state === 'sending' ? '发送中…' : '发送鼓励'}
         </Button>
       </div>
       {state === 'sent' ? (
-        <p className="feedback-done">鼓励已记录，会在合适的时机传达给孩子。</p>
+        <p className="feedback-done">✓ 鼓励已记录，会在合适的契机呈现给孩子。</p>
       ) : null}
       {state === 'error' ? <p className="inline-error">发送失败，请稍后重试。</p> : null}
     </SectionCard>
