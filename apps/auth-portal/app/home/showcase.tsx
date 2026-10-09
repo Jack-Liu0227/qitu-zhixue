@@ -48,10 +48,8 @@ export function TemplateShowcase({ templates }: { templates: PublicHomeTemplate[
           <Icon name="layers" size={26} />
         </span>
         <h3>暂时没有可展示的公开模板</h3>
-        <p>
-          平台模板库正在整理中，登录后仍可以看到已授权给你的全部项目模板与历史项目。
-        </p>
-        <Link className="home-btn home-btn--outline" href="/login">
+        <p>平台模板库正在整理中，登录后仍可以看到已授权给你的全部项目模板与历史项目。</p>
+        <Link className="home-btn home-btn--outline" href="/login?next=%2Fstudent%2Finspiration">
           登录查看模板库
           <Icon name="arrowRight" size={18} />
         </Link>
@@ -79,9 +77,7 @@ export function TemplateShowcase({ templates }: { templates: PublicHomeTemplate[
 
             <div className="home-template-body">
               <h3 className="home-template-title">{template.title}</h3>
-              {facts.length > 0 ? (
-                <p className="home-template-facts">{facts.join(' · ')}</p>
-              ) : null}
+              {facts.length > 0 ? <p className="home-template-facts">{facts.join(' · ')}</p> : null}
               <p className="home-template-summary">{template.summary}</p>
 
               {objectives.length > 0 ? (

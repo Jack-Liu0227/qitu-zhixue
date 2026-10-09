@@ -1,11 +1,6 @@
 import { Icon } from './icons';
 
-/**
- * 首屏右侧的「AI 搭档」界面示意。
- *
- * 这是**界面示意**，不是实时数据：卡片右上角固定标注「界面示例」，
- * 避免访客把它当成真实学生对话（未成年人的对话内容也不会出现在公开页面上）。
- */
+/** 首屏右侧的产品界面预览，不展示虚构的学生对话、统计或版本数据。 */
 export function HeroTutorDemo() {
   return (
     <div className="home-hero-visual">
@@ -16,8 +11,8 @@ export function HeroTutorDemo() {
             <i />
             <i />
           </span>
-          <span className="home-tutor-title">AI 搭档 · 火星生态居住舱智能调控</span>
-          <span className="home-tutor-tag">界面示例</span>
+          <span className="home-tutor-title">AI 搭档 · 项目工作区</span>
+          <span className="home-tutor-tag">产品预览</span>
         </div>
 
         <div className="home-tutor-context">
@@ -25,40 +20,40 @@ export function HeroTutorDemo() {
             <Icon name="target" size={20} />
           </span>
           <span className="home-tutor-context-body">
-            <strong>本轮目标</strong>
-            <span>让舱内氧气浓度在 8 分钟内回到安全区间，并说明依据</span>
+            <strong>登录后加载真实项目</strong>
+            <span>你的项目目标、对话记录与作品状态会从平台权限范围内加载。</span>
           </span>
         </div>
 
         <div className="home-thread">
           <div className="home-bubble home-bubble--ai">
             <span className="home-bubble-label">AI 搭档</span>
-            <p>你打算先测哪一个变量？说说你的理由。</p>
+            <p>登录后，这里会显示与你当前项目相关的引导问题。</p>
           </div>
           <div className="home-bubble home-bubble--me">
-            <span className="home-bubble-label">学生</span>
-            <p>先调氧气浓度，因为它直接影响能不能生存。</p>
+            <span className="home-bubble-label">学习者</span>
+            <p>你提交的回答、证据与作品会保存在自己的工作区。</p>
           </div>
           <div className="home-bubble home-bubble--ai">
-            <span className="home-bubble-label">AI 搭档 · 第 2 层追问</span>
-            <p>如果只动氧气、不管二氧化碳，8 分钟后浓度会怎么变？先预测，再动手验证。</p>
+            <span className="home-bubble-label">权限范围内的项目记录</span>
+            <p>未登录时不展示任何未成年人真实内容。</p>
           </div>
         </div>
 
         <div className="home-ladder">
           <div className="home-ladder-head">
-            <span>提示阶梯</span>
-            <span>答案始终不直接给出</span>
+            <span>学习流程</span>
+            <span>按平台规则逐步推进</span>
           </div>
           <ol className="home-ladder-list">
             <li className="is-done">
-              <Icon name="checkCircle" size={16} /> 第 1 层 · 定位概念：气体浓度与换气速率
+              <Icon name="checkCircle" size={16} /> 问题定义 · 从真实任务开始
             </li>
             <li className="is-active">
-              <Icon name="sparkle" size={16} /> 第 2 层 · 类比例子：像给鱼缸换水
+              <Icon name="sparkle" size={16} /> 理论掌握 · 达标后进入实践
             </li>
             <li>
-              <Icon name="target" size={16} /> 第 3 层 · 拆解步骤：尚未解锁
+              <Icon name="target" size={16} /> 作品沉淀 · 记录学习证据
             </li>
           </ol>
         </div>
@@ -69,8 +64,8 @@ export function HeroTutorDemo() {
           <Icon name="bolt" size={18} />
         </span>
         <span className="home-float-body">
-          <strong>QuestED Engine v3.4</strong>
-          <span>启发式状态机 · 已识别 3 个卡点，全程未泄露答案</span>
+          <strong>项目学习引擎</strong>
+          <span>按权限加载项目状态与学习证据</span>
         </span>
       </div>
 
@@ -80,7 +75,7 @@ export function HeroTutorDemo() {
         </span>
         <span className="home-float-body">
           <strong>苏格拉底式导师</strong>
-          <span>掌握度 62% → 目标 85% 才解锁实践阶段</span>
+          <span>理论达标后解锁实践阶段</span>
         </span>
       </div>
     </div>

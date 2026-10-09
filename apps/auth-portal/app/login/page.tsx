@@ -14,8 +14,6 @@ interface RoleOption {
   role: LoginRole;
   label: string;
   destination: string;
-  demoEmail: string;
-  demoPassword: string;
 }
 
 const ROLE_OPTIONS: RoleOption[] = [
@@ -23,29 +21,21 @@ const ROLE_OPTIONS: RoleOption[] = [
     role: 'student',
     label: '学生',
     destination: '/student',
-    demoEmail: 'student@qtzx.local',
-    demoPassword: 'student123',
   },
   {
     role: 'parent',
     label: '家长',
     destination: '/parent',
-    demoEmail: 'parent@qtzx.local',
-    demoPassword: 'parent123',
   },
   {
     role: 'teacher',
     label: '班主任',
     destination: '/teacher',
-    demoEmail: 'teacher@qtzx.local',
-    demoPassword: 'teacher123',
   },
   {
     role: 'admin',
     label: '管理员',
     destination: '/admin',
-    demoEmail: 'admin@qtzx.local',
-    demoPassword: 'admin123',
   },
 ];
 
@@ -150,15 +140,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemoAccount(option: RoleOption): void {
-    setRole(option.role);
-    setEmail(option.demoEmail);
-    setPassword(option.demoPassword);
-    setStatus('idle');
-    setErrorKind(null);
-    persistRememberedEmail(option.demoEmail, rememberAccount);
-  }
-
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (offline) {
@@ -217,7 +198,10 @@ export default function LoginPage() {
       // 登录成功后由浏览器执行跳转，避免把未确认身份的 next 当作可信目标。
       window.location.assign(nextPath ?? destinationFor(data.user.role));
     } catch (cause) {
-      if (cause instanceof TypeError || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      if (
+        cause instanceof TypeError ||
+        (typeof navigator !== 'undefined' && navigator.onLine === false)
+      ) {
         setErrorKind('network');
       } else {
         setErrorKind('other');
@@ -236,9 +220,7 @@ export default function LoginPage() {
           <BrandLogo width={220} />
         </h1>
         <p className="login-positioning">面向中小学的项目式 AI 学习平台。</p>
-        <p className="login-desc">
-          学生探索和创作，家长看见成长过程，班主任及时提供支持。
-        </p>
+        <p className="login-desc">学生探索和创作，家长看见成长过程，班主任及时提供支持。</p>
 
         <ul className="login-feature-list">
           <li>AI搭档启发式引导，先思考再动手</li>
@@ -387,19 +369,9 @@ export default function LoginPage() {
           忘记密码？本平台不提供自助重置，请联系班主任或管理员重置密码。
         </p>
 
-        <div className="login-demo">
-          <p className="login-demo-title">演示环境账号（点击填充）</p>
-          <div className="login-demo-buttons">
-            {ROLE_OPTIONS.map((option) => (
-              <button key={option.role} type="button" onClick={() => fillDemoAccount(option)}>
-                {option.label}演示
-              </button>
-            ))}
-          </div>
-          <p className="login-demo-note">
-            演示口令写在前端代码里，任何人都能看到，只能用在校内演示环境。正式环境必须改为由服务器环境变量下发，并在上线前移除这里的演示账号。
-          </p>
-        </div>
+        <p className="login-account-note">
+          使用学校或机构发放的账号登录。没有账号或需要重置密码，请联系班主任、学校管理员或企图智学科技有限公司合作团队。
+        </p>
       </section>
     </main>
   );

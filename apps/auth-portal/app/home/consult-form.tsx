@@ -164,21 +164,14 @@ export function ConsultationForm() {
       });
 
       const body = (await response.json().catch(() => null)) as
-        | { data?: ConsultationReceipt }
-        | ProblemBody
-        | null;
+        { data?: ConsultationReceipt } | ProblemBody | null;
 
       if (!response.ok) {
         const problem = body as ProblemBody | null;
         const nextFieldErrors: FieldErrors = {};
         for (const item of problem?.errors ?? []) {
           const path = item.path;
-          if (
-            path === 'name' ||
-            path === 'phone' ||
-            path === 'identity' ||
-            path === 'message'
-          ) {
+          if (path === 'name' || path === 'phone' || path === 'identity' || path === 'message') {
             nextFieldErrors[path] = item.message ?? '字段不合法';
           }
         }
@@ -224,8 +217,8 @@ export function ConsultationForm() {
         <h3>已成功收到您的预约！</h3>
         <p>
           咨询编号 <code>{receipt.id.slice(0, 8)}</code>
-          ，提交时间 {receipt.createdAt.slice(0, 16).replace('T', ' ')}。
-          我们会在 1 个工作日内通过您留下的电话联系，请留意来电。
+          ，提交时间 {receipt.createdAt.slice(0, 16).replace('T', ' ')}。 我们会在 1
+          个工作日内通过您留下的电话联系，请留意来电。
         </p>
         <p className="home-form-success-note">
           出于隐私保护，我们不会在页面上回显您的姓名与电话；如需更正信息，请直接回复来电。
@@ -234,7 +227,7 @@ export function ConsultationForm() {
           <button type="button" className="home-btn home-btn--outline" onClick={reset}>
             再提交一条
           </button>
-          <Link className="home-btn home-btn--primary" href="/login">
+          <Link className="home-btn home-btn--primary" href="/login?next=%2Fstudent%2Ftoday">
             先去逛逛学生端
             <Icon name="arrowRight" size={18} />
           </Link>

@@ -65,8 +65,16 @@ export function SiteNav() {
         </nav>
 
         <div className="home-header-actions">
-          <DemoModal label="体验 AI 探索" variant="ghost" icon="sparkle" />
-          <Link className="home-btn home-btn--primary home-btn--compact" href="/login">
+          <DemoModal
+            label="体验 AI 探索"
+            variant="ghost"
+            icon="sparkle"
+            destination="/login?next=%2Fstudent%2Ftutor"
+          />
+          <Link
+            className="home-btn home-btn--primary home-btn--compact"
+            href="/login?next=%2Fstudent%2Ftutor"
+          >
             登录 / 免费体验
           </Link>
           <span className="home-avatar-chip" aria-hidden="true">
@@ -104,7 +112,7 @@ export function SiteNav() {
           })}
           <Link
             className="home-btn home-btn--primary home-mobile-cta"
-            href="/login"
+            href="/login?next=%2Fstudent%2Ftutor"
             onClick={() => setMenuOpen(false)}
           >
             登录 / 免费体验

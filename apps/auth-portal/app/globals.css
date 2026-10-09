@@ -12,9 +12,9 @@
 body {
   min-height: 100vh;
   background:
-    radial-gradient(1100px 600px at 8% -10%, rgb(40 120 240 / 16%), transparent 60%),
-    radial-gradient(900px 520px at 108% 110%, rgb(255 138 61 / 14%), transparent 55%),
-    linear-gradient(135deg, #f2f7ff 0%, #f6faff 45%, #fff3eb 100%);
+    radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 18%), transparent 62%),
+    radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 20%), transparent 58%),
+    linear-gradient(135deg, #f2f3ff 0%, #faf8ff 48%, #effcf8 100%);
   background-attachment: fixed;
 }
 
@@ -36,7 +36,9 @@ body {
   font-weight: 700;
   text-decoration: none;
   backdrop-filter: blur(8px);
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .login-back svg {
@@ -412,4 +414,44 @@ body {
   }
 }
 
-.login-intro-logo { margin: 0 0 12px; line-height: 0; }
+.login-intro-logo {
+  margin: 0 0 12px;
+  line-height: 0;
+}
+
+/* 登录页沿用官网的蓝色、薄荷色与圆角节奏，保持从首页进入后的视觉连续性。 */
+.login-page {
+  --login-primary: #0038b2;
+  --login-heading: #131b2e;
+  --login-text: #263451;
+  --login-muted: #66728a;
+  --login-border: #c4c5d7;
+  --login-page: #f2f3ff;
+  --login-attention: #006b54;
+  background: transparent;
+}
+
+.login-panel {
+  border-radius: 16px;
+  border-color: rgb(196 197 215 / 72%);
+  box-shadow: 0 24px 70px rgb(19 27 46 / 14%);
+}
+
+.login-submit {
+  background: linear-gradient(135deg, #1e4fd9, #0038b2);
+  border-radius: 999px;
+  box-shadow: 0 16px 32px -18px rgb(0 56 178 / 70%);
+}
+
+.login-submit:not(:disabled):hover {
+  background: linear-gradient(135deg, #0038b2, #002b88);
+}
+
+.login-account-note {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px dashed var(--login-border);
+  color: var(--login-muted);
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
