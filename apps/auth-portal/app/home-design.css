@@ -7,3 +7,28 @@
 /* 登录页 */.login-page{min-height:100vh;background:#eaf5ff;overflow:hidden}.login-page:before{content:"";position:absolute;width:700px;height:700px;border-radius:50%;background:#d9ebff;left:-260px;bottom:-340px}.login-brand{position:absolute;left:45px;top:32px;z-index:4}.back-home{position:absolute;right:45px;top:42px;color:#657693;font-size:12px;z-index:4}.login-layout{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}.login-intro{padding:17vh 7vw;position:relative}.login-label{font-size:9px;letter-spacing:.22em;color:#6c7f9e}.login-intro h1{font-size:clamp(60px,6.5vw,98px);line-height:1.04;letter-spacing:-.065em;margin:25px 0}.login-intro h1 em{font-style:normal;color:var(--blue)}.login-intro p{color:#6a7b98;line-height:1.9;font-size:14px}.login-art{position:absolute;width:420px;height:180px;left:7vw;bottom:4vh}.planet{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9ebcff,#4e74e7 55%,#29489f);position:absolute;left:100px;box-shadow:0 35px 60px rgba(55,104,237,.25)}.planet:after{content:"";position:absolute;width:250px;height:50px;border:1px solid #7599ed;border-radius:50%;left:-55px;top:43px;transform:rotate(-13deg)}.planet span{position:absolute;right:6px;top:5px;color:white}.star{position:absolute;color:#7296e8;font-style:normal}.s1{left:15px;top:25px}.s2{right:40px;top:5px;font-size:24px}.s3{right:80px;bottom:20px;font-size:10px}.login-panel{background:#fafdff;display:grid;place-items:center;border-radius:34px 0 0 34px;box-shadow:-15px 0 60px rgba(72,106,151,.07)}.login-card{width:min(430px,75%)}.login-card-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:30px}.login-card-head>span{font-size:25px;font-weight:700}.login-card-head small{color:#8390a4;font-size:10px}.login-card a{color:var(--blue)}.wechat-button,.submit-login{width:100%;height:50px;border:0;border-radius:13px;cursor:pointer;font-size:12px;font-weight:600}.wechat-button{background:#14284e;color:#fff}.wechat-button span{color:#72dc8c;font-size:16px;margin-right:8px}.divider{height:62px;display:flex;align-items:center;color:#9aa6b7;font-size:9px}.divider:before,.divider:after{content:"";height:1px;background:#e2e8f0;flex:1}.divider span{padding:0 13px}.login-card label{display:block;font-size:10px;font-weight:600;margin:0 0 8px}.phone-input,.code-input{height:50px;display:flex;border:1px solid #dce4ee;background:#fff;border-radius:12px;margin-bottom:18px;align-items:center;transition:.2s}.phone-input:focus-within,.code-input:focus-within{border-color:#86a6fa;box-shadow:0 0 0 3px rgba(55,104,237,.07)}.phone-input span{padding:0 14px;border-right:1px solid #e4e9f0;font-size:11px}.login-card input{border:0;outline:0;padding:0 14px;flex:1;min-width:0;color:var(--deep);font-size:12px}.code-input button{border:0;background:none;color:var(--blue);font-size:10px;padding:0 14px;cursor:pointer}.submit-login{background:var(--blue);color:#fff;display:flex;justify-content:center;align-items:center;gap:15px;box-shadow:0 10px 25px rgba(55,104,237,.2);transition:.25s}.submit-login:hover{background:#2859dc;transform:translateY(-2px)}.form-note{text-align:center;color:#9aa6b7;font-size:8px}.form-message{text-align:center;font-size:10px;color:var(--blue);height:14px}
 @media(max-width:850px){.shell{width:calc(100% - 36px)}.header{height:75px;grid-template-columns:1fr auto}.header nav{display:none}.hero{padding-top:78px;min-height:610px}.hero h1{font-size:16vw;line-height:1.15;margin-top:24px}.hero-copy{font-size:13px}.float-card{display:none}.quick-start{flex-wrap:wrap}.quick-start>span{width:100%}.hint{display:none}.trust-line p{display:none}.features{padding:100px 0}.feature-heading{display:block}.feature-heading p{margin-top:25px}.feature-grid{grid-template-columns:1fr}.feature-card{height:430px}.cta-section{padding:45px 30px;display:block}.cta-section>a{width:110px;height:110px;margin:40px 0 0 auto}.cta-orbit{right:-200px}footer{height:130px;flex-wrap:wrap}.login-page{overflow:auto}.login-layout{display:block}.login-intro{display:none}.login-panel{min-height:100vh;border-radius:0;padding:120px 0 60px}.login-card{width:calc(100% - 44px);max-width:430px}.login-brand{left:22px;top:25px}.back-home{right:22px;top:37px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}.reveal{opacity:1;transform:none}}
+/* The homepage hides its navigation on narrow screens; keep About reachable. */
+@media (max-width: 850px) {
+  .home-page .header {
+    grid-template-columns: 1fr auto auto;
+    gap: 18px;
+  }
+  .home-page .header nav {
+    display: flex;
+    font-size: 12px;
+  }
+  .home-page .header nav a:first-child {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  .home-page .header {
+    gap: 12px;
+  }
+  .home-page .header .brand {
+    font-size: 16px;
+  }
+  .home-page .header .login-button {
+    padding: 9px 12px;
+  }
+}

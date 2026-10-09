@@ -28,3 +28,9 @@ cached by this rule.
 Verify `/` and `/login` return 200, static assets advertise immutable
 caching and gzip, and `/api/v1/auth/login` still reaches the backend.
 This changes no database schema, account data, or permission checks.
+
+The public About page is served at `/about`. Verify the homepage About link
+on desktop and mobile, and the About page's homepage and `/login` links.
+Its content is statically rendered from the supplied design and requires no
+new API. Verify `/api/v1/auth/login` still returns `401 INVALID_CREDENTIALS`
+for a nonexistent account, and a real test account can reach its role's app.
