@@ -420,6 +420,9 @@ function boundedStringArray(value: unknown, maxItems: number, maxLength: number)
 }
 
 function toErrorCode(error: unknown): string {
-  const value = error instanceof Error ? error.message : String(error);
+  const code = error && typeof error === 'object' && 'code' in error
+    ? (error as { code?: unknown }).code
+    : undefined;
+  const value = typeof code === 'string' ? code : error instanceof Error ? error.message : String(error);
   return /^[A-Z][A-Z0-9_]{2,80}$/u.test(value) ? value : 'TEAM_AGENT_EXECUTION_FAILED';
 }
