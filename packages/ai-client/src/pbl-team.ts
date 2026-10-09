@@ -111,8 +111,60 @@ export const PBL_TEAM_ERROR_CODES = {
   PHASE_MISMATCH: 'TEAM_PHASE_MISMATCH',
   AUTONOMOUS_ADVANCE_FORBIDDEN: 'PBL_AUTONOMOUS_ADVANCE_FORBIDDEN',
   MENTOR_UNIQUENESS_CONFLICT: 'TEAM_MENTOR_UNIQUENESS_CONFLICT',
-  FORMAL_PROJECT_REQUIRES_CONFIRMED_INTENT: 'TEAM_FORMAL_PROJECT_REQUIRES_CONFIRMED_INTENT',
+  /** F1：客户端在 POST /tutor/team-runs 的 context 里提交阶段/门禁字段。 */
+  CONTEXT_RESERVED_KEY: 'TEAM_CONTEXT_RESERVED_KEY',
+  /** F1：context 出现白名单以外的未知键（与 admin-ai-config assertKnownKeys 同风格）。 */
+  CONTEXT_UNKNOWN_KEY: 'TEAM_CONTEXT_UNKNOWN_KEY',
+  /** F1：context 不是对象。 */
+  CONTEXT_INVALID: 'TEAM_CONTEXT_INVALID',
+  /** 阶段枚举参数非法（delegate.pblPhase / advancePhase.targetPhase）。 */
+  PHASE_INVALID: 'PBL_PHASE_INVALID',
+  /** 非管理员/服务端试图写入门禁达成证据。 */
+  GATE_WRITE_FORBIDDEN: 'TEAM_GATE_WRITE_FORBIDDEN',
+  /** 提交的门禁条件不在冻结枚举内。 */
+  GATE_UNKNOWN: 'PBL_GATE_UNKNOWN',
 } as const;
+
+/**
+ * F1（独立验证官）修复：`run.context.phase` 是门禁的权威读取源，因此它
+ * 只能由服务端初始化（startRun）与推进（advancePhase）。客户端提交的
+ * Team Run `context` 必须过下面的键白名单：
+ *
+ * - `TEAM_RUN_CONTEXT_RESERVED_KEYS`：任何阶段/门禁状态字段，出现即 400
+ *   `TEAM_CONTEXT_RESERVED_KEY`（不落库）。
+ * - `TEAM_RUN_CONTEXT_ALLOWED_KEYS`：只允许的非状态字段（观测/溯源用）。
+ *   `turnCount` / `pedagogicMove` 是既有 AI 搭档链路（tutor.service.ts
+ *   executeTurn）已经在传的服务端派生观测字段，必须保留；
+ *   `intentDraftId` / `topic` / `source` 为意图草稿与溯源非状态字段。
+ * - 其余未知键 → 400 `TEAM_CONTEXT_UNKNOWN_KEY`。
+ */
+export const TEAM_RUN_CONTEXT_RESERVED_KEYS: readonly string[] = [
+  'phase',
+  'pblPhase',
+  'gates',
+  'gate',
+  'gateEvidence',
+  'satisfiedGates',
+  'theoryMastered',
+  'theoryMasteredGate',
+  'allowAutonomousAdvance',
+  'pblSpec',
+  'context',
+] as const;
+
+export const TEAM_RUN_CONTEXT_ALLOWED_KEYS: readonly string[] = [
+  'turnCount',
+  'pedagogicMove',
+  'intentDraftId',
+  'topic',
+  'source',
+] as const;
+
+/**
+ * 服务端初始化的首阶段（冻结顺序的第一项）。「阶段缺失」必须被视为还在
+ * 首阶段（探索），绝不能被当作「已走到终点」而绕过门禁。
+ */
+export const PBL_INITIAL_PHASE: PblPhase = PBL_PHASE_ORDER[0] as PblPhase;
 
 /**
  * Hard rule from the frozen spec: autonomous advance past gates is disabled.

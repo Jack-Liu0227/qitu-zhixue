@@ -99,8 +99,9 @@ export interface AdminTeamResponse          { data: AdminTeamConfig }
 
 ### 2. 幂等：只走请求头
 
-幂等键**一律**通过 HTTP 头 `Idempotency-Key` 传递，**不放进 body**；body 中出现
-`idempotencyKey` 属于未知字段，必须被拒绝。
+本节的六条 admin 助手/团队路由：幂等键**一律**通过 HTTP 头 `Idempotency-Key` 传递，
+**不放进 body**；body 中出现 `idempotencyKey` 属于未知字段，必须被拒绝。
+（其它端点存在 body 回退的既有例外，见下方「幂等键取法：header-only 与已知例外（F4）」。）
 
 ```ts
 export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key' as const;
@@ -352,3 +353,205 @@ export interface AdminTeamPblPhaseInput {
 `IDEMPOTENCY_KEY_REQUIRED`、`IDEMPOTENCY_CONFLICT`、`UNAUTHENTICATED` 已在 `ApiErrorCode`
 冻结；`*_NOT_FOUND` 与助手/团队专属校验码若需要固化，由 T2 以附加项补进 `ApiErrorCode`
 （该联合类型声明为 additive-only，只能加不能改）。
+
+## Team Run `context` 与阶段真源
+
+**契约语义**：`context` 是客户端**可传但受键白名单约束**的输入；阶段与门禁字段
+**禁止客户端写入**。这条约束由**服务端强制**（解析层 + 服务层双重校验，在任何
+数据库写入前报错 → 被拒请求 0 insert），不是 prompt 约定，也不是可被管理端配置
+打开的开关。
+
+### 服务端常量（逐字，出处 `packages/ai-client/src/pbl-team.ts`）
+
+`TEAM_RUN_CONTEXT_RESERVED_KEYS`（`pbl-team.ts:141-153`）——在 `context` 里出现即 400：
+
+```ts
+['phase', 'pblPhase', 'gates', 'gate', 'gateEvidence', 'satisfiedGates',
+ 'theoryMastered', 'theoryMasteredGate', 'allowAutonomousAdvance', 'pblSpec', 'context']
+```
+
+`TEAM_RUN_CONTEXT_ALLOWED_KEYS`（`pbl-team.ts:155-161`）——白名单，未列出的键 400：
+
+```ts
+['turnCount', 'pedagogicMove', 'intentDraftId', 'topic', 'source']
+```
+
+`turnCount` / `pedagogicMove` 是既有 AI 搭档链路已在传的服务端派生观测字段
+（`services/api/src/modules/ai-tutor/tutor.service.ts:498` `executeTurn` → `:509` 算 `turnCount`
+→ `:523` `context: { turnCount, pedagogicMove }`）；`intentDraftId` / `topic` / `source` 是
+意图草稿与溯源（traceability）类非状态字段。
+
+`PBL_INITIAL_PHASE`（`pbl-team.ts:167`）= `PBL_PHASE_ORDER[0]` = `'exploration'`：
+服务端初始化阶段时写入的值（`startRun` → `team-runtime.service.ts:554`
+`context: { ...clientContext, phase: PBL_INITIAL_PHASE }`）。「阶段缺失」必须被理解为
+**还在首阶段**，绝不能当作「已走到终点」而绕过门禁（`readRunPhaseContext`，
+`team-runtime.service.ts:354-357`）。
+
+### 错误码
+
+| 情况 | 状态 | `code` | 抛错点 |
+|---|---|---|---|
+| `context` 不是对象（或是数组） | 400 | `TEAM_CONTEXT_INVALID` | `team-runtime.service.ts:329` |
+| 命中保留的状态键 | 400 | `TEAM_CONTEXT_RESERVED_KEY` | `team-runtime.service.ts:335` |
+| 白名单外的未知键 | 400 | `TEAM_CONTEXT_UNKNOWN_KEY` | `team-runtime.service.ts:342` |
+| `run.context.phase` 值非法/伪造 | 409 | `PBL_PHASE_ORDER_INVALID` | `team-runtime.service.ts:361` |
+| 声称的阶段**缺少前置门禁证据**（历史脏数据） | 409 | `PBL_PHASE_ORDER_INVALID` | `team-runtime.service.ts:375` |
+
+码字面量定义：`pbl-team.ts:110`（`PHASE_ORDER_INVALID`）、`:115`、`:117`、`:119`。
+校验函数 `sanitizeTeamClientContext`（`team-runtime.service.ts:326`）在两处调用：
+解析层 `team-runtime.controller.ts:200` 与服务层 `startRun`（`:494`）；合法时**只返回
+白名单副本**（`:346-350`），非白名单字段不会落库。
+
+### 阶段只能按冻结顺序推进，只有服务端能改
+
+- 全仓**唯一**改写 `context.phase` 的地方是 `advancePhase`（`team-runtime.service.ts:880`）；
+  `startRun` 只会写 `PBL_INITIAL_PHASE`。
+- `POST /api/v1/tutor/team-runs/:runId/phase`（`team-runtime.controller.ts:117`）：目标阶段必须
+  等于 `nextPblPhase(currentPhase)`（`pbl-team.ts:193-198`），否则 409 `PBL_PHASE_ORDER_INVALID`
+  （抛错点 `team-runtime.service.ts:203-211`）；终阶段无后续，也不能再推。
+- 门禁是**累积判定**：进入目标阶段需要其之前所有阶段的门禁均已达成
+  （`pblGatesRequiredToEnter` `pbl-team.ts:206-210`；`evaluateGateEntry` `team-runtime.service.ts:169`），
+  因此进入 `guided_practice` 需要 `student_confirmed_intent` **且** `TheoryMastered`。
+- 证据只认服务端写入的 `team.gate.satisfied` 事件（主题常量 `team-runtime.service.ts:57`；
+  重放集合 `loadSatisfiedGates` `:986-996`），写入入口唯一：
+  `POST /api/v1/admin/agent-runs/:runId/gates`（`team-runtime.controller.ts:140`，仅 admin `:147`，
+  非 admin/服务端走域逻辑则 409 `TEAM_GATE_WRITE_FORBIDDEN`，`team-runtime.service.ts:776`）。
+- 自动推进永远被拒：`allowAutonomousAdvance = false` 派生成常量
+  `PBL_AUTONOMOUS_ADVANCE_ALLOWED`（`pbl-team.ts:173`），`trigger: 'autonomous'` → 409
+  `PBL_AUTONOMOUS_ADVANCE_FORBIDDEN`（`team-runtime.service.ts:193-202`）。
+- 门禁未达成的稳定阶段码（409，`pbl-team.ts:101-106`）：
+  `PBL_GATE_STUDENT_INTENT_REQUIRED` / `PBL_GATE_THEORY_MASTERED_REQUIRED` /
+  `PBL_GATE_CODE_RUN_NOT_VERIFIED` / `PBL_GATE_REVIEW_NOT_ARCHIVED`；拒绝同时落
+  `team.gate.blocked` 事件（`team-runtime.service.ts:853-864`）。
+- 委派也受门禁：携带 `pblPhase` 的 delegate 先过门禁再过阶段一致性
+  （`decideDelegatedPhaseEntry` `team-runtime.service.ts:230`；拒绝写事件 `:632-637`，不一致则
+  409 `TEAM_PHASE_MISMATCH`）。
+- 读取侧（客户端只读）：`GET /api/v1/tutor/team-runs/:runId/phase`
+  （`team-runtime.controller.ts:107` → `getPhaseStatus` `team-runtime.service.ts:803-825`）返回
+  `phase` / `phaseOrder` / `nextPhase` / `currentGate` / `requiredGateForNext` /
+  `nextGateErrorCode` / `satisfiedGates` / `allowAutonomousAdvance` / `theoryMasteredGate`。
+
+## 当前班主任唯一性（一个学生同时只能有一个）
+
+AGENTS.md 硬约束。两层实现，缺一层都不算完成：
+
+**服务层判定**（`decideMentorUniqueness` `team-runtime.service.ts:291-312`，调用点 `:511-531`）：
+
+1. `Idempotency-Key` 命中已有 run → 直接重放（`:504-507`）。
+2. 活跃 run 定义：同 `student_user_id` 且 `status IN ('queued', 'running')`（查询 `:512-519`）。
+3. 同 leader + 同 `tutorSessionId` + 同 `projectId` → 幂等重放既有 run（`:305-310`）。
+4. 任一活跃 run 的 leader 与请求不同 → 409 `TEAM_MENTOR_UNIQUENESS_CONFLICT`
+   （`:296-303`；码 `pbl-team.ts:113`），绝不允许出现两个当前班主任。
+
+**DB 层兜底**（并发两个 `startRun` 可同时通过上面的 check-then-insert，即 TOCTOU）：
+迁移 `database/migrations/0021_agent_team_run_mentor_uniqueness.sql:16-18` 已落地：
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS "agent_team_runs_active_mentor_unique_idx"
+  ON "agent_team_runs" ("student_user_id")
+  WHERE "status" IN ('queued', 'running');
+```
+
+- 部分唯一索引：只约束活跃行；终态（completed / failed / cancelled）不在 `WHERE` 内，
+  历史 run 不受影响。
+- `student_user_id IS NULL`（无学生归属的服务端 run）不受约束：Postgres 唯一索引默认
+  NULLS DISTINCT，多个 NULL 行可共存。
+- Drizzle schema 同步声明：`packages/database/src/schema/team-runtime.ts:51-53`
+  （`activeMentorUniqueIdx`，同名 + `.where(sql\`status IN ('queued', 'running')\`)`）。
+- 若库里已存在同一学生的多行活跃 run，**索引创建会失败并阻断迁移**（有意的：先修数据
+  再升级，不做静默去重）。回滚仅移除索引（`0021_agent_team_run_mentor_uniqueness.down.sql:4`）。
+  （该迁移原拟编号 0020，因 local main 已用 `0020_enable_team_agents`（journal idx 20）而
+  **重编号为 0021**（journal idx 21 / when=1791676800000）；索引名与谓词不变。）
+- 服务层把 Postgres `23505` 翻译成 409：`isUniqueViolationError`（`team-runtime.service.ts:276-279`）
+  在 `startRun` 的 catch 里使用（`:572-608`）。注意 insert 的 `ON CONFLICT DO NOTHING` 只仲裁
+  `idempotency_key`，所以 `23505` 只能来自班主任索引；事务已整体回滚（本次未留下任何
+  run 行、邮箱或审计）。回读胜者后：同 leader+同会话+同项目 → 重放胜者（`:604`），
+  其余情形一律 409 `TEAM_MENTOR_UNIQUENESS_CONFLICT`（`:592` / `:608`）。
+
+## 幂等键取法：header-only 与已知例外
+
+上节「Admin 助手 / 团队 CRUD 契约」的六条 admin 路由：**只认 `Idempotency-Key` 头**。
+
+| 路由（含全局前缀 `api/v1`，见 `services/api/src/main.ts:13`） | 声明处 | 取键点 |
+|---|---|---|
+| `GET /admin/ai-runtime/assistants` | `platform-registry.controller.ts:72` | 无需幂等键 |
+| `POST /admin/ai-runtime/assistants` | `:78` | `:85` `requireAdminAiIdempotencyKey(key)` |
+| `PATCH /admin/ai-runtime/assistants/:assistantId` | `:99` | `:107` 同上 |
+| `GET /admin/ai-runtime/teams` | `:122` | 无需幂等键 |
+| `POST /admin/ai-runtime/teams` | `:128` | `:135` 同上 |
+| `PATCH /admin/ai-runtime/teams/:teamId` | `:149` | `:157` 同上 |
+
+取键函数 `requireAdminAiIdempotencyKey`（`platform-registry.controller.ts:173-177`）：只读
+`@Headers('idempotency-key')`，`trim` 后非空且 ≤ 160，否则 400 `IDEMPOTENCY_KEY_REQUIRED`；
+完全不看 body。
+
+同类 header-only 的其他写端点（函数定义 `team-runtime.controller.ts:254`）：
+`POST /admin/ai-runtime/routes`（`:37`，取键 `:44`）、`PATCH /admin/ai-runtime/routes/:routeId`
+（`:58`，`:66`）、`POST /tutor/team-runs/:runId/phase`（`:117`，`:125`）、
+`POST /admin/agent-runs/:runId/gates`（`:140`，`:148`）；以及
+`PATCH` / `POST /admin/ai-runtime/agents/:agentId`（`platform-registry.controller.ts:28` / `:49`，
+内联校验 `:36` / `:57`）——同样只认头。
+
+**既有例外两条（body 优先、header 兜底）**：
+
+| 端点 | 声明 | 取键点 |
+|---|---|---|
+| `POST /api/v1/tutor/team-runs` | `team-runtime.controller.ts:80` | `:188` `typeof value.idempotencyKey === 'string' ? value.idempotencyKey : headerKey` |
+| `POST /api/v1/admin/agent-runs/:runId/delegate` | `:163` | `:208` 同一写法 |
+
+原因（只陈述事实）：既有客户端就是这么传的——
+`apps/student-center/features/tutor/data/tutorStream.ts:38` 将 `idempotencyKey` 定义在请求体
+`TutorStreamRequest` 里并在 `:102` `body: JSON.stringify(request)` 发送（请求头只有
+content-type / accept）；`apps/admin-console/lib/api/agentTeam.ts:122` 也在 body 里带
+`idempotencyKey`。服务端流式入口 `POST /tutor/sessions/:id/stream` 同样是头优先、
+body 兜底（`ai-tutor/tutor.controller.ts:176-180`）。
+
+⚠️ **已知不一致**：同一平台内两种取键方式并存。统一成纯 header 需要同时修改
+student-center 流式链路与 admin-console 团队入口，属于跨平台破坏性变更，需单独立项；
+**本期不改行为，只如实记录**。
+
+## 学生端消费的团队帧
+
+5 个 `team.*` 帧已全部被学生端消费（不再静默丢弃）。常量单一出处：
+`apps/student-center/features/tutor/data/teamFrames.ts` ——
+帧名 `TUTOR_TEAM_FRAME_NAMES`（`:23-29`）、`teamFrameKind`（`:39`）、
+`TUTOR_TEAM_FRAME_NAME_LIST`（`:44`）、`teamFrameToReplyBlock`（`:138`）。
+解析器 `tutorStream.ts:60-73` 把 `TUTOR_TEAM_FRAME_NAME_LIST` 展开进 `KNOWN_FRAMES`（`:72`），
+在 `:222` / `:226` 将帧转为回复块；字段缺失/非法时返回 null（格式校验失败丢弃坏帧，
+不是吞帧，也不用默认阶段假装渲染）。
+
+| 帧名 | 学生端呈现 | 出处 |
+|---|---|---|
+| `team.phase_advanced` | `pbl_card` 阶段卡（含阶段进度 `n/4`、上一门禁已由服务端确认达成） | `teamFrames.ts:144` |
+| `team.gate_blocked` | `pbl_card` 门禁拒绝 + 中文提示 | `:162`（文案表 `ERROR_CODE_MESSAGES:78`、`GATE_LABELS:70`） |
+| `team.member_delegated` | `tool` 委派时间线条目（收件助手 / 任务类型 / 状态三态） | `:185` |
+| `team.tool_invoked` | `tool` 工具调用时间线条目 | `:201` |
+| `team.thinking` | `think` 团队思考块（只呈现阶段标签，不含思考原文） | `:216` |
+
+**服务端真实写入点（逐项核实）**：
+
+- `team.phase_advanced`：有写入点——`advancePhase` 成功后的 `recordEvent`
+  （`team-runtime.service.ts:884-894`，主题常量 `:61`）。
+- `team.gate_blocked`：有写入点——两处：delegate 被门禁拒（`:632-637`）与
+  advancePhase 被拒（`:853-864`）；主题常量 `:59`。
+- `team.member_delegated`：有产出点——不是事件，而是由 `agent_team_tasks` 行直接
+  合成帧（`listSessionStreamFrames` 内 `:964-980`）。
+- `team.tool_invoked` / `team.thinking`：**目前只有帧名与事件主题声明，无写入点**。
+  声明见 `TEAM_FRAME_NAMES`（`team-runtime.service.ts:68-74`）、主题常量
+  `TEAM_TOOL_INVOKED_TOPIC:63` / `TEAM_MODEL_THINKING_TOPIC:65`、事件→帧映射 `:85-90`；
+  但 `services/api/src` 内不存在任何 `recordEvent` 以这两个主题写入的调用（已逐个
+  grep 确认，仅 protocol / gate 测试自行造事件）。学生端已按容错字段解析就绪，
+  服务端一旦开始写入即可直接渲染；在那之前这两类帧不会出现在流上。
+
+输出链路与脱敏（未成年人数据最小化）：
+
+- 帧来源 `listSessionStreamFrames`（`team-runtime.service.ts:913-983`），按
+  `TEAM_TOPIC_FRAME_KIND` 过滤事件，最多 50 帧并按时间排序（`:981-982`）。
+- SSE 出口 `services/api/src/modules/ai-tutor/tutor.controller.ts:233-250`，每帧经
+  `writeTeamFrame`（`:417-428`）输出，帧名取 `teamFrameName`（`team-runtime.service.ts:118`）。
+  Team Runtime 故障不能把正常学生对话流变成错误流（`:251-253` 只 swallow，不注入 error）。
+- 载荷经 `buildTeamFrameData`（`:144-146`）→ `sanitizeTeamFramePayload`（`:128-141`）：
+  剥离 `RAW_TEXT_KEYS` 里的原文类字段（`:101-115`）、字符串截断 120 字符（`:116`）、
+  字符串数组最多 10 项。对话原文不上流。
+- 新增/改名帧类型必须同步 `team-runtime.protocol.test.ts` 的断言与前端
+  `teamFrames.ts` 两处（前端注释已约束）。
