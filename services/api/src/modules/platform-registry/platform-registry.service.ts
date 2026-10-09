@@ -1,7 +1,28 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
-import { desc, eq, sql } from 'drizzle-orm';
-import { agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
+import type {
+  AdminAssistantConfig,
+  AdminAssistantCreateInput,
+  AdminAssistantUpdateInput,
+  AdminTeamConfig,
+  AdminTeamCreateInput,
+  AdminTeamMember,
+  AdminTeamMemberInput,
+  AdminTeamPblSpecInput,
+  AdminTeamUpdateInput,
+  AssistantAgentStatus,
+  AssistantDefaults,
+  AssistantSource,
+  PblPhase,
+  PblTeamWorkflowSpec,
+  TeamSessionMode,
+  TeammateRole,
+  TeammateStatus,
+  WorkspaceMode,
+} from '@qitu/contracts';
+import { asc, desc, eq, sql } from 'drizzle-orm';
+import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { builtinToolRegistry } from './built-in-tools';
@@ -9,6 +30,7 @@ import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { assertParentGraph } from './agent-config.validation';
+import { PBL_PHASE_GATE_DEFAULTS } from './admin-ai-config.validation';
 import type { TutorRuntimePolicy, TutorRuntimeSkill } from '../../common/tutor-runtime/runtime-source';
 
 export interface EffectiveAgentRuntime {
@@ -17,6 +39,143 @@ export interface EffectiveAgentRuntime {
   skills: readonly TutorRuntimeSkill[];
   tools: readonly TutorAgentToolDescriptor[];
   mcpServers: readonly TutorAgentMcpDescriptor[];
+}
+
+/* ==================== admin AI 配置（助手 / 团队） ==================== */
+
+type AssistantRow = typeof adminAssistants.$inferSelect;
+type TeamRow = typeof adminTeams.$inferSelect;
+type MemberRow = typeof adminTeamMembers.$inferSelect;
+
+/**
+ * 服务端兜底的助手默认项：与 `@qitu/ai-client` 内置注册表的
+ * `DEFAULT_ASSISTANT_DEFAULTS` 保持一致；客户端只允许覆盖已知项，
+ * 缺省字段由这里补齐（冻结契约 AdminAssistantCreateInput.defaults）。
+ */
+const SERVER_ASSISTANT_DEFAULTS: AssistantDefaults = {
+  model: { mode: 'default', value: 'qwen3.8-flash' },
+  permission: { mode: 'auto', value: 'supervised' },
+  thought_level: { mode: 'high', value: 'balanced' },
+  skills: { mode: 'default', value: ['guided', 'planning', 'escalation'] },
+  mcps: { mode: 'default', value: [] },
+};
+
+function mergeAssistantDefaults(partial?: Partial<AssistantDefaults> | null): AssistantDefaults {
+  const d = partial ?? {};
+  return {
+    model: d.model ?? SERVER_ASSISTANT_DEFAULTS.model,
+    permission: d.permission ?? SERVER_ASSISTANT_DEFAULTS.permission,
+    thought_level: d.thought_level ?? SERVER_ASSISTANT_DEFAULTS.thought_level,
+    skills: d.skills ?? SERVER_ASSISTANT_DEFAULTS.skills,
+    mcps: d.mcps ?? SERVER_ASSISTANT_DEFAULTS.mcps,
+  };
+}
+
+/** 读取侧投影：deletable 由 source 派生，绝不落库、绝不由客户端写入（硬要求 5）。 */
+function toAssistantConfig(row: AssistantRow): AdminAssistantConfig {
+  const config: AdminAssistantConfig = {
+    id: row.id,
+    source: row.source as AssistantSource,
+    name: row.name,
+    description: row.description,
+    role: row.role,
+    enabled: row.enabled,
+    sortOrder: row.sortOrder,
+    modelProviderId: row.modelProviderId ?? null,
+    modelId: row.modelId ?? null,
+    instructions: row.instructions,
+    enabledSkills: [...row.enabledSkills],
+    toolIds: [...row.toolIds],
+    mcpServerIds: [...row.mcpServerIds],
+    defaults: mergeAssistantDefaults(row.defaults as Partial<AssistantDefaults> | null),
+    agentStatus: row.agentStatus as AssistantAgentStatus,
+    teamSelectable: row.teamSelectable,
+    deletable: row.source !== 'builtin',
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+  if (row.avatar) config.avatar = row.avatar;
+  if (row.temperature !== null && row.temperature !== undefined) config.temperature = row.temperature;
+  if (row.agentStatusMessage) config.agentStatusMessage = row.agentStatusMessage;
+  return config;
+}
+
+/** 成员的 assistantName / avatar / status 由服务端解析回填（硬要求 1）。 */
+function toTeamConfig(team: TeamRow, members: readonly MemberRow[], assistantRows: readonly AssistantRow[]): AdminTeamConfig {
+  const byId = new Map(assistantRows.map((row) => [row.id, row]));
+  const memberList: AdminTeamMember[] = [...members]
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.slotId.localeCompare(b.slotId))
+    .map((member) => {
+      const assistant = byId.get(member.assistantId);
+      const resolved: AdminTeamMember = {
+        slotId: member.slotId,
+        assistantId: member.assistantId,
+        assistantName: assistant?.name ?? member.assistantId,
+        role: member.role as TeammateRole,
+        roleLabel: member.roleLabel ?? assistant?.role ?? '',
+        status: member.status as TeammateStatus,
+      };
+      if (assistant?.avatar) resolved.avatar = assistant.avatar;
+      const model = member.model ?? assistant?.modelId ?? undefined;
+      if (model) resolved.model = model;
+      if (member.color) resolved.color = member.color;
+      if (member.pblPhase) resolved.pblPhase = member.pblPhase as PblPhase;
+      return resolved;
+    });
+  const config: AdminTeamConfig = {
+    id: team.id,
+    name: team.name,
+    description: team.description,
+    workspaceMode: team.workspaceMode as WorkspaceMode,
+    sessionMode: team.sessionMode as TeamSessionMode,
+    leaderAssistantId: team.leaderAssistantId,
+    members: memberList,
+    concurrencyLimit: team.concurrencyLimit,
+    enabled: team.enabled,
+    createdAt: team.createdAt.toISOString(),
+    updatedAt: team.updatedAt.toISOString(),
+  };
+  if (team.pblSpec) config.pblSpec = team.pblSpec as unknown as PblTeamWorkflowSpec;
+  return config;
+}
+
+/**
+ * 把写入形状规范化成服务端存储的 PBL 规格：
+ * - `theoryMasteredGate` 恒为 true（校验层已拒绝 false/缺失，这里再兜底写死）；
+ * - `concept_mastery` 阶段的门禁强制 `TheoryMastered`；
+ * - 缺省 `gateCondition` 按阶段补默认门禁；
+ * - `allowAutonomousAdvance` 归一为 false。
+ */
+function normalizePblSpec(
+  spec: AdminTeamPblSpecInput,
+  members: readonly { assistantId: string; roleLabel?: string | null }[],
+  assistantRows: readonly AssistantRow[],
+): PblTeamWorkflowSpec {
+  const byId = new Map(assistantRows.map((row) => [row.id, row]));
+  const roleLabelFor = (assistantId: string): string =>
+    members.find((member) => member.assistantId === assistantId)?.roleLabel
+    ?? byId.get(assistantId)?.role
+    ?? '';
+  return {
+    projectId: spec.projectId,
+    projectName: spec.projectName,
+    targetDomain: spec.targetDomain,
+    phases: spec.phases.map((phase) => {
+      const gate = phase.phase === 'concept_mastery' ? 'TheoryMastered' : (phase.gateCondition ?? PBL_PHASE_GATE_DEFAULTS[phase.phase]);
+      const entry = {
+        phase: phase.phase,
+        title: phase.title,
+        assignedAssistantId: phase.assignedAssistantId,
+        assignedRoleLabel: phase.assignedRoleLabel ?? roleLabelFor(phase.assignedAssistantId),
+        learningObjectives: [...(phase.learningObjectives ?? [])],
+        gateCondition: gate,
+        ...(phase.deliverableType !== undefined ? { deliverableType: phase.deliverableType } : {}),
+      };
+      return entry;
+    }),
+    theoryMasteredGate: true,
+    allowAutonomousAdvance: false,
+  };
 }
 
 function assertModelSelectionPair(input: AdminRuntimeAgentUpdateRequest): void {
@@ -388,6 +547,271 @@ export class PlatformRegistryService {
     const created = (await this.listAgentsFromDatabase()).find((agent) => agent.id === agentId);
     if (!created) throw new ServiceUnavailableException('Agent 创建未返回记录');
     return created;
+  }
+
+  /* ==================== admin 助手 CRUD ==================== */
+
+  async listAssistants(): Promise<AdminAssistantConfig[]> {
+    if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
+    const rows = await this.db
+      .select()
+      .from(adminAssistants)
+      .orderBy(asc(adminAssistants.sortOrder), asc(adminAssistants.id));
+    return rows.map(toAssistantConfig);
+  }
+
+  /**
+   * 创建助手：`id` / `source: 'user'` / `deletable`（读取侧派生）/ `agentStatus:
+   * 'unchecked'` / `createdAt` / `updatedAt` 全部由服务端补全；`sortOrder` 缺省
+   * 追加到列表末尾。
+   */
+  async createAssistant(actor: CurrentUser, input: AdminAssistantCreateInput): Promise<AdminAssistantConfig> {
+    if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
+    const rows = await this.db.select().from(adminAssistants);
+    const now = new Date();
+    const id = `assistant-${randomUUID()}`;
+    const sortOrder = input.sortOrder ?? rows.reduce((max, row) => Math.max(max, row.sortOrder), 0) + 1;
+    const record: AssistantRow = {
+      id,
+      source: 'user',
+      name: input.name,
+      avatar: input.avatar ?? null,
+      description: input.description,
+      role: input.role,
+      enabled: input.enabled ?? true,
+      sortOrder,
+      modelProviderId: input.modelProviderId ?? null,
+      modelId: input.modelId ?? null,
+      temperature: input.temperature ?? null,
+      instructions: input.instructions,
+      enabledSkills: [...(input.enabledSkills ?? [])],
+      toolIds: [...(input.toolIds ?? [])],
+      mcpServerIds: [...(input.mcpServerIds ?? [])],
+      defaults: mergeAssistantDefaults(input.defaults) as unknown as Record<string, unknown>,
+      agentStatus: 'unchecked',
+      agentStatusMessage: null,
+      teamSelectable: input.teamSelectable ?? true,
+      updatedBy: actor.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await withTransaction(this.db, async (tx) => {
+      await tx.insert(adminAssistants).values({ ...record });
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.assistant.create',
+        targetType: 'admin_assistant', targetId: id,
+        // 审计不存提示词正文，只存变更元数据（未成年人数据最小可见 + 留痕）。
+        detail: {
+          source: 'user',
+          changedFields: Object.keys(input).filter((key) => key !== 'instructions'),
+          instructionsChanged: true,
+          teamSelectable: record.teamSelectable,
+          enabled: record.enabled,
+        },
+      }, tx);
+    });
+    return toAssistantConfig(record);
+  }
+
+  async updateAssistant(actor: CurrentUser, assistantId: string, patch: AdminAssistantUpdateInput): Promise<AdminAssistantConfig> {
+    if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
+    return withTransaction(this.db, async (tx) => {
+      const rows = await tx.select().from(adminAssistants);
+      const existing = rows.find((row) => row.id === assistantId);
+      if (!existing) throw new NotFoundException('助手不存在');
+      const now = new Date();
+      const set: Partial<typeof adminAssistants.$inferInsert> = { updatedBy: actor.id, updatedAt: now };
+      if (patch.name !== undefined) set.name = patch.name;
+      if (patch.description !== undefined) set.description = patch.description;
+      if (patch.role !== undefined) set.role = patch.role;
+      if (patch.instructions !== undefined) set.instructions = patch.instructions;
+      if (patch.avatar !== undefined) set.avatar = patch.avatar;
+      if (patch.modelProviderId !== undefined) set.modelProviderId = patch.modelProviderId;
+      if (patch.modelId !== undefined) set.modelId = patch.modelId;
+      if (patch.temperature !== undefined) set.temperature = patch.temperature;
+      if (patch.enabledSkills !== undefined) set.enabledSkills = [...patch.enabledSkills];
+      if (patch.toolIds !== undefined) set.toolIds = [...patch.toolIds];
+      if (patch.mcpServerIds !== undefined) set.mcpServerIds = [...patch.mcpServerIds];
+      if (patch.defaults !== undefined) {
+        set.defaults = mergeAssistantDefaults({
+          ...(existing.defaults as Partial<AssistantDefaults>),
+          ...patch.defaults,
+        }) as unknown as Record<string, unknown>;
+      }
+      if (patch.teamSelectable !== undefined) set.teamSelectable = patch.teamSelectable;
+      if (patch.sortOrder !== undefined) set.sortOrder = patch.sortOrder;
+      if (patch.enabled !== undefined) set.enabled = patch.enabled;
+      await tx.update(adminAssistants).set(set).where(eq(adminAssistants.id, assistantId));
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.assistant.update',
+        targetType: 'admin_assistant', targetId: assistantId,
+        detail: {
+          source: existing.source,
+          changedFields: Object.keys(patch).filter((key) => key !== 'instructions'),
+          // 内置助手的提示词改写必须留下审计标记（冻结契约）。
+          instructionsChanged: patch.instructions !== undefined,
+        },
+      }, tx);
+      return toAssistantConfig({ ...existing, ...set });
+    });
+  }
+
+  /* ==================== admin 团队 CRUD ==================== */
+
+  async listTeams(): Promise<AdminTeamConfig[]> {
+    if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    const [teams, members, assistants] = await Promise.all([
+      this.db.select().from(adminTeams).orderBy(asc(adminTeams.createdAt), asc(adminTeams.id)),
+      this.db.select().from(adminTeamMembers).orderBy(asc(adminTeamMembers.sortOrder)),
+      this.db.select().from(adminAssistants),
+    ]);
+    return teams.map((team) => toTeamConfig(team, members.filter((member) => member.teamId === team.id), assistants));
+  }
+
+  async createTeam(actor: CurrentUser, input: AdminTeamCreateInput): Promise<AdminTeamConfig> {
+    if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    const assistantRows = await this.db.select().from(adminAssistants);
+    const existingMembers = await this.db.select().from(adminTeamMembers);
+    this.assertTeamMembers(input.members, assistantRows);
+    if (!input.members.some((member) => member.assistantId === input.leaderAssistantId)) {
+      throw new BadRequestException('leaderAssistantId 必须是 members 中的某个助手');
+    }
+    const explicitSlots = input.members.map((member) => member.slotId).filter((slot): slot is string => !!slot);
+    if (existingMembers.some((member) => explicitSlots.includes(member.slotId))) {
+      throw new BadRequestException('slotId 已被既有团队成员占用');
+    }
+    const now = new Date();
+    const id = `team-${randomUUID()}`;
+    const memberRows: MemberRow[] = input.members.map((member, index) => ({
+      slotId: member.slotId ?? `slot-${randomUUID()}`,
+      teamId: id,
+      assistantId: member.assistantId,
+      role: member.role,
+      roleLabel: member.roleLabel ?? null,
+      model: member.model ?? null,
+      color: member.color ?? null,
+      pblPhase: member.pblPhase ?? null,
+      status: 'idle',
+      sortOrder: index,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    const pblSpec = input.pblSpec ? normalizePblSpec(input.pblSpec, memberRows, assistantRows) : null;
+    const teamRow: TeamRow = {
+      id,
+      name: input.name,
+      description: input.description,
+      workspaceMode: input.workspaceMode ?? 'shared',
+      sessionMode: input.sessionMode ?? 'supervised',
+      leaderAssistantId: input.leaderAssistantId,
+      concurrencyLimit: input.concurrencyLimit ?? 1,
+      pblSpec: pblSpec as unknown as Record<string, unknown> | null,
+      enabled: input.enabled ?? true,
+      updatedBy: actor.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await withTransaction(this.db, async (tx) => {
+      await tx.insert(adminTeams).values({ ...teamRow });
+      await tx.insert(adminTeamMembers).values(memberRows.map((member) => ({ ...member })));
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.team.create',
+        targetType: 'admin_team', targetId: id,
+        detail: {
+          memberCount: memberRows.length,
+          leaderAssistantId: input.leaderAssistantId,
+          concurrencyLimit: teamRow.concurrencyLimit,
+          pblSpecPresent: pblSpec !== null,
+          theoryMasteredGate: true,
+        },
+      }, tx);
+    });
+    return toTeamConfig(teamRow, memberRows, assistantRows);
+  }
+
+  /** members 为整体替换语义（不是增量 diff）；slotId 回填可保持引用稳定。 */
+  async updateTeam(actor: CurrentUser, teamId: string, patch: AdminTeamUpdateInput): Promise<AdminTeamConfig> {
+    if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    return withTransaction(this.db, async (tx) => {
+      const teams = await tx.select().from(adminTeams);
+      const existing = teams.find((team) => team.id === teamId);
+      if (!existing) throw new NotFoundException('团队不存在');
+      const allMembers = await tx.select().from(adminTeamMembers);
+      const currentMembers = allMembers.filter((member) => member.teamId === teamId);
+      const assistantRows = await tx.select().from(adminAssistants);
+      const leaderAssistantId = patch.leaderAssistantId ?? existing.leaderAssistantId;
+      const now = new Date();
+      let memberRows: readonly MemberRow[] = currentMembers;
+      let replaced = false;
+      if (patch.members !== undefined) {
+        this.assertTeamMembers(patch.members, assistantRows);
+        if (!patch.members.some((member) => member.assistantId === leaderAssistantId)) {
+          throw new BadRequestException('leaderAssistantId 必须是 members 中的某个助手');
+        }
+        const explicitSlots = patch.members.map((member) => member.slotId).filter((slot): slot is string => !!slot);
+        if (allMembers.some((member) => member.teamId !== teamId && explicitSlots.includes(member.slotId))) {
+          throw new BadRequestException('slotId 已被其他团队占用');
+        }
+        memberRows = patch.members.map((member, index) => ({
+          slotId: member.slotId ?? `slot-${randomUUID()}`,
+          teamId,
+          assistantId: member.assistantId,
+          role: member.role,
+          roleLabel: member.roleLabel ?? null,
+          model: member.model ?? null,
+          color: member.color ?? null,
+          pblPhase: member.pblPhase ?? null,
+          status: 'idle',
+          sortOrder: index,
+          createdAt: now,
+          updatedAt: now,
+        }));
+        replaced = true;
+      } else if (!currentMembers.some((member) => member.assistantId === leaderAssistantId)) {
+        throw new BadRequestException('leaderAssistantId 必须是 members 中的某个助手');
+      }
+      const set: Partial<typeof adminTeams.$inferInsert> = { updatedBy: actor.id, updatedAt: now };
+      if (patch.name !== undefined) set.name = patch.name;
+      if (patch.description !== undefined) set.description = patch.description;
+      if (patch.leaderAssistantId !== undefined) set.leaderAssistantId = patch.leaderAssistantId;
+      if (patch.workspaceMode !== undefined) set.workspaceMode = patch.workspaceMode;
+      if (patch.sessionMode !== undefined) set.sessionMode = patch.sessionMode;
+      if (patch.concurrencyLimit !== undefined) set.concurrencyLimit = patch.concurrencyLimit;
+      if (patch.enabled !== undefined) set.enabled = patch.enabled;
+      if (patch.pblSpec !== undefined) {
+        set.pblSpec = normalizePblSpec(patch.pblSpec, memberRows, assistantRows) as unknown as Record<string, unknown> | null;
+      }
+      await tx.update(adminTeams).set(set).where(eq(adminTeams.id, teamId));
+      if (replaced) {
+        await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId));
+        await tx.insert(adminTeamMembers).values(memberRows.map((member) => ({ ...member })));
+      }
+      await this.audit.write({
+        actorId: actor.id, actorRole: actor.role, action: 'admin.team.update',
+        targetType: 'admin_team', targetId: teamId,
+        detail: {
+          changedFields: Object.keys(patch),
+          membersReplaced: replaced,
+          memberCount: memberRows.length,
+          leaderAssistantId,
+          pblSpecChanged: patch.pblSpec !== undefined,
+          theoryMasteredGate: true,
+        },
+      }, tx);
+      return toTeamConfig({ ...existing, ...set }, memberRows, assistantRows);
+    });
+  }
+
+  /** 每个成员助手必须存在且 teamSelectable && enabled（硬要求 3，服务端二次校验）。 */
+  private assertTeamMembers(members: readonly AdminTeamMemberInput[], assistantRows: readonly AssistantRow[]): void {
+    const byId = new Map(assistantRows.map((row) => [row.id, row]));
+    for (const member of members) {
+      const assistant = byId.get(member.assistantId);
+      if (!assistant) throw new BadRequestException(`团队成员助手 ${member.assistantId} 不存在`);
+      if (!assistant.teamSelectable || !assistant.enabled) {
+        throw new BadRequestException(`团队成员助手 ${member.assistantId} 未启用或不可被团队选用`);
+      }
+    }
   }
 
   getAgentRuntimeTools(runtime: EffectiveAgentRuntime) {

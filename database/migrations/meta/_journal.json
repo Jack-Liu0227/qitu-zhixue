@@ -134,6 +134,13 @@
       "when": 1791350400000,
       "tag": "0018_public_consultations",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791436800000,
+      "tag": "0019_admin_ai_config",
+      "breakpoints": true
     }
   ]
 }

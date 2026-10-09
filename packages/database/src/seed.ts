@@ -11,6 +11,9 @@
  *       knowledge_documents / knowledge_chunks / learning_plans(+modules/objectives/sessions) /
  *       mastery_records / mastery_attempts / growth_records / student_memories / mentor_reviews）。
  *       需在身份与工作区之后：created_by / student_user_id / mentor_user_id / partner_id 引用前两者。
+ *   4. admin-ai-config.sql —— admin AI 配置（admin_assistants / admin_teams / admin_team_members）。
+ *       迁移 0019 建表后执行；内容与 @qitu/ai-client 的 BUILTIN_ASSISTANTS /
+ *       THUNDER_FIGHTER_TEAM_CONFIG 对齐，供 admin 控制台两张表真实落库。
  *
  * 种子内容只有一份真源（上面的 .sql 文件），本脚本只负责按序执行，
  * 避免 SQL 与 TS 两份数据漂移。
@@ -30,7 +33,7 @@ import pg from 'pg';
 const SEEDS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../database/seeds');
 
 /** 确定性执行顺序；数组顺序即外键依赖顺序，禁止重排。 */
-const SEED_FILES = ['demo-identities.sql', 'tutor-workspace.sql', 'domain-foundation.sql'] as const;
+const SEED_FILES = ['demo-identities.sql', 'tutor-workspace.sql', 'domain-foundation.sql', 'admin-ai-config.sql'] as const;
 
 type SeedFile = (typeof SEED_FILES)[number];
 
