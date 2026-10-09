@@ -20,6 +20,9 @@ importers:
 
   apps/admin-console:
     dependencies:
+      '@qitu/ai-client':
+        specifier: workspace:*
+        version: link:../../packages/ai-client
       '@qitu/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client

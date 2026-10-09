@@ -12,6 +12,7 @@
 2. 本文件：产品基线、仓库架构、跨域硬规则、平台索引。
 3. 按角色阅读对应平台入口：
    - 管理端：[`admin/platform-governance.md`](./admin/platform-governance.md)
+   - 公开官网：[`admin/public-site.md`](./admin/public-site.md)
    - 学生端：[`student/today.md`](./student/today.md)
    - 班主任端：[`teacher/dashboard.md`](./teacher/dashboard.md)
    - 家长端：[`parent/home.md`](./parent/home.md)
@@ -26,11 +27,11 @@ AI 运行时的管理与 SDK 合同：[`admin/control-plane.md`](./admin/control
 | 学生端 | `docs/student/` | `student` | 探索、AI搭档、项目、理论学习、制作工作台、作品、成长轨迹 |
 | 班主任端 | `docs/teacher/` | `teacher` | 工作台、学生管理、问题处理、数据统计 |
 | 家长端 | `docs/parent/` | `parent` | 授权投影下的成长快照、消息与反馈、导出 |
-| 管理端 | `docs/admin/` | `admin` | 平台治理控制面、模型注册表、关系绑定、数据库、部署、权限 |
+| 管理端 | `docs/admin/` | `admin` | 平台治理控制面、模型注册表、关系绑定、数据库、部署、权限、公开官网 |
 | SDK | `docs/sdk/` | — | Agent Runtime、领域 facade、浏览器 client、记忆 |
 
-跨域基线（架构、权限、数据库、初始化、部署、登录）**不是**独立目录，而是分别归入
-`docs/README.md`（架构与不变量）与 `docs/admin/`（权限、登录、数据库、初始化、部署）。
+跨域基线（架构、权限、数据库、初始化、部署、登录、公开官网）**不是**独立目录，而是分别归入
+`docs/README.md`（架构与不变量）与 `docs/admin/`（权限、登录、数据库、初始化、部署、公开官网）。
 
 ## 仓库架构
 
@@ -65,6 +66,7 @@ Agent Runtime 由服务端加载根 `AGENTS.md` 作为全局策略，并为每�
 | Mentor Operations | `mentor` / `teacher` | 告警、问题、干预、班主任笔记、知识库 |
 | Parent Experience | `parent` / `growth` | 授权脱敏投影、成长快照、消息与反馈、导出 |
 | Admin & Compliance | `admin` / `platform-registry` / `platform-data` / `settings` / `templates` / `model-registry` / `knowledge` | 平台配置、AI 策略、审计、数据保留、敏感访问审批 |
+| Public Site | `public-content` | 官网首页聚合投影与访客咨询线索（唯一公开写入口，白名单字段 + 幂等 + 审计） |
 
 依赖规则：
 

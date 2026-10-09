@@ -18,6 +18,37 @@ body {
   background-attachment: fixed;
 }
 
+/* ---- 登录页返回首页入口（`/login` 抽取自原首页） ---- */
+.login-back {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--login-border);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 88%);
+  color: var(--login-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.login-back svg {
+  transform: rotate(180deg);
+}
+
+.login-back:hover,
+.login-back:focus-visible {
+  border-color: var(--login-primary);
+  color: var(--login-primary);
+}
+
 .login-page {
   min-height: 100vh;
   display: grid;

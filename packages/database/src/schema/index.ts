@@ -1,6 +1,7 @@
 export * from './agent-memory';
 export * from './agent-runtime';
 export * from './team-runtime';
+export * from './consultation';
 export * from './feedback';
 export * from './growth-records';
 export * from './identity';

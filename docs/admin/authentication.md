@@ -7,6 +7,9 @@
 
 平台按**身份**统一登录：同一个登录入口按角色把用户送到对应端。
 
+公开官网（`/`）与统一登录（`/login`）同在 `apps/auth-portal`，都无需登录即可访问；
+首页所有入口均指向 `/login`（见 [`public-site.md`](./public-site.md)）。
+
 | 角色 | 登录后落地 |
 |---|---|
 | `student` | `/student` |
@@ -50,6 +53,7 @@
 |---|---|
 | 主域名 | `http://www.qtzx.de5.net/` |
 | IP 回退 | `http://122.51.130.204/` |
+| 统一登录 | `http://122.51.130.204/login` |
 | 管理端 | `http://122.51.130.204/admin/login` |
 
 > HTTPS 曾因 `www.qtzx.de5.net` 的 DNSSEC Bogus 被阻断；修复方式：

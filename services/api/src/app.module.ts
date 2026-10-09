@@ -27,6 +27,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { WorksModule } from './modules/works/works.module';
 import { PlatformRegistryModule } from './modules/platform-registry/platform-registry.module';
+import { PublicContentModule } from './modules/public-content/public-content.module';
 import { InitializationModule } from './modules/initialization/initialization.module';
 import { ModelSettingsModule } from './modules/settings/model-config.module';
 import { TeamRuntimeModule } from './modules/team-runtime/team-runtime.module';
@@ -61,6 +62,7 @@ import { TeamRuntimeModule } from './modules/team-runtime/team-runtime.module';
     KnowledgeModule,
     WorksModule,
     PlatformRegistryModule,
+    PublicContentModule,
     InitializationModule,
     // 旧 `/admin/models/:slot` 兼容读取模块；新运行时事实源是
     // ModelRegistryModule 保存供应商/模型；Agent Runtime 负责最终模型选择。
