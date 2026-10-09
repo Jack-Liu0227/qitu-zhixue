@@ -1,172 +1,261 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AdminTeamConfig, AdminTeamMember, WorkspaceMode, TeamSessionMode } from '@qitu/contracts';
-import { fetchAdminTeams, updateAdminTeam } from '../../../../lib/api/teams';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  AdminAssistantConfig,
+  AdminTeamConfig,
+  AdminTeamCreateInput,
+  AdminTeamMember,
+  AdminTeamMemberInput,
+  AdminTeamUpdateInput,
+  TeamSessionMode,
+  TeammateRole,
+  WorkspaceMode,
+} from '@qitu/contracts';
+import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
+import { createIdempotentRetryKey, AdminApiError } from '../../../../lib/api/types';
+import { createAdminTeam, fetchAdminTeams, updateAdminTeam } from '../../../../lib/api/teams';
+import { fetchAdminAssistants } from '../../../../lib/api/assistants';
+import { WriteErrorPanel } from '../../../../components/settings/WriteErrorPanel';
+import { NetworkOfflineBanner, useBrowserOnline } from '../../../../components/settings/NetworkOffline';
 import { AionSettingsParadigm, RowCard } from '../AionSettingsParadigm';
 import Link from 'next/link';
 
-interface ExtendedTeamItem extends AdminTeamConfig {
-  isAvailable: boolean;
-  avatarIcon?: string;
-  creatorName?: string;
-  protocolMarkdown?: string;
+/**
+ * 「团队」表（设置页左侧第二张表，位置/名称/层级为冻结信息架构，保持不变）。
+ *
+ * 数据来源只有真实接口 `GET /api/v1/admin/ai-runtime/teams`：旧版在请求失败时
+ * 静默回退 `THUNDER_FIGHTER_TEAM_CONFIG` 的兜底已删除，失败一定渲染成
+ * error / 断网 / 权限失败可见状态。五种状态：
+ *  - loading / error / 断网 → AdminStateViews（骨架、ErrorState、OfflineBanner）
+ *  - empty → EmptyTeamsPanel（接口成功、列表为空）
+ *  - 权限失败(403) → AdminPermissionError → 「权限不足」渲染，前端不做最终判断
+ * 写操作（POST/PATCH）携带 `Idempotency-Key`，未确认的重试复用同一键；
+ * 服务端校验失败（空 PATCH、leaderAssistantId 不在成员里、theoryMasteredGate
+ * 被写成 false 等）以 WriteErrorPanel 原样显示错误码与字段级提示。
+ */
+
+/** 客户端编辑草稿：只携带契约允许写入的字段 + 展示用的服务端派生值。 */
+interface TeamDraft {
+  /** 空串 = 新建；正式 id 只能由服务端生成。 */
+  id: string;
+  name: string;
+  description: string;
+  workspaceMode: WorkspaceMode;
+  sessionMode: TeamSessionMode;
+  leaderAssistantId: string;
+  concurrencyLimit: number;
+  enabled: boolean;
+  members: AdminTeamMember[];
 }
 
-const DEFAULT_THUNDER_PROTOCOL = `# 雷霆战机 PBL 研发小队协议
-本小队负责引导学生通过 PBL（项目式学习）完成雷霆战机小游戏全流程研发：
-从物理概念理解、碰撞检测数学推导，到代码实战与成果提交答辩。
+function toTeamDraft(team: AdminTeamConfig): TeamDraft {
+  return {
+    id: team.id,
+    name: team.name,
+    description: team.description,
+    workspaceMode: team.workspaceMode,
+    sessionMode: team.sessionMode,
+    leaderAssistantId: team.leaderAssistantId,
+    concurrencyLimit: team.concurrencyLimit,
+    enabled: team.enabled,
+    members: team.members.map((m) => ({ ...m })),
+  };
+}
 
-## 触发与常驻授权
-学生在灵感空间完成意图确认后，自动立项独立工程工作目录，无需反复确认，直接开工。
-
-## 固定编制与成员职责
-- Leader: 启途总导师 (调度总控，把控整体进度与目标达成)
-- 原理教练: 战机原理教练 (飞行力学、矢量位移、AABB碰撞；TheoryMastered 责任人)
-- 代码向导: 战机代码向导 (Canvas 渲染循环、按键事件绑定、敌人波次生成)
-- 答辩导师: 答辩导师 (代码规范审查、成果答辩、成长档案归档)
-
-## 工作目录规范
-WORK_ROOT 为学生专属工程目录: \`student-projects/thunder-fighter/\`
-
-## 执行原则与状态门禁 (硬约束)
-- 理论门禁: \`TheoryMastered\` 判定通过前，严禁越级进入实践代码编写阶段！
-- 循序渐进: 每次仅给出一小步引导与关键思考题，绝不替学生直接代写全部代码。
-- 幂等性: 任何阶段切换与成果生成必须支持幂等重放与审计追踪。`;
-
-const STATIC_TEAMS: ExtendedTeamItem[] = [
-  {
-    id: 'thunder-fighter-game-pbl',
-    name: '雷霆战机 PBL 研发小队',
-    description: '指导学生以 PBL 项目式学习方式，从游戏概念、碰撞检测数学推导、核心循环到成果提交全流程研发雷霆战机小游戏。',
-    leaderAssistantId: 'tutor-general-leader',
+function emptyTeamDraft(): TeamDraft {
+  return {
+    id: '',
+    name: '新创 PBL 协作小队',
+    description: '针对特定项目式学习目标的多智能体协同研发小队。',
     workspaceMode: 'shared',
-    sessionMode: 'plan',
-    concurrencyLimit: 4,
+    sessionMode: 'supervised',
+    leaderAssistantId: '',
+    concurrencyLimit: 1,
     enabled: true,
-    avatarIcon: '🚀',
-    creatorName: 'Qitu Admin',
-    createdAt: '2026-09-01T08:00:00Z',
-    updatedAt: new Date().toISOString(),
-    protocolMarkdown: DEFAULT_THUNDER_PROTOCOL,
-    members: [
-      { slotId: 'slot-1', assistantId: 'tutor-general-leader', assistantName: '启途总导师', role: 'leader', roleLabel: '启途总导师 · 调度总控', status: 'active', color: '#165dff' },
-      { slotId: 'slot-2', assistantId: 'tutor-concept-coach', assistantName: '战机原理与概念教练', role: 'coach', roleLabel: '物理规律与碰撞理论教学 (TheoryMastered 责任人)', status: 'active', color: '#059669' },
-      { slotId: 'slot-3', assistantId: 'tutor-code-guide', assistantName: '战机架构与代码向导', role: 'teammate', roleLabel: 'Canvas 渲染循环与按键交互向导', status: 'active', color: '#f77234' },
-      { slotId: 'slot-4', assistantId: 'tutor-deliverable-reviewer', assistantName: '成果评审与答辩导师', role: 'reviewer', roleLabel: '成果评审、反思答辩与档案归档', status: 'idle', color: '#722ed1' },
-    ],
-    isAvailable: true,
-  },
-  {
-    id: 'general-problem-solving-team',
-    name: '通用解题小队',
-    description: '拿到前端给的任务后立项独立工作目录，拆解重跑实验任务，并在通过引言门槛后自动提交挑战。',
-    leaderAssistantId: 'result-review-lead',
-    workspaceMode: 'isolated',
-    sessionMode: 'auto',
-    concurrencyLimit: 5,
-    enabled: true,
-    avatarIcon: '🦊',
-    creatorName: 'Yujie Liu',
-    createdAt: '2026-08-05T10:00:00Z',
-    updatedAt: new Date().toISOString(),
-    protocolMarkdown: `# 通用解题小队协议
-本小队是通用解题执行体：收到一个任务后就自己开工，建目录、查资料、写代码、出结果，能提交的就是提交，不限于论文复现。
+    members: [],
+  };
+}
 
-## 触发与常驻授权
-任何满足派单形状的留言视为有效派单，无需再向用户确认，直接开工。
+/** 持久化成员 → 写侧成员：只发送契约允许的字段（派生字段由服务端回填）。 */
+function toMemberInput(member: AdminTeamMember): AdminTeamMemberInput {
+  const input: AdminTeamMemberInput = {
+    assistantId: member.assistantId,
+    role: member.role,
+    roleLabel: member.roleLabel,
+  };
+  // 尚未保存的新增成员不带 slotId，由服务端生成稳定 slotId（契约：省略时服务端生成）。
+  if (!member.slotId.startsWith('slot-pending-')) input.slotId = member.slotId;
+  if (member.model !== undefined) input.model = member.model;
+  if (member.color !== undefined) input.color = member.color;
+  if (member.pblPhase !== undefined) input.pblPhase = member.pblPhase;
+  return input;
+}
 
-## 固定编制
-- Leader: 论文复现方案架构师 (生产流程 Leader)
-- 验收师: 结果复现与量化验收师 (RESULT_REVIEW 结果与量化验收)
-- 检验师: 方法与实验策略检验师 (METHOD_REVIEW 方法与实验检验)
-- 交付师: 提交准备与平台交付师 (AUDIT/SUBMIT 独立审计与唯一提交)
-- 教练: 复现实验执行教练 (EXECUTE 实验复现与调优)`,
-    members: [
-      { slotId: 's-1', assistantId: 'paper-arch-lead', assistantName: '论文复现方案架构师', role: 'leader', roleLabel: '生产流程 Leader', status: 'active', color: '#d97706' },
-      { slotId: 's-2', assistantId: 'result-review-lead', assistantName: '结果复现与量化验收师', role: 'leader', roleLabel: 'RESULT_REVIEW 结果与量化验收', status: 'active', color: '#ea580c' },
-      { slotId: 's-3', assistantId: 'method-review-agent', assistantName: '方法与实验策略检验师', role: 'reviewer', roleLabel: 'METHOD_REVIEW 方法与实验检验', status: 'idle', color: '#0284c7' },
-      { slotId: 's-4', assistantId: 'audit-submit-agent', assistantName: '提交准备与平台交付师', role: 'teammate', roleLabel: 'AUDIT/SUBMIT 独立审计与唯一提交', status: 'idle', color: '#8b5cf6' },
-      { slotId: 's-5', assistantId: 'execution-coach-agent', assistantName: '复现实验执行教练', role: 'coach', roleLabel: 'EXECUTE 实验复现与调优', status: 'idle', color: '#10b981' },
-    ],
-    isAvailable: true,
-  },
-];
+function memberInputsEqual(a: readonly AdminTeamMemberInput[], b: readonly AdminTeamMemberInput[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((item, index) => JSON.stringify(item) === JSON.stringify(b[index]));
+}
 
-const CANDIDATE_ASSISTANTS = [
-  { id: 'tutor-general-leader', name: '启途总导师', role: '调度总控' },
-  { id: 'tutor-concept-coach', name: '战机原理与概念教练', role: '概念教学与理论门禁' },
-  { id: 'tutor-code-guide', name: '战机架构与代码向导', role: '代码实践向导' },
-  { id: 'tutor-deliverable-reviewer', name: '成果评审与答辩导师', role: '成果答辩与评审' },
-  { id: 'literature-knowledge-map', name: '文献与知识地图助手', role: '跨学科证据综合师' },
-  { id: 'claude-code', name: 'Claude Code', role: '高级代码重构向导' },
-  { id: 'codex-cli', name: 'Codex CLI', role: '精准代码补全代理' },
-];
+function buildTeamPatch(original: AdminTeamConfig, draft: TeamDraft): AdminTeamUpdateInput {
+  const patch: AdminTeamUpdateInput = {};
+  if (draft.name !== original.name) patch.name = draft.name;
+  if (draft.description !== original.description) patch.description = draft.description;
+  if (draft.workspaceMode !== original.workspaceMode) patch.workspaceMode = draft.workspaceMode;
+  if (draft.sessionMode !== original.sessionMode) patch.sessionMode = draft.sessionMode;
+  if (draft.leaderAssistantId !== original.leaderAssistantId) patch.leaderAssistantId = draft.leaderAssistantId;
+  if (draft.concurrencyLimit !== original.concurrencyLimit) patch.concurrencyLimit = draft.concurrencyLimit;
+  if (draft.enabled !== original.enabled) patch.enabled = draft.enabled;
+  const nextMembers = draft.members.map(toMemberInput);
+  if (!memberInputsEqual(nextMembers, original.members.map(toMemberInput))) {
+    patch.members = nextMembers;
+  }
+  return patch;
+}
+
+function buildTeamCreateInput(draft: TeamDraft): AdminTeamCreateInput {
+  return {
+    name: draft.name,
+    description: draft.description,
+    leaderAssistantId: draft.leaderAssistantId,
+    members: draft.members.map(toMemberInput),
+    workspaceMode: draft.workspaceMode,
+    sessionMode: draft.sessionMode,
+    concurrencyLimit: draft.concurrencyLimit,
+    enabled: draft.enabled,
+  };
+}
+
+/** 从真实团队数据推导只读「指引」文本；契约中没有客户端可写的协议字段，因此不做假保存。 */
+function teamProtocolMarkdown(team: AdminTeamConfig, assistantNames: Map<string, string>): string {
+  const lines: string[] = [];
+  lines.push(`# ${team.name}`);
+  lines.push(team.description);
+  lines.push('');
+  lines.push('## 编排与运行边界');
+  lines.push(`- 队长：${assistantNames.get(team.leaderAssistantId) ?? team.leaderAssistantId}`);
+  lines.push(`- 工作区模式：${team.workspaceMode === 'shared' ? 'shared（共享工程目录）' : 'isolated（隔离沙箱）'}`);
+  lines.push(`- 会话策略：${team.sessionMode}`);
+  lines.push(`- 并发上限：${team.concurrencyLimit}`);
+  lines.push('');
+  lines.push('## 固定编制与成员职责');
+  for (const member of team.members) {
+    const star = member.assistantId === team.leaderAssistantId ? '⭐ ' : '';
+    lines.push(
+      `- ${star}${assistantNames.get(member.assistantId) ?? member.assistantName}（${member.roleLabel || member.role}）`,
+    );
+  }
+  if (team.pblSpec !== undefined) {
+    lines.push('');
+    lines.push(`## PBL 阶段编排 · ${team.pblSpec.projectName}`);
+    lines.push(`- 目标领域：${team.pblSpec.targetDomain}`);
+    lines.push(
+      `- 理论门禁：TheoryMastered 之前不得进入实践阶段（服务端强制，theoryMasteredGate=${String(
+        team.pblSpec.theoryMasteredGate,
+      )}，客户端不可关闭）`,
+    );
+    for (const phase of team.pblSpec.phases) {
+      const objectives = phase.learningObjectives.length > 0 ? ` · 目标：${phase.learningObjectives.join('；')}` : '';
+      lines.push(`- [${phase.phase}] ${phase.title} → 门禁 ${phase.gateCondition}${objectives}`);
+    }
+  }
+  lines.push('');
+  lines.push('## 执行原则（硬约束）');
+  lines.push('- 项目状态流转、AI 决策、成长档案与审计日志一律由服务端写入，本页面只是显示层。');
+  lines.push('- 学生未确认意图时不得创建正式项目；一个学生同一时间只能有一个当前班主任。');
+  lines.push('- 一切写操作以 Idempotency-Key 头幂等，阶段切换必须支持幂等重放与审计追踪。');
+  return lines.join('\n');
+}
 
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<AdminTeamConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<Error | null>(null);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  const [testingId, setTestingId] = useState<string | null>(null);
 
-  // Multica 团队工作台当前选中团队
-  const [activeTeam, setActiveTeam] = useState<ExtendedTeamItem | null>(null);
-  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'members' | 'protocol'>('members');
-  const [protocolViewMode, setProtocolViewMode] = useState<'edit' | 'preview'>('preview');
-  const [protocolExpanded, setProtocolExpanded] = useState(false);
+  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [assistantsError, setAssistantsError] = useState<unknown>(null);
+
+  const [draft, setDraft] = useState<TeamDraft | null>(null);
+  const [baseline, setBaseline] = useState<AdminTeamConfig | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'members' | 'protocol'>('members');
+  const [protocolExpanded, setProtocolExpanded] = useState(false);
 
-  // 添加成员弹窗状态
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [selectedAssistantToAdd, setSelectedAssistantToAdd] = useState(
-    CANDIDATE_ASSISTANTS[0]?.id ?? 'tutor-general-leader'
-  );
+  const [selectedAssistantToAdd, setSelectedAssistantToAdd] = useState('');
   const [newMemberRoleLabel, setNewMemberRoleLabel] = useState('协同助理');
+
+  const online = useBrowserOnline();
+  const retryKeys = useRef(createIdempotentRetryKey()).current;
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchAdminTeams();
       setTeams(data);
-    } catch {
-      // Offline fallback
+    } catch (error) {
+      // 已删除「失败 → 内置常量兜底」：失败必须抛出并渲染成可见错误态。
+      setTeams([]);
+      setLoadError(error instanceof Error ? error : new Error('团队列表加载失败'));
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const loadAssistants = useCallback(async () => {
+    try {
+      const data = await fetchAdminAssistants();
+      setAssistants(data.filter((a) => a.teamSelectable && a.enabled));
+      setAssistantsError(null);
+    } catch (error) {
+      setAssistantsError(error);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadAssistants();
+  }, [load, loadAssistants]);
 
-  const allTeams = useMemo<ExtendedTeamItem[]>(() => {
-    const list: ExtendedTeamItem[] = teams.map((t) => ({
-      ...t,
-      isAvailable: t.members.length > 0,
-      avatarIcon: t.id.includes('thunder') ? '🚀' : '👥',
-      creatorName: 'Qitu Admin',
-      protocolMarkdown: DEFAULT_THUNDER_PROTOCOL,
-    }));
-    for (const preset of STATIC_TEAMS) {
-      if (!list.some((item) => item.id === preset.id)) {
-        list.push(preset);
-      }
+  const wasOffline = useRef(!online);
+  useEffect(() => {
+    if (!online) {
+      wasOffline.current = true;
+      return;
     }
-    return list;
-  }, [teams]);
+    if (wasOffline.current) {
+      wasOffline.current = false;
+      void load();
+      void loadAssistants();
+    }
+  }, [online, load, loadAssistants]);
 
-  const tabs = useMemo(() => {
-    const readyCount = allTeams.filter((t) => t.isAvailable).length;
-    return [
-      { id: 'all', label: '全部小队', count: allTeams.length },
+  const assistantNames = useMemo(
+    () => new Map(assistants.map((a) => [a.id, a.name] as const)),
+    [assistants],
+  );
+
+  const readyCount = useMemo(
+    () => teams.filter((t) => t.enabled && t.members.length > 0).length,
+    [teams],
+  );
+
+  const tabs = useMemo(
+    () => [
+      { id: 'all', label: '全部小队', count: teams.length },
       { id: 'ready', label: '就绪可用', count: readyCount },
-    ];
-  }, [allTeams]);
+    ],
+    [teams.length, readyCount],
+  );
 
   const filtered = useMemo(() => {
-    return allTeams.filter((team) => {
+    return teams.filter((team) => {
+      if (activeTab === 'ready' && !(team.enabled && team.members.length > 0)) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         return (
@@ -177,188 +266,220 @@ export default function AdminTeamsPage() {
       }
       return true;
     });
-  }, [allTeams, search]);
-
-  const handleTest = (id: string) => {
-    setTestingId(id);
-    setTimeout(() => {
-      setTestingId(null);
-      alert(`团队 [${id}] 多 Agent 协同握手测试通过，状态正常！`);
-    }, 500);
-  };
+  }, [teams, search, activeTab]);
 
   const startCreateTeam = () => {
-    setIsCreatingTeam(true);
-    const newTeam: ExtendedTeamItem = {
-      id: `custom-team-${Date.now()}`,
-      name: '新创 PBL 协作小队',
-      description: '针对特定项目式学习目标的多智能体协同研发小队。',
-      leaderAssistantId: 'tutor-general-leader',
-      workspaceMode: 'shared',
-      sessionMode: 'plan',
-      concurrencyLimit: 4,
-      enabled: true,
-      avatarIcon: '💡',
-      creatorName: 'Qitu Admin',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      protocolMarkdown: `# 新创小队协议\n## 目标\n...\n\n## 规则\n- 理论先导...`,
-      members: [
-        { slotId: 'slot-1', assistantId: 'tutor-general-leader', assistantName: '启途总导师', role: 'leader', roleLabel: '启途总导师 · 调度总控', status: 'active', color: '#165dff' },
-      ],
-      isAvailable: true,
-    };
-    setActiveTeam(newTeam);
+    setBaseline(null);
+    setSaveError(null);
+    setNotice(null);
+    setDraft(emptyTeamDraft());
+  };
+
+  const startEditTeam = (team: AdminTeamConfig) => {
+    setBaseline(team);
+    setSaveError(null);
+    setNotice(null);
+    setDraft(toTeamDraft(team));
   };
 
   const handleSaveTeam = async () => {
-    if (!activeTeam) return;
+    if (draft === null) return;
+    if (!draft.name.trim()) {
+      setNotice('请填写小队名称。');
+      return;
+    }
+    if (draft.members.length === 0) {
+      // 前端只负责显示这条预检；即便提交，服务端 members.length>=1 校验仍会兜底。
+      setNotice('团队至少需要 1 名成员（最终校验以服务端为准）。');
+      return;
+    }
+    if (!draft.leaderAssistantId) {
+      setNotice('请从成员中指定队长（leaderAssistantId）。');
+      return;
+    }
     setSaving(true);
+    setSaveError(null);
+    setNotice(null);
     try {
-      if (activeTeam.id === 'thunder-fighter-game-pbl') {
-        await updateAdminTeam(
-          activeTeam.id,
-          {
-            name: activeTeam.name,
-            description: activeTeam.description,
-            workspaceMode: activeTeam.workspaceMode,
-            sessionMode: activeTeam.sessionMode,
-            members: activeTeam.members,
-          },
-          `team-save-${Date.now()}`,
-        );
-      }
-      const existingIdx = STATIC_TEAMS.findIndex((t) => t.id === activeTeam.id);
-      if (existingIdx >= 0) {
-        STATIC_TEAMS[existingIdx] = { ...activeTeam };
+      if (draft.id === '') {
+        const signature = `create:${JSON.stringify(draft)}`;
+        await createAdminTeam(buildTeamCreateInput(draft), retryKeys.keyFor(signature));
       } else {
-        STATIC_TEAMS.unshift({ ...activeTeam });
+        if (baseline === null) throw new Error('编辑基线丢失，请返回列表重新进入。');
+        const patch = buildTeamPatch(baseline, draft);
+        if (Object.keys(patch).length === 0) {
+          setNotice('没有任何改动可以保存（服务端也会拒绝空 PATCH）。');
+          return;
+        }
+        const signature = `patch:${draft.id}:${JSON.stringify(patch)}`;
+        await updateAdminTeam(draft.id, patch, retryKeys.keyFor(signature));
       }
-      await load();
-      alert('小队配置已成功保存！');
-    } catch (err) {
-      alert(`保存失败: ${err instanceof Error ? err.message : '网络或服务异常'}`);
+      retryKeys.acknowledge();
+      setDraft(null);
+      setBaseline(null);
+      await Promise.all([load(), loadAssistants()]);
+    } catch (error) {
+      setSaveError(error);
     } finally {
       setSaving(false);
     }
   };
 
+  const cancelEdit = () => {
+    setDraft(null);
+    setBaseline(null);
+    setSaveError(null);
+    setNotice(null);
+  };
+
   const handleSetLeader = (assistantId: string) => {
-    if (!activeTeam) return;
-    const updatedMembers = activeTeam.members.map((m) => ({
-      ...m,
-      role: (m.assistantId === assistantId ? 'leader' : (m.role === 'leader' ? 'teammate' : m.role)) as AdminTeamMember['role'],
-    }));
-    setActiveTeam({
-      ...activeTeam,
+    if (draft === null) return;
+    setDraft({
+      ...draft,
       leaderAssistantId: assistantId,
-      members: updatedMembers,
+      members: draft.members.map((m) => ({
+        ...m,
+        role: m.assistantId === assistantId ? 'leader' : m.role === 'leader' ? 'teammate' : m.role,
+      })),
     });
   };
 
   const handleRemoveMember = (slotId: string) => {
-    if (!activeTeam) return;
-    if (activeTeam.members.length <= 1) {
-      alert('团队至少需保留 1 名成员！');
+    if (draft === null) return;
+    if (draft.members.length <= 1) {
+      setNotice('团队至少需保留 1 名成员（服务端同样会拒绝更少的成员数）。');
       return;
     }
-    const updatedMembers = activeTeam.members.filter((m) => m.slotId !== slotId);
-    setActiveTeam({
-      ...activeTeam,
-      members: updatedMembers,
+    const members = draft.members.filter((m) => m.slotId !== slotId);
+    const leaderStillThere = members.some((m) => m.assistantId === draft.leaderAssistantId);
+    setDraft({
+      ...draft,
+      members,
+      leaderAssistantId: leaderStillThere ? draft.leaderAssistantId : (members[0]?.assistantId ?? ''),
     });
   };
 
+  const openAddMember = () => {
+    const first = assistants[0];
+    setSelectedAssistantToAdd((current) => current || first?.id || '');
+    setNewMemberRoleLabel('协同助理');
+    setShowAddMemberModal(true);
+  };
+
   const handleAddMemberSubmit = () => {
-    if (!activeTeam) return;
-    const candidate = CANDIDATE_ASSISTANTS.find((c) => c.id === selectedAssistantToAdd);
-    if (!candidate) return;
+    if (draft === null) return;
+    if (draft.members.some((m) => m.assistantId === selectedAssistantToAdd)) {
+      setNotice('该助手已在小队成员中。');
+      setShowAddMemberModal(false);
+      return;
+    }
+    const candidate = assistants.find((a) => a.id === selectedAssistantToAdd);
+    if (candidate === undefined) return;
     const newMember: AdminTeamMember = {
-      slotId: `slot-${Date.now()}`,
+      slotId: `slot-pending-${Date.now()}`,
       assistantId: candidate.id,
       assistantName: candidate.name,
-      role: 'teammate',
+      role: draft.members.length === 0 ? 'leader' : 'teammate',
       roleLabel: newMemberRoleLabel.trim() || candidate.role,
-      status: 'idle',
+      status: 'pending',
       color: '#165dff',
     };
-    setActiveTeam({
-      ...activeTeam,
-      members: [...activeTeam.members, newMember],
+    setDraft({
+      ...draft,
+      leaderAssistantId: draft.leaderAssistantId === '' ? candidate.id : draft.leaderAssistantId,
+      members: [...draft.members, newMember],
     });
     setShowAddMemberModal(false);
   };
 
   // -------------------------------------------------------------
-  // 视图 1：Multica 风格团队详情 / 工作台 (参考上传截图 media_1791562203977 / media_1791562217713)
+  // 视图 1：团队详情 / 工作台
   // -------------------------------------------------------------
-  if (activeTeam) {
-    const leaderMember = activeTeam.members.find((m) => m.assistantId === activeTeam.leaderAssistantId) || activeTeam.members[0];
+  if (draft !== null) {
+    const leaderMember =
+      draft.members.find((m) => m.assistantId === draft.leaderAssistantId) ?? draft.members[0];
+    const protocolSource: AdminTeamConfig = {
+      id: draft.id || '(未保存)',
+      name: draft.name,
+      description: draft.description,
+      workspaceMode: draft.workspaceMode,
+      sessionMode: draft.sessionMode,
+      leaderAssistantId: draft.leaderAssistantId,
+      members: draft.members,
+      concurrencyLimit: draft.concurrencyLimit,
+      enabled: draft.enabled,
+      createdAt: baseline?.createdAt ?? '',
+      updatedAt: baseline?.updatedAt ?? '',
+      ...(baseline?.pblSpec !== undefined ? { pblSpec: baseline.pblSpec } : {}),
+    };
 
     return (
       <div style={{ maxWidth: '1020px', margin: '0 auto' }}>
-        {/* 顶部面包屑与操作条 */}
         <div className="multica-breadcrumb-bar">
           <div className="multica-crumb-path">
-            <span
-              className="multica-crumb-link"
-              onClick={() => {
-                setActiveTeam(null);
-                setIsCreatingTeam(false);
-              }}
-            >
+            <span className="multica-crumb-link" onClick={cancelEdit}>
               小队
             </span>
             <span>&gt;</span>
             <span style={{ color: '#1d2129', fontWeight: 600 }}>
-              {activeTeam.avatarIcon || '👥'} {activeTeam.name}
+              {draft.id === '' ? '🆕 新建小队' : `${draft.name}`}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              className="settings-action-btn"
-              onClick={() => {
-                setActiveTeam(null);
-                setIsCreatingTeam(false);
-              }}
-            >
+            <button type="button" className="settings-action-btn" onClick={cancelEdit}>
               ← 返回小队列表
             </button>
             <button
               type="button"
               className="settings-action-btn is-primary"
-              onClick={handleSaveTeam}
+              onClick={() => void handleSaveTeam()}
               disabled={saving}
             >
-              {saving ? '保存中...' : '保存修改'}
+              {saving ? '保存中...' : draft.id === '' ? '创建小队' : '保存修改'}
             </button>
           </div>
         </div>
 
-        {/* 双栏布局：左侧团队资料卡 + 右侧 Tabs (成员 | 指引) */}
+        <NetworkOfflineBanner online={online} />
+        {saveError !== null && <WriteErrorPanel error={saveError} />}
+        {notice !== null && (
+          <div
+            role="status"
+            style={{
+              border: '1px solid #bfd4ff',
+              background: '#f0f6ff',
+              borderRadius: 10,
+              padding: '8px 14px',
+              margin: '10px 0',
+              fontSize: 13,
+              color: '#165dff',
+            }}
+          >
+            {notice}
+          </div>
+        )}
+
         <div className="multica-team-grid">
-          {/* 左栏：团队资料卡 */}
           <aside className="multica-profile-card">
             <div className="multica-profile-header">
               <div className="multica-profile-avatar">
-                {activeTeam.avatarIcon || '👥'}
+                {draft.id.includes('thunder') ? '🚀' : draft.id === '' ? '🆕' : '👥'}
               </div>
               <div>
                 <input
                   type="text"
                   className="settings-input"
                   style={{ fontWeight: 700, fontSize: '15px' }}
-                  value={activeTeam.name}
-                  onChange={(e) => setActiveTeam({ ...activeTeam, name: e.target.value })}
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />
               </div>
               <div>
                 <textarea
                   className="settings-textarea"
                   style={{ fontSize: '12px', minHeight: '64px' }}
-                  value={activeTeam.description}
-                  onChange={(e) => setActiveTeam({ ...activeTeam, description: e.target.value })}
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                 />
               </div>
             </div>
@@ -373,11 +494,39 @@ export default function AdminTeamsPage() {
               </div>
               <div className="multica-meta-item">
                 <span className="multica-meta-k">成员数</span>
-                <span className="multica-meta-v">{activeTeam.members.length}</span>
+                <span className="multica-meta-v">{draft.members.length}</span>
               </div>
               <div className="multica-meta-item">
-                <span className="multica-meta-k">创建者</span>
-                <span className="multica-meta-v">👤 {activeTeam.creatorName || 'Qitu Admin'}</span>
+                <span className="multica-meta-k">并发上限</span>
+                <span className="multica-meta-v">
+                  <input
+                    type="number"
+                    className="settings-input"
+                    min={1}
+                    max={8}
+                    style={{ width: '72px', height: '28px', fontSize: '12px' }}
+                    value={draft.concurrencyLimit}
+                    onChange={(e) => {
+                      const raw = Number.parseInt(e.target.value, 10);
+                      const next = Number.isFinite(raw) ? Math.min(8, Math.max(1, raw)) : 1;
+                      setDraft({ ...draft, concurrencyLimit: next });
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: '#86909c' }}> 1–8（服务端强校验）</span>
+                </span>
+              </div>
+              <div className="multica-meta-item">
+                <span className="multica-meta-k">启用</span>
+                <span className="multica-meta-v">
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                    <input
+                      type="checkbox"
+                      checked={draft.enabled}
+                      onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
+                    />
+                    {draft.enabled ? '已启用' : '已停用'}
+                  </label>
+                </span>
               </div>
               <div className="multica-meta-item">
                 <span className="multica-meta-k">工作区模式</span>
@@ -385,10 +534,8 @@ export default function AdminTeamsPage() {
                   <select
                     className="settings-select"
                     style={{ height: '28px', fontSize: '11.5px', padding: '0 4px', width: 'auto' }}
-                    value={activeTeam.workspaceMode}
-                    onChange={(e) =>
-                      setActiveTeam({ ...activeTeam, workspaceMode: e.target.value as WorkspaceMode })
-                    }
+                    value={draft.workspaceMode}
+                    onChange={(e) => setDraft({ ...draft, workspaceMode: e.target.value as WorkspaceMode })}
                   >
                     <option value="shared">shared (共享工作区)</option>
                     <option value="isolated">isolated (隔离沙箱)</option>
@@ -401,10 +548,8 @@ export default function AdminTeamsPage() {
                   <select
                     className="settings-select"
                     style={{ height: '28px', fontSize: '11.5px', padding: '0 4px', width: 'auto' }}
-                    value={activeTeam.sessionMode}
-                    onChange={(e) =>
-                      setActiveTeam({ ...activeTeam, sessionMode: e.target.value as TeamSessionMode })
-                    }
+                    value={draft.sessionMode}
+                    onChange={(e) => setDraft({ ...draft, sessionMode: e.target.value as TeamSessionMode })}
                   >
                     <option value="plan">plan (规划驱动)</option>
                     <option value="auto">auto (全自动)</option>
@@ -414,21 +559,21 @@ export default function AdminTeamsPage() {
               </div>
               <div className="multica-meta-item">
                 <span className="multica-meta-k">更新时间</span>
-                <span className="multica-meta-v">刚刚</span>
+                <span className="multica-meta-v">
+                  {baseline?.updatedAt ? new Date(baseline.updatedAt).toLocaleString() : '未保存'}
+                </span>
               </div>
             </div>
           </aside>
 
-          {/* 右栏：选项卡与工作台 */}
           <main style={{ minWidth: 0 }}>
-            {/* Tab 导航 */}
             <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #e5e6eb', marginBottom: '14px' }}>
               <button
                 type="button"
                 className={`settings-tab-btn ${activeSubTab === 'members' ? 'is-active' : ''}`}
                 onClick={() => setActiveSubTab('members')}
               >
-                👥 成员 <span className="settings-tab-cnt">{activeTeam.members.length}</span>
+                👥 成员 <span className="settings-tab-cnt">{draft.members.length}</span>
               </button>
               <button
                 type="button"
@@ -439,99 +584,105 @@ export default function AdminTeamsPage() {
               </button>
             </div>
 
-            {/* Tab 1: 成员列表 (参考截图 media_1791562203977_3edc6520.png) */}
             {activeSubTab === 'members' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                  }}
+                >
                   <span style={{ fontSize: '13px', color: '#4e5969' }}>
-                    该小队共有 <strong>{activeTeam.members.length}</strong> 名智能体成员
+                    该小队共有 <strong>{draft.members.length}</strong> 名智能体成员
                   </span>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <Link
-                      href="/settings/assistants"
-                      className="settings-pill-btn"
-                      style={{ textDecoration: 'none' }}
-                    >
+                    <Link href="/settings/assistants" className="settings-pill-btn" style={{ textDecoration: 'none' }}>
                       + 创建智能体
                     </Link>
                     <button
                       type="button"
                       className="settings-action-btn is-primary"
                       style={{ height: '30px', fontSize: '12px', padding: '0 12px' }}
-                      onClick={() => setShowAddMemberModal(true)}
+                      onClick={openAddMember}
+                      disabled={assistants.length === 0}
                     >
                       + 添加成员
                     </button>
                   </div>
                 </div>
 
-                {/* 成员卡片行 */}
-                {activeTeam.members.map((member) => {
-                  const isLeader = member.assistantId === activeTeam.leaderAssistantId || member.role === 'leader';
-                  return (
-                    <div key={member.slotId} className="multica-member-row">
-                      {/* 头像 */}
-                      <div
-                        className="multica-member-avatar"
-                        style={{ background: member.color || '#165dff' }}
-                      >
-                        {member.assistantName.slice(0, 1)}
-                      </div>
-
-                      {/* 身份与职责 */}
-                      <div className="multica-member-info">
-                        <div className="multica-member-top">
-                          <span className="multica-member-name">{member.assistantName}</span>
-                          <span className="multica-member-tag">智能体</span>
-                          <span className="multica-member-tag is-online">就绪</span>
-                          {isLeader && <span className="multica-member-tag is-leader">⭐ 队长</span>}
+                {draft.members.length === 0 ? (
+                  <div className="settings-empty">暂无成员：请从「可编排助手」目录中添加（目录来自真实 API）。</div>
+                ) : (
+                  draft.members.map((member) => {
+                    const isLeader =
+                      member.assistantId === draft.leaderAssistantId || member.role === 'leader';
+                    return (
+                      <div key={member.slotId} className="multica-member-row">
+                        <div className="multica-member-avatar" style={{ background: member.color || '#165dff' }}>
+                          {member.assistantName.slice(0, 1)}
                         </div>
-                        <div className="multica-member-role">
-                          {member.roleLabel || `${member.role} 角色`}
+                        <div className="multica-member-info">
+                          <div className="multica-member-top">
+                            <span className="multica-member-name">{member.assistantName}</span>
+                            <span className="multica-member-tag">智能体</span>
+                            {member.slotId.startsWith('slot-pending-') ? (
+                              <span className="multica-member-tag" title="尚未保存">待保存</span>
+                            ) : (
+                              <span className={`multica-member-tag ${member.status === 'active' ? 'is-online' : ''}`}>
+                                {member.status === 'active' ? '运行中' : member.status === 'failed' ? '失败' : '就绪'}
+                              </span>
+                            )}
+                            {isLeader && <span className="multica-member-tag is-leader">⭐ 队长</span>}
+                          </div>
+                          <div className="multica-member-role">{member.roleLabel || `${member.role} 角色`}</div>
                         </div>
-                        <div className="multica-member-activity">
-                          最近活动 刚刚
-                        </div>
-                      </div>
-
-                      {/* 操作按钮 */}
-                      <div className="multica-member-actions">
-                        {!isLeader && (
+                        <div className="multica-member-actions">
+                          {!isLeader && (
+                            <button
+                              type="button"
+                              className="multica-icon-btn"
+                              title="设为队长"
+                              onClick={() => handleSetLeader(member.assistantId)}
+                            >
+                              ⭐
+                            </button>
+                          )}
+                          <Link
+                            href="/settings/assistants"
+                            className="multica-icon-btn"
+                            title="查看并配置助手"
+                            style={{ textDecoration: 'none' }}
+                          >
+                            ↗
+                          </Link>
                           <button
                             type="button"
-                            className="multica-icon-btn"
-                            title="设为队长"
-                            onClick={() => handleSetLeader(member.assistantId)}
+                            className="multica-icon-btn is-danger"
+                            title="从团队移除"
+                            onClick={() => handleRemoveMember(member.slotId)}
                           >
-                            ⭐
+                            🗑️
                           </button>
-                        )}
-                        <Link
-                          href="/settings/assistants"
-                          className="multica-icon-btn"
-                          title="查看并配置助手"
-                          style={{ textDecoration: 'none' }}
-                        >
-                          ↗
-                        </Link>
-                        <button
-                          type="button"
-                          className="multica-icon-btn is-danger"
-                          title="从团队移除"
-                          onClick={() => handleRemoveMember(member.slotId)}
-                        >
-                          🗑️
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
 
-            {/* Tab 2: 指引与小队协议 (参考截图 media_1791562217713_ddc70530.png) */}
             {activeSubTab === 'protocol' && (
-              <div style={{ background: '#ffffff', border: '1px solid #e5e6eb', borderRadius: '12px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e5e6eb',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                }}
+              >
                 <div
                   style={{
                     display: 'flex',
@@ -543,101 +694,37 @@ export default function AdminTeamsPage() {
                   }}
                 >
                   <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#1d2129' }}>
-                    小队协议与协作规范
+                    小队协议与协作规范（按服务端配置生成，只读）
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ display: 'inline-flex', background: '#f2f3f5', borderRadius: '6px', padding: '2px' }}>
-                      <button
-                        type="button"
-                        style={{
-                          border: 'none',
-                          background: protocolViewMode === 'edit' ? '#ffffff' : 'transparent',
-                          color: protocolViewMode === 'edit' ? '#165dff' : '#4e5969',
-                          fontSize: '11.5px',
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setProtocolViewMode('edit')}
-                      >
-                        编辑协议
-                      </button>
-                      <button
-                        type="button"
-                        style={{
-                          border: 'none',
-                          background: protocolViewMode === 'preview' ? '#ffffff' : 'transparent',
-                          color: protocolViewMode === 'preview' ? '#165dff' : '#4e5969',
-                          fontSize: '11.5px',
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setProtocolViewMode('preview')}
-                      >
-                        预览
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      className="settings-pill-btn"
-                      style={{ fontSize: '11px', height: '24px' }}
-                      onClick={() => setProtocolExpanded((p) => !p)}
-                    >
-                      {protocolExpanded ? '收起' : '展开'}
-                    </button>
-                  </div>
-                </div>
-
-                {protocolViewMode === 'edit' ? (
-                  <textarea
-                    className="settings-textarea"
-                    style={{
-                      height: protocolExpanded ? '520px' : '340px',
-                      border: 'none',
-                      borderRadius: '0',
-                      fontFamily: 'monospace',
-                      fontSize: '12.5px',
-                      lineHeight: '1.6',
-                      padding: '16px 20px',
-                    }}
-                    value={activeTeam.protocolMarkdown || ''}
-                    onChange={(e) =>
-                      setActiveTeam({ ...activeTeam, protocolMarkdown: e.target.value })
-                    }
-                  />
-                ) : (
-                  <div
-                    style={{
-                      height: protocolExpanded ? '520px' : '340px',
-                      overflowY: 'auto',
-                      padding: '20px 24px',
-                      background: '#fafafa',
-                      fontSize: '13px',
-                      lineHeight: '1.75',
-                      color: '#272e3b',
-                    }}
+                  <button
+                    type="button"
+                    className="settings-pill-btn"
+                    style={{ fontSize: '11px', height: '24px' }}
+                    onClick={() => setProtocolExpanded((p) => !p)}
                   >
-                    <pre
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        margin: 0,
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      {activeTeam.protocolMarkdown || '（暂无协议内容）'}
-                    </pre>
-                  </div>
-                )}
+                    {protocolExpanded ? '收起' : '展开'}
+                  </button>
+                </div>
+                <div
+                  style={{
+                    height: protocolExpanded ? '520px' : '340px',
+                    overflowY: 'auto',
+                    padding: '20px 24px',
+                    background: '#fafafa',
+                    fontSize: '13px',
+                    lineHeight: '1.75',
+                    color: '#272e3b',
+                  }}
+                >
+                  <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontFamily: 'inherit' }}>
+                    {teamProtocolMarkdown(protocolSource, assistantNames)}
+                  </pre>
+                </div>
               </div>
             )}
           </main>
         </div>
 
-        {/* 添加成员 Modal 弹窗 */}
         {showAddMemberModal && (
           <div
             style={{
@@ -660,48 +747,69 @@ export default function AdminTeamsPage() {
               }}
             >
               <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>添加团队成员</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '12px', color: '#4e5969', display: 'block', marginBottom: '4px' }}>
-                    选择智能体 / 导师
-                  </label>
-                  <select
-                    className="settings-select"
-                    value={selectedAssistantToAdd}
-                    onChange={(e) => setSelectedAssistantToAdd(e.target.value)}
-                  >
-                    {CANDIDATE_ASSISTANTS.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.role})
-                      </option>
-                    ))}
-                  </select>
+
+              {assistantsError !== null ? (
+                <AdminStateViews
+                  loading={false}
+                  error={
+                    assistantsError instanceof Error ? assistantsError : new Error('助手目录加载失败')
+                  }
+                  onRetry={() => void loadAssistants()}
+                />
+              ) : assistants.length === 0 ? (
+                <div className="settings-empty" style={{ margin: '8px 0' }}>
+                  暂无可编排的助手（需 `teamSelectable` 且已启用）。请先到「助手」表创建。
                 </div>
-                <div>
-                  <label style={{ fontSize: '12px', color: '#4e5969', display: 'block', marginBottom: '4px' }}>
-                    在小队中的职责描述
-                  </label>
-                  <input
-                    type="text"
-                    className="settings-input"
-                    value={newMemberRoleLabel}
-                    onChange={(e) => setNewMemberRoleLabel(e.target.value)}
-                    placeholder="例如：物理规律与碰撞理论教学"
-                  />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#4e5969', display: 'block', marginBottom: '4px' }}>
+                      选择智能体 / 导师（来自真实助手目录）
+                    </label>
+                    <select
+                      className="settings-select"
+                      value={selectedAssistantToAdd}
+                      onChange={(e) => setSelectedAssistantToAdd(e.target.value)}
+                    >
+                      {assistants.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}（{a.role}）
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#4e5969', display: 'block', marginBottom: '4px' }}>
+                      在小队中的职责描述
+                    </label>
+                    <input
+                      type="text"
+                      className="settings-input"
+                      value={newMemberRoleLabel}
+                      onChange={(e) => setNewMemberRoleLabel(e.target.value)}
+                      placeholder="例如：物理规律与碰撞理论教学"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#4e5969', display: 'block', marginBottom: '4px' }}>
+                      角色
+                    </label>
+                    <span style={{ fontSize: '12px', color: '#86909c' }}>
+                      新成员默认以 teammate 加入；点「⭐ 设为队长」调整 leaderAssistantId，保存时由服务端最终校验。
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
+
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="settings-action-btn"
-                  onClick={() => setShowAddMemberModal(false)}
-                >
+                <button type="button" className="settings-action-btn" onClick={() => setShowAddMemberModal(false)}>
                   取消
                 </button>
                 <button
                   type="button"
                   className="settings-action-btn is-primary"
                   onClick={handleAddMemberSubmit}
+                  disabled={assistants.length === 0 || selectedAssistantToAdd === ''}
                 >
                   确认添加
                 </button>
@@ -714,49 +822,76 @@ export default function AdminTeamsPage() {
   }
 
   // -------------------------------------------------------------
-  // 视图 2：小队列表概览
+  // 视图 2：小队列表概览（真实 API + 五态）
   // -------------------------------------------------------------
-  return (
-    <AionSettingsParadigm
-      title="团队"
-      description={
-        <span>
-          配置多 Agent 协作研发团队，支持 Multica 风格工作区共享与监督会话模式。可自定义成员分工、指定队长，并维护小队研发与 PBL 交付协议。
-        </span>
+  const listBody = (() => {
+    if (loading) {
+      return <AdminStateViews loading={true} error={null} onRetry={() => void load()} />;
+    }
+    if (loadError !== null) {
+      // 服务端业务失败：带错误码的可见面板；断网/权限：AdminStateViews。
+      if (loadError instanceof AdminApiError) {
+        return <WriteErrorPanel error={loadError} onRetry={() => void load()} />;
       }
-      searchPlaceholder="搜索团队名称、职责..."
-      searchQuery={search}
-      onSearchChange={setSearch}
-      primaryActionLabel="新建团队"
-      onPrimaryAction={startCreateTeam}
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-    >
-      {filtered.length === 0 ? (
-        <div className="settings-empty">暂无匹配的团队</div>
-      ) : (
-        filtered.map((team) => (
-          <RowCard
-            key={team.id}
-            avatarText={team.avatarIcon || '👥'}
-            avatarBg="#eff6ff"
-            name={team.name}
-            statusText={team.isAvailable ? '就绪' : '待配置'}
-            statusType={team.isAvailable ? 'ok' : 'off'}
-            description={`${team.workspaceMode === 'shared' ? '共享工作区 (shared)' : '独立沙箱 (isolated)'} · ${team.members.length} 名成员 · ${team.description}`}
-            avatarStack={team.members.map((m) => m.assistantName.slice(0, 1))}
-            testLabel="测试协作网格"
-            testLoading={testingId === team.id}
-            onTestConnection={() => handleTest(team.id)}
-            editLabel="查看小队"
-            onEdit={() => {
-              setActiveTeam({ ...team });
-              setIsCreatingTeam(false);
-            }}
-          />
-        ))
-      )}
-    </AionSettingsParadigm>
+      return <AdminStateViews loading={false} error={loadError} onRetry={() => void load()} />;
+    }
+    if (teams.length === 0) {
+      return (
+        <div className="settings-empty" style={{ textAlign: 'center', padding: '48px 0' }}>
+          <div style={{ fontSize: '34px', marginBottom: '10px' }}>👥</div>
+          <strong style={{ fontSize: '14px', color: '#1d2129' }}>暂无协作团队</strong>
+          <p style={{ color: '#4e5969', fontSize: '12.5px', margin: '6px 0 14px' }}>
+            服务端团队目录为空。创建第一支小队后即可编排多 Agent 协作。
+          </p>
+          <button type="button" className="settings-action-btn is-primary" onClick={startCreateTeam}>
+            新建团队
+          </button>
+        </div>
+      );
+    }
+    if (filtered.length === 0) {
+      return <div className="settings-empty">暂无匹配的团队</div>;
+    }
+    return filtered.map((team) => {
+      const ready = team.enabled && team.members.length > 0;
+      return (
+        <RowCard
+          key={team.id}
+          avatarText={team.id.includes('thunder') ? '🚀' : '👥'}
+          avatarBg="#eff6ff"
+          name={team.name}
+          statusText={team.enabled ? (ready ? '就绪' : '无成员') : '已停用'}
+          statusType={ready ? 'ok' : 'off'}
+          description={`${team.workspaceMode === 'shared' ? '共享工作区 (shared)' : '独立沙箱 (isolated)'} · ${team.members.length} 名成员 · ${team.description}`}
+          avatarStack={team.members.map((m) => m.assistantName.slice(0, 1))}
+          editLabel="查看小队"
+          onEdit={() => startEditTeam(team)}
+        />
+      );
+    });
+  })();
+
+  return (
+    <>
+      <NetworkOfflineBanner online={online} onRetry={() => void load()} />
+      <AionSettingsParadigm
+        title="团队"
+        description={
+          <span>
+            配置多 Agent 协作研发团队，支持 Multica 风格工作区共享与监督会话模式。可自定义成员分工、指定队长，并维护小队研发与 PBL 交付协议。
+          </span>
+        }
+        searchPlaceholder="搜索团队名称、职责..."
+        searchQuery={search}
+        onSearchChange={setSearch}
+        primaryActionLabel="新建团队"
+        onPrimaryAction={startCreateTeam}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {listBody}
+      </AionSettingsParadigm>
+    </>
   );
 }
