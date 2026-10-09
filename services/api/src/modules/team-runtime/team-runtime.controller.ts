@@ -1,4 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
+import type { PblPhase } from '@qitu/contracts';
+import { isPblPhase } from '@qitu/ai-client';
 import { TeamRuntimeService, type AgentRouteInput, type AgentRouteTrigger, type AgentRouteUpdateInput, type DelegateTaskInput, type StartTeamRunInput } from './team-runtime.service';
 import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
@@ -101,6 +103,62 @@ export class TeamRuntimeController {
     return { data: await this.runtime.getRunGraph(actor, runId) };
   }
 
+  /** 当前 PBL 阶段与服务端门禁状态（只读；客户端不可写）。 */
+  @Get('tutor/team-runs/:runId/phase')
+  async getPhase(@Headers('cookie') cookie: string | undefined, @Param('runId') runId: string) {
+    const actor = requireAnyRole(this.auth, cookie);
+    return { data: await this.runtime.getPhaseStatus(actor, runId) };
+  }
+
+  /**
+   * 阶段推进：服务端强制冻结门禁。未达成 → 409 + 稳定错误码
+   * （如 PBL_GATE_THEORY_MASTERED_REQUIRED）；自动推进永远被拒。
+   */
+  @Post('tutor/team-runs/:runId/phase')
+  async advancePhase(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Param('runId') runId: string,
+    @Body() body: unknown,
+  ) {
+    const actor = requireAnyRole(this.auth, cookie);
+    const idempotencyKey = requireIdempotencyKey(headerKey);
+    const input = parsePhaseAdvanceInput(body);
+    const scope = `tutor.team-run.phase:${runId}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, runId }, input), async () => ({
+        status: 200,
+        body: await this.runtime.advancePhase(actor, runId, { ...input, idempotencyKey }),
+      }));
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /** 管理员/服务端域逻辑写入门禁达成证据；学生没有任何直写路径。 */
+  @Post('admin/agent-runs/:runId/gates')
+  async recordGate(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Param('runId') runId: string,
+    @Body() body: unknown,
+  ) {
+    const actor = requireRole(this.auth, cookie, 'admin', '门禁证据仅向管理员/服务端开放');
+    const idempotencyKey = requireIdempotencyKey(headerKey);
+    const input = parseGateInput(body);
+    const scope = `admin.agent-run.gate:${runId}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, runId }, input), async () => ({
+        status: 201,
+        body: await this.runtime.recordGateSatisfied(actor, runId, input, idempotencyKey),
+      }));
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
   /** Admin-only test/delegation endpoint; TutorService should call the service directly. */
   @Post('admin/agent-runs/:runId/delegate')
   async delegate(
@@ -148,6 +206,11 @@ function parseDelegateInput(body: unknown, headerKey: string | undefined): Deleg
   if (typeof value.senderAgentId !== 'string' || typeof value.recipientAgentId !== 'string' || typeof value.taskType !== 'string') {
     throw new BadRequestException('缺少 senderAgentId、recipientAgentId 或 taskType');
   }
+  let pblPhase: PblPhase | undefined;
+  if (typeof value.pblPhase === 'string') {
+    if (!isPblPhase(value.pblPhase)) throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'pblPhase 不在冻结阶段枚举内' });
+    pblPhase = value.pblPhase;
+  }
   return {
     senderAgentId: value.senderAgentId,
     recipientAgentId: value.recipientAgentId,
@@ -156,6 +219,31 @@ function parseDelegateInput(body: unknown, headerKey: string | undefined): Deleg
     parentTaskId: typeof value.parentTaskId === 'string' ? value.parentTaskId : null,
     idempotencyKey,
     maxAttempts: typeof value.maxAttempts === 'number' ? value.maxAttempts : undefined,
+    ...(pblPhase !== undefined ? { pblPhase } : {}),
+  };
+}
+
+function parsePhaseAdvanceInput(body: unknown): { targetPhase: string; trigger?: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('阶段推进请求体无效');
+  const value = body as Record<string, unknown>;
+  if (typeof value.targetPhase !== 'string' || !isPblPhase(value.targetPhase)) {
+    throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'targetPhase 必须是冻结阶段枚举内的值' });
+  }
+  const trigger = typeof value.trigger === 'string' ? value.trigger : undefined;
+  if ('trigger' in value && trigger === undefined) throw new BadRequestException('trigger 必须是字符串');
+  return { targetPhase: value.targetPhase, ...(trigger !== undefined ? { trigger } : {}) };
+}
+
+function parseGateInput(body: unknown): { gate: string; evidenceRef?: string; source?: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('门禁证据请求体无效');
+  const value = body as Record<string, unknown>;
+  if (typeof value.gate !== 'string' || !value.gate.trim()) {
+    throw new BadRequestException({ code: 'PBL_GATE_REQUIRED_MISSING', message: '缺少 gate' });
+  }
+  return {
+    gate: value.gate.trim(),
+    ...(typeof value.evidenceRef === 'string' ? { evidenceRef: value.evidenceRef } : {}),
+    ...(typeof value.source === 'string' ? { source: value.source } : {}),
   };
 }
 

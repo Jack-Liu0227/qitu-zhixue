@@ -1,3 +1,4 @@
+export * from './admin-ai-config';
 export * from './agent-memory';
 export * from './agent-runtime';
 export * from './team-runtime';

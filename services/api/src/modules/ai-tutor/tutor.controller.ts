@@ -25,6 +25,7 @@ import type {
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
+import { TeamRuntimeService, teamFrameName, type TeamStreamFrame } from '../team-runtime/team-runtime.service.js';
 import type { StreamedTutorEvent } from './tutor.service';
 
 const SESSION_COOKIE = 'qitu_session';
@@ -76,6 +77,11 @@ export class TutorController {
     private readonly authService: AuthService,
     private readonly tutorService: TutorService,
     @Optional() private readonly workspace?: TutorWorkspaceService,
+    /**
+     * 团队编排流式帧：阶段事件 / 成员委派事件 / 工具调用事件 / 模型思考事件。
+     * 可选注入：Team Runtime 未接线时对话流保持原样（fail-closed）。
+     */
+    @Optional() private readonly teamRuntime?: TeamRuntimeService,
   ) {}
 
   @Get('templates')
@@ -188,6 +194,8 @@ export class TutorController {
     });
 
     const turnId = `live-${record.sessionId}-${record.lastSeq + 1}`;
+    const streamStartedAt = new Date();
+    let lastStreamedSeq = record.lastSeq;
     // The service owns `seq`; it yields each event already numbered so the
     // student turn, every step and the assistant turn never collide.
 
@@ -200,6 +208,7 @@ export class TutorController {
         ...(typeof body.optionLabel === 'string' ? { optionLabel: body.optionLabel } : {}),
       })) {
         if (aborted) break;
+        lastStreamedSeq = streamed.seq;
         writeFrame(response, streamed, { sessionId: record.sessionId, turnId });
         await delay(DELAY_BY_TYPE[streamed.event.type]);
       }
@@ -216,9 +225,34 @@ export class TutorController {
           message: error instanceof Error ? error.message : 'AI搭档暂时不可用',
         });
       }
-    } finally {
-      if (!aborted && !response.writableEnded) response.end();
     }
+
+    // 团队编排事件帧：阶段推进 / 门禁拒绝 / 成员委派 / 工具调用 / 模型思考。
+    // 只携带服务端脱敏后的元数据（frameId / runId / phase / taskType 等），
+    // 不含未成年人原文；seq 沿用本回合末端游标，不占用回合序号。
+    if (!aborted && !response.writableEnded && this.teamRuntime !== undefined) {
+      try {
+        const frames = await this.teamRuntime.listSessionStreamFrames(
+          { id: actor.id, email: '', displayName: '', role: 'student' },
+          record.sessionId,
+          { since: streamStartedAt },
+        );
+        let frameIndex = 0;
+        for (const frame of frames) {
+          if (aborted || response.writableEnded) break;
+          frameIndex += 1;
+          writeTeamFrame(response, frame, {
+            sessionId: record.sessionId,
+            turnId,
+            seq: lastStreamedSeq,
+            frameSeq: frameIndex,
+          });
+        }
+      } catch {
+        // Team Runtime 故障不能把正常的学生对话流变成错误流。
+      }
+    }
+    if (!aborted && !response.writableEnded) response.end();
   }
 
   /* ---------------- 契约中 REST 风格的等价路由 ---------------- */
@@ -372,6 +406,25 @@ function writeFrame(
 
 function writeRawFrame(response: Response, frameName: string, data: unknown): void {
   response.write(`event: ${frameName}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * 写一帧团队事件。沿用 writeRawFrame 机制，帧名取自服务端冻结的
+ * `TEAM_FRAME_NAMES`（阶段 / 门禁拒绝 / 委派 / 工具 / 思考），前端因此能
+ * 把团队事件与 tutor.* 对话帧区分开。新增/改名帧类型必须同步
+ * team-runtime.protocol.test.ts 的断言。
+ */
+function writeTeamFrame(
+  response: Response,
+  frame: TeamStreamFrame,
+  envelope: { sessionId: string; turnId: string; seq: number; frameSeq: number },
+): void {
+  writeRawFrame(response, teamFrameName(frame.kind), {
+    ...envelope,
+    timestamp: frame.occurredAt,
+    frameId: frame.frameId,
+    ...frame.data,
+  });
 }
 
 /** Flatten one event onto the shared `RealtimeServerEvent` envelope shape. */

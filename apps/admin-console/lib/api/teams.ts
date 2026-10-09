@@ -1,5 +1,11 @@
-import type { AdminRuntimeAgent, AdminRuntimeSnapshot } from '@qitu/contracts';
-import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
+import type {
+  AdminRuntimeAgent,
+  AdminRuntimeSnapshot,
+  AdminTeamConfig,
+  AdminTeamCreateInput,
+  AdminTeamUpdateInput,
+} from '@qitu/contracts';
+import { AdminOfflineError, AdminPermissionError, adminEnvelopeRequest, type DataEnvelope } from './types';
 import { newIdempotencyKey } from './modelRegistry';
 import { fetchRuntimeSnapshot } from './runtime';
 
@@ -60,6 +66,39 @@ export async function fetchAdminTeams(): Promise<TeamRuntimeSnapshot> {
     },
     routes,
   };
+}
+
+const ADMIN_TEAMS_PATH = '/api/v1/admin/ai-runtime/teams';
+const ADMIN_TEAM_ITEM_PATH = (id: string) => `${ADMIN_TEAMS_PATH}/${encodeURIComponent(id)}`;
+
+/** Persisted team CRUD used by the SDK-compatible settings surfaces. */
+export function fetchAdminTeamConfigs(): Promise<AdminTeamConfig[]> {
+  return adminEnvelopeRequest<AdminTeamConfig[]>({ path: ADMIN_TEAMS_PATH, method: 'GET' });
+}
+
+export function createPersistedTeam(
+  input: AdminTeamCreateInput,
+  idempotencyKey = newIdempotencyKey(),
+): Promise<AdminTeamConfig> {
+  return adminEnvelopeRequest<AdminTeamConfig>({
+    path: ADMIN_TEAMS_PATH,
+    method: 'POST',
+    body: input,
+    idempotencyKey,
+  });
+}
+
+export function updatePersistedTeam(
+  id: string,
+  patch: AdminTeamUpdateInput,
+  idempotencyKey = newIdempotencyKey(),
+): Promise<AdminTeamConfig> {
+  return adminEnvelopeRequest<AdminTeamConfig>({
+    path: ADMIN_TEAM_ITEM_PATH(id),
+    method: 'PATCH',
+    body: patch,
+    idempotencyKey,
+  });
 }
 
 export async function updateAgentRoute(
