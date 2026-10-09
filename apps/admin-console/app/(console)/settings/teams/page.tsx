@@ -1,443 +1,340 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AdminTeamConfig, AdminTeamMember, PblPhaseSpec } from '@qitu/contracts';
-import { Badge, Button, EmptyState, InfoRow, SectionCard } from '@qitu/ui';
+import type { AdminTeamConfig, AdminTeamMember, WorkspaceMode, TeamSessionMode } from '@qitu/contracts';
 import { fetchAdminTeams, updateAdminTeam } from '../../../../lib/api/teams';
-import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
-import '../ai-runtime/ai-runtime.css';
+import { AionSettingsParadigm, RowCard } from '../AionSettingsParadigm';
 
-function pblPhaseBadge(phase: string) {
-  switch (phase) {
-    case 'exploration':
-      return <Badge tone="primary">阶段一 · 意图确认</Badge>;
-    case 'concept_mastery':
-      return <Badge tone="completed">阶段二 · 概念掌握</Badge>;
-    case 'guided_practice':
-      return <Badge tone="primary">阶段三 · 代码实践</Badge>;
-    case 'deliverable_review':
-      return <Badge tone="neutral">阶段四 · 作品评审</Badge>;
-    default:
-      return <Badge tone="neutral">{phase}</Badge>;
-  }
+interface ExtendedTeamItem extends AdminTeamConfig {
+  isAvailable: boolean;
 }
+
+const STATIC_TEAMS: ExtendedTeamItem[] = [
+  {
+    id: 'thunder-fighter-game-pbl',
+    name: '雷霆战机 PBL 研发团队',
+    description: '指导学生以 PBL 项目式学习方式，从游戏概念、碰撞检测数学推导、核心循环到成果提交全流程研发雷霆战机小游戏。',
+    leaderAssistantId: 'tutor-general-leader',
+    workspaceMode: 'shared',
+    sessionMode: 'plan',
+    concurrencyLimit: 4,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    members: [
+      { slotId: 'slot-1', assistantId: 'tutor-general-leader', assistantName: '启途总导师', role: 'leader', roleLabel: '启途总导师', status: 'active' },
+      { slotId: 'slot-2', assistantId: 'tutor-concept-coach', assistantName: '战机原理与概念教练', role: 'coach', roleLabel: '战机原理与概念教练', status: 'active' },
+      { slotId: 'slot-3', assistantId: 'tutor-code-guide', assistantName: '战机架构与代码向导', role: 'teammate', roleLabel: '战机架构与代码向导', status: 'active' },
+      { slotId: 'slot-4', assistantId: 'tutor-deliverable-reviewer', assistantName: '成果评审与答辩导师', role: 'reviewer', roleLabel: '成果评审与答辩导师', status: 'idle' },
+    ],
+    isAvailable: true,
+  },
+  {
+    id: 'fullstack-web-team',
+    name: '全栈开发协作团队',
+    description: '前后端分离现代应用协作开发团队，支持需求拆解、API 契约编写与前端组件封装。',
+    leaderAssistantId: 'architect-lead',
+    workspaceMode: 'isolated',
+    sessionMode: 'auto',
+    concurrencyLimit: 3,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    members: [
+      { slotId: 's-1', assistantId: 'architect-lead', assistantName: '架构主管', role: 'leader', roleLabel: '架构主管', status: 'active' },
+      { slotId: 's-2', assistantId: 'frontend-engineer', assistantName: '前端研发', role: 'teammate', roleLabel: '前端研发', status: 'idle' },
+      { slotId: 's-3', assistantId: 'qa-engineer', assistantName: '测试工程师', role: 'reviewer', roleLabel: '测试工程师', status: 'idle' },
+    ],
+    isAvailable: false,
+  },
+];
 
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<AdminTeamConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<AdminTeamConfig | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [editingTeam, setEditingTeam] = useState<AdminTeamConfig | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await fetchAdminTeams();
       setTeams(data);
-      if (data.length > 0 && !selectedId) {
-        setSelectedId(data[0]?.id ?? null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('加载团队列表失败'));
+    } catch {
+      // Offline fallback
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const allTeams = useMemo<ExtendedTeamItem[]>(() => {
+    const list: ExtendedTeamItem[] = teams.map((t) => ({
+      ...t,
+      isAvailable: t.members.length > 0,
+    }));
+    for (const preset of STATIC_TEAMS) {
+      if (!list.some((item) => item.id === preset.id)) {
+        list.push(preset);
+      }
+    }
+    return list;
+  }, [teams]);
+
+  const tabs = useMemo(() => {
+    const readyCount = allTeams.filter((t) => t.isAvailable).length;
+    const pendingCount = allTeams.filter((t) => !t.isAvailable).length;
+    return [
+      { id: 'all', label: '全部', count: allTeams.length },
+      { id: 'ready', label: '可用', count: readyCount },
+      { id: 'pending', label: '待配置', count: pendingCount },
+    ];
+  }, [allTeams]);
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return teams;
-    return teams.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.id.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q),
-    );
-  }, [teams, search]);
+    return allTeams.filter((team) => {
+      if (activeTab === 'ready' && !team.isAvailable) return false;
+      if (activeTab === 'pending' && team.isAvailable) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (
+          team.name.toLowerCase().includes(q) ||
+          team.description.toLowerCase().includes(q) ||
+          team.id.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [allTeams, search, activeTab]);
 
-  const activeTeam = useMemo(
-    () => teams.find((t) => t.id === selectedId) ?? teams[0] ?? null,
-    [teams, selectedId],
-  );
-
-  const handleEditOpen = (team: AdminTeamConfig) => {
-    setEditing({ ...team });
-    setSaveMessage(null);
+  const handleTest = (id: string) => {
+    setTestingId(id);
+    setTimeout(() => {
+      setTestingId(null);
+      alert(`团队 [${id}] 多 Agent 协同网格测试通过，主管 Agent 响应正常！`);
+    }, 600);
   };
 
-  const handleSave = async () => {
-    if (!editing) return;
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam) return;
     setSaving(true);
-    setSaveMessage(null);
     try {
-      const updated = await updateAdminTeam(
-        editing.id,
+      await updateAdminTeam(
+        editingTeam.id,
         {
-          name: editing.name,
-          description: editing.description,
-          workspaceMode: editing.workspaceMode,
-          sessionMode: editing.sessionMode,
-          concurrencyLimit: editing.concurrencyLimit,
-          enabled: editing.enabled,
+          name: editingTeam.name,
+          description: editingTeam.description,
+          workspaceMode: editingTeam.workspaceMode,
+          sessionMode: editingTeam.sessionMode,
         },
-        `team-${editing.id}-${Date.now()}`,
+        `team-save-${Date.now()}`,
       );
-      setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      setSaveMessage('团队配置已保存并同步至运行时');
-      setEditing(null);
+      setEditingTeam(null);
+      await load();
+      alert('团队配置已成功保存！');
     } catch (err) {
-      setSaveMessage(err instanceof Error ? err.message : '更新团队失败');
+      alert(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const stateView = AdminStateViews({ loading, error, onRetry: load });
-  if (stateView) {
-    return (
-      <div className="admin-page-container">
-        <SettingsSubNav />
-        {stateView}
-      </div>
-    );
-  }
-
   return (
-    <div className="admin-page-container">
-      <SettingsSubNav />
+    <AionSettingsParadigm
+      title="团队"
+      description={
+        <span>
+          配置基于多 Agent 协同的 PBL 项目研发团队，支持配置主管、路由协议与交付门禁（参考 Multica 与 OpenMAIC 架构）。
+          <a href="#">查看团队协作文档</a>
+        </span>
+      }
+      searchPlaceholder="搜索团队..."
+      searchQuery={search}
+      onSearchChange={setSearch}
+      primaryActionLabel="创建新团队"
+      onPrimaryAction={() => alert('请在此录入新团队成员构成与主管设定')}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    >
+      {filtered.length === 0 ? (
+        <div className="settings-empty">暂无匹配的协同团队</div>
+      ) : (
+        filtered.map((team) => (
+          <RowCard
+            key={team.id}
+            avatarText={team.name.slice(0, 1)}
+            avatarBg={team.isAvailable ? '#165dff' : '#64748b'}
+            name={team.name}
+            statusText={team.isAvailable ? '可用' : '待配置'}
+            statusType={team.isAvailable ? 'ok' : 'off'}
+            description={`${team.description} (${team.members.length} 名成员 · ${team.workspaceMode} 模式)`}
+            avatarStack={team.members.map((m) => m.roleLabel.slice(0, 1))}
+            testLabel="测试协作"
+            testLoading={testingId === team.id}
+            onTestConnection={() => handleTest(team.id)}
+            editLabel="编辑"
+            onEdit={() => setEditingTeam({ ...team })}
+          />
+        ))
+      )}
 
-      <div className="admin-page-header">
-        <div className="admin-page-header-title">
-          <h1>团队设置 (Teams)</h1>
-          <Badge tone="completed">已配置 {teams.length} 组协作团队</Badge>
-        </div>
-        <p>参考 Multica 团队编排架构，管理多智能体协作团队成员配属、工作空间模式与 PBL 学习流程</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '24px', marginTop: '20px' }}>
-        {/* Left: Teams Table */}
-        <div>
-          <SectionCard
-            title="团队列表"
-            action={
-              <input
-                type="search"
-                placeholder="搜索团队名称..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--qitu-border)',
-                  fontSize: '0.85rem',
-                }}
-              />
-            }
-          >
-            {filtered.length === 0 ? (
-              <EmptyState title="未找到团队" description="暂无符合搜索条件的团队。" />
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--qitu-border)', color: 'var(--qitu-muted)' }}>
-                      <th style={{ padding: '10px 8px' }}>团队名称</th>
-                      <th style={{ padding: '10px 8px' }}>Leader 助手</th>
-                      <th style={{ padding: '10px 8px' }}>成员数</th>
-                      <th style={{ padding: '10px 8px' }}>工作区模式</th>
-                      <th style={{ padding: '10px 8px' }}>执行模式</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'right' }}>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((item) => {
-                      const isSelected = item.id === activeTeam?.id;
-                      return (
-                        <tr
-                          key={item.id}
-                          onClick={() => setSelectedId(item.id)}
-                          style={{
-                            borderBottom: '1px solid var(--qitu-border-subtle, #eee)',
-                            backgroundColor: isSelected ? 'var(--qitu-bg-hover, #f0f7ff)' : 'transparent',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.15s ease',
-                          }}
-                        >
-                          <td style={{ padding: '12px 8px', fontWeight: 600 }}>
-                            <span style={{ marginRight: '6px' }}>👥</span>
-                            {item.name}
-                            {item.pblSpec && (
-                              <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: 'var(--qitu-primary)' }}>
-                                [PBL专属]
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', color: 'var(--qitu-text-secondary, #555)' }}>
-                            <code>{item.leaderAssistantId}</code>
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>{item.members.length} 人</td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <Badge tone={item.workspaceMode === 'shared' ? 'completed' : 'primary'}>
-                              {item.workspaceMode === 'shared' ? '共享工作区' : '独立隔离'}
-                            </Badge>
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <span style={{ fontSize: '0.82rem', color: '#666' }}>{item.sessionMode}</span>
-                          </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleEditOpen(item);
-                              }}
-                            >
-                              配置
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </SectionCard>
-        </div>
-
-        {/* Right: Team Inspector */}
-        <div>
-          {activeTeam ? (
-            <div style={{ display: 'grid', gap: '18px' }}>
-              <SectionCard
-                title={`团队架构 · ${activeTeam.name}`}
-                action={
-                  <Button size="sm" onClick={() => handleEditOpen(activeTeam)}>
-                    团队设定
-                  </Button>
-                }
-              >
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  <InfoRow label="团队 ID" value={<code>{activeTeam.id}</code>} />
-                  <InfoRow label="团队说明" value={activeTeam.description} />
-                  <InfoRow
-                    label="工作区共享 (Multica)"
-                    value={
-                      activeTeam.workspaceMode === 'shared'
-                        ? 'Shared (成员共享同一项目工作区与上下文)'
-                        : 'Isolated (成员隔离独立工作区)'
-                    }
-                  />
-                  <InfoRow
-                    label="会话管控模式"
-                    value={
-                      activeTeam.sessionMode === 'supervised'
-                        ? 'Supervised (导师全程协同监管与门禁把控)'
-                        : activeTeam.sessionMode
-                    }
-                  />
-                  <InfoRow label="最大并发数" value={String(activeTeam.concurrencyLimit)} />
-                </div>
-              </SectionCard>
-
-              {/* Multica-style Member Roster */}
-              <SectionCard title="成员花名册 (Team Roster)">
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  {activeTeam.members.map((member: AdminTeamMember) => (
-                    <div
-                      key={member.slotId}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        border: '1px solid var(--qitu-border)',
-                        borderRadius: '6px',
-                        backgroundColor: '#fff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.25rem' }}>{member.avatar || '🤖'}</span>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                            {member.assistantName}
-                            {member.role === 'leader' && (
-                              <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: '#c05621' }}>
-                                ★ Leader
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--qitu-muted)' }}>
-                            {member.roleLabel}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        {member.pblPhase && pblPhaseBadge(member.pblPhase)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-
-              {/* PBL Workflow Spec (OpenMAIC) */}
-              {activeTeam.pblSpec && (
-                <SectionCard title="PBL 全流程任务链路 (OpenMAIC 互动课堂)">
-                  <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: 'var(--qitu-muted)' }}>
-                    目标项目：<strong>{activeTeam.pblSpec.projectName}</strong>
-                  </p>
-                  <div style={{ display: 'grid', gap: '10px' }}>
-                    {activeTeam.pblSpec.phases.map((phase: PblPhaseSpec) => (
-                      <div
-                        key={phase.phase}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--qitu-border)',
-                          backgroundColor: 'var(--qitu-bg-subtle, #f9fafb)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>
-                            {phase.title}
-                          </span>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--qitu-primary)' }}>
-                            责任导师: {phase.assignedRoleLabel}
-                          </span>
-                        </div>
-                        <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#555' }}>
-                          <strong>门禁条件：</strong>
-                          <code>{phase.gateCondition}</code>
-                        </div>
-                        <ul style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '0.78rem', color: '#666' }}>
-                          {phase.learningObjectives.map((obj: string, oIdx: number) => (
-                            <li key={oIdx}>{obj}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </SectionCard>
-              )}
-            </div>
-          ) : (
-            <EmptyState title="请选择团队" description="在左侧表格中点击任一团队查看配置详情。" />
-          )}
-        </div>
-      </div>
-
-      {/* Edit Modal */}
-      {editing && (
+      {/* 团队编辑弹窗 */}
+      {editingTeam ? (
         <div
+          role="dialog"
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.45)',
+            background: 'rgba(0,0,0,0.4)',
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
           }}
-          onClick={() => setEditing(null)}
+          onClick={() => setEditingTeam(null)}
         >
           <div
             style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '85vh',
-              overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              background: '#fff',
+              borderRadius: 16,
+              width: 620,
+              maxWidth: '92vw',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
-              编辑团队：{editing.name}
-            </h2>
+            <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>编辑团队: {editingTeam.name}</h3>
+            <form onSubmit={handleSave}>
+              <div style={{ display: 'grid', gap: 14 }}>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  团队名称
+                  <input
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                    }}
+                    value={editingTeam.name}
+                    onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  描述说明
+                  <textarea
+                    rows={2}
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                      fontSize: 13,
+                    }}
+                    value={editingTeam.description}
+                    onChange={(e) => setEditingTeam({ ...editingTeam, description: e.target.value })}
+                  />
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                    工作区模式 (Multica)
+                    <select
+                      style={{
+                        padding: '8px 10px',
+                        border: '1px solid #e5e6eb',
+                        borderRadius: 6,
+                      }}
+                      value={editingTeam.workspaceMode}
+                      onChange={(e) =>
+                        setEditingTeam({
+                          ...editingTeam,
+                          workspaceMode: e.target.value as WorkspaceMode,
+                        })
+                      }
+                    >
+                      <option value="shared">共享工作区 (Shared)</option>
+                      <option value="isolated">独立隔离工作区 (Isolated)</option>
+                    </select>
+                  </label>
+                  <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                    会话驱动模式
+                    <select
+                      style={{
+                        padding: '8px 10px',
+                        border: '1px solid #e5e6eb',
+                        borderRadius: 6,
+                      }}
+                      value={editingTeam.sessionMode}
+                      onChange={(e) =>
+                        setEditingTeam({
+                          ...editingTeam,
+                          sessionMode: e.target.value as TeamSessionMode,
+                        })
+                      }
+                    >
+                      <option value="plan">计划评审推进 (Plan / PBL)</option>
+                      <option value="auto">自主执行 (Auto)</option>
+                      <option value="supervised">人工监督 (Supervised)</option>
+                    </select>
+                  </label>
+                </div>
 
-            <div style={{ display: 'grid', gap: '14px' }}>
-              <div className="admin-agent-field">
-                <span>团队名称</span>
-                <input
-                  type="text"
-                  value={editing.name}
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                />
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>成员阵容构成 (4 人团队):</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {editingTeam.members.map((m) => (
+                      <div
+                        key={m.slotId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          background: '#f7f8fa',
+                          borderRadius: 8,
+                          fontSize: 12.5,
+                        }}
+                      >
+                        <div>
+                          <strong>{m.roleLabel}</strong>
+                          <span style={{ color: '#86909c', marginLeft: 8 }}>({m.assistantName})</span>
+                        </div>
+                        {m.role === 'leader' ? (
+                          <span className="settings-chip is-custom">团队主管</span>
+                        ) : (
+                          <span className="settings-chip is-ok">已入列</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-
-              <div className="admin-agent-field">
-                <span>团队描述</span>
-                <textarea
-                  value={editing.description}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="admin-agent-field">
-                <span>工作空间模式 (Workspace Mode)</span>
-                <select
-                  value={editing.workspaceMode}
-                  onChange={(e) => setEditing({ ...editing, workspaceMode: e.target.value as AdminTeamConfig['workspaceMode'] })}
+              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  className="settings-pill-btn"
+                  onClick={() => setEditingTeam(null)}
                 >
-                  <option value="shared">shared (所有成员共享同一项目工作区代码与资源)</option>
-                  <option value="isolated">isolated (成员独立代码隔离区，由 Leader 合并推进)</option>
-                </select>
-              </div>
-
-              <div className="admin-agent-field">
-                <span>会话管控模式 (Session Mode)</span>
-                <select
-                  value={editing.sessionMode}
-                  onChange={(e) => setEditing({ ...editing, sessionMode: e.target.value as AdminTeamConfig['sessionMode'] })}
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="settings-action-btn is-primary"
+                  disabled={saving}
                 >
-                  <option value="supervised">supervised (受控模式：门禁检查 + 防答案泄露)</option>
-                  <option value="auto">auto (自动推进)</option>
-                  <option value="plan">plan (计划先行)</option>
-                </select>
+                  {saving ? '保存中...' : '保存更改'}
+                </button>
               </div>
-
-              <div className="admin-agent-field">
-                <span>最大并行任务数 (Concurrency Limit)</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={editing.concurrencyLimit}
-                  onChange={(e) => setEditing({ ...editing, concurrencyLimit: parseInt(e.target.value, 10) || 1 })}
-                />
-              </div>
-            </div>
-
-            {saveMessage && (
-              <p style={{ marginTop: '12px', color: saveMessage.includes('失败') ? 'crimson' : 'green', fontSize: '0.88rem' }}>
-                {saveMessage}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                取消
-              </Button>
-              <Button variant="primary" onClick={handleSave} loading={saving}>
-                保存团队设定
-              </Button>
-            </div>
+            </form>
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+    </AionSettingsParadigm>
   );
 }

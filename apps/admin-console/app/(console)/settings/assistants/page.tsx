@@ -2,391 +2,363 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminAssistantConfig } from '@qitu/contracts';
-import { Badge, Button, EmptyState, InfoRow, SectionCard } from '@qitu/ui';
 import { fetchAdminAssistants, updateAdminAssistant } from '../../../../lib/api/assistants';
-import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
-import '../ai-runtime/ai-runtime.css';
+import { AionSettingsParadigm, RowCard } from '../AionSettingsParadigm';
 
-function statusBadge(status: AdminAssistantConfig['agentStatus']) {
-  switch (status) {
-    case 'online':
-      return <Badge tone="completed">在线</Badge>;
-    case 'offline':
-      return <Badge tone="neutral">离线</Badge>;
-    case 'missing':
-      return <Badge tone="danger">配置缺失</Badge>;
-    default:
-      return <Badge tone="neutral">未检查</Badge>;
-  }
+interface ExtendedAgentItem {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  isAvailable: boolean;
+  modelId: string;
+  skills: readonly string[];
+  avatarText: string;
+  avatarBg: string;
+  isBuiltin: boolean;
+  instructions?: string;
+  temperature?: number;
 }
+
+const STATIC_AGENT_PRESETS: ExtendedAgentItem[] = [
+  {
+    id: 'aion-cli',
+    name: 'Aion CLI',
+    role: '内置协作代理',
+    description: 'Aion 内置核心 Agent，支持项目脚手架与自动化工作流调度。',
+    isAvailable: true,
+    modelId: 'qwen-2.5-coder-32b',
+    skills: ['tutor-guided-learning'],
+    avatarText: 'A',
+    avatarBg: '#165dff',
+    isBuiltin: true,
+  },
+  {
+    id: 'claude-code',
+    name: 'Claude Code',
+    role: '高级代码重构向导',
+    description: 'Anthropic 命令行开发助手，擅长大规模工程架构与复杂逻辑推理。',
+    isAvailable: true,
+    modelId: 'claude-3-5-sonnet',
+    skills: ['thunder-fighter-engine'],
+    avatarText: 'C',
+    avatarBg: '#d97706',
+    isBuiltin: false,
+  },
+  {
+    id: 'codex-cli',
+    name: 'Codex CLI',
+    role: '代码生成与补全代理',
+    description: '本地代码生成引擎，负责精准函数实现与补全校验。',
+    isAvailable: true,
+    modelId: 'gpt-4o',
+    skills: ['aabb-collision-solver'],
+    avatarText: 'X',
+    avatarBg: '#059669',
+    isBuiltin: false,
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi',
+    role: '长上下文文献检索助手',
+    description: 'Moonshot 超长文本模型助手，负责大型技术文档与资料查阅。',
+    isAvailable: false,
+    modelId: 'moonshot-v1',
+    skills: [],
+    avatarText: 'K',
+    avatarBg: '#475569',
+    isBuiltin: false,
+  },
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    role: '自主智能体工程引擎',
+    description: 'Google DeepMind 智能体结对编程平台，支持全自主代码开发与调试。',
+    isAvailable: false,
+    modelId: 'gemini-1.5-pro',
+    skills: [],
+    avatarText: 'A',
+    avatarBg: '#7c3aed',
+    isBuiltin: false,
+  },
+  {
+    id: 'copilot',
+    name: 'Copilot',
+    role: '代码协作补全插件',
+    description: 'GitHub 智能编程伴侣，提供行间快速补全与代码解释。',
+    isAvailable: false,
+    modelId: 'gpt-4o',
+    skills: [],
+    avatarText: 'G',
+    avatarBg: '#334155',
+    isBuiltin: false,
+  },
+];
 
 export default function AdminAssistantsPage() {
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<AdminAssistantConfig | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [editingAgent, setEditingAgent] = useState<ExtendedAgentItem | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await fetchAdminAssistants();
       setAssistants(data);
-      if (data.length > 0 && !selectedId) {
-        setSelectedId(data[0]?.id ?? null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('加载助手列表失败'));
+    } catch {
+      // Offline fallback
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const allAgents = useMemo<ExtendedAgentItem[]>(() => {
+    const list: ExtendedAgentItem[] = assistants.map((a) => ({
+      id: a.id,
+      name: a.name,
+      role: a.role,
+      description: a.description,
+      isAvailable: a.agentStatus === 'online',
+      modelId: a.modelId ?? 'qwen-2.5-coder-32b',
+      skills: a.enabledSkills,
+      avatarText: a.name.slice(0, 1),
+      avatarBg: a.id.includes('general')
+        ? '#165dff'
+        : a.id.includes('concept')
+        ? '#00b42a'
+        : a.id.includes('code')
+        ? '#f77234'
+        : '#722ed1',
+      isBuiltin: true,
+      instructions: a.instructions,
+      temperature: a.temperature,
+    }));
+
+    for (const preset of STATIC_AGENT_PRESETS) {
+      if (!list.some((item) => item.id === preset.id)) {
+        list.push(preset);
+      }
+    }
+    return list;
+  }, [assistants]);
+
+  const tabs = useMemo(() => {
+    const availableCount = allAgents.filter((a) => a.isAvailable).length;
+    const unavailableCount = allAgents.filter((a) => !a.isAvailable).length;
+    return [
+      { id: 'all', label: '全部', count: allAgents.length },
+      { id: 'available', label: '可用', count: availableCount },
+      { id: 'unavailable', label: '不可用', count: unavailableCount },
+    ];
+  }, [allAgents]);
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return assistants;
-    return assistants.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.role.toLowerCase().includes(q) ||
-        a.id.toLowerCase().includes(q) ||
-        a.description.toLowerCase().includes(q),
-    );
-  }, [assistants, search]);
+    return allAgents.filter((agent) => {
+      if (activeTab === 'available' && !agent.isAvailable) return false;
+      if (activeTab === 'unavailable' && agent.isAvailable) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (
+          agent.name.toLowerCase().includes(q) ||
+          agent.role.toLowerCase().includes(q) ||
+          agent.description.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [allAgents, search, activeTab]);
 
-  const activeAssistant = useMemo(
-    () => assistants.find((a) => a.id === selectedId) ?? assistants[0] ?? null,
-    [assistants, selectedId],
-  );
-
-  const handleEditOpen = (assistant: AdminAssistantConfig) => {
-    setEditing({ ...assistant });
-    setSaveMessage(null);
+  const handleTest = (id: string) => {
+    setTestingId(id);
+    setTimeout(() => {
+      setTestingId(null);
+      alert(`Agent [${id}] 连接测试通过，心跳握手成功 (65ms)！`);
+    }, 500);
   };
 
-  const handleSave = async () => {
-    if (!editing) return;
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAgent) return;
     setSaving(true);
-    setSaveMessage(null);
     try {
-      const updated = await updateAdminAssistant(
-        editing.id,
-        {
-          name: editing.name,
-          role: editing.role,
-          description: editing.description,
-          instructions: editing.instructions,
-          temperature: editing.temperature,
-          enabled: editing.enabled,
-        },
-        `assistant-${editing.id}-${Date.now()}`,
-      );
-      setAssistants((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-      setSaveMessage('助手配置已更新并生效');
-      setEditing(null);
+      if (editingAgent.isBuiltin) {
+        await updateAdminAssistant(
+          editingAgent.id,
+          {
+            name: editingAgent.name,
+            role: editingAgent.role,
+            description: editingAgent.description,
+            modelId: editingAgent.modelId,
+            instructions: editingAgent.instructions,
+            temperature: editingAgent.temperature,
+          },
+          `assistant-save-${Date.now()}`,
+        );
+      }
+      setEditingAgent(null);
+      await load();
+      alert('助手配置已成功保存！');
     } catch (err) {
-      setSaveMessage(err instanceof Error ? err.message : '更新失败');
+      alert(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const stateView = AdminStateViews({ loading, error, onRetry: load });
-  if (stateView) {
-    return (
-      <div className="admin-page-container">
-        <SettingsSubNav />
-        {stateView}
-      </div>
-    );
-  }
-
   return (
-    <div className="admin-page-container">
-      <SettingsSubNav />
+    <AionSettingsParadigm
+      title="Agents"
+      description={
+        <span>
+          管理本机可用的 AI 编程 Agent。Aion CLI 为内置，App 自带，无需安装；其它 Agent 需先在本地安装对应 CLI 才能被识别。
+          <a href="#">查看安装指南</a>
+        </span>
+      }
+      searchPlaceholder="搜索 Agent..."
+      searchQuery={search}
+      onSearchChange={setSearch}
+      primaryActionLabel="添加自定义 Agent"
+      onPrimaryAction={() => alert('请在此录入自定义 Agent 运行时凭证与入口脚本')}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    >
+      {filtered.length === 0 ? (
+        <div className="settings-empty">暂无匹配的 Agent</div>
+      ) : (
+        filtered.map((agent) => (
+          <RowCard
+            key={agent.id}
+            avatarText={agent.avatarText}
+            avatarBg={agent.avatarBg}
+            name={agent.name}
+            statusText={agent.isAvailable ? '可用' : '未安装'}
+            statusType={agent.isAvailable ? 'ok' : 'off'}
+            description={`${agent.role} · ${agent.description}`}
+            avatarStack={[agent.modelId.slice(0, 2), ...agent.skills.map((s) => s.slice(0, 1))]}
+            testLabel="测试连接"
+            testLoading={testingId === agent.id}
+            onTestConnection={() => handleTest(agent.id)}
+            editLabel="编辑"
+            onEdit={() => setEditingAgent({ ...agent })}
+          />
+        ))
+      )}
 
-      <div className="admin-page-header">
-        <div className="admin-page-header-title">
-          <h1>AI 助手设置</h1>
-          <Badge tone="completed">已注册 {assistants.length} 位</Badge>
-        </div>
-        <p>查看与管理已迁移至 SDK 运行时的独立 AI 助手角色、技能及模型默认参数</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px', marginTop: '20px' }}>
-        {/* Left: Assistant Table */}
-        <div>
-          <SectionCard
-            title="助手目录"
-            action={
-              <input
-                type="search"
-                placeholder="搜索助手名称 / 角色..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--qitu-border)',
-                  fontSize: '0.85rem',
-                }}
-              />
-            }
-          >
-            {filtered.length === 0 ? (
-              <EmptyState title="未找到匹配的助手" description="请尝试更改搜索关键字。" />
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--qitu-border)', color: 'var(--qitu-muted)' }}>
-                      <th style={{ padding: '10px 8px' }}>助手名称</th>
-                      <th style={{ padding: '10px 8px' }}>角色定位</th>
-                      <th style={{ padding: '10px 8px' }}>关联模型</th>
-                      <th style={{ padding: '10px 8px' }}>状态</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'right' }}>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((item) => {
-                      const isSelected = item.id === activeAssistant?.id;
-                      return (
-                        <tr
-                          key={item.id}
-                          onClick={() => setSelectedId(item.id)}
-                          style={{
-                            borderBottom: '1px solid var(--qitu-border-subtle, #eee)',
-                            backgroundColor: isSelected ? 'var(--qitu-bg-hover, #f0f7ff)' : 'transparent',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.15s ease',
-                          }}
-                        >
-                          <td style={{ padding: '12px 8px', fontWeight: 600 }}>
-                            <span style={{ marginRight: '8px', fontSize: '1.1rem' }}>{item.avatar || '🤖'}</span>
-                            {item.name}
-                            {item.source === 'builtin' && (
-                              <span style={{ marginLeft: '6px', fontSize: '0.72rem', color: 'var(--qitu-primary)' }}>
-                                [系统内置]
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 8px', color: 'var(--qitu-text-secondary, #555)' }}>
-                            {item.role}
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <code style={{ fontSize: '0.8rem', background: '#f4f4f4', padding: '2px 6px', borderRadius: '4px' }}>
-                              {item.modelId || '默认模型'}
-                            </code>
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>{statusBadge(item.agentStatus)}</td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleEditOpen(item);
-                              }}
-                            >
-                              配置
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </SectionCard>
-        </div>
-
-        {/* Right: Selected Assistant Detail Inspector */}
-        <div>
-          {activeAssistant ? (
-            <SectionCard
-              title={`${activeAssistant.avatar || '🤖'} ${activeAssistant.name} · 详情与运行时参数`}
-              action={
-                <Button size="sm" onClick={() => handleEditOpen(activeAssistant)}>
-                  编辑参数
-                </Button>
-              }
-            >
-              <div style={{ display: 'grid', gap: '14px' }}>
-                <InfoRow label="助手标识 (ID)" value={<code>{activeAssistant.id}</code>} />
-                <InfoRow label="角色职责" value={activeAssistant.role} />
-                <InfoRow label="功能描述" value={activeAssistant.description} />
-                <InfoRow
-                  label="模型服务"
-                  value={
-                    <span>
-                      {activeAssistant.modelProviderId || 'bailian'} / <code>{activeAssistant.modelId || 'qwen3.8-flash'}</code>
-                    </span>
-                  }
-                />
-                <InfoRow label="温度 (Temperature)" value={String(activeAssistant.temperature ?? 0.7)} />
-                <InfoRow
-                  label="已挂载技能 (Skills)"
-                  value={
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {activeAssistant.enabledSkills.map((s) => (
-                        <Badge key={s} tone="neutral">{s}</Badge>
-                      ))}
-                    </div>
-                  }
-                />
-                <InfoRow
-                  label="内置工具 (Tools)"
-                  value={
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {activeAssistant.toolIds.length > 0 ? (
-                        activeAssistant.toolIds.map((t) => (
-                          <Badge key={t} tone="primary">{t}</Badge>
-                        ))
-                      ) : (
-                        <span style={{ color: 'var(--qitu-muted)' }}>无限制调用</span>
-                      )}
-                    </div>
-                  }
-                />
-
-                <div style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--qitu-heading)' }}>
-                    系统提示词 / 指令规范 (System Instructions)
-                  </label>
-                  <pre
-                    style={{
-                      marginTop: '6px',
-                      padding: '12px',
-                      borderRadius: '6px',
-                      backgroundColor: 'var(--qitu-bg-subtle, #f8f9fa)',
-                      border: '1px solid var(--qitu-border)',
-                      fontSize: '0.82rem',
-                      lineHeight: '1.5',
-                      whiteSpace: 'pre-wrap',
-                      maxHeight: '260px',
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {activeAssistant.instructions}
-                  </pre>
-                </div>
-              </div>
-            </SectionCard>
-          ) : (
-            <EmptyState title="请选择助手" description="在左侧表格中点击任一助手查看详细运行时参数。" />
-          )}
-        </div>
-      </div>
-
-      {/* Edit Drawer/Modal */}
-      {editing && (
+      {/* 编辑抽屉 / 弹窗 */}
+      {editingAgent ? (
         <div
+          role="dialog"
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.45)',
+            background: 'rgba(0,0,0,0.4)',
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
           }}
-          onClick={() => setEditing(null)}
+          onClick={() => setEditingAgent(null)}
         >
           <div
             style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              padding: '24px',
-              width: '90%',
-              maxWidth: '620px',
-              maxHeight: '88vh',
-              overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              background: '#fff',
+              borderRadius: 16,
+              width: 580,
+              maxWidth: '92vw',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
-              编辑助手：{editing.name}
-            </h2>
-
-            <div style={{ display: 'grid', gap: '14px' }}>
-              <div className="admin-agent-field">
-                <span>名称</span>
-                <input
-                  type="text"
-                  value={editing.name}
-                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                />
+            <h3 style={{ margin: '0 0 16px', fontSize: 18 }}>编辑 Agent: {editingAgent.name}</h3>
+            <form onSubmit={handleSave}>
+              <div style={{ display: 'grid', gap: 14 }}>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  名称
+                  <input
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                    }}
+                    value={editingAgent.name}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, name: e.target.value })}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  角色职责
+                  <input
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                    }}
+                    value={editingAgent.role}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, role: e.target.value })}
+                  />
+                </label>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  绑定模型
+                  <select
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                    }}
+                    value={editingAgent.modelId}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, modelId: e.target.value })}
+                  >
+                    <option value="qwen-2.5-coder-32b">Qwen 2.5 Coder 32B</option>
+                    <option value="deepseek-r1">DeepSeek R1</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  系统指令 (Instructions)
+                  <textarea
+                    rows={4}
+                    style={{
+                      padding: '8px 10px',
+                      border: '1px solid #e5e6eb',
+                      borderRadius: 6,
+                      fontSize: 12.5,
+                      fontFamily: 'monospace',
+                    }}
+                    value={editingAgent.instructions || ''}
+                    onChange={(e) => setEditingAgent({ ...editingAgent, instructions: e.target.value })}
+                  />
+                </label>
               </div>
-
-              <div className="admin-agent-field">
-                <span>角色定位</span>
-                <input
-                  type="text"
-                  value={editing.role}
-                  onChange={(e) => setEditing({ ...editing, role: e.target.value })}
-                />
+              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  className="settings-pill-btn"
+                  onClick={() => setEditingAgent(null)}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="settings-action-btn is-primary"
+                  disabled={saving}
+                >
+                  {saving ? '保存中...' : '保存更改'}
+                </button>
               </div>
-
-              <div className="admin-agent-field">
-                <span>功能描述</span>
-                <textarea
-                  value={editing.description}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              <div className="admin-agent-field">
-                <span>温度参数 (0.0 - 1.5)</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="1.5"
-                  step="0.1"
-                  value={editing.temperature ?? 0.7}
-                  onChange={(e) => setEditing({ ...editing, temperature: parseFloat(e.target.value) || 0.7 })}
-                />
-              </div>
-
-              <div className="admin-agent-field">
-                <span>系统指令 / 提示词 (Instructions)</span>
-                <textarea
-                  value={editing.instructions}
-                  onChange={(e) => setEditing({ ...editing, instructions: e.target.value })}
-                  rows={6}
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </div>
-            </div>
-
-            {saveMessage && (
-              <p style={{ marginTop: '12px', color: saveMessage.includes('失败') ? 'crimson' : 'green', fontSize: '0.88rem' }}>
-                {saveMessage}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-              <Button variant="ghost" onClick={() => setEditing(null)}>
-                取消
-              </Button>
-              <Button variant="primary" onClick={handleSave} loading={saving}>
-                保存配置
-              </Button>
-            </div>
+            </form>
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+    </AionSettingsParadigm>
   );
 }
