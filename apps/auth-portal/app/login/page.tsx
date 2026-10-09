@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { colors } from '@qitu/design-tokens';
-import { BrandLogo, BrandMark, HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
+import { BrandMark, HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
 import { readCachedSession, writeCachedSession } from '@qitu/auth';
 
@@ -14,6 +14,8 @@ interface RoleOption {
   role: LoginRole;
   label: string;
   destination: string;
+  demoEmail: string;
+  demoPassword: string;
 }
 
 const ROLE_OPTIONS: RoleOption[] = [
@@ -21,21 +23,29 @@ const ROLE_OPTIONS: RoleOption[] = [
     role: 'student',
     label: '学生',
     destination: '/student',
+    demoEmail: 'student@qtzx.local',
+    demoPassword: 'student123',
   },
   {
     role: 'parent',
     label: '家长',
     destination: '/parent',
+    demoEmail: 'parent@qtzx.local',
+    demoPassword: 'parent123',
   },
   {
     role: 'teacher',
     label: '班主任',
     destination: '/teacher',
+    demoEmail: 'teacher@qtzx.local',
+    demoPassword: 'teacher123',
   },
   {
     role: 'admin',
     label: '管理员',
     destination: '/admin',
+    demoEmail: 'admin@qtzx.local',
+    demoPassword: 'admin123',
   },
 ];
 
@@ -85,6 +95,7 @@ export default function LoginPage() {
   const [errorKind, setErrorKind] = useState<ErrorKind>(null);
   const [offline, setOffline] = useState(false);
   const [cachedUser, setCachedUser] = useState<CurrentUser | null>(null);
+  const [notice, setNotice] = useState('');
 
   const nextPath = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -140,6 +151,16 @@ export default function LoginPage() {
     }
   }
 
+  function fillDemoAccount(option: RoleOption): void {
+    setRole(option.role);
+    setEmail(option.demoEmail);
+    setPassword(option.demoPassword);
+    setStatus('idle');
+    setErrorKind(null);
+    setNotice(`已填入${option.label}测试账号，提交后会通过真实登录接口校验。`);
+    persistRememberedEmail(option.demoEmail, rememberAccount);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (offline) {
@@ -150,6 +171,7 @@ export default function LoginPage() {
 
     setStatus('submitting');
     setErrorKind(null);
+    setNotice('');
 
     const idempotencyKey = makeIdempotencyKey();
     try {
@@ -217,16 +239,16 @@ export default function LoginPage() {
           QITU SMART LEARNING
         </p>
         <h1 id="login-intro-title" className="login-intro-logo">
-          <BrandLogo width={220} />
+          <img src="/brand-logo.png" width={220} height={220} alt="启途智学" />
         </h1>
-        <p className="login-positioning">面向中小学的项目式 AI 学习平台。</p>
-        <p className="login-desc">学生探索和创作，家长看见成长过程，班主任及时提供支持。</p>
+        <p className="login-positioning">让好奇心有方向，让每个作品留下成长证据。</p>
+        <p className="login-desc">启途智学把问题、思考、实践和复盘连接起来，帮助学生在真实项目中建立能力。</p>
 
         <ul className="login-feature-list">
-          <li>AI搭档启发式引导，先思考再动手</li>
-          <li>先理论后实践，稳步进入项目创作</li>
+          <li>从真实问题出发，定义值得研究的方向</li>
+          <li>AI 搭档启发式引导，先思考再动手</li>
+          <li>先理论后实践，把想法做成真实作品</li>
           <li>作品与成长档案沉淀每一步学习轨迹</li>
-          <li>安全与最小可见范围，守护未成年人数据</li>
         </ul>
 
         <div className="login-how">
@@ -278,6 +300,7 @@ export default function LoginPage() {
                 setRole(option.role);
                 setErrorKind(null);
                 setStatus('idle');
+                setNotice('');
               }}
               role="tab"
               aria-selected={role === option.role}
@@ -301,6 +324,7 @@ export default function LoginPage() {
                 setEmail(event.target.value);
                 setStatus('idle');
                 setErrorKind(null);
+                setNotice('');
                 persistRememberedEmail(event.target.value, rememberAccount);
               }}
               placeholder="请输入学校统一发放的登录邮箱"
@@ -321,6 +345,7 @@ export default function LoginPage() {
                   setPassword(event.target.value);
                   setStatus('idle');
                   setErrorKind(null);
+                  setNotice('');
                 }}
                 placeholder="请输入密码"
               />
@@ -355,6 +380,12 @@ export default function LoginPage() {
             </p>
           ) : null}
 
+          {notice ? (
+            <p className="login-notice" role="status">
+              {notice}
+            </p>
+          ) : null}
+
           <button
             className="login-submit"
             disabled={status === 'submitting' || offline}
@@ -369,8 +400,20 @@ export default function LoginPage() {
           忘记密码？本平台不提供自助重置，请联系班主任或管理员重置密码。
         </p>
 
+        <div className="login-demo">
+          <p className="login-demo-title">测试账号 <span>一键填入，仍通过真实接口登录</span></p>
+          <div className="login-demo-buttons">
+            {ROLE_OPTIONS.map((option) => (
+              <button key={option.role} type="button" onClick={() => fillDemoAccount(option)}>
+                {option.label}账号
+              </button>
+            ))}
+          </div>
+          <p className="login-demo-note">账号用于本地与共享演示环境联调，密码不会保存到浏览器。</p>
+        </div>
+
         <p className="login-account-note">
-          使用学校或机构发放的账号登录。没有账号或需要重置密码，请联系班主任、学校管理员或企图智学科技有限公司合作团队。
+          使用学校或机构发放的账号登录。没有账号或需要重置密码，请联系班主任、学校管理员或启途智学科技有限公司合作团队。
         </p>
       </section>
     </main>

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { DemoModal } from './demo-modal';
-import { BrandGlyph, Icon } from './icons';
+import { Icon } from './icons';
 
 const NAV_ITEMS = [
   { path: '/', label: '首页' },
@@ -41,10 +41,10 @@ export function SiteNav() {
     <header className="home-header">
       <div className="home-shell home-header-inner">
         <Link className="home-brand" href="/">
-          <BrandGlyph />
+          <img className="home-brand-mark-image" src="/brand-mark.png" alt="" aria-hidden="true" />
           <span className="home-brand-copy">
             <span className="home-brand-name">启途智学</span>
-            <span className="home-brand-sub">QuestED Intelligence</span>
+            <span className="home-brand-sub">QITU ZHIXUE</span>
           </span>
         </Link>
 

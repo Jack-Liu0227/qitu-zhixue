@@ -6,7 +6,7 @@ import { PublicPageShell } from '../public-shell';
 
 export const metadata: Metadata = {
   title: '关于我们',
-  description: '企图智学科技有限公司，由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育。',
+  description: '启途智学科技有限公司，由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育。',
 };
 
 export default function AboutPage() {
@@ -22,7 +22,7 @@ export default function AboutPage() {
               让好奇心有方向，<span>让每个作品留下成长证据。</span>
             </h1>
             <p className="public-lead">
-              企图智学科技有限公司由西安交通大学团队研发，面向中小学提供项目式 AI 学习支持。
+              启途智学科技有限公司由西安交通大学团队研发，面向中小学提供项目式 AI 学习支持。
               我们把问题、思考、实践和复盘连接起来，让学习者在真实问题中建立能力。
             </p>
             <div className="public-actions">
@@ -35,7 +35,7 @@ export default function AboutPage() {
             </div>
           </div>
           <aside className="public-hero-note">
-            <strong>关于企图智学</strong>
+            <strong>关于启途智学</strong>
             <p>
               团队来自西安交通大学，办公地址位于西安市碑林区，持续把探究式学习方法做成可使用、可追溯的产品。
             </p>
@@ -93,13 +93,13 @@ export default function AboutPage() {
         <div className="home-shell public-contact-grid">
           <div className="public-contact-panel">
             <h2>我们是谁</h2>
-            <p>企图智学科技有限公司专注于探究式学习与项目式 AI 教育。</p>
+            <p>启途智学科技有限公司专注于探究式学习与项目式 AI 教育。</p>
             <ul className="public-contact-list">
               <li>
                 <Icon name="verified" size={20} aria-hidden="true" />
                 <div>
                   <strong>公司主体</strong>
-                  <span>企图智学科技有限公司</span>
+                  <span>启途智学科技有限公司</span>
                 </div>
               </li>
               <li>

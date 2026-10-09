@@ -189,7 +189,7 @@ export default async function HomePage() {
             <div className="home-about-grid">
               <div className="home-about-copy">
                 <p className="home-eyebrow">
-                  <Icon name="verified" size={16} /> 关于企图智学科技有限公司
+                  <Icon name="verified" size={16} /> 关于启途智学科技有限公司
                 </p>
                 <h2 className="home-section-title">
                   源自西安交通大学团队，
@@ -197,7 +197,7 @@ export default async function HomePage() {
                   为真实学习建立一条清晰路径。
                 </h2>
                 <p>
-                  企图智学科技有限公司专注于探究式学习与项目式 AI
+                  启途智学科技有限公司专注于探究式学习与项目式 AI
                   教育，面向中小学提供可使用、可追溯的学习支持。
                 </p>
                 <p>
@@ -279,7 +279,7 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="home-summary-contact">
-              <strong>企图智学科技有限公司</strong>
+              <strong>启途智学科技有限公司</strong>
               <span>西安交通大学团队</span>
               <span>西安市碑林区</span>
             </div>
@@ -291,9 +291,9 @@ export default async function HomePage() {
         <div className="home-shell">
           <div className="home-footer-grid">
             <div className="home-footer-brand">
-              <p className="home-brand-name">启途智学</p>
+              <img className="home-footer-logo" src="/brand-logo.png" alt="启途智学" />
               <p className="home-footer-desc">
-                企图智学科技有限公司由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育。
+                启途智学科技有限公司由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育。
               </p>
             </div>
             <nav className="home-footer-col" aria-label="产品与学习">
@@ -331,7 +331,7 @@ export default async function HomePage() {
               <h3>公司信息</h3>
               <ul className="home-footer-contact">
                 <li>
-                  <Icon name="verified" size={16} /> 企图智学科技有限公司
+                  <Icon name="verified" size={16} /> 启途智学科技有限公司
                 </li>
                 <li>
                   <Icon name="hub" size={16} /> 西安交通大学团队
@@ -343,7 +343,7 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="home-footer-bottom">
-            <p>© 2026 企图智学科技有限公司. 保留所有权利。</p>
+            <p>© 2026 启途智学科技有限公司. 保留所有权利。</p>
             <p className="home-footer-legal">
               <span>启途智学项目式 AI 学习平台</span>
             </p>

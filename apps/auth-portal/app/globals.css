@@ -419,6 +419,15 @@ body {
   line-height: 0;
 }
 
+.login-intro-logo img {
+  display: block;
+  width: min(220px, 52vw);
+  height: auto;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgb(0 56 178 / 12%);
+}
+
 /* 登录页沿用官网的蓝色、薄荷色与圆角节奏，保持从首页进入后的视觉连续性。 */
 .login-page {
   --login-primary: #0038b2;
@@ -454,4 +463,14 @@ body {
   color: var(--login-muted);
   font-size: 0.84rem;
   line-height: 1.7;
+}
+
+.login-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--login-attention);
+  background: rgb(111 250 208 / 16%);
+  color: var(--login-text);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }

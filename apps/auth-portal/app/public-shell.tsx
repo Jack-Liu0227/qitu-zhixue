@@ -24,9 +24,9 @@ export function PublicFooter() {
       <div className="home-shell">
         <div className="home-footer-grid">
           <div className="home-footer-brand">
-            <p className="home-brand-name">启途智学</p>
+            <img className="home-footer-logo" src="/brand-logo.png" alt="启途智学" />
             <p className="home-footer-desc">
-              企图智学科技有限公司由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育，
+              启途智学科技有限公司由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育，
               帮助学习者在真实问题中建立能力、沉淀作品与成长证据。
             </p>
             <p className="home-footer-social" aria-hidden="true">
@@ -82,7 +82,7 @@ export function PublicFooter() {
             <h3>公司信息</h3>
             <ul className="home-footer-contact">
               <li>
-                <Icon name="verified" size={16} /> 企图智学科技有限公司
+                <Icon name="verified" size={16} /> 启途智学科技有限公司
               </li>
               <li>
                 <Icon name="hub" size={16} /> 西安交通大学团队
@@ -95,7 +95,7 @@ export function PublicFooter() {
         </div>
 
         <div className="home-footer-bottom">
-          <p>© 2026 企图智学科技有限公司. 保留所有权利。</p>
+          <p>© 2026 启途智学科技有限公司. 保留所有权利。</p>
           <p className="home-footer-legal">
             <span>启途智学项目式 AI 学习平台</span>
           </p>

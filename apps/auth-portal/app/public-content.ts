@@ -101,7 +101,7 @@ export const COMPETENCIES: readonly Competency[] = [
 ];
 
 export const CONTACT_ROWS: readonly ContactRow[] = [
-  { icon: 'verified', label: '公司主体', value: '企图智学科技有限公司' },
+  { icon: 'verified', label: '公司主体', value: '启途智学科技有限公司' },
   { icon: 'hub', label: '研发团队', value: '西安交通大学团队' },
   {
     icon: 'location',

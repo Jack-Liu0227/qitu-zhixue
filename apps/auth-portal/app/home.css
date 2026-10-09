@@ -185,10 +185,27 @@
 
 .home-brand {
   display: inline-flex;
-  gap: 10px;
   align-items: center;
   color: inherit;
   text-decoration: none;
+}
+
+.home-brand-logo {
+  display: block;
+  width: 132px;
+  height: 58px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.home-brand-mark-image {
+  display: block;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 
 .home-brand-copy {
@@ -1633,6 +1650,17 @@
   font-weight: 800;
 }
 
+.home-footer-logo {
+  display: block;
+  width: 164px;
+  height: 78px;
+  object-fit: contain;
+  object-position: left center;
+  padding: 4px;
+  border-radius: 12px;
+  background: #fff;
+}
+
 .home-footer-desc {
   margin: 10px 0 0;
   max-width: 46ch;
@@ -2181,6 +2209,16 @@
 @media (max-width: 399px) {
   .home-brand-sub {
     display: none;
+  }
+
+  .home-brand-logo {
+    width: 108px;
+    height: 48px;
+  }
+
+  .home-brand-mark-image {
+    width: 36px;
+    height: 36px;
   }
 
   .home-brand-name {
