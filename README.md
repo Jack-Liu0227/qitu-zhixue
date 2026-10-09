@@ -1,64 +1,75 @@
-# 启途智学工程文档入口
+# 启途智学
 
-> 更新：2026-10-04
+> 面向中小学生的项目式 AI 学习平台：让 AI 参与学习过程，让人的好奇心、判断力、创造力和责任感在真实项目中成长。
 >
-> 当前实现基线：NestJS 模块化单体 + PostgreSQL + Redis/Worker。
-> 文档优先级和历史资料说明见 [`docs/README.md`](./docs/README.md)。
+> 文档校验基线：2026-10-10，`main@772c601`。
 
-## 首先阅读
+启途智学把一个问题变成可推进、可复盘、可展示的学习过程。学生从兴趣和真实问题出发，在 AI 搭档的启发式引导下完成理论学习、实践创作和作品反思；家长看到经过授权的成长投影，班主任处理需要人工介入的问题，管理员负责平台、模型和协同运行时治理。
 
-1. [`AGENTS.md`](./AGENTS.md)：项目协作、安全和领域硬规则。
-2. [`docs/README.md`](./docs/README.md)：五端与 SDK 文档索引、优先级和读取顺序。
-3. 按责任域阅读 [`docs/admin/platform-governance.md`](./docs/admin/platform-governance.md)、[`docs/student/today.md`](./docs/student/today.md)、[`docs/teacher/dashboard.md`](./docs/teacher/dashboard.md)、[`docs/parent/home.md`](./docs/parent/home.md) 或 [`docs/sdk/overview.md`](./docs/sdk/overview.md)。
-4. [`docs/admin/database.md`](./docs/admin/database.md)：数据真源、表归属和迁移。
-5. [`docs/admin/permissions.md`](./docs/admin/permissions.md)：角色、对象级授权、错误码与审计。
+## 从这里开始
 
-## 当前文档分组
+1. [`AGENTS.md`](./AGENTS.md)：工程协作、安全和领域硬规则。
+2. [`docs/README.md`](./docs/README.md)：架构、责任域、阅读顺序和文档规则。
+3. [`docs/aboutus/README.md`](./docs/aboutus/README.md)：产品定位、主页信息和 AI 与人共成长的教育理念。
+4. 按责任域阅读：
+   - 管理端：[`docs/admin/platform-governance.md`](./docs/admin/platform-governance.md)
+   - 学生端：[`docs/student/today.md`](./docs/student/today.md)
+   - 班主任端：[`docs/teacher/dashboard.md`](./docs/teacher/dashboard.md)
+   - 家长端：[`docs/parent/home.md`](./docs/parent/home.md)
+   - SDK 与 Agent：[`docs/sdk/overview.md`](./docs/sdk/overview.md)
 
-按平台二级目录组织，**每个具体功能一份 `.md`**：
+## 当前实现基线
 
-- [Admin](./docs/admin/)：平台治理、控制面、模型注册表、权限、认证、目录与关系、数据库、初始化、部署。
-- [Student](./docs/student/)：今天、灵感空间、AI搭档、我的项目、制作工作台、作品展厅、成长轨迹、学习计划。
-- [Teacher](./docs/teacher/)：工作台、学生管理、问题处理、数据统计、知识库（planned）。
-- [Parent](./docs/parent/)：首页、学习进展、消息与反馈、成长导出。
-- [SDK](./docs/sdk/)：总览、Agent Runtime、浏览器客户端、领域 facade、Agent 记忆。
+- Monorepo：`pnpm workspace + Turborepo`。
+- 后端：NestJS 模块化单体，PostgreSQL 为业务真源，Redis/Worker 承担异步任务和 outbox 投影。
+- 前端：一个公开官网与统一登录入口 `apps/auth-portal`，以及 student、parent、teacher、admin 四个角色应用。
+- AI：Provider Registry 保存供应商、协议、模型目录和加密凭证；Agent 直接选择 `providerId + modelId`。
+- 协同：Team Runtime 使用服务端 route、mailbox、租约、任务、事件和 worker；真实结果进入候选投影后再由领域 owner 校验、幂等接受和审计。
+- 学习门禁：学生确认意图后才能形成正式项目，`TheoryMastered` 之前不能进入实践阶段，项目状态由服务端状态机推进。
+- 公开站点：主页、学习路径、能力说明、作品展厅、关于我们、联系咨询均有正式路由；公开写入口只有带幂等键的咨询提交。
 
-## 运行服务
-
-本仓库目前是 Monorepo，不是预期的独立 `@qitu/sdk` 多包仓。启动边界如下：
-
-```bash
-# API + 四端前端
-QITU_DATA_MODE=test tooling/start-qitu-services.sh start
-
-# Graphiti 外部投影（需要 Docker + Neo4j + secret 环境变量）
-export GRAPHITI_NEO4J_PASSWORD='local-only-secret'
-export QITU_GRAPHITI_TOKEN='local-only-token'
-tooling/qitu-graphiti.sh up
-tooling/qitu-graphiti.sh init
-export QITU_GRAPHITI_ENABLED=true
-pnpm --filter @qitu/workers mastery:once
-```
-
-默认不启用 Graphiti。`services/graphiti` 是结构化 projection bridge，不是聊天记忆服务；
-真实 round-trip 需要 Docker/Neo4j 和 `graphiti-core`，当前代码测试不会伪造该结果。
-
+## 仓库结构
 
 ```text
-过程证据 / 审计       PostgreSQL + Trajectory/L1
-当前掌握 / 项目门槛   PostgreSQL mastery projection
-掌握度时间线查询     MasteryTimelinePort，可选 Graphiti 投影
-长期偏好事实         Mem0
-阶段摘要 / 综合画像  自研 L2 / L3
+apps/       auth-portal、student-center、parent-companion、teacher-workspace、admin-console
+packages/   contracts、api-client、ai-client、auth、database、model-runtime、permissions、ui 等共享能力
+services/   api（模块化单体）、workers、realtime-gateway、graphiti（可选投影）
+database/   migrations、seeds、fixtures
+tooling/    启动、同步、端口和部署辅助脚本
+docs/       产品、平台、SDK 和运行维护事实文档
 ```
 
-Graphiti 不直接决定 `TheoryMastered`、实践解锁、项目状态或权限；Mem0 不保存掌握
-level。具体事件模型、时间语义、迁移阶段和验收门以
-[`docs/student/growth.md`](./docs/student/growth.md) §3 与
-[`docs/sdk/agent-memory.md`](./docs/sdk/agent-memory.md) 为准。
+应用之间不互相导入业务代码；跨端共享只通过 `packages/*`。浏览器只能提交 API 合同允许的输入，不能直接写项目状态、AI 决策、成长档案或审计日志。
 
-## 文档维护
+## 本地运行
 
-- 当前事实文档只放在 `docs/{admin,student,teacher,parent,sdk}/` 与 `docs/README.md`。
-- 兼容文档、历史 ADR 与归档目录已删除；历史版本通过 git 历史保留。
-- 新增能力必须是「当前实现事实」或明确标注的「planned」，并在对应平台的功能文档中维护。
+```bash
+pnpm install
+
+# 依赖数据库的完整服务启动；端口见 tooling/qitu-ports.env.example
+QITU_DATA_MODE=live bash tooling/start-qitu-services.sh start
+bash tooling/start-qitu-services.sh status
+
+# 仅本地演示或测试，不能用于生产
+QITU_DATA_MODE=test bash tooling/start-qitu-services.sh start
+```
+
+Graphiti 默认关闭。需要外部 Neo4j 时，按 [`docs/sdk/agent-memory.md`](./docs/sdk/agent-memory.md) 和 [`docs/admin/deployment.md`](./docs/admin/deployment.md) 配置，不能把投影结果当作权限、项目状态或掌握度真源。
+
+## 验证
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm check:basepath
+```
+
+Windows UNC 工作目录可能导致 pnpm shim 无法切换到固定 pnpm 版本；遇到这种环境问题要记录为验证阻塞，不能把未执行的测试表述为通过。
+
+## 文档规则
+
+- 文档只描述当前代码事实，规划内容必须明确标为 planned 或未决事项。
+- 公开产品叙事放在 `docs/aboutus/`；责任域合同放在 `docs/admin/`、`docs/student/`、`docs/teacher/`、`docs/parent/`、`docs/sdk/`。
+- 新增接口、权限、错误码、迁移或异步流程时，同时更新对应责任域文档和验证说明。
+- 不提交 `.env`、API Key、Token、密码、OAuth 文件、私钥和未脱敏的未成年人原始数据。

@@ -8,15 +8,25 @@
 
 根 `AGENTS.md` 是服务端加载的全局策略，随运行时快照以版本和内容指纹引用；它不能由浏览器、Agent prompt 或单个 Agent 配置覆盖。Agent-local 定义只提供受限的角色说明，权限、对象范围和领域不变量仍由服务端执行。
 
+## 管理入口
+
+| 页面                              | 责任                                                            |
+| --------------------------------- | --------------------------------------------------------------- |
+| `/admin/settings/ai-runtime`      | Agent 角色定义、直接模型选择、Skills、Tools、MCP 和协同运行状态 |
+| `/admin/settings/assistants`      | 助手目录和可选择状态，写入服务端 `agent_configs`                |
+| `/admin/settings/teams`           | 团队成员、协同 route 和真实 Team Run 测试入口                   |
+| `/admin/settings/model-providers` | Provider、协议、凭证状态、模型目录刷新和连接测试                |
+| `/admin/settings/models`          | 从 Provider Registry 读取模型的统一视图，不维护第二份模型清单   |
+
 ## 管理 API
 
-| 方法 | 路径 | 权限 | 幂等 |
-|---|---|---|---|
-| GET | `/api/v1/admin/ai-runtime` | admin | 否 |
-| POST | `/api/v1/admin/ai-runtime/agents/:agentId` | admin | 必填 |
-| PATCH | `/api/v1/admin/ai-runtime/agents/:agentId` | admin | 必填 |
-| GET | `/api/v1/admin/initialization` | admin | 否 |
-| POST | `/api/v1/admin/initialization/{knowledge\|template\|tutor}/execute` | admin | 必填 |
+| 方法  | 路径                                                                | 权限  | 幂等 |
+| ----- | ------------------------------------------------------------------- | ----- | ---- |
+| GET   | `/api/v1/admin/ai-runtime`                                          | admin | 否   |
+| POST  | `/api/v1/admin/ai-runtime/agents/:agentId`                          | admin | 必填 |
+| PATCH | `/api/v1/admin/ai-runtime/agents/:agentId`                          | admin | 必填 |
+| GET   | `/api/v1/admin/initialization`                                      | admin | 否   |
+| POST  | `/api/v1/admin/initialization/{knowledge\|template\|tutor}/execute` | admin | 必填 |
 
 服务端在 Agent 写入时校验模型是否存在且启用、供应商和模型是否成对出现、绑定的 Skill/Tool/MCP 是否属于注册表，并在同一事务写审计日志。模型凭证永远不返回给前端。
 

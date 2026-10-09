@@ -6,17 +6,20 @@
 
 `apps/admin-console` 使用 `basePath: '/admin'`。设置入口保持冻结：
 
-| 导航 | 实际路径 | 说明 |
-|---|---|---|
-| 治理概览 | `/admin` | 平台总览和聚合指标 |
-| 学生数据统计 | `/admin/students/statistics` | 聚合治理投影 |
-| 关系绑定 | `/admin/relationships` | 监护关系和班主任分配 |
-| 设置 | `/admin/settings` | 设置索引和子导航 |
+| 导航         | 实际路径                     | 说明                 |
+| ------------ | ---------------------------- | -------------------- |
+| 治理概览     | `/admin`                     | 平台总览和聚合指标   |
+| 学生数据统计 | `/admin/students/statistics` | 聚合治理投影         |
+| 关系绑定     | `/admin/relationships`       | 监护关系和班主任分配 |
+| 设置         | `/admin/settings`            | 设置索引和子导航     |
 
 设置子页面包括：
 
 - `/admin/settings/ai-runtime`：AGENTS.md、Skills、模型、Tools、MCP、Agent 配置和初始化检查。
+- `/admin/settings/assistants`：助手目录、启用状态和 Agent 直接模型选择。
+- `/admin/settings/teams`：团队成员、协同 route 开关和真实 Team Run 测试。
 - `/admin/settings/model-providers`：供应商凭证、模型目录和连接测试。
+- `/admin/settings/models`：由 Provider Registry 聚合的模型视图和连接测试，不单独保存模型目录。
 - `/admin/settings/knowledge`、`templates`、`database`：知识、模板和数据库状态。
 
 模型选择已经并入 AI 运行时。旧模型用途 API 只作为后端兼容和迁移边界，不再有独立导航或管理页面。

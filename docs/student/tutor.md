@@ -1,95 +1,81 @@
-# AI搭档
+# AI 搭档
 
-> 学生端第 3 项（`/student/tutor`、`/student/tutor/[projectId]`）。唯一对话入口，
-> 自由探索与项目辅导共用。责任域：AI Tutor（Tutor session / turn），
-> **不写项目阶段、掌握度、成长档案或审计**。
-> 实现入口：`apps/student-center/features/tutor/**`、`services/api/src/modules/ai-tutor`、
-> `packages/ai-client/src/{pedagogy,context,escalation,context-packet}.ts`。
+> 学生端唯一对话入口：`/student/tutor`、`/student/tutor/[projectId]`。
+>
+> 实现：`apps/student-center/features/tutor/**`、`services/api/src/modules/ai-tutor`、`packages/ai-client/src/{pedagogy,context,escalation,context-packet}.ts`。
 
-## 1. 页面构成
+AI 搭档负责启发式引导、追问、拆解和反馈，不直接写项目阶段、掌握度、成长档案或审计日志。它可以参与真实 Team Runtime 协同，但协同结果必须经过服务端任务、事件和领域 owner 校验。
 
-- 左侧：项目或探索进度（服务端 `context discriminator`）。
-- 中间：单一文字对话 Composer + 对话线程。
-- 回复为**结构化块**，不是纯 Markdown：`text` / `questions` / `options` / `hint` / `evidence`。
+## 1. 页面与上下文
 
-## 2. 上下文判别式（ADR 0010）
+- `source=exploration`：服务端确认当前学生的自由探索草稿，创建或恢复 exploration session。
+- `source=project`：服务端确认学生对项目的对象级权限，读取项目上下文。
+- 缺失、无效或越权上下文统一拒绝，不能创建共享或 demo 项目来“补齐”对话。
+- 一个 exploration 或 project 只能有一个对应 session，重复创建由数据库唯一约束和幂等键处理。
 
-```typescript
-type TutorContextRequest = {
-  source: 'exploration' | 'project';
-  explorationId?: string;   // source='exploration'
-  projectId?: string;       // source='project'
-  idempotencyKey: string;
-};
-```
+回复使用结构化合同（文本、问题、选项、提示、证据和教学动作），不接受客户端提交 stage、hintLevel、project status 或 pedagogic move 作为事实。
 
-- `exploration` 必须带由 Projects owner 创建且属于当前学生的 exploration。
-- `project` 必须带经对象级授权的 project。
-- 二者互斥；缺失 / 无效 / 越权返回稳定错误，**不得回退 demo project**。
-- 一 exploration 一 session、一 project 一 session；数据库唯一约束防并发重复创建。
+## 2. 教学动作
 
-## 3. 服务端职责
+| 动作           | 用途                   | 约束                     |
+| -------------- | ---------------------- | ------------------------ |
+| `hint`         | 让学生自己继续推理     | 一次只给一条轻提示       |
+| `scaffold`     | 拆解复杂问题           | 通过目标和问题逐步推进   |
+| `explain`      | 学生明确请求解释       | 解释后回到检查与应用     |
+| `review_work`  | 反馈学生作品           | 只引用已授权作品和证据   |
+| `debug_guide`  | 定位问题和验证路径     | 不直接替学生改出最终答案 |
+| `stall_signal` | 识别卡顿并建议人工介入 | 由服务端根据会话轨迹判定 |
 
-- 组装 bounded context packet，模型只读取授权投影（画像 / 关系记忆 / 模板证据 / 知识证据 / 有限近期消息）。
-- 教学策略与 pedagogic move 由服务端决定；客户端不能提交 stage、`hintLevel`、项目状态或强制 move。
-- 提示阶梯默认苏格拉底式；答案泄露检查与班主任升级由服务端执行。
-- 回合以已授权 `sessionId` 为对象边界，`Idempotency-Key` 必填。
-- 序号、提示等级、卡顿计数和审计由服务端产生。
-- **不向学生展示**其他学生信息、完整系统提示词、数据库查询或模型凭证。
+系统默认禁止“直接给答案”；教学动作和提示等级由服务端策略、模型输出校验和领域门禁共同决定。
 
-### 3.1 教学动作词表
-
-| 入口 | `pedagogic_move` | 提示等级 | 约束 |
-|---|---|---|---|
-| 给我提示 | `hint` | 1 → 3 | 一次只升一级 |
-| 帮我拆解 | `scaffold` | 4 | 2–6 步，每步一个 goal |
-| 解释这个概念 | `explain` | 5 | **唯一**允许讲解的入口 |
-| 检查我的方案 | `review_work` | — | 只评审、不代做 |
-| 帮我调试 | `debug_guide` | 1 → 3 | 引导定位，不给修好的代码 |
-| 我卡住了 | `stall_signal` | — | 计入 4 轮卡顿窗口 → 班主任待办 |
-
-**没有「直接给我答案」入口**——与默认禁止输出完整答案一致；Level 5 只能经「解释这个概念」进入。
-
-## 4. 接口
+## 3. API
 
 ```http
-GET  /api/v1/tutor/templates                             可用模板 / 会话配置
-GET  /api/v1/tutor/session                               当前会话
-GET  /api/v1/tutor/project-context                       项目上下文（授权后）
-POST /api/v1/tutor/sessions                              创建 / 恢复 session（幂等）
-GET  /api/v1/tutor/sessions/:id                          会话详情 + 恢复游标
-POST /api/v1/tutor/sessions/:id/turns                    单回合
-POST /api/v1/tutor/sessions/:id/stream                   SSE 流式回合
-GET  /api/v1/tutor/sessions/:id/summary                  会话摘要
+GET  /api/v1/tutor/templates
+GET  /api/v1/tutor/session
+GET  /api/v1/tutor/project-context
+POST /api/v1/tutor/sessions
+GET  /api/v1/tutor/sessions/:id
+POST /api/v1/tutor/sessions/:id/turns
+POST /api/v1/tutor/sessions/:id/stream
+GET  /api/v1/tutor/sessions/:id/summary
 ```
 
-SSE 回合只接受已授权 `sessionId`、学生文本和幂等键。
+写操作使用 `Idempotency-Key`。SSE 只允许已授权的 `sessionId`，服务端过滤和截断敏感字段；Team Runtime 的 `team.*` 帧由学生端转换为可读的协同卡片，不能把内部提示词或模型原始思考直接发送给学生。
 
-## 5. 语音（未实现）
+## 4. 语音能力
 
-- 语音输入只转成现有文字 draft，**不保存原始音频**，最终仍走 Tutor 文本提交链路。
-- 真实 VAD / ASR / TTS 后端尚未形成可验证链路；本期统一为文字对话，
-  **不保留 mock Live 假功能**。语音作为同一 composer 的输入适配，服务端能力就绪后再上。
+语音已经具备真实 API 合同，但是否可用取决于已配置的语音模型：
 
-## 6. 页面状态
+```http
+GET  /api/v1/voice/capabilities
+POST /api/v1/voice/transcriptions
+POST /api/v1/voice/synthesis
+GET  /api/v1/admin/model-voice
+```
 
-| 状态 | 行为 |
-|---|---|
-| loading | 打字指示器 |
-| empty | 无项目且无探索 → 引导去灵感空间 |
-| error | 保留会话，可重试；不丢已输入内容 |
-| offline | 保留文字输入 + 重连提示；重连后合并 |
-| permission-denied | 403 页面，不泄露对象存在性 |
+前端 composer 先读取能力和模型状态；没有可用模型时显示不可用并保持文字输入，不伪造录音或合成成功。语音转写结果仍经过 Tutor 文本合同和权限校验，原始音频不得进入成长、家长投影或公开站点。
 
-## 7. 未决事项
+## 5. 页面状态与安全
 
-- [ ] 真实流式（当前一次 `ModelGateway.complete`，回答后分片）。
-- [ ] 卡顿自动检测阈值是否适用于语音通道。
-- [ ] 「卡顿已正确升级」的可观测验收口径。
-- [ ] 会话摘要的生成与保留策略。
+| 状态              | 行为                                              |
+| ----------------- | ------------------------------------------------- |
+| loading           | 显示会话和上下文骨架，保持输入区尺寸稳定          |
+| empty             | 没有探索或项目时引导去灵感空间                    |
+| error             | 显示可重试错误和安全错误码，不泄露上游响应        |
+| offline           | 保留本地未提交草稿，禁止伪造发送成功              |
+| permission-denied | 返回 403，不泄露其他学生或项目是否存在            |
+| model unavailable | 显示模型未配置/不可用，不能静默回退到另一个 Agent |
 
-## 8. 相关文档
+## 6. 未决事项
 
-- [`learning-plan.md`](./learning-plan.md)（掌握度 / 题库 / 间隔复习）
-- [`inspiration.md`](./inspiration.md)
+- [ ] 将实时文本流完全切换到生产 `ModelGateway`，并继续保留错误码和取消语义。
+- [ ] 完善卡顿自动检测和教师干预建议的阈值验证。
+- [ ] 将会话摘要接入明确的数据保留和学生可见范围策略。
+
+## 7. 相关文档
+
+- [`learning-plan.md`](./learning-plan.md)：理论掌握和实践解锁
+- [`projects.md`](./projects.md)：项目状态机
 - [`../sdk/agent-runtime.md`](../sdk/agent-runtime.md)
+- [`../sdk/team-runtime.md`](../sdk/team-runtime.md)

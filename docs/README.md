@@ -1,100 +1,85 @@
 # 启途智学文档总入口
 
-> 更新：2026-10-05
-> 当前实现基线：NestJS 模块化单体 + PostgreSQL + Redis/Worker + 四个 Next.js 前端。
+> 文档校验基线：2026-10-10，`main@772c601`。
 >
-> 本目录按**责任域**组织：`docs/<平台>/<功能>.md`。每个功能一个文件，
-> 不再保留 ADR、设计稿、路线图、归档等历史/兼容文档。
+> 当前实现：NestJS 模块化单体 + PostgreSQL + Redis/Worker + 一个公开官网/登录应用 + 四个角色应用。
 
 ## 阅读顺序
 
-1. [`AGENTS.md`](../AGENTS.md)：项目协作、安全与领域硬规则（最高优先级）。
-2. 本文件：产品基线、仓库架构、跨域硬规则、平台索引。
-3. 按角色阅读对应平台入口：
+1. [`../AGENTS.md`](../AGENTS.md)：协作、安全和领域硬规则，优先级最高。
+2. [`aboutus/README.md`](./aboutus/README.md)：产品定位、主页信息和 AI 与人共成长的叙事基线。
+3. 本文件：仓库架构、责任域、跨域不变量和文档维护规则。
+4. 按角色阅读入口：
    - 管理端：[`admin/platform-governance.md`](./admin/platform-governance.md)
-   - 公开官网：[`admin/public-site.md`](./admin/public-site.md)
+   - 公开站点：[`admin/public-site.md`](./admin/public-site.md)
    - 学生端：[`student/today.md`](./student/today.md)
    - 班主任端：[`teacher/dashboard.md`](./teacher/dashboard.md)
    - 家长端：[`parent/home.md`](./parent/home.md)
    - SDK：[`sdk/overview.md`](./sdk/overview.md)
 
-AI 运行时的管理与 SDK 合同：[`admin/control-plane.md`](./admin/control-plane.md)、[`admin/model-registry.md`](./admin/model-registry.md)、[`sdk/agent-runtime.md`](./sdk/agent-runtime.md)、[`sdk/team-runtime.md`](./sdk/team-runtime.md)。
+## 文档目录
 
-## 平台与责任域
+| 目录       | 责任                                                         | 入口                                                             |
+| ---------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `aboutus/` | 产品定位、教育理念、公开主页信息                             | [`aboutus/README.md`](./aboutus/README.md)                       |
+| `admin/`   | 平台治理、认证、数据库、部署、公开站点、模型和权限           | [`admin/platform-governance.md`](./admin/platform-governance.md) |
+| `student/` | 灵感、AI 搭档、项目、学习计划、工作台、作品和成长            | [`student/today.md`](./student/today.md)                         |
+| `teacher/` | 班主任工作台、学生、问题、统计和平台知识能力边界             | [`teacher/dashboard.md`](./teacher/dashboard.md)                 |
+| `parent/`  | 授权成长投影、进展、消息和导出                               | [`parent/home.md`](./parent/home.md)                             |
+| `sdk/`     | Agent Runtime、Team Runtime、领域 Facade、浏览器客户端和记忆 | [`sdk/overview.md`](./sdk/overview.md)                           |
 
-| 平台 | 目录 | 角色 | 说明 |
-|---|---|---|---|
-| 学生端 | `docs/student/` | `student` | 探索、AI搭档、项目、理论学习、制作工作台、作品、成长轨迹 |
-| 班主任端 | `docs/teacher/` | `teacher` | 工作台、学生管理、问题处理、数据统计 |
-| 家长端 | `docs/parent/` | `parent` | 授权投影下的成长快照、消息与反馈、导出 |
-| 管理端 | `docs/admin/` | `admin` | 平台治理控制面、模型注册表、关系绑定、数据库、部署、权限、公开官网 |
-| SDK | `docs/sdk/` | — | Agent Runtime、领域 facade、浏览器 client、记忆 |
-
-跨域基线（架构、权限、数据库、初始化、部署、登录、公开官网）**不是**独立目录，而是分别归入
-`docs/README.md`（架构与不变量）与 `docs/admin/`（权限、登录、数据库、初始化、部署、公开官网）。
+`aboutus/` 是产品叙事目录，不是新的运行时责任域；接口、状态机和权限合同仍以对应平台文档和代码为准。
 
 ## 仓库架构
 
-Monorepo（`pnpm workspace + Turborepo`），四端共用一套认证、API 合同、权限与数据模型。
-
 ```text
-apps/            四个 Next.js 应用（student-center / teacher-workspace / parent-companion / admin-console）
-packages/        共享能力（contracts / permissions / database / ai-client / auth / ui / design-tokens …）
-services/        api（模块化单体）/ workers（异步任务）/ realtime-gateway / graphiti（可选投影）
-database/        迁移产物 migrations/、确定性种子 seeds/、fixtures/
-tooling/         启动、同步、端口约定
+apps/       auth-portal（官网/统一登录）
+            student-center / parent-companion / teacher-workspace / admin-console
+packages/   contracts / api-client / ai-client / auth / database / model-runtime /
+            permissions / ui / design-tokens / validation ...
+services/   api（模块化单体）/ workers / realtime-gateway / graphiti（可选投影）
+database/   migrations / seeds / fixtures
+tooling/    启动、同步、端口、基线校验和生产辅助脚本
 ```
 
-**硬边界：**
+四个角色平台共享认证、API 合同、权限和数据模型。公开官网只提供公开读接口和咨询写入口；它不绕过登录访问学生、家长或教师数据。
 
-- 应用之间**禁止**互相导入业务代码；跨端共享只经 `packages/*`。
-- 后端是模块化单体，按领域模块拆分，不提前拆微服务。
-- 项目状态转换由 `projects` 领域统一写入；其他模块只能通过命令/领域事件请求变更。
-- 家长授权、班主任分配、审计、幂等属于横切基础设施，业务页面不得各自实现。
+## 领域边界
 
-Agent Runtime 由服务端加载根 `AGENTS.md` 作为全局策略，并为每个 Agent 直接解析 `providerId + modelId`；浏览器不能替换策略、选择凭证或绕过对象级授权。Team Runtime 的任务通信经过 route、mailbox、租约和 outbox，画像与成长结果只能先进入候选投影，再由领域 owner 校验、幂等接受并审计写入正式数据。
+| 领域                | 主要代码                                                                         | 单一写入职责                               |
+| ------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| Identity & Access   | `identity-auth` / `account` / `directory`                                        | 用户、会话、家庭、监护关系和班主任分配     |
+| Projects & Learning | `projects` / `learning-plan` / `mastery`                                         | 模板、项目、阶段、任务、理论检查和门禁     |
+| AI Tutor            | `ai-tutor` / `agent-memory`                                                      | 会话、上下文、教学动作和记忆候选           |
+| Mentor Operations   | `mentor` / `teacher` / `feedback`                                                | 告警、干预、班主任笔记和反馈工单           |
+| Parent Experience   | `parent` / `growth`                                                              | 授权脱敏投影、消息和导出                   |
+| Admin & Compliance  | `admin` / `platform-registry` / `settings` / `model-registry` / `initialization` | 平台配置、模型、Agent、审计和初始化        |
+| Team Runtime        | `team-runtime` / `workers`                                                       | route、mailbox、租约、任务、事件和候选投影 |
+| Public Site         | `public-content`                                                                 | 公开首页聚合和咨询线索                     |
 
-## 领域边界（单一写入者）
+跨领域写入只能通过命令、领域事件或 outbox；家长只读授权投影，Team Runtime 结果必须回到领域 owner 校验后才成为正式事实。
 
-每个领域模块是**各自数据的唯一写入者**；跨模块写只能走命令/事件/outbox。
+## 跨域硬规则
 
-| 领域 | 服务目录 | 负责 |
-|---|---|---|
-| Identity & Access | `identity-auth` / `account` / `directory` | 用户、角色、会话、家庭、监护关系、班主任分配、对象级授权 |
-| Projects & Learning | `projects` / `learning-plan` / `mastery` | 模板版本、项目实例、阶段、任务、理论检查、状态机 |
-| AI Tutor | `ai-tutor` / `agent-memory` | 会话、turn、context packet、提示等级、模型路由、卡顿检测 |
-| Mentor Operations | `mentor` / `teacher` | 告警、问题、干预、班主任笔记、知识库 |
-| Parent Experience | `parent` / `growth` | 授权脱敏投影、成长快照、消息与反馈、导出 |
-| Admin & Compliance | `admin` / `platform-registry` / `platform-data` / `settings` / `templates` / `model-registry` / `knowledge` | 平台配置、AI 策略、审计、数据保留、敏感访问审批 |
-| Public Site | `public-content` | 官网首页聚合投影与访客咨询线索（唯一公开写入口，白名单字段 + 幂等 + 审计） |
+1. 前端权限只负责显示；所有对象级权限由后端再次校验。
+2. 项目状态、AI 决策、成长档案和审计日志不能由客户端直接写入。
+3. 一个学生同一时间只能有一个当前班主任。
+4. 学生未确认意图时不能创建正式项目。
+5. `TheoryMastered` 之前不能进入实践阶段。
+6. 未成年人数据默认最小可见范围，并保留敏感访问审计。
+7. 项目、任务、作品、导师分配、干预和配置写操作都要考虑幂等性。
+8. 页面必须覆盖 loading、empty、error、offline 和 permission-denied。
 
-依赖规则：
+## AI 与模型事实源
 
-```text
-apps → packages/contracts + packages/api-client + packages/ui
-apps ✕ apps/* 业务代码
-api modules → domain / application / infrastructure / presentation
-api modules ✕ 直接写其他模块的表
-cross-domain writes → command / event / outbox
-parent reads → authorized projection only
-```
+模型供应商页面 `/admin/settings/model-providers` 负责供应商、协议、凭证状态、模型目录刷新和连接测试；模型页面 `/admin/settings/models` 从同一 provider registry 生成模型视图，不能维护第二份模型清单。Agent 在 `/admin/settings/ai-runtime` 直接选择 `providerId + modelId`，服务端在每次调用前重新校验供应商、模型、凭证和权限。
 
-## 跨域硬规则（所有平台必须遵守）
+Team Runtime 的真实协同链路是：Leader 创建 run → 服务端 route 委派任务 → mailbox/租约由 worker 执行 → task/event/outbox 回传 → 领域 owner 校验候选结果。任何 mock 或 demo 数据必须明确标识，不能冒充真实协同结果。
 
-以下规则来自 `AGENTS.md`，任何平台文档与实现都不得违反：
+## 文档维护
 
-1. **前端权限只负责显示**；所有对象级权限必须在后端再次校验（前端隐藏不是授权）。
-2. 项目状态转换、AI 决策、成长档案、审计日志**不能由客户端直接写入**。
-3. 一个学生同一时间只能有一个当前班主任（部分唯一索引保证）。
-4. 学生**未确认意图**时不得创建正式项目。
-5. `TheoryMastered` 之前不得进入实践阶段。
-6. 涉及未成年人数据时，默认最小化可见范围并保留审计记录。
-7. 所有写操作考虑幂等性，尤其项目、任务、作品、导师分配和干预操作。
-8. 页面必须覆盖 loading / empty / error / 断网 / 权限失败五种状态。
-
-## 文档维护规则
-
-- 文档只能是「当前事实」或「明确标注的规划项」，不保留历史决策记录。
-- 新增功能 → 在对应平台目录新增一个功能文件，并在本文件与平台入口登记。
-- 不再使用的文档直接删除，不建立 `archive/`、`decisions/`、`shared/` 等兼容目录。
-- 代码里的 `@see docs/...` 引用必须指向本目录中真实存在的文件。
+- 每个功能一个事实文档；规划内容明确标记，不用历史 ADR 代替当前合同。
+- 新增页面、API、错误码、迁移、权限或异步任务时更新对应目录和本文件索引。
+- 删除不再使用的文档，不创建 `archive/`、`decisions/`、`shared/` 等兼容目录。
+- 所有 `@see docs/...` 和 Markdown 相对链接必须指向真实文件。
+- 校验命令：`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm check:basepath`。
