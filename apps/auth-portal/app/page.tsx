@@ -24,7 +24,7 @@ export default function HomePage() {
         </Link>
         <nav aria-label="主导航">
           <Link className="active" href="/#home">首页</Link>
-          <Link href="/#about">关于我们</Link>
+          <Link href="/about">关于我们</Link>
         </nav>
         <Link className="login-button" href="/login">登录 <span aria-hidden="true">↗</span></Link>
       </header>
