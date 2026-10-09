@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
 import type { PblPhase } from '@qitu/contracts';
-import { isPblPhase } from '@qitu/ai-client';
-import { TeamRuntimeService, type AgentRouteInput, type AgentRouteTrigger, type AgentRouteUpdateInput, type DelegateTaskInput, type StartTeamRunInput } from './team-runtime.service';
+import { PBL_TEAM_ERROR_CODES, isPblPhase } from '@qitu/ai-client';
+import { TeamRuntimeService, sanitizeTeamClientContext, type AgentRouteInput, type AgentRouteTrigger, type AgentRouteUpdateInput, type DelegateTaskInput, type StartTeamRunInput } from './team-runtime.service';
 import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
@@ -193,7 +193,11 @@ function parseStartInput(body: unknown, headerKey: string | undefined): StartTea
     projectId: typeof value.projectId === 'string' ? value.projectId : null,
     tutorSessionId: typeof value.tutorSessionId === 'string' ? value.tutorSessionId : null,
     trigger: typeof value.trigger === 'string' ? value.trigger : undefined,
-    context: isRecord(value.context) ? value.context : undefined,
+    // F1：阶段/门禁状态字段不得由客户端写入。解析层先把 context 过键白名单
+    //（保留键 → 400 TEAM_CONTEXT_RESERVED_KEY，未知键 → 400
+    // TEAM_CONTEXT_UNKNOWN_KEY）；服务层 startRun 还会再校验一次，并在
+    // 任何写库之前拒绝（0 insert）。
+    context: sanitizeTeamClientContext(value.context),
     idempotencyKey,
   };
 }
@@ -208,7 +212,7 @@ function parseDelegateInput(body: unknown, headerKey: string | undefined): Deleg
   }
   let pblPhase: PblPhase | undefined;
   if (typeof value.pblPhase === 'string') {
-    if (!isPblPhase(value.pblPhase)) throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'pblPhase 不在冻结阶段枚举内' });
+    if (!isPblPhase(value.pblPhase)) throw new BadRequestException({ code: PBL_TEAM_ERROR_CODES.PHASE_INVALID, message: 'pblPhase 不在冻结阶段枚举内' });
     pblPhase = value.pblPhase;
   }
   return {
@@ -227,7 +231,7 @@ function parsePhaseAdvanceInput(body: unknown): { targetPhase: string; trigger?:
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('阶段推进请求体无效');
   const value = body as Record<string, unknown>;
   if (typeof value.targetPhase !== 'string' || !isPblPhase(value.targetPhase)) {
-    throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'targetPhase 必须是冻结阶段枚举内的值' });
+    throw new BadRequestException({ code: PBL_TEAM_ERROR_CODES.PHASE_INVALID, message: 'targetPhase 必须是冻结阶段枚举内的值' });
   }
   const trigger = typeof value.trigger === 'string' ? value.trigger : undefined;
   if ('trigger' in value && trigger === undefined) throw new BadRequestException('trigger 必须是字符串');

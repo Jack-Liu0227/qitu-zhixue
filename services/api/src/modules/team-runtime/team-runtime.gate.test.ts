@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ConflictException } from '@nestjs/common';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
 import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, type Database } from '@qitu/database';
 import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
   PBL_GATE_BY_PHASE,
+  PBL_INITIAL_PHASE,
   PBL_PHASE_ORDER,
+  PBL_TEAM_ERROR_CODES,
+  TEAM_RUN_CONTEXT_ALLOWED_KEYS,
+  TEAM_RUN_CONTEXT_RESERVED_KEYS,
   THUNDER_FIGHTER_PBL_SPEC,
   nextPblPhase,
   pblGatesRequiredToEnter,
@@ -15,13 +21,15 @@ import {
 import {
   TEAM_FRAME_NAMES,
   TeamRuntimeService,
+  assertRunPhaseConsistent,
   buildTeamFrameData,
   decideDelegatedPhaseEntry,
-  decideFormalProjectCreation,
   decideMentorUniqueness,
   decidePhaseAdvance,
   evaluateGateEntry,
+  isUniqueViolationError,
   readRunPhaseContext,
+  sanitizeTeamClientContext,
   type ActiveTeamRunRow,
 } from './team-runtime.service';
 
@@ -52,8 +60,61 @@ test('frozen PBL spec pins the four-phase order and gate conditions', () => {
   assert.equal(nextPblPhase('deliverable_review'), null);
   assert.equal(PBL_ASSISTANT_BY_PHASE.guided_practice, 'fighter-code-guide');
   assert.equal(readRunPhaseContext({ phase: 'guided_practice' }), 'guided_practice');
+  // D3：phase 缺失 → 视为首阶段（探索），绝不视为终点。
   assert.equal(readRunPhaseContext({}), 'exploration');
-  assert.equal(readRunPhaseContext({ phase: 'not-a-phase' }), 'exploration');
+  assert.equal(readRunPhaseContext(null), PBL_INITIAL_PHASE);
+  // D3：非法/伪造值 → 409，不得当成有效阶段继续判定。
+  assert.throws(
+    () => readRunPhaseContext({ phase: 'not-a-phase' }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(((error as ConflictException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.PHASE_ORDER_INVALID);
+      return true;
+    },
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* F1：客户端不得写阶段/门禁字段（键白名单，拒绝时 0 insert）          */
+/* ------------------------------------------------------------------ */
+
+test('client team-run context whitelist pins reserved state keys', () => {
+  assert.ok(TEAM_RUN_CONTEXT_RESERVED_KEYS.includes('phase'));
+  assert.ok(TEAM_RUN_CONTEXT_RESERVED_KEYS.includes('satisfiedGates'));
+  assert.ok(TEAM_RUN_CONTEXT_RESERVED_KEYS.includes('pblPhase'));
+  for (const key of ['phase', 'gates', 'theoryMasteredGate', 'allowAutonomousAdvance']) {
+    assert.ok(TEAM_RUN_CONTEXT_RESERVED_KEYS.includes(key), `${key} must be reserved`);
+    assert.equal(TEAM_RUN_CONTEXT_ALLOWED_KEYS.includes(key), false);
+  }
+  // 既有 AI 搭档链路（tutor.service.ts executeTurn）依赖的两个观测字段必须在白名单内。
+  assert.ok(TEAM_RUN_CONTEXT_ALLOWED_KEYS.includes('turnCount'));
+  assert.ok(TEAM_RUN_CONTEXT_ALLOWED_KEYS.includes('pedagogicMove'));
+  assert.deepEqual(sanitizeTeamClientContext({ turnCount: 3, pedagogicMove: 'hint' }), { turnCount: 3, pedagogicMove: 'hint' });
+  assert.deepEqual(sanitizeTeamClientContext(undefined), {});
+  assert.deepEqual(sanitizeTeamClientContext(null), {});
+});
+
+test('client-forged context.phase is rejected with 400 TEAM_CONTEXT_RESERVED_KEY', () => {
+  assert.throws(
+    () => sanitizeTeamClientContext({ phase: 'deliverable_review' }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.CONTEXT_RESERVED_KEY);
+      return true;
+    },
+  );
+  assert.throws(
+    () => sanitizeTeamClientContext({ topic: 'x', satisfiedGates: ['TheoryMastered'] }),
+    (error: unknown) => ((error as BadRequestException).getResponse() as { code?: string }).code === PBL_TEAM_ERROR_CODES.CONTEXT_RESERVED_KEY,
+  );
+  assert.throws(
+    () => sanitizeTeamClientContext({ mystery: 1 }),
+    (error: unknown) => ((error as BadRequestException).getResponse() as { code?: string }).code === PBL_TEAM_ERROR_CODES.CONTEXT_UNKNOWN_KEY,
+  );
+  assert.throws(
+    () => sanitizeTeamClientContext('not-an-object'),
+    (error: unknown) => ((error as BadRequestException).getResponse() as { code?: string }).code === PBL_TEAM_ERROR_CODES.CONTEXT_INVALID,
+  );
 });
 
 /* ------------------------------------------------------------------ */
@@ -111,20 +172,16 @@ test('delegated calls entering guided_practice are rejected when TheoryMastered 
 });
 
 /* ------------------------------------------------------------------ */
-/* 学生未确认意图 → 不得创建正式项目 / 不得离开探索阶段                  */
+/* 学生未确认意图 → 不得离开探索阶段（正式项目创建的判定点在 projects） */
 /* ------------------------------------------------------------------ */
 
-test('formal project creation is blocked while student intent is not confirmed', () => {
-  const blocked = decideFormalProjectCreation(new Set<string>());
-  assert.equal(blocked.allowed, false);
-  if (!blocked.allowed) {
-    assert.equal(blocked.status, 409);
-    assert.equal(blocked.errorCode, 'PBL_GATE_STUDENT_INTENT_REQUIRED');
-    assert.equal(blocked.requiredGate, 'student_confirmed_intent');
-  }
-  const allowed = decideFormalProjectCreation(satisfied('student_confirmed_intent'));
-  assert.deepEqual(allowed, { allowed: true, phase: 'concept_mastery' });
+// F3：这里不再重复实现「正式项目创建」判定。唯一判定点是
+// services/api/src/modules/projects/intent-confirmation.state-machine.ts 的
+// `canCreateFormalProject`（由 projects.service.ts 在项目创建入口调用）。
+// 本节只钉住 team-runtime 自己的探索阶段门禁：意图未经服务端确认时，
+// 不得推进离开 exploration（推进不了 = 拿不到后续阶段的委派/推进资格）。
 
+test('leaving exploration is blocked while student intent gate is not satisfied', () => {
   const advance = decidePhaseAdvance({
     currentPhase: 'exploration',
     targetPhase: 'concept_mastery',
@@ -135,7 +192,15 @@ test('formal project creation is blocked while student intent is not confirmed',
   if (!advance.allowed) {
     assert.equal(advance.status, 409);
     assert.equal(advance.errorCode, 'PBL_GATE_STUDENT_INTENT_REQUIRED');
+    assert.equal(advance.requiredGate, 'student_confirmed_intent');
   }
+  const ok = decidePhaseAdvance({
+    currentPhase: 'exploration',
+    targetPhase: 'concept_mastery',
+    trigger: 'manual',
+    satisfiedGates: satisfied('student_confirmed_intent'),
+  });
+  assert.deepEqual(ok, { allowed: true, phase: 'concept_mastery' });
 });
 
 test('phase skipping and autonomous advance are rejected', () => {
@@ -310,6 +375,213 @@ test('startRun replays the existing active run for the same mentor + session + p
   assert.equal(view.id, 'run-a');
 });
 
+/* ------------------------------------------------------------------ */
+/* F1 服务层：拒绝时 0 insert；阶段由服务端初始化；脏数据被 409 拦截    */
+/* ------------------------------------------------------------------ */
+
+function fakeDbWithProbe(queues: Map<unknown, unknown[][]>, options: { insertFailures?: unknown[] } = {}) {
+  const probe = { selectCalls: 0, insertCalls: 0, transactionCalls: 0, inserts: [] as unknown[], updates: [] as Record<string, unknown>[] };
+  const failures = [...(options.insertFailures ?? [])];
+  const db: Record<string, unknown> = {
+    select: () => {
+      probe.selectCalls += 1;
+      return {
+        from: (table: unknown) => {
+          const queue = queues.get(table);
+          const rows = queue && queue.length > 0 ? queue.shift() : [];
+          return makeChain(rows ?? []);
+        },
+      };
+    },
+    insert: () => {
+      probe.insertCalls += 1;
+      const failure = failures.shift();
+      if (failure !== undefined) {
+        return {
+          values: (recordValue: unknown) => {
+            probe.inserts.push(recordValue);
+            throw failure;
+          },
+        };
+      }
+      // 兼容 `values(...).onConflictDoNothing(...)`（直接 await）与
+      // `values(...).onConflictDoNothing(...).returning(...)` 两种链式形状。
+      const tail: Record<string, unknown> = {
+        returning: () => Promise.resolve([]),
+        then: (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => Promise.resolve([]).then(onFulfilled, onRejected),
+      };
+      return {
+        values: (recordValue: unknown) => {
+          probe.inserts.push(recordValue);
+          return { onConflictDoNothing: () => tail };
+        },
+      };
+    },
+    update: () => ({
+      set: (patchValue: Record<string, unknown>) => {
+        probe.updates.push(patchValue);
+        return { where: () => Promise.resolve([]) };
+      },
+    }),
+    transaction: async (cb: (tx: unknown) => Promise<unknown>) => {
+      probe.transactionCalls += 1;
+      return cb(db);
+    },
+    execute: async () => ({ rows: [] }),
+  };
+  return { db: db as unknown as Database, probe };
+}
+
+test('startRun refuses client-forged context.phase with 400 and provably zero inserts', async () => {
+  const { db, probe } = fakeDbWithProbe(new Map<unknown, unknown[][]>());
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () =>
+      service.startRun(STU, {
+        leaderAgentId: 'leader-a',
+        studentUserId: 'stu-1',
+        context: { phase: 'deliverable_review' },
+        idempotencyKey: 'f1-forge-1',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException, `expected BadRequestException, got ${String(error)}`);
+      const response = (error as BadRequestException).getResponse() as { code?: string };
+      assert.equal(response.code, PBL_TEAM_ERROR_CODES.CONTEXT_RESERVED_KEY);
+      return true;
+    },
+  );
+  // 被拒时不得落库：无任何 select / insert / transaction 执行。
+  assert.equal(probe.selectCalls, 0);
+  assert.equal(probe.insertCalls, 0);
+  assert.equal(probe.transactionCalls, 0);
+  assert.equal(probe.inserts.length, 0);
+});
+
+test('startRun initializes run.context.phase to the first frozen phase server-side', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [
+      agentTeamRuns,
+      [
+        [],
+        [],
+        [fullRunRow({ context: { topic: 'thunder-fighter', phase: 'exploration' } })],
+      ],
+    ],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-1',
+    context: { topic: 'thunder-fighter', turnCount: 3 },
+    idempotencyKey: 'f1-init-1',
+  });
+  const runInsert = probe.inserts.find((recordValue) => recordValue !== null && typeof recordValue === 'object' && 'leaderAgentId' in (recordValue as Record<string, unknown>)) as Record<string, unknown>;
+  assert.ok(runInsert, 'expected an agent_team_runs insert');
+  assert.deepEqual(runInsert.context, { topic: 'thunder-fighter', turnCount: 3, phase: PBL_INITIAL_PHASE });
+  assert.equal((view.context as Record<string, unknown>).phase, 'exploration');
+});
+
+test('a polluted run claiming a later phase without gate evidence is refused with 409 at every gate read', async () => {
+  // 纯函数：声称处于后续阶段但缺少前置门禁事件 → 视为伪造/历史污染。
+  assert.throws(
+    () => assertRunPhaseConsistent('deliverable_review', new Set<string>()),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(((error as ConflictException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.PHASE_ORDER_INVALID);
+      return true;
+    },
+  );
+
+  // 服务层：即使 context.phase 是合法枚举值（旧脏数据），进入 guided_practice
+  // 的委派仍被 409 挡住，且没有落任何任务。
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow({ context: { phase: 'guided_practice' } })]]],
+    [agentTeamEvents, [[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () =>
+      service.delegate(STU, 'run-1', {
+        senderAgentId: 'leader-a',
+        recipientAgentId: 'fighter-code-guide',
+        taskType: 'code.mentor',
+        idempotencyKey: 'f1-polluted-1',
+        pblPhase: 'guided_practice',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(((error as ConflictException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.PHASE_ORDER_INVALID);
+      return true;
+    },
+  );
+  assert.equal(probe.inserts.length, 0);
+
+  // getPhaseStatus 同样不得把脏阶段当作有效状态继续报状态。
+  const statusQueues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow({ context: { phase: 'deliverable_review' } })]]],
+    [agentTeamEvents, [[]]],
+  ]);
+  const statusService = new TeamRuntimeService(fakeDb(statusQueues), auditStub, outboxStub);
+  await assert.rejects(
+    () => statusService.getPhaseStatus(STU, 'run-1'),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(((error as ConflictException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.PHASE_ORDER_INVALID);
+      return true;
+    },
+  );
+});
+
+test('advancePhase stays the only phase writer: two sequential advances follow the frozen order', async () => {
+  const run0 = fullRunRow({ context: { phase: 'exploration' } });
+  const run1 = fullRunRow({ context: { phase: 'concept_mastery' } });
+  const intentGate = {
+    id: 'ev-intent',
+    runId: 'run-1',
+    taskId: null,
+    topic: 'team.gate.satisfied',
+    sequence: 0,
+    payload: { gate: 'student_confirmed_intent', phase: 'exploration', evidenceRef: 'projects:intent:1', source: 'server' },
+    occurredAt: new Date('2026-11-05T00:30:00.000Z'),
+    createdAt: new Date('2026-11-05T00:30:00.000Z'),
+  };
+  const queues = new Map<unknown, unknown[][]>([
+    // 调用1：getRunRow → run0；推进后回读 → run1。调用2：getRunRow → run1。
+    [agentTeamRuns, [[run0], [run1], [run1]]],
+    // 调用1：loadSatisfiedGates → [intent]；recordEvent 查重 → []。
+    // 调用2：loadSatisfiedGates → [intent]；gate.blocked 查重 → []。
+    [agentTeamEvents, [[intentGate], [], [intentGate], []]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+
+  const first = await service.advancePhase(STU, 'run-1', {
+    targetPhase: 'concept_mastery',
+    trigger: 'manual',
+    idempotencyKey: 'seq-1',
+  });
+  assert.equal(first.phase, 'concept_mastery');
+  assert.equal(first.previousPhase, 'exploration');
+  assert.equal(probe.updates.length, 1, 'exactly one context phase write by the server');
+  const writtenContext = (probe.updates[0] as Record<string, unknown>).context as Record<string, unknown>;
+  assert.equal(writtenContext.phase, 'concept_mastery');
+
+  // 第二次尝试（没有 TheoryMastered 证据）：409 拒绝，且不再有第二次阶段写入。
+  await assert.rejects(
+    () => service.advancePhase(STU, 'run-1', { targetPhase: 'guided_practice', trigger: 'manual', idempotencyKey: 'seq-2' }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      assert.equal(((error as ConflictException).getResponse() as { code?: string }).code, 'PBL_GATE_THEORY_MASTERED_REQUIRED');
+      return true;
+    },
+  );
+  assert.equal(probe.updates.length, 1, 'rejected advance must not write the phase');
+});
+
 test('advancePhase throws 409 PBL_GATE_THEORY_MASTERED_REQUIRED when the gate event is absent', async () => {
   // 真实场景：探索阶段门禁（学生意图）已经服务端确认，唯独 TheoryMastered
   // 尚未达成 —— 此时任何进入 guided_practice 的推进必须被 409 拒绝。
@@ -477,4 +749,157 @@ test('listSessionStreamFrames emits distinguishable, sanitized team frames', asy
   const data = buildTeamFrameData('tool_invoked', { toolName: 'knowledge_search', status: 'done', text: '工具输出原文' });
   assert.equal(data.frame, 'team.tool_invoked');
   assert.equal('text' in data, false);
+});
+
+/* ------------------------------------------------------------------ */
+/* F2：班主任唯一性的 DB 层兜底（迁移 0021 部分唯一索引 + 23505→409）   */
+/* ------------------------------------------------------------------ */
+
+function uniqueViolation23505(): Error {
+  return Object.assign(
+    new Error('duplicate key value violates unique constraint "agent_team_runs_active_mentor_unique_idx"'),
+    { code: '23505' },
+  );
+}
+
+function countingAudit() {
+  const calls: unknown[] = [];
+  return { calls, writer: { write: async (entry: unknown) => { calls.push(entry); return 'audit-id'; } } as never };
+}
+
+test('F2 竞态败者：插入命中班主任唯一索引 23505 → 409 TEAM_MENTOR_UNIQUENESS_CONFLICT，且无第二行、无审计', async () => {
+  // 时间线：败者 startRun(leader-b) 通过 check-then-insert（活跃 run 查询返回空），
+  // 真正 INSERT 时被迁移 0021 的部分唯一索引拒绝（胜者 leader-a 的 run 在检查之后落库）。
+  const winner = fullRunRow({ id: 'run-race', leaderAgentId: 'leader-a', tutorSessionId: 'session-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-b')]]],
+    // 1) 按幂等键查 existing → 空；2) 活跃 run 检查 → 空（竞态窗口）；3) 冲突后重读 → 胜者。
+    [agentTeamRuns, [[], [], [winner]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues, { insertFailures: [uniqueViolation23505()] });
+  const audit = countingAudit();
+  const service = new TeamRuntimeService(db, audit.writer, outboxStub);
+  await assert.rejects(
+    () =>
+      service.startRun(STU, {
+        leaderAgentId: 'leader-b',
+        studentUserId: 'stu-1',
+        tutorSessionId: 'session-2',
+        idempotencyKey: 'key-race-conflict',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException, `expected ConflictException, got ${String(error)}`);
+      const response = (error as ConflictException).getResponse() as { code?: string; message?: string };
+      assert.equal(response.code, 'TEAM_MENTOR_UNIQUENESS_CONFLICT');
+      assert.match(response.message ?? '', /班主任/);
+      return true;
+    },
+  );
+  // probe 计数：败者事务只尝试过一次 INSERT（且被唯一索引拒绝、随事务回滚），
+  // 绝不允许出现第二次插入或任何审计写入 —— 即不存在「双活跃 run」。
+  assert.equal(probe.insertCalls, 1);
+  assert.equal(probe.inserts.length, 1);
+  assert.equal(probe.transactionCalls, 1);
+  assert.equal(audit.calls.length, 0, '回滚的败者事务不得留下审计');
+});
+
+test('F2 竞态败者与胜者同 leader+同会话+同项目 → 保持既有语义：幂等重放胜者 run，不 409', async () => {
+  const twin = fullRunRow({ id: 'run-twin', leaderAgentId: 'leader-a', tutorSessionId: 'session-1', projectId: null });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [[], [], [twin]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues, { insertFailures: [uniqueViolation23505()] });
+  const audit = countingAudit();
+  const service = new TeamRuntimeService(db, audit.writer, outboxStub);
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-1',
+    projectId: null,
+    idempotencyKey: 'key-race-replay',
+  });
+  assert.equal(view.id, 'run-twin', '完全匹配时必须重放既有活跃 run');
+  assert.equal(probe.insertCalls, 1, '重放路径不得二次插入');
+  assert.equal(audit.calls.length, 0, '重放败者不得重复审计');
+});
+
+test('F2 同 leader 但不同会话/项目的竞态：无法安全重放 → 明确 409（DB 一生活跃 run 语义）', async () => {
+  const winner = fullRunRow({ id: 'run-other-session', leaderAgentId: 'leader-a', tutorSessionId: 'session-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [[], [], [winner]]],
+  ]);
+  const { db } = fakeDbWithProbe(queues, { insertFailures: [uniqueViolation23505()] });
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () =>
+      service.startRun(STU, {
+        leaderAgentId: 'leader-a',
+        studentUserId: 'stu-1',
+        tutorSessionId: 'session-2',
+        idempotencyKey: 'key-race-allow-branch',
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ConflictException);
+      const response = (error as ConflictException).getResponse() as { code?: string; message?: string };
+      assert.equal(response.code, PBL_TEAM_ERROR_CODES.MENTOR_UNIQUENESS_CONFLICT);
+      assert.match(response.message ?? '', /活跃 run/);
+      return true;
+    },
+  );
+});
+
+test('F2 isUniqueViolationError 识别 pg 直抛与 driverError 包装两种 23505 形状，拒绝误吞其他错误', () => {
+  assert.equal(isUniqueViolationError(Object.assign(new Error('dup'), { code: '23505' })), true);
+  assert.equal(isUniqueViolationError(Object.assign(new Error('dup'), { driverError: { code: '23505' } })), true);
+  assert.equal(isUniqueViolationError(Object.assign(new Error('fk'), { code: '23503' })), false);
+  assert.equal(isUniqueViolationError('not-an-error'), false);
+  assert.equal(isUniqueViolationError(undefined), false);
+});
+
+/* 文件级断言：迁移 0021 / journal / schema 声明三处一致（可证伪的落盘证据）。 */
+
+function repoRoot(): string {
+  let dir = process.cwd();
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (existsSync(join(dir, 'database', 'migrations', 'meta', '_journal.json'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error('repo root with database/migrations not found from ' + process.cwd());
+}
+
+test('migration 0021 pins the active-mentor partial unique index; journal monotonic; schema synced', () => {
+  const root = repoRoot();
+  const migrations = join(root, 'database', 'migrations');
+  const up = readFileSync(join(migrations, '0021_agent_team_run_mentor_uniqueness.sql'), 'utf8');
+  const down = readFileSync(join(migrations, '0021_agent_team_run_mentor_uniqueness.down.sql'), 'utf8');
+  assert.match(up, /CREATE UNIQUE INDEX IF NOT EXISTS "agent_team_runs_active_mentor_unique_idx"/);
+  assert.match(up, /ON "agent_team_runs" \("student_user_id"\)/);
+  assert.match(up, /WHERE "status" IN \('queued', 'running'\)/);
+  assert.match(down, /DROP INDEX IF EXISTS "agent_team_runs_active_mentor_unique_idx"/);
+
+  const journal = JSON.parse(readFileSync(join(migrations, 'meta', '_journal.json'), 'utf8')) as {
+    entries: Array<{ idx: number; when: number; tag: string }>;
+  };
+  // 不假设序号连续：main 可能已有其它分支占用中间 idx（如 0020_enable_team_agents），
+  // 只要求 idx 严格递增且尾条是本分支的 0021。
+  const idxs = journal.entries.map((entry) => entry.idx);
+  for (let i = 1; i < idxs.length; i += 1) {
+    assert.ok(idxs[i]! > idxs[i - 1]!, 'journal idx 必须严格递增');
+  }
+  const last = journal.entries[journal.entries.length - 1]!;
+  const previous = journal.entries[journal.entries.length - 2]!;
+  assert.equal(last.idx, 21);
+  assert.equal(last.tag, '0021_agent_team_run_mentor_uniqueness');
+  assert.ok(last.when > previous.when, 'journal when 必须严格递增');
+  assert.ok(existsSync(join(migrations, `${last.tag}.sql`)), 'tag 必须与 up 文件名一致');
+  assert.ok(existsSync(join(migrations, `${last.tag}.down.sql`)), 'tag 必须与 down 文件名一致');
+
+  // schema 声明与迁移同步：agent_team_runs 上必须有同名部分唯一索引。
+  const schema = readFileSync(join(root, 'packages', 'database', 'src', 'schema', 'team-runtime.ts'), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(schema, /uniqueIndex\('agent_team_runs_active_mentor_unique_idx'\)/);
+  assert.match(schema, /\.on\(table\.studentUserId\)\s*\.where\(sql`status IN \('queued', 'running'\)`\)/);
 });

@@ -45,6 +45,12 @@ export const agentTeamRuns = pgTable(
   },
   (table) => ({
     idempotencyUniqueIdx: uniqueIndex('agent_team_runs_idempotency_unique_idx').on(table.idempotencyKey),
+    // F2 DB-layer backstop for AGENTS.md “one current mentor per student”:
+    // at most one *active* row per student_user_id. Matches migration 0020;
+    // NULL student_user_id rows are unconstrained (Postgres NULLS DISTINCT).
+    activeMentorUniqueIdx: uniqueIndex('agent_team_runs_active_mentor_unique_idx')
+      .on(table.studentUserId)
+      .where(sql`status IN ('queued', 'running')`),
     studentIdx: index('agent_team_runs_student_idx').on(table.studentUserId, table.createdAt),
     statusIdx: index('agent_team_runs_status_idx').on(table.status, table.createdAt),
     leaseIdx: index('agent_team_runs_lease_idx').on(table.leaseExpiresAt),
