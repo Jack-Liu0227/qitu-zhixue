@@ -1595,6 +1595,26 @@ body { min-height: 100vh; }
   .admin-settings-toast { right: 16px; bottom: 16px; }
 }
 
+/* ---- Card spacing refinement ---- */
+.admin-settings-page { gap: 28px; }
+.admin-settings-panels { gap: 28px; }
+.admin-settings-metrics { gap: 24px; }
+.admin-settings-quick-card,
+.admin-runtime-governance-card { margin-bottom: 0; }
+.admin-runtime-cards { gap: 24px; }
+.admin-relationships-page { gap: 26px; }
+.admin-relationships-page .admin-relationship-panel { margin-top: 2px; }
+.admin-data-section,
+.admin-chart-section,
+.admin-alert-card { margin-top: 4px; }
+.admin-overview-stats,
+.admin-stats-grid { row-gap: 20px; }
+
+@media (max-width: 860px) {
+  .admin-settings-panels,
+  .admin-settings-metrics { gap: 20px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-console-content,
   .admin-console-content.qitu-page-transition > * > *,

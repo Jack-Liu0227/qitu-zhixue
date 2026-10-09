@@ -120,7 +120,7 @@ export function applyAccountPreferences(preferences: AccountPreferences): void {
     fontSize: preferences.fontSize,
   });
   for (const [name, value] of Object.entries(variables)) {
-    root.style.setProperty(name, value);
+    root.style.setProperty(name, value as string);
   }
   if (preferences.reducedMotion) {
     root.setAttribute(REDUCED_MOTION_ATTR, 'true');

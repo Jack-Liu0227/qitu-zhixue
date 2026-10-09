@@ -33,6 +33,14 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
       return typeof (value as { ref?: unknown }).ref === 'string';
     case 'tool':
       return isTutorToolCall((value as { call?: unknown }).call);
+    case 'think': {
+      const think = value as { content?: unknown; closed?: unknown };
+      return typeof think.content === 'string' && typeof think.closed === 'boolean';
+    }
+    case 'pbl_card': {
+      const card = value as { title?: unknown; summary?: unknown };
+      return typeof card.title === 'string' && typeof card.summary === 'string';
+    }
     default:
       return false;
   }
