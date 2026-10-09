@@ -1,12 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { createHash, randomUUID } from 'node:crypto';
+import { and, asc, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import {
   agentConfigs,
   agentMailboxes,
@@ -18,13 +19,287 @@ import {
   type Database,
   withTransaction,
 } from '@qitu/database';
-import type { CurrentUser } from '@qitu/contracts';
+import type { CurrentUser, PblPhase } from '@qitu/contracts';
+import {
+  PBL_ASSISTANT_BY_PHASE,
+  PBL_AUTONOMOUS_ADVANCE_ALLOWED,
+  PBL_GATE_BY_PHASE,
+  PBL_GATE_ERROR_CODES,
+  PBL_PHASE_ORDER,
+  PBL_TEAM_ERROR_CODES,
+  THUNDER_FIGHTER_PBL_SPEC,
+  isPblPhase,
+  nextPblPhase,
+  pblGatesRequiredToEnter,
+  pblPhaseIndex,
+} from '@qitu/ai-client';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 
 export type TeamRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TeamTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+/* ==========================================================================
+ * PBL 阶段门禁 —— 服务端强制层
+ *
+ * 阶段顺序与门禁条件的唯一真源是 `@qitu/ai-client` 的 `pbl-team.ts`
+ * （`THUNDER_FIGHTER_TEAM_CONFIG` / `THUNDER_FIGHTER_PBL_SPEC`）。本节只从
+ * 该真源派生判定，不在 prompt 或客户端里重复声明；所有拒绝都以 HTTP 409 +
+ * 稳定错误码返回。门禁达成证据只能由服务端通过 `recordGateSatisfied`
+ * 写入 `team.gate.satisfied` 事件，客户端没有任何直写路径。
+ * ========================================================================== */
+
+/** 服务端写入的门禁达成事件主题（唯一合法证据来源）。 */
+export const PBL_GATE_SATISFIED_TOPIC = 'team.gate.satisfied';
+/** 门禁拒绝事件主题（可观测 + 流式 `team.gate_blocked` 帧来源）。 */
+export const PBL_GATE_BLOCKED_TOPIC = 'team.gate.blocked';
+/** 阶段推进事件主题（流式 `team.phase_advanced` 帧来源）。 */
+export const PBL_PHASE_ADVANCED_TOPIC = 'team.phase_advanced';
+/** 团队工具调用事件主题（流式 `team.tool_invoked` 帧来源）。 */
+export const TEAM_TOOL_INVOKED_TOPIC = 'team.tool.invoked';
+/** 模型思考事件主题（流式 `team.thinking` 帧来源；只携带阶段标签，不携带原文）。 */
+export const TEAM_MODEL_THINKING_TOPIC = 'team.model.thinking';
+
+/** 学生会话流上可区分的团队帧类型（新增/改名必须同步 protocol 测试断言）。 */
+export const TEAM_FRAME_NAMES = {
+  phase_advanced: 'team.phase_advanced',
+  gate_blocked: 'team.gate_blocked',
+  member_delegated: 'team.member_delegated',
+  tool_invoked: 'team.tool_invoked',
+  thinking: 'team.thinking',
+} as const;
+
+export type TeamStreamKind = keyof typeof TEAM_FRAME_NAMES;
+
+export interface TeamStreamFrame {
+  kind: TeamStreamKind;
+  frameId: string;
+  occurredAt: string;
+  data: Record<string, unknown>;
+}
+
+const TEAM_TOPIC_FRAME_KIND: Record<string, TeamStreamKind> = {
+  [PBL_PHASE_ADVANCED_TOPIC]: 'phase_advanced',
+  [PBL_GATE_BLOCKED_TOPIC]: 'gate_blocked',
+  [TEAM_TOOL_INVOKED_TOPIC]: 'tool_invoked',
+  [TEAM_MODEL_THINKING_TOPIC]: 'thinking',
+};
+
+const KNOWN_PBL_GATES: ReadonlySet<string> = new Set(Object.values(PBL_GATE_BY_PHASE));
+const GATE_TO_PHASE: Record<string, PblPhase> = Object.fromEntries(
+  (Object.entries(PBL_GATE_BY_PHASE) as [PblPhase, string][]).map(([phase, gate]) => [gate, phase]),
+);
+
+/**
+ * 未成年人数据最小化：帧载荷白名单裁剪。
+ * 任何疑似原文对话的字段一律剥离；字符串截断到 120 字符。
+ */
+const RAW_TEXT_KEYS = new Set([
+  'content',
+  'text',
+  'utterance',
+  'raw',
+  'transcript',
+  'messages',
+  'prompt',
+  'response',
+  'conversationSummary',
+  'intent',
+  'reply',
+  'question',
+  'answer',
+]);
+const MAX_FRAME_STRING_LENGTH = 120;
+
+export function teamFrameName(kind: TeamStreamKind): string {
+  return TEAM_FRAME_NAMES[kind];
+}
+
+/** 稳定的短幂等键（事件表幂等列上限 160 字符）：哈希拼接，不碰撞、不含原文。 */
+function shortEventKey(prefix: string, ...parts: string[]): string {
+  const digest = createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 40);
+  return normalizeKey(`${prefix}:${digest}`, 'team-event');
+}
+
+export function sanitizeTeamFramePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (RAW_TEXT_KEYS.has(key)) continue;
+    if (value === null || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') {
+      out[key] = typeof value === 'string' && value.length > MAX_FRAME_STRING_LENGTH
+        ? value.slice(0, MAX_FRAME_STRING_LENGTH)
+        : value;
+    } else if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+      out[key] = (value as string[]).slice(0, 10);
+    }
+  }
+  return out;
+}
+
+/** 组装一帧团队事件的载荷（帧名 + 脱敏字段），供 SSE 层直接使用。 */
+export function buildTeamFrameData(kind: TeamStreamKind, data: Record<string, unknown>): Record<string, unknown> {
+  return { frame: TEAM_FRAME_NAMES[kind], ...sanitizeTeamFramePayload(data) };
+}
+
+export type PblGateDecision =
+  | { allowed: true }
+  | { allowed: false; status: 409; errorCode: string; requiredGate: string; blockedPhase: PblPhase; message: string };
+
+function gateBlock(gate: string): PblGateDecision & { allowed: false } {
+  const phase = GATE_TO_PHASE[gate] ?? 'exploration';
+  return {
+    allowed: false,
+    status: 409,
+    errorCode: PBL_GATE_ERROR_CODES[phase as PblPhase],
+    requiredGate: gate,
+    blockedPhase: phase,
+    message: `PBL 门禁未达成：需要先满足「${gate}」才能进入后续阶段`,
+  };
+}
+
+/**
+ * 进入 `targetPhase` 需要其之前所有阶段的门禁均已达成（累积判定）。
+ * 例：进入 guided_practice 需要 `student_confirmed_intent` 且 `TheoryMastered`。
+ * 返回第一个未达成的门禁对应的稳定错误码。
+ */
+export function evaluateGateEntry(targetPhase: PblPhase, satisfiedGates: ReadonlySet<string>): PblGateDecision {
+  for (const gate of pblGatesRequiredToEnter(targetPhase)) {
+    if (!satisfiedGates.has(gate)) return gateBlock(gate);
+  }
+  return { allowed: true };
+}
+
+export interface PhaseAdvanceRequest {
+  currentPhase: PblPhase;
+  targetPhase: PblPhase;
+  /** 只允许 'manual'（人工/服务端触发）；'autonomous' 在冻结规格里被禁止。 */
+  trigger: string;
+  satisfiedGates: ReadonlySet<string>;
+}
+
+export type PhaseAdvanceDecision =
+  | { allowed: true; phase: PblPhase }
+  | { allowed: false; status: 409; errorCode: string; requiredGate: string | null; message: string };
+
+/**
+ * 纯函数：判断一次阶段推进是否被允许。顺序、自动推进与门禁全部由冻结规格
+ * 派生；服务层把 `allowed:false` 原样映射为 HTTP 409 ConflictException。
+ */
+export function decidePhaseAdvance(input: PhaseAdvanceRequest): PhaseAdvanceDecision {
+  if (input.trigger !== 'manual' && !PBL_AUTONOMOUS_ADVANCE_ALLOWED) {
+    return {
+      allowed: false,
+      status: 409,
+      errorCode: PBL_TEAM_ERROR_CODES.AUTONOMOUS_ADVANCE_FORBIDDEN,
+      requiredGate: null,
+      message: '冻结规格禁止自动推进越过门禁（allowAutonomousAdvance=false）',
+    };
+  }
+  const expected = nextPblPhase(input.currentPhase);
+  if (expected === null || input.targetPhase !== expected) {
+    return {
+      allowed: false,
+      status: 409,
+      errorCode: PBL_TEAM_ERROR_CODES.PHASE_ORDER_INVALID,
+      requiredGate: null,
+      message: `阶段只能按冻结顺序推进：${input.currentPhase} → ${expected ?? '（无后续阶段）'}`,
+    };
+  }
+  const gate = evaluateGateEntry(input.targetPhase, input.satisfiedGates);
+  if (!gate.allowed) {
+    return { allowed: false, status: 409, errorCode: gate.errorCode, requiredGate: gate.requiredGate, message: gate.message };
+  }
+  return { allowed: true, phase: input.targetPhase };
+}
+
+export interface DelegatedPhaseEntryRequest {
+  runPhase: PblPhase;
+  pblPhase: PblPhase;
+  satisfiedGates: ReadonlySet<string>;
+}
+
+/**
+ * 纯函数：委派任务携带 `pblPhase` 时的服务端判定。门禁优先（未达成 → 对应
+ * 409 门禁码），其次阶段一致性（不允许向未来阶段委派）。这样「未达成
+ * TheoryMastered 时任何进入 guided_practice 的委派调用」都会被拒绝。
+ */
+export function decideDelegatedPhaseEntry(input: DelegatedPhaseEntryRequest): PhaseAdvanceDecision {
+  const gate = evaluateGateEntry(input.pblPhase, input.satisfiedGates);
+  if (!gate.allowed) {
+    return { allowed: false, status: 409, errorCode: gate.errorCode, requiredGate: gate.requiredGate, message: gate.message };
+  }
+  if (pblPhaseIndex(input.pblPhase) !== pblPhaseIndex(input.runPhase)) {
+    return {
+      allowed: false,
+      status: 409,
+      errorCode: PBL_TEAM_ERROR_CODES.PHASE_MISMATCH,
+      requiredGate: null,
+      message: `委派阶段与当前项目阶段不一致：run=${input.runPhase}, request=${input.pblPhase}`,
+    };
+  }
+  return { allowed: true, phase: input.pblPhase };
+}
+
+/**
+ * 纯函数：正式项目创建守卫。学生意图未经服务端确认时，禁止创建正式项目
+ * （AGENTS.md 硬约束）。由探索阶段的 `student_confirmed_intent` 门禁驱动。
+ */
+export function decideFormalProjectCreation(satisfiedGates: ReadonlySet<string>): PhaseAdvanceDecision {
+  const gate = evaluateGateEntry('concept_mastery', satisfiedGates);
+  if (!gate.allowed) {
+    return { allowed: false, status: 409, errorCode: gate.errorCode, requiredGate: gate.requiredGate, message: '学生意图未经服务端确认，不得创建正式项目' };
+  }
+  return { allowed: true, phase: 'concept_mastery' };
+}
+
+export interface ActiveTeamRunRow {
+  id: string;
+  leaderAgentId: string;
+  studentUserId: string | null;
+  projectId: string | null;
+  tutorSessionId: string | null;
+  status: string;
+}
+
+export type MentorUniquenessDecision =
+  | { kind: 'allow' }
+  | { kind: 'replay'; runId: string }
+  | { kind: 'conflict'; errorCode: string; status: 409; message: string };
+
+/**
+ * 纯函数：一个学生同一时间只能有一个当前班主任（leader agent）。活跃 run
+ * （queued/running）上：同 leader 同会话同项目 → 幂等重放既有 run；不同
+ * leader → 409 拒绝，绝不允许出现两个当前班主任。
+ */
+export function decideMentorUniqueness(
+  activeRuns: readonly ActiveTeamRunRow[],
+  requested: { leaderAgentId: string; tutorSessionId: string | null; projectId: string | null },
+): MentorUniquenessDecision {
+  for (const run of activeRuns) {
+    if (run.leaderAgentId !== requested.leaderAgentId) {
+      return {
+        kind: 'conflict',
+        status: 409,
+        errorCode: PBL_TEAM_ERROR_CODES.MENTOR_UNIQUENESS_CONFLICT,
+        message: `该学生已有当前班主任（agent ${run.leaderAgentId}，run ${run.id}），不能同时再指定另一个`,
+      };
+    }
+  }
+  const replay = activeRuns.find(
+    (run) => run.leaderAgentId === requested.leaderAgentId
+      && run.tutorSessionId === requested.tutorSessionId
+      && run.projectId === requested.projectId,
+  );
+  if (replay !== undefined) return { kind: 'replay', runId: replay.id };
+  return { kind: 'allow' };
+}
+
+/** run.context.phase 的服务端读取；缺省或非法值回退到冻结顺序的第一阶段。 */
+export function readRunPhaseContext(context: Record<string, unknown> | null | undefined): PblPhase {
+  const phase = context?.phase;
+  return isPblPhase(phase) ? phase : PBL_PHASE_ORDER[0] as PblPhase;
+}
 
 export const EXECUTABLE_TEAM_MESSAGE_TYPES = ['task.request', 'projection.request'] as const;
 
@@ -50,6 +325,8 @@ export interface DelegateTaskInput {
   parentTaskId?: string | null;
   idempotencyKey: string;
   maxAttempts?: number;
+  /** 可选：委派目标所属的 PBL 阶段；服务端按冻结门禁强制校验。 */
+  pblPhase?: PblPhase;
 }
 
 export type AgentRouteTrigger = 'delegate' | 'event' | 'schedule';
@@ -149,6 +426,38 @@ export class TeamRuntimeService {
       return toRunView(existing[0]);
     }
 
+    // 硬约束：一个学生同一时间只能有一个当前班主任。幂等键未命中时再查
+    // 活跃 run：同 leader 同会话同项目 → 幂等重放；不同 leader → 409。
+    if (studentUserId !== null) {
+      const activeRuns = await db
+        .select()
+        .from(agentTeamRuns)
+        .where(and(
+          eq(agentTeamRuns.studentUserId, studentUserId),
+          inArray(agentTeamRuns.status, ['queued', 'running']),
+        ))
+        .orderBy(asc(agentTeamRuns.createdAt));
+      const decision = decideMentorUniqueness(
+        activeRuns.map((run) => ({
+          id: run.id,
+          leaderAgentId: run.leaderAgentId,
+          studentUserId: run.studentUserId,
+          projectId: run.projectId,
+          tutorSessionId: run.tutorSessionId,
+          status: run.status,
+        })),
+        { leaderAgentId, tutorSessionId: input.tutorSessionId ?? null, projectId: input.projectId ?? null },
+      );
+      if (decision.kind === 'conflict') throw new ConflictException({ code: decision.errorCode, message: decision.message });
+      if (decision.kind === 'replay') {
+        const replayed = activeRuns.find((run) => run.id === decision.runId);
+        if (replayed) {
+          this.assertRunAccess(replayed, actor);
+          return toRunView(replayed);
+        }
+      }
+    }
+
     const id = randomUUID();
     const now = new Date();
     await withTransaction(db, async (tx) => {
@@ -191,6 +500,22 @@ export class TeamRuntimeService {
     const db = this.requireDb();
     const run = await this.getRunRow(runId);
     this.assertRunAccess(run, actor);
+    // 服务端门禁：携带 pblPhase 的委派先过冻结门禁（例如未达成
+    // TheoryMastered 时任何进入 guided_practice 的委派都会被 409 拒绝）。
+    if (input.pblPhase !== undefined) {
+      if (!isPblPhase(input.pblPhase)) throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'pblPhase 不在冻结阶段枚举内' });
+      const satisfied = await this.loadSatisfiedGates(db, runId);
+      const decision = decideDelegatedPhaseEntry({ runPhase: readRunPhaseContext(run.context), pblPhase: input.pblPhase, satisfiedGates: satisfied });
+      if (!decision.allowed) {
+        await this.recordEvent({
+          runId,
+          topic: PBL_GATE_BLOCKED_TOPIC,
+          payload: { phase: input.pblPhase, requiredGate: decision.requiredGate, errorCode: decision.errorCode, context: 'delegate' },
+          idempotencyKey: shortEventKey('gate-blocked:delegate', runId, input.pblPhase, input.idempotencyKey),
+        });
+        throw new ConflictException({ code: decision.errorCode, message: decision.message });
+      }
+    }
     const route = await db.select().from(agentRoutes).where(and(
       eq(agentRoutes.fromAgentId, input.senderAgentId),
       eq(agentRoutes.toAgentId, input.recipientAgentId),
@@ -311,6 +636,244 @@ export class TeamRuntimeService {
       }, tx);
     });
     return id;
+  }
+
+  /**
+   * 服务端记录门禁达成证据（只允许由服务端域逻辑或管理员端点写入，
+   * 学生/客户端没有任何直写路径）。证据以 `team.gate.satisfied` 事件落库，
+   * 后续所有阶段判定从事件重放，重启/多实例语义一致。
+   */
+  async recordGateSatisfied(
+    actor: CurrentUser,
+    runId: string,
+    input: { gate: string; evidenceRef?: string; source?: string },
+    idempotencyKey: string,
+  ): Promise<Record<string, unknown>> {
+    const db = this.requireDb();
+    const run = await this.getRunRow(runId);
+    if (actor.role !== 'admin') throw new ConflictException({ code: 'TEAM_GATE_WRITE_FORBIDDEN', message: '门禁达成证据只能由服务端/管理员写入' });
+    const gate = input.gate?.trim();
+    if (!gate || !KNOWN_PBL_GATES.has(gate)) {
+      throw new BadRequestException({ code: 'PBL_GATE_UNKNOWN', message: '门禁条件不在冻结规格枚举内', allowed: Array.from(KNOWN_PBL_GATES) });
+    }
+    const key = normalizeKey(idempotencyKey, 'team-gate');
+    const phase = GATE_TO_PHASE[gate] as PblPhase;
+    const eventId = await this.recordEvent({
+      runId,
+      taskId: null,
+      topic: PBL_GATE_SATISFIED_TOPIC,
+      payload: { gate, phase, evidenceRef: input.evidenceRef ?? `audit:${key}`, source: input.source ?? 'server' },
+      idempotencyKey: key,
+    });
+    await this.audit.write({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'agent.team_gate.satisfied',
+      targetType: 'agent_team_run',
+      targetId: runId,
+      idempotencyKey: key,
+      detail: { gate, phase, evidenceRef: input.evidenceRef ?? null, studentUserId: run.studentUserId },
+    });
+    return { eventId, runId, gate, phase };
+  }
+
+  /** 读回当前阶段与服务端门禁状态（客户端只能读，不能写）。 */
+  async getPhaseStatus(actor: CurrentUser, runId: string): Promise<Record<string, unknown>> {
+    const db = this.requireDb();
+    const run = await this.getRunRow(runId);
+    this.assertRunAccess(run, actor);
+    const phase = readRunPhaseContext(run.context);
+    const satisfied = await this.loadSatisfiedGates(db, runId);
+    const target = nextPblPhase(phase);
+    const gateDecision = target === null ? null : evaluateGateEntry(target, satisfied);
+    return {
+      runId,
+      specProjectId: THUNDER_FIGHTER_PBL_SPEC.projectId,
+      phase,
+      phaseOrder: PBL_PHASE_ORDER,
+      nextPhase: target,
+      currentGate: PBL_GATE_BY_PHASE[phase],
+      requiredGateForNext: gateDecision && !gateDecision.allowed ? gateDecision.requiredGate : null,
+      nextGateErrorCode: gateDecision && !gateDecision.allowed ? gateDecision.errorCode : null,
+      satisfiedGates: Array.from(satisfied).sort(),
+      allowAutonomousAdvance: PBL_AUTONOMOUS_ADVANCE_ALLOWED,
+      theoryMasteredGate: THUNDER_FIGHTER_PBL_SPEC.theoryMasteredGate,
+    };
+  }
+
+  /**
+   * 阶段推进（服务端强制门禁）。拒绝时返回 409 + 稳定错误码并落
+   * `team.gate.blocked` 事件；成功时只允许推进到冻结顺序的下一阶段。
+   */
+  async advancePhase(
+    actor: CurrentUser,
+    runId: string,
+    input: { targetPhase: string; trigger?: string; idempotencyKey: string },
+  ): Promise<Record<string, unknown>> {
+    const db = this.requireDb();
+    const run = await this.getRunRow(runId);
+    this.assertRunAccess(run, actor);
+    if (!isPblPhase(input.targetPhase)) {
+      throw new BadRequestException({ code: 'PBL_PHASE_INVALID', message: 'targetPhase 不在冻结阶段枚举内' });
+    }
+    const key = normalizeKey(input.idempotencyKey, 'team-phase-advance');
+    const currentPhase = readRunPhaseContext(run.context);
+    const satisfied = await this.loadSatisfiedGates(db, runId);
+    const decision = decidePhaseAdvance({
+      currentPhase,
+      targetPhase: input.targetPhase,
+      trigger: input.trigger ?? 'manual',
+      satisfiedGates: satisfied,
+    });
+    if (!decision.allowed) {
+      await this.recordEvent({
+        runId,
+        topic: PBL_GATE_BLOCKED_TOPIC,
+        payload: {
+          previousPhase: currentPhase,
+          attemptedPhase: input.targetPhase,
+          requiredGate: decision.requiredGate,
+          errorCode: decision.errorCode,
+          trigger: input.trigger ?? 'manual',
+        },
+        idempotencyKey: shortEventKey('gate-blocked:advance', runId, key),
+      });
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'agent.team_run.phase_blocked',
+        targetType: 'agent_team_run',
+        targetId: runId,
+        idempotencyKey: shortEventKey('gate-blocked:advance', runId, key),
+        detail: { previousPhase: currentPhase, attemptedPhase: input.targetPhase, errorCode: decision.errorCode },
+      });
+      throw new ConflictException({ code: decision.errorCode, message: decision.message });
+    }
+    const now = new Date();
+    await db
+      .update(agentTeamRuns)
+      .set({
+        context: { ...(run.context ?? {}), phase: decision.phase, phaseUpdatedAt: now.toISOString(), phaseUpdatedBy: actor.id },
+        updatedAt: now,
+      })
+      .where(eq(agentTeamRuns.id, runId));
+    await this.recordEvent({
+      runId,
+      topic: PBL_PHASE_ADVANCED_TOPIC,
+      payload: {
+        previousPhase: currentPhase,
+        phase: decision.phase,
+        passedGate: PBL_GATE_BY_PHASE[currentPhase],
+        ownerAssistantId: this.thunderFighterAssistantForPhase(decision.phase),
+      },
+      idempotencyKey: shortEventKey('phase-advanced', runId, key),
+    });
+    await this.audit.write({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'agent.team_run.phase_advance',
+      targetType: 'agent_team_run',
+      targetId: runId,
+      idempotencyKey: key,
+      detail: { previousPhase: currentPhase, phase: decision.phase },
+    });
+    const [updated] = await db.select().from(agentTeamRuns).where(eq(agentTeamRuns.id, runId)).limit(1);
+    if (!updated) throw new ServiceUnavailableException('Team Run 阶段更新未返回记录');
+    return { run: toRunView(updated), phase: decision.phase, previousPhase: currentPhase };
+  }
+
+  /**
+   * 把学生会话最近的团队事件/委派任务转换成可区分的流式帧。
+   * 载荷全部经过 `sanitizeTeamFramePayload` 脱敏，不含未成年人原文。
+   */
+  async listSessionStreamFrames(
+    actor: CurrentUser,
+    tutorSessionId: string,
+    options: { since?: Date } = {},
+  ): Promise<TeamStreamFrame[]> {
+    const db = this.requireDb();
+    const [run] = await db
+      .select()
+      .from(agentTeamRuns)
+      .where(and(eq(agentTeamRuns.tutorSessionId, tutorSessionId), sql`${agentTeamRuns.tutorSessionId} IS NOT NULL`))
+      .orderBy(desc(agentTeamRuns.createdAt))
+      .limit(1);
+    if (!run) return [];
+    this.assertRunAccess(run, actor);
+    const since = options.since ?? null;
+    const [events, tasks] = await Promise.all([
+      db
+        .select()
+        .from(agentTeamEvents)
+        .where(and(
+          eq(agentTeamEvents.runId, run.id),
+          inArray(agentTeamEvents.topic, Object.keys(TEAM_TOPIC_FRAME_KIND)),
+          ...(since ? [gt(agentTeamEvents.occurredAt, since)] : []),
+        ))
+        .orderBy(asc(agentTeamEvents.createdAt)),
+      db
+        .select()
+        .from(agentTeamTasks)
+        .where(and(
+          eq(agentTeamTasks.runId, run.id),
+          sql`${agentTeamTasks.agentId} <> ${run.leaderAgentId}`,
+          ...(since ? [gt(agentTeamTasks.createdAt, since)] : []),
+        ))
+        .orderBy(asc(agentTeamTasks.createdAt)),
+    ]);
+    const frames: TeamStreamFrame[] = [];
+    for (const event of events) {
+      const kind = TEAM_TOPIC_FRAME_KIND[event.topic];
+      if (kind === undefined) continue;
+      const payload = (event.payload ?? {}) as Record<string, unknown>;
+      frames.push({
+        kind,
+        frameId: event.id,
+        occurredAt: event.occurredAt.toISOString(),
+        data: buildTeamFrameData(kind, {
+          runId: event.runId,
+          taskId: event.taskId,
+          ...payload,
+        }),
+      });
+    }
+    for (const task of tasks) {
+      frames.push({
+        kind: 'member_delegated',
+        frameId: task.id,
+        occurredAt: task.createdAt.toISOString(),
+        data: buildTeamFrameData('member_delegated', {
+          runId: task.runId,
+          taskId: task.id,
+          recipientAgentId: task.agentId,
+          taskType: task.taskType,
+          status: task.status,
+          pblPhase: typeof task.input === 'object' && task.input !== null && isPblPhase((task.input as Record<string, unknown>).pblPhase)
+            ? ((task.input as Record<string, unknown>).pblPhase as string)
+            : null,
+        }),
+      });
+    }
+    frames.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+    return frames.slice(0, 50);
+  }
+
+  /** 从 `team.gate.satisfied` 事件重放已达成门禁集合（服务端唯一证据源）。 */
+  private async loadSatisfiedGates(db: Database, runId: string): Promise<Set<string>> {
+    const rows = await db
+      .select({ payload: agentTeamEvents.payload })
+      .from(agentTeamEvents)
+      .where(and(eq(agentTeamEvents.runId, runId), eq(agentTeamEvents.topic, PBL_GATE_SATISFIED_TOPIC)));
+    const satisfied = new Set<string>();
+    for (const row of rows) {
+      const gate = (row.payload as Record<string, unknown> | null | undefined)?.gate;
+      if (typeof gate === 'string' && KNOWN_PBL_GATES.has(gate)) satisfied.add(gate);
+    }
+    return satisfied;
+  }
+
+  private thunderFighterAssistantForPhase(phase: PblPhase): string {
+    return PBL_ASSISTANT_BY_PHASE[phase] ?? PBL_ASSISTANT_BY_PHASE.exploration;
   }
 
   async getStaticGraph() {

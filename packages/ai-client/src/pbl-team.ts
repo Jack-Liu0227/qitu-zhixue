@@ -75,6 +75,88 @@ export const THUNDER_FIGHTER_PBL_SPEC: PblTeamWorkflowSpec = {
   allowAutonomousAdvance: false,
 };
 
+/* ------------------------------------------------------------------ *
+ * Derived single source of truth for server-side PBL enforcement.
+ *
+ * Everything below is computed FROM `THUNDER_FIGHTER_PBL_SPEC` /
+ * `THUNDER_FIGHTER_PHASES`; it is not a second copy. The API runtime
+ * (`services/api/src/modules/team-runtime`) imports these symbols and
+ * refuses phase transitions that violate them. Gates and phase order
+ * therefore cannot be weakened by prompts or client payloads.
+ * ------------------------------------------------------------------ */
+
+/** Frozen phase order: exploration → concept_mastery → guided_practice → deliverable_review. */
+export const PBL_PHASE_ORDER: readonly PblPhase[] = THUNDER_FIGHTER_PHASES.map((spec) => spec.phase);
+
+/** Gate condition required to *complete* (advance out of) each phase, per the frozen spec. */
+export const PBL_GATE_BY_PHASE: Record<PblPhase, string> = THUNDER_FIGHTER_PHASES.reduce(
+  (acc, spec) => {
+    acc[spec.phase] = spec.gateCondition;
+    return acc;
+  },
+  {} as Record<PblPhase, string>,
+);
+
+/** Stable HTTP error codes per unsatisfied gate; names are part of the API contract. */
+export const PBL_GATE_ERROR_CODES: Record<PblPhase, string> = {
+  exploration: 'PBL_GATE_STUDENT_INTENT_REQUIRED',
+  concept_mastery: 'PBL_GATE_THEORY_MASTERED_REQUIRED',
+  guided_practice: 'PBL_GATE_CODE_RUN_NOT_VERIFIED',
+  deliverable_review: 'PBL_GATE_REVIEW_NOT_ARCHIVED',
+};
+
+/** Other stable Team Runtime gate/ordering error codes. */
+export const PBL_TEAM_ERROR_CODES = {
+  PHASE_ORDER_INVALID: 'PBL_PHASE_ORDER_INVALID',
+  PHASE_MISMATCH: 'TEAM_PHASE_MISMATCH',
+  AUTONOMOUS_ADVANCE_FORBIDDEN: 'PBL_AUTONOMOUS_ADVANCE_FORBIDDEN',
+  MENTOR_UNIQUENESS_CONFLICT: 'TEAM_MENTOR_UNIQUENESS_CONFLICT',
+  FORMAL_PROJECT_REQUIRES_CONFIRMED_INTENT: 'TEAM_FORMAL_PROJECT_REQUIRES_CONFIRMED_INTENT',
+} as const;
+
+/**
+ * Hard rule from the frozen spec: autonomous advance past gates is disabled.
+ * The server must reject every `trigger: 'autonomous'` advance attempt.
+ */
+export const PBL_AUTONOMOUS_ADVANCE_ALLOWED: boolean = THUNDER_FIGHTER_PBL_SPEC.allowAutonomousAdvance === true;
+
+/** Assistant id that owns each phase (from the frozen spec, for delegation labels). */
+export const PBL_ASSISTANT_BY_PHASE: Record<PblPhase, string> = THUNDER_FIGHTER_PHASES.reduce(
+  (acc, spec) => {
+    acc[spec.phase] = spec.assignedAssistantId;
+    return acc;
+  },
+  {} as Record<PblPhase, string>,
+);
+
+export function isPblPhase(value: unknown): value is PblPhase {
+  return typeof value === 'string' && (PBL_PHASE_ORDER as readonly string[]).includes(value);
+}
+
+export function pblPhaseIndex(phase: PblPhase): number {
+  return PBL_PHASE_ORDER.indexOf(phase);
+}
+
+/** Next phase in the frozen order, or null when the phase is terminal. */
+export function nextPblPhase(phase: PblPhase): PblPhase | null {
+  const index = pblPhaseIndex(phase);
+  if (index < 0 || index >= PBL_PHASE_ORDER.length - 1) return null;
+  const next = PBL_PHASE_ORDER[index + 1];
+  return next === undefined ? null : next;
+}
+
+/**
+ * Gates that must already be satisfied before a student may *operate inside*
+ * `phase`: the gate conditions of every earlier phase in the frozen order.
+ * Entering `guided_practice` therefore requires `student_confirmed_intent`
+ * AND `TheoryMastered` (AGENTS.md: 理论未掌握不得进入实践).
+ */
+export function pblGatesRequiredToEnter(phase: PblPhase): string[] {
+  const index = pblPhaseIndex(phase);
+  if (index < 0) return [];
+  return PBL_PHASE_ORDER.slice(0, index).map((earlier) => PBL_GATE_BY_PHASE[earlier]);
+}
+
 export const THUNDER_FIGHTER_TEAM_MEMBERS: readonly AdminTeamMember[] = [
   {
     slotId: 'slot-leader',
