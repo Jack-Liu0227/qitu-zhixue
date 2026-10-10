@@ -224,3 +224,74 @@ export interface ReplyTeacherFeedbackRequest {
   content: string;
   attachmentRefs?: string[] | null;
 }
+
+/* ------------------------------------------------------------------ *
+ * 班主任复核审批（T20：`review_completed_and_archived` 的审批真源）
+ *
+ * 背景：`mentor_reviews.status='approved'` 是作品发布（`works.service.ts`
+ * 的 `findApprovedReviewForArtifact`）唯一的复核通过证据来源，但此前全仓
+ * 没有任何写入点：`works.service.ts:396` 只创建 `status='requested'`，
+ * teacher 模块也只有读路由。本节定义「谁批、批成什么」的契约形状。
+ *
+ * 权限口径（AGENTS.md）：
+ * - 只有 `teacher` 角色可调用，且**后端必须再校验对象级权限**：
+ *   调用者既要等于该复核行的 `mentorUserId`，又要仍是该生
+ *   `mentor_assignments.status='active'` 的当前班主任；
+ * - `studentUserId` / `mentorUserId` / `projectId` / `kind` / `artifactRef`
+ *   **一律不在请求体里**：客户端不得直写归属与复核对象身份，服务端从复核行读；
+ * - 终态（`approved` / `rejected`）不可篡改：不同决定覆盖 → 409，
+ *   同决定重放 → 幂等（不重复写库、不重复审计）。
+ *
+ * 本段仍是 type-only，不含运行时逻辑；错误码常量放在
+ * `services/api/src/modules/teacher/teacher.service.ts`。
+ * ------------------------------------------------------------------ */
+
+/**
+ * 班主任可提交的复核决定。
+ *
+ * 与 `mentor_reviews.status` 的终态/中间态子集对齐：
+ * `approved`（通过，作品发布门禁的证据）、`changes_requested`（要求修改，非终态，
+ * 学生改完可再批）、`rejected`（不通过，终态）。
+ */
+export type TeacherReviewDecision = 'approved' | 'changes_requested' | 'rejected';
+
+/**
+ * `POST /api/v1/teacher/reviews/:reviewId/decision` 的请求体。
+ *
+ * 除这两个字段外出现任何键都必须被服务端以 400 拒绝（含 `idempotencyKey`：
+ * 幂等键只走 HTTP 头 `Idempotency-Key`）。
+ */
+export interface TeacherReviewDecisionRequest {
+  decision: TeacherReviewDecision;
+  /** 给学生的结构化反馈；不含原始 AI 对话，长度上限由服务端校验。 */
+  comment?: string | null;
+}
+
+/**
+ * 审批结果响应体（`{ data: ... }` 信封内）。
+ *
+ * 全部字段都是**服务端复核行的当前值**（原样回显 `kind` / `artifactRef` /
+ * `projectId` / 归属，便于前端确认没有越权改写），不含任何客户端可写身份。
+ */
+export interface TeacherReviewDecisionResponse {
+  reviewId: string;
+  /** 复核对象所属学生；服务端从复核行读出。 */
+  studentUserId: string;
+  /** 复核归属班主任；恒等于调用者（对象级校验已保证）。 */
+  mentorUserId: string;
+  projectId: string | null;
+  /** 作品 id（复核目标）。发布门禁的 `artifact_ref` 谓词就靠它匹配。 */
+  artifactRef: string | null;
+  /** `'artifact' | 'project' | …`：服务端原样保留，客户端不可写。 */
+  kind: string;
+  /** 审批后的状态，等于本次决定。 */
+  status: TeacherReviewDecision;
+  decision: TeacherReviewDecision;
+  comment: string | null;
+  /** 以下为 ISO 8601 字符串（UTC）。 */
+  requestedAt: string;
+  reviewedAt: string;
+  updatedAt: string;
+  /** `true` 表示命中已存在的同决定终态：本次未写库、未写审计。 */
+  idempotentReplay: boolean;
+}

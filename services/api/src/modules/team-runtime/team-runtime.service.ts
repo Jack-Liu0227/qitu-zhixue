@@ -29,6 +29,8 @@ import {
   PBL_GATE_ERROR_CODES,
   PBL_INITIAL_PHASE,
   PBL_PHASE_ORDER,
+  PBL_GATE_EVIDENCE_REF_MIN_LENGTH,
+  PBL_GATE_SOURCE_WHITELIST,
   PBL_TEAM_ERROR_CODES,
   TEAM_RUN_CONTEXT_ALLOWED_KEYS,
   TEAM_RUN_CONTEXT_RESERVED_KEYS,
@@ -120,6 +122,34 @@ const MAX_FRAME_STRING_LENGTH = 120;
 
 export function teamFrameName(kind: TeamStreamKind): string {
   return TEAM_FRAME_NAMES[kind];
+}
+
+/**
+ * T25：门禁证据写入的统一校验（admin HTTP 端点与内部通道共用，一份判据）。
+ * 在任何写库之前执行：拒绝 → 400 + 稳定错误码，0 事件 0 审计。
+ * - evidenceRef 必填且 trim 后长度 ≥ PBL_GATE_EVIDENCE_REF_MIN_LENGTH；
+ * - source 必须命中该 gate 的白名单（PBL_GATE_SOURCE_WHITELIST，真源在
+ *   packages/ai-client/src/pbl-team.ts）。
+ * 返回规范化后的 (evidenceRef, source)。
+ */
+export function assertGateEvidenceWritable(gate: string, evidenceRef: string | undefined | null, source: string | undefined | null): { evidenceRef: string; source: string } {
+  const ref = evidenceRef?.trim() ?? '';
+  if (ref.length < PBL_GATE_EVIDENCE_REF_MIN_LENGTH) {
+    throw new BadRequestException({
+      code: PBL_TEAM_ERROR_CODES.GATE_EVIDENCE_REQUIRED,
+      message: `evidenceRef 必填且 trim 后长度不小于 ${PBL_GATE_EVIDENCE_REF_MIN_LENGTH}（禁止空写门禁证据）`,
+    });
+  }
+  const src = source?.trim() ?? '';
+  const allowed = PBL_GATE_SOURCE_WHITELIST[gate] ?? [];
+  if (!allowed.includes(src)) {
+    throw new BadRequestException({
+      code: PBL_TEAM_ERROR_CODES.GATE_SOURCE_NOT_ALLOWED,
+      message: `source「${src || '(空)'}」不在门禁「${gate}」的允许清单内`,
+      allowed,
+    });
+  }
+  return { evidenceRef: ref, source: src };
 }
 
 /** 稳定的短幂等键（事件表幂等列上限 160 字符）：哈希拼接，不碰撞、不含原文。 */
@@ -888,11 +918,13 @@ export class TeamRuntimeService {
     }
     const key = normalizeKey(idempotencyKey, 'team-gate');
     const phase = GATE_TO_PHASE[gate] as PblPhase;
+    // T25：evidenceRef 必填 + 按 gate 细分的 source 白名单（拒绝 → 0 写入）。
+    const writable = assertGateEvidenceWritable(gate, input.evidenceRef, input.source);
     const eventId = await this.recordEvent({
       runId,
       taskId: null,
       topic: PBL_GATE_SATISFIED_TOPIC,
-      payload: { gate, phase, evidenceRef: input.evidenceRef ?? `audit:${key}`, source: input.source ?? 'server' },
+      payload: { gate, phase, evidenceRef: writable.evidenceRef, source: writable.source },
       idempotencyKey: key,
     });
     await this.audit.write({
@@ -902,7 +934,7 @@ export class TeamRuntimeService {
       targetType: 'agent_team_run',
       targetId: runId,
       idempotencyKey: key,
-      detail: { gate, phase, evidenceRef: input.evidenceRef ?? null, studentUserId: run.studentUserId },
+      detail: { gate, phase, evidenceRef: writable.evidenceRef, source: writable.source, studentUserId: run.studentUserId },
     });
     return { eventId, runId, gate, phase };
   }
@@ -935,7 +967,11 @@ export class TeamRuntimeService {
     const evidenceRef = input.evidenceRef?.trim() ?? '';
     const studentUserId = input.studentUserId?.trim();
     if (!studentUserId) throw new BadRequestException({ code: 'TEAM_GATE_STUDENT_REQUIRED', message: '缺少 studentUserId' });
-    const key = normalizeKey(input.idempotencyKey?.trim() || `gate:${studentUserId}:${gate}:${evidenceRef}`, 'team-gate');
+    // T25：内部通道同样过「evidenceRef 必填 + 按 gate 细分 source 白名单」，
+    // 与 admin 端点共用 assertGateEvidenceWritable（一份判据）；拒绝在任何
+    // 写库/写账本之前（调用方 projects/works 已用 try/catch 包住，业务不受影响）。
+    const writable = assertGateEvidenceWritable(gate, evidenceRef, input.source);
+    const key = normalizeKey(input.idempotencyKey?.trim() || `gate:${studentUserId}:${gate}:${writable.evidenceRef}`, 'team-gate');
 
     // T22：无活跃 run 不再丢弃证据，而是落待冲刷账本（域侧完全不感知 run）。
     // 记账失败也绝不影响业务域：best-effort + 记日志，返回值仍为 deferred。
@@ -956,8 +992,8 @@ export class TeamRuntimeService {
             id: `pblge-${randomUUID()}`,
             studentUserId,
             gate,
-            evidenceRef,
-            source: input.source,
+            evidenceRef: writable.evidenceRef,
+            source: writable.source,
           })
           .onConflictDoNothing({
             target: [pblGateEvidence.studentUserId, pblGateEvidence.gate, pblGateEvidence.evidenceRef],
@@ -975,8 +1011,8 @@ export class TeamRuntimeService {
       run.id,
       studentUserId,
       gate,
-      evidenceRef,
-      input.source,
+      writable.evidenceRef,
+      writable.source,
       key,
       'direct',
     );

@@ -15,12 +15,20 @@ import type {
   TeacherInterventionDetail,
   TeacherInterventionActionRequest,
   TeacherInterventionActionResponse,
+  TeacherReviewDecision,
+  TeacherReviewDecisionRequest,
+  TeacherReviewDecisionResponse,
   TeacherStatisticsPageData,
   TeacherFeedbackListPageData,
   TeacherFeedbackDetail,
   ReplyTeacherFeedbackRequest,
 } from '@qitu/contracts';
-import { TeacherService } from './teacher.service';
+import {
+  TeacherService,
+  TEACHER_REVIEW_ERROR_CODES,
+  REVIEW_DECISION_VALUES,
+  MAX_TEACHER_REVIEW_COMMENT_LENGTH,
+} from './teacher.service';
 import { requireRole, pickFields } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { FeedbackService } from '../feedback/feedback.service';
@@ -37,6 +45,61 @@ import type { TeacherAgentRunProjection } from '../team-runtime/team-runtime.ser
  * 角色闸门之外还有对象级授权：只能访问自己名下的学生，见
  * `TeacherService.assertTeacherCanAccessStudent`。
  */
+/**
+ * 解析并严格校验复核决定请求体（`assertKnownKeys` 风格）。
+ *
+ * 白名单以外的一切键都拒：这既挡住客户端直写归属字段（`studentUserId` /
+ * `mentorUserId` / `projectId` / `kind` / `artifactRef`），也挡住把幂等键
+ * 放进 body 的写法（键只走 HTTP 头）。未知键不能“静警”，否则下一轮
+ * 接入的客户端会误以为自写身份字段生效了。
+ */
+export function parseReviewDecisionInput(body: unknown): TeacherReviewDecisionRequest {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw new BadRequestException({
+      code: TEACHER_REVIEW_ERROR_CODES.REQUEST_INVALID,
+      message: '请求体必须是对象',
+    });
+  }
+  const value = body as Record<string, unknown>;
+  const allowed = ['decision', 'comment'];
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) {
+      throw new BadRequestException({
+        code: TEACHER_REVIEW_ERROR_CODES.REQUEST_INVALID,
+        message: `请求体包含不可写字段 "${key}"`,
+      });
+    }
+  }
+
+  const decision = value.decision;
+  if (typeof decision !== 'string'
+    || !REVIEW_DECISION_VALUES.includes(decision as TeacherReviewDecision)) {
+    throw new BadRequestException({
+      code: TEACHER_REVIEW_ERROR_CODES.REQUEST_INVALID,
+      message: 'decision 必须为 approved | changes_requested | rejected',
+    });
+  }
+
+  let comment: string | null | undefined;
+  if (value.comment !== undefined && value.comment !== null) {
+    if (typeof value.comment !== 'string') {
+      throw new BadRequestException({
+        code: TEACHER_REVIEW_ERROR_CODES.REQUEST_INVALID,
+        message: 'comment 必须是字符串或 null',
+      });
+    }
+    if (value.comment.length > MAX_TEACHER_REVIEW_COMMENT_LENGTH) {
+      throw new BadRequestException({
+        code: TEACHER_REVIEW_ERROR_CODES.REQUEST_INVALID,
+        message: `comment 不能超过 ${MAX_TEACHER_REVIEW_COMMENT_LENGTH} 个字符`,
+      });
+    }
+    comment = value.comment;
+  }
+
+  return { decision: decision as TeacherReviewDecisionRequest['decision'], comment };
+}
+
 @Controller('teacher')
 export class TeacherController {
   constructor(
@@ -161,6 +224,55 @@ export class TeacherController {
         idempotencyKey,
         hashIdempotentInput(scope, { interventionId: id }, input),
         async () => ({ status: 200, body: await this.teacherService.recordInterventionAction(user.id, id, input.action!) }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /**
+   * 班主任落定复核决定。
+   *
+   * 口径与本文件其他写接口一致：
+   * - 角色闸门 `requireRole('teacher')`，对象级权限在服务层再查（AGENTS.md：
+   *   前端权限只负责显示）；
+   * - 幂等键**只从 `Idempotency-Key` 请求头取**，body 里出现 `idempotencyKey`
+   *   会被当成未知键拒掉（400，且 0 写入）；
+   * - 请求体只允许 `decision` / `comment`；`studentUserId` / `mentorUserId` /
+   *   `projectId` / `kind` / `artifactRef` 等归属字段由服务端从复核行读，
+   *   客户端一律不可写。
+   */
+  @Post('reviews/:reviewId/decision')
+  @HttpCode(200)
+  async decideReview(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('reviewId') reviewId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: TeacherReviewDecisionResponse }> {
+    const user = requireRole(this.authService, cookieHeader, 'teacher', '该操作仅向班主任开放');
+
+    // 取键在解析之前：缺键 → 400，不进入任何业务写入。
+    const key = idempotencyKey?.trim();
+    if (key === undefined || key.length === 0 || key.length > 160) {
+      throw new BadRequestException({
+        code: 'IDEMPOTENCY_KEY_REQUIRED',
+        message: '缺少或无效的 Idempotency-Key 请求头',
+      });
+    }
+
+    const input = parseReviewDecisionInput(body);
+    const scope = `teacher.review.decision:${reviewId}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        key,
+        hashIdempotentInput(scope, { actorId: user.id, reviewId }, input),
+        async () => ({
+          status: 200,
+          body: await this.teacherService.decideReview(user, reviewId, input),
+        }),
       );
       return { data: result.body };
     } catch (error) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
@@ -9,6 +9,7 @@ import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
   PBL_GATE_BY_PHASE,
+  PBL_GATE_SOURCE_WHITELIST,
   PBL_INITIAL_PHASE,
   PBL_PHASE_ORDER,
   PBL_TEAM_ERROR_CODES,
@@ -21,6 +22,7 @@ import {
 import {
   TEAM_FRAME_NAMES,
   TeamRuntimeService,
+  assertGateEvidenceWritable,
   assertRunPhaseConsistent,
   buildTeamFrameData,
   decideDelegatedPhaseEntry,
@@ -700,7 +702,7 @@ test('recordGateSatisfied refuses student-authored gate evidence', async () => {
     [agentTeamEvents, [[], []]],
   ]);
   const adminService = new TeamRuntimeService(fakeDb(adminQueues), auditStub, outboxStub);
-  const recorded = await adminService.recordGateSatisfied(ADMIN, 'run-1', { gate: 'TheoryMastered', evidenceRef: 'mastery:run:9' }, 'gate-2');
+  const recorded = await adminService.recordGateSatisfied(ADMIN, 'run-1', { gate: 'TheoryMastered', evidenceRef: 'mastery:run:9', source: 'server_backfill' }, 'gate-2');
   assert.equal(recorded.gate, 'TheoryMastered');
   assert.equal(recorded.phase, 'concept_mastery');
 });
@@ -960,7 +962,7 @@ test('recordGateForStudent: no active run → deferred 记账到待冲刷账本�
   const { db, probe } = fakeDbWithProbe(queues, { insertFailures: [undefined, uniqueViolation23505()] });
   const audit = auditSpy();
   const service = new TeamRuntimeService(db, audit as never, outboxStub);
-  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:check:1', source: 'mastery.theory-check' };
+  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:check:1', source: 'learning-plan.theory-mastered' };
   const result = await service.recordGateForStudent(input);
   assert.deepEqual(result, { status: 'deferred', runId: null, gate: 'TheoryMastered', reason: 'pending_gate_evidence' });
   const second = await service.recordGateForStudent(input);
@@ -986,7 +988,7 @@ test('recordGateForStudent: active run → recorded, event payload and audit exa
     studentUserId: 'stu-1',
     gate: 'TheoryMastered',
     evidenceRef: 'mastery:check:7',
-    source: 'mastery.theory-check',
+    source: 'learning-plan.theory-mastered',
   });
   assert.equal(result.status, 'recorded');
   assert.equal(result.runId, 'run-9');
@@ -997,7 +999,7 @@ test('recordGateForStudent: active run → recorded, event payload and audit exa
   assert.equal(payload.gate, 'TheoryMastered');
   assert.equal(payload.phase, 'concept_mastery');
   assert.equal(payload.evidenceRef, 'mastery:check:7');
-  assert.equal(payload.source, 'mastery.theory-check');
+  assert.equal(payload.source, 'learning-plan.theory-mastered');
   assert.equal(events[0]?.idempotencyKey, 'gate:stu-1:TheoryMastered:mastery:check:7');
   assert.equal(audit.calls.length, 1);
   const entry = audit.calls[0] as Record<string, unknown>;
@@ -1008,7 +1010,7 @@ test('recordGateForStudent: active run → recorded, event payload and audit exa
   assert.equal(detail.studentUserId, 'stu-1');
   assert.equal(detail.gate, 'TheoryMastered');
   assert.equal(detail.evidenceRef, 'mastery:check:7');
-  assert.equal(detail.source, 'mastery.theory-check');
+  assert.equal(detail.source, 'learning-plan.theory-mastered');
 });
 
 test('recordGateForStudent: same inputs replay as already_satisfied without second event or audit', async () => {
@@ -1019,7 +1021,7 @@ test('recordGateForStudent: same inputs replay as already_satisfied without seco
     [agentTeamEvents, [[], [{ id: 'ev-gate-1' }]]],
   ]);
   const { service, probe, audit } = newServiceWithProbe(queues);
-  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered' as const, evidenceRef: 'mastery:check:7', source: 'mastery.theory-check' };
+  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered' as const, evidenceRef: 'mastery:check:7', source: 'learning-plan.theory-mastered' };
   const first = await service.recordGateForStudent(input);
   assert.equal(first.status, 'recorded');
   const second = await service.recordGateForStudent(input);
@@ -1188,7 +1190,7 @@ test('T22: direct recorded path never writes the ledger (no double-path duplicat
     studentUserId: 'stu-1',
     gate: 'TheoryMastered',
     evidenceRef: 'mastery:check:9',
-    source: 'mastery.theory-check',
+    source: 'learning-plan.theory-mastered',
   });
   assert.equal(result.status, 'recorded');
   assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 0);
@@ -1241,4 +1243,148 @@ test('T22: flush failure is logged and must not roll back or block run creation'
   assert.equal(logged.some((line) => line.includes('冲刷失败')), true, 'flush failure must be logged, not silently swallowed');
   assert.equal(gateEventInserts(probe.inserts).length, 0);
   assert.equal(probe.updates.filter((patchValue) => 'consumedRunId' in patchValue).length, 0, 'failed flush must not mark ledger consumed');
+});
+
+
+/* ------------------------------------------------------------------ */
+/* T25：门禁证据治理 —— evidenceRef 必填 + 按 gate 细分 source 白名单    */
+/* ------------------------------------------------------------------ */
+
+test('T25: admin gate write without usable evidenceRef → 400 PBL_GATE_EVIDENCE_REQUIRED, zero writes', async () => {
+  for (const bad of [undefined, '', '   ', 'short']) {
+    const queues = new Map<unknown, unknown[][]>([
+      [agentTeamRuns, [[fullRunRow()]]],
+      [agentTeamEvents, [[], []]],
+    ]);
+    const { db, probe } = fakeDbWithProbe(queues);
+    const audit = auditSpy();
+    const service = new TeamRuntimeService(db, audit as never, outboxStub);
+    await assert.rejects(
+      () => service.recordGateSatisfied(ADMIN, 'run-1', { gate: 'TheoryMastered', evidenceRef: bad, source: 'server_backfill' }, `t25-ev-${String(bad) || 'missing'}`),
+      (error: unknown) => {
+        assert.ok(error instanceof BadRequestException);
+        assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.GATE_EVIDENCE_REQUIRED);
+        return true;
+      },
+    );
+    assert.equal(gateEventInserts(probe.inserts).length, 0);
+    assert.equal(audit.calls.length, 0);
+  }
+});
+
+test('T25: gate=TheoryMastered + source=runner → 400 PBL_GATE_SOURCE_NOT_ALLOWED, zero writes', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow()]]],
+    [agentTeamEvents, [[], []]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  await assert.rejects(
+    () => service.recordGateSatisfied(ADMIN, 'run-1', { gate: 'TheoryMastered', evidenceRef: 'mastery:run:42', source: 'runner' }, 't25-src'),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.GATE_SOURCE_NOT_ALLOWED);
+      return true;
+    },
+  );
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal(audit.calls.length, 0);
+});
+
+test('T25 table-driven: every gate accepts its whitelisted sources and writes exactly once', async () => {
+  const cases: Array<{ gate: string; source: string; evidenceRef: string }> = [
+    { gate: 'student_confirmed_intent', source: 'projects.confirm-intent', evidenceRef: 'intent_confirmation:t25-1' },
+    { gate: 'student_confirmed_intent', source: 'mentor_review', evidenceRef: 'mentor:review:t25-1b' },
+    { gate: 'TheoryMastered', source: 'learning-plan.theory-mastered', evidenceRef: 'mastery:unit:t25-2' },
+    { gate: 'TheoryMastered', source: 'server_backfill', evidenceRef: 'backfill:0022:t25-2b' },
+    { gate: 'code_playable_run_verified', source: 'runner', evidenceRef: 'runner:play:build:t25-3' },
+    { gate: 'code_playable_run_verified', source: 'mentor_review', evidenceRef: 'mentor:review:t25-3b' },
+    { gate: 'review_completed_and_archived', source: 'works.publish-approved', evidenceRef: 'artifact:t25-4' },
+    { gate: 'review_completed_and_archived', source: 'server_backfill', evidenceRef: 'backfill:archive:t25-4b' },
+  ];
+  for (const testCase of cases) {
+    const queues = new Map<unknown, unknown[][]>([
+      [agentTeamRuns, [[fullRunRow()]]],
+      [agentTeamEvents, [[], []]],
+    ]);
+    const { db, probe } = fakeDbWithProbe(queues);
+    const audit = auditSpy();
+    const service = new TeamRuntimeService(db, audit as never, outboxStub);
+    const result = await service.recordGateSatisfied(ADMIN, 'run-1', testCase, `t25-ok-${testCase.gate}-${testCase.source}`);
+    assert.equal(result.gate, testCase.gate);
+    const events = gateEventInserts(probe.inserts);
+    assert.equal(events.length, 1, `${testCase.gate}/${testCase.source} must write exactly one event`);
+    const payload = events[0]?.payload as Record<string, unknown>;
+    assert.equal(payload.evidenceRef, testCase.evidenceRef);
+    assert.equal(payload.source, testCase.source);
+    assert.equal(audit.calls.length, 1);
+    assert.equal((audit.calls[0]?.detail as Record<string, unknown>).source, testCase.source);
+  }
+});
+
+test('T25: internal recordGateForStudent enforces the same whitelist via the same validator', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow({ id: 'run-9', studentUserId: 'stu-1' })]]],
+    [agentTeamEvents, [[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  await assert.rejects(
+    () => service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:check:t25', source: 'works.publish-approved' }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.GATE_SOURCE_NOT_ALLOWED);
+      return true;
+    },
+  );
+  await assert.rejects(
+    () => service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'x:1', source: 'mentor_review' }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.GATE_EVIDENCE_REQUIRED);
+      return true;
+    },
+  );
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal(audit.calls.length, 0);
+  assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 0, 'rejected internal writes must not touch the ledger either');
+});
+
+test('T25: whitelist constant is the single source of truth and live call sites stay inside it', () => {
+  assert.deepEqual(PBL_GATE_SOURCE_WHITELIST, {
+    student_confirmed_intent: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
+    TheoryMastered: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
+    code_playable_run_verified: ['mentor_review', 'runner', 'server_backfill'],
+    review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+  });
+  // 表驱动校验 assertGateEvidenceWritable 本身。
+  assert.deepEqual(assertGateEvidenceWritable('TheoryMastered', '  mastery:unit:77  ', 'mentor_review'), { evidenceRef: 'mastery:unit:77', source: 'mentor_review' });
+  assert.throws(() => assertGateEvidenceWritable('TheoryMastered', 'ok:1', 'mentor_review'), (error: unknown) => ((error as BadRequestException).getResponse() as { code?: string }).code === PBL_TEAM_ERROR_CODES.GATE_EVIDENCE_REQUIRED);
+  // 扫描全仓（team-runtime 自身除外）recordGateForStudent 字面量调用点，
+  // 每个 (gate, source) 组合必须命中白名单；已接线的 projects/works 至少 2 处。
+  const modulesDir = join(repoRoot(), 'services', 'api', 'src', 'modules');
+  const pairs: Array<{ file: string; gate: string; source: string }> = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'team-runtime') walk(full);
+      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) {
+        const text = readFileSync(full, 'utf8');
+        for (const match of text.matchAll(/recordGateForStudent\(\s*\{[\s\S]{0,400}?\}\)/g)) {
+          const body = match[0];
+          const gate = body.match(/gate:\s*'([^']+)'/)?.[1];
+          const source = body.match(/source:\s*'([^']+)'/)?.[1];
+          if (gate !== undefined && source !== undefined) pairs.push({ file: entry.name, gate, source });
+        }
+      }
+    }
+  };
+  walk(modulesDir);
+  assert.ok(pairs.length >= 2, `expected wired call sites (projects/works), found ${pairs.length}`);
+  for (const pair of pairs) {
+    assert.ok(((PBL_GATE_SOURCE_WHITELIST as Record<string, readonly string[]>)[pair.gate] ?? []).includes(pair.source), `call site ${pair.file}: (${pair.gate}, ${pair.source}) outside whitelist`);
+  }
 });
