@@ -123,7 +123,35 @@ export const PBL_TEAM_ERROR_CODES = {
   GATE_WRITE_FORBIDDEN: 'TEAM_GATE_WRITE_FORBIDDEN',
   /** 提交的门禁条件不在冻结枚举内。 */
   GATE_UNKNOWN: 'PBL_GATE_UNKNOWN',
+  /** T25：门禁证据必须携带非空 evidenceRef（trim 后长度 ≥ 8）。 */
+  GATE_EVIDENCE_REQUIRED: 'PBL_GATE_EVIDENCE_REQUIRED',
+  /** T25：source 缺失或不在该门禁的 source 白名单内。 */
+  GATE_SOURCE_NOT_ALLOWED: 'PBL_GATE_SOURCE_NOT_ALLOWED',
 } as const;
+
+/** T25：evidenceRef 最短长度（trim 后）。防止空写/占位写。 */
+export const PBL_GATE_EVIDENCE_REF_MIN_LENGTH = 8;
+
+/**
+ * T25：门禁写入方身份白名单，按 gate 细分（服务端常量表，唯一真源）。
+ *
+ * admin HTTP 端点（POST /admin/agent-runs/:runId/gates）与内部通道
+ * （recordGateForStudent / 账本冲刷的写入方 projects/works/learning-plan/mentor）
+ * 必须使用同一张表：不在对应 gate 的允许集合内 → 400 PBL_GATE_SOURCE_NOT_ALLOWED。
+ * 取值清单（与 T15/T16/T17/T23 接线点逐一核对）：
+ * - projects.confirm-intent        → projects.service.ts 确认意图（T15）
+ * - learning-plan.theory-mastered  → learning-plan 理论掌握（T16）
+ * - works.publish-approved         → works 发布评审通过（T17）
+ * - mentor_review                  → 班主任人工确认（T23b）
+ * - runner                         → 自动运行验证器（code_playable_run_verified 专用）
+ * - server_backfill                → 服务端存量回填（运维，admin-only）
+ */
+export const PBL_GATE_SOURCE_WHITELIST: Record<string, readonly string[]> = {
+  student_confirmed_intent: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
+  TheoryMastered: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
+  code_playable_run_verified: ['mentor_review', 'runner', 'server_backfill'],
+  review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+};
 
 /**
  * F1（独立验证官）修复：`run.context.phase` 是门禁的权威读取源，因此它
