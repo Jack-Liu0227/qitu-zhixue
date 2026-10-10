@@ -3,11 +3,12 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import {
   agentConfigs,
   agentMailboxes,
@@ -16,6 +17,7 @@ import {
   agentTeamMessages,
   agentTeamRuns,
   agentTeamTasks,
+  pblGateEvidence,
   type Database,
   withTransaction,
 } from '@qitu/database';
@@ -489,6 +491,91 @@ export class TeamRuntimeService {
     private readonly outbox: OutboxWriter,
   ) {}
 
+  private readonly logger = new Logger(TeamRuntimeService.name);
+
+  /**
+   * T22：门禁达成事件+审计的唯一写入实现（executor 可为库连接或事务句柄）。
+   * 「确认意图时已有 run」（recordGateForStudent 直写）与「先确认后建 run」
+   * （startRun 冲刷待冲刷账本）两条路径共用本方法，幂等键规则完全一致：
+   * `gate:${studentUserId}:${gate}:${evidenceRef}` → 两条路径不会产生重复事件。
+   */
+  private async writeGateSatisfiedForRun(
+    executor: Parameters<Parameters<Database['transaction']>[0]>[0],
+    runId: string,
+    studentUserId: string,
+    gate: string,
+    evidenceRef: string,
+    source: string,
+    key: string,
+    via: 'direct' | 'ledger_flush',
+  ): Promise<'recorded' | 'already_satisfied'> {
+    const existing = await executor
+      .select({ id: agentTeamEvents.id })
+      .from(agentTeamEvents)
+      .where(and(eq(agentTeamEvents.idempotencyKey, key), eq(agentTeamEvents.topic, PBL_GATE_SATISFIED_TOPIC)))
+      .limit(1);
+    if (existing[0]) return 'already_satisfied';
+    const id = randomUUID();
+    const now = new Date();
+    const phase = GATE_TO_PHASE[gate] as PblPhase;
+    await executor.insert(agentTeamEvents).values({
+      id,
+      runId,
+      taskId: null,
+      topic: PBL_GATE_SATISFIED_TOPIC,
+      sequence: 0,
+      payload: { gate, phase, evidenceRef: evidenceRef || `audit:${key}`, source: source || 'server', via },
+      idempotencyKey: key,
+      occurredAt: now,
+      createdAt: now,
+    }).onConflictDoNothing({ target: agentTeamEvents.idempotencyKey });
+    await this.outbox.write({
+      id: `agent-team-event:${id}`,
+      topic: 'agent.team.event',
+      payload: { eventId: id, runId, taskId: null, topic: PBL_GATE_SATISFIED_TOPIC, payload: { gate, phase, evidenceRef, source, via } },
+    }, executor);
+    await this.audit.write({
+      actorId: PBL_GATE_INTERNAL_ACTOR.id,
+      actorRole: PBL_GATE_INTERNAL_ACTOR.role,
+      action: 'agent.team_gate.satisfied',
+      targetType: 'agent_team_run',
+      targetId: runId,
+      idempotencyKey: key,
+      detail: { studentUserId, gate, evidenceRef: evidenceRef || null, source, via },
+    }, executor);
+    return 'recorded';
+  }
+
+  /**
+   * T22：startRun 事务内物化该生活跃待冲刷证据。
+   * 幂等键与直写路径完全一致；事件已存在（already_satisfied）也照常标记
+   * consumed，账本行不会重复冲刷。
+   */
+  private async flushPendingGateEvidence(
+    tx: Parameters<Parameters<Database['transaction']>[0]>[0],
+    runId: string,
+    studentUserId: string,
+  ): Promise<number> {
+    const rows = await tx
+      .select()
+      .from(pblGateEvidence)
+      .where(and(eq(pblGateEvidence.studentUserId, studentUserId), isNull(pblGateEvidence.consumedAt)))
+      .orderBy(asc(pblGateEvidence.createdAt));
+    if (rows.length === 0) return 0;
+    const consumedAt = new Date();
+    let flushed = 0;
+    for (const row of rows) {
+      const key = normalizeKey(`gate:${studentUserId}:${row.gate}:${row.evidenceRef}`, 'team-gate');
+      await this.writeGateSatisfiedForRun(tx, runId, studentUserId, row.gate, row.evidenceRef, row.source, key, 'ledger_flush');
+      await tx
+        .update(pblGateEvidence)
+        .set({ consumedRunId: runId, consumedAt })
+        .where(eq(pblGateEvidence.id, row.id));
+      flushed += 1;
+    }
+    return flushed;
+  }
+
   async startRun(actor: CurrentUser, input: StartTeamRunInput) {
     // F1：在任何数据库操作之前拒绝客户端提交的阶段/门禁字段（被拒 → 0 insert），
     // 并只保留白名单内的非状态字段。
@@ -569,6 +656,26 @@ export class TeamRuntimeService {
           idempotencyKey: key,
           detail: { leaderAgentId, studentUserId, trigger: input.trigger ?? 'tutor.turn' },
         }, tx);
+        // T22：同一事务内物化该生的待冲刷门禁账本（先确认后建 run 的时序
+        // 死锁修复）。SAVEPOINT 隔离：冲刷失败只回滚冲刷段，run 照常创建；
+        // 失败必须记日志，不得静默吞。
+        if (studentUserId !== null) {
+          try {
+            await tx.execute(sql`SAVEPOINT pbl_gate_flush`);
+            const flushed = await this.flushPendingGateEvidence(tx, id, studentUserId);
+            await tx.execute(sql`RELEASE SAVEPOINT pbl_gate_flush`);
+            if (flushed > 0) {
+              this.logger.log(`PBL 待冲刷门禁已物化：run=${id}，学生=${studentUserId}，共 ${flushed} 条`);
+            }
+          } catch (error) {
+            try {
+              await tx.execute(sql`ROLLBACK TO SAVEPOINT pbl_gate_flush`);
+            } catch {
+              // 保存点回滚失败不阻断 run 创建；错误已在下方日志。
+            }
+            this.logger.error(`PBL 门禁账本冲刷失败（run=${id}，学生=${studentUserId}），run 创建不受影响：${String(error)}`);
+          }
+        }
       });
     } catch (error) {
       // F2 DB 层兜底：并发的第二个 startRun 通过了上面的 check-then-insert，
@@ -818,7 +925,7 @@ export class TeamRuntimeService {
     evidenceRef: string;
     source: string;
     idempotencyKey?: string;
-  }): Promise<{ status: 'recorded' | 'already_satisfied' | 'skipped'; runId: string | null; gate: string; reason?: string }> {
+  }): Promise<{ status: 'recorded' | 'already_satisfied' | 'deferred'; runId: string | null; gate: string; reason?: string }> {
     // 非法 gate 在任何写入之前拒绝（0 事件 0 审计）。
     const gate = input.gate?.trim();
     if (!gate || !KNOWN_PBL_GATES.has(gate)) {
@@ -830,7 +937,8 @@ export class TeamRuntimeService {
     if (!studentUserId) throw new BadRequestException({ code: 'TEAM_GATE_STUDENT_REQUIRED', message: '缺少 studentUserId' });
     const key = normalizeKey(input.idempotencyKey?.trim() || `gate:${studentUserId}:${gate}:${evidenceRef}`, 'team-gate');
 
-    // 活跃 run：复用 startRun 的谓词写法，不造第二套。
+    // T22：无活跃 run 不再丢弃证据，而是落待冲刷账本（域侧完全不感知 run）。
+    // 记账失败也绝不影响业务域：best-effort + 记日志，返回值仍为 deferred。
     const [run] = await db
       .select()
       .from(agentTeamRuns)
@@ -840,34 +948,39 @@ export class TeamRuntimeService {
       ))
       .orderBy(asc(agentTeamRuns.createdAt))
       .limit(1);
-    if (!run) return { status: 'skipped', runId: null, gate, reason: 'no_active_run' };
+    if (!run) {
+      try {
+        await db
+          .insert(pblGateEvidence)
+          .values({
+            id: `pblge-${randomUUID()}`,
+            studentUserId,
+            gate,
+            evidenceRef,
+            source: input.source,
+          })
+          .onConflictDoNothing({
+            target: [pblGateEvidence.studentUserId, pblGateEvidence.gate, pblGateEvidence.evidenceRef],
+          });
+      } catch (error) {
+        // 记账失败不抛错不回滚调用方业务；但不得静默吞。
+        this.logger.error(`PBL 待冲刷门禁账本写入失败（学生 ${studentUserId}，门禁 ${gate}）：${String(error)}`);
+      }
+      return { status: 'deferred', runId: null, gate, reason: 'pending_gate_evidence' };
+    }
 
-    // 真幂等：同键已有门禁达成事件 → 不重复写事件、不重复写审计。
-    const existing = await db
-      .select({ id: agentTeamEvents.id })
-      .from(agentTeamEvents)
-      .where(and(eq(agentTeamEvents.idempotencyKey, key), eq(agentTeamEvents.topic, PBL_GATE_SATISFIED_TOPIC)))
-      .limit(1);
-    if (existing[0]) return { status: 'already_satisfied', runId: run.id, gate };
-
-    const phase = GATE_TO_PHASE[gate] as PblPhase;
-    await this.recordEvent({
-      runId: run.id,
-      taskId: null,
-      topic: PBL_GATE_SATISFIED_TOPIC,
-      payload: { gate, phase, evidenceRef: evidenceRef || `audit:${key}`, source: input.source || 'server' },
-      idempotencyKey: key,
-    });
-    await this.audit.write({
-      actorId: PBL_GATE_INTERNAL_ACTOR.id,
-      actorRole: PBL_GATE_INTERNAL_ACTOR.role,
-      action: 'agent.team_gate.satisfied',
-      targetType: 'agent_team_run',
-      targetId: run.id,
-      idempotencyKey: key,
-      detail: { studentUserId, gate, evidenceRef: evidenceRef || null, source: input.source },
-    });
-    return { status: 'recorded', runId: run.id, gate };
+    // 已有活跃 run：走与冲刷完全相同的写入实现（同一幂等键规则），不写账本。
+    const outcome = await this.writeGateSatisfiedForRun(
+      db as unknown as Parameters<Parameters<Database['transaction']>[0]>[0],
+      run.id,
+      studentUserId,
+      gate,
+      evidenceRef,
+      input.source,
+      key,
+      'direct',
+    );
+    return { status: outcome, runId: run.id, gate };
   }
 
   /** 读回当前阶段与服务端门禁状态（客户端只能读，不能写）。 */

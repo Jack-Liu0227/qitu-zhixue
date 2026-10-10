@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
-import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, type Database } from '@qitu/database';
+import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, pblGateEvidence, type Database } from '@qitu/database';
 import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
@@ -380,7 +380,15 @@ test('startRun replays the existing active run for the same mentor + session + p
 /* ------------------------------------------------------------------ */
 
 function fakeDbWithProbe(queues: Map<unknown, unknown[][]>, options: { insertFailures?: unknown[] } = {}) {
-  const probe = { selectCalls: 0, insertCalls: 0, transactionCalls: 0, inserts: [] as unknown[], updates: [] as Record<string, unknown>[] };
+  const probe = {
+    selectCalls: 0,
+    insertCalls: 0,
+    transactionCalls: 0,
+    inserts: [] as unknown[],
+    updates: [] as Record<string, unknown>[],
+    insertTables: [] as unknown[],
+    conflicts: [] as unknown[],
+  };
   const failures = [...(options.insertFailures ?? [])];
   const db: Record<string, unknown> = {
     select: () => {
@@ -389,12 +397,15 @@ function fakeDbWithProbe(queues: Map<unknown, unknown[][]>, options: { insertFai
         from: (table: unknown) => {
           const queue = queues.get(table);
           const rows = queue && queue.length > 0 ? queue.shift() : [];
+          // T22：队列项允许塞 Error，用于验证「冲刷失败不回滚建 run」。
+          if (rows instanceof Error) throw rows;
           return makeChain(rows ?? []);
         },
       };
     },
-    insert: () => {
+    insert: (table: unknown) => {
       probe.insertCalls += 1;
+      probe.insertTables.push(table);
       const failure = failures.shift();
       if (failure !== undefined) {
         return {
@@ -406,14 +417,22 @@ function fakeDbWithProbe(queues: Map<unknown, unknown[][]>, options: { insertFai
       }
       // 兼容 `values(...).onConflictDoNothing(...)`（直接 await）与
       // `values(...).onConflictDoNothing(...).returning(...)` 两种链式形状。
+      // returning 必须返回非空行：否则 startRun/delegate 会把插入当成
+      // 「幂等冲突被跳过」（inserted.length === 0）而提前 return，
+      // 永远不会走到 T22 的账本冲刷段。
       const tail: Record<string, unknown> = {
-        returning: () => Promise.resolve([]),
+        returning: () => Promise.resolve([{ id: 'fake-inserted-row' }]),
         then: (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => Promise.resolve([]).then(onFulfilled, onRejected),
       };
       return {
         values: (recordValue: unknown) => {
           probe.inserts.push(recordValue);
-          return { onConflictDoNothing: () => tail };
+          return {
+            onConflictDoNothing: (cfg?: unknown) => {
+              probe.conflicts.push(cfg);
+              return tail;
+            },
+          };
         },
       };
     },
@@ -930,18 +949,26 @@ function gateEventInserts(inserts: unknown[]) {
   return inserts.filter((recordValue) => (recordValue as Record<string, unknown> | null)?.topic === 'team.gate.satisfied') as Record<string, unknown>[];
 }
 
-test('recordGateForStudent: no active run → skipped, zero events, zero audits, never throws', async () => {
+test('recordGateForStudent: no active run → deferred 记账到待冲刷账本，零事件零审计，永不抛错；重复记账靠唯一索引仍只有一行', async () => {
   const queues = new Map<unknown, unknown[][]>([
-    [agentTeamRuns, [[]]],
+    [agentTeamRuns, [[], []]],
   ]);
-  const { service, probe, audit } = newServiceWithProbe(queues);
-  const result = await service.recordGateForStudent({
-    studentUserId: 'stu-1',
-    gate: 'TheoryMastered',
-    evidenceRef: 'mastery:check:1',
-    source: 'mastery.theory-check',
-  });
-  assert.deepEqual(result, { status: 'skipped', runId: null, gate: 'TheoryMastered', reason: 'no_active_run' });
+  // 第二次账本插入模拟唯一索引 23505 冲突：必须被吞掉且仍返回 deferred（记账失败不得影响业务域）。
+  const { db, probe } = fakeDbWithProbe(queues, { insertFailures: [undefined, uniqueViolation23505()] });
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:check:1', source: 'mastery.theory-check' };
+  const result = await service.recordGateForStudent(input);
+  assert.deepEqual(result, { status: 'deferred', runId: null, gate: 'TheoryMastered', reason: 'pending_gate_evidence' });
+  const second = await service.recordGateForStudent(input);
+  assert.deepEqual(second, { status: 'deferred', runId: null, gate: 'TheoryMastered', reason: 'pending_gate_evidence' });
+  // 两次尝试都打到同一张账本表；DB 层由唯一索引去重 → 一活行。第一次尝试
+  // 必须声明幂等目标三元组 (student_user_id, gate, evidence_ref)；第二次在
+  // values() 处即抛 23505（唯一索引冲突的真实形状），不会走到 onConflictDoNothing。
+  const ledgerInserts = probe.inserts.filter((recordValue) => (recordValue as Record<string, unknown> | null)?.gate === 'TheoryMastered' && !(recordValue as Record<string, unknown>)?.topic);
+  assert.equal(ledgerInserts.length, 2);
+  assert.equal(probe.conflicts.length, 1, 'first ledger insert must use onConflictDoNothing');
+  assert.deepEqual((probe.conflicts[0] as { target?: unknown }).target, [pblGateEvidence.studentUserId, pblGateEvidence.gate, pblGateEvidence.evidenceRef]);
   assert.equal(gateEventInserts(probe.inserts).length, 0);
   assert.equal(audit.calls.length, 0);
 });
@@ -985,8 +1012,8 @@ test('recordGateForStudent: same inputs replay as already_satisfied without seco
   const run = fullRunRow({ id: 'run-9', studentUserId: 'stu-1' });
   const queues = new Map<unknown, unknown[][]>([
     [agentTeamRuns, [[run], [run]]],
-    // 第一次调用：existing [] + recordEvent 内部查重 []；第二次调用：existing [{id}] → 提前返回。
-    [agentTeamEvents, [[], [], [{ id: 'ev-gate-1' }]]],
+    // 统一写入路径后每次调用只做一次同键查重：第一次 [] → 插入；第二次命中 [{id}] → already_satisfied。
+    [agentTeamEvents, [[], [{ id: 'ev-gate-1' }]]],
   ]);
   const { service, probe, audit } = newServiceWithProbe(queues);
   const input = { studentUserId: 'stu-1', gate: 'TheoryMastered' as const, evidenceRef: 'mastery:check:7', source: 'mastery.theory-check' };
@@ -1036,9 +1063,179 @@ test('recordGateForStudent: different evidenceRef are different evidence, each r
   assert.equal(audit.calls.length, 2);
 });
 
-test('recordGateForStudent is internal-only: team-runtime.controller.ts never references it', () => {
+test('recordGateForStudent is internal-only: team-runtime.controller.ts never references it or the ledger', () => {
   const controllerPath = join(repoRoot(), 'services', 'api', 'src', 'modules', 'team-runtime', 'team-runtime.controller.ts');
   assert.ok(existsSync(controllerPath), 'controller source must exist at ' + controllerPath);
   const src = readFileSync(controllerPath, 'utf8');
   assert.equal(src.includes('recordGateForStudent'), false, 'no HTTP route may expose recordGateForStudent');
+  assert.equal(src.includes('pblGateEvidence'), false, 'no HTTP route may expose the pending gate ledger');
+  assert.equal(src.includes('pbl_gate_evidence'), false, 'no HTTP route may name the ledger table');
+  assert.equal(src.includes('flushPending'), false, 'no HTTP route may trigger the flush');
+});
+
+
+/* ------------------------------------------------------------------ */
+/* T22：待冲刷账本 → startRun 物化（解「先确认后建 run」永久 409 死锁）  */
+/* ------------------------------------------------------------------ */
+
+function ledgerRow(over: Record<string, unknown> = {}) {
+  return {
+    id: 'pblge-1',
+    studentUserId: 'stu-1',
+    gate: 'student_confirmed_intent',
+    evidenceRef: 'intent_confirmation:abc',
+    source: 'projects.confirm-intent',
+    createdAt: new Date('2026-11-06T00:00:00.000Z'),
+    consumedRunId: null,
+    consumedAt: null,
+    ...over,
+  };
+}
+
+test('T22 main regression: deferred ledger row → startRun flushes it → gate satisfied → advancePhase exploration→concept_mastery succeeds', async () => {
+  const created = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { topic: 'thunder-fighter', phase: 'exploration' } });
+  const conceptRun = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'running', context: { topic: 'thunder-fighter', phase: 'concept_mastery' } });
+  const flushedGateEvent = { payload: { gate: 'student_confirmed_intent', phase: 'exploration', evidenceRef: 'intent_confirmation:abc', source: 'projects.confirm-intent', via: 'ledger_flush' } };
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [
+      [],                     // p1 recordGateForStudent 活跃 run 查询 → 无
+      [],                     // p2 startRun 幂等查询
+      [],                     // p2 startRun 活跃 run 查询
+      [created],              // p2 事务后回读
+      [created],              // p3 getPhaseStatus
+      [created],              // p4 advancePhase getRunRow
+      [conceptRun],           // p4 推进后回读
+    ]],
+    [agentTeamEvents, [
+      [],                     // p2 冲刷查重：无同键事件 → 插入
+      [flushedGateEvent],     // p3 loadSatisfiedGates
+      [flushedGateEvent],     // p4 loadSatisfiedGates
+      [],                     // p4 recordEvent(phase_advanced) 查重
+    ]],
+    [pblGateEvidence, [[ledgerRow()]]], // p2 冲刷 select
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+
+  // p1：无 run → deferred 落账本 1 行。
+  const deferred = await service.recordGateForStudent({
+    studentUserId: 'stu-1',
+    gate: 'student_confirmed_intent',
+    evidenceRef: 'intent_confirmation:abc',
+    source: 'projects.confirm-intent',
+  });
+  assert.equal(deferred.status, 'deferred');
+  assert.equal(deferred.reason, 'pending_gate_evidence');
+  assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 1);
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+
+  // p2：startRun 建 run 并在同一事务内物化账本。
+  const actor: CurrentUser = { id: 'stu-1', email: '', displayName: '', role: 'student' };
+  const runView = await service.startRun(actor, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-1',
+    context: { topic: 'thunder-fighter' },
+    idempotencyKey: 't22-run-1',
+  });
+  assert.equal(runView.id, 'run-1');
+  const flushEvents = gateEventInserts(probe.inserts);
+  assert.equal(flushEvents.length, 1, 'ledger flush must write exactly one gate event');
+  const flushEvent = flushEvents[0] as Record<string, unknown>;
+  assert.equal(flushEvent.idempotencyKey, 'gate:stu-1:student_confirmed_intent:intent_confirmation:abc');
+  const flushPayload = flushEvent.payload as Record<string, unknown>;
+  assert.equal(flushPayload.via, 'ledger_flush');
+  assert.equal(flushPayload.gate, 'student_confirmed_intent');
+  // 冲刷成功后 consumed_run_id/consumed_at 落值，且 run_id 与事件 runId 一致。
+  const consumedUpdate = probe.updates.find((patchValue) => 'consumedRunId' in patchValue) as Record<string, unknown> | undefined;
+  assert.ok(consumedUpdate, 'ledger row must be marked consumed');
+  assert.equal(consumedUpdate.consumedRunId, flushEvent.runId);
+  assert.equal(typeof consumedUpdate.consumedAt, 'object');
+
+  // p3：阶段状态里 satisfiedGates 已包含该门禁。
+  const status = await service.getPhaseStatus(actor, 'run-1');
+  assert.deepEqual(status.satisfiedGates, ['student_confirmed_intent']);
+  assert.equal(status.phase, 'exploration');
+  assert.equal(status.nextPhase, 'concept_mastery');
+  assert.equal(status.requiredGateForNext, null);
+
+  // p4：探索 → 概念掌握推进成功（死锁已解）。
+  const advanced = await service.advancePhase(actor, 'run-1', {
+    targetPhase: 'concept_mastery',
+    trigger: 'manual',
+    idempotencyKey: 't22-advance-1',
+  });
+  assert.equal(advanced.phase, 'concept_mastery');
+  assert.equal(advanced.previousPhase, 'exploration');
+  // 审计：账本冲刷路径恰 1 条，detail.via='ledger_flush'。
+  const gateAudits = audit.calls.filter((entry) => entry.action === 'agent.team_gate.satisfied');
+  assert.equal(gateAudits.length, 1);
+  assert.equal((gateAudits[0] as { detail?: Record<string, unknown> }).detail?.via, 'ledger_flush');
+});
+
+test('T22: direct recorded path never writes the ledger (no double-path duplication)', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow({ id: 'run-9', studentUserId: 'stu-1' })]]],
+    [agentTeamEvents, [[]]],
+  ]);
+  const { service, probe } = newServiceWithProbe(queues);
+  const result = await service.recordGateForStudent({
+    studentUserId: 'stu-1',
+    gate: 'TheoryMastered',
+    evidenceRef: 'mastery:check:9',
+    source: 'mastery.theory-check',
+  });
+  assert.equal(result.status, 'recorded');
+  assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 0);
+});
+
+test('T22: a second startRun after terminal does not re-emit the same-key gate event', async () => {
+  const runA = fullRunRow({ id: 'run-a', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const runB = fullRunRow({ id: 'run-b', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')], [agentRow('leader-a')]]],
+    [agentTeamRuns, [
+      [], [], [runA],   // 第一次 startRun：幂等 / 活跃 / 回读
+      [], [], [runB],   // 第二次 startRun（前一个已终态，活跃查询为空）
+    ]],
+    [agentTeamEvents, [[], []]], // 两次冲刷各自的同键查重（此处均返回空行但账本只有一行未消费）
+    [pblGateEvidence, [[ledgerRow()], []]], // 第一次有账本；第二次已 consumed（空）
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-1' });
+  await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-2' });
+  assert.equal(gateEventInserts(probe.inserts).length, 1, 'flushed exactly once across two runs');
+  assert.equal(probe.updates.filter((patchValue) => 'consumedRunId' in patchValue).length, 1);
+});
+
+test('T22: flush failure is logged and must not roll back or block run creation', async () => {
+  const created = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [[], [], [created]]],
+    // 队列项本身必须是 Error（shift 后直接 instanceof Error → select 抛出）。
+    [pblGateEvidence, [new Error('simulated ledger read failure') as unknown as unknown[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  const logged: string[] = [];
+  const original = Logger.prototype.error;
+  Logger.prototype.error = ((message: unknown) => {
+    logged.push(String(message));
+    return true;
+  }) as typeof Logger.prototype.error;
+  try {
+    const runView = await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-flush-fail' });
+    assert.equal(runView.id, 'run-1', 'run must still be created when the flush fails');
+  } finally {
+    Logger.prototype.error = original;
+  }
+  assert.equal(logged.some((line) => line.includes('冲刷失败')), true, 'flush failure must be logged, not silently swallowed');
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal(probe.updates.filter((patchValue) => 'consumedRunId' in patchValue).length, 0, 'failed flush must not mark ledger consumed');
 });
