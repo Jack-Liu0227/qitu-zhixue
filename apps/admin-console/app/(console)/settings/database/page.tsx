@@ -5,7 +5,6 @@ import { InfoRow, SectionCard } from '@qitu/ui';
 import type { AdminRuntimeSnapshot } from '@qitu/contracts';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 import { InitializationCheckBadge, RuntimeHealthBadge, databaseLabel, dataModeLabel } from '../../../../lib/components/RuntimeViews';
 
 export default function AdminDatabasePage() {
@@ -27,12 +26,11 @@ export default function AdminDatabasePage() {
 
   useEffect(() => { void load(); }, [load]);
   const state = AdminStateViews({ loading, error, onRetry: load });
-  if (state) return <div className="admin-settings-page"><SettingsSubNav />{state}</div>;
+  if (state) return <div className="admin-settings-page">{state}</div>;
   if (!snapshot) return null;
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
       <div className="admin-page-header">
         <div className="admin-page-header-title"><h1>数据库与初始化</h1><RuntimeHealthBadge health={snapshot.initialization.overall} /></div>
         <p>数据库 schema 由部署或 CLI 运维流程管理。Admin 只查看连接、初始化和迁移证据，不通过 HTTP 执行迁移。</p>

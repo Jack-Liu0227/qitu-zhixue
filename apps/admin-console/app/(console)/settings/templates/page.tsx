@@ -5,7 +5,6 @@ import { EmptyState, InfoRow, SectionCard } from '@qitu/ui';
 import type { AdminProjectTemplate } from '../../../../lib/api/content';
 import { fetchAdminTemplates } from '../../../../lib/api/content';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: '草稿',
@@ -33,11 +32,10 @@ export default function AdminTemplatesPage() {
 
   useEffect(() => { void load(); }, [load]);
   const state = AdminStateViews({ loading, error, onRetry: load });
-  if (state) return <div className="admin-settings-page"><SettingsSubNav />{state}</div>;
+  if (state) return <div className="admin-settings-page">{state}</div>;
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
       <div className="admin-page-header">
         <div className="admin-page-header-title"><h1>项目模板库</h1></div>
         <p>Admin 统一维护项目式学习模板。发布后的版本冻结，Tutor Agent 只能读取已发布版本。</p>

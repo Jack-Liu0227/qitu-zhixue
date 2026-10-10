@@ -332,35 +332,6 @@ body { min-height: 100vh; }
   line-height: 1.5;
 }
 .admin-settings-quick-status { display: flex; flex-wrap: wrap; gap: 8px; }
-.admin-settings-subnav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--qitu-border);
-}
-.admin-settings-subnav-item {
-  padding: 6px 14px;
-  border: 1px solid var(--qitu-border);
-  border-radius: 6px;
-  background: white;
-  color: var(--qitu-text);
-  font-size: 0.88rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.15s;
-}
-.admin-settings-subnav-item:hover {
-  border-color: #2878f0;
-  color: #2878f0;
-}
-.admin-settings-subnav-item.is-active {
-  background: #2878f0;
-  border-color: #2878f0;
-  color: white;
-}
-
 /* ---- 模型供应商 / Agent 模型配置通用 ---- */
 .admin-form-actions {
   display: flex;

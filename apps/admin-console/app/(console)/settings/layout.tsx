@@ -18,8 +18,9 @@ interface NavGroup {
 
 const SETTINGS_NAV: NavGroup[] = [
   {
-    group: '账户',
+    group: '工作区',
     items: [
+      { href: '/settings', label: '设置总览', icon: '⌂' },
       { href: '/settings/account', label: '账号设置', icon: '👤' },
     ],
   },
@@ -28,15 +29,24 @@ const SETTINGS_NAV: NavGroup[] = [
     items: [
       { href: '/settings/assistants', label: '助手', icon: '🤖' },
       { href: '/settings/teams', label: '团队', icon: '👥' },
-      { href: '/settings/models', label: '模型', icon: '☁️' },
-      { href: '/settings/skills', label: '技能', icon: '⚡' },
+      { href: '/settings/model-providers', label: '模型', icon: '◈' },
+      { href: '/settings/ai-runtime', label: 'AI 运行时', icon: '⌁' },
+      { href: '/settings/skills', label: '技能', icon: 'ϟ' },
       { href: '/settings/tools', label: '工具', icon: '🧰' },
+    ],
+  },
+  {
+    group: '内容与数据',
+    items: [
+      { href: '/settings/knowledge', label: '知识库', icon: '▤' },
+      { href: '/settings/templates', label: '模板库', icon: '▦' },
+      { href: '/settings/database', label: '数据库', icon: '◫' },
     ],
   },
   {
     group: '应用',
     items: [
-      { href: '/settings/appearance', label: '外观', icon: '🖥️' },
+      { href: '/settings/appearance', label: '外观', icon: '◐' },
       { href: '/settings/ops', label: '沉浸运维', icon: '🌐' },
       { href: '/settings/system', label: '系统', icon: '⚙️' },
     ],
@@ -44,7 +54,7 @@ const SETTINGS_NAV: NavGroup[] = [
   {
     group: '供应商',
     items: [
-      { href: '/settings/dialogs', label: '已安装的对话', icon: '💬' },
+      { href: '/settings/dialogs', label: '已安装的对话', icon: '◌' },
     ],
   },
   {
@@ -72,9 +82,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     if (href === '/settings/teams') {
       return internal === '/settings/teams' || internal.startsWith('/settings/teams/');
     }
-    if (href === '/settings/models') {
-      return internal === '/settings/models' || internal.startsWith('/settings/models/') || internal === '/settings/model-providers' || internal === '/settings';
-    }
+    if (href === '/settings') return internal === '/settings';
     return internal === href || internal.startsWith(`${href}/`);
   };
 

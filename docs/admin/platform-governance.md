@@ -36,3 +36,6 @@
 运行时页面集中展示根目录 `AGENTS.md`、已加载 Skills、Agent-local `AGENTS.md`、直接选择的供应商与模型、显式 Skill/Tool/MCP 绑定和初始化检查。开发协作目录（例如 `.pi`）不自动进入 Tutor runtime。
 
 Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不默认继承 Tool/MCP；Skill 继承必须显式声明。模型调用前服务端重新解析 Agent 配置，客户端不能直接写入模型决策、项目状态或成长档案。
+<!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
+
+The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.

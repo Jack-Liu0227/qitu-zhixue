@@ -5,7 +5,6 @@ import { EmptyState, InfoRow, SectionCard } from '@qitu/ui';
 import type { AdminKnowledgeDocument } from '../../../../lib/api/content';
 import { fetchAdminKnowledge } from '../../../../lib/api/content';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: '草稿',
@@ -32,11 +31,10 @@ export default function AdminKnowledgePage() {
 
   useEffect(() => { void load(); }, [load]);
   const state = AdminStateViews({ loading, error, onRetry: load });
-  if (state) return <div className="admin-settings-page"><SettingsSubNav />{state}</div>;
+  if (state) return <div className="admin-settings-page">{state}</div>;
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
       <div className="admin-page-header">
         <div className="admin-page-header-title"><h1>知识库</h1></div>
         <p>由 Admin 统一维护的已登记知识文档。Tutor 只读取经过授权和校验的证据摘要，不直接读取数据库。</p>

@@ -42,7 +42,6 @@ import {
 } from '../../../../lib/api/agentTeam';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { DataSourceBadge } from '../../../../lib/components/DataSourceBadge';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 import './ai-runtime.css';
 import {
   InitializationCheckBadge,
@@ -818,7 +817,6 @@ export default function AdminRuntimePage() {
         : AdminStateViews({ loading, error, onRetry: load });
     return (
       <div className="admin-settings-page">
-        <SettingsSubNav />
         {stateView}
       </div>
     );
@@ -828,8 +826,6 @@ export default function AdminRuntimePage() {
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
-
       <div className="admin-page-header">
         <div className="admin-page-header-title">
           <h1>AI 运行时与初始化</h1>

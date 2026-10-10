@@ -5,7 +5,6 @@ import type { AdminRuntimeAgent, AdminRuntimeAgentUpdateRequest, AdminRuntimeSna
 import { fetchAdminAssistants, updateAdminAssistant, createAdminAssistant } from '../../../../lib/api/assistants';
 import { newIdempotencyKey, testModelConnection } from '../../../../lib/api/modelRegistry';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
 type Draft = {
   id: string;
@@ -136,11 +135,10 @@ export default function AdminAssistantsPage() {
   }
 
   const stateView = AdminStateViews({ loading, error, onRetry: load });
-  if (stateView) return <div className="admin-settings-page"><SettingsSubNav />{stateView}</div>;
+  if (stateView) return <div className="admin-settings-page">{stateView}</div>;
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
       <div className="admin-page-header">
         <div className="admin-page-header-title"><div><h1>助手运行时</h1><p>所有助手来自服务端 Agent 配置；模型、技能和协同路由由后端校验后生效。</p></div></div>
         <div className="admin-page-header-actions">

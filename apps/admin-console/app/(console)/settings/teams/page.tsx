@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchAdminTeams, updateAgentRoute, startTeamRun, delegateTeamTask, fetchTeamRun, type TeamRuntimeSnapshot, type AgentGraphEdge } from '../../../../lib/api/teams';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
 export default function AdminTeamsPage() {
   const [data, setData] = useState<TeamRuntimeSnapshot | null>(null);
@@ -55,11 +54,10 @@ export default function AdminTeamsPage() {
   }
 
   const stateView = AdminStateViews({ loading, error, onRetry: load });
-  if (stateView) return <div className="admin-settings-page"><SettingsSubNav />{stateView}</div>;
+  if (stateView) return <div className="admin-settings-page">{stateView}</div>;
 
   return (
     <div className="admin-settings-page">
-      <SettingsSubNav />
       <div className="admin-page-header">
         <div className="admin-page-header-title"><div><h1>团队协作运行时</h1><p>团队由服务端 Agent 节点与显式路由组成。测试会真实创建 Team Run、投递任务并读取持久化状态。</p></div></div>
         <div className="admin-page-header-actions"><input className="admin-search-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索 Agent 或职责" /><button type="button" className="settings-action-btn is-primary" disabled={testRunning} onClick={() => void runCollaborationTest()}>{testRunning ? '执行中…' : '运行协同测试'}</button></div>

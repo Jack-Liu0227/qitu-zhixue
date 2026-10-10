@@ -4,7 +4,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormE
 import type { AdminProvidersResponse, ConnectionTestResponse, ModelApi, ModelDescriptor, ProviderConfigPublic, ProviderPreset, UpsertProviderRequest } from '@qitu/contracts';
 import { createManualModel, fetchProviders, newIdempotencyKey, refreshProvider, testModelConnection, testProviderConnection, upsertProvider } from '../../../../lib/api/modelRegistry';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { SettingsSubNav } from '../../../../lib/components/SettingsSubNav';
 
 const API_OPTIONS: Array<{ value: ModelApi; label: string }> = [
   { value: 'openai-completions', label: 'OpenAI Chat Completions' },
@@ -82,7 +81,7 @@ function ModelQuickAdd({ provider, onAdded }: { provider: ProviderConfigPublic; 
   return <form className="provider-model-add" onSubmit={submit}><input value={modelId} onChange={(event) => setModelId(event.target.value)} placeholder="上游模型 ID" /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="展示名" /><button type="submit" className="settings-pill-btn" disabled={saving}>{saving ? '添加中…' : '添加模型'}</button>{error ? <small className="qitu-field-error">{error}</small> : null}</form>;
 }
 
-export default function AdminModelProvidersPage() {
+export default function AdminModelPage() {
   const [data, setData] = useState<AdminProvidersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -111,11 +110,11 @@ export default function AdminModelProvidersPage() {
   async function bulkSetEnabled(enabled: boolean) { if (selected.size === 0) return; setBulkSaving(true); try { await Promise.all([...selected].map(async (id) => { const provider = data?.providers.find((item) => item.id === id); if (!provider) return; const updated = await upsertProvider(provider.id, { name: provider.name, baseUrl: provider.baseUrl, api: provider.api, authHeader: provider.authHeader, enabled } as UpsertProviderRequest, newIdempotencyKey()); replaceProvider(updated); })); setSelected(new Set()); } catch (cause) { setError(cause instanceof Error ? cause : new Error('批量更新失败')); } finally { setBulkSaving(false); } }
 
   const stateView = AdminStateViews({ loading, error, onRetry: load });
-  if (stateView) return <div className="admin-settings-page"><SettingsSubNav />{stateView}</div>;
+  if (stateView) return <div className="admin-settings-page">{stateView}</div>;
   if (!data) return null;
   const allSelected = providers.length > 0 && providers.every((provider) => selected.has(provider.id));
 
-  return <div className="admin-settings-page"><SettingsSubNav />
+  return <div className="admin-settings-page">
     <div className="admin-page-header"><div className="admin-page-header-title"><div><h1>模型供应商</h1><p>参考 NewAPI 频道管理：一行一个网关，模型目录、协议、状态和真实连通性集中管理。</p></div></div><div className="admin-page-header-actions"><button type="button" className="settings-action-btn is-primary" onClick={() => setEditing({})}>新建供应商</button></div></div>
     <div className="provider-stats"><div><strong>{data.providers.length}</strong><span>供应商</span></div><div><strong>{data.providers.filter((provider) => provider.enabled).length}</strong><span>运行中</span></div><div><strong>{data.providers.reduce((count, provider) => count + provider.models.length, 0)}</strong><span>已登记模型</span></div><div><strong>{data.providers.filter((provider) => provider.lastError).length}</strong><span>同步异常</span></div></div>
     <div className="provider-toolbar"><input className="admin-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索 ID、名称、地址或模型" /><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">全部状态</option><option value="enabled">运行中</option><option value="disabled">已停用</option><option value="error">同步异常</option></select><select value={apiFilter} onChange={(event) => setApiFilter(event.target.value as typeof apiFilter)}><option value="all">全部协议</option>{API_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{selected.size > 0 ? <><button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(true)}>批量启用</button><button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(false)}>批量停用</button></> : null}</div>
