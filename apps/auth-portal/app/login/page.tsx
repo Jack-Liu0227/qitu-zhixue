@@ -74,6 +74,38 @@ function makeIdempotencyKey(): string {
   return `login-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+async function requestLogin(body: LoginRequest, idempotencyKey: string): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey,
+        },
+        credentials: 'include',
+        signal: controller.signal,
+        body: JSON.stringify(body),
+      });
+      if (attempt < 2 && [502, 503, 504].includes(response.status)) {
+        await new Promise((resolve) => window.setTimeout(resolve, 450 * (attempt + 1)));
+        continue;
+      }
+      return response;
+    } catch (cause) {
+      lastError = cause;
+      if (attempt === 2) throw cause;
+      await new Promise((resolve) => window.setTimeout(resolve, 450 * (attempt + 1)));
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('登录请求失败');
+}
+
 type SubmitStatus = 'idle' | 'submitting' | 'error';
 type ErrorKind = 'invalid' | 'role' | 'network' | 'rate' | 'other' | null;
 
@@ -84,6 +116,13 @@ const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
   rate: '尝试过于频繁，请稍后再试。',
   other: '登录失败，请稍后重试。',
 };
+
+function getErrorMessage(kind: Exclude<ErrorKind, null>): string {
+  if (kind === 'network' && typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return '当前服务只配置了 HTTP，请使用 http:// 地址访问登录页。';
+  }
+  return ERROR_MESSAGES[kind];
+}
 
 export default function LoginPage() {
   const [role, setRole] = useState<LoginRole>('student');
@@ -175,19 +214,11 @@ export default function LoginPage() {
 
     const idempotencyKey = makeIdempotencyKey();
     try {
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'X-Idempotency-Key': idempotencyKey,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-          rememberMe: rememberAccount,
-        } satisfies LoginRequest),
-      });
+      const response = await requestLogin({
+        email,
+        password,
+        rememberMe: rememberAccount,
+      }, idempotencyKey);
 
       const payload = (await response.json().catch(() => null)) as {
         data?: LoginResponse;
@@ -376,7 +407,7 @@ export default function LoginPage() {
 
           {status === 'error' && errorKind ? (
             <p className="login-error" role="alert">
-              {ERROR_MESSAGES[errorKind]}
+              {getErrorMessage(errorKind)}
             </p>
           ) : null}
 
