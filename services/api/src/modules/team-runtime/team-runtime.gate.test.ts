@@ -903,3 +903,142 @@ test('migration 0021 pins the active-mentor partial unique index; journal monoto
   assert.match(schema, /uniqueIndex\('agent_team_runs_active_mentor_unique_idx'\)/);
   assert.match(schema, /\.on\(table\.studentUserId\)\s*\.where\(sql`status IN \('queued', 'running'\)`\)/);
 });
+
+/* ------------------------------------------------------------------ */
+/* T14：recordGateForStudent —— 门禁证据的唯一内部写入通道              */
+/* ------------------------------------------------------------------ */
+
+function auditSpy() {
+  const calls: Record<string, unknown>[] = [];
+  return {
+    calls,
+    write: async (entry: Record<string, unknown>) => {
+      calls.push(entry);
+      return 'audit-id';
+    },
+  };
+}
+
+function newServiceWithProbe(queues: Map<unknown, unknown[][]>) {
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+  return { service, probe, audit };
+}
+
+function gateEventInserts(inserts: unknown[]) {
+  return inserts.filter((recordValue) => (recordValue as Record<string, unknown> | null)?.topic === 'team.gate.satisfied') as Record<string, unknown>[];
+}
+
+test('recordGateForStudent: no active run → skipped, zero events, zero audits, never throws', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[]]],
+  ]);
+  const { service, probe, audit } = newServiceWithProbe(queues);
+  const result = await service.recordGateForStudent({
+    studentUserId: 'stu-1',
+    gate: 'TheoryMastered',
+    evidenceRef: 'mastery:check:1',
+    source: 'mastery.theory-check',
+  });
+  assert.deepEqual(result, { status: 'skipped', runId: null, gate: 'TheoryMastered', reason: 'no_active_run' });
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal(audit.calls.length, 0);
+});
+
+test('recordGateForStudent: active run → recorded, event payload and audit exactly right', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[fullRunRow({ id: 'run-9', studentUserId: 'stu-1' })]]],
+    [agentTeamEvents, [[], []]],
+  ]);
+  const { service, probe, audit } = newServiceWithProbe(queues);
+  const result = await service.recordGateForStudent({
+    studentUserId: 'stu-1',
+    gate: 'TheoryMastered',
+    evidenceRef: 'mastery:check:7',
+    source: 'mastery.theory-check',
+  });
+  assert.equal(result.status, 'recorded');
+  assert.equal(result.runId, 'run-9');
+  assert.equal(result.gate, 'TheoryMastered');
+  const events = gateEventInserts(probe.inserts);
+  assert.equal(events.length, 1);
+  const payload = events[0]?.payload as Record<string, unknown>;
+  assert.equal(payload.gate, 'TheoryMastered');
+  assert.equal(payload.phase, 'concept_mastery');
+  assert.equal(payload.evidenceRef, 'mastery:check:7');
+  assert.equal(payload.source, 'mastery.theory-check');
+  assert.equal(events[0]?.idempotencyKey, 'gate:stu-1:TheoryMastered:mastery:check:7');
+  assert.equal(audit.calls.length, 1);
+  const entry = audit.calls[0] as Record<string, unknown>;
+  assert.equal(entry.action, 'agent.team_gate.satisfied');
+  assert.equal(entry.actorId, 'system:pbl-gate');
+  assert.equal(entry.actorRole, 'system');
+  const detail = entry.detail as Record<string, unknown>;
+  assert.equal(detail.studentUserId, 'stu-1');
+  assert.equal(detail.gate, 'TheoryMastered');
+  assert.equal(detail.evidenceRef, 'mastery:check:7');
+  assert.equal(detail.source, 'mastery.theory-check');
+});
+
+test('recordGateForStudent: same inputs replay as already_satisfied without second event or audit', async () => {
+  const run = fullRunRow({ id: 'run-9', studentUserId: 'stu-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[run], [run]]],
+    // 第一次调用：existing [] + recordEvent 内部查重 []；第二次调用：existing [{id}] → 提前返回。
+    [agentTeamEvents, [[], [], [{ id: 'ev-gate-1' }]]],
+  ]);
+  const { service, probe, audit } = newServiceWithProbe(queues);
+  const input = { studentUserId: 'stu-1', gate: 'TheoryMastered' as const, evidenceRef: 'mastery:check:7', source: 'mastery.theory-check' };
+  const first = await service.recordGateForStudent(input);
+  assert.equal(first.status, 'recorded');
+  const second = await service.recordGateForStudent(input);
+  assert.deepEqual(second, { status: 'already_satisfied', runId: 'run-9', gate: 'TheoryMastered' });
+  assert.equal(gateEventInserts(probe.inserts).length, 1);
+  assert.equal(audit.calls.length, 1);
+});
+
+test('recordGateForStudent: unknown gate throws PBL_GATE_UNKNOWN before touching the database', async () => {
+  const { service, probe, audit } = newServiceWithProbe(new Map<unknown, unknown[][]>());
+  await assert.rejects(
+    () => service.recordGateForStudent({
+      studentUserId: 'stu-1',
+      gate: 'TheoryMasteredPleaseIgnore',
+      evidenceRef: 'x:1',
+      source: 'evil',
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof BadRequestException);
+      assert.equal(((error as BadRequestException).getResponse() as { code?: string }).code, PBL_TEAM_ERROR_CODES.GATE_UNKNOWN);
+      return true;
+    },
+  );
+  assert.equal(probe.selectCalls, 0);
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal(audit.calls.length, 0);
+});
+
+test('recordGateForStudent: different evidenceRef are different evidence, each recorded once', async () => {
+  const run = fullRunRow({ id: 'run-9', studentUserId: 'stu-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[run], [run]]],
+    [agentTeamEvents, [[], [], [], []]],
+  ]);
+  const { service, probe, audit } = newServiceWithProbe(queues);
+  const a = await service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'student_confirmed_intent', evidenceRef: 'intent_confirmation:aaa', source: 'projects.confirm-intent' });
+  const b = await service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'student_confirmed_intent', evidenceRef: 'intent_confirmation:bbb', source: 'projects.confirm-intent' });
+  assert.equal(a.status, 'recorded');
+  assert.equal(b.status, 'recorded');
+  const events = gateEventInserts(probe.inserts);
+  assert.equal(events.length, 2);
+  assert.equal(events[0]?.idempotencyKey, 'gate:stu-1:student_confirmed_intent:intent_confirmation:aaa');
+  assert.equal(events[1]?.idempotencyKey, 'gate:stu-1:student_confirmed_intent:intent_confirmation:bbb');
+  assert.equal(audit.calls.length, 2);
+});
+
+test('recordGateForStudent is internal-only: team-runtime.controller.ts never references it', () => {
+  const controllerPath = join(repoRoot(), 'services', 'api', 'src', 'modules', 'team-runtime', 'team-runtime.controller.ts');
+  assert.ok(existsSync(controllerPath), 'controller source must exist at ' + controllerPath);
+  const src = readFileSync(controllerPath, 'utf8');
+  assert.equal(src.includes('recordGateForStudent'), false, 'no HTTP route may expose recordGateForStudent');
+});

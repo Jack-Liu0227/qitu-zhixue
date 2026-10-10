@@ -39,6 +39,7 @@ import {
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
+import { PBL_GATE_INTERNAL_ACTOR } from './internal-gate-actor.js';
 
 export type TeamRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TeamTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -797,6 +798,76 @@ export class TeamRuntimeService {
       detail: { gate, phase, evidenceRef: input.evidenceRef ?? null, studentUserId: run.studentUserId },
     });
     return { eventId, runId, gate, phase };
+  }
+
+  /**
+   * T14：门禁证据的**唯一内部写入通道**（供 projects/mastery/works 在业务
+   * 成功时调用）。禁止接任何 HTTP 路由，客户端不可触达；与 admin 端点
+   * `recordGateSatisfied` 共用同一事件主题、同一幂等机制。
+   *
+   * 语义：
+   * - 无活跃 run → `{status:'skipped', reason:'no_active_run'}`，绝不抛错
+   *  （调用方在业务事务里，门禁缺失不得回滚业务成功）；
+   * - 默认幂等键 `gate:${studentUserId}:${gate}:${evidenceRef}`；同键已有
+   *   `team.gate.satisfied` 事件 → `already_satisfied`，不重复写事件/审计；
+   * - gate 不在冻结枚举 → 400 PBL_GATE_UNKNOWN，且不落任何事件/审计。
+   */
+  async recordGateForStudent(input: {
+    studentUserId: string;
+    gate: string;
+    evidenceRef: string;
+    source: string;
+    idempotencyKey?: string;
+  }): Promise<{ status: 'recorded' | 'already_satisfied' | 'skipped'; runId: string | null; gate: string; reason?: string }> {
+    // 非法 gate 在任何写入之前拒绝（0 事件 0 审计）。
+    const gate = input.gate?.trim();
+    if (!gate || !KNOWN_PBL_GATES.has(gate)) {
+      throw new BadRequestException({ code: PBL_TEAM_ERROR_CODES.GATE_UNKNOWN, message: '门禁条件不在冻结规格枚举内', allowed: Array.from(KNOWN_PBL_GATES) });
+    }
+    const db = this.requireDb();
+    const evidenceRef = input.evidenceRef?.trim() ?? '';
+    const studentUserId = input.studentUserId?.trim();
+    if (!studentUserId) throw new BadRequestException({ code: 'TEAM_GATE_STUDENT_REQUIRED', message: '缺少 studentUserId' });
+    const key = normalizeKey(input.idempotencyKey?.trim() || `gate:${studentUserId}:${gate}:${evidenceRef}`, 'team-gate');
+
+    // 活跃 run：复用 startRun 的谓词写法，不造第二套。
+    const [run] = await db
+      .select()
+      .from(agentTeamRuns)
+      .where(and(
+        eq(agentTeamRuns.studentUserId, studentUserId),
+        inArray(agentTeamRuns.status, ['queued', 'running']),
+      ))
+      .orderBy(asc(agentTeamRuns.createdAt))
+      .limit(1);
+    if (!run) return { status: 'skipped', runId: null, gate, reason: 'no_active_run' };
+
+    // 真幂等：同键已有门禁达成事件 → 不重复写事件、不重复写审计。
+    const existing = await db
+      .select({ id: agentTeamEvents.id })
+      .from(agentTeamEvents)
+      .where(and(eq(agentTeamEvents.idempotencyKey, key), eq(agentTeamEvents.topic, PBL_GATE_SATISFIED_TOPIC)))
+      .limit(1);
+    if (existing[0]) return { status: 'already_satisfied', runId: run.id, gate };
+
+    const phase = GATE_TO_PHASE[gate] as PblPhase;
+    await this.recordEvent({
+      runId: run.id,
+      taskId: null,
+      topic: PBL_GATE_SATISFIED_TOPIC,
+      payload: { gate, phase, evidenceRef: evidenceRef || `audit:${key}`, source: input.source || 'server' },
+      idempotencyKey: key,
+    });
+    await this.audit.write({
+      actorId: PBL_GATE_INTERNAL_ACTOR.id,
+      actorRole: PBL_GATE_INTERNAL_ACTOR.role,
+      action: 'agent.team_gate.satisfied',
+      targetType: 'agent_team_run',
+      targetId: run.id,
+      idempotencyKey: key,
+      detail: { studentUserId, gate, evidenceRef: evidenceRef || null, source: input.source },
+    });
+    return { status: 'recorded', runId: run.id, gate };
   }
 
   /** 读回当前阶段与服务端门禁状态（客户端只能读，不能写）。 */
