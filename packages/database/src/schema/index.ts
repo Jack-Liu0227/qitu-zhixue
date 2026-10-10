@@ -14,6 +14,7 @@ export * from './mentor-review';
 export * from './model-registry';
 export * from './ops';
 export * from './parent-export';
+export * from './pbl-gate-evidence';
 export * from './pending-questions';
 export * from './preferences';
 export * from './project-templates';

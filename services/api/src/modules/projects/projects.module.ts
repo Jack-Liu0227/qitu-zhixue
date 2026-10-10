@@ -7,6 +7,7 @@ import { PostgresExplorationStore } from './exploration.store.postgres';
 import { ExplorationsController } from './explorations.controller';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { MasteryModule } from '../mastery/mastery.module';
+import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { ProjectLifecycleController } from './project-lifecycle.controller';
 import { ProjectLifecycleService } from './project-lifecycle.service';
 import { ProjectsService } from './projects.service';
@@ -21,9 +22,13 @@ import { ProjectsService } from './projects.service';
  *
  * `IdempotencyModule` / `AuditModule` 是 `@Global()`，由 `AppModule` 统一导入，
  * 这里直接注入其抽象即可。
+ *
+ * T15：`TeamRuntimeModule` 提供 `recordGateForStudent`（服务端内部的门禁证据写入），
+ * 学生确认意图是 `student_confirmed_intent` 门禁的唯一真源。
+ * 该模块不反向依赖 ProjectsModule，因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule],
   controllers: [ExplorationsController, ProjectLifecycleController],
   providers: [
     ProjectsService,

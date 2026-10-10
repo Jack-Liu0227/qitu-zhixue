@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { CurrentUser } from '@qitu/contracts';
@@ -13,6 +14,7 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { AuditWriter } from '../../common/audit/audit.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
 import {
   isArtifactEditable,
   publishFromReview,
@@ -157,6 +159,7 @@ export class WorksService {
     private readonly presigner: ObjectStoragePresigner,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    private readonly teamRuntime: TeamRuntimeService,
   ) {}
 
   /* ============================== 读 ============================== */
@@ -424,10 +427,43 @@ export class WorksService {
         });
         return { status: 200, body: await this.toView(submitted) };
       });
+      // T17：仅当「复核已通过并真的进入 published」才写 review_completed_and_archived。
+      // 调用放在幂等 execute **之外**：重放路径不执行回调，放内部会漏记；
+      // 且门禁写入失败绝不能回滚已成立的发布。
+      // 撑回（archived）**不算**复核完成——该路径不经过这里。
+      if (result.body.status === 'published') {
+        await this.recordReviewCompletedGate(studentId, artifactId);
+      }
       return result.body;
     } catch (error) {
       throwHttpForIdempotencyError(error);
       throw error;
+    }
+  }
+
+  /**
+   * T17：把「班主任复核已通过且作品已发布」写入 PBL 门禁 `review_completed_and_archived`。
+   *
+   * 判据全部来自服务端真源，客户端无法影响：
+   * - 复核通过 = `store.findApprovedReviewForArtifact` 命中 `mentor_reviews`
+   *   （`artifact_ref = artifactId AND status = 'approved'`）；
+   * - 已发布 = 上面那条分支返回的视图 `status === 'published'`。
+   *
+   * 三条约束与 T15 一致（放 execute 之外 / 失败不回滚发布 / 靠确定性幂等键去重），
+   * `recorded` | `already_satisfied` | `deferred` 三种状态都视为成功。
+   */
+  private async recordReviewCompletedGate(studentId: string, artifactId: string): Promise<void> {
+    try {
+      await this.teamRuntime.recordGateForStudent({
+        studentUserId: studentId,
+        gate: 'review_completed_and_archived',
+        evidenceRef: `artifact:${artifactId}`,
+        source: 'works.publish-approved',
+      });
+    } catch (error) {
+      this.logger.warn(
+        `门禁证据写入失败（不影响已发布的作品） artifact=${artifactId} err=${(error as Error)?.message ?? error}`,
+      );
     }
   }
 
@@ -476,6 +512,29 @@ export class WorksService {
   }
 
   /** 对象存储签名 URL：适配器边界；live 未配置时 503，不回退假地址。 */
+  /**
+   * T23a 第 2 步占位（尚未实现，路由骨架已接）。
+   *
+   * 实现时必须满足（Lead 确认后落地，本占位不落任何副作用）：
+   * 1. evidenceRef 必须是服务端可查证的真实证据（project_evidence 或上传登记），
+   *    查不到 → 400 RUN_EVIDENCE_NOT_FOUND，不接受任意字符串；
+   * 2. 新建 `mentor_reviews(kind='artifact_run', status='requested')`，复用
+   *    mentor_reviews_idempotency_unique_idx；已有未决 artifact_run 复核 → 幂等返回既有；
+   * 3. 无在任班主任 → 409 `ARTIFACT_MENTOR_REQUIRED`（同 publishArtifact :391-395 口径）；
+   * 4. 任何情况下 **不得**写 team.gate.satisfied 事件（门禁只能由 T23b 班主任侧写）。
+   */
+  async requestRunVerification(
+    _studentId: string,
+    _artifactId: string,
+    _idempotencyKey: string,
+    _body: unknown,
+  ): Promise<{ reviewId: string; status: string }> {
+    throw new ServiceUnavailableException({
+      code: 'RUN_VERIFICATION_NOT_IMPLEMENTED',
+      message: '运行验证申请尚未开放（T23a 第 2 步实现中）',
+    });
+  }
+
   async presignUpload(
     studentId: string,
     input: PresignUploadRequest,

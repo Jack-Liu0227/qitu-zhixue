@@ -155,6 +155,13 @@
       "when": 1791676800000,
       "tag": "0021_agent_team_run_mentor_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791763200000,
+      "tag": "0022_pbl_gate_evidence",
+      "breakpoints": true
     }
   ]
 }

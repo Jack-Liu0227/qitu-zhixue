@@ -20,6 +20,28 @@ import {
   UnconfiguredObjectStoragePresigner,
 } from './object-storage.presigner';
 import { WorksService } from './works.service';
+import type { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
+
+/**
+ * T17：`TeamRuntimeService` 的门禁写入替身。
+ * 只记录调用参数（事件/审计去重是 recordGateForStudent 自己的职责，
+ * 已在 team-runtime.gate.test.ts 里验证）。
+ */
+class FakeTeamRuntimeGates {
+  readonly calls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string }> = [];
+  throwOnCall = false;
+
+  async recordGateForStudent(input: {
+    studentUserId: string;
+    gate: string;
+    evidenceRef: string;
+    source: string;
+  }): Promise<{ status: 'recorded'; runId: string; gate: string }> {
+    this.calls.push(input);
+    if (this.throwOnCall) throw new Error('gate store unavailable');
+    return { status: 'recorded', runId: 'run-1', gate: input.gate };
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * 测试替身
@@ -86,6 +108,7 @@ class FakeWorksDirectory extends WorksDirectory {
 }
 
 interface Harness {
+  gates: FakeTeamRuntimeGates;
   service: WorksService;
   store: InMemoryWorksStore;
   idempotency: FakeIdempotencyStore;
@@ -101,6 +124,7 @@ function makeHarness(): Harness {
   const store = new InMemoryWorksStore();
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
+  const gates = new FakeTeamRuntimeGates();
   const directory = new FakeWorksDirectory();
   const projects = new InMemoryWorksProjectReader();
   const evidenceStore = new InMemoryProjectEvidenceStore();
@@ -117,8 +141,9 @@ function makeHarness(): Harness {
     presigner,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
+    gates as unknown as TeamRuntimeService,
   );
-  return { service, store, idempotency, audit, directory, projects, evidenceStore, evidence, presigner };
+  return { service, store, idempotency, audit, gates, directory, projects, evidenceStore, evidence, presigner };
 }
 
 const STUDENT: CurrentUser = {
@@ -245,6 +270,70 @@ describe('WorksService — 发布授权与幂等', () => {
     const reviews = await h.store.listReviewsForArtifact(created.id);
     assert.equal(reviews.length, 1);
     assert.equal(reviews[0]!.mentorUserId, MENTOR.id);
+  });
+
+  /* ---------------- T17：复核通过并发布 → review_completed_and_archived 门禁 ---------------- */
+
+  it('T17 有 approved 复核并发布成功 → 恰写一条 review_completed_and_archived 门禁', async () => {
+    h.directory.mentors.set(STUDENT.id, MENTOR.id);
+    const created = await h.service.createArtifact(STUDENT.id, { title: '雷霆战机' }, 'k1');
+    h.store.seedApprovedReview(created.id, MENTOR.id);
+
+    const published = await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+    assert.equal(published.status, 'published');
+
+    assert.equal(h.gates.calls.length, 1, '发布成功必须触发一次门禁写入');
+    assert.deepEqual(h.gates.calls[0], {
+      studentUserId: STUDENT.id,
+      gate: 'review_completed_and_archived',
+      evidenceRef: `artifact:${created.id}`,
+      source: 'works.publish-approved',
+    });
+  });
+
+  it('T17 无复核（仅进待审核）→ 绝不写门禁', async () => {
+    h.directory.mentors.set(STUDENT.id, MENTOR.id);
+    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
+
+    const view = await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+    assert.equal(view.status, 'submitted');
+    assert.equal(h.gates.calls.length, 0, '未经班主任 approved 不得产生该门禁（防伪通过）');
+  });
+
+  it('T17 撑回 archived → 不写门禁（撑回不算复核完成）', async () => {
+    h.directory.mentors.set(STUDENT.id, MENTOR.id);
+    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
+    h.store.seedApprovedReview(created.id, MENTOR.id);
+    h.gates.calls.length = 0;
+
+    await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+    h.gates.calls.length = 0; // 只关注撑回这一步是否多写
+    await h.service.withdrawArtifact(STUDENT.id, created.id, 'k-withdraw');
+
+    assert.equal(h.gates.calls.length, 0, '撑回不得写门禁');
+  });
+
+  it('T17 同幂等键重复发布 → 参数完全一致（靠确定性键去重）', async () => {
+    h.directory.mentors.set(STUDENT.id, MENTOR.id);
+    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
+    h.store.seedApprovedReview(created.id, MENTOR.id);
+
+    await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+    await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+
+    assert.ok(h.gates.calls.length >= 1);
+    assert.deepEqual(h.gates.calls[0], h.gates.calls[h.gates.calls.length - 1]);
+  });
+
+  it('T17 门禁写入失败 → 发布仍成功且失败被记录（不静默吞）', async () => {
+    h.directory.mentors.set(STUDENT.id, MENTOR.id);
+    const created = await h.service.createArtifact(STUDENT.id, { title: '作品' }, 'k1');
+    h.store.seedApprovedReview(created.id, MENTOR.id);
+    h.gates.throwOnCall = true;
+
+    const published = await h.service.publishArtifact(STUDENT.id, created.id, 'k-pub');
+    assert.equal(published.status, 'published', '门禁失败绝不能回滚已成立的发布');
+    assert.equal(h.gates.calls.length, 1, '尝试必须发生（不能静默跳过）');
   });
 
   it('同幂等键重复发布 → 仍只有一条复核记录', async () => {
@@ -422,6 +511,7 @@ describe('WorksService — 对象存储签名', () => {
       new UnconfiguredObjectStoragePresigner(),
       new FakeIdempotencyStore() as unknown as IdempotencyStore,
       new FakeAuditWriter() as unknown as AuditWriter,
+      new FakeTeamRuntimeGates() as unknown as TeamRuntimeService,
     );
     await assertHttpError(
       () =>
