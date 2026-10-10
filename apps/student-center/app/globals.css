@@ -4,6 +4,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.qitu-student-shell {
+  background-image:
+    linear-gradient(180deg, rgb(246 250 255 / 91%) 0%, rgb(241 249 249 / 87%) 52%, rgb(237 249 245 / 91%) 100%),
+    url('/student/frontend_pictures/15f5b7e8-d755-493c-a6b0-487bc55d8414.png');
+  background-position: center bottom;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
 /* ---- 优化全局滚动条 (精致圆润风格) ---- */
 ::-webkit-scrollbar {
   width: 8px;
