@@ -33,7 +33,9 @@ export function PblStageCard({
       <header className={styles.pblCardHeader}>
         <div className={styles.pblCardBadgeGroup}>
           <span className={styles.pblPhasePill}>{PHASE_NAMES[phase]}</span>
-          {teammateLabel && <span className={styles.pblTeammatePill}>{teammateLabel}</span>}
+          {teammateLabel && (
+            <span className={styles.pblTeammatePill}>{teammateLabel}</span>
+          )}
         </div>
         <h4 className={styles.pblCardTitle}>{title}</h4>
       </header>
@@ -49,7 +51,11 @@ export function PblStageCard({
       )}
       {actionLabel && (
         <footer className={styles.pblCardFooter}>
-          <button type="button" className={styles.pblActionButton} onClick={onAction}>
+          <button
+            type="button"
+            className={styles.pblActionButton}
+            onClick={onAction}
+          >
             {actionLabel} →
           </button>
         </footer>

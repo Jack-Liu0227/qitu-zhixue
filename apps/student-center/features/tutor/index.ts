@@ -18,7 +18,6 @@ export { EvidenceChip } from './components/EvidenceChip';
 export { HintLevelIndicator } from './components/HintLevelIndicator';
 export { NumberedQuestionList } from './components/NumberedQuestionList';
 export { OptionChips } from './components/OptionChips';
-export { PinnedSourcesRail, type PinnedSourceItem } from './components/PinnedSourcesRail';
 export { ProjectCard } from './components/ProjectCard';
 export { ProjectContextPanel } from './components/ProjectContextPanel';
 export { SafeReplyFallback, TutorReplyBlockView } from './components/TutorReplyBlockView';
@@ -51,12 +50,7 @@ export {
   openTutorStream,
   TUTOR_STREAM_PATH,
 } from './data';
-export type {
-  TutorDataSource,
-  MockTutorScenario,
-  TutorStreamHandlers,
-  TutorStreamRequest,
-} from './data';
+export type { TutorDataSource, MockTutorScenario, TutorStreamHandlers, TutorStreamRequest } from './data';
 
 // Pure logic / contracts
 export {

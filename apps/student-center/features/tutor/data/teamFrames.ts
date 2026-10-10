@@ -41,7 +41,9 @@ export function teamFrameKind(name: string): TutorTeamFrameKind | null {
 }
 
 /** 所有 team.* 帧名（供解析器 KNOWN_FRAMES 收录，集中一处、不散落）。 */
-export const TUTOR_TEAM_FRAME_NAME_LIST: readonly string[] = Object.values(TUTOR_TEAM_FRAME_NAMES);
+export const TUTOR_TEAM_FRAME_NAME_LIST: readonly string[] = Object.values(
+  TUTOR_TEAM_FRAME_NAMES,
+);
 
 /* ------------------------------------------------------------------ */
 /*  阶段 / 门禁 / 错误码 → 学生可读中文                                 */
@@ -74,10 +76,8 @@ const GATE_LABELS: Record<string, string> = {
 
 /** 稳定错误码 → 学生可读中文（保留 code 便于排查；出处 @qitu/ai-client pbl-team.ts）。 */
 const ERROR_CODE_MESSAGES: Record<string, string> = {
-  PBL_GATE_STUDENT_INTENT_REQUIRED:
-    '还没有确认这一轮的学习意图，先把想法和 AI 搭档说清楚，才能继续推进。',
-  PBL_GATE_THEORY_MASTERED_REQUIRED:
-    '理论测评还没通过，暂时不能进入动手实践阶段——先把核心概念吃透，这是不可跳过的硬门禁。',
+  PBL_GATE_STUDENT_INTENT_REQUIRED: '还没有确认这一轮的学习意图，先把想法和 AI 搭档说清楚，才能继续推进。',
+  PBL_GATE_THEORY_MASTERED_REQUIRED: '理论测评还没通过，暂时不能进入动手实践阶段——先把核心概念吃透，这是不可跳过的硬门禁。',
   PBL_GATE_CODE_RUN_NOT_VERIFIED: '实践作品还没有通过可运行验证，暂时不能进入成果答辩。',
   PBL_GATE_REVIEW_NOT_ARCHIVED: '答辩与成长档案还没有归档完成。',
   PBL_PHASE_ORDER_INVALID: '阶段只能按「意图 → 理论 → 实践 → 答辩」的固定顺序推进，不能跳级。',
@@ -155,9 +155,7 @@ export function teamFrameToReplyBlock(
         ...(owner !== null ? { teammateLabel: `负责助手：${owner}` } : {}),
         summary:
           `已进入 ${phaseLabelZh(phase)}（第 ${PBL_PHASE_ORDER.indexOf(phase) + 1} / ${PBL_PHASE_ORDER.length} 阶段）。` +
-          (passedGate !== null
-            ? `${fromNote}上一门禁「${gateLabelZh(passedGate)}」已由服务端确认达成。`
-            : fromNote),
+          (passedGate !== null ? `${fromNote}上一门禁「${gateLabelZh(passedGate)}」已由服务端确认达成。` : fromNote),
         tags: [phaseProgressTag(phase), ...(passedGate !== null ? [`gate:${passedGate}`] : [])],
       };
     }

@@ -63,15 +63,13 @@ export const MOCK_TURNS: TutorTurn[] = [
         phase: 'concept_mastery',
         title: '项目阶段二：核心原理探索（OpenMAIC 互动课堂）',
         teammateLabel: '🕹️ 战机原理与概念教练',
-        summary:
-          '我们要一起制作《雷霆战机》小游戏。在动手写 Pygame 代码之前，我们先搞懂游戏的核心脉搏：游戏主循环（Game Loop）和坐标系移动。',
+        summary: '我们要一起制作《雷霆战机》小游戏。在动手写 Pygame 代码之前，我们先搞懂游戏的核心脉搏：游戏主循环（Game Loop）和坐标系移动。',
         tags: ['游戏主循环', '坐标系与向量', '碰撞检测几何原理'],
         actionLabel: '开始探索游戏循环',
       },
       {
         kind: 'think',
-        content:
-          '学生正在开启《雷霆战机》PBL 项目。遵循教学硬规则：在 TheoryMastered 达成之前不得进入代码实践阶段。当前步骤需要引导学生思考：游戏画面是如何动起来的？从帧率与状态更新切入，提问启发。',
+        content: '学生正在开启《雷霆战机》PBL 项目。遵循教学硬规则：在 TheoryMastered 达成之前不得进入代码实践阶段。当前步骤需要引导学生思考：游戏画面是如何动起来的？从帧率与状态更新切入，提问启发。',
         closed: true,
       },
       {
@@ -102,12 +100,7 @@ export const MOCK_TURNS: TutorTurn[] = [
   {
     turnId: 'turn-2',
     role: 'student',
-    blocks: [
-      {
-        kind: 'text',
-        text: '我觉得就像翻动画书一样，每秒刷新很多张图，每次飞机的位置往上移一点点！',
-      },
-    ],
+    blocks: [{ kind: 'text', text: '我觉得就像翻动画书一样，每秒刷新很多张图，每次飞机的位置往上移一点点！' }],
     hintLevel: null,
     stageBefore: null,
     stageAfter: null,
@@ -121,8 +114,7 @@ export const MOCK_TURNS: TutorTurn[] = [
     blocks: [
       {
         kind: 'think',
-        content:
-          '学生的回答非常敏锐！准确抓住了动画书（帧刷新）与位置增量的核心本质。下一步引导：建立游戏主循环的三个标准步骤（事件监听、状态更新、渲染绘制），并提问 options。',
+        content: '学生的回答非常敏锐！准确抓住了动画书（帧刷新）与位置增量的核心本质。下一步引导：建立游戏主循环的三个标准步骤（事件监听、状态更新、渲染绘制），并提问 options。',
         closed: true,
       },
       {
@@ -137,7 +129,7 @@ export const MOCK_TURNS: TutorTurn[] = [
       },
       {
         kind: 'text',
-        text: '太棒了！你的「翻动画书」比喻完全击中了游戏引擎的核心秘密 [1]。在 Pygame 中，我们把这个不断循环翻页的过程叫做「游戏主循环（Game Loop）」[2]。',
+        text: '太棒了！你的「翻动画书」比喻完全击中了游戏引擎的核心秘密。在 Pygame 中，我们把这个不断循环翻页的过程叫做「游戏主循环（Game Loop）」。',
       },
       {
         kind: 'options',
@@ -159,12 +151,7 @@ export const MOCK_TURNS: TutorTurn[] = [
   {
     turnId: 'turn-4',
     role: 'student',
-    blocks: [
-      {
-        kind: 'text',
-        text: '这三个步骤在每一帧都会按顺序发生一次对吗？那子弹碰到敌机是怎么判定的？',
-      },
-    ],
+    blocks: [{ kind: 'text', text: '这三个步骤在每一帧都会按顺序发生一次对吗？那子弹碰到敌机是怎么判定的？' }],
     hintLevel: null,
     stageBefore: null,
     stageAfter: null,
@@ -178,8 +165,7 @@ export const MOCK_TURNS: TutorTurn[] = [
     blocks: [
       {
         kind: 'think',
-        content:
-          '学生主动提出了第二大核心概念：碰撞检测（Collision Detection）。需要先解释几何包围盒矩形（Rect / AABB）相交原理，然后再做理论掌握度检测。',
+        content: '学生主动提出了第二大核心概念：碰撞检测（Collision Detection）。需要先解释几何包围盒矩形（Rect / AABB）相交原理，然后再做理论掌握度检测。',
         closed: true,
       },
       {
@@ -194,7 +180,7 @@ export const MOCK_TURNS: TutorTurn[] = [
       },
       {
         kind: 'text',
-        text: '完全正确！每一帧都在按顺序快速发生 [2]。至于子弹击中敌机，计算机把子弹和战机都看作一个透明的矩形盒子（Bounding Box）[3]。只要两个矩形在 x 和 y 方向上同时发生了重叠，就被判定为「命中」！',
+        text: '完全正确！每一帧都在按顺序快速发生。至于子弹击中敌机，计算机把子弹和战机都看作一个透明的矩形盒子（Bounding Box）。只要两个矩形在 x 和 y 方向上同时发生了重叠，就被判定为「命中」！',
       },
       {
         kind: 'evidence',

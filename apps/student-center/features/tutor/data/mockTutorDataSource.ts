@@ -75,7 +75,9 @@ export class MockTutorDataSource implements TutorDataSource {
     return MOCK_PROJECT_CONTEXT;
   }
 
-  async createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse> {
+  async createSession(
+    request: CreateTutorSessionRequest,
+  ): Promise<CreateTutorSessionResponse> {
     await this.delay();
     this.assertReadable();
     return {
@@ -127,13 +129,7 @@ export class MockTutorDataSource implements TutorDataSource {
     // student's own echo before the assistant's reply.
     const response: CreateTutorTurnResponse = { turnId, seq: baseSeq, accepted: true };
     this.turnKeys.set(request.idempotencyKey, response);
-    this.pushStreamedTurn(
-      sessionId,
-      turnId,
-      blockSeq,
-      doneSeq,
-      request.pedagogicMove !== undefined,
-    );
+    this.pushStreamedTurn(sessionId, turnId, blockSeq, doneSeq, request.pedagogicMove !== undefined);
     return response;
   }
 

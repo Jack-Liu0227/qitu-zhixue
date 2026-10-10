@@ -47,10 +47,7 @@ export class TutorApiDataSource implements TutorDataSource {
 
   private async fetchProjectContext(projectId?: string): Promise<TutorProjectContext | null> {
     const query = projectId === undefined ? '' : `?projectId=${encodeURIComponent(projectId)}`;
-    const response = await this.fetchJson(
-      `/api/v1/tutor/project-context${query}`,
-      '项目信息加载失败',
-    );
+    const response = await this.fetchJson(`/api/v1/tutor/project-context${query}`, '项目信息加载失败');
     const data = unwrapData(response);
     if (data === null) return null;
     if (!isTutorProjectContext(data)) {
@@ -59,7 +56,9 @@ export class TutorApiDataSource implements TutorDataSource {
     return data;
   }
 
-  async createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse> {
+  async createSession(
+    request: CreateTutorSessionRequest,
+  ): Promise<CreateTutorSessionResponse> {
     const projectId = request.projectId;
     let explorationId = request.explorationId;
     if (request.source === 'exploration' && explorationId === undefined) {
@@ -175,10 +174,7 @@ export class TutorApiDataSource implements TutorDataSource {
     return socket;
   }
 
-  private async fetchSession(
-    projectId?: string,
-    explorationId?: string,
-  ): Promise<GetTutorSessionResponse> {
+  private async fetchSession(projectId?: string, explorationId?: string): Promise<GetTutorSessionResponse> {
     const params = new URLSearchParams();
     if (projectId !== undefined) params.set('projectId', projectId);
     if (explorationId !== undefined) params.set('explorationId', explorationId);
@@ -229,11 +225,7 @@ export class TutorApiDataSource implements TutorDataSource {
 }
 
 function isExplorationPayload(value: unknown): value is { id: string } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { id?: unknown }).id === 'string'
-  );
+  return typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string';
 }
 
 function isTutorProjectContext(value: unknown): value is TutorProjectContext {
@@ -251,6 +243,7 @@ function isTutorProjectContext(value: unknown): value is TutorProjectContext {
     (candidate.currentTask === null || typeof candidate.currentTask === 'object')
   );
 }
+
 
 function unwrapData(body: unknown): unknown {
   if (typeof body === 'object' && body !== null && 'data' in body) {

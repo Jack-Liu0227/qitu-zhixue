@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { TutorTurn } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, SkeletonBlock } from '@qitu/ui';
 import type { TutorLoadStatus, TutorViewError } from '../types';
@@ -11,11 +11,16 @@ import { TypingIndicator } from './TypingIndicator';
 /**
  * CENTER COLUMN — the conversation.
  *
- * Implements the NotebookLM-style dialogue area:
- * 1. Top bar with session topic title and 「X sources · cited」 indicator.
- * 2. Clean conversational bubble stream with structured teaching blocks.
- * 3. Floating 「Jump to latest」 pill button with down-arrow.
- * 4. Integrated input capsule composer.
+ * Renders only server turns; it never constructs a `stageAfter` or a reply
+ * block locally. All five states are handled here:
+ * loading → skeleton + typing indicator, empty → start prompt,
+ * error → retry that KEEPS already-loaded turns, offline → offline banner with
+ * read-only history, permission-denied → page-level `PermissionDenied`.
+ *
+ * STREAMING SURFACE: exactly one bubble is marked `streaming` (the newest
+ * assistant turn) so only that one gets the blinking caret. The standalone
+ * indicator appears only while that turn still has nothing to show, and its
+ * caption names the step the server says it is on.
  */
 export function ChatThread({
   turns,
@@ -29,9 +34,6 @@ export function ChatThread({
   onReconnect,
   onSelectOption,
   composer,
-  sessionTitle,
-  sourceCount = 6,
-  onCitationClick,
 }: {
   turns: TutorTurn[];
   status: TutorLoadStatus;
@@ -44,55 +46,20 @@ export function ChatThread({
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
   composer: ReactNode;
-  sessionTitle?: string;
-  sourceCount?: number;
-  onCitationClick?: (index: number) => void;
 }) {
   const hasTurns = turns.length > 0;
   const newestAssistant = lastAssistantTurn(turns);
+  // Only the newest assistant turn can still be receiving events; giving the
+  // caret to every assistant bubble would claim the finished ones are live.
   const streamingTurnId = streaming && newestAssistant !== null ? newestAssistant.turnId : null;
   const showIndicator =
     streaming && hasTurns && (newestAssistant === null || newestAssistant.blocks.length === 0);
+  // Caption the indicator with the step the server is actually on, so the
+  // student reads 「正在查看你的掌握度记录」 instead of a generic spinner.
   const runningToolLabel = findRunningToolLabel(turns);
-
-  const threadScrollRef = useRef<HTMLDivElement | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
-
-  // Check scroll position to display the "Jump to latest" pill
-  const handleScroll = useCallback(() => {
-    const el = threadScrollRef.current;
-    if (!el) return;
-    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowJumpToLatest(distanceToBottom > 100);
-  }, []);
-
-  const scrollToBottom = useCallback((smooth = true) => {
-    bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
-    setShowJumpToLatest(false);
-  }, []);
-
-  // Auto-scroll when turns change or stream updates if already near bottom
-  useEffect(() => {
-    const el = threadScrollRef.current;
-    if (!el) return;
-    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distanceToBottom < 160 || streaming) {
-      scrollToBottom(false);
-    }
-  }, [turns, streaming, scrollToBottom]);
 
   return (
     <div className="qitu-tutor-col qitu-tutor-col-center">
-      <header className="qitu-chat-top-bar">
-        <h2 className="qitu-chat-session-title">
-          {sessionTitle || '雷霆战机：从零打造 Python 飞行射击小游戏'}
-        </h2>
-        <div className="qitu-chat-cited-tag" title="当前会话关联的学习资料与证据">
-          <span>{sourceCount} sources · cited</span>
-        </div>
-      </header>
-
       {offline ? <OfflineBanner readOnly onRetry={onReconnect} /> : null}
       {escalated ? (
         <p className="qitu-tutor-escalation" role="status">
@@ -100,12 +67,7 @@ export function ChatThread({
         </p>
       ) : null}
 
-      <div
-        className="qitu-chat-thread"
-        ref={threadScrollRef}
-        onScroll={handleScroll}
-        aria-live="polite"
-      >
+      <div className="qitu-chat-thread" aria-live="polite">
         {status === 'loading' && !hasTurns ? (
           <div className="qitu-tutor-thread-loading" aria-busy="true">
             <SkeletonBlock lines={2} height={24} />
@@ -125,7 +87,7 @@ export function ChatThread({
         {status === 'empty' && !hasTurns ? (
           <EmptyState
             title="还没有开始对话"
-            description="在下方输入框向 AI搭档提出你的问题，或点「+」让搭档给你提示。"
+            description="点右边的「给我提示」，让 AI搭档先从一个问题开始陪你思考。"
           />
         ) : null}
 
@@ -134,13 +96,14 @@ export function ChatThread({
             key={turn.turnId}
             turn={turn}
             onSelectOption={onSelectOption}
-            onCitationClick={onCitationClick}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />
         ))}
 
-        {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
+        {showIndicator ? (
+          <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} />
+        ) : null}
 
         {status === 'error' && hasTurns ? (
           <ErrorState
@@ -150,32 +113,9 @@ export function ChatThread({
             onRetry={onRetry}
           />
         ) : null}
-
-        <div ref={bottomRef} style={{ height: 1 }} />
       </div>
 
-      <div className="qitu-composer-container">
-        {showJumpToLatest && (
-          <button
-            type="button"
-            className="qitu-jump-to-latest-pill"
-            onClick={() => scrollToBottom(true)}
-            aria-label="回到底部最新消息"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M12 5v14M19 12l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>Jump to latest</span>
-          </button>
-        )}
-        {composer}
-      </div>
+      {composer}
     </div>
   );
 }

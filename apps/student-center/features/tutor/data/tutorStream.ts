@@ -7,7 +7,11 @@ import type {
 } from '@qitu/contracts';
 import { isTutorReplyBlock } from '../state';
 import { TutorDataError } from './dataSource';
-import { TUTOR_TEAM_FRAME_NAME_LIST, teamFrameKind, teamFrameToReplyBlock } from './teamFrames';
+import {
+  TUTOR_TEAM_FRAME_NAME_LIST,
+  teamFrameKind,
+  teamFrameToReplyBlock,
+} from './teamFrames';
 
 /**
  * Transport for `POST /api/v1/tutor/sessions/:id/stream` (Server-Sent Events).
@@ -88,9 +92,7 @@ export function openTutorStream(
     let response: Response;
     try {
       if (request.sessionId === undefined || request.sessionId.length === 0) {
-        handlers.onFailure(
-          new TutorDataError('会话尚未建立，请稍后重试。', undefined, 'SESSION_NOT_FOUND'),
-        );
+        handlers.onFailure(new TutorDataError('会话尚未建立，请稍后重试。', undefined, 'SESSION_NOT_FOUND'));
         settle();
         return;
       }
