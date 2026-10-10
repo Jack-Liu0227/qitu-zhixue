@@ -9,6 +9,7 @@ import { IdempotencyError } from '../../common/idempotency/idempotency.errors';
 import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { InMemoryExplorationStore } from './exploration.store';
 import { ProjectsService } from './projects.service';
+import type { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
 
 /* ------------------------------------------------------------------ *
  * 测试替身
@@ -50,23 +51,48 @@ class FakeAuditWriter {
   }
 }
 
+/**
+ * T15：`TeamRuntimeService` 的门禁写入替身。
+ * 只记录调用参数，不碰数据库（事件去重是 recordGateForStudent 自己的职责，
+ * 已在 team-runtime.gate.test.ts 里验证）。
+ */
+class FakeTeamRuntimeGates {
+  readonly calls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string }> = [];
+  throwOnCall = false;
+
+  async recordGateForStudent(input: {
+    studentUserId: string;
+    gate: string;
+    evidenceRef: string;
+    source: string;
+  }): Promise<{ status: 'recorded'; runId: string; gate: string }> {
+    this.calls.push(input);
+    if (this.throwOnCall) throw new Error('gate store unavailable');
+    return { status: 'recorded', runId: 'run-1', gate: input.gate };
+  }
+}
+
 interface Harness {
   service: ProjectsService;
   store: InMemoryExplorationStore;
   idempotency: FakeIdempotencyStore;
   audit: FakeAuditWriter;
+  gates: FakeTeamRuntimeGates;
 }
 
 function makeHarness(): Harness {
   const store = new InMemoryExplorationStore();
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
+  const gates = new FakeTeamRuntimeGates();
   const service = new ProjectsService(
     store,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
+    null,
+    gates as unknown as TeamRuntimeService,
   );
-  return { service, store, idempotency, audit };
+  return { service, store, idempotency, audit, gates };
 }
 
 const RECOMMENDED: CreateExplorationRequest = {
@@ -156,6 +182,72 @@ describe('ProjectsService（T6 意图确认）', () => {
     );
     assert.ok(confirmAudit, '确认创建项目必须写审计');
     assert.equal(confirmAudit?.targetId, result.project.id);
+  });
+
+  /* ---------------- T15：确认意图 → student_confirmed_intent 门禁 ---------------- */
+
+  it('T15 确认意图后恰写一次 student_confirmed_intent 门禁证据（服务端内部通道）', async () => {
+    const { service, gates } = harness;
+    const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+
+    await service.confirmIntent('student-1', created.id, 'gate-key-1');
+
+    assert.equal(gates.calls.length, 1, '确认意图必须且只能触发一次门禁写入');
+    assert.deepEqual(gates.calls[0], {
+      studentUserId: 'student-1',
+      gate: 'student_confirmed_intent',
+      evidenceRef: `intent_confirmation:${created.id}`,
+      source: 'projects.confirm-intent',
+    });
+  });
+
+  it('T15 未确认意图时绝不写门禁（草案写完也不算）', async () => {
+    const { service, gates } = harness;
+    const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
+    await service.updateIntentDraft('student-1', created.id, {
+      goalUser: '为社区老人做陪伴工具',
+      coreInterests: ['适老化'],
+      preferredForm: '小程序',
+    });
+
+    assert.equal(gates.calls.length, 0, '未确认意图不得产生门禁证据');
+    assert.equal(created.status, 'exploring');
+  });
+
+  it('T15 确认被拒（已关闭的探索）时不写门禁', async () => {
+    const { service, gates } = harness;
+    const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+    await service.closeExploration('student-1', created.id);
+
+    await assert.rejects(() => service.confirmIntent('student-1', created.id, 'gate-key-closed'));
+    assert.equal(gates.calls.length, 0, '确认失败不得产生门禁证据');
+  });
+
+  it('T15 同幂等键重放仍调门禁（去重由确定性幂等键在服务端负责）', async () => {
+    const { service, gates } = harness;
+    const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+
+    await service.confirmIntent('student-1', created.id, 'same-gate-key');
+    await service.confirmIntent('student-1', created.id, 'same-gate-key');
+
+    assert.equal(gates.calls.length, 2, '重放路径也要发出门禁写入意图，否则首次漏记将无法自愈');
+    assert.deepEqual(gates.calls[0], gates.calls[1], '两次参数必须完全一致，才能靠确定性键去重');
+  });
+
+  it('T15 门禁写入失败不影响确认意图（项目仍创建，失败被记录而非静默）', async () => {
+    const { service, store, gates } = harness;
+    const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+
+    gates.throwOnCall = true;
+    const result = await service.confirmIntent('student-1', created.id, 'gate-key-throw');
+
+    assert.equal(result.project.stage, 'intent_confirmed', '门禁失败绝不能回滚已成立的确认');
+    assert.equal((await store.findProjectByExploration(created.id))?.id, result.project.id);
+    assert.equal(gates.calls.length, 1, '尝试必须发生（不能静默跳过）');
   });
 
   it('同幂等键重复确认只创建一个项目', async () => {

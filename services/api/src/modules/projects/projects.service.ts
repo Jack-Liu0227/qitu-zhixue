@@ -24,6 +24,7 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { AuditWriter } from '../../common/audit/audit.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
 import type { Database } from '@qitu/database';
 import { projectTemplateVersions, projectTemplates } from '@qitu/database';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -85,6 +86,7 @@ export class ProjectsService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
+    private readonly teamRuntime: TeamRuntimeService,
   ) {}
 
   /* ------------------------------ 读 ------------------------------ */
@@ -264,10 +266,44 @@ export class ProjectsService {
       });
 
       const body = result.body;
+      // T15：意图确认成立后写入 PBL 门禁证据（详见 recordIntentConfirmationGate 的三条约束）。
+      await this.recordIntentConfirmationGate(studentId, explorationId);
       // `execute` 命中持久化记录时，把「未创建新项目」这一事实补进响应。
       return result.replayed ? { ...body, replayed: true } : body;
     } catch (error) {
       throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /**
+   * T15：把「学生已确认意图」写入 PBL 门禁证据（`student_confirmed_intent`）。
+   *
+   * 三条约束（改代码前先读，勿绕过）：
+   * 1. 必须放在幂等 `execute` **之外**：命中持久化记录的重放路径根本不会执行回调，
+   *    放回调内部会在「同键重放」时漏记门禁；
+   * 2. 门禁写入失败**绝不**回滚已成立的「确认意图 + 创建正式项目」——
+   *    只 `logger.warn` 记录，不静默吞（AGENTS.md：错误必须可观测）；
+   * 3. 重复确认不产生第二条事件：`recordGateForStudent` 用确定性幂等键
+   *    `gate:<studentUserId>:<gate>:<evidenceRef>` 在事件与审计两层同时去重。
+   *
+   * 三种返回状态（`recorded` / `already_satisfied` / `deferred`）一律视为成功：
+   * 学生可能还没进入 AI 搭档团队链路，此时证据进待冲刷账本，由 `startRun` 物化。
+   */
+  private async recordIntentConfirmationGate(
+    studentId: string,
+    explorationId: string,
+  ): Promise<void> {
+    try {
+      await this.teamRuntime.recordGateForStudent({
+        studentUserId: studentId,
+        gate: 'student_confirmed_intent',
+        evidenceRef: `intent_confirmation:${explorationId}`,
+        source: 'projects.confirm-intent',
+      });
+    } catch (error) {
+      this.logger.warn(
+        `门禁证据写入失败（不影响已确认的意图） exploration=${explorationId} err=${(error as Error)?.message ?? error}`,
+      );
     }
   }
 
