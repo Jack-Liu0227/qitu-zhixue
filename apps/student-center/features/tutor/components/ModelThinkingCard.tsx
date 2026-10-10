@@ -37,11 +37,7 @@ export function ModelThinkingCard({ content, closed }: ModelThinkingCardProps) {
   const hasBody = content.trim().length > 0;
 
   return (
-    <details
-      ref={detailsRef}
-      onToggle={handleToggle}
-      className={styles.thinkingCard}
-    >
+    <details ref={detailsRef} onToggle={handleToggle} className={styles.thinkingCard}>
       <summary className={styles.thinkingSummary}>
         <span className={styles.thinkingCaret} aria-hidden="true">
           ▶
@@ -50,9 +46,7 @@ export function ModelThinkingCard({ content, closed }: ModelThinkingCardProps) {
           🧠
         </span>
         <span className={styles.thinkingTitle}>模型深度思考过程</span>
-        {!closed && (
-          <span className={styles.thinkingSpinner} aria-hidden="true" />
-        )}
+        {!closed && <span className={styles.thinkingSpinner} aria-hidden="true" />}
       </summary>
       <div className={styles.thinkingBody}>
         {hasBody ? (

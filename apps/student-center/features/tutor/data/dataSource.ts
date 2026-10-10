@@ -29,10 +29,7 @@ export interface TutorDataSource {
   /** GET /tutor/session — initial turns + `lastSeq` cursor seed. */
   getSession(sessionId: string): Promise<GetTutorSessionResponse>;
   /** POST /tutor/sessions/:id/turns — idempotent turn submission. */
-  submitTurn(
-    sessionId: string,
-    request: CreateTutorTurnRequest,
-  ): Promise<CreateTutorTurnResponse>;
+  submitTurn(sessionId: string, request: CreateTutorTurnRequest): Promise<CreateTutorTurnResponse>;
   /** GET /tutor/sessions/:id/summary — display-only ladder/stall status. */
   getSummary(sessionId: string): Promise<TutorSessionSummary>;
   /** POST /tutor/sessions/:id/feedback — idempotent feedback. */

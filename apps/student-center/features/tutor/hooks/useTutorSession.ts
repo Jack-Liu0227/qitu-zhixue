@@ -1,11 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  RealtimeServerEvent,
-  TutorHintLevel,
-  TutorTurn,
-} from '@qitu/contracts';
+import type { RealtimeServerEvent, TutorHintLevel, TutorTurn } from '@qitu/contracts';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
 import { createIdempotencyKey } from '../idempotency';
 import { TutorRealtimeClient } from '../realtime/tutorRealtimeClient';
@@ -103,9 +99,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     if (echoIdsRef.current.length === 0) return [...loaded];
     const ids = echoIdsRef.current;
     echoIdsRef.current = [];
-    return ids.reduce<TutorTurn[]>((accumulator, id) => dropTurn(accumulator, id), [
-      ...loaded,
-    ]);
+    return ids.reduce<TutorTurn[]>((accumulator, id) => dropTurn(accumulator, id), [...loaded]);
   }, []);
 
   // Load the active project (or the routed project) context.

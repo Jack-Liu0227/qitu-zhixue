@@ -72,8 +72,13 @@
 }
 
 @keyframes qituDotPulse {
-  0%, 100% { box-shadow: 0 0 0 2px var(--qitu-completed-soft); }
-  50% { box-shadow: 0 0 0 5px rgba(24, 183, 172, 0.25); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--qitu-completed-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(24, 183, 172, 0.25);
+  }
 }
 
 .qitu-tutor-grid {
@@ -147,7 +152,11 @@
   font: inherit;
   font-size: 0.84rem;
   cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
 }
 
 .qitu-composer-mode:hover:not(:disabled),
@@ -236,13 +245,20 @@
 }
 
 @keyframes qitu-composer-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--qitu-primary) 20%, transparent); }
-  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--qitu-primary) 0%, transparent); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--qitu-primary) 20%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--qitu-primary) 0%, transparent);
+  }
 }
 
 /* Student-safe projection of the server Team. Detailed mailbox payloads stay
  * out of this surface; only role and high-level execution state are shown. */
-.qitu-tutor-team-rail { gap: 12px; }
+.qitu-tutor-team-rail {
+  gap: 12px;
+}
 
 .qitu-tutor-team-panel {
   display: grid;
@@ -310,7 +326,9 @@
   margin: 0 -8px;
   border-top: 1px solid var(--qitu-border);
   border-radius: 8px;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
 .qitu-tutor-team-item:hover {
@@ -354,6 +372,679 @@
 
 .qitu-tutor-encouragement .qitu-handwritten {
   line-height: 1.6;
+}
+
+/* ==========================================================================
+   NotebookLM-style Pinned Sources & AI Dialogue Canvas
+   Echoes the reference design: dark palette, numbered badges, sleek capsule.
+   ========================================================================== */
+
+/* Left column tab switcher */
+.qitu-tutor-left-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #181d28;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.qitu-tutor-tab-button {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.qitu-tutor-tab-button:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.qitu-tutor-tab-button.is-active {
+  background: #283144;
+  color: #f8fafc;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Pinned sources card */
+.qitu-pinned-sources-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #151821;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+}
+
+.qitu-pinned-sources-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qitu-pinned-sources-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f1f5f9;
+}
+
+.qitu-pinned-sources-title h2 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+
+.qitu-pin-icon {
+  width: 17px;
+  height: 17px;
+  color: #60a5fa;
+  transform: rotate(30deg);
+}
+
+.qitu-pinned-sources-count-badge {
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #232938;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.qitu-pinned-sources-toolbar {
+  display: flex;
+  gap: 6px;
+}
+
+.qitu-pinned-filter-pill {
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9999px;
+  background: #1c212d;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-pinned-filter-pill:hover {
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.qitu-pinned-filter-pill.is-active {
+  background: #252e40;
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.qitu-pinned-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.qitu-pinned-source-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #1a1e2a;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-pinned-source-item:hover {
+  background: #222838;
+  border-color: rgba(96, 165, 250, 0.4);
+  transform: translateX(2px);
+}
+
+.qitu-pinned-source-item.is-selected {
+  background: #1e283d;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.qitu-pinned-badge {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #283042;
+  color: #93c5fd;
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.qitu-pinned-content {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qitu-pinned-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.qitu-pinned-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qitu-source-icon {
+  width: 14px;
+  height: 14px;
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.qitu-pinned-meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qitu-pin-toggle {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.qitu-pin-toggle:hover {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.qitu-pin-toggle.is-pinned {
+  color: #60a5fa;
+}
+
+.qitu-pin-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.qitu-pinned-project-brief {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #181c26;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.qitu-pinned-brief-label {
+  display: block;
+  color: #60a5fa;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.qitu-pinned-project-brief strong {
+  display: block;
+  color: #f1f5f9;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.qitu-pinned-project-brief p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+}
+
+/* Center Column Chat Area (Dark Theme Dialog Arena) */
+.qitu-tutor-grid > .qitu-tutor-col-center {
+  background: #12151d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.qitu-chat-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 16px;
+}
+
+.qitu-chat-session-title {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.qitu-chat-cited-tag {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.qitu-chat-thread {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 380px;
+  max-height: 62vh;
+  padding-right: 6px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Chat bubble styling matching reference image */
+.qitu-chat-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 86%;
+}
+
+.qitu-chat-bubble.is-student {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.qitu-chat-bubble.is-student .qitu-chat-role {
+  display: none; /* Reference image keeps user bubble completely clean */
+}
+
+.qitu-chat-bubble.is-student .qitu-chat-body {
+  background: #222938;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px 18px 4px 18px;
+  padding: 12px 18px;
+  color: #f8fafc;
+  font-size: 0.94rem;
+  line-height: 1.65;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.qitu-chat-bubble.is-assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+  max-width: 92%;
+}
+
+.qitu-chat-bubble.is-assistant .qitu-chat-role {
+  color: #60a5fa;
+  font-size: 0.76rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.qitu-chat-bubble.is-assistant .qitu-chat-body {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  color: #e2e8f0;
+  font-size: 0.96rem;
+  line-height: 1.75;
+}
+
+/* Inline numbered citation badges: [1], [2] in text */
+.qitu-inline-citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 4px;
+  vertical-align: baseline;
+  border-radius: 4px;
+  background: #252e40;
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  user-select: none;
+}
+
+.qitu-inline-citation:hover {
+  background: #2878f0;
+  color: #ffffff;
+  border-color: #2878f0;
+  transform: translateY(-1px);
+}
+
+/* Evidence chip */
+.qitu-tutor-evidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #1a2233;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.15s ease;
+}
+
+.qitu-tutor-evidence:hover {
+  background: #222d44;
+  border-color: #60a5fa;
+}
+
+.qitu-tutor-evidence-label {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.qitu-tutor-evidence-ref {
+  color: #94a3b8;
+}
+
+/* Floating Jump to latest pill button */
+.qitu-composer-container {
+  position: relative;
+}
+
+.qitu-jump-to-latest-pill {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #1c2230;
+  border: 1px solid #333d52;
+  color: #f1f5f9;
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.16s ease;
+}
+
+.qitu-jump-to-latest-pill:hover {
+  background: #273044;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.qitu-jump-to-latest-pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Modern Input Capsule Composer */
+.qitu-composer-capsule {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-radius: 18px;
+  background: #171b26;
+  border: 1px solid #283042;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.qitu-composer-capsule:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 24px rgba(40, 120, 240, 0.18);
+}
+
+.qitu-composer-capsule .qitu-composer-input {
+  width: 100%;
+  min-height: 48px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f8fafc;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  resize: none;
+  padding: 0;
+}
+
+.qitu-composer-capsule .qitu-composer-input::placeholder {
+  color: #64748b;
+}
+
+.qitu-composer-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.qitu-composer-left-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qitu-composer-plus-wrapper {
+  position: relative;
+}
+
+.qitu-composer-plus-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #202636;
+  border: 1px solid #2c354a;
+  color: #94a3b8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-composer-plus-btn:hover,
+.qitu-composer-plus-btn.is-active {
+  background: #283248;
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+.qitu-composer-plus-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.qitu-composer-quick-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #1c2230;
+  border: 1px solid #2f384d;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  min-width: 180px;
+  z-index: 30;
+}
+
+.qitu-quick-menu-header {
+  padding: 4px 8px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 2px;
+}
+
+.qitu-quick-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.qitu-quick-menu-item:hover {
+  background: #273044;
+  color: #60a5fa;
+}
+
+.qitu-composer-mode-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #202636;
+  border: 1px solid #2c354a;
+  color: #94a3b8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-composer-mode-btn:hover {
+  color: #f1f5f9;
+  border-color: #3b82f6;
+}
+
+.qitu-composer-mode-btn.is-active {
+  background: #25334d;
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+.qitu-composer-voice-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: #202636;
+  border: 1px solid #2c354a;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.qitu-composer-voice-action-btn.is-listening {
+  color: #f87171;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.qitu-composer-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qitu-composer-kbd-hint {
+  color: #475569;
+  font-size: 0.74rem;
+  user-select: none;
+}
+
+.qitu-composer-send-arrow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #232938;
+  color: #475569;
+  display: grid;
+  place-items: center;
+  cursor: not-allowed;
+  transition: all 0.16s ease;
+}
+
+.qitu-composer-send-arrow-btn.is-ready {
+  background: #2878f0;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(40, 120, 240, 0.4);
+}
+
+.qitu-composer-send-arrow-btn.is-ready:hover {
+  background: #1a6be6;
+  transform: scale(1.06);
+}
+
+.qitu-composer-arrow-icon {
+  width: 16px;
+  height: 16px;
 }
 
 @media (max-width: 860px) {

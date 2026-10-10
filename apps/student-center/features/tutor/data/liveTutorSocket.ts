@@ -118,7 +118,11 @@ export class LiveTutorSocket implements TutorSocket {
   failStream(error: TutorDataError): void {
     if (this.disposed) return;
     const code: ApiErrorCode =
-      error.status === 401 ? 'UNAUTHENTICATED' : error.status === 429 ? 'RATE_LIMITED' : 'AI_SAFETY_BLOCK';
+      error.status === 401
+        ? 'UNAUTHENTICATED'
+        : error.status === 429
+          ? 'RATE_LIMITED'
+          : 'AI_SAFETY_BLOCK';
     this.emit(
       this.renumber(
         {

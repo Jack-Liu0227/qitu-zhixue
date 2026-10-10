@@ -22,6 +22,29 @@ export function SafeReplyFallback() {
   );
 }
 
+export function renderTextWithCitations(text: string, onCitationClick?: (index: number) => void) {
+  const parts = text.split(/(\[\d+\])/g);
+  return parts.map((part, index) => {
+    const match = part.match(/^\[(\d+)\]$/);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      return (
+        <button
+          key={`cite-${index}`}
+          type="button"
+          className="qitu-inline-citation"
+          onClick={() => onCitationClick?.(num)}
+          title={`查看材料 ${num}`}
+          aria-label={`来源材料 ${num}`}
+        >
+          {num}
+        </button>
+      );
+    }
+    return part;
+  });
+}
+
 /**
  * The ONLY renderer for assistant output.
  *
@@ -36,15 +59,19 @@ export function SafeReplyFallback() {
 export function TutorReplyBlockView({
   block,
   onSelectOption,
+  onCitationClick,
   disabled = false,
 }: {
   block: TutorReplyBlock;
   onSelectOption?: (label: string, text?: string) => void;
+  onCitationClick?: (index: number) => void;
   disabled?: boolean;
 }) {
   switch (block.kind) {
     case 'text':
-      return <p className="qitu-tutor-text">{block.text}</p>;
+      return (
+        <p className="qitu-tutor-text">{renderTextWithCitations(block.text, onCitationClick)}</p>
+      );
     case 'questions':
       return <NumberedQuestionList items={block.items} />;
     case 'options':
@@ -60,11 +87,17 @@ export function TutorReplyBlockView({
       return (
         <div className="qitu-tutor-hint">
           <HintLevelIndicator level={block.level} />
-          <p className="qitu-tutor-text">{block.text}</p>
+          <p className="qitu-tutor-text">{renderTextWithCitations(block.text, onCitationClick)}</p>
         </div>
       );
     case 'evidence':
-      return <EvidenceChip reference={block.ref} />;
+      return (
+        <EvidenceChip
+          reference={block.ref}
+          citationIndex={1}
+          onClick={() => onCitationClick?.(1)}
+        />
+      );
     case 'tool':
       // A lone step; a run of consecutive steps is grouped into one panel by
       // `ChatBubble` so the student reads one 「执行过程」 card, not N of them.
@@ -80,7 +113,9 @@ export function TutorReplyBlockView({
           summary={block.summary}
           tags={block.tags}
           actionLabel={block.actionLabel}
-          onAction={() => block.actionLabel && onSelectOption?.(block.actionLabel, block.actionLabel)}
+          onAction={() =>
+            block.actionLabel && onSelectOption?.(block.actionLabel, block.actionLabel)
+          }
         />
       );
     default: {

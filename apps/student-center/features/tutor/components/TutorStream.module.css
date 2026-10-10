@@ -136,7 +136,9 @@
   border-radius: 10px;
   background: rgba(246, 250, 255, 0.7);
   overflow: hidden;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .thinkingCard:hover {
@@ -255,9 +257,18 @@
 }
 
 @keyframes tutorPulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
 }
 
 .toolFoldTitle {
@@ -286,7 +297,9 @@
   border: 1px solid #c7d2fe;
   background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 85%);
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s ease;
   overflow: hidden;
 }
 
@@ -384,7 +397,9 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .pblActionButton:hover {
@@ -392,4 +407,3 @@
   transform: translateX(2px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
-

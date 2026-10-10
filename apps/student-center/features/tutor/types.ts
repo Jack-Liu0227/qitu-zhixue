@@ -1,4 +1,7 @@
-import type { TutorHintLevel, TutorProjectContext as SharedTutorProjectContext } from '@qitu/contracts';
+import type {
+  TutorHintLevel,
+  TutorProjectContext as SharedTutorProjectContext,
+} from '@qitu/contracts';
 
 export type TutorCurrentTask = SharedTutorProjectContext['currentTask'];
 

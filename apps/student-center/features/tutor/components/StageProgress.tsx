@@ -17,7 +17,10 @@ export function StageProgress({
 }) {
   return (
     <SectionCard title="阶段进度">
-      <ProgressBar percent={progress.progressPercent} label={`${progress.currentStageIndex + 1}/${progress.stageTotal}`} />
+      <ProgressBar
+        percent={progress.progressPercent}
+        label={`${progress.currentStageIndex + 1}/${progress.stageTotal}`}
+      />
       <ol className="qitu-tutor-stage-rail">
         {stages.map((stage, index) => {
           const tone =

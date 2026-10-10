@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { PermissionDenied } from '@qitu/ui';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
@@ -45,6 +46,10 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           : 'empty';
   const chatError = session.sessionError ?? session.submitError ?? session.streamNotice;
 
+  const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(null);
+
+  const sessionTitle = session.project?.project?.title ?? 'AI搭档启发探究对话';
+
   return (
     <div className="qitu-tutor-page">
       <TutorHeader />
@@ -57,6 +62,15 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           permissionDenied={session.permissionDenied}
           onRetry={session.retryProject}
           onReconnect={session.reconnect}
+          activeSourceIndex={activeSourceIndex}
+          onSelectSource={(source) => {
+            setActiveSourceIndex(source.index);
+            composer.setDraft(
+              composer.draft
+                ? `${composer.draft} [${source.index}]`
+                : `关于参考材料 [${source.index}] ${source.title}，我想请教：`,
+            );
+          }}
         />
 
         <ChatThread
@@ -67,6 +81,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           offline={session.offline}
           escalated={session.escalated}
           disabled={!sessionReady}
+          sessionTitle={sessionTitle}
+          sourceCount={6}
+          onCitationClick={(index) => setActiveSourceIndex(index)}
           onRetry={session.retrySession}
           onReconnect={session.reconnect}
           onSelectOption={(label) => {
@@ -88,7 +105,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         <TutorTeamRail
           streaming={session.streaming}
           ready={session.sessionStatus === 'ready'}
-          failed={session.sessionStatus === 'error' || session.submitError !== null || session.streamNotice !== null}
+          failed={
+            session.sessionStatus === 'error' ||
+            session.submitError !== null ||
+            session.streamNotice !== null
+          }
           offline={session.offline}
         />
       </div>

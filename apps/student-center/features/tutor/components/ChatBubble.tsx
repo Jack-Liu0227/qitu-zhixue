@@ -9,9 +9,7 @@ import { StreamCaret, ToolCallTimeline } from './ToolCallTimeline';
  * A render segment: either a RUN of consecutive tool calls (collapsed into one
  * 「执行过程」 panel) or a single validated reply block.
  */
-type Segment =
-  | { kind: 'tools'; calls: TutorToolCall[] }
-  | { kind: 'block'; raw: unknown };
+type Segment = { kind: 'tools'; calls: TutorToolCall[] } | { kind: 'block'; raw: unknown };
 
 /**
  * One conversation turn. The assistant side consumes only structured
@@ -29,11 +27,13 @@ type Segment =
 export function ChatBubble({
   turn,
   onSelectOption,
+  onCitationClick,
   disabled = false,
   streaming = false,
 }: {
   turn: TutorTurn;
   onSelectOption?: (label: string, text?: string) => void;
+  onCitationClick?: (index: number) => void;
   disabled?: boolean;
   streaming?: boolean;
 }) {
@@ -57,6 +57,7 @@ export function ChatBubble({
               key={`${turn.turnId}-${index}`}
               block={segment.raw}
               onSelectOption={onSelectOption}
+              onCitationClick={onCitationClick}
               disabled={disabled}
             />
           ) : (
@@ -101,9 +102,7 @@ function isToolBlock(value: unknown): value is Extract<TutorReplyBlock, { kind: 
 
 function isTextBlock(value: unknown): boolean {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    (value as { kind?: unknown }).kind === 'text'
+    typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'text'
   );
 }
 

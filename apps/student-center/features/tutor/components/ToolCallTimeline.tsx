@@ -11,7 +11,9 @@ export function ToolCallStep({ call }: { call: TutorToolCall }) {
   const statusText =
     call.status === 'running' ? '正在执行' : call.status === 'done' ? '已完成' : '执行失败';
   return (
-    <li className={call.status === 'running' ? `${styles.step} ${styles.stepRunning}` : styles.step}>
+    <li
+      className={call.status === 'running' ? `${styles.step} ${styles.stepRunning}` : styles.step}
+    >
       <span className={styles.marker} role="img" aria-label={statusText}>
         {call.status === 'running' ? <span className={styles.spinner} aria-hidden="true" /> : null}
         {call.status === 'done' ? (
@@ -53,11 +55,18 @@ export function ToolCallTimeline({ calls }: { calls: TutorToolCall[] }) {
         aria-expanded={open}
         className={styles.toolFoldButton}
       >
-        <span className={running ? `${styles.toolStatusDot} ${styles.dotRunning}` : styles.toolStatusDot} />
+        <span
+          className={
+            running ? `${styles.toolStatusDot} ${styles.dotRunning}` : styles.toolStatusDot
+          }
+        />
         <span className={styles.toolFoldTitle}>
           {running ? 'AI搭档正在执行工具...' : `${calls.length} 次工具与环境调用`}
         </span>
-        <span className={`${styles.toolFoldCaret} ${open ? styles.caretRotated : ''}`} aria-hidden="true">
+        <span
+          className={`${styles.toolFoldCaret} ${open ? styles.caretRotated : ''}`}
+          aria-hidden="true"
+        >
           ▶
         </span>
       </button>
