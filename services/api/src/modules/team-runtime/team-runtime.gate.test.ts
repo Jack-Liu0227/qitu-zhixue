@@ -903,19 +903,22 @@ test('migration 0021 pins the active-mentor partial unique index; journal monoto
   const journal = JSON.parse(readFileSync(join(migrations, 'meta', '_journal.json'), 'utf8')) as {
     entries: Array<{ idx: number; when: number; tag: string }>;
   };
-  // 不假设序号连续：main 可能已有其它分支占用中间 idx（如 0020_enable_team_agents），
-  // 只要求 idx 严格递增且尾条是本分支的 0021。
+  // 不假设序号连续，也不假设 0021 永远是尾条：后续迁移可以追加到 journal。
+  // 只要求 idx 严格递增，并核实 0021 这条记录与其 up/down 文件同步。
   const idxs = journal.entries.map((entry) => entry.idx);
   for (let i = 1; i < idxs.length; i += 1) {
     assert.ok(idxs[i]! > idxs[i - 1]!, 'journal idx 必须严格递增');
   }
-  const last = journal.entries[journal.entries.length - 1]!;
-  const previous = journal.entries[journal.entries.length - 2]!;
-  assert.equal(last.idx, 21);
-  assert.equal(last.tag, '0021_agent_team_run_mentor_uniqueness');
-  assert.ok(last.when > previous.when, 'journal when 必须严格递增');
-  assert.ok(existsSync(join(migrations, `${last.tag}.sql`)), 'tag 必须与 up 文件名一致');
-  assert.ok(existsSync(join(migrations, `${last.tag}.down.sql`)), 'tag 必须与 down 文件名一致');
+  const migration0021 = journal.entries.find((entry) => entry.tag === '0021_agent_team_run_mentor_uniqueness');
+  assert.ok(migration0021, 'journal 必须包含 0021 迁移');
+  const migration0021Index = journal.entries.indexOf(migration0021);
+  const previous = journal.entries[migration0021Index - 1]!;
+  assert.equal(migration0021.idx, 21);
+  assert.equal(migration0021.tag, '0021_agent_team_run_mentor_uniqueness');
+  assert.ok(migration0021Index > 0, '0021 必须有前置迁移');
+  assert.ok(migration0021.when > previous.when, 'journal when 必须严格递增');
+  assert.ok(existsSync(join(migrations, `${migration0021.tag}.sql`)), 'tag 必须与 up 文件名一致');
+  assert.ok(existsSync(join(migrations, `${migration0021.tag}.down.sql`)), 'tag 必须与 down 文件名一致');
 
   // schema 声明与迁移同步：agent_team_runs 上必须有同名部分唯一索引。
   const schema = readFileSync(join(root, 'packages', 'database', 'src', 'schema', 'team-runtime.ts'), 'utf8').replace(/\r\n/g, '\n');
