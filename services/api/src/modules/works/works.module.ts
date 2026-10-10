@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { type Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
+import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { DirectoryModule } from '../directory/directory.module';
 import { DirectoryService } from '../directory/directory.service';
 import { ArtifactsController, FilesController } from './works.controller';
@@ -43,7 +44,9 @@ import {
  * 判分等服务端模块物化证据（这是**唯一**的证据写入口，没有 HTTP 路由）。
  */
 @Module({
-  imports: [AuthModule, DirectoryModule],
+  // T17：TeamRuntimeModule 提供服务端内部的门禁证据写入（review_completed_and_archived）。
+  // 它不反向依赖 WorksModule，因此无循环导入。
+  imports: [AuthModule, DirectoryModule, TeamRuntimeModule],
   controllers: [ArtifactsController, FilesController, ProjectEvidenceController],
   providers: [
     WorksService,
