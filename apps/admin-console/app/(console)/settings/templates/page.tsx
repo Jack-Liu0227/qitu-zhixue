@@ -49,22 +49,25 @@ export default function AdminTemplatesPage() {
         <EmptyState title="暂无项目模板" description="模板库当前没有可供管理的模板，或数据库尚未初始化。" />
       ) : (
         <div className="admin-runtime-cards">
-          {templates.map((template) => (
-            <SectionCard key={template.id} title={template.title} action={<span className="admin-runtime-status-chip">{STATUS_LABEL[template.status] ?? template.status}</span>}>
-              <div className="admin-runtime-row-meta admin-runtime-row-meta-spaced">
-                <code className="admin-console-fingerprint">{template.slug}</code>
-                <span>{template.scope}</span>
-                <span>{template.domain ?? '未分类'}</span>
-              </div>
-              <p className="admin-runtime-description">{template.summary || '暂无摘要'}</p>
-              <InfoRow label="适用年龄" value={template.ageRange ?? '未设置'} />
-              <InfoRow label="难度" value={template.difficulty ?? '未设置'} />
-              <InfoRow label="预计时长" value={template.estimatedDurationMinutes ? `${template.estimatedDurationMinutes} 分钟` : '未设置'} />
-              <InfoRow label="学习目标" value={template.learningObjectives.length > 0 ? template.learningObjectives.join('、') : '—'} />
-              <InfoRow label="绑定导师团队" value={LINKED_TEAMS[template.id] ? `${LINKED_TEAMS[template.id].teamName} (${LINKED_TEAMS[template.id].teamId})` : '平台通用导师'} />
-              <InfoRow label="最新发布版本" value={template.latestPublishedVersionId ?? '未发布'} />
-            </SectionCard>
-          ))}
+          {templates.map((template) => {
+            const linkedTeam = LINKED_TEAMS[template.id];
+            return (
+              <SectionCard key={template.id} title={template.title} action={<span className="admin-runtime-status-chip">{STATUS_LABEL[template.status] ?? template.status}</span>}>
+                <div className="admin-runtime-row-meta admin-runtime-row-meta-spaced">
+                  <code className="admin-console-fingerprint">{template.slug}</code>
+                  <span>{template.scope}</span>
+                  <span>{template.domain ?? '未分类'}</span>
+                </div>
+                <p className="admin-runtime-description">{template.summary || '暂无摘要'}</p>
+                <InfoRow label="适用年龄" value={template.ageRange ?? '未设置'} />
+                <InfoRow label="难度" value={template.difficulty ?? '未设置'} />
+                <InfoRow label="预计时长" value={template.estimatedDurationMinutes ? `${template.estimatedDurationMinutes} 分钟` : '未设置'} />
+                <InfoRow label="学习目标" value={template.learningObjectives.length > 0 ? template.learningObjectives.join('、') : '—'} />
+                <InfoRow label="绑定导师团队" value={linkedTeam ? `${linkedTeam.teamName} (${linkedTeam.teamId})` : '平台通用导师'} />
+                <InfoRow label="最新发布版本" value={template.latestPublishedVersionId ?? '未发布'} />
+              </SectionCard>
+            );
+          })}
         </div>
       )}
     </div>
