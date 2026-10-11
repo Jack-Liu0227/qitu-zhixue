@@ -214,6 +214,7 @@ export default function AdminTeamsPage() {
       const created = await createPersistedAssistant(
         {
           name: newAsstName.trim(),
+          description: newAsstRole.trim() || 'PBL 专属探究导师',
           role: newAsstRole.trim(),
           avatar: newAsstAvatar.trim() || '🤖',
           modelId: newAsstModel || configuredModels[0]?.id || 'gpt-5.6-sol',
