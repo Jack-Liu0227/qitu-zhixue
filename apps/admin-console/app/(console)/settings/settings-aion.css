@@ -951,3 +951,627 @@
   .admin-page-header-actions { width: 100%; flex-wrap: wrap; }
   .admin-search-input { min-width: 0; flex: 1; }
 }
+
+/* ==========================================================================
+   Admin Assistants UI (AdminUI/助手展示.png & 助手编辑与设置.png)
+   ========================================================================== */
+
+.admin-assistants-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.admin-assistants-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 6px;
+}
+
+.admin-assistants-eyebrow {
+  font-size: 13.5px;
+  color: var(--aion-t-secondary);
+  margin: 0;
+}
+
+.admin-assistants-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-header-filter-select {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--aion-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--aion-t-primary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.admin-assistants-group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-group-bar {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: #165dff;
+}
+
+.admin-group-bar.is-orange {
+  background: #f77234;
+}
+
+.admin-group-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+  margin: 0;
+}
+
+.admin-group-count {
+  font-size: 12px;
+  color: var(--aion-t-tertiary);
+  background: var(--aion-fill-2);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.admin-assistants-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.admin-assistant-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--aion-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.admin-assistant-card:hover {
+  border-color: #165dff;
+  box-shadow: 0 6px 16px rgba(22, 93, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.admin-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-card-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f2f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid #dce4ee;
+}
+
+.admin-card-icon-box.is-cli {
+  background: #fff5eb;
+  border-color: #ffe3cf;
+}
+
+.admin-toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #e5e6eb;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease;
+  padding: 2px;
+}
+
+.admin-toggle-switch.is-on {
+  background: #165dff;
+}
+
+.admin-toggle-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-toggle-switch.is-on .admin-toggle-knob {
+  transform: translateX(20px);
+}
+
+.admin-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.admin-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+}
+
+.admin-warning-circle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff1da;
+  color: #b9761e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-card-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--aion-t-secondary);
+  margin: 0 0 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 40px;
+}
+
+.admin-card-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #f2f3f5;
+  margin-top: auto;
+}
+
+.admin-agent-meta {
+  font-size: 12px;
+  color: var(--aion-t-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-agent-tag {
+  font-size: 14px;
+}
+
+.admin-card-action-btn {
+  font-size: 12.5px;
+  color: #165dff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.admin-card-action-btn:hover {
+  background: #edf5ff;
+}
+
+/* 助手与团队成员编辑器详情 */
+.admin-assistant-editor-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #ffffff;
+  border: 1px solid var(--aion-border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.admin-editor-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f2f3f5;
+  padding-bottom: 16px;
+}
+
+.admin-editor-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--aion-border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--aion-t-secondary);
+  cursor: pointer;
+}
+
+.admin-back-btn:hover {
+  background: var(--aion-fill-1);
+  color: var(--aion-t-primary);
+}
+
+.admin-editor-section-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #f0f2f5;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+}
+
+.admin-config-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.admin-config-label-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--aion-t-secondary);
+}
+
+.admin-config-field-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--aion-border);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  color: var(--aion-t-primary);
+  outline: none;
+}
+
+.admin-select:focus {
+  border-color: #165dff;
+}
+
+.admin-config-hint {
+  font-size: 11.5px;
+  color: var(--aion-t-tertiary);
+}
+
+.admin-inline-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-selector-pill {
+  font-size: 12px;
+  padding: 3px 10px;
+  background: #edf5ff;
+  color: #165dff;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.admin-config-link {
+  font-size: 12px;
+  color: #165dff;
+  text-decoration: none;
+}
+
+.admin-config-link:hover {
+  text-decoration: underline;
+}
+
+.admin-prompt-editor-box {
+  width: 100%;
+  min-height: 240px;
+  border: 1px solid var(--aion-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--aion-t-primary);
+  background: #ffffff;
+  resize: vertical;
+  outline: none;
+}
+
+.admin-prompt-editor-box:focus {
+  border-color: #165dff;
+}
+
+/* ==========================================================================
+   Admin Team Member Editor UI (AdminUI/团队成员能力编辑.png & 团队成员设置编辑.png)
+   ========================================================================== */
+
+.team-member-editor-view {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--aion-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.team-editor-top-tabs {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 28px;
+  height: 52px;
+  border-bottom: 1px solid #e5e6eb;
+  background: #ffffff;
+}
+
+.team-editor-tab-item {
+  position: relative;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--aion-t-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.team-editor-tab-item:hover {
+  color: var(--aion-t-primary);
+}
+
+.team-editor-tab-item.is-active {
+  color: #165dff;
+  font-weight: 600;
+}
+
+.team-editor-tab-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #165dff;
+  border-radius: 1px;
+}
+
+.team-editor-body-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 480px;
+}
+
+.team-editor-subnav {
+  padding: 20px 12px;
+  border-right: 1px solid #f0f2f5;
+  background: #fbfcfe;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.team-subnav-btn {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--aion-t-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.team-subnav-btn:hover {
+  background: #f2f3f5;
+  color: var(--aion-t-primary);
+}
+
+.team-subnav-btn.is-active {
+  background: #f2f3f5;
+  color: var(--aion-t-primary);
+  font-weight: 600;
+}
+
+.team-editor-subcontent {
+  padding: 28px 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: #ffffff;
+}
+
+.team-subcontent-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+  margin: 0;
+}
+
+.team-subcontent-desc {
+  font-size: 13px;
+  color: var(--aion-t-tertiary);
+  margin: 0;
+}
+
+.team-subcontent-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.team-block-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--aion-t-primary);
+  margin: 0;
+}
+
+.team-form-card {
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.team-field-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.team-field-label {
+  font-size: 13.5px;
+  color: var(--aion-t-primary);
+}
+
+.team-field-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.team-avatar-preview {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f2f3f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border: 1px solid #e5e6eb;
+}
+
+.team-input-text {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--aion-t-primary);
+  outline: none;
+}
+
+.team-input-text:focus {
+  border-color: #165dff;
+}
+
+.team-textarea {
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  color: var(--aion-t-primary);
+  outline: none;
+  min-height: 72px;
+  resize: vertical;
+}
+
+.team-textarea:focus {
+  border-color: #165dff;
+}
+
+.team-char-counter {
+  align-self: flex-end;
+  font-size: 11.5px;
+  color: var(--aion-t-tertiary);
+}
+
+.team-select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--aion-t-primary);
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+}
+
+.team-select:focus {
+  border-color: #165dff;
+}
+
+.team-concurrency-hint {
+  font-size: 11.5px;
+  color: var(--aion-t-tertiary);
+  margin-top: 4px;
+}
+
+.team-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 28px;
+  border-top: 1px solid #f0f2f5;
+  background: #ffffff;
+}
+

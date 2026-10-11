@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { colors } from '@qitu/design-tokens';
-import { BrandMark, HandwrittenNote, OfflineBanner, RobotMascot } from '@qitu/ui';
+import { BrandMark, OfflineBanner, RobotMascot } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
 import { readCachedSession, writeCachedSession } from '@qitu/auth';
 
@@ -248,8 +247,10 @@ export default function LoginPage() {
 
       writeCachedSession(data);
       persistRememberedEmail(email, rememberAccount);
-      // 登录成功后由浏览器执行跳转，避免把未确认身份的 next 当作可信目标。
-      window.location.assign(nextPath ?? destinationFor(data.user.role));
+      // 登录成功后跳转到对应的系统；仅当 next 属于该角色命名空间时才继承 next
+      const roleDest = destinationFor(data.user.role);
+      const targetPath = nextPath && nextPath.startsWith(roleDest) ? nextPath : roleDest;
+      window.location.assign(targetPath);
     } catch (cause) {
       if (
         cause instanceof TypeError ||
@@ -265,32 +266,6 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-intro" aria-labelledby="login-intro-title">
-        <p className="eyebrow" style={{ color: colors.primary }}>
-          QITU SMART LEARNING
-        </p>
-        <h1 id="login-intro-title" className="login-intro-logo">
-          <img src="/brand-logo.png" width={220} height={220} alt="启途智学" />
-        </h1>
-        <p className="login-positioning">让好奇心有方向，让每个作品留下成长证据。</p>
-        <p className="login-desc">启途智学把问题、思考、实践和复盘连接起来，帮助学生在真实项目中建立能力。</p>
-
-        <ul className="login-feature-list">
-          <li>从真实问题出发，定义值得研究的方向</li>
-          <li>AI 搭档启发式引导，先思考再动手</li>
-          <li>先理论后实践，把想法做成真实作品</li>
-          <li>作品与成长档案沉淀每一步学习轨迹</li>
-        </ul>
-
-        <div className="login-how">
-          <HandwrittenNote rotate={-2}>如何登录？</HandwrittenNote>
-          <p>
-            本平台使用学校统一发放的账号（邮箱）与密码登录，不支持自助注册。
-            如忘记密码，请联系班主任或管理员重置。
-          </p>
-        </div>
-      </section>
-
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-brand-row">
           <div className="login-brand">

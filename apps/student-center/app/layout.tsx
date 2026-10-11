@@ -6,6 +6,7 @@ import './globals.css';
 // AI搭档页的伙伴外壳样式放在 student-center，避免影响工作台共用的 tutor advice 组件。
 import '../styles/growth.css';
 import '../styles/inspiration.css';
+import '../styles/profile.css';
 import '../styles/projects.css';
 import '../styles/today.css';
 import '../styles/tutor.css';

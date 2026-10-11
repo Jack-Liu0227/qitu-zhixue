@@ -1,0 +1,98 @@
+'use client';
+
+import { useState } from 'react';
+
+export interface HeuristicQuizCardProps {
+  questionId: string;
+  stem: string;
+  type?: 'single' | 'multiple' | 'heuristic';
+  options: { key: string; text: string; hint?: string }[];
+  explanation?: string;
+  selectedKey?: string;
+  onSelectOption?: (key: string, text: string) => void;
+  disabled?: boolean;
+}
+
+export function HeuristicQuizCard({
+  stem,
+  type = 'single',
+  options,
+  explanation,
+  selectedKey: initialSelectedKey,
+  onSelectOption,
+  disabled = false,
+}: HeuristicQuizCardProps) {
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(initialSelectedKey);
+  const [showHint, setShowHint] = useState(false);
+
+  const handleSelect = (key: string, text: string) => {
+    if (disabled) return;
+    setSelectedKey(key);
+    onSelectOption?.(key, text);
+  };
+
+  return (
+    <div className="qitu-quiz-card">
+      <div className="qitu-quiz-header">
+        <span className="qitu-quiz-badge">
+          {type === 'heuristic' ? '💡 启发式思考' : type === 'multiple' ? '多选题' : '单选题'}
+        </span>
+        <span className="qitu-quiz-hint-tag">项目式引导探索</span>
+      </div>
+
+      <h4 className="qitu-quiz-stem">{stem}</h4>
+
+      <div className="qitu-quiz-options">
+        {options.map((option) => {
+          const isSelected = selectedKey === option.key;
+          return (
+            <button
+              key={option.key}
+              type="button"
+              className={`qitu-quiz-option-btn${isSelected ? ' is-selected' : ''}`}
+              disabled={disabled}
+              onClick={() => handleSelect(option.key, option.text)}
+            >
+              <span className="qitu-quiz-option-key">{option.key}</span>
+              <div className="qitu-quiz-option-content">
+                <span className="qitu-quiz-option-text">{option.text}</span>
+                {option.hint && isSelected ? (
+                  <span className="qitu-quiz-option-feedback">{option.hint}</span>
+                ) : null}
+              </div>
+              <span className="qitu-quiz-option-indicator">
+                {isSelected ? '✓' : '→'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="qitu-quiz-footer">
+        <button
+          type="button"
+          className="qitu-quiz-toggle-hint-btn"
+          onClick={() => setShowHint(!showHint)}
+        >
+          {showHint ? '隐藏思考锦囊' : '💡 查看思考锦囊与提示'}
+        </button>
+
+        {showHint ? (
+          <div className="qitu-quiz-hint-box">
+            <strong>搭档提示：</strong>
+            <p>
+              从真实问题的核心变量入手，思考输入条件与预期输出之间的因果链条。试着用控制变量的方法分析不同选项带来的差异。
+            </p>
+          </div>
+        ) : null}
+
+        {explanation && selectedKey ? (
+          <div className="qitu-quiz-explanation">
+            <strong>解析与下一步：</strong>
+            <p>{explanation}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

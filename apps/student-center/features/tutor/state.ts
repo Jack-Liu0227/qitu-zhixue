@@ -41,6 +41,14 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
       const card = value as { title?: unknown; summary?: unknown };
       return typeof card.title === 'string' && typeof card.summary === 'string';
     }
+    case 'artifact': {
+      const art = value as { fileName?: unknown; title?: unknown };
+      return typeof art.fileName === 'string' && typeof art.title === 'string';
+    }
+    case 'quiz': {
+      const q = value as { questionId?: unknown; stem?: unknown; options?: unknown };
+      return typeof q.questionId === 'string' && typeof q.stem === 'string' && Array.isArray(q.options);
+    }
     default:
       return false;
   }

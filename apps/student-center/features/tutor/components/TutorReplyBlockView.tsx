@@ -6,6 +6,8 @@ import { OptionChips } from './OptionChips';
 import { ToolCallTimeline } from './ToolCallTimeline';
 import { ModelThinkingCard } from './ModelThinkingCard';
 import { PblStageCard } from './PblStageCard';
+import { ArtifactFileCard } from './ArtifactFileCard';
+import { HeuristicQuizCard } from './HeuristicQuizCard';
 
 /**
  * Safe fallback for a reply block that is not one of the five modelled
@@ -81,6 +83,32 @@ export function TutorReplyBlockView({
           tags={block.tags}
           actionLabel={block.actionLabel}
           onAction={() => block.actionLabel && onSelectOption?.(block.actionLabel, block.actionLabel)}
+        />
+      );
+    case 'artifact':
+      return (
+        <ArtifactFileCard
+          fileName={block.fileName}
+          fileType={block.fileType}
+          title={block.title}
+          summary={block.summary}
+          content={block.content}
+          downloadUrl={block.downloadUrl}
+          sizeText={block.sizeText}
+          nodeRef={block.nodeRef}
+        />
+      );
+    case 'quiz':
+      return (
+        <HeuristicQuizCard
+          questionId={block.questionId}
+          stem={block.stem}
+          type={block.type}
+          options={block.options}
+          explanation={block.explanation}
+          selectedKey={block.selectedKey}
+          onSelectOption={(key, text) => onSelectOption?.(key, text)}
+          disabled={disabled}
         />
       );
     default: {

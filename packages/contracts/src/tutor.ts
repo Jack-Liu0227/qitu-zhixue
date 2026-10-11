@@ -74,6 +74,32 @@ export type TutorReplyBlock =
       summary: string;
       tags?: readonly string[];
       actionLabel?: string;
+    }
+  /**
+   * 项目交付物与文件产出展示卡片（如实验报告、方案设计、分析代码、思维导图等）。
+   */
+  | {
+      kind: 'artifact';
+      fileName: string;
+      fileType: 'markdown' | 'code' | 'document' | 'data' | 'image' | 'archive';
+      title: string;
+      summary?: string;
+      content?: string;
+      downloadUrl?: string;
+      sizeText?: string;
+      nodeRef?: string;
+    }
+  /**
+   * 启发式题目与问答选择卡片。
+   */
+  | {
+      kind: 'quiz';
+      questionId: string;
+      stem: string;
+      type?: 'single' | 'multiple' | 'heuristic';
+      options: { key: string; text: string; hint?: string }[];
+      explanation?: string;
+      selectedKey?: string;
     };
 
 /** 工具调用的生命周期状态。 */

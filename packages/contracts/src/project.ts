@@ -37,9 +37,19 @@ export interface ProjectSummary {
  * `id` and `label` come from the frozen template version, not from global
  * constants.
  */
+export interface TemplateSubNode {
+  id: string;
+  label: string;
+  description?: string;
+  status?: 'done' | 'current' | 'locked';
+  deliverables?: string[];
+}
+
 export interface TemplateStage {
   id: string;
   label: string;
+  description?: string;
+  subNodes?: TemplateSubNode[];
 }
 
 /**

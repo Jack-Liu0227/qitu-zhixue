@@ -15,13 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function LoginLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <>
-      <Link className="login-back" href="/">
-        <Icon name="arrowRight" size={16} />
-        返回首页
-      </Link>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

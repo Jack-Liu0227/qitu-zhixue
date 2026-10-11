@@ -39,6 +39,7 @@ const NAV_SPECS = [
   { path: '/projects', label: '我的项目' },
   { path: '/works', label: '作品展厅' },
   { path: '/growth', label: '成长轨迹' },
+  { path: '/profile', label: '个人画像' },
 ] as const;
 
 /** Pure presentational glyphs. `@qitu/ui` may add a shared icon set later; the
@@ -132,6 +133,18 @@ function GrowthIcon() {
   );
 }
 
+function ProfileIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 4a3.5 3.5 0 1 1-3.5 3.5A3.5 3.5 0 0 1 12 6zm0 14a7.93 7.93 0 0 1-5.65-2.39 6 6 0 0 1 11.3 0A7.93 7.93 0 0 1 12 20z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 const NAV_ICONS: Record<(typeof NAV_SPECS)[number]['path'], ReactNode> = {
   '/today': <TodayIcon />,
   '/inspiration': <InspirationIcon />,
@@ -139,6 +152,7 @@ const NAV_ICONS: Record<(typeof NAV_SPECS)[number]['path'], ReactNode> = {
   '/projects': <ProjectsIcon />,
   '/works': <WorksIcon />,
   '/growth': <GrowthIcon />,
+  '/profile': <ProfileIcon />,
 };
 
 const NAV_ITEMS: NavItem[] = NAV_SPECS.map((spec) => ({

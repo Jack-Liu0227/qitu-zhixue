@@ -3,7 +3,7 @@ import { StudentLink } from '../../../components/student-link';
 import type { TutorLoadStatus, TutorProjectContext, TutorViewError } from '../types';
 import { CurrentTask } from './CurrentTask';
 import { ProjectCard } from './ProjectCard';
-import { StageProgress } from './StageProgress';
+import { ProjectProgressPreview } from './ProjectProgressPreview';
 
 /**
  * LEFT COLUMN — 「项目卡 + 阶段进度 + 当前任务」.
@@ -75,8 +75,11 @@ export function ProjectContextPanel({
 
       {status === 'ready' && project !== null ? (
         <div className="qitu-tutor-left-cards">
-          <ProjectCard project={project.project} />
-          <StageProgress stages={project.stages} progress={project.progress} />
+          <ProjectProgressPreview
+            projectTitle={project.project.title}
+            stages={project.stages}
+            progress={project.progress}
+          />
           <CurrentTask task={project.currentTask} />
         </div>
       ) : null}
