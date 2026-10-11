@@ -1,5 +1,10 @@
 body {
   min-height: 100vh;
+  background:
+    radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 18%), transparent 62%),
+    radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 20%), transparent 58%),
+    linear-gradient(135deg, #f2f3ff 0%, #faf8ff 48%, #effcf8 100%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -7,7 +12,7 @@ body {
 .qitu-student-shell {
   min-height: 100vh;
   width: 100%;
-  background: radial-gradient(circle at 50% 0%, #eaedff 0%, #faf8ff 55%, #f4f6fc 100%);
+  background: transparent;
   color: #131b2e;
 }
 
@@ -145,12 +150,22 @@ body {
 
 /* 全宽优化：减少左右多余空白，填满屏幕空间 */
 .qitu-student-content {
-  padding: 16px 24px 40px !important;
+  padding: 16px 20px 40px !important;
   max-width: 100% !important;
   width: 100% !important;
   box-sizing: border-box;
 }
 
 .qitu-student-banner-slot {
-  padding: 16px 24px 0 !important;
+  padding: 16px 20px 0 !important;
+}
+
+.qitu-inspiration-detail,
+.qitu-inspiration-page,
+.qitu-tutor-page,
+.qitu-profile-page,
+.qitu-projects-page,
+.qitu-today-page {
+  max-width: 100% !important;
+  width: 100% !important;
 }

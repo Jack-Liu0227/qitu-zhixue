@@ -1,4 +1,11 @@
-body { min-height: 100vh; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 18%), transparent 62%),
+    radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 20%), transparent 58%),
+    linear-gradient(135deg, #f2f3ff 0%, #faf8ff 48%, #effcf8 100%);
+  background-attachment: fixed;
+}
 
 .admin-login-page { display: grid; min-height: 100vh; place-items: center; padding: 6vh 6vw; }
 .admin-login-panel { width: min(100%, 420px); padding: 36px; background: white; border: 1px solid var(--qitu-border); border-radius: 10px; box-shadow: 0 18px 50px rgb(16 42 92 / 10%); }

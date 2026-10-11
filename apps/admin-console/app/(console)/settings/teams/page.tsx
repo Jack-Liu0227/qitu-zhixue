@@ -39,8 +39,14 @@ export default function AdminTeamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // 默认小队列表 vs 具体小队详情视图 (和助手一样默认展示小队卡片)
+  const [viewingTeamDetailId, setViewingTeamDetailId] = useState<string | null>(null);
+
   // 团队内主视图 Tab（成员 vs 指引）
   const [teamMainTab, setTeamMainTab] = useState<'members' | 'guide'>('members');
+  const [teamGuideText, setTeamGuideText] = useState<string>('');
+  const [isGuideEditing, setIsGuideEditing] = useState<boolean>(false);
+  const [guideSaveNotice, setGuideSaveNotice] = useState<string>('');
 
   // 成员编辑器状态
   const [editingMember, setEditingMember] = useState<MemberEditState | null>(null);
@@ -51,10 +57,10 @@ export default function AdminTeamsPage() {
   // 新增成员弹窗状态
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedAssistantToAdd, setSelectedAssistantToAdd] = useState('');
-  const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<'teammate' | 'coach' | 'reviewer'>('teammate');
+  const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<'leader' | 'teammate' | 'coach' | 'reviewer'>('teammate');
+  const [expandInlineCreateAsst, setExpandInlineCreateAsst] = useState(false);
 
   // 新建专属导师智能体状态
-  const [showDesignAssistantModal, setShowDesignAssistantModal] = useState(false);
   const [newAsstName, setNewAsstName] = useState('');
   const [newAsstRole, setNewAsstRole] = useState('原理教练');
   const [newAsstAvatar, setNewAsstAvatar] = useState('🎓');
@@ -102,6 +108,49 @@ export default function AdminTeamsPage() {
   const activeTeam = useMemo(() => {
     return teams.find((t) => t.id === activeTeamId) || teams[0] || null;
   }, [teams, activeTeamId]);
+
+  useEffect(() => {
+    if (activeTeam) {
+      setTeamGuideText(
+        activeTeam.description
+          ? `# ${activeTeam.name} 运行与交付指引\n\n${activeTeam.description}\n\n## 教学与交接红线\n1. 意图确认：学生未明确探究意图与核心玩法/探究假设前，队长不得批准正式开题。\n2. 理论硬门禁：在通过原理教练的 TheoryMastered 概念质询前，团队成员严禁直接向学生下发实践代码。\n3. 沙箱排错：由伙伴向导启发学生根据 Traceback 报错按行定位，引导其自主修复。\n4. 答辩归档：评审导师依据 PBL 量规进行防作弊质询，核验通过后生成终身成长档案。`
+          : ''
+      );
+    }
+  }, [activeTeam]);
+
+  const handleSaveGuide = async () => {
+    if (!activeTeam) return;
+    try {
+      const updated = await updatePersistedTeam(
+        activeTeam.id,
+        { description: teamGuideText || activeTeam.description },
+        newIdempotencyKey()
+      );
+      setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setGuideSaveNotice('指引已成功保存 ✔');
+      setTimeout(() => setGuideSaveNotice(''), 2000);
+      setIsGuideEditing(false);
+    } catch (err: any) {
+      alert(`保存指引失败：${err?.message || '网络异常'}`);
+    }
+  };
+
+  const handleDeleteTeamById = async (id: string, name: string) => {
+    const ok = window.confirm(`确定要彻底删除团队「${name}」吗？\n删除后不可恢复。`);
+    if (!ok) return;
+    try {
+      await deletePersistedTeam(id, newIdempotencyKey());
+      const nextTeams = teams.filter((t) => t.id !== id);
+      setTeams(nextTeams);
+      if (viewingTeamDetailId === id) {
+        setViewingTeamDetailId(null);
+      }
+      setActiveTeamId(nextTeams[0]?.id || '');
+    } catch (err: any) {
+      alert(`删除团队失败：${err?.message || '操作异常'}`);
+    }
+  };
 
   // 设为队长
   const handleSetLeader = async (memberAssistantId: string, e?: React.MouseEvent) => {
@@ -766,18 +815,174 @@ export default function AdminTeamsPage() {
     );
   }
 
-  // 团队主显示视图（严格对齐 AdminUI/团队显示.png）
+  // 默认团队列表视图 (与助手列表保持统一，默认只显示团队卡片，点开后才展示具体成员与指引)
+  if (viewingTeamDetailId === null) {
+    return (
+      <div className="admin-settings-page">
+        <div className="settings-pagehead">
+          <div className="settings-titlebox">
+            <h1>导师团队 (Teams)</h1>
+            <div className="settings-desc">
+              针对具体 PBL 项目的导师团队协同配置。默认展示小队列表，点击进入小队查看完整成员与运行指引。
+            </div>
+          </div>
+          <div className="settings-page-actions">
+            <button
+              type="button"
+              className="settings-action-btn is-primary"
+              onClick={() => setShowCreateTeamModal(true)}
+            >
+              + 新建团队
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-templates-cards-grid">
+          {teams.map((t) => {
+            const leader = allAssistants.find((a) => a.id === t.leaderAssistantId);
+            return (
+              <div key={t.id} className="admin-template-item-card">
+                <div className="admin-template-item-head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '26px' }}>
+                      {t.id.includes('thunder') ? '🚀' : '⚡'}
+                    </span>
+                    <strong className="admin-template-item-title">{t.name}</strong>
+                  </div>
+                  <span className="admin-template-status-pill">{t.members.length} 人小队</span>
+                </div>
+
+                <p className="admin-template-item-desc">
+                  {t.description || '收到标准格式任务后自动建立工作目录、端到端完成任务，并在通过机器自检后自动提交挑战。'}
+                </p>
+
+                <div className="admin-template-info-list">
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">小队总负责人 (Leader):</span>
+                    <span className="admin-template-info-val">👑 {leader?.name || '小队负责人'}</span>
+                  </div>
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">核心角色成员:</span>
+                    <span className="admin-template-info-val">
+                      {t.members.map((m) => m.roleLabel || m.role).join(' · ')}
+                    </span>
+                  </div>
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">所属探究领域:</span>
+                    <span className="admin-template-info-val">
+                      {t.id.includes('thunder') ? 'Python / Pygame 游戏开发' : '高中物理 / 动能定理数值仿真'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="admin-template-card-footer" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="settings-action-btn is-primary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      setActiveTeamId(t.id);
+                      setViewingTeamDetailId(t.id);
+                    }}
+                  >
+                    查看小队成员与指引 →
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-skill-dot-btn"
+                    style={{ color: '#ef4444' }}
+                    onClick={() => handleDeleteTeamById(t.id, t.name)}
+                    title="删除团队"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 新建团队弹窗 */}
+        {showCreateTeamModal ? (
+          <div className="admin-modal-overlay" onClick={() => setShowCreateTeamModal(false)}>
+            <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="admin-modal-header">
+                <h3>创建新 PBL 导师团队</h3>
+                <button
+                  type="button"
+                  className="admin-modal-close-btn"
+                  onClick={() => setShowCreateTeamModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="admin-modal-body">
+                <div className="admin-form-row">
+                  <label className="admin-form-label">团队名称</label>
+                  <input
+                    className="admin-input-text"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    placeholder="如：动手学动能定理 PBL 导师团队"
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label className="admin-form-label">团队职责描述</label>
+                  <textarea
+                    className="admin-input-text"
+                    rows={3}
+                    value={newTeamDesc}
+                    onChange={(e) => setNewTeamDesc(e.target.value)}
+                    placeholder="描述该团队负责的项目式学习情境、阶段目标及角色分工..."
+                  />
+                </div>
+              </div>
+              <div className="admin-modal-footer">
+                <button
+                  type="button"
+                  className="settings-action-btn"
+                  onClick={() => setShowCreateTeamModal(false)}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="settings-action-btn is-primary"
+                  onClick={handleCreateTeam}
+                >
+                  立即创建
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // 团队详情管理视图
   return (
     <div className="admin-teams-page-container">
       {/* 顶部小队选择与操作栏 */}
       <div className="admin-teams-tabs-header">
         <div className="admin-teams-tabs-list">
+          <button
+            type="button"
+            className="settings-action-btn"
+            style={{ fontWeight: 600, color: '#165dff' }}
+            onClick={() => setViewingTeamDetailId(null)}
+          >
+            ← 返回团队列表
+          </button>
           {teams.map((t) => (
             <button
               key={t.id}
               type="button"
               className={`admin-team-selector-pill${t.id === activeTeam?.id ? ' is-active' : ''}`}
-              onClick={() => setActiveTeamId(t.id)}
+              onClick={() => {
+                setActiveTeamId(t.id);
+                setViewingTeamDetailId(t.id);
+              }}
             >
               <span>👥 {t.name}</span>
               <span className="admin-team-pill-count">{t.members.length} 人</span>
@@ -886,14 +1091,7 @@ export default function AdminTeamsPage() {
                     <strong>成员</strong>
                     <span>该小队有 {activeTeam.members.length} 名成员</span>
                   </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      type="button"
-                      className="settings-action-btn"
-                      onClick={() => setShowDesignAssistantModal(true)}
-                    >
-                      + 设计新导师智能体
-                    </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
                     <button
                       type="button"
                       className="settings-action-btn is-primary"
@@ -968,14 +1166,99 @@ export default function AdminTeamsPage() {
                     );
                   })}
                 </div>
+
+                {/* 小队角色分工与 PBL 调度机制架构说明面板 */}
+                <div style={{ marginTop: '24px', padding: '16px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '18px' }}>💡</span>
+                    <strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                      PBL 导师团队四类角色分工与调度机制（OpenMAIC 体系架构）
+                    </strong>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: '12.5px', color: '#64748b', lineHeight: 1.6 }}>
+                    为确保项目式学习教学质量与防作弊红线，每个团队固化了 4 类角色职责。在学生不同探究阶段，由 Team Orchestrator 状态机按阶段流转激活：
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#165dff', marginBottom: '4px' }}>
+                        👑 队长 / 总负责人 (Leader)
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                        把控探究大方向。在学生提出想法时进行目标拆解，只有明确意图后才批准立项，防止盲目开题。
+                      </div>
+                    </div>
+                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#00b42a', marginBottom: '4px' }}>
+                        🎓 原理教练 (Coach)
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                        苏格拉底式启发教学主力。主导 TheoryMastered 概念门禁，在学生未掌握原理前严格锁死完整代码生成。
+                      </div>
+                    </div>
+                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#ff7d00', marginBottom: '4px' }}>
+                        💻 伙伴向导 (Teammate)
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                        动手实践伙伴。在沙箱中指导学生分步编写代码、构建实验装置，引导学生看懂 Traceback 错误栈。
+                      </div>
+                    </div>
+                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#722ed1', marginBottom: '4px' }}>
+                        ⚖️ 评审导师 (Reviewer)
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                        结项答辩专家。依据 PBL 量规（Rubric）对学生进行防作弊概念质询与掌握度打分，归档终身成长档案。
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="admin-team-guide-wrapper">
-                <h3>小队运行与任务交接指引</h3>
-                <p>
-                  队长负责接收学生意图、分配阶段性挑战并审核通过条件。在 TheoryMastered
-                  通过前，团队严禁向学生下发实践代码。
-                </p>
+              <div className="admin-team-guide-wrapper" style={{ padding: '20px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e5e6eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '16px', color: '#1d2129' }}>小队运行与任务交接指引</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#86909c' }}>
+                      为小队各导师提供统一的协作规范与教学红线约束。
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {guideSaveNotice ? <span className="settings-notice-text">{guideSaveNotice}</span> : null}
+                    <button
+                      type="button"
+                      className="settings-action-btn"
+                      onClick={() => setIsGuideEditing(!isGuideEditing)}
+                    >
+                      {isGuideEditing ? '👁️ 切换预览' : '✏️ 编辑指引'}
+                    </button>
+                    {isGuideEditing ? (
+                      <button
+                        type="button"
+                        className="settings-action-btn is-primary"
+                        onClick={handleSaveGuide}
+                      >
+                        保存指引
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {isGuideEditing ? (
+                  <textarea
+                    className="team-instruction-full-textarea"
+                    rows={16}
+                    value={teamGuideText}
+                    onChange={(e) => setTeamGuideText(e.target.value)}
+                    placeholder="输入小队运行与任务交接指引（支持 Markdown 格式）..."
+                  />
+                ) : (
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, lineHeight: 1.7, color: '#1d2129', fontSize: '13.5px' }}>
+                      {teamGuideText || '暂无详细指引配置，点击右上角「编辑指引」补充内容。'}
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
           </main>
@@ -985,7 +1268,7 @@ export default function AdminTeamsPage() {
       {/* 新增成员弹窗 */}
       {showAddMemberModal ? (
         <div className="admin-modal-overlay" onClick={() => setShowAddMemberModal(false)}>
-          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-card" style={{ width: 'min(92vw, 560px)' }} onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
               <h3>向「{activeTeam?.name}」添加成员</h3>
               <button
@@ -1004,7 +1287,7 @@ export default function AdminTeamsPage() {
                   value={selectedAssistantToAdd}
                   onChange={(e) => setSelectedAssistantToAdd(e.target.value)}
                 >
-                  <option value="">-- 请选择导师智能体 --</option>
+                  <option value="">-- 请选择已有导师智能体 --</option>
                   {allAssistants.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.role})
@@ -1013,32 +1296,71 @@ export default function AdminTeamsPage() {
                 </select>
               </div>
               <div className="admin-form-row">
-                <label className="admin-form-label">小队职责</label>
+                <label className="admin-form-label">在小队中担任角色</label>
                 <select
                   className="admin-select"
                   value={selectedRoleToAdd}
                   onChange={(e) => setSelectedRoleToAdd(e.target.value as any)}
                 >
-                  <option value="teammate">伙伴向导 (Teammate)</option>
-                  <option value="coach">原理教练 (Coach)</option>
-                  <option value="reviewer">评审导师 (Reviewer)</option>
+                  <option value="teammate">伙伴向导 (Teammate) - 沙箱编程指导</option>
+                  <option value="coach">原理教练 (Coach) - 核心概念与理论门禁</option>
+                  <option value="reviewer">评审导师 (Reviewer) - 结项答辩与量规质询</option>
+                  <option value="leader">队长 / 总负责人 (Leader) - 意图确认与任务流转</option>
                 </select>
               </div>
 
-              <div style={{ marginTop: '14px', padding: '12px 14px', background: '#f0f7ff', borderRadius: '8px', border: '1px dashed #b8d6fc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '12.5px', color: '#165dff' }}>找不到现成导师？</span>
+              {/* 跳转助手中心 或 就地快速设计 */}
+              <div style={{ marginTop: '14px', padding: '12px 14px', background: '#f0f7ff', borderRadius: '8px', border: '1px dashed #b8d6fc', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#165dff', fontWeight: 600 }}>找不到合适的现成导师？</span>
+                  <a
+                    href="/admin/settings/assistants"
+                    className="settings-action-btn"
+                    style={{ fontSize: '12px', padding: '4px 10px', textDecoration: 'none' }}
+                  >
+                    🔗 跳转助手中心设计
+                  </a>
+                </div>
                 <button
                   type="button"
-                  className="settings-action-btn"
-                  style={{ fontSize: '12px', padding: '4px 10px' }}
-                  onClick={() => {
-                    setShowAddMemberModal(false);
-                    setShowDesignAssistantModal(true);
-                  }}
+                  style={{ background: 'none', border: 'none', color: '#165dff', fontSize: '12px', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                  onClick={() => setExpandInlineCreateAsst(!expandInlineCreateAsst)}
                 >
-                  ✨ 立即设计并新建专属导师
+                  {expandInlineCreateAsst ? '▲ 收起快速创建' : '▼ 或者在此就地快速创建新导师'}
                 </button>
               </div>
+
+              {/* 就地快速创建导师面板 */}
+              {expandInlineCreateAsst ? (
+                <div style={{ marginTop: '12px', padding: '12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div className="admin-form-row">
+                    <label className="admin-form-label">新导师名称</label>
+                    <input
+                      className="admin-input-text"
+                      placeholder="如：物理实验教练、Pygame 向导"
+                      value={newAsstName}
+                      onChange={(e) => setNewAsstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="admin-form-row">
+                    <label className="admin-form-label">职责提示词 (Instructions)</label>
+                    <textarea
+                      className="admin-input-text"
+                      rows={2}
+                      value={newAsstPrompt}
+                      onChange={(e) => setNewAsstPrompt(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-action-btn"
+                    style={{ width: '100%', marginTop: '6px' }}
+                    onClick={handleCreateAndAddAssistant}
+                  >
+                    创建此导师并加入小队
+                  </button>
+                </div>
+              ) : null}
             </div>
             <div className="admin-modal-footer">
               <button
@@ -1059,109 +1381,9 @@ export default function AdminTeamsPage() {
           </div>
         </div>
       ) : null}
-
-      {/* 直接设计并新建智能体弹窗 */}
-      {showDesignAssistantModal ? (
-        <div className="admin-modal-overlay" onClick={() => setShowDesignAssistantModal(false)}>
-          <div className="admin-modal-card" style={{ width: 'min(92vw, 560px)' }} onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header">
-              <h3>设计新导师智能体并加入团队</h3>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setShowDesignAssistantModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="admin-modal-body">
-              <div className="admin-form-row">
-                <label className="admin-form-label">导师名称</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  placeholder="例如：物理实验向导、算法架构教练"
-                  value={newAsstName}
-                  onChange={(e) => setNewAsstName(e.target.value)}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">角色定位</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  placeholder="例如：Experiment Guide / 仿真向导"
-                  value={newAsstRole}
-                  onChange={(e) => setNewAsstRole(e.target.value)}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">头像 Emoji</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  placeholder="例如：🔬、🚀、📐"
-                  value={newAsstAvatar}
-                  onChange={(e) => setNewAsstAvatar(e.target.value)}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">驱动大模型</label>
-                <select
-                  className="admin-select"
-                  value={newAsstModel}
-                  onChange={(e) => setNewAsstModel(e.target.value)}
-                >
-                  <option value="">-- 使用系统默认推荐模型 --</option>
-                  {configuredModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.id} ({m.providerId})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">小队职责</label>
-                <select
-                  className="admin-select"
-                  value={newAsstTeamRole}
-                  onChange={(e) => setNewAsstTeamRole(e.target.value as any)}
-                >
-                  <option value="coach">原理教练 (Coach)</option>
-                  <option value="teammate">伙伴向导 (Teammate)</option>
-                  <option value="reviewer">评审导师 (Reviewer)</option>
-                  <option value="leader">队长 / 总负责人 (Leader)</option>
-                </select>
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">发问约束 Prompt</label>
-                <textarea
-                  className="admin-textarea"
-                  rows={3}
-                  value={newAsstPrompt}
-                  onChange={(e) => setNewAsstPrompt(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="settings-action-btn"
-                onClick={() => setShowDesignAssistantModal(false)}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="settings-action-btn is-primary"
-                onClick={handleCreateAndAddAssistant}
-              >
-                确认创建并加入小队
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+    </div>
+  );
+}
 
       {/* 新建团队弹窗 */}
       {showCreateTeamModal ? (

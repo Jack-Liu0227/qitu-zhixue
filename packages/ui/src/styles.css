@@ -10,16 +10,20 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(234, 242, 254, 0.75) 0%, rgba(246, 250, 255, 0.95) 40%, #f6faff 100%);
+  background:
+    radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 18%), transparent 62%),
+    radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 20%), transparent 58%),
+    linear-gradient(135deg, #f2f3ff 0%, #faf8ff 48%, #effcf8 100%);
+  background-attachment: fixed;
   color: var(--qitu-text);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   min-height: 100vh;
 }
 .qitu-shell { min-height: 100vh; width: 100%; }
-.qitu-topbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 32px; background: white; border-bottom: 1px solid var(--qitu-border); }
+.qitu-topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: white; border-bottom: 1px solid var(--qitu-border); }
 .qitu-topbar strong { color: var(--qitu-heading); letter-spacing: .04em; }
 .qitu-topbar span { color: var(--qitu-muted); font-size: .9rem; }
-.qitu-content { width: 100%; max-width: 100%; margin: 0; padding: 32px 40px; }
+.qitu-content { width: 100%; max-width: 100%; margin: 0; padding: 20px 24px; }
 .hero { max-width: 780px; }
 .eyebrow { color: var(--qitu-accent, #2878f0); font-size: .75rem; font-weight: 700; letter-spacing: .14em; }
 h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.08; margin: 20px 0; }
