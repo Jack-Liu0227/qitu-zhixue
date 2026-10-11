@@ -119,7 +119,7 @@ const CLI_DEFAULT_ITEMS: AssistantItem[] = [
 ];
 
 function mapConfigToItem(config: AdminAssistantConfig): AssistantItem {
-  const isCli = config.source === 'cli' || config.id.startsWith('cli-');
+  const isCli = (config.source as string) === 'cli' || config.id.startsWith('cli-');
   return {
     id: config.id,
     source: (config.source as any) || 'user',
