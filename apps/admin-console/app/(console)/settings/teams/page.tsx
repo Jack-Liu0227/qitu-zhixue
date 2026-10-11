@@ -747,8 +747,8 @@ export default function AdminTeamsPage() {
             <div className="multica-meta-item">
               <span className="multica-meta-k">队长</span>
               <span className="multica-meta-v">
-                <span>{currentLeader.avatar}</span>
-                <span>{currentLeader.name}</span>
+                <span>{currentLeader?.avatar ?? '👤'}</span>
+                <span>{currentLeader?.name ?? '暂未指定'}</span>
               </span>
             </div>
 
