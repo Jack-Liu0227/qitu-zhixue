@@ -69,7 +69,7 @@ export default function AdminTeamsPage() {
       setConfiguredModels(modelsData);
 
       if (teamsData.length > 0) {
-        setActiveTeamId((prev) => (prev && teamsData.some((t) => t.id === prev) ? prev : teamsData[0].id));
+        setActiveTeamId((prev) => (prev && teamsData.some((t) => t.id === prev) ? prev : (teamsData[0]?.id ?? '')));
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('团队数据加载失败'));
