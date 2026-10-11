@@ -1115,7 +1115,7 @@ export default function AdminTeamsPage() {
                   <option value="">-- 使用系统默认推荐模型 --</option>
                   {configuredModels.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.name || m.id} ({m.provider})
+                      {m.name || m.id} ({m.providerId})
                     </option>
                   ))}
                 </select>
