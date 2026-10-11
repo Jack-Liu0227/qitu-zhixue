@@ -61,6 +61,7 @@ const INSTALLED_DIALOGS: DialogFlowItem[] = [
   },
 ];
 
+export default function DialogsSettingsPage() {
   const [dialogs, setDialogs] = useState<DialogFlowItem[]>(INSTALLED_DIALOGS);
   const [activeTestingDialog, setActiveTestingDialog] = useState<DialogFlowItem | null>(null);
   const [editingDialog, setEditingDialog] = useState<DialogFlowItem | null>(null);
