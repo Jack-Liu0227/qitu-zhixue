@@ -68,6 +68,36 @@ export function HeuristicQuizCard({
         })}
       </div>
 
+      {/* 确认发送给 Agent 交互栏 */}
+      {selectedKey && (
+        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+          <span style={{ fontSize: '12.5px', color: '#1e40af', fontWeight: 500 }}>
+            已选定：<strong style={{ fontWeight: 700 }}>{selectedKey}</strong>（确认后向导师提交你的探究结论）
+          </span>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              const opt = options.find((o) => o.key === selectedKey);
+              if (opt) onSelectOption?.(opt.key, opt.text);
+            }}
+            style={{
+              padding: '6px 16px',
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              boxShadow: '0 1px 3px rgba(37,99,235,0.3)',
+            }}
+          >
+            确认提交给导师 ↵
+          </button>
+        </div>
+      )}
+
       <div className="qitu-quiz-footer">
         <button
           type="button"

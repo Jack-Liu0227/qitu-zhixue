@@ -18,24 +18,36 @@ export function OptionChips({
   onSelect: (label: string, text?: string) => void;
   disabled?: boolean;
 }) {
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [otherOpen, setOtherOpen] = useState(false);
   const [otherText, setOtherText] = useState('');
+
+  const selectedItem = items.find((i) => i.label === selectedLabel);
 
   return (
     <div className="qitu-tutor-options">
       <div className="qitu-tutor-option-row">
-        {items.map((item) => (
-          <button
-            key={`${item.label}-${item.text}`}
-            type="button"
-            className="qitu-tutor-option-chip"
-            disabled={disabled}
-            onClick={() => onSelect(item.label, item.text)}
-          >
-            <span className="qitu-tutor-option-label">{item.label}</span>
-            <span className="qitu-tutor-option-text">{item.text}</span>
-          </button>
-        ))}
+        {items.map((item) => {
+          const isSelected = selectedLabel === item.label;
+          return (
+            <button
+              key={`${item.label}-${item.text}`}
+              type="button"
+              className={`qitu-tutor-option-chip${isSelected ? ' is-active' : ''}`}
+              style={{
+                borderColor: isSelected ? '#2563eb' : undefined,
+                background: isSelected ? '#eff6ff' : undefined,
+                color: isSelected ? '#1d4ed8' : undefined,
+                fontWeight: isSelected ? 600 : undefined,
+              }}
+              disabled={disabled}
+              onClick={() => setSelectedLabel(item.label)}
+            >
+              <span className="qitu-tutor-option-label">{item.label}</span>
+              <span className="qitu-tutor-option-text">{item.text}</span>
+            </button>
+          );
+        })}
         {allowOther ? (
           <button
             type="button"
@@ -47,6 +59,32 @@ export function OptionChips({
           </button>
         ) : null}
       </div>
+
+      {/* 确认发送按钮 */}
+      {selectedItem && (
+        <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+          <span style={{ fontSize: '12px', color: '#1e40af' }}>
+            已选择选项 <strong>{selectedItem.label}</strong>：{selectedItem.text}
+          </span>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(selectedItem.label, selectedItem.text)}
+            style={{
+              padding: '5px 14px',
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            确认提交 ↵
+          </button>
+        </div>
+      )}
       {allowOther && otherOpen ? (
         <form
           className="qitu-tutor-other"

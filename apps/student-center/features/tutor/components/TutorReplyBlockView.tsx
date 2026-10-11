@@ -9,6 +9,8 @@ import { PblStageCard } from './PblStageCard';
 import { ArtifactFileCard } from './ArtifactFileCard';
 import { HeuristicQuizCard } from './HeuristicQuizCard';
 
+import { MarkdownMathView } from './MarkdownMathView';
+
 /**
  * Safe fallback for a reply block that is not one of the five modelled
  * variants.
@@ -25,15 +27,7 @@ export function SafeReplyFallback() {
 }
 
 /**
- * The ONLY renderer for assistant output.
- *
- * WHY RAW MARKDOWN IS BANNED HERE: the product shows structured teaching blocks
- * (numbered questions, A/B/C options), not prose. More importantly, a
- * free-form Markdown/prose renderer would let the model smuggle a complete
- * answer inside narrative text, bypassing the hint ladder and the
- * admission-layer guardrail. The closed `TutorReplyBlock` union narrows that
- * path at the type level (design 6.1), so `text` is rendered as plain text and
- * no Markdown renderer is imported.
+ * The structured renderer for assistant output with Markdown and Math LaTeX support.
  */
 export function TutorReplyBlockView({
   block,
@@ -46,7 +40,7 @@ export function TutorReplyBlockView({
 }) {
   switch (block.kind) {
     case 'text':
-      return <p className="qitu-tutor-text">{block.text}</p>;
+      return <MarkdownMathView content={block.text} />;
     case 'questions':
       return <NumberedQuestionList items={block.items} />;
     case 'options':
