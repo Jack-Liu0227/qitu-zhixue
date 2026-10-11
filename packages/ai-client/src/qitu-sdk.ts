@@ -1,9 +1,14 @@
-import type { EvaluateMasteryInput, MasteryTimelinePort, ProjectStage, AdminAssistantConfig, AdminTeamMember, PblPhaseSpec } from '@qitu/contracts';
+import type { EvaluateMasteryInput, MasteryTimelinePort, ProjectStage, AdminAssistantConfig, AdminTeamConfig, AdminTeamMember, PblPhaseSpec, PblTeamWorkflowSpec } from '@qitu/contracts';
 import { BUILTIN_ASSISTANTS } from './assistant-registry.js';
 import {
   THUNDER_FIGHTER_PHASES,
   THUNDER_FIGHTER_PBL_SPEC,
   THUNDER_FIGHTER_TEAM_MEMBERS,
+  THUNDER_FIGHTER_TEAM_CONFIG,
+  KINETIC_ENERGY_PHASES,
+  KINETIC_ENERGY_PBL_SPEC,
+  KINETIC_ENERGY_TEAM_MEMBERS,
+  KINETIC_ENERGY_TEAM_CONFIG,
   nextPblPhase,
   pblGatesRequiredToEnter,
 } from './pbl-team.js';
@@ -98,9 +103,11 @@ export interface QituSDK<Input, Result, Profile> {
 
   /** 团队与多智能体编排 (Teams & Multi-Agent Collaboration) */
   readonly teams: {
-    getMembers(): readonly AdminTeamMember[];
-    getPblPhases(): readonly PblPhaseSpec[];
-    getWorkflowSpec(): typeof THUNDER_FIGHTER_PBL_SPEC;
+    list(): readonly AdminTeamConfig[];
+    get(teamId: string): AdminTeamConfig | undefined;
+    getMembers(teamId?: string): readonly AdminTeamMember[];
+    getPblPhases(teamId?: string): readonly PblPhaseSpec[];
+    getWorkflowSpec(teamId?: string): PblTeamWorkflowSpec;
     getNextPhase: typeof nextPblPhase;
     getRequiredGates: typeof pblGatesRequiredToEnter;
   };
@@ -232,9 +239,20 @@ export function createQituSDK<Input, Result, Profile>(
     },
 
     teams: {
-      getMembers: () => THUNDER_FIGHTER_TEAM_MEMBERS,
-      getPblPhases: () => THUNDER_FIGHTER_PHASES,
-      getWorkflowSpec: () => THUNDER_FIGHTER_PBL_SPEC,
+      list: () => [THUNDER_FIGHTER_TEAM_CONFIG, KINETIC_ENERGY_TEAM_CONFIG],
+      get: (teamId: string) => [THUNDER_FIGHTER_TEAM_CONFIG, KINETIC_ENERGY_TEAM_CONFIG].find((t) => t.id === teamId),
+      getMembers: (teamId?: string) => {
+        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_TEAM_MEMBERS;
+        return THUNDER_FIGHTER_TEAM_MEMBERS;
+      },
+      getPblPhases: (teamId?: string) => {
+        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_PHASES;
+        return THUNDER_FIGHTER_PHASES;
+      },
+      getWorkflowSpec: (teamId?: string) => {
+        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_PBL_SPEC;
+        return THUNDER_FIGHTER_PBL_SPEC;
+      },
       getNextPhase: nextPblPhase,
       getRequiredGates: pblGatesRequiredToEnter,
     },

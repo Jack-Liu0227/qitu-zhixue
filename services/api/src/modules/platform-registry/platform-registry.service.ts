@@ -802,6 +802,62 @@ export class PlatformRegistryService {
     });
   }
 
+  async deleteAssistant(actor: CurrentUser, assistantId: string): Promise<{ success: true; deletedAssistantId: string }> {
+    if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
+    return withTransaction(this.db, async (tx) => {
+      const existing = (await tx.select().from(adminAssistants)).find((a) => a.id === assistantId);
+      if (!existing) throw new NotFoundException('助手不存在');
+      if (existing.source === 'builtin') {
+        throw new BadRequestException('系统内置助手不可直接删除，可停用');
+      }
+      const teams = await tx.select().from(adminTeams);
+      if (teams.some((t) => t.leaderAssistantId === assistantId)) {
+        throw new BadRequestException('该助手当前为团队负责人，不能删除；请先更换团队负责人');
+      }
+      const members = await tx.select().from(adminTeamMembers);
+      if (members.some((m) => m.assistantId === assistantId)) {
+        throw new BadRequestException('该助手正在被团队选用，不能直接删除；请先从团队成员中移除');
+      }
+      await tx.delete(adminAssistants).where(eq(adminAssistants.id, assistantId));
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'admin.assistant.delete',
+        targetType: 'admin_assistant',
+        targetId: assistantId,
+        detail: {
+          name: existing.name,
+          source: existing.source,
+          role: existing.role,
+        },
+      }, tx);
+      return { success: true, deletedAssistantId: assistantId };
+    });
+  }
+
+  async deleteTeam(actor: CurrentUser, teamId: string): Promise<{ success: true; deletedTeamId: string }> {
+    if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    return withTransaction(this.db, async (tx) => {
+      const teams = await tx.select().from(adminTeams);
+      const existing = teams.find((t) => t.id === teamId);
+      if (!existing) throw new NotFoundException('团队不存在');
+      await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId));
+      await tx.delete(adminTeams).where(eq(adminTeams.id, teamId));
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'admin.team.delete',
+        targetType: 'admin_team',
+        targetId: teamId,
+        detail: {
+          name: existing.name,
+          leaderAssistantId: existing.leaderAssistantId,
+        },
+      }, tx);
+      return { success: true, deletedTeamId: teamId };
+    });
+  }
+
   /** 每个成员助手必须存在且 teamSelectable && enabled（硬要求 3，服务端二次校验）。 */
   private assertTeamMembers(members: readonly AdminTeamMemberInput[], assistantRows: readonly AssistantRow[]): void {
     const byId = new Map(assistantRows.map((row) => [row.id, row]));

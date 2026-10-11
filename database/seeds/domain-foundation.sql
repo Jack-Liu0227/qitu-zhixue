@@ -59,6 +59,16 @@ VALUES
     '["能描述画面构成", "能对比 AI 与手绘的差异"]'::jsonb,
     '一组对比图 + 简短反思', '使用 AI 生成内容需教师在场并注明来源。',
     'published', 'teacher-demo', 'teacher-demo', NOW(), NOW(), NOW()
+  ),
+  (
+    'template-kinetic-energy', NULL, 'kinetic-energy-inquiry',
+    '动手学动能定理：物理虚拟仿真与规律探究',
+    '从生活中的动能现象出发，推导功与动能关系，设计虚拟轨道实验收集数据，完成探究报告。',
+    'physics', '14-17', 'intermediate', 480,
+    '["电脑", "浏览器/仿真软件", "科学计算器", "实验记录单"]'::jsonb,
+    '["理解功的物理定义与计算公式", "掌握动能表达式及其推导", "掌握合力做功等于动能变化量", "能设计实验采集并拟合数据分析误差"]'::jsonb,
+    '探究实验报告 + 虚拟仿真数据图表 + 答辩展示PPT', '注意保护视力，实验数据须真实记录严禁篡改。',
+    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
   school_id = EXCLUDED.school_id,
@@ -102,6 +112,13 @@ VALUES
     '{"theoryGate":false,"suggestedWeeks":[4],"sessionBlocks":["warmup","concept","practice","reflect"]}'::jsonb,
     '[{"id":"r1","criterion":"构图说明清楚","weight":50},{"id":"r2","criterion":"有对比反思","weight":50}]'::jsonb,
     'published', 'teacher-demo', NOW(), NOW()
+  ),
+  (
+    'ptv-kinetic-energy-v1', 'template-kinetic-energy', 'v1',
+    '[{"id":"exploration","label":"生活情境与问题定义"},{"id":"theory","label":"功与动能核心理论掌握"},{"id":"practice","label":"轨道虚拟仿真与实验验证"},{"id":"showcase","label":"误差分析与答辩归档"}]'::jsonb,
+    '{"theoryGate":true,"suggestedWeeks":[4,6],"sessionBlocks":["problem_inquiry","formula_derivation","simulation_run","error_analysis"]}'::jsonb,
+    '[{"id":"r1","criterion":"理论推导清晰","weight":30},{"id":"r2","criterion":"仿真实验规范与数据真实","weight":40},{"id":"r3","criterion":"误差分析深入与答辩表达","weight":30}]'::jsonb,
+    'published', 'admin-demo', NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
   template_id = EXCLUDED.template_id,
@@ -143,6 +160,24 @@ VALUES
     '未成年人在校使用 AI 生成内容时需教师在场，生成结果须标注来源，不采集未成年人原始语音与可识别对话。',
     'demo-school-policy', 'school://demo/ai-policy', 'seed-school-safety-v1', 'v1',
     'verified', 'teacher-demo', NOW(), NOW(), NOW()
+  ),
+  (
+    'knowledge-work-energy-theorem', NULL, 'system', NULL, NULL,
+    '高中物理核心知识：动能定理与功能关系',
+    '合外力对物体所做的功等于物体动能的变化量：W_合 = ΔEk = 1/2 m v2^2 - 1/2 m v1^2。',
+    '["动能定理", "功", "动能", "物理探究", "功能关系"]'::jsonb,
+    '1. 功的定义：W = F·s·cosθ。2. 动能：Ek = 1/2 m v^2。3. 动能定理：合外力做的总功等于物体动能的增量，适用于直线运动与曲线运动、恒力与变力。在实验中应注意摩擦阻力与遮光条宽度的系统误差修正。',
+    'physics-curriculum-standard', 'curriculum://physics/work-energy', 'seed-work-energy-v1', 'v1',
+    'verified', 'teacher-demo', NOW(), NOW(), NOW()
+  ),
+  (
+    'knowledge-thunder-fighter-game', NULL, 'system', NULL, NULL,
+    'Python 游戏开发核心：雷霆战机游戏循环与碰撞检测',
+    'Pygame 框架下的主循环事件监听、笛卡尔坐标系统与 AABB 矩形碰撞检测机制。',
+    '["Pygame", "游戏开发", "雷霆战机", "碰撞检测", "主循环"]'::jsonb,
+    '1. 游戏循环三大步：处理事件 (pygame.event.get())、更新状态 (Sprite.update())、重绘画面 (pygame.display.flip())。2. 笛卡尔坐标：屏幕左上角为原点 (0, 0)，X 轴向右递增，Y 轴向下递增。3. 碰撞检测：利用 pygame.sprite.groupcollide 或 AABB 矩形相交判定子弹击中敌机与玩家坠毁。',
+    'game-dev-curriculum-standard', 'curriculum://python/thunder-fighter', 'seed-thunder-fighter-v1', 'v1',
+    'verified', 'teacher-demo', NOW(), NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
   school_id = EXCLUDED.school_id,
@@ -164,7 +199,9 @@ INSERT INTO knowledge_chunks (id, document_id, ordinal, content, token_count, em
 VALUES
   ('kc-socratic-0', 'knowledge-socratic-loop', 0, '对话先确认学生想做什么，再询问已有尝试和不确定点。', 32, '[0.10,0.20,0.30]'::jsonb, 'placeholder-v1', NOW()),
   ('kc-theory-0', 'knowledge-theory-gate', 0, '一次答对不足以通过掌握门槛，需服务端累积掌握度达到阈值。', 30, '[0.11,0.22,0.33]'::jsonb, 'placeholder-v1', NOW()),
-  ('kc-school-safety-0', 'knowledge-school-safety', 0, '未成年人使用 AI 生成内容需教师在场并标注来源。', 26, '[0.12,0.24,0.36]'::jsonb, 'placeholder-v1', NOW())
+  ('kc-school-safety-0', 'knowledge-school-safety', 0, '未成年人使用 AI 生成内容需教师在场并标注来源。', 26, '[0.12,0.24,0.36]'::jsonb, 'placeholder-v1', NOW()),
+  ('kc-work-energy-0', 'knowledge-work-energy-theorem', 0, '动能定理：合外力对物体所做的功等于物体动能的变化量。', 28, '[0.15,0.25,0.35]'::jsonb, 'placeholder-v1', NOW()),
+  ('kc-thunder-fighter-0', 'knowledge-thunder-fighter-game', 0, '雷霆战机游戏循环：处理事件、更新状态与重绘画面，结合 AABB 碰撞检测。', 36, '[0.18,0.28,0.38]'::jsonb, 'placeholder-v1', NOW())
 ON CONFLICT (id) DO UPDATE SET
   document_id = EXCLUDED.document_id,
   ordinal = EXCLUDED.ordinal,

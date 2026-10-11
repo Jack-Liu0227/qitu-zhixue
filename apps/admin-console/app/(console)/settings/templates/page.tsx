@@ -13,6 +13,11 @@ const STATUS_LABEL: Record<string, string> = {
   archived: '已归档',
 };
 
+const LINKED_TEAMS: Record<string, { teamName: string; teamId: string }> = {
+  'template-python-mini-project': { teamName: '雷霆战机小游戏 PBL 导师团队', teamId: 'team-thunder-fighter-pbl' },
+  'template-kinetic-energy': { teamName: '动手学动能定理 PBL 导师团队', teamId: 'team-kinetic-energy-pbl' },
+};
+
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<AdminProjectTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +61,7 @@ export default function AdminTemplatesPage() {
               <InfoRow label="难度" value={template.difficulty ?? '未设置'} />
               <InfoRow label="预计时长" value={template.estimatedDurationMinutes ? `${template.estimatedDurationMinutes} 分钟` : '未设置'} />
               <InfoRow label="学习目标" value={template.learningObjectives.length > 0 ? template.learningObjectives.join('、') : '—'} />
+              <InfoRow label="绑定导师团队" value={LINKED_TEAMS[template.id] ? `${LINKED_TEAMS[template.id].teamName} (${LINKED_TEAMS[template.id].teamId})` : '平台通用导师'} />
               <InfoRow label="最新发布版本" value={template.latestPublishedVersionId ?? '未发布'} />
             </SectionCard>
           ))}

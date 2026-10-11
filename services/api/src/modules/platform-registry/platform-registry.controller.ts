@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post } from '@nestjs/common';
 import type { AdminRuntimeAgent, AdminRuntimeSnapshot } from '@qitu/contracts';
 import { ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES } from '@qitu/contracts';
 import { requireRole } from '../../common/access/request-auth';
@@ -9,7 +9,14 @@ import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { parseAgentUpdate } from './agent-config.validation';
 import { parseAssistantCreate, parseAssistantUpdate, parseTeamCreate, parseTeamUpdate } from './admin-ai-config.validation';
-import type { AdminAssistantResponse, AdminAssistantListResponse, AdminTeamResponse, AdminTeamListResponse } from '@qitu/contracts';
+import type {
+  AdminAssistantResponse,
+  AdminAssistantListResponse,
+  AdminAssistantDeleteResponse,
+  AdminTeamResponse,
+  AdminTeamListResponse,
+  AdminTeamDeleteResponse,
+} from '@qitu/contracts';
 
 @Controller('admin')
 export class PlatformRegistryController {
@@ -161,6 +168,46 @@ export class PlatformRegistryController {
       const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, input), async () => ({
         status: 200,
         body: await this.registry.updateTeam(actor, teamId, input),
+      }));
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  @Delete('ai-runtime/assistants/:assistantId')
+  async deleteAssistant(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('assistantId') assistantId: string,
+  ): Promise<AdminAssistantDeleteResponse> {
+    const actor = requireRole(this.auth, cookie, 'admin', '助手配置仅向管理员开放');
+    const idempotencyKey = requireAdminAiIdempotencyKey(key);
+    const scope = `${ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES.assistantDelete}:${assistantId}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, assistantId }, {}), async () => ({
+        status: 200,
+        body: await this.registry.deleteAssistant(actor, assistantId),
+      }));
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  @Delete('ai-runtime/teams/:teamId')
+  async deleteTeam(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('teamId') teamId: string,
+  ): Promise<AdminTeamDeleteResponse> {
+    const actor = requireRole(this.auth, cookie, 'admin', '团队配置仅向管理员开放');
+    const idempotencyKey = requireAdminAiIdempotencyKey(key);
+    const scope = `${ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES.teamDelete}:${teamId}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, {}), async () => ({
+        status: 200,
+        body: await this.registry.deleteTeam(actor, teamId),
       }));
       return { data: result.body };
     } catch (error) {

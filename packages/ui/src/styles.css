@@ -8,12 +8,18 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--qitu-page); color: var(--qitu-text); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-.qitu-shell { min-height: 100vh; }
-.qitu-topbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 6vw; background: white; border-bottom: 1px solid var(--qitu-border); }
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(234, 242, 254, 0.75) 0%, rgba(246, 250, 255, 0.95) 40%, #f6faff 100%);
+  color: var(--qitu-text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+.qitu-shell { min-height: 100vh; width: 100%; }
+.qitu-topbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 32px; background: white; border-bottom: 1px solid var(--qitu-border); }
 .qitu-topbar strong { color: var(--qitu-heading); letter-spacing: .04em; }
 .qitu-topbar span { color: var(--qitu-muted); font-size: .9rem; }
-.qitu-content { max-width: 1180px; margin: 0 auto; padding: 8vh 6vw; }
+.qitu-content { width: 100%; max-width: 100%; margin: 0; padding: 32px 40px; }
 .hero { max-width: 780px; }
 .eyebrow { color: var(--qitu-accent, #2878f0); font-size: .75rem; font-weight: 700; letter-spacing: .14em; }
 h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.08; margin: 20px 0; }
@@ -330,6 +336,7 @@ summary:focus-visible,
 .qitu-sidebar.is-collapsed .qitu-sidebar-brand-text { display: none; }
 .qitu-sidebar.is-collapsed .qitu-nav-item { justify-content: center; padding: 12px 0; }
 .qitu-sidebar.is-collapsed .qitu-nav-label { display: none; }
+.qitu-sidebar.is-collapsed .qitu-nav-icon { display: inline-flex !important; align-items: center; justify-content: center; width: 24px; height: 24px; }
 .qitu-sidebar.is-collapsed .qitu-nav-item::before { left: -6px; }
 
 .qitu-sidebar-toggle {
@@ -801,18 +808,22 @@ summary:focus-visible,
  * 追加式，不改动任何既有 class。
  * ================================================================== */
 
-/* ---- 页面与三栏栅格 ---- */
+/* ---- 页面与双栏栅格 ---- */
 .qitu-tutor-page {
   display: block;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
 }
 
 .qitu-tutor-grid {
   display: grid;
-  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(240px, 300px);
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
   gap: var(--qitu-space-xl);
   align-items: start;
-  padding: var(--qitu-space-xxl) 6vw var(--qitu-space-huge);
+  padding: 24px 32px 48px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .qitu-tutor-col {

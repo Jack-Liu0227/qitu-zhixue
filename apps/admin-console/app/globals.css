@@ -1183,8 +1183,26 @@ body { min-height: 100vh; }
 }
 .admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-item {
   justify-content: center;
-  padding: 12px 0;
+  padding: 8px 0;
   gap: 0;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  color: #4b5563;
+  transition: all 0.2s ease;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-item:hover .qitu-nav-icon {
+  background: rgb(222 236 255 / 80%);
+  color: #1b68f8;
+}
+.admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-item.is-active .qitu-nav-icon {
+  background: #1b68f8;
+  color: #ffffff;
 }
 .admin-console-shell .qitu-sidebar.is-collapsed .qitu-nav-label {
   display: none;

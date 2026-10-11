@@ -18,18 +18,56 @@ const BASE_PATH = '/admin';
 const DENIED_KEY = 'qitu.admin.auth-denied';
 
 const NAV_SPECS = [
-  { path: '/', label: '治理概览' },
-  // 管理员默认只进入聚合与治理视图（ADR 0008 / 产品文档 7.0）。
-  // 「学生端数据 / 教师端数据」属于班主任日常处理，不再作为管理端默认导航；
-  // 个别学生详情需要显式授权，入口与后端一起收紧（后端 fail closed）。
-  { path: '/students/statistics', label: '学生数据统计' },
-  { path: '/relationships', label: '关系绑定' },
-  { path: '/settings', label: '模型与设置' },
+  {
+    path: '/',
+    label: '治理概览',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="7" height="9" x="3" y="3" rx="1" />
+        <rect width="7" height="5" x="14" y="3" rx="1" />
+        <rect width="7" height="9" x="14" y="12" rx="1" />
+        <rect width="7" height="5" x="3" y="16" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    path: '/students/statistics',
+    label: '学生数据统计',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 3v18h18" />
+        <path d="m19 9-5 5-4-4-3 3" />
+      </svg>
+    ),
+  },
+  {
+    path: '/relationships',
+    label: '关系绑定',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    path: '/settings',
+    label: '模型与设置',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+  },
 ] as const;
 
 const NAV_ITEMS = NAV_SPECS.map((spec) => ({
   href: spec.path === '/' ? BASE_PATH : `${BASE_PATH}${spec.path}`,
   label: spec.label,
+  icon: spec.icon,
 }));
 
 /** NavSidebar 比较的是完整外部路径；next/link 需要的是 basePath 相对路径。 */

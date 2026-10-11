@@ -91,7 +91,8 @@
   min-width: 0;
   overflow-y: auto;
   padding: 32px 40px 48px;
-  max-width: 1040px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ====== 1. 页头 ====== */
@@ -1574,4 +1575,540 @@
   border-top: 1px solid #f0f2f5;
   background: #ffffff;
 }
+
+/* ================== 助手与团队高级管理样式 ================== */
+.admin-card-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-card-delete-icon-btn {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.admin-card-delete-icon-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  background: #fee2e2;
+}
+
+.admin-card-builtin-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+/* 团队工作区 */
+.admin-teams-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.admin-teams-tabs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--aion-border);
+}
+
+.admin-teams-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-team-selector-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.admin-team-selector-pill:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #f8fafc;
+}
+
+.admin-team-selector-pill.is-active {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.admin-team-pill-count {
+  font-size: 11px;
+  font-weight: normal;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 999px;
+  color: #64748b;
+}
+
+.admin-teams-layout-grid {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .admin-teams-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-teams-left-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.team-profile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.team-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.team-avatar-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.team-profile-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.team-profile-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.team-profile-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #475569;
+  margin: 0 0 16px;
+}
+
+.team-attr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 16px;
+}
+
+.team-attr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.team-attr-label {
+  color: #64748b;
+}
+
+.team-attr-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.team-linked-module-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.team-linked-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.team-linked-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 6px 0 8px;
+}
+
+.team-linked-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.team-gate-rule-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #166534;
+}
+
+.team-collab-test-box {
+  margin-top: 12px;
+}
+
+.team-test-result-text {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #0f172a;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.admin-members-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.admin-members-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-members-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin-members-count-tag {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.admin-team-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-team-member-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-team-member-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.admin-team-member-card.is-leader {
+  border-color: #93c5fd;
+  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+}
+
+.admin-member-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.admin-member-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.admin-member-leader-crown {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 14px;
+}
+
+.admin-member-role-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.admin-role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.admin-role-badge.is-leader {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.admin-phase-badge {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.admin-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-member-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-member-model-text {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.admin-member-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f8fafc;
+}
+
+.admin-member-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-member-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.admin-member-btn.is-danger {
+  color: #dc2626;
+  border-color: #fee2e2;
+}
+
+.admin-member-btn.is-danger:hover {
+  background: #fef2f2;
+}
+
+/* PBL 流程看板 */
+.admin-pbl-phases-board {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
+}
+
+.admin-pbl-board-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px;
+}
+
+.admin-pbl-phases-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.admin-pbl-phase-step-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.admin-phase-step-idx {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-phase-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-phase-step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-phase-step-mentor {
+  font-size: 12px;
+  color: #475569;
+}
+
+.admin-phase-step-gate {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* 模态弹窗 */
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.admin-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: min(90vw, 480px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+}
+
+.admin-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.admin-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
 

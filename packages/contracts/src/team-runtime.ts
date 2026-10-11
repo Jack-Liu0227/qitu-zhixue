@@ -817,8 +817,10 @@ export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key' as const;
 export const ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES = {
   assistantCreate: 'admin.ai-runtime.assistant.create',
   assistantUpdate: 'admin.ai-runtime.assistant.update',
+  assistantDelete: 'admin.ai-runtime.assistant.delete',
   teamCreate: 'admin.ai-runtime.team.create',
   teamUpdate: 'admin.ai-runtime.team.update',
+  teamDelete: 'admin.ai-runtime.team.delete',
 } as const;
 
 /** PBL 阶段门禁条件（与 `@qitu/ai-client` 的雷霆战机种子逐字一致）。 */
@@ -994,5 +996,21 @@ export interface AdminTeamListResponse {
 /** `POST /api/v1/admin/ai-runtime/teams`、`PATCH /api/v1/admin/ai-runtime/teams/:id` */
 export interface AdminTeamResponse {
   data: AdminTeamConfig;
+}
+
+/** `DELETE /api/v1/admin/ai-runtime/assistants/:id` */
+export interface AdminAssistantDeleteResponse {
+  data: {
+    success: true;
+    deletedAssistantId: string;
+  };
+}
+
+/** `DELETE /api/v1/admin/ai-runtime/teams/:id` */
+export interface AdminTeamDeleteResponse {
+  data: {
+    success: true;
+    deletedTeamId: string;
+  };
 }
 

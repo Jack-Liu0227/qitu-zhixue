@@ -75,6 +75,73 @@ export const THUNDER_FIGHTER_PBL_SPEC: PblTeamWorkflowSpec = {
   allowAutonomousAdvance: false,
 };
 
+export const KINETIC_ENERGY_PHASES: readonly PblPhaseSpec[] = [
+  {
+    phase: 'exploration',
+    title: '阶段一：生活情境启发与探究课题确认',
+    assignedAssistantId: 'kinetic-leader',
+    assignedRoleLabel: '物理总导师',
+    learningObjectives: [
+      '观察汽车刹车滑行距离与车速关系，提出物理假设',
+      '明确动能定理探究目标与实验自变量、因变量',
+      '学生主动确认探究课题并生成探究意向书',
+    ],
+    gateCondition: 'student_confirmed_intent',
+    deliverableType: 'project_intent_doc',
+  },
+  {
+    phase: 'concept_mastery',
+    title: '阶段二：功与动能核心概念探索与定理推导',
+    assignedAssistantId: 'kinetic-concept-coach',
+    assignedRoleLabel: '概念教练',
+    learningObjectives: [
+      '理解恒力做功数学表达式 W = F·s·cosθ 与变力做功微元累加',
+      '理解动能概念与 Ek = 1/2 m v^2 推导过程',
+      '掌握合外力做功与动能变化量关系 W_合 = ΔEk 的物理意义',
+      '通过典型力学场景概念闯关测试',
+    ],
+    gateCondition: 'TheoryMastered',
+    deliverableType: 'mastery_checkpoint_report',
+  },
+  {
+    phase: 'guided_practice',
+    title: '阶段三：倾斜轨道仿真实验与数据规律验证',
+    assignedAssistantId: 'kinetic-experiment-guide',
+    assignedRoleLabel: '仿真向导',
+    learningObjectives: [
+      '在虚拟仿真环境中配置小车质量、轨道倾角与摩擦阻力',
+      '使用虚拟光电门采集两点速度并计算动能变化量',
+      '计算重力与摩擦力做功代数和并绘制 W-ΔEk 散点图',
+      '拟合数据直线验证动能定理，误差控制在 5% 以内',
+    ],
+    gateCondition: 'code_playable_run_verified',
+    deliverableType: 'simulation_experiment_report',
+  },
+  {
+    phase: 'deliverable_review',
+    title: '阶段四：实验误差分析、答辩评审与素养归档',
+    assignedAssistantId: 'kinetic-review-assessor',
+    assignedRoleLabel: '评审导师',
+    learningObjectives: [
+      '深入分析系统误差与偶然误差来源（光电门遮光条宽度、摩擦力测量）',
+      '撰写完整科学探究报告并进行线上答辩陈述',
+      '探讨动能定理在工程减速缓冲装置中的生活迁移应用',
+      '生成物理核心素养与科学探究能力成长档案',
+    ],
+    gateCondition: 'review_completed_and_archived',
+    deliverableType: 'growth_archive_record',
+  },
+];
+
+export const KINETIC_ENERGY_PBL_SPEC: PblTeamWorkflowSpec = {
+  projectId: 'pbl-kinetic-energy',
+  projectName: '动手学动能定理：物理虚拟仿真与规律探究',
+  targetDomain: 'physics_mechanics',
+  phases: KINETIC_ENERGY_PHASES,
+  theoryMasteredGate: true,
+  allowAutonomousAdvance: false,
+};
+
 /* ------------------------------------------------------------------ *
  * Derived single source of truth for server-side PBL enforcement.
  *
@@ -304,10 +371,82 @@ export const THUNDER_FIGHTER_TEAM_CONFIG: AdminTeamConfig = {
   updatedAt: '2026-10-09T00:00:00.000Z',
 };
 
+export const KINETIC_ENERGY_TEAM_MEMBERS: readonly AdminTeamMember[] = [
+  {
+    slotId: 'slot-kinetic-leader',
+    assistantId: 'kinetic-leader',
+    assistantName: '动能定理总导师',
+    role: 'leader',
+    roleLabel: '物理总导师 (探究引导与门禁把控)',
+    avatar: '⚡',
+    status: 'active',
+    model: 'qwen3.8-flash',
+    color: 'var(--brand)',
+    pblPhase: 'exploration',
+  },
+  {
+    slotId: 'slot-kinetic-concept',
+    assistantId: 'kinetic-concept-coach',
+    assistantName: '功与动能概念教练',
+    role: 'coach',
+    roleLabel: '概念教练 (功与动能微元推导)',
+    avatar: '📐',
+    status: 'idle',
+    model: 'qwen3.8-flash',
+    color: '#2563eb',
+    pblPhase: 'concept_mastery',
+  },
+  {
+    slotId: 'slot-kinetic-guide',
+    assistantId: 'kinetic-experiment-guide',
+    assistantName: '动能定理仿真与实验向导',
+    role: 'teammate',
+    roleLabel: '仿真向导 (轨道实验与数据拟合)',
+    avatar: '🔬',
+    status: 'idle',
+    model: 'qwen3.8-flash',
+    color: '#0d9488',
+    pblPhase: 'guided_practice',
+  },
+  {
+    slotId: 'slot-kinetic-review',
+    assistantId: 'kinetic-review-assessor',
+    assistantName: '物理探究答辩与评审导师',
+    role: 'reviewer',
+    roleLabel: '评审导师 (误差分析与探究归档)',
+    avatar: '🎖️',
+    status: 'idle',
+    model: 'qwen3.8-flash',
+    color: '#7c3aed',
+    pblPhase: 'deliverable_review',
+  },
+];
+
+export const KINETIC_ENERGY_TEAM_CONFIG: AdminTeamConfig = {
+  id: 'team-kinetic-energy-pbl',
+  name: '动手学动能定理 PBL 导师团队',
+  description:
+    '面向高中物理探究与动能定理虚拟仿真设计的专属多智能体协同导师团队。引导学生从生活情境发问、功与动能微元推导、轨道实验仿真验证到答辩反思归档。',
+  workspaceMode: 'shared',
+  sessionMode: 'supervised',
+  leaderAssistantId: 'kinetic-leader',
+  members: KINETIC_ENERGY_TEAM_MEMBERS,
+  concurrencyLimit: 2,
+  pblSpec: KINETIC_ENERGY_PBL_SPEC,
+  enabled: true,
+  createdAt: '2026-10-01T00:00:00.000Z',
+  updatedAt: '2026-10-09T00:00:00.000Z',
+};
+
 export class TeamOrchestrator {
   private readonly teams = new Map<string, AdminTeamConfig>();
 
-  constructor(initialTeams: readonly AdminTeamConfig[] = [THUNDER_FIGHTER_TEAM_CONFIG]) {
+  constructor(
+    initialTeams: readonly AdminTeamConfig[] = [
+      THUNDER_FIGHTER_TEAM_CONFIG,
+      KINETIC_ENERGY_TEAM_CONFIG,
+    ],
+  ) {
     for (const t of initialTeams) {
       this.teams.set(t.id, { ...t });
     }
@@ -348,6 +487,12 @@ export class TeamOrchestrator {
     };
     this.teams.set(id, updated);
     return { ...updated };
+  }
+
+  delete(id: string): boolean {
+    const existing = this.teams.get(id);
+    if (!existing) return false;
+    return this.teams.delete(id);
   }
 
   /**

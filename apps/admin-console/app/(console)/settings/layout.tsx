@@ -30,7 +30,6 @@ const SETTINGS_NAV: NavGroup[] = [
       { href: '/settings/assistants', label: '助手', icon: '🤖' },
       { href: '/settings/teams', label: '团队', icon: '👥' },
       { href: '/settings/model-providers', label: '模型', icon: '◈' },
-      { href: '/settings/ai-runtime', label: 'AI 运行时', icon: '⌁' },
       { href: '/settings/skills', label: '技能', icon: 'ϟ' },
       { href: '/settings/tools', label: '工具', icon: '🧰' },
     ],

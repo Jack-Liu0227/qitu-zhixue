@@ -101,6 +101,18 @@ export function updatePersistedTeam(
   });
 }
 
+export function deletePersistedTeam(
+  id: string,
+  idempotencyKey = newIdempotencyKey(),
+): Promise<{ success: true; deletedTeamId: string }> {
+  return adminEnvelopeRequest<{ success: true; deletedTeamId: string }>({
+    path: ADMIN_TEAM_ITEM_PATH(id),
+    method: 'DELETE',
+    idempotencyKey,
+  });
+}
+
+
 export async function updateAgentRoute(
   routeId: string,
   patch: Partial<Pick<AgentGraphEdge, 'enabled' | 'taskType' | 'trigger'>>,

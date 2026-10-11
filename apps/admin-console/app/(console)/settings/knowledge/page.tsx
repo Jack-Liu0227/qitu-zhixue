@@ -12,6 +12,13 @@ const STATUS_LABEL: Record<string, string> = {
   archived: '已归档',
 };
 
+const LINKED_KNOWLEDGE_TEAMS: Record<string, string> = {
+  'knowledge-work-energy-theorem': '动手学动能定理 PBL 导师团队 (team-kinetic-energy-pbl)',
+  'knowledge-thunder-fighter-game': '雷霆战机小游戏 PBL 导师团队 (team-thunder-fighter-pbl)',
+  'knowledge-socratic-loop': '启途全平台导师通用',
+  'knowledge-theory-gate': '启途全平台导师通用',
+};
+
 export default function AdminKnowledgePage() {
   const [documents, setDocuments] = useState<AdminKnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +59,7 @@ export default function AdminKnowledgePage() {
               </div>
               <p className="admin-runtime-description">{document.summary || '暂无摘要'}</p>
               <InfoRow label="标签" value={document.tags.length > 0 ? document.tags.join('、') : '—'} />
+              <InfoRow label="服务导师团队" value={LINKED_KNOWLEDGE_TEAMS[document.id] || '跨项目通用知识'} />
               <InfoRow label="来源" value={document.source} />
               <InfoRow label="正文长度" value={`${document.contentLength} 字`} />
               <InfoRow label="校验时间" value={document.verifiedAt ? new Date(document.verifiedAt).toLocaleString('zh-CN') : '未校验'} />

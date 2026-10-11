@@ -61,3 +61,15 @@ export function updatePersistedAssistant(
     idempotencyKey,
   });
 }
+
+export function deletePersistedAssistant(
+  id: string,
+  idempotencyKey: string = newIdempotencyKey(),
+): Promise<{ success: true; deletedAssistantId: string }> {
+  return adminEnvelopeRequest<{ success: true; deletedAssistantId: string }>({
+    path: ADMIN_ASSISTANT_ITEM_PATH(id),
+    method: 'DELETE',
+    idempotencyKey,
+  });
+}
+
