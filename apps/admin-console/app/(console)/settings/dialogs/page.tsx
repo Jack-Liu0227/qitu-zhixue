@@ -61,12 +61,50 @@ const INSTALLED_DIALOGS: DialogFlowItem[] = [
   },
 ];
 
-export default function DialogsSettingsPage() {
   const [dialogs, setDialogs] = useState<DialogFlowItem[]>(INSTALLED_DIALOGS);
   const [activeTestingDialog, setActiveTestingDialog] = useState<DialogFlowItem | null>(null);
+  const [editingDialog, setEditingDialog] = useState<DialogFlowItem | null>(null);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [inputMsg, setInputMsg] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // 删除对话流
+  const handleDeleteDialog = (id: string, name: string) => {
+    if (!window.confirm(`确定要删除对话流「${name}」吗？`)) return;
+    setDialogs((prev) => prev.filter((d) => d.id !== id));
+    if (editingDialog?.id === id) setEditingDialog(null);
+    if (activeTestingDialog?.id === id) setActiveTestingDialog(null);
+  };
+
+  // 保存编辑
+  const handleSaveEditDialog = () => {
+    if (!editingDialog) return;
+    setDialogs((prev) =>
+      prev.map((d) => (d.id === editingDialog.id ? { ...editingDialog } : d))
+    );
+    setEditingDialog(null);
+  };
+
+  // 新增对话流
+  const handleCreateDialog = () => {
+    const newDialog: DialogFlowItem = {
+      id: `dialog-${Date.now()}`,
+      name: `新建探究引导对话流 ${dialogs.length + 1}`,
+      status: 'ready',
+      targetTeam: '雷霆战机小游戏 PBL 导师团队',
+      phasesCount: 4,
+      description: '针对特定探究任务的标准化多轮苏格拉底式启发对话。',
+      openingMessage: '你好！今天我们要开启一段全新的 PBL 探究之旅，你准备好了吗？',
+      sampleResponses: [
+        {
+          student: '我准备好了，接下来怎么做？',
+          tutor: '非常好！我们首先从观察现象开始...',
+        },
+      ],
+    };
+    setDialogs((prev) => [newDialog, ...prev]);
+    setEditingDialog(newDialog);
+  };
 
   // 打开演练实测
   const handleOpenTest = (dialog: DialogFlowItem) => {
@@ -108,6 +146,15 @@ export default function DialogsSettingsPage() {
             管理已登记的标准化教学对话流（Dialogue Flows）。已直接接通底座 Agent SDK 导师内核，支持即时启动实测演练与剧本调试。
           </div>
         </div>
+        <div className="settings-page-actions">
+          <button
+            type="button"
+            className="settings-action-btn is-primary"
+            onClick={handleCreateDialog}
+          >
+            + 新建对话流
+          </button>
+        </div>
       </div>
 
       <div className="admin-knowledge-cards-grid">
@@ -140,7 +187,7 @@ export default function DialogsSettingsPage() {
               </div>
             </div>
 
-            <div className="admin-knowledge-card-footer" style={{ display: 'flex', gap: '10px' }}>
+            <div className="admin-knowledge-card-footer" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 type="button"
                 className="settings-action-btn is-primary"
@@ -148,6 +195,23 @@ export default function DialogsSettingsPage() {
                 onClick={() => handleOpenTest(dialog)}
               >
                 启动实测演练 ▶
+              </button>
+              <button
+                type="button"
+                className="admin-skill-dot-btn"
+                onClick={() => setEditingDialog({ ...dialog })}
+                title="编辑对话配置"
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                className="admin-skill-dot-btn"
+                style={{ color: '#ef4444' }}
+                onClick={() => handleDeleteDialog(dialog.id, dialog.name)}
+                title="删除对话流"
+              >
+                🗑️
               </button>
             </div>
           </div>
@@ -255,6 +319,86 @@ export default function DialogsSettingsPage() {
                 onClick={handleSendTestMessage}
               >
                 发送
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 编辑对话流弹窗 */}
+      {editingDialog ? (
+        <div className="admin-modal-overlay" onClick={() => setEditingDialog(null)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>编辑对话流: {editingDialog.name}</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingDialog(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">对话流名称</label>
+                <input
+                  className="admin-input-text"
+                  value={editingDialog.name}
+                  onChange={(e) => setEditingDialog({ ...editingDialog, name: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">挂载导师团队</label>
+                <input
+                  className="admin-input-text"
+                  value={editingDialog.targetTeam}
+                  onChange={(e) => setEditingDialog({ ...editingDialog, targetTeam: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">对话情境描述</label>
+                <textarea
+                  className="admin-input-text"
+                  rows={3}
+                  value={editingDialog.description}
+                  onChange={(e) => setEditingDialog({ ...editingDialog, description: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">导师第一句开场白</label>
+                <textarea
+                  className="admin-input-text"
+                  rows={3}
+                  value={editingDialog.openingMessage}
+                  onChange={(e) => setEditingDialog({ ...editingDialog, openingMessage: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ marginRight: 'auto' }}
+                onClick={() => {
+                  handleDeleteDialog(editingDialog.id, editingDialog.name);
+                }}
+              >
+                🗑️ 删除此对话流
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setEditingDialog(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleSaveEditDialog}
+              >
+                保存修改
               </button>
             </div>
           </div>

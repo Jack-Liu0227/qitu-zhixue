@@ -160,6 +160,61 @@ export default function AdminTemplatesPage() {
     void load();
   }, [load]);
 
+  const handleDeleteTemplate = (id: string, title: string) => {
+    if (!window.confirm(`确定要删除项目模板「${title}」吗？`)) return;
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    if (editingTemplate?.id === id) setEditingTemplate(null);
+  };
+
+  const handleCreateTemplate = () => {
+    const newTpl: EditableTemplate = {
+      id: `template-${Date.now()}`,
+      title: `自定义 PBL 项目模板 ${templates.length + 1}`,
+      slug: `custom-pbl-${templates.length + 1}`,
+      summary: '自定义项目式学习探索模板，包含从意图确认到答辩反思的全流程。',
+      status: 'draft',
+      domain: '跨学科探究',
+      level: 'intermediate',
+      suggestedDurationHours: 12,
+      theoryGateConcept: '核心物理或编程概念',
+      linkedTeamId: teams[0]?.id || 'team-thunder-fighter-pbl',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      phases: [
+        {
+          id: 'phase-1',
+          name: '意图确认与开题',
+          gateRule: '确认探究意图与任务目标',
+          stagePrompt: '引导学生阐述项目构想，拆解探究目标。',
+          mentorRole: '总导师',
+        },
+        {
+          id: 'phase-2',
+          name: '核心理论推导 (TheoryMastered 门禁)',
+          gateRule: '理论掌握度硬性门禁，未达标前严禁进入编码实践',
+          stagePrompt: '严格坚持苏格拉底式启发引导，通过概念反问检验掌握度。',
+          mentorRole: '原理教练',
+        },
+        {
+          id: 'phase-3',
+          name: '工程实践与编码',
+          gateRule: '沙箱验证与功能测试',
+          stagePrompt: '指导学生在沙箱中分步编写代码并定位错误。',
+          mentorRole: '代码向导',
+        },
+        {
+          id: 'phase-4',
+          name: '成果答辩与反思',
+          gateRule: '量规质询与成长档案归档',
+          stagePrompt: '提出2-3个概念质询问题评估真实掌握度。',
+          mentorRole: '答辩导师',
+        },
+      ],
+    };
+    setTemplates((prev) => [newTpl, ...prev]);
+    setEditingTemplate(newTpl);
+  };
+
   const handleSaveTemplate = () => {
     if (!editingTemplate) return;
     setTemplates((prev) =>
@@ -203,6 +258,13 @@ export default function AdminTemplatesPage() {
               onClick={handleSaveTemplate}
             >
               保存模板与提示词
+            </button>
+            <button
+              type="button"
+              className="settings-action-btn is-danger"
+              onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
+            >
+              🗑️ 删除
             </button>
             <button
               type="button"
@@ -370,6 +432,15 @@ export default function AdminTemplatesPage() {
             Admin 统一维护项目式学习（PBL）模板。模板深度绑定指定导师团队，配置四阶段门禁与苏格拉底式引导 Prompt。
           </div>
         </div>
+        <div className="settings-page-actions">
+          <button
+            type="button"
+            className="settings-action-btn is-primary"
+            onClick={handleCreateTemplate}
+          >
+            + 新建项目模板
+          </button>
+        </div>
       </div>
 
       <div className="admin-templates-cards-grid">
@@ -406,14 +477,23 @@ export default function AdminTemplatesPage() {
                 </div>
               </div>
 
-              <div className="admin-template-card-footer">
+              <div className="admin-template-card-footer" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   type="button"
                   className="settings-action-btn is-primary"
-                  style={{ width: '100%' }}
+                  style={{ flex: 1 }}
                   onClick={() => setEditingTemplate(template)}
                 >
                   配置团队与四阶段 Prompt →
+                </button>
+                <button
+                  type="button"
+                  className="admin-skill-dot-btn"
+                  style={{ color: '#ef4444' }}
+                  onClick={() => handleDeleteTemplate(template.id, template.title)}
+                  title="删除模板"
+                >
+                  🗑️
                 </button>
               </div>
             </div>

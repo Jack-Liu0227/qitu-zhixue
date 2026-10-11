@@ -84,10 +84,26 @@ export default function PluginsSettingsPage() {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [installPackageName, setInstallPackageName] = useState('');
 
+  const [editingPlugin, setEditingPlugin] = useState<PluginItem | null>(null);
+
   const togglePlugin = (id: string) => {
     setPlugins((prev) =>
       prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p))
     );
+  };
+
+  const handleDeletePlugin = (id: string, name: string) => {
+    if (!window.confirm(`确定要彻底卸载并删除插件「${name}」吗？`)) return;
+    setPlugins((prev) => prev.filter((p) => p.id !== id));
+    if (editingPlugin?.id === id) setEditingPlugin(null);
+  };
+
+  const handleSaveEditPlugin = () => {
+    if (!editingPlugin) return;
+    setPlugins((prev) =>
+      prev.map((p) => (p.id === editingPlugin.id ? { ...editingPlugin } : p))
+    );
+    setEditingPlugin(null);
   };
 
   const handleInstall = () => {
@@ -193,7 +209,7 @@ export default function PluginsSettingsPage() {
                 </div>
               </div>
 
-              <div className="admin-knowledge-card-footer">
+              <div className="admin-knowledge-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span
                   style={{
                     fontSize: '12px',
@@ -201,8 +217,27 @@ export default function PluginsSettingsPage() {
                     fontWeight: 600,
                   }}
                 >
-                  {plugin.enabled ? '● 插件已激活并在执行链路中就绪' : '○ 插件已停用'}
+                  {plugin.enabled ? '● 插件已就绪' : '○ 插件已停用'}
                 </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    className="admin-skill-dot-btn"
+                    onClick={() => setEditingPlugin({ ...plugin })}
+                    title="编辑插件"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-skill-dot-btn"
+                    style={{ color: '#ef4444' }}
+                    onClick={() => handleDeletePlugin(plugin.id, plugin.name)}
+                    title="卸载并删除插件"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -251,6 +286,85 @@ export default function PluginsSettingsPage() {
                 onClick={handleInstall}
               >
                 安装并注册
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 编辑插件弹窗 */}
+      {editingPlugin ? (
+        <div className="admin-modal-overlay" onClick={() => setEditingPlugin(null)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>编辑插件: {editingPlugin.name}</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingPlugin(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">插件名称</label>
+                <input
+                  className="admin-input-text"
+                  value={editingPlugin.name}
+                  onChange={(e) => setEditingPlugin({ ...editingPlugin, name: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">版本</label>
+                <input
+                  className="admin-input-text"
+                  value={editingPlugin.version}
+                  onChange={(e) => setEditingPlugin({ ...editingPlugin, version: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">描述</label>
+                <textarea
+                  className="admin-input-text"
+                  rows={3}
+                  value={editingPlugin.description}
+                  onChange={(e) => setEditingPlugin({ ...editingPlugin, description: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">生效团队/范围</label>
+                <input
+                  className="admin-input-text"
+                  value={editingPlugin.boundScope}
+                  onChange={(e) => setEditingPlugin({ ...editingPlugin, boundScope: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ marginRight: 'auto' }}
+                onClick={() => {
+                  handleDeletePlugin(editingPlugin.id, editingPlugin.name);
+                }}
+              >
+                🗑️ 卸载删除
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setEditingPlugin(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleSaveEditPlugin}
+              >
+                保存修改
               </button>
             </div>
           </div>

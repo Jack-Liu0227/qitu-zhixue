@@ -120,6 +120,23 @@ export default function ToolsSettingsPage() {
     setNewMcpArgs('');
   };
 
+  const [editingMcp, setEditingMcp] = useState<(McpServerConfig & { argsStr: string }) | null>(null);
+
+  const handleSaveEditMcp = () => {
+    if (!editingMcp) return;
+    setMcpServers((prev) =>
+      prev.map((s) =>
+        s.id === editingMcp.id
+          ? {
+              ...editingMcp,
+              args: editingMcp.argsStr.trim() ? editingMcp.argsStr.trim().split(' ') : [],
+            }
+          : s
+      )
+    );
+    setEditingMcp(null);
+  };
+
   return (
     <div className="admin-tools-page-view">
       {/* 标题与描述严格对齐 AdminUI/工具.png */}
@@ -170,6 +187,26 @@ export default function ToolsSettingsPage() {
                         title="测试连接 / 刷新状态"
                       >
                         🔄
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-skill-dot-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingMcp({ ...server, argsStr: server.args.join(' ') });
+                        }}
+                        title="编辑 MCP"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-skill-dot-btn"
+                        style={{ color: '#ef4444' }}
+                        onClick={(e) => handleDeleteMcp(server.id, server.name, e)}
+                        title="删除 MCP"
+                      >
+                        🗑️
                       </button>
                     </div>
                   </div>
@@ -368,6 +405,77 @@ export default function ToolsSettingsPage() {
                 onClick={handleAddMcp}
               >
                 确认添加
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 编辑 MCP 弹窗 */}
+      {editingMcp ? (
+        <div className="admin-modal-overlay" onClick={() => setEditingMcp(null)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>编辑 MCP 服务器: {editingMcp.name}</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingMcp(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">MCP 名称</label>
+                <input
+                  className="admin-input-text"
+                  value={editingMcp.name}
+                  onChange={(e) => setEditingMcp({ ...editingMcp, name: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">启动命令 (Command)</label>
+                <input
+                  className="admin-input-text"
+                  value={editingMcp.command}
+                  onChange={(e) => setEditingMcp({ ...editingMcp, command: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">参数 (Args)</label>
+                <input
+                  className="admin-input-text"
+                  value={editingMcp.argsStr}
+                  onChange={(e) => setEditingMcp({ ...editingMcp, argsStr: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ marginRight: 'auto' }}
+                onClick={(e) => {
+                  handleDeleteMcp(editingMcp.id, editingMcp.name, e);
+                  setEditingMcp(null);
+                }}
+              >
+                🗑️ 删除此 MCP
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setEditingMcp(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleSaveEditMcp}
+              >
+                保存修改
               </button>
             </div>
           </div>

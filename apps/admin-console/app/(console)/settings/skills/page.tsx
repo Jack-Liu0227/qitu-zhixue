@@ -515,14 +515,25 @@ export default function SkillsSettingsPage() {
                     <span className="admin-skill-time-cell">{skill.updatedAtText}</span>
                   </td>
                   <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="admin-skill-dot-btn"
-                      onClick={() => setEditingSkill(skill)}
-                      title="编辑技能"
-                    >
-                      •••
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="admin-skill-dot-btn"
+                        onClick={() => setEditingSkill(skill)}
+                        title="编辑技能"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-skill-dot-btn"
+                        style={{ color: '#ef4444' }}
+                        onClick={() => handleDeleteSkill(skill.id, skill.name)}
+                        title="删除技能"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

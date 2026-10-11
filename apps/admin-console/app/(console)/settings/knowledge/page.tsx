@@ -117,6 +117,29 @@ export default function AdminKnowledgePage() {
     alert('知识文档已成功上传并完成 DeepTutor 向量化切片与导师绑定！');
   };
 
+  const [editingDoc, setEditingDoc] = useState<(EnhancedDocument & { tagsStr: string }) | null>(null);
+
+  const handleDeleteDoc = (id: string, title: string) => {
+    if (!window.confirm(`确定要删除知识库文档「${title}」吗？`)) return;
+    setDocuments((prev) => prev.filter((d) => d.id !== id));
+    if (editingDoc?.id === id) setEditingDoc(null);
+  };
+
+  const handleSaveEditDoc = () => {
+    if (!editingDoc) return;
+    setDocuments((prev) =>
+      prev.map((d) =>
+        d.id === editingDoc.id
+          ? {
+              ...editingDoc,
+              tags: editingDoc.tagsStr.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
+            }
+          : d
+      )
+    );
+    setEditingDoc(null);
+  };
+
   const filteredDocs = useMemo(() => {
     return documents.filter((doc) => {
       if (activeCategory !== 'all' && doc.category !== activeCategory) return false;
@@ -215,14 +238,33 @@ export default function AdminKnowledgePage() {
               </div>
             </div>
 
-            <div className="admin-knowledge-card-footer">
+            <div className="admin-knowledge-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button
                 type="button"
                 className="settings-action-btn"
                 onClick={() => setInspectingDoc(doc)}
               >
-                查看 DeepTutor 切片详情
+                查看切片详情
               </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  className="admin-skill-dot-btn"
+                  onClick={() => setEditingDoc({ ...doc, tagsStr: doc.tags.join(', ') })}
+                  title="编辑知识文档"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  className="admin-skill-dot-btn"
+                  style={{ color: '#ef4444' }}
+                  onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                  title="删除知识文档"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -363,6 +405,85 @@ export default function AdminKnowledgePage() {
                 onClick={handleUploadNewDoc}
               >
                 确认导入并自动分块
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 编辑知识文档弹窗 */}
+      {editingDoc ? (
+        <div className="admin-modal-overlay" onClick={() => setEditingDoc(null)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>编辑知识文档: {editingDoc.title}</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setEditingDoc(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">文档标题</label>
+                <input
+                  className="admin-input-text"
+                  value={editingDoc.title}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, title: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">服务导师团队</label>
+                <input
+                  className="admin-input-text"
+                  value={editingDoc.targetTeam}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, targetTeam: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">标签 (逗号分隔)</label>
+                <input
+                  className="admin-input-text"
+                  value={editingDoc.tagsStr}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, tagsStr: e.target.value })}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">核心摘要 / 引导规范</label>
+                <textarea
+                  className="admin-input-text"
+                  rows={4}
+                  value={editingDoc.summary}
+                  onChange={(e) => setEditingDoc({ ...editingDoc, summary: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ marginRight: 'auto' }}
+                onClick={() => {
+                  handleDeleteDoc(editingDoc.id, editingDoc.title);
+                }}
+              >
+                🗑️ 删除此文档
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setEditingDoc(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleSaveEditDoc}
+              >
+                保存修改
               </button>
             </div>
           </div>

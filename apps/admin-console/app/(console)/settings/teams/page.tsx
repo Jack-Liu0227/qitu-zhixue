@@ -9,7 +9,7 @@ import {
   deletePersistedTeam,
   startTeamRun,
 } from '../../../../lib/api/teams';
-import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import { fetchAdminAssistantConfigs, createPersistedAssistant } from '../../../../lib/api/assistants';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
 import { newIdempotencyKey } from '../../../../lib/api/modelRegistry';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
@@ -52,6 +52,15 @@ export default function AdminTeamsPage() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedAssistantToAdd, setSelectedAssistantToAdd] = useState('');
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<'teammate' | 'coach' | 'reviewer'>('teammate');
+
+  // 新建专属导师智能体状态
+  const [showDesignAssistantModal, setShowDesignAssistantModal] = useState(false);
+  const [newAsstName, setNewAsstName] = useState('');
+  const [newAsstRole, setNewAsstRole] = useState('原理教练');
+  const [newAsstAvatar, setNewAsstAvatar] = useState('🎓');
+  const [newAsstModel, setNewAsstModel] = useState('');
+  const [newAsstPrompt, setNewAsstPrompt] = useState('严格坚持苏格拉底式启发提问，引导学生自主思考，严禁直出完整代码。');
+  const [newAsstTeamRole, setNewAsstTeamRole] = useState<'leader' | 'teammate' | 'coach' | 'reviewer'>('coach');
 
   // 新建团队弹窗状态
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
@@ -190,6 +199,69 @@ export default function AdminTeamsPage() {
       setSelectedAssistantToAdd('');
     } catch (err: any) {
       alert(`添加成员失败：${err?.message || '操作失败'}`);
+    }
+  };
+
+  // 直接设计并新建智能体并加入当前团队
+  const handleCreateAndAddAssistant = async () => {
+    if (!newAsstName.trim()) {
+      alert('请输入导师智能体名称');
+      return;
+    }
+    if (!activeTeam) return;
+
+    try {
+      const created = await createPersistedAssistant(
+        {
+          name: newAsstName.trim(),
+          role: newAsstRole.trim(),
+          avatar: newAsstAvatar.trim() || '🤖',
+          modelId: newAsstModel || configuredModels[0]?.id || 'gpt-5.6-sol',
+          instructions: newAsstPrompt.trim(),
+          systemPrompt: newAsstPrompt.trim(),
+          enabledSkills: ['pbl-guidance', 'socratic-hint'],
+        },
+        newIdempotencyKey()
+      );
+
+      setAllAssistants((prev) => [created, ...prev]);
+
+      const newMember: AdminTeamMember = {
+        slotId: `slot-${Date.now()}`,
+        assistantId: created.id,
+        assistantName: created.name,
+        role: newAsstTeamRole,
+        roleLabel: created.role || '导师',
+        model: created.modelId,
+        avatar: created.avatar,
+        color: '#165dff',
+      };
+
+      const updatedMembers = [
+        ...activeTeam.members.map((m) => ({
+          slotId: m.slotId,
+          assistantId: m.assistantId,
+          role: m.role,
+          roleLabel: m.roleLabel,
+          model: m.model,
+          color: m.color,
+          pblPhase: m.pblPhase,
+        })),
+        newMember,
+      ];
+
+      const updatedTeam = await updatePersistedTeam(
+        activeTeam.id,
+        { members: updatedMembers },
+        newIdempotencyKey()
+      );
+
+      setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
+      setShowDesignAssistantModal(false);
+      setNewAsstName('');
+      alert(`已成功创建「${created.name}」并加入团队「${activeTeam.name}」！`);
+    } catch (err: any) {
+      alert(`创建导师智能体失败：${err?.message || '操作异常'}`);
     }
   };
 
@@ -813,13 +885,13 @@ export default function AdminTeamsPage() {
                     <strong>成员</strong>
                     <span>该小队有 {activeTeam.members.length} 名成员</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                     <button
                       type="button"
                       className="settings-action-btn"
-                      onClick={() => setShowAddMemberModal(true)}
+                      onClick={() => setShowDesignAssistantModal(true)}
                     >
-                      + 创建智能体
+                      + 设计新导师智能体
                     </button>
                     <button
                       type="button"
@@ -951,6 +1023,21 @@ export default function AdminTeamsPage() {
                   <option value="reviewer">评审导师 (Reviewer)</option>
                 </select>
               </div>
+
+              <div style={{ marginTop: '14px', padding: '12px 14px', background: '#f0f7ff', borderRadius: '8px', border: '1px dashed #b8d6fc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '12.5px', color: '#165dff' }}>找不到现成导师？</span>
+                <button
+                  type="button"
+                  className="settings-action-btn"
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  onClick={() => {
+                    setShowAddMemberModal(false);
+                    setShowDesignAssistantModal(true);
+                  }}
+                >
+                  ✨ 立即设计并新建专属导师
+                </button>
+              </div>
             </div>
             <div className="admin-modal-footer">
               <button
@@ -966,6 +1053,109 @@ export default function AdminTeamsPage() {
                 onClick={handleAddMember}
               >
                 确认添加
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 直接设计并新建智能体弹窗 */}
+      {showDesignAssistantModal ? (
+        <div className="admin-modal-overlay" onClick={() => setShowDesignAssistantModal(false)}>
+          <div className="admin-modal-card" style={{ width: 'min(92vw, 560px)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>设计新导师智能体并加入团队</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setShowDesignAssistantModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">导师名称</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  placeholder="例如：物理实验向导、算法架构教练"
+                  value={newAsstName}
+                  onChange={(e) => setNewAsstName(e.target.value)}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">角色定位</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  placeholder="例如：Experiment Guide / 仿真向导"
+                  value={newAsstRole}
+                  onChange={(e) => setNewAsstRole(e.target.value)}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">头像 Emoji</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  placeholder="例如：🔬、🚀、📐"
+                  value={newAsstAvatar}
+                  onChange={(e) => setNewAsstAvatar(e.target.value)}
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">驱动大模型</label>
+                <select
+                  className="admin-select"
+                  value={newAsstModel}
+                  onChange={(e) => setNewAsstModel(e.target.value)}
+                >
+                  <option value="">-- 使用系统默认推荐模型 --</option>
+                  {configuredModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.id} ({m.provider})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">小队职责</label>
+                <select
+                  className="admin-select"
+                  value={newAsstTeamRole}
+                  onChange={(e) => setNewAsstTeamRole(e.target.value as any)}
+                >
+                  <option value="coach">原理教练 (Coach)</option>
+                  <option value="teammate">伙伴向导 (Teammate)</option>
+                  <option value="reviewer">评审导师 (Reviewer)</option>
+                  <option value="leader">队长 / 总负责人 (Leader)</option>
+                </select>
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">发问约束 Prompt</label>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={newAsstPrompt}
+                  onChange={(e) => setNewAsstPrompt(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setShowDesignAssistantModal(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleCreateAndAddAssistant}
+              >
+                确认创建并加入小队
               </button>
             </div>
           </div>

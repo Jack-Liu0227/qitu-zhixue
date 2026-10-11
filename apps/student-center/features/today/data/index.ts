@@ -5,11 +5,13 @@
  * replaces this one binding with the real student API; no component changes.
  */
 import { createMockTodayDataSource } from './mockTodayDataSource';
+import { ApiTodayDataSource } from './apiTodayDataSource';
 import type { TodayDataSource } from './todayDataSource';
 
 export type { TodayDataSource, TodayScenario } from './todayDataSource';
 export { createMockTodayDataSource } from './mockTodayDataSource';
+export { ApiTodayDataSource } from './apiTodayDataSource';
 export type { MockTodayDataSourceOptions } from './mockTodayDataSource';
 
-/** Default binding. Swap this for the real API in Wave 4. */
-export const todayDataSource: TodayDataSource = createMockTodayDataSource({ scenario: 'ready' });
+/** Real API binding connected to backend /api/v1/projects and /api/v1/project-templates */
+export const todayDataSource: TodayDataSource = new ApiTodayDataSource();
