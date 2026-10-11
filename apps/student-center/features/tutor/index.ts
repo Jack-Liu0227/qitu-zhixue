@@ -19,7 +19,6 @@ export { HintLevelIndicator } from './components/HintLevelIndicator';
 export { NumberedQuestionList } from './components/NumberedQuestionList';
 export { OptionChips } from './components/OptionChips';
 export { ProjectCard } from './components/ProjectCard';
-export { ProjectContextPanel } from './components/ProjectContextPanel';
 export { SafeReplyFallback, TutorReplyBlockView } from './components/TutorReplyBlockView';
 export { StageProgress } from './components/StageProgress';
 export { StreamCaret, ToolCallStep, ToolCallTimeline } from './components/ToolCallTimeline';
