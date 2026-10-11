@@ -27,9 +27,13 @@ body { min-height: 100vh; }
 .admin-console-heading .eyebrow { margin: 0; }
 .admin-console-page-title { margin: 4px 0 0; color: var(--qitu-heading); font-size: 1.25rem; }
 .admin-console-identity { display: flex; align-items: center; gap: 12px; }
-.admin-console-identity-name { color: var(--qitu-heading); font-weight: 600; font-size: 0.9rem; }
-.admin-console-topbar .auth-logout { position: static; }
-.admin-console-content { padding: 24px 32px 48px; }
+.admin-console-content {
+  padding: 20px 24px 40px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+}
 
 /* ---- 概览 / 模型配置通用页头 ---- */
 .admin-page-header h1 { margin: 0 0 8px; font-size: 1.6rem; }
@@ -1129,29 +1133,14 @@ body { min-height: 100vh; }
   position: relative;
   isolation: isolate;
   min-height: 100vh;
-  background: #f2f7fd;
-  color: #17243b;
+  background: radial-gradient(circle at 50% 0%, #eaedff 0%, #faf8ff 55%, #f4f6fc 100%);
+  color: #131b2e;
   font-family: Inter, 'PingFang SC', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif;
+  width: 100%;
 }
-.admin-console-shell::before {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background-image: url('/admin/frontend_pictures/15f5b7e8-d755-493c-a6b0-487bc55d8414.png');
-  background-position: center bottom;
-  background-size: cover;
-  background-attachment: fixed;
-  content: '';
-  opacity: 0.32;
-  filter: saturate(1.15) contrast(1.04);
-}
+.admin-console-shell::before,
 .admin-console-shell::after {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(180deg, rgb(242 248 255 / 88%) 0%, rgb(235 245 252 / 73%) 52%, rgb(226 243 241 / 82%) 100%);
-  content: '';
-  pointer-events: none;
+  display: none;
 }
 .admin-console-shell .qitu-sidebar {
   z-index: 50;

@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 24px 32px 8px;
+  padding: 4px 8px 16px;
 }
 
 .qitu-tutor-header-mascot {
@@ -80,9 +80,9 @@
 .qitu-tutor-grid {
   display: grid;
   grid-template-columns: minmax(320px, 360px) minmax(0, 1fr) !important;
-  gap: 24px;
+  gap: 20px;
   align-items: start;
-  padding: 20px 32px 48px;
+  padding: 4px 8px 32px;
   width: 100%;
 }
 

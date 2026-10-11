@@ -25,41 +25,32 @@ const SETTINGS_NAV: NavGroup[] = [
     ],
   },
   {
-    group: 'AI 核心',
+    group: 'AI 核心架构',
     items: [
-      { href: '/settings/assistants', label: '助手', icon: '🤖' },
-      { href: '/settings/teams', label: '团队', icon: '👥' },
-      { href: '/settings/model-providers', label: '模型', icon: '◈' },
-      { href: '/settings/skills', label: '技能', icon: 'ϟ' },
-      { href: '/settings/tools', label: '工具', icon: '🧰' },
+      { href: '/settings/assistants', label: 'AI 助手', icon: '🤖' },
+      { href: '/settings/teams', label: '协作团队', icon: '👥' },
+      { href: '/settings/model-providers', label: '模型接入', icon: '◈' },
+      { href: '/settings/skills', label: '技能中心', icon: 'ϟ' },
+      { href: '/settings/tools', label: '工具与 MCP', icon: '🧰' },
+      { href: '/settings/plugins', label: '生态插件', icon: '🧩' },
     ],
   },
   {
     group: '内容与数据',
     items: [
-      { href: '/settings/knowledge', label: '知识库', icon: '▤' },
-      { href: '/settings/templates', label: '模板库', icon: '▦' },
+      { href: '/settings/knowledge', label: '教学知识库', icon: '▤' },
+      { href: '/settings/templates', label: '项目模板库', icon: '▦' },
       { href: '/settings/database', label: '数据库', icon: '◫' },
     ],
   },
   {
-    group: '应用',
+    group: '应用与会话',
     items: [
-      { href: '/settings/appearance', label: '外观', icon: '◐' },
+      { href: '/settings/dialogs', label: '已安装的对话', icon: '💬' },
+      { href: '/settings/appearance', label: '外观偏好', icon: '◐' },
       { href: '/settings/ops', label: '沉浸运维', icon: '🌐' },
-      { href: '/settings/system', label: '系统', icon: '⚙️' },
-    ],
-  },
-  {
-    group: '供应商',
-    items: [
-      { href: '/settings/dialogs', label: '已安装的对话', icon: '◌' },
-    ],
-  },
-  {
-    group: '其他',
-    items: [
-      { href: '/settings/about', label: '关于', icon: 'ⓘ' },
+      { href: '/settings/system', label: '系统设置', icon: '⚙️' },
+      { href: '/settings/about', label: '关于启途', icon: 'ⓘ' },
     ],
   },
 ];
@@ -89,15 +80,17 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     <div className={`settings-shell ${siderCollapsed ? 'is-sider-collapsed' : ''}`}>
       <aside className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
         <div className="settings-sider-head">
-          {!siderCollapsed && <span className="settings-sider-title">系统偏好设置</span>}
+          <span className="settings-sider-title">
+            {siderCollapsed ? '偏好' : '系统偏好设置'}
+          </span>
           <button
             type="button"
             className="settings-sider-toggle-btn"
             onClick={() => setSiderCollapsed((prev) => !prev)}
-            title={siderCollapsed ? '展开导航' : '折叠导航'}
-            aria-label={siderCollapsed ? '展开导航' : '折叠导航'}
+            title={siderCollapsed ? '展开侧边栏菜单' : '收起侧边栏'}
+            aria-label={siderCollapsed ? '展开侧边栏菜单' : '收起侧边栏'}
           >
-            {siderCollapsed ? '»' : '«'}
+            {siderCollapsed ? '展开 »' : '«'}
           </button>
         </div>
         <div className="settings-sider-scroll">
@@ -111,11 +104,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={`settings-sider-item ${active ? 'is-active' : ''}`}
-                    title={siderCollapsed ? `${grp.group} · ${item.label}` : undefined}
+                    title={`${grp.group} · ${item.label}`}
                     aria-current={active ? 'page' : undefined}
                   >
                     <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
-                    {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
+                    <span className="settings-sider-label">{item.label}</span>
                   </Link>
                 );
               })}

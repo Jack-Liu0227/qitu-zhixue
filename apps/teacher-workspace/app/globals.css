@@ -34,7 +34,7 @@
 
 body {
   margin: 0;
-  background: var(--qtx-bg);
+  background: radial-gradient(circle at 50% 0%, #eaedff 0%, #faf8ff 55%, #f4f6fc 100%);
   color: var(--qtx-text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;

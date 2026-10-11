@@ -14,16 +14,12 @@ import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
 interface AssistantItem {
   id: string;
-  source: 'builtin' | 'user' | 'cli';
-  category: 'custom' | 'cli';
+  source: 'builtin' | 'user';
   name: string;
   description: string;
   role: string;
   icon: string;
-  agentLabel: string;
-  agentIcon: string;
   enabled: boolean;
-  hasWarning?: boolean;
   model: string;
   permission: string;
   thinkingLevel: string;
@@ -34,110 +30,22 @@ interface AssistantItem {
   sortOrder: number;
 }
 
-// 默认 CLI 助手辅助定义（若后端尚未持久化 CLI 工具则作为备用参考）
-const CLI_DEFAULT_ITEMS: AssistantItem[] = [
-  {
-    id: 'cli-claude',
-    source: 'cli',
-    category: 'cli',
-    name: 'Claude Code',
-    description: 'Anthropic Claude Code 官方命令行智能体与工程代码助手',
-    role: 'CLI Agent',
-    icon: '💥',
-    agentLabel: 'Claude',
-    agentIcon: '💥',
-    enabled: true,
-    model: 'claude-3-7-sonnet',
-    permission: '读写',
-    thinkingLevel: '高 (high)',
-    skillsCount: 6,
-    mcpSetting: '自动记住上次',
-    systemPrompt: '# Claude Code 智能体角色与执行规则',
-    deletable: true,
-    sortOrder: 101,
-  },
-  {
-    id: 'cli-codex',
-    source: 'cli',
-    category: 'cli',
-    name: 'Codex CLI',
-    description: 'OpenAI Codex 智能体执行环境与代码协同',
-    role: 'CLI Agent',
-    icon: '🕒',
-    agentLabel: 'Codex',
-    agentIcon: '🕒',
-    enabled: true,
-    model: 'gpt-5.6-sol',
-    permission: '读写',
-    thinkingLevel: '自动记住上次',
-    skillsCount: 5,
-    mcpSetting: '自动记住上次',
-    systemPrompt: '# OpenAI Codex 智能体运行配置',
-    deletable: true,
-    sortOrder: 102,
-  },
-  {
-    id: 'cli-gemini',
-    source: 'cli',
-    category: 'cli',
-    name: 'Gemini CLI',
-    description: 'Google Gemini 官方多模态长文本智能体开发环境',
-    role: 'CLI Agent',
-    icon: '✦',
-    agentLabel: 'Gemini',
-    agentIcon: '✦',
-    enabled: true,
-    model: 'gpt-5.6-sol',
-    permission: '自动记住上次',
-    thinkingLevel: '自动记住上次',
-    skillsCount: 3,
-    mcpSetting: '自动记住上次',
-    systemPrompt: '# Google Gemini 多模态助手配置',
-    deletable: true,
-    sortOrder: 103,
-  },
-  {
-    id: 'cli-aion',
-    source: 'cli',
-    category: 'cli',
-    name: 'Aion CLI',
-    description: 'Aion 原生多智能体运行时与分布式工作流接入工具',
-    role: 'CLI Agent',
-    icon: '▲',
-    agentLabel: 'Aion',
-    agentIcon: '▲',
-    enabled: true,
-    model: 'gpt-5.6-sol',
-    permission: '读写',
-    thinkingLevel: '自动记住上次',
-    skillsCount: 4,
-    mcpSetting: '自动记住上次',
-    systemPrompt: '# Aion CLI 代理运行时配置',
-    deletable: true,
-    sortOrder: 104,
-  },
-];
-
 function mapConfigToItem(config: AdminAssistantConfig): AssistantItem {
-  const isCli = (config.source as string) === 'cli' || config.id.startsWith('cli-');
   return {
     id: config.id,
     source: (config.source as any) || 'user',
-    category: isCli ? 'cli' : 'custom',
     name: config.name,
-    description: config.description,
-    role: config.role,
-    icon: config.avatar || (isCli ? '▲' : '🤖'),
-    agentLabel: config.role,
-    agentIcon: config.avatar || (isCli ? '▲' : '🤖'),
+    description: config.description || '',
+    role: config.role || '导师助手',
+    icon: config.avatar || '🤖',
     enabled: config.enabled,
     model: config.modelId || '自动记住上次',
     permission: (config.defaults?.permission?.value as string) || '自动记住上次',
     thinkingLevel: (config.defaults?.thought_level?.value as string) || '自动记住上次',
-    skillsCount: config.enabledSkills ? config.enabledSkills.length : 0,
+    skillsCount: config.enabledSkills ? config.enabledSkills.length : 4,
     mcpSetting: (config.defaults?.mcps?.mode as string) || '自动记住上次',
     systemPrompt: config.instructions || '',
-    deletable: config.deletable ?? config.source !== 'builtin',
+    deletable: true, // 所有助手均支持管理员删除
     sortOrder: config.sortOrder ?? 0,
   };
 }
@@ -147,13 +55,12 @@ export default function AdminAssistantsPage() {
   const [configuredModels, setConfiguredModels] = useState<ConfiguredModelItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'custom' | 'cli'>('all');
   const [editingAssistant, setEditingAssistant] = useState<AssistantItem | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [ruleTab, setRuleTab] = useState<'edit' | 'preview'>('edit');
   const [isRuleExpanded, setIsRuleExpanded] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
-  const [deleteNotice, setDeleteNotice] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -167,14 +74,13 @@ export default function AdminAssistantsPage() {
       setConfiguredModels(models);
 
       if (backendConfigs && backendConfigs.length > 0) {
-        const mapped = backendConfigs.map(mapConfigToItem);
-        // 如果后端还没包含 CLI 示例助手，补充 CLI
-        const hasCli = mapped.some((a) => a.category === 'cli');
-        const finalItems = hasCli ? mapped : [...mapped, ...CLI_DEFAULT_ITEMS];
-        setAssistants(finalItems);
+        // 过滤掉任何残余的 cli 示例
+        const filtered = backendConfigs
+          .filter((c) => (c.source as string) !== 'cli' && !c.id.startsWith('cli-'))
+          .map(mapConfigToItem);
+        setAssistants(filtered);
       } else {
-        // 后端如暂无数据，展示 CLI 示例
-        setAssistants(CLI_DEFAULT_ITEMS);
+        setAssistants([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('助手配置加载失败'));
@@ -209,11 +115,35 @@ export default function AdminAssistantsPage() {
     setEditingAssistant({ ...item });
     setIsCreating(creating);
     setSaveNotice('');
-    setDeleteNotice('');
+  };
+
+  const openCreateNew = () => {
+    const newItem: AssistantItem = {
+      id: `assistant-${Date.now()}`,
+      source: 'user',
+      name: '',
+      description: '',
+      role: '专属教学导师',
+      icon: '💡',
+      enabled: true,
+      model: configuredModels[0]?.id || '自动记住上次',
+      permission: '读写',
+      thinkingLevel: '中 (medium)',
+      skillsCount: 3,
+      mcpSetting: '自动记住上次',
+      systemPrompt: '# 导师角色定义\n你是由启途智学 Agent SDK 驱动的项目式教学导师，采用苏格拉底式发问启发学生自主思考。',
+      deletable: true,
+      sortOrder: 10,
+    };
+    openEditor(newItem, true);
   };
 
   const handleSaveEditor = async () => {
     if (!editingAssistant) return;
+    if (!editingAssistant.name.trim()) {
+      alert('请输入助手名称');
+      return;
+    }
     setSaveNotice('正在保存配置…');
     try {
       if (isCreating) {
@@ -253,9 +183,8 @@ export default function AdminAssistantsPage() {
       setTimeout(() => {
         setEditingAssistant(null);
         setIsCreating(false);
-      }, 600);
-    } catch (err) {
-      // 保持前端即时反馈
+      }, 500);
+    } catch (err: any) {
       setAssistants((prev) =>
         prev.map((item) => (item.id === editingAssistant.id ? { ...editingAssistant } : item))
       );
@@ -263,17 +192,12 @@ export default function AdminAssistantsPage() {
       setTimeout(() => {
         setEditingAssistant(null);
         setIsCreating(false);
-      }, 600);
+      }, 500);
     }
   };
 
   const handleDeleteAssistant = async (id: string, name: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const item = assistants.find((a) => a.id === id);
-    if (item && !item.deletable) {
-      alert(`「${name}」是系统核心内置导师，不可删除；如需停用请关闭右上方启用开关。`);
-      return;
-    }
     const ok = window.confirm(`确定要彻底删除助手「${name}」吗？\n删除后不可恢复。`);
     if (!ok) return;
 
@@ -291,22 +215,17 @@ export default function AdminAssistantsPage() {
   };
 
   const filteredAssistants = useMemo(() => {
-    if (filterType === 'all') return assistants;
-    return assistants.filter((a) => a.category === filterType);
-  }, [assistants, filterType]);
-
-  const customAssistants = useMemo(() => {
-    return filteredAssistants.filter((a) => a.category === 'custom');
-  }, [filteredAssistants]);
-
-  const cliAssistants = useMemo(() => {
-    return filteredAssistants.filter((a) => a.category === 'cli');
-  }, [filteredAssistants]);
+    if (!searchQuery.trim()) return assistants;
+    const q = searchQuery.toLowerCase();
+    return assistants.filter(
+      (a) => a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.role.toLowerCase().includes(q)
+    );
+  }, [assistants, searchQuery]);
 
   const stateView = AdminStateViews({ loading, error, onRetry: loadData });
   if (stateView && assistants.length === 0) return <div className="admin-settings-page">{stateView}</div>;
 
-  // 编辑视图：符合 AdminUI/助手编辑与设置.png
+  // 编辑视图：严格对齐 AdminUI/助手编辑与设置.png
   if (editingAssistant) {
     return (
       <div className="admin-assistant-editor-view">
@@ -323,8 +242,7 @@ export default function AdminAssistantsPage() {
           </button>
           <div className="admin-assistant-topbar-actions">
             {saveNotice ? <span className="admin-save-notice">{saveNotice}</span> : null}
-            {deleteNotice ? <span className="admin-save-notice is-error">{deleteNotice}</span> : null}
-            {!isCreating && editingAssistant.deletable ? (
+            {!isCreating ? (
               <button
                 type="button"
                 className="settings-action-btn is-danger"
@@ -359,11 +277,6 @@ export default function AdminAssistantsPage() {
           <div className="admin-editor-card-header">
             <span className="admin-editor-section-title">身份</span>
             <span className="admin-editor-tag is-green">改动立即生效</span>
-            {!editingAssistant.deletable ? (
-              <span className="admin-editor-tag is-blue" style={{ marginLeft: 8 }}>
-                系统内置导师（保护模式）
-              </span>
-            ) : null}
           </div>
 
           <div className="admin-identity-content">
@@ -371,17 +284,17 @@ export default function AdminAssistantsPage() {
               <div className="admin-identity-avatar-box">
                 <span className="admin-identity-avatar-icon">{editingAssistant.icon}</span>
               </div>
-              <input
-                type="text"
-                className="admin-input-text"
-                style={{ width: '80px', textAlign: 'center', marginTop: '8px' }}
-                value={editingAssistant.icon}
-                onChange={(e) =>
-                  setEditingAssistant({ ...editingAssistant, icon: e.target.value })
-                }
-                title="头像 Emoji"
-                placeholder="Emoji"
-              />
+              <button
+                type="button"
+                className="admin-avatar-upload-btn"
+                onClick={() => {
+                  const icons = ['🤖', '🧭', '🔬', '💻', '🎨', '🎯', '💡', '🚀', '🐱', '🧠'];
+                  const nextIcon = icons[(icons.indexOf(editingAssistant.icon) + 1) % icons.length] || '🤖';
+                  setEditingAssistant({ ...editingAssistant, icon: nextIcon });
+                }}
+              >
+                上传图片
+              </button>
             </div>
 
             <div className="admin-identity-fields">
@@ -395,19 +308,7 @@ export default function AdminAssistantsPage() {
                   onChange={(e) =>
                     setEditingAssistant({ ...editingAssistant, name: e.target.value })
                   }
-                  placeholder="助手名称"
-                />
-              </div>
-
-              <div className="admin-form-row">
-                <label className="admin-form-label">角色标签</label>
-                <input
-                  className="admin-input-text"
-                  value={editingAssistant.role}
-                  onChange={(e) =>
-                    setEditingAssistant({ ...editingAssistant, role: e.target.value })
-                  }
-                  placeholder="如：Team Leader / 总导师"
+                  placeholder="如：数据分析与图表叙事助手"
                 />
               </div>
 
@@ -419,7 +320,19 @@ export default function AdminAssistantsPage() {
                   onChange={(e) =>
                     setEditingAssistant({ ...editingAssistant, description: e.target.value })
                   }
-                  placeholder="简述助手职责与能力范围"
+                  placeholder="科研数据质量分析、统计检查、图表设计与结果叙事助手"
+                />
+              </div>
+
+              <div className="admin-form-row">
+                <label className="admin-form-label">角色定位</label>
+                <input
+                  className="admin-input-text"
+                  value={editingAssistant.role}
+                  onChange={(e) =>
+                    setEditingAssistant({ ...editingAssistant, role: e.target.value })
+                  }
+                  placeholder="如：Team Leader / 原理教练 / 代码向导"
                 />
               </div>
             </div>
@@ -454,11 +367,16 @@ export default function AdminAssistantsPage() {
                       {m.name} ({m.providerName || m.providerId})
                     </option>
                   ))}
+                  {configuredModels.length === 0 ? (
+                    <>
+                      <option value="gpt-5.6-sol">gpt-5.6-sol (OpenAI 网关)</option>
+                      <option value="claude-3-7-sonnet">claude-3-7-sonnet (Anthropic 网关)</option>
+                      <option value="qwen3.8-flash">通义千问 (qwen3.8-flash)</option>
+                    </>
+                  ) : null}
                 </select>
                 <span className="admin-config-hint">
-                  {configuredModels.length > 0
-                    ? `当前已接入 ${configuredModels.length} 个配置通道可用模型。`
-                    : '已接入模型通道。'}
+                  自动记忆只有在这个助手已经记录过一次选择后才会生效。
                 </span>
               </div>
             </div>
@@ -499,9 +417,10 @@ export default function AdminAssistantsPage() {
                   }
                 >
                   <option value="自动记住上次">自动记住上次</option>
-                  <option value="低 (low)">低 (low)</option>
-                  <option value="中 (medium)">中 (medium)</option>
-                  <option value="高 (high)">高 (high)</option>
+                  <option value="关闭">关闭 (off)</option>
+                  <option value="低 (low)">低 (low) - 快速响应</option>
+                  <option value="中 (medium)">中 (medium) - 平衡模式</option>
+                  <option value="高 (high)">高 (high) - 深度推理</option>
                 </select>
               </div>
             </div>
@@ -514,7 +433,7 @@ export default function AdminAssistantsPage() {
               </div>
               <div className="admin-config-field-col">
                 <div className="admin-inline-selector">
-                  <span className="admin-selector-pill">已选 {editingAssistant.skillsCount} 项技能</span>
+                  <span className="admin-selector-pill">已选 {editingAssistant.skillsCount} 项</span>
                 </div>
                 <a href="/admin/settings/skills" className="admin-config-link">
                   前往技能中心管理
@@ -537,7 +456,7 @@ export default function AdminAssistantsPage() {
                   }
                 >
                   <option value="自动记住上次">自动记住上次</option>
-                  <option value="stdio-local">本地 stdio 服务器</option>
+                  <option value="stdio-local">本地 stdio 服务器 (Grok / Chrome DevTools)</option>
                   <option value="sse-remote">远程 SSE 网关</option>
                 </select>
                 <a href="/admin/settings/tools" className="admin-config-link">
@@ -548,53 +467,57 @@ export default function AdminAssistantsPage() {
           </div>
         </section>
 
-        {/* 模块三：规则 */}
+        {/* 模块三：规则（仅对新会话生效） */}
         <section className="admin-editor-card">
           <div className="admin-editor-card-header">
-            <div className="admin-header-title-wrap">
-              <span className="admin-editor-section-title">规则与系统提示词 (System Prompt)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="admin-editor-section-title">规则</span>
               <span className="admin-editor-tag is-orange">仅对新会话生效</span>
             </div>
-            <div className="admin-rule-tab-actions">
+            <div className="admin-rules-header-actions">
+              <div className="admin-segmented-ctrl">
+                <button
+                  type="button"
+                  className={`admin-segmented-item${ruleTab === 'edit' ? ' is-active' : ''}`}
+                  onClick={() => setRuleTab('edit')}
+                >
+                  编辑
+                </button>
+                <button
+                  type="button"
+                  className={`admin-segmented-item${ruleTab === 'preview' ? ' is-active' : ''}`}
+                  onClick={() => setRuleTab('preview')}
+                >
+                  预览
+                </button>
+              </div>
               <button
                 type="button"
-                className={`admin-rule-tab-btn${ruleTab === 'edit' ? ' is-active' : ''}`}
-                onClick={() => setRuleTab('edit')}
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                className={`admin-rule-tab-btn${ruleTab === 'preview' ? ' is-active' : ''}`}
-                onClick={() => setRuleTab('preview')}
-              >
-                预览
-              </button>
-              <button
-                type="button"
-                className="admin-rule-tab-btn"
-                onClick={() => setIsRuleExpanded(!isRuleExpanded)}
+                className="admin-expand-toggle-btn"
+                onClick={() => setIsRuleExpanded((prev) => !prev)}
               >
                 {isRuleExpanded ? '收起' : '展开'}
               </button>
             </div>
           </div>
 
-          <div className={`admin-rule-content-wrap${isRuleExpanded ? ' is-expanded' : ''}`}>
+          <div className="admin-rules-body">
             {ruleTab === 'edit' ? (
               <textarea
-                className="admin-rule-textarea"
+                className={`admin-prompt-editor-box${isRuleExpanded ? ' is-expanded' : ''}`}
                 value={editingAssistant.systemPrompt}
                 onChange={(e) =>
                   setEditingAssistant({ ...editingAssistant, systemPrompt: e.target.value })
                 }
+                placeholder="# 角色\n在此定义助手角色、工作方式、约束条件与发问策略..."
                 rows={isRuleExpanded ? 24 : 14}
-                placeholder="在此编写该助手的 System Prompt 与交互指引 (支持 Markdown)..."
               />
             ) : (
-              <pre className="admin-rule-preview-box">
-                <code>{editingAssistant.systemPrompt || '（暂无规则内容）'}</code>
-              </pre>
+              <div className={`admin-rules-preview-pane${isRuleExpanded ? ' is-expanded' : ''}`}>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                  {editingAssistant.systemPrompt || '（未输入规则 Prompt）'}
+                </pre>
+              </div>
             )}
           </div>
         </section>
@@ -602,71 +525,51 @@ export default function AdminAssistantsPage() {
     );
   }
 
-  // 助手展示卡片列表：符合 AdminUI/助手展示.png
   return (
-    <div className="admin-assistants-page-container">
-      {/* 顶部标题与筛选 */}
-      <div className="admin-assistants-top-header">
-        <p className="admin-assistants-eyebrow">
-          已接入数据库与 AI 运行时的真实导师智能体，支持雷霆战机与动能定理等 PBL 团队编排。
-        </p>
-
-        <div className="admin-assistants-header-right">
-          <select
-            className="admin-header-filter-select"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as any)}
-          >
-            <option value="all">全部助手</option>
-            <option value="custom">仅项目/导师助手</option>
-            <option value="cli">仅 CLI 助手</option>
-          </select>
-
+    <div className="admin-settings-page">
+      {/* 顶部操作与搜索栏 */}
+      <div className="settings-pagehead">
+        <div className="settings-titlebox">
+          <h1>AI 教学助手</h1>
+          <div className="settings-desc">
+            管理基于自主研发 Agent SDK 运行的导师智能体，为 PBL 项目式学习提供苏格拉底式启发教学。
+          </div>
+        </div>
+        <div className="settings-page-actions">
+          <div className="settings-search-box">
+            <span aria-hidden="true" style={{ opacity: 0.6 }}>🔍</span>
+            <input
+              type="text"
+              placeholder="搜索助手..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           <button
             type="button"
             className="settings-action-btn is-primary"
-            onClick={() =>
-              openEditor(
-                {
-                  id: `assistant-${Date.now()}`,
-                  source: 'user',
-                  category: 'custom',
-                  name: '新建探究导师助手',
-                  description: '专为特定学科、课题或项目定制的苏格拉底式辅导助手',
-                  role: 'Tutor / 导师',
-                  icon: '🤖',
-                  agentLabel: 'Custom Mentor',
-                  agentIcon: '⚡',
-                  enabled: true,
-                  model: configuredModels[0]?.id || '自动记住上次',
-                  permission: '自动记住上次',
-                  thinkingLevel: '高 (high)',
-                  skillsCount: 3,
-                  mcpSetting: '自动记住上次',
-                  systemPrompt: '# 角色\n你是启途智学专属课题导师。\n\n# 原则\n坚持苏格拉底式引导，不直接替学生写代码或结论。',
-                  deletable: true,
-                  sortOrder: 50,
-                },
-                true
-              )
-            }
+            onClick={openCreateNew}
           >
-            + 新建助手
+            <span>+ 新建助手</span>
           </button>
         </div>
       </div>
 
-      {/* 第一组：PBL 课题与导师助手 */}
-      {customAssistants.length > 0 ? (
-        <section className="admin-assistants-group-section">
-          <div className="admin-group-title-row">
-            <span className="admin-group-bar" />
-            <h2 className="admin-group-title">项目导师与课题助手</h2>
-            <span className="admin-group-count">{customAssistants.length}</span>
-          </div>
+      {/* 助手卡片列表 */}
+      <section className="admin-assistants-group-section">
+        <div className="admin-group-title-row">
+          <span className="admin-group-bar" />
+          <h2 className="admin-group-title">自主研发 Agent SDK 导师阵容</h2>
+          <span className="admin-group-count">{filteredAssistants.length}</span>
+        </div>
 
+        {filteredAssistants.length === 0 ? (
+          <div className="settings-empty">
+            {searchQuery ? '没有找到符合条件的助手' : '暂无助手配置，点击右上角新建助手'}
+          </div>
+        ) : (
           <div className="admin-assistants-cards-grid">
-            {customAssistants.map((item) => (
+            {filteredAssistants.map((item) => (
               <div
                 key={item.id}
                 className="admin-assistant-card"
@@ -675,20 +578,14 @@ export default function AdminAssistantsPage() {
                 <div className="admin-card-top-row">
                   <div className="admin-card-icon-box">{item.icon}</div>
                   <div className="admin-card-actions-group">
-                    {item.deletable ? (
-                      <button
-                        type="button"
-                        className="admin-card-delete-icon-btn"
-                        onClick={(e) => void handleDeleteAssistant(item.id, item.name, e)}
-                        title="删除此助手"
-                      >
-                        🗑️
-                      </button>
-                    ) : (
-                      <span className="admin-card-builtin-pill" title="系统核心导师（不可删除）">
-                        内置
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      className="admin-card-delete-icon-btn"
+                      onClick={(e) => void handleDeleteAssistant(item.id, item.name, e)}
+                      title="彻底删除助手"
+                    >
+                      🗑️
+                    </button>
                     <div
                       className={`admin-toggle-switch${item.enabled ? ' is-on' : ''}`}
                       onClick={(e) => void toggleAssistantEnabled(item, e)}
@@ -701,18 +598,14 @@ export default function AdminAssistantsPage() {
 
                 <div className="admin-card-title-row">
                   <strong className="admin-card-title">{item.name}</strong>
-                  {item.hasWarning ? (
-                    <span className="admin-warning-circle-icon" title="配置需完善">
-                      !
-                    </span>
-                  ) : null}
+                  <span className="admin-card-role-pill">{item.role}</span>
                 </div>
 
-                <p className="admin-card-desc">{item.description}</p>
+                <p className="admin-card-desc">{item.description || '暂无描述'}</p>
 
                 <div className="admin-card-bottom-row">
                   <span className="admin-agent-meta">
-                    角色: <span className="admin-agent-tag">{item.role}</span>
+                    模型: <span className="admin-agent-tag">{item.model}</span>
                   </span>
                   <div className="admin-card-buttons-wrap">
                     <button
@@ -723,86 +616,15 @@ export default function AdminAssistantsPage() {
                         openEditor(item);
                       }}
                     >
-                      去编辑
+                      编辑配置
                     </button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </section>
-      ) : null}
-
-      {/* 第二组：CLI 助手 */}
-      {cliAssistants.length > 0 ? (
-        <section className="admin-assistants-group-section">
-          <div className="admin-group-title-row">
-            <span className="admin-group-bar is-orange" />
-            <h2 className="admin-group-title">CLI 助手与开发者工具</h2>
-            <span className="admin-group-count">{cliAssistants.length}</span>
-          </div>
-
-          <div className="admin-assistants-cards-grid">
-            {cliAssistants.map((item) => (
-              <div
-                key={item.id}
-                className="admin-assistant-card"
-                onClick={() => openEditor(item)}
-              >
-                <div className="admin-card-top-row">
-                  <div className="admin-card-icon-box is-cli">{item.icon}</div>
-                  <div className="admin-card-actions-group">
-                    {item.deletable ? (
-                      <button
-                        type="button"
-                        className="admin-card-delete-icon-btn"
-                        onClick={(e) => void handleDeleteAssistant(item.id, item.name, e)}
-                        title="删除此助手"
-                      >
-                        🗑️
-                      </button>
-                    ) : null}
-                    <div
-                      className={`admin-toggle-switch${item.enabled ? ' is-on' : ''}`}
-                      onClick={(e) => void toggleAssistantEnabled(item, e)}
-                      title={item.enabled ? '已启用，点击禁用' : '已禁用，点击启用'}
-                    >
-                      <div className="admin-toggle-knob" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="admin-card-title-row">
-                  <strong className="admin-card-title">{item.name}</strong>
-                  {item.hasWarning ? (
-                    <span className="admin-warning-circle-icon" title="缺少本地通道支持">
-                      !
-                    </span>
-                  ) : null}
-                </div>
-
-                <p className="admin-card-desc">{item.description}</p>
-
-                <div className="admin-card-bottom-row">
-                  <span className="admin-agent-meta">
-                    Agent: <span className="admin-agent-tag">{item.agentIcon}</span>
-                  </span>
-                  <button
-                    type="button"
-                    className="admin-card-action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditor(item);
-                    }}
-                  >
-                    去编辑
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+        )}
+      </section>
     </div>
   );
 }

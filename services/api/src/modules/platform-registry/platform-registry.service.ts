@@ -807,17 +807,39 @@ export class PlatformRegistryService {
     return withTransaction(this.db, async (tx) => {
       const existing = (await tx.select().from(adminAssistants)).find((a) => a.id === assistantId);
       if (!existing) throw new NotFoundException('助手不存在');
-      if (existing.source === 'builtin') {
-        throw new BadRequestException('系统内置助手不可直接删除，可停用');
-      }
+      // 解除内置助手不可删除硬限制，支持管理员完全控制
+      // 若该助手为团队成员，先级联清理成员记录
+      await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.assistantId, assistantId));
+
+      // 若该助手为某团队的 Leader，自动将其移交至该团队其他成员或可用助手，确保外键完整性
       const teams = await tx.select().from(adminTeams);
-      if (teams.some((t) => t.leaderAssistantId === assistantId)) {
-        throw new BadRequestException('该助手当前为团队负责人，不能删除；请先更换团队负责人');
+      const leadingTeams = teams.filter((t) => t.leaderAssistantId === assistantId);
+      for (const t of leadingTeams) {
+        const remainingMembers = await tx
+          .select()
+          .from(adminTeamMembers)
+          .where(eq(adminTeamMembers.teamId, t.id));
+        if (remainingMembers.length > 0) {
+          await tx
+            .update(adminTeams)
+            .set({ leaderAssistantId: remainingMembers[0].assistantId })
+            .where(eq(adminTeams.id, t.id));
+        } else {
+          const otherAssistant = (await tx.select().from(adminAssistants)).find(
+            (a) => a.id !== assistantId
+          );
+          if (otherAssistant) {
+            await tx
+              .update(adminTeams)
+              .set({ leaderAssistantId: otherAssistant.id })
+              .where(eq(adminTeams.id, t.id));
+          } else {
+            // 没有其他可用助手时，级联清理该孤立团队
+            await tx.delete(adminTeams).where(eq(adminTeams.id, t.id));
+          }
+        }
       }
-      const members = await tx.select().from(adminTeamMembers);
-      if (members.some((m) => m.assistantId === assistantId)) {
-        throw new BadRequestException('该助手正在被团队选用，不能直接删除；请先从团队成员中移除');
-      }
+
       await tx.delete(adminAssistants).where(eq(adminAssistants.id, assistantId));
       await this.audit.write({
         actorId: actor.id,

@@ -5,12 +5,10 @@ body {
 }
 
 .qitu-student-shell {
-  background-image:
-    linear-gradient(180deg, rgb(246 250 255 / 91%) 0%, rgb(241 249 249 / 87%) 52%, rgb(237 249 245 / 91%) 100%),
-    url('/student/frontend_pictures/15f5b7e8-d755-493c-a6b0-487bc55d8414.png');
-  background-position: center bottom;
-  background-size: cover;
-  background-attachment: fixed;
+  min-height: 100vh;
+  width: 100%;
+  background: radial-gradient(circle at 50% 0%, #eaedff 0%, #faf8ff 55%, #f4f6fc 100%);
+  color: #131b2e;
 }
 
 /* ---- 优化全局滚动条 (精致圆润风格) ---- */
@@ -143,4 +141,16 @@ body {
 .qitu-works-actions a:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(40, 120, 240, 0.18);
+}
+
+/* 全宽优化：减少左右多余空白，填满屏幕空间 */
+.qitu-student-content {
+  padding: 16px 24px 40px !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.qitu-student-banner-slot {
+  padding: 16px 24px 0 !important;
 }

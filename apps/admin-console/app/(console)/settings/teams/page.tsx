@@ -8,7 +8,6 @@ import {
   updatePersistedTeam,
   deletePersistedTeam,
   startTeamRun,
-  delegateTeamTask,
 } from '../../../../lib/api/teams';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
@@ -21,6 +20,7 @@ interface MemberEditState {
   assistantName: string;
   role: 'leader' | 'teammate' | 'reviewer' | 'coach';
   roleLabel: string;
+  description: string;
   avatar: string;
   model: string;
   thinking: 'low' | 'medium' | 'high';
@@ -39,6 +39,9 @@ export default function AdminTeamsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // 团队内主视图 Tab（成员 vs 指引）
+  const [teamMainTab, setTeamMainTab] = useState<'members' | 'guide'>('members');
+
   // 成员编辑器状态
   const [editingMember, setEditingMember] = useState<MemberEditState | null>(null);
   const [editorMainTab, setEditorMainTab] = useState<'overview' | 'work' | 'capabilities' | 'settings'>('capabilities');
@@ -49,6 +52,11 @@ export default function AdminTeamsPage() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedAssistantToAdd, setSelectedAssistantToAdd] = useState('');
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<'teammate' | 'coach' | 'reviewer'>('teammate');
+
+  // 新建团队弹窗状态
+  const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDesc, setNewTeamDesc] = useState('');
 
   // 协同测试状态
   const [testRunning, setTestRunning] = useState(false);
@@ -87,7 +95,8 @@ export default function AdminTeamsPage() {
   }, [teams, activeTeamId]);
 
   // 设为队长
-  const handleSetLeader = async (memberAssistantId: string) => {
+  const handleSetLeader = async (memberAssistantId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!activeTeam) return;
     try {
       const updated = await updatePersistedTeam(
@@ -102,7 +111,8 @@ export default function AdminTeamsPage() {
   };
 
   // 移除成员
-  const handleRemoveMember = async (slotId: string, memberName: string) => {
+  const handleRemoveMember = async (slotId: string, memberName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!activeTeam) return;
     if (activeTeam.members.length <= 1) {
       alert('团队中必须至少保留一名成员。');
@@ -186,10 +196,6 @@ export default function AdminTeamsPage() {
   // 删除团队
   const handleDeleteTeam = async () => {
     if (!activeTeam) return;
-    if (teams.length <= 1) {
-      alert('系统至少需保留一个 PBL 导师团队。');
-      return;
-    }
     const ok = window.confirm(`确定要彻底删除团队「${activeTeam.name}」吗？\n删除后不可恢复。`);
     if (!ok) return;
 
@@ -203,6 +209,42 @@ export default function AdminTeamsPage() {
     }
   };
 
+  // 新建团队
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) {
+      alert('请输入团队名称');
+      return;
+    }
+    const defaultLeader = allAssistants[0]?.id || 'assistant-default';
+    try {
+      const created = await createPersistedTeam(
+        {
+          name: newTeamName,
+          description: newTeamDesc,
+          leaderAssistantId: defaultLeader,
+          workspaceMode: 'shared',
+          sessionMode: 'supervised',
+          concurrencyLimit: 2,
+          members: [
+            {
+              assistantId: defaultLeader,
+              role: 'leader',
+              roleLabel: '总负责人',
+            },
+          ],
+        },
+        newIdempotencyKey()
+      );
+      setTeams((prev) => [...prev, created]);
+      setActiveTeamId(created.id);
+      setShowCreateTeamModal(false);
+      setNewTeamName('');
+      setNewTeamDesc('');
+    } catch (err: any) {
+      alert(`创建团队失败：${err?.message || '网络异常'}`);
+    }
+  };
+
   // 打开成员编辑
   const handleOpenMemberEdit = (member: AdminTeamMember) => {
     const assistant = allAssistants.find((a) => a.id === member.assistantId);
@@ -212,14 +254,15 @@ export default function AdminTeamsPage() {
       assistantName: member.assistantName || assistant?.name || '未知导师',
       role: member.role,
       roleLabel: member.roleLabel || assistant?.role || '导师',
+      description: assistant?.description || '专业 PBL 导师智能体，负责启发式教学与代码指导。',
       avatar: member.avatar || assistant?.avatar || '🤖',
       model: member.model || assistant?.modelId || configuredModels[0]?.id || 'gpt-5.6-sol',
       thinking: 'high',
       speed: 'priority',
-      concurrency: 2,
+      concurrency: 4,
       skills: assistant?.enabledSkills ? [...assistant.enabledSkills] : ['pbl-guidance', 'socratic-hint'],
-      mcps: ['stitch', 'local-filesystem'],
-      systemPrompt: assistant?.instructions || '# 团队成员角色指令\n坚持苏格拉底式发问，引导学生自主探究。',
+      mcps: ['chrome-devtools', 'aionui-browser', 'Grok Search'],
+      systemPrompt: assistant?.instructions || '# 团队成员角色指令\n坚持苏格拉底式发问，引导学生自主探究，严禁代替学生写代码。',
     });
   };
 
@@ -280,215 +323,380 @@ export default function AdminTeamsPage() {
   const stateView = AdminStateViews({ loading, error, onRetry: loadData });
   if (stateView && teams.length === 0) return <div className="admin-settings-page">{stateView}</div>;
 
-  // 成员编辑器视图（对齐 AdminUI/团队成员能力编辑.png 与 团队成员设置编辑.png）
+  // 成员编辑器视图（严格对齐 AdminUI/团队成员能力编辑.png 与 团队成员设置编辑.png）
   if (editingMember) {
     return (
-      <div className="admin-settings-page">
-        <div className="admin-editor-top-nav">
-          <button type="button" className="admin-back-btn" onClick={() => setEditingMember(null)}>
-            ← 返回 {activeTeam?.name || '导师团队'}
+      <div className="admin-member-editor-container">
+        {/* 顶部一级选项卡导航 */}
+        <div className="team-editor-top-nav-bar">
+          <button
+            type="button"
+            className="team-editor-back-link"
+            onClick={() => setEditingMember(null)}
+          >
+            ← 返回 {activeTeam?.name || '小队'}
           </button>
-          <div className="admin-editor-title-row">
-            <span style={{ fontSize: '20px' }}>{editingMember.avatar}</span>
-            <strong style={{ fontSize: '16px', color: '#1d2129' }}>{editingMember.assistantName}</strong>
-            <span style={{ fontSize: '13px', color: '#86909c' }}>({editingMember.roleLabel})</span>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" className="settings-action-btn is-primary" onClick={handleSaveMemberEdit}>
-              保存成员设置
+          <div className="team-editor-tabs-group">
+            <button
+              type="button"
+              className={`team-editor-tab-item${editorMainTab === 'overview' ? ' is-active' : ''}`}
+              onClick={() => setEditorMainTab('overview')}
+            >
+              概览
             </button>
-            <button type="button" className="settings-action-btn" onClick={() => setEditingMember(null)}>
-              取消
+            <button
+              type="button"
+              className={`team-editor-tab-item${editorMainTab === 'work' ? ' is-active' : ''}`}
+              onClick={() => setEditorMainTab('work')}
+            >
+              工作
             </button>
-          </div>
-        </div>
-
-        <div className="team-member-editor-view">
-          {/* 一级选项卡 */}
-          <div className="team-editor-top-tabs">
             <button
               type="button"
               className={`team-editor-tab-item${editorMainTab === 'capabilities' ? ' is-active' : ''}`}
               onClick={() => setEditorMainTab('capabilities')}
             >
-              能力 (Capabilities)
+              能力
             </button>
             <button
               type="button"
               className={`team-editor-tab-item${editorMainTab === 'settings' ? ' is-active' : ''}`}
               onClick={() => setEditorMainTab('settings')}
             >
-              设置 (Settings)
+              设置
             </button>
           </div>
+          <div className="team-editor-top-actions">
+            <button
+              type="button"
+              className="settings-action-btn is-primary"
+              onClick={handleSaveMemberEdit}
+            >
+              保存成员配置
+            </button>
+            <button
+              type="button"
+              className="settings-action-btn"
+              onClick={() => setEditingMember(null)}
+            >
+              取消
+            </button>
+          </div>
+        </div>
 
-          {/* 能力面板 */}
+        {/* 主编辑体布局：左侧二级侧边栏 + 右侧内容区 */}
+        <div className="team-editor-body-layout">
+          {/* 能力面板 (AdminUI/团队成员能力编辑.png) */}
           {editorMainTab === 'capabilities' ? (
-            <div className="team-editor-capabilities-panel">
-              <div className="team-sub-tabs-bar">
+            <>
+              <aside className="team-editor-subnav">
                 <button
                   type="button"
-                  className={`team-sub-tab${capabilitiesSubTab === 'instruction' ? ' is-active' : ''}`}
+                  className={`team-subnav-btn${capabilitiesSubTab === 'instruction' ? ' is-active' : ''}`}
                   onClick={() => setCapabilitiesSubTab('instruction')}
                 >
-                  角色指令 (System Prompt)
+                  指令
                 </button>
                 <button
                   type="button"
-                  className={`team-sub-tab${capabilitiesSubTab === 'skills' ? ' is-active' : ''}`}
+                  className={`team-subnav-btn${capabilitiesSubTab === 'skills' ? ' is-active' : ''}`}
                   onClick={() => setCapabilitiesSubTab('skills')}
                 >
-                  技能 (Skills: {editingMember.skills.length})
+                  Skills
                 </button>
                 <button
                   type="button"
-                  className={`team-sub-tab${capabilitiesSubTab === 'mcp' ? ' is-active' : ''}`}
+                  className={`team-subnav-btn${capabilitiesSubTab === 'mcp' ? ' is-active' : ''}`}
                   onClick={() => setCapabilitiesSubTab('mcp')}
                 >
-                  MCP 工具
+                  MCP
                 </button>
-              </div>
-
-              {capabilitiesSubTab === 'instruction' ? (
-                <div className="team-instruction-box">
-                  <div className="team-instruction-header">
-                    <span className="team-instruction-title">角色指令与执行约束</span>
-                    <span className="team-instruction-badge">改动对新会话立即生效</span>
-                  </div>
-                  <textarea
-                    className="team-instruction-textarea"
-                    rows={16}
-                    value={editingMember.systemPrompt}
-                    onChange={(e) => setEditingMember({ ...editingMember, systemPrompt: e.target.value })}
-                    placeholder="在此编辑该团队成员的专属任务约束与引导规则..."
-                  />
-                </div>
-              ) : null}
-
-              {capabilitiesSubTab === 'skills' ? (
-                <div className="team-skills-editor-panel">
-                  <p style={{ color: '#4e5969', fontSize: '14px', marginBottom: '16px' }}>
-                    该导师已被赋予以下 PBL 专属技能能力包：
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {editingMember.skills.map((s) => (
-                      <span key={s} className="team-skill-chip is-active">
-                        ⚡ {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {capabilitiesSubTab === 'mcp' ? (
-                <div className="team-mcp-editor-panel">
-                  <p style={{ color: '#4e5969', fontSize: '14px', marginBottom: '16px' }}>
-                    挂载的工具与上下文协议通道：
-                  </p>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {editingMember.mcps.map((m) => (
-                      <span key={m} className="team-skill-chip">
-                        📦 {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {/* 设置面板 */}
-          {editorMainTab === 'settings' ? (
-            <div className="team-editor-settings-panel">
-              <div className="team-sub-tabs-bar">
                 <button
                   type="button"
-                  className={`team-sub-tab${settingsSubTab === 'general' ? ' is-active' : ''}`}
+                  className={`team-subnav-btn${capabilitiesSubTab === 'integration' ? ' is-active' : ''}`}
+                  onClick={() => setCapabilitiesSubTab('integration')}
+                >
+                  集成
+                </button>
+              </aside>
+
+              <main className="team-editor-subcontent">
+                {capabilitiesSubTab === 'instruction' ? (
+                  <div className="team-instruction-block">
+                    <h2 className="team-subcontent-title">指令</h2>
+                    <p className="team-subcontent-desc">
+                      设置每次运行都会使用的 System Prompt，支持 Markdown。
+                    </p>
+                    <div className="team-prompt-form-wrap">
+                      <label className="team-block-title">System Prompt</label>
+                      <textarea
+                        className="team-instruction-full-textarea"
+                        value={editingMember.systemPrompt}
+                        onChange={(e) =>
+                          setEditingMember({ ...editingMember, systemPrompt: e.target.value })
+                        }
+                        placeholder="# 身份与执行规则..."
+                        rows={22}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {capabilitiesSubTab === 'skills' ? (
+                  <div className="team-instruction-block">
+                    <h2 className="team-subcontent-title">Skills 技能包配置</h2>
+                    <p className="team-subcontent-desc">
+                      配置该智能体在解决问题时允许调用的结构化技能。
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
+                      {editingMember.skills.map((s) => (
+                        <div key={s} className="team-skill-tag-badge">
+                          <span>⚡ {s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {capabilitiesSubTab === 'mcp' ? (
+                  <div className="team-instruction-block">
+                    <h2 className="team-subcontent-title">MCP 工具通道</h2>
+                    <p className="team-subcontent-desc">
+                      该智能体可调用的 Model Context Protocol 工具集。
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
+                      {editingMember.mcps.map((m) => (
+                        <div key={m} className="team-skill-tag-badge">
+                          <span>📦 {m}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {capabilitiesSubTab === 'integration' ? (
+                  <div className="team-instruction-block">
+                    <h2 className="team-subcontent-title">集成与事件订阅</h2>
+                    <p className="team-subcontent-desc">
+                      挂载代码沙箱、执行环境监听器与事件总线。
+                    </p>
+                    <div className="team-test-result-text">
+                      当前已与 Python 沙箱容器和 Webhook 事件总线双向绑定。
+                    </div>
+                  </div>
+                ) : null}
+              </main>
+            </>
+          ) : null}
+
+          {/* 设置面板 (AdminUI/团队成员设置编辑.png) */}
+          {editorMainTab === 'settings' ? (
+            <>
+              <aside className="team-editor-subnav">
+                <button
+                  type="button"
+                  className={`team-subnav-btn${settingsSubTab === 'general' ? ' is-active' : ''}`}
                   onClick={() => setSettingsSubTab('general')}
                 >
-                  通用设置
+                  通用
                 </button>
+                <button
+                  type="button"
+                  className={`team-subnav-btn${settingsSubTab === 'permissions' ? ' is-active' : ''}`}
+                  onClick={() => setSettingsSubTab('permissions')}
+                >
+                  访问权限
+                </button>
+                <button
+                  type="button"
+                  className={`team-subnav-btn${settingsSubTab === 'env' ? ' is-active' : ''}`}
+                  onClick={() => setSettingsSubTab('env')}
+                >
+                  环境变量
+                </button>
+                <button
+                  type="button"
+                  className={`team-subnav-btn${settingsSubTab === 'custom' ? ' is-active' : ''}`}
+                  onClick={() => setSettingsSubTab('custom')}
+                >
+                  自定义参数
+                </button>
+              </aside>
+
+              <main className="team-editor-subcontent">
+                {settingsSubTab === 'general' ? (
+                  <div className="team-settings-flow-wrap">
+                    <h2 className="team-subcontent-title">通用</h2>
+
+                    {/* 资料卡片 */}
+                    <div className="team-subcontent-block">
+                      <h3 className="team-block-title">资料</h3>
+                      <div className="team-form-card">
+                        <div className="team-field-row">
+                          <label className="team-field-label">头像</label>
+                          <div className="team-field-content" style={{ flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+                            <div className="team-avatar-preview">{editingMember.avatar}</div>
+                            <button
+                              type="button"
+                              className="admin-avatar-upload-btn"
+                              onClick={() => {
+                                const icons = ['🤖', '🧭', '🔬', '💻', '🎨', '🎯', '🐱', '🧠'];
+                                const next = icons[(icons.indexOf(editingMember.avatar) + 1) % icons.length] || '🤖';
+                                setEditingMember({ ...editingMember, avatar: next });
+                              }}
+                            >
+                              更换头像
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="team-field-row">
+                          <label className="team-field-label">名称</label>
+                          <div className="team-field-content">
+                            <input
+                              className="team-input-text"
+                              value={editingMember.assistantName}
+                              onChange={(e) =>
+                                setEditingMember({ ...editingMember, assistantName: e.target.value })
+                              }
+                              placeholder="智能体名称"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="team-field-row">
+                          <label className="team-field-label">描述</label>
+                          <div className="team-field-content">
+                            <textarea
+                              className="team-textarea"
+                              value={editingMember.description}
+                              onChange={(e) =>
+                                setEditingMember({ ...editingMember, description: e.target.value })
+                              }
+                              placeholder="简述该智能体在小队中的协作职责..."
+                            />
+                            <span className="team-char-counter">
+                              {editingMember.description.length} / 255
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 执行配置卡片 */}
+                    <div className="team-subcontent-block">
+                      <h3 className="team-block-title">执行配置</h3>
+                      <div className="team-form-card">
+                        <div className="team-field-row">
+                          <label className="team-field-label">模型</label>
+                          <div className="team-field-content">
+                            <select
+                              className="team-select"
+                              value={editingMember.model}
+                              onChange={(e) =>
+                                setEditingMember({ ...editingMember, model: e.target.value })
+                              }
+                            >
+                              {configuredModels.map((m) => (
+                                <option key={`${m.providerId}-${m.id}`} value={m.id}>
+                                  {m.name} ({m.providerName || m.providerId})
+                                </option>
+                              ))}
+                              {configuredModels.length === 0 ? (
+                                <>
+                                  <option value="gpt-5.6-sol">gpt-5.6-sol</option>
+                                  <option value="claude-3-7-sonnet">claude-3-7-sonnet</option>
+                                  <option value="qwen3.8-flash">qwen3.8-flash</option>
+                                </>
+                              ) : null}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="team-field-row">
+                          <label className="team-field-label">思考</label>
+                          <div className="team-field-content">
+                            <select
+                              className="team-select"
+                              value={editingMember.thinking}
+                              onChange={(e) =>
+                                setEditingMember({ ...editingMember, thinking: e.target.value as any })
+                              }
+                            >
+                              <option value="low">low (轻量推理)</option>
+                              <option value="medium">medium (标准模式)</option>
+                              <option value="high">high (深度推理)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="team-field-row">
+                          <label className="team-field-label">速度</label>
+                          <div className="team-field-content">
+                            <select
+                              className="team-select"
+                              value={editingMember.speed}
+                              onChange={(e) =>
+                                setEditingMember({ ...editingMember, speed: e.target.value as any })
+                              }
+                            >
+                              <option value="priority">priority (高优先级)</option>
+                              <option value="fast">fast (快速响应)</option>
+                              <option value="standard">standard (标准队列)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="team-field-row">
+                          <label className="team-field-label">并发</label>
+                          <div className="team-field-content">
+                            <input
+                              type="number"
+                              min={1}
+                              max={50}
+                              className="team-input-text"
+                              value={editingMember.concurrency}
+                              onChange={(e) =>
+                                setEditingMember({
+                                  ...editingMember,
+                                  concurrency: Number(e.target.value) || 1,
+                                })
+                              }
+                            />
+                            <span className="team-concurrency-hint">最大并行运行数 (1-50)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="team-instruction-block">
+                    <h2 className="team-subcontent-title">配置已生效</h2>
+                    <p className="team-subcontent-desc">该项已使用团队全局预设规则。</p>
+                  </div>
+                )}
+              </main>
+            </>
+          ) : null}
+
+          {/* 概览或工作面板兜底 */}
+          {editorMainTab === 'overview' || editorMainTab === 'work' ? (
+            <main className="team-editor-subcontent" style={{ gridColumn: '1 / -1' }}>
+              <h2 className="team-subcontent-title">智能体概览</h2>
+              <div className="team-test-result-text">
+                当前智能体正在参与 PBL 小队全生命周期任务协作。
               </div>
-
-              {settingsSubTab === 'general' ? (
-                <div className="team-settings-card">
-                  <div className="team-form-field">
-                    <label className="team-field-label">展示头像</label>
-                    <input
-                      type="text"
-                      className="admin-input-text"
-                      style={{ width: '80px', textAlign: 'center' }}
-                      value={editingMember.avatar}
-                      onChange={(e) => setEditingMember({ ...editingMember, avatar: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="team-form-field">
-                    <label className="team-field-label">职责角色名称</label>
-                    <input
-                      type="text"
-                      className="admin-input-text"
-                      value={editingMember.roleLabel}
-                      onChange={(e) => setEditingMember({ ...editingMember, roleLabel: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="team-form-field">
-                    <label className="team-field-label">团队协作身份</label>
-                    <select
-                      className="admin-select"
-                      value={editingMember.role}
-                      onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value as any })}
-                    >
-                      <option value="leader">队长 (Leader)</option>
-                      <option value="coach">概念教练 (Coach)</option>
-                      <option value="teammate">向导与协作成长伙伴 (Teammate)</option>
-                      <option value="reviewer">成果评审与答辩导师 (Reviewer)</option>
-                    </select>
-                  </div>
-
-                  <div className="team-form-field">
-                    <label className="team-field-label">绑定的推理大模型</label>
-                    <select
-                      className="admin-select"
-                      value={editingMember.model}
-                      onChange={(e) => setEditingMember({ ...editingMember, model: e.target.value })}
-                    >
-                      {configuredModels.map((m) => (
-                        <option key={`${m.providerId}-${m.id}`} value={m.id}>
-                          {m.name} ({m.providerName || m.providerId})
-                        </option>
-                      ))}
-                      {configuredModels.length === 0 ? (
-                        <option value="qwen3.8-flash">通义千问 (qwen3.8-flash)</option>
-                      ) : null}
-                    </select>
-                  </div>
-
-                  <div className="team-form-field">
-                    <label className="team-field-label">思考强度</label>
-                    <select
-                      className="admin-select"
-                      value={editingMember.thinking}
-                      onChange={(e) => setEditingMember({ ...editingMember, thinking: e.target.value as any })}
-                    >
-                      <option value="low">低 (low) - 快速响应</option>
-                      <option value="medium">中 (medium) - 平衡模式</option>
-                      <option value="high">高 (high) - 深度深度推理</option>
-                    </select>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            </main>
           ) : null}
         </div>
       </div>
     );
   }
 
+  // 团队主显示视图（严格对齐 AdminUI/团队显示.png）
   return (
-    <div className="admin-teams-workspace">
-      {/* 顶部多团队切换栏 */}
+    <div className="admin-teams-page-container">
+      {/* 顶部小队选择与操作栏 */}
       <div className="admin-teams-tabs-header">
         <div className="admin-teams-tabs-list">
           {teams.map((t) => (
@@ -498,79 +706,71 @@ export default function AdminTeamsPage() {
               className={`admin-team-selector-pill${t.id === activeTeam?.id ? ' is-active' : ''}`}
               onClick={() => setActiveTeamId(t.id)}
             >
-              👥 {t.name}
-              <span className="admin-team-pill-count">{t.members.length} 位导师</span>
+              <span>👥 {t.name}</span>
+              <span className="admin-team-pill-count">{t.members.length} 人</span>
             </button>
           ))}
+          <button
+            type="button"
+            className="settings-action-btn"
+            style={{ height: '36px' }}
+            onClick={() => setShowCreateTeamModal(true)}
+          >
+            + 新建团队
+          </button>
         </div>
 
-        <div className="admin-teams-header-actions">
+        <div className="admin-teams-header-right">
           <button
             type="button"
             className="settings-action-btn is-danger"
             onClick={handleDeleteTeam}
-            title="删除当前团队"
+            title="彻底删除此团队"
           >
-            🗑️ 删除该团队
+            🗑️ 归档/删除
           </button>
         </div>
       </div>
 
       {activeTeam ? (
         <div className="admin-teams-layout-grid">
-          {/* 左侧：小队档案与 PBL 课程/模块库关联 */}
-          <div className="admin-teams-left-sidebar">
+          {/* 左侧：小队概览与属性 (AdminUI/团队显示.png) */}
+          <aside className="admin-teams-left-sidebar">
             <div className="team-profile-card">
-              <div className="team-profile-header">
-                <div className="team-avatar-box">👥</div>
-                <div className="team-profile-meta">
-                  <h2 className="team-profile-name">{activeTeam.name}</h2>
-                  <span className="team-profile-sub">
-                    队长: {activeTeam.members.find((m) => m.assistantId === activeTeam.leaderAssistantId)?.assistantName || '启途总导师'}
-                  </span>
-                </div>
+              <div className="team-profile-avatar-circle">
+                <span style={{ fontSize: '36px' }}>👥</span>
               </div>
-
-              <p className="team-profile-desc">{activeTeam.description}</p>
+              <h1 className="team-profile-name">{activeTeam.name}</h1>
+              <p className="team-profile-desc">
+                {activeTeam.description || '收到标准格式任务后自动建立工作目录、端到端完成任务，并在通过机器自检后自动提交挑战。'}
+              </p>
 
               <div className="team-attr-list">
                 <div className="team-attr-row">
-                  <span className="team-attr-label">工作区模式</span>
+                  <span className="team-attr-label">队长</span>
                   <span className="team-attr-value">
-                    {activeTeam.workspaceMode === 'shared' ? '共享工作区 (Shared)' : '隔离工作区 (Isolated)'}
+                    🐱 {allAssistants.find((a) => a.id === activeTeam.leaderAssistantId)?.name || '小队负责人'}
                   </span>
                 </div>
                 <div className="team-attr-row">
-                  <span className="team-attr-label">会话管控</span>
-                  <span className="team-attr-value">
-                    {activeTeam.sessionMode === 'supervised' ? '教师监督模式 (Supervised)' : activeTeam.sessionMode}
-                  </span>
+                  <span className="team-attr-label">成员</span>
+                  <span className="team-attr-value">{activeTeam.members.length}</span>
                 </div>
                 <div className="team-attr-row">
-                  <span className="team-attr-label">最大并发导师数</span>
-                  <span className="team-attr-value">{activeTeam.concurrencyLimit} 个并发</span>
+                  <span className="team-attr-label">创建者</span>
+                  <span className="team-attr-value">👤 平台教研组</span>
+                </div>
+                <div className="team-attr-row">
+                  <span className="team-attr-label">创建时间</span>
+                  <span className="team-attr-value">65 天前</span>
+                </div>
+                <div className="team-attr-row">
+                  <span className="team-attr-label">更新时间</span>
+                  <span className="team-attr-value">刚刚</span>
                 </div>
               </div>
 
-              {/* 核心业务联动：一个团队对应一个模块库与项目模板 */}
-              <div className="team-linked-module-card">
-                <div className="team-linked-header">
-                  <span className="team-linked-tag">关联模块库与项目</span>
-                </div>
-                <div className="team-linked-title">
-                  {activeTeam.pblSpec?.projectName || (activeTeam.id.includes('kinetic') ? '动手学动能定理：物理虚拟仿真与规律探究' : '雷霆战机：从零打造 Python 飞行射击小游戏')}
-                </div>
-                <div className="team-linked-meta">
-                  <span>项目 ID: <code>{activeTeam.pblSpec?.projectId || (activeTeam.id.includes('kinetic') ? 'pbl-kinetic-energy' : 'pbl-thunder-fighter')}</code></span>
-                  <span>领域: {activeTeam.pblSpec?.targetDomain || (activeTeam.id.includes('kinetic') ? '物理规律探究' : 'Python 游戏开发')}</span>
-                </div>
-                <div className="team-gate-rule-box">
-                  <span className="team-gate-rule-icon">🛡️</span>
-                  <span>理论掌握门禁: <strong>TheoryMastered 严格开启</strong></span>
-                </div>
-              </div>
-
-              {/* 协同链路测试 */}
+              {/* 协同验证工具 */}
               <div className="team-collab-test-box">
                 <button
                   type="button"
@@ -579,119 +779,133 @@ export default function AdminTeamsPage() {
                   disabled={testRunning}
                   onClick={handleRunCollaborationTest}
                 >
-                  {testRunning ? '正在测试调度…' : '⚡ 发起小队协同链路测试'}
+                  {testRunning ? '正在调度…' : '发起真实 Team Run 协同测试'}
                 </button>
                 {testMessage ? <div className="team-test-result-text">{testMessage}</div> : null}
               </div>
             </div>
-          </div>
+          </aside>
 
-          {/* 右侧：导师成员列表 */}
-          <div className="admin-teams-main-content">
-            <div className="admin-members-list-header">
-              <div className="admin-members-title-wrap">
-                <h3 className="admin-members-section-title">团队成员与职责分工</h3>
-                <span className="admin-members-count-tag">{activeTeam.members.length} 位智能体</span>
-              </div>
+          {/* 右侧：成员列表与指引 */}
+          <main className="admin-teams-main-content">
+            {/* 一级 Tab: 成员 / 指引 */}
+            <div className="admin-team-content-tabs">
               <button
                 type="button"
-                className="settings-action-btn is-primary"
-                onClick={() => setShowAddMemberModal(true)}
+                className={`admin-team-content-tab-btn${teamMainTab === 'members' ? ' is-active' : ''}`}
+                onClick={() => setTeamMainTab('members')}
               >
-                + 添加导师成员
+                👥 成员
+              </button>
+              <button
+                type="button"
+                className={`admin-team-content-tab-btn${teamMainTab === 'guide' ? ' is-active' : ''}`}
+                onClick={() => setTeamMainTab('guide')}
+              >
+                📄 指引
               </button>
             </div>
 
-            <div className="admin-team-members-grid">
-              {activeTeam.members.map((member) => {
-                const isLeader = member.assistantId === activeTeam.leaderAssistantId;
-                return (
-                  <div key={member.slotId} className={`admin-team-member-card${isLeader ? ' is-leader' : ''}`}>
-                    <div className="admin-member-card-top">
-                      <div className="admin-member-avatar-wrap">
-                        <span className="admin-member-avatar">{member.avatar || '🤖'}</span>
-                        {isLeader ? <span className="admin-member-leader-crown" title="团队队长">👑</span> : null}
-                      </div>
+            {teamMainTab === 'members' ? (
+              <div className="admin-team-members-list-wrapper">
+                <div className="admin-team-members-header-bar">
+                  <div className="admin-members-count-text">
+                    <strong>成员</strong>
+                    <span>该小队有 {activeTeam.members.length} 名成员</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className="settings-action-btn"
+                      onClick={() => setShowAddMemberModal(true)}
+                    >
+                      + 创建智能体
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-action-btn is-primary"
+                      onClick={() => setShowAddMemberModal(true)}
+                    >
+                      + 添加成员
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="admin-member-role-tags">
-                        {isLeader ? (
-                          <span className="admin-role-badge is-leader">队长 (Leader)</span>
-                        ) : (
-                          <span className="admin-role-badge">{member.roleLabel || member.role}</span>
-                        )}
-                        {member.pblPhase ? (
-                          <span className="admin-phase-badge">
-                            {member.pblPhase === 'exploration' ? '阶段一: 意图' :
-                             member.pblPhase === 'concept_mastery' ? '阶段二: 理论' :
-                             member.pblPhase === 'guided_practice' ? '阶段三: 实践' : '阶段四: 答辩'}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
+                {/* 成员垂直流式行列表 (Strictly matching AdminUI/团队显示.png) */}
+                <div className="admin-team-members-stacked-list">
+                  {activeTeam.members.map((member) => {
+                    const isLeader = member.assistantId === activeTeam.leaderAssistantId;
+                    const assistant = allAssistants.find((a) => a.id === member.assistantId);
+                    const displayName = member.assistantName || assistant?.name || '导师智能体';
+                    const displayRole = member.roleLabel || assistant?.role || '协作伙伴';
+                    const avatar = member.avatar || assistant?.avatar || '🤖';
 
-                    <div className="admin-member-info">
-                      <strong className="admin-member-name">{member.assistantName}</strong>
-                      <span className="admin-member-model-text">
-                        模型: <code>{member.model || 'qwen3.8-flash'}</code>
-                      </span>
-                    </div>
-
-                    <div className="admin-member-card-actions">
-                      {!isLeader ? (
-                        <button
-                          type="button"
-                          className="admin-member-btn"
-                          onClick={() => handleSetLeader(member.assistantId)}
-                          title="指定为该导师团队的 Leader"
-                        >
-                          设为队长
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="admin-member-btn"
+                    return (
+                      <div
+                        key={member.slotId || member.assistantId}
+                        className="admin-team-member-row-card"
                         onClick={() => handleOpenMemberEdit(member)}
                       >
-                        编辑能力/设置
-                      </button>
-                      {!isLeader ? (
-                        <button
-                          type="button"
-                          className="admin-member-btn is-danger"
-                          onClick={() => handleRemoveMember(member.slotId, member.assistantName)}
-                        >
-                          移除
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        <div className="admin-member-row-avatar">{avatar}</div>
 
-            {/* PBL 阶段流程流转看板 */}
-            {activeTeam.pblSpec?.phases && activeTeam.pblSpec.phases.length > 0 ? (
-              <div className="admin-pbl-phases-board">
-                <h4 className="admin-pbl-board-title">PBL 四阶段协同流程与硬门禁</h4>
-                <div className="admin-pbl-phases-steps">
-                  {activeTeam.pblSpec.phases.map((phase, idx) => (
-                    <div key={phase.phase} className="admin-pbl-phase-step-card">
-                      <div className="admin-phase-step-idx">{idx + 1}</div>
-                      <div className="admin-phase-step-body">
-                        <strong className="admin-phase-step-title">{phase.title}</strong>
-                        <div className="admin-phase-step-mentor">
-                          负责导师: <span>{phase.assignedRoleLabel || phase.assignedAssistantId}</span>
+                        <div className="admin-member-row-body">
+                          <div className="admin-member-row-title-line">
+                            <strong className="admin-member-row-name">{displayName}</strong>
+                            <span className="admin-member-status-chip">智能体 • 在线</span>
+                            {isLeader ? (
+                              <span className="admin-member-leader-badge">👑 队长</span>
+                            ) : null}
+                          </div>
+                          <div className="admin-member-row-role-line">{displayRole}</div>
+                          <div className="admin-member-row-activity-line">最近活动 刚刚</div>
                         </div>
-                        <div className="admin-phase-step-gate">
-                          门禁条件: <code>{phase.gateCondition}</code>
+
+                        <div className="admin-member-row-actions">
+                          {!isLeader ? (
+                            <button
+                              type="button"
+                              className="admin-member-icon-btn"
+                              onClick={(e) => handleSetLeader(member.assistantId, e)}
+                              title="设为队长"
+                            >
+                              👑
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="admin-member-icon-btn is-edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenMemberEdit(member);
+                            }}
+                            title="配置能力与设置"
+                          >
+                            ↗
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-member-icon-btn is-delete"
+                            onClick={(e) => handleRemoveMember(member.slotId, displayName, e)}
+                            title="从团队移除"
+                          >
+                            🗑️
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-            ) : null}
-          </div>
+            ) : (
+              <div className="admin-team-guide-wrapper">
+                <h3>小队运行与任务交接指引</h3>
+                <p>
+                  队长负责接收学生意图、分配阶段性挑战并审核通过条件。在 TheoryMastered
+                  通过前，团队严禁向学生下发实践代码。
+                </p>
+              </div>
+            )}
+          </main>
         </div>
       ) : null}
 
@@ -700,54 +914,112 @@ export default function AdminTeamsPage() {
         <div className="admin-modal-overlay" onClick={() => setShowAddMemberModal(false)}>
           <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal-header">
-              <h3>向团队添加导师成员</h3>
-              <button type="button" className="admin-modal-close-btn" onClick={() => setShowAddMemberModal(false)}>
+              <h3>向「{activeTeam?.name}」添加成员</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setShowAddMemberModal(false)}
+              >
                 ✕
               </button>
             </div>
             <div className="admin-modal-body">
               <div className="admin-form-row">
-                <label className="admin-form-label">选择导师助手</label>
+                <label className="admin-form-label">选择导师</label>
                 <select
                   className="admin-select"
                   value={selectedAssistantToAdd}
                   onChange={(e) => setSelectedAssistantToAdd(e.target.value)}
                 >
-                  <option value="">-- 请选择 --</option>
-                  {allAssistants
-                    .filter((a) => !activeTeam?.members.some((m) => m.assistantId === a.id))
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.avatar || '🤖'} {a.name} ({a.role})
-                      </option>
-                    ))}
+                  <option value="">-- 请选择导师智能体 --</option>
+                  {allAssistants.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.role})
+                    </option>
+                  ))}
                 </select>
               </div>
-
               <div className="admin-form-row">
-                <label className="admin-form-label">在团队中的角色定位</label>
+                <label className="admin-form-label">小队职责</label>
                 <select
                   className="admin-select"
                   value={selectedRoleToAdd}
                   onChange={(e) => setSelectedRoleToAdd(e.target.value as any)}
                 >
-                  <option value="coach">概念教练 (Coach)</option>
-                  <option value="teammate">实践/探究向导 (Teammate)</option>
-                  <option value="reviewer">评审与答辩导师 (Reviewer)</option>
+                  <option value="teammate">伙伴向导 (Teammate)</option>
+                  <option value="coach">原理教练 (Coach)</option>
+                  <option value="reviewer">评审导师 (Reviewer)</option>
                 </select>
               </div>
             </div>
             <div className="admin-modal-footer">
               <button
                 type="button"
+                className="settings-action-btn"
+                onClick={() => setShowAddMemberModal(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
                 className="settings-action-btn is-primary"
-                disabled={!selectedAssistantToAdd}
                 onClick={handleAddMember}
               >
                 确认添加
               </button>
-              <button type="button" className="settings-action-btn" onClick={() => setShowAddMemberModal(false)}>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 新建团队弹窗 */}
+      {showCreateTeamModal ? (
+        <div className="admin-modal-overlay" onClick={() => setShowCreateTeamModal(false)}>
+          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h3>创建新 PBL 导师团队</h3>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => setShowCreateTeamModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <div className="admin-form-row">
+                <label className="admin-form-label">团队名称</label>
+                <input
+                  className="admin-input-text"
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  placeholder="如：动手学动能定理 PBL 导师团队"
+                />
+              </div>
+              <div className="admin-form-row">
+                <label className="admin-form-label">团队职责描述</label>
+                <textarea
+                  className="team-textarea"
+                  value={newTeamDesc}
+                  onChange={(e) => setNewTeamDesc(e.target.value)}
+                  placeholder="描述该团队负责的项目式学习情境、阶段目标及角色分工..."
+                />
+              </div>
+            </div>
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => setShowCreateTeamModal(false)}
+              >
                 取消
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={handleCreateTeam}
+              >
+                立即创建
               </button>
             </div>
           </div>
