@@ -232,6 +232,7 @@ export default function AdminTeamsPage() {
         assistantName: created.name,
         role: newAsstTeamRole,
         roleLabel: created.role || '导师',
+        status: 'idle',
         model: created.modelId ?? undefined,
         avatar: created.avatar || '🤖',
         color: '#165dff',
