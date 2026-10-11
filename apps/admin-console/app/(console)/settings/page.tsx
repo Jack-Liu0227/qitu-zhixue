@@ -10,6 +10,7 @@ export default function SettingsIndexPage() {
     { href: '/settings/plugins', icon: '🧩', title: '生态插件 (Plugins)', description: '通过 4 类标准扩展钩子注册评估门禁、沙箱工具与工作台画板。', accent: 'indigo' },
     { href: '/settings/knowledge', icon: '▤', title: '教学知识库', description: '基于 DeepTutor 架构管理概念库、事实切片分块与导师检索挂载。', accent: 'slate' },
     { href: '/settings/templates', icon: '▦', title: '项目模板库', description: '维护 PBL 四阶段教学流程设计、TheoryMastered 门禁与阶段提示词。', accent: 'rose' },
+    { href: '/settings/profile-growth', icon: '📊', title: '学情画像与成长轨迹', description: '配置学生个人能力画像多维权重、PBL 事件流自动捕获及隐私隔离策略。', accent: 'emerald' },
     { href: '/settings/dialogs', icon: '💬', title: '已安装的对话', description: '管理标准化引导剧本，接通底座 Agent SDK 并支持实测演练。', accent: 'cyan' },
     { href: '/settings/database', icon: '◫', title: '数据库管理', description: '查看 PostgreSQL 关系模型、数据表记录数与审计日志。', accent: 'gray' },
   ];

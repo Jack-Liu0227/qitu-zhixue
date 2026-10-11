@@ -467,9 +467,31 @@ export default function AdminTemplatesPage() {
               <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
 
               <div className="admin-template-info-list">
-                <div className="admin-template-info-row">
+                <div className="admin-template-info-row" style={{ alignItems: 'center' }}>
                   <span className="admin-template-info-label">绑定导师团队:</span>
-                  <span className="admin-template-info-val">👥 {teamName}</span>
+                  <select
+                    className="admin-select"
+                    style={{ fontSize: '12px', padding: '3px 8px', height: '28px', maxWidth: '240px' }}
+                    value={template.linkedTeamId || (template.id.includes('python') || template.id.includes('thunder') ? 'team-thunder-fighter-pbl' : 'team-kinetic-energy-pbl')}
+                    onChange={(e) => {
+                      const nextTeamId = e.target.value;
+                      setTemplates((prev) =>
+                        prev.map((t) => (t.id === template.id ? { ...t, linkedTeamId: nextTeamId } : t))
+                      );
+                    }}
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        👥 {t.name}
+                      </option>
+                    ))}
+                    {teams.length === 0 ? (
+                      <>
+                        <option value="team-thunder-fighter-pbl">👥 雷霆战机小游戏 PBL 导师团队</option>
+                        <option value="team-kinetic-energy-pbl">👥 动手学动能定理 PBL 导师团队</option>
+                      </>
+                    ) : null}
+                  </select>
                 </div>
                 <div className="admin-template-info-row">
                   <span className="admin-template-info-label">PBL 阶段流程:</span>

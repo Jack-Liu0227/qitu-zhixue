@@ -180,11 +180,45 @@ export default function SkillsSettingsPage() {
   const [showAddAssistantModal, setShowAddAssistantModal] = useState(false);
   const [selectedAsstToAdd, setSelectedAsstToAdd] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
+  const [skillsViewMode, setSkillsViewMode] = useState<'list' | 'matrix'>('list');
 
   // 文件管理状态
   const [selectedFileName, setSelectedFileName] = useState<string>('SKILL.md');
   const [fileViewMode, setFileViewMode] = useState<'edit' | 'preview'>('edit');
   const [fileContentDraft, setFileContentDraft] = useState<string>('');
+
+  // 助手展示列表
+  const displayAssistants = useMemo(() => {
+    if (assistants.length > 0) {
+      return assistants.map((a) => ({
+        id: a.id,
+        name: a.name,
+        role: a.role || '导师助手',
+        avatar: a.avatar || '🤖',
+      }));
+    }
+    return [
+      { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
+      { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
+      { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },
+      { id: 'asst-reviewer', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️' },
+      { id: 'asst-kinetic-leader', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡' },
+    ];
+  }, [assistants]);
+
+  // 矩阵中切换技能绑定
+  const toggleSkillForAssistant = (skillId: string, asstId: string) => {
+    setSkills((prev) =>
+      prev.map((s) => {
+        if (s.id !== skillId) return s;
+        const exists = s.boundAssistantIds.includes(asstId);
+        const boundAssistantIds = exists
+          ? s.boundAssistantIds.filter((id) => id !== asstId)
+          : [...s.boundAssistantIds, asstId];
+        return { ...s, boundAssistantIds };
+      })
+    );
+  };
 
   // 加载真实助手用于绑定与展示头像
   useEffect(() => {
@@ -771,38 +805,145 @@ export default function SkillsSettingsPage() {
   return (
     <div className="admin-skills-page-container">
       {/* 顶部标题与新建按钮 */}
-      <div className="admin-skills-top-bar">
+      <div className="admin-skills-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div className="admin-skills-title-group">
           <span className="admin-skills-top-icon">📖</span>
-          <h1 className="admin-skills-title">Skills (技能库)</h1>
+          <h1 className="admin-skills-title">Skills (技能中心)</h1>
           <span className="admin-skills-total-count">{skills.length}</span>
-          <span className="admin-skills-tagline">工作区里任何智能体都能使用的指令规范与文件体系。</span>
+          <span className="admin-skills-tagline">工作区里任何智能体都能使用的指令规范与能力包。</span>
         </div>
 
-        <button
-          type="button"
-          className="settings-action-btn is-primary"
-          onClick={handleCreateSkill}
-        >
-          + 新建 skill
-        </button>
-      </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+            <button
+              type="button"
+              style={{
+                padding: '6px 14px',
+                border: 'none',
+                borderRadius: '6px',
+                background: skillsViewMode === 'list' ? '#ffffff' : 'transparent',
+                fontWeight: skillsViewMode === 'list' ? 600 : 400,
+                boxShadow: skillsViewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                cursor: 'pointer',
+                color: skillsViewMode === 'list' ? '#0f172a' : '#64748b',
+                fontSize: '13px',
+              }}
+              onClick={() => setSkillsViewMode('list')}
+            >
+              📋 技能列表
+            </button>
+            <button
+              type="button"
+              style={{
+                padding: '6px 14px',
+                border: 'none',
+                borderRadius: '6px',
+                background: skillsViewMode === 'matrix' ? '#ffffff' : 'transparent',
+                fontWeight: skillsViewMode === 'matrix' ? 600 : 400,
+                boxShadow: skillsViewMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                cursor: 'pointer',
+                color: skillsViewMode === 'matrix' ? '#0f172a' : '#64748b',
+                fontSize: '13px',
+              }}
+              onClick={() => setSkillsViewMode('matrix')}
+            >
+              🔲 助手 × 技能绑定矩阵
+            </button>
+          </div>
 
-      {/* 搜索与筛选控制栏 */}
-      <div className="admin-skills-filter-row">
-        <div className="admin-skills-search-input-wrap">
-          <span aria-hidden="true">🔍</span>
-          <input
-            type="text"
-            placeholder="搜索 skill..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <button
+            type="button"
+            className="settings-action-btn is-primary"
+            onClick={handleCreateSkill}
+          >
+            + 新建 skill
+          </button>
         </div>
       </div>
 
-      {/* 技能表格 */}
-      <div className="admin-skills-table-card">
+      {skillsViewMode === 'matrix' ? (
+        /* 助手 × 技能绑定矩阵 (行=助手, 列=技能) */
+        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>技能分配矩阵 (Skills Matrix)</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                行代表教学团队中的导师助手，列代表标准技能。勾选即为助手绑定该技能，取消勾选即刻解绑。
+              </p>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 16px', width: '220px', color: '#334155', fontWeight: 600 }}>
+                    导师智能体 (行)
+                  </th>
+                  {skills.map((sk) => (
+                    <th key={sk.id} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <span>📖 {sk.name}</span>
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>({sk.filesCount} 个规范文件)</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayAssistants.map((asst, idx) => {
+                  const isEven = idx % 2 === 0;
+                  return (
+                    <tr key={asst.id} style={{ background: isEven ? '#ffffff' : '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '18px' }}>{asst.avatar}</span>
+                          <div>
+                            <strong style={{ color: '#0f172a', display: 'block' }}>{asst.name}</strong>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>{asst.role}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {skills.map((sk) => {
+                        const isChecked = sk.boundAssistantIds.includes(asst.id);
+                        return (
+                          <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSkillForAssistant(sk.id, asst.id)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
+                              />
+                            </label>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 搜索与筛选控制栏 */}
+          <div className="admin-skills-filter-row">
+            <div className="admin-skills-search-input-wrap">
+              <span aria-hidden="true">🔍</span>
+              <input
+                type="text"
+                placeholder="搜索 skill..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* 技能表格 */}
+          <div className="admin-skills-table-card">
         <table className="admin-skills-table">
           <thead>
             <tr>
@@ -889,6 +1030,8 @@ export default function SkillsSettingsPage() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }

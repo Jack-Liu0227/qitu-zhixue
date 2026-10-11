@@ -1314,11 +1314,11 @@ export default function AdminTeamsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '13px', color: '#165dff', fontWeight: 600 }}>找不到合适的现成导师？</span>
                   <a
-                    href="/admin/settings/assistants"
-                    className="settings-action-btn"
-                    style={{ fontSize: '12px', padding: '4px 10px', textDecoration: 'none' }}
+                    href="/admin/settings/assistants?action=create"
+                    className="settings-action-btn is-primary"
+                    style={{ fontSize: '12px', padding: '4px 12px', textDecoration: 'none' }}
                   >
-                    🔗 跳转助手中心设计
+                    ➕ 直接跳转新建助手
                   </a>
                 </div>
                 <button

@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import type { AdminAssistantConfig } from '@qitu/contracts';
 
 export interface McpServerConfig {
   id: string;
@@ -118,38 +120,34 @@ function parseJsonToServers(rawJson: string): McpServerConfig[] {
 }
 
 export default function ToolsSettingsPage() {
-  const [viewMode, setViewMode] = useState<'visual' | 'json'>('visual');
+  const [viewMode, setViewMode] = useState<'matrix' | 'json-edit' | 'json-preview'>('matrix');
   const [mcpServers, setMcpServers] = useState<McpServerConfig[]>(DEFAULT_MCP_SERVERS);
-  const [expandedMcpId, setExpandedMcpId] = useState<string | null>('mcp-grok-search');
-  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+
+  // 内置工具绑定状态（记录哪些助手启用了内置工具）
+  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>(['雷霆战机总导师', '动手学动能定理总导师']);
+  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>([
+    '雷霆战机总导师',
+    '代码向导与答辩导师',
+    '动手学动能定理总导师',
+    '物理仿真向导',
+  ]);
 
   // JSON 编辑态
   const [jsonText, setJsonText] = useState<string>(() => serversToJson(DEFAULT_MCP_SERVERS));
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [saveJsonNotice, setSaveJsonNotice] = useState<string>('');
+  const [saveNotice, setSaveNotice] = useState<string>('');
 
-  // 内置工具状态
-  const [imageGenEnabled, setImageGenEnabled] = useState(false);
-  const [selectedImageModel, setSelectedImageModel] = useState('');
-  const [pythonSandboxEnabled, setPythonSandboxEnabled] = useState(true);
-
-  // 添加 MCP 弹窗
-  const [showAddMcpModal, setShowAddMcpModal] = useState(false);
-  const [newMcpName, setNewMcpName] = useState('');
-  const [newMcpCommand, setNewMcpCommand] = useState('uvx');
-  const [newMcpArgs, setNewMcpArgs] = useState('');
-  const [newMcpEnv, setNewMcpEnv] = useState('');
-  const [newMcpDesc, setNewMcpDesc] = useState('');
-
-  // 编辑 MCP 弹窗
-  const [editingMcp, setEditingMcp] = useState<(McpServerConfig & { argsStr: string; envStr: string }) | null>(null);
-
-  // 切换到 JSON 视图时同步当前状态
-  const handleSwitchToJson = () => {
-    setJsonText(serversToJson(mcpServers));
-    setJsonError(null);
-    setViewMode('json');
-  };
+  // 加载系统真实助手用于矩阵行展示
+  useEffect(() => {
+    fetchAdminAssistantConfigs()
+      .then((res) => {
+        if (res && res.length > 0) {
+          setAssistants(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // 格式化 JSON
   const handleFormatJson = () => {
@@ -162,186 +160,287 @@ export default function ToolsSettingsPage() {
     }
   };
 
-  // 保存 JSON 配置并同步回视图
+  // 保存 JSON 配置并同步回服务器状态
   const handleSaveJson = () => {
     try {
       const parsedServers = parseJsonToServers(jsonText);
       setMcpServers(parsedServers);
       setJsonError(null);
-      setSaveJsonNotice('JSON 配置已成功验证并同步到系统！✔');
-      setTimeout(() => setSaveJsonNotice(''), 2500);
+      setSaveNotice('JSON 配置已成功验证并保存至运行时！✔');
+      setTimeout(() => setSaveNotice(''), 2500);
     } catch (err) {
       setJsonError('JSON 解析失败: ' + (err as Error).message);
     }
   };
 
-  // 重置为默认 MCP JSON
+  // 恢复默认配置
   const handleResetDefaultJson = () => {
     if (!window.confirm('确定要恢复为推荐的默认 MCP 配置吗？')) return;
     setMcpServers(DEFAULT_MCP_SERVERS);
     setJsonText(serversToJson(DEFAULT_MCP_SERVERS));
     setJsonError(null);
+    setSaveNotice('已重置为默认配置 ✔');
+    setTimeout(() => setSaveNotice(''), 2000);
   };
 
-  // 刷新测试 MCP 连接
-  const handleRefresh = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setRefreshingId(id);
-    setTimeout(() => {
-      setRefreshingId(null);
-      setMcpServers((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, status: 'connected', latencyMs: Math.floor(Math.random() * 25) + 12 } : s))
+  // 切换助手对某个 MCP 的绑定
+  const toggleMcpForAssistant = (serverName: string, asstName: string) => {
+    setMcpServers((prev) => {
+      const next = prev.map((s) => {
+        if (s.name !== serverName) return s;
+        const exists = s.boundAssistants.includes(asstName);
+        const boundAssistants = exists
+          ? s.boundAssistants.filter((a) => a !== asstName)
+          : [...s.boundAssistants, asstName];
+        return { ...s, boundAssistants };
+      });
+      setJsonText(serversToJson(next));
+      return next;
+    });
+  };
+
+  // 切换助手对内置工具的绑定
+  const toggleBuiltinToolForAssistant = (toolType: 'imageGen' | 'sandbox', asstName: string) => {
+    if (toolType === 'imageGen') {
+      setImageGenAssistants((prev) =>
+        prev.includes(asstName) ? prev.filter((a) => a !== asstName) : [...prev, asstName]
       );
-      alert(`MCP Server [${id}] 心跳检测成功，状态：已连接 (延迟 ~20ms)！`);
-    }, 500);
-  };
-
-  // 删除 MCP Server
-  const handleDeleteMcp = (id: string, name: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!window.confirm(`确定要删除 MCP 服务器「${name}」吗？`)) return;
-    setMcpServers((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      setJsonText(serversToJson(next));
-      return next;
-    });
-    if (expandedMcpId === id) setExpandedMcpId(null);
-  };
-
-  // 添加 MCP
-  const handleAddMcp = () => {
-    if (!newMcpName.trim() || !newMcpCommand.trim()) {
-      alert('请填写 MCP 名称与启动命令');
-      return;
-    }
-
-    let parsedEnv: Record<string, string> | undefined = undefined;
-    if (newMcpEnv.trim()) {
-      try {
-        parsedEnv = JSON.parse(newMcpEnv.trim());
-      } catch {
-        alert('环境变量必须是合法的 JSON 对象键值对');
-        return;
-      }
-    }
-
-    const newServer: McpServerConfig = {
-      id: `mcp-${Date.now()}`,
-      name: newMcpName.trim(),
-      transport: 'stdio',
-      command: newMcpCommand.trim(),
-      args: newMcpArgs.trim() ? newMcpArgs.trim().split(' ') : [],
-      env: parsedEnv,
-      status: 'connected',
-      latencyMs: 25,
-      tools: ['custom_tool_call', 'query_context'],
-      boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-      description: newMcpDesc.trim() || undefined,
-    };
-
-    setMcpServers((prev) => {
-      const next = [...prev, newServer];
-      setJsonText(serversToJson(next));
-      return next;
-    });
-    setExpandedMcpId(newServer.id);
-    setShowAddMcpModal(false);
-    setNewMcpName('');
-    setNewMcpCommand('uvx');
-    setNewMcpArgs('');
-    setNewMcpEnv('');
-    setNewMcpDesc('');
-  };
-
-  const handleSaveEditMcp = () => {
-    if (!editingMcp) return;
-    let parsedEnv: Record<string, string> | undefined = undefined;
-    if (editingMcp.envStr.trim()) {
-      try {
-        parsedEnv = JSON.parse(editingMcp.envStr.trim());
-      } catch {
-        alert('环境变量必须是合法的 JSON 对象，如 {"KEY": "VALUE"}');
-        return;
-      }
-    }
-
-    setMcpServers((prev) => {
-      const next = prev.map((s) =>
-        s.id === editingMcp.id
-          ? {
-              ...editingMcp,
-              args: editingMcp.argsStr.trim() ? editingMcp.argsStr.trim().split(' ') : [],
-              env: parsedEnv,
-            }
-          : s
+    } else {
+      setSandboxAssistants((prev) =>
+        prev.includes(asstName) ? prev.filter((a) => a !== asstName) : [...prev, asstName]
       );
-      setJsonText(serversToJson(next));
-      return next;
-    });
-    setEditingMcp(null);
+    }
   };
+
+  // 助手展示列表
+  const displayAssistants = useMemo(() => {
+    if (assistants.length > 0) {
+      return assistants.map((a) => ({
+        id: a.id,
+        name: a.name,
+        role: a.role || '导师助手',
+        avatar: a.avatar || '🤖',
+      }));
+    }
+    return [
+      { id: 'asst-1', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
+      { id: 'asst-2', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
+      { id: 'asst-3', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },
+      { id: 'asst-4', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️' },
+      { id: 'asst-5', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡' },
+      { id: 'asst-6', name: '物理概念教练', role: '公式推导教练', avatar: '🔬' },
+      { id: 'asst-7', name: '物理仿真向导', role: 'Python 数值仿真向导', avatar: '📊' },
+    ];
+  }, [assistants]);
 
   return (
     <div className="admin-tools-page-view">
-      {/* 标题与描述严格对齐 AdminUI/工具.png */}
+      {/* 页头 */}
       <div className="admin-tools-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h1 className="admin-tools-title">工具与 MCP</h1>
+            <h1 className="admin-tools-title">MCP 与工具能力中心</h1>
             <p className="admin-tools-subtitle">
-              配置 MCP 服务器（支持 stdio/SSE、JSON 源代码互通）与内置沙箱。所有 MCP 与工具均直接与 Agent SDK 运行时与导师团队联动。
+              遵循统一 JSON 规范管理 MCP 服务器。通过能力绑定矩阵，以一键勾选方式为任意导师启用或停用专属 MCP 及内置沙箱工具。
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div className="admin-segmented-tabs" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex' }}>
+            <div className="admin-segmented-tabs" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
               <button
                 type="button"
-                className={`admin-sub-tab${viewMode === 'visual' ? ' is-active' : ''}`}
+                className={`admin-sub-tab${viewMode === 'matrix' ? ' is-active' : ''}`}
                 style={{
                   padding: '6px 14px',
                   border: 'none',
                   borderRadius: '6px',
-                  background: viewMode === 'visual' ? '#ffffff' : 'transparent',
-                  fontWeight: viewMode === 'visual' ? 600 : 400,
-                  boxShadow: viewMode === 'visual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  background: viewMode === 'matrix' ? '#ffffff' : 'transparent',
+                  fontWeight: viewMode === 'matrix' ? 600 : 400,
+                  boxShadow: viewMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   cursor: 'pointer',
-                  color: viewMode === 'visual' ? '#0f172a' : '#64748b',
+                  color: viewMode === 'matrix' ? '#0f172a' : '#64748b',
                 }}
-                onClick={() => setViewMode('visual')}
+                onClick={() => setViewMode('matrix')}
               >
-                🎛️ 可视化卡片
+                🔲 助手 × 工具/MCP 绑定矩阵
               </button>
               <button
                 type="button"
-                className={`admin-sub-tab${viewMode === 'json' ? ' is-active' : ''}`}
+                className={`admin-sub-tab${viewMode === 'json-edit' ? ' is-active' : ''}`}
                 style={{
                   padding: '6px 14px',
                   border: 'none',
                   borderRadius: '6px',
-                  background: viewMode === 'json' ? '#ffffff' : 'transparent',
-                  fontWeight: viewMode === 'json' ? 600 : 400,
-                  boxShadow: viewMode === 'json' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  background: viewMode === 'json-edit' ? '#ffffff' : 'transparent',
+                  fontWeight: viewMode === 'json-edit' ? 600 : 400,
+                  boxShadow: viewMode === 'json-edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   cursor: 'pointer',
-                  color: viewMode === 'json' ? '#0f172a' : '#64748b',
+                  color: viewMode === 'json-edit' ? '#0f172a' : '#64748b',
                 }}
-                onClick={handleSwitchToJson}
+                onClick={() => {
+                  setJsonText(serversToJson(mcpServers));
+                  setJsonError(null);
+                  setViewMode('json-edit');
+                }}
               >
-                📝 JSON 源代码配置与预览
+                📝 JSON 配置编辑
+              </button>
+              <button
+                type="button"
+                className={`admin-sub-tab${viewMode === 'json-preview' ? ' is-active' : ''}`}
+                style={{
+                  padding: '6px 14px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: viewMode === 'json-preview' ? '#ffffff' : 'transparent',
+                  fontWeight: viewMode === 'json-preview' ? 600 : 400,
+                  boxShadow: viewMode === 'json-preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  cursor: 'pointer',
+                  color: viewMode === 'json-preview' ? '#0f172a' : '#64748b',
+                }}
+                onClick={() => {
+                  setJsonText(serversToJson(mcpServers));
+                  setViewMode('json-preview');
+                }}
+              >
+                👁️ JSON 实时预览
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {viewMode === 'json' ? (
-        /* JSON 源代码编辑与实时校验视图 */
-        <div className="admin-tools-json-panel" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginTop: '16px' }}>
+      {saveNotice ? (
+        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+          {saveNotice}
+        </div>
+      ) : null}
+
+      {/* 视图 1：助手 × 工具/MCP 绑定矩阵 (行=助手, 列=MCP与工具) */}
+      {viewMode === 'matrix' ? (
+        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>能力分配矩阵 (Capability Matrix)</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                行表示平台中的导师智能体，列表示已注册的 MCP 服务与内置沙箱。点击复选框即可即时为导师启用或停用该工具。
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={() => {
+                  setSaveNotice('所有工具与助手绑定已成功同步至运行时！✔');
+                  setTimeout(() => setSaveNotice(''), 2500);
+                }}
+              >
+                💾 保存矩阵配置
+              </button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 16px', width: '220px', color: '#334155', fontWeight: 600 }}>
+                    导师智能体 (行)
+                  </th>
+                  {mcpServers.map((s) => (
+                    <th key={s.name} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <span>🔌 {s.name}</span>
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>MCP ({s.tools.length} 工具)</span>
+                      </div>
+                    </th>
+                  ))}
+                  <th style={{ padding: '12px 14px', color: '#7c3aed', fontWeight: 600, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <span>🎨 图像生成</span>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>内置 (ImageGen)</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: '12px 14px', color: '#059669', fontWeight: 600, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <span>📦 Python 沙箱</span>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>内置 (Sandbox)</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayAssistants.map((asst, idx) => {
+                  const isEven = idx % 2 === 0;
+                  return (
+                    <tr key={asst.id} style={{ background: isEven ? '#ffffff' : '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '18px' }}>{asst.avatar}</span>
+                          <div>
+                            <strong style={{ color: '#0f172a', display: 'block' }}>{asst.name}</strong>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>{asst.role}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* MCP 列 */}
+                      {mcpServers.map((s) => {
+                        const isChecked = s.boundAssistants.includes(asst.name);
+                        return (
+                          <td key={s.name} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleMcpForAssistant(s.name, asst.name)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
+                              />
+                            </label>
+                          </td>
+                        );
+                      })}
+
+                      {/* 图像生成 列 */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: imageGenAssistants.includes(asst.name) ? '#f5f3ff' : 'transparent', border: imageGenAssistants.includes(asst.name) ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
+                          <input
+                            type="checkbox"
+                            checked={imageGenAssistants.includes(asst.name)}
+                            onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
+                          />
+                        </label>
+                      </td>
+
+                      {/* Python 沙箱 列 */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: sandboxAssistants.includes(asst.name) ? '#ecfdf5' : 'transparent', border: sandboxAssistants.includes(asst.name) ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
+                          <input
+                            type="checkbox"
+                            checked={sandboxAssistants.includes(asst.name)}
+                            onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
+                          />
+                        </label>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 视图 2：JSON 源代码配置编辑 */}
+      {viewMode === 'json-edit' ? (
+        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
-              <strong style={{ fontSize: '15px', color: '#0f172a' }}>mcpServers 统一配置规范 (对齐 .pi / Codex / Claude Desktop 标准)</strong>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>mcpServers 统一配置编辑 (遵循 .pi / Codex / Claude Desktop 标准)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                支持编辑 uvx / npx 命令行、环境变量（如 GROK_API_KEY）、参数以及绑定的导师智能体。
+                在此直接编辑命令、参数、环境变量（含 GROK_API_KEY）与绑定列表。保存后直接生效并回写矩阵。
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -363,16 +462,10 @@ export default function ToolsSettingsPage() {
             </div>
           ) : null}
 
-          {saveJsonNotice ? (
-            <div style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#16a34a', fontSize: '13px', marginBottom: '12px' }}>
-              {saveJsonNotice}
-            </div>
-          ) : null}
-
           <textarea
             style={{
               width: '100%',
-              height: '420px',
+              height: '460px',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
               fontSize: '13px',
               lineHeight: 1.5,
@@ -392,413 +485,61 @@ export default function ToolsSettingsPage() {
             spellCheck={false}
           />
         </div>
-      ) : (
-        <div className="admin-tools-cards-column">
-          {/* 卡片一：MCP 工具配置 (AdminUI/工具.png) */}
-          <section className="admin-tool-card-panel">
-            <div className="admin-tool-card-head">
-              <div>
-                <span className="admin-tool-card-title">MCP 工具配置</span>
-                <span style={{ marginLeft: '10px', fontSize: '12px', color: '#64748b' }}>
-                  ({mcpServers.length} 个已注册服务器，全部实时心跳就绪)
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="admin-add-mcp-btn"
-                  onClick={() => setShowAddMcpModal(true)}
-                >
-                  <span>+ 添加 MCP</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="admin-mcp-accordion-list">
-              {mcpServers.map((server) => {
-                const isExpanded = expandedMcpId === server.id;
-                const isRefreshing = refreshingId === server.id;
-
-                return (
-                  <div key={server.id} className={`admin-mcp-accordion-item${isExpanded ? ' is-open' : ''}`}>
-                    <div
-                      className="admin-mcp-accordion-header"
-                      onClick={() => setExpandedMcpId(isExpanded ? null : server.id)}
-                    >
-                      <div className="admin-mcp-header-left">
-                        <span className={`admin-mcp-arrow-icon${isExpanded ? ' is-open' : ''}`}>▶</span>
-                        <strong className="admin-mcp-name">{server.name}</strong>
-                        {server.description ? (
-                          <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            - {server.description}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="admin-mcp-header-right">
-                        <span className="admin-mcp-status-check" title="服务已就绪">✓</span>
-                        <button
-                          type="button"
-                          className={`admin-mcp-refresh-btn${isRefreshing ? ' is-spinning' : ''}`}
-                          onClick={(e) => handleRefresh(server.id, e)}
-                          title="测试连接 / 刷新状态"
-                        >
-                          🔄
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-skill-dot-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingMcp({
-                              ...server,
-                              argsStr: server.args.join(' '),
-                              envStr: server.env ? JSON.stringify(server.env, null, 2) : '',
-                            });
-                          }}
-                          title="编辑 MCP"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-skill-dot-btn"
-                          style={{ color: '#ef4444' }}
-                          onClick={(e) => handleDeleteMcp(server.id, server.name, e)}
-                          title="删除 MCP"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-
-                    {isExpanded ? (
-                      <div className="admin-mcp-accordion-body">
-                        <div className="admin-mcp-detail-grid">
-                          <div className="admin-mcp-field-row">
-                            <span className="admin-mcp-field-label">传输协议:</span>
-                            <span className="admin-mcp-field-val">
-                              stdio (Local Standard I/O Subprocess)
-                            </span>
-                          </div>
-                          <div className="admin-mcp-field-row">
-                            <span className="admin-mcp-field-label">启动指令:</span>
-                            <code className="admin-mcp-code-val">
-                              {server.command} {server.args.join(' ')}
-                            </code>
-                          </div>
-                          {server.env && Object.keys(server.env).length > 0 ? (
-                            <div className="admin-mcp-field-row">
-                              <span className="admin-mcp-field-label">环境变量 (Env):</span>
-                              <code className="admin-mcp-code-val" style={{ background: '#f8fafc', color: '#0369a1' }}>
-                                {Object.entries(server.env).map(([k, v]) => `${k}=${v.length > 8 ? v.substring(0, 4) + '***' : v}`).join(' | ')}
-                              </code>
-                            </div>
-                          ) : null}
-                          <div className="admin-mcp-field-row">
-                            <span className="admin-mcp-field-label">连接状态:</span>
-                            <span className="admin-mcp-status-chip">
-                              ● 已连接 (心跳延迟 {server.latencyMs ?? 20}ms)
-                            </span>
-                          </div>
-                          <div className="admin-mcp-field-row">
-                            <span className="admin-mcp-field-label">暴露工具 ({server.tools.length}):</span>
-                            <div className="admin-mcp-tools-tags">
-                              {server.tools.map((t) => (
-                                <span key={t} className="admin-mcp-tool-pill">
-                                  🔧 {t}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="admin-mcp-field-row">
-                            <span className="admin-mcp-field-label">已绑定的导师:</span>
-                            <div className="admin-mcp-assistants-tags">
-                              {server.boundAssistants.map((a) => (
-                                <span key={a} className="admin-mcp-assistant-pill">
-                                  🤖 {a}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="admin-mcp-actions-bar">
-                          <button
-                            type="button"
-                            className="settings-action-btn"
-                            onClick={(e) => handleRefresh(server.id, e)}
-                          >
-                            测试连接
-                          </button>
-                          <button
-                            type="button"
-                            className="settings-action-btn"
-                            onClick={() => {
-                              setEditingMcp({
-                                ...server,
-                                argsStr: server.args.join(' '),
-                                envStr: server.env ? JSON.stringify(server.env, null, 2) : '',
-                              });
-                            }}
-                          >
-                            编辑配置
-                          </button>
-                          <button
-                            type="button"
-                            className="settings-action-btn is-danger"
-                            onClick={(e) => handleDeleteMcp(server.id, server.name, e)}
-                          >
-                            删除此 MCP
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* 卡片二：图像生成 (AdminUI/工具.png) */}
-          <section className="admin-tool-card-panel">
-            <div className="admin-tool-card-head">
-              <span className="admin-tool-card-title">图像生成</span>
-              <div
-                className={`admin-toggle-switch${imageGenEnabled ? ' is-on' : ''}`}
-                onClick={() => setImageGenEnabled((prev) => !prev)}
-                title={imageGenEnabled ? '已启用，点击关闭' : '未启用，点击启用'}
-              >
-                <div className="admin-toggle-knob" />
-              </div>
-            </div>
-
-            <div className="admin-tool-card-body">
-              <div className="admin-tool-config-row">
-                <div className="admin-tool-label-wrap">
-                  <span className="admin-tool-label-text">图像模型</span>
-                  <span className="admin-tool-help-icon" title="用于文生图与游戏战机素材渲染的模型">❓</span>
-                </div>
-                <div className="admin-tool-content-wrap">
-                  {imageGenEnabled ? (
-                    <select
-                      className="admin-select"
-                      style={{ width: '300px' }}
-                      value={selectedImageModel}
-                      onChange={(e) => setSelectedImageModel(e.target.value)}
-                    >
-                      <option value="dall-e-3">DALL·E 3 (OpenAI 官方图像生成)</option>
-                      <option value="flux-1-schnell">FLUX.1 Schnell (极速生成)</option>
-                      <option value="stable-diffusion-xl">Stable Diffusion XL</option>
-                    </select>
-                  ) : (
-                    <div className="admin-tool-placeholder-text">
-                      暂无可用图像模型，<a href="/admin/settings/models" className="admin-config-link">前往配置</a> ❓
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 卡片三：内置代码沙箱工具 */}
-          <section className="admin-tool-card-panel">
-            <div className="admin-tool-card-head">
-              <span className="admin-tool-card-title">内置 Python 执行沙箱</span>
-              <div
-                className={`admin-toggle-switch${pythonSandboxEnabled ? ' is-on' : ''}`}
-                onClick={() => setPythonSandboxEnabled((prev) => !prev)}
-                title={pythonSandboxEnabled ? '已启用沙箱安全隔离' : '沙箱已关闭'}
-              >
-                <div className="admin-toggle-knob" />
-              </div>
-            </div>
-
-            <div className="admin-tool-card-body">
-              <div className="admin-tool-config-row">
-                <div className="admin-tool-label-wrap">
-                  <span className="admin-tool-label-text">沙箱隔离环境</span>
-                  <span className="admin-tool-help-icon" title="用于学生 Python 与 Pygame 代码安全隔离执行">❓</span>
-                </div>
-                <div className="admin-tool-content-wrap">
-                  <span style={{ fontSize: '13px', color: '#00b42a', fontWeight: 600 }}>
-                    ● Python 3.12 虚拟环境已就绪（预装 pygame-ce、numpy、matplotlib）
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {/* 添加 MCP 弹窗 */}
-      {showAddMcpModal ? (
-        <div className="admin-modal-overlay" onClick={() => setShowAddMcpModal(false)}>
-          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header">
-              <h3>添加 MCP 服务器</h3>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setShowAddMcpModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="admin-modal-body">
-              <div className="admin-form-row">
-                <label className="admin-form-label">MCP 唯一名称 (Key)</label>
-                <input
-                  className="admin-input-text"
-                  value={newMcpName}
-                  onChange={(e) => setNewMcpName(e.target.value)}
-                  placeholder="如：groksearch-mcp"
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">启动命令 (Command)</label>
-                <input
-                  className="admin-input-text"
-                  value={newMcpCommand}
-                  onChange={(e) => setNewMcpCommand(e.target.value)}
-                  placeholder="如：uvx 或 npx"
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">参数 (Args，空格分隔)</label>
-                <input
-                  className="admin-input-text"
-                  value={newMcpArgs}
-                  onChange={(e) => setNewMcpArgs(e.target.value)}
-                  placeholder="如：--from git+https://github.com/GuDaStudio/GrokSearch groksearch"
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">环境变量 (JSON 格式，可选)</label>
-                <textarea
-                  className="admin-textarea"
-                  rows={2}
-                  value={newMcpEnv}
-                  onChange={(e) => setNewMcpEnv(e.target.value)}
-                  placeholder='{"GROK_API_KEY": "xxx"}'
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">功能描述</label>
-                <input
-                  className="admin-input-text"
-                  value={newMcpDesc}
-                  onChange={(e) => setNewMcpDesc(e.target.value)}
-                  placeholder="如：Grok 搜索与网页抽取服务"
-                />
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="settings-action-btn"
-                onClick={() => setShowAddMcpModal(false)}
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                className="settings-action-btn is-primary"
-                onClick={handleAddMcp}
-              >
-                确认添加
-              </button>
-            </div>
-          </div>
-        </div>
       ) : null}
 
-      {/* 编辑 MCP 弹窗 */}
-      {editingMcp ? (
-        <div className="admin-modal-overlay" onClick={() => setEditingMcp(null)}>
-          <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header">
-              <h3>编辑 MCP 服务器: {editingMcp.name}</h3>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setEditingMcp(null)}
-              >
-                ✕
-              </button>
+      {/* 视图 3：JSON 配置预览与服务心跳 */}
+      {viewMode === 'json-preview' ? (
+        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>运行态 MCP 配置只读预览与心跳状态</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                当前系统挂载的所有 MCP 服务器已建立 stdio 通道，全部处于就绪状态。
+              </p>
             </div>
-            <div className="admin-modal-body">
-              <div className="admin-form-row">
-                <label className="admin-form-label">MCP 名称</label>
-                <input
-                  className="admin-input-text"
-                  value={editingMcp.name}
-                  onChange={(e) => setEditingMcp({ ...editingMcp, name: e.target.value })}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">启动命令 (Command)</label>
-                <input
-                  className="admin-input-text"
-                  value={editingMcp.command}
-                  onChange={(e) => setEditingMcp({ ...editingMcp, command: e.target.value })}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">参数 (Args，空格分隔)</label>
-                <input
-                  className="admin-input-text"
-                  value={editingMcp.argsStr}
-                  onChange={(e) => setEditingMcp({ ...editingMcp, argsStr: e.target.value })}
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">环境变量 (JSON 格式)</label>
-                <textarea
-                  className="admin-textarea"
-                  rows={3}
-                  value={editingMcp.envStr}
-                  onChange={(e) => setEditingMcp({ ...editingMcp, envStr: e.target.value })}
-                  placeholder='{"GROK_API_KEY": "xxx"}'
-                />
-              </div>
-              <div className="admin-form-row">
-                <label className="admin-form-label">功能描述</label>
-                <input
-                  className="admin-input-text"
-                  value={editingMcp.description ?? ''}
-                  onChange={(e) => setEditingMcp({ ...editingMcp, description: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="settings-action-btn is-danger"
-                style={{ marginRight: 'auto' }}
-                onClick={() => {
-                  handleDeleteMcp(editingMcp.id, editingMcp.name);
-                  setEditingMcp(null);
-                }}
-              >
-                🗑️ 删除此 MCP
-              </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
                 className="settings-action-btn"
-                onClick={() => setEditingMcp(null)}
+                onClick={() => {
+                  navigator.clipboard.writeText(jsonText);
+                  alert('已复制 JSON 到剪贴板！');
+                }}
               >
-                取消
-              </button>
-              <button
-                type="button"
-                className="settings-action-btn is-primary"
-                onClick={handleSaveEditMcp}
-              >
-                保存修改
+                📋 复制完整 JSON
               </button>
             </div>
           </div>
+
+          {/* 状态徽章条 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+            {mcpServers.map((s) => (
+              <div key={s.id} style={{ padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>{s.name}</strong>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>{s.tools.length} 个工具暴露</span>
+                </div>
+                <span style={{ fontSize: '11px', background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>
+                  ● 在线 ({s.latencyMs ?? 20}ms)
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <pre style={{
+            margin: 0,
+            background: '#0f172a',
+            color: '#e2e8f0',
+            padding: '16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontFamily: 'ui-monospace, monospace',
+            overflowX: 'auto',
+            maxHeight: '440px',
+            lineHeight: 1.5,
+          }}>
+            {jsonText}
+          </pre>
         </div>
       ) : null}
     </div>

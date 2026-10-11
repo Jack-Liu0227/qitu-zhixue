@@ -93,6 +93,16 @@ export default function AdminAssistantsPage() {
     void loadData();
   }, [loadData]);
 
+  // 当带有 ?action=create 或 ?create=true 参数时，直接打开新建助手编辑器
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'create' || params.get('create') === 'true') {
+        openCreateNew();
+      }
+    }
+  }, [configuredModels]);
+
   const toggleAssistantEnabled = async (assistant: AssistantItem, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextState = !assistant.enabled;
