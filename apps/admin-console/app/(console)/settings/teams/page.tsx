@@ -218,7 +218,6 @@ export default function AdminTeamsPage() {
           avatar: newAsstAvatar.trim() || '🤖',
           modelId: newAsstModel || configuredModels[0]?.id || 'gpt-5.6-sol',
           instructions: newAsstPrompt.trim(),
-          systemPrompt: newAsstPrompt.trim(),
           enabledSkills: ['pbl-guidance', 'socratic-hint'],
         },
         newIdempotencyKey()
