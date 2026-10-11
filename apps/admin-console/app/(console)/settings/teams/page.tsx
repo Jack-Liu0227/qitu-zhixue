@@ -307,7 +307,7 @@ export default function AdminTeamsPage() {
       );
 
       setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
-      setShowDesignAssistantModal(false);
+      setShowAddMemberModal(false);
       setNewAsstName('');
       alert(`已成功创建「${created.name}」并加入团队「${activeTeam.name}」！`);
     } catch (err: any) {
