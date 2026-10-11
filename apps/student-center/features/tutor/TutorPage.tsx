@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PermissionDenied } from '@qitu/ui';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
@@ -17,28 +17,52 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const session = useTutorSession(projectId);
   const composer = useComposer();
 
-  // 1. 会话状态与团队状态管理
+  // 1. 会话状态与团队状态管理（基于客户端持久化存储与 agent-memory 策略）
   const [currentTeam, setCurrentTeam] = useState<'team-thunder-fighter' | 'team-kinetic-energy'>('team-kinetic-energy');
-  const [sessions, setSessions] = useState<ChatSessionItem[]>([
-    {
-      id: 'sess-kinetic-energy-1',
-      title: '动能定理核心公式探究与推导 (PBL)',
-      teamId: 'team-kinetic-energy',
-      updatedAt: '刚刚',
-      isArchived: false,
-      turns: KINETIC_ENERGY_TURNS,
-    },
-    {
-      id: 'sess-thunder-fighter-1',
-      title: '雷霆战机游戏主循环与碰撞检测 (PBL)',
-      teamId: 'team-thunder-fighter',
-      updatedAt: '昨天',
-      isArchived: false,
-      turns: session.turns,
-    },
-  ]);
+  const [sessions, setSessions] = useState<ChatSessionItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.tutor.sessions');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return [
+      {
+        id: 'sess-kinetic-energy-1',
+        title: '动能定理核心公式探究与推导 (PBL)',
+        teamId: 'team-kinetic-energy',
+        updatedAt: '刚刚',
+        isArchived: false,
+        turns: KINETIC_ENERGY_TURNS,
+      },
+      {
+        id: 'sess-thunder-fighter-1',
+        title: '雷霆战机游戏主循环与碰撞检测 (PBL)',
+        teamId: 'team-thunder-fighter',
+        updatedAt: '昨天',
+        isArchived: false,
+        turns: session.turns,
+      },
+    ];
+  });
   const [activeSessionId, setActiveSessionId] = useState<string>('sess-kinetic-energy-1');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 监听持久化同步
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.tutor.sessions', JSON.stringify(sessions));
+      } catch {
+        // quota exceeded guard
+      }
+    }
+  }, [sessions]);
 
   if (session.permissionDenied) {
     return (

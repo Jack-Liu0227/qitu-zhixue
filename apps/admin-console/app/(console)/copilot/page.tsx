@@ -101,11 +101,34 @@ const INITIAL_SESSIONS: Session[] = [
 ];
 
 export default function CopilotPage() {
-  const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.copilot.sessions');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_SESSIONS;
+  });
   const [currentSessionId, setCurrentSessionId] = useState<string>('sess-default');
   const [inputMessage, setInputMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.copilot.sessions', JSON.stringify(sessions));
+      } catch {
+        // quota guard
+      }
+    }
+  }, [sessions]);
 
   const activeSession = sessions.find((s) => s.id === currentSessionId) ?? sessions[0]!;
 
@@ -241,13 +264,18 @@ export default function CopilotPage() {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 65px)', background: '#f8fafc' }}>
+    <div style={{
+      display: 'flex',
+      height: 'calc(100vh - 65px)',
+      background: 'radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 10%), transparent 62%), radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 12%), transparent 58%), linear-gradient(135deg, #f8faff 0%, #faf8ff 48%, #effcf8 100%)'
+    }}>
       {/* 1. 左侧会话列表与管理 */}
       <div
         style={{
           width: '280px',
-          background: '#ffffff',
-          borderRight: '1px solid #e2e8f0',
+          background: 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(12px)',
+          borderRight: '1px solid #e4ecf7',
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,

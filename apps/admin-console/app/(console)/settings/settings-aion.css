@@ -1,28 +1,31 @@
-/* AionUI Unified Settings Paradigm Styles */
+/* AionUI Unified Settings Paradigm Styles - Stitch Academic Tech & Agentic Radiance Theme */
 
 :root {
-  --aion-primary: #165dff;
-  --aion-primary-soft: rgba(22, 93, 255, 0.1);
-  --aion-success: #00b42a;
-  --aion-success-soft: rgba(0, 180, 42, 0.1);
-  --aion-warning: #f77234;
-  --aion-warning-soft: rgba(247, 114, 52, 0.1);
-  --aion-danger: #f53f3f;
-  --aion-danger-soft: rgba(245, 63, 63, 0.08);
-  --aion-t-primary: #1d2129;
-  --aion-t-secondary: #4e5969;
-  --aion-t-tertiary: #86909c;
+  --aion-primary: #2878f0;
+  --aion-primary-soft: rgba(40, 120, 240, 0.08);
+  --aion-success: #18b7ac;
+  --aion-success-soft: rgba(24, 183, 172, 0.1);
+  --aion-warning: #ff8a3d;
+  --aion-warning-soft: rgba(255, 138, 61, 0.1);
+  --aion-danger: #e95b68;
+  --aion-danger-soft: rgba(233, 91, 104, 0.08);
+  --aion-t-primary: #102a5c;
+  --aion-t-secondary: #243b5a;
+  --aion-t-tertiary: #73839b;
   --aion-t-quaternary: #c9cdd4;
-  --aion-border: #e5e6eb;
-  --aion-fill-1: #f7f8fa;
-  --aion-fill-2: #f2f3f5;
+  --aion-border: #e4ecf7;
+  --aion-fill-1: #f8fafc;
+  --aion-fill-2: #f1f5f9;
   --aion-bg-card: #ffffff;
 }
 
 .settings-shell {
   display: flex;
   min-height: calc(100vh - 65px);
-  background: #ffffff;
+  background:
+    radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 10%), transparent 62%),
+    radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 12%), transparent 58%),
+    linear-gradient(135deg, #f8faff 0%, #faf8ff 48%, #effcf8 100%);
   border-top: 1px solid var(--aion-border);
 }
 
