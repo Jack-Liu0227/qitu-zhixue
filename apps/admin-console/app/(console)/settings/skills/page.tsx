@@ -309,7 +309,7 @@ export default function SkillsSettingsPage() {
     const updatedSkill = { ...editingSkill, files: updatedFiles, filesCount: updatedFiles.length };
     setEditingSkill(updatedSkill);
     setSkills((prev) => prev.map((s) => (s.id === editingSkill.id ? updatedSkill : s)));
-    if (selectedFileName === fileName) {
+    if (selectedFileName === fileName && updatedFiles[0]) {
       setSelectedFileName(updatedFiles[0].name);
       setFileContentDraft(updatedFiles[0].content);
     }
@@ -351,7 +351,7 @@ export default function SkillsSettingsPage() {
   // 技能编辑视图
   if (editingSkill) {
     const boundAssistants = assistants.filter((a) => editingSkill.boundAssistantIds.includes(a.id));
-    const activeFile = editingSkill.files.find((f) => f.name === selectedFileName) || editingSkill.files[0];
+    const activeFile = editingSkill.files.find((f) => f.name === selectedFileName) || editingSkill.files[0] || { name: 'SKILL.md', sizeBytes: 0, content: '' };
 
     return (
       <div className="admin-skill-editor-page">
