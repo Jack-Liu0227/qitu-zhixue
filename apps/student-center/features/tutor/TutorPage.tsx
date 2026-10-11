@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { PermissionDenied } from '@qitu/ui';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
-import { ProjectContextPanel } from './components/ProjectContextPanel';
+import { PinnedSourcesRail } from './components/PinnedSourcesRail';
 import { TutorHeader } from './components/TutorHeader';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
@@ -16,6 +17,7 @@ import type { TutorLoadStatus } from './types';
 export function TutorPage({ projectId }: { projectId?: string }) {
   const session = useTutorSession(projectId);
   const composer = useComposer();
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
 
   if (session.permissionDenied) {
     return (
@@ -47,17 +49,14 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   return (
     <div className="qitu-tutor-page">
       <TutorHeader />
-      <div className="qitu-tutor-grid">
-        <ProjectContextPanel
-          status={session.projectStatus}
-          project={session.project}
-          error={session.projectError}
-          offline={session.offline}
-          permissionDenied={session.permissionDenied}
-          onRetry={session.retryProject}
-          onReconnect={session.reconnect}
-        />
-
+      <div className={`qitu-tutor-grid ${sourcesCollapsed ? 'is-sources-collapsed' : ''}`}>
+        <aside className="qitu-tutor-pinned-sidebar" aria-label="固定资料">
+          <button type="button" className="qitu-tutor-pinned-toggle" onClick={() => setSourcesCollapsed((current) => !current)} aria-expanded={!sourcesCollapsed} aria-label={sourcesCollapsed ? '展开固定资料' : '收起固定资料'} title={sourcesCollapsed ? '展开固定资料' : '收起固定资料'}>
+            <span aria-hidden="true">{sourcesCollapsed ? '›' : '‹'}</span>
+            <span>{sourcesCollapsed ? '资料' : '收起'}</span>
+          </button>
+          {sourcesCollapsed ? <div className="qitu-tutor-pinned-collapsed" aria-hidden="true">⌖</div> : <PinnedSourcesRail turns={session.turns} />}
+        </aside>
         <ChatThread
           turns={session.turns}
           status={chatStatus}

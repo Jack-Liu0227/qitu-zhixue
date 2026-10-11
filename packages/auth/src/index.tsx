@@ -42,6 +42,22 @@ function emitSessionChanged(): void {
   window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
 }
 
+const AUTH_CHECK_TIMEOUT_MS = 8_000;
+
+async function fetchAuthMe(): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
+  try {
+    return await fetch('/api/v1/auth/me', {
+      credentials: 'include',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 /**
  * 读取缓存的会话（不校验过期时间）。
  *
@@ -201,10 +217,7 @@ export function AuthGuard({
 
     async function revalidateInBackground(): Promise<void> {
       try {
-        const response = await fetch('/api/v1/auth/me', {
-          credentials: 'include',
-          cache: 'no-store',
-        });
+        const response = await fetchAuthMe();
         if (!active) return;
 
         if (!response.ok) {
@@ -276,7 +289,7 @@ export function AuthGuard({
 
     // 无缓存：全屏验证。
     setState('refreshing');
-    fetch('/api/v1/auth/me', { credentials: 'include', cache: 'no-store' })
+    fetchAuthMe()
       .then(async (response) => {
         if (!response.ok) throw new Error('anonymous');
         return (await response.json()) as { data?: LoginResponse };
