@@ -1381,9 +1381,6 @@ export default function AdminTeamsPage() {
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
 
       {/* 新建团队弹窗 */}
       {showCreateTeamModal ? (
