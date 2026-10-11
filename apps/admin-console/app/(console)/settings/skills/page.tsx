@@ -105,7 +105,7 @@ const INITIAL_SKILLS: SkillItem[] = [
     addedBy: '平台教研组',
     updatedAtText: '2 天前',
     boundAssistantIds: ['asst-thunder-leader', 'asst-kinetic-leader', 'asst-code-guide'],
-    files: DEFAULT_FILES_FOR_SKILL['tutor-guided-learning'],
+    files: DEFAULT_FILES_FOR_SKILL['tutor-guided-learning'] ?? [],
   },
   {
     id: 'thunder-fighter-engine',
@@ -116,7 +116,7 @@ const INITIAL_SKILLS: SkillItem[] = [
     addedBy: '平台教研组',
     updatedAtText: '5 天前',
     boundAssistantIds: ['asst-thunder-leader', 'asst-code-guide'],
-    files: DEFAULT_FILES_FOR_SKILL['thunder-fighter-engine'],
+    files: DEFAULT_FILES_FOR_SKILL['thunder-fighter-engine'] ?? [],
   },
   {
     id: 'aabb-collision-solver',
