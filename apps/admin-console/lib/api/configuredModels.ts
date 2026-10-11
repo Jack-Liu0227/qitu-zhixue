@@ -20,16 +20,14 @@ export async function fetchAvailableConfiguredModels(): Promise<ConfiguredModelI
       // 从该通道已配置的模型中提取
       if (provider.models && provider.models.length > 0) {
         for (const m of provider.models) {
-          if (m.enabled) {
-            result.push({
-              id: m.modelId,
-              name: `${m.displayName || m.modelId} (${provider.name})`,
-              providerId: provider.id,
-              providerName: provider.name,
-              api: provider.api,
-              enabled: true,
-            });
-          }
+          result.push({
+            id: m.id,
+            name: `${m.name || m.id} (${provider.name})`,
+            providerId: provider.id,
+            providerName: provider.name,
+            api: provider.api,
+            enabled: true,
+          });
         }
       } else {
         // 如果供应商尚未配置单独模型列表，但供应商已配置并启用，注入其典型兼容模型
