@@ -78,7 +78,7 @@ const MILESTONE_BADGES = [
 ];
 
 export function ProfilePage() {
-  const [selectedDimension, setSelectedDimension] = useState<CompetencyDimension>(COMPETENCY_DATA[0]);
+  const [selectedDimension, setSelectedDimension] = useState<CompetencyDimension>(COMPETENCY_DATA[0]!);
 
   // 计算六维雷达图多边形顶点坐标 (中心点 150, 150，半径 110)
   const radarGeometry = useMemo(() => {
