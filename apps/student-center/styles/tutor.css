@@ -1027,31 +1027,68 @@
 .qitu-tutor-pinned-copy strong { color: var(--qitu-heading); font-size: .72rem; }
 .qitu-tutor-pinned-copy small { overflow: hidden; color: var(--qitu-muted); font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
 .qitu-tutor-pinned-mark { color: var(--qitu-primary); font-weight: 700; }
+.qitu-tutor-sidebar-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.qitu-tutor-tab-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  color: var(--qitu-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.qitu-tutor-tab-btn.is-active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.qitu-tutor-pinned-sidebar .qitu-tutor-pinned-toggle {
+  position: static;
+  margin-left: 4px;
+}
+
+.qitu-tutor-pinned-sidebar .qitu-tutor-left-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .qitu-tutor-pinned-empty { display: grid; gap: 6px; padding: 18px 12px; border: 1px dashed var(--qitu-primary-border); border-radius: 9px; color: var(--qitu-muted); text-align: center; }
 .qitu-tutor-pinned-empty span { color: var(--qitu-primary); font-size: 1.2rem; }
 .qitu-tutor-pinned-empty strong { color: var(--qitu-heading); font-size: .74rem; }
 .qitu-tutor-pinned-empty small { font-size: .65rem; line-height: 1.45; }
 .qitu-tutor-pinned-note { margin: 0; color: var(--qitu-muted); font-size: .65rem; line-height: 1.45; }
-.qitu-tutor-pinned-toggle { position: absolute; z-index: 3; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px; border: 1px solid var(--qitu-border); border-radius: 7px; background: #fff; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .66rem; box-shadow: 0 2px 8px rgba(16, 42, 92, .06); }
+.qitu-tutor-pinned-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 0 8px; border: 1px solid var(--qitu-border); border-radius: 7px; background: #fff; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .66rem; box-shadow: 0 2px 8px rgba(16, 42, 92, .06); }
 .qitu-tutor-pinned-toggle:hover, .qitu-tutor-pinned-toggle:focus-visible { border-color: var(--qitu-primary-border); background: var(--qitu-primary-soft); color: var(--qitu-primary); outline: none; }
-.qitu-tutor-pinned-collapsed { display: grid; min-height: 128px; place-items: center; border: 1px solid var(--qitu-primary-border); border-radius: 12px; background: var(--qitu-primary-soft); color: var(--qitu-primary); font-size: 1.15rem; }
+.qitu-tutor-pinned-collapsed { display: grid; min-height: 128px; place-items: center; border: 1px solid var(--qitu-primary-border); border-radius: 12px; background: var(--qitu-primary-soft); color: var(--qitu-primary); font-size: 1.15rem; cursor: pointer; }
 .qitu-tutor-grid.is-sources-collapsed { grid-template-columns: 54px minmax(0, 1fr) !important; }
-.qitu-tutor-grid.is-sources-collapsed .qitu-tutor-pinned-toggle { right: 50%; transform: translateX(50%); padding: 0 7px; }
-.qitu-tutor-grid.is-sources-collapsed .qitu-tutor-pinned-toggle span:last-child { display: none; }
-.qitu-tutor-col-center { min-width: 0; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); overflow: hidden; }
-.qitu-tutor-col-center .qitu-chat-thread { max-width: 920px; margin: 0 auto; padding: 28px clamp(18px, 4vw, 64px) 120px; }
+.qitu-tutor-col-center { min-width: 0; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); overflow: hidden; width: 100%; }
+.qitu-tutor-col-center .qitu-chat-thread { max-width: 100%; width: 100%; margin: 0; padding: 24px clamp(16px, 3vw, 48px) 120px; box-sizing: border-box; }
 .qitu-tutor-col-center .qitu-chat-bubble { max-width: 100%; border-radius: 14px; }
-.qitu-tutor-col-center .qitu-composer { position: sticky; bottom: 0; z-index: 5; max-width: 920px; margin: -96px auto 0; border: 1px solid var(--qitu-border); border-radius: 14px; background: rgba(255,255,255,.96); box-shadow: 0 10px 30px rgba(16, 42, 92, .08); }
+.qitu-tutor-col-center .qitu-composer { position: sticky; bottom: 0; z-index: 5; max-width: 100%; width: calc(100% - 48px); margin: -96px auto 16px; border: 1px solid var(--qitu-border); border-radius: 14px; background: rgba(255,255,255,.98); box-shadow: 0 10px 30px rgba(16, 42, 92, .08); }
 @media (max-width: 960px) {
-  .qitu-tutor-grid { grid-template-columns: 1fr !important; padding-inline: 20px; }
+  .qitu-tutor-grid { grid-template-columns: 1fr !important; padding-inline: 16px; }
   .qitu-tutor-pinned-sources { position: static; max-height: none; }
   .qitu-tutor-pinned-sidebar { min-width: 0; }
   .qitu-tutor-grid.is-sources-collapsed { grid-template-columns: 54px minmax(0, 1fr) !important; }
 }
 @media (max-width: 680px) {
-  .qitu-tutor-grid { padding-inline: 12px; }
+  .qitu-tutor-grid { padding-inline: 8px; }
   .qitu-tutor-grid.is-sources-collapsed { grid-template-columns: 1fr !important; }
   .qitu-tutor-grid.is-sources-collapsed .qitu-tutor-pinned-sidebar { display: none; }
-  .qitu-tutor-header { padding-inline: 16px; }
-  .qitu-tutor-col-center .qitu-composer { margin-top: -92px; }
+  .qitu-tutor-header { padding-inline: 12px; }
+  .qitu-tutor-col-center .qitu-composer { margin-top: -92px; width: calc(100% - 24px); }
 }
