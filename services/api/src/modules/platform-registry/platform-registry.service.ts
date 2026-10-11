@@ -819,10 +819,11 @@ export class PlatformRegistryService {
           .select()
           .from(adminTeamMembers)
           .where(eq(adminTeamMembers.teamId, t.id));
-        if (remainingMembers.length > 0) {
+        const fallbackMember = remainingMembers[0];
+        if (fallbackMember) {
           await tx
             .update(adminTeams)
-            .set({ leaderAssistantId: remainingMembers[0].assistantId })
+            .set({ leaderAssistantId: fallbackMember.assistantId })
             .where(eq(adminTeams.id, t.id));
         } else {
           const otherAssistant = (await tx.select().from(adminAssistants)).find(
