@@ -1,13 +1,13 @@
 'use client';
 
-import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig } from '@qitu/contracts';
+import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig, AdminTeamUpdateInput } from '@qitu/contracts';
 import { useState } from 'react';
 
 interface TeamDetailViewProps {
   team: AdminTeamConfig;
   allAssistants: AdminAssistantConfig[];
   onBack: () => void;
-  onUpdateTeam: (updates: Partial<AdminTeamConfig>) => Promise<void>;
+  onUpdateTeam: (updates: AdminTeamUpdateInput) => Promise<void>;
   onOpenMemberEdit: (member: AdminTeamMember) => void;
   onRemoveMember: (slotId: string, memberName: string) => Promise<void>;
   onSetLeader: (assistantId: string) => Promise<void>;

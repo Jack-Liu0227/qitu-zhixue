@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig } from '@qitu/contracts';
+import type {
+  AdminTeamConfig,
+  AdminTeamMember,
+  AdminAssistantConfig,
+  AdminTeamUpdateInput,
+} from '@qitu/contracts';
 import {
   fetchAdminTeamConfigs,
   createPersistedTeam,
@@ -112,7 +117,7 @@ export default function AdminTeamsPage() {
   };
 
   // 更新团队
-  const handleUpdateTeam = async (teamId: string, updates: Partial<AdminTeamConfig>) => {
+  const handleUpdateTeam = async (teamId: string, updates: AdminTeamUpdateInput) => {
     try {
       const updated = await updatePersistedTeam(teamId, updates, newIdempotencyKey());
       setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
