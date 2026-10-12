@@ -25,10 +25,9 @@ export function HeuristicQuizCard({
   const [selectedKey, setSelectedKey] = useState<string | undefined>(initialSelectedKey);
   const [showHint, setShowHint] = useState(false);
 
-  const handleSelect = (key: string, text: string) => {
+  const handleSelect = (key: string) => {
     if (disabled) return;
     setSelectedKey(key);
-    onSelectOption?.(key, text);
   };
 
   return (
@@ -51,7 +50,7 @@ export function HeuristicQuizCard({
               type="button"
               className={`qitu-quiz-option-btn${isSelected ? ' is-selected' : ''}`}
               disabled={disabled}
-              onClick={() => handleSelect(option.key, option.text)}
+              onClick={() => handleSelect(option.key)}
             >
               <span className="qitu-quiz-option-key">{option.key}</span>
               <div className="qitu-quiz-option-content">

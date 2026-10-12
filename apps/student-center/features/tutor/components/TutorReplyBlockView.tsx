@@ -8,6 +8,7 @@ import { ModelThinkingCard } from './ModelThinkingCard';
 import { PblStageCard } from './PblStageCard';
 import { ArtifactFileCard } from './ArtifactFileCard';
 import { HeuristicQuizCard } from './HeuristicQuizCard';
+import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 
 import { MarkdownMathView } from './MarkdownMathView';
 
@@ -103,6 +104,13 @@ export function TutorReplyBlockView({
           selectedKey={block.selectedKey}
           onSelectOption={(key, text) => onSelectOption?.(key, text)}
           disabled={disabled}
+        />
+      );
+    case 'interactive_experiment':
+      return (
+        <KineticEnergyInteractiveCard
+          disabled={disabled}
+          onExperimentComplete={(summary) => onSelectOption?.('实验结论', summary)}
         />
       );
     default: {

@@ -1317,13 +1317,13 @@
 }
 
 .qitu-tutor-col-center .qitu-chat-thread {
-  flex: 1 1 auto !important;
+  flex: 1 1 0% !important;
   min-height: 0 !important;
-  height: 100% !important;
+  height: auto !important;
   max-width: 100%;
   width: 100%;
   margin: 0;
-  padding: 24px clamp(16px, 3vw, 40px) 24px !important;
+  padding: 24px clamp(16px, 3vw, 40px) 36px !important;
   box-sizing: border-box;
   overflow-y: auto !important;
   overflow-x: hidden !important;
@@ -1392,7 +1392,7 @@
 @media (max-width: 680px) {
   .qitu-tutor-grid-full-chat { height: calc(100vh - 150px); min-height: 500px; padding: 8px; }
   .qitu-tutor-grid-full-chat .qitu-chat-thread { padding-inline: 12px; }
-  .qitu-tutor-grid-full-chat .qitu-composer { width: calc(100% - 16px); margin-top: -96px; }
+  .qitu-tutor-grid-full-chat .qitu-composer { width: 100%; margin-top: 0; }
   .qitu-tutor-grid-full-chat .qitu-composer-input { min-height: 96px; }
 }
 

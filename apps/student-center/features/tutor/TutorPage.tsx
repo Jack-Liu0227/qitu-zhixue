@@ -6,6 +6,7 @@ import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { TutorHeader } from './components/TutorHeader';
 import { TutorTeamRail } from './components/TutorTeamRail';
+import { SubAgentStatusHud } from './components/SubAgentStatusHud';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import type { TutorLoadStatus } from './types';
@@ -479,6 +480,17 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             onSelectOption={(label, text) => {
               void handleSubmitMessage(`${label}: ${text ?? ''}`);
             }}
+            subAgentHud={
+              currentTurns.length > 0 ? (
+                <SubAgentStatusHud
+                  currentTeam={currentTeam}
+                  streaming={session.streaming}
+                  onSelectAgent={() => {
+                    setIsRightOpen(true);
+                  }}
+                />
+              ) : null
+            }
             composer={(
               <Composer
                 draft={composer.draft}
@@ -496,16 +508,18 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           />
         </div>
 
-        {/* 3. 右侧团队角色与项目进度状态（默认折叠，支持双Tab展开） */}
-        <TutorTeamRail
-          currentTeam={currentTeam}
-          streaming={session.streaming}
-          ready={true}
-          failed={false}
-          offline={session.offline}
-          isOpen={isRightOpen}
-          onToggleOpen={() => setIsRightOpen(!isRightOpen)}
-        />
+        {/* 3. 右侧团队角色与项目进度状态（仅进入项目后触发，默认折叠，支持双Tab展开） */}
+        {currentTurns.length > 0 && (
+          <TutorTeamRail
+            currentTeam={currentTeam}
+            streaming={session.streaming}
+            ready={true}
+            failed={false}
+            offline={session.offline}
+            isOpen={isRightOpen}
+            onToggleOpen={() => setIsRightOpen(!isRightOpen)}
+          />
+        )}
       </div>
 
       {/* 会话列表浮层 Modal */}

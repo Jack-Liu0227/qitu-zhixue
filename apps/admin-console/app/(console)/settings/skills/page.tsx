@@ -218,7 +218,7 @@ export default function SkillsSettingsPage() {
       }));
     }
     return [
-      { id: 'qitu-assistant', name: '启途智学关键', role: '平台管家', avatar: '🤖' },
+      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家', avatar: '🤖' },
       { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
       { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
       { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },

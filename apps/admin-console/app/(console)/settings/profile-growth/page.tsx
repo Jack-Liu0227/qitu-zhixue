@@ -519,7 +519,7 @@ export default function ProfileGrowthSettingsPage() {
                     ))
                   ) : (
                     <>
-                      <option value="qitu-assistant">启途智学关键 (默认学情分析)</option>
+                      <option value="qitu-assistant">启途智学管家 (默认学情分析)</option>
                       <option value="tutor-leader">启途总导师</option>
                       <option value="kinetic-review-assessor">物理探究答辩与评审导师</option>
                     </>
@@ -545,7 +545,7 @@ export default function ProfileGrowthSettingsPage() {
                   ) : (
                     <>
                       <option value="tutor-leader">启途总导师 (默认轨迹追踪)</option>
-                      <option value="qitu-assistant">启途智学关键</option>
+                      <option value="qitu-assistant">启途智学管家</option>
                       <option value="fighter-review-assessor">成果评审与答辩导师</option>
                     </>
                   )}

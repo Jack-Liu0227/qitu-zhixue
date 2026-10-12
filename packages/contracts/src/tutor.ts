@@ -100,6 +100,15 @@ export type TutorReplyBlock =
       options: { key: string; text: string; hint?: string }[];
       explanation?: string;
       selectedKey?: string;
+    }
+  /**
+   * 动态物理/算法参数探索实验卡片 (如动能定理控制变量法实验)。
+   */
+  | {
+      kind: 'interactive_experiment';
+      experimentId: string;
+      title: string;
+      summary?: string;
     };
 
 /** 工具调用的生命周期状态。 */

@@ -2,6 +2,7 @@ import { AuthGuard } from '@qitu/auth';
 import type { Metadata } from 'next';
 import '@qitu/ui/styles.css';
 import '@qitu/ui/preferences.css';
+import 'katex/dist/katex.min.css';
 import './globals.css';
 // AI搭档页的伙伴外壳样式放在 student-center，避免影响工作台共用的 tutor advice 组件。
 import '../styles/growth.css';

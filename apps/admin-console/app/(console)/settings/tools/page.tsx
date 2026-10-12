@@ -235,7 +235,7 @@ export default function ToolsSettingsPage() {
       return assistants.map((a) => ({ id: a.id, name: a.name, role: a.role }));
     }
     return [
-      { id: 'qitu-assistant', name: '启途智学关键', role: '平台管家' },
+      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家' },
       { id: 'asst-thunder', name: '雷霆战机总导师', role: 'Leader' },
       { id: 'asst-kinetic', name: '动手学动能定理总导师', role: 'Leader' },
       { id: 'asst-coder', name: '代码向导与答辩导师', role: 'Teammate' },

@@ -36,13 +36,13 @@ interface Session {
 const INITIAL_SESSIONS: Session[] = [
   {
     id: 'sess-default',
-    title: '启途智学关键构建中心',
+    title: '启途智学管家构建中心',
     updatedAt: '刚刚',
     messages: [
       {
         id: 'msg-1',
         role: 'system',
-        content: '我是「启途智学关键」平台核心运维与开发智能中枢（基于自建 Agent SDK），可为您全自动设计与配置智能体、团队组合、MCP 工具、Skill 技能包、PBL 教学模板与知识库。',
+        content: '我是「启途智学管家」平台核心运维与开发智能中枢（基于自建 Agent SDK），可为您全自动设计与配置智能体、团队组合、MCP 工具、Skill 技能包、PBL 教学模板与知识库。',
         timestamp: '10:00',
       },
       {
@@ -84,7 +84,7 @@ const INITIAL_SESSIONS: Session[] = [
       {
         id: 'ca-1',
         role: 'system',
-        content: '启途智学关键就绪。',
+        content: '启途智学管家就绪。',
         timestamp: '09:40',
       },
       {
@@ -184,7 +184,7 @@ export default function CopilotPage() {
         {
           id: `msg-${Date.now()}`,
           role: 'system',
-          content: '我是启途智学关键。输入您的指令，如“创建雷霆战机新关卡设计团队”、“添加一个 Python 绘图 MCP”、“为动能定理添加补充知识库”。',
+          content: '我是启途智学管家。输入您的指令，如“创建雷霆战机新关卡设计团队”、“添加一个 Python 绘图 MCP”、“为动能定理添加补充知识库”。',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ],
@@ -360,7 +360,7 @@ export default function CopilotPage() {
             ▶
           </button>
           <span style={{ writingMode: 'vertical-rl', fontSize: '12px', fontWeight: 600, color: '#64748b', letterSpacing: '0.15em' }}>
-            启途智学关键会话 ({sessions.length})
+            启途智学管家会话 ({sessions.length})
           </span>
         </aside>
       ) : (
@@ -378,7 +378,7 @@ export default function CopilotPage() {
           <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '18px' }}>🤖</span> 启途智学关键
+                <span style={{ fontSize: '18px' }}>🤖</span> 启途智学管家
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0284c7', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>

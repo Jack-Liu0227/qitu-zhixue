@@ -143,6 +143,12 @@ export const KINETIC_ENERGY_TURNS: TutorTurn[] = [
         ref: '高中物理必修第二册 · 第八章 机械能守恒定律 · 动能与动能定理',
       },
       {
+        kind: 'interactive_experiment',
+        experimentId: 'exp-kinetic-work-energy',
+        title: '动能定理参数动态探究工作台',
+        summary: '控制变量法探究：调节小车质量 m 与位移 s，观察做功与动能增量的动态关联。',
+      },
+      {
         kind: 'quiz',
         questionId: 'quiz-ke-gate',
         stem: '【门禁考核】如果一个质量为 2kg 的小球初始速度为 3m/s，受到合外力做功 16J 后，小球的末速度为多少？',

@@ -45,6 +45,7 @@ export function ChatThread({
   onRetry: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
+  subAgentHud?: ReactNode;
   composer: ReactNode;
 }) {
   const hasTurns = turns.length > 0;
@@ -155,6 +156,7 @@ export function ChatThread({
         <div ref={bottomRef} style={{ height: '1px', width: '100%' }} />
       </div>
 
+      {subAgentHud}
       {composer}
     </div>
   );
