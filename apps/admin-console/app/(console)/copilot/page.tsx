@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
+import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
 
 interface ToolExecutionStep {
   name: string;
