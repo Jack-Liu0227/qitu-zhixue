@@ -177,8 +177,8 @@ export default function ToolsSettingsPage() {
   // 当前选中的设置目标：'global'（总的 mcpServers 设置）或 单个 MCP 的 id
   const [selectedTarget, setSelectedTarget] = useState<string>('global');
 
-  // 当前主工作台模式：'edit' (JSON 编辑) 或 'preview' (实时预览)
-  const [activeMode, setActiveMode] = useState<'edit' | 'preview'>('edit');
+  // 当前主工作台模式：'matrix' (启用与关闭矩阵) | 'edit' (JSON 编辑) | 'preview' (实时预览)
+  const [activeMode, setActiveMode] = useState<'matrix' | 'edit' | 'preview'>('matrix');
 
   // JSON 草稿与错误提示
   const [jsonTextDraft, setJsonTextDraft] = useState<string>('');
@@ -186,7 +186,18 @@ export default function ToolsSettingsPage() {
   const [notice, setNotice] = useState<string>('');
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
 
-  // 内置工具开关状态
+  // 内置工具绑定的助手列表
+  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>([
+    '雷霆战机总导师',
+    '代码向导与答辩导师',
+  ]);
+  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>([
+    '雷霆战机总导师',
+    '动手学动能定理总导师',
+    '代码向导与答辩导师',
+  ]);
+
+  // 内置工具全局总开关状态
   const [imageGenEnabled, setImageGenEnabled] = useState<boolean>(true);
   const [sandboxEnabled, setSandboxEnabled] = useState<boolean>(true);
 
@@ -198,6 +209,20 @@ export default function ToolsSettingsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // 当前可用的助手角色列表（优先使用后台真实数据，保底提供默认战队导师）
+  const activeAssistantsList = useMemo(() => {
+    if (assistants.length > 0) {
+      return assistants.map((a) => ({ id: a.id, name: a.name, role: a.role }));
+    }
+    return [
+      { id: 'asst-thunder', name: '雷霆战机总导师', role: 'Leader' },
+      { id: 'asst-kinetic', name: '动手学动能定理总导师', role: 'Leader' },
+      { id: 'asst-coder', name: '代码向导与答辩导师', role: 'Teammate' },
+      { id: 'asst-coach', name: '原理教练', role: 'Coach' },
+      { id: 'asst-reviewer', name: '评审导师', role: 'Reviewer' },
+    ];
+  }, [assistants]);
 
   // 持久化存储 MCP 列表
   useEffect(() => {
@@ -391,6 +416,86 @@ export default function ToolsSettingsPage() {
     }
   };
 
+  // 切换 MCP 对指定助手的授权
+  const toggleMcpForAssistant = (mcpName: string, asstName: string) => {
+    setMcpList((prev) =>
+      prev.map((m) => {
+        if (m.name !== mcpName) return m;
+        const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
+        const nextBound = currentBound.includes(asstName)
+          ? currentBound.filter((n) => n !== asstName)
+          : [...currentBound, asstName];
+
+        let updatedRawJson = m.rawJson;
+        try {
+          const parsed = JSON.parse(m.rawJson);
+          parsed.boundAssistants = nextBound;
+          updatedRawJson = JSON.stringify(parsed, null, 2);
+        } catch {
+          // fallback
+        }
+
+        return {
+          ...m,
+          boundAssistants: nextBound,
+          rawJson: updatedRawJson,
+        };
+      })
+    );
+  };
+
+  // 切换内置工具对指定助手的授权
+  const toggleBuiltinToolForAssistant = (tool: 'imageGen' | 'sandbox', asstName: string) => {
+    if (tool === 'imageGen') {
+      setImageGenAssistants((prev) =>
+        prev.includes(asstName) ? prev.filter((n) => n !== asstName) : [...prev, asstName]
+      );
+    } else {
+      setSandboxAssistants((prev) =>
+        prev.includes(asstName) ? prev.filter((n) => n !== asstName) : [...prev, asstName]
+      );
+    }
+  };
+
+  // 一键为某助手全选所有工具
+  const grantAllToolsForAssistant = (asstName: string) => {
+    setMcpList((prev) =>
+      prev.map((m) => {
+        const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
+        if (!currentBound.includes(asstName)) {
+          currentBound.push(asstName);
+        }
+        let updatedRawJson = m.rawJson;
+        try {
+          const parsed = JSON.parse(m.rawJson);
+          parsed.boundAssistants = currentBound;
+          updatedRawJson = JSON.stringify(parsed, null, 2);
+        } catch {}
+        return { ...m, boundAssistants: currentBound, rawJson: updatedRawJson };
+      })
+    );
+    if (!imageGenAssistants.includes(asstName)) setImageGenAssistants((prev) => [...prev, asstName]);
+    if (!sandboxAssistants.includes(asstName)) setSandboxAssistants((prev) => [...prev, asstName]);
+  };
+
+  // 一键清除某助手的所有工具授权
+  const revokeAllToolsForAssistant = (asstName: string) => {
+    setMcpList((prev) =>
+      prev.map((m) => {
+        const nextBound = (m.boundAssistants || []).filter((n) => n !== asstName);
+        let updatedRawJson = m.rawJson;
+        try {
+          const parsed = JSON.parse(m.rawJson);
+          parsed.boundAssistants = nextBound;
+          updatedRawJson = JSON.stringify(parsed, null, 2);
+        } catch {}
+        return { ...m, boundAssistants: nextBound, rawJson: updatedRawJson };
+      })
+    );
+    setImageGenAssistants((prev) => prev.filter((n) => n !== asstName));
+    setSandboxAssistants((prev) => prev.filter((n) => n !== asstName));
+  };
+
   return (
     <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
       {/* 页头 */}
@@ -401,13 +506,33 @@ export default function ToolsSettingsPage() {
               工具与 MCP 配置中心
             </h1>
             <p className="admin-tools-subtitle" style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-              支持总的 mcpServers 全局配置与任意单个 MCP 的独立 JSON 设置。编辑与预览合并为一个工作台，通过顶层按钮自由切换。
+              支持智能体授权矩阵、总的 mcpServers 全局配置与任意单个 MCP 的独立 JSON 设置。编辑与预览自由切换。
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {/* 顶层切换按钮：编辑 JSON / 实时预览 */}
-            <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* 顶层切换按钮：矩阵 / 编辑 JSON / 实时预览 */}
+            <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0', gap: '2px' }}>
+              <button
+                type="button"
+                style={{
+                  padding: '6px 14px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  background: activeMode === 'matrix' ? '#ffffff' : 'transparent',
+                  fontWeight: activeMode === 'matrix' ? 600 : 400,
+                  boxShadow: activeMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  color: activeMode === 'matrix' ? '#165dff' : '#64748b',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                onClick={() => setActiveMode('matrix')}
+              >
+                📊 智能体授权矩阵
+              </button>
               <button
                 type="button"
                 style={{
@@ -484,8 +609,129 @@ export default function ToolsSettingsPage() {
         </div>
       ) : null}
 
-      {/* 核心工作台：左侧导航选择（支持选【总配置】或【单个独立 MCP】），右侧合并的单个 Table/工作台 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '18px', alignItems: 'start' }}>
+      {/* 视图 1：智能体与工具启用与关闭矩阵 */}
+      {activeMode === 'matrix' ? (
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>智能体与工具启用与关闭矩阵 (Capability & Authorization Matrix)</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                行代表智能体导师，列代表 MCP 工具服务与平台原生工具。在此勾选或取消勾选将即时同步至底层 MCP JSON 声明及运行时权限表。
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                已纳管 {activeAssistantsList.length} 位智能体 · {mcpList.length} 个 MCP 服务
+              </span>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '10px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
+                  <th style={{ padding: '14px 16px', fontWeight: 700, color: '#334155', minWidth: '170px' }}>智能体角色</th>
+                  {mcpList.map((m) => (
+                    <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '130px' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ fontSize: '11px', color: '#16a34a' }}>●</span>
+                        <span>{m.name}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具</div>
+                    </th>
+                  ))}
+                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '120px' }}>
+                    <div>🎨 图像生成</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 ImageGen</div>
+                  </th>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#047857', textAlign: 'center', minWidth: '120px' }}>
+                    <div>🐍 Python 沙箱</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 Sandbox</div>
+                  </th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '130px' }}>批量快捷操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeAssistantsList.map((asst, index) => {
+                  return (
+                    <tr key={asst.id || asst.name} style={{ borderBottom: '1px solid #f1f5f9', background: index % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{asst.name}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          <span style={{ padding: '1px 6px', background: '#e2e8f0', borderRadius: '4px' }}>{asst.role || '智能导师'}</span>
+                        </div>
+                      </td>
+
+                      {/* MCP 列 */}
+                      {mcpList.map((m) => {
+                        const isChecked = m.boundAssistants.includes(asst.name);
+                        return (
+                          <td key={m.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleMcpForAssistant(m.name, asst.name)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
+                              />
+                            </label>
+                          </td>
+                        );
+                      })}
+
+                      {/* 图像生成 列 */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: imageGenAssistants.includes(asst.name) ? '#f5f3ff' : 'transparent', border: imageGenAssistants.includes(asst.name) ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
+                          <input
+                            type="checkbox"
+                            checked={imageGenAssistants.includes(asst.name)}
+                            onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
+                          />
+                        </label>
+                      </td>
+
+                      {/* Python 沙箱 列 */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: sandboxAssistants.includes(asst.name) ? '#ecfdf5' : 'transparent', border: sandboxAssistants.includes(asst.name) ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
+                          <input
+                            type="checkbox"
+                            checked={sandboxAssistants.includes(asst.name)}
+                            onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
+                          />
+                        </label>
+                      </td>
+
+                      {/* 批量操作 */}
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => grantAllToolsForAssistant(asst.name)}
+                            style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#165dff', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            全选
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => revokeAllToolsForAssistant(asst.name)}
+                            style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            清空
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* 视图 2 & 3：JSON 配置编辑与实时预览工作台 */
+        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '18px', alignItems: 'start' }}>
         {/* 左侧目标选择列表 */}
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
@@ -801,6 +1047,7 @@ export default function ToolsSettingsPage() {
           ) : null}
         </div>
       </div>
+      )}
 
       {/* 模块二：内置工具（图像生成与沙箱）卡片，严格对应 AdminUI/工具.png 视觉 */}
       <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>

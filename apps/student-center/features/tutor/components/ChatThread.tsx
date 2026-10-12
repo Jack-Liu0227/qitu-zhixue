@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { TutorTurn } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, SkeletonBlock } from '@qitu/ui';
 import type { TutorLoadStatus, TutorViewError } from '../types';
@@ -58,6 +58,12 @@ export function ChatThread({
   // student reads 「正在查看你的掌握度记录」 instead of a generic spinner.
   const runningToolLabel = findRunningToolLabel(turns);
 
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [turns.length, streaming]);
+
   return (
     <div className="qitu-tutor-col qitu-tutor-col-center">
       {offline ? <OfflineBanner readOnly onRetry={onReconnect} /> : null}
@@ -113,6 +119,8 @@ export function ChatThread({
             onRetry={onRetry}
           />
         ) : null}
+
+        <div ref={bottomRef} style={{ height: '1px', width: '100%' }} />
       </div>
 
       {composer}

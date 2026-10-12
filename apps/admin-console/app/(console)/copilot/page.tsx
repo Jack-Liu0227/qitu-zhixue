@@ -310,6 +310,8 @@ export default function CopilotPage() {
     <div style={{
       display: 'flex',
       height: 'calc(100vh - 65px)',
+      margin: '-20px -24px -40px',
+      overflow: 'hidden',
       background: 'radial-gradient(900px 520px at 8% -10%, rgb(30 79 217 / 10%), transparent 62%), radial-gradient(760px 500px at 108% 110%, rgb(111 250 208 / 12%), transparent 58%), linear-gradient(135deg, #f8faff 0%, #faf8ff 48%, #effcf8 100%)'
     }}>
       {/* 1. 左侧会话列表与管理（支持折叠） */}

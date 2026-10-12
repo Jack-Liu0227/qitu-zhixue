@@ -1075,10 +1075,72 @@
 .qitu-tutor-pinned-toggle:hover, .qitu-tutor-pinned-toggle:focus-visible { border-color: var(--qitu-primary-border); background: var(--qitu-primary-soft); color: var(--qitu-primary); outline: none; }
 .qitu-tutor-pinned-collapsed { display: grid; min-height: 128px; place-items: center; border: 1px solid var(--qitu-primary-border); border-radius: 12px; background: var(--qitu-primary-soft); color: var(--qitu-primary); font-size: 1.15rem; cursor: pointer; }
 .qitu-tutor-grid.is-sources-collapsed { grid-template-columns: 54px minmax(0, 1fr) !important; }
-.qitu-tutor-col-center { min-width: 0; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); overflow: hidden; width: 100%; }
-.qitu-tutor-col-center .qitu-chat-thread { max-width: 100%; width: 100%; margin: 0; padding: 24px clamp(16px, 3vw, 48px) 120px; box-sizing: border-box; }
+.qitu-tutor-col-center {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  flex: 1 1 0% !important;
+  border: 1px solid var(--qitu-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(16, 42, 92, .04);
+  overflow: hidden !important;
+  width: 100%;
+  position: relative;
+}
+
+.qitu-tutor-col-center .qitu-chat-thread {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 24px clamp(16px, 3vw, 40px) 24px !important;
+  box-sizing: border-box;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scroll-behavior: smooth;
+}
+
+.qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar {
+  width: 8px;
+}
+.qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+.qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .qitu-tutor-col-center .qitu-chat-bubble { max-width: 100%; border-radius: 14px; }
-.qitu-tutor-col-center .qitu-composer { position: sticky; bottom: 0; z-index: 5; max-width: 100%; width: calc(100% - 48px); margin: -96px auto 16px; border: 1px solid var(--qitu-border); border-radius: 14px; background: rgba(255,255,255,.98); box-shadow: 0 10px 30px rgba(16, 42, 92, .08); }
+
+/* 底部对话框：固定在对话卡片底端，flex-shrink: 0，不再随消息滑动到页面最底下 */
+.qitu-tutor-col-center .qitu-composer {
+  position: relative !important;
+  bottom: auto !important;
+  z-index: 10;
+  flex: 0 0 auto !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border: none !important;
+  border-top: 1px solid var(--qitu-border) !important;
+  border-radius: 0 0 14px 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 -4px 16px rgba(16, 42, 92, .03) !important;
+  padding: 16px 24px !important;
+  box-sizing: border-box !important;
+}
+
 @media (max-width: 960px) {
   .qitu-tutor-grid { grid-template-columns: 1fr !important; padding-inline: 16px; }
   .qitu-tutor-pinned-sources { position: static; max-height: none; }
@@ -1090,7 +1152,7 @@
   .qitu-tutor-grid.is-sources-collapsed { grid-template-columns: 1fr !important; }
   .qitu-tutor-grid.is-sources-collapsed .qitu-tutor-pinned-sidebar { display: none; }
   .qitu-tutor-header { padding-inline: 12px; }
-  .qitu-tutor-col-center .qitu-composer { margin-top: -92px; width: calc(100% - 24px); }
+  .qitu-tutor-col-center .qitu-composer { width: 100% !important; margin: 0 !important; padding: 12px 14px !important; }
 }
 
 /* Final full-chat layout: DeepTutor natural flex column paradigm */
@@ -1109,38 +1171,47 @@
   .qitu-tutor-grid-full-chat .qitu-composer-input { min-height: 96px; }
 }
 
-/* 统一桌面端与手机端自适应布局支持 */
+/* 统一桌面端与手机端自适应布局支持：视口全屏适配与滚轮动态滚动 */
 .qitu-tutor-workspace-layout {
   display: flex;
   gap: 16px;
-  padding: 0 24px 28px;
-  height: calc(100vh - 160px);
+  padding: 0 24px 20px;
+  height: calc(100vh - 145px);
+  min-height: 560px;
   position: relative;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
   .qitu-tutor-workspace-layout {
     flex-direction: column;
-    height: auto;
-    min-height: calc(100vh - 140px);
-    padding: 0 12px 20px;
-    gap: 12px;
+    height: calc(100vh - 110px);
+    min-height: 480px;
+    padding: 0 10px 14px;
+    gap: 10px;
   }
 
   .qitu-tutor-workspace-layout > aside {
     width: 100% !important;
-    max-height: 240px;
+    max-height: 160px;
+    flex-shrink: 0;
+  }
+
+  .qitu-tutor-col-center {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    height: 100% !important;
   }
 
   .qitu-tutor-header {
-    padding: 8px 12px;
+    padding: 6px 12px;
     gap: 10px;
   }
 
   .qitu-tutor-header-mascot {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
   }
 }
 
