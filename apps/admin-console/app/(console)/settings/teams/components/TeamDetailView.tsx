@@ -1,4 +1,7 @@
+'use client';
+
 import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig } from '@qitu/contracts';
+import { useState } from 'react';
 
 interface TeamDetailViewProps {
   team: AdminTeamConfig;

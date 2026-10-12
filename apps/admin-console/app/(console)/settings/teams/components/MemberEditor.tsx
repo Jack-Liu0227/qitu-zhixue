@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import type { AdminTeamMember, AdminAssistantConfig } from '@qitu/contracts';
 import type { ConfiguredModelItem } from '../../../../../lib/api/configuredModels';
