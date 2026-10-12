@@ -11,7 +11,7 @@ Audit baseline: `origin/main` at `b1612f6` on 2026-10-12. An item is closed only
 | [#47](https://github.com/Jack-Liu0227/qitu-zhixue/issues/47) | Model sync, MCP JSON workbench and capability matrix | `cce6974`, `334c4d4`, `0afaa51` |
 | [#48](https://github.com/Jack-Liu0227/qitu-zhixue/issues/48) | AI conversation layout, Markdown/math and responsive interaction | `193ac97`, `568f579`, `89a4a82`, `0afaa51`, `b1612f6` |
 
-## Current Open Work (Eight New Issues)
+## Current Open Work (Nine New Issues)
 
 | Issue | Scope |
 | --- | --- |
@@ -23,6 +23,7 @@ Audit baseline: `origin/main` at `b1612f6` on 2026-10-12. An item is closed only
 | [#54](https://github.com/Jack-Liu0227/qitu-zhixue/issues/54) | PBL templates, recommendations, intent confirmation, team binding and stage gates |
 | [#55](https://github.com/Jack-Liu0227/qitu-zhixue/issues/55) | Student-isolated sessions, memory, profile and growth data foundation |
 | [#56](https://github.com/Jack-Liu0227/qitu-zhixue/issues/56) | Unified four-platform theme, density, login entry and mobile acceptance |
+| [#57](https://github.com/Jack-Liu0227/qitu-zhixue/issues/57) | Admin AI configuration center: models, assistants, teams, Skills, tools and MCP governance |
 
 ## Closed Legacy Backlog
 
