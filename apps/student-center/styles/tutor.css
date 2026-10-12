@@ -111,37 +111,202 @@
 }
 
 .qitu-composer {
-  display: grid;
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  align-items: stretch !important;
   gap: 10px;
-  padding: 16px;
-  border-top: 1px solid var(--qitu-border);
-  background: var(--qitu-surface);
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--qitu-border, #e4ecf7);
+  background: var(--qitu-surface, #ffffff);
+}
+
+.qitu-composer-quick-prompts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.qitu-composer-quick-prompts::-webkit-scrollbar {
+  display: none;
+}
+
+.qitu-composer-quick-label {
+  flex: 0 0 auto;
+  color: var(--qitu-muted, #73839b);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.qitu-composer-prompt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 4px 11px;
+  border: 1px solid var(--qitu-border, #e4ecf7);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--qitu-text, #243b5a);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.qitu-composer-prompt-chip:hover:not(:disabled) {
+  border-color: var(--qitu-primary-border, #c6dcfb);
+  background: var(--qitu-primary-soft, #eaf2fe);
+  color: var(--qitu-primary, #2878f0);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(40, 120, 240, 0.08);
+}
+
+.qitu-composer-prompt-chip:focus-visible {
+  outline: 2px solid var(--qitu-primary, #2878f0);
+  outline-offset: 2px;
+}
+
+.qitu-composer-prompt-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qitu-composer-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1.5px solid var(--qitu-border, #dbe5f3);
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: inset 0 1px 2px rgba(16, 42, 92, 0.02);
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  overflow: hidden;
+}
+
+.qitu-composer-shell:hover:not(.is-disabled) {
+  border-color: var(--qitu-primary-border, #b8d4fb);
+  background: #ffffff;
+}
+
+.qitu-composer-shell:focus-within:not(.is-disabled) {
+  border-color: var(--qitu-primary, #2878f0);
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(40, 120, 240, 0.08), 0 0 0 3px rgba(40, 120, 240, 0.12);
+}
+
+.qitu-composer-shell.is-offline {
+  border-color: var(--qitu-attention-border, #ffd3b8);
+  background: #fffdf9;
+}
+
+.qitu-composer-shell.is-disabled {
+  opacity: 0.65;
+  background: #f1f5f9;
 }
 
 .qitu-composer-input {
   width: 100%;
-  min-height: 72px;
-  resize: vertical;
-  border: 1px solid var(--qitu-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  color: var(--qitu-heading);
-  background: var(--qitu-background);
+  min-height: 56px;
+  max-height: 160px;
+  resize: none;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 12px 16px 8px !important;
+  color: var(--qitu-heading, #102a5c);
+  background: transparent !important;
   font: inherit;
-  line-height: 1.5;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-.qitu-composer-input:focus {
-  outline: 2px solid var(--qitu-primary-border);
-  outline-offset: 1px;
+.qitu-composer-input::placeholder {
+  color: #94a3b8;
+}
+
+.qitu-composer-input:focus,
+.qitu-composer-input:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .qitu-composer-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px 8px 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(255, 255, 255, 0.6);
+  flex-wrap: wrap;
+}
+
+.qitu-composer-toolbar-left,
+.qitu-composer-toolbar-right {
+  display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.qitu-composer-toolbar-right {
+  margin-left: auto;
+}
+
+.qitu-composer-shortcut-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  margin-left: 4px;
+  user-select: none;
+}
+
+.qitu-composer-shortcut-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
+}
+
+.qitu-composer-char-count {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.qitu-composer-clear {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qitu-muted, #73839b);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.qitu-composer-clear:hover:not(:disabled) {
+  color: var(--qitu-danger, #e95b68);
+  background: var(--qitu-danger-soft, #fdedee);
 }
 
 .qitu-composer-mode,
@@ -149,102 +314,162 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 40px;
-  border: 1px solid var(--qitu-border);
-  border-radius: 10px;
-  padding: 0 12px;
-  color: var(--qitu-muted);
-  background: var(--qitu-background);
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--qitu-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 0 11px;
+  color: var(--qitu-text, #334155);
+  background: #ffffff;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.81rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .qitu-composer-mode:hover:not(:disabled),
 .qitu-composer-voice-button:hover:not(:disabled) {
-  border-color: var(--qitu-primary-border);
-  color: var(--qitu-primary);
+  border-color: var(--qitu-primary-border, #c6dcfb);
+  color: var(--qitu-primary, #2878f0);
+  background: var(--qitu-primary-soft, #eaf2fe);
 }
 
 .qitu-composer-mode.is-active,
 .qitu-composer-voice-button.is-listening {
-  border-color: var(--qitu-primary);
-  color: var(--qitu-primary);
-  background: var(--qitu-primary-soft);
+  border-color: var(--qitu-primary, #2878f0);
+  color: var(--qitu-primary, #2878f0);
+  background: var(--qitu-primary-soft, #eaf2fe);
+  font-weight: 600;
 }
 
 .qitu-composer-mode:focus-visible,
 .qitu-composer-voice-button:focus-visible,
-.qitu-composer-submit:focus-visible {
-  outline: 2px solid var(--qitu-primary-border);
+.qitu-composer-submit:focus-visible,
+.qitu-composer-clear:focus-visible {
+  outline: 2px solid var(--qitu-primary, #2878f0);
   outline-offset: 2px;
 }
 
 .qitu-composer-mode:disabled,
 .qitu-composer-voice-button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.48;
+  background: #f8fafc;
 }
 
 .qitu-composer-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
 .qitu-composer-submit {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.qitu-composer-submit.is-ready {
+  background: linear-gradient(135deg, #2878f0 0%, #1d63d2 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(40, 120, 240, 0.26);
+}
+
+.qitu-composer-submit.is-ready:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e63ce 0%, #164fa8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(40, 120, 240, 0.34);
+}
+
+.qitu-composer-submit:disabled {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
 }
 
 .qitu-composer-voice-panel {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 10px 12px;
-  border: 1px solid var(--qitu-primary-border);
-  border-radius: 10px;
-  color: var(--qitu-heading);
-  background: var(--qitu-primary-soft);
+  gap: 14px;
+  min-height: 68px;
+  padding: 12px 16px;
+  color: var(--qitu-heading, #102a5c);
+  background: linear-gradient(135deg, rgba(234, 242, 254, 0.7) 0%, rgba(255, 255, 255, 0.9) 100%);
+}
+
+.qitu-composer-voice-copy {
+  min-width: 0;
+  flex: 1;
 }
 
 .qitu-composer-voice-panel strong {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .qitu-composer-voice-panel p {
-  margin: 4px 0 0;
-  color: var(--qitu-muted);
-  font-size: 0.82rem;
+  margin: 3px 0 0;
+  color: var(--qitu-muted, #73839b);
+  font-size: 0.8rem;
   line-height: 1.45;
 }
 
 .qitu-composer-voice-orb {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
   border-radius: 50%;
-  color: var(--qitu-primary);
-  background: var(--qitu-surface);
+  color: var(--qitu-primary, #2878f0);
+  background: #ffffff;
+  border: 1px solid var(--qitu-primary-border, #c6dcfb);
+  box-shadow: 0 2px 8px rgba(40, 120, 240, 0.12);
 }
 
 .qitu-composer-voice-orb.is-listening {
   animation: qitu-composer-pulse 1.4s ease-in-out infinite;
-  color: var(--qitu-danger, #c65353);
+  color: var(--qitu-danger, #e95b68);
+  border-color: var(--qitu-danger-border, #f8c9ce);
+}
+
+.qitu-composer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.qitu-composer-hint.is-warning {
+  color: #b45309;
+  font-weight: 500;
 }
 
 .qitu-composer-error {
   margin: 0;
-  color: var(--qitu-danger, #c65353);
-  font-size: 0.8rem;
+  color: var(--qitu-danger, #e95b68);
+  font-size: 0.78rem;
+  font-weight: 500;
   line-height: 1.45;
+}
+
+@media (max-width: 680px) {
+  .qitu-composer-shortcut-hint {
+    display: none;
+  }
 }
 
 @keyframes qitu-composer-pulse {
