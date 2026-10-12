@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../lib/api/assistants';
-import { fetchAdminTeams } from '../../../lib/api/teams';
+import { fetchAdminTeamConfigs } from '../../../lib/api/teams';
 
 export default function SettingsIndexPage() {
   const [assistantsCount, setAssistantsCount] = useState<number>(9);
@@ -19,7 +19,7 @@ export default function SettingsIndexPage() {
       })
       .catch(() => {});
 
-    fetchAdminTeams()
+    fetchAdminTeamConfigs()
       .then((res) => {
         if (res && res.length > 0) setTeamsCount(res.length);
       })
