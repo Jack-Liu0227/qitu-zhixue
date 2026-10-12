@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Avatar } from '@qitu/ui';
 import type { TutorReplyBlock, TutorToolCall, TutorTurn } from '@qitu/contracts';
