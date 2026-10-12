@@ -5,19 +5,13 @@ import { RobotMascot } from '@qitu/ui';
 interface TutorHeaderProps {
   currentTeam: 'team-thunder-fighter' | 'team-kinetic-energy';
   onTeamChange: (team: 'team-thunder-fighter' | 'team-kinetic-energy') => void;
-  onNewSession: () => void;
   onClearHistory: () => void;
-  onOpenSessionModal: () => void;
-  sessionCount: number;
 }
 
 export function TutorHeader({
   currentTeam,
   onTeamChange,
-  onNewSession,
   onClearHistory,
-  onOpenSessionModal,
-  sessionCount,
 }: TutorHeaderProps) {
   return (
     <header className="qitu-tutor-header" style={{ flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between' }}>
@@ -59,47 +53,7 @@ export function TutorHeader({
           </select>
         </div>
 
-        {/* 会话管理按钮 */}
-        <button
-          onClick={onNewSession}
-          title="创建新对话"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '7px 12px',
-            fontSize: '12.5px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(37,99,235,0.2)',
-          }}
-        >
-          <span>+</span> 新开会话
-        </button>
 
-        <button
-          onClick={onOpenSessionModal}
-          title="查看历史与归档会话"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            background: '#ffffff',
-            color: '#334155',
-            border: '1px solid #cbd5e1',
-            borderRadius: '8px',
-            padding: '7px 12px',
-            fontSize: '12.5px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          <span>📁</span> 会话列表 ({sessionCount})
-        </button>
 
         <button
           onClick={onClearHistory}

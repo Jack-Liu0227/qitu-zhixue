@@ -209,10 +209,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       <TutorHeader
         currentTeam={currentTeam}
         onTeamChange={handleSelectTeam}
-        onNewSession={handleNewSession}
         onClearHistory={handleClearHistory}
-        onOpenSessionModal={() => setIsModalOpen(true)}
-        sessionCount={sessions.length}
       />
 
       <div style={{ display: 'flex', gap: '16px', padding: '0 24px 28px', height: 'calc(100vh - 160px)', position: 'relative' }}>

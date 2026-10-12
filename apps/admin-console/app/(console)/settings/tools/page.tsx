@@ -4,544 +4,746 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
-export interface McpServerConfig {
+export interface SingleMcpConfig {
   id: string;
   name: string;
-  transport: 'stdio' | 'sse';
   command: string;
   args: string[];
   env?: Record<string, string>;
+  transport?: 'stdio' | 'sse';
   status: 'connected' | 'disconnected' | 'error';
   latencyMs?: number;
   tools: string[];
   boundAssistants: string[];
   description?: string;
+  rawJson: string;
 }
 
-const DEFAULT_MCP_SERVERS: McpServerConfig[] = [
+const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
   {
     id: 'mcp-grok-search',
-    name: 'groksearch-mcp',
-    transport: 'stdio',
+    name: 'groksearch',
     command: 'uvx',
     args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
     env: {
       GROK_API_KEY: 'xai-grok-search-live-key',
       TAVILY_API_KEY: 'tvly-free-search-key',
     },
+    transport: 'stdio',
     status: 'connected',
-    latencyMs: 28,
+    latencyMs: 26,
     tools: ['grok_web_search', 'fetch_page_markdown', 'knowledge_crawl', 'citation_extract'],
     boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-    description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索工具，支持带来源引用的学术与事实检索。',
-  },
-  {
-    id: 'mcp-fetch',
-    name: 'fetch',
-    transport: 'stdio',
-    command: 'uvx',
-    args: ['mcp-server-fetch'],
-    status: 'connected',
-    latencyMs: 16,
-    tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
-    boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
-    description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
+    description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索，支持学术与事实溯源。',
+    rawJson: JSON.stringify(
+      {
+        name: 'groksearch',
+        command: 'uvx',
+        args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
+        env: {
+          GROK_API_KEY: 'xai-grok-search-live-key',
+          TAVILY_API_KEY: 'tvly-free-search-key',
+        },
+        transport: 'stdio',
+        description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索，支持学术与事实溯源。',
+        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
+        tools: ['grok_web_search', 'fetch_page_markdown', 'knowledge_crawl', 'citation_extract'],
+      },
+      null,
+      2
+    ),
   },
   {
     id: 'mcp-chrome-devtools',
     name: 'chrome-devtools',
-    transport: 'stdio',
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
+    transport: 'stdio',
     status: 'connected',
     latencyMs: 18,
     tools: ['launch_browser', 'navigate_page', 'click_element', 'take_screenshot', 'capture_console'],
     boundAssistants: ['雷霆战机总导师', '代码向导与答辩导师'],
     description: 'Chrome DevTools 自动化视口控制、页面渲染监测与前端控制台日志捕获。',
+    rawJson: JSON.stringify(
+      {
+        name: 'chrome-devtools',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
+        transport: 'stdio',
+        description: 'Chrome DevTools 自动化视口控制、页面渲染监测与前端控制台日志捕获。',
+        boundAssistants: ['雷霆战机总导师', '代码向导与答辩导师'],
+        tools: ['launch_browser', 'navigate_page', 'click_element', 'take_screenshot', 'capture_console'],
+      },
+      null,
+      2
+    ),
   },
   {
     id: 'mcp-aionui-browser',
     name: 'aionui-browser',
-    transport: 'stdio',
     command: 'npx',
     args: ['-y', '@aionui/browser-mcp'],
+    transport: 'stdio',
     status: 'connected',
-    latencyMs: 24,
+    latencyMs: 22,
     tools: ['browser_tab_open', 'read_dom', 'execute_js_action', 'snapshot_viewport'],
     boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
     description: 'AionUI 浏览器自动化 DOM 读取与学生交互沙箱。',
+    rawJson: JSON.stringify(
+      {
+        name: 'aionui-browser',
+        command: 'npx',
+        args: ['-y', '@aionui/browser-mcp'],
+        transport: 'stdio',
+        description: 'AionUI 浏览器自动化 DOM 读取与学生交互沙箱。',
+        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
+        tools: ['browser_tab_open', 'read_dom', 'execute_js_action', 'snapshot_viewport'],
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'mcp-fetch',
+    name: 'fetch',
+    command: 'uvx',
+    args: ['mcp-server-fetch'],
+    transport: 'stdio',
+    status: 'connected',
+    latencyMs: 15,
+    tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
+    boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
+    description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
+    rawJson: JSON.stringify(
+      {
+        name: 'fetch',
+        command: 'uvx',
+        args: ['mcp-server-fetch'],
+        transport: 'stdio',
+        description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
+        boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
+        tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
+      },
+      null,
+      2
+    ),
   },
 ];
 
-function serversToJson(servers: McpServerConfig[]): string {
-  const mcpServersRecord: Record<string, Record<string, unknown>> = {};
-  for (const s of servers) {
-    const entry: Record<string, unknown> = {
-      command: s.command,
-      args: s.args,
-    };
-    if (s.env && Object.keys(s.env).length > 0) {
-      entry.env = s.env;
-    }
-    if (s.description) {
-      entry.description = s.description;
-    }
-    if (s.boundAssistants && s.boundAssistants.length > 0) {
-      entry.boundAssistants = s.boundAssistants;
-    }
-    mcpServersRecord[s.name] = entry;
-  }
-  return JSON.stringify({ mcpServers: mcpServersRecord }, null, 2);
-}
-
-function parseJsonToServers(rawJson: string): McpServerConfig[] {
-  const parsed = JSON.parse(rawJson);
-  const mcpRecord = parsed.mcpServers || parsed;
-  const result: McpServerConfig[] = [];
-
-  for (const [key, val] of Object.entries(mcpRecord)) {
-    if (typeof val !== 'object' || val === null) continue;
-    const v = val as Record<string, unknown>;
-    result.push({
-      id: `mcp-${key.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`,
-      name: key,
-      transport: (v.transport as 'stdio' | 'sse') || 'stdio',
-      command: typeof v.command === 'string' ? v.command : 'npx',
-      args: Array.isArray(v.args) ? v.args.map(String) : [],
-      env: typeof v.env === 'object' && v.env !== null ? (v.env as Record<string, string>) : undefined,
-      status: 'connected',
-      latencyMs: Math.floor(Math.random() * 20) + 15,
-      tools: Array.isArray(v.tools) ? v.tools.map(String) : ['tool_call', 'query_context'],
-      boundAssistants: Array.isArray(v.boundAssistants) ? v.boundAssistants.map(String) : ['雷霆战机总导师'],
-      description: typeof v.description === 'string' ? v.description : undefined,
-    });
-  }
-  return result;
-}
-
 export default function ToolsSettingsPage() {
-  const [viewMode, setViewMode] = useState<'matrix' | 'json-edit' | 'json-preview'>('matrix');
-  const [mcpServers, setMcpServers] = useState<McpServerConfig[]>(DEFAULT_MCP_SERVERS);
+  const [mcpList, setMcpList] = useState<SingleMcpConfig[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.mcp_list');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return DEFAULT_MCP_LIST;
+  });
+
+  const [selectedMcpId, setSelectedMcpId] = useState<string>(DEFAULT_MCP_LIST[0]!.id);
+  const [editorTab, setEditorTab] = useState<'json-edit' | 'preview'>('json-edit');
+  const [jsonTextDraft, setJsonTextDraft] = useState<string>('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string>('');
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
 
-  // 内置工具绑定状态（记录哪些助手启用了内置工具）
-  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>(['雷霆战机总导师', '动手学动能定理总导师']);
-  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>([
-    '雷霆战机总导师',
-    '代码向导与答辩导师',
-    '动手学动能定理总导师',
-    '物理仿真向导',
-  ]);
+  // 内置工具开关状态
+  const [imageGenEnabled, setImageGenEnabled] = useState<boolean>(true);
+  const [sandboxEnabled, setSandboxEnabled] = useState<boolean>(true);
 
-  // JSON 编辑态
-  const [jsonText, setJsonText] = useState<string>(() => serversToJson(DEFAULT_MCP_SERVERS));
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [saveNotice, setSaveNotice] = useState<string>('');
-
-  // 加载系统真实助手用于矩阵行展示
+  // 挂载时加载助手信息
   useEffect(() => {
     fetchAdminAssistantConfigs()
       .then((res) => {
-        if (res && res.length > 0) {
-          setAssistants(res);
-        }
+        if (res && res.length > 0) setAssistants(res);
       })
       .catch(() => {});
   }, []);
 
-  // 格式化 JSON
+  // 持久化存储 MCP 列表
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(mcpList));
+      } catch {
+        // guard
+      }
+    }
+  }, [mcpList]);
+
+  // 当前选中的 MCP
+  const currentMcp = useMemo(() => {
+    return mcpList.find((m) => m.id === selectedMcpId) ?? mcpList[0]!;
+  }, [mcpList, selectedMcpId]);
+
+  // 当选中的 MCP 改变时，同步草稿文本
+  useEffect(() => {
+    if (currentMcp) {
+      setJsonTextDraft(currentMcp.rawJson);
+      setJsonError(null);
+    }
+  }, [currentMcp.id]);
+
+  // 格式化当前 MCP 的 JSON
   const handleFormatJson = () => {
     try {
-      const parsed = JSON.parse(jsonText);
-      setJsonText(JSON.stringify(parsed, null, 2));
+      const parsed = JSON.parse(jsonTextDraft);
+      setJsonTextDraft(JSON.stringify(parsed, null, 2));
       setJsonError(null);
     } catch (err) {
-      setJsonError((err as Error).message);
+      setJsonError('格式化失败: ' + (err as Error).message);
     }
   };
 
-  // 保存 JSON 配置并同步回服务器状态
-  const handleSaveJson = () => {
+  // 保存当前单 MCP 的 JSON 配置
+  const handleSaveCurrentMcp = () => {
     try {
-      const parsedServers = parseJsonToServers(jsonText);
-      setMcpServers(parsedServers);
+      const parsed = JSON.parse(jsonTextDraft);
+      const name = parsed.name || currentMcp.name;
+      const command = parsed.command || 'npx';
+      const args = Array.isArray(parsed.args) ? parsed.args.map(String) : [];
+      const env = typeof parsed.env === 'object' && parsed.env !== null ? parsed.env : undefined;
+      const tools = Array.isArray(parsed.tools) ? parsed.tools.map(String) : currentMcp.tools;
+      const boundAssistants = Array.isArray(parsed.boundAssistants) ? parsed.boundAssistants.map(String) : currentMcp.boundAssistants;
+      const description = typeof parsed.description === 'string' ? parsed.description : currentMcp.description;
+
+      const updatedMcp: SingleMcpConfig = {
+        ...currentMcp,
+        name,
+        command,
+        args,
+        env,
+        tools,
+        boundAssistants,
+        description,
+        rawJson: JSON.stringify(parsed, null, 2),
+      };
+
+      setMcpList((prev) => prev.map((m) => (m.id === currentMcp.id ? updatedMcp : m)));
       setJsonError(null);
-      setSaveNotice('JSON 配置已成功验证并保存至运行时！✔');
-      setTimeout(() => setSaveNotice(''), 2500);
+      setNotice(`MCP【${name}】的独立配置已成功校验并保存！✔`);
+      setTimeout(() => setNotice(''), 2500);
     } catch (err) {
-      setJsonError('JSON 解析失败: ' + (err as Error).message);
+      setJsonError('JSON 语法错误: ' + (err as Error).message);
     }
   };
 
-  // 恢复默认配置
-  const handleResetDefaultJson = () => {
-    if (!window.confirm('确定要恢复为推荐的默认 MCP 配置吗？')) return;
-    setMcpServers(DEFAULT_MCP_SERVERS);
-    setJsonText(serversToJson(DEFAULT_MCP_SERVERS));
-    setJsonError(null);
-    setSaveNotice('已重置为默认配置 ✔');
-    setTimeout(() => setSaveNotice(''), 2000);
+  // 添加新 MCP
+  const handleAddNewMcp = () => {
+    const rawName = prompt('请输入新 MCP 名称 (例如 filesystem, sqlite, github)：');
+    if (!rawName || !rawName.trim()) return;
+    const name = rawName.trim().toLowerCase();
+    const newId = `mcp-${name}-${Date.now().toString().slice(-4)}`;
+    const templateObj = {
+      name,
+      command: 'npx',
+      args: [`-y`, `@modelcontextprotocol/server-${name}`],
+      env: {},
+      transport: 'stdio',
+      description: `自定义 ${name} MCP 独立服务器配置`,
+      boundAssistants: ['雷霆战机总导师'],
+      tools: [`${name}_action`, `${name}_query`],
+    };
+    const newMcp: SingleMcpConfig = {
+      id: newId,
+      name,
+      command: 'npx',
+      args: [`-y`, `@modelcontextprotocol/server-${name}`],
+      transport: 'stdio',
+      status: 'connected',
+      latencyMs: 20,
+      tools: templateObj.tools,
+      boundAssistants: templateObj.boundAssistants,
+      description: templateObj.description,
+      rawJson: JSON.stringify(templateObj, null, 2),
+    };
+
+    setMcpList((prev) => [...prev, newMcp]);
+    setSelectedMcpId(newId);
+    setNotice(`已新建 MCP【${name}】并生成独立 JSON 模板！✔`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
-  // 切换助手对某个 MCP 的绑定
-  const toggleMcpForAssistant = (serverName: string, asstName: string) => {
-    setMcpServers((prev) => {
-      const next = prev.map((s) => {
-        if (s.name !== serverName) return s;
-        const exists = s.boundAssistants.includes(asstName);
-        const boundAssistants = exists
-          ? s.boundAssistants.filter((a) => a !== asstName)
-          : [...s.boundAssistants, asstName];
-        return { ...s, boundAssistants };
-      });
-      setJsonText(serversToJson(next));
-      return next;
-    });
+  // 删除当前 MCP
+  const handleDeleteCurrentMcp = (id: string, name: string) => {
+    if (mcpList.length <= 1) {
+      alert('至少保留一个 MCP 工具服务器！');
+      return;
+    }
+    if (!window.confirm(`确定要删除 MCP【${name}】配置吗？此操作不可逆。`)) return;
+    const next = mcpList.filter((m) => m.id !== id);
+    setMcpList(next);
+    setSelectedMcpId(next[0]!.id);
+    setNotice(`MCP【${name}】已成功移除！✔`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
-  // 切换助手对内置工具的绑定
-  const toggleBuiltinToolForAssistant = (toolType: 'imageGen' | 'sandbox', asstName: string) => {
-    if (toolType === 'imageGen') {
-      setImageGenAssistants((prev) =>
-        prev.includes(asstName) ? prev.filter((a) => a !== asstName) : [...prev, asstName]
+  // 绑定 / 解绑助手
+  const toggleAssistantBinding = (asstName: string) => {
+    try {
+      const parsed = JSON.parse(jsonTextDraft);
+      let list: string[] = Array.isArray(parsed.boundAssistants) ? parsed.boundAssistants : [];
+      if (list.includes(asstName)) {
+        list = list.filter((n) => n !== asstName);
+      } else {
+        list.push(asstName);
+      }
+      parsed.boundAssistants = list;
+      const formatted = JSON.stringify(parsed, null, 2);
+      setJsonTextDraft(formatted);
+
+      setMcpList((prev) =>
+        prev.map((m) =>
+          m.id === currentMcp.id
+            ? { ...m, boundAssistants: list, rawJson: formatted }
+            : m
+        )
       );
-    } else {
-      setSandboxAssistants((prev) =>
-        prev.includes(asstName) ? prev.filter((a) => a !== asstName) : [...prev, asstName]
-      );
+    } catch {
+      // json error guard
     }
   };
-
-  // 助手展示列表
-  const displayAssistants = useMemo(() => {
-    if (assistants.length > 0) {
-      return assistants.map((a) => ({
-        id: a.id,
-        name: a.name,
-        role: a.role || '导师助手',
-        avatar: a.avatar || '🤖',
-      }));
-    }
-    return [
-      { id: 'asst-1', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
-      { id: 'asst-2', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
-      { id: 'asst-3', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },
-      { id: 'asst-4', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️' },
-      { id: 'asst-5', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡' },
-      { id: 'asst-6', name: '物理概念教练', role: '公式推导教练', avatar: '🔬' },
-      { id: 'asst-7', name: '物理仿真向导', role: 'Python 数值仿真向导', avatar: '📊' },
-    ];
-  }, [assistants]);
 
   return (
-    <div className="admin-tools-page-view">
+    <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
       {/* 页头 */}
-      <div className="admin-tools-header">
+      <div className="admin-tools-header" style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h1 className="admin-tools-title">MCP 与工具能力中心</h1>
-            <p className="admin-tools-subtitle">
-              遵循统一 JSON 规范管理 MCP 服务器。通过能力绑定矩阵，以一键勾选方式为任意导师启用或停用专属 MCP 及内置沙箱工具。
+            <h1 className="admin-tools-title" style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px 0' }}>
+              工具与 MCP 配置中心
+            </h1>
+            <p className="admin-tools-subtitle" style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+              一个 MCP 一个独立 JSON，类似 Markdown 文件支持独立编辑与实时解析预览。支持为各个智能体绑定调用。
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div className="admin-segmented-tabs" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              className="settings-action-btn is-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#165dff',
+                color: '#fff',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+              onClick={handleAddNewMcp}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              添加 MCP
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {notice ? (
+        <div style={{ marginBottom: '16px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+          {notice}
+        </div>
+      ) : null}
+
+      {/* 模块一：MCP 服务器列表卡片选择与单 MCP JSON 工作台 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '18px', alignItems: 'start' }}>
+        {/* 左侧：MCP 列表与状态 */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>已配置 MCP 服务器 ({mcpList.length})</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>独立 JSON 管理</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {mcpList.map((mcp) => {
+              const isSelected = mcp.id === currentMcp.id;
+              return (
+                <div
+                  key={mcp.id}
+                  onClick={() => setSelectedMcpId(mcp.id)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: isSelected ? '#f0f7ff' : '#ffffff',
+                    border: isSelected ? '1px solid #165dff' : '1px solid #e2e8f0',
+                    transition: 'all 0.15s ease',
+                    position: 'relative',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: isSelected ? '#165dff' : '#64748b', fontSize: '12px' }}>▶</span>
+                      <strong style={{ fontSize: '13.5px', color: isSelected ? '#165dff' : '#0f172a' }}>{mcp.name}</strong>
+                    </div>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#16a34a', background: '#ecfdf5', padding: '1px 6px', borderRadius: '999px', fontWeight: 600 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {mcp.latencyMs ?? 20}ms
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                    {mcp.description || `${mcp.command} ${(mcp.args || []).join(' ')}`}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px', fontSize: '11px', color: '#94a3b8' }}>
+                    <span>{mcp.tools.length} 个工具</span>
+                    <span>·</span>
+                    <span>{mcp.boundAssistants.length} 个智能体绑定</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 右侧：单 MCP 详情、JSON 编辑与实时解析预览 */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          {/* 顶部标题与 Tab 栏 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>⚙️</span>
+              <div>
+                <strong style={{ fontSize: '15px', color: '#0f172a' }}>{currentMcp.name}.json</strong>
+                <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
+                  单 MCP 独立配置 (stdio / uvx / npx)
+                </span>
+              </div>
+            </div>
+
+            {/* 编辑与预览 Tab */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: '5px 12px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    background: editorTab === 'json-edit' ? '#ffffff' : 'transparent',
+                    fontWeight: editorTab === 'json-edit' ? 600 : 400,
+                    boxShadow: editorTab === 'json-edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: editorTab === 'json-edit' ? '#0f172a' : '#64748b',
+                  }}
+                  onClick={() => setEditorTab('json-edit')}
+                >
+                  📝 编辑 JSON
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: '5px 12px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    background: editorTab === 'preview' ? '#ffffff' : 'transparent',
+                    fontWeight: editorTab === 'preview' ? 600 : 400,
+                    boxShadow: editorTab === 'preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: editorTab === 'preview' ? '#0f172a' : '#64748b',
+                  }}
+                  onClick={() => setEditorTab('preview')}
+                >
+                  👁️ 实时预览
+                </button>
+              </div>
+
               <button
                 type="button"
-                className={`admin-sub-tab${viewMode === 'matrix' ? ' is-active' : ''}`}
+                onClick={() => handleDeleteCurrentMcp(currentMcp.id, currentMcp.name)}
+                title="删除此 MCP 配置"
                 style={{
-                  padding: '6px 14px',
-                  border: 'none',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
                   borderRadius: '6px',
-                  background: viewMode === 'matrix' ? '#ffffff' : 'transparent',
-                  fontWeight: viewMode === 'matrix' ? 600 : 400,
-                  boxShadow: viewMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  padding: '5px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  color: viewMode === 'matrix' ? '#0f172a' : '#64748b',
                 }}
-                onClick={() => setViewMode('matrix')}
               >
-                🔲 助手 × 工具/MCP 绑定矩阵
+                🗑️ 删除
               </button>
-              <button
-                type="button"
-                className={`admin-sub-tab${viewMode === 'json-edit' ? ' is-active' : ''}`}
-                style={{
-                  padding: '6px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: viewMode === 'json-edit' ? '#ffffff' : 'transparent',
-                  fontWeight: viewMode === 'json-edit' ? 600 : 400,
-                  boxShadow: viewMode === 'json-edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  color: viewMode === 'json-edit' ? '#0f172a' : '#64748b',
-                }}
-                onClick={() => {
-                  setJsonText(serversToJson(mcpServers));
+            </div>
+          </div>
+
+          {/* 错误提示 */}
+          {jsonError ? (
+            <div style={{ marginTop: '12px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '12.5px' }}>
+              ⚠️ {jsonError}
+            </div>
+          ) : null}
+
+          {/* 编辑模式 */}
+          {editorTab === 'json-edit' ? (
+            <div style={{ marginTop: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  支持配置 <code>command</code>, <code>args</code>, <code>env</code>, <code>tools</code>, <code>boundAssistants</code>
+                </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    style={{ fontSize: '12px', padding: '4px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: 'pointer' }}
+                    onClick={handleFormatJson}
+                  >
+                    ✨ 格式化 JSON
+                  </button>
+                  <button
+                    type="button"
+                    style={{ fontSize: '12px', padding: '4px 12px', border: 'none', borderRadius: '6px', background: '#165dff', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                    onClick={handleSaveCurrentMcp}
+                  >
+                    💾 保存该 MCP
+                  </button>
+                </div>
+              </div>
+
+              <textarea
+                value={jsonTextDraft}
+                onChange={(e) => {
+                  setJsonTextDraft(e.target.value);
                   setJsonError(null);
-                  setViewMode('json-edit');
                 }}
-              >
-                📝 JSON 配置编辑
-              </button>
-              <button
-                type="button"
-                className={`admin-sub-tab${viewMode === 'json-preview' ? ' is-active' : ''}`}
+                spellCheck={false}
                 style={{
-                  padding: '6px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: viewMode === 'json-preview' ? '#ffffff' : 'transparent',
-                  fontWeight: viewMode === 'json-preview' ? 600 : 400,
-                  boxShadow: viewMode === 'json-preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  color: viewMode === 'json-preview' ? '#0f172a' : '#64748b',
+                  width: '100%',
+                  height: '380px',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontSize: '13px',
+                  lineHeight: 1.5,
+                  padding: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
                 }}
-                onClick={() => {
-                  setJsonText(serversToJson(mcpServers));
-                  setViewMode('json-preview');
-                }}
-              >
-                👁️ JSON 实时预览
-              </button>
+              />
+            </div>
+          ) : (
+            /* 预览模式：结构化解析展示 */
+            <div style={{ marginTop: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>运行命令 (Command)</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace' }}>
+                    {currentMcp.command} {(currentMcp.args || []).join(' ')}
+                  </div>
+                </div>
+
+                <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>连接通道 & 延迟</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#16a34a', marginTop: '2px' }}>
+                    ● {currentMcp.transport ?? 'stdio'} 通道 ({currentMcp.latencyMs ?? 20}ms)
+                  </div>
+                </div>
+              </div>
+
+              {/* 暴露的工具列表 */}
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  暴露的 MCP 工具清单 ({currentMcp.tools.length})
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {currentMcp.tools.map((tool) => (
+                    <span key={tool} style={{ padding: '3px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '12px', color: '#1d4ed8', fontFamily: 'monospace' }}>
+                      ⚡ {tool}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 代码只读视图 */}
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  原始 JSON 配置视图
+                </div>
+                <pre style={{
+                  margin: 0,
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontFamily: 'ui-monospace, monospace',
+                  overflowX: 'auto',
+                  maxHeight: '260px',
+                  lineHeight: 1.5,
+                }}>
+                  {currentMcp.rawJson}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* 智能体快速授权绑定区 */}
+          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <strong style={{ fontSize: '13px', color: '#0f172a' }}>已授权使用此 MCP 的智能体</strong>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>点击标签一键切换绑定状态</span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {(assistants.length > 0 ? assistants.map((a) => a.name) : ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '原理教练', '评审导师']).map((asstName) => {
+                const isBound = currentMcp.boundAssistants.includes(asstName);
+                return (
+                  <button
+                    key={asstName}
+                    type="button"
+                    onClick={() => toggleAssistantBinding(asstName)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      background: isBound ? '#165dff' : '#f1f5f9',
+                      color: isBound ? '#ffffff' : '#475569',
+                      border: isBound ? '1px solid #165dff' : '1px solid #cbd5e1',
+                      fontWeight: isBound ? 600 : 400,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {isBound ? '✓' : '+'} {asstName}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
-      {saveNotice ? (
-        <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
-          {saveNotice}
-        </div>
-      ) : null}
-
-      {/* 视图 1：助手 × 工具/MCP 绑定矩阵 (行=助手, 列=MCP与工具) */}
-      {viewMode === 'matrix' ? (
-        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div>
-              <strong style={{ fontSize: '15px', color: '#0f172a' }}>能力分配矩阵 (Capability Matrix)</strong>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                行表示平台中的导师智能体，列表示已注册的 MCP 服务与内置沙箱。点击复选框即可即时为导师启用或停用该工具。
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="settings-action-btn is-primary"
-                onClick={() => {
-                  setSaveNotice('所有工具与助手绑定已成功同步至运行时！✔');
-                  setTimeout(() => setSaveNotice(''), 2500);
-                }}
-              >
-                💾 保存矩阵配置
-              </button>
-            </div>
-          </div>
-
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 16px', width: '220px', color: '#334155', fontWeight: 600 }}>
-                    导师智能体 (行)
-                  </th>
-                  {mcpServers.map((s) => (
-                    <th key={s.name} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                        <span>🔌 {s.name}</span>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>MCP ({s.tools.length} 工具)</span>
-                      </div>
-                    </th>
-                  ))}
-                  <th style={{ padding: '12px 14px', color: '#7c3aed', fontWeight: 600, textAlign: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                      <span>🎨 图像生成</span>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>内置 (ImageGen)</span>
-                    </div>
-                  </th>
-                  <th style={{ padding: '12px 14px', color: '#059669', fontWeight: 600, textAlign: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                      <span>📦 Python 沙箱</span>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>内置 (Sandbox)</span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayAssistants.map((asst, idx) => {
-                  const isEven = idx % 2 === 0;
-                  return (
-                    <tr key={asst.id} style={{ background: isEven ? '#ffffff' : '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '18px' }}>{asst.avatar}</span>
-                          <div>
-                            <strong style={{ color: '#0f172a', display: 'block' }}>{asst.name}</strong>
-                            <span style={{ fontSize: '12px', color: '#64748b' }}>{asst.role}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* MCP 列 */}
-                      {mcpServers.map((s) => {
-                        const isChecked = s.boundAssistants.includes(asst.name);
-                        return (
-                          <td key={s.name} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleMcpForAssistant(s.name, asst.name)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
-                              />
-                            </label>
-                          </td>
-                        );
-                      })}
-
-                      {/* 图像生成 列 */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: imageGenAssistants.includes(asst.name) ? '#f5f3ff' : 'transparent', border: imageGenAssistants.includes(asst.name) ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
-                          <input
-                            type="checkbox"
-                            checked={imageGenAssistants.includes(asst.name)}
-                            onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
-                          />
-                        </label>
-                      </td>
-
-                      {/* Python 沙箱 列 */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: sandboxAssistants.includes(asst.name) ? '#ecfdf5' : 'transparent', border: sandboxAssistants.includes(asst.name) ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
-                          <input
-                            type="checkbox"
-                            checked={sandboxAssistants.includes(asst.name)}
-                            onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
-                          />
-                        </label>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {/* 模块二：内置工具（图像生成与沙箱）卡片，严格对应 AdminUI/工具.png 视觉 */}
+      <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <strong style={{ fontSize: '15px', color: '#0f172a' }}>内置工具 (Builtin Tools)</strong>
+            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+              配置 MCP 服务器与内置工具（如图像生成与代码沙箱）。图像生成需先在“模型”页配置支持图像的模型后才能启用。
+            </p>
           </div>
         </div>
-      ) : null}
 
-      {/* 视图 2：JSON 源代码配置编辑 */}
-      {viewMode === 'json-edit' ? (
-        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* 图像生成 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
             <div>
-              <strong style={{ fontSize: '15px', color: '#0f172a' }}>mcpServers 统一配置编辑 (遵循 .pi / Codex / Claude Desktop 标准)</strong>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                在此直接编辑命令、参数、环境变量（含 GROK_API_KEY）与绑定列表。保存后直接生效并回写矩阵。
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="settings-action-btn" onClick={handleFormatJson}>
-                ✨ 格式化 JSON
-              </button>
-              <button type="button" className="settings-action-btn" onClick={handleResetDefaultJson}>
-                ↺ 恢复默认
-              </button>
-              <button type="button" className="settings-action-btn is-primary" onClick={handleSaveJson}>
-                💾 验证并保存到系统
-              </button>
-            </div>
-          </div>
-
-          {jsonError ? (
-            <div style={{ padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>
-              ⚠️ {jsonError}
-            </div>
-          ) : null}
-
-          <textarea
-            style={{
-              width: '100%',
-              height: '460px',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: '13px',
-              lineHeight: 1.5,
-              padding: '16px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: '#0f172a',
-              color: '#e2e8f0',
-              boxSizing: 'border-box',
-              resize: 'vertical',
-            }}
-            value={jsonText}
-            onChange={(e) => {
-              setJsonText(e.target.value);
-              setJsonError(null);
-            }}
-            spellCheck={false}
-          />
-        </div>
-      ) : null}
-
-      {/* 视图 3：JSON 配置预览与服务心跳 */}
-      {viewMode === 'json-preview' ? (
-        <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div>
-              <strong style={{ fontSize: '15px', color: '#0f172a' }}>运行态 MCP 配置只读预览与心跳状态</strong>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                当前系统挂载的所有 MCP 服务器已建立 stdio 通道，全部处于就绪状态。
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="settings-action-btn"
-                onClick={() => {
-                  navigator.clipboard.writeText(jsonText);
-                  alert('已复制 JSON 到剪贴板！');
-                }}
-              >
-                📋 复制完整 JSON
-              </button>
-            </div>
-          </div>
-
-          {/* 状态徽章条 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-            {mcpServers.map((s) => (
-              <div key={s.id} style={{ padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>{s.name}</strong>
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>{s.tools.length} 个工具暴露</span>
-                </div>
-                <span style={{ fontSize: '11px', background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>
-                  ● 在线 ({s.latencyMs ?? 20}ms)
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>图像生成 (ImageGen)</strong>
+                <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>平台原生</span>
               </div>
-            ))}
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                图像模型：暂无可用本地图像模型，<a href="/settings/models" style={{ color: '#165dff', textDecoration: 'none' }}>前往配置 ⓘ</a>
+              </div>
+            </div>
+
+            <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+              <input
+                type="checkbox"
+                checked={imageGenEnabled}
+                onChange={(e) => setImageGenEnabled(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: imageGenEnabled ? '#165dff' : '#cbd5e1',
+                  transition: '.3s',
+                  borderRadius: '22px',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '16px',
+                    width: '16px',
+                    left: imageGenEnabled ? '21px' : '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '.3s',
+                    borderRadius: '50%',
+                  }}
+                />
+              </span>
+            </label>
           </div>
 
-          <pre style={{
-            margin: 0,
-            background: '#0f172a',
-            color: '#e2e8f0',
-            padding: '16px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            fontFamily: 'ui-monospace, monospace',
-            overflowX: 'auto',
-            maxHeight: '440px',
-            lineHeight: 1.5,
-          }}>
-            {jsonText}
-          </pre>
+          {/* Python 代码沙箱 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Python 运行沙箱 (Sandbox)</strong>
+                <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#ecfdf5', color: '#047857', fontWeight: 600 }}>安全隔离</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                用于学生代码执行、物理公式数值仿真与游戏逻辑运行测试。
+              </div>
+            </div>
+
+            <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+              <input
+                type="checkbox"
+                checked={sandboxEnabled}
+                onChange={(e) => setSandboxEnabled(e.target.checked)}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: sandboxEnabled ? '#165dff' : '#cbd5e1',
+                  transition: '.3s',
+                  borderRadius: '22px',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '16px',
+                    width: '16px',
+                    left: sandboxEnabled ? '21px' : '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '.3s',
+                    borderRadius: '50%',
+                  }}
+                />
+              </span>
+            </label>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

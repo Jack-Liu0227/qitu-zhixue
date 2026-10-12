@@ -140,10 +140,10 @@ export default function CopilotPage() {
   // 1. 侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置
-  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'standard' | 'deep'>('deep');
+  // 2. 快捷设置状态：Thinking 强度（参考 Pi Agent: off | normal | high | max）、底座模型选择、运行权限设置（参考 Codex: read_only | workspace_write | full_access）
+  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
   const [selectedModel, setSelectedModel] = useState<string>('deepseek-r1');
-  const [runtimePermission, setRuntimePermission] = useState<'sandbox' | 'direct' | 'audit_required'>('sandbox');
+  const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -506,17 +506,18 @@ export default function CopilotPage() {
 
           {/* 快捷设置区 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Thinking 强度 */}
+            {/* Thinking 强度 (参考 Pi Agent: Off / Normal / High / Max) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 深度思考:</span>
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
               <select
                 value={thinkingStrength}
-                onChange={(e) => setThinkingStrength(e.target.value as 'off' | 'standard' | 'deep')}
+                onChange={(e) => setThinkingStrength(e.target.value as 'off' | 'normal' | 'high' | 'max')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
-                <option value="deep">深度思考 (Deep 推理)</option>
-                <option value="standard">标准思考 (Standard)</option>
-                <option value="off">关闭 (Direct)</option>
+                <option value="max">Max (极限深度思考)</option>
+                <option value="high">High (深度思考)</option>
+                <option value="normal">Normal (标准思考)</option>
+                <option value="off">Off (直接回复)</option>
               </select>
             </div>
 
@@ -535,17 +536,17 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            {/* 权限设置 */}
+            {/* 权限设置 (参考 Codex 3 个权限: Read Only / Workspace Write / Full Access) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
               <select
                 value={runtimePermission}
-                onChange={(e) => setRuntimePermission(e.target.value as 'sandbox' | 'direct' | 'audit_required')}
+                onChange={(e) => setRuntimePermission(e.target.value as 'read_only' | 'workspace_write' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
-                <option value="sandbox">沙箱隔离 (安全推荐)</option>
-                <option value="direct">直接写配置 (管理权限)</option>
-                <option value="audit_required">需要人工审计审批</option>
+                <option value="full_access">Full Access (完全访问 · 免确认写入)</option>
+                <option value="workspace_write">Workspace Write (工作区写入)</option>
+                <option value="read_only">Read Only (只读安全模式)</option>
               </select>
             </div>
 
