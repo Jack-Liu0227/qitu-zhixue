@@ -1759,6 +1759,33 @@ body {
   .admin-settings-metrics { gap: 20px; }
 }
 
+@media (max-width: 768px) {
+  .admin-console-shell {
+    flex-direction: column !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+  .admin-console-topbar {
+    padding: 12px 14px !important;
+  }
+  .admin-console-identity-name {
+    display: none !important;
+  }
+  .admin-console-content {
+    padding: 16px 14px 32px !important;
+  }
+  .admin-models-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-overview-stats,
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-console-page-title {
+    font-size: 1.1rem !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-console-content,
   .admin-console-content.qitu-page-transition > * > *,

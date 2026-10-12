@@ -53,6 +53,10 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
       const exp = value as { experimentId?: unknown; title?: unknown };
       return typeof exp.experimentId === 'string' && typeof exp.title === 'string';
     }
+    case 'circuit_experiment': {
+      const exp = value as { experimentId?: unknown; title?: unknown };
+      return typeof exp.experimentId === 'string' && typeof exp.title === 'string';
+    }
     default:
       return false;
   }

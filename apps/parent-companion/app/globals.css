@@ -1062,22 +1062,13 @@ body {
   .parent-feedback-toggle { width: 100%; justify-content: center; }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 768px) {
   .parent-shell { 
-    display: block;
+    flex-direction: column;
+    min-height: 100dvh;
   }
-  .qitu-sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    overflow: auto;
-  }
-  .qitu-sidebar-brand {
-    display: none;
-  }
-  .qitu-sidebar-nav {
-    flex-direction: row;
+  .parent-topbar {
+    padding: 12px 16px;
   }
   .kpi-grid,
   .message-summary {

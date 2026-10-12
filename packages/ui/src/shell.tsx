@@ -116,8 +116,16 @@ export function NavSidebar({
 }) {
   const brand = brandName ?? PRODUCT_NAME;
   return (
-    <aside className={collapsed ? 'qitu-sidebar is-collapsed' : 'qitu-sidebar'}>
-      <div className="qitu-sidebar-brand">
+    <>
+      {!collapsed && onToggleCollapse ? (
+        <div
+          className="qitu-sidebar-mobile-backdrop"
+          onClick={onToggleCollapse}
+          aria-hidden="true"
+        />
+      ) : null}
+      <aside className={collapsed ? 'qitu-sidebar is-collapsed' : 'qitu-sidebar is-expanded'}>
+        <div className="qitu-sidebar-brand">
         <span className="qitu-sidebar-logo">
           <BrandMark size={40} decorative />
         </span>
@@ -168,7 +176,8 @@ export function NavSidebar({
         </button>
       ) : null}
     </aside>
-  );
+  </>
+);
 }
 
 export function GreetingBanner({

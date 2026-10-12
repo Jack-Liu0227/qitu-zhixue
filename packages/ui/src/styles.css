@@ -721,35 +721,157 @@ summary:focus-visible,
   .qitu-student-content { padding: 20px 20px 40px; }
 }
 
-/* ---- 响应式：≤760px 单列布局 ---- */
-@media (max-width: 760px) {
-  .qitu-student-shell { flex-direction: column; }
-  .qitu-sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
+/* ---- 移动端抽屉与遮罩样式 ---- */
+.qitu-sidebar-mobile-backdrop {
+  display: none;
+}
+.qitu-mobile-menu-btn {
+  display: none;
+}
+
+@keyframes qitu-backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qitu-drawer-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* ---- 响应式：≤768px 单列布局与抽屉导航 ---- */
+@media (max-width: 768px) {
+  .qitu-mobile-menu-btn {
+    display: inline-flex !important;
     align-items: center;
-    gap: var(--qitu-space-sm);
-    padding: 12px 16px;
-    border-right: 0;
-    border-bottom: 1px solid var(--qitu-border);
-    overflow-x: auto;
-    overflow-y: hidden;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid var(--qitu-border);
+    color: var(--qitu-heading);
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(16, 42, 92, 0.05);
+    transition: all 0.15s ease;
   }
-  .qitu-sidebar-brand { display: none; }
-  .qitu-sidebar-toggle { display: none; }
-  .qitu-sidebar-nav { flex-direction: row; gap: 4px; }
-  .qitu-nav-item { padding: 8px 12px; }
-  .qitu-nav-item::before { display: none; }
-  .qitu-nav-label { display: inline; }
-  .qitu-student-banner-slot { padding: 16px 16px 0; }
-  .qitu-student-content { padding: 16px 16px 32px; }
-  .qitu-content { padding: 40px 20px; }
+  .qitu-mobile-menu-btn:hover {
+    background: var(--qitu-primary-soft);
+    color: var(--qitu-primary);
+    border-color: var(--qitu-primary-border);
+  }
+
+  .qitu-sidebar-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: qitu-backdrop-fade 0.2s ease;
+  }
+
+  .qitu-student-shell { flex-direction: column; min-height: 100dvh; }
+
+  /* 移动端折叠时完全脱离主视口流，释放 100% 空间给页面，不再显示挤压的 76px 细条 */
+  .qitu-sidebar.is-collapsed {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* 移动端展开时（抽屉模式）：优雅浮动滑出 */
+  .qitu-sidebar:not(.is-collapsed),
+  .qitu-sidebar.is-expanded {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    z-index: 999 !important;
+    width: min(290px, 82vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 24px 18px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 20px 48px -12px rgba(15, 23, 42, 0.28) !important;
+    border-right: 1px solid var(--qitu-border) !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    animation: qitu-drawer-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-sidebar-brand {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    padding: 0 8px 16px !important;
+    border-bottom: 1px solid var(--qitu-border) !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-sidebar-brand-text {
+    display: block !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-sidebar-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    margin-top: 14px !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-nav-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px !important;
+    gap: 10px !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-nav-label {
+    display: inline !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-nav-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-sidebar-toggle {
+    display: flex !important;
+    margin-top: auto !important;
+    padding: 10px 14px !important;
+    border-radius: var(--qitu-radius-md) !important;
+    justify-content: flex-start !important;
+  }
+
+  .qitu-sidebar:not(.is-collapsed) .qitu-sidebar-toggle-label {
+    display: inline !important;
+  }
+
+  .qitu-student-banner-slot { padding: 14px 14px 0 !important; }
+  .qitu-student-content { padding: 14px 14px 32px !important; }
+  .qitu-content { padding: 24px 14px !important; }
   .stats-grid,
-  .qitu-stat-triple { grid-template-columns: 1fr; }
-  .qitu-greeting-banner { flex-direction: column; align-items: flex-start; text-align: left; }
-  .qitu-greeting-mascot { align-self: flex-end; }
+  .qitu-stat-triple { grid-template-columns: 1fr !important; }
+  .qitu-greeting-banner { flex-direction: column !important; align-items: flex-start !important; text-align: left !important; padding: 16px !important; gap: 12px !important; }
+  .qitu-greeting-mascot { align-self: flex-end !important; }
 }
 
 /* ---- 统一页面转场 ----

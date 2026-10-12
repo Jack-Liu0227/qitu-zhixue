@@ -211,13 +211,28 @@ function toInternalPath(pathname: string): string {
  * shell's own header, next to the student's name, so the current student is
  * always identifiable and the control never overlaps the banner.
  */
-function StudentIdentityHeader() {
+function StudentIdentityHeader({ onToggleNav }: { onToggleNav?: () => void }) {
   const user = useCurrentUser();
   const name = user?.displayName?.trim() ?? '';
   const displayName = name.length > 0 ? name : '同学';
   return (
     <div className="qitu-student-identity">
       <div className="qitu-student-account">
+        {onToggleNav ? (
+          <button
+            type="button"
+            className="qitu-mobile-menu-btn"
+            onClick={onToggleNav}
+            aria-label="打开导航菜单"
+            title="导航菜单"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        ) : null}
         <Avatar name={displayName} size="sm" />
         <span className="qitu-student-account-text">
           <span className="qitu-student-account-label">当前学生</span>
@@ -277,7 +292,7 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
     <StudentShell
       navItems={NAV_ITEMS}
       activeHref={active ? `${BASE_PATH}${active.path}` : ''}
-      header={<StudentIdentityHeader />}
+      header={<StudentIdentityHeader onToggleNav={toggleNav} />}
       renderLink={renderNavLink}
       navCollapsed={navCollapsed}
       onToggleNav={toggleNav}

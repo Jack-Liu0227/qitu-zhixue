@@ -149,6 +149,12 @@ export const KINETIC_ENERGY_TURNS: TutorTurn[] = [
         summary: '控制变量法探究：调节小车质量 m 与位移 s，观察做功与动能增量的动态关联。',
       },
       {
+        kind: 'circuit_experiment',
+        experimentId: 'exp-circuit-ohm-series-parallel',
+        title: '动态电路与欧姆定律探究工作台',
+        summary: '动态串并联探究：调节电源电压 U 与电阻 R1、R2，观察电路电流、分压与灯泡亮度的动态变化。',
+      },
+      {
         kind: 'quiz',
         questionId: 'quiz-ke-gate',
         stem: '【门禁考核】如果一个质量为 2kg 的小球初始速度为 3m/s，受到合外力做功 16J 后，小球的末速度为多少？',

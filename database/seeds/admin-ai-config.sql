@@ -120,6 +120,30 @@ VALUES
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["project-review","growth-evaluation","error-analysis"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
+  ),
+  (
+    'profile-analyst-assistant', 'builtin', '学情画像分析助手', '📊',
+    '负责综合研判学生概念掌握度、尝试次数、认知盲区及五维能力雷达，支持班主任隔离读取。',
+    'Profile Analyst / 学情画像分析导师', true, 9,
+    'qwen-token-plan-cn', 'qwen3.8-flash', 0.5,
+    '你是学情画像分析导师。根据学生在各阶段的学习交互记录，客观评估其概念理解、逻辑推理、实践编码、反思复盘、迁移创新五维素养雷达。严格遵守班级数据隔离原则，只读取与研判当前班主任所属学生的学情档案。',
+    '["student-profiling","competency-radar","learning-gap-diagnosis"]'::jsonb,
+    '["student_profile_get","mastery_query","radar_synthesizer","competency_evaluation"]'::jsonb,
+    '[]'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["student-profiling","competency-radar","learning-gap-diagnosis"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
+  ),
+  (
+    'growth-trajectory-assistant', 'builtin', '成长轨迹生成助手', '📈',
+    '负责聚合关键里程碑成果、项目验收证书、答辩记录与导师评语，生成纵向成长时间轴与综合能力报告。',
+    'Growth Trajectory Mentor / 成长轨迹导师', true, 10,
+    'qwen-token-plan-cn', 'qwen3.8-flash', 0.6,
+    '你是成长轨迹生成导师。基于学生历次 PBL 项目的交付物与答辩评估，梳理阶段性突破与能力进阶关键事件，生成可审计的纵向成长时间轴与多维能力进阶趋势。',
+    '["timeline-generation","milestone-synthesis","growth-narrative"]'::jsonb,
+    '["growth_record_append","timeline_generator","milestone_auditor","narrative_summary"]'::jsonb,
+    '[]'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["timeline-generation","milestone-synthesis","growth-narrative"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   )
 ON CONFLICT (id) DO UPDATE SET
   source = EXCLUDED.source,

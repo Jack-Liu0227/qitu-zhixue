@@ -9,6 +9,7 @@ import { PblStageCard } from './PblStageCard';
 import { ArtifactFileCard } from './ArtifactFileCard';
 import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
+import { CircuitSimulationCard } from './CircuitSimulationCard';
 
 import { MarkdownMathView } from './MarkdownMathView';
 
@@ -111,6 +112,13 @@ export function TutorReplyBlockView({
         <KineticEnergyInteractiveCard
           disabled={disabled}
           onExperimentComplete={(summary) => onSelectOption?.('实验结论', summary)}
+        />
+      );
+    case 'circuit_experiment':
+      return (
+        <CircuitSimulationCard
+          disabled={disabled}
+          onExperimentComplete={(summary) => onSelectOption?.('电路探究结论', summary)}
         />
       );
     default: {

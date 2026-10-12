@@ -4,7 +4,7 @@ import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ParentFeedbackWidget } from './ParentFeedbackWidget';
 const BASE_PATH = '/parent';
 const specs = [
@@ -41,6 +41,8 @@ export function ParentShell({ children }: { children: ReactNode }) {
     return s.path === '/' ? p === '/' : p === s.path || p.startsWith(`${s.path}/`);
   });
   const user = useCurrentUser();
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <AuthGuard expectedRole="parent" redirectTo="/parent/login">
       <div className="parent-shell">
@@ -50,12 +52,29 @@ export function ParentShell({ children }: { children: ReactNode }) {
           items={items}
           activeHref={active ? `${BASE_PATH}${active.path === '/' ? '' : active.path}` : ''}
           renderLink={renderLink}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((p) => !p)}
         />
         <div className="parent-main">
           <header className="parent-topbar">
-            <div>
-              <p className="parent-eyebrow">PARENT COMPANION</p>
-              <h1>{active?.label ?? '家长陪伴中心'}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                className="qitu-mobile-menu-btn"
+                onClick={() => setCollapsed((p) => !p)}
+                aria-label="打开导航菜单"
+                title="导航菜单"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+              <div>
+                <p className="parent-eyebrow">PARENT COMPANION</p>
+                <h1>{active?.label ?? '家长陪伴中心'}</h1>
+              </div>
             </div>
             <div className="parent-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '演示家长'} size="sm" />

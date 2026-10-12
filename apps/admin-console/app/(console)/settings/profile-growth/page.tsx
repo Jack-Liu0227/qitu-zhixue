@@ -123,8 +123,8 @@ export default function ProfileGrowthSettingsPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
-  const [profileAssistantId, setProfileAssistantId] = useState('qitu-assistant');
-  const [growthAssistantId, setGrowthAssistantId] = useState('tutor-leader');
+  const [profileAssistantId, setProfileAssistantId] = useState('profile-analyst-assistant');
+  const [growthAssistantId, setGrowthAssistantId] = useState('growth-trajectory-assistant');
 
   useEffect(() => {
     fetchAvailableConfiguredModels()
@@ -519,9 +519,9 @@ export default function ProfileGrowthSettingsPage() {
                     ))
                   ) : (
                     <>
-                      <option value="qitu-assistant">启途智学管家 (默认学情分析)</option>
+                      <option value="profile-analyst-assistant">学情画像分析助手 (专任导师)</option>
+                      <option value="qitu-assistant">启途智学管家</option>
                       <option value="tutor-leader">启途总导师</option>
-                      <option value="kinetic-review-assessor">物理探究答辩与评审导师</option>
                     </>
                   )}
                 </select>
@@ -544,9 +544,9 @@ export default function ProfileGrowthSettingsPage() {
                     ))
                   ) : (
                     <>
-                      <option value="tutor-leader">启途总导师 (默认轨迹追踪)</option>
+                      <option value="growth-trajectory-assistant">成长轨迹生成助手 (专任导师)</option>
+                      <option value="tutor-leader">启途总导师</option>
                       <option value="qitu-assistant">启途智学管家</option>
-                      <option value="fighter-review-assessor">成果评审与答辩导师</option>
                     </>
                   )}
                 </select>

@@ -67,12 +67,20 @@ export function TeacherShell({ children }: { children: ReactNode }) {
 
   const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : null;
   const avatarInitial = user?.displayName.trim().charAt(0) || '—';
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
     <div className="qtx-app">
-      <aside className="qtx-sidebar">
+      {isMobileOpen ? (
+        <div
+          className="qtx-sidebar-backdrop"
+          onClick={() => setIsMobileOpen(false)}
+          aria-hidden="true"
+        />
+      ) : null}
+      <aside className={`qtx-sidebar ${isMobileOpen ? 'is-mobile-open' : 'is-mobile-closed'}`}>
         <div>
-          <Link href="/dashboard" className="qtx-brand">
+          <Link href="/dashboard" className="qtx-brand" onClick={() => setIsMobileOpen(false)}>
             <span className="qtx-brand-logo">
               <BrandMark size={40} decorative />
             </span>
@@ -94,6 +102,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={`qtx-nav-item${isActive(item.href) ? ' active' : ''}`}
+                  onClick={() => setIsMobileOpen(false)}
                 >
                   <Icon size={19} />
                   <span>{item.label}</span>
@@ -115,7 +124,21 @@ export function TeacherShell({ children }: { children: ReactNode }) {
 
       <div className="qtx-main">
         <header className="qtx-topbar">
-          <div className="qtx-user" aria-busy={!user}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              className="qtx-mobile-menu-btn"
+              onClick={() => setIsMobileOpen((prev) => !prev)}
+              aria-label="打开导航菜单"
+              title="导航菜单"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div className="qtx-user" aria-busy={!user}>
             {user ? (
               <>
                 <span className="qtx-avatar">{avatarInitial}</span>

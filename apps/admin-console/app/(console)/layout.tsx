@@ -146,9 +146,24 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
         />
         <div className="admin-console-main">
           <header className="admin-console-topbar">
-            <div className="admin-console-heading">
-              <p className="eyebrow">ADMIN CONSOLE</p>
-              <h2 className="admin-console-page-title">{pageTitle}</h2>
+            <div className="admin-console-heading" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                className="qitu-mobile-menu-btn"
+                onClick={() => setCollapsed((prev) => !prev)}
+                aria-label="打开导航菜单"
+                title="导航菜单"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+              <div>
+                <p className="eyebrow">ADMIN CONSOLE</p>
+                <h2 className="admin-console-page-title">{pageTitle}</h2>
+              </div>
             </div>
             <div className="admin-console-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '管理员'} size="sm" />

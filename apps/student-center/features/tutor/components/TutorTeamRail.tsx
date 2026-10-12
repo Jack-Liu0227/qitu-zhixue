@@ -23,6 +23,16 @@ export function TutorTeamRail({
   onToggleOpen,
 }: TutorTeamRailProps) {
   const [activeTab, setActiveTab] = useState<'progress' | 'members'>('progress');
+  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([2]));
+
+  const togglePhase = (id: number) => {
+    setExpandedPhases((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const leaderStatus: TeamNodeStatus = offline
     ? 'offline'
@@ -36,21 +46,131 @@ export function TutorTeamRail({
 
   const isKinetic = currentTeam === 'team-kinetic-energy';
 
-  // 项目里程碑列表（已完成绿色，未完成黄色）
-  const milestones = isKinetic
+  // 多层级项目规划树 (Phases -> Subtasks & Checkpoints)
+  const phasesHierarchy = isKinetic
     ? [
-        { id: 1, title: '探索与问题发现：受力与运动观察', status: 'completed' as const, phase: 'Stage 1' },
-        { id: 2, title: '原理推导：恒力做功与动能定理推导 (W=ΔEk)', status: 'current' as const, phase: 'Stage 2' },
-        { id: 3, title: '门禁核准：TheoryMastered 掌握度评估', status: 'pending' as const, phase: 'Gate' },
-        { id: 4, title: '实践验证：Python 物理数值仿真与绘图', status: 'pending' as const, phase: 'Stage 3' },
-        { id: 5, title: '结项答辩：能量守恒元认知反思报告', status: 'pending' as const, phase: 'Stage 4' },
+        {
+          id: 1,
+          title: '受力与运动生活情境观察',
+          status: 'completed' as const,
+          progress: 100,
+          phaseLabel: '阶段一：意图与情境',
+          description: '从汽车刹车距离与生活力学现象中提出探究假设。',
+          subTasks: [
+            { id: '1.1', title: '刹车距离与生活力学情境感知', status: 'completed' as const, duration: '15m', checkpoint: '情境反思已记录' },
+            { id: '1.2', title: '提出探究假设与控制变量方案', status: 'completed' as const, duration: '20m', checkpoint: '假设表单已归档' },
+          ],
+        },
+        {
+          id: 2,
+          title: '原理推导与动态仿真交互',
+          status: 'current' as const,
+          progress: 65,
+          phaseLabel: '阶段二：核心原理探究',
+          description: '推导动能定理 W=ΔEk，通过参数实验台观察做功与动能非线性变化。',
+          subTasks: [
+            { id: '2.1', title: '恒力做功与微元法理论推导 (W=F·s)', status: 'completed' as const, duration: '30m', checkpoint: 'KaTeX 彩色公式推导完成' },
+            { id: '2.2', title: '动能定理动态探究工作台参数测试', status: 'in_progress' as const, duration: '25m', checkpoint: '质量线性 vs 速度平方倍增对比中' },
+            { id: '2.3', title: '动态电路欧姆定律与串并联仿真实验', status: 'in_progress' as const, duration: '20m', checkpoint: '串联分压与并联分流模型交互就绪' },
+          ],
+        },
+        {
+          id: 3,
+          title: '门禁核准：TheoryMastered 概念评估',
+          status: 'pending' as const,
+          progress: 0,
+          phaseLabel: '强门禁审查',
+          description: '概念教练对能量转化、标量性质进行全面考评，阻断代码阶段抢跑。',
+          subTasks: [
+            { id: '3.1', title: '核心物理概念掌握度测试量规', status: 'locked' as const, duration: '25m', checkpoint: '需达标 85% 解锁实践' },
+            { id: '3.2', title: '苏格拉底导师答辩质询考核', status: 'locked' as const, duration: '15m', checkpoint: '概念盲区排除' },
+          ],
+        },
+        {
+          id: 4,
+          title: '工程实践：Python 物理数值仿真与绘图',
+          status: 'pending' as const,
+          progress: 0,
+          phaseLabel: '阶段三：算法与仿真',
+          description: '利用 RK4 数值微分算法仿真受阻运动，绘制动能拟合曲线。',
+          subTasks: [
+            { id: '4.1', title: '配置 Python RK4 数值积分物理沙箱', status: 'locked' as const, duration: '45m', checkpoint: '沙箱 Traceback 自检' },
+            { id: '4.2', title: '绘制功-动能增量实验拟合曲线', status: 'locked' as const, duration: '30m', checkpoint: '拟合误差控制在 5% 以内' },
+          ],
+        },
+        {
+          id: 5,
+          title: '结项答辩与综合素养归档',
+          status: 'pending' as const,
+          progress: 0,
+          phaseLabel: '阶段四：反思复盘',
+          description: '撰写能量守恒元认知反思报告，由评审导师生成核心素养档案。',
+          subTasks: [
+            { id: '5.1', title: '撰写物理探究与元认知反思报告', status: 'locked' as const, duration: '30m', checkpoint: '反思自评量规提交' },
+            { id: '5.2', title: '答辩质询与生成核心素养证书', status: 'locked' as const, duration: '20m', checkpoint: '终期成长雷达建档' },
+          ],
+        },
       ]
     : [
-        { id: 1, title: '游戏概念构思：玩法机制与素材规划', status: 'completed' as const, phase: 'Stage 1' },
-        { id: 2, title: '核心原理探索：游戏主循环与坐标刷新', status: 'completed' as const, phase: 'Stage 2' },
-        { id: 3, title: '几何算法攻坚：AABB 矩形碰撞检测', status: 'current' as const, phase: 'Stage 2' },
-        { id: 4, title: '门禁核准：TheoryMastered 掌握度评估', status: 'pending' as const, phase: 'Gate' },
-        { id: 5, title: '代码构建：Pygame 完整战机小游戏实现', status: 'pending' as const, phase: 'Stage 3' },
+        {
+          id: 1,
+          title: '游戏概念构思：玩法机制与素材规划',
+          status: 'completed' as const,
+          progress: 100,
+          phaseLabel: '阶段一：意图确认',
+          description: '确定飞机射击游戏基本玩法机制、敌机波次与武器系统。',
+          subTasks: [
+            { id: '1.1', title: '玩法机制设计与关卡规则制定', status: 'completed' as const, duration: '20m', checkpoint: '游戏规则确认' },
+            { id: '1.2', title: '游戏资源与精灵素材清单规划', status: 'completed' as const, duration: '20m', checkpoint: '资源目录初始化' },
+          ],
+        },
+        {
+          id: 2,
+          title: '核心原理探索：游戏主循环与坐标刷新',
+          status: 'completed' as const,
+          progress: 100,
+          phaseLabel: '阶段二：核心概念',
+          description: '理解游戏 60FPS 帧率循环、事件捕获与笛卡尔坐标系统。',
+          subTasks: [
+            { id: '2.1', title: 'Pygame 游戏主循环机制深度拆解', status: 'completed' as const, duration: '25m', checkpoint: '事件队列机制掌握' },
+            { id: '2.2', title: '精灵移动与笛卡尔坐标变换原理', status: 'completed' as const, duration: '25m', checkpoint: '坐标连续帧更新验证' },
+          ],
+        },
+        {
+          id: 3,
+          title: '几何算法攻坚：AABB 矩形碰撞检测',
+          status: 'current' as const,
+          progress: 50,
+          phaseLabel: '阶段二：碰撞算法',
+          description: '探索重叠区域区间交集算法，从几何数学推导到代码落地。',
+          subTasks: [
+            { id: '3.1', title: 'AABB 碰撞检测数学模型推导', status: 'completed' as const, duration: '30m', checkpoint: '区间不重叠反证法掌握' },
+            { id: '3.2', title: '子弹击中敌机碰撞算法代码实现', status: 'in_progress' as const, duration: '35m', checkpoint: '碰撞响应自检调试' },
+          ],
+        },
+        {
+          id: 4,
+          title: '门禁核准：TheoryMastered 掌握度评估',
+          status: 'pending' as const,
+          progress: 0,
+          phaseLabel: '强门禁审查',
+          description: '确保学生透彻理解游戏循环与碰撞几何原理，阻断代码盲目复制。',
+          subTasks: [
+            { id: '4.1', title: '游戏主循环与碰撞算法综合测评', status: 'locked' as const, duration: '20m', checkpoint: '理论掌握度 > 85%' },
+          ],
+        },
+        {
+          id: 5,
+          title: '代码构建：完整战机小游戏实现与答辩',
+          status: 'pending' as const,
+          progress: 0,
+          phaseLabel: '阶段三：工程与答辩',
+          description: '整合玩家飞机、敌机生成、生命值与计分系统，完成作品答辩。',
+          subTasks: [
+            { id: '5.1', title: '多文件结构重构与音效粒子特效', status: 'locked' as const, duration: '60m', checkpoint: '可执行游戏包交付' },
+            { id: '5.2', title: '作品结项答辩与能力画像更新', status: 'locked' as const, duration: '25m', checkpoint: '代码评审报告归档' },
+          ],
+        },
       ];
 
   if (!isOpen) {
@@ -186,78 +306,151 @@ export function TutorTeamRail({
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
         {activeTab === 'progress' ? (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>PBL 关键推进路线</span>
-              <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                当前阶段: 原理推导
-              </span>
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>PBL 项目推进总览</span>
+                <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                  总体进度: 45% (阶段 2 推进中)
+                </span>
+              </div>
+              <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{ width: '45%', height: '100%', background: 'linear-gradient(90deg, #2563eb, #7c3aed)', borderRadius: '999px' }} />
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {milestones.map((ms) => {
-                const isDone = ms.status === 'completed';
-                const isCur = ms.status === 'current';
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {phasesHierarchy.map((phase) => {
+                const isDone = phase.status === 'completed';
+                const isCur = phase.status === 'current';
+                const isExpanded = expandedPhases.has(phase.id);
+
                 return (
                   <div
-                    key={ms.id}
+                    key={phase.id}
                     style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
+                      borderRadius: '10px',
                       border: isCur ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
-                      background: isCur ? '#eff6ff' : isDone ? '#f0fdf4' : '#ffffff',
+                      background: isCur ? '#f8faff' : isDone ? '#f0fdf4' : '#ffffff',
+                      overflow: 'hidden',
+                      transition: 'all 0.15s ease',
                     }}
                   >
+                    {/* 阶段层级头部 (Level 2) - 点击展开/折叠 */}
                     <div
+                      onClick={() => togglePhase(phase.id)}
                       style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        background: isDone ? '#10b981' : isCur ? '#f59e0b' : '#e2e8f0',
-                        color: isDone || isCur ? '#ffffff' : '#64748b',
-                        flexShrink: 0,
-                        marginTop: '1px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        background: isCur ? '#eff6ff' : 'transparent',
                       }}
                     >
-                      {isDone ? '✓' : ms.id}
+                      <div
+                        style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: isDone ? '#10b981' : isCur ? '#3b82f6' : '#e2e8f0',
+                          color: isDone || isCur ? '#ffffff' : '#64748b',
+                          flexShrink: 0,
+                          marginTop: '1px',
+                        }}
+                      >
+                        {isDone ? '✓' : phase.id}
+                      </div>
+
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: isCur ? 700 : 600, color: isCur ? '#1d4ed8' : '#1e293b' }}>
+                            {phase.title}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>
+                            {isExpanded ? '▲' : '▼'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          <span style={{ fontSize: '10.5px', color: '#64748b' }}>{phase.phaseLabel}</span>
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              padding: '1px 6px',
+                              borderRadius: '999px',
+                              background: isDone ? '#dcfce7' : isCur ? '#fef3c7' : '#f1f5f9',
+                              color: isDone ? '#15803d' : isCur ? '#b45309' : '#64748b',
+                            }}
+                          >
+                            {isDone ? '● 已完成 100%' : isCur ? `● 推进中 ${phase.progress}%` : '○ 锁定'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: isCur ? 700 : 500, color: isCur ? '#1d4ed8' : '#1e293b' }}>
-                          {ms.title}
-                        </span>
+                    {/* 子任务与检查点层级 (Level 3 - 展开树) */}
+                    {isExpanded ? (
+                      <div
+                        style={{
+                          padding: '8px 12px 10px 38px',
+                          borderTop: '1px solid #f1f5f9',
+                          background: '#ffffff',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                        }}
+                      >
+                        <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+                          {phase.description}
+                        </p>
+
+                        {phase.subTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              background: task.status === 'in_progress' ? '#eff6ff' : '#f8fafc',
+                              border: task.status === 'in_progress' ? '1px solid #bfdbfe' : '1px solid #f1f5f9',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0 }}>
+                              <span style={{ fontSize: '12px' }}>
+                                {task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '⚡' : '🔒'}
+                              </span>
+                              <div>
+                                <div style={{ fontSize: '12px', fontWeight: task.status === 'in_progress' ? 700 : 500, color: task.status === 'in_progress' ? '#1d4ed8' : '#334155' }}>
+                                  {task.title}
+                                </div>
+                                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                                  检查点: {task.checkpoint}
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '10.5px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                              {task.duration}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>{ms.phase}</span>
-                        <span
-                          style={{
-                            fontSize: '10.5px',
-                            fontWeight: 600,
-                            padding: '1px 6px',
-                            borderRadius: '999px',
-                            background: isDone ? '#dcfce7' : isCur ? '#fef3c7' : '#f1f5f9',
-                            color: isDone ? '#15803d' : isCur ? '#b45309' : '#64748b',
-                          }}
-                        >
-                          {isDone ? '● 已完成' : isCur ? '● 正在推进' : '○ 待解锁'}
-                        </span>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
                 );
               })}
             </div>
 
             <div style={{ marginTop: '16px', padding: '10px 12px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', fontSize: '12px', color: '#854d0e' }}>
-              <strong>🔒 门禁规则锁定：</strong>
-              <div style={{ marginTop: '2px', color: '#713f12' }}>在完成动能定理或游戏主循环物理推导前，系统将阻断代码实践任务。</div>
+              <strong>🔒 门禁规则锁定 (TheoryMastered)：</strong>
+              <div style={{ marginTop: '2px', color: '#713f12' }}>在通过物理原理与数学推导考核前，系统将阻断代码实践任务，确保理论建构扎实。</div>
             </div>
           </div>
         ) : (

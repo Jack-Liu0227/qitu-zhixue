@@ -109,6 +109,15 @@ export type TutorReplyBlock =
       experimentId: string;
       title: string;
       summary?: string;
+    }
+  /**
+   * 动态电路欧姆定律与串并联参数探索实验卡片。
+   */
+  | {
+      kind: 'circuit_experiment';
+      experimentId: string;
+      title: string;
+      summary?: string;
     };
 
 /** 工具调用的生命周期状态。 */
