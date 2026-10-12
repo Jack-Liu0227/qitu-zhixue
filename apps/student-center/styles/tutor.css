@@ -1108,3 +1108,39 @@
   .qitu-tutor-grid-full-chat .qitu-composer { width: calc(100% - 16px); margin-top: -96px; }
   .qitu-tutor-grid-full-chat .qitu-composer-input { min-height: 96px; }
 }
+
+/* 统一桌面端与手机端自适应布局支持 */
+.qitu-tutor-workspace-layout {
+  display: flex;
+  gap: 16px;
+  padding: 0 24px 28px;
+  height: calc(100vh - 160px);
+  position: relative;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .qitu-tutor-workspace-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 140px);
+    padding: 0 12px 20px;
+    gap: 12px;
+  }
+
+  .qitu-tutor-workspace-layout > aside {
+    width: 100% !important;
+    max-height: 240px;
+  }
+
+  .qitu-tutor-header {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  .qitu-tutor-header-mascot {
+    width: 48px;
+    height: 48px;
+  }
+}
+

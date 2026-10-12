@@ -212,7 +212,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         onClearHistory={handleClearHistory}
       />
 
-      <div style={{ display: 'flex', gap: '16px', padding: '0 24px 28px', height: 'calc(100vh - 160px)', position: 'relative' }}>
+      <div className="qitu-tutor-workspace-layout">
         {/* 1. 左侧会话历史侧边栏（支持折叠） */}
         {isLeftCollapsed ? (
           <aside

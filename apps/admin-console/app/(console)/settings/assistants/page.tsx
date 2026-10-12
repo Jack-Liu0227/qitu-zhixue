@@ -385,9 +385,17 @@ export default function AdminAssistantsPage() {
                     </>
                   ) : null}
                 </select>
-                <span className="admin-config-hint">
-                  自动记忆只有在这个助手已经记录过一次选择后才会生效。
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                  <span className="admin-config-hint">
+                    来自 NewAPI / 模型供应商通道自动拉取的可用模型。
+                  </span>
+                  <a
+                    href="/settings/model-providers"
+                    style={{ fontSize: '11.5px', color: '#165dff', textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    管理模型通道与拉取 ↗
+                  </a>
+                </div>
               </div>
             </div>
 
