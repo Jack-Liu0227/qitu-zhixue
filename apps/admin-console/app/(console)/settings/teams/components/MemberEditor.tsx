@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AdminTeamMember, AdminAssistantConfig } from '@qitu/contracts';
-import type { ConfiguredModelItem } from '../../../../lib/api/configuredModels';
+import type { ConfiguredModelItem } from '../../../../../lib/api/configuredModels';
 
 interface MemberEditorProps {
   member: AdminTeamMember;
