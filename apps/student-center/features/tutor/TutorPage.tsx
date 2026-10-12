@@ -37,6 +37,14 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     }
     return [
       {
+        id: 'sess-new-1',
+        title: '全新探究对话',
+        teamId: 'team-kinetic-energy',
+        updatedAt: '刚刚',
+        isArchived: false,
+        turns: [],
+      },
+      {
         id: 'sess-kinetic-energy-1',
         title: '动能定理核心公式探究与推导 (PBL)',
         teamId: 'team-kinetic-energy',
@@ -54,7 +62,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       },
     ];
   });
-  const [activeSessionId, setActiveSessionId] = useState<string>('sess-kinetic-energy-1');
+  const [activeSessionId, setActiveSessionId] = useState<string>('sess-new-1');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -167,7 +175,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       teamId: currentTeam,
       updatedAt: '刚刚',
       isArchived: false,
-      turns: currentTeam === 'team-kinetic-energy' ? KINETIC_ENERGY_TURNS.slice(0, 1) : session.turns.slice(0, 1),
+      turns: [],
     };
     setSessions([newSess, ...sessions]);
     setActiveSessionId(newId);
@@ -204,6 +212,23 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   const handleSubmitMessage = async (content: string) => {
     if (!content.trim()) return;
+    const isFirstMessage = currentTurns.length === 0;
+    let chosenTeam = currentTeam;
+    let newTitle = activeSession.title;
+
+    if (isFirstMessage) {
+      if (content.includes('动能') || content.includes('物理') || content.includes('能量') || content.includes('做功')) {
+        chosenTeam = 'team-kinetic-energy';
+        newTitle = '动能定理核心公式探究与推导 (PBL)';
+      } else if (content.includes('战机') || content.includes('游戏') || content.includes('Pygame') || content.includes('编程')) {
+        chosenTeam = 'team-thunder-fighter';
+        newTitle = '雷霆战机游戏主循环与碰撞检测 (PBL)';
+      } else {
+        newTitle = `探究：${content.slice(0, 14)}`;
+      }
+      setCurrentTeam(chosenTeam);
+    }
+
     const studentTurn: TutorTurn = {
       turnId: `turn-stu-${Date.now()}`,
       role: 'student',
@@ -220,28 +245,40 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
-          ? { ...s, updatedAt: '刚刚', turns: newTurns }
+          ? {
+              ...s,
+              title: isFirstMessage ? newTitle : s.title,
+              teamId: isFirstMessage ? chosenTeam : s.teamId,
+              updatedAt: '刚刚',
+              turns: newTurns,
+            }
           : s
       )
     );
 
     // 智能体导师反馈
     setTimeout(() => {
-      const isKinetic = activeSession.teamId === 'team-kinetic-energy';
+      const isKinetic = chosenTeam === 'team-kinetic-energy';
       const assistantTurn: TutorTurn = {
         turnId: `turn-asst-${Date.now()}`,
         role: 'assistant',
         blocks: [
           {
             kind: 'think',
-            content: `导师正在基于自建 Agent SDK 评估学生观点：“${content}”。根据苏格拉底提问策略引导下一层深思。`,
+            content: isFirstMessage
+              ? `意图与兴趣确认完毕，已唤醒「${isKinetic ? '动能定理科研协作团队' : '雷霆战机创意开发团队'}」接管探究！`
+              : `导师正在基于自建 Agent SDK 评估学生观点：“${content}”。根据苏格拉底提问策略引导下一层深思。`,
             closed: true,
           },
           {
             kind: 'text',
-            text: isKinetic
-              ? `你提出了一个非常敏锐的物理视角：“${content}”！\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n当合外力做正功时，动能增加；当有摩擦阻力等负功时，动能会减少。你可以继续推导：如果是变力做功，我们应该使用什么数学思想进行求解？`
-              : `收到你的战机编程设计思路：“${content}”。在处理 Pygame 事件循环时，保证每一帧的状态更新与绘制分离是非常关键的架构习惯。`,
+            text: isFirstMessage
+              ? (isKinetic
+                ? `太棒了！已为你匹配「动能定理科研协作团队」，由物理学科大模型导师与仿真专家接管你的探究！\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n我们第一步先进行受力与做功思维推导：设想一辆质量为 m 的小车，在光滑水平面上受到一个恒定外力 F 的持续推动，在位移 s 的过程中，恒力 F 对小车做了多少功？它的定义公式是什么？`
+                : `太棒了！已为你匹配「雷霆战机创意开发团队」，由游戏架构导师接管你的探究！\n\n我们第一步先进行游戏主循环设计。在 Pygame 中，主循环由“事件监听、状态刷新、画面重绘”三部分构成。你打算先设计战机的键盘操控移动逻辑吗？`)
+              : (isKinetic
+                ? `你提出了一个非常敏锐的物理视角：“${content}”！\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n当合外力做正功时，动能增加；当有摩擦阻力等负功时，动能会减少。你可以继续推导：如果是变力做功，我们应该使用什么数学思想进行求解？`
+                : `收到你的战机编程设计思路：“${content}”。在处理 Pygame 事件循环时，保证每一帧的状态更新与绘制分离是非常关键的架构习惯。`),
           },
         ],
         hintLevel: null,
