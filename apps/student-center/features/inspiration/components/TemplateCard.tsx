@@ -58,21 +58,42 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
         <span>{template.outcome}</span>
       </p>
 
-      <footer className="qitu-inspiration-template-footer">
-        {readOnly ? (
-          <button type="button" className="qitu-button qitu-button-primary" disabled>
-            查看推荐项目
-          </button>
-        ) : (
-          <StudentLink
-            className="qitu-button qitu-button-primary"
-            href={templateExploreHref(template.id)}
-          >
-            查看推荐项目
-          </StudentLink>
-        )}
+      <footer className="qitu-inspiration-template-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
+        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+          {readOnly ? (
+            <button type="button" className="qitu-button qitu-button-primary" style={{ flex: 1 }} disabled>
+              查看详情
+            </button>
+          ) : (
+            <StudentLink
+              className="qitu-button qitu-button-primary"
+              style={{ flex: 1, textAlign: 'center' }}
+              href={templateExploreHref(template.id)}
+            >
+              查看详情
+            </StudentLink>
+          )}
+
+          {!readOnly && (
+            <StudentLink
+              className="qitu-button"
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                fontWeight: 600,
+                fontSize: '13px',
+              }}
+              href={`/student/tutor?explorePrompt=${encodeURIComponent(`我想探究《${template.title}》：${template.summary}`)}&team=${template.id.includes('thunder') ? 'team-thunder-fighter' : 'team-kinetic-energy'}`}
+            >
+              💬 与AI搭档开始
+            </StudentLink>
+          )}
+        </div>
         <span className="qitu-inspiration-template-hint">
-          {readOnly ? '恢复网络后再查看推荐详情' : '查看推荐详情并确认方向'}
+          {readOnly ? '恢复网络后再查看推荐详情' : '支持直接跳转与 AI 导师团队开始意图探讨'}
         </span>
       </footer>
     </article>

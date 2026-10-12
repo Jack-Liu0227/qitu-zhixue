@@ -172,7 +172,18 @@ const INITIAL_SKILLS: SkillItem[] = [
 ];
 
 export default function SkillsSettingsPage() {
-  const [skills, setSkills] = useState<SkillItem[]>(INITIAL_SKILLS);
+  const [skills, setSkills] = useState<SkillItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.skills_list');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return INITIAL_SKILLS;
+  });
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSkill, setEditingSkill] = useState<SkillItem | null>(null);
@@ -181,6 +192,15 @@ export default function SkillsSettingsPage() {
   const [selectedAsstToAdd, setSelectedAsstToAdd] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
   const [skillsViewMode, setSkillsViewMode] = useState<'list' | 'matrix'>('list');
+
+  // 持久化存储 skills
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(skills));
+      } catch {}
+    }
+  }, [skills]);
 
   // 文件管理状态
   const [selectedFileName, setSelectedFileName] = useState<string>('SKILL.md');
@@ -198,6 +218,7 @@ export default function SkillsSettingsPage() {
       }));
     }
     return [
+      { id: 'qitu-assistant', name: '启途智学关键', role: '平台管家', avatar: '🤖' },
       { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
       { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
       { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },
@@ -207,14 +228,14 @@ export default function SkillsSettingsPage() {
   }, [assistants]);
 
   // 矩阵中切换技能绑定
-  const toggleSkillForAssistant = (skillId: string, asstId: string) => {
+  const toggleSkillForAssistant = (skillId: string, asstIdentifier: string) => {
     setSkills((prev) =>
       prev.map((s) => {
         if (s.id !== skillId) return s;
-        const exists = s.boundAssistantIds.includes(asstId);
+        const exists = s.boundAssistantIds.includes(asstIdentifier);
         const boundAssistantIds = exists
-          ? s.boundAssistantIds.filter((id) => id !== asstId)
-          : [...s.boundAssistantIds, asstId];
+          ? s.boundAssistantIds.filter((id) => id !== asstIdentifier)
+          : [...s.boundAssistantIds, asstIdentifier];
         return { ...s, boundAssistantIds };
       })
     );
@@ -906,7 +927,9 @@ export default function SkillsSettingsPage() {
                       </td>
 
                       {skills.map((sk) => {
-                        const isChecked = sk.boundAssistantIds.includes(asst.id);
+                        const isChecked = sk.boundAssistantIds.some(
+                          (identifier) => identifier === asst.id || identifier === asst.name
+                        );
                         return (
                           <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
                             <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>

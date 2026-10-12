@@ -73,33 +73,60 @@
   gap: var(--qitu-space-lg);
 }
 
-/* 按可用宽度自动排 2~4 列，窄屏退化成单列。 */
+/* 推荐项目：4 个子窗口大小一致，最右边内容多支持向下滚动，具备 Steam 卡片沉浸式交互 */
 .qitu-inspiration-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--qitu-space-lg);
-  align-items: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
-/* ---------- 模板卡 ---------- */
+@media (max-width: 1200px) {
+  .qitu-inspiration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .qitu-inspiration-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 模板卡 (Steam 游戏卡片式高质感设计) ---------- */
 
 .qitu-inspiration-template-card {
   display: flex;
   flex-direction: column;
   gap: var(--qitu-space-md);
-  padding: var(--qitu-space-lg);
-  background: #fff;
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-lg);
-  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 18px;
+  background: #ffffff;
+  border: 1.5px solid var(--qitu-border, #e4ecf7);
+  border-radius: 14px;
+  min-height: 440px;
+  height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+  position: relative;
+  transition: box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qitu-inspiration-template-card::-webkit-scrollbar {
+  width: 5px;
+}
+
+.qitu-inspiration-template-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .qitu-inspiration-template-card:hover {
-  border-color: var(--qitu-primary-border, #bfdbfe);
-  box-shadow: 0 12px 28px rgba(16, 42, 92, 0.08);
-  transform: translateY(-3px);
+  border-color: #3b82f6;
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.12), 0 2px 6px rgba(0,0,0,0.04);
+  transform: translateY(-4px);
 }
 
 .qitu-inspiration-template-header {

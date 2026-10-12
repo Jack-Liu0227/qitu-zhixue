@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
+import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import type { AdminAssistantConfig } from '@qitu/contracts';
 
 interface DimensionSetting {
   id: string;
@@ -114,10 +117,31 @@ export default function ProfileGrowthSettingsPage() {
   const [headTeacherExclusive, setHeadTeacherExclusive] = useState(true);
   const [parentReadonlyAccess, setParentReadonlyAccess] = useState(true);
 
-  // AI 分析引擎
+  // AI 分析引擎与助手绑定
   const [profilingModel, setProfilingModel] = useState('gpt-4o');
   const [refreshCycle, setRefreshCycle] = useState('realtime-phase');
   const [saveNotice, setSaveNotice] = useState('');
+  const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
+  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [profileAssistantId, setProfileAssistantId] = useState('qitu-assistant');
+  const [growthAssistantId, setGrowthAssistantId] = useState('tutor-leader');
+
+  useEffect(() => {
+    fetchAvailableConfiguredModels()
+      .then((models) => {
+        if (models && models.length > 0) {
+          setAvailableModels(models);
+          setProfilingModel(models[0].modelId);
+        }
+      })
+      .catch(() => {});
+
+    fetchAdminAssistantConfigs()
+      .then((res) => {
+        if (res && res.length > 0) setAssistants(res);
+      })
+      .catch(() => {});
+  }, []);
 
   const totalWeight = dimensions.reduce((sum, d) => sum + (d.enabled ? d.weight : 0), 0);
 
@@ -454,17 +478,79 @@ export default function ProfileGrowthSettingsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                学情分析推理模型
+                学情分析推理模型 (从已配置模型库统一选择)
               </label>
               <select
                 value={profilingModel}
                 onChange={(e) => setProfilingModel(e.target.value)}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
               >
-                <option value="gpt-4o">GPT-4o (高精度多模态画像与思维链分析)</option>
-                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (深度教学反思与长文本分析)</option>
-                <option value="deepseek-r1">DeepSeek-R1 (第一性原理推理验证)</option>
+                {availableModels.length > 0 ? (
+                  availableModels.map((m) => (
+                    <option key={m.id} value={m.modelId}>
+                      {m.name || m.modelId} ({m.provider})
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="gpt-4o">GPT-4o (高精度多模态画像与思维链分析)</option>
+                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (深度教学反思与长文本分析)</option>
+                    <option value="deepseek-r1">DeepSeek-R1 (第一性原理推理验证)</option>
+                  </>
+                )}
               </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  学情画像专任分析助手
+                </label>
+                <select
+                  value={profileAssistantId}
+                  onChange={(e) => setProfileAssistantId(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
+                >
+                  {assistants.length > 0 ? (
+                    assistants.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.role || '智能导师'})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="qitu-assistant">启途智学关键 (默认学情分析)</option>
+                      <option value="tutor-leader">启途总导师</option>
+                      <option value="kinetic-review-assessor">物理探究答辩与评审导师</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  成长轨迹专任追踪助手
+                </label>
+                <select
+                  value={growthAssistantId}
+                  onChange={(e) => setGrowthAssistantId(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
+                >
+                  {assistants.length > 0 ? (
+                    assistants.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.role || '智能导师'})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="tutor-leader">启途总导师 (默认轨迹追踪)</option>
+                      <option value="qitu-assistant">启途智学关键</option>
+                      <option value="fighter-review-assessor">成果评审与答辩导师</option>
+                    </>
+                  )}
+                </select>
+              </div>
             </div>
 
             <div>

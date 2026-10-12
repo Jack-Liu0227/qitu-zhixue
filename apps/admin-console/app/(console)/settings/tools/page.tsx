@@ -186,16 +186,25 @@ export default function ToolsSettingsPage() {
   const [notice, setNotice] = useState<string>('');
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
 
-  // 内置工具绑定的助手列表
-  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>([
-    '雷霆战机总导师',
-    '代码向导与答辩导师',
-  ]);
-  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>([
-    '雷霆战机总导师',
-    '动手学动能定理总导师',
-    '代码向导与答辩导师',
-  ]);
+  // 内置工具绑定的助手列表（支持 localStorage 读写）
+  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.imagegen_assistants');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return ['雷霆战机总导师', '代码向导与答辩导师', '战机架构与代码向导'];
+  });
+  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.sandbox_assistants');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '战机架构与代码向导', '动能定理仿真与实验向导'];
+  });
 
   // 内置工具全局总开关状态
   const [imageGenEnabled, setImageGenEnabled] = useState<boolean>(true);
@@ -210,12 +219,23 @@ export default function ToolsSettingsPage() {
       .catch(() => {});
   }, []);
 
+  // 持久化存储内置工具绑定
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.imagegen_assistants', JSON.stringify(imageGenAssistants));
+        localStorage.setItem('qitu.admin.sandbox_assistants', JSON.stringify(sandboxAssistants));
+      } catch {}
+    }
+  }, [imageGenAssistants, sandboxAssistants]);
+
   // 当前可用的助手角色列表（优先使用后台真实数据，保底提供默认战队导师）
   const activeAssistantsList = useMemo(() => {
     if (assistants.length > 0) {
       return assistants.map((a) => ({ id: a.id, name: a.name, role: a.role }));
     }
     return [
+      { id: 'qitu-assistant', name: '启途智学关键', role: '平台管家' },
       { id: 'asst-thunder', name: '雷霆战机总导师', role: 'Leader' },
       { id: 'asst-kinetic', name: '动手学动能定理总导师', role: 'Leader' },
       { id: 'asst-coder', name: '代码向导与答辩导师', role: 'Teammate' },
@@ -664,7 +684,9 @@ export default function ToolsSettingsPage() {
 
                       {/* MCP 列 */}
                       {mcpList.map((m) => {
-                        const isChecked = m.boundAssistants.includes(asst.name);
+                        const isChecked = m.boundAssistants.some(
+                          (identifier) => identifier === asst.name || identifier === asst.id
+                        );
                         return (
                           <td key={m.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
                             <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
@@ -681,26 +703,40 @@ export default function ToolsSettingsPage() {
 
                       {/* 图像生成 列 */}
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: imageGenAssistants.includes(asst.name) ? '#f5f3ff' : 'transparent', border: imageGenAssistants.includes(asst.name) ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
-                          <input
-                            type="checkbox"
-                            checked={imageGenAssistants.includes(asst.name)}
-                            onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
-                          />
-                        </label>
+                        {(() => {
+                          const isChecked = imageGenAssistants.some(
+                            (identifier) => identifier === asst.name || identifier === asst.id
+                          );
+                          return (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#f5f3ff' : 'transparent', border: isChecked ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
+                              />
+                            </label>
+                          );
+                        })()}
                       </td>
 
                       {/* Python 沙箱 列 */}
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: sandboxAssistants.includes(asst.name) ? '#ecfdf5' : 'transparent', border: sandboxAssistants.includes(asst.name) ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
-                          <input
-                            type="checkbox"
-                            checked={sandboxAssistants.includes(asst.name)}
-                            onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
-                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
-                          />
-                        </label>
+                        {(() => {
+                          const isChecked = sandboxAssistants.some(
+                            (identifier) => identifier === asst.name || identifier === asst.id
+                          );
+                          return (
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#ecfdf5' : 'transparent', border: isChecked ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
+                              />
+                            </label>
+                          );
+                        })()}
                       </td>
 
                       {/* 批量操作 */}

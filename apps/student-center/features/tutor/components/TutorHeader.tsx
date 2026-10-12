@@ -32,29 +32,6 @@ export function TutorHeader({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        {/* 团队切换 */}
-        <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '4px 8px', gap: '6px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>导师团队:</span>
-          <select
-            value={currentTeam}
-            onChange={(e) => onTeamChange(e.target.value as 'team-thunder-fighter' | 'team-kinetic-energy')}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#0f172a',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <option value="team-kinetic-energy">⚡ 动手学动能定理导师团队 (PBL)</option>
-            <option value="team-thunder-fighter">🕹️ 雷霆战机小游戏导师团队 (PBL)</option>
-          </select>
-        </div>
-
-
-
         <button
           onClick={onClearHistory}
           title="清空当前会话历史"

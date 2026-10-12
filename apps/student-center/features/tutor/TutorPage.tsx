@@ -67,6 +67,67 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     }
   }, [sessions]);
 
+  // 支持从灵感空间携带 explorePrompt 或 team/project 跳转进入直接提问
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const explorePrompt = params.get('explorePrompt');
+    const teamParam = params.get('team');
+    if (explorePrompt) {
+      const newId = `sess-explore-${Date.now()}`;
+      const chosenTeam = teamParam === 'team-thunder-fighter' ? 'team-thunder-fighter' : 'team-kinetic-energy';
+      const userTurn: TutorTurn = {
+        turnId: `turn-stu-${Date.now()}`,
+        role: 'student',
+        blocks: [{ kind: 'text', text: explorePrompt }],
+        hintLevel: null,
+        stageBefore: null,
+        stageAfter: null,
+        seq: 1,
+        createdAt: new Date().toISOString(),
+        modality: 'text',
+      };
+      const assistantGreetingTurn: TutorTurn = {
+        turnId: `turn-asst-${Date.now()}`,
+        role: 'assistant',
+        blocks: [
+          {
+            kind: 'think',
+            content: `学生从灵感空间跳转接入课题：“${explorePrompt}”。已匹配专属导师团队，开始进行兴趣与意图确认。`,
+            closed: true,
+          },
+          {
+            kind: 'text',
+            text: `你好！我看到你对「${explorePrompt}」很感兴趣！\n\n我们将采用 PBL 项目式探究模式带你一步步探索。在开始之前，我想先了解一下：你希望通过这个项目最终制作出什么样的成果（例如物理仿真程序、游戏作品或实验演示）？`,
+          },
+        ],
+        hintLevel: null,
+        stageBefore: 'theory_learning',
+        stageAfter: 'theory_learning',
+        seq: 2,
+        createdAt: new Date().toISOString(),
+        modality: 'text',
+      };
+
+      const newSession: ChatSessionItem = {
+        id: newId,
+        title: `探索：${explorePrompt.slice(0, 16)}...`,
+        teamId: chosenTeam,
+        updatedAt: '刚刚',
+        isArchived: false,
+        turns: [userTurn, assistantGreetingTurn],
+      };
+
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveSessionId(newId);
+      setCurrentTeam(chosenTeam);
+      setIsRightOpen(true); // 打开右侧项目进度与团队
+
+      // 清除 URL query 避免刷新重复追加
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   if (session.permissionDenied) {
     return (
       <div className="qitu-tutor-page">
