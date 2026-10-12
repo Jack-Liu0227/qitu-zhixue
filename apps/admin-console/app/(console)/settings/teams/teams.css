@@ -1,0 +1,564 @@
+/* 团队卡片样式 */
+.team-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.team-card:hover {
+  border-color: #165dff;
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.1);
+}
+
+.team-card.is-active {
+  border-color: #165dff;
+  background: #f0f5ff;
+}
+
+.team-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.team-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #165dff 0%, #0e42d2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.team-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.team-card-meta {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.team-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.is-ready {
+  background: #e8f5e9;
+  color: #00b42a;
+}
+
+.team-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.team-card-action-btn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: background 0.2s ease;
+}
+
+.team-card-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 团队详情视图样式 */
+.team-detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.team-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.team-back-btn {
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.team-back-btn:hover {
+  border-color: #165dff;
+  color: #165dff;
+}
+
+.team-detail-title h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.team-detail-title p {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.team-detail-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.team-tab {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.team-tab.is-active {
+  color: #165dff;
+  border-bottom-color: #165dff;
+}
+
+.team-tab:hover:not(.is-active) {
+  color: #1e293b;
+}
+
+/* 成员面板样式 */
+.members-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.members-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.members-panel-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.add-member-btn {
+  padding: 8px 16px;
+  border: 1px solid #165dff;
+  background: #165dff;
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.add-member-btn:hover {
+  background: #0e42d2;
+  border-color: #0e42d2;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.member-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.member-card:hover {
+  border-color: #165dff;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.1);
+}
+
+.member-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.member-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leader-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #fff3e0;
+  color: #ff7d00;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.member-card-role {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.member-card-status {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.member-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.member-action-btn {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.member-action-btn:hover {
+  border-color: #165dff;
+  background: #f0f5ff;
+}
+
+.member-action-btn.is-danger:hover {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+/* 角色说明面板样式 */
+.role-explanation-panel {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.role-explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.role-icon {
+  font-size: 20px;
+}
+
+.role-explanation-header strong {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.role-explanation-intro {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+.role-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.role-card {
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.role-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.role-emoji {
+  font-size: 18px;
+}
+
+.role-card-title strong {
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.role-card-desc {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 指引面板样式 */
+.guide-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guide-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guide-panel-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.guide-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guide-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.guide-tab {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.guide-tab.is-active {
+  background: #ffffff;
+  color: #165dff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.edit-guide-btn,
+.save-guide-btn,
+.cancel-guide-btn {
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.save-guide-btn {
+  background: #165dff;
+  border-color: #165dff;
+  color: #ffffff;
+}
+
+.save-guide-btn:hover {
+  background: #0e42d2;
+}
+
+.guide-panel-content {
+  min-height: 400px;
+}
+
+.guide-editor {
+  width: 100%;
+  min-height: 400px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.guide-preview {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  min-height: 400px;
+  overflow-y: auto;
+}
+
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1e293b;
+}
+
+.markdown-body h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.markdown-body h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 24px 0 12px 0;
+}
+
+.markdown-body h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 10px 0;
+}
+
+.markdown-body p {
+  margin: 0 0 12px 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 12px 0;
+  padding-left: 24px;
+}
+
+.markdown-body li {
+  margin: 4px 0;
+}
+
+.markdown-body code {
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.9em;
+}
+
+.markdown-body pre {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .team-card {
+    padding: 16px;
+  }
+  
+  .team-detail-view {
+    padding: 16px;
+  }
+  
+  .role-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .member-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .member-card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .guide-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
