@@ -52,8 +52,9 @@ export default function AdminTeamsPage() {
       setAllAssistants(assistantsData);
       setConfiguredModels(modelsData);
 
-      if (teamsData.length > 0 && !activeTeamId) {
-        setActiveTeamId(teamsData[0].id);
+      const firstTeam = teamsData[0];
+      if (firstTeam !== undefined && !activeTeamId) {
+        setActiveTeamId(firstTeam.id);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('团队数据加载失败'));
