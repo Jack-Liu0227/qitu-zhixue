@@ -63,7 +63,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       },
     ];
   });
-  const [activeSessionId, setActiveSessionId] = useState<string>('sess-new-1');
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    if (projectId === 'proj-kinetic-energy') return 'sess-kinetic-energy-1';
+    if (projectId === 'proj-thunder-fighter') return 'sess-thunder-fighter-1';
+    return 'sess-new-1';
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
