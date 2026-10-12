@@ -657,7 +657,7 @@ export default function CopilotPage() {
                 🤖
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                启途管家正在利用 <strong>{selectedModel}</strong>（{thinkingStrength === 'deep' ? '深度推理' : '标准推理'}）执行分析...
+                启途管家正在利用 <strong>{selectedModel}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
               </div>
             </div>
           )}
