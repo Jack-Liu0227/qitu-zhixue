@@ -156,6 +156,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
                 </span>
               </>
             )}
+            </div>
           </div>
           {/*
             通知入口没有对应的后端数据源，这里不摆放一个点了没反应的铃铛；
