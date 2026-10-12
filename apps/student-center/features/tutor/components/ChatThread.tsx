@@ -33,6 +33,7 @@ export function ChatThread({
   onRetry,
   onReconnect,
   onSelectOption,
+  subAgentHud,
   composer,
 }: {
   turns: TutorTurn[];
