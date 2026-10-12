@@ -546,8 +546,8 @@ export default function CopilotPage() {
               >
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
-                    <option key={m.id} value={m.modelId}>
-                      {m.name || m.modelId} ({m.provider})
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.id}
                     </option>
                   ))
                 ) : (

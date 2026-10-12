@@ -131,7 +131,7 @@ export default function ProfileGrowthSettingsPage() {
       .then((models) => {
         if (models && models.length > 0) {
           setAvailableModels(models);
-          setProfilingModel(models[0].modelId);
+          setProfilingModel(models[0].id);
         }
       })
       .catch(() => {});
@@ -487,8 +487,8 @@ export default function ProfileGrowthSettingsPage() {
               >
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
-                    <option key={m.id} value={m.modelId}>
-                      {m.name || m.modelId} ({m.provider})
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.id}
                     </option>
                   ))
                 ) : (
