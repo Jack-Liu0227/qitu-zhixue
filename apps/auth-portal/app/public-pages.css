@@ -105,6 +105,33 @@
   align-items: end;
 }
 
+/* Editorial heroes use the full shell for the heading, then two balanced columns. */
+.public-hero--wide {
+  padding-top: clamp(54px, 6vw, 88px);
+  padding-bottom: clamp(64px, 7vw, 96px);
+}
+
+.public-hero-heading {
+  margin-bottom: 32px;
+}
+
+.public-hero--wide .public-hero-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
+}
+
+.public-hero--wide .public-title {
+  max-width: none;
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  letter-spacing: -.045em;
+  line-height: 1.18;
+}
+
+.public-hero--wide .public-lead {
+  margin-top: 0;
+}
+
 .public-kicker {
   display: inline-flex;
   align-items: center;
@@ -339,6 +366,10 @@
 }
 
 @media (max-width: 800px) {
+  .public-hero--wide .public-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
   .public-hero-grid,
   .public-contact-grid {
     grid-template-columns: 1fr;

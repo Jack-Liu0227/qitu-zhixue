@@ -12,15 +12,17 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <PublicPageShell>
-      <section className="public-hero">
+      <section className="public-hero public-hero--wide">
+        <div className="home-shell public-hero-heading">
+          <p className="public-kicker">
+            <Icon name="verified" size={16} /> About QITU
+          </p>
+          <h1 className="public-title">
+            让好奇心有方向，<span>让每个作品留下成长证据。</span>
+          </h1>
+        </div>
         <div className="home-shell public-hero-grid">
           <div>
-            <p className="public-kicker">
-              <Icon name="verified" size={16} /> About QITU
-            </p>
-            <h1 className="public-title">
-              让好奇心有方向，<span>让每个作品留下成长证据。</span>
-            </h1>
             <p className="public-lead">
               启途智学科技有限公司由西安交通大学团队研发，面向中小学提供项目式 AI 学习支持。
               我们把问题、思考、实践和复盘连接起来，让学习者在真实问题中建立能力。

@@ -13,11 +13,13 @@ export const metadata: Metadata = {
 export default function CompetenciesPage() {
   return (
     <PublicPageShell>
-      <section className="public-hero">
+      <section className="public-hero public-hero--wide">
+        <div className="home-shell public-hero-heading">
+          <p className="public-kicker"><Icon name="target" size={16} /> Competency compass</p>
+          <h1 className="public-title">不只看结果，<span>也看孩子如何走到这里。</span></h1>
+        </div>
         <div className="home-shell public-hero-grid">
           <div>
-            <p className="public-kicker"><Icon name="target" size={16} /> Competency compass</p>
-            <h1 className="public-title">不只看结果，<span>也看孩子如何走到这里。</span></h1>
             <p className="public-lead">
               能力不是一张一次性测出来的分数表，而是在提出问题、修改判断、协作表达和完成作品的过程中逐渐显现的成长轨迹。
             </p>
