@@ -49,8 +49,28 @@ export function ChatBubble({
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
       <div className="qitu-chat-role">
-        <Avatar name={isStudent ? '我' : '启'} size="sm" />
-        <span>{isStudent ? '我' : 'AI搭档'}</span>
+        <Avatar
+          name={isStudent ? '我' : (turn.author?.name ? turn.author.name.slice(0, 1) : '启')}
+          size="sm"
+        />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontWeight: 600 }}>{isStudent ? '我' : (turn.author?.name ?? '启途智学助手')}</span>
+          {!isStudent && turn.author?.role && (
+            <span
+              style={{
+                fontSize: '10.5px',
+                fontWeight: 600,
+                padding: '1px 6px',
+                borderRadius: '4px',
+                background: turn.author.color ? `${turn.author.color}15` : '#eff6ff',
+                color: turn.author.color ?? '#2563eb',
+                border: `1px solid ${turn.author.color ? `${turn.author.color}40` : '#bfdbfe'}`,
+              }}
+            >
+              {turn.author.role}
+            </span>
+          )}
+        </div>
       </div>
       <div className="qitu-chat-body">
         {!isStudent ? (

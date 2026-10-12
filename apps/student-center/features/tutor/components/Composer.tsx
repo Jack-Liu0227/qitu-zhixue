@@ -64,6 +64,7 @@ export function Composer({
   const [interimTranscript, setInterimTranscript] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const voiceBaseRef = useRef('');
@@ -76,12 +77,17 @@ export function Composer({
   }, [draft, mode]);
 
   useEffect(() => {
+    const hasWebSpeech =
+      typeof window !== 'undefined' &&
+      Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
     const recorderReady =
       typeof window !== 'undefined' &&
       typeof MediaRecorder !== 'undefined' &&
       typeof navigator.mediaDevices?.getUserMedia === 'function' &&
       getRecorderMimeType().length > 0;
-    setVoiceSupported(recorderReady);
+
+    setVoiceSupported(hasWebSpeech || recorderReady);
     if (!recorderReady) return;
     let disposed = false;
     void fetch('/api/v1/voice/capabilities', { credentials: 'same-origin', cache: 'no-store' })
@@ -112,6 +118,12 @@ export function Composer({
   }, []);
 
   const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
     const recorder = recorderRef.current;
     if (recorder === null) {
       releaseStream();
@@ -143,7 +155,76 @@ export function Composer({
   );
 
   const startListening = useCallback(async () => {
-    if (disabled || submitting || offline || voiceModel === null) return;
+    if (disabled || submitting || offline) return;
+    setVoiceError(null);
+    setInterimTranscript('');
+    voiceBaseRef.current = draft.trim();
+    setVoiceStatus('starting');
+
+    // 优先使用浏览器原生高灵敏度 Web Speech API 实时识别
+    const SpeechRecognition =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'zh-CN';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          setVoiceStatus('recording');
+          setInterimTranscript('正在聆听你的想法...');
+        };
+
+        recognition.onresult = (event: any) => {
+          let accumulatedFinal = '';
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              accumulatedFinal += transcript;
+            } else {
+              interim += transcript;
+            }
+          }
+          if (accumulatedFinal) {
+            const combined = voiceBaseRef.current ? `${voiceBaseRef.current} ${accumulatedFinal}` : accumulatedFinal;
+            onDraftChange(combined);
+            voiceBaseRef.current = combined;
+          }
+          if (interim) {
+            setInterimTranscript(interim);
+          }
+        };
+
+        recognition.onerror = (e: any) => {
+          if (e.error !== 'no-speech') {
+            setVoiceError(`语音提示: ${e.error || '未检测到清晰语音'}`);
+          }
+        };
+
+        recognition.onend = () => {
+          setVoiceStatus('idle');
+          setInterimTranscript('');
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+        return;
+      } catch {
+        // Fall back to MediaRecorder
+      }
+    }
+
+    if (voiceModel === null) {
+      setVoiceStatus('error');
+      setVoiceError('未检测到语音转写服务，请直接键入文字');
+      return;
+    }
     if (typeof navigator.mediaDevices?.getUserMedia !== 'function' || typeof MediaRecorder === 'undefined') {
       setVoiceError('当前设备不支持录音，请改用文字输入');
       setVoiceStatus('error');
@@ -209,7 +290,10 @@ export function Composer({
   }, [offline, stopListening, voiceStatus]);
 
   const isRecording = voiceStatus === 'starting' || voiceStatus === 'recording';
-  const voiceUnavailable = voiceSupported === false || voiceModel === null;
+  const hasWebSpeech =
+    typeof window !== 'undefined' &&
+    Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+  const voiceUnavailable = !hasWebSpeech && (voiceSupported === false || voiceModel === null);
   const trimmedLength = draft.trim().length;
   const canSend = trimmedLength > 0 && !submitting && !disabled && !offline;
 

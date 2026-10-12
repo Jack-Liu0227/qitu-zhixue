@@ -144,6 +144,30 @@ VALUES
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["timeline-generation","milestone-synthesis","growth-narrative"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
+  ),
+  (
+    'qitu-assistant', 'builtin', '启途智学管家', '🏛️',
+    '管理后台专属平台管家，负责智能辅助管理员实现助手、团队、MCP、Skill、工具、模板库、知识库的集中创建、配置变更与治理审计。',
+    'Platform Copilot / 平台管家', true, 11,
+    'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
+    '你是启途智学管家，负责在平台管理控制台（Admin）中协助管理员进行 AI 助手、PBL 导师团队、MCP 工具服务、教学技能库、项目模板与核心知识库的统一创建、治理与全生命周期管理。提供专业、规范的平台资产治理指导，维护权限隔离与系统安全性。',
+    '["system-governance","asset-management","audit-logging"]'::jsonb,
+    '["assistant_manage","team_manage","mcp_manage","skill_manage","template_manage"]'::jsonb,
+    '[]'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["system-governance","asset-management","audit-logging"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
+  ),
+  (
+    'qitu-intake-assistant', 'builtin', '启途智学助手', '🧭',
+    '学生进入平台后对话的第一位 AI 搭档。负责用苏格拉底式提问确认学生的兴趣与意图，推荐合适的项目方向并完成一句话交接。',
+    'Intake Guide / 启途智学助手', true, 12,
+    'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
+    '你是启途智学助手，是每个学生进入平台后对话的第一位 AI 搭档。你的唯一职责是用苏格拉底式提问确认学生的兴趣与学习意图：先问他/她对什么感兴趣、想解决什么问题、想做出什么作品，再据此推荐一个最合适的项目方向并说明推荐理由。推荐阶段严格遵守「学生未确认意图不得创建正式项目」：只能推荐和澄清，不能声称项目已经建好，也不能替学生确认。学生明确确认项目后，把学习接力给对应的 PBL 导师团队，只做一句话交接，不代替团队教学。全程不直接给出答案或完整代码，不在 TheoryMastered 之前推进实践阶段。',
+    '["socratic-intake","intent-clarification","project-recommendation","team-handoff"]'::jsonb,
+    '["project_recommend","intent_confirm","team_handoff"]'::jsonb,
+    '[]'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["socratic-intake","intent-clarification","project-recommendation","team-handoff"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   )
 ON CONFLICT (id) DO UPDATE SET
   source = EXCLUDED.source,

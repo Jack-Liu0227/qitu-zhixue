@@ -83,7 +83,7 @@ export class AuthController {
   }
 
   private readEmail(body: LoginBody): string {
-    if (typeof body.email !== 'string' || !body.email.trim()) {
+    if (!body || typeof body.email !== 'string' || !body.email.trim()) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: '请输入邮箱和密码',
@@ -93,7 +93,7 @@ export class AuthController {
   }
 
   private readPassword(body: LoginBody): string {
-    if (typeof body.password !== 'string' || body.password.length === 0) {
+    if (!body || typeof body.password !== 'string' || body.password.length === 0) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: '请输入邮箱和密码',

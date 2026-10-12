@@ -136,7 +136,78 @@ export default function CopilotPage() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('sess-default');
   const [inputMessage, setInputMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceInterim, setVoiceInterim] = useState('');
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+      setVoiceInterim('');
+      return;
+    }
+
+    const SpeechRecognition =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecognition) {
+      alert('当前浏览器暂不支持原生语音输入，请使用 Chrome/Edge 浏览器或直接打字输入。');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'zh-CN';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceInterim('正在聆听中...');
+      };
+
+      recognition.onresult = (event: any) => {
+        let final = '';
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+        if (final) {
+          setInputMessage((prev) => (prev ? `${prev} ${final}` : final));
+        }
+        setVoiceInterim(interim || final);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setVoiceInterim('');
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setVoiceInterim('');
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch {
+      alert('麦克风启动失败，请检查浏览器权限');
+      setIsListening(false);
+    }
+  };
 
   // 1. 侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -691,6 +762,13 @@ export default function CopilotPage() {
 
         {/* 底部输入框 */}
         <div style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+          {isListening && (
+            <div style={{ marginBottom: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }} />
+              <strong>正在语音输入中：</strong>
+              <span>{voiceInterim || '请对麦克风说话，语音将自动转写为文字...'}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
             <textarea
               value={inputMessage}
@@ -701,19 +779,44 @@ export default function CopilotPage() {
                   handleSendMessage();
                 }
               }}
-              placeholder="对启途管家说：例如“帮我为高中物理力学创建一个探究小队”或“配置一个新的 GrokSearch MCP”..."
+              placeholder="对启途智学管家说：例如“帮我为高中物理力学创建一个探究小队”或“配置一个新的 GrokSearch MCP”..."
               style={{
                 flex: 1,
                 minHeight: '44px',
                 maxHeight: '120px',
                 padding: '10px 14px',
                 borderRadius: '8px',
-                border: '1px solid #cbd5e1',
+                border: isListening ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
                 fontSize: '13.5px',
                 resize: 'none',
                 outline: 'none',
+                transition: 'border-color 0.2s',
               }}
             />
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              title={isListening ? '点击停止语音输入' : '开启语音输入'}
+              style={{
+                height: '44px',
+                padding: '0 14px',
+                background: isListening ? '#ef4444' : '#f1f5f9',
+                color: isListening ? '#ffffff' : '#334155',
+                border: '1px solid',
+                borderColor: isListening ? '#ef4444' : '#cbd5e1',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>{isListening ? '⏹️' : '🎙️'}</span>
+              <span>{isListening ? '停止' : '语音'}</span>
+            </button>
             <button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isGenerating}
@@ -733,7 +836,7 @@ export default function CopilotPage() {
             </button>
           </div>
           <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>
-            快捷操作：Enter 发送，Shift + Enter 换行。支持 Markdown、LaTeX 公式、工具调用与配置自动化生成。
+            快捷操作：Enter 发送，Shift + Enter 换行。支持麦克风语音转写、Markdown、LaTeX 公式、工具调用与配置自动化生成。
           </div>
         </div>
       </div>

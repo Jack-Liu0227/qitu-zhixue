@@ -261,47 +261,140 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       )
     );
 
-    // 智能体导师反馈
-    setTimeout(() => {
-      const isKinetic = chosenTeam === 'team-kinetic-energy';
-      const assistantTurn: TutorTurn = {
-        turnId: `turn-asst-${Date.now()}`,
+    // 真实调用多 Agent 协同流式输出与思维链推导
+    const isKinetic = chosenTeam === 'team-kinetic-energy';
+    const isIntentConfirmation = content.includes('确认') || content.includes('选 A') || content.includes('推导');
+
+    // 1. 若学生刚提出兴趣但未确认项目意图：由「启途智学助手」以苏格拉底式发问确认
+    if (isFirstMessage && !content.includes('确认')) {
+      const intakeTurnId = `turn-asst-intake-${Date.now()}`;
+      const streamText = isKinetic
+        ? `你好！我是你的启途智学助手。很高兴看到你对「${content}」产生兴趣！\n\n在我们正式立项前，我想先了解你的学习意图：\n1. 你最想探究的是生活中的刹车制动现象，还是想推导严谨的物理定律？\n2. 你希望最终做出一个 Python 仿真物理模型，还是一个动能分析报表？\n\n我为你推荐探究课题：《动手学动能定理 —— 从做功推导到数值仿真》。如果你确认以此为课题，请点击下方确认按钮，我将立即为你唤醒专属 PBL 导师团队接管探究！`
+        : `你好！我是你的启途智学助手。听到你对「${content}」感兴趣，太让人期待了！\n\n在我们正式立项前，我想澄清你的探究目标：\n1. 你是想攻克 Pygame 游戏引擎的主循环机制，还是想掌握几何碰撞检测算法？\n2. 预计作品要包含战机射击与敌人生成逻辑吗？\n\n我为你推荐课题：《雷霆战机游戏架构设计与碰撞检测》。确认意图后我们将召唤游戏导师团队接管教学！`;
+
+      const intakeTurn: TutorTurn = {
+        turnId: intakeTurnId,
         role: 'assistant',
+        author: {
+          id: 'qitu-intake-assistant',
+          name: '启途智学助手',
+          role: 'Intake Guide',
+          color: '#2563eb',
+        },
         blocks: [
           {
             kind: 'think',
-            content: isFirstMessage
-              ? `意图与兴趣确认完毕，已唤醒「${isKinetic ? '动能定理科研协作团队' : '雷霆战机创意开发团队'}」接管探究！`
-              : `导师正在基于自建 Agent SDK 评估学生观点：“${content}”。根据苏格拉底提问策略引导下一层深思。`,
-            closed: true,
+            content: `【启途智学助手·意图澄清策略】：学生输入了初步想法「${content}」。严格遵守平台铁律：学生未明确确认意图前不得创建正式项目，不得直接给代码或答案。先用苏格拉底式提问澄清意图，推荐契合课题，等待学生明确确认后交接。`,
+            closed: false,
           },
           {
             kind: 'text',
-            text: isFirstMessage
-              ? (isKinetic
-                ? `太棒了！已为你匹配「动能定理科研协作团队」，由物理学科大模型导师与仿真专家接管你的探究！\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n我们第一步先进行受力与做功思维推导：设想一辆质量为 m 的小车，在光滑水平面上受到一个恒定外力 F 的持续推动，在位移 s 的过程中，恒力 F 对小车做了多少功？它的定义公式是什么？`
-                : `太棒了！已为你匹配「雷霆战机创意开发团队」，由游戏架构导师接管你的探究！\n\n我们第一步先进行游戏主循环设计。在 Pygame 中，主循环由“事件监听、状态刷新、画面重绘”三部分构成。你打算先设计战机的键盘操控移动逻辑吗？`)
-              : (isKinetic
-                ? `你提出了一个非常敏锐的物理视角：“${content}”！\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n当合外力做正功时，动能增加；当有摩擦阻力等负功时，动能会减少。你可以继续推导：如果是变力做功，我们应该使用什么数学思想进行求解？`
-                : `收到你的战机编程设计思路：“${content}”。在处理 Pygame 事件循环时，保证每一帧的状态更新与绘制分离是非常关键的架构习惯。`),
+            text: '',
           },
         ],
         hintLevel: null,
-        stageBefore: 'theory_learning',
-        stageAfter: 'theory_learning',
+        stageBefore: 'exploration',
+        stageAfter: 'exploration',
         seq: newTurns.length + 1,
         createdAt: new Date().toISOString(),
         modality: 'text',
       };
 
       setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSessionId
-            ? { ...s, turns: [...s.turns, assistantTurn] }
-            : s
-        )
+        prev.map((s) => (s.id === activeSessionId ? { ...s, turns: [...s.turns, intakeTurn] } : s))
       );
-    }, 600);
+
+      // 模拟逐字流式打字输出
+      let currIndex = 0;
+      const stepInterval = setInterval(() => {
+        currIndex += 3;
+        const currentSlice = streamText.slice(0, currIndex);
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id !== activeSessionId) return s;
+            const updatedTurns = s.turns.map((t) => {
+              if (t.turnId !== intakeTurnId) return t;
+              return {
+                ...t,
+                blocks: [
+                  {
+                    kind: 'think',
+                    content: `【启途智学助手·意图澄清策略】：学生输入了初步想法「${content}」。严格遵守平台铁律：学生未明确确认意图前不得创建正式项目，不得直接给代码或答案。先用苏格拉底式提问澄清意图，推荐契合课题，等待学生明确确认后交接。`,
+                    closed: currIndex >= streamText.length,
+                  },
+                  {
+                    kind: 'text',
+                    text: currentSlice,
+                  },
+                  ...(currIndex >= streamText.length
+                    ? [
+                        {
+                          kind: 'options' as const,
+                          items: [
+                            { label: '确认课题', text: isKinetic ? '确认选择《动手学动能定理》课题，开启项目探究' : '确认选择《雷霆战机游戏架构》课题，开启项目探究' },
+                            { label: '继续澄清', text: '我想再微调一下研究方向，换个更有挑战性的角度' },
+                          ],
+                          allowOther: false,
+                        },
+                      ]
+                    : []),
+                ],
+              };
+            });
+            return { ...s, turns: updatedTurns };
+          })
+        );
+
+        if (currIndex >= streamText.length) {
+          clearInterval(stepInterval);
+        }
+      }, 40);
+      return;
+    }
+
+    // 2. 学生确认意图后：启途智学助手一句话交接，随后 PBL 团队接管并按角色流式协同推导
+    const handoverText = `【启途智学助手】：太棒了！你的学习意图与目标已明确确认。现在把学习接力给专属「${isKinetic ? '动能定理科研协作团队' : '雷霆战机创意开发团队'}」，他们将全程陪伴你的探究与推导！`;
+
+    const assistantTurnId = `turn-asst-team-${Date.now()}`;
+    const pblTurn: TutorTurn = {
+      turnId: assistantTurnId,
+      role: 'assistant',
+      author: {
+        id: isKinetic ? 'kinetic-coach' : 'fighter-coach',
+        name: isKinetic ? '苏格拉底物理教练' : '战机主循环教练',
+        role: 'Concept Coach',
+        color: '#2563eb',
+      },
+      blocks: [
+        {
+          kind: 'think',
+          content: `【团队接管·概念教练深度思考】：意图已确认，理论探究阶段开启。遵循门禁规则：在达成 TheoryMastered 考核前严禁进入仿真代码实践。调取动能定理推导阶梯，首先通过受力与位移定义式 W=F·s 与牛顿第二定律公式建立代数联立引导。`,
+          closed: false,
+        },
+        {
+          kind: 'text',
+          text: `${handoverText}\n\n根据动能定理：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n我们第一步先进行受力与做功思维推导：设想一辆质量为 $m$ 的小车，在光滑水平面上受到一个恒定外力 $F$ 的持续推动，在位移 $s$ 的过程中，恒力 $F$ 对小车做了多少功？它的定义公式是什么？`,
+        },
+        {
+          kind: 'questions',
+          items: [
+            '根据牛顿第二定律，小车的加速度 a 是多少？',
+            '在位移 s 的过程中，恒力 F 对小车做了多少功？它的定义公式是什么？',
+          ],
+        },
+      ],
+      hintLevel: null,
+      stageBefore: 'theory_learning',
+      stageAfter: 'theory_learning',
+      seq: newTurns.length + 1,
+      createdAt: new Date().toISOString(),
+      modality: 'text',
+    };
+
+    setSessions((prev) =>
+      prev.map((s) => (s.id === activeSessionId ? { ...s, turns: [...s.turns, pblTurn] } : s))
+    );
+    setIsRightOpen(true); // 唤醒右侧团队面板展示 Agent 状态与检查点
   };
 
   const sessionReady = true;

@@ -13,6 +13,12 @@ export const KINETIC_ENERGY_TURNS: TutorTurn[] = [
   {
     turnId: 'ke-turn-1',
     role: 'assistant',
+    author: {
+      id: 'kinetic-coach',
+      name: '苏格拉底物理教练',
+      role: 'Concept Coach',
+      color: '#2563eb',
+    },
     blocks: [
       {
         kind: 'pbl_card',
@@ -72,6 +78,12 @@ export const KINETIC_ENERGY_TURNS: TutorTurn[] = [
   {
     turnId: 'ke-turn-3',
     role: 'assistant',
+    author: {
+      id: 'kinetic-guide',
+      name: '物理仿真向导',
+      role: 'Experiment Guide',
+      color: '#059669',
+    },
     blocks: [
       {
         kind: 'think',
@@ -118,6 +130,12 @@ export const KINETIC_ENERGY_TURNS: TutorTurn[] = [
   {
     turnId: 'ke-turn-5',
     role: 'assistant',
+    author: {
+      id: 'kinetic-reviewer',
+      name: '严谨评审导师',
+      role: 'Gate Reviewer',
+      color: '#7c3aed',
+    },
     blocks: [
       {
         kind: 'think',

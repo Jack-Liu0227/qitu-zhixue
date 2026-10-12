@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
-import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import { fetchAdminAssistantConfigs, updatePersistedAssistant } from '../../../../lib/api/assistants';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
 interface DimensionSetting {
@@ -145,12 +145,30 @@ export default function ProfileGrowthSettingsPage() {
 
   const totalWeight = dimensions.reduce((sum, d) => sum + (d.enabled ? d.weight : 0), 0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (totalWeight !== 100) {
       alert(`当前启用的维度权重之和为 ${totalWeight}%，请调整至 100% 后保存。`);
       return;
     }
-    setSaveNotice('学情画像与成长轨迹配置已成功保存并同步全平台！✔');
+    try {
+      const pAst = assistants.find((a) => a.id === profileAssistantId);
+      if (pAst && pAst.modelId) {
+        await updatePersistedAssistant(profileAssistantId, {
+          modelId: pAst.modelId,
+          modelProviderId: pAst.modelProviderId || 'qwen-token-plan-cn',
+        }).catch(() => {});
+      }
+      const gAst = assistants.find((a) => a.id === growthAssistantId);
+      if (gAst && gAst.modelId) {
+        await updatePersistedAssistant(growthAssistantId, {
+          modelId: gAst.modelId,
+          modelProviderId: gAst.modelProviderId || 'qwen-token-plan-cn',
+        }).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+    setSaveNotice('学情画像与成长轨迹专任助手及模型配置已成功保存并同步全平台！✔');
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
@@ -476,40 +494,21 @@ export default function ProfileGrowthSettingsPage() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div>
-              <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                学情分析推理模型 (从已配置模型库统一选择)
-              </label>
-              <select
-                value={profilingModel}
-                onChange={(e) => setProfilingModel(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
-              >
-                {availableModels.length > 0 ? (
-                  availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.id}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="gpt-4o">GPT-4o (高精度多模态画像与思维链分析)</option>
-                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (深度教学反思与长文本分析)</option>
-                    <option value="deepseek-r1">DeepSeek-R1 (第一性原理推理验证)</option>
-                  </>
-                )}
-              </select>
+            {/* 提示：模型配置在助手里实现 */}
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+              💡 <strong>模型配置规范：</strong>学情画像与成长轨迹分析模型直接在专任助手中配置与托管，无需在系统级独立指定。选择专任助手后，下方直接联动该助手的专属大语言模型。
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+              {/* 学情画像专任助手及模型 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   学情画像专任分析助手
                 </label>
                 <select
                   value={profileAssistantId}
                   onChange={(e) => setProfileAssistantId(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
                   {assistants.length > 0 ? (
                     assistants.map((a) => (
@@ -525,16 +524,48 @@ export default function ProfileGrowthSettingsPage() {
                     </>
                   )}
                 </select>
+
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                  画像分析助手模型（直接绑定于该助手）
+                </label>
+                <select
+                  value={assistants.find((a) => a.id === profileAssistantId)?.modelId || 'qwen3.8-flash'}
+                  onChange={(e) => {
+                    const newModel = e.target.value;
+                    setAssistants((prev) =>
+                      prev.map((a) => (a.id === profileAssistantId ? { ...a, modelId: newModel } : a))
+                    );
+                  }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
+                >
+                  {availableModels.length > 0 ? (
+                    availableModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.id}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="qwen3.8-flash">Qwen 3.8 Flash (推荐/低延迟)</option>
+                      <option value="gpt-4o">GPT-4o (高精度画像建模)</option>
+                      <option value="deepseek-v4-pro">DeepSeek V4 Pro (深度归因)</option>
+                    </>
+                  )}
+                </select>
+                <div style={{ marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
+                  角色：{assistants.find((a) => a.id === profileAssistantId)?.role || '学情画像分析导师'}
+                </div>
               </div>
 
-              <div>
+              {/* 成长轨迹专任助手及模型 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   成长轨迹专任追踪助手
                 </label>
                 <select
                   value={growthAssistantId}
                   onChange={(e) => setGrowthAssistantId(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#f8fafc', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
                   {assistants.length > 0 ? (
                     assistants.map((a) => (
@@ -550,6 +581,37 @@ export default function ProfileGrowthSettingsPage() {
                     </>
                   )}
                 </select>
+
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                  成长轨迹助手模型（直接绑定于该助手）
+                </label>
+                <select
+                  value={assistants.find((a) => a.id === growthAssistantId)?.modelId || 'qwen3.8-flash'}
+                  onChange={(e) => {
+                    const newModel = e.target.value;
+                    setAssistants((prev) =>
+                      prev.map((a) => (a.id === growthAssistantId ? { ...a, modelId: newModel } : a))
+                    );
+                  }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
+                >
+                  {availableModels.length > 0 ? (
+                    availableModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.id}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="qwen3.8-flash">Qwen 3.8 Flash (推荐/低延迟)</option>
+                      <option value="gpt-4o">GPT-4o (长周期轨迹叙事)</option>
+                      <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (反思提炼)</option>
+                    </>
+                  )}
+                </select>
+                <div style={{ marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
+                  角色：{assistants.find((a) => a.id === growthAssistantId)?.role || '成长轨迹导师'}
+                </div>
               </div>
             </div>
 

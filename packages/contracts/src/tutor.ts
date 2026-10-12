@@ -243,6 +243,18 @@ export interface TutorTurn {
    * 旧数据可能缺省；缺省时前端按 `text` 渲染，不自行推断。
    */
   outputModality?: TutorOutputModality;
+  /**
+   * 发布该轮回复的智能体/子导师元数据。
+   *
+   * 用于多 Agent 协作时区分总导师、概念教练、仿真向导、评审导师或启途智学助手。
+   */
+  author?: {
+    id: string;
+    name: string;
+    role: string;
+    avatar?: string;
+    color?: string;
+  };
 }
 
 export interface GetTutorSessionResponse {
