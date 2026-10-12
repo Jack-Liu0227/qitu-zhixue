@@ -129,7 +129,7 @@ export default function ProfileGrowthSettingsPage() {
   useEffect(() => {
     fetchAvailableConfiguredModels()
       .then((models) => {
-        if (models && models.length > 0) {
+        if (models && models.length > 0 && models[0]) {
           setAvailableModels(models);
           setProfilingModel(models[0].id);
         }
