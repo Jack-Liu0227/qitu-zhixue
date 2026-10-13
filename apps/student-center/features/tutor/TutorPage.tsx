@@ -10,7 +10,7 @@ import { SubAgentStatusHud } from './components/SubAgentStatusHud';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import type { TutorLoadStatus } from './types';
-import type { TutorTurn } from '@qitu/contracts';
+import type { TutorTurn, TutorReplyBlock } from '@qitu/contracts';
 import { KINETIC_ENERGY_TURNS, type ChatSessionItem } from './data/kineticTurns';
 
 /** AI 搭档主对话工作区：左侧历史会话支持折叠，右侧双Tab抽屉支持折叠。 */
