@@ -21,6 +21,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   // 1. 折叠状态管理：左侧历史会话默认展开，右侧工作区默认折叠
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
   const [isRightOpen, setIsRightOpen] = useState(false);
+  const [rightRailTab, setRightRailTab] = useState<'progress' | 'members'>('progress');
 
   // 2. 团队与多会话管理
   const [currentTeam, setCurrentTeam] = useState<'team-thunder-fighter' | 'team-kinetic-energy'>('team-kinetic-energy');
@@ -584,6 +585,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
                   currentTeam={currentTeam}
                   streaming={session.streaming}
                   onSelectAgent={() => {
+                    setRightRailTab('members');
                     setIsRightOpen(true);
                   }}
                 />
@@ -615,6 +617,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             failed={false}
             offline={session.offline}
             isOpen={isRightOpen}
+            initialTab={rightRailTab}
             onToggleOpen={() => setIsRightOpen(!isRightOpen)}
           />
         )}

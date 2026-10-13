@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TeamStatusBadge, type TeamNodeStatus } from '@qitu/ui';
 
 interface TutorTeamRailProps {
@@ -11,6 +11,7 @@ interface TutorTeamRailProps {
   offline: boolean;
   isOpen?: boolean;
   onToggleOpen?: () => void;
+  initialTab?: 'progress' | 'members';
 }
 
 export function TutorTeamRail({
@@ -21,9 +22,17 @@ export function TutorTeamRail({
   offline,
   isOpen = false,
   onToggleOpen,
+  initialTab = 'progress',
 }: TutorTeamRailProps) {
-  const [activeTab, setActiveTab] = useState<'progress' | 'members'>('progress');
+  const [activeTab, setActiveTab] = useState<'progress' | 'members'>(initialTab);
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([2]));
+
+  // 当外部传入 initialTab 改变时同步更新（例如从 HUD 点击子 Agent 展开）
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const togglePhase = (id: number) => {
     setExpandedPhases((prev) => {
@@ -455,27 +464,79 @@ export function TutorTeamRail({
           </div>
         ) : (
           <div>
-            <ol className="qitu-tutor-team-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <TutorTeamItem
-                label={isKinetic ? '苏格拉底教练' : '战机原理教练'}
-                detail="Coach · 主导概念提问与门禁"
-                status={leaderStatus}
-              />
-              <TutorTeamItem
-                label={isKinetic ? '探索向导 (小凯)' : '互动向导 (小翼)'}
-                detail="Teammate · 实验观察与思路启发"
-                status="waiting"
-              />
-              <TutorTeamItem
-                label={isKinetic ? '严谨评审导师' : '代码评审导师'}
-                detail="Reviewer · 公式推导与阶段门禁核准"
-                status="waiting"
-              />
-              <TutorTeamItem
-                label="成长分析引擎"
-                detail="系统 Agent · 自动捕获四维能力轨迹"
-                status="ready"
-              />
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🤖 实时协作团队架构 (Herdr Multi-Agent)</span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '4px', lineHeight: 1.4 }}>
+                各子 Agent 协同运行，完成当前环节任务后自动休眠回收，触发新阶段时自动唤醒接入。
+              </div>
+            </div>
+
+            <ol className="qitu-tutor-team-list" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? '苏格拉底物理教练' : '战机主循环教练'}</strong>
+                  </div>
+                  <TeamStatusBadge status="running" />
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                  角色: Concept Coach · 主导苏格拉底启发式追问与门禁提问
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#0369a1', marginTop: '4px', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                  执行模型: DeepSeek R1 (思维链推理) · 活跃中
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8' }} />
+                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? 'RK4 数值仿真 Agent' : 'AABB 碰撞检测引擎'}</strong>
+                  </div>
+                  <TeamStatusBadge status="ready" />
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                  角色: Sandbox Runner · 执行微分方程积分与动态沙箱参数反馈
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                  执行模型: Python WebAssembly / Qwen-Coder · 待命
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8' }} />
+                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? '严谨评审导师' : '代码架构评审导师'}</strong>
+                  </div>
+                  <TeamStatusBadge status="waiting" />
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                  角色: Gate Reviewer · TheoryMastered 强门禁考核与代码安全审计
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                  执行模型: Claude 3.5 Sonnet (严谨考评) · 待命
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>学情画像与成长轨迹分析引擎</strong>
+                  </div>
+                  <TeamStatusBadge status="ready" />
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                  角色: Profile & Growth Tracker · 实时捕获对话与交互维度的能力增长
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#15803d', marginTop: '4px', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+                  执行模型: 平台统一配置助手 · 后台常驻
+                </div>
+              </div>
             </ol>
             <p className="qitu-tutor-team-footnote" style={{ marginTop: '14px', fontSize: '11.5px', color: '#94a3b8' }}>
               各导师依据自建 Agent SDK 协同运作，在会话中根据阶段自动交接主导权。

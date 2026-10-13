@@ -56,24 +56,24 @@ export function SubAgentStatusHud({
     },
   ]);
 
-  // 动态递增活跃 Agent 运行时间，并自动淡出完成的 Agent
+  // 动态递增活跃 Agent 运行时间，当任务结束时自动移除（只展示活跃的 Agent）
   useEffect(() => {
     const timer = setInterval(() => {
       setAgents((prev) =>
-        prev
-          .map((a) => {
-            if (a.status === 'active') {
-              return { ...a, elapsedSeconds: +(a.elapsedSeconds + 0.5).toFixed(1) };
-            }
-            return a;
-          })
+        prev.map((a) => {
+          if (a.status === 'active') {
+            return { ...a, elapsedSeconds: +(a.elapsedSeconds + 0.5).toFixed(1) };
+          }
+          return a;
+        })
       );
     }, 500);
 
     return () => clearInterval(timer);
   }, []);
 
-  const visibleAgents = agents.filter((a) => a.status === 'active' || a.status === 'completed');
+  // 仅展示当前处于 active 状态的子 Agent；一旦完成或休眠则自动消失，再次唤醒时恢复
+  const visibleAgents = agents.filter((a) => a.status === 'active');
 
   if (visibleAgents.length === 0) return null;
 
