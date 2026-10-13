@@ -96,43 +96,273 @@ Rule: Always conclude your response with a thought-provoking question to nudge t
   ],
 };
 
-const INITIAL_SKILLS: SkillItem[] = [
+interface SkillCategory {
+  key: string;
+  label: string;
+}
+
+export const SKILL_CATEGORIES: SkillCategory[] = [
+  { key: 'all', label: '全部技能' },
+  { key: 'guidance', label: '启发与引导' },
+  { key: 'collaboration', label: '探究与协同' },
+  { key: 'physics', label: '物理探究' },
+  { key: 'engineering', label: '工程与沙箱' },
+  { key: 'assessment', label: '答辩与反思' },
+  { key: 'governance', label: '画像与治理' },
+];
+
+export const CORE_SKILLS_CATALOG: SkillItem[] = [
+  // 启发与引导
+  {
+    id: 'guided',
+    name: 'guided',
+    description: '苏格拉底短轮次启发与概念拆解规范，引导学生自主探索，严禁直接给答案。',
+    tags: ['苏格拉底', '启发式', '教学规范'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '1 天前',
+    boundAssistantIds: ['tutor-leader', 'fighter-concept-coach', 'kinetic-concept-coach', 'kinetic-leader'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2800,
+        content: '# Guided Socratic Instruction\n\n以问题启发为主，分步递进，严禁向学生直接提供完整实现代码。',
+      },
+    ],
+  },
+  {
+    id: 'hint',
+    name: 'hint',
+    description: '渐进式线索与思维支架提示（三级梯级提示：微线索、伪代码比对、定位排错）。',
+    tags: ['脚手架', '分级线索', '思维支架'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '2 天前',
+    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide', 'kinetic-concept-coach', 'kinetic-experiment-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2200,
+        content: '# Progressive Hint Scaffolding\n\n提供 3 级渐进提示，确保学生在自主思考区间完成突破。',
+      },
+    ],
+  },
+  {
+    id: 'openmaic-interactive-concept',
+    name: 'openmaic-interactive-concept',
+    description: '互动式概念探究与具身多模态概念对话规范，将抽象概念具象化。',
+    tags: ['概念探究', '具象化', '多模态'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['fighter-concept-coach'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2500,
+        content: '# OpenMAIC Interactive Concept Exploration\n\n通过交互对话将核心抽象概念具象化。',
+      },
+    ],
+  },
   {
     id: 'tutor-guided-learning',
     name: 'tutor-guided-learning',
-    description: '短轮次苏格拉底式启发教学，引导学生自主探索与思考，严禁直出完整代码。智能体据此决定何时加载引导规范。',
-    tags: ['教学规范', '苏格拉底', '引导'],
+    description: '短轮次苏格拉底式启发教学与理论门禁确认规范，定义平台通用的导师教学互动准则。',
+    tags: ['教学规范', '理论门禁', '引导'],
     filesCount: 3,
     addedBy: '平台教研组',
     updatedAtText: '2 天前',
-    boundAssistantIds: ['asst-thunder-leader', 'asst-kinetic-leader', 'asst-code-guide'],
+    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
     files: DEFAULT_FILES_FOR_SKILL['tutor-guided-learning'] ?? [],
   },
   {
-    id: 'thunder-fighter-engine',
-    name: 'thunder-fighter-engine',
-    description: '雷霆战机 Python/Pygame 游戏主循环引擎与渲染规范，包含帧率锁定与事件队列控制。',
-    tags: ['Pygame', '游戏引擎', '主循环'],
+    id: 'socratic-intake',
+    name: 'socratic-intake',
+    description: '苏格拉底接引与初始意图探询规范，用于平台管家或助手初次接收入口对话。',
+    tags: ['接收入口', '苏格拉底', '意图识别'],
     filesCount: 2,
     addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['asst-thunder-leader', 'asst-code-guide'],
-    files: DEFAULT_FILES_FOR_SKILL['thunder-fighter-engine'] ?? [],
+    updatedAtText: '4 天前',
+    boundAssistantIds: ['qitu-intake-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2100,
+        content: '# Socratic Intake Specification\n\n在学生进入项目学习前通过对话探寻学习兴趣与前置认知。',
+      },
+    ],
   },
   {
-    id: 'aabb-collision-solver',
-    name: 'aabb-collision-solver',
-    description: '二维轴对齐包围盒 (AABB) 碰撞检测算法推导与子弹击中敌机判定数学规范。',
-    tags: ['物理算法', 'AABB', '碰撞检测'],
+    id: 'intent-clarification',
+    name: 'intent-clarification',
+    description: '学习意图与目标清晰化澄清规范，引导学生明确探究项目产出与挑战目标。',
+    tags: ['意图澄清', '目标拆解', '学情引导'],
     filesCount: 2,
     addedBy: '平台教研组',
-    updatedAtText: '12 天前',
-    boundAssistantIds: ['asst-thunder-leader', 'asst-code-guide'],
+    updatedAtText: '4 天前',
+    boundAssistantIds: ['qitu-intake-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 1900,
+        content: '# Intent Clarification\n\n确认学生学习意愿，未确认意图前不得创建正式项目。',
+      },
+    ],
+  },
+
+  // 探究与协同
+  {
+    id: 'planning',
+    name: 'planning',
+    description: 'PBL 任务拆解与子阶段学习路径动态规划，形成递进式里程碑。',
+    tags: ['任务规划', '路径拆解', '里程碑'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '2 天前',
+    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2600,
+        content: '# Project Planning & Milestone Decomposition\n\n将大目标分解为可交付、可验证的微型探索阶段。',
+      },
+    ],
+  },
+  {
+    id: 'pbl-orchestration',
+    name: 'pbl-orchestration',
+    description: '多智能体教学导师团队协作流转与任务分发编排规范。',
+    tags: ['团队协同', '智能体编排', '角色交接'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '2 天前',
+    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
     files: [
       {
         name: 'SKILL.md',
         sizeBytes: 3100,
-        content: `# AABB Collision Solver Specification\n\n## 理论推导\n两个矩形相交的充要条件：\n\`rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y\``,
+        content: '# Multi-Agent PBL Orchestration\n\n统筹原理教练、代码向导与评审导师的角色分工与流转条件。',
+      },
+    ],
+  },
+  {
+    id: 'escalation',
+    name: 'escalation',
+    description: '学生卡点识别与人机协同求助升级（转交班主任或真人导师干预）。',
+    tags: ['卡点检测', '协同求助', '人机交接'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['tutor-leader'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 1800,
+        content: '# Human-in-the-Loop Escalation\n\n连续多次回答受挫或检测到消极情绪时自动触发干预预警。',
+      },
+    ],
+  },
+  {
+    id: 'project-recommendation',
+    name: 'project-recommendation',
+    description: '基于学生兴趣、前置知识画像与认知风格推荐适合的 PBL 探索项目。',
+    tags: ['项目推荐', '学情匹配', '画像推荐'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '6 天前',
+    boundAssistantIds: ['qitu-intake-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2000,
+        content: '# Project Recommendation Engine\n\n智能匹配 PBL 学习主题并生成前置学习契约。',
+      },
+    ],
+  },
+  {
+    id: 'team-handoff',
+    name: 'team-handoff',
+    description: '学生确认开启项目后，由接引助手平滑交接至项目专属导师团队规范。',
+    tags: ['团队交接', '状态同步', '流程编排'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '6 天前',
+    boundAssistantIds: ['qitu-intake-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2200,
+        content: '# Team Handoff Protocol\n\n打包对话上下文与学习目标，唤醒项目 Leader 导师团队。',
+      },
+    ],
+  },
+
+  // 物理探究
+  {
+    id: 'physics-inquiry',
+    name: 'physics-inquiry',
+    description: '物理科学探究方法论（提出假说、设计验证变量、控制变量法）。',
+    tags: ['科学探究', '假设检验', '控制变量'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['kinetic-leader'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2700,
+        content: '# Physics Inquiry Methodology\n\n引导学生提出科学假说并设计对比实验。',
+      },
+    ],
+  },
+  {
+    id: 'physics-derivation',
+    name: 'physics-derivation',
+    description: '牛顿第二定律与动能定理微元法积分推导规范，掌握公式底层物理机制。',
+    tags: ['公式推导', '微元法', '动能定理'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['kinetic-concept-coach'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2900,
+        content: '# Physics Derivation\n\n牛顿运动定律到外力做功与动能变化的数理推导引导。',
+      },
+    ],
+  },
+  {
+    id: 'simulation-experiment',
+    name: 'simulation-experiment',
+    description: '物理仿真沙箱交互指导，包括变力做功、恒力加速与动能变化曲线实时观测。',
+    tags: ['物理仿真', '虚拟实验', '曲线观测'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['kinetic-experiment-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2600,
+        content: '# Simulation Experiment\n\n指导学生操控小车滑轨、光电门与拉力传感器虚拟沙箱。',
+      },
+    ],
+  },
+  {
+    id: 'data-fitting',
+    name: 'data-fitting',
+    description: '实验数据采集、最小二乘法拟合与 W-v² 线性关系验证规范。',
+    tags: ['数据拟合', '线性回归', '实验验证'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['kinetic-experiment-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2400,
+        content: '# Data Fitting & Curve Analysis\n\n采集 (W, v) 数据点并绘制 W 与 v² 散点图完成斜率验证。',
       },
     ],
   },
@@ -144,12 +374,146 @@ const INITIAL_SKILLS: SkillItem[] = [
     filesCount: 2,
     addedBy: '平台教研组',
     updatedAtText: '15 天前',
-    boundAssistantIds: ['asst-kinetic-leader', 'asst-concept-coach'],
+    boundAssistantIds: ['kinetic-leader', 'kinetic-concept-coach', 'kinetic-experiment-guide'],
     files: [
       {
         name: 'SKILL.md',
         sizeBytes: 3800,
-        content: `# Kinetic Energy Physics Specification\n\n## 动能定理公式\n$$W = \\Delta E_k = \\frac{1}{2}m v_2^2 - \\frac{1}{2}m v_1^2$$\n\n## 探究流程\n1. 恒力作用与匀加速运动数据采集。\n2. 绘制功-位移曲线与动能折线图。\n3. 分析误差来源（空气阻力与轨道摩擦）。`,
+        content: '# Kinetic Energy Physics Specification\n\n$$W = \\Delta E_k = \\frac{1}{2}m v_2^2 - \\frac{1}{2}m v_1^2$$',
+      },
+    ],
+  },
+  {
+    id: 'error-analysis',
+    name: 'error-analysis',
+    description: '实验系统误差与偶然误差溯源分析（导轨倾角摩擦、传感器阻尼、空气阻力）。',
+    tags: ['误差分析', '系统误差', '实验反思'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['kinetic-review-assessor'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2100,
+        content: '# Experimental Error Analysis\n\n引导学生分析实验值与理论值偏差的物理源头。',
+      },
+    ],
+  },
+
+  // 工程与沙箱
+  {
+    id: 'project-implementation',
+    name: 'project-implementation',
+    description: '工程项目模块化架构设计与代码实现规范指导，引导面向对象与模块解耦。',
+    tags: ['工程实现', '模块解耦', '代码指导'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['fighter-code-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2700,
+        content: '# Project Implementation\n\n指导学生构建清晰的模块化类结构与生命周期管理。',
+      },
+    ],
+  },
+  {
+    id: 'debugging-guide',
+    name: 'debugging-guide',
+    description: '代码断点调试、错误堆栈逆向溯源与防御性编程指导规范。',
+    tags: ['排错调试', '堆栈分析', '异常处理'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '3 天前',
+    boundAssistantIds: ['fighter-code-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2500,
+        content: '# Debugging Guide\n\n引导学生依据控制台报错精准回溯语法或逻辑异常。',
+      },
+    ],
+  },
+  {
+    id: 'thunder-fighter-engine',
+    name: 'thunder-fighter-engine',
+    description: '雷霆战机 Python/Pygame 游戏主循环引擎与渲染规范，包含帧率锁定与事件队列控制。',
+    tags: ['Pygame', '游戏引擎', '主循环'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide'],
+    files: DEFAULT_FILES_FOR_SKILL['thunder-fighter-engine'] ?? [],
+  },
+  {
+    id: 'aabb-collision-solver',
+    name: 'aabb-collision-solver',
+    description: '二维轴对齐包围盒 (AABB) 碰撞检测算法推导与子弹击中敌机判定数学规范。',
+    tags: ['物理算法', 'AABB', '碰撞检测'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '12 天前',
+    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 3100,
+        content: '# AABB Collision Solver Specification\n\n矩形碰撞判定充要条件推导与优化。',
+      },
+    ],
+  },
+
+  // 答辩与反思
+  {
+    id: 'project-review',
+    name: 'project-review',
+    description: 'PBL 项目工程质量与成果验收综合质询评估规范。',
+    tags: ['成果验收', '代码质询', '工程复盘'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '4 天前',
+    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2400,
+        content: '# Project Review\n\n综合质询工程完整度与架构合理性。',
+      },
+    ],
+  },
+  {
+    id: 'growth-evaluation',
+    name: 'growth-evaluation',
+    description: '学生素养维度（问题解决、探究坚持性、批判性思维）综合多维评价。',
+    tags: ['核心素养', '多维评价', '学情增值'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '4 天前',
+    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2300,
+        content: '# Growth Evaluation\n\n评价学生在探究过程中的反思性与解决复杂问题能力。',
+      },
+    ],
+  },
+  {
+    id: 'socratic-reflection',
+    name: 'socratic-reflection',
+    description: '苏格拉底结项三问与迁移思考（如果增加特性你会怎么做、遇到的最大卡点如何突破）。',
+    tags: ['苏格拉底', '反思复盘', '迁移思考'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '4 天前',
+    boundAssistantIds: ['fighter-review-assessor'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2500,
+        content: '# Socratic Reflection\n\n促使学生深度回顾认知重塑过程与技术突破点。',
       },
     ],
   },
@@ -161,12 +525,167 @@ const INITIAL_SKILLS: SkillItem[] = [
     filesCount: 2,
     addedBy: '平台教研组',
     updatedAtText: '20 天前',
-    boundAssistantIds: ['asst-reviewer'],
+    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
     files: [
       {
         name: 'SKILL.md',
         sizeBytes: 2900,
-        content: `# PBL Defense Rubric\n\n## 答辩环节三问\n1. 为什么选择这个方案？\n2. 遇到的最大困难是什么，如何定位根因？\n3. 如果再多一周，你会增加什么特性？`,
+        content: '# PBL Defense Rubric\n\n防作弊质询与概念掌握深度核验。',
+      },
+    ],
+  },
+
+  // 画像与治理
+  {
+    id: 'student-profiling',
+    name: 'student-profiling',
+    description: '动态学生认知画像与行为特征建模规范。',
+    tags: ['学生画像', '行为建模', '认知特征'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['profile-analyst-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2100,
+        content: '# Student Profiling\n\n从互动记录中提取认知水平与学习习惯指标。',
+      },
+    ],
+  },
+  {
+    id: 'competency-radar',
+    name: 'competency-radar',
+    description: '五维素养雷达图（逻辑、工程、探究、表达、反思）计算与增值分析。',
+    tags: ['素养雷达', '能力评估', '成长可视化'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['profile-analyst-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2200,
+        content: '# Competency Radar\n\n多维素养分值量化计算与动态折线图。',
+      },
+    ],
+  },
+  {
+    id: 'learning-gap-diagnosis',
+    name: 'learning-gap-diagnosis',
+    description: '薄弱知识点与认知断层自动诊断，生成个性化干预建议。',
+    tags: ['认知断层', '薄弱点诊断', '个性化干预'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['profile-analyst-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2300,
+        content: '# Learning Gap Diagnosis\n\n识别概念混淆点并输出靶向辅导策略。',
+      },
+    ],
+  },
+  {
+    id: 'timeline-generation',
+    name: 'timeline-generation',
+    description: '学习历程时间轴自动梳理与探究足迹序列化。',
+    tags: ['时间轴', '学习轨迹', '事件序列'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['growth-trajectory-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2000,
+        content: '# Learning Timeline Generation\n\n将对话、代码提交与实验数据聚合为清晰足迹流。',
+      },
+    ],
+  },
+  {
+    id: 'milestone-synthesis',
+    name: 'milestone-synthesis',
+    description: '重大突破里程碑综合提炼与关键事件卡片合成。',
+    tags: ['里程碑', '关键突破', '成果卡片'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['growth-trajectory-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2100,
+        content: '# Milestone Synthesis\n\n萃取探索转折点并生成成就徽章事件。',
+      },
+    ],
+  },
+  {
+    id: 'growth-narrative',
+    name: 'growth-narrative',
+    description: '第一人称个性化成长故事与研学报告自动叙述生成。',
+    tags: ['成长叙事', '研学报告', '故事化生成'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['growth-trajectory-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2400,
+        content: '# Growth Narrative Generation\n\n生成富有温度与科学严谨性的学生个人成长总结。',
+      },
+    ],
+  },
+  {
+    id: 'system-governance',
+    name: 'system-governance',
+    description: '平台全局合规、模型路由调度与安全兜底策略规范。',
+    tags: ['平台治理', '合规监控', '安全策略'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['qitu-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2600,
+        content: '# System Governance\n\n保护未成年人隐私与系统鲁棒性安全规则。',
+      },
+    ],
+  },
+  {
+    id: 'asset-management',
+    name: 'asset-management',
+    description: '团队、助手、技能模板、知识库等数字教育资产管理与分发规范。',
+    tags: ['资产管理', '模板分发', '知识库管理'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['qitu-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2300,
+        content: '# Asset Management\n\n资产库元数据规范与版本控制。',
+      },
+    ],
+  },
+  {
+    id: 'audit-logging',
+    name: 'audit-logging',
+    description: '关键操作不可篡改审计日志流水与行为追踪规范。',
+    tags: ['审计日志', '可追溯', '合规记录'],
+    filesCount: 2,
+    addedBy: '平台教研组',
+    updatedAtText: '5 天前',
+    boundAssistantIds: ['qitu-assistant'],
+    files: [
+      {
+        name: 'SKILL.md',
+        sizeBytes: 2000,
+        content: '# Audit Logging\n\n敏感操作、权限变更与AI决策全链路存证。',
       },
     ],
   },
@@ -178,15 +697,27 @@ export default function SkillsSettingsPage() {
       try {
         const cached = localStorage.getItem('qitu.admin.skills_list');
         if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          const parsed: SkillItem[] = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // 将缓存的技能与 CORE_SKILLS_CATALOG 进行合并补齐
+            const cachedMap = new Map(parsed.map((s) => [s.id, s]));
+            const merged = CORE_SKILLS_CATALOG.map((core) => cachedMap.get(core.id) || core);
+            // 附加上用户自定义添加的 skill
+            parsed.forEach((custom) => {
+              if (!CORE_SKILLS_CATALOG.some((c) => c.id === custom.id)) {
+                merged.push(custom);
+              }
+            });
+            return merged;
+          }
         }
       } catch {}
     }
-    return INITIAL_SKILLS;
+    return CORE_SKILLS_CATALOG;
   });
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingSkill, setEditingSkill] = useState<SkillItem | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'files'>('overview');
   const [showAddAssistantModal, setShowAddAssistantModal] = useState(false);
@@ -208,7 +739,7 @@ export default function SkillsSettingsPage() {
   const [fileViewMode, setFileViewMode] = useState<'edit' | 'preview'>('edit');
   const [fileContentDraft, setFileContentDraft] = useState<string>('');
 
-  // 助手展示列表
+  // 助手展示列表 (以 assistants 为唯一真实来源)
   const displayAssistants = useMemo(() => {
     if (assistants.length > 0) {
       return assistants.map((a) => ({
@@ -219,27 +750,20 @@ export default function SkillsSettingsPage() {
         enabledSkills: (a.enabledSkills as string[]) || [],
       }));
     }
-    return [
-      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家', avatar: '🤖', enabledSkills: [] },
-      { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀', enabledSkills: ['thunder-fighter-engine', 'aabb-collision-solver', 'tutor-guided-learning'] },
-      { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯', enabledSkills: ['aabb-collision-solver'] },
-      { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻', enabledSkills: ['thunder-fighter-engine'] },
-      { id: 'asst-reviewer', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️', enabledSkills: ['pbl-defense-rubric'] },
-      { id: 'asst-kinetic-leader', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡', enabledSkills: ['kinetic-energy-physics', 'tutor-guided-learning'] },
-    ];
+    return [];
   }, [assistants]);
 
-  // 判断助手与技能是否已绑定 (双向校验技能 boundAssistantIds 与助手 enabledSkills)
+  // 判断助手与技能是否已绑定：以助手实际的 enabledSkills 为 Single Source of Truth
   const isSkillBoundToAssistant = useCallback(
     (sk: SkillItem, asst: { id: string; name: string; enabledSkills?: string[] }) => {
-      const inSkill = (sk.boundAssistantIds || []).some(
-        (identifier) => identifier === asst.id || identifier === asst.name
-      );
-      if (inSkill) return true;
-
+      // 优先从最新的 assistants 状态中读取该助手的 enabledSkills
       const matched = assistants.find((a) => a.id === asst.id || a.name === asst.name);
-      const enabledList = matched?.enabledSkills || asst.enabledSkills || [];
-      return enabledList.some((sId) => sId === sk.id || sId === sk.name);
+      const enabledList = (matched?.enabledSkills as string[]) || asst.enabledSkills || [];
+      if (enabledList.includes(sk.id) || enabledList.includes(sk.name)) {
+        return true;
+      }
+      // 回退兼容：检查技能的 boundAssistantIds
+      return (sk.boundAssistantIds || []).includes(asst.id) || (sk.boundAssistantIds || []).includes(asst.name);
     },
     [assistants]
   );
@@ -351,6 +875,19 @@ export default function SkillsSettingsPage() {
         const existingIds = new Set(backendList.map((a) => a.id));
         const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...backendList];
         setAssistants(combined);
+
+        // 同步更新本地 skills 列表各技能绑定的助手 ID
+        setSkills((prevSkills) =>
+          prevSkills.map((sk) => {
+            const boundIds = combined
+              .filter((a) => ((a.enabledSkills as string[]) || []).includes(sk.id) || ((a.enabledSkills as string[]) || []).includes(sk.name))
+              .map((a) => a.id);
+            return {
+              ...sk,
+              boundAssistantIds: Array.from(new Set([...(sk.boundAssistantIds || []), ...boundIds])),
+            };
+          })
+        );
       })
       .catch(() => {
         if (typeof window !== 'undefined') {
@@ -379,6 +916,20 @@ export default function SkillsSettingsPage() {
       (s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
     );
   }, [skills, searchQuery]);
+
+  const matrixSkills = useMemo(() => {
+    if (selectedCategory === 'all') return skills;
+    const categoryMap: Record<string, string[]> = {
+      guidance: ['guided', 'hint', 'openmaic-interactive-concept', 'tutor-guided-learning', 'socratic-intake', 'intent-clarification'],
+      collaboration: ['planning', 'pbl-orchestration', 'escalation', 'project-recommendation', 'team-handoff'],
+      physics: ['physics-inquiry', 'physics-derivation', 'simulation-experiment', 'data-fitting', 'kinetic-energy-physics', 'error-analysis'],
+      engineering: ['project-implementation', 'debugging-guide', 'thunder-fighter-engine', 'aabb-collision-solver'],
+      assessment: ['project-review', 'growth-evaluation', 'socratic-reflection', 'pbl-defense-rubric'],
+      governance: ['student-profiling', 'competency-radar', 'learning-gap-diagnosis', 'timeline-generation', 'milestone-synthesis', 'growth-narrative', 'system-governance', 'asset-management', 'audit-logging'],
+    };
+    const validIds = categoryMap[selectedCategory] || [];
+    return skills.filter((s) => validIds.includes(s.id));
+  }, [skills, selectedCategory]);
 
   // 新建 Skill
   const handleCreateSkill = () => {
@@ -993,12 +1544,39 @@ export default function SkillsSettingsPage() {
       {skillsViewMode === 'matrix' ? (
         /* 助手 × 技能绑定矩阵 (行=助手, 列=技能) */
         <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>技能分配矩阵 (Skills Matrix)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                行代表教学团队中的导师助手，列代表标准技能。勾选即为助手绑定该技能，取消勾选即刻解绑。
+                行代表教学团队中的导师助手，列代表标准技能。打上✔ 即为助手立即启用该技能，取消✔ 即刻关闭。
               </p>
+            </div>
+
+            {/* 分类筛选标签栏 */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {SKILL_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.key;
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.key)}
+                    style={{
+                      border: isSelected ? '1px solid #165dff' : '1px solid #e2e8f0',
+                      background: isSelected ? '#eff4ff' : '#ffffff',
+                      color: isSelected ? '#165dff' : '#475569',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: isSelected ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1006,11 +1584,11 @@ export default function SkillsSettingsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 16px', width: '220px', color: '#334155', fontWeight: 600 }}>
+                  <th style={{ padding: '12px 16px', minWidth: '220px', color: '#334155', fontWeight: 600 }}>
                     导师智能体 (行)
                   </th>
-                  {skills.map((sk) => (
-                    <th key={sk.id} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center' }}>
+                  {matrixSkills.map((sk) => (
+                    <th key={sk.id} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                         <span>📖 {sk.name}</span>
                         <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>({sk.filesCount} 个规范文件)</span>
@@ -1034,7 +1612,7 @@ export default function SkillsSettingsPage() {
                         </div>
                       </td>
 
-                      {skills.map((sk) => {
+                      {matrixSkills.map((sk) => {
                         const isChecked = isSkillBoundToAssistant(sk, asst);
                         return (
                           <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
