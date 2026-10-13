@@ -439,15 +439,20 @@ export default function ToolsSettingsPage() {
 
   // 切换 MCP 对指定助手的授权 (打上✔ 立即生效)
   const toggleMcpForAssistant = async (mcpName: string, asstName: string) => {
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    const targetAsstId = matchedAsst?.id || asstName;
+    const targetAsstName = matchedAsst?.name || asstName;
+    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstName].filter(Boolean));
+
     let nextChecked = false;
     const nextMcpList = mcpList.map((m) => {
-      if (m.name !== mcpName) return m;
+      if (m.name !== mcpName && m.id !== mcpName) return m;
       const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
-      const hasBound = currentBound.includes(asstName);
+      const hasBound = currentBound.some((id) => asstIdentifiers.has(id));
       nextChecked = !hasBound;
       const nextBound = hasBound
-        ? currentBound.filter((n) => n !== asstName)
-        : [...currentBound, asstName];
+        ? currentBound.filter((n) => !asstIdentifiers.has(n))
+        : Array.from(new Set([...currentBound, targetAsstName, targetAsstId]));
 
       let updatedRawJson = m.rawJson;
       try {
@@ -471,12 +476,11 @@ export default function ToolsSettingsPage() {
       } catch {}
     }
 
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
     if (matchedAsst) {
       const curServers: string[] = matchedAsst.mcpServerIds ? [...matchedAsst.mcpServerIds] : [];
       const updatedServers: string[] = nextChecked
         ? (curServers.includes(mcpName) ? curServers : [...curServers, mcpName])
-        : curServers.filter((n) => n !== mcpName);
+        : curServers.filter((n) => n !== mcpName && n !== targetAsstId);
 
       setAssistants((prev) =>
         prev.map((a) => (a.id === matchedAsst.id ? { ...a, mcpServerIds: updatedServers } : a))
@@ -488,7 +492,7 @@ export default function ToolsSettingsPage() {
       }
     }
 
-    setNotice(`已更新【${matchedAsst?.name || asstName}】对 MCP【${mcpName}】的授权 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
+    setNotice(`已更新【${targetAsstName}】对 MCP【${mcpName}】的授权 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
     setTimeout(() => setNotice(''), 2500);
   };
 
@@ -496,23 +500,30 @@ export default function ToolsSettingsPage() {
   const toggleBuiltinToolForAssistant = async (tool: 'imageGen' | 'sandbox', asstName: string) => {
     const builtinId = tool === 'imageGen' ? BUILTIN_IMAGE_GENERATION_ID : BUILTIN_SANDBOX_ID;
     const toolLabel = tool === 'imageGen' ? '图像生成' : 'Python 沙箱';
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    const targetAsstId = matchedAsst?.id || asstName;
+    const targetAsstName = matchedAsst?.name || asstName;
+    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstName].filter(Boolean));
     let nextChecked = false;
 
     if (tool === 'imageGen') {
       setImageGenAssistants((prev) => {
-        const has = prev.includes(asstName);
+        const has = prev.some((id) => asstIdentifiers.has(id));
         nextChecked = !has;
-        return has ? prev.filter((n) => n !== asstName) : [...prev, asstName];
+        return has
+          ? prev.filter((n) => !asstIdentifiers.has(n))
+          : Array.from(new Set([...prev, targetAsstName, targetAsstId]));
       });
     } else {
       setSandboxAssistants((prev) => {
-        const has = prev.includes(asstName);
+        const has = prev.some((id) => asstIdentifiers.has(id));
         nextChecked = !has;
-        return has ? prev.filter((n) => n !== asstName) : [...prev, asstName];
+        return has
+          ? prev.filter((n) => !asstIdentifiers.has(n))
+          : Array.from(new Set([...prev, targetAsstName, targetAsstId]));
       });
     }
 
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
     if (matchedAsst) {
       const curTools: string[] = matchedAsst.toolIds ? [...matchedAsst.toolIds] : [];
       const updatedTools: string[] = nextChecked
@@ -527,7 +538,7 @@ export default function ToolsSettingsPage() {
       } catch {}
     }
 
-    setNotice(`已更新【${matchedAsst?.name || asstName}】对【${toolLabel}】的权限 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
+    setNotice(`已更新【${targetAsstName}】对【${toolLabel}】的权限 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
     setTimeout(() => setNotice(''), 2500);
   };
 
@@ -761,14 +772,36 @@ export default function ToolsSettingsPage() {
                         );
                         return (
                           <td key={m.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleMcpForAssistant(m.name, asst.name)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
-                              />
-                            </label>
+                            <div
+                              onClick={() => toggleMcpForAssistant(m.name, asst.name)}
+                              role="checkbox"
+                              aria-checked={isChecked}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '5px',
+                                border: isChecked ? '1.5px solid #165dff' : '1.5px solid #cbd5e1',
+                                background: isChecked ? '#165dff' : '#ffffff',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isChecked ? '0 1px 3px rgba(22, 93, 255, 0.25)' : 'none',
+                                userSelect: 'none',
+                                margin: '0 auto',
+                              }}
+                              title={
+                                isChecked
+                                  ? `${asst.name} 已授权 ${m.name} (点击取消打勾即刻关闭)`
+                                  : `${asst.name} 未授权 ${m.name} (点击打上✔ 立即生效)`
+                              }
+                            >
+                              {isChecked ? '✓' : ''}
+                            </div>
                           </td>
                         );
                       })}
@@ -780,14 +813,36 @@ export default function ToolsSettingsPage() {
                             (identifier) => identifier === asst.name || identifier === asst.id
                           );
                           return (
-                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#f5f3ff' : 'transparent', border: isChecked ? '1px solid #ddd6fe' : '1px dashed #cbd5e1' }}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7c3aed' }}
-                              />
-                            </label>
+                            <div
+                              onClick={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
+                              role="checkbox"
+                              aria-checked={isChecked}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '5px',
+                                border: isChecked ? '1.5px solid #7c3aed' : '1.5px solid #cbd5e1',
+                                background: isChecked ? '#7c3aed' : '#ffffff',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isChecked ? '0 1px 3px rgba(124, 58, 237, 0.25)' : 'none',
+                                userSelect: 'none',
+                                margin: '0 auto',
+                              }}
+                              title={
+                                isChecked
+                                  ? `${asst.name} 已授权图像生成 (点击取消打勾即刻关闭)`
+                                  : `${asst.name} 未授权图像生成 (点击打上✔ 立即生效)`
+                              }
+                            >
+                              {isChecked ? '✓' : ''}
+                            </div>
                           );
                         })()}
                       </td>
@@ -799,14 +854,36 @@ export default function ToolsSettingsPage() {
                             (identifier) => identifier === asst.name || identifier === asst.id
                           );
                           return (
-                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '5px 10px', borderRadius: '6px', background: isChecked ? '#ecfdf5' : 'transparent', border: isChecked ? '1px solid #a7f3d0' : '1px dashed #cbd5e1' }}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#059669' }}
-                              />
-                            </label>
+                            <div
+                              onClick={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
+                              role="checkbox"
+                              aria-checked={isChecked}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '5px',
+                                border: isChecked ? '1.5px solid #059669' : '1.5px solid #cbd5e1',
+                                background: isChecked ? '#059669' : '#ffffff',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isChecked ? '0 1px 3px rgba(5, 150, 105, 0.25)' : 'none',
+                                userSelect: 'none',
+                                margin: '0 auto',
+                              }}
+                              title={
+                                isChecked
+                                  ? `${asst.name} 已授权 Python 沙箱 (点击取消打勾即刻关闭)`
+                                  : `${asst.name} 未授权 Python 沙箱 (点击打上✔ 立即生效)`
+                              }
+                            >
+                              {isChecked ? '✓' : ''}
+                            </div>
                           );
                         })()}
                       </td>

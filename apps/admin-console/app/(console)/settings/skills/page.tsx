@@ -216,31 +216,67 @@ export default function SkillsSettingsPage() {
         name: a.name,
         role: a.role || '导师助手',
         avatar: a.avatar || '🤖',
+        enabledSkills: (a.enabledSkills as string[]) || [],
       }));
     }
     return [
-      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家', avatar: '🤖' },
-      { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀' },
-      { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯' },
-      { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻' },
-      { id: 'asst-reviewer', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️' },
-      { id: 'asst-kinetic-leader', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡' },
+      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家', avatar: '🤖', enabledSkills: [] },
+      { id: 'asst-thunder-leader', name: '雷霆战机总导师', role: '队长 / 总负责人', avatar: '🚀', enabledSkills: ['thunder-fighter-engine', 'aabb-collision-solver', 'tutor-guided-learning'] },
+      { id: 'asst-concept-coach', name: '原理教练', role: '核心概念探究', avatar: '🎯', enabledSkills: ['aabb-collision-solver'] },
+      { id: 'asst-code-guide', name: '代码向导与答辩导师', role: '沙箱编程指导', avatar: '💻', enabledSkills: ['thunder-fighter-engine'] },
+      { id: 'asst-reviewer', name: '评审导师', role: '成果反思与答辩', avatar: '⚖️', enabledSkills: ['pbl-defense-rubric'] },
+      { id: 'asst-kinetic-leader', name: '动手学动能定理总导师', role: '队长 / 物理负责人', avatar: '⚡', enabledSkills: ['kinetic-energy-physics', 'tutor-guided-learning'] },
     ];
   }, [assistants]);
 
+  // 判断助手与技能是否已绑定 (双向校验技能 boundAssistantIds 与助手 enabledSkills)
+  const isSkillBoundToAssistant = useCallback(
+    (sk: SkillItem, asst: { id: string; name: string; enabledSkills?: string[] }) => {
+      const inSkill = (sk.boundAssistantIds || []).some(
+        (identifier) => identifier === asst.id || identifier === asst.name
+      );
+      if (inSkill) return true;
+
+      const matched = assistants.find((a) => a.id === asst.id || a.name === asst.name);
+      const enabledList = matched?.enabledSkills || asst.enabledSkills || [];
+      return enabledList.some((sId) => sId === sk.id || sId === sk.name);
+    },
+    [assistants]
+  );
+
   // 矩阵中切换技能绑定 (打上✔ 立即生效)
   const toggleSkillForAssistant = async (skillId: string, asstIdentifier: string) => {
-    let targetExists = false;
-    let nextBoundIds: string[] = [];
+    const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
+    const targetAsstId = matchedAsst?.id || asstIdentifier;
+    const targetAsstName = matchedAsst?.name || asstIdentifier;
+    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstIdentifier].filter(Boolean));
+
+    const currentSkill = skills.find((s) => s.id === skillId);
+    if (!currentSkill) return;
+
+    // 当前是否已经绑定
+    const currentlyChecked = isSkillBoundToAssistant(currentSkill, {
+      id: targetAsstId,
+      name: targetAsstName,
+      enabledSkills: matchedAsst?.enabledSkills as string[],
+    });
+    const nextChecked = !currentlyChecked;
+
+    // 1. 更新技能列表中的 boundAssistantIds 并写入本地持久化
     const nextSkills = skills.map((s) => {
       if (s.id !== skillId) return s;
-      const exists = s.boundAssistantIds.includes(asstIdentifier);
-      targetExists = !exists;
-      nextBoundIds = exists
-        ? s.boundAssistantIds.filter((id) => id !== asstIdentifier)
-        : [...s.boundAssistantIds, asstIdentifier];
-      return { ...s, boundAssistantIds: nextBoundIds };
+      let nextBounds: string[];
+      if (nextChecked) {
+        const set = new Set(s.boundAssistantIds || []);
+        set.add(targetAsstId);
+        if (targetAsstName) set.add(targetAsstName);
+        nextBounds = Array.from(set);
+      } else {
+        nextBounds = (s.boundAssistantIds || []).filter((id) => !asstIdentifiers.has(id));
+      }
+      return { ...s, boundAssistantIds: nextBounds };
     });
+
     setSkills(nextSkills);
     if (typeof window !== 'undefined') {
       try {
@@ -248,32 +284,82 @@ export default function SkillsSettingsPage() {
       } catch {}
     }
 
-    const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
+    // 2. 如果当前正在编辑此技能，实时同步 editingSkill
+    if (editingSkill && editingSkill.id === skillId) {
+      const updatedBounds = nextChecked
+        ? Array.from(new Set([...editingSkill.boundAssistantIds, targetAsstId, targetAsstName]))
+        : editingSkill.boundAssistantIds.filter((id) => !asstIdentifiers.has(id));
+      setEditingSkill({ ...editingSkill, boundAssistantIds: updatedBounds });
+    }
+
+    // 3. 更新助手对象中的 enabledSkills 并持久化至服务端
     if (matchedAsst) {
-      const currentEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
-      const updatedEnabled: string[] = targetExists
-        ? (currentEnabled.includes(skillId) ? currentEnabled : [...currentEnabled, skillId])
-        : currentEnabled.filter((id) => id !== skillId);
+      const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
+      let updatedEnabled: string[];
+      if (nextChecked) {
+        const set = new Set(curEnabled);
+        set.add(skillId);
+        if (currentSkill.name) set.add(currentSkill.name);
+        updatedEnabled = Array.from(set);
+      } else {
+        updatedEnabled = curEnabled.filter((id) => id !== skillId && id !== currentSkill.name);
+      }
 
       setAssistants((prev) =>
         prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
       );
+
       try {
         await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
-      } catch {
-        // fallback
+      } catch (err) {
+        console.warn('持久化助手技能绑定失败', err);
+      }
+
+      // 同步更新本地 custom_assistants
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_assistants');
+          if (cached) {
+            const list: any[] = JSON.parse(cached);
+            const nextList = list.map((a) =>
+              a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
+            );
+            localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
+          }
+        } catch {}
       }
     }
 
-    setSaveNotice(`已更新【${matchedAsst?.name || asstIdentifier}】的 Skill 权限 (${targetExists ? '已打上✔ 立即启用' : '取消✔ 立即关闭'})`);
+    setSaveNotice(
+      `已更新【${targetAsstName}】的技能【${currentSkill.name}】(${nextChecked ? '已打上✔ 立即生效' : '取消✔ 立即关闭'})`
+    );
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
-  // 加载真实助手用于绑定与展示头像
+  // 加载真实助手用于绑定与展示头像（同时合并管家自建助手）
   useEffect(() => {
     fetchAdminAssistantConfigs()
-      .then((res) => setAssistants(res))
-      .catch(() => {});
+      .then((res) => {
+        let customList: AdminAssistantConfig[] = [];
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem('qitu.admin.custom_assistants');
+            if (cached) customList = JSON.parse(cached);
+          } catch {}
+        }
+        const backendList = res || [];
+        const existingIds = new Set(backendList.map((a) => a.id));
+        const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...backendList];
+        setAssistants(combined);
+      })
+      .catch(() => {
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem('qitu.admin.custom_assistants');
+            if (cached) setAssistants(JSON.parse(cached));
+          } catch {}
+        }
+      });
   }, []);
 
   // 当切换 editingSkill 或 selectedFileName 时同步草稿
@@ -407,33 +493,27 @@ export default function SkillsSettingsPage() {
     }
   };
 
-  // 从技能中解除绑定助手
-  const handleRemoveAssistantFromSkill = (asstId: string) => {
+  // 从技能中解除绑定助手 (立即生效并同步矩阵)
+  const handleRemoveAssistantFromSkill = async (asstId: string) => {
     if (!editingSkill) return;
-    setEditingSkill({
-      ...editingSkill,
-      boundAssistantIds: editingSkill.boundAssistantIds.filter((id) => id !== asstId),
-    });
+    await toggleSkillForAssistant(editingSkill.id, asstId);
   };
 
-  // 向技能绑定助手
-  const handleAddAssistantToSkill = () => {
+  // 向技能绑定助手 (立即生效并在矩阵方框中打上✔)
+  const handleAddAssistantToSkill = async () => {
     if (!editingSkill || !selectedAsstToAdd) return;
-    if (editingSkill.boundAssistantIds.includes(selectedAsstToAdd)) {
-      alert('该助手已绑定此技能');
-      return;
-    }
-    setEditingSkill({
-      ...editingSkill,
-      boundAssistantIds: [...editingSkill.boundAssistantIds, selectedAsstToAdd],
-    });
+    await toggleSkillForAssistant(editingSkill.id, selectedAsstToAdd);
     setShowAddAssistantModal(false);
     setSelectedAsstToAdd('');
   };
 
   // 技能编辑视图
   if (editingSkill) {
-    const boundAssistants = assistants.filter((a) => editingSkill.boundAssistantIds.includes(a.id));
+    const boundAssistants = assistants.filter(
+      (a) =>
+        editingSkill.boundAssistantIds.some((id) => id === a.id || id === a.name) ||
+        ((a.enabledSkills as string[]) || []).includes(editingSkill.id)
+    );
     const activeFile = editingSkill.files.find((f) => f.name === selectedFileName) || editingSkill.files[0] || { name: 'SKILL.md', sizeBytes: 0, content: '' };
 
     return (
@@ -955,19 +1035,39 @@ export default function SkillsSettingsPage() {
                       </td>
 
                       {skills.map((sk) => {
-                        const isChecked = sk.boundAssistantIds.some(
-                          (identifier) => identifier === asst.id || identifier === asst.name
-                        );
+                        const isChecked = isSkillBoundToAssistant(sk, asst);
                         return (
                           <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', padding: '6px', borderRadius: '6px', background: isChecked ? '#eff6ff' : 'transparent', border: isChecked ? '1px solid #bfdbfe' : '1px dashed #cbd5e1' }}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleSkillForAssistant(sk.id, asst.id)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#165dff' }}
-                              />
-                            </label>
+                            <div
+                              onClick={() => toggleSkillForAssistant(sk.id, asst.id)}
+                              role="checkbox"
+                              aria-checked={isChecked}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '5px',
+                                border: isChecked ? '1.5px solid #165dff' : '1.5px solid #cbd5e1',
+                                background: isChecked ? '#165dff' : '#ffffff',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isChecked ? '0 1px 3px rgba(22, 93, 255, 0.25)' : 'none',
+                                userSelect: 'none',
+                                margin: '0 auto',
+                              }}
+                              title={
+                                isChecked
+                                  ? `${asst.name} 已启用 ${sk.name} (点击取消打勾即刻关闭)`
+                                  : `${asst.name} 未启用 ${sk.name} (点击打上✔ 立即生效)`
+                              }
+                            >
+                              {isChecked ? '✓' : ''}
+                            </div>
                           </td>
                         );
                       })}
@@ -1010,7 +1110,11 @@ export default function SkillsSettingsPage() {
           </thead>
           <tbody>
             {filteredSkills.map((skill) => {
-              const bound = assistants.filter((a) => skill.boundAssistantIds.includes(a.id));
+              const bound = assistants.filter(
+                (a) =>
+                  skill.boundAssistantIds.some((id) => id === a.id || id === a.name) ||
+                  ((a.enabledSkills as string[]) || []).includes(skill.id)
+              );
 
               return (
                 <tr
