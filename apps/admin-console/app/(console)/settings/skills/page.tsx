@@ -101,7 +101,7 @@ interface SkillCategory {
   label: string;
 }
 
-export const SKILL_CATEGORIES: SkillCategory[] = [
+const SKILL_CATEGORIES: SkillCategory[] = [
   { key: 'all', label: '全部技能' },
   { key: 'guidance', label: '启发与引导' },
   { key: 'collaboration', label: '探究与协同' },
@@ -111,7 +111,7 @@ export const SKILL_CATEGORIES: SkillCategory[] = [
   { key: 'governance', label: '画像与治理' },
 ];
 
-export const CORE_SKILLS_CATALOG: SkillItem[] = [
+const CORE_SKILLS_CATALOG: SkillItem[] = [
   // 启发与引导
   {
     id: 'guided',
