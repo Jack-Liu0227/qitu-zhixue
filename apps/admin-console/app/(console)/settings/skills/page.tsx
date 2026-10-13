@@ -250,8 +250,8 @@ export default function SkillsSettingsPage() {
 
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (matchedAsst) {
-      const currentEnabled = matchedAsst.enabledSkills || [];
-      const updatedEnabled = targetExists
+      const currentEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
+      const updatedEnabled: string[] = targetExists
         ? (currentEnabled.includes(skillId) ? currentEnabled : [...currentEnabled, skillId])
         : currentEnabled.filter((id) => id !== skillId);
 

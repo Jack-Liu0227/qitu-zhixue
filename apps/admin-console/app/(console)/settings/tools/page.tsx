@@ -473,8 +473,8 @@ export default function ToolsSettingsPage() {
 
     const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
     if (matchedAsst) {
-      const curServers = matchedAsst.mcpServerIds || [];
-      const updatedServers = nextChecked
+      const curServers: string[] = matchedAsst.mcpServerIds ? [...matchedAsst.mcpServerIds] : [];
+      const updatedServers: string[] = nextChecked
         ? (curServers.includes(mcpName) ? curServers : [...curServers, mcpName])
         : curServers.filter((n) => n !== mcpName);
 
