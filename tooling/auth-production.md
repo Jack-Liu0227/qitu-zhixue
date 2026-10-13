@@ -9,15 +9,19 @@ pnpm --filter @qitu/auth-portal lint
 pnpm --filter @qitu/auth-portal build
 ```
 
-Point `/root/team-workspaces/qitu-auth-current` to the fully built release.
 Install `tooling/qitu-auth.service` in `/etc/systemd/system/`, run
 `systemctl daemon-reload`, and enable/start `qitu-auth.service`.
+The unit runs from the canonical checkout `/root/team-workspaces/qitu-zhixue`;
+there is no `qitu-auth-current` release symlink any more (the earlier
+symlink-based scheme was dropped — keep the unit file and the host in sync).
 Port 3100 must be free before starting it. Manage this frontend through
 systemd; do not launch a second `next dev` process on this port.
 
-Never build into the `.next` directory used by a running process. Build the
-next release separately, switch the symlink, and restart the service.
-Roll back by restoring the previous symlink and restarting the service.
+Never build into the `.next` directory a running process is serving. Stop the
+service (or the script-owned process on that port), build in place, then start
+again — `bash tooling/start-qitu-services.sh stop && ... build && ... start`
+handles all five frontends in one pass. `next start` without a production
+`.next/BUILD_ID` crash-loops the unit and Nginx returns 502 on `/` and `/login`.
 
 Apply the gzip and `/_next/static/` location from
 `tooling/qtzx.jaycue.tech.conf` to the existing Nginx site, preserving its
