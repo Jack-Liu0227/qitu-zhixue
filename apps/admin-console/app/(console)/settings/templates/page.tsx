@@ -148,7 +148,20 @@ export default function AdminTemplatesPage() {
         };
       });
 
-      setTemplates(merged);
+      let customTemplates: EditableTemplate[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_templates');
+          if (cached) {
+            customTemplates = JSON.parse(cached);
+          }
+        } catch {}
+      }
+
+      const existingTplIds = new Set(merged.map((t) => t.id));
+      const combined = [...customTemplates.filter((t) => !existingTplIds.has(t.id)), ...merged];
+
+      setTemplates(combined);
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('模板库加载失败'));
     } finally {

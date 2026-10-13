@@ -69,7 +69,34 @@ export default function AdminKnowledgePage() {
         };
       });
 
-      setDocuments(enhanced);
+      let customDocs: EnhancedDocument[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_knowledge_docs');
+          if (cached) {
+            const list = JSON.parse(cached);
+            customDocs = list.map((d: any) => ({
+              ...d,
+              summary: d.summary || (d.content ? d.content.slice(0, 100) + '...' : '管家录入文献'),
+              source: '启途智学管家自动录入',
+              sourceRef: null,
+              schoolId: null,
+              ownerUserId: null,
+              projectId: null,
+              checksum: null,
+              scope: 'domain',
+              contentLength: d.content?.length || 500,
+              createdAt: d.updatedAt || new Date().toISOString(),
+              updatedAt: d.updatedAt || new Date().toISOString(),
+            }));
+          }
+        } catch {}
+      }
+
+      const existingDocIds = new Set(enhanced.map((d) => d.id));
+      const combined = [...customDocs.filter((d) => !existingDocIds.has(d.id)), ...enhanced];
+
+      setDocuments(combined);
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('知识库加载失败'));
     } finally {

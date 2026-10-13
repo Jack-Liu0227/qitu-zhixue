@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import { persistAssistantBinding, BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID } from '../../../../lib/api/assistantBindings';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
 export interface SingleMcpConfig {
@@ -436,84 +437,155 @@ export default function ToolsSettingsPage() {
     }
   };
 
-  // 切换 MCP 对指定助手的授权
-  const toggleMcpForAssistant = (mcpName: string, asstName: string) => {
-    setMcpList((prev) =>
-      prev.map((m) => {
-        if (m.name !== mcpName) return m;
-        const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
-        const nextBound = currentBound.includes(asstName)
-          ? currentBound.filter((n) => n !== asstName)
-          : [...currentBound, asstName];
+  // 切换 MCP 对指定助手的授权 (打上✔ 立即生效)
+  const toggleMcpForAssistant = async (mcpName: string, asstName: string) => {
+    let nextChecked = false;
+    const nextMcpList = mcpList.map((m) => {
+      if (m.name !== mcpName) return m;
+      const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
+      const hasBound = currentBound.includes(asstName);
+      nextChecked = !hasBound;
+      const nextBound = hasBound
+        ? currentBound.filter((n) => n !== asstName)
+        : [...currentBound, asstName];
 
-        let updatedRawJson = m.rawJson;
-        try {
-          const parsed = JSON.parse(m.rawJson);
-          parsed.boundAssistants = nextBound;
-          updatedRawJson = JSON.stringify(parsed, null, 2);
-        } catch {
-          // fallback
-        }
+      let updatedRawJson = m.rawJson;
+      try {
+        const parsed = JSON.parse(m.rawJson);
+        parsed.boundAssistants = nextBound;
+        updatedRawJson = JSON.stringify(parsed, null, 2);
+      } catch {
+        // fallback
+      }
 
-        return {
-          ...m,
-          boundAssistants: nextBound,
-          rawJson: updatedRawJson,
-        };
-      })
-    );
+      return {
+        ...m,
+        boundAssistants: nextBound,
+        rawJson: updatedRawJson,
+      };
+    });
+    setMcpList(nextMcpList);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcpList));
+      } catch {}
+    }
+
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    if (matchedAsst) {
+      const curServers = matchedAsst.mcpServerIds || [];
+      const updatedServers = nextChecked
+        ? (curServers.includes(mcpName) ? curServers : [...curServers, mcpName])
+        : curServers.filter((n) => n !== mcpName);
+
+      setAssistants((prev) =>
+        prev.map((a) => (a.id === matchedAsst.id ? { ...a, mcpServerIds: updatedServers } : a))
+      );
+      try {
+        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', updatedServers);
+      } catch {
+        // fallback
+      }
+    }
+
+    setNotice(`已更新【${matchedAsst?.name || asstName}】对 MCP【${mcpName}】的授权 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
-  // 切换内置工具对指定助手的授权
-  const toggleBuiltinToolForAssistant = (tool: 'imageGen' | 'sandbox', asstName: string) => {
+  // 切换内置工具对指定助手的授权 (打上✔ 立即生效)
+  const toggleBuiltinToolForAssistant = async (tool: 'imageGen' | 'sandbox', asstName: string) => {
+    const builtinId = tool === 'imageGen' ? BUILTIN_IMAGE_GENERATION_ID : BUILTIN_SANDBOX_ID;
+    const toolLabel = tool === 'imageGen' ? '图像生成' : 'Python 沙箱';
+    let nextChecked = false;
+
     if (tool === 'imageGen') {
-      setImageGenAssistants((prev) =>
-        prev.includes(asstName) ? prev.filter((n) => n !== asstName) : [...prev, asstName]
-      );
+      setImageGenAssistants((prev) => {
+        const has = prev.includes(asstName);
+        nextChecked = !has;
+        return has ? prev.filter((n) => n !== asstName) : [...prev, asstName];
+      });
     } else {
-      setSandboxAssistants((prev) =>
-        prev.includes(asstName) ? prev.filter((n) => n !== asstName) : [...prev, asstName]
-      );
+      setSandboxAssistants((prev) => {
+        const has = prev.includes(asstName);
+        nextChecked = !has;
+        return has ? prev.filter((n) => n !== asstName) : [...prev, asstName];
+      });
     }
+
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    if (matchedAsst) {
+      const curTools = matchedAsst.toolIds || [];
+      const updatedTools = nextChecked
+        ? (curTools.includes(builtinId) ? curTools : [...curTools, builtinId])
+        : curTools.filter((t) => t !== builtinId);
+
+      setAssistants((prev) =>
+        prev.map((a) => (a.id === matchedAsst.id ? { ...a, toolIds: updatedTools } : a))
+      );
+      try {
+        await persistAssistantBinding(matchedAsst.id, 'toolIds', updatedTools);
+      } catch {}
+    }
+
+    setNotice(`已更新【${matchedAsst?.name || asstName}】对【${toolLabel}】的权限 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
   // 一键为某助手全选所有工具
-  const grantAllToolsForAssistant = (asstName: string) => {
-    setMcpList((prev) =>
-      prev.map((m) => {
-        const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
-        if (!currentBound.includes(asstName)) {
-          currentBound.push(asstName);
-        }
-        let updatedRawJson = m.rawJson;
-        try {
-          const parsed = JSON.parse(m.rawJson);
-          parsed.boundAssistants = currentBound;
-          updatedRawJson = JSON.stringify(parsed, null, 2);
-        } catch {}
-        return { ...m, boundAssistants: currentBound, rawJson: updatedRawJson };
-      })
-    );
+  const grantAllToolsForAssistant = async (asstName: string) => {
+    const nextMcp = mcpList.map((m) => {
+      const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
+      if (!currentBound.includes(asstName)) {
+        currentBound.push(asstName);
+      }
+      let updatedRawJson = m.rawJson;
+      try {
+        const parsed = JSON.parse(m.rawJson);
+        parsed.boundAssistants = currentBound;
+        updatedRawJson = JSON.stringify(parsed, null, 2);
+      } catch {}
+      return { ...m, boundAssistants: currentBound, rawJson: updatedRawJson };
+    });
+    setMcpList(nextMcp);
     if (!imageGenAssistants.includes(asstName)) setImageGenAssistants((prev) => [...prev, asstName]);
     if (!sandboxAssistants.includes(asstName)) setSandboxAssistants((prev) => [...prev, asstName]);
+
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    if (matchedAsst) {
+      try {
+        await persistAssistantBinding(matchedAsst.id, 'toolIds', [BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID]);
+        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', nextMcp.map((m) => m.name));
+      } catch {}
+    }
+    setNotice(`已为【${matchedAsst?.name || asstName}】授予全部 MCP 与内置工具权限 (打上✔ 立即生效)`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
   // 一键清除某助手的所有工具授权
-  const revokeAllToolsForAssistant = (asstName: string) => {
-    setMcpList((prev) =>
-      prev.map((m) => {
-        const nextBound = (m.boundAssistants || []).filter((n) => n !== asstName);
-        let updatedRawJson = m.rawJson;
-        try {
-          const parsed = JSON.parse(m.rawJson);
-          parsed.boundAssistants = nextBound;
-          updatedRawJson = JSON.stringify(parsed, null, 2);
-        } catch {}
-        return { ...m, boundAssistants: nextBound, rawJson: updatedRawJson };
-      })
-    );
+  const revokeAllToolsForAssistant = async (asstName: string) => {
+    const nextMcp = mcpList.map((m) => {
+      const nextBound = (m.boundAssistants || []).filter((n) => n !== asstName);
+      let updatedRawJson = m.rawJson;
+      try {
+        const parsed = JSON.parse(m.rawJson);
+        parsed.boundAssistants = nextBound;
+        updatedRawJson = JSON.stringify(parsed, null, 2);
+      } catch {}
+      return { ...m, boundAssistants: nextBound, rawJson: updatedRawJson };
+    });
+    setMcpList(nextMcp);
     setImageGenAssistants((prev) => prev.filter((n) => n !== asstName));
     setSandboxAssistants((prev) => prev.filter((n) => n !== asstName));
+
+    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
+    if (matchedAsst) {
+      try {
+        await persistAssistantBinding(matchedAsst.id, 'toolIds', []);
+        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', []);
+      } catch {}
+    }
+    setNotice(`已清除【${matchedAsst?.name || asstName}】的所有工具授权 (立即生效)`);
+    setTimeout(() => setNotice(''), 2500);
   };
 
   return (

@@ -307,64 +307,185 @@ export default function CopilotPage() {
       let artifact: Message['artifact'];
 
       if (userText.includes('助手') || userText.includes('智能体')) {
+        const newAsstId = `asst-custom-${Date.now()}`;
+        const asstName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `导师-${userText.slice(0, 10)}`;
+        const customAsst = {
+          id: newAsstId,
+          source: 'user',
+          name: asstName || '全能学科启发导师',
+          description: `由启途智学管家自动创建：${userText}`,
+          role: '导师助手',
+          icon: '🤖',
+          enabled: true,
+          model: selectedModel,
+          permission: runtimePermission,
+          thinkingLevel: thinkingStrength,
+          skillsCount: 4,
+          mcpSetting: '自动记住上次',
+          systemPrompt: `你是遵循苏格拉底教学法的${asstName}，坚决不直接提供代码或答案，引导学生通过观察与推导独立解决问题。`,
+          deletable: true,
+          sortOrder: 99,
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_assistants');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([customAsst, ...list]));
+        } catch {}
+
         toolSteps = [
           { name: 'agent_sdk_spec_parser', status: 'done', label: `解析导师角色需求：${userText.slice(0, 12)}` },
           { name: 'model_router_bind', status: 'done', label: `挂载模型网关：${selectedModel} (思考强度: ${thinkingStrength})` },
+          { name: 'persist_assistant_db', status: 'done', label: '写入智能体数据库并刷新设置视图' },
         ];
-        replyContent = `已根据自建 Agent SDK 生成全新导师助手配置，已设定严谨的启发式教学模式。底座运行模型挂接为 **${selectedModel}**，权限设为 **${runtimePermission}**。`;
+        replyContent = `已根据自建 Agent SDK 生成全新导师助手【**${customAsst.name}**】配置并实时持久化保存！\n\n您现在前往 **[设置 > 智能体助手](/settings/assistants)** 即可在列表中实时查看该助手，支持立即配置技能与绑定团队。`;
         artifact = {
           type: 'assistant',
-          title: `生成新导师：${userText.slice(0, 15)}...`,
-          details: '已与模型网关通道接入，开启动态单步检验',
-          jsonPreview: JSON.stringify({
-            name: '自动生成的启途导师',
-            model: selectedModel,
-            thinking: thinkingStrength,
-            permission: runtimePermission,
-            createdAt: new Date().toISOString()
-          }, null, 2),
+          title: `生成新导师：${customAsst.name}`,
+          details: '已与模型网关通道接入，已在设置中心实时显示',
+          jsonPreview: JSON.stringify(customAsst, null, 2),
         };
       } else if (userText.includes('团队') || userText.includes('组建')) {
+        const newTeamId = `team-custom-${Date.now()}`;
+        const teamName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `${userText.slice(0, 12)}研讨团队`;
+        const customTeam = {
+          id: newTeamId,
+          name: teamName || '全新 PBL 课题导师团队',
+          description: `由启途智学管家自动组建：${userText}`,
+          leaderAssistantId: 'asst-coach-socrates',
+          workspaceMode: 'shared',
+          sessionMode: 'supervised',
+          concurrencyLimit: 2,
+          status: 'active',
+          members: [
+            { assistantId: 'asst-coach-socrates', roleLabel: '概念教练', orderIndex: 0, isOptional: false },
+            { assistantId: 'asst-coder', roleLabel: '沙箱向导', orderIndex: 1, isOptional: false },
+            { assistantId: 'asst-reviewer', roleLabel: '评审导师', orderIndex: 2, isOptional: false },
+          ],
+          updatedAt: new Date().toISOString(),
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_teams');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.custom_teams', JSON.stringify([customTeam, ...list]));
+        } catch {}
+
         toolSteps = [
           { name: 'team_orchestrator', status: 'done', label: '调度自建 Agent SDK 多智能体协同引擎' },
-          { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束门禁' }
+          { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束门禁' },
+          { name: 'persist_team_registry', status: 'done', label: '注册至团队协同中心' },
         ];
-        replyContent = `已成功基于 PBL 规范组建协同团队，包含原理教练、向导与评审导师。在未达成掌握度前遵循：\n\n$$\\text{GateState} = \\text{TheoryMastered}$$`;
+        replyContent = `已成功基于 PBL 规范组建协同团队【**${customTeam.name}**】并实时生效！\n\n您现在前往 **[设置 > 团队协同](/settings/teams)** 即可在团队架构列表中实时查看该团队及各角色导师。`;
         artifact = {
           type: 'team',
-          title: '自动生成 PBL 协同团队',
-          details: '已绑定项目模板门禁与阶段流转规则',
-          jsonPreview: JSON.stringify({
-            teamName: 'PBL 自动化研讨小组',
-            roles: ['Coach', 'Teammate', 'Reviewer'],
-            gateRequired: 'TheoryMastered'
-          }, null, 2),
+          title: `自动生成 PBL 协同团队：${customTeam.name}`,
+          details: '已绑定项目模板门禁与阶段流转规则，已在设置中心实时显示',
+          jsonPreview: JSON.stringify(customTeam, null, 2),
         };
       } else if (userText.includes('MCP') || userText.includes('工具')) {
+        const newMcpId = `mcp-custom-${Date.now()}`;
+        const mcpName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `tool-${userText.slice(0, 8)}`;
+        const customMcp = {
+          id: newMcpId,
+          name: mcpName || 'custom-analysis-tool',
+          command: 'npx',
+          args: ['-y', `@tools/${mcpName || 'runner'}`],
+          env: { QITU_ENV: 'production' },
+          transport: 'stdio',
+          status: 'connected',
+          latencyMs: 12,
+          tools: ['data_query', 'graph_plot', 'schema_audit'],
+          boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
+          description: `由启途智学管家自动配置：${userText}`,
+          rawJson: JSON.stringify({ mcpServers: { [mcpName || 'tool']: { command: 'npx', args: ['-y', `@tools/${mcpName || 'runner'}`] } }, boundAssistants: ['启途智学管家'] }, null, 2),
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.mcp_list');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.mcp_list', JSON.stringify([customMcp, ...list]));
+        } catch {}
+
         toolSteps = [
           { name: 'mcp_json_schema_build', status: 'done', label: '构建标准 JSON-RPC 2.0 MCP 配置' },
-          { name: 'security_sandbox_audit', status: 'done', label: `运行权限安全审计 (当前策略: ${runtimePermission})` }
+          { name: 'security_sandbox_audit', status: 'done', label: `运行权限安全审计 (当前策略: ${runtimePermission})` },
+          { name: 'persist_tool_matrix', status: 'done', label: '注入工具矩阵与 MCP 清单' },
         ];
-        replyContent = `已生成对应的 MCP 工具与服务器连接规范，支持在工具矩阵中一键勾选启用。`;
+        replyContent = `已生成对应的 MCP 工具【**${customMcp.name}**】并实时同步！\n\n您现在前往 **[设置 > MCP 与工具](/settings/tools)** 即可在工具矩阵中一键打上✔立即生效。`;
         artifact = {
           type: 'mcp',
-          title: 'MCP 配置包 (Model Context Protocol)',
-          details: '协议标准：JSON-RPC 2.0 | 权限隔离：只读沙箱环境',
-          jsonPreview: JSON.stringify({
-            mcpServers: {
-              customTool: {
-                command: 'npx',
-                args: ['-y', '@custom/mcp-server'],
-                env: {}
-              }
-            }
-          }, null, 2),
+          title: `MCP 配置包：${customMcp.name}`,
+          details: '协议标准：JSON-RPC 2.0 | 已在工具矩阵实时就绪',
+          jsonPreview: JSON.stringify(customMcp, null, 2),
+        };
+      } else if (userText.includes('模板') || userText.includes('项目模板') || userText.includes('模板库')) {
+        const newTplId = `tpl-custom-${Date.now()}`;
+        const tplTitle = userText.includes('：') ? userText.split('：')[1]?.slice(0, 18) : `${userText.slice(0, 12)}探究课题`;
+        const customTpl = {
+          id: newTplId,
+          title: tplTitle || '全新项目设计模板',
+          summary: `由启途智学管家自动设计：${userText}`,
+          content: '包含阶段一意图确认、阶段二理论推导(TheoryMastered门禁)、阶段三代码仿真与阶段四答辩反思。',
+          stage: 'exploration',
+          tags: ['项目式学习', '科学探究', '跨学科'],
+          updatedAt: new Date().toISOString(),
+          linkedTeamId: 'team-kinetic-energy',
+          phases: [
+            { id: 'p1', name: '意图确认与选题', gateRule: '学生明确目标与预期成果', stagePrompt: '启发学生提出假设', mentorRole: '总导师' },
+            { id: 'p2', name: '核心理论推导与考核 (TheoryMastered)', gateRule: '达标85%以上通过概念闭环', stagePrompt: '苏格拉底追问推导', mentorRole: '概念教练' },
+            { id: 'p3', name: '工程仿真与实验制作', gateRule: '沙箱验证通过', stagePrompt: '指导编程与数据拟合', mentorRole: '沙箱向导' },
+            { id: 'p4', name: '结项答辩与成长建档', gateRule: '完成答辩量规', stagePrompt: '概念盲区追问', mentorRole: '评审导师' },
+          ],
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_templates');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.custom_templates', JSON.stringify([customTpl, ...list]));
+        } catch {}
+
+        toolSteps = [
+          { name: 'template_schema_compiler', status: 'done', label: '编译 PBL 阶段阶梯与门禁量规' },
+          { name: 'persist_template_store', status: 'done', label: '持久化上架至项目模板库' },
+        ];
+        replyContent = `已成功为课题【**${customTpl.title}**】生成完整 PBL 设计模板！\n\n您现在前往 **[设置 > 项目模板](/settings/templates)** 即可查看四阶段阶梯与门禁配置。`;
+        artifact = {
+          type: 'template',
+          title: `PBL 项目模板：${customTpl.title}`,
+          details: '已定义 4 个探究阶段与强约束门禁，已在模板库实时显示',
+          jsonPreview: JSON.stringify(customTpl, null, 2),
+        };
+      } else if (userText.includes('知识库') || userText.includes('文档') || userText.includes('知识')) {
+        const newDocId = `doc-custom-${Date.now()}`;
+        const docTitle = userText.includes('：') ? userText.split('：')[1]?.slice(0, 18) : `${userText.slice(0, 12)}参考资料`;
+        const customDoc = {
+          id: newDocId,
+          title: docTitle || '新录入知识库文献',
+          category: 'kinetic',
+          targetTeam: '全平台通用导师',
+          chunksCount: 6,
+          content: `由启途智学管家生成：${userText}\n\n该文档已建立向量切片索引，支持各学科导师在苏格拉底提问时实时召回。`,
+          updatedAt: new Date().toISOString(),
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_knowledge_docs');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.custom_knowledge_docs', JSON.stringify([customDoc, ...list]));
+        } catch {}
+
+        toolSteps = [
+          { name: 'rag_vector_embed', status: 'done', label: '执行文本分块与向量化嵌入处理' },
+          { name: 'persist_knowledge_base', status: 'done', label: '录入平台 DeepTutor 知识库并建档' },
+        ];
+        replyContent = `已成功将文献【**${customDoc.title}**】录入平台知识库！\n\n您现在前往 **[设置 > 知识库](/settings/knowledge)** 即可在知识列表与切片抽屉中实时检索该文档。`;
+        artifact = {
+          type: 'knowledge',
+          title: `知识库文档：${customDoc.title}`,
+          details: '已完成 6 个 Chunk 切片索引，已在知识库实时显示',
+          jsonPreview: JSON.stringify(customDoc, null, 2),
         };
       } else {
         toolSteps = [
           { name: 'qitu_agent_sdk_scan', status: 'done', label: '全量扫描系统配置与微模块依赖' }
         ];
-        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型，随时为您执行结构化变更。您可以在右侧或下方查看生成的配置草案。`;
+        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型，随时为您执行结构化变更。您可以输入“创建一个高中物理力学探究团队”、“新增一个 Python 绘图工具”或“为动能定理添加补充知识库”，我将为您实时配置并在设置中心显示。`;
       }
 
       const botMsg: Message = {

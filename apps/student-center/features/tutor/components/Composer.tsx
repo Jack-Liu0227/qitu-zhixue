@@ -293,9 +293,19 @@ export function Composer({
   const hasWebSpeech =
     typeof window !== 'undefined' &&
     Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
-  const voiceUnavailable = !hasWebSpeech && (voiceSupported === false || voiceModel === null);
+  const voiceUnavailable = false; // Always allow user to trigger voice input
   const trimmedLength = draft.trim().length;
   const canSend = trimmedLength > 0 && !submitting && !disabled && !offline;
+
+  const toggleRecording = () => {
+    setVoiceError(null);
+    setInterimTranscript('');
+    if (isRecording) {
+      stopListening();
+    } else {
+      void startListening();
+    }
+  };
 
   const switchMode = () => {
     setVoiceError(null);
@@ -311,7 +321,7 @@ export function Composer({
 
   const submit = () => {
     stopListening();
-    setMode('text');
+    if (mode === 'voice') setMode('text');
     if (canSend) onSubmit();
   };
 
@@ -331,6 +341,55 @@ export function Composer({
 
   return (
     <form className="qitu-composer" onSubmit={(event) => { event.preventDefault(); submit(); }}>
+      {/* 正在录音或识别时的动态声波指示条 */}
+      {isRecording && (
+        <div
+          style={{
+            marginBottom: '8px',
+            padding: '8px 12px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12.5px',
+            color: '#1d4ed8',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: '#ef4444',
+                boxShadow: '0 0 0 4px rgba(239, 68, 68, 0.2)',
+              }}
+            />
+            <strong>正在倾听你的想法：</strong>
+            <span style={{ color: '#2563eb' }}>{interimTranscript || '请对麦克风说话，语音将实时转写为文字...'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={stopListening}
+            style={{
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              padding: '2px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            完成说话
+          </button>
+        </div>
+      )}
+
       {mode === 'text' ? (
         <div className="qitu-composer-quick-prompts" role="group" aria-label="启发思考快捷提问">
           <span className="qitu-composer-quick-label">思考灵感：</span>
@@ -360,7 +419,7 @@ export function Composer({
             placeholder={
               offline
                 ? '当前离线，先把想法写下来，网络恢复后再发送…'
-                : '说说你现在的想法、尝试过的步骤或卡住的地方…'
+                : '说说你现在的想法、尝试过的步骤或卡住的地方（支持点击语音输入麦克风直接说话）…'
             }
             disabled={disabled}
             rows={2}
@@ -382,15 +441,20 @@ export function Composer({
           <div className="qitu-composer-toolbar-left">
             <button
               type="button"
-              className={`qitu-composer-mode${mode === 'voice' ? ' is-active' : ''}`}
-              onClick={switchMode}
-              disabled={disabled || (mode === 'text' && (offline || voiceUnavailable))}
-              aria-pressed={mode === 'voice'}
-              aria-label={mode === 'voice' ? '切换为文字输入' : '切换为语音输入'}
-              title={voiceUnavailable ? '当前没有可用的语音转写模型' : mode === 'voice' ? '切换为文字输入' : '切换为语音输入'}
+              className={`qitu-composer-mode${isRecording ? ' is-active' : ''}`}
+              onClick={toggleRecording}
+              disabled={disabled || offline}
+              aria-pressed={isRecording}
+              aria-label={isRecording ? '停止语音录制' : '点击开始语音输入'}
+              title={isRecording ? '停止语音录制' : '点击开始语音输入'}
+              style={{
+                background: isRecording ? '#fee2e2' : undefined,
+                color: isRecording ? '#dc2626' : undefined,
+                borderColor: isRecording ? '#fca5a5' : undefined,
+              }}
             >
-              {mode === 'voice' ? <KeyboardIcon /> : <MicIcon />}
-              <span>{mode === 'voice' ? '切换打字' : '语音输入'}</span>
+              <MicIcon active={isRecording} />
+              <span>{isRecording ? '停止录音' : '语音输入'}</span>
             </button>
 
             {mode === 'voice' ? (

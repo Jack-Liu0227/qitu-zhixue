@@ -73,14 +73,26 @@ export default function AdminAssistantsPage() {
 
       setConfiguredModels(models);
 
+      let customList: AssistantItem[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_assistants');
+          if (cached) {
+            customList = JSON.parse(cached);
+          }
+        } catch {}
+      }
+
       if (backendConfigs && backendConfigs.length > 0) {
         // 过滤掉任何残余的 cli 示例
         const filtered = backendConfigs
           .filter((c) => (c.source as string) !== 'cli' && !c.id.startsWith('cli-'))
           .map(mapConfigToItem);
-        setAssistants(filtered);
+        const existingIds = new Set(filtered.map((a) => a.id));
+        const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...filtered];
+        setAssistants(combined);
       } else {
-        setAssistants([]);
+        setAssistants(customList);
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('助手配置加载失败'));

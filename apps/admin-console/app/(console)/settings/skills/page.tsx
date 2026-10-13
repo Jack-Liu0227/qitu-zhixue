@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
+import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
 interface SkillFile {
@@ -227,18 +228,45 @@ export default function SkillsSettingsPage() {
     ];
   }, [assistants]);
 
-  // 矩阵中切换技能绑定
-  const toggleSkillForAssistant = (skillId: string, asstIdentifier: string) => {
-    setSkills((prev) =>
-      prev.map((s) => {
-        if (s.id !== skillId) return s;
-        const exists = s.boundAssistantIds.includes(asstIdentifier);
-        const boundAssistantIds = exists
-          ? s.boundAssistantIds.filter((id) => id !== asstIdentifier)
-          : [...s.boundAssistantIds, asstIdentifier];
-        return { ...s, boundAssistantIds };
-      })
-    );
+  // 矩阵中切换技能绑定 (打上✔ 立即生效)
+  const toggleSkillForAssistant = async (skillId: string, asstIdentifier: string) => {
+    let targetExists = false;
+    let nextBoundIds: string[] = [];
+    const nextSkills = skills.map((s) => {
+      if (s.id !== skillId) return s;
+      const exists = s.boundAssistantIds.includes(asstIdentifier);
+      targetExists = !exists;
+      nextBoundIds = exists
+        ? s.boundAssistantIds.filter((id) => id !== asstIdentifier)
+        : [...s.boundAssistantIds, asstIdentifier];
+      return { ...s, boundAssistantIds: nextBoundIds };
+    });
+    setSkills(nextSkills);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+      } catch {}
+    }
+
+    const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
+    if (matchedAsst) {
+      const currentEnabled = matchedAsst.enabledSkills || [];
+      const updatedEnabled = targetExists
+        ? (currentEnabled.includes(skillId) ? currentEnabled : [...currentEnabled, skillId])
+        : currentEnabled.filter((id) => id !== skillId);
+
+      setAssistants((prev) =>
+        prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
+      );
+      try {
+        await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
+      } catch {
+        // fallback
+      }
+    }
+
+    setSaveNotice(`已更新【${matchedAsst?.name || asstIdentifier}】的 Skill 权限 (${targetExists ? '已打上✔ 立即启用' : '取消✔ 立即关闭'})`);
+    setTimeout(() => setSaveNotice(''), 2500);
   };
 
   // 加载真实助手用于绑定与展示头像

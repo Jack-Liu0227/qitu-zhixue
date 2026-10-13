@@ -53,11 +53,24 @@ export default function AdminTeamsPage() {
         fetchAvailableConfiguredModels().catch(() => []),
       ]);
 
-      setTeams(teamsData);
+      let customTeams: AdminTeamConfig[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_teams');
+          if (cached) {
+            customTeams = JSON.parse(cached);
+          }
+        } catch {}
+      }
+
+      const existingIds = new Set(teamsData.map((t) => t.id));
+      const combined = [...customTeams.filter((t) => !existingIds.has(t.id)), ...teamsData];
+
+      setTeams(combined);
       setAllAssistants(assistantsData);
       setConfiguredModels(modelsData);
 
-      const firstTeam = teamsData[0];
+      const firstTeam = combined[0];
       if (firstTeam !== undefined && !activeTeamId) {
         setActiveTeamId(firstTeam.id);
       }

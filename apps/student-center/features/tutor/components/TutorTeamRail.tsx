@@ -6,6 +6,7 @@ import { TeamStatusBadge, type TeamNodeStatus } from '@qitu/ui';
 interface TutorTeamRailProps {
   currentTeam?: 'team-thunder-fighter' | 'team-kinetic-energy';
   streaming: boolean;
+  activeAgentId?: string | null;
   ready: boolean;
   failed: boolean;
   offline: boolean;
@@ -17,6 +18,7 @@ interface TutorTeamRailProps {
 export function TutorTeamRail({
   currentTeam = 'team-kinetic-energy',
   streaming,
+  activeAgentId = null,
   ready,
   failed,
   offline,
@@ -474,54 +476,76 @@ export function TutorTeamRail({
             </div>
 
             <ol className="qitu-tutor-team-list" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? '苏格拉底物理教练' : '战机主循环教练'}</strong>
+              {/* 1. 概念教练 */}
+              {(() => {
+                const coachId = isKinetic ? 'kinetic-coach' : 'fighter-coach';
+                const isRunning = activeAgentId === coachId;
+                return (
+                  <div style={{ padding: '10px', background: isRunning ? '#eff6ff' : '#f8fafc', borderRadius: '8px', border: isRunning ? '1.5px solid #3b82f6' : '1px solid #e2e8f0', transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRunning ? '#10b981' : '#3b82f6', boxShadow: isRunning ? '0 0 0 3px rgba(16,185,129,0.25)' : 'none' }} />
+                        <strong style={{ fontSize: '13px', color: isRunning ? '#1d4ed8' : '#1e293b' }}>{isKinetic ? '苏格拉底物理教练' : '战机主循环教练'}</strong>
+                      </div>
+                      <TeamStatusBadge status={isRunning ? 'running' : 'ready'} />
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                      角色: Concept Coach · 主导苏格拉底启发式追问与概念推导
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: isRunning ? '#1d4ed8' : '#0369a1', marginTop: '4px', background: isRunning ? '#dbeafe' : '#e0f2fe', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', fontWeight: isRunning ? 700 : 500 }}>
+                      执行模型: Qwen-Max / DeepSeek R1 · {isRunning ? '🔥 实时流式思考与输出中' : '就绪'}
+                    </div>
                   </div>
-                  <TeamStatusBadge status="running" />
-                </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  角色: Concept Coach · 主导苏格拉底启发式追问与门禁提问
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#0369a1', marginTop: '4px', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
-                  执行模型: DeepSeek R1 (思维链推理) · 活跃中
-                </div>
-              </div>
+                );
+              })()}
 
-              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8' }} />
-                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? 'RK4 数值仿真 Agent' : 'AABB 碰撞检测引擎'}</strong>
+              {/* 2. 沙箱数值仿真 / 碰撞引擎 */}
+              {(() => {
+                const sandboxId = isKinetic ? 'kinetic-sandbox' : 'fighter-engine';
+                const isRunning = activeAgentId === sandboxId;
+                return (
+                  <div style={{ padding: '10px', background: isRunning ? '#ecfdf5' : '#f8fafc', borderRadius: '8px', border: isRunning ? '1.5px solid #10b981' : '1px solid #e2e8f0', transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRunning ? '#10b981' : '#94a3b8', boxShadow: isRunning ? '0 0 0 3px rgba(16,185,129,0.25)' : 'none' }} />
+                        <strong style={{ fontSize: '13px', color: isRunning ? '#065f46' : '#1e293b' }}>{isKinetic ? 'RK4 数值仿真 Agent' : 'AABB 碰撞检测引擎'}</strong>
+                      </div>
+                      <TeamStatusBadge status={isRunning ? 'running' : 'ready'} />
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                      角色: Sandbox Runner · 执行微分方程数值积分与动态沙箱参数反馈
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: isRunning ? '#065f46' : '#64748b', marginTop: '4px', background: isRunning ? '#d1fae5' : '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', fontWeight: isRunning ? 700 : 500 }}>
+                      执行模型: Python WebAssembly / Qwen-Coder · {isRunning ? '🔥 仿真计算与图表绘制中' : '待命'}
+                    </div>
                   </div>
-                  <TeamStatusBadge status="ready" />
-                </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  角色: Sandbox Runner · 执行微分方程积分与动态沙箱参数反馈
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
-                  执行模型: Python WebAssembly / Qwen-Coder · 待命
-                </div>
-              </div>
+                );
+              })()}
 
-              <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8' }} />
-                    <strong style={{ fontSize: '13px', color: '#1e293b' }}>{isKinetic ? '严谨评审导师' : '代码架构评审导师'}</strong>
+              {/* 3. 门禁评审导师 */}
+              {(() => {
+                const reviewerId = isKinetic ? 'kinetic-reviewer' : 'fighter-reviewer';
+                const isRunning = activeAgentId === reviewerId;
+                return (
+                  <div style={{ padding: '10px', background: isRunning ? '#faf5ff' : '#f8fafc', borderRadius: '8px', border: isRunning ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0', transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRunning ? '#8b5cf6' : '#94a3b8', boxShadow: isRunning ? '0 0 0 3px rgba(139,92,246,0.25)' : 'none' }} />
+                        <strong style={{ fontSize: '13px', color: isRunning ? '#5b21b6' : '#1e293b' }}>{isKinetic ? '严谨评审导师' : '代码架构评审导师'}</strong>
+                      </div>
+                      <TeamStatusBadge status={isRunning ? 'running' : 'waiting'} />
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                      角色: Gate Reviewer · TheoryMastered 强门禁考核与答辩审计
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: isRunning ? '#5b21b6' : '#64748b', marginTop: '4px', background: isRunning ? '#ede9fe' : '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', fontWeight: isRunning ? 700 : 500 }}>
+                      执行模型: Claude 3.5 Sonnet / Qwen · {isRunning ? '🔥 门禁严谨评估中' : '待命'}
+                    </div>
                   </div>
-                  <TeamStatusBadge status="waiting" />
-                </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  角色: Gate Reviewer · TheoryMastered 强门禁考核与代码安全审计
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '4px', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
-                  执行模型: Claude 3.5 Sonnet (严谨考评) · 待命
-                </div>
-              </div>
+                );
+              })()}
 
+              {/* 4. 学情画像 */}
               <div style={{ padding: '10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

@@ -45,6 +45,35 @@ export function ChatBubble({
   const lastRaw = toUnknownBlocks(turn).at(-1);
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
   const [showThoughtTrace, setShowThoughtTrace] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleToggleSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('当前浏览器环境不支持语音合成输出');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const texts = turn.blocks
+      .filter((b): b is Extract<TutorReplyBlock, { kind: 'text' }> => (b as any).kind === 'text')
+      .map((b) => b.text.replace(/[\$#\*`_]/g, ''))
+      .join('。');
+    if (!texts.trim()) return;
+
+    const utterance = new SpeechSynthesisUtterance(texts);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
 
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
@@ -69,6 +98,29 @@ export function ChatBubble({
             >
               {turn.author.role}
             </span>
+          )}
+          {!isStudent && (
+            <button
+              type="button"
+              onClick={handleToggleSpeech}
+              title={isSpeaking ? '停止朗读' : '语音播报此回复'}
+              style={{
+                background: isSpeaking ? '#dbeafe' : 'transparent',
+                border: isSpeaking ? '1px solid #93c5fd' : '1px solid transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                padding: '1px 5px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                color: isSpeaking ? '#1d4ed8' : '#64748b',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>{isSpeaking ? '⏹️' : '🔊'}</span>
+              <span style={{ fontSize: '11px', fontWeight: 500 }}>{isSpeaking ? '停止' : '朗读'}</span>
+            </button>
           )}
         </div>
       </div>
