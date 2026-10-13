@@ -514,8 +514,8 @@ export default function ToolsSettingsPage() {
 
     const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
     if (matchedAsst) {
-      const curTools = matchedAsst.toolIds || [];
-      const updatedTools = nextChecked
+      const curTools: string[] = matchedAsst.toolIds ? [...matchedAsst.toolIds] : [];
+      const updatedTools: string[] = nextChecked
         ? (curTools.includes(builtinId) ? curTools : [...curTools, builtinId])
         : curTools.filter((t) => t !== builtinId);
 
