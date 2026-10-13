@@ -314,31 +314,32 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             if (s.id !== activeSessionId) return s;
             const updatedTurns = s.turns.map((t) => {
               if (t.turnId !== intakeTurnId) return t;
+              const updatedBlocks: TutorReplyBlock[] = [
+                {
+                  kind: 'think',
+                  content: `【启途智学助手·意图澄清策略】：学生输入了初步想法「${content}」。严格遵守平台铁律：学生未明确确认意图前不得创建正式项目，不得直接给代码或答案。先用苏格拉底式提问澄清意图，推荐契合课题，等待学生明确确认后交接。`,
+                  closed: currIndex >= streamText.length,
+                },
+                {
+                  kind: 'text',
+                  text: currentSlice,
+                },
+                ...(currIndex >= streamText.length
+                  ? [
+                      {
+                        kind: 'options' as const,
+                        items: [
+                          { label: '确认课题', text: isKinetic ? '确认选择《动手学动能定理》课题，开启项目探究' : '确认选择《雷霆战机游戏架构》课题，开启项目探究' },
+                          { label: '继续澄清', text: '我想再微调一下研究方向，换个更有挑战性的角度' },
+                        ],
+                        allowOther: false,
+                      },
+                    ]
+                  : []),
+              ];
               return {
                 ...t,
-                blocks: [
-                  {
-                    kind: 'think',
-                    content: `【启途智学助手·意图澄清策略】：学生输入了初步想法「${content}」。严格遵守平台铁律：学生未明确确认意图前不得创建正式项目，不得直接给代码或答案。先用苏格拉底式提问澄清意图，推荐契合课题，等待学生明确确认后交接。`,
-                    closed: currIndex >= streamText.length,
-                  },
-                  {
-                    kind: 'text',
-                    text: currentSlice,
-                  },
-                  ...(currIndex >= streamText.length
-                    ? [
-                        {
-                          kind: 'options' as const,
-                          items: [
-                            { label: '确认课题', text: isKinetic ? '确认选择《动手学动能定理》课题，开启项目探究' : '确认选择《雷霆战机游戏架构》课题，开启项目探究' },
-                            { label: '继续澄清', text: '我想再微调一下研究方向，换个更有挑战性的角度' },
-                          ],
-                          allowOther: false,
-                        },
-                      ]
-                    : []),
-                ],
+                blocks: updatedBlocks,
               };
             });
             return { ...s, turns: updatedTurns };
