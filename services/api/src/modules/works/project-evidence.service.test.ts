@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { EmptyProjectEvidenceSource, InMemoryProjectEvidenceStore, type ProjectEvidenceFact } from './project-evidence.store';
+import { EmptyProjectEvidenceSource, InMemoryProjectEvidenceStore, ProjectEvidenceValidationError, type ProjectEvidenceFact } from './project-evidence.store';
 import { ProjectEvidenceMaterializer } from './project-evidence.service';
 import { ProjectEvidenceController } from './project-evidence.controller';
 
@@ -68,6 +68,16 @@ describe('ProjectEvidenceMaterializer（服务端证据物化）', () => {
       updatedAt: new Date(),
     });
     assert.equal(inserted, 0);
+  });
+
+  it('运行时校验拒绝无效来源且整批不写入', async () => {
+    const store = new InMemoryProjectEvidenceStore();
+    const materializer = new ProjectEvidenceMaterializer(store, new EmptyProjectEvidenceSource());
+    await assert.rejects(
+      materializer.ingestServerFacts([fact(), fact({ sourceKind: 'not-a-source' as never })]),
+      (error: unknown) => error instanceof ProjectEvidenceValidationError && error.code === 'PROJECT_EVIDENCE_INVALID',
+    );
+    assert.deepEqual(await store.listByProject('proj-1'), []);
   });
 });
 

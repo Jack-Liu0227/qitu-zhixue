@@ -267,6 +267,68 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     assert.equal(validateGeneratedPlan.length > 0, true);
   });
 
+  it('显式 PblSchedule 生成 1×120 分钟计划，并保留 TheoryMastered 结构校验', () => {
+    const input = assertGenerateInput({
+      interest: '桌面互动机器人',
+      weeks: 4,
+      schedule: {
+        durationWeeks: 4,
+        weeklyMinutes: 120,
+        sessionsPerWeek: 1,
+        sessionMinutes: 120,
+      },
+    });
+    const plan = new DeterministicPlanGenerator().generate(input);
+
+    assert.equal(plan.schedule?.sessionsPerWeek, 1);
+    assert.equal(plan.minutesPerSession, 120);
+    assert.equal(plan.sessions.length, 4);
+    assert.equal(plan.sessions[0]?.blocks.reduce((sum, block) => sum + block.minutes, 0), 120);
+    assert.doesNotThrow(() => validateGeneratedPlan(plan));
+  });
+
+  it('显式 PblSchedule 生成 2×60 分钟计划；无 schedule 仍保持旧 5×60 语义', () => {
+    const input = assertGenerateInput({
+      interest: 'Python',
+      weeks: 8,
+      schedule: {
+        durationWeeks: 8,
+        weeklyMinutes: 120,
+        sessionsPerWeek: 2,
+        sessionMinutes: 60,
+      },
+    });
+    const scheduled = new DeterministicPlanGenerator().generate(input);
+    assert.equal(scheduled.sessions.length, 16);
+    assert.doesNotThrow(() => validateGeneratedPlan(scheduled));
+
+    const legacy = new DeterministicPlanGenerator().generate(
+      assertGenerateInput({ interest: 'Python', weeks: 8 }),
+    );
+    assert.equal(legacy.schedule, undefined);
+    assert.equal(legacy.sessions.length, 40);
+    assert.doesNotThrow(() => validateGeneratedPlan(legacy));
+  });
+
+  it('拒绝无效或与 weeks 不一致的 PblSchedule', () => {
+    assert.throws(
+      () => assertGenerateInput({
+        interest: '机器人',
+        weeks: 4,
+        schedule: { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
+      }),
+      PlanGenerationError,
+    );
+    assert.throws(
+      () => assertGenerateInput({
+        interest: '机器人',
+        weeks: 4,
+        schedule: { durationWeeks: 4, weeklyMinutes: 90, sessionsPerWeek: 1, sessionMinutes: 90 },
+      }),
+      PlanGenerationError,
+    );
+  });
+
   it('确认计划恰好创建一个项目；同幂等键重复确认不重复建项目、不重复审计', async () => {
     const { service, store, audit } = harness;
     const user = student('student-1');

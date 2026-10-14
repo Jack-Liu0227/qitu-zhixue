@@ -4,6 +4,7 @@ import type { ArtifactRecord } from './works.store';
 import {
   ProjectEvidenceSource,
   ProjectEvidenceStore,
+  assertProjectEvidenceFact,
   toProjectEvidenceView,
   type ProjectEvidenceFact,
   type ProjectEvidenceView,
@@ -29,6 +30,9 @@ export class ProjectEvidenceMaterializer {
 
   /** 服务端直接注入权威事实（其它模块产生的真实记录）。 */
   async ingestServerFacts(facts: readonly ProjectEvidenceFact[]): Promise<number> {
+    // Validate the complete batch before writing so one malformed fact cannot
+    // leave a partially materialised evidence set behind.
+    for (const fact of facts) assertProjectEvidenceFact(fact);
     const inserted = await this.store.upsertFacts(facts);
     if (inserted > 0) {
       this.logger.log(`项目证据新增 ${inserted} 条（服务端物化）`);

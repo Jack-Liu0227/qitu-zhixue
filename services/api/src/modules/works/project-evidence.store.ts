@@ -57,6 +57,57 @@ export interface ProjectEvidenceView {
   difficulties: ProjectEvidenceItem[];
 }
 
+/**
+ * Runtime boundary error for facts received from other server modules.
+ * TypeScript unions protect callers compiled with this package, but facts can
+ * also arrive from adapters, queues, or database rows and must be checked
+ * before materialisation.
+ */
+export class ProjectEvidenceValidationError extends Error {
+  readonly code = 'PROJECT_EVIDENCE_INVALID';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProjectEvidenceValidationError';
+  }
+}
+
+const isProjectEvidenceColumnKind = (value: unknown): value is ProjectEvidenceColumnKind =>
+  typeof value === 'string' &&
+  (PROJECT_EVIDENCE_COLUMNS as readonly string[]).includes(value);
+
+const isProjectEvidenceSourceKind = (value: unknown): value is ProjectEvidenceSourceKind =>
+  typeof value === 'string' &&
+  (PROJECT_EVIDENCE_SOURCES as readonly string[]).includes(value);
+
+function assertNonEmpty(value: unknown, field: string): asserts value is string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new ProjectEvidenceValidationError(`${field} must be a non-empty string`);
+  }
+}
+
+/** Validate one server-derived fact before it reaches either store. */
+export function assertProjectEvidenceFact(fact: ProjectEvidenceFact): void {
+  assertNonEmpty(fact.projectId, 'projectId');
+  assertNonEmpty(fact.studentUserId, 'studentUserId');
+  assertNonEmpty(fact.sourceId, 'sourceId');
+  assertNonEmpty(fact.label, 'label');
+  if (!isProjectEvidenceColumnKind(fact.columnKind)) {
+    throw new ProjectEvidenceValidationError(`unsupported columnKind: ${String(fact.columnKind)}`);
+  }
+  if (!isProjectEvidenceSourceKind(fact.sourceKind)) {
+    throw new ProjectEvidenceValidationError(`unsupported sourceKind: ${String(fact.sourceKind)}`);
+  }
+  if (fact.artifactId !== null) assertNonEmpty(fact.artifactId, 'artifactId');
+  if (fact.schoolId !== null) assertNonEmpty(fact.schoolId, 'schoolId');
+  if (fact.detail !== null && typeof fact.detail !== 'string') {
+    throw new ProjectEvidenceValidationError('detail must be a string or null');
+  }
+  if (!(fact.occurredAt instanceof Date) || Number.isNaN(fact.occurredAt.getTime())) {
+    throw new ProjectEvidenceValidationError('occurredAt must be a valid Date');
+  }
+}
+
 export abstract class ProjectEvidenceStore {
   /** 幂等写入；返回实际新增行数（已存在的行不重复插入）。 */
   abstract upsertFacts(facts: readonly ProjectEvidenceFact[]): Promise<number>;

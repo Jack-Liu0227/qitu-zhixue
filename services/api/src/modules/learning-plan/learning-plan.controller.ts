@@ -64,7 +64,7 @@ export class LearningPlanController {
   ): Promise<{ data: GenerateLearningPlanResponse }> {
     const user = this.requireStudent(cookieHeader);
     assertNoServerOwnedFields(body);
-    const request = pickFields<GenerateLearningPlanRequest>(body, ['interest', 'weeks', 'goal']);
+    const request = pickFields<GenerateLearningPlanRequest>(body, ['interest', 'weeks', 'goal', 'schedule']);
     return { data: await this.guard(() => this.plans.generatePlan(user, request)) };
   }
 

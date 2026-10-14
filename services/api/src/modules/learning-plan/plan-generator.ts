@@ -2,6 +2,7 @@ import type {
   KnowledgeType,
   LearningPlanBlockActivity,
   LearningPlanWeeks,
+  PblSchedule,
   SessionBlockKind,
   SessionMode,
 } from '@qitu/contracts';
@@ -9,6 +10,7 @@ import {
   validateLearningPlanDraft,
   type LearningPlanDraft,
 } from '@qitu/ai-client';
+import { validatePblSchedule } from '@qitu/contracts';
 
 /**
  * 计划生成 + 不可信模型输出的校验边界（纯函数）。
@@ -81,6 +83,8 @@ export interface GeneratedPlan {
   templateVersion: string;
   weeks: LearningPlanWeeks;
   minutesPerSession: number;
+  /** Explicit PBL timing; omitted for legacy `weeks` requests. */
+  schedule?: PblSchedule;
   title: string;
   interest: string;
   goal: string;
@@ -93,6 +97,8 @@ export interface GeneratePlanInput {
   interest: string;
   weeks: LearningPlanWeeks;
   goal: string | null;
+  /** New PBL schedule. Omitted requests retain legacy 5 x 60-minute semantics. */
+  schedule?: PblSchedule;
 }
 
 export class PlanGenerationError extends Error {
@@ -166,7 +172,9 @@ export class DeterministicPlanGenerator extends PlanGenerator {
   generate(input: GeneratePlanInput): GeneratedPlan {
     const interest = input.interest.trim();
     const weeks = input.weeks;
-    const totalSessions = weeks * 5;
+    const sessionsPerWeek = input.schedule?.sessionsPerWeek ?? 5;
+    const minutesPerSession = input.schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
+    const totalSessions = weeks * sessionsPerWeek;
     const title = `${interest} · ${weeks} 周学习计划`;
     const goal = (input.goal ?? '').trim() || `用 ${weeks} 周时间掌握「${interest}」的核心知识与实践能力`;
 
@@ -183,12 +191,19 @@ export class DeterministicPlanGenerator extends PlanGenerator {
 
     const objectives: GeneratedObjective[] = [];
     const sessions: GeneratedSession[] = [];
-    const moduleIdFor = (index: number): string => `mod-w${Math.floor(index / 5) + 1}`;
+    const moduleIdFor = (index: number): string => `mod-w${Math.floor(index / sessionsPerWeek) + 1}`;
+
+    const theoryShape = minutesPerSession === 120
+      ? { review: 10, theory: 80, check: 30 }
+      : { review: 10, theory: 40, check: 10 };
+    const practiceShape = minutesPerSession === 120
+      ? { review: 10, practice: 110 }
+      : { review: 10, practice: 50 };
 
     for (let index = 0; index < totalSessions; index += 2) {
       const round = index / 2;
-      const week = Math.floor(index / 5) + 1;
-      const day = (index % 5) + 1;
+      const week = Math.floor(index / sessionsPerWeek) + 1;
+      const day = (index % sessionsPerWeek) + 1;
 
       const theory: GeneratedObjective = {
         id: `obj-t-${index}`,
@@ -213,7 +228,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
           {
             id: `blk-${index}-review`,
             title: '衔接回顾',
-            minutes: 10,
+            minutes: theoryShape.review,
             activity: 'review',
             objectiveIds: previousPracticeId === null ? [] : [previousPracticeId],
             prerequisiteObjectiveIds: [],
@@ -221,7 +236,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
           {
             id: `blk-${index}-learn`,
             title: '理论讲解',
-            minutes: 40,
+            minutes: theoryShape.theory,
             activity: 'learn',
             objectiveIds: [theory.id],
             prerequisiteObjectiveIds: [],
@@ -229,7 +244,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
           {
             id: `blk-${index}-check`,
             title: '理解检查',
-            minutes: 10,
+            minutes: theoryShape.check,
             activity: 'reflect',
             objectiveIds: [theory.id],
             prerequisiteObjectiveIds: [],
@@ -256,14 +271,14 @@ export class DeterministicPlanGenerator extends PlanGenerator {
         id: `sess-${practiceIndex + 1}`,
         moduleId: practice.moduleId,
         index: practiceIndex,
-        week: Math.floor(practiceIndex / 5) + 1,
-        day: (practiceIndex % 5) + 1,
+        week: Math.floor(practiceIndex / sessionsPerWeek) + 1,
+        day: (practiceIndex % sessionsPerWeek) + 1,
         title: `实践 ${round + 1}：${practice.name}`,
         blocks: [
           {
             id: `blk-${practiceIndex}-review`,
             title: '衔接回顾',
-            minutes: 10,
+            minutes: practiceShape.review,
             activity: 'review',
             objectiveIds: [theory.id],
             prerequisiteObjectiveIds: [],
@@ -271,7 +286,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
           {
             id: `blk-${practiceIndex}-practice`,
             title: '动手实践',
-            minutes: 50,
+            minutes: practiceShape.practice,
             activity: 'practice',
             objectiveIds: [practice.id],
             prerequisiteObjectiveIds: [theory.id],
@@ -286,7 +301,8 @@ export class DeterministicPlanGenerator extends PlanGenerator {
     return {
       templateVersion: CURRICULUM_TEMPLATE_VERSION,
       weeks,
-      minutesPerSession: MINUTES_PER_SESSION,
+      minutesPerSession,
+      ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
       title,
       interest,
       goal,
@@ -331,13 +347,25 @@ const KNOWLEDGE_TYPES: readonly KnowledgeType[] = ['memory', 'concept', 'procedu
  */
 export function validateGeneratedPlan(plan: GeneratedPlan): void {
   const errors: { path: string; message: string }[] = [];
+  const schedule = plan.schedule;
+  const expectedSessionsPerWeek = schedule?.sessionsPerWeek ?? 5;
+  const expectedMinutesPerSession = schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
+  if (schedule !== undefined) {
+    const scheduleResult = validatePblSchedule(schedule);
+    for (const message of scheduleResult.errors) {
+      errors.push({ path: 'schedule', message });
+    }
+    if (schedule.durationWeeks !== plan.weeks) {
+      errors.push({ path: 'schedule.durationWeeks', message: 'schedule.durationWeeks must match weeks' });
+    }
+  }
   if (plan.weeks !== 4 && plan.weeks !== 8) {
     errors.push({ path: 'weeks', message: 'weeks 必须是 4 或 8' });
   }
-  if (plan.sessions.length !== plan.weeks * 5) {
+  if (plan.sessions.length !== plan.weeks * expectedSessionsPerWeek) {
     errors.push({ path: 'sessions', message: '计划必须恰好包含 weeks*5 节课' });
   }
-  if (plan.minutesPerSession !== MINUTES_PER_SESSION) {
+  if (plan.minutesPerSession !== expectedMinutesPerSession) {
     errors.push({ path: 'minutesPerSession', message: '每节必须为 60 分钟' });
   }
   if (plan.interest.trim().length < MIN_INTEREST_LENGTH || plan.interest.length > MAX_INTEREST_LENGTH) {
@@ -380,7 +408,7 @@ export function validateGeneratedPlan(plan: GeneratedPlan): void {
 
   for (const session of plan.sessions) {
     const minutes = session.blocks.reduce((sum, block) => sum + block.minutes, 0);
-    if (minutes !== MINUTES_PER_SESSION) {
+    if (minutes !== expectedMinutesPerSession) {
       errors.push({
         path: `sessions.${session.id}.blocks`,
         message: '每节分块合计必须正好 60 分钟',
@@ -435,9 +463,14 @@ export function validateGeneratedPlan(plan: GeneratedPlan): void {
     }
   }
 
-  const legacy = validateLearningPlanDraft(toLearningPlanDraft(plan));
-  for (const error of legacy.errors) {
-    errors.push({ path: `curriculum.${error.path}`, message: error.message });
+  // The legacy ai-client validator hard-codes five sessions per week and
+  // 60-minute sessions. Keep it only for legacy requests; scheduled plans use
+  // the local validator so 1x120 and 2x60 schedules remain valid.
+  if (schedule === undefined) {
+    const legacy = validateLearningPlanDraft(toLearningPlanDraft(plan));
+    for (const error of legacy.errors) {
+      errors.push({ path: `curriculum.${error.path}`, message: error.message });
+    }
   }
 
   if (errors.length > 0) {
@@ -482,6 +515,7 @@ export function assertGenerateInput(input: {
   interest: unknown;
   weeks: unknown;
   goal?: unknown;
+  schedule?: unknown;
 }): GeneratePlanInput {
   const interest = typeof input.interest === 'string' ? input.interest.trim() : '';
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
@@ -505,5 +539,36 @@ export function assertGenerateInput(input: {
     }
     goal = trimmed.length === 0 ? null : trimmed;
   }
-  return { interest, weeks: input.weeks, goal };
+  let schedule: PblSchedule | undefined;
+  if (input.schedule !== undefined && input.schedule !== null) {
+    if (typeof input.schedule !== 'object') {
+      throw new PlanGenerationError('schedule 必须是对象', [
+        { path: 'schedule', message: 'invalid schedule' },
+      ]);
+    }
+    const candidate = input.schedule as Record<string, unknown>;
+    if (
+      (candidate.durationWeeks !== 4 && candidate.durationWeeks !== 8) ||
+      candidate.weeklyMinutes !== 120 ||
+      (candidate.sessionsPerWeek !== 1 && candidate.sessionsPerWeek !== 2) ||
+      (candidate.sessionMinutes !== 60 && candidate.sessionMinutes !== 120)
+    ) {
+      throw new PlanGenerationError('schedule 不符合项目式学习时间合同', [
+        { path: 'schedule', message: 'invalid PblSchedule' },
+      ]);
+    }
+    schedule = {
+      durationWeeks: candidate.durationWeeks,
+      weeklyMinutes: 120,
+      sessionsPerWeek: candidate.sessionsPerWeek,
+      sessionMinutes: candidate.sessionMinutes,
+    } as PblSchedule;
+    const result = validatePblSchedule(schedule);
+    if (!result.valid || schedule.durationWeeks !== input.weeks) {
+      throw new PlanGenerationError('schedule 必须与 weeks 一致且每周总时长为 120 分钟', [
+        { path: 'schedule', message: result.errors.join('; ') || 'durationWeeks mismatch' },
+      ]);
+    }
+  }
+  return { interest, weeks: input.weeks, goal, schedule };
 }
