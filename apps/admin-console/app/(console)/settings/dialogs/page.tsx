@@ -1,6 +1,7 @@
 'use client';
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
 
 interface DialogFlowItem {
   id: string;
@@ -70,7 +71,9 @@ export default function DialogsSettingsPage() {
   >([]);
   const [inputMsg, setInputMsg] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [testModel, setTestModel] = useState('deepseek-chat');
+  const [configuredModels, setConfiguredModels] = useState<ConfiguredModelItem[]>([]);
+  const [loadingModels, setLoadingModels] = useState(true);
+  const [testModel, setTestModel] = useState('');
   const [testApiKey, setTestApiKey] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -86,6 +89,36 @@ export default function DialogsSettingsPage() {
     return '';
   });
   const [showKeyPopover, setShowKeyPopover] = useState(false);
+
+  // 严格从已配置的模型中提取可用选项
+  useEffect(() => {
+    let mounted = true;
+    fetchAvailableConfiguredModels()
+      .then((models) => {
+        if (!mounted) return;
+        setConfiguredModels(models);
+        if (models && models.length > 0 && models[0]) {
+          setTestModel((current) => {
+            if (!current || !models.some((m) => m.id === current)) {
+              return models[0]!.id;
+            }
+            return current;
+          });
+        } else {
+          setTestModel('');
+        }
+      })
+      .catch(() => {
+        if (mounted) setConfiguredModels([]);
+      })
+      .finally(() => {
+        if (mounted) setLoadingModels(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // 删除对话流
   const handleDeleteDialog = (id: string, name: string) => {
@@ -161,26 +194,43 @@ export default function DialogsSettingsPage() {
 
     let replyText = '';
     let thinkText = '';
-    let modelBadge = testModel;
 
-    // 1. 若配置了有效 API Key，直接调用上游大模型
-    if (testApiKey && testApiKey.trim().length > 5) {
+    // 严格检查是否已配置模型
+    if (configuredModels.length === 0) {
+      setChatHistory([
+        ...nextHistory,
+        {
+          role: 'assistant',
+          text: '⚠️ 当前系统尚未配置任何已启用的模型通道。\n\n根据系统模型规范，动态模型调用只能从您在「系统设置 > 模型接入」中已配置并启用的模型中选择。\n\n请先前往「系统设置 > 模型接入」页面添加供应商网关并拉取或登记模型。',
+          think: '【系统治理拦截】：检测到系统尚未配置任何启用的模型通道。已阻止未配置的模型调用。',
+          model: '未配置模型',
+        },
+      ]);
+      setIsTyping(false);
+      return;
+    }
+
+    const activeModel = configuredModels.find((m) => m.id === testModel) || configuredModels[0]!;
+    let modelBadge = activeModel.name;
+
+    // 1. 若配置了有效 API Key 或供应商自身已登记认证，调用已配置的模型网关
+    if ((testApiKey && testApiKey.trim().length > 5) || activeModel.authConfigured) {
       try {
-        const isQwen = testModel.startsWith('qwen');
-        const baseUrl = isQwen
-          ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-          : testModel.startsWith('gpt')
-          ? 'https://api.openai.com/v1'
-          : 'https://api.deepseek.com/v1';
+        const baseUrl = activeModel.baseUrl.trim().replace(/\/$/u, '');
+        const targetModelId = activeModel.rawModelId || activeModel.id;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (testApiKey && testApiKey.trim().length > 5) {
+          headers['Authorization'] = `Bearer ${testApiKey.trim()}`;
+        }
 
         const res = await fetch(`${baseUrl}/chat/completions`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${testApiKey.trim()}`,
-          },
+          headers,
           body: JSON.stringify({
-            model: testModel,
+            model: targetModelId,
             messages,
             temperature: 0.7,
             max_tokens: 800,
@@ -198,7 +248,7 @@ export default function DialogsSettingsPage() {
             } else {
               replyText = raw.trim();
             }
-            modelBadge = `${testModel} (实时调用)`;
+            modelBadge = `${activeModel.name} (实时调用)`;
           }
         }
       } catch {
@@ -327,25 +377,51 @@ export default function DialogsSettingsPage() {
 
               {/* 模型切换与 Key 配置 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <select
-                  value={testModel}
-                  onChange={(e) => setTestModel(e.target.value)}
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '12px',
-                    background: '#ffffff',
-                    color: '#1e293b',
-                    fontWeight: 500,
-                  }}
-                  title="切换实测演练调用的大模型"
-                >
-                  <option value="deepseek-chat">DeepSeek V3 (官方)</option>
-                  <option value="qwen-plus">阿里通义千问 (百炼)</option>
-                  <option value="gpt-4o">OpenAI GPT-4o</option>
-                  <option value="qwen2.5:7b">本地 Ollama (qwen2.5)</option>
-                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>模型:</span>
+                  {loadingModels ? (
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>加载模型中...</span>
+                  ) : configuredModels.length === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>⚠️ 未配置可用模型</span>
+                      <Link
+                        href="/settings/model-providers"
+                        style={{
+                          fontSize: '11.5px',
+                          color: '#2563eb',
+                          textDecoration: 'underline',
+                          fontWeight: 600,
+                        }}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        前往配置 ↗
+                      </Link>
+                    </div>
+                  ) : (
+                    <select
+                      value={testModel}
+                      onChange={(e) => setTestModel(e.target.value)}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '12px',
+                        background: '#ffffff',
+                        color: '#1e293b',
+                        fontWeight: 500,
+                        maxWidth: '240px',
+                      }}
+                      title="切换实测演练调用的大模型（仅限系统已配置模型）"
+                    >
+                      {configuredModels.map((m) => (
+                        <option key={`${m.providerId}-${m.id}`} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
                 <button
                   type="button"
@@ -507,7 +583,7 @@ export default function DialogsSettingsPage() {
 
               {isTyping ? (
                 <div style={{ color: '#2563eb', fontSize: '12px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>⏳</span> 正在调用大语言模型【{testModel}】组织苏格拉底式启发探究...
+                  <span>⏳</span> 正在调用已配置模型【{configuredModels.find((m) => m.id === testModel)?.name || testModel || '智能导师'}】组织苏格拉底式启发探究...
                 </div>
               ) : null}
             </div>

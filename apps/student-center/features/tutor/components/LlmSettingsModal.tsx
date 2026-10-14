@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getClientLlmConfig, saveClientLlmConfig, type LlmConfig } from '../services/pblLlmService';
 
 interface LlmSettingsModalProps {
@@ -47,9 +47,24 @@ const PRESETS: Array<{
 
 export function LlmSettingsModal({ isOpen, onClose }: LlmSettingsModalProps) {
   const [config, setConfig] = useState<LlmConfig>(getClientLlmConfig);
+  const [systemModels, setSystemModels] = useState<Array<{ id: string; name: string; baseUrl?: string; providerId?: string }>>([]);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.cached_configured_models');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSystemModels(parsed);
+          }
+        }
+      } catch {}
+    }
+  }, []);
 
   if (!isOpen) return null;
 
@@ -238,23 +253,61 @@ export function LlmSettingsModal({ isOpen, onClose }: LlmSettingsModalProps) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
-                  模型标识 (Model ID)
-                </label>
-                <input
-                  type="text"
-                  value={config.model}
-                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                  placeholder="deepseek-chat"
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '13px',
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                    模型选择 (Model ID)
+                  </label>
+                  {systemModels.length > 0 ? (
+                    <span style={{ fontSize: '11px', color: '#16a34a' }}>● 已匹配已配置模型 ({systemModels.length})</span>
+                  ) : null}
+                </div>
+                {systemModels.length > 0 ? (
+                  <select
+                    value={config.model}
+                    onChange={(e) => {
+                      const selected = systemModels.find((m) => m.id === e.target.value);
+                      if (selected) {
+                        setConfig({
+                          ...config,
+                          model: selected.id,
+                          baseUrl: selected.baseUrl || config.baseUrl,
+                        });
+                      } else {
+                        setConfig({ ...config, model: e.target.value });
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '13px',
+                      background: '#ffffff',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {systemModels.map((m) => (
+                      <option key={`${m.providerId}-${m.id}`} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={config.model}
+                    onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                    placeholder="deepseek-chat"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '13px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                )}
               </div>
 
               <div>

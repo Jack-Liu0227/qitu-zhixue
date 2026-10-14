@@ -390,11 +390,7 @@ export default function AdminAssistantsPage() {
                     </option>
                   ))}
                   {configuredModels.length === 0 ? (
-                    <>
-                      <option value="gpt-5.6-sol">gpt-5.6-sol (OpenAI 网关)</option>
-                      <option value="claude-3-7-sonnet">claude-3-7-sonnet (Anthropic 网关)</option>
-                      <option value="qwen3.8-flash">通义千问 (qwen3.8-flash)</option>
-                    </>
+                    <option value="" disabled>暂无已配置的模型（请先在模型接入中配置）</option>
                   ) : null}
                 </select>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
