@@ -56,6 +56,14 @@ export const MAX_ARTIFACT_VERSION_NOTE_LENGTH = 500;
 export const MAX_PRESIGN_FILENAME_LENGTH = 255;
 export const MAX_PRESIGN_SIZE_BYTES = 512 * 1024 * 1024; // 512MB
 
+/**
+ * 允许预签名的内容类型。
+ *
+ * 2026-10（WS3）：**增量**加入 `text/markdown` 与 `text/html`。
+ * 此前这两个都不在白名单里，导致学生**根本传不上实验报告**——
+ * 报告是动能定理类项目的核心交付物，这是真实功能缺口，不是便利性偏好。
+ * 既有条目一个未删（`text/plain` 仍保留）。
+ */
 const ALLOWED_PRESIGN_CONTENT_TYPES = [
   'image/png',
   'image/jpeg',
@@ -66,6 +74,8 @@ const ALLOWED_PRESIGN_CONTENT_TYPES = [
   'application/pdf',
   'application/zip',
   'text/plain',
+  'text/markdown',
+  'text/html',
 ] as const;
 
 const PRESIGN_PURPOSES: readonly PresignPurpose[] = ['artifact', 'evidence', 'thumbnail', 'other'];

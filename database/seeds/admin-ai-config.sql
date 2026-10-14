@@ -13,6 +13,15 @@
 --（admin 通过 API 的编辑会被重新种库覆盖回基线，与 domain-foundation.sql 的策略一致）；
 -- 不含任何未成年人数据；updated_by 置空表示种子来源而非某个管理员。
 --
+-- ⚠️ 本文件的 `pbl_spec` 是**两个保留模板**的唯一编写面（配合 domain-foundation.sql
+--    的 project_templates：template-thunder-fighter / template-kinetic-energy）。
+--    但 `ON CONFLICT DO UPDATE SET pbl_spec = EXCLUDED.pbl_spec` 对管理员在后台
+--    改过的 spec 是**破坏性**的，因此它**不是**对账手段，只是基线重放。
+--    两边的漂移由 `PlatformRegistryService.reportPblTemplateDrift()` 在启动/首次读团队时
+--    **只读比对并告警**（不写库、不抛错），避免出现「spec 通过校验、落库却换门禁」。
+--    guided_practice 的门禁由**交付物**推导：runnable_python_game →
+--    code_playable_run_verified；simulation_experiment_report → experiment_report_validated。
+--
 -- 执行顺序： assistants → teams → members（外键依赖）；seed.ts 已把本文件放在
 -- SEED_FILES 最后，可手动执行：psql "$DATABASE_URL" -f database/seeds/admin-ai-config.sql
 
@@ -245,7 +254,8 @@ VALUES
             "实现子弹击中敌机判定与得分/生命值 HUD 界面"
           ],
           "gateCondition": "code_playable_run_verified",
-          "deliverableType": "runnable_python_game"
+          "deliverableType": "runnable_python_game",
+          "evidenceProfile": "runnable_code"
         },
         {
           "phase": "deliverable_review",
@@ -316,8 +326,9 @@ VALUES
             "计算重力与摩擦力做功代数和并绘制 W-ΔEk 散点图",
             "拟合数据直线验证动能定理，误差控制在 5% 以内"
           ],
-          "gateCondition": "code_playable_run_verified",
-          "deliverableType": "simulation_experiment_report"
+          "gateCondition": "experiment_report_validated",
+          "deliverableType": "simulation_experiment_report",
+          "evidenceProfile": "experiment_report"
         },
         {
           "phase": "deliverable_review",

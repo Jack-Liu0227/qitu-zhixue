@@ -26,7 +26,6 @@ import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
   PBL_GATE_BY_PHASE,
-  PBL_GATE_ERROR_CODES,
   PBL_INITIAL_PHASE,
   PBL_PHASE_ORDER,
   PBL_GATE_EVIDENCE_REF_MIN_LENGTH,
@@ -37,6 +36,7 @@ import {
   THUNDER_FIGHTER_PBL_SPEC,
   isPblPhase,
   nextPblPhase,
+  pblGateErrorCode,
   pblGatesRequiredToEnter,
   pblPhaseIndex,
 } from '@qitu/ai-client';
@@ -187,7 +187,7 @@ function gateBlock(gate: string): PblGateDecision & { allowed: false } {
   return {
     allowed: false,
     status: 409,
-    errorCode: PBL_GATE_ERROR_CODES[phase as PblPhase],
+    errorCode: pblGateErrorCode(gate),
     requiredGate: gate,
     blockedPhase: phase,
     message: `PBL 门禁未达成：需要先满足「${gate}」才能进入后续阶段`,

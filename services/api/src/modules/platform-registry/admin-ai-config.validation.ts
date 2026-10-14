@@ -1,4 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  GATE_CONDITION_CORE,
+  GATE_CONDITION_REGISTRY,
+  deriveGateConditionForPhase,
+  isGateConditionId,
+  isRegisteredGateCondition,
+} from '@qitu/contracts';
 import type {
   AdminAssistantCreateInput,
   AdminAssistantUpdateInput,
@@ -8,7 +15,8 @@ import type {
   AdminTeamPblSpecInput,
   AdminTeamUpdateInput,
   AssistantDefaults,
-  PblGateCondition,
+  EvidenceProfile,
+  GateConditionId,
   PblPhase,
   TeamSessionMode,
   TeammateRole,
@@ -39,20 +47,90 @@ const ROLES: readonly TeammateRole[] = ['leader', 'teammate', 'reviewer', 'coach
 const WORKSPACE_MODES: readonly WorkspaceMode[] = ['shared', 'isolated'];
 const SESSION_MODES: readonly TeamSessionMode[] = ['auto', 'plan', 'supervised'];
 const PBL_PHASES: readonly PblPhase[] = ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'];
-const GATE_CONDITIONS: readonly PblGateCondition[] = [
-  'student_confirmed_intent',
-  'TheoryMastered',
-  'code_playable_run_verified',
-  'review_completed_and_archived',
+/**
+ * 门禁 id 清单：唯一真源是 `@qitu/contracts`。
+ *
+ * 此前这里是四值字面量的第二份拷贝（与 contracts 的联合、pbl-learning.ts 的
+ * 内联联合三处重复）。现在只派生、不手写：核心四个来自 `GATE_CONDITION_CORE`，
+ * 扩展门禁来自 `GATE_CONDITION_REGISTRY`（例如报告/实验类的
+ * `experiment_report_validated`）。
+ */
+export const GATE_CONDITIONS: readonly GateConditionId[] = [
+  ...GATE_CONDITION_CORE,
+  ...Object.keys(GATE_CONDITION_REGISTRY).filter(
+    (gate) => !(GATE_CONDITION_CORE as readonly string[]).includes(gate),
+  ),
 ];
 
-/** 阶段缺省门禁（服务端补全；concept_mastery 恒为 TheoryMastered）。 */
-export const PBL_PHASE_GATE_DEFAULTS: Record<PblPhase, PblGateCondition> = {
+/** 已注册门禁 id 集合（写侧白名单）。 */
+export const REGISTERED_GATE_CONDITIONS: ReadonlySet<string> = new Set(GATE_CONDITIONS);
+
+/** 证据档案闭集。 */
+const EVIDENCE_PROFILES: readonly EvidenceProfile[] = ['runnable_code', 'experiment_report'];
+
+/**
+ * 阶段缺省门禁——**仅是回落表**，不再具权威。
+ *
+ * 权威是 `deriveGateConditionForPhase`（由交付物/证据档案推导）：guided_practice
+ * 收「可运行代码」还是「报告/实验」取决于该阶段提交的 `deliverableType` /
+ * `evidenceProfile`，而不是阶段名。本表只在阶段无法推导时兜底。
+ */
+export const PBL_PHASE_GATE_DEFAULTS: Record<PblPhase, GateConditionId> = {
   exploration: 'student_confirmed_intent',
   concept_mastery: 'TheoryMastered',
   guided_practice: 'code_playable_run_verified',
   deliverable_review: 'review_completed_and_archived',
 };
+
+/**
+ * 阶段 -> 门禁的唯一推导入口（校验器与 platform-registry 规范化共用）。
+ *
+ * 先走 contracts 的交付物推导，推导不出时回落到阶段缺省表，两者都失败
+ * （未知阶段）才返回 `undefined`。
+ * **硬规则**：`concept_mastery` 恒为 `TheoryMastered`。
+ */
+export function resolveGateConditionForPhase(
+  phase: string,
+  deliverableType?: string | null,
+  evidenceProfile?: EvidenceProfile | null,
+): GateConditionId | undefined {
+  const derived = deriveGateConditionForPhase(phase, deliverableType, evidenceProfile);
+  if (derived !== null) {
+    if (phase === 'concept_mastery' && derived !== 'TheoryMastered') {
+      invalid('concept_mastery 阶段的 gateCondition 必须是 TheoryMastered');
+    }
+    return derived;
+  }
+  return (PBL_PHASE_GATE_DEFAULTS as Record<string, GateConditionId>)[phase];
+}
+
+/**
+ * 写侧运行时门禁校验（**必须与 `GateConditionId` 的放宽同批落地**）。
+ *
+ * 放宽联合以后 TypeScript 不再做穷尽检查，非法门禁字符串会一路走到数据库；
+ * 因此写入路径必须过这里：先词法校验，再要求已注册；`phase` 已知时还要求与
+ * 该阶段的推导一致（防止 spec 通过校验却在规范化时换成另一个门禁）。
+ */
+export function assertGateConditionWritable(
+  gate: unknown,
+  phase?: string,
+  deliverableType?: string | null,
+  evidenceProfile?: EvidenceProfile | null,
+): GateConditionId {
+  if (!isGateConditionId(gate)) {
+    invalid(`phases[].gateCondition 非法：${typeof gate === 'string' ? gate : typeof gate}`);
+  }
+  if (!isRegisteredGateCondition(gate)) {
+    invalid(`phases[].gateCondition 未注册：${gate}（已注册：${GATE_CONDITIONS.join(' / ')}）`);
+  }
+  if (phase !== undefined) {
+    const expected = resolveGateConditionForPhase(phase, deliverableType, evidenceProfile);
+    if (expected !== undefined && expected !== gate) {
+      invalid(`phases[].gateCondition 与阶段「${phase}」的交付物不一致：期望 ${expected}，实际 ${gate}`);
+    }
+  }
+  return gate;
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -233,7 +311,7 @@ function parseMembers(value: unknown): AdminTeamMemberInput[] {
 }
 
 const PBL_SPEC_KEYS = ['projectId', 'projectName', 'targetDomain', 'phases', 'theoryMasteredGate', 'allowAutonomousAdvance'] as const;
-const PBL_PHASE_KEYS = ['phase', 'title', 'assignedAssistantId', 'assignedRoleLabel', 'learningObjectives', 'gateCondition', 'deliverableType'] as const;
+const PBL_PHASE_KEYS = ['phase', 'title', 'assignedAssistantId', 'assignedRoleLabel', 'learningObjectives', 'gateCondition', 'deliverableType', 'evidenceProfile'] as const;
 
 function parsePblSpec(value: unknown): AdminTeamPblSpecInput {
   if (!isPlainObject(value)) invalid('pblSpec 必须是对象');
@@ -256,21 +334,39 @@ function parsePblSpec(value: unknown): AdminTeamPblSpecInput {
     const assignedAssistantId = trimmedText(item.assignedAssistantId, 'phases[].assignedAssistantId', 160, true)!;
     const title = trimmedText(item.title, 'phases[].title', 200, true)!;
     const spec: AdminTeamPblPhaseInput = { phase: phase as PblPhase, title, assignedAssistantId };
-    if ('gateCondition' in item && item.gateCondition !== undefined) {
-      const gate = trimmedText(item.gateCondition, 'phases[].gateCondition', 60, true)!;
-      if (!GATE_CONDITIONS.includes(gate as PblGateCondition)) invalid(`phases[].gateCondition 无效：${gate}`);
-      // concept_mastery 的门禁只认 TheoryMastered，显式提交其他值直接拒绝（硬要求 4）。
-      if (phase === 'concept_mastery' && gate !== 'TheoryMastered') {
-        invalid('concept_mastery 阶段的 gateCondition 必须是 TheoryMastered');
-      }
-      spec.gateCondition = gate as PblGateCondition;
-    }
     const roleLabel = trimmedText(item.assignedRoleLabel, 'phases[].assignedRoleLabel', 160, false);
     if (roleLabel !== undefined) spec.assignedRoleLabel = roleLabel;
     const objectives = stringList(item.learningObjectives, 'phases[].learningObjectives', 32);
     if (objectives !== undefined) spec.learningObjectives = objectives;
     const deliverable = trimmedText(item.deliverableType, 'phases[].deliverableType', 120, false);
     if (deliverable !== undefined) spec.deliverableType = deliverable;
+    // 证据档案（可选）：决定 guided_practice 的门禁走「可运行代码」还是「报告/实验」。
+    let evidenceProfile: EvidenceProfile | undefined;
+    if ('evidenceProfile' in item && item.evidenceProfile !== undefined) {
+      const raw = trimmedText(item.evidenceProfile, 'phases[].evidenceProfile', 40, true)!;
+      if (!EVIDENCE_PROFILES.includes(raw as EvidenceProfile)) {
+        invalid(`phases[].evidenceProfile 无效：${raw}（可选值：${EVIDENCE_PROFILES.join(' / ')}）`);
+      }
+      evidenceProfile = raw as EvidenceProfile;
+      spec.evidenceProfile = evidenceProfile;
+    }
+    // 门禁以「阶段 + 交付物 + 证据档案」的推导为准；显式提交只能与推导一致。
+    // 省略时**不在解析层补全**：补全靠 service 层的 `normalizePblSpec`
+    // （与校验器共用同一推导函数，见 `resolveGateConditionForPhase`）。
+    // 解析层只管校验，不改写数据——否则同一份 spec 在校验层和规范化层
+    // 各补一次，两处一旦漂移就会出现「校验通过、落库却是另一个门禁」。
+    const expected = resolveGateConditionForPhase(phase, deliverable, evidenceProfile);
+    let effectiveGate: GateConditionId | undefined = expected;
+    if ('gateCondition' in item && item.gateCondition !== undefined) {
+      const gate = trimmedText(item.gateCondition, 'phases[].gateCondition', 60, true)!;
+      assertGateConditionWritable(gate, phase, deliverable, evidenceProfile);
+      spec.gateCondition = gate as GateConditionId;
+      effectiveGate = gate as GateConditionId;
+    }
+    // 冻结硬门禁：concept_mastery 必须是 TheoryMastered（省略时按推导值判定）。
+    if (phase === 'concept_mastery' && effectiveGate !== 'TheoryMastered') {
+      invalid('concept_mastery 阶段的 gateCondition 必须是 TheoryMastered');
+    }
     return spec;
   });
   return {

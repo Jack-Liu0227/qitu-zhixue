@@ -32,8 +32,20 @@ export type SessionMode = 'outline' | 'study' | 'review';
 /** 题型闭集。 */
 export type QuestionKind = 'choice' | 'short' | 'open';
 
-/** 60 分钟课的四个分块。 */
-export type SessionBlockKind = 'review' | 'theory' | 'check' | 'practice';
+/**
+ * 一节课内的分块类型。
+ *
+ * 原先是四值（`review | theory | check | practice`），与 `pbl-learning.ts` 里
+ * `LessonActivity` 的五值（多一个 `reflect`）不一致——后者此前没有任何产出方或
+ * 消费方，属于一份未使用的平行契约。这里统一为**五段**：复习/导入、理论学习、
+ * 检查、实践、反思。
+ *
+ * 新增值只做**加宽**：既有写入方仍可只产出四个分块，不会因为联合变宽而失败；
+ * 需要覆盖反思段的生成器（见 WS4）改为产出五个分块。
+ * 注意：旧路径把 `reflect` 映射成 `'check'`（`plan-generator.ts` 的
+ * `blockKind()`），所以「反思」与「检查」此前在学生侧不可区分。
+ */
+export type SessionBlockKind = 'review' | 'theory' | 'check' | 'practice' | 'reflect';
 
 /** 计划块的旧版活动枚举（复用 `packages/ai-client` 的 curriculum 校验器）。 */
 export type LearningPlanBlockActivity = 'explore' | 'learn' | 'practice' | 'reflect' | 'review';

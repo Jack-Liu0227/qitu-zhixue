@@ -236,11 +236,21 @@ export abstract class LearningPlanStore {
   abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
   abstract findMasteryEvent(id: string): Promise<MasteryEventRecord | null>;
   abstract withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
+  /**
+   * 按签名读取既有草稿。
+   *
+   * `signatureKey` 是**含排课形状**的完整幂等键（`learning-plan:<student>:
+   * <templateVersion>:<weeks>:<interest>:<sessionsPerWeek>x<sessionMinutes>`）；
+   * 传旧前缀（无排课后缀）即走兼容读，供升级前落库的草稿命中。
+   * 只按 (student, interest, weeks, templateVersion) 去重是缺陷：4 周 1×120 与
+   * 4 周 2×60 会撞进同一条签名，第二个请求被返回第一份计划的形状。
+   */
   abstract findPlanBySignature(
     studentUserId: string,
     interest: string,
     weeks: 4 | 8,
     templateVersion: string,
+    signatureKey?: string,
   ): Promise<PlanBundle | null>;
 
   abstract createPlan(bundle: PlanBundle): Promise<void>;
@@ -388,6 +398,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     interest: string,
     weeks: 4 | 8,
     templateVersion: string,
+    signatureKey?: string,
   ): Promise<PlanBundle | null> {
     for (const bundle of this.plans.values()) {
       const plan = bundle.plan;
@@ -395,7 +406,10 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
         plan.studentUserId === studentUserId &&
         plan.interest === interest &&
         plan.weeks === weeks &&
-        plan.templateVersion === templateVersion
+        plan.templateVersion === templateVersion &&
+        // 排课是形状的一部分：只有键完全一致才算同一份计划。旧键（无排课
+        // 后缀）同样只是「键相等」的一个特例，因此两种读共用这一条判据。
+        (signatureKey === undefined || plan.idempotencyKey === signatureKey)
       ) {
         return cloneBundle(bundle);
       }
@@ -409,6 +423,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       bundle.plan.interest,
       bundle.plan.weeks,
       bundle.plan.templateVersion,
+      bundle.plan.idempotencyKey,
     );
     if (existing !== null) {
       throw new LearningPlanStoreConflictError(`已存在同一签名的学习计划：${existing.plan.id}`);

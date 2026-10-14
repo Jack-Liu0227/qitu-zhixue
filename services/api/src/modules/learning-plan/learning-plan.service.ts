@@ -27,6 +27,14 @@ import type {
   SubmitEvidenceResponse,
   PblSchedule,
 } from '@qitu/contracts';
+// 门禁契约里的**值**导出（+ 对应的类型）：注册表是门禁 id 的真源。必须走值
+// 导入——`import type` 下 `GATE_CONDITION_REGISTRY` 只能当类型用，取不到 `gateId`。
+import {
+  GATE_CONDITION_REGISTRY,
+  isRegisteredGateCondition,
+  validatePblSchedule,
+  type GateConditionId,
+} from '@qitu/contracts';
 import {
   buildQuestion,
   computeMasteryScore,
@@ -49,6 +57,7 @@ import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { AccessPolicy } from '../../common/access/access-policy';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { MasteryReadService } from '../mastery/mastery.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -68,12 +77,18 @@ import {
   type SessionRecord,
 } from './learning-plan.store';
 import {
-  assertGenerateInput,
   PlanGenerationError,
   PlanGenerator,
-  validateGeneratedPlan,
+  type GeneratePlanInput,
   type GeneratedPlan,
 } from './plan-generator';
+import {
+  MAX_GOAL_LENGTH,
+  MAX_INTEREST_LENGTH,
+  MIN_INTEREST_LENGTH,
+  SESSION_COUNT_OPTIONS,
+  validateGeneratedPlan,
+} from './session-plan-validator';
 
 const PLAN_FORBIDDEN_MESSAGE = '无权访问该学习计划';
 const THRESHOLD_BASIS_POINTS = 9000;
@@ -104,10 +119,16 @@ type ServiceErrorCode =
  * 3. **判分与題库留在服务端**：题面用 `QuestionCard`（含答案与解析），下发前只经
  *    `toPublicQuestion` 结构化投影；作答请求只有 `questionId` + `answer`。
  * 4. **对象级授权**：学生只能碰自己的计划；班主任只能读当前在带的学生；越权 403。
- * 5. **幂等**：生成按 `(studentId, interest, weeks, templateVersion)` 去重；
+ * 5. **幂等**：生成按 `(studentId, interest, weeks, templateVersion, **schedule**)`
+ *    去重（排课也是计划形状的一部分：4 周 1×120 与 4 周 2×60 是两份不同的草稿）；
  *    confirm / answers / evidence 走 `IdempotencyStore`，重试不追加第二次尝试。
  * 6. **审计**：生成、确认、`TheoryMastered`、证据提交各写一次（`TheoryMastered`
  *    用「非达标 → 达标」的状态翻转保证 exactly-once）。
+ * 7. **门禁证据桥（WS2）**：`TheoryMastered` 状态翻转后，把门禁证据交给
+ *    `TeamRuntimeService.recordGateForStudent` —— 团队门禁事件、审计与待冲刷账本
+ *    全部由服务端内部通道写；本服务只调用，不自己写门禁表（AGENTS.md：门禁事件
+ *    服务端写入，AI 决策不直接写通过/接受）。调用点在业务提交**之后**、事务
+ *    **之外**，门禁写入失败绝不回滚已成立的理论达标。
  */
 @Injectable()
 export class LearningPlanService {
@@ -122,6 +143,11 @@ export class LearningPlanService {
     private readonly outbox: OutboxWriter,
     private readonly access: AccessPolicy,
     @Optional() mastery?: MasteryDomainService,
+    /**
+     * 门禁证据的唯一内部写入通道（服务器侧）。`@Optional()` 是刻意的：
+     * 单测与无团队链路的部署不需要它；缺失时桥调用整体跳过，只记一条日志。
+     */
+    @Optional() private readonly teamRuntime?: TeamRuntimeService,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -130,18 +156,34 @@ export class LearningPlanService {
 
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown },
+    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
-    const input = assertGenerateInput(rawInput);
+    const input = assertGeneratePlanInput(rawInput);
     const generated = this.generator.generate(input);
     validateGeneratedPlan(generated);
 
-    const existing = await this.store.findPlanBySignature(
-      actor.id,
-      generated.interest,
-      generated.weeks,
-      generated.templateVersion,
-    );
+    // 去重签名必须**包含排课形状**：4 周 1×120 与 4 周 2×60 的周数、兴趣、
+    // 模板版本完全相同，但计划形状（会话数 / 每节分钟）不同。签名与幂等键
+    // 都带上 `sessionsPerWeek x sessionMinutes`，两种排课各自得到一份草稿。
+    const signatureKey = planSignatureKey(actor.id, generated);
+    const signatureQuery = {
+      studentUserId: actor.id,
+      interest: generated.interest,
+      weeks: generated.weeks,
+      templateVersion: generated.templateVersion,
+      signatureKey,
+      legacyKeyPrefix: legacyPlanKeyPrefix(actor.id, {
+        templateVersion: generated.templateVersion,
+        weeks: generated.weeks,
+        interest: generated.interest,
+      }),
+      shape: {
+        weeks: generated.weeks,
+        minutesPerSession: generated.minutesPerSession,
+        totalSessions: generated.sessions.length,
+      },
+    };
+    const existing = await findSignatureHit(this.store, signatureQuery);
     if (existing !== null) {
       return { plan: await this.toPlanView(existing), deduplicated: true };
     }
@@ -152,12 +194,9 @@ export class LearningPlanService {
       await this.store.createPlan(bundle);
     } catch (error) {
       if (error instanceof LearningPlanStoreConflictError) {
-        const raced = await this.store.findPlanBySignature(
-          actor.id,
-          generated.interest,
-          generated.weeks,
-          generated.templateVersion,
-        );
+        // 并发竞争：同排课的另一请求已落库 → 读回并去重。**同签名不同排课
+        // 的竞争不在这里合并**——它本来就该是两份草稿。
+        const raced = await findSignatureHit(this.store, signatureQuery);
         if (raced !== null) return { plan: await this.toPlanView(raced), deduplicated: true };
       }
       throw error;
@@ -352,6 +391,8 @@ export class LearningPlanService {
       { planId, sessionId, questionId },
       { answer: body.answer },
     );
+    // 由**本次新执行**（非重放）的业务回调置位，事务提交后据此触发门禁桥。
+    let theoryMasteredFlip = false;
     try {
       const result = await this.idempotency.execute(
         scope,
@@ -451,6 +492,9 @@ export class LearningPlanService {
               message: '该题已作答',
             });
           }
+          // 门禁证据的**调用意图**只由事务内的状态翻转决定；真正写入放在事务外
+          // （见下方 recordTheoryMasteredGate），避免门禁写入把合法达标一起回滚。
+          theoryMasteredFlip = shouldEmitTheoryMastered;
 
           const updatedStates = await scoped.loadStates(actor, fresh);
           return {
@@ -471,6 +515,12 @@ export class LearningPlanService {
           };
         }),
       );
+      // 门禁桥：**在幂等 `execute` 之外、业务事务之外**调用。
+      // - 放在重放路径之前不看结果，是因为重放根本不执行回调，标志位保持 false；
+      // - 放在事务之外，是因为门禁写入失败绝不能回滚已成立的理论达标。
+      if (theoryMasteredFlip && !result.replayed) {
+        await this.recordTheoryMasteredGate(actor.id, sessionId);
+      }
       const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
     } catch (error) {
@@ -515,6 +565,7 @@ export class LearningPlanService {
       { planId, sessionId, objectiveId },
       { evidenceRef, summary },
     );
+    let theoryMasteredFlip = false;
     try {
       const result = await this.idempotency.execute(
         scope,
@@ -594,6 +645,8 @@ export class LearningPlanService {
               }, tx as AuditTransaction);
             },
           });
+          // 同 submitAnswer：门禁写入在事务外执行，此处只置位调用意图。
+          theoryMasteredFlip = shouldEmitTheoryMastered;
           const updatedStates = await scoped.loadStates(actor, fresh);
           return {
             status: 201,
@@ -607,6 +660,9 @@ export class LearningPlanService {
           };
         }),
       );
+      if (theoryMasteredFlip && !result.replayed) {
+        await this.recordTheoryMasteredGate(actor.id, sessionId);
+      }
       const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
     } catch (error) {
@@ -614,8 +670,49 @@ export class LearningPlanService {
     }
   }
 
+  /**
+   * 门禁证据桥：`TheoryMastered` 状态翻转后，把证据交给团队运行时的**唯一内部
+   * 写入通道**（`recordGateForStudent`）。本服务不写门禁事件表、不写账本、也不
+   * 自行判定门禁达成——它只递交证据引用。
+   *
+   * 三条硬约束（改这里之前先读）：
+   *
+   * 1. **必须在业务事务之外调用**：门禁写入失败不得回滚已成立的理论达标
+   *    （`projects.service.ts` / `works.service.ts` 的同一判据）；
+   * 2. **`evidenceRef` 必须稳定**：门禁幂等键是字面量
+   *    `gate:<student>:<gate>:<evidenceRef>`，不做哈希。用「每题一个 / 带时间戳」
+   *    的引用会在翻转之后每答一题都新写一条门禁事件，而事件表没有库级兜底
+   *    （唯一约束在待冲刷账本上）。故按 (student, gate, session) 稳定。
+   * 3. **`source` 必须在白名单内**：`learning-plan.theory-mastered` 是
+   *    `TheoryMastered` 门禁登记的生产者身份，写侧白名单表驱动校验。
+   *
+   * 三种返回（recorded / already_satisfied / deferred）一律视为成功：学生尚未
+   * 进入团队链路时证据进待冲刷账本，由 `startRun` 后续物化。
+   */
+  private async recordTheoryMasteredGate(studentId: string, sessionId: string): Promise<void> {
+    if (this.teamRuntime === undefined) {
+      // 未装配团队运行时（单测 / 无团队链路的部署）：只记日志，不改变业务结果。
+      this.logger.log(`门禁桥未装配，跳过 TheoryMastered 证据（session=${sessionId}）`);
+      return;
+    }
+    try {
+      await this.teamRuntime.recordGateForStudent({
+        studentUserId: studentId,
+        gate: CONCEPT_MASTERY_GATE,
+        evidenceRef: theoryMasteredEvidenceRef(sessionId),
+        source: 'learning-plan.theory-mastered',
+      });
+    } catch (error) {
+      this.logger.warn(
+        `门禁证据写入失败（不影响已成立的理论达标） session=${sessionId} err=${(error as Error)?.message ?? error}`,
+      );
+    }
+  }
+
   private async withAssessmentStore<T>(studentId: string, work: (scoped: LearningPlanService) => Promise<T>): Promise<T> {
     return this.store.withAssessmentTransaction(studentId, async (scopedStore) => {
+      // 作用域实例必须**原样带上**可选依赖：所有 emitTheoryMastered / 门禁桥调用
+      // 都发生在这个子实例上，只在外层构造器注入而这里漏传 = 静默空操作。
       const scoped = new LearningPlanService(
         scopedStore,
         this.generator,
@@ -623,6 +720,8 @@ export class LearningPlanService {
         this.audit,
         this.outbox,
         this.access,
+        this.masteryDomain,
+        this.teamRuntime,
       );
       return work(scoped);
     });
@@ -649,7 +748,13 @@ export class LearningPlanService {
       templateVersion: generated.templateVersion,
       status: 'draft',
       version: 1,
-      idempotencyKey: `learning-plan:${studentId}:${generated.templateVersion}:${generated.weeks}:${generated.interest}`,
+      idempotencyKey: planIdempotencyKey(studentId, {
+        templateVersion: generated.templateVersion,
+        weeks: generated.weeks,
+        interest: generated.interest,
+        sessionsPerWeek: generated.sessions.length / generated.weeks,
+        minutesPerSession: generated.minutesPerSession,
+      }),
       confirmedAt: null,
       completedAt: null,
       createdAt: now,
@@ -843,6 +948,17 @@ export class LearningPlanService {
     return computeTheoryMastered(session.theoryObjectiveIds, states);
   }
 
+  /**
+   * 实践门槛（学生侧 403）。AGENTS.md 硬规则：`TheoryMastered` 之前不得进入
+   * 实践阶段，所以这条 403 **原样保留**——团队门禁事件是权威，但不替代它。
+   *
+   * 门禁 id 取自 WS1 的**注册表**（`GATE_CONDITION_REGISTRY`），不再在本文件
+   * 硬编码第二份 `'TheoryMastered'` 真源；`practiceGateForDeliverable` 提供
+   * 「交付物 → 实践门禁」的同一套映射（可运行代码 → 代码运行验证；实验/报告 →
+   * 报告校验），供团队链路在有交付物元数据时使用。计划路径在确认前拿不到部署的
+   * PBL 交付物（`learning_projects` 只有 templateVersionId，没有 deliverableType），
+   * 因此本处不按交付物推断、也不放宽：只按理论门槛判定并把权威门禁 id 记入日志。
+   */
   private async assertPracticeGate(
     session: SessionRecord,
     _states: Map<string, ObjectiveMasteryState>,
@@ -851,6 +967,9 @@ export class LearningPlanService {
   ): Promise<void> {
     if (session.practiceObjectiveIds.length === 0) return;
     if (!await this.masteryDomain.checkRequiredObjectives(actor, bundle.plan.studentUserId, bundle.plan.id, session.theoryObjectiveIds, this.store)) {
+      this.logger.warn(
+        `实践门禁未达成 session=${session.id} gate=${CONCEPT_MASTERY_GATE}`,
+      );
       throw new ForbiddenException({
         code: 'THEORY_MASTERED_REQUIRED',
         message: '理论目标全部掌握前，实践分块保持锁定',
@@ -1331,12 +1450,220 @@ export class LearningPlanService {
   }
 }
 
+/**
+ * 去重签名查询（服务层唯一入口）。
+ *
+ * 两步：先按**完整键**（含排课后缀）精确命中；未命中再按旧键前缀回退，并且
+ * 只在计划形状（周数 / 每节分钟 / 会话数）与本次请求一致时才认这份规划。
+ * 形状比对是必需的：只按前缀认领会让「4 周 1×120」与「4 周 2×60」重新撞车，
+ * 而那正是本次要修的缺陷。
+ */
+async function findSignatureHit(
+  store: LearningPlanStore,
+  query: SignatureQuery,
+): Promise<PlanBundle | null> {
+  const exact = await store.findPlanBySignature(
+    query.studentUserId,
+    query.interest,
+    query.weeks,
+    query.templateVersion,
+    query.signatureKey,
+  );
+  if (exact !== null) return exact;
+  const legacy = await store.findPlanBySignature(
+    query.studentUserId,
+    query.interest,
+    query.weeks,
+    query.templateVersion,
+    query.legacyKeyPrefix,
+  );
+  if (legacy === null) return null;
+  return isSamePlanShape(legacy, query.shape) ? legacy : null;
+}
+
+interface SignatureQuery {
+  studentUserId: string;
+  interest: string;
+  weeks: 4 | 8;
+  templateVersion: string;
+  /** 含排课后缀的完整幂等键。 */
+  signatureKey: string;
+  /** 旧键前缀（无排课后缀），仅用于兼容读。 */
+  legacyKeyPrefix: string;
+  shape: { weeks: 4 | 8; minutesPerSession: number; totalSessions: number };
+}
+
 function inferSessionsPerWeek(bundle: PlanBundle): 1 | 2 | 5 {
   const count = bundle.sessions.length;
   if (count === bundle.plan.weeks) return 1;
   if (count === bundle.plan.weeks * 2) return 2;
   return 5;
 }
+
+/** 排课形状标签（`1x120` / `2x60` / 旧语义 `5x60`）。去重签名与幂等键共用。 */
+function scheduleTag(sessionsPerWeek: number, minutesPerSession: number): string {
+  return `${sessionsPerWeek}x${minutesPerSession}`;
+}
+
+/**
+ * 生成入参白名单校验（服务端唯一入口）。
+ *
+ * 只接受学生真正能表达的内容：兴趣、周数、目标、排课、课次数。任何服务端状态
+ * （stage / mastery / theoryMastered / projectId / templateVersion 等）由控制器
+ * 的 `assertNoServerOwnedFields` 在更外层先行拒绝，这里只做类型与范围校验，
+ * 产出一个可信的 `GeneratePlanInput` 交给生成器。
+ *
+ * 导出给同目录的 `learning-plan.service.test.ts` 使用：生成入参校验是服务层的
+ * 职责，测试与服务共用同一判据（避免测试自建一份与实现漂移的白名单）。
+ */
+function rejectInput(message: string, path: string): never {
+  throw new PlanGenerationError(message, [{ path, message }]);
+}
+
+export function assertGeneratePlanInput(raw: {
+  interest: unknown;
+  weeks: unknown;
+  goal?: unknown;
+  schedule?: unknown;
+  sessionCount?: unknown;
+}): GeneratePlanInput {  if (typeof raw.interest !== 'string') rejectInput('interest 必须是字符串', 'interest');
+  const interest = (raw.interest as string).trim();
+  if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
+    rejectInput(`interest 长度须为 ${MIN_INTEREST_LENGTH}–${MAX_INTEREST_LENGTH} 字符`, 'interest');
+  }
+
+  if (raw.weeks !== 4 && raw.weeks !== 8) rejectInput('weeks 只能是 4 或 8', 'weeks');
+  const weeks: 4 | 8 = raw.weeks;
+
+  let goal: string | null = null;
+  if (raw.goal !== undefined && raw.goal !== null) {
+    if (typeof raw.goal !== 'string') rejectInput('goal 必须是字符串', 'goal');
+    const text = raw.goal.trim();
+    if (text.length > MAX_GOAL_LENGTH) rejectInput(`goal 不能超过 ${MAX_GOAL_LENGTH} 字符`, 'goal');
+    goal = text.length === 0 ? null : text;
+  }
+
+  let sessionCount: 4 | 8 | undefined;
+  if (raw.sessionCount !== undefined && raw.sessionCount !== null) {
+    if (raw.sessionCount !== 4 && raw.sessionCount !== 8) {
+      rejectInput(`sessionCount 只能是 ${SESSION_COUNT_OPTIONS.join(' 或 ')}`, 'sessionCount');
+    }
+    sessionCount = raw.sessionCount;
+  }
+
+  let schedule: PblSchedule | undefined;
+  if (raw.schedule !== undefined && raw.schedule !== null) {
+    if (typeof raw.schedule !== 'object' || Array.isArray(raw.schedule)) {
+      rejectInput('schedule 必须是对象', 'schedule');
+    }
+    // 边界仍拒绝自相矛盾或与 weeks 不一致的排课：生成器与计划校验器会再查一遍，
+    // 但让非法排课在进入业务事务之前就被挡下，错误更早、也更容易定位。
+    // 复用共享的 `validatePblSchedule`，不在此另写第二份字段策略。
+    const candidate = raw.schedule as Record<string, unknown>;
+    const normalized = {
+      durationWeeks: candidate.durationWeeks,
+      weeklyMinutes: candidate.weeklyMinutes,
+      sessionsPerWeek: candidate.sessionsPerWeek,
+      sessionMinutes: candidate.sessionMinutes,
+    } as PblSchedule;
+    const scheduleCheck = validatePblSchedule(normalized);
+    if (!scheduleCheck.valid || normalized.durationWeeks !== weeks) {
+      rejectInput(
+        `schedule 必须与 weeks(${weeks}) 一致且每周总时长为 120 分钟：${scheduleCheck.errors.join('; ') || 'durationWeeks mismatch'}`,
+        'schedule',
+      );
+    }
+    schedule = normalized;
+  }
+
+  return {
+    interest,
+    weeks,
+    goal,
+    ...(schedule === undefined ? {} : { schedule }),
+    ...(sessionCount === undefined ? {} : { sessionCount }),
+  };
+}
+
+/**
+ * 兼容读的键形（无排课后缀）。由 store 在精确键未命中时按此回退，
+ * 保证升级前已落库、键尾还没有排课标签的草稿仍能被读回。
+ */
+function legacyPlanKeyPrefix(
+  studentId: string,
+  shape: { templateVersion: string; weeks: 4 | 8; interest: string },
+): string {
+  return `learning-plan:${studentId}:${shape.templateVersion}:${shape.weeks}:${shape.interest}`;
+}
+
+/**
+ * 计划生成幂等键 / 去重签名（**唯一真源**）。
+ *
+ * 排课是计划形状的一部分，必须进签名：否则「4 周 1×120」与「4 周 2×60」会
+ * 撞进同一条签名，第二个请求被当成重复并被返回第一份计划的形状。
+ * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`。
+ */
+function planIdempotencyKey(
+  studentId: string,
+  shape: {
+    templateVersion: string;
+    weeks: 4 | 8;
+    interest: string;
+    sessionsPerWeek: number;
+    minutesPerSession: number;
+  },
+): string {
+  return `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
+}
+
+/** 由生成产物直接算出幂等键（生成路径的唯一入口）。 */
+function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
+  return planIdempotencyKey(studentId, {
+    templateVersion: generated.templateVersion,
+    weeks: generated.weeks,
+    interest: generated.interest,
+    sessionsPerWeek: generated.sessions.length / generated.weeks,
+    minutesPerSession: generated.minutesPerSession,
+  });
+}
+
+/**
+ * 兼容读：升级前落库的草稿可能在键尾没有排课后缀。
+ *
+ * 旧实现按 `(student, interest, weeks, templateVersion)` 去重并落库，本文件只
+ * 传新键的**前缀**给它比对，因此前缀命中的计划还要按形状二次确认：只有
+ * 「周数 / 每节分钟数 / 实际会话数」与请求一致的去重，形状不同宁可另建一份
+ * 新草稿——旧行为正是「返回第一份计划的形状」，那才是这次要修的缺陷。
+ */
+function isSamePlanShape(
+  bundle: PlanBundle,
+  shape: { weeks: 4 | 8; minutesPerSession: number; totalSessions: number },
+): boolean {
+  return bundle.plan.weeks === shape.weeks
+    && bundle.plan.minutesPerSession === shape.minutesPerSession
+    && bundle.sessions.length === shape.totalSessions;
+}
+
+/**
+ * TheoryMastered 门禁证据引用。
+ *
+ * 必须是**稳定**引用：门禁事件的幂等键是字面量 `gate:<student>:<gate>:<evidenceRef>`
+ * （`normalizeKey` 不做哈希），若这里换成「每题一个 / 带时间戳」的引用，翻转之后
+ * 每答一题都会新写一条门禁事件。按 (student, gate, session) 稳定即可。
+ */
+function theoryMasteredEvidenceRef(sessionId: string): string {
+  return `mastery:theory:${sessionId}`;
+}
+
+/**
+ * `concept_mastery` 的门禁 id。登记表按**门禁 id** 索引（不按阶段名），
+ * 所以这里直接按键取 `gateId`，取不到才回落到冻结契约的核心字面量——
+ * 语义不变，但门禁 id 不再是散落在本文件里的第二份硬编码真源。
+ */
+const CONCEPT_MASTERY_GATE: GateConditionId =
+  isRegisteredGateCondition('TheoryMastered')
+    ? (GATE_CONDITION_REGISTRY['TheoryMastered']?.gateId ?? 'TheoryMastered')
+    : 'TheoryMastered';
 
 function inferPlanSchedule(bundle: PlanBundle): PblSchedule | null {
   const sessionsPerWeek = inferSessionsPerWeek(bundle);

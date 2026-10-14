@@ -525,3 +525,79 @@ describe('WorksService — 对象存储签名', () => {
     );
   });
 });
+
+/**
+ * WS3：预签名白名单的**活体缺口**修复回归。
+ *
+ * 修复前的真实行为（两条独立缺陷，都会让真实调用失败）：
+ * 1. `text/markdown` / `text/html` 不在 `ALLOWED_PRESIGN_CONTENT_TYPES` 内
+ *    → 学生**根本传不上实验报告**；
+ * 2. `normalizePresign` 要求 `sizeBytes` 是有限正数，而学生端上传组件从未发送
+ *    → 真实上传请求必然 400。
+ *
+ * 注意这两条只是「能不能传上去」，**不**表示证据已被校验：
+ * 对象存储的**读**路径仍是延后项（live 抛 OBJECT_STORAGE_NOT_CONFIGURED）。
+ */
+describe('WorksService — 报告类内容类型（WS3 增量修复）', () => {
+  it('text/markdown 与 text/html 现在可以预签名（此前会被 400 拒绝）', async () => {
+    const h = makeHarness();
+    const markdown = await h.service.presignUpload(
+      STUDENT.id,
+      { filename: 'report.md', contentType: 'text/markdown', sizeBytes: 4096, purpose: 'artifact' },
+      'k-md',
+    );
+    const html = await h.service.presignUpload(
+      STUDENT.id,
+      { filename: 'report.html', contentType: 'text/html', sizeBytes: 4096, purpose: 'evidence' },
+      'k-html',
+    );
+    assert.equal(markdown.method, 'PUT');
+    assert.equal(html.method, 'PUT');
+    assert.ok(markdown.objectKey.includes('report.md'));
+  });
+
+  it('既有白名单未被削弱：text/plain 仍然可用', async () => {
+    const h = makeHarness();
+    const result = await h.service.presignUpload(
+      STUDENT.id,
+      { filename: 'notes.txt', contentType: 'text/plain', sizeBytes: 100, purpose: 'other' },
+      'k-txt',
+    );
+    assert.equal(result.method, 'PUT');
+  });
+
+  it('sizeBytes 缺失 / 非正数仍然被拒（前端此前正是漏发该字段）', async () => {
+    const h = makeHarness();
+    await assertHttpError(
+      () => h.service.presignUpload(
+        STUDENT.id,
+        { filename: 'report.md', contentType: 'text/markdown', purpose: 'artifact' },
+        'k-nosize',
+      ),
+      400,
+      'ARTIFACT_INVALID',
+    );
+    await assertHttpError(
+      () => h.service.presignUpload(
+        STUDENT.id,
+        { filename: 'report.md', contentType: 'text/markdown', sizeBytes: 0, purpose: 'artifact' },
+        'k-zerosize',
+      ),
+      400,
+      'ARTIFACT_INVALID',
+    );
+  });
+
+  it('不在白名单内的 purpose 仍被拒（前端此前发的 project-submission 就是这类）', async () => {
+    const h = makeHarness();
+    await assertHttpError(
+      () => h.service.presignUpload(
+        STUDENT.id,
+        { filename: 'report.md', contentType: 'text/markdown', sizeBytes: 100, purpose: 'project-submission' as never },
+        'k-purpose',
+      ),
+      400,
+      'ARTIFACT_INVALID',
+    );
+  });
+});

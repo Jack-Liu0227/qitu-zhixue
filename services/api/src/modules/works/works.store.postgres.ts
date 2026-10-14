@@ -275,6 +275,51 @@ export class PostgresWorksStore extends WorksStore {
       .orderBy(mentorReviewsTable.createdAt);
     return rows.map(mapReview);
   }
+
+  /** P2 只读端口：按版本 id 取版本 + 所属作品（两次单行查询，不做连接）。 */
+  async findVersionById(
+    versionId: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null> {
+    const versions = await this.db
+      .select()
+      .from(artifactVersionsTable)
+      .where(eq(artifactVersionsTable.id, versionId))
+      .limit(1);
+    const version = versions[0];
+    if (version === undefined) return null;
+    const artifacts = await this.db
+      .select()
+      .from(artifactsTable)
+      .where(eq(artifactsTable.id, version.artifactId))
+      .limit(1);
+    const artifact = artifacts[0];
+    if (artifact === undefined) return null;
+    return { artifact: mapArtifact(artifact), version: mapVersion(version) };
+  }
+
+  /** P2 只读端口：按对象 key 反查版本（取 ordinal 最大的那条）。 */
+  async findVersionByObjectKey(
+    objectKey: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null> {
+    const wanted = objectKey.trim();
+    if (wanted.length === 0) return null;
+    const versions = await this.db
+      .select()
+      .from(artifactVersionsTable)
+      .where(eq(artifactVersionsTable.objectKey, wanted))
+      .orderBy(desc(artifactVersionsTable.ordinal))
+      .limit(1);
+    const version = versions[0];
+    if (version === undefined) return null;
+    const artifacts = await this.db
+      .select()
+      .from(artifactsTable)
+      .where(eq(artifactsTable.id, version.artifactId))
+      .limit(1);
+    const artifact = artifacts[0];
+    if (artifact === undefined) return null;
+    return { artifact: mapArtifact(artifact), version: mapVersion(version) };
+  }
 }
 
 function mapArtifact(row: ArtifactRow): ArtifactRecord {

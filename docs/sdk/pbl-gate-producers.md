@@ -221,3 +221,65 @@ $ grep -n "@Post\|@Controller" services/api/src/modules/works/works.controller.t
   若 T18 后续要接线 TheoryMastered，属「新增桥接」而非「复用已有接线」，工作量应据此重估。
 - 本文档中所有命令均在 `.worktrees/pbl-gate-wiring`（HEAD a873600）真实执行；
   未执行的推断已在正文标注为「未发现/无消费方」等可证伪措辞。
+
+---
+
+## 三、WS3 更新（P2 证据生产者落地后的真实状态）
+
+- 更新基线：`feature/pbl-gate-automation-local`（P2/WS3：确定性证据生产者）。
+- 本节**覆盖**上方 §1.1 的结论：那句「四个门禁都没有自动产出方」在
+  `student_confirmed_intent` 与 `review_completed_and_archived` 上**已经过期**。
+
+### 3.1 四门禁的真实产出状态（逐条，可证伪）
+
+| 门禁 | 是否有诚实自动产出方 | 真源（写入方标识） |
+|---|---|---|
+| `student_confirmed_intent` | **有** | `projects.service.ts` 学生确认意图（`source: 'projects.confirm-intent'`，T15） |
+| `TheoryMastered` | **有（WS2 桥接）** | `learning-plan` 掌握度翻转后调用内部通道（`source: 'learning-plan.theory-mastered'`，T16）；此前只有审计 + outbox，**无消费者** |
+| `experiment_report_validated` | **有（WS3 新增门禁）** | 报告/实验类交付物的**结构**校验（`works.document-structure-validator`）；证据是校验结论行（校验器版本 + sha256 + 缺项） |
+| `review_completed_and_archived` | **有** | `works.service.ts` 发布评审通过（`source: 'works.publish-approved'`，T17） |
+| `code_playable_run_verified` | **没有（本工作流无法诚实关闭）** | 白名单里 `source: 'runner'` 已注册待用；真实 runner 需要容器/微 VM（见 §3.3） |
+
+### 3.2 语义红线（写进数据行，不只写在文档里）
+
+**静态检查 MUST NOT 被表述为「已验证可运行」。**
+
+- §方案 C 早已写下这个陷阱：**语法通过 ≠ 能运行 ≠ 可玩**
+  （`import pygame` 静态能过，无显示器就崩）。
+- WS3 的 `code-static-check-producer.ts` 因此把语义范围做成了数据：
+  返回值带 `semanticScope: 'static_only'`（字面量类型），`disclosures` 里恒含
+  一条 `NOT_A_RUN_VERIFICATION` 文本；落库的 `work_validation_checks.notes`
+  也一并保存该声明。任何消费方都无法把它误读成运行验证。
+- 该生产者**没有**门禁写入路径：它不产生候选、不调用 `recordGateForStudent`，
+  更不会去写 `code_playable_run_verified`。门禁名里同时有
+  run + playable + verified 三个词，静态结论与它语义相反，写了就是伪造。
+- 学生端也**不得**为 `code_playable_run_verified` 提供「学生点一下就算验证」的按钮
+  （原本就没有，保持之，并作为 QA 回归项）。
+
+### 3.3 仍然缺什么（不粉饰）
+
+1. **真实代码运行验证**：需要无网络容器/微 VM、CPU 与墙钟配额、除 scratch 外的
+   只读文件系统、headless 显示垫片（游戏要 SDL + 显示才能进主循环）。
+   在 API 进程里跑学生代码会把多租户服务端与未成年人数据暴露出去，
+   因此这是**基础设施延后项**，不是实现细节。`services/workers` 目前也没有
+   任何容器/沙箱运行时依赖。
+2. **对象存储读路径**：文档/视频/代码生产者都需要读字节。live 未配置时
+   预签名直接 503 `OBJECT_STORAGE_NOT_CONFIGURED`，读端口也抛
+   `OBJECT_STORAGE_READ_NOT_CONFIGURED`。生产者写成了**注入式读端口**，
+   于是「读不到」被翻译为 `unverifiable`（不可判定），**绝不**翻译成
+   「校验不通过」。端到端集成测试因此只能是 skipped / expected-unavailable。
+3. **多文件源码清单**：`artifact_versions` 只登记一个 `object_key`，
+   没有文件清单字段。多文件项目（`main.py` + `settings.py`）的静态检查
+   现在会如实报 `CODE_FILE_MISSING`，而不是猜。
+
+### 3.4 WS3 交付的确定性生产者（新增）
+
+| 生产者 | 输入 | 结论 | 是否写门禁 |
+|---|---|---|---|
+| 文档/报告结构校验 `doc-structure-v1` | 注入的字节读端口（Markdown 报告） | 章节/表格/图表是否存在 + sha256 + 缺项 | 否（结论作为候选与规则输入） |
+| 视频/硬件演示合规 `media-compliance-v1` | 容器**头部窗口**（不解码） | 容器/大小/时长/分辨率是否合规、是否有人工说明、引用是否真实且属于该学生 | 否 |
+| 代码静态检查 `code-static-v1` | 版本登记的源文件字节 | 入口文件是否存在 + Python 语法编译是否通过 + `semanticScope: 'static_only'` | 否（**永不**写 `code_playable_run_verified`） |
+
+隐私边界（绑定，非建议）：视频生产者**只**输出合规结论、不透明作品引用与人写说明；
+原始帧、缩略图、转写一律不进模型上下文与日志。今天这一点还有类型层保障：
+`ModelChatMessage.content` 是普通 string，`ModelCompletionRequest` 没有媒体字段。
