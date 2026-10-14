@@ -7,10 +7,47 @@ import type {
   SessionMode,
 } from '@qitu/contracts';
 import {
+  sessionBlockShapeFor,
   validateLearningPlanDraft,
+  type BlockShape,
   type LearningPlanDraft,
 } from '@qitu/ai-client';
 import { validatePblSchedule } from '@qitu/contracts';
+import {
+  PlanGenerationError,
+  PlanValidationError,
+  blockShapesCoverSessionMinutes,
+  expectedSessionCount,
+  findPrerequisiteCycle,
+  scheduleViolations,
+  validateGeneratedPlan,
+  MAX_OBJECTIVES_PER_SESSION,
+  PLAN_BLOCK_ORDER,
+  type PlanViolation,
+  type SessionPlanShape,
+} from './session-plan-validator';
+
+export {
+  PlanGenerationError,
+  PlanValidationError,
+  validateGeneratedPlan,
+  findPrerequisiteCycle,
+  expectedSessionCount,
+  scheduleViolations,
+  blockShapesCoverSessionMinutes,
+  MAX_OBJECTIVES_PER_SESSION,
+  PLAN_BLOCK_ORDER,
+  type PlanViolation,
+  type SessionPlanShape,
+};
+
+/**
+ * 显式课次数量。4 与 8 是产品决定，不是调度字段的副产品。
+ *
+ * 本文件先落地类型，`packages/contracts` 的对应导出是 WS1 的写入边界（此处
+ * **不**改 contracts），接线方式见文件末尾的说明与最终报告里的 hand-off。
+ */
+export type PlanSessionCount = 4 | 8;
 
 /**
  * 计划生成 + 不可信模型输出的校验边界（纯函数）。
@@ -19,11 +56,17 @@ import { validatePblSchedule } from '@qitu/contracts';
  * `DeterministicPlanGenerator`，测试可以注入畸形实现来证明「模型输出不可信，
  * 结构非法必须被拒绝而不是被静默修复」。
  *
- * 这里同时跑两道校验：
- * 1. 复用 `@qitu/ai-client` 的 `validateLearningPlanDraft`（周数、节数、每节 60 分钟、
- *    实践必须引用已掌握的理论、目标数 ≤4、DAG 无环）；
- * 2. `validateGeneratedPlan` 在本产品的模块 / 目标 / 会话维度做更严格的检查，
- *    任何一条不过都抛 `PlanGenerationError`，绝不「修正后继续」。
+ * 单元：**次课**。`sessionCount`（4 或 8）是显式输入，不再由 `weeks` 乘出。
+ * `weeks` 保留只为向后兼容（旧请求没有 `sessionCount`，按 5 节/周摊到各周）。
+ *
+ * 一节课五段：复习/导入（review）、理论学习（theory）、检查（check）、实践
+ * （practice）、反思（reflect）。形状由 `sessionBlockShapeFor(sessionMinutes,
+ * ordinal)` 唯一决定——那是 `@qitu/ai-client` 里的**唯一**分块策略，本文件不再
+ * 自带第二套（此前 60/120 双档散在这里，与 curriculum.ts 的周索引表分歧）。
+ *
+ * 校验只有一个入口 `validateGeneratedPlan`，它委托 `session-plan-validator.ts`
+ * 收集**全部**违规后一次性抛出。任何一条不过都抛 `PlanGenerationError`
+ * （`LEARNING_PLAN_INVALID`），绝不「修正后继续」。
  *
  * 结构采用「理论课 → 实践课」交替：理论课引入理论目标并完成 `TheoryMastered`，
  * 实践课引用**上一节理论课**的目标（`prerequisiteObjectiveIds` 必须已完成，
@@ -38,6 +81,9 @@ export const MIN_INTEREST_LENGTH = 1;
 export const MAX_INTEREST_LENGTH = 60;
 export const MAX_GOAL_LENGTH = 200;
 export const MINUTES_PER_SESSION = 60;
+
+/** 允许的显式课次数量。4 与 8 是产品决定，不是调度字段的副产品。 */
+export const SESSION_COUNT_OPTIONS: readonly PlanSessionCount[] = [4, 8];
 
 export interface GeneratedObjective {
   id: string;
@@ -62,6 +108,12 @@ export interface GeneratedBlock {
   title: string;
   minutes: number;
   activity: LearningPlanBlockActivity;
+  /**
+   * 服务端真源的分块类型。`activity` 是给旧版校验器/旧消费者的投影，两者由
+   * 生成期同时写入；`kind` 才能区分 `check` 与 `reflect`（旧投影把两者都压成
+   * `reflect`，所以只靠 `activity` 无法还原）。
+   */
+  kind: SessionBlockKind;
   objectiveIds: string[];
   prerequisiteObjectiveIds: string[];
 }
@@ -82,6 +134,8 @@ export interface GeneratedSession {
 export interface GeneratedPlan {
   templateVersion: string;
   weeks: LearningPlanWeeks;
+  /** 显式课次数量。4 或 8；与 `weeks` 并存，不互相推导。 */
+  sessionCount: PlanSessionCount;
   minutesPerSession: number;
   /** Explicit PBL timing; omitted for legacy `weeks` requests. */
   schedule?: PblSchedule;
@@ -99,17 +153,11 @@ export interface GeneratePlanInput {
   goal: string | null;
   /** New PBL schedule. Omitted requests retain legacy 5 x 60-minute semantics. */
   schedule?: PblSchedule;
-}
-
-export class PlanGenerationError extends Error {
-  readonly code = 'LEARNING_PLAN_INVALID';
-  constructor(
-    message: string,
-    readonly errors: readonly { path: string; message: string }[] = [],
-  ) {
-    super(message);
-    this.name = 'PlanGenerationError';
-  }
+  /**
+   * 显式课次数量。省略时按 `weeks * sessionsPerWeek` 回退（旧语义，5 节/周）。
+   * 给出时必须与 `weeks` 自洽：4 节 ↔ 4 周，8 节 ↔ 4 周 2 节/周 或 8 周。
+   */
+  sessionCount?: PlanSessionCount;
 }
 
 /**
@@ -161,20 +209,45 @@ export abstract class PlanGenerator {
 }
 
 /**
- * 确定性课程模板：理论课与实践课交替，每节 60 分钟。
+ * 由次课数量与周数推出「每周几节」。
  *
- * - 理论课：10 分钟「衔接回顾」+ 40 分钟「理论讲解」+ 10 分钟「理解检查」；
- * - 实践课：10 分钟「衔接回顾」+ 50 分钟「动手实践」；
- * - 理论目标类型在 `memory` / `concept` 间轮转，实践目标在 `procedure` / `design` 间轮转，
- *   保证量化与质化两条门槛都被真实覆盖。
+ * 课次是单元，周只是排期容器：4 节摊进 4 周即每周 1 节；8 节摊进 4 周即每周 2 节。
+ */
+export function sessionsPerWeekFor(weeks: LearningPlanWeeks, sessionCount: number): number {
+  if (sessionCount % weeks !== 0) {
+    throw new PlanGenerationError(
+      `${sessionCount} 节课无法均分到 ${weeks} 周`,
+      [{ path: 'sessionCount', message: `sessionCount ${sessionCount} is not divisible by weeks ${weeks}` }],
+    );
+  }
+  return sessionCount / weeks;
+}
+
+/**
+ * 确定性课程模板：理论课与实践课交替，每节课五段。
+ *
+ * - 形状来自唯一策略 `sessionBlockShapeFor(minutesPerSession, ordinal)`；
+ * - 理论目标类型在 `memory` / `concept` 间轮转，实践目标在 `procedure` / `design`
+ *   间轮转，保证量化与质化两条门槛都被真实覆盖；
+ * - 每个实践目标的前置恒为**同节理论目标**（`prerequisiteIds = [theory.id]`），
+ *   结构上不存在「实践排在其理论之前」。
  */
 export class DeterministicPlanGenerator extends PlanGenerator {
   generate(input: GeneratePlanInput): GeneratedPlan {
     const interest = input.interest.trim();
     const weeks = input.weeks;
-    const sessionsPerWeek = input.schedule?.sessionsPerWeek ?? 5;
-    const minutesPerSession = input.schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
-    const totalSessions = weeks * sessionsPerWeek;
+    const schedule = input.schedule;
+    const minutesPerSession = schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
+    const explicitCount = input.sessionCount;
+    const derivedCount = weeks * (schedule?.sessionsPerWeek ?? 5);
+    const sessionCount = explicitCount ?? derivedCount;
+    if (!Number.isInteger(sessionCount) || sessionCount <= 0) {
+      throw new PlanGenerationError(`课次数量非法：${sessionCount}`, [
+        { path: 'sessionCount', message: 'sessionCount must be a positive integer' },
+      ]);
+    }
+    const sessionsPerWeek = sessionsPerWeekFor(weeks, sessionCount);
+    const totalSessions = sessionCount;
     const title = `${interest} · ${weeks} 周学习计划`;
     const goal = (input.goal ?? '').trim() || `用 ${weeks} 周时间掌握「${interest}」的核心知识与实践能力`;
 
@@ -193,106 +266,77 @@ export class DeterministicPlanGenerator extends PlanGenerator {
     const sessions: GeneratedSession[] = [];
     const moduleIdFor = (index: number): string => `mod-w${Math.floor(index / sessionsPerWeek) + 1}`;
 
-    const theoryShape = minutesPerSession === 120
-      ? { review: 10, theory: 80, check: 30 }
-      : { review: 10, theory: 40, check: 10 };
-    const practiceShape = minutesPerSession === 120
-      ? { review: 10, practice: 110 }
-      : { review: 10, practice: 50 };
-
-    for (let index = 0; index < totalSessions; index += 2) {
-      const round = index / 2;
-      const week = Math.floor(index / sessionsPerWeek) + 1;
+    for (let index = 0; index < totalSessions; index += 1) {
       const day = (index % sessionsPerWeek) + 1;
+      const week = Math.floor(index / sessionsPerWeek) + 1;
+      const moduleId = moduleIdFor(index);
+      const ordinal = Math.floor(index / 2);
+      const isTheorySession = index % 2 === 0;
+      const shape = sessionBlockShapeFor(minutesPerSession, index);
 
-      const theory: GeneratedObjective = {
-        id: `obj-t-${index}`,
-        moduleId: moduleIdFor(index),
-        name: `${interest} 理论要点 ${round + 1}`,
-        type: round % 2 === 0 ? 'memory' : 'concept',
-        objective: `能解释并复述「${interest}」的第 ${round + 1} 个理论要点`,
-        prerequisiteIds: [],
-        ordinal: objectives.length,
-      };
-      objectives.push(theory);
+      if (isTheorySession) {
+        const theory: GeneratedObjective = {
+          id: `obj-t-${index}`,
+          moduleId,
+          name: `${interest} 理论要点 ${ordinal + 1}`,
+          type: ordinal % 2 === 0 ? 'memory' : 'concept',
+          objective: `能解释并复述「${interest}」的第 ${ordinal + 1} 个理论要点`,
+          prerequisiteIds: [],
+          ordinal: objectives.length,
+        };
+        objectives.push(theory);
 
-      const previousPracticeId = index >= 2 ? `obj-p-${index - 1}` : null;
-      sessions.push({
-        id: `sess-${index + 1}`,
-        moduleId: theory.moduleId,
-        index,
-        week,
-        day,
-        title: `理论 ${round + 1}：${theory.name}`,
-        blocks: [
-          {
-            id: `blk-${index}-review`,
-            title: '衔接回顾',
-            minutes: theoryShape.review,
-            activity: 'review',
-            objectiveIds: previousPracticeId === null ? [] : [previousPracticeId],
-            prerequisiteObjectiveIds: [],
-          },
-          {
-            id: `blk-${index}-learn`,
-            title: '理论讲解',
-            minutes: theoryShape.theory,
-            activity: 'learn',
-            objectiveIds: [theory.id],
-            prerequisiteObjectiveIds: [],
-          },
-          {
-            id: `blk-${index}-check`,
-            title: '理解检查',
-            minutes: theoryShape.check,
-            activity: 'reflect',
-            objectiveIds: [theory.id],
-            prerequisiteObjectiveIds: [],
-          },
-        ],
-        theoryObjectiveIds: [theory.id],
-        practiceObjectiveIds: [],
-        mode: 'study',
-      });
+        const previousPracticeId = index >= 2 ? `obj-p-${index - 1}` : null;
+        // 理论课**不**排 practice 分块：那一节没有实践目标，而实践分块必须携带
+        // 非空 prerequisiteObjectiveIds（结构化的先理论后实践）。形状里的实践份额
+        // 并入理论讲解，合计仍然恰好等于 minutesPerSession。
+        sessions.push({
+          id: `sess-${index + 1}`,
+          moduleId,
+          index,
+          week,
+          day,
+          title: `理论 ${ordinal + 1}：${theory.name}`,
+          blocks: [
+            block(index, 'review', shape.review, previousPracticeId === null ? [] : [previousPracticeId]),
+            block(index, 'theory', shape.theory + shape.practice, [theory.id]),
+            block(index, 'check', shape.check, [theory.id]),
+            block(index, 'reflect', shape.reflect, [theory.id]),
+          ],
+          theoryObjectiveIds: [theory.id],
+          practiceObjectiveIds: [],
+          mode: 'study',
+        });
+        continue;
+      }
 
-      const practiceIndex = index + 1;
+      const theoryId = `obj-t-${index - 1}`;
       const practice: GeneratedObjective = {
-        id: `obj-p-${practiceIndex}`,
-        moduleId: moduleIdFor(practiceIndex),
-        name: `${interest} 实践任务 ${round + 1}`,
-        type: round % 2 === 0 ? 'procedure' : 'design',
-        objective: `完成「${interest}」的第 ${round + 1} 个实践任务并提交证据`,
-        prerequisiteIds: [theory.id],
+        id: `obj-p-${index}`,
+        moduleId,
+        name: `${interest} 实践任务 ${ordinal + 1}`,
+        type: ordinal % 2 === 0 ? 'procedure' : 'design',
+        objective: `完成「${interest}」的第 ${ordinal + 1} 个实践任务并提交证据`,
+        prerequisiteIds: [theoryId],
         ordinal: objectives.length,
       };
       objectives.push(practice);
 
       sessions.push({
-        id: `sess-${practiceIndex + 1}`,
-        moduleId: practice.moduleId,
-        index: practiceIndex,
-        week: Math.floor(practiceIndex / sessionsPerWeek) + 1,
-        day: (practiceIndex % sessionsPerWeek) + 1,
-        title: `实践 ${round + 1}：${practice.name}`,
+        id: `sess-${index + 1}`,
+        moduleId,
+        index,
+        week,
+        day,
+        title: `实践 ${ordinal + 1}：${practice.name}`,
         blocks: [
-          {
-            id: `blk-${practiceIndex}-review`,
-            title: '衔接回顾',
-            minutes: practiceShape.review,
-            activity: 'review',
-            objectiveIds: [theory.id],
-            prerequisiteObjectiveIds: [],
-          },
-          {
-            id: `blk-${practiceIndex}-practice`,
-            title: '动手实践',
-            minutes: practiceShape.practice,
-            activity: 'practice',
-            objectiveIds: [practice.id],
-            prerequisiteObjectiveIds: [theory.id],
-          },
+          block(index, 'review', shape.review, [theoryId]),
+          block(index, 'theory', shape.theory, [theoryId]),
+          block(index, 'check', shape.check, [theoryId]),
+          block(index, 'practice', shape.practice, [practice.id], [theoryId]),
+          block(index, 'reflect', shape.reflect, [practice.id]),
         ],
-        theoryObjectiveIds: [theory.id],
+        theoryObjectiveIds: [theoryId],
         practiceObjectiveIds: [practice.id],
         mode: 'study',
       });
@@ -301,8 +345,9 @@ export class DeterministicPlanGenerator extends PlanGenerator {
     return {
       templateVersion: CURRICULUM_TEMPLATE_VERSION,
       weeks,
+      sessionCount: sessionCount as PlanSessionCount,
       minutesPerSession,
-      ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+      ...(schedule === undefined ? {} : { schedule }),
       title,
       interest,
       goal,
@@ -310,6 +355,71 @@ export class DeterministicPlanGenerator extends PlanGenerator {
       objectives,
       sessions,
     };
+  }
+}
+
+/** 构造一个分块：`kind` 是真源，`activity` 是旧校验器认识的投影。 */
+function block(
+  sessionIndex: number,
+  kind: SessionBlockKind,
+  minutes: number,
+  objectiveIds: string[],
+  prerequisiteObjectiveIds: string[] = [],
+): GeneratedBlock {
+  return {
+    id: `blk-${sessionIndex}-${kind}`,
+    title: BLOCK_TITLES[kind],
+    minutes,
+    activity: activityForKind(kind),
+    kind,
+    objectiveIds,
+    prerequisiteObjectiveIds,
+  };
+}
+
+/** 分块中文标题（学生侧可读）。 */
+const BLOCK_TITLES: Readonly<Record<SessionBlockKind, string>> = {
+  review: '衔接回顾',
+  theory: '理论讲解',
+  check: '理解检查',
+  practice: '动手实践',
+  reflect: '反思复盘',
+};
+
+/**
+ * `SessionBlockKind` → 旧版 `activity` 投影。
+ *
+ * `check` 与 `reflect` 都投成 `reflect`（旧枚举没有「检查」这个值），所以旧投影
+ * **不可逆**；需要区分时必须读 `GeneratedBlock.kind`。
+ */
+export function activityForKind(kind: SessionBlockKind): LearningPlanBlockActivity {
+  switch (kind) {
+    case 'review':
+      return 'review';
+    case 'theory':
+      return 'learn';
+    case 'check':
+      return 'reflect';
+    case 'practice':
+      return 'practice';
+    case 'reflect':
+      return 'reflect';
+  }
+}
+
+/** 反向投影：旧路径 `activity` → `kind`。仅供读旧数据时使用。 */
+export function kindForActivity(activity: LearningPlanBlockActivity): SessionBlockKind {
+  switch (activity) {
+    case 'review':
+      return 'review';
+    case 'learn':
+      return 'theory';
+    case 'reflect':
+      return 'check';
+    case 'practice':
+      return 'practice';
+    case 'explore':
+      return 'theory';
   }
 }
 
@@ -325,197 +435,33 @@ export function toLearningPlanDraft(plan: GeneratedPlan): LearningPlanDraft {
       week: session.week,
       day: session.day,
       title: session.title,
-      blocks: session.blocks.map((block) => ({
-        id: block.id,
-        title: block.title,
-        minutes: block.minutes,
-        objectiveIds: [...block.objectiveIds],
-        activity: block.activity,
-        prerequisiteObjectiveIds: [...block.prerequisiteObjectiveIds],
+      blocks: session.blocks.map((blockItem) => ({
+        id: blockItem.id,
+        title: blockItem.title,
+        minutes: blockItem.minutes,
+        objectiveIds: [...blockItem.objectiveIds],
+        activity: blockItem.activity,
+        prerequisiteObjectiveIds: [...blockItem.prerequisiteObjectiveIds],
       })),
     })),
   };
 }
 
-const BLOCK_KINDS: readonly SessionBlockKind[] = ['review', 'theory', 'check', 'practice'];
-const KNOWLEDGE_TYPES: readonly KnowledgeType[] = ['memory', 'concept', 'procedure', 'design'];
+export type { BlockShape };
 
 /**
- * 生成结构校验。任何一条不满足都抛 `PlanGenerationError`。
+ * 校验学生输入；非法时抛 `PlanGenerationError`（400）。
  *
- * 同时调用 `validateLearningPlanDraft`，它的错误会原样并入，保证错误信息一致。
+ * `sessionCount` 与 `schedule` 可以并存，但必须自洽：
+ * `sessionCount === weeks * sessionsPerWeek`。给出 `sessionCount` 时它**就是**课次
+ * 数量（不再由 `weeks` 乘出）；两者冲突时拒绝，而不是挑一个。
  */
-export function validateGeneratedPlan(plan: GeneratedPlan): void {
-  const errors: { path: string; message: string }[] = [];
-  const schedule = plan.schedule;
-  const expectedSessionsPerWeek = schedule?.sessionsPerWeek ?? 5;
-  const expectedMinutesPerSession = schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
-  if (schedule !== undefined) {
-    const scheduleResult = validatePblSchedule(schedule);
-    for (const message of scheduleResult.errors) {
-      errors.push({ path: 'schedule', message });
-    }
-    if (schedule.durationWeeks !== plan.weeks) {
-      errors.push({ path: 'schedule.durationWeeks', message: 'schedule.durationWeeks must match weeks' });
-    }
-  }
-  if (plan.weeks !== 4 && plan.weeks !== 8) {
-    errors.push({ path: 'weeks', message: 'weeks 必须是 4 或 8' });
-  }
-  if (plan.sessions.length !== plan.weeks * expectedSessionsPerWeek) {
-    errors.push({ path: 'sessions', message: '计划必须恰好包含 weeks*5 节课' });
-  }
-  if (plan.minutesPerSession !== expectedMinutesPerSession) {
-    errors.push({ path: 'minutesPerSession', message: '每节必须为 60 分钟' });
-  }
-  if (plan.interest.trim().length < MIN_INTEREST_LENGTH || plan.interest.length > MAX_INTEREST_LENGTH) {
-    errors.push({ path: 'interest', message: `interest 长度必须在 ${MIN_INTEREST_LENGTH}..${MAX_INTEREST_LENGTH}` });
-  }
-  if (plan.goal.length > MAX_GOAL_LENGTH) {
-    errors.push({ path: 'goal', message: `goal 不能超过 ${MAX_GOAL_LENGTH} 字` });
-  }
-
-  const objectiveById = new Map<string, GeneratedObjective>();
-  for (const objective of plan.objectives) {
-    if (objectiveById.has(objective.id)) {
-      errors.push({ path: `objectives.${objective.id}`, message: '目标 id 重复' });
-    }
-    if (!KNOWLEDGE_TYPES.includes(objective.type)) {
-      errors.push({ path: `objectives.${objective.id}.type`, message: '未知的目标类型' });
-    }
-    objectiveById.set(objective.id, objective);
-  }
-  for (const objective of plan.objectives) {
-    for (const prerequisite of objective.prerequisiteIds) {
-      if (!objectiveById.has(prerequisite)) {
-        errors.push({
-          path: `objectives.${objective.id}.prerequisiteIds`,
-          message: `前置目标 ${prerequisite} 不存在`,
-        });
-      }
-    }
-  }
-  if (hasPrerequisiteCycle(plan.objectives)) {
-    errors.push({ path: 'objectives', message: '目标前置关系存在环' });
-  }
-
-  const moduleIds = new Set(plan.modules.map((module) => module.id));
-  for (const module of plan.modules) {
-    if (module.ordinal <= 0) {
-      errors.push({ path: `modules.${module.id}.ordinal`, message: '模块序号必须为正' });
-    }
-  }
-
-  for (const session of plan.sessions) {
-    const minutes = session.blocks.reduce((sum, block) => sum + block.minutes, 0);
-    if (minutes !== expectedMinutesPerSession) {
-      errors.push({
-        path: `sessions.${session.id}.blocks`,
-        message: '每节分块合计必须正好 60 分钟',
-      });
-    }
-    if (!moduleIds.has(session.moduleId)) {
-      errors.push({ path: `sessions.${session.id}.moduleId`, message: '会话引用了不存在的模块' });
-    }
-    for (const block of session.blocks) {
-      if (block.minutes <= 0) {
-        errors.push({ path: `sessions.${session.id}.blocks.${block.id}`, message: '分块时长必须为正' });
-      }
-      if (!BLOCK_KINDS.includes(blockKind(block.activity))) {
-        errors.push({ path: `sessions.${session.id}.blocks.${block.id}`, message: '未知的分块类型' });
-      }
-      for (const objectiveId of block.objectiveIds) {
-        if (!objectiveById.has(objectiveId)) {
-          errors.push({ path: `sessions.${session.id}.blocks.${block.id}`, message: `目标 ${objectiveId} 不存在` });
-        }
-      }
-      for (const prerequisite of block.prerequisiteObjectiveIds) {
-        if (!objectiveById.has(prerequisite)) {
-          errors.push({ path: `sessions.${session.id}.blocks.${block.id}`, message: `前置 ${prerequisite} 不存在` });
-        }
-      }
-      if (block.activity === 'practice' && block.prerequisiteObjectiveIds.length === 0) {
-        errors.push({ path: `sessions.${session.id}.blocks.${block.id}`, message: '实践分块必须引用理论前置' });
-      }
-    }
-    for (const objectiveId of [...session.theoryObjectiveIds, ...session.practiceObjectiveIds]) {
-      if (!objectiveById.has(objectiveId)) {
-        errors.push({ path: `sessions.${session.id}`, message: `会话引用不存在的目标 ${objectiveId}` });
-      }
-    }
-    for (const objectiveId of session.practiceObjectiveIds) {
-      const objective = objectiveById.get(objectiveId);
-      if (objective === undefined) continue;
-      if (objective.prerequisiteIds.length === 0) {
-        errors.push({ path: `sessions.${session.id}`, message: `实践目标 ${objectiveId} 缺少理论前置` });
-      }
-      if (session.theoryObjectiveIds.length === 0) {
-        errors.push({ path: `sessions.${session.id}`, message: `实践会话 ${session.id} 必须声明理论门禁目标` });
-      }
-    }
-    const sessionObjectives = new Set([
-      ...session.blocks.flatMap((block) => block.objectiveIds),
-      ...session.theoryObjectiveIds,
-      ...session.practiceObjectiveIds,
-    ]);
-    if (sessionObjectives.size > 4) {
-      errors.push({ path: `sessions.${session.id}`, message: '单节最多 4 个目标' });
-    }
-  }
-
-  // The legacy ai-client validator hard-codes five sessions per week and
-  // 60-minute sessions. Keep it only for legacy requests; scheduled plans use
-  // the local validator so 1x120 and 2x60 schedules remain valid.
-  if (schedule === undefined) {
-    const legacy = validateLearningPlanDraft(toLearningPlanDraft(plan));
-    for (const error of legacy.errors) {
-      errors.push({ path: `curriculum.${error.path}`, message: error.message });
-    }
-  }
-
-  if (errors.length > 0) {
-    throw new PlanGenerationError(`生成的学习计划未通过校验：${errors[0]?.message ?? ''}`, errors);
-  }
-}
-
-function blockKind(activity: LearningPlanBlockActivity): SessionBlockKind {
-  switch (activity) {
-    case 'review':
-      return 'review';
-    case 'learn':
-      return 'theory';
-    case 'reflect':
-      return 'check';
-    case 'practice':
-      return 'practice';
-    default:
-      return 'theory';
-  }
-}
-
-function hasPrerequisiteCycle(objectives: readonly GeneratedObjective[]): boolean {
-  const byId = new Map(objectives.map((objective) => [objective.id, objective]));
-  const state = new Map<string, 0 | 1 | 2>();
-  const visit = (id: string): boolean => {
-    const status = state.get(id) ?? 0;
-    if (status === 1) return true;
-    if (status === 2) return false;
-    state.set(id, 1);
-    for (const prerequisite of byId.get(id)?.prerequisiteIds ?? []) {
-      if (visit(prerequisite)) return true;
-    }
-    state.set(id, 2);
-    return false;
-  };
-  return objectives.some((objective) => visit(objective.id));
-}
-
-/** 校验学生输入；非法时抛 `PlanGenerationError`（400）。 */
 export function assertGenerateInput(input: {
   interest: unknown;
   weeks: unknown;
   goal?: unknown;
   schedule?: unknown;
+  sessionCount?: unknown;
 }): GeneratePlanInput {
   const interest = typeof input.interest === 'string' ? input.interest.trim() : '';
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
@@ -570,5 +516,29 @@ export function assertGenerateInput(input: {
       ]);
     }
   }
-  return { interest, weeks: input.weeks, goal, schedule };
+  let sessionCount: PlanSessionCount | undefined;
+  if (input.sessionCount !== undefined && input.sessionCount !== null) {
+    if (input.sessionCount !== 4 && input.sessionCount !== 8) {
+      throw new PlanGenerationError('sessionCount 只能是 4 或 8', [
+        { path: 'sessionCount', message: 'invalid sessionCount' },
+      ]);
+    }
+    sessionCount = input.sessionCount;
+    // 课次是单元，周只是排期容器：给出 sessionCount 时它就是课次总数，
+    // 每周几节由它除以 weeks 推出。只有**同时**给出 schedule 时才要求两者一致，
+    // 否则同一个请求会有两个互相矛盾的课次数。
+    if (schedule !== undefined && sessionCount !== input.weeks * schedule.sessionsPerWeek) {
+      throw new PlanGenerationError(
+        `sessionCount=${sessionCount} 与 schedule 不一致：` +
+          `${input.weeks} 周 × 每周 ${schedule.sessionsPerWeek} 节应为 ${input.weeks * schedule.sessionsPerWeek} 节`,
+        [
+          {
+            path: 'sessionCount',
+            message: `sessionCount must equal weeks * schedule.sessionsPerWeek (${input.weeks * schedule.sessionsPerWeek})`,
+          },
+        ],
+      );
+    }
+  }
+  return { interest, weeks: input.weeks, goal, schedule, sessionCount };
 }

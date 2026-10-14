@@ -623,34 +623,104 @@ export function exploreCurriculumInterest(
 // 阶段 2：plan（产出结构化计划）
 // ---------------------------------------------------------------------------
 
-interface BlockShape {
+export interface BlockShape {
   review: number;
   theory: number;
   check: number;
   practice: number;
-}
-/**
- * 60 分钟分块表。
- *
- * - 4 周：1–2 周 10/25/10/15，3–4 周 10/20/10/20；
- * - 8 周：1–5 周 10/20/10/20，6–8 周 10/15/10/25；
- * - 首节课：0/40/20/0（没有到期复习，也不排实践，先立理论门禁）。
- *
- * 复习/理论/检查/实践四段之和恒为 60，且实践占比逐周上升。
- */
-export function blockShapeFor(weeks: LearningPlanWeeks, week: number, firstSession: boolean): BlockShape {
-  if (firstSession) return { review: 0, theory: 40, check: 20, practice: 0 };
-  if (weeks === 8) {
-    return week >= 6
-      ? { review: 10, theory: 15, check: 10, practice: 25 }
-      : { review: 10, theory: 20, check: 10, practice: 20 };
-  }
-  return week >= 3
-    ? { review: 10, theory: 20, check: 10, practice: 20 }
-    : { review: 10, theory: 25, check: 10, practice: 15 };
+  /**
+   * 反思段。
+   *
+   * 五段模型里的最后一段（`SessionBlockKind` 的 `reflect`，见
+   * `packages/contracts/src/learning-plan.ts`）。旧路径把 `reflect` 折叠成
+   * `check`，导致「反思」与「检查」在学生侧不可区分——这正是本模块统一
+   * 分块策略时要消掉的分歧。首节课为 0：那节课全部时长都给理论门禁。
+   */
+  reflect: number;
 }
 
-/** 周主题：4 周计划把 8 周的两周主题压进同一周（理论深度下降）。 */
+/**
+ * **唯一**的会话分块策略：入参是「本节总时长 + 本节课次序号」，不是周索引。
+ *
+ * 这是 `packages/ai-client` 与 `services/api/src/modules/learning-plan/plan-generator.ts`
+ * 共用的那一份实现。此前两处各写一套（本文件的 4 元组按周索引、plan-generator
+ * 的 60/120 双档），同一条「4 周计划」会有两种块形状。现在两处都调用本函数，
+ * 差异只可能来自入参。
+ *
+ * 规则（`ordinal` 从 0 起，`sessionMinutes` 为 60 或 120）：
+ *
+ * - 复习、检查、反思取固定小段（随总时长放大），保证五段**都**出现；
+ * - 剩下按课次序号线性切给「理论」与「实践」——越靠后实践占比越高，但任何一节
+ *   都保留一部分理论（不出现纯实践节）；
+ * - 首节课（ordinal 0）实践最少：先立 `TheoryMastered` 门禁。
+ *
+ * 不变量（对 `sessionMinutes ∈ {60,120}` 与任意 `ordinal >= 0` 都成立）：
+ * `review + theory + check + practice + reflect === sessionMinutes`，
+ * 且每一段都是**正整数**。
+ */
+export function sessionBlockShapeFor(sessionMinutes: number, ordinal: number): BlockShape {
+  if (!Number.isInteger(sessionMinutes) || sessionMinutes <= 0) {
+    throw new CurriculumPlanError('LEARNING_PLAN_INVALID', `会话时长必须是正整数分钟，收到 ${sessionMinutes}`, [
+      { path: 'sessionMinutes', message: 'sessionMinutes must be a positive integer' },
+    ]);
+  }
+  if (!Number.isInteger(ordinal) || ordinal < 0) {
+    throw new CurriculumPlanError('LEARNING_PLAN_INVALID', `会话序号必须是从 0 起的整数，收到 ${ordinal}`, [
+      { path: 'ordinal', message: 'ordinal must be a non-negative integer' },
+    ]);
+  }
+  // 五段的最小配额之和必须小于最短会话，否则无解。
+  if (sessionMinutes < 5 * 5) {
+    throw new CurriculumPlanError(
+      'LEARNING_PLAN_INVALID',
+      `会话时长至少要 25 分钟才能容纳五段，收到 ${sessionMinutes}`,
+      [{ path: 'sessionMinutes', message: 'sessionMinutes is too small for five segments' }],
+    );
+  }
+
+  const long = sessionMinutes >= 120;
+  const review = long ? 15 : 10;
+  const check = long ? 10 : 5;
+  const reflect = long ? 10 : 5;
+  const remaining = sessionMinutes - review - check - reflect;
+  // 留一节理论，其余给实践；实践份额随课次序号增长但恒 < remaining。
+  const practiceBase = Math.floor(remaining / 4);
+  const practice = Math.min(remaining - 1, practiceBase + ordinal * (long ? 4 : 2));
+  const theory = remaining - practice;
+  if (practice <= 0 || theory <= 0) {
+    throw new CurriculumPlanError(
+      'LEARNING_PLAN_INVALID',
+      `无法为 ${sessionMinutes} 分钟的第 ${ordinal + 1} 节切出正的理论与实践段`,
+      [{ path: 'sessionMinutes', message: 'cannot split theory and practice into positive minutes' }],
+    );
+  }
+  return { review, theory, check, practice, reflect };
+}
+
+/**
+ * 周索引网格：`planCurriculum` 的旧排期投影（四段，`reflect` 恒为 0）。
+ *
+ * **它不是**分块策略的第二份实现。唯一的策略是按课次序号调用的
+ * `sessionBlockShapeFor(sessionMinutes, ordinal)`——`plan-generator.ts` 用的是
+ * 那一份，五段（含反思）也在那一份里表达。本函数只是把旧的四段网格按「周」
+ * 重新索引，供 `planCurriculum` 与既有测试继续取形状；它内部调用
+ * `sessionBlockShapeFor` 并覆盖 review/reflect，不再携带任何独立规则。
+ *
+ * - 首节课：0/40/20/0（没有到期复习，也不排实践，先立理论门禁）；
+ * - 4 周：1–2 周 10/25/10/15，3–4 周 10/20/10/20；
+ * - 8 周：1–5 周 10/20/10/20，6–8 周 10/15/10/25。
+ *
+ * 新代码一律用 `sessionBlockShapeFor`，不要在这个表上加分支。
+ */
+export function blockShapeFor(weeks: LearningPlanWeeks, week: number, firstSession: boolean): BlockShape {
+  if (firstSession) return { review: 0, theory: 40, check: 20, practice: 0, reflect: 0 };
+  const latePractice = weeks === 8 ? week >= 6 : week >= 3;
+  return latePractice
+    ? { review: 10, theory: 20, check: 10, practice: 20, reflect: 0 }
+    : { review: 10, theory: 25, check: 10, practice: 15, reflect: 0 };
+}
+
+/** 计划周主题：4 周计划把 8 周的两周主题压进同一周（理论深度下降）。 */
 export function themeIndexFor(weeks: LearningPlanWeeks, week: number, day: number): number {
   if (weeks === 8) return Math.min(WEEKLY_THEMES.length - 1, week - 1);
   const base = (week - 1) * 2;

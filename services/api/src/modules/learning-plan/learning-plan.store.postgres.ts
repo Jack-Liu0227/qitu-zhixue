@@ -136,7 +136,10 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     interest: string,
     weeks: 4 | 8,
     templateVersion: string,
+    signatureKey?: string,
   ): Promise<PlanBundle | null> {
+    // 签名键（含排课形状）优先；未传时退回旧签名，供升级前落库的草稿命中。
+    // 幂等键在 `learning_plans_idempotency_unique_idx` 上唯一，所以按它取最多一行。
     const [plan] = await this.db
       .select()
       .from(learningPlans)
@@ -146,8 +149,10 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           eq(learningPlans.interest, interest),
           eq(learningPlans.weeks, weeks),
           eq(learningPlans.templateVersionId, templateVersion),
+          ...(signatureKey === undefined ? [] : [eq(learningPlans.idempotencyKey, signatureKey)]),
         ),
       )
+      .orderBy(asc(learningPlans.createdAt))
       .limit(1);
     if (plan === undefined) return null;
     return this.assembleBundle(this.db, plan);

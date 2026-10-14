@@ -26,11 +26,11 @@ import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBi
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { builtinToolRegistry } from './built-in-tools';
-import { QITU_LEARNING_PARTNER } from '@qitu/ai-client';
+import { QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THUNDER_FIGHTER_PBL_SPEC } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { assertParentGraph } from './agent-config.validation';
-import { PBL_PHASE_GATE_DEFAULTS } from './admin-ai-config.validation';
+import { assertGateConditionWritable, resolveGateConditionForPhase } from './admin-ai-config.validation';
 import type { TutorRuntimePolicy, TutorRuntimeSkill } from '../../common/tutor-runtime/runtime-source';
 
 export interface EffectiveAgentRuntime {
@@ -143,7 +143,9 @@ function toTeamConfig(team: TeamRow, members: readonly MemberRow[], assistantRow
  * 把写入形状规范化成服务端存储的 PBL 规格：
  * - `theoryMasteredGate` 恒为 true（校验层已拒绝 false/缺失，这里再兜底写死）；
  * - `concept_mastery` 阶段的门禁强制 `TheoryMastered`；
- * - 缺省 `gateCondition` 按阶段补默认门禁；
+ * - 缺省 `gateCondition` 由**交付物推导**（`resolveGateConditionForPhase`，
+ *   与校验器共用同一个函数，避免「spec 通过校验、落库却换成另一个门禁」）；
+ * - 仍然经过 `assertGateConditionWritable` 运行时校验，因为联合已放宽、编译器不再兜底；
  * - `allowAutonomousAdvance` 归一为 false。
  */
 function normalizePblSpec(
@@ -161,7 +163,13 @@ function normalizePblSpec(
     projectName: spec.projectName,
     targetDomain: spec.targetDomain,
     phases: spec.phases.map((phase) => {
-      const gate = phase.phase === 'concept_mastery' ? 'TheoryMastered' : (phase.gateCondition ?? PBL_PHASE_GATE_DEFAULTS[phase.phase]);
+      const evidenceProfile = phase.evidenceProfile ?? null;
+      const gate = assertGateConditionWritable(
+        phase.gateCondition ?? resolveGateConditionForPhase(phase.phase, phase.deliverableType, evidenceProfile),
+        phase.phase,
+        phase.deliverableType,
+        evidenceProfile,
+      );
       const entry = {
         phase: phase.phase,
         title: phase.title,
@@ -170,6 +178,7 @@ function normalizePblSpec(
         learningObjectives: [...(phase.learningObjectives ?? [])],
         gateCondition: gate,
         ...(phase.deliverableType !== undefined ? { deliverableType: phase.deliverableType } : {}),
+        ...(evidenceProfile !== null ? { evidenceProfile } : {}),
       };
       return entry;
     }),
@@ -191,6 +200,10 @@ function assertModelSelectionPair(input: AdminRuntimeAgentUpdateRequest): void {
 
 @Injectable()
 export class PlatformRegistryService {
+  private readonly logger = new Logger(PlatformRegistryService.name);
+  /** P0 模板漂移检查每次进程只告警一次，避免刷日志。 */
+  private pblDriftReported = false;
+
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
@@ -665,7 +678,63 @@ export class PlatformRegistryService {
       this.db.select().from(adminTeamMembers).orderBy(asc(adminTeamMembers.sortOrder)),
       this.db.select().from(adminAssistants),
     ]);
+    if (!this.pblDriftReported) {
+      this.pblDriftReported = true;
+      this.reportPblTemplateDrift(teams);
+    }
     return teams.map((team) => toTeamConfig(team, members.filter((member) => member.teamId === team.id), assistants));
+  }
+
+  /**
+   * P0 模板漂移检查：**只读并告警，绝不写库**。
+   *
+   * 背景：`database/seeds/admin-ai-config.sql` 里的 `pbl_spec` 是 JSONB 文本，
+   * 而 `@qitu/ai-client` 的同名 TS 常量是评测/编排侧的另一份声明。两份内容一旦
+   * 分叉，学生看到的阶段标签与服务端门禁就会不一致。种子里的
+   * `ON CONFLICT DO UPDATE SET pbl_spec = EXCLUDED.pbl_spec` 对管理员在后台改过的
+   * spec 是**破坏性**的（会静默覆盖），因此**不能**用种子作为对账手段；
+   * 这里只做读-比-告警。
+   *
+   * 检查两件事：
+   * 1. 保留的两个模板（`pbl-thunder-fighter` / `pbl-kinetic-energy`）是否都在库里；
+   * 2. 库里每个模板的 `phases[].gateCondition` 是否与代码常量逐字一致。
+   *
+   * 不抛异常：漂移是运营问题，不该让管理端接口 500。
+   */
+  private reportPblTemplateDrift(teams: readonly TeamRow[]): void {
+    try {
+      const canonical = new Map(
+        [THUNDER_FIGHTER_PBL_SPEC, KINETIC_ENERGY_PBL_SPEC].map((spec) => [spec.projectId, spec]),
+      );
+      const present = new Set<string>();
+      for (const team of teams) {
+        const raw = team.pblSpec as Record<string, unknown> | null;
+        const projectId = typeof raw?.projectId === 'string' ? raw.projectId : null;
+        if (projectId === null) continue;
+        present.add(projectId);
+        const expected = canonical.get(projectId);
+        if (!expected) {
+          this.logger.warn(`PBL 模板漂移：团队 ${team.id} 引用未在代码常量中登记的 projectId=${projectId}（代码侧只有 ${[...canonical.keys()].join(' / ')}）`);
+          continue;
+        }
+        const expectedGates = new Map(expected.phases.map((phase) => [phase.phase, phase.gateCondition]));
+        const actualPhases = Array.isArray(raw?.phases) ? (raw?.phases as Record<string, unknown>[]) : [];
+        for (const [phase, gate] of expectedGates) {
+          const actual = actualPhases.find((item) => item.phase === phase);
+          const actualGate = typeof actual?.gateCondition === 'string' ? actual.gateCondition : null;
+          if (actualGate !== gate) {
+            this.logger.warn(`PBL 模板漂移：团队 ${team.id} 阶段 ${phase} 的 gateCondition 库里为 ${actualGate ?? '(缺失)'}，代码常量为 ${gate}`);
+          }
+        }
+      }
+      for (const projectId of canonical.keys()) {
+        if (!present.has(projectId)) {
+          this.logger.warn(`PBL 模板缺失：代码常量声明了 ${projectId}，但 admin_teams 中没有对应模板行`);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`PBL 模板漂移检查失败（只读检查，不影响接口）：${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async createTeam(actor: CurrentUser, input: AdminTeamCreateInput): Promise<AdminTeamConfig> {

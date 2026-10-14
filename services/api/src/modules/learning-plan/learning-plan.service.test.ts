@@ -15,16 +15,16 @@ import {
   InMemoryLearningPlanStore,
   type MasteryObjectiveMappingRecord,
 } from './learning-plan.store';
-import { LearningPlanService } from './learning-plan.service';
+import { LearningPlanService, assertGeneratePlanInput } from './learning-plan.service';
+import type { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import {
-  assertGenerateInput,
   assertNoServerOwnedFields,
   DeterministicPlanGenerator,
   PlanGenerationError,
-  validateGeneratedPlan,
   type GeneratePlanInput,
   type GeneratedPlan,
 } from './plan-generator';
+import { validateGeneratedPlan } from './session-plan-validator';
 
 /* ------------------------------------------------------------------ *
  * 测试替身（语义与真实实现一致：同键同载荷重放，同键异载荷冲突）
@@ -98,6 +98,30 @@ interface Harness {
   audit: FakeAuditWriter;
   outbox: FakeOutboxWriter;
   access: FakeAccessPolicy;
+  teamRuntime: FakeTeamRuntime;
+}
+
+/**
+ * 门禁桥的替身：只记录调用参数与返回状态。门禁事件 / 审计 / 账本的去重是
+ * `TeamRuntimeService.recordGateForStudent` 自己的职责（见
+ * `team-runtime.gate.test.ts` 的 T26），这里只验证「本服务在正确时机、用正确
+ * 参数递交了一次证据」。
+ */
+class FakeTeamRuntime {
+  readonly calls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string }> = [];
+  status: 'recorded' | 'already_satisfied' | 'deferred' = 'recorded';
+  failWith: Error | null = null;
+
+  async recordGateForStudent(input: {
+    studentUserId: string;
+    gate: string;
+    evidenceRef: string;
+    source: string;
+  }): Promise<{ status: 'recorded' | 'already_satisfied' | 'deferred'; runId: string | null; gate: string }> {
+    this.calls.push({ ...input });
+    if (this.failWith !== null) throw this.failWith;
+    return { status: this.status, runId: null, gate: input.gate };
+  }
 }
 
 function makeHarness(
@@ -108,6 +132,7 @@ function makeHarness(
   const audit = new FakeAuditWriter();
   const outbox = new FakeOutboxWriter();
   const access = new FakeAccessPolicy();
+  const teamRuntime = new FakeTeamRuntime();
   const service = new LearningPlanService(
     store,
     generator,
@@ -115,8 +140,10 @@ function makeHarness(
     audit as unknown as AuditWriter,
     outbox as unknown as OutboxWriter,
     access as unknown as AccessPolicy,
+    undefined,
+    teamRuntime as unknown as TeamRuntimeService,
   );
-  return { service, store, idempotency, audit, outbox, access };
+  return { service, store, idempotency, audit, outbox, access, teamRuntime };
 }
 
 function student(id: string): CurrentUser {
@@ -243,7 +270,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     }
     assert.doesNotThrow(() => assertNoServerOwnedFields({ interest: '钢琴', weeks: 4 }));
     // 周数只允许 4 / 8。
-    assert.throws(() => assertGenerateInput({ interest: '钢琴', weeks: 6 }), PlanGenerationError);
+    assert.throws(() => assertGeneratePlanInput({ interest: '钢琴', weeks: 6 }), PlanGenerationError);
   });
 
   it('不可信的模型输出（结构非法）被拒绝，而不是被修复', async () => {
@@ -268,7 +295,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   });
 
   it('显式 PblSchedule 生成 1×120 分钟计划，并保留 TheoryMastered 结构校验', () => {
-    const input = assertGenerateInput({
+    const input = assertGeneratePlanInput({
       interest: '桌面互动机器人',
       weeks: 4,
       schedule: {
@@ -288,7 +315,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   });
 
   it('显式 PblSchedule 生成 2×60 分钟计划；无 schedule 仍保持旧 5×60 语义', () => {
-    const input = assertGenerateInput({
+    const input = assertGeneratePlanInput({
       interest: 'Python',
       weeks: 8,
       schedule: {
@@ -303,7 +330,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     assert.doesNotThrow(() => validateGeneratedPlan(scheduled));
 
     const legacy = new DeterministicPlanGenerator().generate(
-      assertGenerateInput({ interest: 'Python', weeks: 8 }),
+      assertGeneratePlanInput({ interest: 'Python', weeks: 8 }),
     );
     assert.equal(legacy.schedule, undefined);
     assert.equal(legacy.sessions.length, 40);
@@ -312,7 +339,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
 
   it('拒绝无效或与 weeks 不一致的 PblSchedule', () => {
     assert.throws(
-      () => assertGenerateInput({
+      () => assertGeneratePlanInput({
         interest: '机器人',
         weeks: 4,
         schedule: { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
@@ -320,7 +347,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
       PlanGenerationError,
     );
     assert.throws(
-      () => assertGenerateInput({
+      () => assertGeneratePlanInput({
         interest: '机器人',
         weeks: 4,
         schedule: { durationWeeks: 4, weeklyMinutes: 90, sessionsPerWeek: 1, sessionMinutes: 90 },
@@ -415,6 +442,169 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     // 再答一题也不会重复触发（已掌握的目标不再作为候选）。
     assert.equal(audit.count('learning_plan.theory_mastered'), 1);
     assert.equal(outbox.events.filter((event) => event.topic === 'learning.theory_mastered').length, 1);
+  });
+
+  /* ---------------------------------------------------------------- *
+   * WS2：TheoryMastered → 门禁证据桥（唯一内部通道）                  *
+   * ---------------------------------------------------------------- */
+
+  it('理论达标翻转时只递交一次门禁证据，evidenceRef 稳定为 mastery:theory:<sessionId>', async () => {
+    const { service, teamRuntime, audit } = harness;
+    const user = student('student-1');
+    const generated = await service.generatePlan(user, { interest: '天文', weeks: 4 });
+    const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-gate');
+    const plan = confirmed.plan;
+    const theorySession = plan.sessions[0];
+    assert.ok(theorySession);
+
+    // 达标之前一个证据都不递交。
+    assert.equal(teamRuntime.calls.length, 0);
+    let flipKey = '';
+    for (let i = 0; i < 3; i += 1) {
+      flipKey = `k-gate-${i}`;
+      await submitCorrectAnswer(harness, user, plan, theorySession.id, flipKey);
+    }
+    assert.equal(teamRuntime.calls.length, 1, '翻转只应递交一次证据');
+    const call = teamRuntime.calls[0];
+    assert.equal(call?.studentUserId, 'student-1');
+    assert.equal(call?.gate, 'TheoryMastered');
+    assert.equal(call?.source, 'learning-plan.theory-mastered');
+    assert.equal(call?.evidenceRef, `mastery:theory:${theorySession.id}`);
+    assert.equal(call?.evidenceRef.startsWith('mastery:theory:'), true);
+    assert.notEqual(call?.evidenceRef, `theory-mastered:${theorySession.id}`, '审计键与门禁幂等域必须可区分');
+
+    // 同一会话再答一题：状态已翻转，既不重复审计也不重复递交门禁证据。
+    await submitCorrectAnswer(harness, user, plan, theorySession.id, 'k-gate-more');
+    assert.equal(teamRuntime.calls.length, 1);
+    assert.equal(audit.count('learning_plan.theory_mastered'), 1);
+  });
+
+  it('同键重放不再递交门禁证据（重放不执行回调，也不重复写门禁）', async () => {
+    const { service, teamRuntime } = harness;
+    const user = student('student-1');
+    const generated = await service.generatePlan(user, { interest: '昆虫', weeks: 4 });
+    const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-replay');
+    const plan = confirmed.plan;
+    const theorySession = plan.sessions[0];
+    assert.ok(theorySession);
+
+    // 第一题：先读题面拿到题 id 与标准答案，再用固定键首次提交。
+    const next = await service.getNextStep(user, plan.id, theorySession.id);
+    assert.ok(next.question);
+    assert.ok(next.objectiveId);
+    const objective = flattenObjectives(plan).find((item) => item.id === next.objectiveId);
+    assert.ok(objective);
+    const question = next.question;
+    const index = Number(question.questionId.slice(question.questionId.lastIndexOf('-') + 1));
+    const card = buildQuestion({
+      objective: { id: objective.id, name: objective.name, type: objective.type },
+      index,
+      seed: objective.id,
+    });
+    const first = await service.submitAnswer(
+      user,
+      plan.id,
+      theorySession.id,
+      { questionId: question.questionId, answer: card.expectedAnswer },
+      'k-replay-fixed',
+    );
+    assert.equal(first.replayed, false);
+
+    const callsAfterFirst = teamRuntime.calls.length;
+    // 同键重放同一请求：命中幂等记录 → 回调不执行 → 门禁证据不得再递交。
+    const replay = await service.submitAnswer(
+      user,
+      plan.id,
+      theorySession.id,
+      { questionId: question.questionId, answer: card.expectedAnswer },
+      'k-replay-fixed',
+    );
+    assert.equal(replay.replayed, true);
+    assert.equal(teamRuntime.calls.length, callsAfterFirst, '重放不得追加门禁证据递交');
+  });
+
+  it('门禁写入失败不回滚已成立的理论达标（只记 warn）', async () => {
+    const { service, teamRuntime, audit, store, outbox } = harness;
+    teamRuntime.failWith = new Error('gate writer unavailable');
+    const user = student('student-1');
+    const generated = await service.generatePlan(user, { interest: '气象', weeks: 4 });
+    const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-fail');
+    const plan = confirmed.plan;
+    const theorySession = plan.sessions[0];
+    assert.ok(theorySession);
+
+    const results: boolean[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      results.push((await submitCorrectAnswer(harness, user, plan, theorySession.id, `k-fail-${i}`)).theoryMastered);
+    }
+    // 作答全部成功返回，理论达标成立，审计与出箱事件照旧只写一次。
+    assert.equal(results.at(-1), true, '门禁失败不得影响作答结果');
+    assert.equal(audit.count('learning_plan.theory_mastered'), 1);
+    assert.equal(outbox.events.filter((event) => event.topic === 'learning.theory_mastered').length, 1);
+    const mastery = await store.listMasteryForPlan('student-1', plan.id);
+    assert.ok(mastery.length > 0, '掌握记录必须已落库');
+  });
+
+  it('实践证据翻转同样桥接门禁，且实践 403 保持权威分层', async () => {
+    const { service, teamRuntime } = harness;
+    const user = student('student-1');
+    const generated = await service.generatePlan(user, { interest: '桥梁', weeks: 4 });
+    const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-practice');
+    const plan = confirmed.plan;
+    const theorySession = plan.sessions[0];
+    assert.ok(theorySession);
+
+    // 达标前实践接口 403（THEORY_MASTERED_REQUIRED），且不递交任何门禁证据。
+    const practiceSession = plan.sessions[1];
+    assert.ok(practiceSession);
+    await assertHttpError(
+      () => service.submitEvidence(user, plan.id, practiceSession.id, { objectiveId: 'x', evidenceRef: 'artifact:1' }, 'k-ev-early'),
+      403,
+      'THEORY_MASTERED_REQUIRED',
+    );
+    assert.equal(teamRuntime.calls.length, 0);
+
+    for (let i = 0; i < 3; i += 1) {
+      await submitCorrectAnswer(harness, user, plan, theorySession.id, `k-prac-${i}`);
+    }
+    assert.equal(teamRuntime.calls.length, 1);
+    assert.equal(teamRuntime.calls[0]?.evidenceRef, `mastery:theory:${theorySession.id}`);
+  });
+
+  it('排课是去重签名的一部分：4 周 1×120 与 4 周 2×60 各得一份草稿', async () => {
+    const { service, store } = harness;
+    const user = student('student-1');
+    const onePerWeek = await service.generatePlan(user, {
+      interest: '机器人',
+      weeks: 4,
+      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
+    });
+    const one = onePerWeek.plan;
+    const twoPerWeek = await service.generatePlan(user, {
+      interest: '机器人',
+      weeks: 4,
+      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60 },
+    });
+    const two = twoPerWeek.plan;
+
+    assert.equal(onePerWeek.deduplicated, false);
+    assert.equal(twoPerWeek.deduplicated, false, '不同排课不得被当成重复计划');
+    assert.notEqual(one.id, two.id);
+    assert.equal(one.sessions.length, 4);
+    assert.equal(two.sessions.length, 8);
+    assert.equal(one.minutesPerSession, 120);
+    assert.equal(two.minutesPerSession, 60);
+    assert.equal((await store.listPlansByStudent('student-1')).length, 2);
+
+    // 同一排课重复请求 → 命中自己那份，不产生第三份。
+    const again = await service.generatePlan(user, {
+      interest: '机器人',
+      weeks: 4,
+      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
+    });
+    assert.equal(again.deduplicated, true);
+    assert.equal(again.plan.id, one.id);
+    assert.equal((await store.listPlansByStudent('student-1')).length, 2);
   });
 
   it('显式 mapping 时写入 append-only mastery event，重复提交不重复写事件', async () => {

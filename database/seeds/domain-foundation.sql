@@ -25,11 +25,53 @@
 BEGIN;
 
 -- 1. 项目模板（NULL school_id = 平台共享；非空 = 校域私有）
+--
+-- P0 对账：`project_templates` 只保留**两个**正式模板，与 `admin_teams.pbl_spec`
+-- 登记的两个 pblSpec 一一对应（模板 id 与 pblSpec id 目前不同名，映射如下）：
+--   template-thunder-fighter  <-> pbl-thunder-fighter
+--   template-kinetic-energy   <-> pbl-kinetic-energy
+--
+-- 另外两个历史种子行（`template-python-mini-project`、`template-story-game`）
+-- **归档而不是删除**：`template-python-mini-project` 仍被学生「今日」数据源
+-- （`apps/student-center/features/today/data/apiTodayDataSource.ts`）与
+-- `tutor_template_documents` 引用，硬删会留下悬空引用。归档保留行与引用，只改
+-- `status`（见下方 1b）。
+--
+-- 下面 `ON CONFLICT ... DO UPDATE` 里**刻意不更新 `status`**：否则每次 `pnpm seed`
+-- 都会把管理员在后台归档过的模板重新改回 `published`，让归档变成一次性的。
+--
+-- 幂等：可重复执行。
 INSERT INTO project_templates
   (id, school_id, slug, title, summary, domain, age_range, difficulty,
    estimated_duration_minutes, required_materials, learning_objectives,
    outcome_form, safety_notes, status, created_by, verified_by, verified_at, created_at, updated_at)
 VALUES
+  (
+    'template-thunder-fighter', NULL, 'thunder-fighter-game',
+    '雷霆战机：从零打造 Python 飞行射击小游戏',
+    '从玩法目标出发，掌握游戏循环、坐标与碰撞检测，亲手构建并交付一个可运行的 Pygame 飞行射击小游戏。',
+    'programming_game_dev', '10-14', 'intermediate', 480,
+    '["电脑", "Python 3.11+", "Pygame 库", "任意编辑器"]'::jsonb,
+    '["掌握游戏循环机制（事件监听 -> 状态更新 -> 画面渲染）", "掌握屏幕坐标系统与边界限制算法", "理解键盘事件流与速度向量", "掌握矩形相交（AABB 碰撞检测）", "能调试并说明自己的游戏程序"]'::jsonb,
+    '可运行的 Pygame 小游戏 + 代码说明 + 答辩展示', '使用电脑时保持正确坐姿与用眼休息。',
+    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
+  ),
+  (
+    'template-kinetic-energy', NULL, 'kinetic-energy-inquiry',
+    '动手学动能定理：物理虚拟仿真与规律探究',
+    '从生活中的动能现象出发，推导功与动能关系，设计虚拟轨道实验收集数据，完成探究报告。',
+    'physics_mechanics', '14-17', 'intermediate', 480,
+    '["电脑", "浏览器/仿真软件", "科学计算器", "实验记录单"]'::jsonb,
+    '["理解功的物理定义与计算公式", "掌握动能表达式及其推导", "掌握合力做功等于动能变化量", "能设计实验采集并拟合数据分析误差"]'::jsonb,
+    '探究实验报告 + 虚拟仿真数据图表 + 答辩展示PPT', '注意保护视力，实验数据须真实记录严禁篡改。',
+    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
+  ),
+  -- 三个历史种子模板**以 archived 状态保留行**，而不是删除：
+  --   * 它们的 `project_template_versions` 行（下方第 2 节 ptv-python-mini-v1 /
+  --     ptv-story-game-v1 / ptv-ai-drawing-v1）带 `template_id` 外键，删行会让
+  --     新库初始化在 project_template_versions_template_id_project_templates_id_fk 上失败；
+  --   * `template-python-mini-project` 仍被学生「今日」数据源与 tutor_template_documents、
+  --     以及下方演示项目/作品/评审行引用，硬删会留下悬空引用。
   (
     'template-python-mini-project', NULL, 'python-mini-project',
     'Python 小项目：从兴趣到作品',
@@ -38,7 +80,7 @@ VALUES
     '["电脑", "Python 3.11+", "任意编辑器"]'::jsonb,
     '["理解变量与输入输出", "能用条件与循环组织逻辑", "能调试并说明自己的程序"]'::jsonb,
     '可运行的 Python 程序 + 讲解稿', '使用电脑时保持正确坐姿与用眼休息。',
-    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
+    'archived', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
   ),
   (
     'template-story-game', NULL, 'story-game',
@@ -48,7 +90,7 @@ VALUES
     '["纸笔", "可选：Scratch 账号"]'::jsonb,
     '["能定义角色与规则", "能画出分支结构", "能根据试玩反馈迭代"]'::jsonb,
     '可试玩的互动故事 + 设计说明', '避免包含可识别真实人物的负面情节。',
-    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
+    'archived', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
   ),
   (
     'template-school-ai-drawing', 'school-demo', 'ai-drawing',
@@ -58,17 +100,7 @@ VALUES
     '["纸笔", "绘图软件（教师机）"]'::jsonb,
     '["能描述画面构成", "能对比 AI 与手绘的差异"]'::jsonb,
     '一组对比图 + 简短反思', '使用 AI 生成内容需教师在场并注明来源。',
-    'published', 'teacher-demo', 'teacher-demo', NOW(), NOW(), NOW()
-  ),
-  (
-    'template-kinetic-energy', NULL, 'kinetic-energy-inquiry',
-    '动手学动能定理：物理虚拟仿真与规律探究',
-    '从生活中的动能现象出发，推导功与动能关系，设计虚拟轨道实验收集数据，完成探究报告。',
-    'physics', '14-17', 'intermediate', 480,
-    '["电脑", "浏览器/仿真软件", "科学计算器", "实验记录单"]'::jsonb,
-    '["理解功的物理定义与计算公式", "掌握动能表达式及其推导", "掌握合力做功等于动能变化量", "能设计实验采集并拟合数据分析误差"]'::jsonb,
-    '探究实验报告 + 虚拟仿真数据图表 + 答辩展示PPT', '注意保护视力，实验数据须真实记录严禁篡改。',
-    'published', 'admin-demo', 'teacher-demo', NOW(), NOW(), NOW()
+    'archived', 'teacher-demo', 'teacher-demo', NOW(), NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
   school_id = EXCLUDED.school_id,
@@ -83,10 +115,17 @@ ON CONFLICT (id) DO UPDATE SET
   learning_objectives = EXCLUDED.learning_objectives,
   outcome_form = EXCLUDED.outcome_form,
   safety_notes = EXCLUDED.safety_notes,
-  status = EXCLUDED.status,
+  -- status 刻意不在更新列内：seed 不得替管理员「取消归档」。
   verified_by = EXCLUDED.verified_by,
   verified_at = EXCLUDED.verified_at,
   updated_at = NOW();
+
+-- 1b. 归档历史种子模板：只改 status，保留行与全部外部引用，可安全重放。
+UPDATE project_templates
+   SET status = 'archived', updated_at = NOW()
+ WHERE id IN ('template-python-mini-project', 'template-story-game')
+   AND status <> 'archived';
+
 
 -- 2. 模板版本（冻结内容；学习计划与项目通过 template_version_id 引用）
 INSERT INTO project_template_versions
@@ -118,6 +157,26 @@ VALUES
     '[{"id":"exploration","label":"生活情境与问题定义"},{"id":"theory","label":"功与动能核心理论掌握"},{"id":"practice","label":"轨道虚拟仿真与实验验证"},{"id":"showcase","label":"误差分析与答辩归档"}]'::jsonb,
     '{"theoryGate":true,"suggestedWeeks":[4,6],"sessionBlocks":["problem_inquiry","formula_derivation","simulation_run","error_analysis"]}'::jsonb,
     '[{"id":"r1","criterion":"理论推导清晰","weight":30},{"id":"r2","criterion":"仿真实验规范与数据真实","weight":40},{"id":"r3","criterion":"误差分析深入与答辩表达","weight":30}]'::jsonb,
+    'published', 'admin-demo', NOW(), NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  template_id = EXCLUDED.template_id,
+  version = EXCLUDED.version,
+  stages = EXCLUDED.stages,
+  content = EXCLUDED.content,
+  rubric = EXCLUDED.rubric,
+  status = EXCLUDED.status,
+  published_at = EXCLUDED.published_at;
+
+-- 2b. 保留模板的版本行（与上面的历史版本行分开，避免同一 INSERT 内出现重复主键）。
+INSERT INTO project_template_versions
+  (id, template_id, version, stages, content, rubric, status, created_by, published_at, created_at)
+VALUES
+  (
+    'ptv-thunder-fighter-v1', 'template-thunder-fighter', 'v1',
+    '[{"id":"exploration","label":"兴趣启发与意图确认"},{"id":"concept_mastery","label":"核心原理与概念掌握"},{"id":"guided_practice","label":"架构拆解与代码构建"},{"id":"deliverable_review","label":"答辩评审与成长归档"}]'::jsonb,
+    '{"theoryGate":true,"suggestedWeeks":[4,8],"sessionBlocks":["review","theory","check","practice","reflect"]}'::jsonb,
+    '[{"id":"r1","criterion":"游戏可运行且操作有反馈","weight":40},{"id":"r2","criterion":"能解释游戏循环与碰撞检测","weight":35},{"id":"r3","criterion":"答辩展示清晰","weight":25}]'::jsonb,
     'published', 'admin-demo', NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET

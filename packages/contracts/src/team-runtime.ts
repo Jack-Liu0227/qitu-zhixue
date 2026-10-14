@@ -749,8 +749,12 @@ export interface PblPhaseSpec {
   assignedAssistantId: string;
   assignedRoleLabel: string;
   learningObjectives: readonly string[];
+  /** 门禁条件 id（写侧受 `assertGateConditionId` 运行时校验）。 */
   gateCondition: string;
+  /** 该阶段产出的交付物类型；guided_practice 的门禁由它推导。 */
   deliverableType?: string;
+  /** 证据档案：把交付物归到可运行代码 / 实验报告两类之一。 */
+  evidenceProfile?: EvidenceProfile;
 }
 
 /**
@@ -823,12 +827,209 @@ export const ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES = {
   teamDelete: 'admin.ai-runtime.team.delete',
 } as const;
 
-/** PBL 阶段门禁条件（与 `@qitu/ai-client` 的雷霆战机种子逐字一致）。 */
-export type PblGateCondition =
-  | 'student_confirmed_intent'
-  | 'TheoryMastered'
-  | 'code_playable_run_verified'
-  | 'review_completed_and_archived';
+/* -------------------------------------------------------------------------- */
+/*  PBL 门禁条件注册表（唯一真源）                                             */
+/*                                                                            */
+/*  这里同时是「门禁 id 命名空间」和「谁可以写这个门禁」的唯一声明处。           */
+/*  之前有**三处**重复的四值联合：本文件、                                   */
+/*  `admin-ai-config.validation.ts` 的 GATE_CONDITIONS、以及                  */
+/*  `pbl-learning.ts` 里 PblTemplatePhase.gateCondition 的内联联合。          */
+/*  三份都收敛到本文件的 GATE_CONDITION_CORE + GATE_CONDITION_REGISTRY。        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 冻结的四个核心门禁字面量（`as const` 元组）。
+ * 这是**唯一**一份四值清单；其余任何地方的清单都必须由它派生。
+ * 顺序与 PBL 阶段顺序一致：exploration → concept_mastery → guided_practice → deliverable_review。
+ */
+export const GATE_CONDITION_CORE = [
+  'student_confirmed_intent',
+  'TheoryMastered',
+  'code_playable_run_verified',
+  'review_completed_and_archived',
+] as const;
+
+/** 冻结核心门禁的联合类型（四个字面量）。 */
+export type GateConditionCore = (typeof GATE_CONDITION_CORE)[number];
+
+/**
+ * 可被注册的门禁 id。
+ *
+ * 刻意**放宽**为 `(string & {})`：新模板必须能注册自己的门禁 id，而不需要
+ * 改这里硬编码的联合。
+ *
+ * 代价（必须成对处理）：放宽之后 TypeScript 不再对这个联合做穷尽检查，
+ * 任何 `switch`/`Record` 都会静默漏掉新成员。因此**所有写侧**必须走本文件
+ * 的 `assertGateConditionId` / `isGateConditionId` 运行时校验，禁止把未校验
+ * 的字符串直接落库。校验入口与类型放宽在同一次改动内落地。
+ */
+export type GateConditionId = GateConditionCore | (string & {});
+
+/**
+ * @deprecated 用 `GateConditionId`。保留别名只为不改动既有 import 点。
+ */
+export type PblGateCondition = GateConditionId;
+
+/**
+ * 证据类型（门禁要求提交哪一类证据）。
+ * 与 `pbl-learning.ts` 的 `PblEvidenceType` 取值对齐，但此处用宽字符串以免
+ * `team-runtime.ts` 反向依赖 `pbl-learning.ts`（后者已 import 本文件）。
+ */
+export type GateEvidenceType = string;
+
+/**
+ * 证据档案：把「交付物」翻译成「这个阶段需要哪种证据、因此该由哪个门禁收口」。
+ * 用于让 guided_practice 的门禁**由交付物推导**，而不是由阶段名硬编码。
+ */
+export type EvidenceProfile = 'runnable_code' | 'experiment_report';
+
+/**
+ * 门禁注册条目：门禁 id 的权威定义。
+ *
+ * 把「写这个门禁需要什么证据」「谁允许写」「谁负责生产」放在门禁 id 旁边，
+ * 替代此前按阶段名 `switch` 的写法。
+ */
+export interface GateConditionRegistration {
+  /** 门禁条件 id。 */
+  gateId: GateConditionId;
+  /** 达成该门禁所需的证据类型。 */
+  requiredEvidenceType: GateEvidenceType;
+  /** 允许写入门禁达成的写入方身份（与 PBL_GATE_SOURCE_WHITELIST 同源）。 */
+  allowedSources: readonly string[];
+  /** 负责产出该门禁证据的服务端生产者（确定性运行器或内部通道，非客户端）。 */
+  producerId: string;
+}
+
+/**
+ * 门禁注册表（冻结核心 + 新增的报告/实验类门禁）。
+ *
+ * `experiment_report_validated` 是为「动手学动能定理」这类**报告/实验类交付物**
+ * 新增的门禁：该模板 guided_practice 阶段的，交付物是
+ * `simulation_experiment_report`，阶段内根本没有可运行代码，
+ * 沿用 `code_playable_run_verified` 会让服务端对一个报告类作品返回
+ * 「代码未通过运行验证」。新 id 是**附加**的，四个核心 id 逐字不变。
+ */
+export const GATE_CONDITION_REGISTRY: Readonly<Record<string, GateConditionRegistration>> = Object.freeze({
+  student_confirmed_intent: {
+    gateId: 'student_confirmed_intent',
+    requiredEvidenceType: 'intent_confirmation',
+    allowedSources: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
+    producerId: 'projects.confirm-intent',
+  },
+  TheoryMastered: {
+    gateId: 'TheoryMastered',
+    requiredEvidenceType: 'mastery_attempt',
+    allowedSources: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
+    producerId: 'learning-plan.theory-mastered',
+  },
+  code_playable_run_verified: {
+    gateId: 'code_playable_run_verified',
+    requiredEvidenceType: 'code_run_log',
+    allowedSources: ['mentor_review', 'runner', 'server_backfill'],
+    producerId: 'runner',
+  },
+  experiment_report_validated: {
+    gateId: 'experiment_report_validated',
+    requiredEvidenceType: 'document',
+    allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+    producerId: 'works.document-structure-validator',
+  },
+  review_completed_and_archived: {
+    gateId: 'review_completed_and_archived',
+    requiredEvidenceType: 'growth_archive',
+    allowedSources: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+    producerId: 'works.publish-approved',
+  },
+});
+
+/** 门禁 id 的最大长度（与各写入 DTO 的 60 字符裁剪上限一致）。 */
+export const GATE_CONDITION_ID_MAX_LENGTH = 60;
+
+/**
+ * 门禁 id 的词法：字母开头，仅字母/数字/下划线/点/连字符。
+ *
+ * 首字符必须允许**大写**：冻结核心门禁里的 `TheoryMastered` 是驼峰，
+ * 只认小写会让 contracts 自己声明的核心门禁通不过 contracts 自己的写侧校验。
+ * 其余三个核心门禁恰好是小写，所以这个缺陷只在 `TheoryMastered` 上暴露。
+ */
+const GATE_CONDITION_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]*$/;
+
+/**
+ * 运行时门禁 id 校验（**写侧唯一入口**）。
+ *
+ * 因为 `GateConditionId` 放宽成了 `string & {}`，编译器不再兜底，
+ * 非法门禁字符串必须在这里被拦下，绝不能落库。
+ * 只校验**词法**，不校验「是否已注册」：新模板注册新门禁 id 必须先能过校验。
+ */
+export function isGateConditionId(value: unknown): value is GateConditionId {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= GATE_CONDITION_ID_MAX_LENGTH
+    && GATE_CONDITION_ID_PATTERN.test(value);
+}
+
+/** 词法校验失败时抛出，消息里带上被拒绝的字面量。 */
+export function assertGateConditionId(value: unknown): asserts value is GateConditionId {
+  if (!isGateConditionId(value)) {
+    throw new Error(`PBL gateCondition 非法（须匹配 ${String(GATE_CONDITION_ID_PATTERN)}，长度 ≤ ${GATE_CONDITION_ID_MAX_LENGTH}）：${typeof value === 'string' ? value : typeof value}`);
+  }
+}
+
+/** 是否已注册（核心四个或显式注册过的扩展门禁）。 */
+export function isRegisteredGateCondition(value: unknown): value is GateConditionId {
+  return isGateConditionId(value) && Object.prototype.hasOwnProperty.call(GATE_CONDITION_REGISTRY, value as string);
+}
+
+/** 已注册门禁的允许写入方；未注册门禁返回空清单（= 任何写入方都不允许）。 */
+export function gateAllowedSources(gate: GateConditionId): readonly string[] {
+  return GATE_CONDITION_REGISTRY[gate as string]?.allowedSources ?? [];
+}
+
+/** 门禁注册条目的只读列表（按注册表声明顺序）。 */
+export function listGateConditionRegistrations(): readonly GateConditionRegistration[] {
+  return Object.freeze(Object.values(GATE_CONDITION_REGISTRY));
+}
+
+/**
+ * guided_practice 门禁推导：**由交付物/证据档案决定**，不看阶段名。
+ *
+ * 修复的真实不一致：`kinetic_energy` 的 guided_practice 提交的是
+ * `simulation_experiment_report`（报告类交付物），阶段内没有任何可运行代码，
+ * 却被硬编码成 `code_playable_run_verified`。
+ */
+export function derivePracticeGateFromDeliverable(
+  deliverableType: string | null | undefined,
+  evidenceProfile?: EvidenceProfile | null,
+): GateConditionId | null {
+  if (evidenceProfile === 'runnable_code') return 'code_playable_run_verified';
+  if (evidenceProfile === 'experiment_report') return 'experiment_report_validated';
+  if (!deliverableType) return null;
+  const normalized = deliverableType.trim().toLowerCase();
+  if (normalized === 'runnable_python_game' || normalized === 'runnable_code') return 'code_playable_run_verified';
+  if (normalized === 'simulation_experiment_report' || normalized === 'experiment_report') return 'experiment_report_validated';
+  return null;
+}
+
+/**
+ * 阶段 → 门禁的统一推导（**校验器与 platform-registry 规范化必须调用同一个函数**）。
+ *
+ * 返回 `null` 表示该阶段无法从交付物推导（调用方回落到阶段缺省表）。
+ * 校验器若在规范化时用另一套推导，就会出现「spec 通过校验、落库却换了一个门禁」，
+ * 所以两边只允许共用本函数。
+ *
+ * 硬规则保持不变：`concept_mastery` 恒为 `TheoryMastered`。
+ */
+export function deriveGateConditionForPhase(
+  phase: string,
+  deliverableType?: string | null,
+  evidenceProfile?: EvidenceProfile | null,
+): GateConditionId | null {
+  if (phase === 'exploration') return 'student_confirmed_intent';
+  if (phase === 'concept_mastery') return 'TheoryMastered';
+  if (phase === 'guided_practice') return derivePracticeGateFromDeliverable(deliverableType, evidenceProfile);
+  if (phase === 'deliverable_review') return 'review_completed_and_archived';
+  return null;
+}
 
 /**
  * 创建助手。**必填**：`name`、`description`、`role`、`instructions`。
@@ -927,13 +1128,24 @@ export interface AdminTeamPblPhaseInput {
   assignedRoleLabel?: string;
   learningObjectives?: readonly string[];
   /**
-   * 缺省时服务端按阶段补默认门禁：
+   * 缺省时服务端按**交付物推导**门禁（`deriveGateConditionForPhase`）：
    * exploration→`student_confirmed_intent`、concept_mastery→`TheoryMastered`、
-   * guided_practice→`code_playable_run_verified`、deliverable_review→`review_completed_and_archived`。
+   * guided_practice→交付物为可运行代码时 `code_playable_run_verified`、
+   * 为报告/实验类（`simulation_experiment_report`）时 `experiment_report_validated`、
+   * deliverable_review→`review_completed_and_archived`。
    * `concept_mastery` 阶段的门禁**必须**是 `TheoryMastered`，服务端强校验。
+   *
+   * 类型放宽为 `GateConditionId` 后，服务端仍必须经 `isGateConditionId`
+   * 运行时词法校验后才可落库。
    */
-  gateCondition?: PblGateCondition;
+  gateCondition?: GateConditionId;
+  /** 该阶段产出的交付物类型；guided_practice 的门禁由此推导。 */
   deliverableType?: string;
+  /**
+   * 证据档案（可选）：把交付物明确归到「可运行代码」或「实验/报告」一类，
+   * 免得服务端只能靠交付物名字符串去猜。省略时按 `deliverableType` 推断。
+   */
+  evidenceProfile?: EvidenceProfile;
 }
 
 /**

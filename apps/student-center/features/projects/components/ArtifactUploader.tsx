@@ -19,9 +19,17 @@ export function ArtifactUploader({ disabled = false, onUploaded }: ArtifactUploa
   const handleChange = async (file: File | undefined): Promise<void> => {
     if (!file) return;
     const response = await mutate({
-      purpose: 'project-submission',
+      // `purpose` 必须是服务端 `PRESIGN_PURPOSES` 中的值
+      // （artifact | evidence | thumbnail | other）。此前这里发的是
+      // `project-submission`，不在白名单内，服务端 `normalizePresign` 会抛
+      // ARTIFACT_INVALID（上传用途非法），真实的 presign 调用必然失败。
+      // 作品文件属于 artifact。
+      purpose: 'artifact',
       filename: file.name,
       contentType: file.type || 'application/octet-stream',
+      // `sizeBytes` 是服务端**必填**的有限正数（normalizePresign 会校验），
+      // 此前完全没有发送，同样导致 presign 直接 400。
+      sizeBytes: file.size,
     });
     if (response) onUploaded?.(response.objectKey);
     if (inputRef.current) inputRef.current.value = '';

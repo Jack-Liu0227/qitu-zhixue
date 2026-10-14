@@ -25,6 +25,19 @@ export * from './pbl-learning.js';
 export * from './mastery.js';
 export * from './public-content.js';
 
+/**
+ * 数据来源模式（唯一真源）。
+ *
+ * - `live`：正式数据（Postgres）。
+ * - `demo`：显式演示数据（内置样例、种子、fixture）。
+ * - `test`：显式测试/CI 数据。
+ *
+ * 复用 `ReadinessResponse.dataMode` 的既有词汇；服务端 `DATABASE_TOKEN` 注入的
+ * `DataMode` 也是这一个类型。任何**硬编码在页面里**的数据都必须按此标注，
+ * 见 `apps/admin-console/lib/components/DataModeBadge.tsx`。
+ */
+export type DataMode = 'live' | 'demo' | 'test';
+
 export interface HealthResponse {
   service: string;
   status: 'ok';
@@ -54,7 +67,7 @@ export interface ReadinessResponse {
   status: ReadinessStatus;
   version: string;
   checkedAt: string;
-  dataMode: 'live' | 'demo' | 'test';
+  dataMode: DataMode;
   dependencies: {
     database: DependencyProbe;
     redis: DependencyProbe;

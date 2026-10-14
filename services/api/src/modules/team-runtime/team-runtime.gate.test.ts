@@ -1358,6 +1358,8 @@ test('T25: whitelist constant is the single source of truth and live call sites 
     TheoryMastered: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
     code_playable_run_verified: ['mentor_review', 'runner', 'server_backfill'],
     review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+    // WS1 追加注册：报告 / 实验类交付物的门禁，生产者是文档结构校验器。
+    experiment_report_validated: ['works.publish-approved', 'mentor_review', 'server_backfill'],
   });
   // 表驱动校验 assertGateEvidenceWritable 本身。
   assert.deepEqual(assertGateEvidenceWritable('TheoryMastered', '  mastery:unit:77  ', 'mentor_review'), { evidenceRef: 'mastery:unit:77', source: 'mentor_review' });
@@ -1387,4 +1389,123 @@ test('T25: whitelist constant is the single source of truth and live call sites 
   for (const pair of pairs) {
     assert.ok(((PBL_GATE_SOURCE_WHITELIST as Record<string, readonly string[]>)[pair.gate] ?? []).includes(pair.source), `call site ${pair.file}: (${pair.gate}, ${pair.source}) outside whitelist`);
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* T26（WS2）：TheoryMastered 消费桥 —— 学习计划是唯一生产者           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 学习计划侧的桥只递交证据（`mastery:theory:<sessionId>`），门禁事件 / 审计 /
+ * 待冲刷账本仍由本模块写。因此这里断言的是**通道语义**：同一 (student, session)
+ * 的证据恰好落一条事件，重复递交是 `already_satisfied` 且不追加任何行；
+ * 没有活跃 run 时落账本、由 startRun 物化。
+ */
+const T26_EVIDENCE_REF = 'mastery:theory:session-42';
+const T26_KEY = `gate:stu-1:TheoryMastered:${T26_EVIDENCE_REF}`;
+
+test('T26: a mastery flip records exactly one team.gate.satisfied for (student, session)', async () => {
+  const run = fullRunRow({ id: 'run-42', studentUserId: 'stu-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[run], [run]]],
+    [agentTeamEvents, [[], [{ id: 'ev-gate-t26' }]]],
+  ]);
+  const { service, probe, audit } = newServiceWithProbe(queues);
+  const input = {
+    studentUserId: 'stu-1',
+    gate: 'TheoryMastered',
+    evidenceRef: T26_EVIDENCE_REF,
+    source: 'learning-plan.theory-mastered',
+  };
+  const first = await service.recordGateForStudent(input);
+  assert.equal(first.status, 'recorded');
+  assert.equal(first.runId, 'run-42');
+
+  const events = gateEventInserts(probe.inserts);
+  assert.equal(events.length, 1, 'exactly one gate event per mastery flip');
+  assert.equal(events[0]?.idempotencyKey, T26_KEY, 'gate key must be the literal student/gate/evidenceRef triple');
+  const payload = events[0]?.payload as Record<string, unknown>;
+  assert.deepEqual(Object.keys(payload).sort(), ['evidenceRef', 'gate', 'phase', 'source', 'via']);
+  assert.equal(payload.gate, 'TheoryMastered');
+  assert.equal(payload.phase, 'concept_mastery');
+  assert.equal(payload.evidenceRef, T26_EVIDENCE_REF);
+  assert.equal(payload.source, 'learning-plan.theory-mastered');
+  // 最小化边界：门禁载荷里**不得**出现 planId / sessionId 原文键。
+  assert.equal('planId' in payload, false, 'planId must not enter the gate payload');
+  assert.equal('sessionId' in payload, false, 'sessionId must not enter the gate payload');
+  assert.equal(audit.calls.length, 1);
+  assert.equal((audit.calls[0] as Record<string, unknown>).action, 'agent.team_gate.satisfied');
+  assert.equal((audit.calls[0] as Record<string, unknown>).actorId, 'system:pbl-gate');
+
+  // 同一证据重复递交（学生在同一会话里继续答题）→ 已达成，零新增。
+  const second = await service.recordGateForStudent(input);
+  assert.deepEqual(second, { status: 'already_satisfied', runId: 'run-42', gate: 'TheoryMastered' });
+  assert.equal(gateEventInserts(probe.inserts).length, 1, 'replay must not append a second gate event');
+  assert.equal(audit.calls.length, 1, 'replay must not append a second audit row');
+});
+
+test('T26: stable evidenceRef keeps one event per session while other sessions stay distinct', async () => {
+  const run = fullRunRow({ id: 'run-42', studentUserId: 'stu-1' });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentTeamRuns, [[run], [run]]],
+    [agentTeamEvents, [[], [], []]],
+  ]);
+  const { service, probe } = newServiceWithProbe(queues);
+  await service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:theory:session-a', source: 'learning-plan.theory-mastered' });
+  await service.recordGateForStudent({ studentUserId: 'stu-1', gate: 'TheoryMastered', evidenceRef: 'mastery:theory:session-b', source: 'learning-plan.theory-mastered' });
+  const keys = gateEventInserts(probe.inserts).map((row) => row.idempotencyKey);
+  assert.deepEqual(keys, [
+    'gate:stu-1:TheoryMastered:mastery:theory:session-a',
+    'gate:stu-1:TheoryMastered:mastery:theory:session-b',
+  ]);
+});
+
+test('T26: mastery flip with no active run defers to the ledger and startRun flushes it', async () => {
+  const created = fullRunRow({ id: 'run-42', studentUserId: 'stu-1', status: 'queued', context: { topic: 'physics', phase: 'concept_mastery' } });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [
+      [],            // p1 recordGateForStudent：无活跃 run → 落账本
+      [],            // p2 startRun 幂等查询
+      [],            // p2 startRun 活跃 run 查询
+      [created],     // p2 事务后回读
+    ]],
+    [agentTeamEvents, [[]]],  // p2 冲刷查重 → 插入
+    [pblGateEvidence, [[{
+      id: 'pblge-t26',
+      studentUserId: 'stu-1',
+      gate: 'TheoryMastered',
+      evidenceRef: T26_EVIDENCE_REF,
+      source: 'learning-plan.theory-mastered',
+      createdAt: new Date('2026-11-06T00:00:00.000Z'),
+      consumedRunId: null,
+      consumedAt: null,
+    }]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const audit = auditSpy();
+  const service = new TeamRuntimeService(db, audit as never, outboxStub);
+
+  const deferred = await service.recordGateForStudent({
+    studentUserId: 'stu-1',
+    gate: 'TheoryMastered',
+    evidenceRef: T26_EVIDENCE_REF,
+    source: 'learning-plan.theory-mastered',
+  });
+  assert.deepEqual(deferred, { status: 'deferred', runId: null, gate: 'TheoryMastered', reason: 'pending_gate_evidence' });
+  assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 1, 'deferred evidence must land in the ledger');
+  assert.equal(gateEventInserts(probe.inserts).length, 0, 'deferred evidence writes no event yet');
+
+  await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-42',
+    context: { topic: 'physics' },
+    idempotencyKey: 't26-run-42',
+  });
+  const flushed = gateEventInserts(probe.inserts);
+  assert.equal(flushed.length, 1, 'startRun must materialize the deferred mastery evidence');
+  assert.equal(flushed[0]?.idempotencyKey, T26_KEY);
+  assert.equal((flushed[0]?.payload as Record<string, unknown>).gate, 'TheoryMastered');
+  assert.equal((flushed[0]?.payload as Record<string, unknown>).via, 'ledger_flush');
 });

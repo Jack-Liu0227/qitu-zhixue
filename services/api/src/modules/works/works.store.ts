@@ -168,6 +168,26 @@ export abstract class WorksStore {
     artifactId: string,
   ): Promise<MentorReviewRecord | null>;
   abstract listReviewsForArtifact(artifactId: string): Promise<MentorReviewRecord[]>;
+
+  /**
+   * P2 生产者只读端口：按版本 id 取版本行（含所属作品）。
+   *
+   * 只读、不引入任何写能力。生产者据此确认「证据引用指向一条**真实**版本行」，
+   * 这是「门禁证据必须可查证」的前提（客户端无法自证）。
+   */
+  abstract findVersionById(
+    versionId: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null>;
+
+  /**
+   * P2 生产者只读端口：按对象 key 反查版本行。
+   *
+   * 视频/文档上传只交回一个不透明 `objectKey`，因此必须能反向查证它属于
+   * **哪一件作品的哪一个版本、哪个学生**——否则「拿别人的作品当证据」无法拦截。
+   */
+  abstract findVersionByObjectKey(
+    objectKey: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null>;
 }
 
 function cloneArtifact(record: ArtifactRecord): ArtifactRecord {
@@ -350,6 +370,36 @@ export class InMemoryWorksStore extends WorksStore {
       .filter((review) => review.artifactId === artifactId)
       .map(cloneReview)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  async findVersionById(
+    versionId: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null> {
+    for (const [artifactId, rows] of this.versions.entries()) {
+      const version = rows.find((row) => row.id === versionId);
+      if (version === undefined) continue;
+      const artifact = this.artifacts.get(artifactId);
+      if (artifact === undefined) continue;
+      return { artifact: cloneArtifact(artifact), version: cloneVersion(version) };
+    }
+    return null;
+  }
+
+  async findVersionByObjectKey(
+    objectKey: string,
+  ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null> {
+    const wanted = objectKey.trim();
+    if (wanted.length === 0) return null;
+    for (const [artifactId, rows] of this.versions.entries()) {
+      // 同一 key 可能出现在多个版本（重传）：取**最新**一个（ordinal 最大）。
+      const matches = rows.filter((row) => row.objectKey === wanted);
+      if (matches.length === 0) continue;
+      const version = matches.reduce((best, row) => (row.ordinal > best.ordinal ? row : best));
+      const artifact = this.artifacts.get(artifactId);
+      if (artifact === undefined) continue;
+      return { artifact: cloneArtifact(artifact), version: cloneVersion(version) };
+    }
+    return null;
   }
 
   /** 测试辅助：清空内存状态。 */

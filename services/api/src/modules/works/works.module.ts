@@ -31,6 +31,25 @@ import {
   ObjectStoragePresigner,
   UnconfiguredObjectStoragePresigner,
 } from './object-storage.presigner';
+// P2 确定性证据生产者（WS3）：三个生产者 + 两个只读端口 + 评估编排。
+import {
+  ArtifactBytesReader,
+  InMemoryArtifactBytesReader,
+  UnconfiguredArtifactBytesReader,
+} from './assessor/artifact-bytes.reader';
+import { MediaArtifactResolver } from './assessor/media-compliance-validator';
+import {
+  CodeArtifactResolver,
+  LocalPythonSyntaxChecker,
+  PythonSyntaxChecker,
+} from './assessor/code-static-check-producer';
+import { StoreBackedCodeArtifactResolver, StoreBackedMediaArtifactResolver } from './assessor/artifact-resolvers';
+import {
+  InMemoryProjectAssessmentStore,
+  ProjectAssessmentStore,
+} from './project-assessment.store';
+import { PostgresProjectAssessmentStore } from './project-assessment.store.postgres';
+import { ProjectAssessmentService } from './project-assessment.service';
 
 /**
  * 作品 / 证据模块（Works）。
@@ -103,7 +122,44 @@ import {
           : new InMemoryObjectStoragePresigner();
       },
     },
+
+    /* ==================== P2 生产者端口（WS3） ==================== */
+
+    ProjectAssessmentService,
+    {
+      // 对象存储**读**端口：真实读路径是已声明延后项，live 直接抛稳定错误码
+      // （OBJECT_STORAGE_READ_NOT_CONFIGURED）；生产者会把它翻译成
+      // 「不可判定」，绝不翻译成「校验不通过」。
+      provide: ArtifactBytesReader,
+      inject: [DATA_MODE_TOKEN],
+      useFactory: (mode: DataMode): ArtifactBytesReader =>
+        mode === 'live' ? new UnconfiguredArtifactBytesReader() : new InMemoryArtifactBytesReader(),
+    },
+    {
+      provide: PythonSyntaxChecker,
+      useFactory: (): PythonSyntaxChecker => new LocalPythonSyntaxChecker(),
+    },
+    {
+      provide: ProjectAssessmentStore,
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
+      useFactory: (db: Database | null, mode: DataMode): ProjectAssessmentStore => {
+        if (db !== null) return new PostgresProjectAssessmentStore(db);
+        if (mode === 'live') throw new Error('live 模式缺少 DATABASE_URL：评估留痕存储不可用');
+        return new InMemoryProjectAssessmentStore();
+      },
+    },
+    {
+      // 证据引用 → 真实版本行（含归属学生）。归属校验靠存储行，不靠请求体。
+      provide: MediaArtifactResolver,
+      inject: [WorksStore],
+      useFactory: (store: WorksStore): MediaArtifactResolver => new StoreBackedMediaArtifactResolver(store),
+    },
+    {
+      provide: CodeArtifactResolver,
+      inject: [WorksStore],
+      useFactory: (store: WorksStore): CodeArtifactResolver => new StoreBackedCodeArtifactResolver(store),
+    },
   ],
-  exports: [WorksService, ProjectEvidenceMaterializer],
+  exports: [WorksService, ProjectEvidenceMaterializer, ProjectAssessmentService],
 })
 export class WorksModule {}

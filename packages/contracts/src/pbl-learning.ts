@@ -1,4 +1,4 @@
-import type { PblPhase } from './team-runtime.js';
+import type { EvidenceProfile, GateConditionId, PblPhase } from './team-runtime.js';
 
 /** Versioned contracts for the planned project-based learning workflow. */
 export const PBL_LEARNING_CONTRACT_VERSION = 'qitu.pbl-learning.v1' as const;
@@ -37,12 +37,25 @@ export interface PblTemplatePhase {
   phase: PblPhase;
   title: string;
   objectiveIds: readonly string[];
-  gateCondition:
-    | 'student_confirmed_intent'
-    | 'TheoryMastered'
-    | 'code_playable_run_verified'
-    | 'review_completed_and_archived';
+  /**
+   * 该阶段收口所需达成的门禁 id。
+   *
+   * 原先是内联的四值联合——与 `team-runtime.ts` 的 `PblGateCondition`、
+   * `admin-ai-config.validation.ts` 的 `GATE_CONDITIONS` 三处重复。现已收敛到
+   * `team-runtime.ts` 的 `GATE_CONDITION_CORE` / `GATE_CONDITION_REGISTRY`，
+   * 类型放宽为 `GateConditionId` 以便新模板注册自己的门禁 id。
+   */
+  gateCondition: GateConditionId;
+  /**
+   * 该阶段产出的交付物类型；guided_practice 的门禁由此推导
+   * （见 `derivePracticeGateFromDeliverable`）。
+   */
   deliverableType: string | null;
+  /**
+   * 证据档案：把交付物归到「可运行代码」还是「实验/报告」这一类，
+   * 让门禁推导不必靠字符串匹配交付物名。省略时按 `deliverableType` 推断。
+   */
+  evidenceProfile?: EvidenceProfile | null;
   assignedAssistantId: string | null;
 }
 

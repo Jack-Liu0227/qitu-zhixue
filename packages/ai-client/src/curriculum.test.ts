@@ -10,6 +10,7 @@ import {
   generateCurriculumPlan,
   planCurriculum,
   selectNextCurriculumStep,
+  sessionBlockShapeFor,
   sessionObjectiveIds,
   toLegacyLearningPlanDraft,
   validateCurriculumPlan,
@@ -412,4 +413,44 @@ export async function runCurriculumAssertions(): Promise<void> {
       `${weeks}w plan must shift time towards practice in later weeks`,
     );
   }
+
+  // --- 唯一分块策略：五段皆为正整数，合计恰好等于 sessionMinutes --------
+  // 这是 `services/api/src/modules/learning-plan/plan-generator.ts` 与
+  // `session-plan-validator.ts` 共用的那一份策略，覆盖 4 节与 8 节课的计划
+  // （以及遗留 20/40 节网格）在 60/120 分钟下的全部合法形状。
+  for (const sessionMinutes of [60, 120] as const) {
+    for (const totalSessions of [4, 8, 16, 20, 40] as const) {
+      let practiceAtStart = 0;
+      let practiceAtEnd = 0;
+      for (let ordinal = 0; ordinal < totalSessions; ordinal += 1) {
+        const shape = sessionBlockShapeFor(sessionMinutes, ordinal);
+        const total =
+          shape.review + shape.theory + shape.check + shape.practice + shape.reflect;
+        assert(
+          total === sessionMinutes,
+          `${sessionMinutes}min 第 ${ordinal + 1} 节分块合计为 ${total}，应为 ${sessionMinutes}`,
+        );
+        for (const [segment, minutes] of Object.entries(shape)) {
+          assert(
+            Number.isInteger(minutes) && minutes > 0,
+            `${sessionMinutes}min 第 ${ordinal + 1} 节 ${segment} 段必须是正整数，实际 ${minutes}`,
+          );
+        }
+        if (ordinal === 0) practiceAtStart = shape.practice;
+        if (ordinal === totalSessions - 1) practiceAtEnd = shape.practice;
+      }
+      assert(
+        practiceAtEnd >= practiceAtStart,
+        `${sessionMinutes}min 计划里实践占比不得随时间下降（${practiceAtStart} → ${practiceAtEnd}）`,
+      );
+    }
+  }
+
+  // 非法入参必须抛 LEARNING_PLAN_INVALID，而不是返回畸形形状。
+  const zeroLength = errorOf(() => sessionBlockShapeFor(0, 0));
+  assert(zeroLength.code === 'LEARNING_PLAN_INVALID', 'a zero session length must be rejected');
+  const badOrdinal = errorOf(() => sessionBlockShapeFor(60, -1));
+  assert(badOrdinal.code === 'LEARNING_PLAN_INVALID', 'a negative ordinal must be rejected');
+  const tooShort = errorOf(() => sessionBlockShapeFor(10, 0));
+  assert(tooShort.code === 'LEARNING_PLAN_INVALID', 'a session too short for five segments must be rejected');
 }

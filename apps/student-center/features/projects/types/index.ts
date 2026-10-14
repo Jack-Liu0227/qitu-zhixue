@@ -122,9 +122,12 @@ export interface ReflectionInput {
 
 /** C12 文件预签名。 */
 export interface PresignRequest {
+  /** 必须命中服务端 `PRESIGN_PURPOSES`：artifact | evidence | thumbnail | other。 */
   purpose: string;
   filename: string;
   contentType: string;
+  /** 服务端必填：有限正数且不超过 512MB。 */
+  sizeBytes: number;
 }
 export interface PresignResponse {
   uploadUrl: string;

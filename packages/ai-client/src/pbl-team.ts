@@ -1,9 +1,17 @@
 import type {
   AdminTeamConfig,
   AdminTeamMember,
+  EvidenceProfile,
+  GateConditionCore,
+  GateConditionId,
   PblPhase,
   PblPhaseSpec,
   PblTeamWorkflowSpec,
+} from '@qitu/contracts';
+import {
+  GATE_CONDITION_CORE,
+  GATE_CONDITION_REGISTRY,
+  derivePracticeGateFromDeliverable,
 } from '@qitu/contracts';
 import { BUILTIN_ASSISTANTS } from './assistant-registry.js';
 
@@ -49,6 +57,7 @@ export const THUNDER_FIGHTER_PHASES: readonly PblPhaseSpec[] = [
     ],
     gateCondition: 'code_playable_run_verified',
     deliverableType: 'runnable_python_game',
+    evidenceProfile: 'runnable_code',
   },
   {
     phase: 'deliverable_review',
@@ -114,8 +123,9 @@ export const KINETIC_ENERGY_PHASES: readonly PblPhaseSpec[] = [
       '计算重力与摩擦力做功代数和并绘制 W-ΔEk 散点图',
       '拟合数据直线验证动能定理，误差控制在 5% 以内',
     ],
-    gateCondition: 'code_playable_run_verified',
+    gateCondition: 'experiment_report_validated',
     deliverableType: 'simulation_experiment_report',
+    evidenceProfile: 'experiment_report',
   },
   {
     phase: 'deliverable_review',
@@ -152,25 +162,76 @@ export const KINETIC_ENERGY_PBL_SPEC: PblTeamWorkflowSpec = {
  * therefore cannot be weakened by prompts or client payloads.
  * ------------------------------------------------------------------ */
 
-/** Frozen phase order: exploration → concept_mastery → guided_practice → deliverable_review. */
-export const PBL_PHASE_ORDER: readonly PblPhase[] = THUNDER_FIGHTER_PHASES.map((spec) => spec.phase);
+/** 冻结阶段顺序（不由单个模板的阶段列表推导，模板只做校验）。 */
+export const PBL_PHASE_ORDER: readonly PblPhase[] = ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'];
+
+/**
+ * 按模板 id 给出该模板登记的阶段集合。
+ *
+ * 此前 `PBL_PHASE_ORDER` / `PBL_GATE_BY_PHASE` / `PBL_GATE_ERROR_CODES` 三者
+ * **全部**从 `THUNDER_FIGHTER_PHASES` 推导，导致动能定理（报告类交付物）的运行
+ * 也继承「雷霆战机」的标签，并对一个报告类交付物报出 `代码未通过运行验证` 的错误码。
+ * 现在改为：核心表由冻结的**阶段序**声明，模板只负责校验；门禁标签与错误码按
+ * **门禁 id** 查表，而不是按阶段名硬编码同一套。
+ */
+export const PBL_PHASE_SETS: Readonly<Record<string, readonly PblPhase[]>> = Object.freeze({
+  'pbl-thunder-fighter': THUNDER_FIGHTER_PHASES.map((spec) => spec.phase),
+  'pbl-kinetic-energy': KINETIC_ENERGY_PHASES.map((spec) => spec.phase),
+});
+
+/** 某个模板登记的阶段集合；未知模板回落到冻结阶段序。 */
+export function pblPhaseSetFor(projectId: string): readonly PblPhase[] {
+  return PBL_PHASE_SETS[projectId] ?? PBL_PHASE_ORDER;
+}
 
 /** Gate condition required to *complete* (advance out of) each phase, per the frozen spec. */
-export const PBL_GATE_BY_PHASE: Record<PblPhase, string> = THUNDER_FIGHTER_PHASES.reduce(
-  (acc, spec) => {
-    acc[spec.phase] = spec.gateCondition;
-    return acc;
-  },
-  {} as Record<PblPhase, string>,
-);
+export const PBL_GATE_BY_PHASE: Record<PblPhase, GateConditionId> = {
+  exploration: 'student_confirmed_intent',
+  concept_mastery: 'TheoryMastered',
+  guided_practice: 'code_playable_run_verified',
+  deliverable_review: 'review_completed_and_archived',
+};
 
-/** Stable HTTP error codes per unsatisfied gate; names are part of the API contract. */
-export const PBL_GATE_ERROR_CODES: Record<PblPhase, string> = {
+/** 四个冻结核心门禁（逐字来自 contracts 的 `GATE_CONDITION_CORE`，此处只做重导出）。 */
+export const PBL_CORE_GATES: readonly GateConditionCore[] = GATE_CONDITION_CORE;
+
+/**
+ * 门禁 → 该门禁未达成时的稳定 HTTP 错误码。
+ *
+ * 前四项**逐字保留**：这些错误码是已发布的 API 契约，任何重编号都是破坏性改动。
+ * `experiment_report_validated` 是**新增**项（报告/实验类交付物专用），
+ * 因为对一个报告类交付物返回 `PBL_GATE_CODE_RUN_NOT_VERIFIED`（代码未通过运行验证）
+ * 是不正确的。
+ */
+export const PBL_GATE_ERROR_CODES: Record<string, string> = {
   exploration: 'PBL_GATE_STUDENT_INTENT_REQUIRED',
   concept_mastery: 'PBL_GATE_THEORY_MASTERED_REQUIRED',
   guided_practice: 'PBL_GATE_CODE_RUN_NOT_VERIFIED',
   deliverable_review: 'PBL_GATE_REVIEW_NOT_ARCHIVED',
+  /** 新增：报告/实验类练习阶段的证据未通过校验。 */
+  experiment_report_validated: 'PBL_GATE_REPORT_NOT_VALIDATED',
 };
+
+/**
+ * 门禁 id → 未达成错误码（**按门禁查表**，替代按阶段硬编码）。
+ *
+ * 让动能定理的报告类门禁不再借用代码运行验证的错误码。
+ */
+export const PBL_GATE_ERROR_CODE_BY_GATE: Record<string, string> = {
+  ...Object.fromEntries(
+    GATE_CONDITION_CORE
+      .map((gate, index) => [gate, PBL_GATE_ERROR_CODES[PBL_PHASE_ORDER[index] ?? '']] as const)
+      .filter((entry): entry is readonly [GateConditionCore, string] => typeof entry[1] === 'string'),
+  ),
+  experiment_report_validated: 'PBL_GATE_REPORT_NOT_VALIDATED',
+};
+
+/** 某个门禁未达成时的稳定错误码；未知门禁回落到阶段序最后一项的错误码。 */
+export function pblGateErrorCode(gate: GateConditionId): string {
+  return PBL_GATE_ERROR_CODE_BY_GATE[gate as string]
+    ?? PBL_GATE_ERROR_CODES[PBL_PHASE_ORDER[PBL_PHASE_ORDER.length - 1] as PblPhase]
+    ?? 'PBL_GATE_REVIEW_NOT_ARCHIVED';
+}
 
 /** Other stable Team Runtime gate/ordering error codes. */
 export const PBL_TEAM_ERROR_CODES = {
@@ -212,12 +273,23 @@ export const PBL_GATE_EVIDENCE_REF_MIN_LENGTH = 8;
  * - mentor_review                  → 班主任人工确认（T23b）
  * - runner                         → 自动运行验证器（code_playable_run_verified 专用）
  * - server_backfill                → 服务端存量回填（运维，admin-only）
+ *
+ * 前四项与 `@qitu/contracts` 的 `GATE_CONDITION_REGISTRY` **逐字一致**（同一个
+ * 语义源，此处保持既有键序以不破坏契约测试）。第五项
+ * `experiment_report_validated` 是**附加**项：报告/实验类交付物（动能定理
+ * guided_practice）专用，允许的写入方与 `review_completed_and_archived` 相同，
+ * 因为其证据同样经由发布/评审流水线产出。
  */
 export const PBL_GATE_SOURCE_WHITELIST: Record<string, readonly string[]> = {
   student_confirmed_intent: ['projects.confirm-intent', 'mentor_review', 'server_backfill'],
   TheoryMastered: ['learning-plan.theory-mastered', 'mentor_review', 'server_backfill'],
   code_playable_run_verified: ['mentor_review', 'runner', 'server_backfill'],
   review_completed_and_archived: ['works.publish-approved', 'mentor_review', 'server_backfill'],
+  ...Object.fromEntries(
+    Object.entries(GATE_CONDITION_REGISTRY)
+      .filter(([gate]) => !(gate in { student_confirmed_intent: 1, TheoryMastered: 1, code_playable_run_verified: 1, review_completed_and_archived: 1 }))
+      .map(([gate, registration]) => [gate, registration.allowedSources]),
+  ),
 };
 
 /**
