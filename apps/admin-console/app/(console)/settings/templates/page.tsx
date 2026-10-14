@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminProjectTemplate } from '../../../../lib/api/content';
-import { fetchAdminTemplates } from '../../../../lib/api/content';
+import {
+  archiveAdminTemplate,
+  createAdminTemplate,
+  createAdminTemplateVersion,
+  fetchAdminTemplates,
+  updateAdminTemplate,
+} from '../../../../lib/api/content';
 import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
 import type { AdminTeamConfig } from '@qitu/contracts';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
@@ -93,6 +99,7 @@ export default function AdminTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<EditableTemplate | null>(null);
   const [editorTab, setEditorTab] = useState<'basic' | 'workflow'>('workflow');
   const [saveNotice, setSaveNotice] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -148,20 +155,7 @@ export default function AdminTemplatesPage() {
         };
       });
 
-      let customTemplates: EditableTemplate[] = [];
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_templates');
-          if (cached) {
-            customTemplates = JSON.parse(cached);
-          }
-        } catch {}
-      }
-
-      const existingTplIds = new Set(merged.map((t) => t.id));
-      const combined = [...customTemplates.filter((t) => !existingTplIds.has(t.id)), ...merged];
-
-      setTemplates(combined);
+      setTemplates(merged);
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('模板库加载失败'));
     } finally {
@@ -173,30 +167,41 @@ export default function AdminTemplatesPage() {
     void load();
   }, [load]);
 
-  const handleDeleteTemplate = (id: string, title: string) => {
+  const handleDeleteTemplate = async (id: string, title: string) => {
     if (!window.confirm(`确定要删除项目模板「${title}」吗？`)) return;
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    setSaving(true);
+    try {
+      const result = await archiveAdminTemplate(id);
+      setTemplates((prev) => prev.map((item) => item.id === id ? { ...item, ...result.template } : item));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error('template archive failed'));
+    } finally {
+      setSaving(false);
+    }
     if (editingTemplate?.id === id) setEditingTemplate(null);
   };
 
-  const handleCreateTemplate = () => {
-    const newTpl: EditableTemplate = {
-      id: `template-${Date.now()}`,
-      title: `自定义 PBL 项目模板 ${templates.length + 1}`,
-      slug: `custom-pbl-${templates.length + 1}`,
-      summary: '自定义项目式学习探索模板，包含从意图确认到答辩反思的全流程。',
-      status: 'draft',
-      domain: '跨学科探究',
+  const handleCreateTemplate = async () => {
+    setSaving(true);
+    try {
+      const created = await createAdminTemplate({
       schoolId: null,
-      scope: 'domain',
+      slug: `custom-pbl-${Date.now()}`,
+      title: `�Զ��� PBL ��Ŀģ�� ${templates.length + 1}`,
+      summary: '�Զ�����Ŀʽѧϰ̽��ģ�壬��������ͼȷ�ϵ���練˼��ȫ���̡�',
+      domain: '��ѧ��̽��',
       ageRange: '12-18',
       difficulty: 'medium',
       estimatedDurationMinutes: 720,
+      learningObjectives: ['���պ��ĸ����Ƶ�', '���ɳ����֤����Ŀ���'],
+      });
+    const newTpl: EditableTemplate = {
+      ...created.template,
+      title: `自定义 PBL 项目模板 ${templates.length + 1}`,
+      summary: '自定义项目式学习探索模板，包含从意图确认到答辩反思的全流程。',
+      domain: '跨学科探究',
       learningObjectives: ['掌握核心概念推导', '完成沙箱验证与项目答辩'],
-      verifiedAt: null,
-      latestPublishedVersionId: null,
       linkedTeamId: teams[0]?.id || 'team-thunder-fighter-pbl',
-      updatedAt: new Date().toISOString(),
       phases: [
         {
           id: 'phase-1',
@@ -228,12 +233,36 @@ export default function AdminTemplatesPage() {
         },
       ],
     };
-    setTemplates((prev) => [newTpl, ...prev]);
-    setEditingTemplate(newTpl);
+    await createAdminTemplateVersion(newTpl.id, {
+      stages: newTpl.phases.map((phase) => ({ id: phase.id, label: phase.name })),
+      content: { phases: newTpl.phases, linkedTeamId: newTpl.linkedTeamId },
+    });
+      setTemplates((prev) => [newTpl, ...prev]);
+      setEditingTemplate(newTpl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error('template creation failed'));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!editingTemplate) return;
+    setSaving(true);
+    try {
+      await updateAdminTemplate(editingTemplate.id, {
+      title: editingTemplate.title,
+      summary: editingTemplate.summary,
+      domain: editingTemplate.domain,
+      ageRange: editingTemplate.ageRange,
+      difficulty: editingTemplate.difficulty,
+      estimatedDurationMinutes: editingTemplate.estimatedDurationMinutes,
+      learningObjectives: editingTemplate.learningObjectives,
+    });
+      await createAdminTemplateVersion(editingTemplate.id, {
+      stages: editingTemplate.phases.map((phase) => ({ id: phase.id, label: phase.name })),
+      content: { phases: editingTemplate.phases, linkedTeamId: editingTemplate.linkedTeamId },
+    });
     setTemplates((prev) =>
       prev.map((t) => (t.id === editingTemplate.id ? { ...editingTemplate } : t))
     );
@@ -242,6 +271,11 @@ export default function AdminTemplatesPage() {
       setSaveNotice('');
       setEditingTemplate(null);
     }, 600);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error('template save failed'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const state = AdminStateViews({ loading, error, onRetry: load });
@@ -273,6 +307,7 @@ export default function AdminTemplatesPage() {
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
+              disabled={saving}
             >
               保存模板与提示词
             </button>

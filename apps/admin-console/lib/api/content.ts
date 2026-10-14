@@ -1,5 +1,11 @@
 import { createApiClient } from '@qitu/api-client';
-import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
+import {
+  adminEnvelopeRequest,
+  AdminOfflineError,
+  AdminPermissionError,
+  newIdempotencyKey,
+  type DataEnvelope,
+} from './types';
 
 export interface AdminKnowledgeDocument {
   id: string;
@@ -38,6 +44,30 @@ export interface AdminProjectTemplate {
   updatedAt: string;
 }
 
+export interface AdminTemplateStage {
+  id: string;
+  label: string;
+}
+
+export interface AdminTemplateMutation {
+  template: AdminProjectTemplate;
+  replayed: boolean;
+}
+
+export interface AdminTemplateVersionMutation {
+  template: AdminProjectTemplate;
+  version: {
+    id: string;
+    templateId: string;
+    version: string;
+    stages: AdminTemplateStage[];
+    status: string;
+    publishedAt: string | null;
+    createdAt: string;
+  };
+  replayed: boolean;
+}
+
 const client = createApiClient('');
 
 async function get<T>(path: string): Promise<T> {
@@ -60,4 +90,46 @@ export function fetchAdminKnowledge(): Promise<AdminKnowledgeDocument[]> {
 
 export function fetchAdminTemplates(): Promise<AdminProjectTemplate[]> {
   return get('/api/v1/admin/project-templates');
+}
+
+export function createAdminTemplate(input: Record<string, unknown>): Promise<AdminTemplateMutation> {
+  return adminEnvelopeRequest<AdminTemplateMutation>({
+    path: '/api/v1/admin/project-templates',
+    method: 'POST',
+    body: input,
+    idempotencyKey: newIdempotencyKey(),
+  });
+}
+
+export function updateAdminTemplate(
+  id: string,
+  input: Record<string, unknown>,
+): Promise<AdminTemplateMutation> {
+  return adminEnvelopeRequest<AdminTemplateMutation>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}`,
+    method: 'PATCH',
+    body: input,
+    idempotencyKey: newIdempotencyKey(),
+  });
+}
+
+export function createAdminTemplateVersion(
+  id: string,
+  input: { stages: AdminTemplateStage[]; content: Record<string, unknown>; rubric?: unknown[] },
+): Promise<AdminTemplateVersionMutation> {
+  return adminEnvelopeRequest<AdminTemplateVersionMutation>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/versions`,
+    method: 'POST',
+    body: input,
+    idempotencyKey: newIdempotencyKey(),
+  });
+}
+
+export function archiveAdminTemplate(id: string): Promise<AdminTemplateMutation> {
+  return adminEnvelopeRequest<AdminTemplateMutation>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/archive`,
+    method: 'POST',
+    body: { reason: 'Archived from admin template editor' },
+    idempotencyKey: newIdempotencyKey(),
+  });
 }

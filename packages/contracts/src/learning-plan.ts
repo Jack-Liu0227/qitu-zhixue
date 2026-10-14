@@ -1,4 +1,5 @@
 import type { ProjectSummary } from './project.js';
+import type { PblSchedule } from './pbl-learning.js';
 
 /**
  * 4/8 周学习计划与掌握度契约。
@@ -130,6 +131,9 @@ export interface LearningPlanView {
   confirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Optional during the v1 migration; old plans keep their `weeks` semantics. */
+  schedule?: PblSchedule;
+  templateId?: string | null;
 }
 
 /** 生成计划。模型输出不可信，服务端校验通过才会落库为草稿。 */
@@ -137,6 +141,7 @@ export interface GenerateLearningPlanRequest {
   interest: string;
   weeks: LearningPlanWeeks;
   goal?: string | null;
+  schedule?: PblSchedule;
 }
 
 export interface GenerateLearningPlanResponse {

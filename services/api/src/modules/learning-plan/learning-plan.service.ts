@@ -25,6 +25,7 @@ import type {
   StartSessionResponse,
   SubmitAnswerResponse,
   SubmitEvidenceResponse,
+  PblSchedule,
 } from '@qitu/contracts';
 import {
   buildQuestion,
@@ -129,7 +130,7 @@ export class LearningPlanService {
 
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown },
+    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGenerateInput(rawInput);
     const generated = this.generator.generate(input);
@@ -721,6 +722,7 @@ export class LearningPlanService {
             ordinal: objective.ordinal,
           })),
       }));
+    const schedule = inferPlanSchedule(bundle);
     return {
       id: bundle.plan.id,
       studentUserId: bundle.plan.studentUserId,
@@ -740,6 +742,7 @@ export class LearningPlanService {
       confirmedAt: bundle.plan.confirmedAt?.toISOString() ?? null,
       createdAt: bundle.plan.createdAt.toISOString(),
       updatedAt: bundle.plan.updatedAt.toISOString(),
+      ...(schedule === null ? {} : { schedule }),
     };
   }
 
@@ -749,12 +752,13 @@ export class LearningPlanService {
     states: Map<string, ObjectiveMasteryState>,
   ): LessonSessionView {
     const theoryMastered = computeTheoryMastered(session.theoryObjectiveIds, states);
+    const sessionsPerWeek = inferSessionsPerWeek(bundle);
     return {
       id: session.id,
       moduleId: session.moduleId,
       index: session.index,
-      week: Math.floor(session.index / 5) + 1,
-      day: (session.index % 5) + 1,
+      week: Math.floor(session.index / sessionsPerWeek) + 1,
+      day: (session.index % sessionsPerWeek) + 1,
       title: `${bundle.plan.interest} · 第 ${session.index + 1} 节`,
       blocks: session.blocks.map((block) => ({ kind: block.kind, minutes: block.minutes })),
       theoryObjectiveIds: [...session.theoryObjectiveIds],
@@ -1325,6 +1329,24 @@ export class LearningPlanService {
   private badRequest(code: ServiceErrorCode, message: string): BadRequestException {
     return new BadRequestException({ code, message });
   }
+}
+
+function inferSessionsPerWeek(bundle: PlanBundle): 1 | 2 | 5 {
+  const count = bundle.sessions.length;
+  if (count === bundle.plan.weeks) return 1;
+  if (count === bundle.plan.weeks * 2) return 2;
+  return 5;
+}
+
+function inferPlanSchedule(bundle: PlanBundle): PblSchedule | null {
+  const sessionsPerWeek = inferSessionsPerWeek(bundle);
+  if (sessionsPerWeek === 5) return null;
+  return {
+    durationWeeks: bundle.plan.weeks,
+    weeklyMinutes: 120,
+    sessionsPerWeek,
+    sessionMinutes: bundle.plan.minutesPerSession === 120 ? 120 : 60,
+  };
 }
 
 function blockKindOf(activity: string): SessionBlock['kind'] {
