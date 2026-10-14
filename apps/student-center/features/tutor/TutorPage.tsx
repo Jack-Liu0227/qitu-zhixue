@@ -12,6 +12,8 @@ import { useTutorSession } from './hooks/useTutorSession';
 import type { TutorLoadStatus } from './types';
 import type { TutorTurn, TutorReplyBlock } from '@qitu/contracts';
 import { KINETIC_ENERGY_TURNS, type ChatSessionItem } from './data/kineticTurns';
+import { LlmSettingsModal } from './components/LlmSettingsModal';
+import { generatePblLlmResponse } from './services/pblLlmService';
 
 /** AI 搭档主对话工作区：左侧历史会话支持折叠，右侧双Tab抽屉支持折叠。 */
 export function TutorPage({ projectId }: { projectId?: string }) {
@@ -71,6 +73,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     return 'sess-new-1';
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLlmModalOpen, setIsLlmModalOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -391,13 +394,45 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       prev.map((s) => (s.id === activeSessionId ? { ...s, turns: [...s.turns, assistantTurn] } : s))
     );
 
-    // 流式打字机效果模拟真实的思考过程与逐字生成
+    // 异步调用大语言模型（优先真实大模型通道，无Key时自适应内核）
+    const historySnapshot = newTurns.map((t) => ({
+      role: t.role as 'student' | 'assistant',
+      text: t.blocks
+        .filter((b): b is Extract<TutorReplyBlock, { kind: 'text' }> => (b as any).kind === 'text')
+        .map((b) => b.text)
+        .join('\n'),
+    }));
+
+    let llmResult;
+    try {
+      llmResult = await generatePblLlmResponse({
+        teamId: chosenTeam,
+        agentName: agentConfig.name,
+        agentRole: agentConfig.role,
+        studentMessage: content,
+        history: historySnapshot,
+      });
+    } catch {
+      llmResult = {
+        think: agentConfig.thinkPrompt,
+        text: agentConfig.replyStreamText,
+        options: agentConfig.options,
+        questions: agentConfig.questions,
+        modelSource: 'PBL情境内核',
+      };
+    }
+
+    const finalThink = llmResult.think || agentConfig.thinkPrompt;
+    const finalFullText = llmResult.text || agentConfig.replyStreamText;
+    const finalQuestions = llmResult.questions || agentConfig.questions;
+    const finalOptions = llmResult.options || agentConfig.options;
+
+    // 流式打字机效果呈现真实的思考过程与逐字生成
     let charIndex = 0;
-    const fullText = agentConfig.replyStreamText;
     const streamTimer = setInterval(() => {
       charIndex += 4;
-      const currentText = fullText.slice(0, charIndex);
-      const isFinished = charIndex >= fullText.length;
+      const currentText = finalFullText.slice(0, charIndex);
+      const isFinished = charIndex >= finalFullText.length;
 
       setSessions((prev) =>
         prev.map((s) => {
@@ -407,15 +442,15 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             const updatedBlocks: TutorReplyBlock[] = [
               {
                 kind: 'think',
-                content: agentConfig.thinkPrompt,
+                content: finalThink,
                 closed: isFinished,
               },
               {
                 kind: 'text',
                 text: currentText,
               },
-              ...(agentConfig.questions ? [{ kind: 'questions' as const, items: agentConfig.questions }] : []),
-              ...(isFinished && agentConfig.options ? [{ kind: 'options' as const, items: agentConfig.options, allowOther: true }] : []),
+              ...(finalQuestions ? [{ kind: 'questions' as const, items: finalQuestions }] : []),
+              ...(isFinished && finalOptions ? [{ kind: 'options' as const, items: finalOptions, allowOther: true }] : []),
             ];
             return {
               ...t,
@@ -433,7 +468,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           setActiveSubAgent(null);
         }, 1200);
       }
-    }, 28);
+    }, 24);
   };
 
   const sessionReady = true;
@@ -445,6 +480,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         currentTeam={currentTeam}
         onTeamChange={handleSelectTeam}
         onClearHistory={handleClearHistory}
+        onOpenLlmSettings={() => setIsLlmModalOpen(true)}
       />
 
       <div className="qitu-tutor-workspace-layout">
@@ -775,6 +811,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </div>
         </div>
       )}
+
+      {/* 大模型接入设置 Modal */}
+      <LlmSettingsModal isOpen={isLlmModalOpen} onClose={() => setIsLlmModalOpen(false)} />
     </div>
   );
 }

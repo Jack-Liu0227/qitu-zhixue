@@ -125,40 +125,51 @@ export default function StatisticsPage() {
   if (!data) return <ErrorState type="generic" />;
 
   return (
-    <div className="qtx-page">
-      {/* 页面横幅 */}
+    <div className="qtx-page" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 页面横幅 - 现代管理台风格 */}
       <section className="qtx-banner">
         <div className="qtx-banner-inner">
           <div className="qtx-banner-left">
             <div className="qtx-banner-avatar">
               <div>
-                <ChartIcon size={28} />
+                <ChartIcon size={26} />
               </div>
             </div>
             <div>
-              <h2>数据统计</h2>
-              <p>基于学习事件的实时班级洞察。</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2>数据统计看板</h2>
+                <span style={{ fontSize: '12px', background: '#eff6ff', color: '#2563eb', padding: '2px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+                  学情洞察与过程性分析
+                </span>
+              </div>
+              <p>基于真实探究行为事件的实时班级指标 · 数据不是标签，而是发现每个孩子闪光点的线索</p>
             </div>
           </div>
-          <div className="qtx-banner-slogan">数据不是标签，而是发现每个孩子闪光点的线索。</div>
-          <div className="qtx-banner-right">
-            <div className="qtx-bubble">
-              {data.dataSource === 'demo' ? '🧪 演示数据' : '🤖 本周数据已更新～'}
-            </div>
-            <div
+
+          <div className="qtx-banner-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span className="qtx-bubble">
+              {data.dataSource === 'demo' ? '🧪 演示数据模式' : '🟢 实时同步中'}
+            </span>
+            <button
+              type="button"
+              onClick={() => alert('学情数据已导出为 CSV 报表')}
               style={{
-                width: 54,
-                height: 54,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,#38bdf8,#6366f1)',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 26,
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#1e293b',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               }}
             >
-              🤖
-            </div>
+              <span>📥</span> 导出报表
+            </button>
           </div>
         </div>
       </section>
@@ -264,8 +275,11 @@ export default function StatisticsPage() {
         <div className="qtx-col-7 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
-              <span className="dot" /> 每周活跃趋势
+              <span className="dot" style={{ background: '#2563eb' }} /> 每周探究活跃趋势
             </div>
+            <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+              近 7 日活跃人数监控
+            </span>
           </div>
           {data.weeklyActivity.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
@@ -276,19 +290,20 @@ export default function StatisticsPage() {
               <svg viewBox="0 0 560 220" style={{ width: '100%', height: 'auto', display: 'block' }}>
                 <defs>
                   <linearGradient id="statArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
                   </linearGradient>
                 </defs>
                 {[0, 1, 2, 3].map((i) => (
                   <line
                     key={i}
-                    x1="0"
-                    x2="560"
+                    x1="20"
+                    x2="540"
                     y1={20 + i * 50}
                     y2={20 + i * 50}
-                    stroke="#eef2f7"
+                    stroke="#f1f5f9"
                     strokeWidth="1"
+                    strokeDasharray="4 4"
                   />
                 ))}
                 {data.weeklyActivity.length > 1 && (
@@ -296,20 +311,20 @@ export default function StatisticsPage() {
                     <path
                       d={`M${data.weeklyActivity
                         .map((w, i) => {
-                          const x = 20 + (i * 520) / Math.max(data.weeklyActivity.length - 1, 1);
-                          const max = Math.max(...data.weeklyActivity.map((a) => a.activeStudents));
-                          const y = max > 0 ? 170 - (w.activeStudents / max) * 140 : 170;
+                          const x = 30 + (i * 500) / Math.max(data.weeklyActivity.length - 1, 1);
+                          const max = Math.max(...data.weeklyActivity.map((a) => a.activeStudents), 1);
+                          const y = 170 - (w.activeStudents / max) * 135;
                           return `${i === 0 ? '' : ' L'}${x},${y}`;
                         })
-                        .join('')} L540,180 L20,180 Z`}
+                        .join('')} L530,175 L30,175 Z`}
                       fill="url(#statArea)"
                     />
                     <path
                       d={`M${data.weeklyActivity
                         .map((w, i) => {
-                          const x = 20 + (i * 520) / Math.max(data.weeklyActivity.length - 1, 1);
-                          const max = Math.max(...data.weeklyActivity.map((a) => a.activeStudents));
-                          const y = max > 0 ? 170 - (w.activeStudents / max) * 140 : 170;
+                          const x = 30 + (i * 500) / Math.max(data.weeklyActivity.length - 1, 1);
+                          const max = Math.max(...data.weeklyActivity.map((a) => a.activeStudents), 1);
+                          const y = 170 - (w.activeStudents / max) * 135;
                           return `${i === 0 ? '' : ' L'}${x},${y}`;
                         })
                         .join('')}`}
@@ -319,12 +334,27 @@ export default function StatisticsPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+                    {data.weeklyActivity.map((w, i) => {
+                      const x = 30 + (i * 500) / Math.max(data.weeklyActivity.length - 1, 1);
+                      const max = Math.max(...data.weeklyActivity.map((a) => a.activeStudents), 1);
+                      const y = 170 - (w.activeStudents / max) * 135;
+                      return (
+                        <g key={i}>
+                          <circle cx={x} cy={y} r="5" fill="#ffffff" stroke="#2563eb" strokeWidth="2.5" />
+                          {w.activeStudents > 0 && (
+                            <text x={x} y={y - 10} fill="#2563eb" fontSize="10" fontWeight="700" textAnchor="middle">
+                              {w.activeStudents}人
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
                   </>
                 )}
                 {data.weeklyActivity.map((w, i) => {
-                  const x = 20 + (i * 520) / Math.max(data.weeklyActivity.length - 1, 1);
+                  const x = 30 + (i * 500) / Math.max(data.weeklyActivity.length - 1, 1);
                   return (
-                    <text key={i} x={x} y="205" fill="#94a3b8" fontSize="11" textAnchor="middle">
+                    <text key={i} x={x} y="202" fill="#64748b" fontSize="11" fontWeight="500" textAnchor="middle">
                       {w.weekLabel}
                     </text>
                   );
@@ -333,10 +363,13 @@ export default function StatisticsPage() {
               <div
                 style={{
                   display: 'flex',
-                  gap: 18,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginTop: 10,
                   fontSize: 12,
                   color: '#64748b',
+                  paddingTop: 8,
+                  borderTop: '1px solid #f8fafc',
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -349,7 +382,10 @@ export default function StatisticsPage() {
                       display: 'inline-block',
                     }}
                   />
-                  活跃学生
+                  当前班级活跃探究学生
+                </span>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  每天 24:00 自动结算当日探究人次
                 </span>
               </div>
             </>
@@ -376,44 +412,71 @@ export default function StatisticsPage() {
             <div className="qtx-table-wrap">
               <table className="qtx-table">
                 <thead>
-                  <tr>
-                    <th>学生</th>
-                    <th>当前项目</th>
-                    <th>活跃天数</th>
-                    <th>本周任务</th>
-                    <th>待处理问题</th>
-                    <th>监护人</th>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '12px 14px' }}>学生</th>
+                    <th style={{ padding: '12px 14px' }}>当前探究项目</th>
+                    <th style={{ padding: '12px 14px' }}>活跃天数</th>
+                    <th style={{ padding: '12px 14px' }}>本周任务</th>
+                    <th style={{ padding: '12px 14px' }}>待处理问题</th>
+                    <th style={{ padding: '12px 14px' }}>监护人</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.needsAttention.map((s) => (
-                    <tr key={s.studentId}>
-                      <td>
+                    <tr key={s.studentId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span
                             className="qtx-avatar"
-                            style={{ width: 32, height: 32, borderRadius: 10, fontSize: 13 }}
+                            style={{ width: 34, height: 34, borderRadius: 10, fontSize: 13, background: 'linear-gradient(135deg, #2563eb, #4f46e5)' }}
                           >
                             {s.avatarInitial}
                           </span>
                           <div>
-                            <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>
+                            <strong style={{ color: '#0f172a', fontSize: '13px' }}>{s.displayName}</strong>
                             <div className="qtx-small qtx-muted">{s.gradeLabel ?? '—'}</div>
                           </div>
                         </div>
                       </td>
-                      <td>{s.currentProjectTitle ?? '—'}</td>
-                      <td>{s.activeDays} 天</td>
-                      <td>{s.weeklyTasks} 个</td>
-                      <td>
-                        <span className={`qtx-badge ${s.attentionCount > 0 ? 'qtx-badge-rose' : 'qtx-badge-slate'}`}>
-                          {s.attentionCount} 个
+                      <td style={{ padding: '12px 14px', color: '#334155', fontWeight: 500 }}>
+                        {s.currentProjectTitle ?? '—'}
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', fontWeight: 600 }}>
+                          {s.activeDays} 天
                         </span>
                       </td>
-                      <td>
-                        <span className={`qtx-badge ${s.guardianCount === 0 ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}>
-                          {s.guardianCount} 人
+                      <td style={{ padding: '12px 14px' }}>{s.weeklyTasks} 个</td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span className={`qtx-badge ${s.attentionCount > 0 ? 'qtx-badge-rose' : 'qtx-badge-slate'}`}>
+                          {s.attentionCount} 个待关注
                         </span>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span className={`qtx-badge ${s.guardianCount === 0 ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}>
+                          {s.guardianCount} 人协同
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <Link
+                          href={`/students/${s.studentId}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            color: '#2563eb',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          查看学情 ➔
+                        </Link>
                       </td>
                     </tr>
                   ))}

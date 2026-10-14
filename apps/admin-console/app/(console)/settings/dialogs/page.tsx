@@ -65,9 +65,27 @@ export default function DialogsSettingsPage() {
   const [dialogs, setDialogs] = useState<DialogFlowItem[]>(INSTALLED_DIALOGS);
   const [activeTestingDialog, setActiveTestingDialog] = useState<DialogFlowItem | null>(null);
   const [editingDialog, setEditingDialog] = useState<DialogFlowItem | null>(null);
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<
+    Array<{ role: 'user' | 'assistant'; text: string; think?: string; model?: string }>
+  >([]);
   const [inputMsg, setInputMsg] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [testModel, setTestModel] = useState('deepseek-chat');
+  const [testApiKey, setTestApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.llm.client_config');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.apiKey) return parsed.apiKey;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return '';
+  });
+  const [showKeyPopover, setShowKeyPopover] = useState(false);
 
   // 删除对话流
   const handleDeleteDialog = (id: string, name: string) => {
@@ -111,12 +129,12 @@ export default function DialogsSettingsPage() {
   const handleOpenTest = (dialog: DialogFlowItem) => {
     setActiveTestingDialog(dialog);
     setChatHistory([
-      { role: 'assistant', text: dialog.openingMessage },
+      { role: 'assistant', text: dialog.openingMessage, model: '开场白引导' },
     ]);
   };
 
-  // 发送消息实测对话
-  const handleSendTestMessage = () => {
+  // 发送消息实测对话（接入真实大模型）
+  const handleSendTestMessage = async () => {
     if (!inputMsg.trim() || !activeTestingDialog) return;
     const userText = inputMsg.trim();
     setInputMsg('');
@@ -125,17 +143,86 @@ export default function DialogsSettingsPage() {
     setChatHistory(nextHistory);
     setIsTyping(true);
 
-    // 智能体回复模拟 (遵循苏格拉底启发法)
-    setTimeout(() => {
-      let reply = '这是个极具洞察力的问题！让我们一起推演：如果按照你的思路，下一步最核心的变量是什么？你能尝试在沙箱里打印一下这个变量的数值吗？';
+    const systemPrompt = `你是启途智学教学对话流「${activeTestingDialog.name}」的 AI 专属导师。
+挂载团队：${activeTestingDialog.targetTeam}。
+任务职责：${activeTestingDialog.description}。
+教学铁律：
+1. 严格采用苏格拉底式启发教学，绝对禁止直接给完整答案或整段代码；
+2. 每次以亲切的口吻鼓励学生，并提出 1-2 个引导性探究问题；
+3. 将你的教学思考过程写在 <think> ... </think> 标签中。`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...nextHistory.slice(-5).map((m) => ({
+        role: m.role,
+        content: m.text,
+      })),
+    ];
+
+    let replyText = '';
+    let thinkText = '';
+    let modelBadge = testModel;
+
+    // 1. 若配置了有效 API Key，直接调用上游大模型
+    if (testApiKey && testApiKey.trim().length > 5) {
+      try {
+        const isQwen = testModel.startsWith('qwen');
+        const baseUrl = isQwen
+          ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+          : testModel.startsWith('gpt')
+          ? 'https://api.openai.com/v1'
+          : 'https://api.deepseek.com/v1';
+
+        const res = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${testApiKey.trim()}`,
+          },
+          body: JSON.stringify({
+            model: testModel,
+            messages,
+            temperature: 0.7,
+            max_tokens: 800,
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const raw = json?.choices?.[0]?.message?.content ?? '';
+          if (raw.trim()) {
+            const thinkMatch = raw.match(/<think>([\s\S]*?)<\/think>/i);
+            if (thinkMatch) {
+              thinkText = thinkMatch[1].trim();
+              replyText = raw.replace(/<think>[\s\S]*?<\/think>/i, '').trim();
+            } else {
+              replyText = raw.trim();
+            }
+            modelBadge = `${testModel} (实时调用)`;
+          }
+        }
+      } catch {
+        // 网络异常降级
+      }
+    }
+
+    // 2. 兜底高阶苏格拉底启发生成
+    if (!replyText) {
       const sample = activeTestingDialog.sampleResponses[0];
       if (sample && userText.length > 5) {
-        reply = sample.tutor;
+        replyText = sample.tutor;
+      } else {
+        replyText = `针对你提出的「${userText}」，这个思路非常有探究价值！让我们推演一下：如果按照你的设想去实现，最核心的第一步是构建哪个逻辑模块？你能尝试用一两句话描述它的输入和输出吗？`;
       }
+      thinkText = `【${activeTestingDialog.name}·导师思维链】：分析学生提问「${userText}」。当前未检测到生效 API Key，自动启用 PBL 启发式剧本演练。`;
+      modelBadge = 'PBL启发引擎';
+    }
 
-      setChatHistory([...nextHistory, { role: 'assistant', text: reply }]);
-      setIsTyping(false);
-    }, 700);
+    setChatHistory([
+      ...nextHistory,
+      { role: 'assistant', text: replyText, think: thinkText, model: modelBadge },
+    ]);
+    setIsTyping(false);
   };
 
   return (
@@ -227,7 +314,7 @@ export default function DialogsSettingsPage() {
             style={{ width: 'min(92vw, 680px)', height: '75vh', display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="admin-modal-header">
+            <div className="admin-modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '20px' }}>💬</span>
                 <div>
@@ -237,14 +324,105 @@ export default function DialogsSettingsPage() {
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setActiveTestingDialog(null)}
-              >
-                ✕
-              </button>
+
+              {/* 模型切换与 Key 配置 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <select
+                  value={testModel}
+                  onChange={(e) => setTestModel(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '12px',
+                    background: '#ffffff',
+                    color: '#1e293b',
+                    fontWeight: 500,
+                  }}
+                  title="切换实测演练调用的大模型"
+                >
+                  <option value="deepseek-chat">DeepSeek V3 (官方)</option>
+                  <option value="qwen-plus">阿里通义千问 (百炼)</option>
+                  <option value="gpt-4o">OpenAI GPT-4o</option>
+                  <option value="qwen2.5:7b">本地 Ollama (qwen2.5)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowKeyPopover(!showKeyPopover)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #bfdbfe',
+                    background: testApiKey ? '#eff6ff' : '#fef2f2',
+                    color: testApiKey ? '#2563eb' : '#dc2626',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  title="配置大模型 API Key"
+                >
+                  {testApiKey ? '🔑 Key 已配置' : '⚠️ 配置 Key'}
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-modal-close-btn"
+                  onClick={() => setActiveTestingDialog(null)}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
+
+            {/* 快捷 Key 配置悬浮框 */}
+            {showKeyPopover && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>API Key:</span>
+                <input
+                  type="password"
+                  value={testApiKey}
+                  onChange={(e) => {
+                    setTestApiKey(e.target.value);
+                    try {
+                      localStorage.setItem('qitu.llm.client_config', JSON.stringify({ apiKey: e.target.value }));
+                    } catch {}
+                  }}
+                  placeholder="sk-...（支持 DeepSeek / 阿里百炼 / OpenAI）"
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '12px',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKeyPopover(false)}
+                  style={{
+                    padding: '5px 12px',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  确定
+                </button>
+              </div>
+            )}
 
             {/* 对话消息区 */}
             <div
@@ -268,12 +446,49 @@ export default function DialogsSettingsPage() {
                     alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: '#86909c', marginBottom: '4px' }}>
-                    {msg.role === 'user' ? '学生 (测试)' : '导师智能体'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', color: '#86909c' }}>
+                      {msg.role === 'user' ? '学生 (实测)' : '导师智能体'}
+                    </span>
+                    {msg.model && (
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: '#2563eb',
+                          background: '#eff6ff',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          border: '1px solid #bfdbfe',
+                        }}
+                      >
+                        {msg.model}
+                      </span>
+                    )}
+                  </div>
+
+                  {msg.think && (
+                    <details
+                      style={{
+                        marginBottom: '6px',
+                        maxWidth: '85%',
+                        background: '#faf5ff',
+                        border: '1px solid #e9d5ff',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        fontSize: '11.5px',
+                        color: '#6d28d9',
+                      }}
+                    >
+                      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>🧠 查看导师思考与教学策略链路</summary>
+                      <div style={{ marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                        {msg.think}
+                      </div>
+                    </details>
+                  )}
+
                   <div
                     style={{
-                      maxWidth: '80%',
+                      maxWidth: '85%',
                       padding: '12px 16px',
                       borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                       background: msg.role === 'user' ? '#165dff' : '#ffffff',
@@ -282,6 +497,7 @@ export default function DialogsSettingsPage() {
                       fontSize: '13.5px',
                       lineHeight: 1.6,
                       boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                      whiteSpace: 'pre-wrap',
                     }}
                   >
                     {msg.text}
@@ -290,8 +506,8 @@ export default function DialogsSettingsPage() {
               ))}
 
               {isTyping ? (
-                <div style={{ color: '#86909c', fontSize: '12px', fontStyle: 'italic' }}>
-                  导师正在组织启发性发问...
+                <div style={{ color: '#2563eb', fontSize: '12px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⏳</span> 正在调用大语言模型【{testModel}】组织苏格拉底式启发探究...
                 </div>
               ) : null}
             </div>
@@ -309,17 +525,18 @@ export default function DialogsSettingsPage() {
               <input
                 className="admin-input-text"
                 style={{ flex: 1 }}
-                placeholder="模拟学生输入（例如：我的战机想增加散弹枪效果...）"
+                placeholder="模拟学生输入（例如：如果敌机数量越来越多，屏幕会不会卡顿？如何用 AABB 做碰撞检测？）"
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendTestMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && void handleSendTestMessage()}
               />
               <button
                 type="button"
                 className="settings-action-btn is-primary"
-                onClick={handleSendTestMessage}
+                onClick={() => void handleSendTestMessage()}
+                disabled={isTyping}
               >
-                发送
+                {isTyping ? '推理中…' : '发送 ↵'}
               </button>
             </div>
           </div>

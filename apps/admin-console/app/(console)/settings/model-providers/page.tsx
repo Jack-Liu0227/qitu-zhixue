@@ -148,6 +148,89 @@ export default function AdminModelPage() {
     <div className="provider-stats"><div><strong>{data.providers.length}</strong><span>总通道数</span></div><div><strong>{data.providers.filter((provider) => provider.enabled).length}</strong><span>已启用通道</span></div><div><strong>{data.providers.reduce((count, provider) => count + provider.models.length, 0)}</strong><span>可调用模型</span></div><div><strong>{data.providers.filter((provider) => provider.lastError).length}</strong><span>同步异常</span></div></div>
     <div className="provider-toolbar"><input className="admin-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索通道 ID、名称、网关或模型" /><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">全部通道状态</option><option value="enabled">运行中通道</option><option value="disabled">已停用通道</option><option value="error">异常通道</option></select><select value={apiFilter} onChange={(event) => setApiFilter(event.target.value as typeof apiFilter)}><option value="all">全部协议</option>{API_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{selected.size > 0 ? <><button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(true)}>批量启用</button><button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(false)}>批量停用</button></> : null}</div>
     {providers.length === 0 ? <div className="admin-empty-state">没有符合筛选条件的模型通道。你可以新建一个 OpenAI-compatible / NewAPI 网关通道。</div> : <div className="admin-data-table admin-table-compact provider-table"><table><thead><tr><th><input type="checkbox" checked={allSelected} onChange={(event) => setSelected(event.target.checked ? new Set(providers.map((provider) => provider.id)) : new Set())} aria-label="全选通道" /></th><th>通道名称</th><th>网关地址</th><th>协议</th><th>状态</th><th>已挂载模型</th><th>最近同步</th><th>操作</th></tr></thead><tbody>{providers.map((provider) => <Fragment key={provider.id}><tr className={expanded === provider.id ? 'is-expanded' : ''}><td><input type="checkbox" checked={selected.has(provider.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(provider.id); else next.delete(provider.id); return next; })} aria-label={`选择 ${provider.name}`} /></td><td><div className="provider-name-cell"><span className="provider-logo">{provider.name.slice(0, 1).toUpperCase()}</span><div><strong>{provider.name}</strong><code>{provider.id}</code></div></div></td><td><code className="provider-url">{provider.baseUrl}</code></td><td><span className="protocol-chip">{provider.api.replace('openai-', '').replace('anthropic-', 'Anthropic ')}</span></td><td><span className={`runtime-status ${provider.enabled && provider.auth.configured ? 'is-ready' : provider.enabled ? 'is-warning' : 'is-off'}`}>{provider.enabled ? (provider.auth.configured ? '就绪' : '缺少密钥') : '已停用'}</span>{provider.lastError ? <small className="provider-error-dot" title={provider.lastError}>同步异常</small> : null}</td><td><strong>{provider.models.length}</strong> <span className="provider-muted">个模型</span></td><td>{formatTime(provider.modelsFetchedAt)}</td><td><div className="runtime-actions"><button type="button" className="settings-pill-btn" onClick={() => setExpanded(expanded === provider.id ? null : provider.id)}>{expanded === provider.id ? '收起' : '模型详情'}</button><button type="button" className="settings-pill-btn" onClick={() => setEditing({ initial: provider })}>配置通道</button><button type="button" className="settings-pill-btn" style={{ color: '#ef4444' }} onClick={() => void handleDeleteProvider(provider)}>删除通道</button></div></td></tr>{expanded === provider.id ? <tr><td colSpan={8}><div className="provider-detail"><div className="provider-detail-head"><div><strong>{provider.name}</strong><span>{provider.auth.configured ? `密钥已就绪 · ${provider.auth.keyFingerprint ?? '指纹不可用'}` : '尚未配置密钥'}</span></div><div className="runtime-actions"><button type="button" className="settings-pill-btn" onClick={() => void runProviderTest(provider)}>探测网关</button><button type="button" className="settings-pill-btn" onClick={() => void refresh(provider)}>同步上游模型</button></div></div>{testState[provider.id] ? <p className="runtime-test-message">{testState[provider.id]}</p> : null}{provider.lastError ? <p className="qitu-field-error">{provider.lastError}</p> : null}<div className="provider-model-list">{provider.models.length ? provider.models.map((model: ModelDescriptor) => <div className="provider-model-row" key={model.id}><div><strong>{model.name || model.id}</strong><code>{model.id}</code></div><span>{model.source === 'manual' ? '手动映射' : '网关拉取'} · {model.input.join('/')} → {model.output.join('/')}</span><div style={{ display: 'flex', gap: '6px' }}><button type="button" className="settings-pill-btn" onClick={() => void testModelConnection(provider.id, model.id).then((result: ConnectionTestResponse) => setTestState((current) => ({ ...current, [provider.id]: result.ok ? `${model.id} 连接通过` : result.error ?? `${model.id} 未通过` }))).catch((cause) => setTestState((current) => ({ ...current, [provider.id]: cause instanceof Error ? cause.message : '模型测试失败' })))}>测速</button>{model.source === 'manual' ? <button type="button" className="settings-pill-btn" style={{ color: '#ef4444' }} onClick={() => void handleDeleteModel(provider, model.id)}>删除</button> : null}</div></div>) : <p className="provider-muted">尚未登记模型，请先同步上游或添加手动映射模型。</p>}</div><ModelQuickAdd provider={provider} onAdded={replaceProvider} /></div></td></tr> : null}</Fragment>)}</tbody></table></div>}
+    {/* 模型用途路由与场景分发 */}
+    <section style={{ marginTop: '24px', marginBottom: '24px', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px 24px', boxShadow: '0 4px 16px rgba(15,23,42,0.04)' }}>
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🎯</span> 模型用途场景分发与链路绑定 (Model Usages)
+          </h2>
+          <span style={{ fontSize: '13px', color: '#64748b' }}>
+            在此明确配置和查看大语言模型在平台各核心功能中的使用位置与生效策略。
+          </span>
+        </div>
+        <span style={{ fontSize: '12px', background: '#eff6ff', color: '#2563eb', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
+          多场景全自动调度
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+        {[
+          {
+            title: '学生端 AI 搭档情景教学',
+            code: 'tutor.chat',
+            desc: '驱动雷霆战机、动手学动能定理等苏格拉底式多角色启发探究。',
+            recommended: 'DeepSeek-V3 / Qwen-Plus / Claude 3.5',
+            status: '已接入 (自适应首选已配置通道)',
+            icon: '🎓',
+          },
+          {
+            title: '管理端已安装对话演练',
+            code: 'dialog.test',
+            desc: '在已安装对话流中启动即时实测演练，测试剧本推演与启发策略。',
+            recommended: 'DeepSeek-V3 / Qwen-Plus / GPT-4o',
+            status: '已接入 (支持实时大模型对话)',
+            icon: '💬',
+          },
+          {
+            title: 'TheoryMastered 门禁核验',
+            code: 'gate.reviewer',
+            desc: '在学生进入代码沙箱前，严格评估公式严谨度与概念掌握度。',
+            recommended: 'DeepSeek-R1 / Qwen-Max / 高推理模型',
+            status: '已接入 (服务端门禁防答案泄漏)',
+            icon: '🛡️',
+          },
+          {
+            title: '语音朗读与转写交互',
+            code: 'voice.asr_tts',
+            desc: '导师回复语音合成播报（支持 0.8x-2.0x 倍速）与语音发问转写。',
+            recommended: 'Web Speech API / Qwen-Voice',
+            status: '已接入 (含倍速切换与音色通道)',
+            icon: '🎙️',
+          },
+        ].map((usage) => (
+          <div
+            key={usage.code}
+            style={{
+              padding: '14px 16px',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '13.5px', color: '#1e293b' }}>
+                <span>{usage.icon}</span> {usage.title}
+              </div>
+              <code style={{ fontSize: '11px', color: '#64748b', background: '#e2e8f0', padding: '1px 6px', borderRadius: '4px' }}>
+                {usage.code}
+              </code>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
+              {usage.desc}
+            </p>
+            <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>推荐：{usage.recommended}</span>
+              <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>{usage.status}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
     <section className="provider-presets"><div className="runtime-section-head"><h2>常用通道模板</h2><span>快速预填主流大模型及聚合代理网关地址。</span></div><div className="provider-preset-grid">{data.presets.map((preset) => <button type="button" className="provider-preset" key={preset.id} onClick={() => setEditing({ preset })}><strong>{preset.name}</strong><code>{preset.id}</code><span>{preset.baseUrl}</span><small>{preset.suggestedModels.length} 个推荐模型 · {preset.api}</small></button>)}</div></section>
     {editing ? <ProviderEditor initial={editing.initial} preset={editing.preset} onSaved={(provider) => { replaceProvider(provider); setEditing(null); }} onClose={() => setEditing(null)} /> : null}
   </div>;

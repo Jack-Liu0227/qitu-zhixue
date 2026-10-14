@@ -6,12 +6,14 @@ interface TutorHeaderProps {
   currentTeam: 'team-thunder-fighter' | 'team-kinetic-energy';
   onTeamChange: (team: 'team-thunder-fighter' | 'team-kinetic-energy') => void;
   onClearHistory: () => void;
+  onOpenLlmSettings?: () => void;
 }
 
 export function TutorHeader({
   currentTeam,
   onTeamChange,
   onClearHistory,
+  onOpenLlmSettings,
 }: TutorHeaderProps) {
   return (
     <header className="qitu-tutor-header" style={{ flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between' }}>
@@ -32,6 +34,30 @@ export function TutorHeader({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        {onOpenLlmSettings && (
+          <button
+            type="button"
+            onClick={onOpenLlmSettings}
+            title="配置大语言模型服务商与 API Key"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>⚡</span> 模型接入与设置
+          </button>
+        )}
+
         <button
           onClick={onClearHistory}
           title="清空当前会话历史"
@@ -43,7 +69,7 @@ export function TutorHeader({
             color: '#ef4444',
             border: '1px solid #fca5a5',
             borderRadius: '8px',
-            padding: '7px 10px',
+            padding: '6px 10px',
             fontSize: '12px',
             fontWeight: 500,
             cursor: 'pointer',

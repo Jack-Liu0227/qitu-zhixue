@@ -46,15 +46,46 @@ export function ChatBubble({
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
   const [showThoughtTrace, setShowThoughtTrace] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const handleToggleSpeech = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('当前浏览器环境不支持语音合成输出');
-      return;
+  const [speechRate, setSpeechRate] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.tts.rate');
+        if (cached) {
+          const num = parseFloat(cached);
+          if (!isNaN(num) && num > 0) return num;
+        }
+      } catch {
+        // ignore
+      }
     }
-    if (isSpeaking) {
+    return 1.25; // 默认 1.25 倍速，语速更清脆自然
+  });
+
+  const SPEEDS = [1.0, 1.25, 1.5, 2.0];
+
+  const handleCycleSpeed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const curIdx = SPEEDS.indexOf(speechRate);
+    const nextRate = SPEEDS[(curIdx + 1) % SPEEDS.length] ?? 1.25;
+    setSpeechRate(nextRate);
+    try {
+      localStorage.setItem('qitu.tts.rate', String(nextRate));
+    } catch {
+      // ignore
+    }
+    if (isSpeaking && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // 正在朗读时调整倍速：重新以新语速启播
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
+      setTimeout(() => {
+        playSpeech(nextRate);
+      }, 50);
+    }
+  };
+
+  const playSpeech = (rate = speechRate) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('当前浏览器环境不支持语音合成输出');
       return;
     }
     window.speechSynthesis.cancel();
@@ -66,13 +97,26 @@ export function ChatBubble({
 
     const utterance = new SpeechSynthesisUtterance(texts);
     utterance.lang = 'zh-CN';
-    utterance.rate = 1.0;
+    utterance.rate = rate;
     utterance.pitch = 1.0;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
     setIsSpeaking(true);
+  };
+
+  const handleToggleSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('当前浏览器环境不支持语音合成输出');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    playSpeech(speechRate);
   };
 
   return (
@@ -100,27 +144,50 @@ export function ChatBubble({
             </span>
           )}
           {!isStudent && (
-            <button
-              type="button"
-              onClick={handleToggleSpeech}
-              title={isSpeaking ? '停止朗读' : '语音播报此回复'}
-              style={{
-                background: isSpeaking ? '#dbeafe' : 'transparent',
-                border: isSpeaking ? '1px solid #93c5fd' : '1px solid transparent',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                padding: '1px 5px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                color: isSpeaking ? '#1d4ed8' : '#64748b',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{isSpeaking ? '⏹️' : '🔊'}</span>
-              <span style={{ fontSize: '11px', fontWeight: 500 }}>{isSpeaking ? '停止' : '朗读'}</span>
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+              <button
+                type="button"
+                onClick={handleToggleSpeech}
+                title={isSpeaking ? '停止朗读' : '语音播报此回复'}
+                style={{
+                  background: isSpeaking ? '#dbeafe' : 'transparent',
+                  border: isSpeaking ? '1px solid #93c5fd' : '1px solid transparent',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  padding: '1px 6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: isSpeaking ? '#1d4ed8' : '#64748b',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{isSpeaking ? '⏹️' : '🔊'}</span>
+                <span style={{ fontSize: '11px', fontWeight: 500 }}>{isSpeaking ? '停止' : '朗读'}</span>
+              </button>
+
+              {/* 倍速切换按钮 */}
+              <button
+                type="button"
+                onClick={handleCycleSpeed}
+                title={`点击切换朗读倍速 (当前 ${speechRate}x)`}
+                style={{
+                  background: speechRate !== 1.0 ? '#eff6ff' : '#f8fafc',
+                  border: '1px solid',
+                  borderColor: speechRate !== 1.0 ? '#bfdbfe' : '#e2e8f0',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '10.5px',
+                  padding: '1px 5px',
+                  fontWeight: 600,
+                  color: speechRate !== 1.0 ? '#2563eb' : '#64748b',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {speechRate}x
+              </button>
+            </div>
           )}
         </div>
       </div>

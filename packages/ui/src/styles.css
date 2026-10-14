@@ -1250,8 +1250,34 @@ summary:focus-visible,
   line-height: 1.6;
 }
 
-.qitu-tutor-option-chip.is-other,
-.qitu-tutor-other { margin-top: var(--qitu-space-xs); }
+.qitu-tutor-option-chip.is-other {
+  margin-top: var(--qitu-space-xs);
+}
+
+.qitu-tutor-other {
+  margin-top: var(--qitu-space-sm);
+  display: flex;
+  gap: var(--qitu-space-sm);
+  align-items: center;
+}
+
+.qitu-tutor-other input {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  font-size: 0.88rem;
+  color: var(--qitu-text);
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qitu-tutor-other input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
 
 /* 提示阶梯（1→5 档，只显示档位名，不显示答案） */
 .qitu-hint-indicator {
