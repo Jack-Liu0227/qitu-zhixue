@@ -196,22 +196,12 @@ export default function AdminTemplatesPage() {
       learningObjectives: ['���պ��ĸ����Ƶ�', '���ɳ����֤����Ŀ���'],
       });
     const newTpl: EditableTemplate = {
-      id: created.template.id,
+      ...created.template,
       title: `自定义 PBL 项目模板 ${templates.length + 1}`,
-      slug: `custom-pbl-${templates.length + 1}`,
       summary: '自定义项目式学习探索模板，包含从意图确认到答辩反思的全流程。',
-      status: 'draft',
       domain: '跨学科探究',
-      schoolId: null,
-      scope: 'domain',
-      ageRange: '12-18',
-      difficulty: 'medium',
-      estimatedDurationMinutes: 720,
       learningObjectives: ['掌握核心概念推导', '完成沙箱验证与项目答辩'],
-      verifiedAt: null,
-      latestPublishedVersionId: null,
       linkedTeamId: teams[0]?.id || 'team-thunder-fighter-pbl',
-      updatedAt: new Date().toISOString(),
       phases: [
         {
           id: 'phase-1',
