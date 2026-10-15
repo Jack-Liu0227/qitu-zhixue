@@ -4,8 +4,17 @@
 import argparse
 import sys
 from html.parser import HTMLParser
+from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import urlopen
+
+
+def open_url(url, timeout):
+    try:
+        return urlopen(url, timeout=timeout)
+    except HTTPError as exc:
+        exc.close()
+        raise
 
 
 class Assets(HTMLParser):
@@ -23,7 +32,7 @@ class Assets(HTMLParser):
 
 def check_page(base_url, route, timeout=15):
     page_url = urljoin(base_url.rstrip('/') + '/', route)
-    with urlopen(page_url, timeout=timeout) as response:
+    with open_url(page_url, timeout) as response:
         if response.status != 200 or response.headers.get_content_type() != 'text/html':
             raise ValueError(f'{route}: expected HTTP 200 HTML')
         # An auth redirect can conceal broken assets on the intended route.
@@ -37,7 +46,7 @@ def check_page(base_url, route, timeout=15):
         asset_url = urljoin(page_url, href)
         if urlsplit(asset_url).netloc != urlsplit(page_url).netloc:
             raise ValueError(f'{route}: unexpected external asset')
-        with urlopen(asset_url, timeout=timeout) as response:
+        with open_url(asset_url, timeout) as response:
             content_type = response.headers.get_content_type()
             allowed = {'text/css'} if kind == 'css' else {'application/javascript', 'text/javascript'}
             if response.status != 200 or content_type not in allowed or not response.read(1):
