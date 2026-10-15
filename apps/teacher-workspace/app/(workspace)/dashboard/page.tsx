@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AttentionStudents } from '../../../components/attention-students';
 import {
   ActivityIcon,
   AlertIcon,
@@ -305,6 +306,8 @@ function DashboardContent({
           )}
         </div>
       </section>
+
+      <section className="qtx-card qtx-panel" aria-label="关注学生"><div className="qtx-panel-header"><h2 className="qtx-panel-title">关注学生</h2><Link href="/students" className="qtx-link">查看学生</Link></div><AttentionStudents students={roster.students.filter((student) => student.stuck || student.attentionCount > 0)} /></section>
 
       {/* 底部：最近活跃学生 + 快捷操作 */}
       <section className="qtx-grid qtx-grid-12">

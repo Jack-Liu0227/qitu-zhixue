@@ -1,6 +1,6 @@
 # 模型 Provider、模型与 Agent 运行时
 
-模型注册表是供应商、凭证状态、协议和模型目录的唯一事实源。模型用途绑定只保留旧 SDK 的兼容读取和迁移边界；新的 Agent 直接选择供应商与模型。
+模型注册表是供应商、凭证状态、协议和模型目录的唯一事实源。管理员在同一模型页配置用途场景，再让 Agent 链路跟随用途自动分发；已有专属模型覆盖保留，只有管理员明确选择用途时才清除。学生不能自由换模或在浏览器填写密钥。
 
 ## 1. Provider 分层
 
@@ -9,7 +9,7 @@ Provider
   baseUrl + protocol + encrypted credential + enabled
     └── Model
           id + displayName + input/output modalities + source + enabled
-                └── Agent Runtime selection: providerId + modelId
+                └── 用途绑定 → Agent 链路，或显式 Agent 专属覆盖
 ```
 
 当前支持的协议是 `openai-completions`、`openai-responses` 和 `anthropic-messages`。OpenAI-compatible / NewAPI 网关通常使用 `openai-completions`，模型目录通过 `GET /v1/models` 同步；同步只保存服务端允许的模型描述，不把 API Key 或原始上游响应返回浏览器。
@@ -22,7 +22,7 @@ Provider
 | `/admin/settings/models`          | 从同一 Provider Registry 展开全部模型，按 ready/pending 筛选和测试；不维护第二份模型表             |
 | `/admin/settings/ai-runtime`      | 为 Agent 选择直接的 `providerId + modelId`，配置角色定义、Tools、Skills 和 MCP                     |
 
-模型页的 provider/model 列表来自 `GET /api/v1/admin/model-providers`；旧 `GET /api/v1/admin/model-usages` 只用于展示兼容绑定和迁移关联，不作为模型目录或运行时选择的事实源。新增、刷新、停用模型必须回到 Provider 页面完成。
+模型目录来自 `GET /api/v1/admin/model-providers`。用途卡片读取 `GET /api/v1/admin/model-usages`，通过 `PATCH /api/v1/admin/model-usages/:usageId` 保存。链路通过 Agent 治理接口保存 `modelUsage`，同时清空两个专属模型字段。可选模型来自同一目录，按声明模态过滤。状态区分配置可用与真实推理验收，不用写死的“已接入”代替验证。新增、刷新、停用模型仍在 Provider 页面完成。
 
 Provider 页面参考 NewAPI 的 channel 思路：一个 Provider 记录一个网关地址、协议、密钥状态、模型目录和测试状态；多个模型共享同一 Provider 凭证，不为每个模型重复保存 URL 或 Key。
 
@@ -55,7 +55,9 @@ Provider、模型和 Agent 写入都需要管理员权限；写操作使用 `Ide
 
 - `modelProviderId` 与 `modelId` 必须同时设置或同时清空。
 - 服务端每次调用前重新确认 Provider、Model 已启用、协议匹配、凭证可用、Agent 有权限。
-- Agent 清空模型时返回 `MODEL_NOT_CONFIGURED`，不能悄悄回退到 `tutor.chat` 或另一个 Agent 的模型。
+- Agent 两个模型字段均为空时，按已保存的 `modelUsage` 解析；用途未绑定或不可用时显式失败。显式覆盖失败不能悄悄回退到用途或其他 Agent。
+- 用途只在声明的 `fallbackTo` 范围内继承，不按模型名称、供应商排序或“上次使用”猜路由。修改用途后，跟随它的 Agent 下一轮调用生效。
+- 向量协议未在本对话目录可靠声明，暂不开放 embedding 自动绑定，不能把聊天模型冒充向量模型；实时语音仍须同时满足 audio 输入与输出。
 - 浏览器只能提交脱敏 ID，不能提交 provider URL、凭证或替代模型。
 - `ModelGateway.complete(usageId, request, selection?)` 仍兼容旧调用方；Agent 调用优先使用直接模型选择。
 

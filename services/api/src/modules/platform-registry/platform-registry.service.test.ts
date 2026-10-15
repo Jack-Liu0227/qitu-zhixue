@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, runtimeMcpServers, tutorPartners, type Database } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentSkillBindings, agentToolBindings, agentMcpBindings, runtimeMcpServers, tutorPartners, type Database } from '@qitu/database';
 import { PlatformRegistryService } from './platform-registry.service';
 import { PlatformRegistryController } from './platform-registry.controller';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
@@ -30,6 +30,43 @@ function fakeDatabase() {
     }),
   } as unknown as Database;
 }
+
+test('persisted Agent scenario binding resolves dynamically, validates availability and preserves explicit overrides', async () => {
+  const config = {
+    id: 'scenario-tutor', displayName: 'Scenario Tutor', role: 'tutor', roleDefinition: 'Safe teaching role',
+    agentDefinition: '', parentAgentId: null, enabled: true, modelUsage: 'tutor.chat',
+    modelProviderId: null as string | null, modelId: null as string | null, configVersion: 1,
+    capabilities: ['teach'],
+  };
+  const db = {
+    select: () => ({ from: (table: unknown) => {
+      if (table === agentConfigs) return Promise.resolve([config]);
+      if (table === tutorPartners || table === runtimeMcpServers) return Promise.resolve([]);
+      if ([agentSkillBindings, agentToolBindings, agentMcpBindings].includes(table as never)) return { where: async () => [] };
+      throw new Error('unexpected table');
+    } }),
+  } as unknown as Database;
+  let modelId = 'model-a';
+  let available = true;
+  const service = new PlatformRegistryService(db, 'live', { write: async () => 'audit' } as never, {
+    getUsages: () => ({ usages: [], bindings: [] }),
+    resolve: () => ({ providerId: 'provider', modelId }),
+    resolvePurpose: () => ({ available }),
+    listAgentModelOptions: () => ['model-a', 'model-b'].map((id) => ({ providerId: 'provider', modelId: id, modelLabel: id, available: true })),
+  } as never);
+  const first = await service.getAgentRuntime(config.id);
+  assert.equal(first.agent.modelId, 'model-a');
+  assert.equal(first.agent.modelBinding, 'usage');
+  modelId = 'model-b';
+  assert.equal((await service.getAgentRuntime(config.id)).agent.modelId, 'model-b');
+  available = false;
+  assert.equal((await service.getAgentRuntime(config.id)).agent.modelAvailable, false);
+  assert.equal((await service.getAgentRuntime(config.id)).agent.modelId, null);
+  config.modelProviderId = 'provider'; config.modelId = 'model-a';
+  const explicit = await service.getAgentRuntime(config.id);
+  assert.equal(explicit.agent.modelBinding, 'agent');
+  assert.equal(explicit.agent.modelId, 'model-a');
+});
 
 test('runtime projection uses persisted partner metadata and excludes prompt contents', async () => {
   const service = new PlatformRegistryService(

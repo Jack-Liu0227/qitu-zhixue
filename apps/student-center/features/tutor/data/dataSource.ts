@@ -1,4 +1,5 @@
 import type {
+  ConfirmIntentResponse,
   CreateTutorFeedbackRequest,
   CreateTutorFeedbackResponse,
   CreateTutorSessionRequest,
@@ -20,6 +21,7 @@ import type { TutorProjectContext } from '../types';
  * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
+  confirmExploration?(explorationId: string, goal: string, idempotencyKey: string): Promise<ConfirmIntentResponse>;
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;
   /** GET /projects/:id + /stages + /tasks — left-column display projection. */

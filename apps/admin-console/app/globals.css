@@ -905,6 +905,10 @@ body {
 .provider-presets { margin-top: 22px; }
 .provider-preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 9px; margin-top: 10px; }
 .provider-preset { display: grid; gap: 4px; text-align: left; padding: 12px; border: 1px solid #e0e6ef; border-radius: 6px; background: #fff; cursor: pointer; }
+section[aria-label="模型用途场景分发与链路绑定"] .provider-preset { cursor: default; min-width: 0; gap: 10px; }
+section[aria-label="模型用途场景分发与链路绑定"] label { display: grid; gap: 6px; font-size: 12px; }
+section[aria-label="模型用途场景分发与链路绑定"] select { width: 100%; min-width: 0; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
+section[aria-label="模型用途场景分发与链路绑定"] .provider-preset small { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 .provider-preset:hover { border-color: #8aa9e8; background: #f8fbff; }
 .provider-preset code, .provider-preset span, .provider-preset small { color: #73839b; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .runtime-section { margin-top: 22px; }

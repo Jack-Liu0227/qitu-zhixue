@@ -1,5 +1,7 @@
 # AI 搭档
 
+2026-10 修复（#53、#54）：页面使用已有服务端会话、SSE 和权限边界，不再调用不存在的 `/tutor/chat/completions`、浏览器直连上游或失败后生成本地模拟答案。会话只从服务端恢复，旧浏览器模型密钥与模拟聊天缓存会被清除。新建探索保留侧栏入口；探索 id 写入 URL 以便刷新恢复，但不把原始对话写入浏览器存储。确认按钮调用 Projects owner 的草稿与幂等确认接口，成功后进入正式项目会话；不会在客户端声明 TheoryMastered 或模拟沙箱运行。项目侧栏显示服务端真实项目阶段与当前任务，不再显示写死的百分比或团队进度。
+
 > 学生端唯一对话入口：`/student/tutor`、`/student/tutor/[projectId]`。
 >
 > 实现：`apps/student-center/features/tutor/**`、`services/api/src/modules/ai-tutor`、`packages/ai-client/src/{pedagogy,context,escalation,context-packet}.ts`。

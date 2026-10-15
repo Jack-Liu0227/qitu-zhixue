@@ -1,4 +1,5 @@
 import type {
+  ConfirmIntentResponse,
   CreateTutorFeedbackRequest,
   CreateTutorFeedbackResponse,
   CreateTutorSessionRequest,
@@ -30,6 +31,23 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
+  async confirmExploration(explorationId: string, goal: string, idempotencyKey: string): Promise<ConfirmIntentResponse> {
+    const current = unwrapData(await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}`, '探索状态读取失败'));
+    if (!isExplorationPayload(current)) throw new TutorDataError('探索状态格式不正确');
+    // A lost confirmation response must be retryable without patching a confirmed exploration.
+    if (!('status' in current) || current.status !== 'confirmed') {
+      await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}`, '学习目标保存失败', {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ goalUser: goal, coreInterests: [goal.slice(0, 40)] }),
+      });
+    }
+    const payload = await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}/confirm-intent`, '学习意图确认失败', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey }, body: JSON.stringify({}),
+    });
+    const result = unwrapData(payload) as ConfirmIntentResponse | null;
+    if (!result?.project?.id) throw new TutorDataError('确认响应缺少项目', undefined, 'BAD_CONFIRMATION_PAYLOAD');
+    return result;
+  }
   private readonly projectIdBySession = new Map<string, string | null>();
   private readonly explorationIdBySession = new Map<string, string | null>();
   private readonly sockets = new Map<string, LiveTutorSocket>();
@@ -214,10 +232,12 @@ export class TutorApiDataSource implements TutorDataSource {
       );
     }
     if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => null);
+      const problem = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : {};
       throw new TutorDataError(
-        `${failureLabel}（${response.status}）`,
+        typeof problem.detail === 'string' ? problem.detail : `${failureLabel}（${response.status}）`,
         response.status,
-        `HTTP_${response.status}`,
+        typeof problem.code === 'string' ? problem.code : `HTTP_${response.status}`,
       );
     }
     return response.json();

@@ -24,6 +24,7 @@ export interface TutorSessionApi {
   projectStatus: TutorLoadStatus;
   projectError: TutorViewError | null;
   sessionId: string | null;
+  explorationId: string | null;
   turns: TutorTurn[];
   sessionStatus: TutorLoadStatus;
   sessionError: TutorViewError | null;
@@ -63,7 +64,7 @@ function toViewError(error: unknown): TutorViewError {
  * Nothing here writes project state, AI decisions, growth records or audit
  * events — it only reads server projections and asks the server for a move.
  */
-export function useTutorSession(projectId?: string): TutorSessionApi {
+export function useTutorSession(projectId?: string, explorationKey = 0): TutorSessionApi {
   const dataSource = useTutorDataSource();
 
   const [project, setProject] = useState<TutorProjectContext | null>(null);
@@ -72,6 +73,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
   const [projectReloadKey, setProjectReloadKey] = useState(0);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [explorationId, setExplorationId] = useState<string | null>(null);
   const [turns, setTurns] = useState<TutorTurn[]>([]);
   const [sessionStatus, setSessionStatus] = useState<TutorLoadStatus>('loading');
   const [sessionError, setSessionError] = useState<TutorViewError | null>(null);
@@ -119,6 +121,11 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
 
     const load = async () => {
       try {
+        if (projectId === undefined && (explorationKey > 0 || new URLSearchParams(window.location.search).has('explorationId') || new URLSearchParams(window.location.search).has('new'))) {
+          setProject(null);
+          setProjectStatus('empty');
+          return;
+        }
         if (projectId !== undefined) {
           const context = await dataSource.getProjectContext(projectId);
           if (cancelled) return;
@@ -151,7 +158,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     return () => {
       cancelled = true;
     };
-  }, [dataSource, projectId, projectReloadKey]);
+  }, [dataSource, projectId, projectReloadKey, explorationKey]);
 
   // Create (idempotently) and load the tutor session for the resolved project.
   useEffect(() => {
@@ -178,12 +185,15 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     setSessionError(null);
     setTurns([]);
     setSessionId(null);
+    setExplorationId(null);
 
     const load = async () => {
       try {
         sessionKeyRef.current ??= createIdempotencyKey();
         const created = await dataSource.createSession({
           ...(project === null ? {} : { projectId: project.project.id }),
+          ...(project === null && new URLSearchParams(window.location.search).get('explorationId')
+            ? { explorationId: new URLSearchParams(window.location.search).get('explorationId')! } : {}),
           source: project === null ? 'exploration' : 'project',
           idempotencyKey: sessionKeyRef.current,
         });
@@ -192,6 +202,12 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
         lastSeqRef.current = session.lastSeq;
         setTransportOffline(false);
         setSessionId(session.sessionId);
+        setExplorationId(session.explorationId);
+        if (session.explorationId !== null && project === null) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('explorationId', session.explorationId);
+          window.history.replaceState(null, '', url);
+        }
         setTurns(clearEchoes(session.turns));
         setSessionStatus('ready');
       } catch (error) {
@@ -208,7 +224,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     return () => {
       cancelled = true;
     };
-  }, [dataSource, project, projectStatus, projectError, sessionReloadKey, clearEchoes]);
+  }, [dataSource, project, projectStatus, projectError, sessionReloadKey, clearEchoes, explorationKey]);
 
   // Subscribe to the stream whenever a session exists.
   useEffect(() => {
@@ -355,6 +371,7 @@ export function useTutorSession(projectId?: string): TutorSessionApi {
     projectStatus,
     projectError,
     sessionId,
+    explorationId,
     turns,
     sessionStatus,
     sessionError,

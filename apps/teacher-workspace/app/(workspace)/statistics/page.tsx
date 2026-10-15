@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AttentionStudents } from '../../../components/attention-students';
 import {
   ActivityIcon,
   ArrowRightIcon,
@@ -404,86 +405,7 @@ export default function StatisticsPage() {
               查看学生 <ArrowRightIcon size={14} />
             </Link>
           </div>
-          {data.needsAttention.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
-              暂无需要关注的学生
-            </div>
-          ) : (
-            <div className="qtx-table-wrap">
-              <table className="qtx-table">
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 14px' }}>学生</th>
-                    <th style={{ padding: '12px 14px' }}>当前探究项目</th>
-                    <th style={{ padding: '12px 14px' }}>活跃天数</th>
-                    <th style={{ padding: '12px 14px' }}>本周任务</th>
-                    <th style={{ padding: '12px 14px' }}>待处理问题</th>
-                    <th style={{ padding: '12px 14px' }}>监护人</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.needsAttention.map((s) => (
-                    <tr key={s.studentId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span
-                            className="qtx-avatar"
-                            style={{ width: 34, height: 34, borderRadius: 10, fontSize: 13, background: 'linear-gradient(135deg, #2563eb, #4f46e5)' }}
-                          >
-                            {s.avatarInitial}
-                          </span>
-                          <div>
-                            <strong style={{ color: '#0f172a', fontSize: '13px' }}>{s.displayName}</strong>
-                            <div className="qtx-small qtx-muted">{s.gradeLabel ?? '—'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 14px', color: '#334155', fontWeight: 500 }}>
-                        {s.currentProjectTitle ?? '—'}
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', fontWeight: 600 }}>
-                          {s.activeDays} 天
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>{s.weeklyTasks} 个</td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <span className={`qtx-badge ${s.attentionCount > 0 ? 'qtx-badge-rose' : 'qtx-badge-slate'}`}>
-                          {s.attentionCount} 个待关注
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px' }}>
-                        <span className={`qtx-badge ${s.guardianCount === 0 ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}>
-                          {s.guardianCount} 人协同
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                        <Link
-                          href={`/students/${s.studentId}`}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '4px 10px',
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '6px',
-                            fontSize: '11.5px',
-                            fontWeight: 600,
-                            color: '#2563eb',
-                            textDecoration: 'none',
-                          }}
-                        >
-                          查看学情 ➔
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <AttentionStudents students={data.needsAttention} />
         </div>
       </section>
     </div>

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const files = [
   'apps/teacher-workspace/components/teacher-shell.tsx',
+  'apps/teacher-workspace/components/attention-students.tsx',
   'apps/teacher-workspace/app/(workspace)/dashboard/page.tsx',
   'apps/teacher-workspace/app/(workspace)/statistics/page.tsx',
 ];

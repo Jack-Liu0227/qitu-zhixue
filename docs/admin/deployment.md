@@ -268,6 +268,14 @@ bash tooling/start-qitu-services.sh status
 
 ## 5. 相关文档
 
+### Redis（study-remote，2026-10-15）
+
+- 使用系统 `redis-server.service`，开机启用，仅监听 `127.0.0.1` / `::1`，不开放公网 6379。
+- 启用 `protected-mode` 和随机服务密码；凭据仅留在服务器受限配置，绝不提交。应用从权限为 600 的 `tooling/qitu-ports.env` 读取 `REDIS_URL`，API / worker 必须重启才能读取新环境。
+- AOF 开启，`appendfsync everysec`；上限 256 MiB，`maxmemory-policy noeviction`，避免驱逐队列或锁制造假互斥。内存满会显式失败，应告警扩容，不能把这个上限当作永久容量承诺。
+- 验收同时检查 `/api/v1/health/ready` 中 database / redis 均为 `ok`，以及真实 `@qitu/infra` 缓存 TTL、锁排他与 token-safe release、队列 reserve / ack；只收到 PONG 不代表业务接线完成。
+- AOF 约每秒刷盘，异常断电仍存在约一秒丢失窗口；单机 Redis 不是高可用，需独立监控和备份策略。保留 PostgreSQL outbox 作为事件事实源。
+
 - [`initialization.md`](./initialization.md)
 - [`authentication.md`](./authentication.md)
 - [`public-site.md`](./public-site.md)

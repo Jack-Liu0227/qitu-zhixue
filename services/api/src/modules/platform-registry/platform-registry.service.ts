@@ -1,3 +1,4 @@
+import { resolveAgentModelSelection } from './agent-model-selection';
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
@@ -313,6 +314,8 @@ export class PlatformRegistryService {
       const configs = await this.db.select().from(agentConfigs);
       if (configs.length > 0) {
         const configAgents = await Promise.all(configs.map(async (config) => {
+          const selection = resolveAgentModelSelection(config, (usage) =>
+            this.models.resolvePurpose(usage).available ? this.models.resolve(usage) : null);
           const [skills, tools, mcp] = await Promise.all([
             this.db!.select().from(agentSkillBindings).where(eq(agentSkillBindings.agentId, config.id)),
             this.db!.select().from(agentToolBindings).where(eq(agentToolBindings.agentId, config.id)),
@@ -328,10 +331,12 @@ export class PlatformRegistryService {
             parentAgentId: config.parentAgentId,
             enabled: config.enabled,
             status: config.enabled ? 'enabled' as const : 'disabled' as const,
-            modelProviderId: config.modelProviderId ?? null,
-            modelId: config.modelId ?? null,
-            modelLabel: modelOptions.find((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId)?.modelLabel ?? null,
-            modelAvailable: modelOptions.some((option) => option.providerId === config.modelProviderId && option.modelId === config.modelId && option.available),
+            modelUsage: config.modelUsage,
+            modelBinding: config.modelProviderId === null && config.modelId === null ? 'usage' as const : 'agent' as const,
+            modelProviderId: selection.providerId,
+            modelId: selection.modelId,
+            modelLabel: modelOptions.find((option) => option.providerId === selection.providerId && option.modelId === selection.modelId)?.modelLabel ?? null,
+            modelAvailable: modelOptions.some((option) => option.providerId === selection.providerId && option.modelId === selection.modelId && option.available),
             promptVersion: `agent-config.v${config.configVersion}`,
             capabilities: Array.isArray(config.capabilities) ? config.capabilities : [],
             skillIds: skills.filter((binding) => binding.enabled).map((binding) => binding.skillId),

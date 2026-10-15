@@ -314,6 +314,9 @@ export interface AdminRuntimeMcpServer {
 /* ---- 项目 Agent 角色与设置 ---- */
 
 export interface AdminRuntimeAgent {
+  /** Scenario used when the Agent has no explicit provider/model override. */
+  modelUsage?: string;
+  modelBinding?: 'usage' | 'agent';
   id: string;
   label: string;
   description: string | null;
@@ -354,7 +357,7 @@ export interface AdminRuntimeAgentUpdateRequest {
   parentAgentId?: string | null;
   modelProviderId?: string | null;
   modelId?: string | null;
-  /** @deprecated compatibility only; model selection is Agent-scoped now. */
+  /** Scenario binding; clear both model fields to follow this scenario. */
   modelUsage?: string;
   capabilities?: string[];
   skillIds?: string[];
