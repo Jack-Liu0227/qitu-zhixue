@@ -25,7 +25,7 @@ import {
   validateDocumentStructure,
   type DocumentStructureProfile,
 } from './assessor/document-structure-validator';
-import type { ArtifactBytesReader } from './assessor/artifact-bytes.reader';
+import { ArtifactBytesReader } from './assessor/artifact-bytes.reader';
 import {
   MediaArtifactResolver,
   assessMediaCompliance,

@@ -94,9 +94,7 @@ ALLOW_REMOTE_DIRTY=1 bash tooling/sync-study-remote.sh
 
 ```bash
 # 先预编译再 restart：restart 内部的构建失败会把服务停在半路上
-runuser -u postgres -- bash -c 'cd /root/team-workspaces/qitu-zhixue && \
-  pnpm --filter @qitu/database build && pnpm --filter @qitu/model-runtime build && \
-  pnpm --filter @qitu/agent-memory build && pnpm --filter @qitu/api build'
+bash tooling/start-qitu-services.sh build api
 bash tooling/start-qitu-services.sh restart
 bash tooling/start-qitu-services.sh status
 sudo nginx -t
@@ -105,6 +103,31 @@ sudo systemctl reload nginx
 
 部署脚本与 Nginx 配置**不会**自动删除 Git 分支、worktree、依赖或环境文件。
 远程备份保存于 `/root/team-workspaces/qitu-backups/`。
+
+### 3.0 Runtime dependency and bootstrap checks
+
+- `build api` / `build workers` select both transitive workspace graphs with
+  `pnpm -r --workspace-concurrency=1 --filter '@qitu/api...' --filter '@qitu/workers...' build`.
+  pnpm builds dependencies topologically, including `contracts`, `ai-client` and `infra`;
+  a manually maintained package list is not sufficient for runtime exports.
+- Root deployments build as `postgres`, the same user that runs API/workers. Existing
+  root-owned build outputs must be repaired before rebuilding; do not change source,
+  secrets or database ownership to work around a failed build.
+- Runtime build failures return nonzero and prevent startup. `restart` builds before
+  stopping API/workers so a compilation failure leaves the old runtime running.
+- `status api` probes `/api/v1/health/ready`, not just liveness. Deployment acceptance
+  also requires `dataMode=live` and a successful database probe; demo/test startup is
+  only a local regression check, never evidence of a production deployment.
+- `bash tooling/start-qitu-services.test.sh` checks dependency-graph selection and
+  failure-before-stop behavior without touching real services. `pnpm --filter @qitu/api test`
+  includes a real Nest application bootstrap and HTTP health check, catching erased
+  constructor injection tokens that hand-constructed service tests miss.
+
+For IP fallback access, persist `IP-CIDR,122.51.130.204/32,DIRECT,no-resolve` in the
+local Clash profile rules/script layer and use rule mode. Do not put a top-level
+`rules:` override in a merge layer: that replaces the subscription rules. Reload
+the core and verify the active rules and a real DIRECT connection. Personal proxy
+configuration and backups stay outside this repository.
 
 ## 3.1 线上 502 排查顺序
 

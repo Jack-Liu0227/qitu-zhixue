@@ -37,7 +37,7 @@ function readSchema(root: string): string {
   return readFileSync(join(root, 'packages', 'database', 'src', 'schema', 'pbl-gate-evidence.ts'), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('journal is append-only monotonic and 0022_pbl_gate_evidence is the head entry', () => {
+test('journal is monotonic, preserves 0022 and registers every up migration', () => {
   const root = repoRoot();
   const journal = JSON.parse(readFileSync(join(root, 'database', 'migrations', 'meta', '_journal.json'), 'utf8')) as {
     entries: Array<{ idx: number; version: string; when: number; tag: string; breakpoints: boolean }>;
@@ -53,11 +53,18 @@ test('journal is append-only monotonic and 0022_pbl_gate_evidence is the head en
     assert.ok(current.when > previous.when, `journal when must strictly increase at entry ${i}`);
     previous = current;
   }
-  const head = previous;
-  assert.equal(head.idx, 22);
-  assert.equal(head.tag, TAG);
-  assert.equal(head.version, '7');
-  assert.equal(head.breakpoints, true);
+  const ledger = entries.find((entry) => entry.tag === TAG);
+  assert.ok(ledger, '0022 must remain registered when later migrations are appended');
+  assert.equal(ledger.idx, 22);
+  assert.equal(ledger.version, '7');
+  assert.equal(ledger.breakpoints, true);
+  const registered = new Set(entries.map((entry) => entry.tag));
+  assert.equal(registered.size, entries.length, 'migration tags must be unique');
+  for (const file of readdirSync(join(root, 'database', 'migrations'))) {
+    if (/^\d{4}_.+\.sql$/.test(file) && !file.endsWith('.down.sql')) {
+      assert.ok(registered.has(file.slice(0, -4)), `up migration ${file} is missing from the journal`);
+    }
+  }
   // 每个 entry 的 tag 都必须与 up/down 文件名一致（防止 tag 与文件漂移）。
   for (const entry of entries) {
     assert.ok(existsSync(join(root, 'database', 'migrations', `${entry.tag}.sql`)), `missing up file for ${entry.tag}`);

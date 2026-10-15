@@ -41,6 +41,7 @@ QITU_NODE_MAX_OLD_SPACE_MB="${QITU_NODE_MAX_OLD_SPACE_MB:-}"
 BROKEN_FRONTENDS=""
 BROKEN_PACKAGES=""
 START_FAILED=""
+RUNTIME_BUILD_READY=0
 
 app_dir_for() {
   case "$1" in
@@ -346,7 +347,7 @@ probe_path_for() {
   # 除 auth 外的四个前端都开了 basePath，直接探 `/` 会得到 404，
   # 必须探各自壳层里真实存在的一个路径。
   case "$1" in
-    api) echo "/api/v1/health" ;;
+    api) echo "/api/v1/health/ready" ;;
     auth) echo "/" ;;
     student) echo "/student/today" ;;
     parent) echo "/parent" ;;
@@ -415,31 +416,28 @@ status_one() {
   return 1
 }
 
-build_package() {
+build_runtime_dependencies() {
   # 以真正持有运行时的用户构建：root 部署后再由 postgres 起 `nest --watch`，
   # dist 归属不一致会让 watch 写不了产物（也会让重启后跑的还是旧运行时）。
   if [[ "$(id -u)" == 0 ]] && command -v runuser >/dev/null 2>&1; then
-    runuser -u postgres -- bash -c "cd '$ROOT' && pnpm --filter $1 build"
+    runuser -u postgres -- bash -c 'cd "$1" && pnpm -r --workspace-concurrency=1 --filter "@qitu/api..." --filter "@qitu/workers..." build' bash "$ROOT"
   else
-    (cd "$ROOT" && pnpm --filter "$1" build)
+    (cd "$ROOT" && pnpm -r --workspace-concurrency=1 --filter '@qitu/api...' --filter '@qitu/workers...' build)
   fi
 }
 
 ensure_shared_packages() {
-  # services/api runs `nest start --watch`, which compiles only services/api/src
-  # (tsconfig rootDir=src). It therefore cannot transpile workspace packages at
-  # runtime, so any package that exports *runtime values* must be built to dist
-  # first. Type-only packages (e.g. @qitu/contracts) are erased and need no build.
-  echo "building runtime packages (database, model-runtime, agent-memory, api)..."
-  local pkg
-  for pkg in @qitu/database @qitu/model-runtime @qitu/agent-memory @qitu/api; do
-    if build_package "$pkg"; then
-      continue
-    fi
-    BROKEN_PACKAGES="$BROKEN_PACKAGES $pkg"
-    echo "warning: $pkg 构建失败；依赖它的服务可能跑在旧 dist 上或启动失败" >&2
-  done
-  return 0
+  [[ "$RUNTIME_BUILD_READY" == 1 ]] && return 0
+  # pnpm selects the transitive workspace graph and builds it topologically.
+  # A hand-maintained list missed ai-client/contracts and left stale runtime exports.
+  echo "building API/worker dependency graphs (serial, as the runtime owner)..."
+  if build_runtime_dependencies; then
+    RUNTIME_BUILD_READY=1
+    return 0
+  fi
+  BROKEN_PACKAGES="api/workers dependency graph"
+  echo "runtime build failed; refusing to start services with stale dist" >&2
+  return 1
 }
 
 require_database_env_for_api() {
@@ -564,7 +562,12 @@ start_selected() {
       continue
     fi
     case "$name" in
-      api|workers) ensure_shared_packages ;;
+      api|workers)
+        if ! ensure_shared_packages; then
+          START_FAILED="$START_FAILED $name"
+          continue
+        fi
+        ;;
       *) build_frontend "$name" ;;
     esac
     try_start "$name" "$port" "$filter" "$mode"
@@ -581,7 +584,10 @@ try_start() {
 }
 
 start_all() {
-  ensure_shared_packages
+  if ! ensure_shared_packages; then
+    START_FAILED="api workers (runtime build failed)"
+    return 1
+  fi
   ensure_frontend_builds
   START_FAILED=""
   try_start api "$QITU_API_PORT" '@qitu/api' api
@@ -634,10 +640,13 @@ case "${1:-status}" in
     # 预检放在 stop 之前：缺 DATABASE_URL 时直接退出，不会先把服务停掉。
     require_database_env_for_api
     if [[ $# -ge 2 && "$2" != "all" ]]; then
+      # Build before stopping a healthy runtime; a broken release must not take it down.
+      case "$2" in api|workers) ensure_shared_packages ;; esac
       START_FAILED=""
       stop_one "$2"
       start_selected "$2"
     else
+      ensure_shared_packages
       stop_all
       start_all
     fi
