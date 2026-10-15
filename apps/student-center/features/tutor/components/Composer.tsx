@@ -40,10 +40,45 @@ function SendIcon() {
   );
 }
 
+function PaperclipIcon() {
+  return (
+    <svg aria-hidden="true" className="qitu-composer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l7.88-7.88" />
+    </svg>
+  );
+}
+
+function ImageIcon() {
+  return (
+    <svg aria-hidden="true" className="qitu-composer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  );
+}
+
+export interface AttachmentDraft {
+  id: string;
+  name: string;
+  type: 'image' | 'file';
+  url: string;
+  sizeText?: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** Tutor voice & text input composer following production UI engineering standards. */
 export function Composer({
   draft,
   onDraftChange,
+  attachments: externalAttachments,
+  onAddAttachments: externalAddAttachments,
+  onRemoveAttachment: externalRemoveAttachment,
   offline,
   submitting,
   disabled,
@@ -51,11 +86,25 @@ export function Composer({
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
+  attachments?: AttachmentDraft[];
+  onAddAttachments?: (items: AttachmentDraft[]) => void;
+  onRemoveAttachment?: (id: string) => void;
   offline: boolean;
   submitting: boolean;
   disabled: boolean;
-  onSubmit: () => void;
+  onSubmit: (attachments?: AttachmentDraft[]) => void;
 }) {
+  const [internalAttachments, setInternalAttachments] = useState<AttachmentDraft[]>([]);
+  const attachments = externalAttachments ?? internalAttachments;
+  const setAttachments = externalAddAttachments
+    ? (fn: (prev: AttachmentDraft[]) => AttachmentDraft[]) => {
+        // Handled via external props
+      }
+    : setInternalAttachments;
+
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<ComposerMode>('text');
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>('idle');
   const [voiceSupported, setVoiceSupported] = useState<boolean | null>(null);
@@ -289,13 +338,96 @@ export function Composer({
     if (offline && voiceStatus !== 'idle') stopListening();
   }, [offline, stopListening, voiceStatus]);
 
+  const handleFilesSelected = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((file) => {
+      const isImg = file.type.startsWith('image/');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const url = (e.target?.result as string) || '';
+        const item: AttachmentDraft = {
+          id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          type: isImg ? 'image' : 'file',
+          url,
+          sizeText: formatFileSize(file.size),
+        };
+        if (externalAddAttachments) {
+          externalAddAttachments([item]);
+        } else {
+          setInternalAttachments((prev) => [...prev, item]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachmentItem = (id: string) => {
+    if (externalRemoveAttachment) {
+      externalRemoveAttachment(id);
+    } else {
+      setInternalAttachments((prev) => prev.filter((item) => item.id !== id));
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const clipItem = items[i];
+      if (!clipItem) continue;
+      if (clipItem.type.indexOf('image') !== -1) {
+        const blob = clipItem.getAsFile();
+        if (blob) {
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const url = (ev.target?.result as string) || '';
+            const item: AttachmentDraft = {
+              id: `paste-img-${Date.now()}`,
+              name: `截图-${new Date().toLocaleTimeString('zh-CN', { hour12: false }).replace(/:/g, '')}.png`,
+              type: 'image',
+              url,
+              sizeText: formatFileSize(blob.size),
+            };
+            if (externalAddAttachments) {
+              externalAddAttachments([item]);
+            } else {
+              setInternalAttachments((prev) => [...prev, item]);
+            }
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelected(e.dataTransfer.files);
+    }
+  };
+
   const isRecording = voiceStatus === 'starting' || voiceStatus === 'recording';
   const hasWebSpeech =
     typeof window !== 'undefined' &&
     Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   const voiceUnavailable = false; // Always allow user to trigger voice input
   const trimmedLength = draft.trim().length;
-  const canSend = trimmedLength > 0 && !submitting && !disabled && !offline;
+  const canSend = (trimmedLength > 0 || attachments.length > 0) && !submitting && !disabled && !offline;
 
   const toggleRecording = () => {
     setVoiceError(null);
@@ -322,7 +454,12 @@ export function Composer({
   const submit = () => {
     stopListening();
     if (mode === 'voice') setMode('text');
-    if (canSend) onSubmit();
+    if (canSend) {
+      onSubmit(attachments);
+      if (!externalAddAttachments) {
+        setInternalAttachments([]);
+      }
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -408,7 +545,114 @@ export function Composer({
         </div>
       ) : null}
 
-      <div className={`qitu-composer-shell${disabled ? ' is-disabled' : ''}${offline ? ' is-offline' : ''}`}>
+      {/* 隐藏的文件输入组件 */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          handleFilesSelected(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".py,.js,.ts,.tsx,.jsx,.html,.css,.json,.md,.txt,.pdf,.docx,.c,.cpp,.java,.zip,.tar,.gz"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          handleFilesSelected(e.target.files);
+          e.target.value = '';
+        }}
+      />
+
+      <div
+        className={`qitu-composer-shell${disabled ? ' is-disabled' : ''}${offline ? ' is-offline' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{
+          outline: isDragging ? '2px dashed #3b82f6' : undefined,
+          backgroundColor: isDragging ? '#eff6ff' : undefined,
+          transition: 'all 0.15s ease',
+        }}
+      >
+        {/* 已添加的附件列表展示栏 */}
+        {attachments.length > 0 && (
+          <div
+            style={{
+              padding: '8px 12px 4px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              borderBottom: '1px solid #f1f5f9',
+            }}
+          >
+            {attachments.map((att) => (
+              <div
+                key={att.id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '11.5px',
+                  color: '#334155',
+                  maxWidth: '220px',
+                }}
+              >
+                {att.type === 'image' ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={att.url}
+                    alt=""
+                    style={{ width: '20px', height: '20px', objectFit: 'cover', borderRadius: '4px' }}
+                  />
+                ) : (
+                  <span aria-hidden="true" style={{ fontSize: '13px' }}>
+                    📎
+                  </span>
+                )}
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '120px',
+                  }}
+                  title={att.name}
+                >
+                  {att.name}
+                </span>
+                {att.sizeText && <span style={{ color: '#94a3b8', fontSize: '10px' }}>({att.sizeText})</span>}
+                <button
+                  type="button"
+                  onClick={() => removeAttachmentItem(att.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    padding: '0 2px',
+                    lineHeight: 1,
+                  }}
+                  title="移除此附件"
+                  disabled={submitting}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {mode === 'text' ? (
           <textarea
             ref={textareaRef}
@@ -416,10 +660,13 @@ export function Composer({
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
               offline
                 ? '当前离线，先把想法写下来，网络恢复后再发送…'
-                : '说说你现在的想法、尝试过的步骤或卡住的地方（支持点击语音输入麦克风直接说话）…'
+                : isDragging
+                ? '松开鼠标即可添加文件附件…'
+                : '说说现在的想法、尝试或卡住的地方（支持点击上传图片/文件，或直接从剪贴板 Ctrl+V 粘贴截图）…'
             }
             disabled={disabled}
             rows={2}
@@ -457,6 +704,30 @@ export function Composer({
               <span>{isRecording ? '停止录音' : '语音输入'}</span>
             </button>
 
+            <button
+              type="button"
+              className="qitu-composer-mode"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={disabled || offline || submitting}
+              aria-label="上传图片"
+              title="上传图片（支持拖拽或直接 Ctrl+V 粘贴截图）"
+            >
+              <ImageIcon />
+              <span>图片</span>
+            </button>
+
+            <button
+              type="button"
+              className="qitu-composer-mode"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || offline || submitting}
+              aria-label="上传文件或代码"
+              title="上传代码脚本、文档或数据文件"
+            >
+              <PaperclipIcon />
+              <span>文件</span>
+            </button>
+
             {mode === 'voice' ? (
               <button
                 type="button"
@@ -477,20 +748,25 @@ export function Composer({
           </div>
 
           <div className="qitu-composer-toolbar-right">
-            {trimmedLength > 0 ? (
+            {trimmedLength > 0 || attachments.length > 0 ? (
               <>
                 <span className="qitu-composer-char-count" aria-live="polite">
-                  {trimmedLength} 字
+                  {trimmedLength > 0 ? `${trimmedLength} 字` : `${attachments.length} 个附件`}
                 </span>
                 <button
                   type="button"
                   className="qitu-composer-clear"
                   onClick={() => {
                     onDraftChange('');
+                    if (externalRemoveAttachment) {
+                      attachments.forEach((a) => externalRemoveAttachment(a.id));
+                    } else {
+                      setInternalAttachments([]);
+                    }
                     textareaRef.current?.focus();
                   }}
                   disabled={disabled || submitting}
-                  aria-label="清空输入内容"
+                  aria-label="清空输入内容与附件"
                 >
                   清空
                 </button>

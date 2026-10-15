@@ -31,7 +31,7 @@ export const THUNDER_FIGHTER_PHASES: readonly PblPhaseSpec[] = [
   },
   {
     phase: 'concept_mastery',
-    title: '阶段二：核心原理探索与概念掌握（OpenMAIC 互动课堂）',
+    title: '阶段二：核心原理探索与概念掌握（启途互动课堂）',
     assignedAssistantId: 'fighter-concept-coach',
     assignedRoleLabel: '原理教练',
     learningObjectives: [
@@ -394,7 +394,7 @@ export const THUNDER_FIGHTER_TEAM_MEMBERS: readonly AdminTeamMember[] = [
     assistantId: 'fighter-concept-coach',
     assistantName: '战机原理与概念教练',
     role: 'coach',
-    roleLabel: '概念教练 (OpenMAIC 核心原理解析)',
+    roleLabel: '概念教练 (核心原理解析)',
     avatar: '🕹️',
     status: 'idle',
     model: 'qwen3.8-flash',
@@ -431,7 +431,7 @@ export const THUNDER_FIGHTER_TEAM_CONFIG: AdminTeamConfig = {
   id: 'team-thunder-fighter-pbl',
   name: '雷霆战机小游戏 PBL 导师团队',
   description:
-    '面向雷霆战机小游戏设计的专属多智能体协同导师团队。融合 OpenMAIC 互动课堂理念，引导学生完成从兴趣启发、概念探索、代码构建到作品答辩的全流程。',
+    '面向雷霆战机小游戏设计的专属多智能体协同导师团队。融合启途互动课堂理念，引导学生完成从兴趣启发、概念探索、代码构建到作品答辩的全流程。',
   workspaceMode: 'shared',
   sessionMode: 'supervised',
   leaderAssistantId: 'tutor-leader',

@@ -488,6 +488,295 @@
   line-height: 1.45;
 }
 
+/* ---- 模式切换与动态多帧视觉容器 ---- */
+.home-hero-visual-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.home-hero-mode-switch {
+  display: inline-flex;
+  align-self: center;
+  background: var(--hp-surface-container);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--hp-outline-variant);
+  gap: 4px;
+  box-shadow: 0 4px 12px -4px rgb(19 27 46 / 12%);
+  z-index: 2;
+}
+
+.home-hero-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--hp-on-surface-variant);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.home-hero-switch-btn.is-active {
+  background: var(--hp-surface-lowest);
+  color: var(--hp-primary);
+  box-shadow: 0 2px 6px -1px rgb(19 27 46 / 15%);
+}
+
+/* ---- 动态多帧视窗 ---- */
+.home-dynamic-visual {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  margin: 0 auto;
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--hp-surface-lowest);
+  border: 1px solid rgb(196 197 215 / 60%);
+  box-shadow: 0 32px 64px -32px rgb(19 27 46 / 35%), 0 0 0 1px rgb(255 255 255 / 80%) inset;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部进度胶囊 */
+.home-frame-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 12px 14px 8px;
+  background: var(--hp-surface-low);
+  border-bottom: 1px solid rgb(196 197 215 / 40%);
+}
+
+.home-frame-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgb(255 255 255 / 60%);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.home-frame-tab.is-active {
+  background: var(--hp-surface-lowest);
+  border-color: rgb(30 79 217 / 30%);
+  box-shadow: 0 4px 10px -2px rgb(30 79 217 / 12%);
+}
+
+.home-frame-tab-indicator {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(196 197 215 / 45%);
+  overflow: hidden;
+}
+
+.home-frame-tab-progress {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  border-radius: 2px;
+}
+
+.home-frame-tab.is-active .home-frame-tab-progress {
+  width: 100%;
+  animation: progressFill 4.8s linear forwards;
+}
+
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.home-frame-tab-text {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--hp-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-frame-tab.is-active .home-frame-tab-text {
+  color: var(--hp-primary);
+}
+
+/* 画面视窗与滑块 */
+.home-frame-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.home-frame-viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.home-frame-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.03);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.home-frame-slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.home-frame-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-frame-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(15 23 42 / 10%) 0%, rgb(15 23 42 / 30%) 40%, rgb(15 23 42 / 85%) 100%);
+}
+
+/* 悬浮微章 */
+.home-frame-badge-top {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgb(15 23 42 / 75%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  color: #fff;
+  z-index: 3;
+}
+
+.home-frame-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.home-frame-badge-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.home-frame-badge-en {
+  font-size: 0.68rem;
+  opacity: 0.75;
+  font-family: JetBrains Mono, monospace;
+}
+
+/* 底部信息面板 */
+.home-frame-card-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  padding: 14px 16px;
+  background: rgb(255 255 255 / 90%);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px -10px rgb(0 0 0 / 25%);
+  z-index: 3;
+}
+
+.home-frame-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.home-frame-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--hp-primary);
+  font-family: JetBrains Mono, monospace;
+}
+
+.home-frame-metric {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #a7f3d0;
+}
+
+.home-frame-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.home-frame-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+/* 播放控件微按钮 */
+.home-frame-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgb(15 23 42 / 75%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  padding: 3px 6px;
+  z-index: 3;
+}
+
+.home-frame-ctrl-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.home-frame-ctrl-btn:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
 /* ---- 首屏右侧「界面示意」 ---- */
 .home-hero-visual {
   position: relative;

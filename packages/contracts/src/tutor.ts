@@ -59,12 +59,12 @@ export type TutorReplyBlock =
    */
   | { kind: 'tool'; call: TutorToolCall }
   /**
-   * 模型思考过程 (Thinking scratchpad)，遵循 DeepTutor ModelThinkingCard 设计。
+   * 模型思考过程 (Thinking scratchpad)，遵循启途 ModelThinkingCard 设计。
    * 包含思考内容及是否收拢闭合状态。
    */
   | { kind: 'think'; content: string; closed: boolean }
   /**
-   * PBL 阶段指导卡片（基于 OpenMAIC 课堂阶段理念）。
+   * PBL 阶段指导卡片（基于启途课堂阶段理念）。
    */
   | {
       kind: 'pbl_card';
@@ -118,6 +118,17 @@ export type TutorReplyBlock =
       experimentId: string;
       title: string;
       summary?: string;
+    }
+  /**
+   * 学生或导师发送的图片与文件附件。
+   */
+  | {
+      kind: 'attachment';
+      fileName: string;
+      fileType: 'image' | 'document' | 'code' | 'other';
+      url: string;
+      sizeText?: string;
+      thumbnailUrl?: string;
     };
 
 /** 工具调用的生命周期状态。 */
@@ -255,6 +266,13 @@ export interface TutorTurn {
     avatar?: string;
     color?: string;
   };
+  attachments?: {
+    id: string;
+    name: string;
+    type: 'image' | 'file';
+    url: string;
+    sizeText?: string;
+  }[];
 }
 
 export interface GetTutorSessionResponse {

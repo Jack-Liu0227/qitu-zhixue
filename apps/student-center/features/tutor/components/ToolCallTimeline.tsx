@@ -36,7 +36,7 @@ export function ToolCallStep({ call }: { call: TutorToolCall }) {
 }
 
 /**
- * Collapsible Process Fold referencing DeepTutor ProcessFold & ActivityFold.
+ * Collapsible Process Fold referencing Qitu ProcessFold & ActivityFold.
  */
 export function ToolCallTimeline({ calls }: { calls: TutorToolCall[] }) {
   if (calls.length === 0) return null;

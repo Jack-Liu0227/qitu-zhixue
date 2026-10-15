@@ -1,1 +1,11 @@
-{ "extends": "../../tsconfig.base.json", "include": ["src/**/*.ts"], "exclude": ["node_modules"] }
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@qitu/contracts": ["../contracts/src/index"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

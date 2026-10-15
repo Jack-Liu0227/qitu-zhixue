@@ -27,7 +27,7 @@ export default function AdminKnowledgePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // 查看切片抽屉/弹窗状态 (DeepTutor RAG Chunks Inspection)
+  // 查看切片抽屉/弹窗状态 (Qitu RAG Chunks Inspection)
   const [inspectingDoc, setInspectingDoc] = useState<EnhancedDocument | null>(null);
 
   // 上传/新建文档弹窗
@@ -118,7 +118,7 @@ export default function AdminKnowledgePage() {
       id: `doc-${Date.now()}`,
       title: newTitle.trim(),
       summary: newContent.slice(0, 100) + '...',
-      source: 'Admin 本地上传 (DeepTutor 架构索引)',
+      source: 'Admin 本地上传 (启途架构索引)',
       sourceRef: null,
       schoolId: null,
       ownerUserId: null,
@@ -141,7 +141,7 @@ export default function AdminKnowledgePage() {
     setShowUploadModal(false);
     setNewTitle('');
     setNewContent('');
-    alert('知识文档已成功上传并完成 DeepTutor 向量化切片与导师绑定！');
+    alert('知识文档已成功上传并完成启途向量化切片与导师绑定！');
   };
 
   const [editingDoc, setEditingDoc] = useState<(EnhancedDocument & { tagsStr: string }) | null>(null);
@@ -186,9 +186,9 @@ export default function AdminKnowledgePage() {
       {/* 头部标题与上传按钮 */}
       <div className="settings-pagehead">
         <div className="settings-titlebox">
-          <h1>教学知识库 (DeepTutor 架构)</h1>
+          <h1>教学知识库</h1>
           <div className="settings-desc">
-            参考 DeepTutor 知识检索架构，维护结构化教学证据与概念库。支持分块切片（Chunking）、分类管理与团队定向挂载。
+            基于启途知识检索架构，维护结构化教学证据与概念库。支持分块切片（Chunking）、分类管理与团队定向挂载。
           </div>
         </div>
 
@@ -317,7 +317,7 @@ export default function AdminKnowledgePage() {
             </div>
             <div className="admin-modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
               <p style={{ fontSize: '13px', color: '#64748b' }}>
-                DeepTutor 知识检索切片展示：智能体在启发学生时将根据向量相似度精准召回以下切片内容作为事实依据。
+                启途知识检索切片展示：智能体在启发学生时将根据向量相似度精准召回以下切片内容作为事实依据。
               </p>
 
               {Array.from({ length: inspectingDoc.chunksCount }).map((_, i) => (

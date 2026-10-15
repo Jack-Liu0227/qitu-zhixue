@@ -106,12 +106,36 @@ export function createStudentEchoTurn(input: {
   /** Journal baseline from `CreateTutorTurnResponse.seq`. */
   baselineSeq: number;
   text: string;
+  attachments?: {
+    id: string;
+    name: string;
+    type: 'image' | 'file';
+    url: string;
+    sizeText?: string;
+  }[];
   createdAt?: string;
 }): TutorTurn {
+  const blocks: TutorReplyBlock[] = [];
+  if (input.attachments && input.attachments.length > 0) {
+    for (const att of input.attachments) {
+      blocks.push({
+        kind: 'attachment',
+        fileName: att.name,
+        fileType: att.type === 'image' ? 'image' : 'document',
+        url: att.url,
+        sizeText: att.sizeText,
+      });
+    }
+  }
+  if (input.text.length > 0) {
+    blocks.push({ kind: 'text', text: input.text });
+  }
+
   return {
     turnId: input.turnId,
     role: 'student',
-    blocks: input.text.length > 0 ? [{ kind: 'text', text: input.text }] : [],
+    blocks,
+    attachments: input.attachments,
     hintLevel: null,
     stageBefore: null,
     stageAfter: null,

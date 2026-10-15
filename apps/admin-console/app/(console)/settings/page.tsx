@@ -48,7 +48,7 @@ export default function SettingsIndexPage() {
     { href: '/settings/skills', icon: 'ϟ', title: '技能中心', badge: `${skillsCount} 个能力包`, description: '配置遵循 Prompt 与工程约定的能力包，并绑定至指定助手。', accent: 'amber' },
     { href: '/settings/tools', icon: '🧰', title: '工具与 MCP', badge: `${toolsCount} 个工具与原生沙箱`, description: '管理 Model Context Protocol 服务器（Chrome DevTools、Grok）与代码沙箱。', accent: 'emerald' },
     { href: '/settings/plugins', icon: '🧩', title: '生态插件 (Plugins)', badge: '4 类标准扩展', description: '通过 4 类标准扩展钩子注册评估门禁、沙箱工具与工作台画板。', accent: 'indigo' },
-    { href: '/settings/knowledge', icon: '▤', title: '教学知识库', badge: 'DeepTutor 切片', description: '基于 DeepTutor 架构管理概念库、事实切片分块与导师检索挂载。', accent: 'slate' },
+    { href: '/settings/knowledge', icon: '▤', title: '教学知识库', badge: '启途知识切片', description: '基于启途核心架构管理概念库、事实切片分块与导师检索挂载。', accent: 'slate' },
     { href: '/settings/templates', icon: '▦', title: '项目模板库', badge: `${templatesCount} 个 PBL 模板`, description: '维护 PBL 四阶段教学流程设计、TheoryMastered 门禁与阶段提示词。', accent: 'rose' },
     { href: '/settings/profile-growth', icon: '📊', title: '学情画像与成长轨迹', badge: '隐私双向隔离', description: '配置学生个人能力画像多维权重、PBL 事件流自动捕获及隐私隔离策略。', accent: 'emerald' },
     { href: '/settings/dialogs', icon: '💬', title: '已安装的对话', badge: '剧本沙盒', description: '管理标准化引导剧本，接通底座 Agent SDK 并支持实测演练。', accent: 'cyan' },

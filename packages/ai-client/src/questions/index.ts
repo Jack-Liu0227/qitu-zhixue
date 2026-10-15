@@ -7,8 +7,7 @@ import type { KnowledgeType, QuestionKind } from '@qitu/contracts';
  * `explanation`；任何下发客户端的响应只能经过 `toPublicQuestion` 的结构化投影，
  * 该投影**逐字段构造**，因此不可能夹带答案 / 解析 / 关键词。
  *
- * 对应 DeepTutor 的 `learning/question_card.py:build_question_card` 与
- * `learning/pending.py:public_pending_question`：题面接口绝不下发答案，
+ * 遵循启途安全规范：题面接口绝不下发答案，
  * 判分结束后才由 `grading` 释放解析。
  */
 

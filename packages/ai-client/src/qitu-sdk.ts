@@ -156,9 +156,9 @@ const BUILTIN_SKILLS: Record<string, QituSkillDefinition> = {
     description: '检测到学生多次困惑或挫败时，自动升格并提醒班主任老师',
     tools: [],
   },
-  'openmaic-interactive-concept': {
-    id: 'openmaic-interactive-concept',
-    name: 'OpenMAIC 概念互动演示',
+  'qitu-interactive-concept': {
+    id: 'qitu-interactive-concept',
+    name: '启途概念互动演示',
     description: '通过生动比喻、帧循环演示和即时选择题检验学生对核心机制的掌握',
     tools: ['mastery_query'],
   },

@@ -11,7 +11,7 @@ interface ModelThinkingCardProps {
 }
 
 /**
- * Collapsible card for model reasoning (<think> scratchpad), referencing DeepTutor ModelThinkingCard.
+ * Collapsible card for model reasoning (<think> scratchpad), referencing Qitu ModelThinkingCard.
  * Default-open while streaming, auto-collapses once finished.
  */
 export function ModelThinkingCard({ content, closed }: ModelThinkingCardProps) {

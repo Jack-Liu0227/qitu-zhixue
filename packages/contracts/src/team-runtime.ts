@@ -647,7 +647,7 @@ export interface AgentModelCapabilitySummary {
 /* ========================================================================== */
 /*  AionUi Migration: Assistant & Team Domain Contracts                       */
 /*  Multica Reference: Workspace Team & Agent Settings                        */
-/*  OpenMAIC Reference: Multi-Agent PBL Learning Contracts                    */
+/*  Qitu Reference: Multi-Agent PBL Learning Contracts                        */
 /* ========================================================================== */
 
 export type AssistantSource = 'builtin' | 'generated' | 'user';
@@ -732,11 +732,11 @@ export interface AdminTeamMember {
 }
 
 /**
- * PBL (Project-Based Learning) Phases inspired by OpenMAIC & Qitu pedagogical rules.
+ * PBL (Project-Based Learning) Phases inspired by Qitu pedagogical rules.
  */
 export type PblPhase =
   | 'exploration'          // 兴趣启发与意图确认 (Intent confirmation)
-  | 'concept_mastery'     // 核心概念与规律探索 (Theory & Knowledge, OpenMAIC classroom)
+  | 'concept_mastery'     // 核心概念与规律探索 (Theory & Knowledge, Qitu classroom)
   | 'guided_practice'     // 任务拆解与分步构建 (Implementation, TheoryMastered gated)
   | 'deliverable_review';  // 成果评审与成长归档 (Review, Self-assessment, Archival)
 

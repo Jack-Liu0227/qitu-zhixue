@@ -7,6 +7,7 @@ import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
+import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
@@ -91,10 +92,20 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       </div>
     </header>
     <div className="qitu-tutor-workspace-layout">
-      <aside className="qitu-live-session-sidebar" style={{ width: leftOpen ? 'min(220px, 28vw)' : 44, flexShrink: 0, padding: 12, border: '1px solid #e4ecf7', borderRadius: 12, background: '#fff', overflowWrap: 'anywhere' }}>
-        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" onClick={() => setLeftOpen(!leftOpen)} aria-expanded={leftOpen} aria-label="切换会话侧栏">{leftOpen ? '收起' : '展开'}</button>
-        {leftOpen ? <><h2 style={{ fontSize: 15 }}>会话历史</h2><p>{session.project?.project.title ?? '自由探索'}</p><p className="qitu-tutor-muted">当前会话 {session.turns.length} 条记录，历史由服务端保存。</p><button type="button" className="qitu-button qitu-button-secondary qitu-button-sm" disabled={busy} onClick={newExploration}>新建探索</button><p className="qitu-tutor-muted">模型由管理员按教学用途配置，学生无需填写密钥。</p></> : null}
-      </aside>
+      <TutorSessionHistory
+        isOpen={leftOpen}
+        onToggle={() => setLeftOpen(!leftOpen)}
+        currentProjectId={projectId}
+        currentExplorationId={session.explorationId}
+        currentTitle={session.project?.project.title}
+        currentTurnCount={session.turns.length}
+        busy={busy}
+        onNewExploration={newExploration}
+        onSelectProject={(targetProjectId) => {
+          if (busy) return;
+          router.push(`/tutor/${encodeURIComponent(targetProjectId)}`);
+        }}
+      />
       <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {error ? <div role="alert" style={{ padding: 12, color: '#9f1239', background: '#fff1f2' }}>{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
         <ChatThread turns={session.turns}
@@ -106,7 +117,21 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             if (text) void composer.submit(text, session.submitText);
             else void session.selectOption(label).catch(() => undefined);
           }}
-          composer={<Composer draft={composer.draft} onDraftChange={composer.setDraft} offline={session.offline} submitting={busy} disabled={!ready} onSubmit={() => { void composer.submit(composer.draft, session.submitText); }} />}
+          composer={
+            <Composer
+              draft={composer.draft}
+              onDraftChange={composer.setDraft}
+              attachments={composer.attachments}
+              onAddAttachments={composer.addAttachments}
+              onRemoveAttachment={composer.removeAttachment}
+              offline={session.offline}
+              submitting={busy}
+              disabled={!ready}
+              onSubmit={(atts) => {
+                void composer.submit(composer.draft, session.submitText, atts);
+              }}
+            />
+          }
         />
         {session.explorationId && studentTurns.length > 0 ? (
           <aside className="qitu-tutor-intent-banner" aria-label="立项准备">

@@ -15,7 +15,7 @@ description: >
 
 **开场声明：** "我先确认这一期做哪个切片，然后侦察现状、出教学策略规格请你确认，再补合同、并行实现、验证和对抗评审。"
 
-参考实现：`HKUDS/DeepTutor`（只借鉴教学机制，不照搬其 Python / RAG / 向量库结构）。
+核心规范：启途智学教学机制实现（聚焦启发式教学机制，基于 TypeScript/NestJS 现有工程架构）。
 学习计划设计基线：[`docs/student/learning-plan.md`](../../../docs/student/learning-plan.md)。
 
 ## 流程
@@ -69,19 +69,15 @@ Phase 8  交付     父会话
 
 ---
 
-## 参考 DeepTutor 的可移植机制（已侦察证实）
+## 启途导学核心机制规格
 
-只移植**教学机制**，不移植其 Python 服务、向量库或前端。以下每条都带**已核实路径**；
-没有证据的机制不写进规格。完整设计见
+遵循启途**教学机制**，结合 TypeScript/NestJS 原生工程链路。以下每条都带完整设计规范；完整设计见
 [`docs/student/learning-plan.md`](../../../docs/student/learning-plan.md)。
 
-**关键结论：DeepTutor 没有分级提示阶梯。** 全仓库不存在 graduated hint/scaffold ladder；
-`hints_used:int`（`deeptutor/learning/models.py:178`、`learning/assessment.py:104`）
-**只是判分质量惩罚的输入**。所以 1–5 档阶梯是**本产品自有资产**，只吸收它的两条约束：
-「只给一个学习者会问的问题、必须问号结尾」（`services/mastery_hints.py`）与
-「解题脊柱 `solve_plan` 2–6 步」（`capabilities/solve/tools.py`）。
+**关键结论：分级提示阶梯** 1–5 档阶梯是**本产品自有资产**，融合严格的教学约束：
+「只给一个学习者会问的问题、必须问号结尾」与「解题脊柱 `solve_plan` 2–6 步」。
 
-**要移植的（带证据）：**
+**核心落地机制：**
 
 1. **类型化掌握门槛** —— `learning/policy.py`。量化 `memory|procedure = 0.9`；
    质化 `concept|design` 用**存储布尔**而非分数。`next_objective()` 优先级：
@@ -158,7 +154,7 @@ embedding/indexing-version 选择器、KB manifest）、`services/memory/**` L1�
 ```
 .pi/runs/<run>/
 ├── brief.json
-├── recon-api.md  recon-deeptutor.md
+├── recon-api.md  recon-pedagogy.md
 ├── pedagogy-spec.md  api-spec.md  curriculum-spec.md
 ├── qa-report.md
 └── review.md
@@ -193,17 +189,16 @@ Report what exists, what is missing, and the exact extension points. No file wri
 });
 
 subagent({
-  name: "Recon DeepTutor",
+  name: "Recon Pedagogy",
   agent: "scout",
   model: "deepseek/deepseek-flash",
   thinking: "off",
-  task: `Read-only. Inspect github.com/HKUDS/DeepTutor to identify the portable
+  task: `Read-only. Inspect pedagogy specifications to identify the portable
 teaching mechanisms listed in .pi/skills/tutor-engine/SKILL.md (hint ladder,
 question generation/difficulty, mastery model, review scheduling, solve-vs-hint,
-tutor prompt structure, learner memory). git clone may be blocked; use
-curl against raw.githubusercontent.com and api.github.com.
-For each mechanism give: name, what it actually does, the file path proving it,
-and the minimal field set. Flag anything Python/RAG/vector-specific that must NOT
+tutor prompt structure, learner memory).
+For each mechanism give: name, what it actually does, and the minimal field set.
+Flag anything third-party Python/RAG/vector-specific that must NOT
 be copied. Do not speculate; if a file is unavailable, say so. No repo writes.`,
 });
 ```
@@ -220,7 +215,7 @@ subagent({
   thinking: "off",
   task: `Mode: spec (no code).
 Run directory: <ABSOLUTE run dir>
-Read brief.json, recon-api.md, recon-deeptutor.md, product doc 4.4/9.3/9.4/9.5,
+Read brief.json, recon-api.md, recon-pedagogy.md, product doc 4.4/9.3/9.4/9.5,
 and .pi/skills/tutor-engine/references/contracts.md.
 Write pedagogy-spec.md. It must define:
 - the pedagogic_move vocabulary and the transition rules
@@ -230,7 +225,7 @@ Write pedagogy-spec.md. It must define:
 - the exact turn-record fields
 - prompt structure (role, prohibitions, language, output shape) and prompt_version
 - the context_packet contract boundary with tutor-context
-- everything Python/RAG-specific in DeepTutor that we are NOT copying
+- everything third-party Python/RAG-specific that we are NOT copying
 Return: artifact path, move list, ladder table, budget, open questions.`,
 });
 
@@ -257,7 +252,7 @@ subagent({
   thinking: "off",
   task: `Mode: spec (no code).
 Run directory: <ABSOLUTE run dir>
-Read brief.json, recon-deeptutor.md, docs/student/learning-plan.md, and
+Read brief.json, recon-pedagogy.md, docs/student/learning-plan.md, and
 .pi/skills/tutor-engine/references/contracts.md.
 Write curriculum-spec.md. It must define:
 - the LearningPlan / Module / Session / Objective shapes and templateVersion freezing
@@ -268,7 +263,7 @@ Write curriculum-spec.md. It must define:
 - the theory -> practice ordering invariant and how it maps to the TheoryMastered event
 - the intake profile (prior knowledge, target level, time budget, preferences) and
   when intake is required
-- exactly which DeepTutor mechanisms are ported, each with its source path
+- exactly which pedagogical mechanisms are implemented, each with its source path
 Return: artifact path, plan shape, validation rules, open questions.`,
 });
 ```

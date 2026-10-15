@@ -148,8 +148,8 @@ const CORE_SKILLS_CATALOG: SkillItem[] = [
     ],
   },
   {
-    id: 'openmaic-interactive-concept',
-    name: 'openmaic-interactive-concept',
+    id: 'qitu-interactive-concept',
+    name: 'qitu-interactive-concept',
     description: '互动式概念探究与具身多模态概念对话规范，将抽象概念具象化。',
     tags: ['概念探究', '具象化', '多模态'],
     filesCount: 2,
@@ -160,7 +160,7 @@ const CORE_SKILLS_CATALOG: SkillItem[] = [
       {
         name: 'SKILL.md',
         sizeBytes: 2500,
-        content: '# OpenMAIC Interactive Concept Exploration\n\n通过交互对话将核心抽象概念具象化。',
+        content: '# Qitu Interactive Concept Exploration\n\n通过交互对话将核心抽象概念具象化。',
       },
     ],
   },
@@ -920,7 +920,7 @@ export default function SkillsSettingsPage() {
   const matrixSkills = useMemo(() => {
     if (selectedCategory === 'all') return skills;
     const categoryMap: Record<string, string[]> = {
-      guidance: ['guided', 'hint', 'openmaic-interactive-concept', 'tutor-guided-learning', 'socratic-intake', 'intent-clarification'],
+      guidance: ['guided', 'hint', 'qitu-interactive-concept', 'tutor-guided-learning', 'socratic-intake', 'intent-clarification'],
       collaboration: ['planning', 'pbl-orchestration', 'escalation', 'project-recommendation', 'team-handoff'],
       physics: ['physics-inquiry', 'physics-derivation', 'simulation-experiment', 'data-fitting', 'kinetic-energy-physics', 'error-analysis'],
       engineering: ['project-implementation', 'debugging-guide', 'thunder-fighter-engine', 'aabb-collision-solver'],

@@ -24,5 +24,5 @@
 
 - 依赖：`p0-domain-contracts`。
 - 交付物：模板合同、管理端 CRUD、生成器/校验器、两个示例模板、模板治理文档。
-- 参考迁移：借鉴 DeepTutor 的 mastery path 和 practice，借鉴 OpenMAIC 的 PBL phase 与课堂活动。
+- 核心规范：落实启途智学 mastery path 和 practice，以及启途 PBL phase 与课堂活动。
 

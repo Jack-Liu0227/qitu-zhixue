@@ -10,6 +10,7 @@ import { ArtifactFileCard } from './ArtifactFileCard';
 import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 import { CircuitSimulationCard } from './CircuitSimulationCard';
+import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
 
@@ -121,6 +122,8 @@ export function TutorReplyBlockView({
           onExperimentComplete={(summary) => onSelectOption?.('电路探究结论', summary)}
         />
       );
+    case 'attachment':
+      return <AttachmentView attachment={block} />;
     default: {
       // Compile-time exhaustiveness: a new variant must be handled here.
       const neverBlock: never = block;

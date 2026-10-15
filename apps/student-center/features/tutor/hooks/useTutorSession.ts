@@ -289,6 +289,13 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         content?: string;
         optionLabel?: string;
         idempotencyKey: string;
+        attachments?: {
+          id: string;
+          name: string;
+          type: 'image' | 'file';
+          url: string;
+          sizeText?: string;
+        }[];
       },
       onSuccess?: () => void,
     ) => {
@@ -308,11 +315,12 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         // the assistant's half of the turn, so without this the student stares
         // at an empty thread while the server reads the project context.
         const echoText = payload.content ?? payload.optionLabel ?? '';
-        if (echoText.length > 0) {
+        if (echoText.length > 0 || (payload.attachments && payload.attachments.length > 0)) {
           const echo = createStudentEchoTurn({
             turnId: `local-echo-${payload.idempotencyKey}`,
             baselineSeq: accepted.seq,
             text: echoText,
+            attachments: payload.attachments,
           });
           echoIdsRef.current = [...echoIdsRef.current, echo.turnId];
           setTurns((previous) => [...previous, echo]);
@@ -338,9 +346,19 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
   );
 
   const submitText = useCallback(
-    async (content: string, idempotencyKey: string) => {
+    async (
+      content: string,
+      idempotencyKey: string,
+      attachments?: {
+        id: string;
+        name: string;
+        type: 'image' | 'file';
+        url: string;
+        sizeText?: string;
+      }[],
+    ) => {
       if (sessionId === null) return;
-      await runSubmission(sessionId, { content, idempotencyKey });
+      await runSubmission(sessionId, { content, idempotencyKey, attachments });
     },
     [runSubmission, sessionId],
   );

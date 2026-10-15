@@ -61,7 +61,7 @@ export const MOCK_TURNS: TutorTurn[] = [
       {
         kind: 'pbl_card',
         phase: 'concept_mastery',
-        title: '项目阶段二：核心原理探索（OpenMAIC 互动课堂）',
+        title: '项目阶段二：核心原理探索（启途互动课堂）',
         teammateLabel: '🕹️ 战机原理与概念教练',
         summary: '我们要一起制作《雷霆战机》小游戏。在动手写 Pygame 代码之前，我们先搞懂游戏的核心脉搏：游戏主循环（Game Loop）和坐标系移动。',
         tags: ['游戏主循环', '坐标系与向量', '碰撞检测几何原理'],

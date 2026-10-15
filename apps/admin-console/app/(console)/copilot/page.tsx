@@ -472,7 +472,7 @@ export default function CopilotPage() {
 
         toolSteps = [
           { name: 'rag_vector_embed', status: 'done', label: '执行文本分块与向量化嵌入处理' },
-          { name: 'persist_knowledge_base', status: 'done', label: '录入平台 DeepTutor 知识库并建档' },
+          { name: 'persist_knowledge_base', status: 'done', label: '录入平台启途知识库并建档' },
         ];
         replyContent = `已成功将文献【**${customDoc.title}**】录入平台知识库！\n\n您现在前往 **[设置 > 知识库](/settings/knowledge)** 即可在知识列表与切片抽屉中实时检索该文档。`;
         artifact = {

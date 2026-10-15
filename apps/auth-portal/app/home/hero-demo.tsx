@@ -1,9 +1,40 @@
-import { Icon } from './icons';
+'use client';
 
-/** 首屏右侧的产品界面预览，不展示虚构的学生对话、统计或版本数据。 */
+import { useState } from 'react';
+import { Icon } from './icons';
+import { HeroDynamicFrames } from './hero-dynamic-frames';
+
+/** 首屏右侧的产品界面与多帧探究动画演示。 */
 export function HeroTutorDemo() {
+  const [viewMode, setViewMode] = useState<'dynamic' | 'preview'>('dynamic');
+
   return (
-    <div className="home-hero-visual">
+    <div className="home-hero-visual-wrapper">
+      <div className="home-hero-mode-switch" role="tablist" aria-label="演示模式切换">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'dynamic'}
+          className={`home-hero-switch-btn ${viewMode === 'dynamic' ? 'is-active' : ''}`}
+          onClick={() => setViewMode('dynamic')}
+        >
+          <Icon name="sparkle" size={14} /> 动态项目式探究 · 多帧呈现
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'preview'}
+          className={`home-hero-switch-btn ${viewMode === 'preview' ? 'is-active' : ''}`}
+          onClick={() => setViewMode('preview')}
+        >
+          <Icon name="target" size={14} /> 工作区架构预览
+        </button>
+      </div>
+
+      {viewMode === 'dynamic' ? (
+        <HeroDynamicFrames />
+      ) : (
+        <div className="home-hero-visual">
       <div className="home-tutor-card">
         <div className="home-tutor-bar">
           <span className="home-dots" aria-hidden="true">
@@ -78,6 +109,8 @@ export function HeroTutorDemo() {
           <span>理论达标后解锁实践阶段</span>
         </span>
       </div>
+        </div>
+      )}
     </div>
   );
 }

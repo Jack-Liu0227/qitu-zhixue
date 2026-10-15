@@ -54,7 +54,6 @@ tooling/rebuild-teacher-3105.sh
 tooling/rebuild-teacher-3105-preview.sh
 
 # Reference repository kept outside the product repository
-DeepTutor/
 AionUi/
 
 # Local demo docs (keep out of main)

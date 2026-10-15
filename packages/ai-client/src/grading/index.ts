@@ -4,7 +4,7 @@ import type { QuestionCard } from '../questions/index.js';
 /**
  * 确定性判分（纯函数，零 I/O）。
  *
- * 对齐 DeepTutor `learning/grading.py`：
+ * 启途确定性判分规范：
  * - 选择：精确匹配（去空格）；
  * - 短答：精确，或当期望答案 ≤30 字符时相似度 `2*M/T >= 0.85`；
  * - 开放：关键词重合 `>= 0.6`。

@@ -16,7 +16,7 @@ QA 与评审产物的形状与 `../student-module/references/contracts.md` 相�
   "product_doc_sections": ["4.4", "9.3", "9.4", "9.5"],
   "in_scope": ["context_packet", "苏格拉底提示阶梯", "卡顿升级"],
   "out_of_scope": ["语音 ASR/TTS 实现", "向量检索"],
-  "reference": "HKUDS/DeepTutor",
+  "reference": "qitu/pedagogy-runtime",
   "acceptance_focus": [
     "默认不输出完整答案",
     "每轮带阶段与提示等级",
@@ -30,7 +30,7 @@ QA 与评审产物的形状与 `../student-module/references/contracts.md` 相�
 
 ---
 
-## `recon-deeptutor.md` — Phase 1，`scout` 写
+## `recon-pedagogy.md` — Phase 1，`scout` 写
 
 每个机制一段，**必须带文件路径证据**：
 
@@ -82,7 +82,7 @@ QA 与评审产物的形状与 `../student-module/references/contracts.md` 相�
 本模块产出什么、向 `tutor-context` 要什么，二者不重叠。
 
 ### 8. 不移植清单
-DeepTutor 中 Python / RAG / 向量库 / 插件 / 多用户 相关部分，明确不照搬。
+第三方 Python / RAG / 向量库 / 插件 / 多用户 相关部分，明确不照搬。
 
 ### 9. Open Questions
 需要产品取舍的条目，不得静默决定。
@@ -199,8 +199,8 @@ interface TutorEscalationEvent {
 ### 7. intake 画像
 字段、何时要求 intake、未填时的降级行为。
 
-### 8. 移植映射
-逐条列出移植的 DeepTutor 机制及**源文件路径**；逐条列出不移植项及理由。
+### 8. 机制映射
+逐条列出启途核心导学机制；逐条列出边界及理由。
 
 ### 9. Open Questions
 课时密度、先理论后实践的含义、计划宿主页面、模板范围等必须用户拍板的条目。

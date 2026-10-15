@@ -55,13 +55,13 @@ export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
     modelId: 'qwen3.8-flash',
     temperature: 0.6,
     instructions:
-      '参考 OpenMAIC 多智能体互动课堂模式，用生活化比喻和启发式问题解释游戏运作原理（帧率刷新、坐标轴移动、矩形相交的数学逻辑）。检测学生是否真正掌握核心概念。',
-    enabledSkills: ['guided', 'hint', 'openmaic-interactive-concept'],
+      '参考启途多智能体互动课堂模式，用生活化比喻和启发式问题解释游戏运作原理（帧率刷新、坐标轴移动、矩形相交的数学逻辑）。检测学生是否真正掌握核心概念。',
+    enabledSkills: ['guided', 'hint', 'qitu-interactive-concept'],
     toolIds: ['knowledge_search', 'mastery_assess'],
     mcpServerIds: [],
     defaults: {
       ...DEFAULT_ASSISTANT_DEFAULTS,
-      skills: { mode: 'custom', value: ['guided', 'hint', 'openmaic-interactive-concept'] },
+      skills: { mode: 'custom', value: ['guided', 'hint', 'qitu-interactive-concept'] },
     },
     agentStatus: 'online',
     teamSelectable: true,

@@ -7,6 +7,7 @@ import type { TutorReplyBlock, TutorToolCall, TutorTurn } from '@qitu/contracts'
 import { isTutorReplyBlock, isTutorToolCall } from '../state';
 import { SafeReplyFallback, TutorReplyBlockView } from './TutorReplyBlockView';
 import { StreamCaret, ToolCallTimeline } from './ToolCallTimeline';
+import { AttachmentView } from './AttachmentView';
 
 /**
  * A render segment: either a RUN of consecutive tool calls (collapsed into one
@@ -231,7 +232,7 @@ export function ChatBubble({
                 }}
               >
                 <div style={{ fontWeight: 700, marginBottom: '4px', color: '#6b21a8' }}>
-                  🎯 苏格拉底教学策略链路（DeepTutor 启发式推理引擎）：
+                  🎯 苏格拉底教学策略链路（启途启发式推理引擎）：
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '16px' }}>
                   <li><strong>认知诊断：</strong>识别学生概念盲区，阻止直接透传代码，严守项目阶段门禁。</li>
@@ -240,6 +241,22 @@ export function ChatBubble({
                 </ul>
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {turn.attachments && turn.attachments.length > 0 ? (
+          <div className="qitu-chat-attachments" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+            {turn.attachments.map((att, attIdx) => (
+              <AttachmentView
+                key={att.id || `att-${attIdx}`}
+                attachment={{
+                  id: att.id,
+                  fileName: att.name,
+                  fileType: att.type === 'image' ? 'image' : 'document',
+                  url: att.url,
+                  sizeText: att.sizeText,
+                }}
+              />
+            ))}
           </div>
         ) : null}
         {segments.map((segment, index) =>

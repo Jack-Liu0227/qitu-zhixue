@@ -14,7 +14,7 @@ interface PblStageCardProps {
 
 const PHASE_NAMES = {
   exploration: '阶段一 · 项目意图',
-  concept_mastery: '阶段二 · 核心原理（OpenMAIC）',
+  concept_mastery: '阶段二 · 核心原理探究',
   guided_practice: '阶段三 · 代码实践（Pygame）',
   deliverable_review: '阶段四 · 成果答辩',
 };

@@ -51,11 +51,11 @@ VALUES
     '负责游戏主循环、坐标系统、事件监听与几何碰撞检测等核心计算机及物理概念讲解。',
     'Concept Coach / 概念教练', true, 2,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.6,
-    '参考 OpenMAIC 多智能体互动课堂模式，用生活化比喻和启发式问题解释游戏运作原理（帧率刷新、坐标轴移动、矩形相交的数学逻辑）。检测学生是否真正掌握核心概念。',
-    '["guided","hint","openmaic-interactive-concept"]'::jsonb,
+    '参考启途多智能体互动课堂模式，用生活化比喻和启发式问题解释游戏运作原理（帧率刷新、坐标轴移动、矩形相交的数学逻辑）。检测学生是否真正掌握核心概念。',
+    '["guided","hint","qitu-interactive-concept"]'::jsonb,
     '["knowledge_search","mastery_assess"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","hint","openmaic-interactive-concept"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","hint","qitu-interactive-concept"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -206,7 +206,7 @@ VALUES
   (
     'team-thunder-fighter-pbl',
     '雷霆战机小游戏 PBL 导师团队',
-    '面向雷霆战机小游戏设计的专属多智能体协同导师团队。融合 OpenMAIC 互动课堂理念，引导学生完成从兴趣启发、概念探索、代码构建到作品答辩的全流程。',
+    '面向雷霆战机小游戏设计的专属多智能体协同导师团队。融合启途互动课堂理念，引导学生完成从兴趣启发、概念探索、代码构建到作品答辩的全流程。',
     'shared', 'supervised', 'tutor-leader',
     2,
     $pbl${
@@ -229,7 +229,7 @@ VALUES
         },
         {
           "phase": "concept_mastery",
-          "title": "阶段二：核心原理探索与概念掌握（OpenMAIC 互动课堂）",
+          "title": "阶段二：核心原理探索与概念掌握（启途互动课堂）",
           "assignedAssistantId": "fighter-concept-coach",
           "assignedRoleLabel": "原理教练",
           "learningObjectives": [
@@ -366,7 +366,7 @@ INSERT INTO admin_team_members
   (slot_id, team_id, assistant_id, role, role_label, model, color, pbl_phase, status, sort_order, created_at, updated_at)
 VALUES
   ('slot-leader',          'team-thunder-fighter-pbl', 'tutor-leader',            'leader',   '总导师 (流程推进与意图把控)',          'qwen3.8-flash', 'var(--brand)', 'exploration',        'active', 1, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),
-  ('slot-concept',         'team-thunder-fighter-pbl', 'fighter-concept-coach',   'coach',    '概念教练 (OpenMAIC 核心原理解析)',      'qwen3.8-flash', '#5c9ea4',      'concept_mastery',    'idle',   2, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),
+  ('slot-concept',         'team-thunder-fighter-pbl', 'fighter-concept-coach',   'coach',    '概念教练 (核心原理解析)',      'qwen3.8-flash', '#5c9ea4',      'concept_mastery',    'idle',   2, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),
   ('slot-code',            'team-thunder-fighter-pbl', 'fighter-code-guide',      'teammate', '代码向导 (Pygame 分步阶梯实践)',        'qwen3.8-flash', '#b58a5e',      'guided_practice',    'idle',   3, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),
   ('slot-review',          'team-thunder-fighter-pbl', 'fighter-review-assessor', 'reviewer', '评审导师 (代码自评与成长归档)',          'qwen3.8-flash', '#9481bf',      'deliverable_review', 'idle',   4, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),
   ('slot-kinetic-leader',  'team-kinetic-energy-pbl',  'kinetic-leader',          'leader',   '物理总导师 (探究引导与门禁把控)',      'qwen3.8-flash', 'var(--brand)', 'exploration',        'active', 1, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'),

@@ -25,5 +25,5 @@
 
 - 依赖：`p0-domain-contracts`、`p1-template-curriculum` 的模板字段；可先并行设计接口。
 - 交付物：Team 绑定合同、route/capability 配置、任务处理器、失败恢复测试、管理员配置说明。
-- 参考迁移：借鉴 OpenMAIC 的多角色互动，但采用 Qitu 现有的 server-owned scope、候选投影和审计边界。
+- 核心规范：落实启途多角色互动，采用 Qitu 现有的 server-owned scope、候选投影和审计边界。
 
