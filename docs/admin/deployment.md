@@ -129,6 +129,45 @@ local Clash profile rules/script layer and use rule mode. Do not put a top-level
 the core and verify the active rules and a real DIRECT connection. Personal proxy
 configuration and backups stay outside this repository.
 
+### 3.0.1 API recovery verification (2026-10-15, #52)
+
+Recovery code: `590e97d`. The API was compiling successfully under `postgres` but
+Nest could not resolve `ProjectAssessmentService` constructor argument 2.
+`ArtifactBytesReader` had been imported with `import type`, erasing the runtime
+injection token. A value import fixes the real provider graph; no gate, permission
+or data-mode checks were bypassed.
+
+Verified against the deployed server at `http://122.51.130.204/`:
+
+- API tests: **702 passed, 0 failed** on both Windows and the Linux server,
+  including a real Nest application bootstrap. API typecheck/build, ai-client
+  assertions, API lint, basePath checks and nine deployment-script cases pass.
+- Production runtime graph builds serially as `postgres`; API listens on `4100`.
+  All five frontend probes return `200`, and `nginx -t` succeeds.
+- Playwright visible-browser checks use the site's own test-account buttons and
+  real authentication APIs: student, parent, teacher and admin logins succeed;
+  `/student/today`, `/student/tutor`, `/parent`, `/teacher/dashboard`, `/admin`
+  and `/admin/settings/teams` load without browser exceptions or HTTP 5xx.
+- Anonymous API access returns `401`; a student reading admin overview receives
+  `403`. The existing shared AuthGuard redirects an unauthenticated tutor visit to
+  the public homepage `/` (not `/login`) without showing the protected composer.
+- Student tutor is checked at 390px width without horizontal overflow, and offline
+  mode disables submission while retaining the draft.
+- The database contains 24 applied migration records and all three PBL tables:
+  `pbl_gate_evidence`, `work_assessment_candidates`, `work_validation_checks`.
+  No schema/data migration is performed by this recovery patch.
+- Local Clash core runs in rule mode with 9,142 de-duplicated rules restored from
+  the 9,263-entry subscription; a live connection to the server matches the
+  `122.51.130.204/32` IPCIDR rule with chain `DIRECT`. Its persistent script and
+  configuration backups are outside Git.
+
+Limits: readiness remains **degraded** because `REDIS_URL` is absent and no local
+Redis listener is present. The live database probe passes; this does not establish
+Redis-backed queue/lock/cache availability. These checks do not certify a full AI
+conversation, automatic PBL acceptance, object-storage reads, isolated student-code
+execution or video-content analysis. Do not label this as complete four-phase PBL
+automation or a fully healthy infrastructure rollout.
+
 ## 3.1 线上 502 排查顺序
 
 公网只有 Nginx `:3000`，502 一律是**上游没监听**，按这个顺序判：
