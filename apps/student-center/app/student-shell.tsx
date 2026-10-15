@@ -211,7 +211,7 @@ function toInternalPath(pathname: string): string {
  * shell's own header, next to the student's name, so the current student is
  * always identifiable and the control never overlaps the banner.
  */
-function StudentIdentityHeader({ onToggleNav }: { onToggleNav?: () => void }) {
+function StudentIdentityHeader({ onToggleNav, navExpanded }: { onToggleNav?: () => void; navExpanded: boolean }) {
   const user = useCurrentUser();
   const name = user?.displayName?.trim() ?? '';
   const displayName = name.length > 0 ? name : '同学';
@@ -224,6 +224,8 @@ function StudentIdentityHeader({ onToggleNav }: { onToggleNav?: () => void }) {
             className="qitu-mobile-menu-btn"
             onClick={onToggleNav}
             aria-label="打开导航菜单"
+            aria-expanded={navExpanded}
+            aria-controls="qitu-sidebar-nav"
             title="导航菜单"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -267,6 +269,21 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
   // 收起状态只存在浏览器里。首屏渲染始终是「展开」，挂载后再同步用户的选择，
   // 这样服务端渲染与客户端首次渲染完全一致（避免 hydration 不匹配）。
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 768px)');
+    const syncViewport = () => {
+      setMobile(query.matches);
+      setMobileNavOpen(false);
+    };
+    syncViewport();
+    query.addEventListener('change', syncViewport);
+    return () => query.removeEventListener('change', syncViewport);
+  }, []);
+
+  useEffect(() => { setMobileNavOpen(false); }, [internalPath]);
 
   useEffect(() => {
     try {
@@ -277,6 +294,8 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleNav = useCallback(() => {
+    // Mobile drawers never inherit or overwrite the desktop sidebar preference.
+    if (mobile) { setMobileNavOpen((open) => !open); return; }
     setNavCollapsed((current) => {
       const next = !current;
       try {
@@ -286,15 +305,17 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
       }
       return next;
     });
-  }, []);
+  }, [mobile]);
+
+  const collapsed = mobile ? !mobileNavOpen : navCollapsed;
 
   return (
     <StudentShell
       navItems={NAV_ITEMS}
       activeHref={active ? `${BASE_PATH}${active.path}` : ''}
-      header={<StudentIdentityHeader onToggleNav={toggleNav} />}
+      header={<StudentIdentityHeader onToggleNav={toggleNav} navExpanded={!collapsed} />}
       renderLink={renderNavLink}
-      navCollapsed={navCollapsed}
+      navCollapsed={collapsed}
       onToggleNav={toggleNav}
       contentKey={internalPath}
     >

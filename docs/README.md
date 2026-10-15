@@ -72,7 +72,7 @@ tooling/    启动、同步、端口、基线校验和生产辅助脚本
 
 ## AI 与模型事实源
 
-模型供应商页面 `/admin/settings/model-providers` 负责供应商、协议、凭证状态、模型目录刷新和连接测试；模型页面 `/admin/settings/models` 从同一 provider registry 生成模型视图，不能维护第二份模型清单。Agent 在 `/admin/settings/ai-runtime` 直接选择 `providerId + modelId`，服务端在每次调用前重新校验供应商、模型、凭证和权限。
+模型供应商页面 `/admin/settings/model-providers` 负责供应商、协议、凭证状态、模型目录刷新和连接测试；模型页面 `/admin/settings/models` 从同一 provider registry 生成模型视图，并配置用途场景和 Agent 链路绑定，不能维护第二份模型清单。Agent 可保留 `/admin/settings/ai-runtime` 中的 `providerId + modelId` 专属覆盖；管理员明确选择用途后才清除覆盖。主导师和 mailbox worker 每次调用重新解析用途，并校验供应商、模型、凭证和权限。学生不能自由换模。
 
 Team Runtime 的真实协同链路是：Leader 创建 run → 服务端 route 委派任务 → mailbox/租约由 worker 执行 → task/event/outbox 回传 → 领域 owner 校验候选结果。任何 mock 或 demo 数据必须明确标识，不能冒充真实协同结果。
 
