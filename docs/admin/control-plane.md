@@ -4,7 +4,7 @@
 
 `GET /api/v1/admin/ai-runtime` 返回服务端脱敏快照；Agent 的 `POST` / `PATCH` 由管理员执行，并要求 `Idempotency-Key`。初始化操作只允许受限的 foundation 写入，数据库 schema migration 永远通过部署或 CLI 执行。
 
-运行时快照包含根 `AGENTS.md`、`.agents/skills/*/SKILL.md`、Agent 配置、内置 Tools、MCP 安全元数据和初始化状态。Agent 配置在同一个表单中维护：角色定义、Agent-local `AGENTS.md`、直接选择的 `providerId + modelId`、能力、Skills、Tools 和 MCP。不存在独立的模型用途绑定步骤。
+运行时快照包含根 `AGENTS.md`、`.agents/skills/*/SKILL.md`、Agent 配置、内置 Tools、MCP 安全元数据和初始化状态。Agent 表单维护角色、Agent-local `AGENTS.md`、专属模型、能力、Skills、Tools 和 MCP。供应商工作区另提供用途场景与链路绑定；明确选择用途时同时清空两个专属模型字段，后续调用重新解析用途配置。
 
 根 `AGENTS.md` 是服务端加载的全局策略，随运行时快照以版本和内容指纹引用；它不能由浏览器、Agent prompt 或单个 Agent 配置覆盖。Agent-local 定义只提供受限的角色说明，权限、对象范围和领域不变量仍由服务端执行。
 
@@ -15,8 +15,8 @@
 | `/admin/settings/ai-runtime`      | Agent 角色定义、直接模型选择、Skills、Tools、MCP 和协同运行状态 |
 | `/admin/settings/assistants`      | 助手目录和可选择状态，写入服务端 `agent_configs`                |
 | `/admin/settings/teams`           | 团队成员、协同 route 和真实 Team Run 测试入口                   |
-| `/admin/settings/model-providers` | Provider、协议、凭证状态、模型目录刷新和连接测试                |
-| `/admin/settings/models`          | 从 Provider Registry 读取模型的统一视图，不维护第二份模型清单   |
+| `/admin/settings/model-providers` | Provider、协议、凭证、目录、连接测试与用途/链路绑定            |
+| `/admin/settings/models`          | 旧书签重定向到供应商工作区，不维护第二份模型清单               |
 
 ## 管理 API
 
@@ -34,7 +34,7 @@
 
 `agents` 来自 `agent_configs` 及其 binding 表；旧数据库可短暂回退 `tutor_partners`。每个 Agent 返回 `modelProviderId`、`modelId`、`modelLabel` 和 `modelAvailable`。`modelOptions` 是脱敏的可选模型列表，供 Agent 编辑器联动选择服务商和模型。
 
-`agent_configs.model_usage` 仅是旧数据兼容字段。迁移 `0016_agent_direct_model_selection.sql` 会把旧 `tutor.chat` 绑定复制到直接模型字段；新写入以直接模型字段为准。
+`agent_configs.model_usage` 在两个专属模型字段均为空时参与用途分发。迁移 `0016_agent_direct_model_selection.sql` 创建的历史专属覆盖继续保留；只有管理员明确选择用途才清空。快照用 `modelBinding` 区分用途与专属覆盖；主导师和 worker 遵循同一用途目录的显式 fallback，不在覆盖失效时偷偷换模。
 
 ## Team Runtime 通信
 
@@ -44,4 +44,4 @@ Tutor Agent 作为 Team Leader 创建 `TeamRun`，通过已启用的 route 委�
 
 ## 前端状态
 
-`apps/admin-console/app/(console)/settings/ai-runtime/page.tsx` 必须覆盖 loading、empty、error、offline、403 和接口未部署状态。模型供应商页面负责接入和刷新目录，AI 运行时页面负责 Agent 的最终模型选择，两者通过 `modelOptions` 连接。
+`apps/admin-console/app/(console)/settings/ai-runtime/page.tsx` 必须覆盖 loading、empty、error、offline、403 和接口未部署状态。模型供应商工作区负责目录与用途/链路绑定，AI 运行时页面保留 Agent 专属覆盖；两者通过 `modelOptions` 连接，调用时由服务端重新校验。

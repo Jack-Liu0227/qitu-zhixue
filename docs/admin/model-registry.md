@@ -18,8 +18,8 @@ Provider
 
 | 页面                              | 事实与操作                                                                                         |
 | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `/admin/settings/model-providers` | 新建、编辑、启停 Provider；保存 base URL、协议和密钥；连接测试；刷新 `/models`；手动补充或编辑模型 |
-| `/admin/settings/models`          | 从同一 Provider Registry 展开模型、配置用途模型和 Agent 链路；按 ready/pending 筛选和测试，不维护第二份模型表 |
+| `/admin/settings/model-providers` | 新建、编辑、启停 Provider；连接测试和目录维护；配置用途模型与 Agent 链路绑定 |
+| `/admin/settings/models`          | 旧书签重定向到供应商工作区，不维护第二份模型表 |
 | `/admin/settings/ai-runtime`      | 为 Agent 选择直接的 `providerId + modelId`，配置角色定义、Tools、Skills 和 MCP                     |
 
 模型目录来自 `GET /api/v1/admin/model-providers`。用途卡片读取 `GET /api/v1/admin/model-usages`，通过 `PATCH /api/v1/admin/model-usages/:usageId` 保存。链路通过 Agent 治理接口保存 `modelUsage`，同时清空两个专属模型字段。可选模型来自同一目录，按声明模态过滤。状态区分配置可用与真实推理验收，不用写死的“已接入”代替验证。新增、刷新、停用模型仍在 Provider 页面完成。
