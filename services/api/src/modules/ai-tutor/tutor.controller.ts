@@ -136,12 +136,12 @@ export class TutorController {
   }
 
   @Get('project-context')
-  getProjectContext(
+  async getProjectContext(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('projectId') projectId?: string,
-  ): { data: TutorProjectContext | null } {
+  ): Promise<{ data: TutorProjectContext | null }> {
     const actor = this.requireStudent(cookieHeader);
-    return { data: this.tutorService.getProjectContext(projectId, actor.id) };
+    return { data: await this.tutorService.getProjectContext(projectId, actor.id) };
   }
 
   /**

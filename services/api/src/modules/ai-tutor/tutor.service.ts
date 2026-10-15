@@ -30,6 +30,7 @@ import {
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
@@ -207,6 +208,7 @@ export class TutorService {
     @Optional() private readonly projects?: ProjectsService,
     @Optional() private readonly platformRegistry?: PlatformRegistryService,
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
+    @Optional() @Inject(LearningPlanStore) private readonly learningStore?: LearningPlanStore,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []));
@@ -217,7 +219,22 @@ export class TutorService {
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
-  getProjectContext(projectId: string | undefined, ownerId: string): TutorProjectContext | null {
+  async getProjectContext(projectId: string | undefined, ownerId: string): Promise<TutorProjectContext | null> {
+    if (this.learningStore !== undefined) {
+      const selected = projectId === undefined
+        ? (await this.learningStore.listProjectsByStudent(ownerId)).find((project) => !['completed', 'published'].includes(project.status))
+        : await this.learningStore.findProject(projectId);
+      if (!selected) return null;
+      if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
+      return {
+        project: { id: selected.id, title: selected.title, stage: selected.status, progress: selected.progressPercent },
+        progress: { currentStageIndex: selected.currentStageIndex, stageTotal: selected.stageTotal, progressPercent: selected.progressPercent },
+        stages: PROJECT_STAGES,
+        currentTask: currentTaskFor(selected.id, selected.title, selected.status),
+      };
+    }
+    // Live teaching must never use the unrelated in-memory demo roster.
+    if (this.dataMode === 'live') return null;
     if (this.platformData === undefined) return null;
     const projects = this.platformData.getProjectsByStudent(ownerId);
     const selected = projectId === undefined
@@ -301,7 +318,7 @@ export class TutorService {
    * 归属不一致统一 403；创建/查回都以**服务端** owner 为准。
    */
   async resolveSession(projectId: string | null, ownerId: string, explorationId?: string): Promise<TutorSessionRecord> {
-    if (projectId !== null && this.platformData !== undefined && this.getProjectContext(projectId, ownerId) === null) {
+    if (projectId !== null && (this.learningStore !== undefined || this.platformData !== undefined) && await this.getProjectContext(projectId, ownerId) === null) {
       throw new NotFoundException('项目不存在');
     }
     if (projectId === null && explorationId !== undefined) {
@@ -531,9 +548,8 @@ export class TutorService {
       }
     }
     await this.domainWriter.initialize();
-    const liveProject = record.projectId === null || this.platformData === undefined
-      ? null
-      : this.platformData.getProject(record.projectId);
+    const liveProject = record.projectId === null ? null : (await this.getProjectContext(record.projectId, request.actorId))?.project;
+    if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);

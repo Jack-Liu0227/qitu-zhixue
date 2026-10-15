@@ -14,6 +14,7 @@ import { QituSDKModule } from '../qitu-sdk/qitu-sdk.module';
 import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 import { TutorService } from './tutor.service';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 
 /**
  * AI 搭档模块。
@@ -31,7 +32,7 @@ import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule],
   controllers: [TutorController],
   providers: [
     TutorService,

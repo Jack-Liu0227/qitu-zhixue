@@ -265,6 +265,7 @@ export abstract class LearningPlanStore {
   abstract confirmPlan(input: ConfirmPlanInput): Promise<ConfirmPlanResult>;
 
   abstract findProject(projectId: string): Promise<LearningProjectRecord | null>;
+  abstract listProjectsByStudent(studentId: string): Promise<LearningProjectRecord[]>;
 
   abstract findSession(planId: string, sessionId: string): Promise<SessionRecord | null>;
 
@@ -479,6 +480,12 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   async findProject(projectId: string): Promise<LearningProjectRecord | null> {
     const project = this.projects.get(projectId);
     return project === undefined ? null : { ...project };
+  }
+
+  async listProjectsByStudent(studentId: string): Promise<LearningProjectRecord[]> {
+    return [...this.projects.values()].filter((project) => project.studentId === studentId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((project) => ({ ...project, tags: [...project.tags] }));
   }
 
   async findSession(planId: string, sessionId: string): Promise<SessionRecord | null> {

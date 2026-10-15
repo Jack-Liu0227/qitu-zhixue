@@ -1,5 +1,5 @@
 import { computeStageProgress } from '../projects/intent-confirmation.state-machine';
-import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { AuditTransaction } from '../../common/audit/audit.service';
 import {
   learningModules,
@@ -324,6 +324,13 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       .where(eq(projectsTable.id, projectId))
       .limit(1);
     return project === undefined ? null : mapProject(project);
+  }
+
+  async listProjectsByStudent(studentId: string): Promise<LearningProjectRecord[]> {
+    const rows = await this.db.select().from(projectsTable)
+      .where(eq(projectsTable.studentUserId, studentId))
+      .orderBy(desc(projectsTable.createdAt), desc(projectsTable.id));
+    return rows.map(mapProject);
   }
 
   async findSession(planId: string, sessionId: string): Promise<SessionRecord | null> {
