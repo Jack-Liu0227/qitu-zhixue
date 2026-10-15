@@ -256,7 +256,7 @@ body {
   background: var(--qitu-primary-soft);
 }
 .tabs button.selected,
-.filter-row button:first-child {
+.filter-row button.selected {
   color: var(--qitu-primary);
   border-color: var(--qitu-primary-border);
   background: var(--qitu-primary-soft);
