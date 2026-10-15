@@ -91,8 +91,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       </div>
     </header>
     <div className="qitu-tutor-workspace-layout">
-      <aside className="qitu-live-session-sidebar" style={{ width: leftOpen ? 'min(220px, 28vw)' : 44, flexShrink: 0, padding: 12, border: '1px solid #e4ecf7', borderRadius: 12, background: '#fff', overflowWrap: 'anywhere' }}>
-        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" onClick={() => setLeftOpen(!leftOpen)} aria-expanded={leftOpen} aria-label="切换会话侧栏">{leftOpen ? '收起' : '展开'}</button>
+      <aside className={`qitu-live-session-sidebar${leftOpen ? '' : ' is-collapsed'}`}>
+        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm qitu-live-session-toggle" onClick={() => setLeftOpen(!leftOpen)} aria-expanded={leftOpen} aria-label="切换会话侧栏">{leftOpen ? '收起' : '展开'}</button>
         {leftOpen ? <><h2 style={{ fontSize: 15 }}>会话历史</h2><p>{session.project?.project.title ?? '自由探索'}</p><p className="qitu-tutor-muted">当前会话 {session.turns.length} 条记录，历史由服务端保存。</p><button type="button" className="qitu-button qitu-button-secondary qitu-button-sm" disabled={busy} onClick={newExploration}>新建探索</button><p className="qitu-tutor-muted">模型由管理员按教学用途配置，学生无需填写密钥。</p></> : null}
       </aside>
       <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>

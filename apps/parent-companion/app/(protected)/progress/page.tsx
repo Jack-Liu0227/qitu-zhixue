@@ -250,17 +250,20 @@ export default function ProgressPage() {
   const works = data?.works ?? [];
   const focus = data?.focusWork ?? null;
 
-  // 其余作品（不含焦点作品），并套用状态筛选与搜索。
-  const otherWorks = useMemo(() => {
+  // 对全部作品统一筛选，焦点作品与它的详情也必须符合当前条件。
+  const filteredWorks = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return works.filter(
       (w) =>
-        w.artifactRef !== focus?.artifactRef &&
         (statusFilter === 'all' || w.status === statusFilter) &&
         (needle.length === 0 ||
-          `${w.title} ${w.tags.join(' ')}`.toLowerCase().includes(needle)),
+          `${w.title} ${w.summary} ${w.tags.join(' ')}`.toLowerCase().includes(needle)),
     );
-  }, [works, focus, statusFilter, search]);
+  }, [works, statusFilter, search]);
+  const visibleFocus = focus && filteredWorks.some((work) => work.artifactRef === focus.artifactRef)
+    ? focus
+    : null;
+  const otherWorks = filteredWorks.filter((work) => work.artifactRef !== visibleFocus?.artifactRef);
 
   // 切孩子时清掉筛选，否则会出现「上一个孩子筛出来的空列表」这种假空状态。
   const selectChild = (id: string) => {
@@ -323,6 +326,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={statusFilter === 'all' ? 'selected' : ''}
+                aria-pressed={statusFilter === 'all'}
                 onClick={() => setStatusFilter('all')}
               >
                 全部作品（{statusCount('all')}）
@@ -330,6 +334,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={statusFilter === 'in_progress' ? 'selected' : ''}
+                aria-pressed={statusFilter === 'in_progress'}
                 onClick={() => setStatusFilter('in_progress')}
               >
                 进行中（{statusCount('in_progress')}）
@@ -337,6 +342,7 @@ export default function ProgressPage() {
               <button
                 type="button"
                 className={statusFilter === 'completed' ? 'selected' : ''}
+                aria-pressed={statusFilter === 'completed'}
                 onClick={() => setStatusFilter('completed')}
               >
                 已完成（{statusCount('completed')}）
@@ -349,10 +355,10 @@ export default function ProgressPage() {
               />
             </div>
 
-            {focus ? (
+            {visibleFocus ? (
               <div className="progress-layout">
                 <div className="works-main">
-                  <FocusWorkCard work={focus} onViewProcess={() => setTab('project')} />
+                  <FocusWorkCard work={visibleFocus} onViewProcess={() => setTab('project')} />
                   <VersionTimelinePanel versions={data?.focusVersions ?? []} />
                 </div>
                 <aside className="progress-side">
@@ -382,9 +388,9 @@ export default function ProgressPage() {
                     </div>
                   </article>
                 ))
-              ) : (
-                <p className="empty-inline">没有符合当前筛选的作品。</p>
-              )}
+              ) : filteredWorks.length === 0 ? (
+                <p className="empty-inline" role="status">没有符合当前筛选的作品。</p>
+              ) : null}
             </div>
           </>
         )}
