@@ -51,13 +51,34 @@ test('session load preserves exploration identity; confirmation can retry after 
     assert.equal(calls.some((call) => call.url === '/api/v1/explorations'), false);
     const loaded = await source.getSession('session-owned');
     assert.equal(loaded.explorationId, 'exploration-owned');
-    await assert.rejects(source.confirmExploration('exploration-owned', 'synthetic goal', 'confirm-key'));
-    const result = await source.confirmExploration('exploration-owned', 'synthetic goal', 'confirm-key');
+    await assert.rejects(source.confirmExploration('exploration-owned', { goal: 'synthetic goal', interest: 'motion' }, 'confirm-key'));
+    const result = await source.confirmExploration('exploration-owned', { goal: 'synthetic goal', interest: 'motion' }, 'confirm-key');
     assert.equal(result.project.id, 'project-owned');
     assert.equal(calls.filter((call) => call.init.method === 'PATCH').length, 1);
+    assert.deepEqual(JSON.parse(calls.find((call) => call.init.method === 'PATCH').init.body), { goalUser: 'synthetic goal', coreInterests: ['motion'] });
     assert.deepEqual(calls.filter((call) => call.url.endsWith('/confirm-intent')).map((call) => call.init.headers['idempotency-key']), ['confirm-key', 'confirm-key']);
     assert.ok(calls.every((call) => call.init.credentials === 'same-origin'));
   } finally { globalThis.fetch = original; }
+});
+
+test('intent confirmation rejects overlong fields before any network write', async () => {
+  const { TutorApiDataSource } = loadModule('apps/student-center/features/tutor/data/tutorApiDataSource.ts');
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('unexpected network write'); };
+  try {
+    const source = new TutorApiDataSource();
+    for (const draft of [{ goal: 'a'.repeat(121), interest: 'motion' }, { goal: 'goal', interest: 'a'.repeat(25) }, { goal: '', interest: 'motion' }]) {
+      await assert.rejects(source.confirmExploration('owned', draft, 'key'), (error) => error.code === 'INTENT_DRAFT_INCOMPLETE');
+    }
+  } finally { globalThis.fetch = original; }
+});
+
+test('completed hint replaces identical streamed text but preserves distinct context and tools', () => {
+  const { applyServerEventToTurns } = loadModule('apps/student-center/features/tutor/state.ts');
+  const turn = { turnId: 'reply', role: 'assistant', blocks: [{ kind: 'text', text: 'context' }, { kind: 'text', text: 'one question?' }, { kind: 'tool', call: { callId: 'tool' } }] };
+  const [updated] = applyServerEventToTurns([turn], { type: 'tutor.block', turnId: 'reply', seq: 2, block: { kind: 'hint', level: 1, text: 'one question?' } });
+  assert.deepEqual(updated.blocks.map((block) => block.kind), ['text', 'tool', 'hint']);
+  assert.equal(updated.blocks[0].text, 'context');
 });
 
 test('authorization failures stay explicit and do not fabricate successful replies', async () => {

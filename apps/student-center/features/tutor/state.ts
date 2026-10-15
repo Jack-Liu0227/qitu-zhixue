@@ -333,7 +333,8 @@ function upsertBlock(turns: readonly TutorTurn[], event: BlockEvent): TutorTurn[
   if (existing === undefined) return [...turns];
   const updated: TutorTurn = {
     ...existing,
-    blocks: [...existing.blocks, block],
+    // A completed hint can replace the same text already delivered as deltas.
+    blocks: [...existing.blocks.filter((previous) => !(block.kind === 'hint' && previous.kind === 'text' && previous.text === block.text)), block],
     hintLevel: block.kind === 'hint' ? block.level : existing.hintLevel,
     seq: event.seq,
   };

@@ -11,8 +11,10 @@ import {
   agentSkillBindings,
   modelModels,
   modelProviders,
+  modelUsageBindings,
   type Database,
 } from '@qitu/database';
+import { MODEL_USAGE_SLOTS } from '@qitu/contracts';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -153,9 +155,7 @@ async function executeTeamAgentJob(
   if (!task) throw new TeamAgentExecutionError('TEAM_TASK_NOT_FOUND');
   const [agent] = await db.select().from(agentConfigs).where(eq(agentConfigs.id, job.message.recipientAgentId)).limit(1);
   if (!agent || !agent.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
-  if (!agent.modelProviderId?.trim() || !agent.modelId?.trim()) {
-    throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_NOT_CONFIGURED');
-  }
+  const selection = await resolveTeamAgentModel(db, agent);
   const [route] = await db.select({ outputSchema: agentRoutes.outputSchema })
     .from(agentRoutes)
     .where(and(
@@ -182,8 +182,8 @@ async function executeTeamAgentJob(
   try {
     result = await runtime.complete({
       usageId: `agent.${agent.id}`,
-      providerId: agent.modelProviderId,
-      modelId: agent.modelId,
+      providerId: selection.providerId,
+      modelId: selection.modelId,
       messages: [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
@@ -200,6 +200,36 @@ async function executeTeamAgentJob(
     throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CALL_FAILED');
   }
   return parseStructuredAgentOutput(result.text, route.outputSchema);
+}
+
+/** Fresh database reads keep worker routing in sync with administrator changes. */
+export async function resolveTeamAgentModel(
+  db: Database,
+  agent: { modelProviderId: string | null; modelId: string | null; modelUsage: string },
+): Promise<{ providerId: string; modelId: string }> {
+  if (agent.modelProviderId !== null || agent.modelId !== null) {
+    if (!agent.modelProviderId?.trim() || !agent.modelId?.trim()) {
+      throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_NOT_CONFIGURED');
+    }
+    return { providerId: agent.modelProviderId, modelId: agent.modelId };
+  }
+  const usage = MODEL_USAGE_SLOTS.find((item) => item.id === agent.modelUsage);
+  // This executor produces JSON text, not embeddings or a realtime audio stream.
+  if (!usage || ['knowledge.embed', 'tutor.live'].includes(usage.id)) {
+    throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_USAGE_UNSUPPORTED');
+  }
+  const readBinding = async (usageId: string) => (await db.select().from(modelUsageBindings)
+    .where(and(eq(modelUsageBindings.usageId, usageId), eq(modelUsageBindings.enabled, true))).limit(1))[0];
+  const direct = await readBinding(usage.id);
+  const binding = direct ?? (usage.fallbackTo ? await readBinding(usage.fallbackTo) : undefined);
+  if (!binding) throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_NOT_CONFIGURED');
+  const [model] = await db.select().from(modelModels)
+    .where(and(eq(modelModels.providerId, binding.providerId), eq(modelModels.modelId, binding.modelId))).limit(1);
+  if (!model?.enabled || !(model.inputModalities as string[]).includes('text') || !(model.outputModalities as string[]).includes('text')) {
+    throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CAPABILITY_MISMATCH');
+  }
+  // Provider state and credentials are validated by the runtime; never fallback on failure.
+  return { providerId: binding.providerId, modelId: binding.modelId };
 }
 
 async function resolveRuntimeTarget(

@@ -69,7 +69,7 @@ Pi 配置导入只接受服务端受限目录中的 `models.json`、`models-stor
 
 ## 6. Team Runtime 与真实协同
 
-Team Leader 和子 Agent 分别使用自身的直接模型。Leader 通过启用的 route 委派任务，服务端写入 mailbox；worker 以租约领取并执行，结果写入 task、message、event 和 outbox。profile/growth 等结果先进入候选投影，领域 owner 校验、幂等接受和审计后才成为正式数据。
+Team Leader 和子 Agent 均保留显式模型覆盖；两个覆盖字段为空时，主导师与 mailbox worker 按同一用途目录解析绑定。worker 每次任务重新读取数据库，遵循目录声明的 fallback；直接模型不可用时不静默回退。文本 JSON 执行器拒绝向量和实时语音用途。Leader 通过启用的 route 委派任务，服务端写入 mailbox；worker 以租约领取并执行，结果写入 task、message、event 和 outbox。profile/growth 等结果先进入候选投影，领域 owner 校验、幂等接受和审计后才成为正式数据。
 
 ## 7. 安全与未决事项
 

@@ -1408,6 +1408,11 @@
   overflow: hidden;
 }
 
+.qitu-tutor-intent-confirmation { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; padding: 14px; border: 1px solid #bfdbfe; border-radius: 12px; background: #eff6ff; }
+.qitu-tutor-intent-confirmation label { display: grid; gap: 5px; margin-block: 10px; font-size: 13px; font-weight: 600; }
+.qitu-tutor-intent-confirmation input, .qitu-tutor-intent-confirmation textarea { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid #bfdbfe; border-radius: 8px; color: #102a5c; background: white; font: inherit; }
+.qitu-tutor-intent-confirmation textarea { min-height: 58px; resize: vertical; }
+
 @media (max-width: 768px) {
   .qitu-tutor-workspace-layout {
     flex-direction: column;

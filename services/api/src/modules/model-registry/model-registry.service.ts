@@ -1,3 +1,4 @@
+import { MODEL_USAGE_SLOTS } from '@qitu/contracts';
 import {
   BadRequestException,
   ConflictException,
@@ -149,58 +150,7 @@ interface ProviderState {
  * 灵感空间只需要快、成长总结需要稳、语音需要能听能说。
  * `fallbackTo` 让管理员只配一个模型也能把产品跑起来。
  */
-const USAGES: readonly ModelUsageSlot[] = [
-  {
-    id: 'tutor.chat',
-    agent: 'tutor',
-    label: 'AI搭档 · 对话',
-    description: '启发式追问的主体模型，决定教学语气与提示阶梯。',
-    requiresInput: ['text'],
-    requiresOutput: ['text'],
-    fallbackTo: null,
-  },
-  {
-    id: 'tutor.live',
-    agent: 'tutor',
-    label: 'AI搭档 · 实时语音',
-    description: '实时语音通道。需同时具备 audio 输入与输出才能启用「语音入→语音出」。',
-    requiresInput: ['audio'],
-    requiresOutput: ['audio'],
-    fallbackTo: 'tutor.chat',
-  },
-  {
-    id: 'inspiration.recommend',
-    agent: 'inspiration',
-    label: '灵感空间 · 项目推荐',
-    description: '按兴趣与掌握度推荐模板，要求低延迟。',
-    requiresOutput: ['text'],
-    fallbackTo: 'tutor.chat',
-  },
-  {
-    id: 'curriculum.plan',
-    agent: 'curriculum',
-    label: '学习计划 · 拆解',
-    description: '把模板拆成 4 周 / 8 周路线与每阶段的理论、实践任务。',
-    requiresOutput: ['text'],
-    fallbackTo: 'tutor.chat',
-  },
-  {
-    id: 'growth.summarize',
-    agent: 'growth',
-    label: '成长档案 · 总结与建议',
-    description: '把证据记录归纳成成长结论。只允许产出「建议」，不得直接写结论。',
-    requiresOutput: ['text'],
-    fallbackTo: 'tutor.chat',
-  },
-  {
-    id: 'knowledge.embed',
-    agent: 'knowledge',
-    label: '知识库 · 向量化',
-    description: '切片向量化，供检索使用。必须是向量模型，不能填对话模型。',
-    requiresOutput: ['text'],
-    fallbackTo: null,
-  },
-];
+const USAGES = MODEL_USAGE_SLOTS;
 
 /** 模型注册表服务。读写方法见下方分区。 */
 

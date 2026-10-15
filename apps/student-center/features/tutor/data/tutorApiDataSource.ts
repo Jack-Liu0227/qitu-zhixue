@@ -31,14 +31,19 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
-  async confirmExploration(explorationId: string, goal: string, idempotencyKey: string): Promise<ConfirmIntentResponse> {
+  async confirmExploration(explorationId: string, draft: { goal: string; interest: string }, idempotencyKey: string): Promise<ConfirmIntentResponse> {
+    const goal = draft.goal.trim();
+    const interest = draft.interest.trim();
+    if (!goal || goal.length > 120 || !interest || interest.length > 24) {
+      throw new TutorDataError('请填写 120 字以内的学习目标和 24 字以内的兴趣方向', 400, 'INTENT_DRAFT_INCOMPLETE');
+    }
     const current = unwrapData(await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}`, '探索状态读取失败'));
     if (!isExplorationPayload(current)) throw new TutorDataError('探索状态格式不正确');
     // A lost confirmation response must be retryable without patching a confirmed exploration.
     if (!('status' in current) || current.status !== 'confirmed') {
       await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}`, '学习目标保存失败', {
         method: 'PATCH', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ goalUser: goal, coreInterests: [goal.slice(0, 40)] }),
+        body: JSON.stringify({ goalUser: goal, coreInterests: [interest] }),
       });
     }
     const payload = await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}/confirm-intent`, '学习意图确认失败', {

@@ -23,6 +23,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [rightOpen, setRightOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [goalDraft, setGoalDraft] = useState('');
+  const [interestDraft, setInterestDraft] = useState('');
   const confirmKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -41,13 +43,12 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   async function confirmProject() {
     if (!session.explorationId || !source.confirmExploration || confirming) return;
-    const goal = studentTurns.flatMap((turn) => turn.blocks.flatMap((block) => block.kind === 'text' ? [block.text] : [])).join('\n').slice(0, 500);
-    if (!goal.trim()) return;
+    if (!goalDraft.trim() || !interestDraft.trim()) return;
     setConfirming(true);
     setConfirmationError(null);
     confirmKey.current ??= createIdempotencyKey();
     try {
-      const result = await source.confirmExploration(session.explorationId, goal, confirmKey.current);
+      const result = await source.confirmExploration(session.explorationId, { goal: goalDraft, interest: interestDraft }, confirmKey.current);
       router.push(`/tutor/${encodeURIComponent(result.project.id)}`);
     } catch (cause) {
       setConfirmationError(cause instanceof Error ? cause.message : '确认失败，请重试');
@@ -60,6 +61,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     window.history.replaceState(null, '', `${window.location.pathname}?new=1`);
     confirmKey.current = null;
     setConfirmationError(null);
+    setGoalDraft('');
+    setInterestDraft('');
     composer.clear();
     setExplorationKey((key) => key + 1);
   }
@@ -71,13 +74,13 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       <div><p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p><h1>AI搭档</h1><p className="qitu-tutor-header-subtitle">先确认学习目标，再一起探究；理论掌握由服务端核验。</p></div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span role="status">{session.offline ? '离线 · 暂停发送' : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}</span>
-        <button type="button" className="qitu-btn" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>项目与进度</button>
+        <button type="button" className="qitu-button qitu-button-ghost" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>项目与进度</button>
       </div>
     </header>
     <div className="qitu-tutor-workspace-layout">
       <aside className="qitu-live-session-sidebar" style={{ width: leftOpen ? 'min(220px, 28vw)' : 44, flexShrink: 0, padding: 12, border: '1px solid #e4ecf7', borderRadius: 12, background: '#fff', overflowWrap: 'anywhere' }}>
-        <button type="button" className="qitu-btn" onClick={() => setLeftOpen(!leftOpen)} aria-expanded={leftOpen} aria-label="切换会话侧栏">{leftOpen ? '收起' : '展开'}</button>
-        {leftOpen ? <><h2 style={{ fontSize: 15 }}>会话历史</h2><p>{session.project?.project.title ?? '自由探索'}</p><p className="qitu-tutor-muted">当前会话 {session.turns.length} 条记录，历史由服务端保存。</p><button type="button" className="qitu-btn" disabled={busy} onClick={newExploration}>新建探索</button><p className="qitu-tutor-muted">模型由管理员按教学用途配置，学生无需填写密钥。</p></> : null}
+        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" onClick={() => setLeftOpen(!leftOpen)} aria-expanded={leftOpen} aria-label="切换会话侧栏">{leftOpen ? '收起' : '展开'}</button>
+        {leftOpen ? <><h2 style={{ fontSize: 15 }}>会话历史</h2><p>{session.project?.project.title ?? '自由探索'}</p><p className="qitu-tutor-muted">当前会话 {session.turns.length} 条记录，历史由服务端保存。</p><button type="button" className="qitu-button qitu-button-secondary qitu-button-sm" disabled={busy} onClick={newExploration}>新建探索</button><p className="qitu-tutor-muted">模型由管理员按教学用途配置，学生无需填写密钥。</p></> : null}
       </aside>
       <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {error ? <div role="alert" style={{ padding: 12, color: '#9f1239', background: '#fff1f2' }}>{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
@@ -92,9 +95,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           }}
           composer={<Composer draft={composer.draft} onDraftChange={composer.setDraft} offline={session.offline} submitting={busy} disabled={!ready} onSubmit={() => { void composer.submit(composer.draft, session.submitText); }} />}
         />
-        {session.explorationId && studentTurns.length > 0 ? <section style={{ padding: 14, border: '1px solid #bfdbfe', borderRadius: 12, background: '#eff6ff' }}>
+        {session.explorationId && studentTurns.length > 0 ? <section className="qitu-tutor-intent-confirmation">
           <strong>准备把想法变成正式项目？</strong><p>请先和搭档澄清目标。只有你明确确认后，系统才会创建项目；确认不代表通过理论门禁。</p>
-          <button type="button" className="qitu-btn" disabled={!ready || busy || confirming} onClick={() => void confirmProject()}>{confirming ? '正在确认…' : '确认学习意图并创建项目'}</button>
+          <label>学习目标<textarea maxLength={120} value={goalDraft} disabled={confirming} onChange={(event) => setGoalDraft(event.target.value)} placeholder="用自己的话写下这次想弄懂或完成的事情（最多 120 字）" /></label>
+          <label>兴趣方向<input maxLength={24} value={interestDraft} disabled={confirming} onChange={(event) => setInterestDraft(event.target.value)} placeholder="例如：小车运动（最多 24 字）" /></label>
+          <button type="button" className="qitu-button qitu-button-primary" disabled={!ready || busy || confirming || !goalDraft.trim() || !interestDraft.trim()} onClick={() => void confirmProject()}>{confirming ? '正在确认…' : '确认学习意图并创建项目'}</button>
           {confirmationError ? <p role="alert">{confirmationError}</p> : null}
         </section> : null}
       </div>
