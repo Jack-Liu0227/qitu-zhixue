@@ -235,6 +235,32 @@ bash tooling/start-qitu-services.sh status
 - services/api 故意保留 `nest start --watch`（远程主工作树在活跃开发）——它仍是最大的单一占用；
   要再降可把 ExecStart 换成 `node dist/main`，代价是失去热重载。
 
+### 3.3 页面 200 但 CSS/JS 丢失
+
+2026-10-15 家长端进程仍持有 10 月 13 日的资源清单，而 `.next` 已被重新构建，
+HTML 引用的旧 CSS 返回 400，导致导航和卡片退化成无样式文字。只检查 `/parent` 返回 200
+无法发现此类故障。仅重启家长端加载当前构建后恢复，未修改 UI、认证、API 或数据。
+
+部署时必须先停止对应应用再原地构建，或在独立发布目录构建并切换运行目录；
+不要覆盖运行中进程的 `.next`。重建后必须启动新进程，并检查页面实际引用的静态资源：
+
+```bash
+# 仅重启已有构建：加载磁盘上当前的资源清单。
+bash tooling/start-qitu-services.sh restart parent
+python3 tooling/check-frontend-assets.py --base-url http://127.0.0.1
+# 再检查统一公网入口；默认检查家长首页、登录、进展和消息四页。
+python3 tooling/check-frontend-assets.py --base-url http://122.51.130.204
+# 其他前端可显式传入路由（支持重复参数）。
+python3 tooling/check-frontend-assets.py --route /login --route /student/today
+```
+
+检查器要求页面返回 200 HTML，所有引用的 CSS/JS 返回 200、内容非空、MIME 类型正确，
+且不发生登录重定向；失败时以非零退出。无需账号，不输出 cookie 或个人数据。
+此检查覆盖资源交付，不能替代授权后浏览器验收和 API 测试。
+
+回归检查：`python3 tooling/check-frontend-assets.test.py`，覆盖正常资源、CSS 返回 400/404，
+以及 HTTP 200 却返回 HTML 的错误资源。
+
 ## 4. Pi/Herdr 开发 Agent（非运行时）
 
 开发期角色定义位于 `.pi/agents/`（约 30 个 `.md`），通过 `pi-herdr-agents` 加载。
