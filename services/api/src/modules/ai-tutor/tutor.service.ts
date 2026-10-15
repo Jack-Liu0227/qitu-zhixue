@@ -566,6 +566,16 @@ export class TutorService {
       partner.capabilities = effectiveRuntime.agent.capabilities.filter((capability): capability is typeof partner.capabilities[number] =>
         capability === 'explore' || capability === 'plan' || capability === 'teach' || capability === 'review' || capability === 'reflect');
     }
+    const configuredTutorAssistant = this.platformRegistry !== undefined
+      && typeof this.platformRegistry.getTutorAssistantStatus === 'function'
+      ? await this.platformRegistry.getTutorAssistantStatus(projectTitle, projectStage)
+      : null;
+    if (configuredTutorAssistant !== null && !configuredTutorAssistant.enabled) {
+      throw new ConflictException({
+        code: 'AGENT_ROLE_DISABLED',
+        message: `当前阶段导师「${configuredTutorAssistant.name}」暂未启用`,
+      });
+    }
     const contextReader = this.workspace === undefined
       ? this.contextReader
       : createTutorContextReader(this.workspace, partner);

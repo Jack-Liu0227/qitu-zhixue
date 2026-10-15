@@ -42,6 +42,46 @@ export interface EffectiveAgentRuntime {
   mcpServers: readonly TutorAgentMcpDescriptor[];
 }
 
+/**
+ * The admin assistant catalogue and the runtime Agent registry use different
+ * identifiers. Keep the deliberate compatibility binding here so an admin
+ * switch is also a runtime guard for the student Tutor.
+ */
+const ADMIN_ASSISTANT_RUNTIME_BINDINGS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  'tutor-leader': ['qitu-learning-partner'],
+});
+
+function assistantIdsForRuntimeAgent(agentId: string): readonly string[] {
+  const aliases = Object.entries(ADMIN_ASSISTANT_RUNTIME_BINDINGS)
+    .filter(([, runtimeIds]) => runtimeIds.includes(agentId))
+    .map(([assistantId]) => assistantId);
+  return [...new Set([agentId, ...aliases])];
+}
+
+function tutorAssistantIdForProject(projectTitle: string, projectStage: string): string {
+  const kineticProject = /动能|物理|小车|kinetic|physics/i.test(projectTitle);
+  const thunderProject = /雷霆|战机|pygame|飞行射击|python.*游戏/i.test(projectTitle);
+  const assistants = kineticProject
+    ? {
+        leader: 'kinetic-leader',
+        concept: 'kinetic-concept-coach',
+        practice: 'kinetic-experiment-guide',
+        review: 'kinetic-review-assessor',
+      }
+    : thunderProject
+      ? {
+        leader: 'tutor-leader',
+        concept: 'fighter-concept-coach',
+        practice: 'fighter-code-guide',
+        review: 'fighter-review-assessor',
+      }
+      : { leader: 'tutor-leader', concept: 'tutor-leader', practice: 'tutor-leader', review: 'tutor-leader' };
+  if (projectStage === 'theory' || projectStage === 'theory_learning' || projectStage === 'theory_check') return assistants.concept;
+  if (projectStage === 'practice' || projectStage === 'practice_ready' || projectStage === 'practice_building') return assistants.practice;
+  if (projectStage === 'review' || projectStage === 'artifact_review' || projectStage === 'reflection') return assistants.review;
+  return assistants.leader;
+}
+
 /* ==================== admin AI 配置（助手 / 团队） ==================== */
 
 type AssistantRow = typeof adminAssistants.$inferSelect;
@@ -272,17 +312,52 @@ export class PlatformRegistryService {
     const runtime = loadTutorRuntimeSource();
     const agent = (await this.listAgentsFromDatabase()).find((item) => item.id === agentId);
     if (!agent) throw new NotFoundException('Agent 角色不存在');
-    const selectedSkills = runtime.skills.filter((skill) => agent.skillIds.includes(skill.id) && skill.status === 'ready');
-    const tools = builtinToolRegistry.listForAgentIds(agent.toolIds);
+    const adminEnabled = await this.getAdminAssistantEnabled(agentId);
+    const effectiveAgent = adminEnabled === null
+      ? agent
+      : { ...agent, enabled: agent.enabled && adminEnabled, status: agent.enabled && adminEnabled ? 'enabled' as const : 'disabled' as const };
+    const selectedSkills = runtime.skills.filter((skill) => effectiveAgent.skillIds.includes(skill.id) && skill.status === 'ready');
+    const tools = builtinToolRegistry.listForAgentIds(effectiveAgent.toolIds);
     const mcpServers = (await this.listMcpServerRows())
-      .filter((server) => agent.mcpServerIds.includes(server.id) && server.enabled)
+      .filter((server) => effectiveAgent.mcpServerIds.includes(server.id) && server.enabled)
       .map((server) => ({
         serverId: server.id,
         label: server.label,
         transport: server.transport as TutorAgentMcpDescriptor['transport'],
-        toolIds: (agent.mcpToolIds[server.id] ?? server.toolIds).filter((toolId) => server.toolIds.includes(toolId)),
+        toolIds: (effectiveAgent.mcpToolIds[server.id] ?? server.toolIds).filter((toolId) => server.toolIds.includes(toolId)),
       }));
-    return { agent, policy: runtime.policy, skills: selectedSkills, tools, mcpServers };
+    return { agent: effectiveAgent, policy: runtime.policy, skills: selectedSkills, tools, mcpServers };
+  }
+
+  /**
+   * Resolve the admin catalogue switch for a runtime Agent. A missing table or
+   * missing binding keeps the existing runtime-only behavior for older
+   * installations; a present binding is fail-closed on `enabled = false`.
+   */
+  private async getAdminAssistantEnabled(agentId: string): Promise<boolean | null> {
+    if (!this.db) return null;
+    const assistantIds = assistantIdsForRuntimeAgent(agentId);
+    try {
+      const rows = await this.db.select().from(adminAssistants);
+      const bound = rows.filter((row) => assistantIds.includes(row.id));
+      if (bound.length === 0) return null;
+      return bound.every((row) => row.enabled);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Resolve the phase-specific admin mentor used by a student Tutor turn. */
+  async getTutorAssistantStatus(projectTitle: string, projectStage: string): Promise<{ id: string; name: string; enabled: boolean } | null> {
+    if (!this.db) return null;
+    const assistantId = tutorAssistantIdForProject(projectTitle, projectStage);
+    try {
+      const rows = await this.db.select().from(adminAssistants);
+      const assistant = rows.find((row) => row.id === assistantId);
+      return assistant ? { id: assistant.id, name: assistant.name, enabled: assistant.enabled } : null;
+    } catch {
+      return null;
+    }
   }
 
   private async listAgentsFromDatabase(): Promise<AdminRuntimeAgent[]> {

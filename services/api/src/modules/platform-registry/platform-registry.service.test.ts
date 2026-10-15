@@ -68,6 +68,57 @@ test('persisted Agent scenario binding resolves dynamically, validates availabil
   assert.equal(explicit.agent.modelId, 'model-a');
 });
 
+test('admin tutor-leader switch gates the student Tutor runtime binding', async () => {
+  const config = {
+    id: 'qitu-learning-partner', displayName: '启途学习搭档', role: 'tutor',
+    roleDefinition: 'Safe teaching role', agentDefinition: '', parentAgentId: null, enabled: true,
+    modelUsage: 'tutor.chat', modelProviderId: null as string | null, modelId: null as string | null,
+    configVersion: 1, capabilities: ['teach'],
+  };
+  const assistant = assistantRow({ id: 'tutor-leader', enabled: false });
+  const db = {
+    select: () => ({ from: (table: unknown) => {
+      if (table === agentConfigs) return Promise.resolve([config]);
+      if (table === adminAssistants) return Promise.resolve([assistant]);
+      if (table === runtimeMcpServers) return Promise.resolve([]);
+      if ([agentSkillBindings, agentToolBindings, agentMcpBindings].includes(table as never)) return { where: async () => [] };
+      return Promise.resolve([]);
+    } }),
+  } as unknown as Database;
+  const service = new PlatformRegistryService(
+    db,
+    'live',
+    { write: async () => 'audit-id' } as never,
+    {
+      getUsages: () => ({ usages: [], bindings: [] }),
+      resolvePurpose: () => ({ available: false }),
+      listAgentModelOptions: () => [],
+    } as never,
+  );
+
+  assert.equal((await service.getAgentRuntime(config.id)).agent.enabled, false);
+  assistant.enabled = true;
+  assert.equal((await service.getAgentRuntime(config.id)).agent.enabled, true);
+});
+
+test('student Tutor resolves phase-specific admin mentor switches', async () => {
+  const assistant = assistantRow({ id: 'kinetic-experiment-guide', name: '动能定理仿真与实验向导', enabled: false });
+  const db = {
+    select: () => ({ from: (table: unknown) => table === adminAssistants ? Promise.resolve([assistant]) : Promise.resolve([]) }),
+  } as unknown as Database;
+  const service = new PlatformRegistryService(
+    db,
+    'live',
+    { write: async () => 'audit-id' } as never,
+    { getUsages: () => ({ usages: [], bindings: [] }) } as never,
+  );
+
+  assert.deepEqual(
+    await service.getTutorAssistantStatus('动手学动能定理：物理虚拟仿真与规律探究', 'practice_building'),
+    { id: 'kinetic-experiment-guide', name: '动能定理仿真与实验向导', enabled: false },
+  );
+});
+
 test('runtime projection uses persisted partner metadata and excludes prompt contents', async () => {
   const service = new PlatformRegistryService(
     fakeDatabase(),

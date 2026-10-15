@@ -1,11 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type {
-  RealtimeServerEvent,
-  TutorHintLevel,
-  TutorTurn,
-} from '@qitu/contracts';
+import type { RealtimeServerEvent, TutorHintLevel, TutorTurn } from '@qitu/contracts';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
 import { createIdempotencyKey } from '../idempotency';
 import { TutorRealtimeClient } from '../realtime/tutorRealtimeClient';
@@ -105,9 +101,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
     if (echoIdsRef.current.length === 0) return [...loaded];
     const ids = echoIdsRef.current;
     echoIdsRef.current = [];
-    return ids.reduce<TutorTurn[]>((accumulator, id) => dropTurn(accumulator, id), [
-      ...loaded,
-    ]);
+    return ids.reduce<TutorTurn[]>((accumulator, id) => dropTurn(accumulator, id), [...loaded]);
   }, []);
 
   // Load the active project (or the routed project) context.
@@ -121,7 +115,12 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
 
     const load = async () => {
       try {
-        if (projectId === undefined && (explorationKey > 0 || new URLSearchParams(window.location.search).has('explorationId') || new URLSearchParams(window.location.search).has('new'))) {
+        if (
+          projectId === undefined &&
+          (explorationKey > 0 ||
+            new URLSearchParams(window.location.search).has('explorationId') ||
+            new URLSearchParams(window.location.search).has('new'))
+        ) {
           setProject(null);
           setProjectStatus('empty');
           return;
@@ -193,7 +192,8 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         const created = await dataSource.createSession({
           ...(project === null ? {} : { projectId: project.project.id }),
           ...(project === null && new URLSearchParams(window.location.search).get('explorationId')
-            ? { explorationId: new URLSearchParams(window.location.search).get('explorationId')! } : {}),
+            ? { explorationId: new URLSearchParams(window.location.search).get('explorationId')! }
+            : {}),
           source: project === null ? 'exploration' : 'project',
           idempotencyKey: sessionKeyRef.current,
         });
@@ -224,7 +224,15 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
     return () => {
       cancelled = true;
     };
-  }, [dataSource, project, projectStatus, projectError, sessionReloadKey, clearEchoes, explorationKey]);
+  }, [
+    dataSource,
+    project,
+    projectStatus,
+    projectError,
+    sessionReloadKey,
+    clearEchoes,
+    explorationKey,
+  ]);
 
   // Subscribe to the stream whenever a session exists.
   useEffect(() => {
@@ -289,11 +297,13 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
       setSubmitting(true);
       setSubmitError(null);
       setStreamNotice(null);
+      // Show immediate feedback while the POST opens the SSE stream. Without
+      // this, a fresh conversation has a blank gap before the first event.
+      setStreaming(true);
       try {
         const accepted = await dataSource.submitTurn(sessionIdValue, payload);
         lastSeqRef.current = Math.max(lastSeqRef.current, accepted.seq);
         setTransportOffline(false);
-        setStreaming(true);
         // Echo the student's own sentence immediately. The stream only carries
         // the assistant's half of the turn, so without this the student stares
         // at an empty thread while the server reads the project context.

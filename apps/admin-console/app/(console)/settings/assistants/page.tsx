@@ -130,6 +130,10 @@ export default function AdminAssistantsPage() {
       );
     } catch (err) {
       console.warn('同步助手启用状态至服务端失败', err);
+      setAssistants((prev) =>
+        prev.map((item) => (item.id === assistant.id ? { ...item, enabled: assistant.enabled } : item))
+      );
+      setSaveNotice(err instanceof Error ? `状态同步失败：${err.message}` : '状态同步失败，请重试');
     }
   };
 
