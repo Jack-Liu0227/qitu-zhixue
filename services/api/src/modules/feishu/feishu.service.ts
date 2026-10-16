@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuQrSession } from '@qitu/contracts';
-import { feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
+import { adminAssistants, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt } from 'drizzle-orm';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { DATABASE_TOKEN } from '../../database';
@@ -74,6 +74,11 @@ export class FeishuService {
       return encryptModelSecret(value, key);
     };
     await withTransaction(db, async (tx) => {
+      if (patch.reportAssistantId) {
+        const [assistant] = await tx.select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, patch.reportAssistantId));
+        if (!assistant) throw new NotFoundException('汇报助手不存在');
+        if (!assistant.enabled) throw new BadRequestException('汇报助手已停用');
+      }
       const [existing] = await tx.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)).for('update');
       const now = new Date();
       const values = {
