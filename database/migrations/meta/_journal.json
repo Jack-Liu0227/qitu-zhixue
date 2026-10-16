@@ -176,6 +176,13 @@
       "when": 1791936000000,
       "tag": "0024_feishu_bot",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792022400000,
+      "tag": "0025_feishu_assistant_device_flow",
+      "breakpoints": true
     }
   ]
 }

@@ -30,4 +30,15 @@ export interface FeishuQrSession {
   status: 'pending' | 'bound' | 'expired' | 'cancelled';
   authorizationUrl: string;
   expiresAt: string;
+  pollIntervalSeconds?: number;
+  errorCode?: 'authorization_pending' | 'slow_down' | 'access_denied' | 'expired_token' | 'provider_unavailable';
+}
+
+export interface FeishuDeviceAuthorization {
+  id: string;
+  status: FeishuQrSession['status'];
+  verificationUriComplete: string;
+  expiresAt: string;
+  pollIntervalSeconds: number;
+  qrCodeDataUrl?: string;
 }

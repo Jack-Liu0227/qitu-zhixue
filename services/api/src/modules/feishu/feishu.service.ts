@@ -1,5 +1,5 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuQrSession } from '@qitu/contracts';
+﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
 import { adminAssistants, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt } from 'drizzle-orm';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
@@ -8,27 +8,38 @@ import { AuditWriter } from '../../common/audit/audit.service';
 import { decryptModelSecret, encryptModelSecret, readModelSecretKey } from '../../common/secrets/model-secret';
 
 export const FEISHU_BOT_ID = 'admin-reporting' as const;
+export const DEFAULT_FEISHU_ASSISTANT_ID = 'feishu-reporting-assistant' as const;
+
+function requireSecretKey(): Buffer {
+  try {
+    const key = readModelSecretKey();
+    if (!key) throw new Error('MISSING_SECRET_KEY');
+    return key;
+  } catch {
+    throw new ServiceUnavailableException('QITU_MODEL_SECRET_KEY is required and must be a valid 32-byte key');
+  }
+}
 
 function string(value: unknown, max: number): string | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string' || value.length > max) throw new BadRequestException('飞书配置字段无效');
+  if (typeof value !== 'string' || value.length > max) throw new BadRequestException('椋炰功閰嶇疆瀛楁鏃犳晥');
   return value.trim() || null;
 }
 
 export function parseFeishuPatch(body: unknown): AdminFeishuSettingsPatch {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('飞书配置须为对象');
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('椋炰功閰嶇疆椤讳负瀵硅薄');
   const value = body as Record<string, unknown>;
   const allowed = ['enabled', 'appId', 'appSecret', 'verificationToken', 'encryptKey', 'domain', 'reportAssistantId', 'reportRecipients'];
-  if (Object.keys(value).some((key) => !allowed.includes(key)) || !Object.keys(value).length) throw new BadRequestException('飞书配置字段不受支持');
-  if ('enabled' in value && typeof value.enabled !== 'boolean') throw new BadRequestException('enabled 须为布尔值');
-  if ('domain' in value && value.domain !== 'feishu' && value.domain !== 'lark') throw new BadRequestException('domain 须为 feishu 或 lark');
+  if (Object.keys(value).some((key) => !allowed.includes(key)) || !Object.keys(value).length) throw new BadRequestException('椋炰功閰嶇疆瀛楁涓嶅彈鏀寔');
+  if ('enabled' in value && typeof value.enabled !== 'boolean') throw new BadRequestException('enabled must be boolean');
+  if ('domain' in value && value.domain !== 'feishu' && value.domain !== 'lark') throw new BadRequestException('domain must be feishu or lark');
   for (const key of ['appId', 'appSecret', 'verificationToken', 'encryptKey', 'reportAssistantId']) if (key in value) string(value[key], 512);
   if ('reportRecipients' in value) {
-    if (!Array.isArray(value.reportRecipients) || value.reportRecipients.length > 500) throw new BadRequestException('reportRecipients 无效');
+    if (!Array.isArray(value.reportRecipients) || value.reportRecipients.length > 500) throw new BadRequestException('reportRecipients 鏃犳晥');
     const seen = new Set<string>();
     for (const item of value.reportRecipients) {
       const id = string(item, 256);
-      if (!id || seen.has(id)) throw new BadRequestException('reportRecipients 必须为唯一非空字符串');
+      if (!id || seen.has(id)) throw new BadRequestException('reportRecipients must be unique non-empty strings');
       seen.add(id);
     }
   }
@@ -40,49 +51,49 @@ export class FeishuService {
   constructor(@Inject(DATABASE_TOKEN) private readonly db: Database | null, private readonly audit: AuditWriter) {}
 
   private database(): Database {
-    if (!this.db) throw new ServiceUnavailableException('飞书配置存储不可用');
+    if (!this.db) throw new ServiceUnavailableException('Feishu configuration storage unavailable');
     return this.db;
   }
 
-  async getSettings(): Promise<AdminFeishuSettings> {
+  async getSettings(assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<AdminFeishuSettings> {
     const db = this.database();
-    const [rows] = await Promise.all([db.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID))]);
-    const row = rows[0];
+    const rows = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    const row = rows[0] ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? (await db.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)))[0] : undefined);
     return {
-      id: FEISHU_BOT_ID,
+      id: (row?.id as 'admin-reporting' | undefined) ?? FEISHU_BOT_ID,
       enabled: row?.enabled ?? false,
-      connected: !!(row?.enabled && row?.appId && row?.appSecretEncrypted && row?.verificationTokenEncrypted && row?.encryptKeyEncrypted && (row.reportRecipients?.length ?? 0) > 0),
+      connected: !!(row?.enabled && row?.appId && row?.appSecretEncrypted && (row.reportRecipients?.length ?? 0) > 0),
       appId: row?.appId ?? null,
       domain: row?.domain === 'lark' ? 'lark' : 'feishu',
       reportAssistantId: row?.reportAssistantId ?? null,
       reportRecipients: row?.reportRecipients ?? [],
-      credentialConfigured: !!(row?.appSecretEncrypted && row?.verificationTokenEncrypted && row?.encryptKeyEncrypted),
+      credentialConfigured: !!row?.appSecretEncrypted,
       qrBinding: { supported: true, callbackPath: '/api/v1/integrations/feishu/oauth/callback' },
       updatedAt: row?.updatedAt?.toISOString() ?? null,
     };
   }
 
-  async update(actor: CurrentUser, input: AdminFeishuSettingsPatch): Promise<AdminFeishuSettings> {
+  async update(actor: CurrentUser, input: AdminFeishuSettingsPatch, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<AdminFeishuSettings> {
     const patch = parseFeishuPatch(input);
     const db = this.database();
-    let key: Buffer | null = null;
-    try { key = readModelSecretKey(); } catch { throw new ServiceUnavailableException('飞书密钥加密配置无效'); }
+    const key = requireSecretKey();
     const encrypt = (value: string | null | undefined): string | null | undefined => {
       if (value === undefined) return undefined;
       if (value === null) return null;
-      if (!key) throw new ServiceUnavailableException('未配置 QITU_MODEL_SECRET_KEY，无法保存飞书密钥');
       return encryptModelSecret(value, key);
     };
     await withTransaction(db, async (tx) => {
       if (patch.reportAssistantId) {
         const [assistant] = await tx.select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, patch.reportAssistantId));
-        if (!assistant) throw new NotFoundException('汇报助手不存在');
-        if (!assistant.enabled) throw new BadRequestException('汇报助手已停用');
+        if (!assistant) throw new NotFoundException('reporting assistant not found');
+        if (!assistant.enabled) throw new BadRequestException('reporting assistant is disabled');
       }
-      const [existing] = await tx.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)).for('update');
+      const existingRows = await tx.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId)).for('update');
+      const existing = existingRows[0] ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? (await tx.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)).for('update'))[0] : undefined);
       const now = new Date();
       const values = {
-        id: FEISHU_BOT_ID,
+        id: existing?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`),
+        assistantId,
         enabled: patch.enabled ?? existing?.enabled ?? false,
         appId: patch.appId !== undefined ? patch.appId : existing?.appId ?? null,
         appSecretEncrypted: patch.appSecret === undefined ? existing?.appSecretEncrypted ?? null : encrypt(patch.appSecret) ?? null,
@@ -94,53 +105,159 @@ export class FeishuService {
         updatedBy: actor.id,
         updatedAt: now,
       };
-      if (existing) await tx.update(feishuBots).set(values).where(eq(feishuBots.id, FEISHU_BOT_ID));
+      if (existing) await tx.update(feishuBots).set(values).where(eq(feishuBots.id, existing.id));
       else await tx.insert(feishuBots).values(values);
-      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.update', targetType: 'feishu_bot', targetId: FEISHU_BOT_ID,
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.update', targetType: 'feishu_bot', targetId: values.id,
         detail: { enabled: values.enabled, appId: values.appId, domain: values.domain, reportAssistantId: values.reportAssistantId, recipientCount: values.reportRecipients.length } }, tx);
     });
-    return this.getSettings();
+    return this.getSettings(assistantId);
   }
 
-  async createQrSession(actor: CurrentUser): Promise<FeishuQrSession> {
+  async createQrSession(actor: CurrentUser, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<FeishuQrSession> {
     const db = this.database();
-    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID));
-    if (!bot?.appId) throw new BadRequestException('请先配置飞书 App ID');
+    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    if (!bot?.appId) throw new BadRequestException('璇峰厛閰嶇疆椋炰功 App ID');
+    const existing = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, bot.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
+    if (existing[0]) return this.getQrSession(existing[0].id);
     const id = randomUUID();
     const state = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + 10 * 60_000);
-    await db.insert(feishuQrSessions).values({ id, botId: FEISHU_BOT_ID, state, status: 'pending', expiresAt, updatedAt: new Date() });
+    await db.insert(feishuQrSessions).values({ id, botId: bot.id, state, status: 'pending', expiresAt, createdBy: actor.id, updatedAt: new Date() });
     await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.qr.create', targetType: 'feishu_qr_session', targetId: id, detail: {} });
     const redirect = absoluteRedirectUri();
     const authorizationUrl = `https://${bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn'}/open-apis/authen/v1/authorize?app_id=${encodeURIComponent(bot.appId)}&redirect_uri=${encodeURIComponent(redirect)}&state=${encodeURIComponent(state)}`;
-    return { id, status: 'pending', authorizationUrl, expiresAt: expiresAt.toISOString() };
+    return { id, status: 'pending', authorizationUrl, expiresAt: expiresAt.toISOString(), pollIntervalSeconds: 5 };
   }
 
   async getQrSession(id: string): Promise<FeishuQrSession> {
     const db = this.database();
     const [row] = await db.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, id));
-    if (!row) throw new NotFoundException('二维码会话不存在');
+    if (!row) throw new NotFoundException('浜岀淮鐮佷細璇濅笉瀛樺湪');
     const status = row.status === 'pending' && row.expiresAt.getTime() <= Date.now() ? 'expired' : row.status as FeishuQrSession['status'];
     if (status !== row.status) await db.update(feishuQrSessions).set({ status, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, row.botId));
     const host = bot?.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
     const appId = bot?.appId;
     const authorizationUrl = appId ? `https://${host}/open-apis/authen/v1/authorize?app_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(absoluteRedirectUri())}&state=${encodeURIComponent(row.state)}` : '';
-    return { id: row.id, status, authorizationUrl, expiresAt: row.expiresAt.toISOString() };
+    return { id: row.id, status, authorizationUrl, expiresAt: row.expiresAt.toISOString(), pollIntervalSeconds: row.pollIntervalSeconds };
+  }
+
+  /** Start Feishu/Lark's server-side device registration flow (no pre-created App ID required). */
+  async beginDeviceAuthorization(actor: CurrentUser, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<FeishuDeviceAuthorization> {
+    if (actor.role !== 'admin') throw new ForbiddenException('Feishu binding requires an administrator');
+    const db = this.database();
+    let domain: 'feishu' | 'lark' = 'feishu';
+    const [configured] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    if (configured?.domain === 'lark') domain = 'lark';
+    const accounts = domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
+    let begin: Record<string, unknown>;
+    try {
+      const initResponse = await fetch(`${accounts}/oauth/v1/app/registration`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'action=init', signal: AbortSignal.timeout(10_000) });
+      const init = await initResponse.json().catch(() => ({})) as Record<string, unknown>;
+      if (!initResponse.ok || !Array.isArray(init.supported_auth_methods) || !init.supported_auth_methods.includes('client_secret')) throw new Error('FEISHU_DEVICE_UNSUPPORTED');
+      const response = await fetch(`${accounts}/oauth/v1/app/registration`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'action=begin&archetype=PersonalAgent&auth_method=client_secret&request_user_info=open_id', signal: AbortSignal.timeout(10_000) });
+      begin = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok) throw new Error('FEISHU_DEVICE_BEGIN_FAILED');
+    } catch { throw new ServiceUnavailableException('椋炰功璁惧鎺堟潈鏈嶅姟鏆備笉鍙敤'); }
+    const deviceCode = String(begin.device_code ?? '');
+    const verificationUriComplete = String(begin.verification_uri_complete ?? begin.verification_uri ?? '');
+    if (!deviceCode || !verificationUriComplete) throw new ServiceUnavailableException('Feishu returned invalid device authorization data');
+    const lifetime = Math.max(30, Math.min(600, Number(begin.expire_in ?? 600)));
+    const pollIntervalSeconds = Math.max(1, Math.min(30, Number(begin.interval ?? 5)));
+    const key = requireSecretKey();
+    const botId = configured?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`);
+    if (!configured) await db.insert(feishuBots).values({ id: botId, assistantId, domain, enabled: false, reportRecipients: [], updatedAt: new Date() });
+    const id = randomUUID();
+    const state = randomBytes(24).toString('base64url');
+    const expiresAt = new Date(Date.now() + lifetime * 1000);
+    await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptModelSecret(deviceCode, key), pollIntervalSeconds, updatedAt: new Date() });
+    await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.begin', targetType: 'feishu_qr_session', targetId: id, detail: { assistantId, domain, expiresAt: expiresAt.toISOString() } });
+    // Do not manufacture a non-scannable image. The client renders the server URL
+    // as a safe explicit link when a QR encoder is not installed.
+    return { id, status: 'pending', verificationUriComplete, expiresAt: expiresAt.toISOString(), pollIntervalSeconds };
+  }
+
+  /** Poll a server-owned device code and apply credentials only to its assistant. */
+  async pollDeviceAuthorization(id: string, actor?: CurrentUser): Promise<FeishuQrSession> {
+    const db = this.database();
+    const [row] = await db.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, id));
+    if (!row) throw new NotFoundException('浜岀淮鐮佷細璇濅笉瀛樺湪');
+    if (actor && row.createdBy && actor.id !== row.createdBy) throw new ForbiddenException('Forbidden QR session');
+    if (row.status !== 'pending') return this.getQrSession(id);
+    if (row.expiresAt.getTime() <= Date.now()) { await db.update(feishuQrSessions).set({ status: 'expired', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
+    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, row.botId));
+    const key = requireSecretKey();
+    if (!row.deviceCodeEncrypted) throw new BadRequestException('璁惧鎺堟潈浼氳瘽鏃犳晥');
+    let deviceCode: string;
+    try { deviceCode = decryptModelSecret(row.deviceCodeEncrypted, key); } catch { throw new ServiceUnavailableException('Feishu device code cannot be decrypted'); }
+    const accounts = bot?.domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
+    let result: Record<string, unknown>;
+    try {
+      const response = await fetch(`${accounts}/oauth/v1/app/registration`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `action=poll&device_code=${encodeURIComponent(deviceCode)}&tp=ob_app`, signal: AbortSignal.timeout(10_000) });
+      result = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok && !result.error) throw new Error('FEISHU_DEVICE_POLL_FAILED');
+    } catch { throw new ServiceUnavailableException('椋炰功璁惧鎺堟潈杞澶辫触'); }
+    const error = String(result.error ?? '');
+    if (error === 'authorization_pending') return this.getQrSession(id);
+    if (error === 'slow_down') { await db.update(feishuQrSessions).set({ pollIntervalSeconds: Math.min(60, row.pollIntervalSeconds + 5), updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
+    if (error === 'access_denied') { await db.update(feishuQrSessions).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
+    if (error === 'expired_token') { await db.update(feishuQrSessions).set({ status: 'expired', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
+    const userInfo = (result.user_info && typeof result.user_info === 'object' ? result.user_info : {}) as Record<string, unknown>;
+    const appId = String(result.client_id ?? '');
+    const appSecret = String(result.client_secret ?? '');
+    const openId = String(userInfo.open_id ?? '');
+    if (!appId || !appSecret || !openId) throw new BadRequestException('椋炰功鎺堟潈鍝嶅簲缂哄皯蹇呰瀛楁');
+    const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
+    await withTransaction(db, async (tx) => {
+      const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
+      const secretKey = requireSecretKey();
+      const recipients = currentBot?.reportRecipients ?? [];
+      await tx.update(feishuBots).set({ enabled: true, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: userInfo.tenant_brand === 'lark' ? 'lark' : currentBot?.domain ?? 'feishu', reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
+      await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: row.createdBy, deviceCodeEncrypted: null, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
+      await this.audit.write({ actorId: row.createdBy ?? null, actorRole: 'admin', action: 'admin.feishu.device.bound', targetType: 'feishu_qr_session', targetId: id, detail: { recipientHash: openIdHash, assistantId: currentBot?.assistantId } }, tx);
+    });
+    return this.getQrSession(id);
+  }
+
+  async getRecipientHashes(assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<readonly string[]> {
+    const db = this.database();
+    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    return bot?.reportRecipients ?? [];
+  }
+
+  /** Minimal Feishu message sender; report text is generated from already-redacted facts. */
+  async sendReport(report: FeishuReportDocument, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<{ requestId?: string }> {
+    const db = this.database();
+    const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    if (!bot?.enabled || !bot.appId || !bot.appSecretEncrypted) throw new BadRequestException('椋炰功鏈哄櫒浜烘湭杩炴帴');
+    const key = requireSecretKey();
+    const secret = decryptModelSecret(bot.appSecretEncrypted, key);
+    const host = bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
+    const tokenResponse = await fetch(`https://${host}/open-apis/auth/v3/app_access_token/internal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ app_id: bot.appId, app_secret: secret }), signal: AbortSignal.timeout(10_000) });
+    const tokenPayload = await tokenResponse.json().catch(() => ({})) as Record<string, unknown>;
+    const token = String(tokenPayload.app_access_token ?? tokenPayload.tenant_access_token ?? '');
+    if (!tokenResponse.ok || !token) throw new ServiceUnavailableException('椋炰功浠ょ墝鏈嶅姟鏆備笉鍙敤');
+    const content = JSON.stringify({ summary: report.summary, range: report.range, redacted: true });
+    let requestId: string | undefined;
+    for (const recipient of bot.reportRecipients ?? []) {
+      const response = await fetch(`https://${host}/open-apis/im/v1/messages?receive_id_type=open_id`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ receive_id: recipient, msg_type: 'text', content: JSON.stringify({ text: content }) }), signal: AbortSignal.timeout(10_000) });
+      const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok) throw new ServiceUnavailableException('Feishu message delivery failed');
+      requestId = String(response.headers.get('x-request-id') ?? payload.request_id ?? requestId ?? '') || undefined;
+    }
+    return { requestId };
   }
 
   async completeQrSession(state: string, code: string): Promise<void> {
-    if (!state || !code || state.length > 256 || code.length > 4096) throw new BadRequestException('OAuth 参数无效');
+    if (!state || !code || state.length > 256 || code.length > 4096) throw new BadRequestException('OAuth 鍙傛暟鏃犳晥');
     const db = this.database();
-    const [row] = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.state, state), gt(feishuQrSessions.expiresAt, new Date())));
-    if (!row) throw new NotFoundException('二维码会话已过期或不存在');
+    const [row] = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.state, state), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
+    if (!row) throw new NotFoundException('浜岀淮鐮佷細璇濆凡杩囨湡鎴栦笉瀛樺湪');
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, row.botId));
-    if (!bot?.appId || !bot.appSecretEncrypted) throw new BadRequestException('飞书应用凭证尚未配置');
-    let key: Buffer | null;
-    try { key = readModelSecretKey(); } catch { throw new ServiceUnavailableException('飞书密钥加密配置无效'); }
-    if (!key) throw new ServiceUnavailableException('未配置 QITU_MODEL_SECRET_KEY');
+    if (!bot?.appId || !bot.appSecretEncrypted) throw new BadRequestException('椋炰功搴旂敤鍑瘉灏氭湭閰嶇疆');
+    const key = requireSecretKey();
     let appSecret: string;
-    try { appSecret = decryptModelSecret(bot.appSecretEncrypted, key); } catch { throw new ServiceUnavailableException('飞书应用凭证无法解密'); }
+    try { appSecret = decryptModelSecret(bot.appSecretEncrypted, key); } catch { throw new ServiceUnavailableException('椋炰功搴旂敤鍑瘉鏃犳硶瑙ｅ瘑'); }
     const host = bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
     let response: Response;
     try {
@@ -157,11 +274,11 @@ export class FeishuService {
         body: JSON.stringify({ grant_type: 'authorization_code', code }),
         signal: AbortSignal.timeout(10_000),
       });
-    } catch { throw new ServiceUnavailableException('飞书授权交换失败'); }
-    if (!response.ok) throw new BadRequestException('飞书授权码无效或已过期');
+    } catch { throw new ServiceUnavailableException('椋炰功鎺堟潈浜ゆ崲澶辫触'); }
+    if (!response.ok) throw new BadRequestException('Feishu authorization code is invalid or expired');
     const payload = await response.json().catch(() => ({})) as { data?: { open_id?: string }; open_id?: string };
     const openId = payload.data?.open_id ?? payload.open_id;
-    if (!openId || typeof openId !== 'string' || openId.length > 256) throw new BadRequestException('飞书未返回有效用户标识');
+    if (!openId || typeof openId !== 'string' || openId.length > 256) throw new BadRequestException('Feishu returned an invalid user identifier');
     const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
     await withTransaction(db, async (tx) => {
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
@@ -178,9 +295,11 @@ export class FeishuService {
 function absoluteRedirectUri(): string {
   const value = (process.env.QITU_FEISHU_REDIRECT_URI ?? '').trim();
   let parsed: URL;
-  try { parsed = new URL(value); } catch { throw new ServiceUnavailableException('QITU_FEISHU_REDIRECT_URI 必须是绝对 HTTPS 地址'); }
+  try { parsed = new URL(value); } catch { throw new ServiceUnavailableException('QITU_FEISHU_REDIRECT_URI 蹇呴』鏄粷瀵?HTTPS 鍦板潃'); }
   if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
-    throw new ServiceUnavailableException('QITU_FEISHU_REDIRECT_URI 必须使用 HTTPS');
+    throw new ServiceUnavailableException('QITU_FEISHU_REDIRECT_URI 蹇呴』浣跨敤 HTTPS');
   }
   return parsed.toString();
 }
+
+
