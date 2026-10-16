@@ -82,3 +82,12 @@ GET  /api/v1/admin/model-voice
 - [`projects.md`](./projects.md)：项目状态机
 - [`../sdk/agent-runtime.md`](../sdk/agent-runtime.md)
 - [`../sdk/team-runtime.md`](../sdk/team-runtime.md)
+
+## 8. 公式与复制体验（实施合同）
+
+- 历史保存 Markdown + TeX 源，不保存 KaTeX HTML；行内公式使用 `$...$`，块公式使用 `$$...$$`，代码块内美元符号不解析。
+- KaTeX 必须使用 `output: 'htmlAndMathml'`、`throwOnError: false`、`trust: false`；非法或超长公式只降级为源文本，不丢弃整条历史。
+- `ChatBubble` 为每个包含可复制内容的可见气泡提供复制按钮。复制公式保留 TeX 源，复制工具时只保留面向学生的标签/结论，不复制思考链、原始参数或未授权附件 URL。
+- Clipboard API 不可用时回退到临时 `textarea`；复制不发请求、不写入会话、不记录正文。按钮必须支持键盘、屏幕阅读器、离线历史和触控。
+
+绑定实体、迁移、API、验证、错误码和验收清单见 [`../design/pbl-reference-implementation-and-chat-history.md`](../design/pbl-reference-implementation-and-chat-history.md)。

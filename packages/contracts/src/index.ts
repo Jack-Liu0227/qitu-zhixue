@@ -12,6 +12,7 @@ export * from './parent.js';
 export * from './admin.js';
 export * from './ima-settings.js';
 export * from './feishu.js';
+export * from './feishu-report.js';
 export * from './agent-runtime.js';
 export * from './team-runtime.js';
 export * from './provider-manifest.js';

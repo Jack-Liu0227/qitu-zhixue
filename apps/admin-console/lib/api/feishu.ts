@@ -1,6 +1,5 @@
-import type { AdminFeishuSettings, FeishuQrSession } from '@qitu/contracts';
-import { newIdempotencyKey } from './modelRegistry';
-import { AdminOfflineError, AdminPermissionError } from './types';
+import type { AdminFeishuSettings, FeishuDeviceAuthorization, FeishuQrSession } from '@qitu/contracts';
+import { AdminOfflineError, AdminPermissionError, newIdempotencyKey } from './types';
 
 export type FeishuConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
 
@@ -22,6 +21,8 @@ export interface FeishuIntegrationConfig {
   qrBinding?: { supported: boolean; callbackPath: string };
   qrSessionId?: string;
   qrCodeUrl?: string;
+  /** Optional server-generated QR image (data URL). Never use a third-party QR proxy. */
+  qrCodeDataUrl?: string;
   expiresAt?: string;
   lastSyncedAt?: string;
 }
@@ -31,6 +32,16 @@ export interface FeishuQrResponse {
   status: FeishuQrSession['status'];
   authorizationUrl: string;
   expiresAt: string;
+  qrCodeDataUrl?: string;
+}
+
+export interface FeishuQrStatusResponse {
+  id: string;
+  status: FeishuQrSession['status'];
+  authorizationUrl: string;
+  expiresAt: string;
+  credentialConfigured: boolean;
+  qrCodeDataUrl?: string;
 }
 
 function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
@@ -48,8 +59,17 @@ function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
   };
 }
 
-function mapQr(value: FeishuQrSession): FeishuQrResponse {
-  return { sessionId: value.id, status: value.status, authorizationUrl: value.authorizationUrl, expiresAt: value.expiresAt };
+function mapQr(value: FeishuQrSession | FeishuDeviceAuthorization): FeishuQrResponse {
+  const candidate = value as (FeishuQrSession | FeishuDeviceAuthorization) & { qrCodeDataUrl?: unknown; qrCode?: unknown; verificationUriComplete?: unknown };
+  const authorizationUrl = 'verificationUriComplete' in value && typeof value.verificationUriComplete === 'string'
+    ? value.verificationUriComplete
+    : 'authorizationUrl' in value ? value.authorizationUrl : '';
+  const qrCodeDataUrl = typeof candidate.qrCodeDataUrl === 'string' && candidate.qrCodeDataUrl.startsWith('data:image/')
+    ? candidate.qrCodeDataUrl
+    : typeof candidate.qrCode === 'string' && candidate.qrCode.startsWith('data:image/')
+      ? candidate.qrCode
+      : undefined;
+  return { sessionId: value.id, status: value.status, authorizationUrl, expiresAt: value.expiresAt, qrCodeDataUrl };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -70,11 +90,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload.data;
 }
 
-export function fetchFeishuIntegration(): Promise<FeishuIntegrationConfig> {
-  return request<AdminFeishuSettings>('/api/v1/admin/integrations/feishu').then(mapSettings);
+export function fetchFeishuIntegration(assistantId?: string): Promise<FeishuIntegrationConfig> {
+  const query = assistantId ? `?assistantId=${encodeURIComponent(assistantId)}` : '';
+  return request<AdminFeishuSettings>(`/api/v1/admin/integrations/feishu${query}`).then(mapSettings);
 }
 
-export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>): Promise<FeishuIntegrationConfig> {
+export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>, idempotencyKey = newIdempotencyKey()): Promise<FeishuIntegrationConfig> {
   const body = {
     enabled: input.enabled,
     appId: input.appId?.trim() || null,
@@ -86,32 +107,37 @@ export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>)
   if (input.appSecret?.trim()) Object.assign(body, { appSecret: input.appSecret.trim() });
   if (input.verificationToken?.trim()) Object.assign(body, { verificationToken: input.verificationToken.trim() });
   if (input.encryptKey?.trim()) Object.assign(body, { encryptKey: input.encryptKey.trim() });
-  return request<AdminFeishuSettings>('/api/v1/admin/integrations/feishu', {
+  const assistantQuery = input.reportAssistantId ? `?assistantId=${encodeURIComponent(input.reportAssistantId)}` : '';
+  return request<AdminFeishuSettings>(`/api/v1/admin/integrations/feishu${assistantQuery}`, {
     method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'Idempotency-Key': newIdempotencyKey() },
+    headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(body),
   }).then(mapSettings);
 }
 
-export function startFeishuQrLogin(): Promise<FeishuQrResponse> {
-  return request<FeishuQrSession>('/api/v1/admin/integrations/feishu/qr-sessions', {
+export function startFeishuQrLogin(assistantId?: string, idempotencyKey = newIdempotencyKey()): Promise<FeishuQrResponse> {
+  return request<FeishuDeviceAuthorization>('/api/v1/admin/integrations/feishu/device-sessions', {
     method: 'POST',
-    headers: { 'Idempotency-Key': newIdempotencyKey() },
+    headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body: assistantId ? JSON.stringify({ assistantId }) : undefined,
   }).then(mapQr);
 }
 
-export function fetchFeishuQrStatus(sessionId: string): Promise<FeishuIntegrationConfig> {
-  return request<FeishuQrSession>(`/api/v1/admin/integrations/feishu/qr-sessions/${encodeURIComponent(sessionId)}`).then((session) => ({
-    enabled: true,
-    appId: '',
-    domain: 'feishu',
-    botName: '飞书汇报助手',
-    reportAssistantId: '',
-    reportScope: [],
-    status: session.status === 'bound' ? 'connected' : session.status === 'expired' || session.status === 'cancelled' ? 'error' : 'pending',
-    credentialConfigured: session.status === 'bound',
-    qrSessionId: session.id,
-    qrCodeUrl: session.authorizationUrl,
-    expiresAt: session.expiresAt,
-  }));
+export function fetchFeishuQrStatus(sessionId: string): Promise<FeishuQrStatusResponse> {
+  return request<FeishuQrSession>(`/api/v1/admin/integrations/feishu/device-sessions/${encodeURIComponent(sessionId)}/poll`, { method: 'POST' }).then((session) => {
+    const candidate = session as FeishuQrSession & { credentialConfigured?: unknown; qrCodeDataUrl?: unknown; qrCode?: unknown };
+    const qrCodeDataUrl = typeof candidate.qrCodeDataUrl === 'string' && candidate.qrCodeDataUrl.startsWith('data:image/')
+      ? candidate.qrCodeDataUrl
+      : typeof candidate.qrCode === 'string' && candidate.qrCode.startsWith('data:image/')
+        ? candidate.qrCode
+        : undefined;
+    return {
+      id: session.id,
+      status: session.status,
+      authorizationUrl: session.authorizationUrl ?? '',
+      expiresAt: session.expiresAt,
+      credentialConfigured: session.status === 'bound' || candidate.credentialConfigured === true,
+      qrCodeDataUrl,
+    };
+  });
 }
