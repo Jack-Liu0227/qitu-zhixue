@@ -17,6 +17,8 @@
 
 独立服务源代码位于 `integrations/ima-mcp`，保留自己的 npm lockfile，不纳入 pnpm workspace。安装后执行 `npm ci --ignore-scripts`、`npm test`，再使用 `qitu-ima-mcp.service` 启动；凭证文件应仅允许服务账号读取。操作员可执行 `tooling/setup-ima-mcp.sql` 幂等登记已有六个 Agent 的只读绑定，现有配置不覆盖，也不修改模型字段。构建 API 后，可用 `node --env-file=/etc/qitu/ima-api.env tooling/verify-ima-mcp.cjs` 验证两个并发 MCP 客户端、三个教材库、搜索及 PDF 读取；脚本只输出计数和来源元数据。
 
+登记脚本默认停用运行时入口。先在候选 API 验证，再发布包含执行器的 API 并启用 `ima-knowledge`；避免旧 API 将工具仅作为提示词元数据展示。正式切换前应记录旧 API 所属进程和启动器，只重启 API，不操作前端。当前服务器 API 采用 postgres 系统账号及现有配置文件启动；部署复用这些配置，不另行复制整套进程环境。直接启动编译产物时需保留原 Nest/pnpm 提供的依赖搜索路径（`NODE_PATH=<checkout>/node_modules/.pnpm/node_modules`）。
+
 ## 执行与边界
 
 已授权的 Tutor 请求进入 GatewayTutorProvider，建立 stateless Streamable HTTP MCP 会话、发现工具并与绑定取交集。ModelGateway 将 schema 交给已配置模型，由模型生成原生工具调用；执行实际 MCP 请求后，以原生 tool result 回填模型上下文，再生成引导回复。只读工具最多调用 8 次、模型工具回合最多 90 秒、单次 MCP 请求最多 25 秒、响应最多 1 MiB。权限由 API 的对象检查和服务端 Agent 绑定共同控制，ima 服务再校验知识库 allowlist 与签名文档引用。
