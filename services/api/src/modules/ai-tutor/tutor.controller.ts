@@ -196,6 +196,14 @@ export class TutorController {
     const turnId = `live-${record.sessionId}-${record.lastSeq + 1}`;
     const streamStartedAt = new Date();
     let lastStreamedSeq = record.lastSeq;
+    const emittedSeq = new Set<number>();
+    const emitLive = async (streamed: StreamedTutorEvent): Promise<void> => {
+      if (aborted || response.writableEnded) return;
+      emittedSeq.add(streamed.seq);
+      lastStreamedSeq = streamed.seq;
+      writeFrame(response, streamed, { sessionId: record.sessionId, turnId });
+      await delay(DELAY_BY_TYPE[streamed.event.type]);
+    };
     // The service owns `seq`; it yields each event already numbered so the
     // student turn, every step and the assistant turn never collide.
 
@@ -206,11 +214,9 @@ export class TutorController {
         ...(typeof body.content === 'string' ? { content: body.content } : {}),
         ...(isMove(body.pedagogicMove) ? { pedagogicMove: body.pedagogicMove } : {}),
         ...(typeof body.optionLabel === 'string' ? { optionLabel: body.optionLabel } : {}),
+        onEvent: emitLive,
       })) {
-        if (aborted) break;
-        lastStreamedSeq = streamed.seq;
-        writeFrame(response, streamed, { sessionId: record.sessionId, turnId });
-        await delay(DELAY_BY_TYPE[streamed.event.type]);
+        if (!emittedSeq.has(streamed.seq)) await emitLive(streamed);
       }
     } catch (error) {
       // Headers are already sent, so the only honest failure signal left is an

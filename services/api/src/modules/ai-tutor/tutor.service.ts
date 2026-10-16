@@ -452,6 +452,7 @@ export class TutorService {
       optionLabel?: string;
       idempotencyKey: string;
       actorId: string;
+      onEvent?: (streamed: StreamedTutorEvent) => Promise<void> | void;
     },
   ): AsyncGenerator<StreamedTutorEvent, void, undefined> {
     // 纵深防御：即使调用方绕过了按 id 的授权查询，回合执行前仍校验归属。
@@ -471,7 +472,7 @@ export class TutorService {
         request.idempotencyKey,
         requestHash,
         async () => {
-          const events = await this.executeTurn(record, request);
+          const events = await this.executeTurn(record, request, request.onEvent);
           return { status: 200, body: { events } };
         },
         { processingLeaseMs: TUTOR_TURN_LEASE_MS },
@@ -502,7 +503,7 @@ export class TutorService {
       return;
     }
 
-    const events = await this.executeTurn(record, request);
+    const events = await this.executeTurn(record, request, request.onEvent);
     this.idempotency.set(request.idempotencyKey, {
       turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
       events,
@@ -525,6 +526,7 @@ export class TutorService {
       idempotencyKey: string;
       actorId: string;
     },
+    onEvent?: (streamed: StreamedTutorEvent) => Promise<void> | void,
   ): Promise<StreamedTutorEvent[]> {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
@@ -694,6 +696,14 @@ export class TutorService {
     let guardBlocked = false;
     const pending = new Map<string, TutorToolCall>();
 
+    if (unifiedSDK) {
+      const runtimeProgress: StreamedTutorEvent = {
+        seq: ++nextSeq,
+        event: { type: 'tool_call', callId: `agent-runtime-${record.sessionId}`, name: 'agent.runtime.run', label: 'Preparing tutor reply' },
+      };
+      events.push(runtimeProgress);
+      await onEvent?.(runtimeProgress);
+    }
     const generated = unifiedSDK ? await unifiedSDK.agent.run(input) : this.provider.generateTurn(input);
     for await (const event of generated) {
       nextSeq += 1;
@@ -732,6 +742,7 @@ export class TutorService {
         default:
           break;
       }
+      await onEvent?.(streamed);
     }
 
     // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
