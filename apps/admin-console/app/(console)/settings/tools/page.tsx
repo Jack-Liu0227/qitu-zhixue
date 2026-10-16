@@ -51,7 +51,7 @@ export interface SingleMcpConfig {
   rawJson: string;
 }
 
-export interface ToolParamSchema {
+interface ToolParamSchema {
   name: string;
   type: string;
   required: boolean;
@@ -59,7 +59,7 @@ export interface ToolParamSchema {
   description: string;
 }
 
-export const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
+const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
   grok_web_search: [
     { name: 'query', type: 'string', required: true, description: '搜索关键词、学术概念或事实提问' },
     { name: 'max_results', type: 'number', required: false, defaultValue: 5, description: '返回的最大网页摘要条数 (1-20)' },
@@ -129,7 +129,7 @@ export const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
   ],
 };
 
-export function getToolParams(toolName: string): ToolParamSchema[] {
+function getToolParams(toolName: string): ToolParamSchema[] {
   if (MCP_TOOL_PARAM_REGISTRY[toolName]) {
     return MCP_TOOL_PARAM_REGISTRY[toolName];
   }
