@@ -13,7 +13,7 @@
 - `ima_list_documents`
 - `ima_read_document`
 
-绑定与启停每轮由 PlatformRegistry 重新解析；未绑定、禁用的服务或工具不会传给模型。知识库接入不替用户选择或修改模型；既有运行时的独立模型选择/用途路由保持原状。独立模型字段均为空时，当前 PlatformRegistry 会尝试原有 `modelUsage` 绑定，因此不能仅凭数据库两个空字段判断有效模型不可用。浏览器不能提交 MCP endpoint、token 或工具授权。
+绑定与启停每轮由 PlatformRegistry 重新解析；未绑定、禁用的服务或工具不会传给模型。知识库接入不替用户选择或修改模型；既有运行时的独立模型选择/用途路由保持原状。独立模型字段均为空时，当前 PlatformRegistry 会尝试原有 `modelUsage` 绑定，因此不能仅凭数据库两个空字段判断有效模型不可用。学生浏览器不能提交 MCP endpoint、token 或工具授权；管理员仅可通过受权限保护的设置接口修改授权。
 
 独立服务源代码位于 `integrations/ima-mcp`，保留自己的 npm lockfile，不纳入 pnpm workspace。安装后执行 `npm ci --ignore-scripts`、`npm test`，再使用 `qitu-ima-mcp.service` 启动；凭证文件应仅允许服务账号读取。操作员可执行 `tooling/setup-ima-mcp.sql` 幂等登记已有六个 Agent 的只读绑定，现有配置不覆盖，也不修改模型字段。构建 API 后，可用 `node --env-file=/etc/qitu/ima-api.env tooling/verify-ima-mcp.cjs` 验证两个并发 MCP 客户端、三个教材库、搜索及 PDF 读取；脚本只输出计数和来源元数据。
 
@@ -34,3 +34,9 @@ ima 的关键词接口可能只匹配文件名，不能视为完整语义 RAG。
 执行 model-runtime 和 API 的 typecheck、lint、测试及生产构建。运行时测试覆盖模型原生工具调用、结果回填、未授权工具拒绝；MCP 测试覆盖握手、SSE、绑定交集和并发会话隔离。生产验收分别检查服务健康、实际知识库列表、教材搜索/PDF读取以及 Agent 模型绑定状态；未绑定模型时不能宣称完整导师问答已验证。
 
 发布前保存现有 MCP/Agent 绑定和 API 启动环境；通过隔离 checkout 启动，保留旧进程启动方式作为回滚路径。停用 `ima-knowledge` 或删除指定 Agent 的绑定即可撤销读取权限；不影响正式项目、掌握度或成长数据。
+
+## 管理员工具与 MCP 页面
+
+保持原有授权矩阵、四个 MCP 配置条目、JSON 编辑/预览、添加与删除以及内置工具的布局。矩阵追加“是否使用 ima 知识库”列，“配置目标与清单”追加与其他条目同样式的“ima知识库”行。
+
+ima 列按现有助手保存授权，配置行显示服务器实际连接状态、工具数和授权数；在该行可设置全局“允许调用”及执行连接检查。矩阵、绑定标签与 JSON 的 `enabled`、`boundAssistants`（助手 ID）均调用管理员 API 保存，刷新后从服务器读取。全局配置也保留 ima 条目，停用通过 `enabled: false` 表达。ima 的连接地址、凭证、工具清单由服务器管理，页面不可覆盖；读取失败显示错误和重试，保存失败不会假装成功。不会新增 Agent、启用助手或变更模型绑定。
