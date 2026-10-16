@@ -1,0 +1,13 @@
+{
+  "title": "让校园的一滴雨，长成一个作品",
+  "video": "/media/rain-garden/story.mp4",
+  "duration": 27,
+  "scenes": [
+    {"id":"observe","start":0,"label":"发现问题","title":"下雨后，这片积水能去哪儿？","description":"从校园里的真实观察开始，记录现象，由学习者选择想研究的问题。","image":"/media/rain-garden/scene-01.webp","alt":"白色校园微缩模型旁的积水、未完成的花园与测量工具"},
+    {"id":"question","start":4.4,"label":"自主提问","title":"先问清楚，再决定做什么","description":"AI 搭档用问题帮助梳理方向；学生确认意图之后，才建立正式项目。","image":"/media/rain-garden/scene-02.webp","alt":"同一校园模型前展开的蓝色笔记本、草图与问题卡片"},
+    {"id":"theory","start":8.8,"label":"理论验证","title":"水怎样穿过土壤？先找到证据","description":"观察砂石与土壤的渗透实验，理解原理。理论达标后，再进入实践。","image":"/media/rain-garden/scene-03.webp","alt":"校园模型前的透明土壤分层实验槽与量筒"},
+    {"id":"build","start":13.2,"label":"动手制作","title":"把理解，做成看得见的方案","description":"理论核验通过后，制作雨水花园模型，让水道与种植区连接起来。","image":"/media/rain-garden/scene-04.webp","alt":"校园水道通过蓝色入水口连接有透明剖面的雨水花园模型"},
+    {"id":"test","start":17.6,"label":"测试迭代","title":"试一次，再改进一点","description":"用模拟降雨检查水流，记录观察和调整。一次测试不是结论，而是下一次改进的起点。","image":"/media/rain-garden/scene-05.webp","alt":"量杯向模型水道注水，观察水流进入花园的测试场景"},
+    {"id":"reflect","start":22,"label":"反思沉淀","title":"带走的不只是作品，还有成长的证据","description":"把过程照片、实验记录与反思整理成作品档案。教师与家长仅查看授权范围内的信息。","image":"/media/rain-garden/scene-06.webp","alt":"完成的校园雨水花园模型旁摆放过程照片与观察档案"}
+  ]
+}

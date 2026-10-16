@@ -67,6 +67,8 @@ POST /api/v1/public/consultations
 
 公开页面使用产品名称“启途智学”和 `QITU ZHIXUE` 标识，品牌资产位于 `apps/auth-portal/public/brand-logo.png`、`brand-mark.png`。关于产品定位和 AI 与人共成长的内容维护在 [`../aboutus/README.md`](../aboutus/README.md)，不要把营销文案复制为接口或权限合同。
 
+首页六幕「一滴雨的项目旅程」由生成图片合成无声短片，不是真实学生录像。剧本、素材来源、减弱动态/离线降级和四端共享视觉约束见 [`../design/brand-story.md`](../design/brand-story.md)。导航与公开数据接口保持不变。
+
 ## 6. 未决事项
 
 - [ ] 咨询线索的受控后台处理、导出和数据保留策略。

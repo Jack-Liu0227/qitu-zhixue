@@ -1,11 +1,11 @@
 'use client';
 
 import { AuthGuard, LogoutButton, useCurrentUser } from '@qitu/auth';
-import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
+import { Avatar, NavSidebar, useResponsiveSidebar, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 /**
  * `next.config.ts` 设置了 `basePath: '/admin'`，所以 `app/(console)/models/page.tsx`
@@ -118,7 +118,7 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
     : '';
   const pageTitle = active?.label ?? '平台管理后台';
 
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggle } = useResponsiveSidebar(pathname);
 
   return (
     <AuthGuard
@@ -142,7 +142,7 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
           activeHref={activeHref}
           renderLink={renderNavLink}
           collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((prev) => !prev)}
+          onToggleCollapse={toggle}
         />
         <div className="admin-console-main">
           <header className="admin-console-topbar">
@@ -150,8 +150,9 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
               <button
                 type="button"
                 className="qitu-mobile-menu-btn"
-                onClick={() => setCollapsed((prev) => !prev)}
-                aria-label="打开导航菜单"
+                onClick={toggle}
+                aria-label={collapsed ? '打开导航菜单' : '关闭导航菜单'}
+                aria-expanded={!collapsed}
                 title="导航菜单"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">

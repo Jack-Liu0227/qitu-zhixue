@@ -1,15 +1,15 @@
 export const PRODUCT_NAME = '启途智学';
 
 export const colors = {
-  page: '#F6FAFF',
-  primary: '#2878F0',
-  heading: '#102A5C',
-  completed: '#18B7AC',
-  attention: '#FF8A3D',
-  danger: '#E95B68',
-  border: '#E4ECF7',
-  text: '#243B5A',
-  muted: '#73839B',
+  page: '#F4F7FB',
+  primary: '#0038B2',
+  heading: '#132646',
+  completed: '#087D70',
+  attention: '#A65B14',
+  danger: '#C33D50',
+  border: '#DDE5F0',
+  text: '#30435F',
+  muted: '#566780',
 } as const;
 
 export type DesignColor = keyof typeof colors;
@@ -53,7 +53,7 @@ export const radii = {
 
 export type DesignRadius = keyof typeof radii;
 
-/** 阴影刻度，统一以品牌深蓝 `#102A5C` 为投影色，保持柔和调性。 */
+/** 阴影刻度，统一以品牌深蓝 `#132646` 为投影色，保持柔和调性。 */
 export const shadows = {
   none: 'none',
   xs: '0 1px 2px rgb(16 42 92 / 6%)',
@@ -70,7 +70,7 @@ export type DesignShadow = keyof typeof shadows;
 /** 排版刻度：字体族、字号、行高与字重。 */
 export const typography = {
   fontFamily:
-    "Inter, 'PingFang SC', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif",
+    "'Microsoft YaHei UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
   monoFamily:
     "'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
   fontSize: {
@@ -102,8 +102,8 @@ export type DesignTypography = typeof typography;
  * 用于标签、状态、按钮 hover 等需要同色系浅色背景的场景。
  */
 export const semanticColors = {
-  primary: { soft: '#EAF2FE', border: '#C6DCFB', hover: '#1E63CE' },
-  completed: { soft: '#E6F7F5', border: '#B6E7E2', hover: '#139C93' },
+  primary: { soft: '#E8EFFC', border: '#CAD8F5', hover: '#002E94' },
+  completed: { soft: '#E6F7F5', border: '#B6E7E2', hover: '#076B60' },
   attention: { soft: '#FFF0E6', border: '#FFD3B8', hover: '#E9762A' },
   danger: { soft: '#FDEDEE', border: '#F8C9CE', hover: '#D23F4D' },
 } as const;
@@ -113,11 +113,11 @@ export type DesignSemanticColor = (typeof semanticColors)[DesignSemanticTone];
 
 /** 品牌渐变，用于横幅、徽标等高强调区域。 */
 export const gradients = {
-  brand: 'linear-gradient(135deg, #2878F0 0%, #18B7AC 100%)',
-  primary: 'linear-gradient(135deg, #3E8BF5 0%, #2878F0 100%)',
-  attention: 'linear-gradient(135deg, #FFA15F 0%, #FF8A3D 100%)',
-  banner: 'linear-gradient(135deg, #EAF2FE 0%, #F6FAFF 100%)',
-  glow: 'radial-gradient(circle at 30% 20%, #EAF2FE 0%, #F6FAFF 70%)',
+  brand: 'linear-gradient(135deg, #0038B2 0%, #087D70 100%)',
+  primary: 'linear-gradient(135deg, #3E8BF5 0%, #0038B2 100%)',
+  attention: 'linear-gradient(135deg, #FFA15F 0%, #A65B14 100%)',
+  banner: 'linear-gradient(135deg, #E8EFFC 0%, #F4F7FB 100%)',
+  glow: 'radial-gradient(circle at 30% 20%, #E8EFFC 0%, #F4F7FB 70%)',
 } as const;
 
 export type DesignGradient = keyof typeof gradients;

@@ -71,3 +71,7 @@ worktrees/
 
 # Stitch designs
 .stitch/
+
+# Local creative build intermediates
+/output/
+.finesse/

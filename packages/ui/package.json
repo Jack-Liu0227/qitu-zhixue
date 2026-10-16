@@ -6,13 +6,14 @@
     ".": "./src/index.tsx",
     "./preferences": "./src/preferences.tsx",
     "./styles.css": "./src/styles.css",
-    "./preferences.css": "./src/preferences.css"
+    "./preferences.css": "./src/preferences.css",
+    "./brand.css": "./src/brand.css"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node ../../tooling/validate-reduced-motion.mjs"
+    "test": "node ../../tooling/validate-reduced-motion.mjs && node --test ../../tooling/brand-story.test.mjs"
   },
   "dependencies": {
     "@qitu/design-tokens": "workspace:*",

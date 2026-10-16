@@ -1,0 +1,36 @@
+/* finesse | register=brand | A=chalk+cobalt | B=CJK-serif+sans | C=story-film
+ * D=still-film-dissolve | E=paper-model | SOUL=7 SPECTACLE=4 DENSITY=5 */
+.story-film { margin: 0; color: var(--qitu-text); background: var(--qitu-surface); }
+.story-film-picture { position: relative; aspect-ratio: 16 / 9; background: var(--qitu-surface-inset); }
+.story-film-picture img, .story-film-picture video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.story-film-picture video[hidden] { display: none; }
+.story-film-label, .story-film-play {
+  position: absolute; top: 16px; padding: 8px 12px; border-radius: 10px;
+  color: var(--qitu-heading); background: var(--qitu-surface); font-size: .75rem;
+}
+.story-film-label { left: 16px; }
+.story-film-play { right: 16px; min-height: 44px; min-width: 64px; border: 1px solid var(--qitu-border); cursor: pointer; }
+.story-film-play:disabled { color: var(--qitu-muted); cursor: default; }
+.story-film-caption { padding: 22px 24px 18px; min-height: 164px; }
+.story-film-stage { color: var(--qitu-primary); font-size: .78rem; font-weight: 700; margin: 0 0 8px; }
+.story-film-caption h3 { color: var(--qitu-heading); margin: 0 0 10px; font-size: 1.2rem; line-height: 1.5; }
+.story-film-caption > p:last-child { margin: 0; color: var(--qitu-muted); font-size: .85rem; line-height: 1.8; }
+.story-film-chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 20px 16px; }
+.story-film-chapters button {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  border: 1px solid var(--qitu-border); border-radius: 10px; background: var(--qitu-surface);
+  color: var(--qitu-muted); font-size: .76rem; cursor: pointer; white-space: nowrap;
+}
+.story-film-chapters button span { font-variant-numeric: tabular-nums; font-size: .66rem; }
+.story-film-chapters button[aria-current] { color: var(--qitu-primary); background: var(--qitu-primary-soft); border-color: var(--qitu-primary); }
+.story-film-note { margin: 0; padding: 0 24px 18px; color: var(--qitu-muted); font-size: .7rem; line-height: 1.7; }
+@media (max-width: 414px) {
+  .story-film-caption { padding: 18px 16px; min-height: 185px; }
+  .story-film-caption h3 { font-size: 1.05rem; }
+  .story-film-chapters { padding-inline: 12px; gap: 4px; }
+  .story-film-chapters button { gap: 4px; font-size: .7rem; }
+  .story-film-note { padding-inline: 16px; }
+  .story-film-label { left: 10px; top: 10px; font-size: .65rem; }
+  .story-film-play { right: 10px; top: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .story-film { scroll-behavior: auto; } }

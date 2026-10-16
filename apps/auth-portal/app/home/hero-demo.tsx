@@ -19,7 +19,7 @@ export function HeroTutorDemo() {
           className={`home-hero-switch-btn ${viewMode === 'dynamic' ? 'is-active' : ''}`}
           onClick={() => setViewMode('dynamic')}
         >
-          <Icon name="sparkle" size={14} /> 动态项目式探究 · 多帧呈现
+          <Icon name="sparkle" size={14} /> 看一滴雨的旅程
         </button>
         <button
           type="button"
@@ -28,7 +28,7 @@ export function HeroTutorDemo() {
           className={`home-hero-switch-btn ${viewMode === 'preview' ? 'is-active' : ''}`}
           onClick={() => setViewMode('preview')}
         >
-          <Icon name="target" size={14} /> 工作区架构预览
+          <Icon name="target" size={14} /> 了解学习工作区
         </button>
       </div>
 

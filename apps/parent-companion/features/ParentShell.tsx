@@ -1,10 +1,10 @@
 'use client';
 import { AuthGuard, LogoutButton, useCurrentUser } from '@qitu/auth';
-import { Avatar, NavSidebar, type NavLinkRenderer } from '@qitu/ui';
+import { Avatar, NavSidebar, useResponsiveSidebar, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { ParentFeedbackWidget } from './ParentFeedbackWidget';
 const BASE_PATH = '/parent';
 const specs = [
@@ -41,7 +41,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
     return s.path === '/' ? p === '/' : p === s.path || p.startsWith(`${s.path}/`);
   });
   const user = useCurrentUser();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggle } = useResponsiveSidebar(pathname);
 
   return (
     <AuthGuard expectedRole="parent" redirectTo="/parent/login">
@@ -53,7 +53,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
           activeHref={active ? `${BASE_PATH}${active.path === '/' ? '' : active.path}` : ''}
           renderLink={renderLink}
           collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((p) => !p)}
+          onToggleCollapse={toggle}
         />
         <div className="parent-main">
           <header className="parent-topbar">
@@ -61,8 +61,9 @@ export function ParentShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 className="qitu-mobile-menu-btn"
-                onClick={() => setCollapsed((p) => !p)}
-                aria-label="打开导航菜单"
+                onClick={toggle}
+                aria-label={collapsed ? '打开导航菜单' : '关闭导航菜单'}
+                aria-expanded={!collapsed}
                 title="导航菜单"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">

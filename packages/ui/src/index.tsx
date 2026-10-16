@@ -34,3 +34,4 @@ export * from './shell';
 export * from './primitives';
 export * from './states';
 export * from './team';
+export * from './responsive-sidebar';

@@ -3,6 +3,8 @@ import '@qitu/ui/styles.css';
 import './globals.css';
 import './home.css';
 import './public-pages.css';
+import './home/story-film.css';
+import '@qitu/ui/brand.css';
 
 export const metadata: Metadata = {
   title: {

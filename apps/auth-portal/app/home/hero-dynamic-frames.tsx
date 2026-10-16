@@ -1,190 +1,142 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Icon } from './icons';
+import story from './storyboard.json';
 
-interface FrameSpec {
-  id: string;
-  stageName: string;
-  stageEn: string;
-  title: string;
-  desc: string;
-  imageSrc: string;
-  agentRole: string;
-  agentRoleEn: string;
-  accentColor: string;
-  metricBadge: string;
-}
-
-const FRAMES: FrameSpec[] = [
-  {
-    id: 'frame-1',
-    stageName: '阶段 01 · 真实问题探究',
-    stageEn: 'STAGE 01 · DRIVING QUESTION & INQUIRY',
-    title: '从真实世界任务出发，启发深层思考',
-    desc: '苏格拉底式 AI 搭档引导学生澄清问题、定义目标，通过自然交互梳理探究路径。',
-    imageSrc: '/images/pbl-hero-frame-1.jpg',
-    agentRole: '启发式探究搭档',
-    agentRoleEn: 'Socratic Inquiry Partner',
-    accentColor: '#2563eb',
-    metricBadge: '目标澄清度 98%',
-  },
-  {
-    id: 'frame-2',
-    stageName: '阶段 02 · 理论掌握与深度验证',
-    stageEn: 'STAGE 02 · THEORY MASTERY & GATE VERIFICATION',
-    title: '严密逻辑推演，理论达标后解锁实践',
-    desc: '多模态实验数据采集与理论图谱推演，系统自动审核先决条件，保障工程实践严谨性。',
-    imageSrc: '/images/pbl-hero-frame-2.jpg',
-    agentRole: '理论门禁核验器',
-    agentRoleEn: 'Theory Gate Verifier',
-    accentColor: '#7c3aed',
-    metricBadge: '理论达标率 100%',
-  },
-  {
-    id: 'frame-3',
-    stageName: '阶段 03 · 实体创作与六维素养成长',
-    stageEn: 'STAGE 03 · ARTIFACT CREATION & GROWTH RADAR',
-    title: '将灵感转化为作品，沉淀完整成长证据',
-    desc: '完成真实项目作品交付，生成六维素养雷达图与全流程可信学习成长档案。',
-    imageSrc: '/images/pbl-hero-frame-3.jpg',
-    agentRole: '成长评估专家',
-    agentRoleEn: 'Growth Portfolio Evaluator',
-    accentColor: '#10b981',
-    metricBadge: '六维素养全面跃升',
-  },
-];
-
+/** The film is decorative; its story remains readable with playback disabled. */
 export function HeroDynamicFrames() {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const container = useRef<HTMLElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const visible = useRef(false);
+  const [chapter, setChapter] = useState(0);
+  const [enabled, setEnabled] = useState(false);
+  const [intent, setIntent] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [reduced, setReduced] = useState(true);
+  const [offline, setOffline] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+
+  const syncPlayback = useCallback(() => {
+    const element = video.current;
+    if (!element) return;
+    if (enabled && intent && !reduced && !offline && !failed && visible.current && !document.hidden) {
+      void element.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setIntent(false);
+        setPlaying(false);
+      });
+    } else {
+      element.pause();
+    }
+  }, [enabled, intent, reduced, offline, failed]);
 
   useEffect(() => {
-    if (!isPlaying) return;
-    timerRef.current = setInterval(() => {
-      setCurrentIdx((prev) => (prev + 1) % FRAMES.length);
-    }, 4800);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const updateMotion = () => {
+      const prefersStill = media.matches || document.documentElement.dataset.qituReducedMotion === 'true';
+      setReduced(prefersStill);
+      if (prefersStill) setEnabled(false);
     };
-  }, [isPlaying]);
+    updateMotion();
+    setEnabled(!media.matches && document.documentElement.dataset.qituReducedMotion !== 'true' && !connection?.saveData);
+    const updateNetwork = () => setOffline(!navigator.onLine);
+    updateNetwork();
+    media.addEventListener('change', updateMotion);
+    const observer = new MutationObserver(updateMotion);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-qitu-reduced-motion'] });
+    window.addEventListener('online', updateNetwork);
+    window.addEventListener('offline', updateNetwork);
+    return () => {
+      media.removeEventListener('change', updateMotion);
+      observer.disconnect();
+      window.removeEventListener('online', updateNetwork);
+      window.removeEventListener('offline', updateNetwork);
+    };
+  }, []);
 
-  const frame = FRAMES[currentIdx]!;
+  useEffect(() => {
+    syncPlayback();
+    const observer = new IntersectionObserver(([entry]) => {
+      visible.current = Boolean(entry?.isIntersecting);
+      syncPlayback();
+    }, { threshold: .15 });
+    if (container.current) observer.observe(container.current);
+    document.addEventListener('visibilitychange', syncPlayback);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', syncPlayback);
+    };
+  }, [syncPlayback]);
+
+  const selectChapter = (index: number) => {
+    setChapter(index);
+    setIntent(false);
+    if (video.current && video.current.readyState >= 1) video.current.currentTime = story.scenes[index]!.start + .7;
+  };
+  const current = story.scenes[chapter]!;
+  const still = !enabled || failed || offline;
 
   return (
-    <div
-      className="home-dynamic-visual"
-      onMouseEnter={() => setIsPlaying(false)}
-      onMouseLeave={() => setIsPlaying(true)}
-    >
-      {/* 顶部多帧进度胶囊切换栏 */}
-      <div className="home-frame-tabs" role="tablist" aria-label="项目式学习演示帧">
-        {FRAMES.map((f, i) => (
-          <button
-            key={f.id}
-            type="button"
-            role="tab"
-            aria-selected={i === currentIdx}
-            className={`home-frame-tab ${i === currentIdx ? 'is-active' : ''}`}
-            onClick={() => {
-              setCurrentIdx(i);
-              setIsPlaying(false);
-            }}
-          >
-            <span className="home-frame-tab-indicator">
-              <span
-                className="home-frame-tab-progress"
-                style={{
-                  animationDuration: isPlaying && i === currentIdx ? '4.8s' : '0s',
-                }}
-              />
-            </span>
-            <span className="home-frame-tab-text">{f.stageName}</span>
+    <figure ref={container} className="story-film" aria-label={story.title}>
+      <div className="story-film-picture">
+        {still && <Image src={current.image} alt={current.alt} width={2048} height={1152} priority={chapter === 0} />}
+        <video
+          ref={video}
+          hidden={still}
+          src={enabled && !offline ? story.video : undefined}
+          poster={story.scenes[0]!.image}
+          aria-label="校园雨水花园项目：六幅生成分镜合成的无声故事短片"
+          muted loop playsInline preload={enabled ? 'metadata' : 'none'}
+          onPlay={() => setPlaying(true)}
+          onPause={() => { setPlaying(false); setWaiting(false); }}
+          onWaiting={() => setWaiting(true)}
+          onPlaying={() => setWaiting(false)}
+          onCanPlay={syncPlayback}
+          onError={() => {
+            if (video.current?.getAttribute('src')) { setFailed(true); setPlaying(false); }
+          }}
+          onTimeUpdate={() => {
+            if (!enabled || failed || offline || reduced) return;
+            const time = video.current?.currentTime ?? 0;
+            let index = 0;
+            story.scenes.forEach((scene, i) => { if (time >= scene.start) index = i; });
+            setChapter(index);
+          }}
+        />
+        <span className="story-film-label">一个问题的六个时刻</span>
+        <button
+          type="button"
+          className="story-film-play"
+          disabled={reduced || offline}
+          aria-label={intent && enabled && !failed ? '暂停故事短片' : '播放故事短片'}
+          onClick={() => {
+            if (intent && enabled && !failed) setIntent(false);
+            else {
+              if (failed) video.current?.load();
+              setFailed(false); setEnabled(true); setIntent(true);
+            }
+          }}
+        >{reduced ? '静态模式' : playing ? '暂停' : '播放'}</button>
+      </div>
+      <figcaption className="story-film-caption">
+        <p className="story-film-stage">{current.label}</p>
+        <h3>{current.title}</h3>
+        <p>{current.description}</p>
+      </figcaption>
+      <nav className="story-film-chapters" aria-label="选择故事章节">
+        {story.scenes.map((scene, index) => (
+          <button key={scene.id} type="button" aria-current={chapter === index ? 'step' : undefined}
+            onClick={() => selectChapter(index)}>
+            <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{scene.label}
           </button>
         ))}
-      </div>
-
-      {/* 画面视窗 */}
-      <div className="home-frame-stage">
-        <div className="home-frame-viewport">
-          {FRAMES.map((f, i) => (
-            <div
-              key={f.id}
-              className={`home-frame-slide ${i === currentIdx ? 'is-active' : ''}`}
-              aria-hidden={i !== currentIdx}
-            >
-              <Image
-                src={f.imageSrc}
-                alt={f.title}
-                width={1280}
-                height={720}
-                className="home-frame-img"
-                priority={i === 0}
-              />
-              <div className="home-frame-overlay" />
-            </div>
-          ))}
-        </div>
-
-        {/* 悬浮实时智能体微章 */}
-        <div className="home-frame-badge-top">
-          <span className="home-frame-badge-dot" style={{ background: frame.accentColor }} />
-          <span className="home-frame-badge-label">{frame.agentRole}</span>
-          <span className="home-frame-badge-en">{frame.agentRoleEn}</span>
-        </div>
-
-        {/* 底部帧信息面板 */}
-        <div className="home-frame-card-bottom">
-          <div className="home-frame-meta">
-            <span className="home-frame-pill">{frame.stageEn}</span>
-            <span className="home-frame-metric">{frame.metricBadge}</span>
-          </div>
-          <h3 className="home-frame-title">{frame.title}</h3>
-          <p className="home-frame-desc">{frame.desc}</p>
-        </div>
-
-        {/* 播放/上一帧/下一帧轻量微控 */}
-        <div className="home-frame-controls">
-          <button
-            type="button"
-            className="home-frame-ctrl-btn"
-            aria-label="上一帧"
-            onClick={() => {
-              setCurrentIdx((prev) => (prev - 1 + FRAMES.length) % FRAMES.length);
-              setIsPlaying(false);
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="home-frame-ctrl-btn"
-            aria-label={isPlaying ? '暂停动态轮播' : '继续动态轮播'}
-            onClick={() => setIsPlaying(!isPlaying)}
-          >
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em' }}>
-              {isPlaying ? 'PAUSE' : 'PLAY'}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="home-frame-ctrl-btn"
-            aria-label="下一帧"
-            onClick={() => {
-              setCurrentIdx((prev) => (prev + 1) % FRAMES.length);
-              setIsPlaying(false);
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
+      </nav>
+      <p className="story-film-note" role="status">
+        {offline ? '当前离线，可继续阅读分镜。' : failed ? '视频暂时无法播放，可选择章节阅读分镜，或点播放重试。' : waiting && intent && enabled ? '正在缓冲短片，可随时选择章节。' : reduced ? '已遵循减弱动态效果偏好，可逐章阅读。' : '生成分镜合成 · 27 秒 · 无声故事示意，非真实学生记录'}
+      </p>
+    </figure>
   );
 }

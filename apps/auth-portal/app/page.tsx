@@ -7,7 +7,6 @@ import { countLabel } from './home/format';
 import { HeroTutorDemo } from './home/hero-demo';
 import { Icon, type IconName } from './home/icons';
 import { SiteNav } from './home/site-nav';
-import { ReactBitsBackground } from './home/react-bits-background';
 import { ScrollReveal } from './home/scroll-reveal';
 import { COMPETENCIES, PBL_STEPS } from './public-content';
 import { FALLBACK_STATS, loadHomeView } from './public-data';
@@ -41,8 +40,6 @@ export default async function HomePage() {
 
   return (
     <div className="home-page">
-      {/* 全局 React Bits 粒子星网与鼠标追焦交互背景 */}
-      <ReactBitsBackground />
       <SiteNav />
 
       <main className="home-main" id="top">
@@ -57,7 +54,7 @@ export default async function HomePage() {
                 <span className="react-bits-badge-arrow">✨</span>
               </p>
               <h1 className="home-hero-title">
-                让每一次学习<span className="react-bits-shiny-text">都有明确方向</span>
+                一个问题，<span className="react-bits-shiny-text">长成一件作品</span>
               </h1>
               <p className="home-hero-sub">与 AI 共成长，启发真实世界新思维</p>
               <p className="home-hero-lead">
