@@ -18,6 +18,17 @@ export interface HistorySessionItem {
 
 
 const STORAGE_KEY = 'qitu.tutor.exploration_history';
+const DELETED_STORAGE_KEY = 'qitu.tutor.deleted_exploration_history';
+function getDeletedExplorationIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
 
 export function getLocalExplorationHistory(): HistorySessionItem[] {
   if (typeof window === 'undefined') return [];
@@ -34,6 +45,7 @@ export function getLocalExplorationHistory(): HistorySessionItem[] {
 export function saveLocalExplorationSession(item: HistorySessionItem) {
   if (typeof window === 'undefined') return;
   try {
+    if (getDeletedExplorationIds().has(item.id)) return;
     const history = getLocalExplorationHistory();
     const filtered = history.filter((h) => h.id !== item.id);
     const updated = [item, ...filtered].slice(0, 30); // 保留最近30条
@@ -46,6 +58,9 @@ export function deleteLocalExplorationSession(id: string) {
   try {
     const history = getLocalExplorationHistory();
     const updated = history.filter((h) => h.id !== id);
+    const deleted = getDeletedExplorationIds();
+    deleted.add(id);
+    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify([...deleted].slice(-100)));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch {}
 }
@@ -106,7 +121,7 @@ export function TutorSessionHistory({
         kind: 'project',
         projectId: project.id,
         updatedAt: new Date().toISOString(),
-        turnCount: project.id === currentProjectId ? currentTurnCount : 0,
+        turnCount: project.id === currentProjectId ? currentTurnCount : (project.turnCount ?? 0),
         stageLabel: project.stage,
       })));
     }).catch(() => {
