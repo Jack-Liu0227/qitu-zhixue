@@ -16,9 +16,11 @@ export class ImaMcpClient {
     return servers.some((server) => server.serverId === IMA_MCP_SERVER_ID && server.transport === 'streamable_http' && server.toolIds.length > 0);
   }
 
-  async toolsFor(servers: readonly TutorAgentMcpDescriptor[]): Promise<ModelRuntimeTool[]> {
+  async toolsFor(servers: readonly TutorAgentMcpDescriptor[], authorize?: (toolId: string) => Promise<boolean>): Promise<ModelRuntimeTool[]> {
     const binding = servers.find((server) => server.serverId === IMA_MCP_SERVER_ID && server.transport === 'streamable_http');
     if (!binding?.toolIds.length) return [];
+    const allowedTools = authorize ? (await Promise.all(binding.toolIds.map(async (id) => await authorize(id) ? id : null))).filter((id): id is string => id !== null) : binding.toolIds;
+    if (!allowedTools.length) return [];
     const endpoint = this.env.QITU_IMA_MCP_URL;
     const token = this.env.QITU_IMA_MCP_TOKEN;
     if (!endpoint || !token || token.length < 32 || /[\r\n]/.test(token)) throw new Error('IMA_MCP_NOT_CONFIGURED');
@@ -69,12 +71,13 @@ export class ImaMcpClient {
     const catalog = await rpc('tools/list', {}, false, discoverySignal);
     if (!Array.isArray(catalog.tools)) throw new Error('IMA_MCP_INVALID_TOOLS');
     return catalog.tools.filter(record).filter((tool) =>
-      typeof tool.name === 'string' && IMA_READ_TOOLS.some((name) => name === tool.name) && binding.toolIds.includes(tool.name) && record(tool.inputSchema),
+      typeof tool.name === 'string' && IMA_READ_TOOLS.some((name) => name === tool.name) && allowedTools.includes(tool.name) && record(tool.inputSchema),
     ).map((tool) => ({
       name: tool.name as string,
       description: String(tool.description ?? '').slice(0, 2000),
       inputSchema: tool.inputSchema as Record<string, unknown>,
       execute: async (args, signal) => {
+        if (authorize && !await authorize(tool.name as string)) throw new Error('IMA_MCP_ACCESS_REVOKED');
         const result = await rpc('tools/call', { name: tool.name, arguments: args }, false, signal);
         const text = Array.isArray(result.content) ? result.content.filter(record)
           .filter((part) => part.type === 'text' && typeof part.text === 'string').map((part) => part.text as string).join('\n') : '';

@@ -58,7 +58,7 @@ function assistantIdsForRuntimeAgent(agentId: string): readonly string[] {
   return [...new Set([agentId, ...aliases])];
 }
 
-function tutorAssistantIdForProject(projectTitle: string, projectStage: string): string {
+export function tutorAssistantIdForProject(projectTitle: string, projectStage: string): string {
   const kineticProject = /动能|物理|小车|kinetic|physics/i.test(projectTitle);
   const thunderProject = /雷霆|战机|pygame|飞行射击|python.*游戏/i.test(projectTitle);
   const assistants = kineticProject

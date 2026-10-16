@@ -35,7 +35,8 @@ import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.pro
 import { ImaMcpClient } from './ima-mcp.client';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
-import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import { PlatformRegistryService, tutorAssistantIdForProject } from '../platform-registry/platform-registry.service';
+import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
@@ -211,6 +212,7 @@ export class TutorService {
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() @Inject(LearningPlanStore) private readonly learningStore?: LearningPlanStore,
     @Optional() @Inject(ImaMcpClient) ima?: ImaMcpClient,
+    @Optional() private readonly imaSettings?: ImaSettingsService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -554,6 +556,9 @@ export class TutorService {
     if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
+    const authorizeKnowledgeTool = this.imaSettings
+      ? (toolId: string) => this.imaSettings!.canCall(this.contextReader.partner.id, toolId, tutorAssistantIdForProject(projectTitle, projectStage))
+      : undefined;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
     const partner = this.workspace === undefined
@@ -602,12 +607,17 @@ export class TutorService {
     });
 
     if (effectiveRuntime !== null) {
+      const mcpServers = await Promise.all(effectiveRuntime.mcpServers.map(async (server) => {
+        if (!authorizeKnowledgeTool || server.serverId !== 'ima-knowledge') return server;
+        const decisions = await Promise.all(server.toolIds.map(async (toolId) => ({ toolId, allowed: await authorizeKnowledgeTool(toolId) })));
+        return { ...server, toolIds: decisions.filter((entry) => entry.allowed).map((entry) => entry.toolId) };
+      }));
       contextPacket.runtime = {
         policyVersion: effectiveRuntime.policy.version,
         agentDefinition: effectiveRuntime.agent.agentDefinition,
         skills: effectiveRuntime.skills.map((skill) => ({ id: skill.id, version: skill.version, content: skill.content })),
         tools: effectiveRuntime.tools,
-        mcpServers: effectiveRuntime.mcpServers,
+        mcpServers: mcpServers.filter((server) => server.toolIds.length > 0),
       } satisfies TutorRuntimeContextMetadata;
     }
 
@@ -621,6 +631,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
+          authorizeKnowledgeTool,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
           modelId: effectiveRuntime?.agent.modelId ?? undefined,
@@ -639,6 +650,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
+      authorizeKnowledgeTool,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
       modelId: effectiveRuntime?.agent.modelId ?? undefined,

@@ -39,3 +39,17 @@ Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不�
 <!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.
+
+### ima 调用治理与状态登记
+
+`设置 → 工具与 MCP` 的 ima 总开关、助手授权矩阵、运行时 Agent 绑定、JSON 编辑及预览均读取服务端配置。`GET/PATCH /api/v1/admin/ai-runtime/mcp/ima-knowledge` 只向管理员开放；写入必须携带幂等键，并在事务内审计。`POST .../check` 实际完成 MCP 握手并读取知识库清单；连接正常与允许调用是两个独立状态，关闭总开关仍可检查连接。
+
+学生 Tutor 必须同时通过全局开关、运行时 Agent 工具白名单、当前阶段助手授权和角色启用检查；每次新工具请求前重新查库，已发现的工具也不能绕过撤权。已发出的上游请求可能完成。数据库异常时拒绝调用。此配置不修改助手启停、模型绑定或教学门禁。
+
+浏览器 JSON 仅允许 `enabled`、`assistantBindings`、`agentBindings`，不接受地址、命令或凭证。连接参数和 ima 密钥保留在服务器配置中，响应不含密钥或上游原始错误。旧页面的本地 MCP 草稿不再被当作已连接服务，不修改或删除其浏览器存储。
+
+新增工具、MCP、Skill、助手和团队必须进入服务端注册表或配置库，并提供真实状态、授权绑定和失败状态；只写浏览器存储不算完成接入。设置总览与工具页能力清单读取后端状态，不能用默认数量或模拟延迟宣称就绪。
+
+升级已部署的 ima 集成时执行 `tooling/migrate-ima-admin.sql`，一次性保留既有阶段导师的访问授权；迁移审计键防止重跑后覆盖管理员撤权。该迁移不启用已停用的助手，不修改任何模型。新助手默认无 ima 授权，管理员须在矩阵明确授予。
+
+验证：API 单测覆盖管理员权限、字段白名单、敏感信息脱敏、全局/角色/工具/阶段授权和数据库异常；MCP 客户端测试覆盖工具发现后撤权不向上游发请求。发布时还需验证真实连接、开关刷新持久化、JSON 保存、矩阵撤权和桌面/移动端页面。
