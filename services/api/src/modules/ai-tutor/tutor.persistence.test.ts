@@ -55,6 +55,20 @@ class StubGateway implements TutorModelGateway {
   }
 }
 
+class DelayedStubGateway extends StubGateway {
+  constructor(text: string, private readonly delayMs: number) {
+    super(text);
+  }
+
+  override async complete(
+    usageId: string,
+    request: ModelCompletionRequest,
+  ): Promise<ModelCompletionResult> {
+    await new Promise<void>((resolve) => setTimeout(resolve, this.delayMs));
+    return super.complete(usageId, request);
+  }
+}
+
 /** 复用内存实现，但宣称自己是 durable，从而走真实持久化读写路径。 */
 class DurableMemoryStore extends InMemoryTutorSessionStore {
   override readonly durable: boolean = true;
@@ -238,6 +252,26 @@ test('持久化：连续卡顿导致的升级状态在重启后依然成立', as
   assert.equal(reloaded.escalated, true, '升级状态由持久化回合重放得出');
 });
 
+test('持久化：同一会话并发回合串行提交且不在回复后报错', async () => {
+  const store = new DurableMemoryStore();
+  const gateway = new DelayedStubGateway('并发回合已按顺序处理。', 20);
+  const service = newService(store, new SharedIdempotencyStore(), undefined, gateway);
+  const session = await service.resolveSession('prj-concurrent', OWNER);
+
+  const [first, second] = await Promise.all([
+    drain(service.runTurn(session, { content: '第一问', idempotencyKey: 'c1', actorId: OWNER })),
+    drain(service.runTurn(session, { content: '第二问', idempotencyKey: 'c2', actorId: OWNER })),
+  ]);
+
+  for (const events of [first, second]) {
+    assert.equal(events.some((streamed) => streamed.event.type === 'error'), false);
+  }
+  const reloaded = await service.loadSession(session.sessionId, OWNER);
+  assert.equal(reloaded.turns.length, 4, '两个并发回合都必须持久化');
+  const seqs = reloaded.turns.map((turn) => turn.seq);
+  assert.equal(new Set(seqs).size, seqs.length, '并发回合不能产生重复序号');
+  assert.equal(reloaded.lastSeq, Math.max(...seqs));
+});
 test('持久化：审计只在真正创建会话时写一次，重放不重复写回合审计', async () => {
   const store = new DurableMemoryStore();
   const idem = new SharedIdempotencyStore();

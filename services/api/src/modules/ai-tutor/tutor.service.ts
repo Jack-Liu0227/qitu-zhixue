@@ -167,6 +167,12 @@ export class TutorService {
 
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
+  /**
+   * A session has one authoritative sequence cursor. Serialize turns per
+   * session so a disconnected/retried request cannot generate against the
+   * same cursor and fail only after its reply has already been streamed.
+   */
+  private readonly turnLocks = new Map<string, Promise<void>>();
   private readonly auditLog: AuditEntry[] = [];
   private readonly store: TutorSessionStore;
 
@@ -455,6 +461,22 @@ export class TutorService {
       onEvent?: (streamed: StreamedTutorEvent) => Promise<void> | void;
     },
   ): AsyncGenerator<StreamedTutorEvent, void, undefined> {
+    const releaseTurnLock = await this.acquireTurnLock(record.sessionId);
+    try {
+      // A durable request may have waited behind another turn. Reload after
+      // the wait so its sequence, history and idempotency hash use the latest
+      // database snapshot rather than the controller's stale read.
+      if (this.durable) {
+        const latest = await this.store.findById(record.sessionId);
+        if (latest === null) throw new NotFoundException('会话不存在');
+        assertOwnedBy(latest, request.actorId);
+        const hydrated = this.hydrate(latest);
+        // Keep the caller's session object current as well. Controllers and
+        // existing in-process consumers retain that object between turns.
+        Object.assign(record, hydrated);
+        record.turns = hydrated.turns;
+      }
+
     // 纵深防御：即使调用方绕过了按 id 的授权查询，回合执行前仍校验归属。
     assertOwnedBy(record, request.actorId);
 
@@ -472,7 +494,7 @@ export class TutorService {
         request.idempotencyKey,
         requestHash,
         async () => {
-          const events = await this.executeTurn(record, request, request.onEvent);
+          const events = await this.executeTurn(record, request);
           return { status: 200, body: { events } };
         },
         { processingLeaseMs: TUTOR_TURN_LEASE_MS },
@@ -486,7 +508,10 @@ export class TutorService {
           detail: `重放回合（key ${request.idempotencyKey}）`,
         });
       }
-      for (const streamed of result.body.events) yield streamed;
+      for (const streamed of result.body.events) {
+        await request.onEvent?.(streamed);
+        yield streamed;
+      }
       return;
     }
 
@@ -499,16 +524,38 @@ export class TutorService {
         action: 'tutor.idempotent_replay',
         detail: `重放回合 ${cached.turnId}`,
       });
-      for (const streamed of cached.events) yield streamed;
+      for (const streamed of cached.events) {
+        await request.onEvent?.(streamed);
+        yield streamed;
+      }
       return;
     }
 
-    const events = await this.executeTurn(record, request, request.onEvent);
+    const events = await this.executeTurn(record, request);
     this.idempotency.set(request.idempotencyKey, {
       turnId: `${record.sessionId}:assistant:${record.lastSeq}`,
       events,
     });
-    for (const streamed of events) yield streamed;
+    for (const streamed of events) {
+      await request.onEvent?.(streamed);
+      yield streamed;
+    }
+    } finally {
+      releaseTurnLock();
+    }
+  }
+
+  private async acquireTurnLock(sessionId: string): Promise<() => void> {
+    const previous = this.turnLocks.get(sessionId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => { release = resolve; });
+    const queued = previous.then(() => current);
+    this.turnLocks.set(sessionId, queued);
+    await previous;
+    return () => {
+      release();
+      if (this.turnLocks.get(sessionId) === queued) this.turnLocks.delete(sessionId);
+    };
   }
 
   /**
@@ -526,7 +573,6 @@ export class TutorService {
       idempotencyKey: string;
       actorId: string;
     },
-    onEvent?: (streamed: StreamedTutorEvent) => Promise<void> | void,
   ): Promise<StreamedTutorEvent[]> {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
@@ -702,7 +748,6 @@ export class TutorService {
         event: { type: 'tool_call', callId: `agent-runtime-${record.sessionId}`, name: 'agent.runtime.run', label: '\u51c6\u5907\u6559\u5b66\u5f15\u5bfc\u56de\u590d' },
       };
       events.push(runtimeProgress);
-      await onEvent?.(runtimeProgress);
     }
     const generated = unifiedSDK ? await unifiedSDK.agent.run(input) : this.provider.generateTurn(input);
     if (unifiedSDK) {
@@ -711,7 +756,6 @@ export class TutorService {
         event: { type: 'tool_result', callId: `agent-runtime-${record.sessionId}`, status: 'done', result: '\u6559\u5b66\u8fd0\u884c\u65f6\u5df2\u51c6\u5907\u56de\u590d' },
       };
       events.push(runtimeResult);
-      await onEvent?.(runtimeResult);
     }
     for await (const event of generated) {
       nextSeq += 1;
@@ -750,7 +794,6 @@ export class TutorService {
         default:
           break;
       }
-      await onEvent?.(streamed);
     }
 
     // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
