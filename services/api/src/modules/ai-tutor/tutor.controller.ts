@@ -189,8 +189,14 @@ export class TutorController {
     response.flushHeaders();
 
     let aborted = false;
+    // Keep the SSE response active while the model or tutor tools are working.
+    // Comment frames are ignored by EventSource but reset proxy idle timers.
+    const keepAliveTimer = setInterval(() => {
+      if (!aborted && !response.writableEnded) response.write(': keep-alive\n\n');
+    }, 15_000);
     response.on('close', () => {
       aborted = true;
+      clearInterval(keepAliveTimer);
     });
 
     const turnId = `live-${record.sessionId}-${record.lastSeq + 1}`;
@@ -228,7 +234,9 @@ export class TutorController {
           turnId,
           seq: record.lastSeq,
           timestamp: new Date().toISOString(),
-          message: error instanceof Error ? error.message : 'AI搭档暂时不可用',
+          code: 'MODEL_UNAVAILABLE',
+          message: 'AI 模型服务暂时不可用，请稍后重试。',
+          retryable: true,
         });
       }
     }
@@ -258,6 +266,7 @@ export class TutorController {
         // Team Runtime 故障不能把正常的学生对话流变成错误流。
       }
     }
+    clearInterval(keepAliveTimer);
     if (!aborted && !response.writableEnded) response.end();
   }
 

@@ -111,14 +111,26 @@ export class LiveTutorSocket implements TutorSocket {
    * server-event-shaped failure channel the realtime contract defines; the
    * student sees `message`, never the code.
    *
-   * `code` picks the most honest member of the additive `ApiErrorCode` union:
-   * 401 → `UNAUTHENTICATED`, 429 → `RATE_LIMITED`, anything else →
-   * `AI_SAFETY_BLOCK` (the code that accompanies `safety.block`).
+   * `code` preserves known transport/model errors so a dropped stream cannot
+   * be presented as a safety decision. HTTP status codes still take priority.
    */
   failStream(error: TutorDataError): void {
     if (this.disposed) return;
+    const knownCode = new Set<ApiErrorCode>([
+      'AI_SAFETY_BLOCK',
+      'MODEL_UNAVAILABLE',
+      'MODEL_NOT_CONFIGURED',
+      'MODEL_CALL_FAILED',
+      'NETWORK_OFFLINE',
+    ]);
     const code: ApiErrorCode =
-      error.status === 401 ? 'UNAUTHENTICATED' : error.status === 429 ? 'RATE_LIMITED' : 'AI_SAFETY_BLOCK';
+      error.status === 401
+        ? 'UNAUTHENTICATED'
+        : error.status === 429
+          ? 'RATE_LIMITED'
+          : error.code !== undefined && knownCode.has(error.code as ApiErrorCode)
+            ? (error.code as ApiErrorCode)
+            : 'MODEL_CALL_FAILED';
     this.emit(
       this.renumber(
         {

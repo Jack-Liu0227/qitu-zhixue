@@ -13,6 +13,14 @@ export type ApiErrorCode =
   | 'IDEMPOTENCY_CONFLICT'
   /** AI safety check blocked the reply; accompanies the `safety.block` event. */
   | 'AI_SAFETY_BLOCK'
+  /** The configured tutor model is unavailable or its upstream request failed. */
+  | 'MODEL_UNAVAILABLE'
+  /** The tutor Agent has no usable provider, model, or credential configured. */
+  | 'MODEL_NOT_CONFIGURED'
+  /** The tutor model call failed without a retryable upstream classification. */
+  | 'MODEL_CALL_FAILED'
+  /** The browser lost the tutor SSE transport before the turn completed. */
+  | 'NETWORK_OFFLINE'
   /** Client attempted to write a server-owned growth record (403). */
   | 'GROWTH_RECORD_WRITE_DENIED'
   /** Client attempted to write server-owned project state (403/405). */

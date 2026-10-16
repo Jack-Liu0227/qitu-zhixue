@@ -1,4 +1,5 @@
 import type {
+  ApiErrorCode,
   PedagogicMove,
   ProjectStage,
   RealtimeServerEvent,
@@ -70,6 +71,14 @@ const KNOWN_FRAMES = new Set([
   'tutor.tool_call',
   'tutor.tool_result',
   ...TUTOR_TEAM_FRAME_NAME_LIST,
+]);
+
+const TUTOR_ERROR_CODES = new Set<ApiErrorCode>([
+  'AI_SAFETY_BLOCK',
+  'MODEL_UNAVAILABLE',
+  'MODEL_NOT_CONFIGURED',
+  'MODEL_CALL_FAILED',
+  'NETWORK_OFFLINE',
 ]);
 
 /**
@@ -280,10 +289,13 @@ function toServerEvent(
       };
     }
     case 'error': {
+      const code = readString(payload, 'code');
       return {
         ...base,
         type: 'safety.block',
-        code: 'AI_SAFETY_BLOCK',
+        code: code !== null && TUTOR_ERROR_CODES.has(code as ApiErrorCode)
+          ? (code as ApiErrorCode)
+          : 'AI_SAFETY_BLOCK',
         message: readString(payload, 'message') ?? '这一步没能完成，请重试。',
       };
     }
