@@ -699,12 +699,20 @@ export class TutorService {
     if (unifiedSDK) {
       const runtimeProgress: StreamedTutorEvent = {
         seq: ++nextSeq,
-        event: { type: 'tool_call', callId: `agent-runtime-${record.sessionId}`, name: 'agent.runtime.run', label: 'Preparing tutor reply' },
+        event: { type: 'tool_call', callId: `agent-runtime-${record.sessionId}`, name: 'agent.runtime.run', label: '\u51c6\u5907\u6559\u5b66\u5f15\u5bfc\u56de\u590d' },
       };
       events.push(runtimeProgress);
       await onEvent?.(runtimeProgress);
     }
     const generated = unifiedSDK ? await unifiedSDK.agent.run(input) : this.provider.generateTurn(input);
+    if (unifiedSDK) {
+      const runtimeResult: StreamedTutorEvent = {
+        seq: ++nextSeq,
+        event: { type: 'tool_result', callId: `agent-runtime-${record.sessionId}`, status: 'done', result: '\u6559\u5b66\u8fd0\u884c\u65f6\u5df2\u51c6\u5907\u56de\u590d' },
+      };
+      events.push(runtimeResult);
+      await onEvent?.(runtimeResult);
+    }
     for await (const event of generated) {
       nextSeq += 1;
       const streamed: StreamedTutorEvent = { seq: nextSeq, event };

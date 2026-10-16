@@ -50,7 +50,7 @@ const MOVES = new Set<PedagogicMove>([
 ]);
 
 /** 每个事件的节流，让「逐步发生」真的看得见。可用环境变量关闭以便测试。 */
-const SPEED = Number.parseFloat(process.env.TUTOR_STREAM_SPEED ?? '1');
+const SPEED = Number.parseFloat(process.env.TUTOR_STREAM_SPEED ?? '0.35');
 const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
   tool_call: 180,
   tool_result: 300,
