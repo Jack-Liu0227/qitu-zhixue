@@ -250,6 +250,17 @@ export default function ProgressPage() {
   const works = data?.works ?? [];
   const focus = data?.focusWork ?? null;
 
+  // 焦点作品是否匹配当前状态筛选与搜索
+  const focusMatches = useMemo(() => {
+    if (!focus) return false;
+    const needle = search.trim().toLowerCase();
+    const matchesStatus = statusFilter === 'all' || focus.status === statusFilter;
+    const matchesSearch =
+      needle.length === 0 ||
+      `${focus.title} ${focus.tags.join(' ')}`.toLowerCase().includes(needle);
+    return matchesStatus && matchesSearch;
+  }, [focus, statusFilter, search]);
+
   // 其余作品（不含焦点作品），并套用状态筛选与搜索。
   const otherWorks = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -349,7 +360,7 @@ export default function ProgressPage() {
               />
             </div>
 
-            {focus ? (
+            {focus && focusMatches ? (
               <div className="progress-layout">
                 <div className="works-main">
                   <FocusWorkCard work={focus} onViewProcess={() => setTab('project')} />
@@ -382,9 +393,9 @@ export default function ProgressPage() {
                     </div>
                   </article>
                 ))
-              ) : (
+              ) : !focusMatches ? (
                 <p className="empty-inline">没有符合当前筛选的作品。</p>
-              )}
+              ) : null}
             </div>
           </>
         )}

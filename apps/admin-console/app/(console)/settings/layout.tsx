@@ -82,16 +82,16 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       <aside className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
         <div className="settings-sider-head">
           <span className="settings-sider-title">
-            {siderCollapsed ? '偏好' : '系统偏好设置'}
+            系统偏好设置
           </span>
           <button
             type="button"
             className="settings-sider-toggle-btn"
             onClick={() => setSiderCollapsed((prev) => !prev)}
-            title={siderCollapsed ? '展开侧边栏菜单' : '收起侧边栏'}
-            aria-label={siderCollapsed ? '展开侧边栏菜单' : '收起侧边栏'}
+            title={siderCollapsed ? '展开偏好设置侧边栏' : '收起偏好设置侧边栏'}
+            aria-label={siderCollapsed ? '展开偏好设置侧边栏' : '收起偏好设置侧边栏'}
           >
-            {siderCollapsed ? '展开 »' : '«'}
+            {siderCollapsed ? '»' : '«'}
           </button>
         </div>
         <div className="settings-sider-scroll">

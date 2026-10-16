@@ -118,13 +118,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
 
     const load = async () => {
       try {
-        if (
-          projectId === undefined &&
-            ((typeof explorationKey === 'number' && explorationKey > 0) ||
-            (typeof explorationKey === 'string' && explorationKey.length > 0) ||
-            new URLSearchParams(window.location.search).has('explorationId') ||
-            new URLSearchParams(window.location.search).has('new'))
-        ) {
+        const hasExplicitExploration =
+          new URLSearchParams(window.location.search).has('explorationId') ||
+          new URLSearchParams(window.location.search).has('new');
+
+        if (projectId === undefined && hasExplicitExploration) {
           setProject(null);
           setProjectStatus('empty');
           return;
@@ -138,15 +136,15 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         }
         const active = await dataSource.getActiveProject();
         if (cancelled || generation !== projectLoadGenerationRef.current) return;
-        if (active === null) {
-          setProject(null);
-          setProjectStatus('empty');
+        if (active !== null) {
+          const context = await dataSource.getProjectContext(active.id);
+          if (cancelled || generation !== projectLoadGenerationRef.current) return;
+          setProject(context);
+          setProjectStatus(context === null ? 'empty' : 'ready');
           return;
         }
-        const context = await dataSource.getProjectContext(active.id);
-        if (cancelled || generation !== projectLoadGenerationRef.current) return;
-        setProject(context);
-        setProjectStatus(context === null ? 'empty' : 'ready');
+        setProject(null);
+        setProjectStatus('empty');
       } catch (error) {
         if (cancelled || generation !== projectLoadGenerationRef.current) return;
         const viewError = toViewError(error);

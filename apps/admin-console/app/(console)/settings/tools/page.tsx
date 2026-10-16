@@ -51,6 +51,94 @@ export interface SingleMcpConfig {
   rawJson: string;
 }
 
+export interface ToolParamSchema {
+  name: string;
+  type: string;
+  required: boolean;
+  defaultValue?: string | number | boolean;
+  description: string;
+}
+
+export const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
+  grok_web_search: [
+    { name: 'query', type: 'string', required: true, description: '搜索关键词、学术概念或事实提问' },
+    { name: 'max_results', type: 'number', required: false, defaultValue: 5, description: '返回的最大网页摘要条数 (1-20)' },
+    { name: 'include_domains', type: 'string[]', required: false, description: '限定检索的目标域名白名单列表' },
+  ],
+  fetch_page_markdown: [
+    { name: 'url', type: 'string', required: true, description: '目标网页完整 URL 地址' },
+    { name: 'extract_main_content', type: 'boolean', required: false, defaultValue: true, description: '是否剔除页眉页脚与广告提取正文' },
+  ],
+  knowledge_crawl: [
+    { name: 'topic', type: 'string', required: true, description: '知识图谱抓取与扩展的主题关键词' },
+    { name: 'depth', type: 'number', required: false, defaultValue: 2, description: '拓扑层级深度 (1-4)' },
+  ],
+  citation_extract: [
+    { name: 'text', type: 'string', required: true, description: '待溯源引用的学术或概念文本段落' },
+    { name: 'style', type: 'string', required: false, defaultValue: 'GB/T 7714', description: '参考文献引文格式规范' },
+  ],
+  launch_browser: [
+    { name: 'headless', type: 'boolean', required: false, defaultValue: true, description: '是否以无头后台模式运行 Chromium' },
+    { name: 'viewport', type: 'object', required: false, defaultValue: '1280x800', description: '初始视口宽度与高度配置' },
+  ],
+  navigate_page: [
+    { name: 'url', type: 'string', required: true, description: '跳转的目标页面地址 (需含 http/https 协议头)' },
+    { name: 'timeout_ms', type: 'number', required: false, defaultValue: 30000, description: '页面加载超时毫秒数' },
+  ],
+  click_element: [
+    { name: 'selector', type: 'string', required: true, description: '目标元素的 CSS 选择器或 XPath 路径' },
+    { name: 'wait_for_navigation', type: 'boolean', required: false, defaultValue: false, description: '点击后是否等待页面导航完成' },
+  ],
+  take_screenshot: [
+    { name: 'full_page', type: 'boolean', required: false, defaultValue: false, description: '是否截取滚动完整长图' },
+    { name: 'format', type: 'string', required: false, defaultValue: 'png', description: '截图格式 (png / jpeg / webp)' },
+  ],
+  capture_console: [
+    { name: 'level', type: 'string', required: false, defaultValue: 'all', description: '日志捕获级别 (error / warn / all)' },
+    { name: 'limit', type: 'number', required: false, defaultValue: 100, description: '最大捕获日志行数' },
+  ],
+  browser_tab_open: [
+    { name: 'url', type: 'string', required: true, description: '新建标签页打开的目标网址' },
+  ],
+  read_dom: [
+    { name: 'selector', type: 'string', required: false, defaultValue: 'body', description: '读取 DOM 树的根节点选择器' },
+  ],
+  execute_js_action: [
+    { name: 'script', type: 'string', required: true, description: '在浏览器上下文中安全执行的 JavaScript 代码片段' },
+  ],
+  snapshot_viewport: [
+    { name: 'selector', type: 'string', required: false, description: '指定截取的局部 DOM 节点选择器' },
+  ],
+  fetch_html: [
+    { name: 'url', type: 'string', required: true, description: '页面 HTTP 请求目标 URL' },
+  ],
+  fetch_markdown: [
+    { name: 'url', type: 'string', required: true, description: '目标页面 URL，自动抓取并转换为纯净 Markdown' },
+  ],
+  extract_links: [
+    { name: 'url', type: 'string', required: true, description: '目标页面 URL，提取所有外链与站内锚点' },
+  ],
+  search_knowledge_chunk: [
+    { name: 'query', type: 'string', required: true, description: '语义检索词或学生问题语句' },
+    { name: 'top_k', type: 'number', required: false, defaultValue: 3, description: '召回的知识切片最大数量' },
+  ],
+  query_curriculum_standard: [
+    { name: 'subject', type: 'string', required: true, description: '学科名称（物理/信息技术/数学等）' },
+    { name: 'grade', type: 'string', required: true, description: '年级学段（初中/高中）' },
+    { name: 'standard_code', type: 'string', required: false, description: '核心素养或课标维度编码' },
+  ],
+};
+
+export function getToolParams(toolName: string): ToolParamSchema[] {
+  if (MCP_TOOL_PARAM_REGISTRY[toolName]) {
+    return MCP_TOOL_PARAM_REGISTRY[toolName];
+  }
+  return [
+    { name: 'query', type: 'string', required: true, description: `调用 ${toolName} 的输入数据或核心查询参数` },
+    { name: 'options', type: 'object', required: false, description: '运行环境与自定义上下文选项' },
+  ];
+}
+
 const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
   {
     id: 'mcp-grok-search',
@@ -235,6 +323,8 @@ export default function ToolsSettingsPage() {
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>('');
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [expandedSidebarTools, setExpandedSidebarTools] = useState<Record<string, boolean>>({});
+  const [selectedToolParamKey, setSelectedToolParamKey] = useState<string | null>(null);
 
   const acceptIma = (settings: AdminImaSettings) => {
     setIma(settings);
@@ -1116,6 +1206,116 @@ export default function ToolsSettingsPage() {
                     <span>·</span>
                     <span>{mcp.boundAssistants.length} 个智能体绑定</span>
                   </div>
+
+                  {/* 子工具与输入参数展开区域 */}
+                  <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed #e2e8f0' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedSidebarTools((prev) => ({
+                          ...prev,
+                          [mcp.id]: !prev[mcp.id],
+                        }));
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '2px 0',
+                        color: '#2563eb',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span>{expandedSidebarTools[mcp.id] ? '▼ 收起子工具' : '▶ 点击展开子工具'} ({mcp.tools.length})</span>
+                    </button>
+
+                    {expandedSidebarTools[mcp.id] && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                        {mcp.tools.map((tool) => {
+                          const toolKey = `${mcp.id}:${tool}`;
+                          const isParamOpen = selectedToolParamKey === toolKey;
+                          const params = getToolParams(tool);
+
+                          return (
+                            <div
+                              key={tool}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedToolParamKey(isParamOpen ? null : toolKey);
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                background: isParamOpen ? '#eff6ff' : '#f8fafc',
+                                border: `1px solid ${isParamOpen ? '#93c5fd' : '#e2e8f0'}`,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 600, color: '#1e40af' }}>
+                                  ⚡ {tool}
+                                </span>
+                                <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                                  {isParamOpen ? '收起参数 ▲' : '查看参数 ▼'}
+                                </span>
+                              </div>
+
+                              {isParamOpen && (
+                                <div
+                                  style={{
+                                    marginTop: '6px',
+                                    paddingTop: '6px',
+                                    borderTop: '1px solid #bfdbfe',
+                                    fontSize: '11px',
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                                    输入参数规范 (InputSchema)：
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {params.map((param) => (
+                                      <div
+                                        key={param.name}
+                                        style={{
+                                          padding: '4px 6px',
+                                          background: '#ffffff',
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: '4px',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                          <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
+                                          <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px' }}>
+                                            {param.type}
+                                          </span>
+                                          <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400 }}>
+                                            {param.required ? '必填' : '选填'}
+                                          </span>
+                                          {param.defaultValue !== undefined && (
+                                            <span style={{ color: '#64748b' }}>默认: {String(param.defaultValue)}</span>
+                                          )}
+                                        </div>
+                                        <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>
+                                          {param.description}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1287,14 +1487,70 @@ export default function ToolsSettingsPage() {
                   {/* 暴露的工具列表 */}
                   <div style={{ marginBottom: '14px' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      暴露的 MCP 工具清单 ({currentSingleMcp.tools.length})
+                      暴露的 MCP 工具清单 ({currentSingleMcp.tools.length} 个 · 点击查看参数规范)
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {currentSingleMcp.tools.map((tool) => (
-                        <span key={tool} style={{ padding: '3px 8px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', fontSize: '12px', color: '#1d4ed8', fontFamily: 'monospace' }}>
-                          ⚡ {tool}
-                        </span>
-                      ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {currentSingleMcp.tools.map((tool) => {
+                          const isSelected = selectedToolParamKey === `${currentSingleMcp.id}:${tool}`;
+                          return (
+                            <button
+                              key={tool}
+                              type="button"
+                              onClick={() => setSelectedToolParamKey(isSelected ? null : `${currentSingleMcp.id}:${tool}`)}
+                              style={{
+                                padding: '4px 10px',
+                                background: isSelected ? '#1d4ed8' : '#eff6ff',
+                                border: '1px solid',
+                                borderColor: isSelected ? '#1d4ed8' : '#bfdbfe',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                color: isSelected ? '#ffffff' : '#1d4ed8',
+                                fontFamily: 'monospace',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <span>⚡ {tool}</span>
+                              <span style={{ fontSize: '10px', opacity: 0.8 }}>{isSelected ? '▲' : '▼'}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 如果有选中的工具，在预览卡片展示参数卡片 */}
+                      {selectedToolParamKey && selectedToolParamKey.startsWith(`${currentSingleMcp.id}:`) && (
+                        <div style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <strong style={{ fontSize: '12px', color: '#1e40af', fontFamily: 'monospace' }}>
+                              ⚡ {selectedToolParamKey.split(':')[1]} 参数规范
+                            </strong>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedToolParamKey(null)}
+                              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {getToolParams(selectedToolParamKey.split(':')[1] || '').map((param) => (
+                              <div key={param.name} style={{ padding: '4px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '11.5px' }}>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <code style={{ fontWeight: 600, color: '#0f172a' }}>{param.name}</code>
+                                  <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px' }}>{param.type}</span>
+                                  <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400 }}>{param.required ? '必填' : '选填'}</span>
+                                  {param.defaultValue !== undefined && <span style={{ color: '#64748b' }}>默认: {String(param.defaultValue)}</span>}
+                                </div>
+                                <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{param.description}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

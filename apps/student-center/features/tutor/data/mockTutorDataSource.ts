@@ -1,4 +1,5 @@
 import type {
+  ConfirmIntentResponse,
   CreateTutorFeedbackRequest,
   CreateTutorFeedbackResponse,
   CreateTutorSessionRequest,
@@ -80,6 +81,46 @@ export class MockTutorDataSource implements TutorDataSource {
     this.assertReadable();
     if (projectId !== MOCK_PROJECT_ID) return null;
     return MOCK_PROJECT_CONTEXT;
+  }
+
+  async confirmExploration(
+    explorationId: string,
+    draft: { goal: string; interest: string },
+    _idempotencyKey: string,
+  ): Promise<ConfirmIntentResponse> {
+    await this.delay();
+    this.assertReadable();
+    const isThunder = /战机|pygame|fighter/i.test(draft.interest) || /战机|pygame|fighter/i.test(draft.goal);
+    const projectId = isThunder ? 'pbl-thunder-fighter' : 'pbl-kinetic-energy';
+    const projectTitle = isThunder ? '雷霆战机：从零打造 Python 飞行射击小游戏' : '动能定理探究：小车实验与能量守恒';
+    return {
+      exploration: {
+        id: explorationId,
+        source: 'free',
+        templateVersionId: null,
+        status: 'confirmed',
+        intentDraft: {
+          id: `draft-${explorationId}`,
+          explorationId,
+          goalUser: draft.goal,
+          coreInterests: [draft.interest],
+          preferredForm: null,
+          targetBeneficiary: null,
+          confirmedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        projectId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      project: {
+        id: projectId,
+        title: projectTitle,
+        stage: 'theory_learning',
+        progress: 0,
+      },
+      replayed: false,
+    };
   }
 
   async createSession(

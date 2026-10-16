@@ -54,11 +54,27 @@ export default function AdminTeamsPage() {
       ]);
 
       let customTeams: AdminTeamConfig[] = [];
+      let customAssts: AdminAssistantConfig[] = [];
       if (typeof window !== 'undefined') {
         try {
           const cached = localStorage.getItem('qitu.admin.custom_teams');
           if (cached) {
             customTeams = JSON.parse(cached);
+          }
+          const cachedAssts = localStorage.getItem('qitu.admin.custom_assistants');
+          if (cachedAssts) {
+            const list = JSON.parse(cachedAssts);
+            customAssts = list.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              description: a.description,
+              role: a.role,
+              avatar: a.icon || '🤖',
+              enabled: a.enabled ?? true,
+              modelId: a.model,
+              source: a.source || 'user',
+              sortOrder: a.sortOrder ?? 99,
+            }));
           }
         } catch {}
       }
@@ -66,8 +82,11 @@ export default function AdminTeamsPage() {
       const existingIds = new Set(teamsData.map((t) => t.id));
       const combined = [...customTeams.filter((t) => !existingIds.has(t.id)), ...teamsData];
 
+      const existingAsstIds = new Set(assistantsData.map((a) => a.id));
+      const combinedAssts = [...customAssts.filter((a) => !existingAsstIds.has(a.id)), ...assistantsData];
+
       setTeams(combined);
-      setAllAssistants(assistantsData);
+      setAllAssistants(combinedAssts);
       setConfiguredModels(modelsData);
 
       const firstTeam = combined[0];

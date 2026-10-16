@@ -347,19 +347,81 @@ export default function CopilotPage() {
       } else if (userText.includes('团队') || userText.includes('组建')) {
         const newTeamId = `team-custom-${Date.now()}`;
         const teamName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `${userText.slice(0, 12)}研讨团队`;
+
+        // 1. 先创建/确保团队成员助手存在，并写入 custom_assistants
+        const coachAsst = {
+          id: `asst-${newTeamId}-coach`,
+          source: 'user',
+          name: `${teamName}-概念教练`,
+          description: `${teamName}专属苏格拉底概念启发教练`,
+          role: '概念教练',
+          icon: '💡',
+          enabled: true,
+          model: selectedModel,
+          permission: runtimePermission,
+          thinkingLevel: thinkingStrength,
+          skillsCount: 4,
+          mcpSetting: '自动记住上次',
+          systemPrompt: `你是${teamName}的概念教练，遵循苏格拉底提问启发教学，引导学生梳理知识图谱，不直接给出答案。`,
+          deletable: true,
+          sortOrder: 10,
+        };
+        const guideAsst = {
+          id: `asst-${newTeamId}-guide`,
+          source: 'user',
+          name: `${teamName}-实践向导`,
+          description: `${teamName}专属实践与动手实验向导`,
+          role: '沙箱向导',
+          icon: '🛠️',
+          enabled: true,
+          model: selectedModel,
+          permission: runtimePermission,
+          thinkingLevel: thinkingStrength,
+          skillsCount: 3,
+          mcpSetting: '自动记住上次',
+          systemPrompt: `你是${teamName}的实践向导，负责指导学生进入动手实践阶段，保障实验与代码安全。`,
+          deletable: true,
+          sortOrder: 11,
+        };
+        const reviewerAsst = {
+          id: `asst-${newTeamId}-reviewer`,
+          source: 'user',
+          name: `${teamName}-评审导师`,
+          description: `${teamName}专属作品评价与反思辅导导师`,
+          role: '评审导师',
+          icon: '📋',
+          enabled: true,
+          model: selectedModel,
+          permission: runtimePermission,
+          thinkingLevel: thinkingStrength,
+          skillsCount: 4,
+          mcpSetting: '自动记住上次',
+          systemPrompt: `你是${teamName}的评审导师，依据项目标准对学生作品进行多维度形成性评价。`,
+          deletable: true,
+          sortOrder: 12,
+        };
+
+        const newAssistants = [coachAsst, guideAsst, reviewerAsst];
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_assistants');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([...newAssistants, ...list]));
+        } catch {}
+
+        // 2. 组建团队并绑定已创建的助手
         const customTeam = {
           id: newTeamId,
           name: teamName || '全新 PBL 课题导师团队',
           description: `由启途智学管家自动组建：${userText}`,
-          leaderAssistantId: 'asst-coach-socrates',
+          leaderAssistantId: coachAsst.id,
           workspaceMode: 'shared',
           sessionMode: 'supervised',
-          concurrencyLimit: 2,
+          concurrencyLimit: 3,
           status: 'active',
           members: [
-            { assistantId: 'asst-coach-socrates', roleLabel: '概念教练', orderIndex: 0, isOptional: false },
-            { assistantId: 'asst-coder', roleLabel: '沙箱向导', orderIndex: 1, isOptional: false },
-            { assistantId: 'asst-reviewer', roleLabel: '评审导师', orderIndex: 2, isOptional: false },
+            { assistantId: coachAsst.id, roleLabel: '概念教练', orderIndex: 0, isOptional: false },
+            { assistantId: guideAsst.id, roleLabel: '沙箱向导', orderIndex: 1, isOptional: false },
+            { assistantId: reviewerAsst.id, roleLabel: '评审导师', orderIndex: 2, isOptional: false },
           ],
           updatedAt: new Date().toISOString(),
         };
@@ -370,16 +432,17 @@ export default function CopilotPage() {
         } catch {}
 
         toolSteps = [
-          { name: 'team_orchestrator', status: 'done', label: '调度自建 Agent SDK 多智能体协同引擎' },
+          { name: 'create_team_assistants', status: 'done', label: `创建并注册团队专属智能体（${coachAsst.name}、${guideAsst.name}、${reviewerAsst.name}）` },
+          { name: 'team_orchestrator', status: 'done', label: `调度自建 Agent SDK 多智能体协同引擎并组建【${customTeam.name}】` },
           { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束门禁' },
-          { name: 'persist_team_registry', status: 'done', label: '注册至团队协同中心' },
+          { name: 'persist_team_registry', status: 'done', label: '将团队与助手同步持久化至设置中心' },
         ];
-        replyContent = `已成功基于 PBL 规范组建协同团队【**${customTeam.name}**】并实时生效！\n\n您现在前往 **[设置 > 团队协同](/settings/teams)** 即可在团队架构列表中实时查看该团队及各角色导师。`;
+        replyContent = `已成功先创建团队专属导师助手（**${coachAsst.name}**、**${guideAsst.name}**、**${reviewerAsst.name}**），并完成协同团队【**${customTeam.name}**】组建！\n\n- 前往 **[设置 > AI 助手](/settings/assistants)** 即可实时查看和微调已创建的各智能体助手。\n- 前往 **[设置 > 团队协同](/settings/teams)** 即可在团队列表中查看该团队及各角色导师架构。`;
         artifact = {
           type: 'team',
           title: `自动生成 PBL 协同团队：${customTeam.name}`,
-          details: '已绑定项目模板门禁与阶段流转规则，已在设置中心实时显示',
-          jsonPreview: JSON.stringify(customTeam, null, 2),
+          details: `已联动生成 3 位导师智能体并持久化至设置中心`,
+          jsonPreview: JSON.stringify({ team: customTeam, createdAssistants: newAssistants }, null, 2),
         };
       } else if (userText.includes('MCP') || userText.includes('工具')) {
         const newMcpId = `mcp-custom-${Date.now()}`;

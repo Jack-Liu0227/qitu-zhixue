@@ -34,6 +34,9 @@ export function ChatThread({
   onRetry,
   onReconnect,
   onSelectOption,
+  onOneClickCreateProject,
+  isConfirmingProject = false,
+  isExploration = false,
   subAgentHud,
   composer,
 }: {
@@ -48,6 +51,9 @@ export function ChatThread({
   onRetry: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string) => void;
+  isConfirmingProject?: boolean;
+  isExploration?: boolean;
   subAgentHud?: ReactNode;
   composer: ReactNode;
 }) {
@@ -254,6 +260,108 @@ export function ChatThread({
             streaming={turn.turnId === streamingTurnId}
           />
         ))}
+
+        {/* 探索模式下在对话流内展示启途智学助手精选立项推荐卡片 */}
+        {isExploration && onOneClickCreateProject && (
+          <div
+            style={{
+              margin: '16px auto',
+              width: '100%',
+              maxWidth: '680px',
+              padding: '16px 18px',
+              background: '#f8fafc',
+              border: '1.5px solid #bfdbfe',
+              borderRadius: '14px',
+              boxShadow: '0 4px 14px rgba(37,99,235,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>🤖</span>
+              <div>
+                <strong style={{ fontSize: '14px', color: '#102a5c' }}>
+                  启途智学助手 · 精选 PBL 立项建议
+                </strong>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>
+                  由启途智学助手提供以下想法，点击即可一键立项并自动唤醒专属导师团队全链路辅导：
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+              <div
+                style={{
+                  padding: '14px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '16px' }}>⚡</span>
+                    <strong style={{ fontSize: '13px', color: '#0f172a' }}>动能定理探究与小车实验</strong>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                    亲手推导 W=ΔEk，弄懂外力做功与动能转换，进行斜面小车仿真实验。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="qitu-button qitu-button-primary qitu-button-sm"
+                  disabled={disabled || isConfirmingProject}
+                  onClick={() =>
+                    onOneClickCreateProject(
+                      '我想亲手推导动能定理 W=ΔEk，了解外力做功与动能转换',
+                      '动能定理',
+                    )
+                  }
+                  style={{ width: '100%', fontSize: '12px', fontWeight: 600 }}
+                >
+                  {isConfirmingProject ? '正在创建并唤醒团队…' : '🚀 一键开启《动能定理》项目'}
+                </button>
+              </div>
+
+              <div
+                style={{
+                  padding: '14px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '16px' }}>🚀</span>
+                    <strong style={{ fontSize: '13px', color: '#0f172a' }}>雷霆战机：Python 射击游戏</strong>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                    攻克 Pygame 游戏主循环、战机移动控制与 AABB 几何矩形碰撞检测算法。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="qitu-button qitu-button-primary qitu-button-sm"
+                  disabled={disabled || isConfirmingProject}
+                  onClick={() =>
+                    onOneClickCreateProject(
+                      '我想设计一款雷霆战机游戏，攻克 Pygame 游戏主循环与碰撞检测',
+                      '雷霆战机',
+                    )
+                  }
+                  style={{ width: '100%', fontSize: '12px', fontWeight: 600 }}
+                >
+                  {isConfirmingProject ? '正在创建并唤醒团队…' : '🚀 一键开启《雷霆战机》项目'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
 
