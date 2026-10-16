@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import qrcode from 'qrcode-generator';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import {
   fetchFeishuIntegration,
@@ -45,6 +46,18 @@ function secondsUntil(expiresAt?: string): number | null {
 function formatCountdown(seconds: number | null): string {
   if (seconds === null) return '';
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function encodeAuthorizationQr(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    const code = qrcode(0, 'M');
+    code.addData(url, 'Byte');
+    code.make();
+    return code.createDataURL(6, 2);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Stable, non-reversible fingerprint for idempotency signatures (never logs raw secrets). */
@@ -93,7 +106,7 @@ export default function FeishuSettingsPage() {
       credentialConfigured: status.credentialConfigured,
       qrSessionId: status.id,
       qrCodeUrl: status.authorizationUrl,
-      qrCodeDataUrl: status.qrCodeDataUrl,
+      qrCodeDataUrl: status.qrCodeDataUrl ?? encodeAuthorizationQr(status.authorizationUrl),
       expiresAt: status.expiresAt,
     }));
     setRemainingSeconds(secondsUntil(status.expiresAt));
@@ -209,7 +222,7 @@ export default function FeishuSettingsPage() {
     try {
       const qr = await startFeishuQrLogin(config.reportAssistantId, idempotencyKey);
       qrRetry.current.acknowledge();
-      setConfig((current) => ({ ...current, status: 'pending', qrSessionId: qr.sessionId, qrCodeUrl: qr.authorizationUrl, qrCodeDataUrl: qr.qrCodeDataUrl, expiresAt: qr.expiresAt }));
+      setConfig((current) => ({ ...current, status: 'pending', qrSessionId: qr.sessionId, qrCodeUrl: qr.authorizationUrl, qrCodeDataUrl: qr.qrCodeDataUrl ?? encodeAuthorizationQr(qr.authorizationUrl), expiresAt: qr.expiresAt }));
       setRemainingSeconds(secondsUntil(qr.expiresAt));
       activeSessionId.current = qr.sessionId;
       pollTimer.current = setInterval(async () => {
