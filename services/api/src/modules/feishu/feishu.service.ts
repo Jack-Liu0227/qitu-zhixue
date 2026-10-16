@@ -149,6 +149,10 @@ export class FeishuService {
     let domain: 'feishu' | 'lark' = 'feishu';
     const [configured] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     if (configured?.domain === 'lark') domain = 'lark';
+    if (configured) {
+      const active = await db.select({ id: feishuQrSessions.id }).from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, configured.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
+      if (active[0]) throw new BadRequestException('FEISHU_QR_ALREADY_ACTIVE');
+    }
     const accounts = domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
     let begin: Record<string, unknown>;
     try {
