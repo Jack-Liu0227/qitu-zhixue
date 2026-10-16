@@ -1,6 +1,6 @@
 ﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
-import { adminAssistants, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
+import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt } from 'drizzle-orm';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { DATABASE_TOKEN } from '../../database';
@@ -207,11 +207,14 @@ export class FeishuService {
     const appSecret = String(result.client_secret ?? '');
     const openId = String(userInfo.open_id ?? '');
     if (!appId || !appSecret || !openId) throw new BadRequestException('椋炰功鎺堟潈鍝嶅簲缂哄皯蹇呰瀛楁');
+    if (!row.createdBy) throw new ForbiddenException('Device session is not bound to an authenticated admin');
     const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
     await withTransaction(db, async (tx) => {
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
       const secretKey = requireSecretKey();
       const recipients = currentBot?.reportRecipients ?? [];
+      const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
+      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
       await tx.update(feishuBots).set({ enabled: true, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: userInfo.tenant_brand === 'lark' ? 'lark' : currentBot?.domain ?? 'feishu', reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: row.createdBy, deviceCodeEncrypted: null, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
       await this.audit.write({ actorId: row.createdBy ?? null, actorRole: 'admin', action: 'admin.feishu.device.bound', targetType: 'feishu_qr_session', targetId: id, detail: { recipientHash: openIdHash, assistantId: currentBot?.assistantId } }, tx);
@@ -279,10 +282,13 @@ export class FeishuService {
     const payload = await response.json().catch(() => ({})) as { data?: { open_id?: string }; open_id?: string };
     const openId = payload.data?.open_id ?? payload.open_id;
     if (!openId || typeof openId !== 'string' || openId.length > 256) throw new BadRequestException('Feishu returned an invalid user identifier');
+    if (!row.createdBy) throw new ForbiddenException('Device session is not bound to an authenticated admin');
     const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
     await withTransaction(db, async (tx) => {
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
       const recipients = currentBot?.reportRecipients ?? [];
+      const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
+      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
       const nextRecipients = recipients.includes(openId) ? recipients : [...recipients, openId];
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
       await tx.update(feishuBots).set({ reportRecipients: nextRecipients, updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));

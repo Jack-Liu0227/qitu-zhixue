@@ -183,6 +183,20 @@
       "when": 1792022400000,
       "tag": "0025_feishu_assistant_device_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792108800000,
+      "tag": "0026_feishu_admin_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792108800000,
+      "tag": "0026_feishu_admin_bindings",
+      "breakpoints": true
     }
   ]
 }

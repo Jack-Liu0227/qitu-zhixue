@@ -38,3 +38,15 @@ export const feishuQrSessions = pgTable('feishu_qr_sessions', {
   stateIdx: index('feishu_qr_sessions_state_idx').on(table.state),
   expiryIdx: index('feishu_qr_sessions_expiry_idx').on(table.expiresAt),
 }));
+
+/** Explicit channel-to-platform identity mapping established by an authenticated admin. */
+export const feishuAdminBindings = pgTable('feishu_admin_bindings', {
+  id: text('id').primaryKey(),
+  assistantId: text('assistant_id').notNull(),
+  openIdHash: text('open_id_hash').notNull(),
+  adminUserId: text('admin_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  channelIdentityUniqueIdx: uniqueIndex('feishu_admin_bindings_channel_identity_unique_idx').on(table.assistantId, table.openIdHash),
+  adminAssistantUniqueIdx: uniqueIndex('feishu_admin_bindings_admin_assistant_unique_idx').on(table.assistantId, table.adminUserId),
+}));
