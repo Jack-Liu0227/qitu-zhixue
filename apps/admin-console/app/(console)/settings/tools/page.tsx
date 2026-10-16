@@ -225,13 +225,16 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
     id: 'mcp-grok-search',
     name: 'groksearch',
     command: 'uvx',
-    args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
-    url: 'https://api.grok.x.ai/v1/mcp',
-    key: 'xai-grok-search-live-key',
-    apiKey: 'xai-grok-search-live-key',
+    args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'grok-search'],
+    url: 'https://newapi.jaycue.dpdns.org/v1',
+    key: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
+    apiKey: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
     env: {
-      GROK_API_KEY: 'xai-grok-search-live-key',
-      TAVILY_API_KEY: 'tvly-free-search-key',
+      GROK_API_KEY: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
+      GROK_API_URL: 'https://newapi.jaycue.dpdns.org/v1',
+      GROK_MODEL: 'grok-4.5',
+      TAVILY_API_KEY: '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',
+      TAVILY_ENABLED: 'true',
     },
     transport: 'stdio',
     status: 'connected',
@@ -243,14 +246,18 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
       {
         name: 'groksearch',
         command: 'uvx',
-        args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
-        url: 'https://api.grok.x.ai/v1/mcp',
-        key: 'xai-grok-search-live-key',
-        env: {
-          GROK_API_KEY: 'xai-grok-search-live-key',
-          TAVILY_API_KEY: 'tvly-free-search-key',
-        },
+        args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'grok-search'],
+        url: 'https://newapi.jaycue.dpdns.org/v1',
+        key: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
+        apiKey: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
         transport: 'stdio',
+        env: {
+          GROK_API_KEY: 'sk-RpQiPvihHZpI2LzvBFHjRSlG5lSPc3njcotHLw7kcaol3amd',
+          GROK_API_URL: 'https://newapi.jaycue.dpdns.org/v1',
+          GROK_MODEL: 'grok-4.5',
+          TAVILY_API_KEY: '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',
+          TAVILY_ENABLED: 'true',
+        },
         description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索，支持学术与事实溯源。',
         boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
         tools: ['grok_web_search', 'fetch_page_markdown', 'knowledge_crawl', 'citation_extract'],
@@ -437,11 +444,15 @@ export default function ToolsSettingsPage() {
             list = list.map((item: SingleMcpConfig) => {
               const def = DEFAULT_MCP_LIST.find((d) => d.name === item.name || d.id === item.id);
               if (def) {
+                const isGrok = item.id === 'mcp-grok-search' || item.name === 'groksearch';
+                const hasDummyKey = !item.key || item.key === 'xai-grok-search-live-key';
                 return {
                   ...item,
-                  url: item.url || def.url,
-                  key: item.key || def.key,
-                  apiKey: item.apiKey || def.apiKey,
+                  url: isGrok && hasDummyKey ? def.url : (item.url || def.url),
+                  key: isGrok && hasDummyKey ? def.key : (item.key || def.key),
+                  apiKey: isGrok && hasDummyKey ? def.apiKey : (item.apiKey || def.apiKey),
+                  env: isGrok && hasDummyKey ? def.env : (item.env || def.env),
+                  rawJson: isGrok && hasDummyKey ? def.rawJson : item.rawJson,
                   transport: item.transport || def.transport || 'stdio',
                 };
               }
@@ -487,6 +498,37 @@ export default function ToolsSettingsPage() {
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [expandedSidebarTools, setExpandedSidebarTools] = useState<Record<string, boolean>>({});
   const [selectedToolParamKey, setSelectedToolParamKey] = useState<string | null>(null);
+  const [selectedMcpIds, setSelectedMcpIds] = useState<Set<string>>(new Set());
+
+  const handleBulkSetMcpStatus = (status: 'connected' | 'disconnected') => {
+    if (selectedMcpIds.size === 0) return;
+    const targetIds = Array.from(selectedMcpIds);
+    setMcpList((prev) =>
+      prev.map((m) => (targetIds.includes(m.id) ? { ...m, status } : m))
+    );
+    if (targetIds.includes(IMA_ID)) {
+      void saveIma({ enabled: status === 'connected' });
+    }
+    setSelectedMcpIds(new Set());
+    setNotice(status === 'connected' ? `已批量启用选中的 ${targetIds.length} 个 MCP 服务 ✔` : `已批量停用选中的 ${targetIds.length} 个 MCP 服务 ✔`);
+    setTimeout(() => setNotice(''), 3000);
+  };
+
+  const handleBulkDeleteMcps = () => {
+    if (selectedMcpIds.size === 0) return;
+    if (!window.confirm(`确定要批量删除选中的 ${selectedMcpIds.size} 个 MCP 服务配置吗？此操作不可逆。`)) return;
+    const targetIds = Array.from(selectedMcpIds);
+    const next = mcpList.filter((m) => !targetIds.includes(m.id));
+    if (next.length === 0) {
+      alert('至少保留一个 MCP 工具服务器！');
+      return;
+    }
+    setMcpList(next);
+    setSelectedTarget('global');
+    setSelectedMcpIds(new Set());
+    setNotice(`已批量移除 ${targetIds.length} 个 MCP 服务配置 ✔`);
+    setTimeout(() => setNotice(''), 3000);
+  };
 
   const acceptIma = (settings: AdminImaSettings) => {
     setIma(settings);
@@ -1639,8 +1681,47 @@ export default function ToolsSettingsPage() {
             </div>
 
             <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', padding: '2px 4px' }}>
-              单个 MCP 独立设置 (点击单独配置)
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px', flexWrap: 'wrap', gap: '6px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={mcpList.length > 0 && mcpList.every((m) => selectedMcpIds.has(m.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedMcpIds(new Set(mcpList.map((m) => m.id)));
+                    else setSelectedMcpIds(new Set());
+                  }}
+                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                />
+                <span>全选 ({selectedMcpIds.size}/{mcpList.length})</span>
+              </label>
+              {selectedMcpIds.size > 0 && (
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSetMcpStatus('connected')}
+                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
+                    title="批量启用选中的 MCP"
+                  >
+                    批量启用
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSetMcpStatus('disconnected')}
+                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fed7aa', background: '#fff7ed', color: '#c2410c', cursor: 'pointer', fontWeight: 600 }}
+                    title="批量停用选中的 MCP"
+                  >
+                    批量停用
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteMcps}
+                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}
+                    title="批量删除选中的 MCP"
+                  >
+                    批量删除
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 2. 各个独立的 MCP */}
@@ -1660,7 +1741,18 @@ export default function ToolsSettingsPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedMcpIds.has(mcp.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedMcpIds);
+                          if (e.target.checked) next.add(mcp.id);
+                          else next.delete(mcp.id);
+                          setSelectedMcpIds(next);
+                        }}
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
                       <span style={{ color: isSelected ? '#165dff' : '#64748b', fontSize: '12px' }}>▶</span>
                       <strong style={{ fontSize: '13.5px', color: isSelected ? '#165dff' : '#0f172a' }}>{mcp.name}</strong>
                     </div>

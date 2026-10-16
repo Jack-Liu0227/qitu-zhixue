@@ -61,6 +61,7 @@ export default function AdminAssistantsPage() {
   const [isRuleExpanded, setIsRuleExpanded] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -237,6 +238,51 @@ export default function AdminAssistantsPage() {
     } catch (err: any) {
       const msg = err?.message || '删除失败，请稍后重试';
       alert(`删除助手失败：${msg}`);
+    }
+  };
+
+  const handleBulkSetEnabled = async (enabled: boolean) => {
+    if (selected.size === 0) return;
+    const targetIds = Array.from(selected);
+    setAssistants((prev) =>
+      prev.map((item) => (targetIds.includes(item.id) ? { ...item, enabled } : item))
+    );
+    try {
+      await Promise.all(
+        targetIds.map((id) =>
+          updatePersistedAssistant(id, { enabled }, newIdempotencyKey()).catch(() => null)
+        )
+      );
+      setSelected(new Set());
+    } catch {
+      // guard
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(`确定要彻底删除选中的 ${selected.size} 位导师助手吗？此操作不可逆。`)) return;
+    const targetIds = Array.from(selected);
+    try {
+      await Promise.all(
+        targetIds.map((id) =>
+          deletePersistedAssistant(id, newIdempotencyKey()).catch(() => null)
+        )
+      );
+      setAssistants((prev) => prev.filter((a) => !targetIds.includes(a.id)));
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_assistants');
+          if (cached) {
+            const list = JSON.parse(cached);
+            const next = list.filter((a: any) => !targetIds.includes(a.id));
+            localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(next));
+          }
+        } catch {}
+      }
+      setSelected(new Set());
+    } catch (err: any) {
+      alert(`批量删除失败：${err?.message || '未知错误'}`);
     }
   };
 
@@ -587,10 +633,52 @@ export default function AdminAssistantsPage() {
 
       {/* 助手卡片列表 */}
       <section className="admin-assistants-group-section">
-        <div className="admin-group-title-row">
-          <span className="admin-group-bar" />
-          <h2 className="admin-group-title">自主研发 Agent SDK 导师阵容</h2>
-          <span className="admin-group-count">{filteredAssistants.length}</span>
+        <div className="admin-group-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="admin-group-bar" />
+            <h2 className="admin-group-title">自主研发 Agent SDK 导师阵容</h2>
+            <span className="admin-group-count">{filteredAssistants.length}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '16px', fontSize: '13px', color: '#475569', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={filteredAssistants.length > 0 && filteredAssistants.every((a) => selected.has(a.id))}
+                onChange={(e) => {
+                  if (e.target.checked) setSelected(new Set(filteredAssistants.map((a) => a.id)));
+                  else setSelected(new Set());
+                }}
+                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+              />
+              <span>全选 ({selected.size}/{filteredAssistants.length})</span>
+            </label>
+          </div>
+          {selected.size > 0 && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="settings-action-btn"
+                style={{ padding: '4px 12px', fontSize: '12px' }}
+                onClick={() => void handleBulkSetEnabled(true)}
+              >
+                批量启用
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                style={{ padding: '4px 12px', fontSize: '12px' }}
+                onClick={() => void handleBulkSetEnabled(false)}
+              >
+                批量停用
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ padding: '4px 12px', fontSize: '12px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                onClick={() => void handleBulkDelete()}
+              >
+                批量删除 ({selected.size})
+              </button>
+            </div>
+          )}
         </div>
 
         {filteredAssistants.length === 0 ? (
@@ -606,7 +694,21 @@ export default function AdminAssistantsPage() {
                 onClick={() => openEditor(item)}
               >
                 <div className="admin-card-top-row">
-                  <div className="admin-card-icon-box">{item.icon}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const next = new Set(selected);
+                        if (e.target.checked) next.add(item.id);
+                        else next.delete(item.id);
+                        setSelected(next);
+                      }}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <div className="admin-card-icon-box">{item.icon}</div>
+                  </div>
                   <div className="admin-card-actions-group">
                     <button
                       type="button"

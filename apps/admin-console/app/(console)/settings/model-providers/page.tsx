@@ -28,9 +28,16 @@ const API_OPTIONS: Array<{ value: ModelApi; label: string; channelType: string }
   { value: 'openai-completions', label: 'OpenAI Chat Completions', channelType: 'OpenAI' },
   { value: 'openai-responses', label: 'OpenAI Responses', channelType: 'OpenAI Responses' },
   { value: 'anthropic-messages', label: 'Anthropic Messages', channelType: 'Anthropic' },
+  { value: 'google-gemini', label: 'Google Gemini (Native / OpenAI Compatible)', channelType: 'Gemini' },
 ];
 
-const PRESET_ALL_MODELS: Array<{ id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | '其他' }> = [
+const PRESET_ALL_MODELS: Array<{ id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' }> = [
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Thinking / 旗舰)', group: 'Google Gemini' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (超极速)', group: 'Google Gemini' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', group: 'Google Gemini' },
+  { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking', group: 'Google Gemini' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', group: 'Google Gemini' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', group: 'Google Gemini' },
   { id: 'gpt-5.6-sol', name: 'GPT-5.6 Solar', group: 'OpenAI' },
   { id: 'gpt-5.5', name: 'GPT-5.5 Turbo', group: 'OpenAI' },
   { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', group: 'OpenAI' },
@@ -60,8 +67,11 @@ function formatTime(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? '未同步' : date.toLocaleString('zh-CN', { hour12: false });
 }
 
-function classifyModelGroup(modelId: string): 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | '其他' {
+function classifyModelGroup(modelId: string): 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' {
   const lower = modelId.toLowerCase();
+  if (lower.includes('gemini') || lower.includes('google')) {
+    return 'Google Gemini';
+  }
   if (lower.startsWith('gpt-') || lower.startsWith('o1-') || lower.startsWith('o3-') || lower.includes('openai') || lower.includes('embedding')) {
     return 'OpenAI';
   }
@@ -92,6 +102,7 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
   const [activeTab, setActiveTab] = useState<'new' | 'existing'>('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    'Google Gemini': true,
     OpenAI: true,
     '阿里百炼 / 通义千问': true,
     DeepSeek: true,
@@ -101,7 +112,7 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
 
   // 合并候选模型与预置全量模型
   const mergedPool = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | '其他' }>();
+    const map = new Map<string, { id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' }>();
     for (const m of PRESET_ALL_MODELS) {
       map.set(m.id, m);
     }
@@ -139,6 +150,7 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
   // 按分类归档
   const groupedDisplay = useMemo(() => {
     const groups: Record<string, typeof displayList> = {
+      'Google Gemini': [],
       OpenAI: [],
       '阿里百炼 / 通义千问': [],
       DeepSeek: [],
@@ -276,9 +288,9 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
           </div>
         </div>
 
-        {/* 搜索框 */}
-        <div style={{ padding: '14px 22px 10px' }}>
-          <div style={{ position: 'relative' }}>
+        {/* 搜索框与快捷操作 */}
+        <div style={{ padding: '14px 22px 10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
             <span style={{ position: 'absolute', left: '12px', top: '9px', color: '#94a3b8' }}>🔍</span>
             <input
               type="text"
@@ -298,6 +310,41 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
               }}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set(displayList.map((m) => m.id)))}
+            style={{
+              padding: '0 12px',
+              height: '38px',
+              borderRadius: '8px',
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            style={{
+              padding: '0 12px',
+              height: '38px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              color: '#64748b',
+              fontSize: '12.5px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            清除模型
+          </button>
         </div>
 
         {/* 分组与模型列表（支持二级折叠与多选） */}
@@ -410,6 +457,13 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
               <input type="checkbox" checked={allFilteredSelected} onChange={handleSelectAllFiltered} />
               <span style={{ fontSize: '12px' }}>全选</span>
             </label>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}
+            >
+              清除已选
+            </button>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
@@ -439,36 +493,532 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
 }
 
 /* ========================================================================= */
+/* 2.5 渠道的模型测试模态弹窗（严格对齐图片 media_1792165815300_79d39dda.png）  */
+/* ========================================================================= */
+interface ModelChannelTestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  channelName: string;
+  baseUrl: string;
+  apiKey?: string;
+  api: ModelApi;
+  providerId?: string;
+  models: string[];
+}
+
+function ModelChannelTestModal({
+  isOpen,
+  onClose,
+  channelName,
+  baseUrl,
+  apiKey,
+  api,
+  providerId,
+  models,
+}: ModelChannelTestModalProps) {
+  const [endpointType, setEndpointType] = useState<'auto' | 'chat' | 'completions'>('auto');
+  const [isStream, setIsStream] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set(models));
+  const [testResults, setTestResults] = useState<
+    Record<string, { status: 'idle' | 'running' | 'success' | 'error'; latencyMs?: number; error?: string }>
+  >({});
+  const [isBatchTesting, setIsBatchTesting] = useState(false);
+  const cancelBatchRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedKeys(new Set(models));
+      setSearchQuery('');
+      setTestResults({});
+      setIsBatchTesting(false);
+      cancelBatchRef.current = false;
+    }
+  }, [isOpen, models]);
+
+  const filteredModels = useMemo(() => {
+    if (!searchQuery.trim()) return models;
+    const q = searchQuery.toLowerCase().trim();
+    return models.filter((m) => m.toLowerCase().includes(q));
+  }, [models, searchQuery]);
+
+  if (!isOpen) return null;
+
+  const runTestForModel = async (modelName: string) => {
+    setTestResults((prev) => ({ ...prev, [modelName]: { status: 'running' } }));
+    const startTime = performance.now();
+    try {
+      if (providerId) {
+        const res = await testModelConnection(providerId, modelName);
+        const elapsed = Math.round(performance.now() - startTime);
+        if (res.ok) {
+          setTestResults((prev) => ({
+            ...prev,
+            [modelName]: { status: 'success', latencyMs: res.latencyMs || elapsed },
+          }));
+        } else {
+          setTestResults((prev) => ({
+            ...prev,
+            [modelName]: { status: 'error', error: res.error || '连接未通过' },
+          }));
+        }
+      } else {
+        const currentUrl = baseUrl.trim() || (api === 'google-gemini' ? 'https://generativelanguage.googleapis.com' : 'https://api.openai.com/v1');
+        let success = false;
+        let errMsg = '';
+        if (api === 'google-gemini' || currentUrl.includes('googleapis.com')) {
+          const geminiUrl = `${currentUrl.replace(/\/$/u, '')}/v1beta/models/${modelName}:generateContent${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+          const res = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'x-goog-api-key': apiKey } : {}) },
+            body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }),
+          });
+          if (res.ok) success = true;
+          else {
+            const err = await res.json().catch(() => null);
+            errMsg = err?.error?.message || `HTTP ${res.status}`;
+          }
+        } else {
+          const ep = endpointType === 'completions' ? '/completions' : '/chat/completions';
+          const chatUrl = `${currentUrl.replace(/\/$/u, '')}${ep}`;
+          const res = await fetch(chatUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'user', content: 'hi' }],
+              max_tokens: 5,
+              stream: isStream,
+            }),
+          });
+          if (res.ok) success = true;
+          else {
+            const err = await res.json().catch(() => null);
+            errMsg = err?.error?.message || `HTTP ${res.status}`;
+          }
+        }
+        const elapsed = Math.round(performance.now() - startTime);
+        if (success) {
+          setTestResults((prev) => ({
+            ...prev,
+            [modelName]: { status: 'success', latencyMs: elapsed },
+          }));
+        } else {
+          setTestResults((prev) => ({
+            ...prev,
+            [modelName]: { status: 'error', error: errMsg || '测试失败' },
+          }));
+        }
+      }
+    } catch (err: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [modelName]: { status: 'error', error: err?.message || '网络连接或跨域异常' },
+      }));
+    }
+  };
+
+  const runBatchTest = async () => {
+    setIsBatchTesting(true);
+    cancelBatchRef.current = false;
+    const targets = models.filter((m) => selectedKeys.has(m));
+    for (const m of targets) {
+      if (cancelBatchRef.current) break;
+      await runTestForModel(m);
+    }
+    setIsBatchTesting(false);
+  };
+
+  const handleCopySelected = () => {
+    const list = Array.from(selectedKeys).join('\n');
+    navigator.clipboard?.writeText(list);
+    alert(`已复制 ${selectedKeys.size} 个模型名称到剪贴板`);
+  };
+
+  const handleSelectSuccess = () => {
+    const successModels = models.filter((m) => testResults[m]?.status === 'success');
+    setSelectedKeys(new Set(successModels));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedKeys(new Set(filteredModels));
+    } else {
+      setSelectedKeys(new Set());
+    }
+  };
+
+  const allSelected = filteredModels.length > 0 && filteredModels.every((m) => selectedKeys.has(m));
+
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 1200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(94vw, 840px)',
+          maxHeight: '90vh',
+          background: '#ffffff',
+          borderRadius: '16px',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.22)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'aionFadeIn 0.2s ease',
+        }}
+      >
+        {/* 顶部标题栏 */}
+        <div
+          style={{
+            padding: '16px 24px',
+            borderBottom: '1px solid #f1f5f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#fafcff',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <strong style={{ fontSize: '16px', color: '#0f172a' }}>
+              {channelName || baseUrl || '网关'} 渠道的模型测试
+            </strong>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>共 {models.length} 个模型</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', fontSize: '18px', color: '#94a3b8', cursor: 'pointer' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: '16px 24px 10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* 端点类型与流式控制栏 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>端点类型:</span>
+              <select
+                value={endpointType}
+                onChange={(e) => setEndpointType(e.target.value as any)}
+                style={{
+                  height: '34px',
+                  padding: '0 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #dce4ee',
+                  fontSize: '13px',
+                  color: '#0f172a',
+                  background: '#ffffff',
+                }}
+              >
+                <option value="auto">自动检测</option>
+                <option value="chat">Chat Completions (/chat/completions)</option>
+                <option value="completions">Completions (/completions)</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>流式:</span>
+              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={isStream}
+                  onChange={(e) => setIsStream(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 蓝底说明条 */}
+          <div
+            style={{
+              padding: '10px 14px',
+              background: '#eff6ff',
+              borderRadius: '8px',
+              color: '#1d4ed8',
+              fontSize: '12.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>ℹ️</span>
+            <span>说明：本页测试为非流式请求；若渠道仅支持流式返回，可能出现测试失败，请以实际使用为准。</span>
+          </div>
+
+          {/* 搜索与快捷操作栏 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <span style={{ position: 'absolute', left: '10px', top: '8px', color: '#94a3b8' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="搜索模型..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: '34px',
+                  paddingLeft: '32px',
+                  paddingRight: '10px',
+                  borderRadius: '6px',
+                  border: '1px solid #dce4ee',
+                  fontSize: '13px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleCopySelected}
+                style={{
+                  padding: '6px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '12.5px',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                复制已选
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectSuccess}
+                style={{
+                  padding: '6px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '12.5px',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                选择成功
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 模型测试表格 */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px 10px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12.5px' }}>
+                <th style={{ padding: '10px 8px', width: '36px' }}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
+                <th style={{ padding: '10px 8px' }}>模型名称</th>
+                <th style={{ padding: '10px 8px', width: '220px' }}>状态</th>
+                <th style={{ padding: '10px 8px', width: '80px', textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredModels.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                    未找到模型
+                  </td>
+                </tr>
+              ) : (
+                filteredModels.map((model) => {
+                  const isChecked = selectedKeys.has(model);
+                  const result = testResults[model];
+                  return (
+                    <tr
+                      key={model}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        background: isChecked ? '#fbfcfe' : '#ffffff',
+                      }}
+                    >
+                      <td style={{ padding: '10px 8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const next = new Set(selectedKeys);
+                            if (e.target.checked) next.add(model);
+                            else next.delete(model);
+                            setSelectedKeys(next);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <strong style={{ color: '#0f172a' }}>{model}</strong>
+                      </td>
+                      <td style={{ padding: '10px 8px' }}>
+                        {!result || result.status === 'idle' ? (
+                          <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+                            未开始
+                          </span>
+                        ) : result.status === 'running' ? (
+                          <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                            ⚡ 测试中...
+                          </span>
+                        ) : result.status === 'success' ? (
+                          <span style={{ fontSize: '12px', color: '#16a34a', background: '#ecfdf5', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                            ✓ 成功 · {result.latencyMs}ms
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: '4px' }} title={result.error}>
+                            ✕ 失败: {result.error?.slice(0, 36) || '未通过'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => void runTestForModel(model)}
+                          disabled={result?.status === 'running'}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          测试
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 底部按钮栏 */}
+        <div
+          style={{
+            padding: '12px 24px',
+            borderTop: '1px solid #f1f5f9',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: '#ffffff',
+          }}
+        >
+          <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+            显示第 1 条-第 {filteredModels.length} 条，共 {models.length} 条
+          </span>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {isBatchTesting ? (
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                onClick={() => {
+                  cancelBatchRef.current = true;
+                  setIsBatchTesting(false);
+                }}
+              >
+                停止测试
+              </button>
+            ) : (
+              <button type="button" className="settings-action-btn" onClick={onClose}>
+                取消
+              </button>
+            )}
+            <button
+              type="button"
+              className="settings-action-btn is-primary"
+              disabled={isBatchTesting || selectedKeys.size === 0}
+              onClick={() => void runBatchTest()}
+            >
+              {isBatchTesting ? '正在批量测试...' : `批量测试 ${selectedKeys.size} 个模型`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================= */
 /* 3. 更新渠道信息 / 新建渠道模态框（严格对齐用户提供的图片例子 Image 3）       */
 /* ========================================================================= */
 interface ChannelEditorModalProps {
   initial?: ProviderConfigPublic;
   preset?: ProviderPreset;
+  isCopy?: boolean;
   onSaved: (provider: ProviderConfigPublic) => void;
   onClose: () => void;
 }
 
-function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditorModalProps) {
-  const [channelType, setChannelType] = useState('OpenAI');
-  const [id, setId] = useState(initial?.id ?? preset?.id ?? '');
-  const [name, setName] = useState(initial?.name ?? preset?.name ?? '');
-  const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? preset?.baseUrl ?? '');
-  const [api, setApi] = useState<ModelApi>(initial?.api ?? preset?.api ?? 'openai-completions');
+function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: ChannelEditorModalProps) {
+  const [channelType, setChannelType] = useState(() => {
+    if (initial?.api === 'google-gemini') return 'Gemini';
+    if (initial?.api === 'anthropic-messages') return 'Anthropic';
+    return 'OpenAI';
+  });
+  const [id, setId] = useState(() => {
+    if (isCopy && initial) return `${initial.id}-copy`;
+    if (initial) return initial.id;
+    return '';
+  });
+  const [name, setName] = useState(() => {
+    if (isCopy && initial) return `${initial.name} (副本)`;
+    if (initial) return initial.name;
+    if (preset) return preset.name;
+    return '';
+  });
+  const [baseUrl, setBaseUrl] = useState(() => {
+    if (initial) return initial.baseUrl;
+    if (preset) return preset.baseUrl;
+    return '';
+  });
+  const [api, setApi] = useState<ModelApi>(() => {
+    if (initial) return initial.api;
+    if (preset) return preset.api;
+    return 'openai-completions';
+  });
   const [authHeader, setAuthHeader] = useState(initial?.authHeader ?? preset?.authHeader ?? true);
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [organization, setOrganization] = useState('');
   const [showKey, setShowKey] = useState(false);
 
-  // 模型 Tags 列表
+  // 模型 Tags 列表 - 添加新模型时默认全部为空，仅复制Provider复用已有模型
   const [modelTags, setModelTags] = useState<string[]>(() => {
-    if (initial?.models?.length) return initial.models.map((m) => m.id);
-    if (preset?.suggestedModels?.length) return preset.suggestedModels.map((m) => m.id);
-    return ['gpt-5.6-sol', 'gpt-5.5', 'gpt-5.6-terra', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6.1-sol'];
+    if (isCopy && initial?.models?.length) return initial.models.map((m) => m.id);
+    if (!isCopy && initial?.models?.length) return initial.models.map((m) => m.id);
+    return [];
   });
 
   const [customModelInput, setCustomModelInput] = useState('');
-  const [groups, setGroups] = useState<string[]>(['default', 'openai']);
-  const [groupInput, setGroupInput] = useState('');
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
 
   // 高级设置状态
   const [detectUpstreamUpdate, setDetectUpstreamUpdate] = useState(false);
@@ -495,9 +1045,48 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
     setCustomModelInput('');
   };
 
-  const handleFillRelatedModels = () => {
-    const defaultOpenAi = ['gpt-5.6-sol', 'gpt-5.5', 'gpt-5.6-terra', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6.1-sol', 'gpt-4o', 'gpt-4o-mini', 'o1-preview'];
-    setModelTags((prev) => Array.from(new Set([...prev, ...defaultOpenAi])));
+  const handleFetchModels = async () => {
+    const url = baseUrl.trim().replace(/\/$/u, '');
+    const key = keyRef.current?.value || '';
+    setFetchingModels(true);
+    try {
+      let fetchedList: string[] = [];
+      if (api === 'google-gemini' || url.includes('googleapis.com')) {
+        const gUrl = `${url || 'https://generativelanguage.googleapis.com'}/v1beta/models${key ? `?key=${encodeURIComponent(key)}` : ''}`;
+        const res = await fetch(gUrl, { headers: key ? { 'x-goog-api-key': key } : {} });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.models) {
+            fetchedList = json.models.map((m: any) => m.name.replace('models/', ''));
+          }
+        }
+      } else {
+        const mUrl = `${url || 'https://api.openai.com/v1'}/models`;
+        const headers: Record<string, string> = {};
+        if (key) headers['Authorization'] = `Bearer ${key}`;
+        const res = await fetch(mUrl, { headers });
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json?.data)) {
+            fetchedList = json.data.map((m: any) => m.id);
+          }
+        }
+      }
+      if (fetchedList.length > 0) {
+        setModelTags((prev) => Array.from(new Set([...prev, ...fetchedList])));
+        alert(`成功获取并添加 ${fetchedList.length} 个模型！`);
+      } else {
+        const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
+        setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
+        alert('已自动载入全量模型库（上游直接请求受浏览器同源策略限制时使用标准模型库）');
+      }
+    } catch {
+      const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
+      setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
+      alert('已自动载入全量模型库（上游直接请求受浏览器同源策略限制时使用标准模型库）');
+    } finally {
+      setFetchingModels(false);
+    }
   };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -813,6 +1402,7 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
                     const ct = e.target.value;
                     setChannelType(ct);
                     if (ct === 'Anthropic') setApi('anthropic-messages');
+                    else if (ct === 'Gemini') setApi('google-gemini');
                     else setApi('openai-completions');
                   }}
                   style={{
@@ -824,7 +1414,8 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
                     fontSize: '13px',
                   }}
                 >
-                  <option value="OpenAI">OpenAI</option>
+                  <option value="OpenAI">OpenAI (Chat Completions)</option>
+                  <option value="Gemini">Google Gemini (Native / OpenAI Compatible)</option>
                   <option value="Anthropic">Anthropic (Claude)</option>
                   <option value="Azure">Azure OpenAI</option>
                   <option value="Bailian">阿里百炼 / 通义千问</option>
@@ -991,55 +1582,98 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
                   ))}
                 </div>
 
-                {/* 模型操作按钮栏 (Image 3) */}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '8px', alignItems: 'center' }}>
+                {/* 模型操作按钮栏 */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    onClick={handleFillRelatedModels}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#165dff',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    填入相关模型
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectModelModalOpen(true)}
+                    onClick={() => void handleFetchModels()}
+                    disabled={fetchingModels}
                     style={{
                       background: '#165dff',
                       border: 'none',
                       color: '#ffffff',
                       fontSize: '12px',
                       fontWeight: 600,
-                      padding: '4px 10px',
+                      padding: '5px 12px',
                       borderRadius: '6px',
                       cursor: 'pointer',
                     }}
                   >
-                    🔍 获取模型列表
+                    {fetchingModels ? '正在获取...' : '⚡ 获取模型'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
+                      setModelTags(Array.from(new Set([...modelTags, ...allPresets])));
+                    }}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    全选模型
                   </button>
                   <button
                     type="button"
                     onClick={() => setModelTags([])}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#94a3b8',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      color: '#dc2626',
                       fontSize: '12px',
+                      fontWeight: 500,
+                      padding: '5px 12px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
                     }}
                   >
-                    清空模型
+                    清除模型
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectModelModalOpen(true)}
+                    style={{
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      color: '#1d4ed8',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔍 选择模型
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTestModalOpen(true)}
+                    disabled={modelTags.length === 0}
+                    style={{
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      color: '#047857',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      cursor: modelTags.length === 0 ? 'not-allowed' : 'pointer',
+                      opacity: modelTags.length === 0 ? 0.6 : 1,
+                    }}
+                  >
+                    🧪 模型测试
                   </button>
                 </div>
               </div>
 
-              {/* 自定义模型名称 (Image 3) */}
+              {/* 自定义模型名称 */}
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: '5px' }}>
                   自定义模型名称
@@ -1067,62 +1701,6 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
                   >
                     填入
                   </button>
-                </div>
-              </div>
-
-              {/* 分组 (Image 3) */}
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: '5px' }}>
-                  分组
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                  {groups.map((grp) => (
-                    <span
-                      key={grp}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: '#f1f5f9',
-                        color: '#334155',
-                        borderRadius: '6px',
-                        padding: '3px 8px',
-                        fontSize: '12px',
-                      }}
-                    >
-                      {grp}
-                      <button
-                        type="button"
-                        onClick={() => setGroups((prev) => prev.filter((g) => g !== grp))}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    type="text"
-                    value={groupInput}
-                    onChange={(e) => setGroupInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (groupInput.trim() && !groups.includes(groupInput.trim())) {
-                          setGroups((prev) => [...prev, groupInput.trim()]);
-                          setGroupInput('');
-                        }
-                      }
-                    }}
-                    placeholder="+ 添加分组 (回车)"
-                    style={{
-                      height: '28px',
-                      padding: '0 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #e2e8f0',
-                      fontSize: '12px',
-                      width: '120px',
-                    }}
-                  />
                 </div>
               </div>
 
@@ -1181,6 +1759,20 @@ function ChannelEditorModal({ initial, preset, onSaved, onClose }: ChannelEditor
           setModelTags(newSelectedIds);
         }}
       />
+
+      {/* 渠道模型测试模态弹窗 */}
+      {testModalOpen && (
+        <ModelChannelTestModal
+          isOpen={testModalOpen}
+          onClose={() => setTestModalOpen(false)}
+          channelName={name || '新建渠道'}
+          baseUrl={baseUrl}
+          apiKey={keyRef.current?.value || ''}
+          api={api}
+          providerId={initial && !isCopy ? initial.id : undefined}
+          models={modelTags}
+        />
+      )}
     </>
   );
 }
@@ -1258,10 +1850,12 @@ export default function AdminModelPage() {
   const [status, setStatus] = useState<'all' | 'enabled' | 'disabled' | 'error'>('all');
   const [apiFilter, setApiFilter] = useState<'all' | ModelApi>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ initial?: ProviderConfigPublic; preset?: ProviderPreset } | null>(null);
+  const [editing, setEditing] = useState<{ initial?: ProviderConfigPublic; preset?: ProviderPreset; isCopy?: boolean } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSaving, setBulkSaving] = useState(false);
   const [testState, setTestState] = useState<Record<string, string>>({});
+  const [testingProvider, setTestingProvider] = useState<ProviderConfigPublic | null>(null);
+  const [selectedModels, setSelectedModels] = useState<Record<string, Set<string>>>({});
 
   // 针对特定展开通道的模型选择弹窗
   const [batchSelectProvider, setBatchSelectProvider] = useState<ProviderConfigPublic | null>(null);
@@ -1384,6 +1978,53 @@ export default function AdminModelPage() {
       setError(cause instanceof Error ? cause : new Error('批量更新失败'));
     } finally {
       setBulkSaving(false);
+    }
+  }
+
+  async function bulkDeleteProviders() {
+    if (selected.size === 0) return;
+    if (!confirm(`确定要批量删除选中的 ${selected.size} 个模型通道吗？此操作不可逆。`)) return;
+    setBulkSaving(true);
+    try {
+      await Promise.all(
+        [...selected].map(async (id) => {
+          await deleteProvider(id, newIdempotencyKey()).catch(() => null);
+        })
+      );
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              providers: current.providers.filter((item) => !selected.has(item.id)),
+            }
+          : current
+      );
+      setSelected(new Set());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error('批量删除通道失败'));
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
+  async function handleBulkDeleteModels(provider: ProviderConfigPublic) {
+    const pSelected = selectedModels[provider.id] || new Set();
+    if (pSelected.size === 0) return;
+    if (!confirm(`确定要从通道「${provider.name}」中批量移除选中的 ${pSelected.size} 个模型吗？`)) return;
+    try {
+      for (const mId of pSelected) {
+        await deleteManualModel(provider.id, mId, newIdempotencyKey()).catch(() => null);
+      }
+      const refreshed = await refreshProvider(provider.id).catch(() => null);
+      replaceProvider(
+        refreshed?.provider ?? {
+          ...provider,
+          models: provider.models.filter((m) => !pSelected.has(m.id)),
+        }
+      );
+      setSelectedModels((prev) => ({ ...prev, [provider.id]: new Set() }));
+    } catch (err) {
+      alert('批量删除模型失败: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -1525,6 +2166,9 @@ export default function AdminModelPage() {
             <button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(false)}>
               批量停用
             </button>
+            <button type="button" className="settings-pill-btn" style={{ color: '#ef4444' }} disabled={bulkSaving} onClick={() => void bulkDeleteProviders()}>
+              批量删除
+            </button>
           </>
         ) : null}
       </div>
@@ -1645,6 +2289,23 @@ export default function AdminModelPage() {
                           <button
                             type="button"
                             className="settings-pill-btn"
+                            onClick={() => setEditing({ initial: provider, isCopy: true })}
+                            title="复制已有配置并新建通道"
+                          >
+                            复制通道
+                          </button>
+                          <button
+                            type="button"
+                            className="settings-pill-btn"
+                            style={{ color: '#0284c7' }}
+                            onClick={() => setTestingProvider(provider)}
+                            title="测试该渠道当前挂载的模型"
+                          >
+                            测试模型
+                          </button>
+                          <button
+                            type="button"
+                            className="settings-pill-btn"
                             style={{ color: '#ef4444' }}
                             onClick={() => void handleDeleteProvider(provider)}
                           >
@@ -1689,7 +2350,7 @@ export default function AdminModelPage() {
                                     : '未配置鉴权密钥'}
                                 </span>
                               </div>
-                              <div style={{ display: 'flex', gap: '8px' }}>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
                                   className="settings-pill-btn"
@@ -1697,6 +2358,43 @@ export default function AdminModelPage() {
                                   onClick={() => setBatchSelectProvider(provider)}
                                 >
                                   🔍 获取模型列表 (批量勾选)
+                                </button>
+                                <button
+                                  type="button"
+                                  className="settings-pill-btn"
+                                  onClick={() => {
+                                    const all = new Set(provider.models.map((m) => m.id));
+                                    setSelectedModels((prev) => ({ ...prev, [provider.id]: all }));
+                                  }}
+                                >
+                                  全选模型
+                                </button>
+                                <button
+                                  type="button"
+                                  className="settings-pill-btn"
+                                  onClick={() => {
+                                    setSelectedModels((prev) => ({ ...prev, [provider.id]: new Set() }));
+                                  }}
+                                >
+                                  清除已选
+                                </button>
+                                {(selectedModels[provider.id]?.size ?? 0) > 0 && (
+                                  <button
+                                    type="button"
+                                    className="settings-pill-btn"
+                                    style={{ color: '#ef4444', borderColor: '#fecaca', background: '#fef2f2', fontWeight: 600 }}
+                                    onClick={() => void handleBulkDeleteModels(provider)}
+                                  >
+                                    批量删除选中模型 ({selectedModels[provider.id]?.size})
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="settings-pill-btn"
+                                  style={{ color: '#0284c7' }}
+                                  onClick={() => setTestingProvider(provider)}
+                                >
+                                  🧪 测试模型
                                 </button>
                                 <button
                                   type="button"
@@ -1737,6 +2435,7 @@ export default function AdminModelPage() {
                               >
                                 {provider.models.map((model: ModelDescriptor) => {
                                   const group = classifyModelGroup(model.id);
+                                  const isModelChecked = selectedModels[provider.id]?.has(model.id) ?? false;
                                   return (
                                     <div
                                       key={model.id}
@@ -1753,9 +2452,22 @@ export default function AdminModelPage() {
                                     >
                                       <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                          <strong style={{ fontSize: '13px', color: '#1e293b' }}>
-                                            {model.name || model.id}
-                                          </strong>
+                                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={isModelChecked}
+                                              onChange={(e) => {
+                                                const next = new Set(selectedModels[provider.id] || []);
+                                                if (e.target.checked) next.add(model.id);
+                                                else next.delete(model.id);
+                                                setSelectedModels((prev) => ({ ...prev, [provider.id]: next }));
+                                              }}
+                                              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                                            />
+                                            <strong style={{ fontSize: '13px', color: '#1e293b' }}>
+                                              {model.name || model.id}
+                                            </strong>
+                                          </label>
                                           <span
                                             style={{
                                               fontSize: '10.5px',
@@ -1884,6 +2596,7 @@ export default function AdminModelPage() {
         <ChannelEditorModal
           initial={editing.initial}
           preset={editing.preset}
+          isCopy={editing.isCopy}
           onSaved={(provider) => {
             replaceProvider(provider);
             setEditing(null);
@@ -1902,6 +2615,19 @@ export default function AdminModelPage() {
           onConfirm={(selectedModelIds) => {
             void handleApplyBatchModels(batchSelectProvider, selectedModelIds);
           }}
+        />
+      ) : null}
+
+      {/* 渠道模型测试模态弹窗 */}
+      {testingProvider ? (
+        <ModelChannelTestModal
+          isOpen={Boolean(testingProvider)}
+          onClose={() => setTestingProvider(null)}
+          channelName={testingProvider.name}
+          baseUrl={testingProvider.baseUrl}
+          api={testingProvider.api}
+          providerId={testingProvider.id}
+          models={testingProvider.models.map((m) => m.id)}
         />
       ) : null}
     </div>

@@ -16,7 +16,7 @@ import type {
   Tool,
 } from './pi/types.js';
 
-export type QituModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
+export type QituModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-gemini';
 
 export interface ModelRuntimeTarget {
   providerId: string;
@@ -284,6 +284,8 @@ function apiFor(api: QituModelApi): ProviderStreams {
       return openAIResponsesApi();
     case 'anthropic-messages':
       return anthropicMessagesApi();
+    case 'google-gemini':
+      return openAICompletionsApi();
   }
 }
 
