@@ -8,6 +8,7 @@ import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
+import { TeamAgentHud } from './components/TeamAgentHud';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
@@ -23,7 +24,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const session = useTutorSession(projectId, routeContextKey || explorationKey);
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const confirmKey = useRef<string | null>(null);
@@ -146,12 +147,26 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           }
         />
       </div>
-      {rightOpen ? <aside style={{ width: 'min(280px, 30vw)', flexShrink: 0, overflow: 'auto' }}>
-        {session.project ? <><ProjectCard project={session.project.project} /><CurrentTask task={session.project.currentTask} /></> : <div style={{ padding: 16 }}>
-          <h2>正在形成的方向</h2>
-          <p>当前仍在探索，尚未创建正式项目。可在左侧对话流中直接点击启途智学助手推荐的项目一键立项并唤醒导师团队。</p>
-        </div>}
-      </aside> : null}
+      {rightOpen ? (
+        <aside style={{ width: 'min(300px, 32vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <TeamAgentHud
+            currentProjectId={projectId}
+            currentTitle={session.project?.project.title}
+            turns={session.turns}
+          />
+          {session.project ? (
+            <>
+              <ProjectCard project={session.project.project} />
+              <CurrentTask task={session.project.currentTask} />
+            </>
+          ) : (
+            <div style={{ padding: '14px 16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px 0', color: '#1e293b' }}>正在形成的方向</h3>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.6 }}>当前处于自由探索阶段，尚未创建正式项目。可在中间对话流中直接点击启途智学助手推荐的项目一键立项并唤醒导师团队。</p>
+            </div>
+          )}
+        </aside>
+      ) : null}
     </div>
   </div>;
 }

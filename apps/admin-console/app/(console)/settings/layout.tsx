@@ -81,9 +81,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     <div className={`settings-shell ${siderCollapsed ? 'is-sider-collapsed' : ''}`}>
       <aside className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
         <div className="settings-sider-head">
-          <span className="settings-sider-title">
-            系统偏好设置
-          </span>
+          {!siderCollapsed && (
+            <span className="settings-sider-title">
+              系统偏好设置
+            </span>
+          )}
           <button
             type="button"
             className="settings-sider-toggle-btn"
@@ -91,13 +93,25 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             title={siderCollapsed ? '展开偏好设置侧边栏' : '收起偏好设置侧边栏'}
             aria-label={siderCollapsed ? '展开偏好设置侧边栏' : '收起偏好设置侧边栏'}
           >
-            {siderCollapsed ? '»' : '«'}
+            {siderCollapsed ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            )}
           </button>
         </div>
         <div className="settings-sider-scroll">
-          {SETTINGS_NAV.map((grp) => (
+          {SETTINGS_NAV.map((grp, idx) => (
             <div key={grp.group} className="settings-sider-section">
-              {!siderCollapsed && <div className="settings-sider-group">{grp.group}</div>}
+              {!siderCollapsed ? (
+                <div className="settings-sider-group">{grp.group}</div>
+              ) : idx > 0 ? (
+                <div className="settings-sider-divider" aria-hidden="true" />
+              ) : null}
               {grp.items.map((item) => {
                 const active = isItemActive(item.href);
                 return (
@@ -109,7 +123,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                     aria-current={active ? 'page' : undefined}
                   >
                     <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
-                    <span className="settings-sider-label">{item.label}</span>
+                    {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
                   </Link>
                 );
               })}

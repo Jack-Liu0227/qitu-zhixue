@@ -41,6 +41,9 @@ export interface SingleMcpConfig {
   name: string;
   command: string;
   args: string[];
+  url?: string;
+  key?: string;
+  apiKey?: string;
   env?: Record<string, string>;
   transport?: 'stdio' | 'sse' | 'streamable_http';
   status: 'connected' | 'disconnected' | 'error';
@@ -60,6 +63,39 @@ interface ToolParamSchema {
 }
 
 const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
+  // Pi Agent 核心内置工具集 (read, write, bash, edit, glob, grep)
+  read: [
+    { name: 'path', type: 'string', required: true, description: '目标文件相对路径或绝对路径' },
+    { name: 'offset', type: 'number', required: false, defaultValue: 0, description: '字节偏移量（大文件分片读取）' },
+    { name: 'limit', type: 'number', required: false, defaultValue: 2000, description: '单次最多读取字节数或字符上限' },
+    { name: 'start_line', type: 'number', required: false, defaultValue: 1, description: '起始行号 (1-indexed)' },
+    { name: 'end_line', type: 'number', required: false, description: '结束行号 (包含此行)' },
+  ],
+  write: [
+    { name: 'path', type: 'string', required: true, description: '目标文件创建或覆盖的完整路径' },
+    { name: 'content', type: 'string', required: true, description: '写入文件的完整代码或纯文本内容' },
+    { name: 'overwrite', type: 'boolean', required: false, defaultValue: true, description: '是否直接覆盖已存在的同名文件' },
+    { name: 'append', type: 'boolean', required: false, defaultValue: false, description: '是否以追加模式写入末尾' },
+  ],
+  bash: [
+    { name: 'command', type: 'string', required: true, description: '在工作区安全沙箱中执行的 Shell 命令行指令' },
+    { name: 'cwd', type: 'string', required: false, defaultValue: '/root/team-workspaces/qitu-zhixue', description: '执行命令的工作目录路径' },
+    { name: 'timeout_ms', type: 'number', required: false, defaultValue: 30000, description: '命令执行超时毫秒数' },
+  ],
+  edit: [
+    { name: 'path', type: 'string', required: true, description: '需要修改的目标代码文件路径' },
+    { name: 'old_str', type: 'string', required: true, description: '文件中待精确匹配的原代码段落 (需完全一致)' },
+    { name: 'new_str', type: 'string', required: true, description: '用于替换写入的目标新代码段落' },
+  ],
+  glob: [
+    { name: 'pattern', type: 'string', required: true, description: '匹配工程文件的通配符 (如 **/*.py 或 src/**/*.tsx)' },
+    { name: 'path', type: 'string', required: false, defaultValue: '.', description: '搜索起始目录' },
+  ],
+  grep: [
+    { name: 'pattern', type: 'string', required: true, description: '在工程文件中检索的正则表达式或文本' },
+    { name: 'path', type: 'string', required: false, defaultValue: '.', description: '检索起始目录' },
+    { name: 'case_sensitive', type: 'boolean', required: false, defaultValue: false, description: '是否严格区分大小写' },
+  ],
   grok_web_search: [
     { name: 'query', type: 'string', required: true, description: '搜索关键词、学术概念或事实提问' },
     { name: 'max_results', type: 'number', required: false, defaultValue: 5, description: '返回的最大网页摘要条数 (1-20)' },
@@ -127,6 +163,12 @@ const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
     { name: 'grade', type: 'string', required: true, description: '年级学段（初中/高中）' },
     { name: 'standard_code', type: 'string', required: false, description: '核心素养或课标维度编码' },
   ],
+  sequentialthinking: [
+    { name: 'thought', type: 'string', required: true, description: '当前思考步骤推演内容' },
+    { name: 'thoughtNumber', type: 'number', required: true, description: '当前思考步骤序号 (1-indexed)' },
+    { name: 'totalThoughts', type: 'number', required: true, description: '预估总思考步骤数' },
+    { name: 'nextThoughtNeeded', type: 'boolean', required: true, description: '是否还需要继续进行下一步深度推理' },
+  ],
 };
 
 function getToolParams(toolName: string): ToolParamSchema[] {
@@ -141,10 +183,52 @@ function getToolParams(toolName: string): ToolParamSchema[] {
 
 const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
   {
+    id: 'mcp-pi-builtin',
+    name: 'pi-agent-builtin',
+    command: 'internal:pi-runtime',
+    args: ['--workspace', '/root/team-workspaces/qitu-zhixue'],
+    url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
+    key: 'pi-builtin-live-sec-key-8912',
+    env: {
+      WORKSPACE_ROOT: '/root/team-workspaces/qitu-zhixue',
+      EXECUTION_SANDBOX: 'docker-isolated',
+      SECURITY_GATE: 'TheoryMastered-Enforced',
+    },
+    transport: 'stdio',
+    status: 'connected',
+    latencyMs: 1,
+    tools: ['read', 'write', 'bash', 'edit', 'glob', 'grep'],
+    boundAssistants: ['战机架构与代码向导', '动能定理仿真与实验向导', '代码向导与答辩导师', '启途智学管家'],
+    description: 'Pi Agent 核心内置基础工具套件（包含文件读取 read、代码覆盖写入 write、终端命令执行 bash、局部精确替换 edit、代码匹配 glob、正则全文搜索 grep）。',
+    rawJson: JSON.stringify(
+      {
+        name: 'pi-agent-builtin',
+        command: 'internal:pi-runtime',
+        args: ['--workspace', '/root/team-workspaces/qitu-zhixue'],
+        url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
+        key: 'pi-builtin-live-sec-key-8912',
+        transport: 'stdio',
+        env: {
+          WORKSPACE_ROOT: '/root/team-workspaces/qitu-zhixue',
+          EXECUTION_SANDBOX: 'docker-isolated',
+          SECURITY_GATE: 'TheoryMastered-Enforced',
+        },
+        description: 'Pi Agent 核心内置基础工具套件（包含文件读取 read、代码覆盖写入 write、终端命令执行 bash、局部精确替换 edit、代码匹配 glob、正则全文搜索 grep）。',
+        boundAssistants: ['战机架构与代码向导', '动能定理仿真与实验向导', '代码向导与答辩导师', '启途智学管家'],
+        tools: ['read', 'write', 'bash', 'edit', 'glob', 'grep'],
+      },
+      null,
+      2
+    ),
+  },
+  {
     id: 'mcp-grok-search',
     name: 'groksearch',
     command: 'uvx',
     args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
+    url: 'https://api.grok.x.ai/v1/mcp',
+    key: 'xai-grok-search-live-key',
+    apiKey: 'xai-grok-search-live-key',
     env: {
       GROK_API_KEY: 'xai-grok-search-live-key',
       TAVILY_API_KEY: 'tvly-free-search-key',
@@ -160,6 +244,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
         name: 'groksearch',
         command: 'uvx',
         args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'groksearch'],
+        url: 'https://api.grok.x.ai/v1/mcp',
+        key: 'xai-grok-search-live-key',
         env: {
           GROK_API_KEY: 'xai-grok-search-live-key',
           TAVILY_API_KEY: 'tvly-free-search-key',
@@ -178,6 +264,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
     name: 'chrome-devtools',
     command: 'npx',
     args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
+    url: 'http://localhost:9222/devtools/mcp',
+    key: 'cdp-devtools-token-9988',
     transport: 'stdio',
     status: 'connected',
     latencyMs: 18,
@@ -189,6 +277,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
         name: 'chrome-devtools',
         command: 'npx',
         args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
+        url: 'http://localhost:9222/devtools/mcp',
+        key: 'cdp-devtools-token-9988',
         transport: 'stdio',
         description: 'Chrome DevTools 自动化视口控制、页面渲染监测与前端控制台日志捕获。',
         boundAssistants: ['雷霆战机总导师', '代码向导与答辩导师'],
@@ -203,6 +293,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
     name: 'aionui-browser',
     command: 'npx',
     args: ['-y', '@aionui/browser-mcp'],
+    url: 'https://browser.aionui.org/mcp/v1',
+    key: 'aion-browser-sec-key-1234',
     transport: 'stdio',
     status: 'connected',
     latencyMs: 22,
@@ -214,6 +306,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
         name: 'aionui-browser',
         command: 'npx',
         args: ['-y', '@aionui/browser-mcp'],
+        url: 'https://browser.aionui.org/mcp/v1',
+        key: 'aion-browser-sec-key-1234',
         transport: 'stdio',
         description: 'AionUI 浏览器自动化 DOM 读取与学生交互沙箱。',
         boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
@@ -228,6 +322,8 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
     name: 'fetch',
     command: 'uvx',
     args: ['mcp-server-fetch'],
+    url: 'https://fetch.mcp.modelcontextprotocol.io/v1',
+    key: 'mcp-fetch-token-live-6677',
     transport: 'stdio',
     status: 'connected',
     latencyMs: 15,
@@ -239,10 +335,42 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
         name: 'fetch',
         command: 'uvx',
         args: ['mcp-server-fetch'],
+        url: 'https://fetch.mcp.modelcontextprotocol.io/v1',
+        key: 'mcp-fetch-token-live-6677',
         transport: 'stdio',
         description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
         boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
         tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
+      },
+      null,
+      2
+    ),
+  },
+  {
+    id: 'mcp-sequential-thinking',
+    name: 'sequential-thinking',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+    url: 'https://thinking.mcp.modelcontextprotocol.io/v1',
+    key: 'seq-think-live-key-4455',
+    apiKey: 'seq-think-live-key-4455',
+    transport: 'stdio',
+    status: 'connected',
+    latencyMs: 12,
+    tools: ['sequentialthinking'],
+    boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '启途智学管家'],
+    description: '单工具 MCP 示范：动态多步思维链推理引擎，支持单步推演与逻辑自洽性校验。',
+    rawJson: JSON.stringify(
+      {
+        name: 'sequential-thinking',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+        url: 'https://thinking.mcp.modelcontextprotocol.io/v1',
+        key: 'seq-think-live-key-4455',
+        transport: 'stdio',
+        description: '单工具 MCP 示范：动态多步思维链推理引擎，支持单步推演与逻辑自洽性校验。',
+        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '启途智学管家'],
+        tools: ['sequentialthinking'],
       },
       null,
       2
@@ -260,6 +388,10 @@ function listToGlobalMcpJson(list: SingleMcpConfig[]): string {
       mcpServers[item.name] = {
         command: parsed.command || item.command,
         args: parsed.args || item.args,
+        url: parsed.url || item.url,
+        key: parsed.key || item.key,
+        apiKey: parsed.apiKey || item.apiKey,
+        transport: parsed.transport || item.transport || 'stdio',
         env: parsed.env || item.env,
         description: parsed.description || item.description,
         tools: parsed.tools || item.tools,
@@ -269,6 +401,10 @@ function listToGlobalMcpJson(list: SingleMcpConfig[]): string {
       mcpServers[item.name] = {
         command: item.command,
         args: item.args,
+        url: item.url,
+        key: item.key,
+        apiKey: item.apiKey,
+        transport: item.transport || 'stdio',
         env: item.env,
         description: item.description,
         tools: item.tools,
@@ -286,7 +422,33 @@ export default function ToolsSettingsPage() {
         const cached = localStorage.getItem('qitu.admin.mcp_list');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter((item) => item.id !== IMA_ID);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            let list = parsed.filter((item: SingleMcpConfig) => item.id !== IMA_ID);
+            // Ensure builtin Pi tool exists
+            if (!list.some((item: SingleMcpConfig) => item.id === 'mcp-pi-builtin' || item.name === 'pi-agent-builtin')) {
+              list.unshift(DEFAULT_MCP_LIST[0]);
+            }
+            // Ensure single-tool MCP sequential-thinking exists
+            if (!list.some((item: SingleMcpConfig) => item.id === 'mcp-sequential-thinking' || item.name === 'sequential-thinking')) {
+              const seq = DEFAULT_MCP_LIST.find((m) => m.id === 'mcp-sequential-thinking');
+              if (seq) list.push(seq);
+            }
+            // Restore any missing url / key credentials from default definitions
+            list = list.map((item: SingleMcpConfig) => {
+              const def = DEFAULT_MCP_LIST.find((d) => d.name === item.name || d.id === item.id);
+              if (def) {
+                return {
+                  ...item,
+                  url: item.url || def.url,
+                  key: item.key || def.key,
+                  apiKey: item.apiKey || def.apiKey,
+                  transport: item.transport || def.transport || 'stdio',
+                };
+              }
+              return item;
+            });
+            return list;
+          }
         }
       } catch {
         // fallback
@@ -497,6 +659,10 @@ export default function ToolsSettingsPage() {
             name: key,
             command: typeof v.command === 'string' ? v.command : 'npx',
             args: Array.isArray(v.args) ? v.args.map(String) : [],
+            url: typeof v.url === 'string' ? v.url : existing?.url,
+            key: typeof v.key === 'string' ? v.key : existing?.key,
+            apiKey: typeof v.apiKey === 'string' ? v.apiKey : existing?.apiKey,
+            transport: (typeof v.transport === 'string' ? (v.transport as 'stdio' | 'sse' | 'streamable_http') : existing?.transport) || 'stdio',
             env: typeof v.env === 'object' && v.env !== null ? (v.env as Record<string, string>) : undefined,
             description: typeof v.description === 'string' ? v.description : existing?.description,
             tools: Array.isArray(v.tools) ? v.tools.map(String) : existing?.tools || ['tool_call'],
@@ -507,8 +673,11 @@ export default function ToolsSettingsPage() {
             name: key,
             command: singleObj.command,
             args: singleObj.args,
+            url: singleObj.url,
+            key: singleObj.key,
+            apiKey: singleObj.apiKey,
+            transport: singleObj.transport,
             env: singleObj.env,
-            transport: 'stdio',
             status: 'connected',
             latencyMs: existing?.latencyMs ?? 20,
             tools: singleObj.tools,
@@ -525,6 +694,10 @@ export default function ToolsSettingsPage() {
         const name = parsed.name || currentSingleMcp.name;
         const command = parsed.command || 'npx';
         const args = Array.isArray(parsed.args) ? parsed.args.map(String) : [];
+        const url = typeof parsed.url === 'string' ? parsed.url : currentSingleMcp.url;
+        const key = typeof parsed.key === 'string' ? parsed.key : currentSingleMcp.key;
+        const apiKey = typeof parsed.apiKey === 'string' ? parsed.apiKey : currentSingleMcp.apiKey;
+        const transport = (typeof parsed.transport === 'string' ? (parsed.transport as 'stdio' | 'sse' | 'streamable_http') : currentSingleMcp.transport) || 'stdio';
         const env = typeof parsed.env === 'object' && parsed.env !== null ? parsed.env : undefined;
         const tools = Array.isArray(parsed.tools) ? parsed.tools.map(String) : currentSingleMcp.tools;
         const boundAssistants = Array.isArray(parsed.boundAssistants) ? parsed.boundAssistants.map(String) : currentSingleMcp.boundAssistants;
@@ -535,6 +708,10 @@ export default function ToolsSettingsPage() {
           name,
           command,
           args,
+          url,
+          key,
+          apiKey,
+          transport,
           env,
           tools,
           boundAssistants,
@@ -1209,110 +1386,162 @@ export default function ToolsSettingsPage() {
 
                   {/* 子工具与输入参数展开区域 */}
                   <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed #e2e8f0' }}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedSidebarTools((prev) => ({
-                          ...prev,
-                          [mcp.id]: !prev[mcp.id],
-                        }));
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '2px 0',
-                        color: '#2563eb',
-                        fontSize: '11.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <span>{expandedSidebarTools[mcp.id] ? '▼ 收起子工具' : '▶ 点击展开子工具'} ({mcp.tools.length})</span>
-                    </button>
-
-                    {expandedSidebarTools[mcp.id] && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-                        {mcp.tools.map((tool) => {
-                          const toolKey = `${mcp.id}:${tool}`;
-                          const isParamOpen = selectedToolParamKey === toolKey;
-                          const params = getToolParams(tool);
-
-                          return (
+                    {mcp.tools.length === 1 ? (
+                      /* 单个工具：直接展开工具的参数要求，无需多余点击 */
+                      <div style={{ marginTop: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 700, color: '#1e40af' }}>
+                            ⚡ {mcp.tools[0]}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#16a34a', background: '#dcfce7', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
+                            单个工具·参数已直展
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: '#475569', fontWeight: 600, marginBottom: '4px' }}>
+                          输入参数传递要求 (InputSchema)：
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {getToolParams(mcp.tools[0] || '').map((param) => (
                             <div
-                              key={tool}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedToolParamKey(isParamOpen ? null : toolKey);
-                              }}
+                              key={param.name}
                               style={{
-                                padding: '6px 8px',
-                                borderRadius: '6px',
-                                background: isParamOpen ? '#eff6ff' : '#f8fafc',
-                                border: `1px solid ${isParamOpen ? '#93c5fd' : '#e2e8f0'}`,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
+                                padding: '4px 6px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                                fontSize: '11px',
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 600, color: '#1e40af' }}>
-                                  ⚡ {tool}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                                <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
+                                <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px', fontSize: '10px' }}>
+                                  {param.type}
                                 </span>
-                                <span style={{ fontSize: '10.5px', color: '#64748b' }}>
-                                  {isParamOpen ? '收起参数 ▲' : '查看参数 ▼'}
+                                <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '10px' }}>
+                                  {param.required ? '必填' : '选填'}
                                 </span>
+                                {param.defaultValue !== undefined && (
+                                  <span style={{ color: '#64748b', fontSize: '10px' }}>默认: {String(param.defaultValue)}</span>
+                                )}
                               </div>
-
-                              {isParamOpen && (
-                                <div
-                                  style={{
-                                    marginTop: '6px',
-                                    paddingTop: '6px',
-                                    borderTop: '1px solid #bfdbfe',
-                                    fontSize: '11px',
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                                    输入参数规范 (InputSchema)：
-                                  </div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {params.map((param) => (
-                                      <div
-                                        key={param.name}
-                                        style={{
-                                          padding: '4px 6px',
-                                          background: '#ffffff',
-                                          border: '1px solid #e2e8f0',
-                                          borderRadius: '4px',
-                                        }}
-                                      >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                          <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
-                                          <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px' }}>
-                                            {param.type}
-                                          </span>
-                                          <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400 }}>
-                                            {param.required ? '必填' : '选填'}
-                                          </span>
-                                          {param.defaultValue !== undefined && (
-                                            <span style={{ color: '#64748b' }}>默认: {String(param.defaultValue)}</span>
-                                          )}
-                                        </div>
-                                        <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>
-                                          {param.description}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                              <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3, fontSize: '10.5px' }}>
+                                {param.description}
+                              </div>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* 多个子工具：展示每个工具名称并支持展开参数传递要求 */
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>
+                            子工具清单 ({mcp.tools.length} 个子工具)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedSidebarTools((prev) => ({
+                                ...prev,
+                                [mcp.id]: prev[mcp.id] === false ? true : false,
+                              }));
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '2px 0',
+                              color: '#2563eb',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {expandedSidebarTools[mcp.id] === false ? '展开全部子工具 ▼' : '收起子工具 ▲'}
+                          </button>
+                        </div>
+
+                        {expandedSidebarTools[mcp.id] !== false && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                            {mcp.tools.map((tool) => {
+                              const toolKey = `${mcp.id}:${tool}`;
+                              const isParamOpen = selectedToolParamKey === toolKey;
+                              const params = getToolParams(tool);
+
+                              return (
+                                <div
+                                  key={tool}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedToolParamKey(isParamOpen ? null : toolKey);
+                                  }}
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    background: isParamOpen ? '#eff6ff' : '#f8fafc',
+                                    border: `1px solid ${isParamOpen ? '#93c5fd' : '#e2e8f0'}`,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 600, color: '#1e40af' }}>
+                                      ⚡ {tool}
+                                    </span>
+                                    <span style={{ fontSize: '10.5px', color: '#2563eb' }}>
+                                      {isParamOpen ? '收起参数 ▲' : '展开参数要求 ▼'}
+                                    </span>
+                                  </div>
+
+                                  {isParamOpen && (
+                                    <div
+                                      style={{
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: '1px solid #bfdbfe',
+                                        fontSize: '11px',
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px', fontSize: '10.5px' }}>
+                                        输入参数传递要求 (InputSchema)：
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {params.map((param) => (
+                                          <div
+                                            key={param.name}
+                                            style={{
+                                              padding: '4px 6px',
+                                              background: '#ffffff',
+                                              border: '1px solid #e2e8f0',
+                                              borderRadius: '4px',
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                              <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
+                                              <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px', fontSize: '10px' }}>
+                                                {param.type}
+                                              </span>
+                                              <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '10px' }}>
+                                                {param.required ? '必填' : '选填'}
+                                              </span>
+                                              {param.defaultValue !== undefined && (
+                                                <span style={{ color: '#64748b', fontSize: '10px' }}>默认: {String(param.defaultValue)}</span>
+                                              )}
+                                            </div>
+                                            <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3, fontSize: '10.5px' }}>
+                                              {param.description}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1468,90 +1697,137 @@ export default function ToolsSettingsPage() {
               ) : currentSingleMcp ? (
                 /* 单独 MCP 预览卡片 */
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '14px' }}>
                     <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                       <div style={{ fontSize: '11px', color: '#64748b' }}>{selectedTarget === IMA_ID ? '知识库调用状态' : '运行命令与参数'}</div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
                         {selectedTarget === IMA_ID ? ima?.enabled ? '允许调用 · 仅限已授权助手' : '总开关已关闭' : `${currentSingleMcp.command} ${(currentSingleMcp.args || []).join(' ')}`}
                       </div>
                     </div>
 
                     <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                       <div style={{ fontSize: '11px', color: '#64748b' }}>协议通道 & 心跳延迟</div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#16a34a', marginTop: '2px' }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#16a34a', marginTop: '2px' }}>
                         ● {currentSingleMcp.transport ?? 'stdio'} 通道 {selectedTarget === IMA_ID ? `（${currentSingleMcp.status === 'connected' ? '连接正常' : currentSingleMcp.status === 'error' ? '连接失败' : '待检查'}）` : `(${currentSingleMcp.latencyMs ?? 20}ms)`}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>服务端点 URL</div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#2563eb', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        {currentSingleMcp.url || 'stdio 进程通道 (无网络URL)'}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>真实凭据 Key / Token</div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        {currentSingleMcp.key || currentSingleMcp.apiKey || (currentSingleMcp.env?.GROK_API_KEY ? '环境变量配置中' : '内嵌进程安全令牌')}
                       </div>
                     </div>
                   </div>
 
                   {/* 暴露的工具列表 */}
                   <div style={{ marginBottom: '14px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      暴露的 MCP 工具清单 ({currentSingleMcp.tools.length} 个 · 点击查看参数规范)
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                      暴露的 MCP 工具清单 ({currentSingleMcp.tools.length} 个)
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {currentSingleMcp.tools.map((tool) => {
-                          const isSelected = selectedToolParamKey === `${currentSingleMcp.id}:${tool}`;
-                          return (
-                            <button
-                              key={tool}
-                              type="button"
-                              onClick={() => setSelectedToolParamKey(isSelected ? null : `${currentSingleMcp.id}:${tool}`)}
-                              style={{
-                                padding: '4px 10px',
-                                background: isSelected ? '#1d4ed8' : '#eff6ff',
-                                border: '1px solid',
-                                borderColor: isSelected ? '#1d4ed8' : '#bfdbfe',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                color: isSelected ? '#ffffff' : '#1d4ed8',
-                                fontFamily: 'monospace',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              <span>⚡ {tool}</span>
-                              <span style={{ fontSize: '10px', opacity: 0.8 }}>{isSelected ? '▲' : '▼'}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
 
-                      {/* 如果有选中的工具，在预览卡片展示参数卡片 */}
-                      {selectedToolParamKey && selectedToolParamKey.startsWith(`${currentSingleMcp.id}:`) && (
-                        <div style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <strong style={{ fontSize: '12px', color: '#1e40af', fontFamily: 'monospace' }}>
-                              ⚡ {selectedToolParamKey.split(':')[1]} 参数规范
-                            </strong>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedToolParamKey(null)}
-                              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px' }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {getToolParams(selectedToolParamKey.split(':')[1] || '').map((param) => (
-                              <div key={param.name} style={{ padding: '4px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '11.5px' }}>
-                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                  <code style={{ fontWeight: 600, color: '#0f172a' }}>{param.name}</code>
-                                  <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px' }}>{param.type}</span>
-                                  <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400 }}>{param.required ? '必填' : '选填'}</span>
-                                  {param.defaultValue !== undefined && <span style={{ color: '#64748b' }}>默认: {String(param.defaultValue)}</span>}
-                                </div>
-                                <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{param.description}</div>
-                              </div>
-                            ))}
-                          </div>
+                    {currentSingleMcp.tools.length === 1 ? (
+                      /* 单个工具：直接展开参数 */
+                      <div style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'monospace', color: '#1e40af' }}>
+                            ⚡ {currentSingleMcp.tools[0]}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#16a34a', background: '#dcfce7', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                            单个工具·输入参数已直接展开
+                          </span>
                         </div>
-                      )}
-                    </div>
+                        <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                          输入参数传递要求 (InputSchema)：
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                          {getToolParams(currentSingleMcp.tools[0] || '').map((param) => (
+                            <div key={param.name} style={{ padding: '6px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px' }}>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <code style={{ fontWeight: 700, color: '#0f172a' }}>{param.name}</code>
+                                <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>{param.type}</span>
+                                <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '11px' }}>{param.required ? '必填' : '选填'}</span>
+                                {param.defaultValue !== undefined && <span style={{ color: '#64748b', fontSize: '11px' }}>默认: {String(param.defaultValue)}</span>}
+                              </div>
+                              <div style={{ color: '#475569', marginTop: '3px', lineHeight: 1.4, fontSize: '11.5px' }}>{param.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* 多个子工具：展示每个工具名称并支持展开参数传递要求 */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {currentSingleMcp.tools.map((tool) => {
+                            const isSelected = selectedToolParamKey === `${currentSingleMcp.id}:${tool}`;
+                            return (
+                              <button
+                                key={tool}
+                                type="button"
+                                onClick={() => setSelectedToolParamKey(isSelected ? null : `${currentSingleMcp.id}:${tool}`)}
+                                style={{
+                                  padding: '5px 12px',
+                                  background: isSelected ? '#1d4ed8' : '#eff6ff',
+                                  border: '1px solid',
+                                  borderColor: isSelected ? '#1d4ed8' : '#bfdbfe',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  color: isSelected ? '#ffffff' : '#1d4ed8',
+                                  fontFamily: 'monospace',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  fontWeight: 600,
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <span>⚡ {tool}</span>
+                                <span style={{ fontSize: '10px', opacity: 0.85 }}>{isSelected ? '收起 ▲' : '展开参数 ▼'}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* 如果有选中的工具，在预览卡片展示参数卡片 */}
+                        {selectedToolParamKey && selectedToolParamKey.startsWith(`${currentSingleMcp.id}:`) && (
+                          <div style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <strong style={{ fontSize: '13px', color: '#1e40af', fontFamily: 'monospace' }}>
+                                ⚡ {selectedToolParamKey.split(':')[1]} 输入参数传递要求
+                              </strong>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedToolParamKey(null)}
+                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '13px' }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                              {getToolParams(selectedToolParamKey.split(':')[1] || '').map((param) => (
+                                <div key={param.name} style={{ padding: '6px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '12px' }}>
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <code style={{ fontWeight: 700, color: '#0f172a' }}>{param.name}</code>
+                                    <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>{param.type}</span>
+                                    <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '11px' }}>{param.required ? '必填' : '选填'}</span>
+                                    {param.defaultValue !== undefined && <span style={{ color: '#64748b', fontSize: '11px' }}>默认: {String(param.defaultValue)}</span>}
+                                  </div>
+                                  <div style={{ color: '#475569', marginTop: '3px', lineHeight: 1.4, fontSize: '11.5px' }}>{param.description}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* 原始 JSON 视图 */}
