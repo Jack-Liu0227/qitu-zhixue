@@ -23,12 +23,19 @@ export class FeishuReportWorker {
 
   /** Persist a delivery command transactionally; a queue consumer can call deliver later. */
   async enqueue(input: { idempotencyKey: string; assistantId?: string; report: FeishuReportDocument }): Promise<string> {
-    if (!this.outbox) return `${input.assistantId ?? 'feishu-reporting-assistant'}:${input.idempotencyKey}`;
-    return this.outbox.write({
-      id: `${input.assistantId ?? 'feishu-reporting-assistant'}:${input.idempotencyKey}`,
-      topic: 'feishu.report.send',
-      payload: { idempotencyKey: input.idempotencyKey, assistantId: input.assistantId, report: input.report },
-    });
+    const id = `${input.assistantId ?? 'feishu-reporting-assistant'}:${input.idempotencyKey}`;
+    if (!this.outbox) return id;
+    try {
+      return await this.outbox.write({
+        id,
+        topic: 'feishu.report.send',
+        payload: { idempotencyKey: input.idempotencyKey, assistantId: input.assistantId, report: input.report },
+      });
+    } catch (error) {
+      // A duplicate outbox primary key is the first enqueue result, not a second send.
+      if (error instanceof Error && /duplicate|unique|conflict/i.test(error.message)) return id;
+      throw error;
+    }
   }
 
   async listDeliveries(assistantId = 'feishu-reporting-assistant'): Promise<readonly ReportDeliveryStatus[]> {
