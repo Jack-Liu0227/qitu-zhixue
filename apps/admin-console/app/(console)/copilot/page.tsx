@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
+import { createPersistedAssistant } from '../../../lib/api/assistants';
+import { createPersistedTeam } from '../../../lib/api/teams';
+import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 
 interface ToolExecutionStep {
   name: string;
@@ -332,6 +335,15 @@ export default function CopilotPage() {
           localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([customAsst, ...list]));
         } catch {}
 
+        void createPersistedAssistant({
+          name: customAsst.name,
+          description: customAsst.description,
+          role: customAsst.role,
+          instructions: customAsst.systemPrompt,
+          modelId: selectedModel,
+          enabled: true,
+        }).catch(() => {});
+
         toolSteps = [
           { name: 'agent_sdk_spec_parser', status: 'done', label: `解析导师角色需求：${userText.slice(0, 12)}` },
           { name: 'model_router_bind', status: 'done', label: `挂载模型网关：${selectedModel} (思考强度: ${thinkingStrength})` },
@@ -430,6 +442,31 @@ export default function CopilotPage() {
           const list = cached ? JSON.parse(cached) : [];
           localStorage.setItem('qitu.admin.custom_teams', JSON.stringify([customTeam, ...list]));
         } catch {}
+
+        for (const asst of newAssistants) {
+          void createPersistedAssistant({
+            name: asst.name,
+            description: asst.description,
+            role: asst.role,
+            instructions: asst.systemPrompt,
+            modelId: selectedModel,
+            enabled: true,
+          }).catch(() => {});
+        }
+        void createPersistedTeam({
+          name: customTeam.name,
+          description: customTeam.description,
+          leaderAssistantId: coachAsst.id,
+          members: [
+            { assistantId: coachAsst.id, role: 'coach', roleLabel: '概念教练' },
+            { assistantId: guideAsst.id, role: 'teammate', roleLabel: '沙箱向导' },
+            { assistantId: reviewerAsst.id, role: 'reviewer', roleLabel: '评审导师' },
+          ],
+          workspaceMode: 'shared',
+          sessionMode: 'supervised',
+          concurrencyLimit: 3,
+          enabled: true,
+        }).catch(() => {});
 
         toolSteps = [
           { name: 'create_team_assistants', status: 'done', label: `创建并注册团队专属智能体（${coachAsst.name}、${guideAsst.name}、${reviewerAsst.name}）` },
@@ -921,6 +958,48 @@ export default function CopilotPage() {
                           <code>{msg.artifact.jsonPreview}</code>
                         </pre>
                       )}
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {msg.artifact.type === 'team' && (
+                          <>
+                            <Link
+                              href="/settings/teams"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                            >
+                              👥 前往团队设置查看
+                            </Link>
+                            <Link
+                              href="/settings/assistants"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                            >
+                              🤖 查看创建的导师助手
+                            </Link>
+                          </>
+                        )}
+                        {msg.artifact.type === 'assistant' && (
+                          <Link
+                            href="/settings/assistants"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                          >
+                            🤖 前往助手设置查看
+                          </Link>
+                        )}
+                        {msg.artifact.type === 'mcp' && (
+                          <Link
+                            href="/settings/tools"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                          >
+                            🔧 前往工具与 MCP 设置
+                          </Link>
+                        )}
+                        {msg.artifact.type === 'skill' && (
+                          <Link
+                            href="/settings/skills"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                          >
+                            ⚡ 前往技能设置
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   )}
 

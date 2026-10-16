@@ -724,6 +724,7 @@ export default function SkillsSettingsPage() {
   const [selectedAsstToAdd, setSelectedAsstToAdd] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
   const [skillsViewMode, setSkillsViewMode] = useState<'list' | 'matrix'>('list');
+  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
 
   // 持久化存储 skills
   useEffect(() => {
@@ -1230,6 +1231,71 @@ export default function SkillsSettingsPage() {
     if (editingSkill?.id === id) {
       setEditingSkill(null);
     }
+  };
+
+  // 批量开启 / 关闭选中技能
+  const handleBulkSetSkillsEnabled = async (enable: boolean) => {
+    if (selectedSkills.size === 0) return;
+    const targetIds = Array.from(selectedSkills);
+    const targetSkills = skills.filter((s) => targetIds.includes(s.id));
+    const allAsstIds = assistants.map((a) => a.id);
+    
+    // 更新技能对象的 boundAssistantIds
+    const nextSkills = skills.map((s) => {
+      if (!targetIds.includes(s.id)) return s;
+      return {
+        ...s,
+        boundAssistantIds: enable ? Array.from(new Set([...s.boundAssistantIds, ...allAsstIds])) : [],
+      };
+    });
+    setSkills(nextSkills);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+      } catch {}
+    }
+
+    // 更新助手的 enabledSkills 并持久化
+    for (const asst of assistants) {
+      const current = asst.enabledSkills ? [...asst.enabledSkills] : [];
+      let updated: string[];
+      if (enable) {
+        updated = Array.from(new Set([...current, ...targetIds, ...targetSkills.map((t) => t.name)]));
+      } else {
+        const removeSet = new Set([...targetIds, ...targetSkills.map((t) => t.name)]);
+        updated = current.filter((id) => !removeSet.has(id));
+      }
+      persistAssistantBinding(asst.id, 'enabledSkills', updated).catch(() => null);
+    }
+    setAssistants((prev) =>
+      prev.map((a) => {
+        const cur = a.enabledSkills ? [...a.enabledSkills] : [];
+        const updated = enable
+          ? Array.from(new Set([...cur, ...targetIds, ...targetSkills.map((t) => t.name)]))
+          : cur.filter((id) => !targetIds.includes(id) && !targetSkills.some((t) => t.name === id));
+        return { ...a, enabledSkills: updated };
+      })
+    );
+    setSelectedSkills(new Set());
+    setSaveNotice(enable ? '已批量为全部导师开启选中的技能 ✔' : '已批量关闭选中的技能 ✔');
+    setTimeout(() => setSaveNotice(''), 3000);
+  };
+
+  // 批量删除技能
+  const handleBulkDeleteSkills = () => {
+    if (selectedSkills.size === 0) return;
+    if (!window.confirm(`确定要彻底删除选中的 ${selectedSkills.size} 个技能规范吗？此操作不可逆。`)) return;
+    const targetIds = Array.from(selectedSkills);
+    const nextSkills = skills.filter((s) => !targetIds.includes(s.id));
+    setSkills(nextSkills);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+      } catch {}
+    }
+    setSelectedSkills(new Set());
+    setSaveNotice(`已成功批量删除 ${targetIds.length} 个技能 ✔`);
+    setTimeout(() => setSaveNotice(''), 3000);
   };
 
   // 从技能中解除绑定助手 (立即生效并同步矩阵)
@@ -1966,7 +2032,7 @@ export default function SkillsSettingsPage() {
       ) : (
         <>
           {/* 搜索与筛选控制栏 */}
-          <div className="admin-skills-filter-row">
+          <div className="admin-skills-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div className="admin-skills-search-input-wrap">
               <span aria-hidden="true">🔍</span>
               <input
@@ -1976,6 +2042,37 @@ export default function SkillsSettingsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            {selectedSkills.size > 0 && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="settings-action-btn"
+                  style={{ padding: '4px 12px', fontSize: '12px' }}
+                  onClick={() => void handleBulkSetSkillsEnabled(true)}
+                  title="为全部导师启用选中的技能"
+                >
+                  批量全部开启
+                </button>
+                <button
+                  type="button"
+                  className="settings-action-btn"
+                  style={{ padding: '4px 12px', fontSize: '12px' }}
+                  onClick={() => void handleBulkSetSkillsEnabled(false)}
+                  title="关闭所有导师对选中技能的授权"
+                >
+                  批量全部关闭
+                </button>
+                <button
+                  type="button"
+                  className="settings-action-btn is-danger"
+                  style={{ padding: '4px 12px', fontSize: '12px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                  onClick={handleBulkDeleteSkills}
+                  title="彻底删除选中的技能"
+                >
+                  批量删除 ({selectedSkills.size})
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 技能表格 */}
@@ -1984,7 +2081,15 @@ export default function SkillsSettingsPage() {
           <thead>
             <tr>
               <th style={{ width: '40px' }}>
-                <input type="checkbox" readOnly />
+                <input
+                  type="checkbox"
+                  checked={filteredSkills.length > 0 && filteredSkills.every((s) => selectedSkills.has(s.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedSkills(new Set(filteredSkills.map((s) => s.id)));
+                    else setSelectedSkills(new Set());
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
               </th>
               <th>名称</th>
               <th>被谁使用</th>
@@ -2001,6 +2106,8 @@ export default function SkillsSettingsPage() {
                   ((a.enabledSkills as string[]) || []).includes(skill.id)
               );
 
+              const isChecked = selectedSkills.has(skill.id);
+
               return (
                 <tr
                   key={skill.id}
@@ -2011,7 +2118,17 @@ export default function SkillsSettingsPage() {
                   }}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" />
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const next = new Set(selectedSkills);
+                        if (e.target.checked) next.add(skill.id);
+                        else next.delete(skill.id);
+                        setSelectedSkills(next);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
                   </td>
                   <td>
                     <strong className="admin-skill-table-name">{skill.name}</strong>

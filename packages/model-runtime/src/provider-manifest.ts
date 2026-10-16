@@ -14,6 +14,7 @@ const SAFE_APIS: readonly ModelApi[] = [
   'openai-completions',
   'openai-responses',
   'anthropic-messages',
+  'google-gemini',
 ];
 const SAFE_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio'];
 const SAFE_VOICE_OPERATIONS = ['asr', 'tts', 'realtime'] as const;

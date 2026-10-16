@@ -42,6 +42,7 @@ export default function AdminTeamsPage() {
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDesc, setNewTeamDesc] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -177,6 +178,63 @@ export default function AdminTeamsPage() {
       }
     } catch (err: any) {
       alert(`删除团队失败：${err?.message || '操作异常'}`);
+    }
+  };
+
+  // 切换团队启用状态
+  const handleToggleTeamEnabled = async (teamId: string, currentEnabled: boolean) => {
+    const next = !currentEnabled;
+    try {
+      await handleUpdateTeam(teamId, { enabled: next });
+    } catch (err: any) {
+      alert(`更新团队状态失败：${err?.message || '异常'}`);
+    }
+  };
+
+  // 批量启用/停用团队
+  const handleBulkSetEnabled = async (enabled: boolean) => {
+    if (selected.size === 0) return;
+    const targetIds = Array.from(selected);
+    setTeams((prev) =>
+      prev.map((t) => (targetIds.includes(t.id) ? { ...t, enabled } : t))
+    );
+    try {
+      await Promise.all(
+        targetIds.map((id) =>
+          updatePersistedTeam(id, { enabled }, newIdempotencyKey()).catch(() => null)
+        )
+      );
+      setSelected(new Set());
+    } catch {
+      // guard
+    }
+  };
+
+  // 批量删除团队
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(`确定要批量删除选中的 ${selected.size} 个团队吗？此操作不可逆。`)) return;
+    const targetIds = Array.from(selected);
+    try {
+      await Promise.all(
+        targetIds.map((id) =>
+          deletePersistedTeam(id, newIdempotencyKey()).catch(() => null)
+        )
+      );
+      setTeams((prev) => prev.filter((t) => !targetIds.includes(t.id)));
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_teams');
+          if (cached) {
+            const list = JSON.parse(cached);
+            const next = list.filter((t: any) => !targetIds.includes(t.id));
+            localStorage.setItem('qitu.admin.custom_teams', JSON.stringify(next));
+          }
+        } catch {}
+      }
+      setSelected(new Set());
+    } catch (err: any) {
+      alert(`批量删除团队失败：${err?.message || '异常'}`);
     }
   };
 
@@ -380,18 +438,60 @@ export default function AdminTeamsPage() {
   // 团队列表视图（卡片模式）
   return (
     <div className="admin-settings-page">
-      <div className="settings-page-header">
+      <div className="settings-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 className="settings-page-title">团队管理</h1>
           <p className="settings-page-desc">配置 PBL 导师团队与协作调度策略</p>
         </div>
-        <button
-          type="button"
-          className="settings-action-btn is-primary"
-          onClick={() => setShowCreateTeamModal(true)}
-        >
-          + 创建新团队
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#475569', cursor: 'pointer', marginRight: '6px' }}>
+            <input
+              type="checkbox"
+              checked={teams.length > 0 && teams.every((t) => selected.has(t.id))}
+              onChange={(e) => {
+                if (e.target.checked) setSelected(new Set(teams.map((t) => t.id)));
+                else setSelected(new Set());
+              }}
+              style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+            />
+            <span>全选 ({selected.size}/{teams.length})</span>
+          </label>
+          {selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                className="settings-action-btn"
+                style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                onClick={() => void handleBulkSetEnabled(true)}
+              >
+                批量启用
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn"
+                style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                onClick={() => void handleBulkSetEnabled(false)}
+              >
+                批量停用
+              </button>
+              <button
+                type="button"
+                className="settings-action-btn is-danger"
+                style={{ padding: '6px 12px', fontSize: '12.5px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                onClick={() => void handleBulkDelete()}
+              >
+                批量删除 ({selected.size})
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="settings-action-btn is-primary"
+            onClick={() => setShowCreateTeamModal(true)}
+          >
+            + 创建新团队
+          </button>
+        </div>
       </div>
 
       {stateView ? (
@@ -403,6 +503,14 @@ export default function AdminTeamsPage() {
               key={team.id}
               team={team}
               isActive={team.id === activeTeamId}
+              isSelected={selected.has(team.id)}
+              onToggleSelect={() => {
+                const next = new Set(selected);
+                if (next.has(team.id)) next.delete(team.id);
+                else next.add(team.id);
+                setSelected(next);
+              }}
+              onToggleEnabled={() => void handleToggleTeamEnabled(team.id, team.enabled !== false)}
               onClick={() => {
                 setActiveTeamId(team.id);
                 handleOpenTeamDetail(team.id);
