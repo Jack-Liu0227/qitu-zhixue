@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTutorDataSource } from '../TutorDataSourceProvider';
 
 export interface HistorySessionItem {
   id: string;
@@ -87,41 +88,28 @@ export function TutorSessionHistory({
 }: TutorSessionHistoryProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const dataSource = useTutorDataSource();
+  const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
 
-  // 预置的推荐/经典 PBL 项目列表
-  const presetProjectSessions: HistorySessionItem[] = useMemo(
-    () => [
-      {
-        id: 'pbl-thunder-fighter',
-        title: '雷霆战机：从零打造 Python 飞行射击小游戏',
+  useEffect(() => {
+    let cancelled = false;
+    void dataSource.listProjects().then((projects) => {
+      if (cancelled) return;
+      setProjectSessions(projects.map((project) => ({
+        id: project.id,
+        title: project.title,
         kind: 'project',
-        projectId: 'pbl-thunder-fighter',
-        updatedAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString(),
-        turnCount: currentProjectId === 'pbl-thunder-fighter' ? currentTurnCount : 12,
-        stageLabel: '核心原理探究',
-      },
-      {
-        id: 'pbl-kinetic-energy',
-        title: '动能定理：物理虚拟仿真与极值探究',
-        kind: 'project',
-        projectId: 'pbl-kinetic-energy',
-        updatedAt: new Date(Date.now() - 3600 * 1000 * 28).toISOString(),
-        turnCount: currentProjectId === 'pbl-kinetic-energy' ? currentTurnCount : 18,
-        stageLabel: '代码实践就绪',
-      },
-      {
-        id: 'pbl-smart-car',
-        title: '桌面巡线小车：单片机控制与 PID 算法实践',
-        kind: 'project',
-        projectId: 'pbl-smart-car',
-        updatedAt: new Date(Date.now() - 3600 * 1000 * 72).toISOString(),
-        turnCount: 8,
-        stageLabel: '意图确认',
-      },
-    ],
-    [currentProjectId, currentTurnCount],
-  );
+        projectId: project.id,
+        updatedAt: new Date().toISOString(),
+        turnCount: project.id === currentProjectId ? currentTurnCount : 0,
+        stageLabel: project.stage,
+      })));
+    }).catch(() => {
+      if (!cancelled) setProjectSessions([]);
+    });
+    return () => { cancelled = true; };
+  }, [dataSource, currentProjectId, currentTurnCount]);
 
   // 初始化并监听本地探索会话
   useEffect(() => {
@@ -153,8 +141,8 @@ export function TutorSessionHistory({
   };
 
   const allSessions = useMemo(() => {
-    return [...presetProjectSessions, ...explorationHistory];
-  }, [presetProjectSessions, explorationHistory]);
+    return [...projectSessions, ...explorationHistory];
+  }, [projectSessions, explorationHistory]);
 
   const filteredSessions = useMemo(() => {
     if (!searchTerm.trim()) return allSessions;
@@ -171,7 +159,7 @@ export function TutorSessionHistory({
         router.push(`/tutor/${encodeURIComponent(session.projectId)}`);
       }
     } else {
-      router.push(`/tutor?explorationId=${encodeURIComponent(session.id)}`);
+      router.push(`/tutor?explorationId=${encodeURIComponent(session.id)}`, { scroll: false });
     }
   };
 

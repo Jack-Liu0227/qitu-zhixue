@@ -68,6 +68,13 @@ export class MockTutorDataSource implements TutorDataSource {
     return MOCK_ACTIVE_PROJECT;
   }
 
+  async listProjects(): Promise<ProjectSummary[]> {
+    await this.delay();
+    if (this.scenario.permissionDenied) throw new TutorDataError('没有访问权限', 403, 'FORBIDDEN');
+    if (this.scenario.noProject) return [];
+    return [MOCK_ACTIVE_PROJECT];
+  }
+
   async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {
     await this.delay();
     this.assertReadable();

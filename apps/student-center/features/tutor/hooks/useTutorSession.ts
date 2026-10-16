@@ -60,7 +60,7 @@ function toViewError(error: unknown): TutorViewError {
  * Nothing here writes project state, AI decisions, growth records or audit
  * events — it only reads server projections and asks the server for a move.
  */
-export function useTutorSession(projectId?: string, explorationKey = 0): TutorSessionApi {
+export function useTutorSession(projectId?: string, explorationKey: number | string = 0): TutorSessionApi {
   const dataSource = useTutorDataSource();
 
   const [project, setProject] = useState<TutorProjectContext | null>(null);
@@ -89,6 +89,8 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
   const realtimeRef = useRef<TutorRealtimeClient | null>(null);
   const lastSeqRef = useRef(0);
   const sessionKeyRef = useRef<string | null>(null);
+  const projectLoadGenerationRef = useRef(0);
+  const sessionLoadGenerationRef = useRef(0);
   const inFlightRef = useRef(false);
   /** Local echo turns awaiting the server's own copy on the next session load. */
   const echoIdsRef = useRef<string[]>([]);
@@ -107,6 +109,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
   // Load the active project (or the routed project) context.
   useEffect(() => {
     let cancelled = false;
+    const generation = ++projectLoadGenerationRef.current;
     setPermissionDenied(false);
     setProjectStatus('loading');
     setProjectError(null);
@@ -117,7 +120,8 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
       try {
         if (
           projectId === undefined &&
-          (explorationKey > 0 ||
+            ((typeof explorationKey === 'number' && explorationKey > 0) ||
+            (typeof explorationKey === 'string' && explorationKey.length > 0) ||
             new URLSearchParams(window.location.search).has('explorationId') ||
             new URLSearchParams(window.location.search).has('new'))
         ) {
@@ -127,24 +131,24 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         }
         if (projectId !== undefined) {
           const context = await dataSource.getProjectContext(projectId);
-          if (cancelled) return;
+          if (cancelled || generation !== projectLoadGenerationRef.current) return;
           setProject(context);
           setProjectStatus(context === null ? 'empty' : 'ready');
           return;
         }
         const active = await dataSource.getActiveProject();
-        if (cancelled) return;
+        if (cancelled || generation !== projectLoadGenerationRef.current) return;
         if (active === null) {
           setProject(null);
           setProjectStatus('empty');
           return;
         }
         const context = await dataSource.getProjectContext(active.id);
-        if (cancelled) return;
+        if (cancelled || generation !== projectLoadGenerationRef.current) return;
         setProject(context);
         setProjectStatus(context === null ? 'empty' : 'ready');
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || generation !== projectLoadGenerationRef.current) return;
         const viewError = toViewError(error);
         if (viewError.status === 403) setPermissionDenied(true);
         if (viewError.code === 'NETWORK_OFFLINE') setTransportOffline(true);
@@ -161,6 +165,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
 
   // Create (idempotently) and load the tutor session for the resolved project.
   useEffect(() => {
+    const generation = ++sessionLoadGenerationRef.current;
     if (
       projectStatus === 'loading' ||
       projectStatus === 'error' ||
@@ -176,6 +181,12 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
       setSessionError(projectStatus === 'error' ? projectError : null);
       setTurns([]);
       setSessionId(null);
+      setExplorationId(null);
+      setConnection('idle');
+      setStreaming(false);
+      setEscalated(false);
+      setSubmitError(null);
+      setStreamNotice(null);
       return;
     }
     let cancelled = false;
@@ -185,6 +196,12 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
     setTurns([]);
     setSessionId(null);
     setExplorationId(null);
+    setConnection('idle');
+    setStreaming(false);
+    setEscalated(false);
+    setSubmitError(null);
+    setStreamNotice(null);
+    lastSeqRef.current = 0;
 
     const load = async () => {
       try {
@@ -198,7 +215,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
           idempotencyKey: sessionKeyRef.current,
         });
         const session = await dataSource.getSession(created.sessionId);
-        if (cancelled) return;
+        if (cancelled || generation !== sessionLoadGenerationRef.current) return;
         lastSeqRef.current = session.lastSeq;
         setTransportOffline(false);
         setSessionId(session.sessionId);
@@ -211,7 +228,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         setTurns(clearEchoes(session.turns));
         setSessionStatus('ready');
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || generation !== sessionLoadGenerationRef.current) return;
         const viewError = toViewError(error);
         if (viewError.status === 403) setPermissionDenied(true);
         if (viewError.code === 'NETWORK_OFFLINE') setTransportOffline(true);
@@ -237,11 +254,13 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
   // Subscribe to the stream whenever a session exists.
   useEffect(() => {
     if (sessionId === null) return;
+    let active = true;
     const client = new TutorRealtimeClient({
       sessionId,
       initialSeq: lastSeqRef.current,
       createSocket: (id) => dataSource.createSocket(id),
       onEvent: (event: RealtimeServerEvent) => {
+        if (!active) return;
         lastSeqRef.current = Math.max(lastSeqRef.current, event.seq);
         setTurns((previous) => applyServerEventToTurns(previous, event));
         if (event.type === 'turn.done') setStreaming(false);
@@ -253,6 +272,7 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
         }
       },
       onStatus: (status) => {
+        if (!active) return;
         setConnection(status);
         // A transport failure must clear the streaming flag: the client will
         // never receive `turn.done`, and leaving it set would spin forever.
@@ -263,8 +283,9 @@ export function useTutorSession(projectId?: string, explorationKey = 0): TutorSe
     realtimeRef.current = client;
     client.connect();
     return () => {
+      active = false;
       client.disconnect();
-      realtimeRef.current = null;
+      if (realtimeRef.current === client) realtimeRef.current = null;
     };
   }, [dataSource, sessionId]);
 

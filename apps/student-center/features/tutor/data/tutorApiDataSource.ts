@@ -64,6 +64,19 @@ export class TutorApiDataSource implements TutorDataSource {
     return context?.project ?? null;
   }
 
+  async listProjects(): Promise<ProjectSummary[]> {
+    const response = await this.fetchJson('/api/v1/projects', '项目列表加载失败');
+    const data = unwrapData(response);
+    if (!Array.isArray(data)) throw new TutorDataError('项目列表格式不正确', undefined, 'BAD_PROJECT_LIST_PAYLOAD');
+    return data.flatMap((item): ProjectSummary[] => {
+      if (typeof item !== 'object' || item === null) return [];
+      const candidate = item as Record<string, unknown>;
+      if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string' ||
+          typeof candidate.status !== 'string' || typeof candidate.progressPercent !== 'number') return [];
+      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent }];
+    });
+  }
+
   async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {
     return this.fetchProjectContext(projectId);
   }
