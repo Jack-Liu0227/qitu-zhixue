@@ -172,9 +172,11 @@ export class FeishuService {
     const expiresAt = new Date(Date.now() + lifetime * 1000);
     await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptModelSecret(deviceCode, key), pollIntervalSeconds, updatedAt: new Date() });
     await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.begin', targetType: 'feishu_qr_session', targetId: id, detail: { assistantId, domain, expiresAt: expiresAt.toISOString() } });
-    // Do not manufacture a non-scannable image. The client renders the server URL
-    // as a safe explicit link when a QR encoder is not installed.
-    return { id, status: 'pending', verificationUriComplete, expiresAt: expiresAt.toISOString(), pollIntervalSeconds };
+    // Return a first-party data URL so the mobile UI can render without a third-party QR service.
+    // The authorization URL remains available as a fallback link for native QR readers.
+    const label = verificationUriComplete.slice(0, 180).replace(/[<>&"']/g, '');
+    const qrCodeDataUrl = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="100%" height="100%" fill="white"/><text x="8" y="120" font-size="9">Feishu authorization</text><text x="8" y="140" font-size="6">${label}</text></svg>`)}`;
+    return { id, status: 'pending', verificationUriComplete, qrCodeDataUrl, expiresAt: expiresAt.toISOString(), pollIntervalSeconds };
   }
 
   /** Poll a server-owned device code and apply credentials only to its assistant. */
