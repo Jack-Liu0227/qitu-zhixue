@@ -8,6 +8,7 @@ import type {
   ModelDescriptor,
   ProviderConfigPublic,
   ProviderPreset,
+  RefreshProviderResponse,
   UpsertProviderRequest,
 } from '@qitu/contracts';
 import {
@@ -96,11 +97,31 @@ interface SelectModelModalProps {
   currentModelIds: string[];
   candidateModels: Array<{ id: string; name?: string }>;
   onConfirm: (selectedModelIds: string[]) => void;
+  onFetchModels?: () => Promise<string[] | void>;
+  providerId?: string;
+  channelName?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  api?: ModelApi;
 }
 
-function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, onConfirm }: SelectModelModalProps) {
+function SelectModelModal({
+  isOpen,
+  onClose,
+  currentModelIds,
+  candidateModels,
+  onConfirm,
+  onFetchModels,
+  providerId,
+  channelName,
+  baseUrl,
+  apiKey,
+  api,
+}: SelectModelModalProps) {
   const [activeTab, setActiveTab] = useState<'new' | 'existing'>('new');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTestingSelected, setIsTestingSelected] = useState(false);
+  const [isFetchingInModal, setIsFetchingInModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Google Gemini': true,
     OpenAI: true,
@@ -310,9 +331,40 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
               }}
             />
           </div>
+          {onFetchModels ? (
+            <button
+              type="button"
+              disabled={isFetchingInModal}
+              onClick={async () => {
+                setIsFetchingInModal(true);
+                try {
+                  const fetched = await onFetchModels();
+                  if (Array.isArray(fetched) && fetched.length > 0) {
+                    setSelectedIds((prev) => new Set([...prev, ...fetched]));
+                  }
+                } finally {
+                  setIsFetchingInModal(false);
+                }
+              }}
+              style={{
+                padding: '0 12px',
+                height: '38px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#165dff',
+                color: '#ffffff',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: isFetchingInModal ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {isFetchingInModal ? '正在拉取...' : '⚡ 获取最新模型'}
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => setSelectedIds(new Set(displayList.map((m) => m.id)))}
+            onClick={() => setSelectedIds(new Set(mergedPool.map((m) => m.id)))}
             style={{
               padding: '0 12px',
               height: '38px',
@@ -326,7 +378,7 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
               whiteSpace: 'nowrap',
             }}
           >
-            全选
+            全选所有模型
           </button>
           <button
             type="button"
@@ -337,13 +389,34 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
               borderRadius: '8px',
               border: '1px solid #e2e8f0',
               background: '#f8fafc',
-              color: '#64748b',
+              color: '#dc2626',
               fontSize: '12.5px',
+              fontWeight: 500,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
           >
-            清除模型
+            清除所有模型
+          </button>
+          <button
+            type="button"
+            disabled={selectedIds.size === 0}
+            onClick={() => setIsTestingSelected(true)}
+            style={{
+              padding: '0 12px',
+              height: '38px',
+              borderRadius: '8px',
+              border: '1px solid #a7f3d0',
+              background: '#ecfdf5',
+              color: '#047857',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: selectedIds.size === 0 ? 'not-allowed' : 'pointer',
+              opacity: selectedIds.size === 0 ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🧪 模型测试 ({selectedIds.size})
           </button>
         </div>
 
@@ -487,6 +560,18 @@ function SelectModelModal({ isOpen, onClose, currentModelIds, candidateModels, o
             </button>
           </div>
         </div>
+        {isTestingSelected && (
+          <ModelChannelTestModal
+            isOpen={isTestingSelected}
+            onClose={() => setIsTestingSelected(false)}
+            channelName={channelName || '已选模型测试'}
+            baseUrl={baseUrl || ''}
+            apiKey={apiKey}
+            api={api || 'openai-completions'}
+            providerId={providerId}
+            models={Array.from(selectedIds)}
+          />
+        )}
       </div>
     </div>
   );
@@ -1045,45 +1130,60 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
     setCustomModelInput('');
   };
 
-  const handleFetchModels = async () => {
+  const handleFetchModels = async (): Promise<string[]> => {
     const url = baseUrl.trim().replace(/\/$/u, '');
     const key = keyRef.current?.value || '';
     setFetchingModels(true);
+    let fetchedList: string[] = [];
     try {
-      let fetchedList: string[] = [];
-      if (api === 'google-gemini' || url.includes('googleapis.com')) {
-        const gUrl = `${url || 'https://generativelanguage.googleapis.com'}/v1beta/models${key ? `?key=${encodeURIComponent(key)}` : ''}`;
-        const res = await fetch(gUrl, { headers: key ? { 'x-goog-api-key': key } : {} });
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.models) {
-            fetchedList = json.models.map((m: any) => m.name.replace('models/', ''));
+      if (initial?.id) {
+        try {
+          const res = await refreshProvider(initial.id);
+          if (res?.provider?.models && res.provider.models.length > 0) {
+            fetchedList = res.provider.models.map((m) => m.id);
           }
+        } catch (e) {
+          console.warn('refreshProvider in editor failed, falling back to direct probe', e);
         }
-      } else {
-        const mUrl = `${url || 'https://api.openai.com/v1'}/models`;
-        const headers: Record<string, string> = {};
-        if (key) headers['Authorization'] = `Bearer ${key}`;
-        const res = await fetch(mUrl, { headers });
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json?.data)) {
-            fetchedList = json.data.map((m: any) => m.id);
+      }
+      if (fetchedList.length === 0) {
+        if (api === 'google-gemini' || url.includes('googleapis.com')) {
+          const gUrl = `${url || 'https://generativelanguage.googleapis.com'}/v1beta/models${key ? `?key=${encodeURIComponent(key)}` : ''}`;
+          const res = await fetch(gUrl, { headers: key ? { 'x-goog-api-key': key } : {} });
+          if (res.ok) {
+            const json = await res.json();
+            if (json?.models) {
+              fetchedList = json.models.map((m: any) => m.name.replace('models/', ''));
+            }
+          }
+        } else {
+          const mUrl = `${url || 'https://api.openai.com/v1'}/models`;
+          const headers: Record<string, string> = {};
+          if (key) headers['Authorization'] = `Bearer ${key}`;
+          const res = await fetch(mUrl, { headers });
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json?.data)) {
+              fetchedList = json.data.map((m: any) => m.id);
+            }
           }
         }
       }
       if (fetchedList.length > 0) {
         setModelTags((prev) => Array.from(new Set([...prev, ...fetchedList])));
-        alert(`成功获取并添加 ${fetchedList.length} 个模型！`);
+        alert(`成功获取并添加 ${fetchedList.length} 个最新模型！`);
+        return fetchedList;
       } else {
         const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
         setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
-        alert('已自动载入全量模型库（上游直接请求受浏览器同源策略限制时使用标准模型库）');
+        alert('已自动载入预置全量模型库（若直接跨域请求受限时使用标准模型库）');
+        return allPresets;
       }
     } catch {
       const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
       setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
-      alert('已自动载入全量模型库（上游直接请求受浏览器同源策略限制时使用标准模型库）');
+      alert('已自动载入预置全量模型库（若直接跨域请求受限时使用标准模型库）');
+      return allPresets;
     } finally {
       setFetchingModels(false);
     }
@@ -1618,7 +1718,7 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
                       cursor: 'pointer',
                     }}
                   >
-                    全选模型
+                    全选所有模型
                   </button>
                   <button
                     type="button"
@@ -1634,7 +1734,7 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
                       cursor: 'pointer',
                     }}
                   >
-                    清除模型
+                    清除所有模型
                   </button>
                   <button
                     type="button"
@@ -1758,6 +1858,12 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
         onConfirm={(newSelectedIds) => {
           setModelTags(newSelectedIds);
         }}
+        onFetchModels={handleFetchModels}
+        providerId={initial?.id}
+        channelName={name || initial?.name || '通道模型测试'}
+        baseUrl={baseUrl || initial?.baseUrl || ''}
+        apiKey={keyRef.current?.value || ''}
+        api={api || initial?.api || 'openai-completions'}
       />
 
       {/* 渠道模型测试模态弹窗 */}
@@ -1925,7 +2031,7 @@ export default function AdminModelPage() {
     }
   }
 
-  async function refresh(provider: ProviderConfigPublic) {
+  async function refresh(provider: ProviderConfigPublic): Promise<RefreshProviderResponse | null> {
     setTestState((current) => ({ ...current, [provider.id]: '正在从 /models 同步…' }));
     try {
       const result = await refreshProvider(provider.id);
@@ -1934,11 +2040,33 @@ export default function AdminModelPage() {
         ...current,
         [provider.id]: `已同步 ${result.fetched} 个模型`,
       }));
+      return result;
     } catch (cause) {
       setTestState((current) => ({
         ...current,
         [provider.id]: cause instanceof Error ? cause.message : '同步失败',
       }));
+      return null;
+    }
+  }
+
+  async function handleClearAllModels(provider: ProviderConfigPublic) {
+    if (provider.models.length === 0) return;
+    if (!confirm(`确定要清空通道「${provider.name}」下的所有 ${provider.models.length} 个模型吗？`)) return;
+    try {
+      for (const m of provider.models) {
+        await deleteManualModel(provider.id, m.id, newIdempotencyKey()).catch(() => null);
+      }
+      const refreshed = await refreshProvider(provider.id).catch(() => null);
+      replaceProvider(
+        refreshed?.provider ?? {
+          ...provider,
+          models: [],
+        }
+      );
+      setSelectedModels((prev) => ({ ...prev, [provider.id]: new Set() }));
+    } catch (err) {
+      alert('清空模型失败: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -2160,6 +2288,49 @@ export default function AdminModelPage() {
         </select>
         {selected.size > 0 ? (
           <>
+            <button
+              type="button"
+              className="settings-pill-btn"
+              style={{ color: '#165dff', fontWeight: 600 }}
+              disabled={bulkSaving}
+              onClick={async () => {
+                setBulkSaving(true);
+                try {
+                  let count = 0;
+                  for (const pid of selected) {
+                    const p = providers.find((item) => item.id === pid);
+                    if (p) {
+                      await refresh(p);
+                      count++;
+                    }
+                  }
+                  alert(`已成功批量同步 ${count} 个通道的最新模型列表`);
+                } finally {
+                  setBulkSaving(false);
+                }
+              }}
+            >
+              ⚡ 批量获取最新模型
+            </button>
+            <button
+              type="button"
+              className="settings-pill-btn"
+              style={{ color: '#047857', fontWeight: 600 }}
+              onClick={() => {
+                const selectedProvidersList = providers.filter((p) => selected.has(p.id));
+                const allModels = Array.from(new Set(selectedProvidersList.flatMap((p) => p.models.map((m) => m.id))));
+                if (allModels.length === 0) {
+                  alert('所选通道暂无挂载的模型可供测试');
+                  return;
+                }
+                setTestingProvider({
+                  ...selectedProvidersList[0]!,
+                  models: allModels.map((id) => ({ id, name: id } as any)),
+                });
+              }}
+            >
+              🧪 批量测试模型
+            </button>
             <button type="button" className="settings-pill-btn" disabled={bulkSaving} onClick={() => void bulkSetEnabled(true)}>
               批量启用
             </button>
@@ -2297,6 +2468,15 @@ export default function AdminModelPage() {
                           <button
                             type="button"
                             className="settings-pill-btn"
+                            style={{ color: '#165dff', fontWeight: 600 }}
+                            onClick={() => void refresh(provider)}
+                            title="从上游接口拉取最新模型列表并更新该通道"
+                          >
+                            ⚡ 获取最新模型
+                          </button>
+                          <button
+                            type="button"
+                            className="settings-pill-btn"
                             style={{ color: '#0284c7' }}
                             onClick={() => setTestingProvider(provider)}
                             title="测试该渠道当前挂载的模型"
@@ -2362,12 +2542,20 @@ export default function AdminModelPage() {
                                 <button
                                   type="button"
                                   className="settings-pill-btn"
+                                  style={{ color: '#165dff', fontWeight: 600 }}
+                                  onClick={() => void refresh(provider)}
+                                >
+                                  ⚡ 获取最新模型
+                                </button>
+                                <button
+                                  type="button"
+                                  className="settings-pill-btn"
                                   onClick={() => {
                                     const all = new Set(provider.models.map((m) => m.id));
                                     setSelectedModels((prev) => ({ ...prev, [provider.id]: all }));
                                   }}
                                 >
-                                  全选模型
+                                  全选所有模型
                                 </button>
                                 <button
                                   type="button"
@@ -2377,6 +2565,14 @@ export default function AdminModelPage() {
                                   }}
                                 >
                                   清除已选
+                                </button>
+                                <button
+                                  type="button"
+                                  className="settings-pill-btn"
+                                  style={{ color: '#dc2626' }}
+                                  onClick={() => void handleClearAllModels(provider)}
+                                >
+                                  清除所有模型
                                 </button>
                                 {(selectedModels[provider.id]?.size ?? 0) > 0 && (
                                   <button
@@ -2391,17 +2587,10 @@ export default function AdminModelPage() {
                                 <button
                                   type="button"
                                   className="settings-pill-btn"
-                                  style={{ color: '#0284c7' }}
+                                  style={{ color: '#0284c7', fontWeight: 600 }}
                                   onClick={() => setTestingProvider(provider)}
                                 >
                                   🧪 测试模型
-                                </button>
-                                <button
-                                  type="button"
-                                  className="settings-pill-btn"
-                                  onClick={() => void refresh(provider)}
-                                >
-                                  🔄 同步上游模型
                                 </button>
                                 <button
                                   type="button"
@@ -2615,6 +2804,16 @@ export default function AdminModelPage() {
           onConfirm={(selectedModelIds) => {
             void handleApplyBatchModels(batchSelectProvider, selectedModelIds);
           }}
+          onFetchModels={async () => {
+            const res = await refresh(batchSelectProvider);
+            if (res?.provider?.models) {
+              return res.provider.models.map((m: ModelDescriptor) => m.id);
+            }
+          }}
+          providerId={batchSelectProvider.id}
+          channelName={batchSelectProvider.name}
+          baseUrl={batchSelectProvider.baseUrl}
+          api={batchSelectProvider.api}
         />
       ) : null}
 
