@@ -19,6 +19,8 @@ export interface ModelChatMessage {
 
 /** 统一的非流式补全请求。 */
 export interface ModelCompletionRequest {
+  tools?: readonly import('@qitu/model-runtime').ModelRuntimeTool[];
+  onToolEvent?: (event: import('@qitu/model-runtime').ModelRuntimeToolEvent) => void;
   messages: readonly ModelChatMessage[];
   /** 采样温度；不传时用上游默认值，不替调用方臆造。 */
   temperature?: number;

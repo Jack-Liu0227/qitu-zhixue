@@ -1,0 +1,28 @@
+{
+  "name": "ima-shared-knowledge-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/src/main.js",
+    "start:stdio": "node dist/src/main.js --stdio",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "discover": "node dist/src/discover.js",
+    "smoke": "node dist/src/smoke.js",
+    "clients": "node dist/src/export-clients.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^17.2.3",
+    "ipaddr.js": "^2.3.0",
+    "pdfjs-dist": "^5.4.296",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  }
+}

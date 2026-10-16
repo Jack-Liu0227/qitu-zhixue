@@ -13,6 +13,7 @@ import { PostgresTutorSessionStore } from './tutor-session.store.postgres';
 import { QituSDKModule } from '../qitu-sdk/qitu-sdk.module';
 import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 import { TutorService } from './tutor.service';
+import { ImaMcpClient } from './ima-mcp.client';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 
@@ -35,6 +36,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
   imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule],
   controllers: [TutorController],
   providers: [
+    { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
     TutorService,
     TutorWorkspaceService,
     {

@@ -32,6 +32,7 @@ import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
+import { ImaMcpClient } from './ima-mcp.client';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
@@ -209,9 +210,10 @@ export class TutorService {
     @Optional() private readonly platformRegistry?: PlatformRegistryService,
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() @Inject(LearningPlanStore) private readonly learningStore?: LearningPlanStore,
+    @Optional() @Inject(ImaMcpClient) ima?: ImaMcpClient,
   ) {
     const runtime = loadTutorRuntimeSource();
-    this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []));
+    this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
     this.contextReader = this.workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(this.workspace);
     this.domainWriter = this.workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(this.workspace);
     this.store = store ?? new InMemoryTutorSessionStore();

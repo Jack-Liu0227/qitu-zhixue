@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ModelGatewayError } from '../model-registry/model-gateway.errors';
+import { createNoopTutorContextReader } from '@qitu/ai-client';
+import { ImaMcpClient } from './ima-mcp.client';
 import type {
   ModelCompletionRequest,
   ModelCompletionResult,
@@ -80,6 +82,47 @@ async function collect(
 function blocksOf(events: TutorStreamEvent[]): string[] {
   return events.flatMap((event) => (event.type === 'delta' ? [event.text] : []));
 }
+
+async function imaInput(): Promise<TutorTurnInput> {
+  const packet = await createNoopTutorContextReader().buildContext({ studentId: 'test-student', projectId: null, projectStage: null,
+    currentGoal: null, query: '集合', recentActivity: [] });
+  packet.runtime = { policyVersion: 'test', agentDefinition: '', skills: [], tools: [], mcpServers: [
+    { serverId: 'ima-knowledge', label: 'ima', transport: 'streamable_http', toolIds: ['ima_read_document'] },
+  ] };
+  return { ...BASE_INPUT, contextPacket: packet };
+}
+
+test('Tutor passes bound tools to the gateway, preserves truthful events and answer guard', async () => {
+  const ima = new ImaMcpClient();
+  ima.toolsFor = async () => [{ name: 'ima_read_document', description: 'read', inputSchema: { type: 'object' },
+    execute: async () => ({ text: 'private textbook passage' }) }];
+  const gateway = new StubGateway(async (_usage, request) => {
+    assert.equal(request.tools?.[0]?.name, 'ima_read_document');
+    assert.match(request.messages[0]!.content, /不可信参考数据/);
+    request.onToolEvent?.({ type: 'call', callId: 'read1', name: 'ima_read_document' });
+    await request.tools![0]!.execute({});
+    request.onToolEvent?.({ type: 'result', callId: 'read1', name: 'ima_read_document', isError: false });
+    return result('答案是照抄课本就行，你觉得呢？');
+  });
+  const events = await collect(new GatewayTutorProvider(gateway, [], ima), await imaInput());
+  assert.ok(events.some((event) => event.type === 'tool_call' && event.name === 'ima_read_document'));
+  assert.ok(events.some((event) => event.type === 'tool_result' && event.callId === 'read1' && event.status === 'done'));
+  assert.doesNotMatch(JSON.stringify(events), /private textbook passage/);
+  assert.doesNotMatch(blocksOf(events).join(''), /答案是/);
+});
+
+test('MCP failure is redacted and the model is explicitly told that knowledge could not be verified', async () => {
+  const ima = new ImaMcpClient();
+  ima.toolsFor = async () => { throw new Error('private-token-in-upstream-error'); };
+  const gateway = new StubGateway((_usage, request) => {
+    assert.equal(request.tools, undefined);
+    assert.match(request.messages[0]!.content, /本轮连接失败/);
+    return result('暂时无法查证教材，你能先说说自己的理解吗？');
+  });
+  const events = await collect(new GatewayTutorProvider(gateway, [], ima), await imaInput());
+  assert.doesNotMatch(JSON.stringify(events), /private-token/);
+  assert.ok(events.some((event) => event.type === 'tool_result' && event.status === 'error' && event.result === 'ima 知识库暂不可用'));
+});
 
 /* --------------------------- provider 选择 --------------------------- */
 

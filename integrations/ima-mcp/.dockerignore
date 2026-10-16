@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.*
+.reference
+.git
+*.log
+.runtime
+ima-mcp-source.zip

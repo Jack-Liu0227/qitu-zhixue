@@ -65,7 +65,7 @@ export class ModelGateway {
     request: ModelCompletionRequest,
     selection?: ModelRuntimeModelSelection,
   ): Promise<ModelCompletionResult> {
-    if (runtimeEngine() === 'qitu') return this.completeWithQituRuntime(usageId, request, selection);
+    if (runtimeEngine() === 'qitu' || request.tools?.length) return this.completeWithQituRuntime(usageId, request, selection);
     const target = selection
       ? this.resolveSelectedTarget(selection)
       : this.resolver.resolveRuntimeTarget(usageId);

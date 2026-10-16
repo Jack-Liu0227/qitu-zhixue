@@ -1,0 +1,20 @@
+[Unit]
+Description=Qitu shared ima textbook MCP service
+After=network-online.target
+
+[Service]
+Type=simple
+User=qitu-ima
+Group=qitu-ima
+WorkingDirectory=/opt/qitu-ima
+Environment=IMA_ENV_FILE=/etc/qitu/ima.env
+ExecStart=/usr/bin/node /opt/qitu-ima/dist/src/main.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

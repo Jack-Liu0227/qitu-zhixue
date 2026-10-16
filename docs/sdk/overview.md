@@ -59,6 +59,8 @@ pnpm build
 
 ## 5. 相关文档
 
+- [`ima-knowledge.md`](./ima-knowledge.md)
+
 - [`agent-runtime.md`](./agent-runtime.md)
 - [`browser-client.md`](./browser-client.md)
 - [`domain-facade.md`](./domain-facade.md)

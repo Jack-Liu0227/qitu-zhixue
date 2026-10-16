@@ -13,6 +13,7 @@ import type {
   Model,
   ProviderStreams,
   StreamOptions,
+  Tool,
 } from './pi/types.js';
 
 export type QituModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
@@ -52,7 +53,21 @@ export interface ModelRuntimeRequest {
   timeoutMs?: number;
   signal?: AbortSignal;
   requestId?: string;
+  /** Server-authorized tools only. Execution closures never cross the model boundary. */
+  tools?: readonly ModelRuntimeTool[];
+  onToolEvent?: (event: ModelRuntimeToolEvent) => void;
 }
+
+export interface ModelRuntimeTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  execute(args: Record<string, unknown>, signal?: AbortSignal): Promise<{ text: string; isError?: boolean }>;
+}
+
+export type ModelRuntimeToolEvent =
+  | { type: 'call'; callId: string; name: string }
+  | { type: 'result'; callId: string; name: string; isError: boolean };
 
 export interface ModelRuntimeUsage {
   inputTokens: number | null;
@@ -136,25 +151,50 @@ async function completeWithPi(
   const { models, model } = createPiModels(target);
   const context = toPiContext(input, target);
 
-  let message: AssistantMessage;
-  try {
-    message = await models.complete(model, context, toPiOptions(input));
-  } catch (error) {
-    throw mapRuntimeError(error, input.signal);
-  }
+  // Keep the full native assistant/tool transcript so the final response is
+  // grounded in actual results. Bound both wall time and tool work per turn.
+  const signal = AbortSignal.any([AbortSignal.timeout(Math.min(Math.max(input.timeoutMs ?? 90_000, 100), 120_000)), ...(input.signal ? [input.signal] : [])]);
+  const tools = input.tools ?? [];
+  context.tools = tools.map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.inputSchema as Tool['parameters'] }));
+  let toolCount = 0;
+  for (;;) {
+    let message: AssistantMessage;
+    try {
+      message = await models.complete(model, context, { ...toPiOptions(input), signal });
+    } catch (error) {
+      throw mapRuntimeError(error, signal);
+    }
 
-  if (message.stopReason === 'aborted') {
-    throw new ModelRuntimeError('MODEL_REQUEST_ABORTED', '模型调用已被调用方取消');
-  }
-  if (message.stopReason === 'error') {
-    throw new ModelRuntimeError('MODEL_STREAM_ERROR', '模型调用失败', { retryable: true });
-  }
+    if (message.stopReason === 'aborted') {
+      if (!input.signal?.aborted && signal.aborted) throw new ModelRuntimeError('MODEL_REQUEST_TIMEOUT', '模型工具回合超时', { retryable: true });
+      throw new ModelRuntimeError('MODEL_REQUEST_ABORTED', '模型调用已被调用方取消');
+    }
+    if (message.stopReason === 'error') {
+      throw new ModelRuntimeError('MODEL_STREAM_ERROR', '模型调用失败', { retryable: true });
+    }
 
-  const text = contentText(message.content).trim();
-  if (text.length === 0) {
-    throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', '模型返回了空文本');
+    const calls = message.content.filter((part) => part.type === 'toolCall');
+    if (calls.length === 0) {
+      const text = contentText(message.content).trim();
+      if (text.length === 0) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', '模型返回了空文本');
+      return toResult(target, message, text);
+    }
+    context.messages.push(message);
+    for (const call of calls) {
+      if (signal.aborted) throw new ModelRuntimeError('MODEL_REQUEST_TIMEOUT', '模型工具回合超时', { retryable: true });
+      if (++toolCount > 8) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', '模型工具调用次数超过上限');
+      const tool = tools.find((candidate) => candidate.name === call.name);
+      let output: { text: string; isError?: boolean } = { text: 'TOOL_NOT_ALLOWED', isError: true };
+      if (tool) {
+        input.onToolEvent?.({ type: 'call', callId: call.id, name: call.name });
+        try { output = await tool.execute(call.arguments as Record<string, unknown>, signal); }
+        catch { output = { text: 'TOOL_UNAVAILABLE', isError: true }; }
+        input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true });
+      }
+      context.messages.push({ role: 'toolResult', toolCallId: call.id, toolName: call.name,
+        content: [{ type: 'text', text: output.text.slice(0, 48_000) }], isError: output.isError === true, timestamp: Date.now() });
+    }
   }
-  return toResult(target, message, text);
 }
 
 async function* streamWithPi(
