@@ -41,12 +41,13 @@ export default async function HomePage() {
 
   return (
     <div className="home-page">
+      {/* 全局 React Bits 粒子星网与鼠标追焦交互背景 */}
+      <ReactBitsBackground />
       <SiteNav />
 
       <main className="home-main" id="top">
         {/* 第 1 屏：Hero 首屏互动入口 */}
         <section className="home-hero react-bits-hero-wrapper home-section--fullscreen">
-          <ReactBitsBackground />
           <div className="home-shell home-hero-grid">
             <div className="home-hero-copy">
               <p className="home-badge react-bits-badge">
@@ -116,7 +117,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 第 2 屏：项目式学习路径（全屏沉浸 + 滚动渐入） */}
+        {/* 第 2 屏：项目式学习路径（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-glow">
           <ScrollReveal>
             <div className="home-shell home-summary-grid">
@@ -144,7 +145,7 @@ export default async function HomePage() {
           </ScrollReveal>
         </section>
 
-        {/* 第 3 屏：六维能力体系（全屏沉浸 + 滚动渐入） */}
+        {/* 第 3 屏：六维能力体系（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-tinted">
           <ScrollReveal delay={80}>
             <div className="home-shell home-summary-grid">
@@ -172,7 +173,7 @@ export default async function HomePage() {
           </ScrollReveal>
         </section>
 
-        {/* 第 4 屏：公开项目展厅（全屏沉浸 + 滚动渐入） */}
+        {/* 第 4 屏：公开项目展厅（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-glow">
           <ScrollReveal delay={80}>
             <div className="home-shell home-summary-grid">
@@ -198,7 +199,7 @@ export default async function HomePage() {
           </ScrollReveal>
         </section>
 
-        {/* 第 5 屏：交大团队背景与核心优势数据（全屏沉浸 + 滚动渐入） */}
+        {/* 第 5 屏：交大团队背景与核心优势数据（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-deep" id="about">
           <ScrollReveal delay={80}>
             <div className="home-shell">
@@ -281,7 +282,7 @@ export default async function HomePage() {
           </ScrollReveal>
         </section>
 
-        {/* 第 6 屏：合作咨询与开启旅程（全屏沉浸 + 滚动渐入） */}
+        {/* 第 6 屏：合作咨询与开启旅程（全屏沉浸 + 每次翻阅均触发渐入） */}
         <section className="home-section home-section--fullscreen is-glow">
           <ScrollReveal delay={80}>
             <div className="home-shell home-summary-grid">
