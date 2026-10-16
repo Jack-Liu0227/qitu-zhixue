@@ -26,6 +26,7 @@
 | P1 | [学生与教师交互体验](./p1-learning-experience.md) | student / teacher UI | 可并行 | P0 闭环 API 草案 | #48、#56 |
 | P2 | [参考项目能力迁移与运行时收敛](./p2-runtime-migration.md) | ai-client / model-runtime | 可并行 | P0/P1 合同稳定 | #49、#50、#51、#53 |
 | P2 | [试点验证、观测与发布门槛](./p2-pilot-verification.md) | QA / workers / admin | 可并行 | 至少一条端到端闭环 | #52、#54 |
+| P0/P1 | [飞书/Lark 管理汇报助手](./20261017-feishu-reporting-assistant.md) | admin / ai-tutor / workers / compliance | P0 基线与授权先行，P1 发送链路随后 | 管理员助手目录、密钥存储、真实 Feishu/Lark 测试租户 | 待立项 |
 
 ## 推荐执行顺序
 

@@ -19,8 +19,8 @@ export const THUNDER_FIGHTER_PHASES: readonly PblPhaseSpec[] = [
   {
     phase: 'exploration',
     title: '阶段一：项目兴趣启发与意图确认',
-    assignedAssistantId: 'tutor-leader',
-    assignedRoleLabel: '总导师',
+    assignedAssistantId: 'qitu-intake-assistant',
+    assignedRoleLabel: '启途智学助手',
     learningObjectives: [
       '明确雷霆战机小游戏的玩法目标与核心规则',
       '确认开发技术栈（Python 3 与 Pygame 库）',
@@ -88,8 +88,8 @@ export const KINETIC_ENERGY_PHASES: readonly PblPhaseSpec[] = [
   {
     phase: 'exploration',
     title: '阶段一：生活情境启发与探究课题确认',
-    assignedAssistantId: 'kinetic-leader',
-    assignedRoleLabel: '物理总导师',
+    assignedAssistantId: 'qitu-intake-assistant',
+    assignedRoleLabel: '启途智学助手',
     learningObjectives: [
       '观察汽车刹车滑行距离与车速关系，提出物理假设',
       '明确动能定理探究目标与实验自变量、因变量',

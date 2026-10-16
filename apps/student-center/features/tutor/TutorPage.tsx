@@ -25,9 +25,13 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [rightSidebarTab, setRightSidebarTab] = useState<'progress' | 'agents'>('progress');
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const confirmKey = useRef<string | null>(null);
+
+  const isThunder = /雷霆|战机|pygame|fighter/i.test(session.project?.project.title ?? '');
+  const teamName = projectId ? (isThunder ? '雷霆战机团队' : '动能定理导师团队') : '启途智学助手';
 
   useEffect(() => {
     // Discard legacy browser-stored credentials and fabricated transcripts.
@@ -75,7 +79,34 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   return <div className="qitu-tutor-page">
     <header className="qitu-tutor-header" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-      <div><p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p><h1>AI搭档</h1><p className="qitu-tutor-header-subtitle">先确认学习目标，再一起探究；理论掌握由服务端核验。</p></div>
+      <div>
+        <p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ margin: 0 }}>AI搭档</h1>
+          <span
+            style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              padding: '2px 10px',
+              borderRadius: '999px',
+              background: projectId ? '#dbeafe' : '#f0fdf4',
+              color: projectId ? '#1d4ed8' : '#15803d',
+              border: `1px solid ${projectId ? '#bfdbfe' : '#bbf7d0'}`,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span>{projectId ? '👥' : '🧭'}</span>
+            <span>{teamName}</span>
+          </span>
+        </div>
+        <p className="qitu-tutor-header-subtitle">
+          {projectId
+            ? `已由专属导师团队【${teamName}】接管辅导；理论掌握由服务端核验。`
+            : '由「启途智学助手」接管初步对话，确认意图后推荐项目，一键立项并唤醒导师团队。'}
+        </p>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span role="status">
           {session.offline
@@ -148,13 +179,56 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         />
       </div>
       {rightOpen ? (
-        <aside style={{ width: 'min(300px, 32vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <TeamAgentHud
-            currentProjectId={projectId}
-            currentTitle={session.project?.project.title}
-            turns={session.turns}
-          />
-          {session.project ? (
+        <aside style={{ width: 'min(320px, 32vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* 侧边栏两个 table / tab 视图切换：一个显示项目进度，一个显示各个 agent 的状态、头像、对话历史、工具调用情况 */}
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '4px', border: '1px solid #e2e8f0' }}>
+            <button
+              type="button"
+              onClick={() => setRightSidebarTab('progress')}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: rightSidebarTab === 'progress' ? 700 : 500,
+                background: rightSidebarTab === 'progress' ? '#ffffff' : 'transparent',
+                color: rightSidebarTab === 'progress' ? '#1d4ed8' : '#64748b',
+                border: 'none',
+                borderRadius: '7px',
+                cursor: 'pointer',
+                boxShadow: rightSidebarTab === 'progress' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📊 项目进度
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightSidebarTab('agents')}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: rightSidebarTab === 'agents' ? 700 : 500,
+                background: rightSidebarTab === 'agents' ? '#ffffff' : 'transparent',
+                color: rightSidebarTab === 'agents' ? '#1d4ed8' : '#64748b',
+                border: 'none',
+                borderRadius: '7px',
+                cursor: 'pointer',
+                boxShadow: rightSidebarTab === 'agents' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              👥 团队智能体
+            </button>
+          </div>
+
+          {rightSidebarTab === 'agents' ? (
+            <TeamAgentHud
+              currentProjectId={projectId}
+              currentTitle={session.project?.project.title}
+              turns={session.turns}
+            />
+          ) : session.project ? (
             <>
               <ProjectCard project={session.project.project} />
               <CurrentTask task={session.project.currentTask} />

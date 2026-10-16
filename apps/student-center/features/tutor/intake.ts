@@ -92,6 +92,13 @@ export const INTAKE_OPENING_TURN: TutorTurn = {
   seq: 0,
   createdAt: new Date().toISOString(),
   modality: 'text',
+  author: {
+    id: 'qitu-intake-assistant',
+    name: '启途智学助手',
+    role: 'Intake Guide / 启途智学助手',
+    avatar: '🧭',
+    color: '#2563eb',
+  },
 };
 
 /**
@@ -116,6 +123,13 @@ export function recommendOpeningTurn(templateTitle: string): TutorTurn {
     seq: 0,
     createdAt: new Date().toISOString(),
     modality: 'text',
+    author: {
+      id: 'qitu-intake-assistant',
+      name: '启途智学助手',
+      role: 'Intake Guide / 启途智学助手',
+      avatar: '🧭',
+      color: '#2563eb',
+    },
   };
 }
 

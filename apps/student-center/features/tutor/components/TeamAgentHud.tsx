@@ -38,91 +38,105 @@ interface TeamAgentHudProps {
 export function TeamAgentHud({ currentProjectId, currentTitle, turns = [] }: TeamAgentHudProps) {
   const [inspectingAgent, setInspectingAgent] = useState<SubAgentStatus | null>(null);
 
+export function resolveSubAgents(currentProjectId?: string, currentTitle?: string): SubAgentStatus[] {
   const isThunder = /雷霆|战机|pygame|fighter/i.test(currentTitle ?? '');
-  const teamName = currentProjectId ? (isThunder ? '雷霆战机导师团队' : '动能定理导师团队') : '启途智学助手';
-
-  const subAgents: SubAgentStatus[] = useMemo(() => {
-    if (!currentProjectId) {
-      return [
-        {
-          id: 'asst-intake',
-          name: '启途智学助手',
-          role: '意图引导管家',
-          avatar: '🤖',
-          color: '#2563eb',
-          status: 'active',
-          statusLabel: '探究中',
-          description: '作为平台核心助手，负责梳理学生学习兴趣，推荐适配的 PBL 课题，并在对话内一键发起立项。',
-        },
-      ];
-    }
-    if (isThunder) {
-      return [
-        {
-          id: 'fighter-concept-coach',
-          name: '概念教练',
-          role: '概念教练',
-          avatar: '🚀',
-          color: '#2563eb',
-          status: 'active',
-          statusLabel: '探究中',
-          description: '引导拆解 Pygame 游戏主循环、帧率控制与状态机逻辑，遵循苏格拉底教学法。',
-        },
-        {
-          id: 'fighter-code-guide',
-          name: '沙箱向导',
-          role: '代码向导',
-          avatar: '💻',
-          color: '#0d9488',
-          status: 'standby',
-          statusLabel: '就绪',
-          description: '负责玩家战机、敌机生成与碰撞检测算法实现，理论门禁通过后进入动手实践。',
-        },
-        {
-          id: 'fighter-review-assessor',
-          name: '评审导师',
-          role: '评审导师',
-          avatar: '📋',
-          color: '#8b5cf6',
-          status: 'standby',
-          statusLabel: '待命',
-          description: '负责可玩性测试、代码规范及反思总结报告的多维度形成性评价。',
-        },
-      ];
-    }
+  if (!currentProjectId) {
     return [
       {
-        id: 'kinetic-concept-coach',
-        name: '概念教练',
-        role: '概念教练',
-        avatar: '💡',
+        id: 'asst-intake',
+        name: '启途智学助手',
+        role: '意图引导管家',
+        avatar: '🧭',
         color: '#2563eb',
         status: 'active',
         statusLabel: '探究中',
-        description: '运用苏格拉底教学法启发物理公式推导，不直接给出答案。',
+        description: '作为平台核心助手，负责梳理学生学习兴趣，推荐适配的 PBL 课题，并在对话内一键发起立项。',
+      },
+    ];
+  }
+  if (isThunder) {
+    return [
+      {
+        id: 'fighter-concept-coach',
+        name: '概念教练',
+        role: '概念教练',
+        avatar: '🚀',
+        color: '#2563eb',
+        status: 'active',
+        statusLabel: '探究中',
+        description: '引导拆解 Pygame 游戏主循环、帧率控制与状态机逻辑，遵循苏格拉底教学法。',
       },
       {
-        id: 'kinetic-experiment-guide',
+        id: 'fighter-code-guide',
         name: '沙箱向导',
-        role: '实验向导',
-        avatar: '🛠️',
+        role: '代码向导',
+        avatar: '💻',
         color: '#0d9488',
         status: 'standby',
         statusLabel: '就绪',
-        description: '指导斜面小车仿真实验，协助进行实验数据记录与图表分析。',
+        description: '负责玩家战机、敌机生成与碰撞检测算法实现，理论门禁通过后进入动手实践。',
       },
       {
-        id: 'kinetic-review-assessor',
+        id: 'fighter-review-assessor',
         name: '评审导师',
         role: '评审导师',
         avatar: '📋',
         color: '#8b5cf6',
         status: 'standby',
         statusLabel: '待命',
-        description: '把关 TheoryMastered 门禁，对探究报告与反思进行形成性评价。',
+        description: '负责可玩性测试、代码规范及反思总结报告的多维度形成性评价。',
       },
     ];
-  }, [currentProjectId, isThunder]);
+  }
+  return [
+    {
+      id: 'kinetic-concept-coach',
+      name: '概念教练',
+      role: '概念教练',
+      avatar: '💡',
+      color: '#2563eb',
+      status: 'active',
+      statusLabel: '探究中',
+      description: '运用苏格拉底教学法启发物理公式推导，不直接给出答案。',
+    },
+    {
+      id: 'kinetic-experiment-guide',
+      name: '沙箱向导',
+      role: '实验向导',
+      avatar: '🛠️',
+      color: '#0d9488',
+      status: 'standby',
+      statusLabel: '就绪',
+      description: '指导斜面小车仿真实验，协助进行实验数据记录与图表分析。',
+    },
+    {
+      id: 'kinetic-review-assessor',
+      name: '评审导师',
+      role: '评审导师',
+      avatar: '📋',
+      color: '#8b5cf6',
+      status: 'standby',
+      statusLabel: '待命',
+      description: '把关 TheoryMastered 门禁，对探究报告与反思进行形成性评价。',
+    },
+  ];
+}
+
+interface TeamAgentHudProps {
+  currentProjectId?: string;
+  currentTitle?: string;
+  turns?: TutorTurn[];
+}
+
+export function TeamAgentHud({ currentProjectId, currentTitle, turns = [] }: TeamAgentHudProps) {
+  const [inspectingAgent, setInspectingAgent] = useState<SubAgentStatus | null>(null);
+
+  const isThunder = /雷霆|战机|pygame|fighter/i.test(currentTitle ?? '');
+  const teamName = currentProjectId ? (isThunder ? '雷霆战机团队' : '动能定理导师团队') : '启途智学助手';
+
+  const subAgents: SubAgentStatus[] = useMemo(() => {
+    return resolveSubAgents(currentProjectId, currentTitle);
+  }, [currentProjectId, currentTitle]);
 
   const inspectingTurns = useMemo(() => {
     if (!inspectingAgent || !turns) return [];
@@ -232,23 +246,55 @@ export function TeamAgentHud({ currentProjectId, currentTitle, turns = [] }: Tea
         </div>
       </div>
 
-      {/* 弹窗：查看 Agent 历史发言与职能详情 */}
       {inspectingAgent && (
-        <div
-          role="presentation"
-          onClick={() => setInspectingAgent(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.45)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-        >
+        <AgentDetailModal
+          inspectingAgent={inspectingAgent}
+          turns={turns}
+          onClose={() => setInspectingAgent(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+export function AgentDetailModal({
+  inspectingAgent,
+  turns = [],
+  onClose,
+}: {
+  inspectingAgent: SubAgentStatus;
+  turns?: TutorTurn[];
+  onClose: () => void;
+}) {
+  const inspectingTurns = useMemo(() => {
+    if (!inspectingAgent || !turns) return [];
+    const targetTurns = turns.filter(
+      (t) =>
+        t.role === 'assistant' &&
+        (t.author?.role === inspectingAgent.role ||
+          t.author?.name?.includes(inspectingAgent.name) ||
+          inspectingAgent.id === 'asst-intake' ||
+          (!t.author && inspectingAgent.role === '概念教练')),
+    );
+    return targetTurns.length > 0 ? targetTurns : turns.filter((t) => t.role === 'assistant').slice(-3);
+  }, [inspectingAgent, turns]);
+
+  return (
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(3px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
           <div
             role="dialog"
             aria-modal="true"

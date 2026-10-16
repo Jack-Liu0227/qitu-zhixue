@@ -62,6 +62,164 @@ const PRESET_ALL_MODELS: Array<{ id: string; name: string; group: 'OpenAI' | '�
   { id: 'custom-internal-pbl-v1', name: '启途智学 PBL 内置微调模型', group: '其他' },
 ];
 
+export interface PiProviderCatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  baseUrl: string;
+  api: ModelApi;
+  wire: string;
+  auth: string;
+  suggestedModels: string[];
+  description: string;
+}
+
+export const PI_AGENT_SUPPORTED_PROVIDERS: PiProviderCatalogItem[] = [
+  {
+    id: 'ali-bailian',
+    name: '阿里百炼 (DashScope / 通义千问)',
+    category: '国产主流直连',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['qwen3.5-flash', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+    description: '阿里云百炼官方端点，具备高并发高可用，深度适配通义千问系列主力模型。',
+  },
+  {
+    id: 'deepseek-official',
+    name: 'DeepSeek 官方开放平台',
+    category: '国产主流直连',
+    baseUrl: 'https://api.deepseek.com/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['deepseek-chat', 'deepseek-reasoner'],
+    description: 'DeepSeek 官方 API 端点，支持 DeepSeek-V3 与 DeepSeek-R1 深度长链推理。',
+  },
+  {
+    id: 'google-gemini',
+    name: 'Google Gemini 官方平台',
+    category: '国际主流基座',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    api: 'google-gemini',
+    wire: 'google-gemini',
+    auth: 'apiKey (x-goog-api-key 或 Bearer Token)',
+    suggestedModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+    description: 'Google AI Studio 官方端点，具备原生超长上下文窗口与强大数理推导能力。',
+  },
+  {
+    id: 'openai-official',
+    name: 'OpenAI 官方开放平台',
+    category: '国际主流基座',
+    baseUrl: 'https://api.openai.com/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o3-mini'],
+    description: 'OpenAI 官方 API，包含 GPT-4o 旗舰与 o-series 深度推理模型。',
+  },
+  {
+    id: 'anthropic-official',
+    name: 'Anthropic 官方平台 (Claude)',
+    category: '国际主流基座',
+    baseUrl: 'https://api.anthropic.com',
+    api: 'anthropic-messages',
+    wire: 'anthropic-messages',
+    auth: 'apiKey (x-api-key)',
+    suggestedModels: ['claude-3-7-sonnet', 'claude-3-5-sonnet', 'claude-3-5-haiku'],
+    description: 'Anthropic Messages 协议端点，长文本分析、代码重构与教学设计表现优异。',
+  },
+  {
+    id: 'openrouter-gateway',
+    name: 'OpenRouter 全球模型聚合路由',
+    category: '聚合代理网关',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['anthropic/claude-3.5-sonnet', 'deepseek/deepseek-r1', 'google/gemini-2.0-flash-001', 'openai/gpt-4o'],
+    description: '全球统一的多模型代理路由网关，按需无缝切换上百款主流大模型。',
+  },
+  {
+    id: 'moonshot-kimi',
+    name: 'Moonshot AI / Kimi 开放平台',
+    category: '国产长文本',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    description: '月之暗面 Kimi 官方端点，具备极强中文超长文本综合分析能力。',
+  },
+  {
+    id: 'z-ai-glm',
+    name: '智谱 AI / Z.AI (GLM)',
+    category: '国产主流直连',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['glm-4-plus', 'glm-4-flash', 'glm-4-air'],
+    description: '智谱 AI 开放平台官方端点，自主研发国产基座大模型。',
+  },
+  {
+    id: 'minimax-official',
+    name: 'MiniMax 稀宇科技',
+    category: '国产主流直连',
+    baseUrl: 'https://api.minimax.chat/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['abab6.5s-chat', 'MiniMax-Text-01'],
+    description: 'MiniMax 官方开放平台，拟人对话与高并发处理能力出众。',
+  },
+  {
+    id: 'siliconflow',
+    name: 'SiliconFlow (硅基流动)',
+    category: '聚合代理网关',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'Qwen/Qwen2.5-72B-Instruct'],
+    description: '国内高速开源大模型推理托管平台，提供低成本与极速响应。',
+  },
+  {
+    id: 'groq-cloud',
+    name: 'Groq LPU 极速推理云',
+    category: '硬件加速云',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'apiKey (Bearer Token)',
+    suggestedModels: ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
+    description: '基于专用 LPU 硬件的推理云服务，每秒达数百 token 极低时延。',
+  },
+  {
+    id: 'ollama-local',
+    name: 'Ollama (本地私有化部署)',
+    category: '本地与私有集群',
+    baseUrl: 'http://localhost:11434/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: 'None (或本地自定义 Header)',
+    suggestedModels: ['qwen2.5:7b', 'deepseek-r1:8b', 'llama3:latest'],
+    description: '本地离线部署 LLM，无需外网凭证，保护未成年人与科研核心数据隐私。',
+  },
+  {
+    id: 'vllm-custom',
+    name: 'vLLM / SGLang (自建 GPU 集群服务)',
+    category: '本地与私有集群',
+    baseUrl: 'http://localhost:8000/v1',
+    api: 'openai-completions',
+    wire: 'openai-completions',
+    auth: '可选 Bearer Token',
+    suggestedModels: ['custom-pbl-qwen-72b', 'custom-physics-tutor'],
+    description: '校级或实验室机房自建的高吞吐 vLLM 服务，支持 PagedAttention 显存优化。',
+  },
+];
+
 function formatTime(value: string | null | undefined): string {
   if (!value) return '未同步';
   const date = new Date(value);
@@ -1966,6 +2124,12 @@ export default function AdminModelPage() {
   // 针对特定展开通道的模型选择弹窗
   const [batchSelectProvider, setBatchSelectProvider] = useState<ProviderConfigPublic | null>(null);
 
+  // Pi Agent 标准供应商目录选择状态
+  const [selectedPiProviderId, setSelectedPiProviderId] = useState<string>('ali-bailian');
+  const activePiProvider = useMemo(() => {
+    return PI_AGENT_SUPPORTED_PROVIDERS.find((p) => p.id === selectedPiProviderId) ?? PI_AGENT_SUPPORTED_PROVIDERS[0]!;
+  }, [selectedPiProviderId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -2755,29 +2919,131 @@ export default function AdminModelPage() {
       {/* 用途路由面板 */}
       <UsageRoutingPanel providers={data.providers} />
 
-      {/* 预设通道模板 */}
-      <section className="provider-presets">
-        <div className="runtime-section-head">
-          <h2>常用通道模板</h2>
-          <span>快速预填主流大模型及聚合代理网关地址。</span>
-        </div>
-        <div className="provider-preset-grid">
-          {data.presets.map((preset) => (
-            <button
-              type="button"
-              className="provider-preset"
-              key={preset.id}
-              onClick={() => setEditing({ preset })}
+      {/* Pi Agent 供应商目录与下拉快速创建 */}
+      <section className="provider-presets-catalog" style={{ marginTop: '24px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🌐</span>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: 0 }}>支持的供应商目录 (Pi Agent / Research Workbench 标准)</h2>
+              <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                13+ 供应商已就绪
+              </span>
+            </div>
+            <p style={{ fontSize: '12.5px', color: '#64748b', margin: '4px 0 0' }}>
+              参考自 Pi Agent 与 Desktop Integrations 标准目录。直接在下拉菜单中选择供应商通道模板，即可一键载入协议、端点与推荐模型。
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>选择供应商模板:</label>
+            <select
+              value={selectedPiProviderId}
+              onChange={(e) => setSelectedPiProviderId(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#0f172a',
+                cursor: 'pointer',
+                outline: 'none',
+                minWidth: '250px',
+              }}
             >
-              <strong>{preset.name}</strong>
-              <code>{preset.id}</code>
-              <span>{preset.baseUrl}</span>
-              <small>
-                {preset.suggestedModels.length} 个推荐模型 · {preset.api}
-              </small>
-            </button>
-          ))}
+              <optgroup label="国产主流直连">
+                <option value="ali-bailian">阿里百炼 (DashScope / 通义千问)</option>
+                <option value="deepseek-official">DeepSeek 官方开放平台</option>
+                <option value="z-ai-glm">智谱 AI / Z.AI (GLM)</option>
+                <option value="minimax-official">MiniMax 稀宇科技</option>
+                <option value="moonshot-kimi">Moonshot AI / Kimi</option>
+              </optgroup>
+              <optgroup label="国际主流基座">
+                <option value="google-gemini">Google Gemini 官方平台</option>
+                <option value="openai-official">OpenAI 官方开放平台</option>
+                <option value="anthropic-official">Anthropic 官方平台 (Claude)</option>
+              </optgroup>
+              <optgroup label="聚合代理与硬件加速">
+                <option value="openrouter-gateway">OpenRouter 全球模型聚合路由</option>
+                <option value="siliconflow">SiliconFlow (硅基流动)</option>
+                <option value="groq-cloud">Groq LPU 极速推理云</option>
+              </optgroup>
+              <optgroup label="本地与私有集群">
+                <option value="ollama-local">Ollama (本地私有化部署)</option>
+                <option value="vllm-custom">vLLM / SGLang (自建 GPU 集群)</option>
+              </optgroup>
+            </select>
+          </div>
         </div>
+
+        {/* 选中供应商详情与快速应用卡片 */}
+        {activePiProvider && (
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '16px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: '320px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <strong style={{ fontSize: '15px', color: '#0f172a' }}>{activePiProvider.name}</strong>
+                <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                  {activePiProvider.category}
+                </span>
+                <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px' }}>
+                  {activePiProvider.wire}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px' }}>{activePiProvider.description}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '12px', color: '#475569' }}>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>网关地址: </span>
+                  <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                    {activePiProvider.baseUrl}
+                  </code>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>认证协议: </span>
+                  <span>{activePiProvider.auth}</span>
+                </div>
+                <div>
+                  <span style={{ color: '#94a3b8' }}>推荐挂载模型: </span>
+                  <span style={{ fontWeight: 600, color: '#2563eb' }}>{activePiProvider.suggestedModels.join(', ')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                className="settings-action-btn is-primary"
+                onClick={() => {
+                  setEditing({
+                    preset: {
+                      id: activePiProvider.id,
+                      name: activePiProvider.name,
+                      baseUrl: activePiProvider.baseUrl,
+                      api: activePiProvider.api,
+                      authHeader: true,
+                      suggestedModels: activePiProvider.suggestedModels,
+                    },
+                  });
+                }}
+                style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>⚡</span> 基于此模板新建通道
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 渠道信息编辑模态框 (Image 3) */}

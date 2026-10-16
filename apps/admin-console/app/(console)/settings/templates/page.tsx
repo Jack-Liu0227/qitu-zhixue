@@ -155,7 +155,35 @@ export default function AdminTemplatesPage() {
         };
       });
 
-      setTemplates(merged);
+      let customList: EditableTemplate[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('qitu.admin.custom_templates');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed)) {
+              customList = parsed.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                summary: item.summary || item.title,
+                content: item.content || '',
+                stage: item.stage || 'exploration',
+                tags: item.tags || ['项目式学习', '科学探究'],
+                status: 'published',
+                createdAt: item.updatedAt || new Date().toISOString(),
+                updatedAt: item.updatedAt || new Date().toISOString(),
+                linkedTeamId: item.linkedTeamId || 'team-kinetic-energy',
+                phases: item.phases || DEFAULT_PHASES['template-kinetic-energy'] || [],
+              }));
+            }
+          }
+        } catch {}
+      }
+
+      const existingIds = new Set(merged.map((m) => m.id));
+      const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...merged];
+
+      setTemplates(combined);
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('模板库加载失败'));
     } finally {

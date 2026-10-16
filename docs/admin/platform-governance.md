@@ -21,6 +21,7 @@
 - `/admin/settings/model-providers`：供应商凭证、模型目录、连接测试、用途场景和 Agent 链路绑定。
 - `/admin/settings/models`：旧书签重定向到供应商工作区，不单独保存模型目录。
 - `/admin/settings/knowledge`、`templates`、`database`：知识、模板和数据库状态。
+- `/admin/settings/feishu`：管理员汇报助手的 Feishu/Lark 机器人配置、手机授权状态和汇报范围；该页面不保存明文凭证。
 
 模型专属覆盖在 AI 运行时维护；用途模型和链路自动分发在供应商工作区维护，不增加导航。管理员明确选择用途后才清空专属覆盖；学生不能自由换模。
 
@@ -36,6 +37,10 @@
 运行时页面集中展示根目录 `AGENTS.md`、已加载 Skills、Agent-local `AGENTS.md`、直接选择的供应商与模型、显式 Skill/Tool/MCP 绑定和初始化检查。开发协作目录（例如 `.pi`）不自动进入 Tutor runtime。
 
 Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不默认继承 Tool/MCP；Skill 继承必须显式声明。模型调用前服务端重新解析 Agent 配置，客户端不能直接写入模型决策、项目状态或成长档案。
+
+### Feishu/Lark 管理汇报助手
+
+Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、二维码会话、凭证轮换和发送状态均由服务端持久化并审计；`open_id` 必须映射到启途管理员后才能生成报告。报告助手只读聚合学生、家长授权投影和教师运营摘要，默认最小化可见范围，禁止发送原始未成年人对话或语音。手机扫码绑定、状态机、错误码和真实租户验收以 [`../plan/20261017-feishu-reporting-assistant.md`](../plan/20261017-feishu-reporting-assistant.md) 为准。
 <!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.

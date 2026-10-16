@@ -1829,3 +1829,84 @@ summary:focus-visible,
   .qitu-team-activity-item { grid-template-columns: 44px minmax(0, 1fr); }
   .qitu-team-activity-item > .qitu-team-status { grid-column: 2; }
 }
+
+/* ========================================================================= */
+/* 启途智学 全平台炫酷动态动画与视觉微动效                                   */
+/* ========================================================================= */
+@keyframes qitu-float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes qitu-glow-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+@keyframes qitu-radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes qitu-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes qitu-gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.qitu-anim-float {
+  animation: qitu-float 3.6s ease-in-out infinite;
+}
+
+.qitu-anim-pulse {
+  animation: qitu-glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.qitu-interactive-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+}
+
+.qitu-interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(30, 79, 217, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+.qitu-shimmer-text {
+  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 25%, #60a5fa 50%, #2563eb 75%, #1e3a8a 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: qitu-shimmer 4s linear infinite;
+}
+
+.qitu-glow-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.qitu-glow-badge::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 70%
+  );
+  transform: rotate(30deg);
+  animation: qitu-shimmer 3s infinite;
+}
+

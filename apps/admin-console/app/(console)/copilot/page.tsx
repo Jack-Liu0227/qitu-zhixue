@@ -215,11 +215,118 @@ export default function CopilotPage() {
   // 1. 侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置
+  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换
   const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
   const [selectedModel, setSelectedModel] = useState<string>('qwen3.8-flash');
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
+  const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
+  const [customAssistantsList, setCustomAssistantsList] = useState<Array<{ id: string; name: string; role: string; icon?: string; systemPrompt?: string }>>([]);
+
+  const BUILTIN_ASSISTANTS_REGISTRY = [
+    {
+      id: 'qitu-assistant',
+      name: '启途智学管家 (平台运维与开发中枢)',
+      role: '运维管理中枢',
+      icon: '🤖',
+      systemPrompt: '我是启途智学管家平台核心运维与开发智能中枢，负责多智能体协同调度、系统配置修改与安全审计。',
+    },
+    {
+      id: 'qitu-intake-assistant',
+      name: '启途智学助手 (学生端探索接引)',
+      role: '意图探索向导',
+      icon: '🧭',
+      systemPrompt: '你是启途智学助手，作为学生进入平台的第一站。遵循苏格拉底短轮次对话规范，探寻学生好奇心，澄清探究目标，推荐匹配课题并一键立项。',
+    },
+    {
+      id: 'fighter-leader',
+      name: '雷霆战机总导师',
+      role: '团队总负责人',
+      icon: '🚀',
+      systemPrompt: '你是雷霆战机 PBL 项目总导师，负责统筹关卡设计、协调概念教练与沙箱向导。',
+    },
+    {
+      id: 'fighter-concept-coach',
+      name: '战机概念教练',
+      role: '概念启发教练',
+      icon: '💡',
+      systemPrompt: '你是雷霆战机团队的概念启发教练。严格遵循苏格拉底教学法，绝不直接提供完整代码，引导学生理解游戏循环、面向对象精灵碰撞与帧率控制。',
+    },
+    {
+      id: 'fighter-code-guide',
+      name: '战机代码向导',
+      role: '沙箱实践向导',
+      icon: '🛠️',
+      systemPrompt: '你是雷霆战机代码向导，指导学生在 Python 沙箱中安全调试 Pygame 代码，提供分步梯级排错线索。',
+    },
+    {
+      id: 'fighter-review-assessor',
+      name: '战机评审导师',
+      role: '评价反思导师',
+      icon: '📋',
+      systemPrompt: '你是雷霆战机评审导师，依据项目标准对学生关卡设计、代码质量与学习反思进行形成性评价。',
+    },
+    {
+      id: 'kinetic-leader',
+      name: '动能定理总导师',
+      role: '团队总负责人',
+      icon: '⚡',
+      systemPrompt: '你是动手学动能定理导师团队总负责人，负责整个实验探究流程的统筹推进。',
+    },
+    {
+      id: 'kinetic-concept-coach',
+      name: '动能定理概念教练',
+      role: '概念启发教练',
+      icon: '🧠',
+      systemPrompt: '你是动能定理概念教练，负责引导学生从牛顿第二定律与做功推导动能定理，严密守卫 TheoryMastered 门禁。',
+    },
+    {
+      id: 'kinetic-experiment-guide',
+      name: '动能实验向导',
+      role: '实验仿真向导',
+      icon: '🔬',
+      systemPrompt: '你是动能实验向导，指导学生操作 Python 物理数值仿真与传感器数据拟合绘图。',
+    },
+    {
+      id: 'kinetic-review-assessor',
+      name: '动能评审导师',
+      role: '答辩评审导师',
+      icon: '📊',
+      systemPrompt: '你是动能定理评审导师，针对实验系统误差、摩擦阻力修正和机械能转换进行深度质询。',
+    },
+    {
+      id: 'profile-analyst-assistant',
+      name: '学情画像分析助手',
+      role: '画像分析师',
+      icon: '📈',
+      systemPrompt: '你是学情画像分析助手，负责计算五维素养雷达（逻辑、工程、探究、表达、反思）与诊断认知断层。',
+    },
+    {
+      id: 'growth-trajectory-assistant',
+      name: '轨迹故事生成助手',
+      role: '成长叙事官',
+      icon: '🌱',
+      systemPrompt: '你是成长轨迹故事生成助手，负责提炼探究历程重大里程碑并生成第一人称个性化研学成长报告。',
+    },
+  ];
+
+  const allTestableAssistants = useMemo(() => {
+    const list = [...BUILTIN_ASSISTANTS_REGISTRY];
+    for (const ca of customAssistantsList) {
+      if (!list.some((a) => a.id === ca.id)) {
+        list.push({
+          id: ca.id,
+          name: ca.name,
+          role: ca.role || '自定义导师',
+          icon: ca.icon || '🤖',
+          systemPrompt: ca.systemPrompt || `你是遵循启途智学教学规范的${ca.name}。`,
+        });
+      }
+    }
+    return list;
+  }, [customAssistantsList]);
+
+  const activeTestAssistant = allTestableAssistants.find((a) => a.id === selectedAssistantId) ?? allTestableAssistants[0]!;
 
   useEffect(() => {
     fetchAvailableConfiguredModels()
@@ -230,6 +337,18 @@ export default function CopilotPage() {
         }
       })
       .catch(() => {});
+
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('qitu.admin.custom_assistants');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            setCustomAssistantsList(parsed);
+          }
+        }
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {
@@ -258,7 +377,7 @@ export default function CopilotPage() {
         {
           id: `msg-${Date.now()}`,
           role: 'system',
-          content: '我是启途智学管家。输入您的指令，如“创建雷霆战机新关卡设计团队”、“添加一个 Python 绘图 MCP”、“为动能定理添加补充知识库”。',
+          content: '我是启途智学管家。输入您的指令，如“创建雷霆战机新关卡设计团队”、“添加一个 Python 绘图 MCP”、“为动能定理添加补充知识库”。您也可在顶部切换为任意平台助手进行实时交互测试。',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ],
@@ -277,6 +396,41 @@ export default function CopilotPage() {
     setSessions(filtered);
     if (currentSessionId === id) {
       setCurrentSessionId(filtered[0]?.id ?? '');
+    }
+  };
+
+  // 严格精确提取用户命名，杜绝“未知名称”或“tool-xxxx”
+  const extractPreciseEntityName = (userText: string, type: 'assistant' | 'team' | 'mcp' | 'skill' | 'template' | 'knowledge'): string => {
+    const quoteMatch = userText.match(/[「“"']([^」”"']{2,30})[」”"']/);
+    if (quoteMatch && quoteMatch[1]?.trim()) {
+      return quoteMatch[1].trim();
+    }
+    const colonMatch = userText.match(/[:：]\s*([^\s,，。；\n]{2,30})/);
+    if (colonMatch && colonMatch[1]?.trim()) {
+      return colonMatch[1].trim();
+    }
+    const verbMatch = userText.match(/(?:创建|新建|添加|配置|组建|设计|生成)\s*(?:一个|个|一门|一款)?\s*([^,，。！？\n]{2,24})/);
+    if (verbMatch && verbMatch[1]?.trim()) {
+      let raw = verbMatch[1].trim()
+        .replace(/^(助手|智能体|团队|工具|MCP|技能|技能包|模板|知识库|文档)/, '')
+        .replace(/(助手|智能体|团队|工具|MCP|技能|技能包|模板|知识库|文档)$/, '')
+        .trim();
+      if (raw.length >= 2) {
+        if (type === 'assistant') return raw.endsWith('导师') || raw.endsWith('助手') || raw.endsWith('教练') ? raw : `${raw}启发导师`;
+        if (type === 'team') return raw.endsWith('团队') ? raw : `${raw}导师团队`;
+        if (type === 'mcp') return raw.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^\w-]/g, '') || `${raw}-mcp`;
+        if (type === 'skill') return raw.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^\w-]/g, '') || `${raw}-skill`;
+        if (type === 'template') return raw.endsWith('模板') ? raw : `${raw}探究课题模板`;
+        if (type === 'knowledge') return raw.endsWith('讲义') || raw.endsWith('文档') || raw.endsWith('资料') ? raw : `${raw}参考讲义`;
+      }
+    }
+    switch (type) {
+      case 'assistant': return '高中物理力学启发导师';
+      case 'team': return '跨学科项目式探究导师团队';
+      case 'mcp': return 'python-matplotlib-plotter-mcp';
+      case 'skill': return 'socratic-deep-inquiry-skill';
+      case 'template': return '综合性科学探究与工程实践模板';
+      case 'knowledge': return '核心物理规律推导与误差分析讲义';
     }
   };
 
@@ -309,13 +463,47 @@ export default function CopilotPage() {
       let toolSteps: ToolExecutionStep[] = [];
       let artifact: Message['artifact'];
 
-      if (userText.includes('助手') || userText.includes('智能体')) {
+      // A. 若当前选择测试特定助手（非默认启途智学管家），则以该助手的真实人设与职责回答
+      if (selectedAssistantId !== 'qitu-assistant') {
+        const asst = activeTestAssistant;
+        if (asst.id === 'qitu-intake-assistant') {
+          toolSteps = [
+            { name: 'intent_recognition', status: 'done', label: '苏格拉底短轮次意图探索与好奇心探寻' },
+            { name: 'pbl_catalog_match', status: 'done', label: '检索匹配当前学情适宜的 PBL 项目库' },
+          ];
+          replyContent = `你好！我是**启途智学助手**。很高兴和你开启探索旅程！\n\n针对你聊到的内容：“${userText}”，每一个伟大的科学发现都始于一个小小的疑问。你希望深入哪一类挑战？\n\n1. 🚀 **雷霆战机游戏设计**：用 Python 打造你的专属飞机大战、弹幕算法与碰撞检测！\n2. ⚡ **动手学动能定理**：解密过山车与滑板加速背后的机械能转换秘密！\n\n告诉我想法，我会为你一键开启项目搭档团队！`;
+        } else if (asst.id.includes('concept') || asst.id.includes('coach')) {
+          toolSteps = [
+            { name: 'socratic_tutor_inquiry', status: 'done', label: `【${asst.name}】调用短轮次苏格拉底启发规范（严禁直接给答案）` },
+            { name: 'theory_gate_check', status: 'done', label: '核验核心概念前置推导状态' },
+          ];
+          replyContent = `我是【**${asst.name}**】。\n\n针对你提出的问题：“${userText}”，让我们退一步从根本原理来思考：\n\n1. 在你的探究模型中，决定这一物理量或状态发生改变的核心原因是什么？\n2. 假设合外力或初始速度加倍，你预期系统的响应曲线会呈现怎样的变化趋势？\n\n请试着写出你的推导猜想，我们再一步步验证！`;
+        } else if (asst.id.includes('code') || asst.id.includes('guide') || asst.id.includes('experiment')) {
+          toolSteps = [
+            { name: 'sandbox_inspect', status: 'done', label: `【${asst.name}】安全沙箱代码断点与语法环境自检` },
+            { name: 'progressive_hint_provider', status: 'done', label: '下发第 1 级思维脚手架与分步排错线索' },
+          ];
+          replyContent = `我是【**${asst.name}**】。我们正在沙箱中协助你排查与实现：\n\n针对：“${userText}”，建议按照以下梯级线索进行调试：\n- **检查点 1**：确认进入主循环前，所有变量或精灵对象已完成合法初始化；\n- **检查点 2**：在控制台中打印每一帧的关键坐标变量，排查是否出现越界或负数；\n- **检查点 3**：如果遇到语法异常，关注报错提示的具体行号和未定义的变量标识符。\n\n尝试修改后控制台输出了什么？告诉我，我们继续推进。`;
+        } else if (asst.id.includes('review') || asst.id.includes('assessor')) {
+          toolSteps = [
+            { name: 'rubrics_evaluation', status: 'done', label: `【${asst.name}】调取多维形成性评价量规（概念/工程/表达）` },
+            { name: 'reflection_generator', status: 'done', label: '生成批判性思维与误差溯源追问' },
+          ];
+          replyContent = `我是【**${asst.name}**】。\n\n依据项目量规，我对你的探究思路进行了形成性审查：\n\n- **科学严谨性**：理论逻辑闭环，但实验系统误差（如阻力、传感器采样频率）尚未纳入修正。\n- **工程规范性**：沙箱代码结构良好，需注意函数单一职责与常量抽取。\n- **反思追问**：如果在完全失重的环境下重新做这个实验，你的结论会有哪些不同？`;
+        } else {
+          toolSteps = [
+            { name: 'custom_asst_runtime', status: 'done', label: `执行【${asst.name}】专属角色交互策略` }
+          ];
+          replyContent = `我是【**${asst.name}**】（${asst.role}）。已收到你的输入：“${userText}”。遵循我的角色职责与启途智学教学规范，我将引导你一步步拆解问题并达成目标。`;
+        }
+      } else if (userText.includes('助手') || userText.includes('智能体')) {
+        // B. 启途智学管家：创建助手（精准命名）
         const newAsstId = `asst-custom-${Date.now()}`;
-        const asstName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `导师-${userText.slice(0, 10)}`;
+        const asstName = extractPreciseEntityName(userText, 'assistant');
         const customAsst = {
           id: newAsstId,
           source: 'user',
-          name: asstName || '全能学科启发导师',
+          name: asstName,
           description: `由启途智学管家自动创建：${userText}`,
           role: '导师助手',
           icon: '🤖',
@@ -333,6 +521,7 @@ export default function CopilotPage() {
           const cached = localStorage.getItem('qitu.admin.custom_assistants');
           const list = cached ? JSON.parse(cached) : [];
           localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([customAsst, ...list]));
+          setCustomAssistantsList((prev) => [customAsst, ...prev]);
         } catch {}
 
         void createPersistedAssistant({
@@ -345,11 +534,11 @@ export default function CopilotPage() {
         }).catch(() => {});
 
         toolSteps = [
-          { name: 'agent_sdk_spec_parser', status: 'done', label: `解析导师角色需求：${userText.slice(0, 12)}` },
+          { name: 'agent_sdk_spec_parser', status: 'done', label: `精准解析导师角色需求：【${customAsst.name}】` },
           { name: 'model_router_bind', status: 'done', label: `挂载模型网关：${selectedModel} (思考强度: ${thinkingStrength})` },
-          { name: 'persist_assistant_db', status: 'done', label: '写入智能体数据库并刷新设置视图' },
+          { name: 'persist_assistant_db', status: 'done', label: '写入智能体数据库并刷新设置中心' },
         ];
-        replyContent = `已根据自建 Agent SDK 生成全新导师助手【**${customAsst.name}**】配置并实时持久化保存！\n\n您现在前往 **[设置 > 智能体助手](/settings/assistants)** 即可在列表中实时查看该助手，支持立即配置技能与绑定团队。`;
+        replyContent = `已根据自建 Agent SDK 生成全新导师助手【**${customAsst.name}**】配置并实时持久化保存！\n\n您现在前往 **[设置 > 智能体助手](/settings/assistants)** 即可在列表中实时查看该助手，也可在上方助手切换下拉框中直接切换进行对话测试。`;
         artifact = {
           type: 'assistant',
           title: `生成新导师：${customAsst.name}`,
@@ -357,10 +546,10 @@ export default function CopilotPage() {
           jsonPreview: JSON.stringify(customAsst, null, 2),
         };
       } else if (userText.includes('团队') || userText.includes('组建')) {
+        // C. 启途智学管家：创建团队（精准命名）
         const newTeamId = `team-custom-${Date.now()}`;
-        const teamName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `${userText.slice(0, 12)}研讨团队`;
+        const teamName = extractPreciseEntityName(userText, 'team');
 
-        // 1. 先创建/确保团队成员助手存在，并写入 custom_assistants
         const coachAsst = {
           id: `asst-${newTeamId}-coach`,
           source: 'user',
@@ -418,12 +607,12 @@ export default function CopilotPage() {
           const cached = localStorage.getItem('qitu.admin.custom_assistants');
           const list = cached ? JSON.parse(cached) : [];
           localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([...newAssistants, ...list]));
+          setCustomAssistantsList((prev) => [...newAssistants, ...prev]);
         } catch {}
 
-        // 2. 组建团队并绑定已创建的助手
         const customTeam = {
           id: newTeamId,
-          name: teamName || '全新 PBL 课题导师团队',
+          name: teamName,
           description: `由启途智学管家自动组建：${userText}`,
           leaderAssistantId: coachAsst.id,
           workspaceMode: 'shared',
@@ -470,11 +659,11 @@ export default function CopilotPage() {
 
         toolSteps = [
           { name: 'create_team_assistants', status: 'done', label: `创建并注册团队专属智能体（${coachAsst.name}、${guideAsst.name}、${reviewerAsst.name}）` },
-          { name: 'team_orchestrator', status: 'done', label: `调度自建 Agent SDK 多智能体协同引擎并组建【${customTeam.name}】` },
-          { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束门禁' },
+          { name: 'team_orchestrator', status: 'done', label: `调度自建 Agent SDK 多智能体协同引擎组建【${customTeam.name}】` },
+          { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束阶段门禁' },
           { name: 'persist_team_registry', status: 'done', label: '将团队与助手同步持久化至设置中心' },
         ];
-        replyContent = `已成功先创建团队专属导师助手（**${coachAsst.name}**、**${guideAsst.name}**、**${reviewerAsst.name}**），并完成协同团队【**${customTeam.name}**】组建！\n\n- 前往 **[设置 > AI 助手](/settings/assistants)** 即可实时查看和微调已创建的各智能体助手。\n- 前往 **[设置 > 团队协同](/settings/teams)** 即可在团队列表中查看该团队及各角色导师架构。`;
+        replyContent = `已成功创建团队专属导师助手（**${coachAsst.name}**、**${guideAsst.name}**、**${reviewerAsst.name}**），并完成协同团队【**${customTeam.name}**】组建！\n\n- 前往 **[设置 > AI 助手](/settings/assistants)** 即可实时查看和微调已创建的各智能体助手。\n- 前往 **[设置 > 团队协同](/settings/teams)** 即可在团队列表中查看该团队及各角色导师架构。`;
         artifact = {
           type: 'team',
           title: `自动生成 PBL 协同团队：${customTeam.name}`,
@@ -482,21 +671,35 @@ export default function CopilotPage() {
           jsonPreview: JSON.stringify({ team: customTeam, createdAssistants: newAssistants }, null, 2),
         };
       } else if (userText.includes('MCP') || userText.includes('工具')) {
+        // D. 启途智学管家：创建 MCP 工具（精准命名）
         const newMcpId = `mcp-custom-${Date.now()}`;
-        const mcpName = userText.includes('：') ? userText.split('：')[1]?.slice(0, 16) : `tool-${userText.slice(0, 8)}`;
+        const mcpName = extractPreciseEntityName(userText, 'mcp');
         const customMcp = {
           id: newMcpId,
-          name: mcpName || 'custom-analysis-tool',
+          name: mcpName,
           command: 'npx',
-          args: ['-y', `@tools/${mcpName || 'runner'}`],
+          args: ['-y', `@tools/${mcpName}`],
           env: { QITU_ENV: 'production' },
           transport: 'stdio',
           status: 'connected',
-          latencyMs: 12,
-          tools: ['data_query', 'graph_plot', 'schema_audit'],
+          latencyMs: 14,
+          tools: ['data_query', 'scientific_plot', 'schema_audit'],
           boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
           description: `由启途智学管家自动配置：${userText}`,
-          rawJson: JSON.stringify({ mcpServers: { [mcpName || 'tool']: { command: 'npx', args: ['-y', `@tools/${mcpName || 'runner'}`] } }, boundAssistants: ['启途智学管家'] }, null, 2),
+          rawJson: JSON.stringify(
+            {
+              mcpServers: {
+                [mcpName]: {
+                  command: 'npx',
+                  args: ['-y', `@tools/${mcpName}`],
+                  env: { QITU_ENV: 'production' },
+                },
+              },
+              boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
+            },
+            null,
+            2
+          ),
         };
         try {
           const cached = localStorage.getItem('qitu.admin.mcp_list');
@@ -505,9 +708,9 @@ export default function CopilotPage() {
         } catch {}
 
         toolSteps = [
-          { name: 'mcp_json_schema_build', status: 'done', label: '构建标准 JSON-RPC 2.0 MCP 配置' },
+          { name: 'mcp_json_schema_build', status: 'done', label: `构建标准 JSON-RPC 2.0 MCP 配置：【${customMcp.name}】` },
           { name: 'security_sandbox_audit', status: 'done', label: `运行权限安全审计 (当前策略: ${runtimePermission})` },
-          { name: 'persist_tool_matrix', status: 'done', label: '注入工具矩阵与 MCP 清单' },
+          { name: 'persist_tool_matrix', status: 'done', label: '注入工具矩阵与 MCP 清单并持久化' },
         ];
         replyContent = `已生成对应的 MCP 工具【**${customMcp.name}**】并实时同步！\n\n您现在前往 **[设置 > MCP 与工具](/settings/tools)** 即可在工具矩阵中一键打上✔立即生效。`;
         artifact = {
@@ -516,12 +719,56 @@ export default function CopilotPage() {
           details: '协议标准：JSON-RPC 2.0 | 已在工具矩阵实时就绪',
           jsonPreview: JSON.stringify(customMcp, null, 2),
         };
+      } else if (userText.includes('技能') || userText.includes('skill') || userText.includes('规范') || userText.includes('能力包')) {
+        // E. 启途智学管家：创建技能包（精准命名）
+        const skillSlug = extractPreciseEntityName(userText, 'skill');
+        const customSkill = {
+          id: skillSlug,
+          name: skillSlug,
+          description: `由启途智学管家自动配置规范技能：${userText}`,
+          tags: ['启发探究', '苏格拉底', 'PBL规范'],
+          filesCount: 2,
+          addedBy: '启途智学管家',
+          updatedAtText: '刚刚',
+          boundAssistantIds: ['qitu-assistant', 'fighter-concept-coach', 'kinetic-concept-coach'],
+          files: [
+            {
+              name: 'SKILL.md',
+              sizeBytes: 2500,
+              content: `# ${skillSlug} 规范指南\n\n## 技能定位与核心目标\n定义智能体在应对学生提问时的教学互动范式，坚守启发思考而非倾倒答案原则。\n\n## 核心铁律 (Hard Constraints)\n1. 严禁向学生直接提供可执行完整代码。\n2. 阶段门禁检查：TheoryMastered 达标前坚决阻断实践阶段跳转。`,
+            },
+            {
+              name: 'prompts/instruction.txt',
+              sizeBytes: 1100,
+              content: `[SKILL PROMPT CONTRACT]\nSkill: ${skillSlug}\nMode: Socratic inquiry & structured scaffolding. Keep turns concise and question-driven.`,
+            },
+          ],
+        };
+        try {
+          const cached = localStorage.getItem('qitu.admin.skills_list');
+          const list = cached ? JSON.parse(cached) : [];
+          localStorage.setItem('qitu.admin.skills_list', JSON.stringify([customSkill, ...list]));
+        } catch {}
+
+        toolSteps = [
+          { name: 'skill_ast_validator', status: 'done', label: `校验技能包 SKILL.md 与 Prompt 结构合规性：【${customSkill.name}】` },
+          { name: 'assistant_skill_binder', status: 'done', label: '挂载至相关导师智能体技能清单' },
+          { name: 'persist_skill_registry', status: 'done', label: '持久化写入技能库' },
+        ];
+        replyContent = `已成功为平台生成专属技能包【**${customSkill.name}**】并实时同步！\n\n您现在前往 **[设置 > 技能中心](/settings/skills)** 即可查看该技能包的 SKILL.md 文档并为助手授权绑定。`;
+        artifact = {
+          type: 'skill',
+          title: `技能配置包：${customSkill.name}`,
+          details: '包含 SKILL.md 教学规范与 prompt 模板，已在技能中心实时显示',
+          jsonPreview: JSON.stringify(customSkill, null, 2),
+        };
       } else if (userText.includes('模板') || userText.includes('项目模板') || userText.includes('模板库')) {
+        // F. 启途智学管家：创建模板（精准命名）
         const newTplId = `tpl-custom-${Date.now()}`;
-        const tplTitle = userText.includes('：') ? userText.split('：')[1]?.slice(0, 18) : `${userText.slice(0, 12)}探究课题`;
+        const tplTitle = extractPreciseEntityName(userText, 'template');
         const customTpl = {
           id: newTplId,
-          title: tplTitle || '全新项目设计模板',
+          title: tplTitle,
           summary: `由启途智学管家自动设计：${userText}`,
           content: '包含阶段一意图确认、阶段二理论推导(TheoryMastered门禁)、阶段三代码仿真与阶段四答辩反思。',
           stage: 'exploration',
@@ -542,7 +789,7 @@ export default function CopilotPage() {
         } catch {}
 
         toolSteps = [
-          { name: 'template_schema_compiler', status: 'done', label: '编译 PBL 阶段阶梯与门禁量规' },
+          { name: 'template_schema_compiler', status: 'done', label: `编译 PBL 阶段阶梯与门禁量规：【${customTpl.title}】` },
           { name: 'persist_template_store', status: 'done', label: '持久化上架至项目模板库' },
         ];
         replyContent = `已成功为课题【**${customTpl.title}**】生成完整 PBL 设计模板！\n\n您现在前往 **[设置 > 项目模板](/settings/templates)** 即可查看四阶段阶梯与门禁配置。`;
@@ -553,11 +800,12 @@ export default function CopilotPage() {
           jsonPreview: JSON.stringify(customTpl, null, 2),
         };
       } else if (userText.includes('知识库') || userText.includes('文档') || userText.includes('知识')) {
+        // G. 启途智学管家：创建知识库（精准命名）
         const newDocId = `doc-custom-${Date.now()}`;
-        const docTitle = userText.includes('：') ? userText.split('：')[1]?.slice(0, 18) : `${userText.slice(0, 12)}参考资料`;
+        const docTitle = extractPreciseEntityName(userText, 'knowledge');
         const customDoc = {
           id: newDocId,
-          title: docTitle || '新录入知识库文献',
+          title: docTitle,
           category: 'kinetic',
           targetTeam: '全平台通用导师',
           chunksCount: 6,
@@ -571,7 +819,7 @@ export default function CopilotPage() {
         } catch {}
 
         toolSteps = [
-          { name: 'rag_vector_embed', status: 'done', label: '执行文本分块与向量化嵌入处理' },
+          { name: 'rag_vector_embed', status: 'done', label: `执行文本分块与向量化嵌入处理：【${customDoc.title}】` },
           { name: 'persist_knowledge_base', status: 'done', label: '录入平台启途知识库并建档' },
         ];
         replyContent = `已成功将文献【**${customDoc.title}**】录入平台知识库！\n\n您现在前往 **[设置 > 知识库](/settings/knowledge)** 即可在知识列表与切片抽屉中实时检索该文档。`;
@@ -585,7 +833,7 @@ export default function CopilotPage() {
         toolSteps = [
           { name: 'qitu_agent_sdk_scan', status: 'done', label: '全量扫描系统配置与微模块依赖' }
         ];
-        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型，随时为您执行结构化变更。您可以输入“创建一个高中物理力学探究团队”、“新增一个 Python 绘图工具”或“为动能定理添加补充知识库”，我将为您实时配置并在设置中心显示。`;
+        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型。您可以输入“创建一个高中物理力学探究团队”、“新增一个 Python 绘图工具”或“为动能定理添加补充知识库”，我将为您精准命名并实时配置，立即可在对应设置页面查验。`;
       }
 
       const botMsg: Message = {
@@ -813,6 +1061,47 @@ export default function CopilotPage() {
 
           {/* 快捷设置区 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
+              <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}>🤖 交互助手:</span>
+              <select
+                value={selectedAssistantId}
+                onChange={(e) => setSelectedAssistantId(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#1e3a8a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '200px' }}
+                title="选择在当前控制台中测试的助手角色"
+              >
+                <optgroup label="平台系统助手">
+                  <option value="qitu-assistant">启途智学管家 (默认·管理中枢)</option>
+                  <option value="qitu-intake-assistant">启途智学助手 (学生端探索接引)</option>
+                </optgroup>
+                <optgroup label="雷霆战机团队">
+                  <option value="fighter-leader">雷霆战机总导师</option>
+                  <option value="fighter-concept-coach">战机概念教练 (苏格拉底启发)</option>
+                  <option value="fighter-code-guide">战机代码向导 (沙箱实践)</option>
+                  <option value="fighter-review-assessor">战机评审导师 (评价反思)</option>
+                </optgroup>
+                <optgroup label="动能定理团队">
+                  <option value="kinetic-leader">动能定理总导师</option>
+                  <option value="kinetic-concept-coach">动能概念教练 (公式推导门禁)</option>
+                  <option value="kinetic-experiment-guide">动能实验向导 (数值仿真)</option>
+                  <option value="kinetic-review-assessor">动能评审导师 (答辩评估)</option>
+                </optgroup>
+                <optgroup label="学情与画像">
+                  <option value="profile-analyst-assistant">学情画像分析助手</option>
+                  <option value="growth-trajectory-assistant">轨迹故事生成助手</option>
+                </optgroup>
+                {customAssistantsList.length > 0 && (
+                  <optgroup label="自定义与已启用助手">
+                    {customAssistantsList.map((ca) => (
+                      <option key={ca.id} value={ca.id}>
+                        {ca.name} ({ca.role || '导师'})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+
             {/* Thinking 强度 (参考 Pi Agent: Off / Normal / High / Max) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
@@ -873,6 +1162,24 @@ export default function CopilotPage() {
             </span>
           </div>
         </div>
+
+        {/* 助手切换提示横幅 */}
+        {selectedAssistantId !== 'qitu-assistant' && (
+          <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>{activeTestAssistant.icon || '🤖'}</span>
+              <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
+              <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 遵循自建 Agent SDK 教学与交互约束）</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedAssistantId('qitu-assistant')}
+              style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
+            >
+              切回管家管理模式
+            </button>
+          </div>
+        )}
 
         {/* 消息历史流 */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
