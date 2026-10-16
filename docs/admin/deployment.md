@@ -5,7 +5,7 @@
 
 ## 1. 单一公共入口
 
-公网只暴露 Nginx 的 `3000`（生产可由 TLS 终止层映射到 `443`）。Nginx 按路径转发到回环地址上的内部服务：
+当前公网入口是 `http://122.51.130.204/`（Nginx `80`），同时保留历史 `3000` 入口；本轮不配置 TLS。Nginx 按路径转发到回环地址上的内部服务：
 
 | 公共路径 | 内部服务 | 角色 |
 |---|---:|---|
@@ -60,10 +60,10 @@ bash tooling/start-qitu-services.sh build     # 强制重建 runtime 包 + 前�
 - 只要 `qitu-<name>.service` 存在且 **enabled**，脚本就只调 `systemctl restart`，不自己 `setsid` 起进程。
   判定用 `is-enabled` 而非 `is-active`：单元 `failed`/crash-loop 时 `is-active` 为假，旧版据此在 `:3100`
   又起了一个 `next dev` 与 systemd 抢端口，是 2026-10-13 502 的成因之一。
-- 当前 systemd 托管（均为**生产构建 `next start`**）：`qitu-auth`（`:3100`）、`qitu-student`（`:3101`）、
-  `qitu-admin`（`:3104`）；单元文件同步保存在 `tooling/qitu-<name>.service`。
-  api / workers / parent / teacher 由脚本以独立会话启动（parent / teacher 也按 `QITU_FRONTEND_MODE`
-  跑 `next start`），停止时按 `QITU_SVC=<name>` 环境标记回收整棵进程树。
+- 当前五个前端均由 systemd 托管并运行**生产构建 `next start`**：`qitu-auth`（`:3100`）、
+  `qitu-student`（`:3101`）、`qitu-parent`（`:3102`）、`qitu-teacher`（`:3103`）、`qitu-admin`（`:3104`）。
+  2026-10-17 的隔离发布使用服务 drop-in 指向独立目录，详见 §3.4；不能仅从仓库中的单元模板推断实际运行目录。
+  API / workers 维持原归属；本次前端发布不重启它们。
 - 生产模式的单元同样**必须先有构建**：`bash tooling/start-qitu-services.sh build`。
   缺 `.next/BUILD_ID` 时单元会 crash-loop（`/` 与 `/login` 直接 502），`status` 会打印该提示。
   不要改用在 `:3100` 跑 `next dev` 来「救活」它（见 [`tooling/auth-production.md`](../../tooling/auth-production.md)）。
@@ -260,6 +260,32 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 
 回归检查：`python3 tooling/check-frontend-assets.test.py`，覆盖正常资源、CSS 返回 400/404，
 以及 HTTP 200 却返回 HTML 的错误资源。
+
+### 3.4 五端品牌发布与隔离构建（2026-10-17，#56）
+
+- 前端代码提交 `04be640`；服务器 Git 主工作树仍为 `/root/team-workspaces/qitu-zhixue`。
+- 使用 `git archive` 将该提交导出到 `/root/qitu-releases/04be640`，以冻结锁文件离线安装依赖，
+  串行执行 `pnpm build --concurrency=1`。没有覆盖任何正在使用的 `.next`。
+- 五个 `qitu-<name>.service` 的 `zz-brand-story-release.conf` drop-in 设置该发布目录、
+  `NODE_ENV=production`、`QITU_API_ORIGIN=http://127.0.0.1:4100` 和各自回环端口。
+  修正家长端单元指向旧 worktree 的问题，补齐教师端 systemd 单元，并逐端切换。
+- 原构建仍保留在主工作树，切换前服务配置在 `/root/qitu-releases/before-04be640/units/`，
+  Git 备份分支为 `backup/brand-story-before-20261017`。API 进程与数据库保持不变。
+
+**后续发布：**先以 `systemctl show qitu-<name> -p WorkingDirectory -p ExecStart` 查看真实归属。
+在新独立目录构建完整产物，检查五个 `.next/BUILD_ID` 后更新对应 drop-in、`daemon-reload`、
+逐端重启并检查静态资源。单独在主工作树执行 `build` 不会更新当前 release；单独 `restart` 也不会部署新代码。
+
+**回滚：**先确认主工作树旧 `.next/BUILD_ID` 与资源完整，再为需要回滚的服务修改品牌 drop-in，
+将 WorkingDirectory 指回主工作树，保留显式 `next start --hostname 127.0.0.1 --port <端口>`。
+执行 `systemctl daemon-reload` 后逐端重启和验证。不要简单恢复旧家长单元或删除教师单元：
+旧配置存在错误目录/手工进程归属问题。不要回滚 API、数据库或其他 worktree。
+
+验收：本机与 Linux 生产构建通过；lint、typecheck、测试通过（API 724 项）；Playwright 使用网站自带演示账号，
+首页和四端在 1440、320、375、414、768px 下加载，无页面异常和非 API 静态资源失败、无页面横向溢出。
+六张 WebP 和 MP4 的线上 SHA256 与提交一致，视频返回正确 MIME 和 HTTP 206 Range。
+视频暂停、章节选择、离屏暂停、离线、节流模式主动播放、系统/产品减弱动态、故障重试通过。
+真实后台标签页切换未在此次可见窗口环境中稳定复现，不将该项列为通过证据。
 
 ## 4. Pi/Herdr 开发 Agent（非运行时）
 
