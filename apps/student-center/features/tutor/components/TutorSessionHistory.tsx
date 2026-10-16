@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TutorTurn } from '@qitu/contracts';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
-import { resolveSubAgents, AgentDetailModal, type SubAgentStatus } from './TeamAgentHud';
 
 export interface HistorySessionItem {
   id: string;
@@ -111,12 +110,6 @@ export function TutorSessionHistory({
   const dataSource = useTutorDataSource();
   const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
-  const [inspectingAgent, setInspectingAgent] = useState<SubAgentStatus | null>(null);
-  const isThunder = /雷霆|战机|pygame|fighter/i.test(currentTitle ?? '');
-  const teamName = currentProjectId ? (isThunder ? '雷霆战机团队' : '动能定理导师团队') : '启途智学助手';
-  const subAgents = useMemo(() => {
-    return resolveSubAgents(currentProjectId, currentTitle);
-  }, [currentProjectId, currentTitle]);
 
   useEffect(() => {
     let cancelled = false;
@@ -342,78 +335,6 @@ export function TutorSessionHistory({
         <span style={{ position: 'absolute', left: '8px', top: '7px', fontSize: '12px', opacity: 0.5 }}>🔍</span>
       </div>
 
-      {/* 团队协同智能体执行状态 HUD（左侧边栏保留，支持点开查看详细对话历史） */}
-      <div style={{ marginBottom: '12px', padding: '10px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{currentProjectId ? '👥' : '🧭'}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{teamName}</span>
-          </div>
-          <span
-            style={{
-              fontSize: '10px',
-              padding: '1px 6px',
-              borderRadius: '4px',
-              background: currentProjectId ? '#dcfce7' : '#dbeafe',
-              color: currentProjectId ? '#15803d' : '#2563eb',
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
-            {currentProjectId ? '团队接管' : '启途助手'}
-          </span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          {subAgents.map((agent) => (
-            <div
-              key={agent.id}
-              onClick={() => setInspectingAgent(agent)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '6px 8px',
-                borderRadius: '6px',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                cursor: 'pointer',
-                fontSize: '11.5px',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.background = '#eff6ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.background = '#ffffff';
-              }}
-              title="点击查看此智能体的详细对话历史与工具调用"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                <span>{agent.avatar}</span>
-                <span style={{ fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {agent.name}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                <span
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: agent.status === 'active' ? '#22c55e' : '#94a3b8',
-                  }}
-                />
-                <span style={{ fontSize: '10.5px', color: agent.status === 'active' ? '#16a34a' : '#64748b' }}>
-                  {agent.statusLabel}
-                </span>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>›</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* 会话列表 */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -530,14 +451,6 @@ export function TutorSessionHistory({
       >
         <p style={{ margin: 0 }}>🔒 会话受服务端安全门禁与审计保护，未成年人数据最小化可见。</p>
       </div>
-
-      {inspectingAgent && (
-        <AgentDetailModal
-          inspectingAgent={inspectingAgent}
-          turns={turns}
-          onClose={() => setInspectingAgent(null)}
-        />
-      )}
     </aside>
   );
 }
