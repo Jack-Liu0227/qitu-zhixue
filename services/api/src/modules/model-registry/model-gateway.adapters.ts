@@ -276,10 +276,21 @@ const anthropicMessages: ProviderAdapter = {
   },
 };
 
+/**
+ * Gemini providers in the registry use the OpenAI-compatible gateway shape.
+ * Native Gemini discovery/testing remains available in the admin UI, while
+ * runtime calls stay on the same normalized adapter contract.
+ */
+const googleGemini: ProviderAdapter = {
+  ...openaiCompletions,
+  api: 'google-gemini',
+};
+
 const ADAPTERS: Record<ModelApi, ProviderAdapter> = {
   'openai-completions': openaiCompletions,
   'openai-responses': openaiResponses,
   'anthropic-messages': anthropicMessages,
+  'google-gemini': googleGemini,
 };
 
 /** 按协议取适配器。三种协议在类型层已穷尽，运行时仍兜底给清晰错误。 */
