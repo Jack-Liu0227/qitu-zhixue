@@ -1,14 +1,20 @@
 .qitu-tutor-page {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 100%;
+  height: calc(100vh - 65px);
   margin: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .qitu-tutor-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 4px 8px 16px;
+  padding: 8px 20px 12px;
 }
 
 .qitu-tutor-header-mascot {
@@ -1402,9 +1408,10 @@
 .qitu-tutor-workspace-layout {
   display: flex;
   gap: 16px;
-  padding: 0 24px 20px;
-  height: calc(100vh - 145px);
-  min-height: 560px;
+  padding: 0 20px 14px;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
@@ -1585,8 +1592,9 @@
 @media (max-width: 768px) {
   .qitu-tutor-workspace-layout {
     flex-direction: column;
-    height: calc(100vh - 110px);
-    min-height: 480px;
+    flex: 1 1 0%;
+    height: 100%;
+    min-height: 0;
     padding: 0 10px 14px;
     gap: 10px;
   }
