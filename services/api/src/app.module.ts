@@ -31,6 +31,7 @@ import { PublicContentModule } from './modules/public-content/public-content.mod
 import { InitializationModule } from './modules/initialization/initialization.module';
 import { ModelSettingsModule } from './modules/settings/model-config.module';
 import { TeamRuntimeModule } from './modules/team-runtime/team-runtime.module';
+import { FeishuModule } from './modules/feishu/feishu.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { TeamRuntimeModule } from './modules/team-runtime/team-runtime.module';
     // ModelRegistryModule 保存供应商/模型；Agent Runtime 负责最终模型选择。
     ModelSettingsModule,
     TeamRuntimeModule,
+    FeishuModule,
   ],
 })
 export class AppModule {}

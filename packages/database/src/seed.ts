@@ -33,7 +33,7 @@ import pg from 'pg';
 const SEEDS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../database/seeds');
 
 /** 确定性执行顺序；数组顺序即外键依赖顺序，禁止重排。 */
-const SEED_FILES = ['demo-identities.sql', 'tutor-workspace.sql', 'domain-foundation.sql', 'admin-ai-config.sql'] as const;
+const SEED_FILES = ['demo-identities.sql', 'tutor-workspace.sql', 'domain-foundation.sql', 'admin-ai-config.sql', 'feishu-reporting-assistant.sql'] as const;
 
 type SeedFile = (typeof SEED_FILES)[number];
 

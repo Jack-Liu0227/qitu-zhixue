@@ -4,6 +4,7 @@ export * from './agent-runtime';
 export * from './team-runtime';
 export * from './consultation';
 export * from './feedback';
+export * from './feishu';
 export * from './growth-records';
 export * from './identity';
 export * from './idempotency';

@@ -28,6 +28,7 @@ const SETTINGS_NAV: NavGroup[] = [
     group: 'AI 核心架构',
     items: [
       { href: '/settings/assistants', label: 'AI 助手', icon: '🤖' },
+      { href: '/settings/feishu', label: '飞书机器人', icon: '🪽' },
       { href: '/settings/teams', label: '协作团队', icon: '👥' },
       { href: '/settings/model-providers', label: '模型接入', icon: '◈' },
       { href: '/settings/skills', label: '技能中心', icon: 'ϟ' },
