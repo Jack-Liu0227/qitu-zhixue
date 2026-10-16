@@ -30,6 +30,8 @@ export interface ProjectSummary {
   title: string;
   stage: ProjectStage;
   progress: number;
+  /** Number of persisted student/assistant turns in the AI tutor session. */
+  turnCount?: number;
 }
 
 /**

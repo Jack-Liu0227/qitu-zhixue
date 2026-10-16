@@ -406,6 +406,25 @@ export class TutorService {
     assertOwnedBy(snapshot, ownerId);
     return this.hydrate(snapshot);
   }
+  /** Read existing project session counts without creating empty sessions. */
+  async getProjectSessionCounts(
+    projectIds: readonly string[],
+    ownerId: string,
+  ): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (const projectId of [...new Set(projectIds)].filter(Boolean).slice(0, 100)) {
+      const snapshot = this.durable
+        ? await this.store.findByProject(projectId)
+        : [...this.sessions.values()].find((session) => session.projectId === projectId) ?? null;
+      if (snapshot === null) {
+        counts[projectId] = 0;
+      } else {
+        assertOwnedBy(snapshot, ownerId);
+        counts[projectId] = snapshot.turns.length;
+      }
+    }
+    return counts;
+  }
 
   /** 契约 `GetTutorSessionResponse` 投影；不含审计与内部字段。 */
   toSessionResponse(record: TutorSessionRecord): GetTutorSessionResponse {
