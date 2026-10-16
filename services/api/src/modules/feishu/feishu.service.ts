@@ -214,7 +214,8 @@ export class FeishuService {
       const secretKey = requireSecretKey();
       const recipients = currentBot?.reportRecipients ?? [];
       const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
+      const bindingInsert = tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
+      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
       await tx.update(feishuBots).set({ enabled: true, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: userInfo.tenant_brand === 'lark' ? 'lark' : currentBot?.domain ?? 'feishu', reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: row.createdBy, deviceCodeEncrypted: null, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
       await this.audit.write({ actorId: row.createdBy ?? null, actorRole: 'admin', action: 'admin.feishu.device.bound', targetType: 'feishu_qr_session', targetId: id, detail: { recipientHash: openIdHash, assistantId: currentBot?.assistantId } }, tx);
@@ -288,7 +289,8 @@ export class FeishuService {
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
       const recipients = currentBot?.reportRecipients ?? [];
       const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
+      const bindingInsert = tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
+      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
       const nextRecipients = recipients.includes(openId) ? recipients : [...recipients, openId];
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
       await tx.update(feishuBots).set({ reportRecipients: nextRecipients, updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
