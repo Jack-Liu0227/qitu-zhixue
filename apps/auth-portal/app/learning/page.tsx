@@ -13,11 +13,13 @@ export const metadata: Metadata = {
 export default function LearningPage() {
   return (
     <PublicPageShell>
-      <section className="public-hero">
+      <section className="public-hero public-hero--wide">
+        <div className="home-shell public-hero-heading">
+          <p className="public-kicker"><Icon name="layers" size={16} /> Project-based learning</p>
+          <h1 className="public-title">把问题带进现实，<span>把想法做成作品。</span></h1>
+        </div>
         <div className="home-shell public-hero-grid">
           <div>
-            <p className="public-kicker"><Icon name="layers" size={16} /> Project-based learning</p>
-            <h1 className="public-title">把问题带进现实，<span>把想法做成作品。</span></h1>
             <p className="public-lead">
               项目式学习不是完成一张练习单，而是经历一次完整的研究过程：定义问题、提出假设、验证方向，
               最后留下自己能够讲清楚的成果。

@@ -67,6 +67,26 @@
   line-height: 1.6;
 }
 
+/* The shared state icon is 72px; this illustration contains a full mascot and note. */
+.qitu-growth-empty .qitu-state-illustration {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  margin-bottom: 8px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.qitu-growth-empty .qitu-robot {
+  display: block;
+  flex-shrink: 0;
+}
+
+.qitu-growth-empty .qitu-handwritten {
+  max-width: 100%;
+  line-height: 1.6;
+}
+
 /* ---- 空态插画：机器人 + 手写小纸条纵向居中 ---- */
 .qitu-growth-page .qitu-empty-state .qitu-state-illustration,
 .qitu-state-illustration:has(.qitu-growth-empty-illustration) {

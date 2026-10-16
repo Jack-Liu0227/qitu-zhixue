@@ -1339,6 +1339,9 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
 .admin-console-topbar .qitu-avatar,
 .admin-console-topbar [class*='avatar'] { box-shadow: 0 2px 8px rgb(27 104 248 / 18%); }
 .admin-console-topbar .auth-logout {
+  position: static;
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 7px 11px;
   border-color: rgb(185 198 218 / 65%);
   border-radius: 8px;

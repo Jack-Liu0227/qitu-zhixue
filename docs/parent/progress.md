@@ -44,3 +44,10 @@ GET /api/v1/growth/:childId/growth              成长轨迹（家长授权读�
 
 - [`home.md`](./home.md)
 - [`../student/growth.md`](../student/growth.md)
+
+
+## 作品筛选
+
+作品成果中的全部、进行中、已完成和关键词搜索统一作用于焦点作品及其余作品。
+焦点作品不匹配时，同时隐藏它的版本和成长详情；没有匹配结果时显示明确空态。
+筛选按钮通过 `aria-pressed` 表达选中状态，切换孩子时重置筛选。

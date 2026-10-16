@@ -1408,6 +1408,35 @@
   overflow: hidden;
 }
 
+/* Keep the collapsed toggle inside its own rail, with enough room for both characters. */
+.qitu-live-session-sidebar {
+  box-sizing: border-box;
+  width: min(220px, 28vw);
+  flex-shrink: 0;
+  padding: 12px;
+  border: 1px solid #e4ecf7;
+  border-radius: 12px;
+  background: #fff;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+}
+
+.qitu-live-session-sidebar.is-collapsed {
+  width: 76px;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.qitu-live-session-toggle {
+  flex-shrink: 0;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  white-space: nowrap;
+}
+
 /* 意图确认精简提示条：不挤压聊天区域高度，保持聊天视口宽阔通畅 */
 .qitu-tutor-intent-banner {
   flex: 0 0 auto;

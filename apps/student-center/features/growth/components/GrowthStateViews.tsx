@@ -33,21 +33,23 @@ export function GrowthLoadingView() {
 
 export function GrowthEmptyView() {
   return (
-    <EmptyState
-      title="你的成长轨迹会从这里开始"
-      description="完成第一个小目标后，里程碑、作品、反思和掌握的目标都会出现在这里。现在，去灵感空间开始第一个项目吧。"
-      illustration={
-        <div className="qitu-growth-empty-illustration">
-          <RobotMascot mood="cheering" size={120} />
-          <HandwrittenNote rotate={-4}>第一步也很了不起</HandwrittenNote>
-        </div>
-      }
-      action={
-        <StudentLink className="qitu-button qitu-button-primary" href="/student/inspiration">
-          去灵感空间看看
-        </StudentLink>
-      }
-    />
+    <div className="qitu-growth-empty">
+      <EmptyState
+        title="你的成长轨迹会从这里开始"
+        description="完成第一个小目标后，里程碑、作品、反思和掌握的目标都会出现在这里。现在，去灵感空间开始第一个项目吧。"
+        illustration={
+          <div className="qitu-growth-empty-illustration">
+            <RobotMascot mood="cheering" size={120} />
+            <HandwrittenNote rotate={-4}>第一步也很了不起</HandwrittenNote>
+          </div>
+        }
+        action={
+          <StudentLink className="qitu-button qitu-button-primary" href="/student/inspiration">
+            去灵感空间看看
+          </StudentLink>
+        }
+      />
+    </div>
   );
 }
 

@@ -102,3 +102,9 @@ GET /api/v1/mastery/regressions         退步检测
 - [`../parent/progress.md`](../parent/progress.md)
 - [`../sdk/agent-memory.md`](../sdk/agent-memory.md)
 - [`../admin/database.md`](../admin/database.md) §3.3
+
+
+## 空态布局
+
+成长轨迹为空时，机器人和鼓励文字纵向居中并参与正常文档流；
+完整插画容器不使用共享状态图标的 72px 固定宽高，避免覆盖标题或正文。
