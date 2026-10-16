@@ -3033,7 +3033,12 @@ export default function AdminModelPage() {
                       baseUrl: activePiProvider.baseUrl,
                       api: activePiProvider.api,
                       authHeader: true,
-                      suggestedModels: activePiProvider.suggestedModels,
+                      suggestedModels: activePiProvider.suggestedModels.map((m) => ({
+                        id: m,
+                        name: m,
+                        input: ['text' as const],
+                        output: ['text' as const],
+                      })),
                     },
                   });
                 }}

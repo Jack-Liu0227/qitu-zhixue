@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
