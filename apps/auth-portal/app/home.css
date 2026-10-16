@@ -2713,3 +2713,87 @@
 .react-bits-hero-spotlight:hover {
   box-shadow: 0 20px 44px rgba(16, 42, 92, 0.12);
 }
+/* =========================================================================
+   React Bits 全屏视口与滚动模糊渐入效果 (Full-Screen Viewport & BlurFade)
+   ========================================================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* 彻底移除旧版明显的水平生硬分界线 */
+.home-section--deep {
+  border-block: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* 全屏沉浸式页面分段：占满一整个屏幕，垂直居中排版 */
+.home-section--fullscreen {
+  position: relative;
+  min-height: 100vh;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 80px 0;
+  box-sizing: border-box;
+  border: none !important;
+  border-block: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+.home-hero.home-section--fullscreen {
+  min-height: calc(100vh - 74px);
+  padding: 40px 0;
+}
+
+/* 消除硬线后的柔和环境光晕过渡 */
+.home-section--fullscreen.is-tinted {
+  background: radial-gradient(ellipse 90% 65% at 50% 50%, rgba(226, 231, 255, 0.45) 0%, rgba(250, 248, 255, 0) 80%);
+}
+
+.home-section--fullscreen.is-deep {
+  background: radial-gradient(ellipse 95% 70% at 50% 50%, rgba(219, 234, 254, 0.45) 0%, rgba(240, 244, 255, 0.15) 60%, rgba(250, 248, 255, 0) 100%);
+}
+
+.home-section--fullscreen.is-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(129, 140, 248, 0.08) 0%, rgba(250, 248, 255, 0) 70%);
+}
+
+@media (max-width: 900px) {
+  .home-section--fullscreen {
+    min-height: auto;
+    padding: 64px 0;
+  }
+}
+
+/* React Bits BlurFade 滚动进入动画 */
+.rb-scroll-reveal {
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(36px);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, filter, transform;
+  width: 100%;
+}
+
+.rb-scroll-reveal.is-visible {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+}
+
+.rb-stagger-1 {
+  transition-delay: 0.12s;
+}
+
+.rb-stagger-2 {
+  transition-delay: 0.24s;
+}
+
+.rb-stagger-3 {
+  transition-delay: 0.36s;
+}
