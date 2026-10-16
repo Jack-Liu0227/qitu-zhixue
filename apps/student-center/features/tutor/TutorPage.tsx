@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PermissionDenied } from '@qitu/ui';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
@@ -16,9 +16,11 @@ import { createIdempotencyKey } from './idempotency';
 /** Teaching state and gate decisions come only from the owned server session. */
 export function TutorPage({ projectId }: { projectId?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const source = useTutorDataSource();
   const [explorationKey, setExplorationKey] = useState(0);
-  const session = useTutorSession(projectId, explorationKey);
+  const routeContextKey = searchParams.toString();
+  const session = useTutorSession(projectId, routeContextKey || explorationKey);
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(false);
@@ -70,7 +72,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   function newExploration() {
     if (busy) return;
-    if (projectId) { router.push('/tutor?new=1'); return; }
+    if (projectId) { router.push('/tutor?new=1', { scroll: false }); return; }
     window.history.replaceState(null, '', `${window.location.pathname}?new=1`);
     confirmKey.current = null;
     setConfirmationError(null);
@@ -87,7 +89,19 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     <header className="qitu-tutor-header" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
       <div><p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p><h1>AI搭档</h1><p className="qitu-tutor-header-subtitle">先确认学习目标，再一起探究；理论掌握由服务端核验。</p></div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span role="status">{session.offline ? '离线 · 暂停发送' : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}</span>
+        <span role="status">
+          {session.offline
+            ? '离线 · 暂停发送'
+            : session.sessionStatus === 'error'
+              ? session.sessionError?.status === 401
+                ? '登录已失效'
+                : '会话加载失败'
+              : busy
+                ? '导师正在处理'
+                : ready
+                  ? '教学会话已连接'
+                  : '正在连接教学会话'}
+        </span>
         <button type="button" className="qitu-button qitu-button-ghost" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>项目与进度</button>
       </div>
     </header>
@@ -103,12 +117,12 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         onNewExploration={newExploration}
         onSelectProject={(targetProjectId) => {
           if (busy) return;
-          router.push(`/tutor/${encodeURIComponent(targetProjectId)}`);
+          router.push(`/tutor/${encodeURIComponent(targetProjectId)}`, { scroll: false });
         }}
       />
       <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {error ? <div role="alert" style={{ padding: 12, color: '#9f1239', background: '#fff1f2' }}>{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
-        <ChatThread turns={session.turns}
+        <ChatThread sessionId={session.sessionId} turns={session.turns}
           status={session.sessionStatus === 'ready' && session.turns.length === 0 ? 'empty' : session.sessionStatus}
           error={session.sessionError} streaming={session.streaming} offline={session.offline} escalated={session.escalated}
           disabled={!ready || busy} onRetry={session.projectStatus === 'error' ? session.retryProject : session.retrySession} onReconnect={session.reconnect}

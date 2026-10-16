@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { TutorTurn } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, SkeletonBlock } from '@qitu/ui';
 import type { TutorLoadStatus, TutorViewError } from '../types';
@@ -23,6 +23,7 @@ import { TypingIndicator } from './TypingIndicator';
  * caption names the step the server says it is on.
  */
 export function ChatThread({
+  sessionId,
   turns,
   status,
   error,
@@ -36,6 +37,7 @@ export function ChatThread({
   subAgentHud,
   composer,
 }: {
+  sessionId: string | null;
   turns: TutorTurn[];
   status: TutorLoadStatus;
   error: TutorViewError | null;
@@ -65,11 +67,28 @@ export function ChatThread({
   // student reads 「正在查看你的掌握度记录」 instead of a generic spinner.
   const runningToolLabel = findRunningToolLabel(turns);
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
+  const nearBottomRef = useRef(true);
+  const skipAutoScrollRef = useRef(true);
+
+  useLayoutEffect(() => {
+    const element = threadScrollRef.current;
+    if (!element) return;
+    skipAutoScrollRef.current = true;
+    nearBottomRef.current = false;
+    element.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [sessionId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [turns.length, streaming]);
+    const element = threadScrollRef.current;
+    if (!element || sessionId === null) return;
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
+    if (!nearBottomRef.current || status === 'loading') return;
+    element.scrollTo({ top: element.scrollHeight, left: 0, behavior: 'auto' });
+  }, [sessionId, status, streaming, turns]);
 
   return (
     <div className="qitu-tutor-col qitu-tutor-col-center">
@@ -80,7 +99,17 @@ export function ChatThread({
         </p>
       ) : null}
 
-      <div className="qitu-chat-thread" aria-live="polite">
+      <div
+        ref={threadScrollRef}
+        className="qitu-chat-thread"
+        aria-live="polite"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          nearBottomRef.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight < 160;
+        }}
+        style={{ scrollBehavior: 'auto' }}
+      >
         {status === 'loading' && !hasTurns ? (
           <div className="qitu-tutor-thread-loading" aria-busy="true">
             <SkeletonBlock lines={2} height={24} />
@@ -237,7 +266,6 @@ export function ChatThread({
           />
         ) : null}
 
-        <div ref={bottomRef} style={{ height: '1px', width: '100%' }} />
       </div>
 
       {subAgentHud}

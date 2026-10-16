@@ -24,6 +24,7 @@ export interface TutorDataSource {
   confirmExploration?(explorationId: string, draft: { goal: string; interest: string }, idempotencyKey: string): Promise<ConfirmIntentResponse>;
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;
+  listProjects(): Promise<ProjectSummary[]>;
   /** GET /projects/:id + /stages + /tasks — left-column display projection. */
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
   /** POST /tutor/sessions — idempotent session creation. */
