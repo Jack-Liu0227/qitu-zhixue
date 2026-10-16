@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * React Bits 灵感动态交互背景（全站全局覆盖）：
+ * React Bits 灵感动态交互背景（全站浅色全局覆盖）：
  * 粒子星网（Particles/Constellation）、光束辉光（Beams/Glow）与微网格（Squares/Grid），
- * 固定铺满视口并在滚动所有屏幕时持续交互，支持鼠标微重力追焦感应。
+ * 适配清爽浅色背景，支持鼠标微重力追焦感应与全局流光。
  */
 export function ReactBitsBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -46,8 +46,8 @@ export function ReactBitsBackground() {
       vx: (Math.random() - 0.5) * 0.5,
       vy: (Math.random() - 0.5) * 0.5,
       radius: Math.random() * 2 + 1.2,
-      baseAlpha: Math.random() * 0.45 + 0.35,
-      color: Math.random() > 0.6 ? '#38bdf8' : Math.random() > 0.3 ? '#818cf8' : '#c084fc',
+      baseAlpha: Math.random() * 0.4 + 0.35,
+      color: Math.random() > 0.6 ? '#2563eb' : Math.random() > 0.3 ? '#4f46e5' : '#0284c7',
     }));
 
     let step = 0;
@@ -55,7 +55,7 @@ export function ReactBitsBackground() {
       step += 0.015;
       ctx.clearRect(0, 0, width, height);
 
-      // 1. 动态弥散光晕（Beams / Aurora）
+      // 1. 动态弥散光晕（Beams / Aurora - 浅色底柔和极光）
       const g1 = ctx.createRadialGradient(
         width * 0.25 + Math.sin(step * 0.8) * 90,
         height * 0.35 + Math.cos(step * 0.6) * 70,
@@ -64,9 +64,9 @@ export function ReactBitsBackground() {
         height * 0.35,
         Math.max(width, height) * 0.55
       );
-      g1.addColorStop(0, 'rgba(56, 189, 248, 0.18)');
-      g1.addColorStop(0.5, 'rgba(99, 102, 241, 0.09)');
-      g1.addColorStop(1, 'rgba(9, 12, 21, 0)');
+      g1.addColorStop(0, 'rgba(186, 230, 253, 0.45)');
+      g1.addColorStop(0.5, 'rgba(199, 210, 254, 0.25)');
+      g1.addColorStop(1, 'rgba(250, 248, 255, 0)');
       ctx.fillStyle = g1;
       ctx.fillRect(0, 0, width, height);
 
@@ -78,18 +78,18 @@ export function ReactBitsBackground() {
         height * 0.55,
         Math.max(width, height) * 0.55
       );
-      g2.addColorStop(0, 'rgba(168, 85, 247, 0.16)');
-      g2.addColorStop(0.5, 'rgba(59, 130, 246, 0.08)');
-      g2.addColorStop(1, 'rgba(9, 12, 21, 0)');
+      g2.addColorStop(0, 'rgba(233, 213, 255, 0.38)');
+      g2.addColorStop(0.5, 'rgba(191, 219, 254, 0.22)');
+      g2.addColorStop(1, 'rgba(250, 248, 255, 0)');
       ctx.fillStyle = g2;
       ctx.fillRect(0, 0, width, height);
 
       // 2. 鼠标追焦高光聚光灯（Spotlight）
       if (mouse.active) {
-        const mouseGlow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 260);
-        mouseGlow.addColorStop(0, 'rgba(129, 140, 248, 0.24)');
-        mouseGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.08)');
-        mouseGlow.addColorStop(1, 'rgba(9, 12, 21, 0)');
+        const mouseGlow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 280);
+        mouseGlow.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
+        mouseGlow.addColorStop(0.5, 'rgba(56, 189, 248, 0.06)');
+        mouseGlow.addColorStop(1, 'rgba(250, 248, 255, 0)');
         ctx.fillStyle = mouseGlow;
         ctx.fillRect(0, 0, width, height);
       }
@@ -120,7 +120,7 @@ export function ReactBitsBackground() {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.baseAlpha;
         ctx.shadowColor = p.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 4;
         ctx.fill();
         ctx.shadowBlur = 0;
 
@@ -133,8 +133,8 @@ export function ReactBitsBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = '#818cf8';
-            ctx.globalAlpha = (1 - dist / 120) * 0.28;
+            ctx.strokeStyle = '#6366f1';
+            ctx.globalAlpha = (1 - dist / 120) * 0.18;
             ctx.lineWidth = 0.85;
             ctx.stroke();
           }
