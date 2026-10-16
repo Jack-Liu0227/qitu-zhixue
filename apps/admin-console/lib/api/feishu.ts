@@ -1,4 +1,4 @@
-﻿import type { AdminFeishuSettings, FeishuQrSession } from '@qitu/contracts';
+import type { AdminFeishuSettings, FeishuQrSession } from '@qitu/contracts';
 import { newIdempotencyKey } from './modelRegistry';
 import { AdminOfflineError, AdminPermissionError } from './types';
 

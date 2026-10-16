@@ -139,9 +139,17 @@ export class FeishuService {
     const host = bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
     let response: Response;
     try {
-      response = await fetch(`https://${host}/open-apis/authen/v1/access_token`, {
+      const appTokenResponse = await fetch(`https://${host}/open-apis/auth/v3/app_access_token/internal`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ grant_type: 'authorization_code', code, app_id: bot.appId, app_secret: appSecret }),
+        body: JSON.stringify({ app_id: bot.appId, app_secret: appSecret }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const appTokenPayload = await appTokenResponse.json().catch(() => ({})) as { app_access_token?: string; tenant_access_token?: string; data?: { app_access_token?: string; tenant_access_token?: string } };
+      const appAccessToken = appTokenPayload.app_access_token ?? appTokenPayload.data?.app_access_token ?? appTokenPayload.tenant_access_token ?? appTokenPayload.data?.tenant_access_token;
+      if (!appTokenResponse.ok || !appAccessToken) throw new Error('FEISHU_APP_TOKEN_FAILED');
+      response = await fetch(`https://${host}/open-apis/authen/v1/access_token`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${appAccessToken}` },
+        body: JSON.stringify({ grant_type: 'authorization_code', code }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch { throw new ServiceUnavailableException('飞书授权交换失败'); }
