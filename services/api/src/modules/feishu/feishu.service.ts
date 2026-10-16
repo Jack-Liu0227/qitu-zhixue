@@ -51,6 +51,7 @@ export class FeishuService {
     return {
       id: FEISHU_BOT_ID,
       enabled: row?.enabled ?? false,
+      connected: !!(row?.enabled && row?.appId && row?.appSecretEncrypted && row?.verificationTokenEncrypted && row?.encryptKeyEncrypted && (row.reportRecipients?.length ?? 0) > 0),
       appId: row?.appId ?? null,
       domain: row?.domain === 'lark' ? 'lark' : 'feishu',
       reportAssistantId: row?.reportAssistantId ?? null,
@@ -148,7 +149,16 @@ export class FeishuService {
     const payload = await response.json().catch(() => ({})) as { data?: { open_id?: string }; open_id?: string };
     const openId = payload.data?.open_id ?? payload.open_id;
     if (!openId || typeof openId !== 'string' || openId.length > 256) throw new BadRequestException('飞书未返回有效用户标识');
-    await db.update(feishuQrSessions).set({ status: 'bound', boundOpenId: createHash('sha256').update(openId).digest('hex').slice(0, 24), updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
+    const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
+    await withTransaction(db, async (tx) => {
+      const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
+      const recipients = currentBot?.reportRecipients ?? [];
+      const nextRecipients = recipients.includes(openId) ? recipients : [...recipients, openId];
+      await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
+      await tx.update(feishuBots).set({ reportRecipients: nextRecipients, updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
+      await this.audit.write({ actorId: null, actorRole: null, action: 'admin.feishu.qr.bound', targetType: 'feishu_qr_session', targetId: row.id,
+        detail: { recipientAdded: !recipients.includes(openId), recipientHash: openIdHash } }, tx);
+    });
   }
 }
 

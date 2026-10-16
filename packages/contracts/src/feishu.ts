@@ -3,6 +3,7 @@ export type FeishuDomain = 'feishu' | 'lark';
 export interface AdminFeishuSettings {
   id: 'admin-reporting';
   enabled: boolean;
+  connected: boolean;
   appId: string | null;
   domain: FeishuDomain;
   reportAssistantId: string | null;
