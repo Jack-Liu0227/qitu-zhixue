@@ -15,6 +15,10 @@ export interface FeishuIntegrationConfig {
   status: FeishuConnectionStatus;
   statusMessage?: string;
   credentialConfigured: boolean;
+  /** Write-only fields; never populated from a GET response. */
+  appSecret?: string;
+  verificationToken?: string;
+  encryptKey?: string;
   qrBinding?: { supported: boolean; callbackPath: string };
   qrSessionId?: string;
   qrCodeUrl?: string;
@@ -36,8 +40,8 @@ function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
     domain: value.domain,
     botName: value.domain === 'lark' ? 'Lark 汇报助手' : '飞书汇报助手',
     reportAssistantId: value.reportAssistantId ?? '',
-    reportScope: [...value.reportRecipients],
-    status: value.credentialConfigured ? 'connected' : 'disconnected',
+    reportScope: ['student', 'parent', 'teacher'],
+    status: value.connected ? 'connected' : 'disconnected',
     credentialConfigured: value.credentialConfigured,
     qrBinding: value.qrBinding,
     lastSyncedAt: value.updatedAt ?? undefined,
@@ -76,8 +80,12 @@ export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>)
     appId: input.appId?.trim() || null,
     domain: input.domain,
     reportAssistantId: input.reportAssistantId || null,
-    reportRecipients: input.reportScope,
+    // Report categories are assistant policy, not Feishu recipient identities.
+    // Never overwrite the server-owned allowlist when an admin saves this form.
   };
+  if (input.appSecret?.trim()) Object.assign(body, { appSecret: input.appSecret.trim() });
+  if (input.verificationToken?.trim()) Object.assign(body, { verificationToken: input.verificationToken.trim() });
+  if (input.encryptKey?.trim()) Object.assign(body, { encryptKey: input.encryptKey.trim() });
   return request<AdminFeishuSettings>('/api/v1/admin/integrations/feishu', {
     method: 'PATCH',
     headers: { 'content-type': 'application/json', 'Idempotency-Key': newIdempotencyKey() },
