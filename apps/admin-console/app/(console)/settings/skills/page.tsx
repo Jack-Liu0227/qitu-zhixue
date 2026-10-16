@@ -931,6 +931,194 @@ export default function SkillsSettingsPage() {
     return skills.filter((s) => validIds.includes(s.id));
   }, [skills, selectedCategory]);
 
+  // 横向全选：为指定助手开启当前分类的所有技能
+  const grantAllSkillsForAssistant = async (asstIdentifier: string) => {
+    const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
+    if (!matchedAsst) return;
+    const targetAsstId = matchedAsst.id;
+    const targetAsstName = matchedAsst.name;
+    const skillIdsToAdd = matrixSkills.flatMap((s) => [s.id, s.name]);
+
+    const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
+    const updatedEnabled = Array.from(new Set([...curEnabled, ...skillIdsToAdd]));
+
+    setAssistants((prev) =>
+      prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
+    );
+
+    const nextSkills = skills.map((s) => {
+      if (!matrixSkills.some((ms) => ms.id === s.id)) return s;
+      const currentBounds = s.boundAssistantIds || [];
+      const updatedBounds = Array.from(new Set([...currentBounds, targetAsstId, targetAsstName]));
+      return { ...s, boundAssistantIds: updatedBounds };
+    });
+    setSkills(nextSkills);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+        const cached = localStorage.getItem('qitu.admin.custom_assistants');
+        if (cached) {
+          const list: any[] = JSON.parse(cached);
+          const nextList = list.map((a) =>
+            a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
+          );
+          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
+        }
+      } catch {}
+    }
+
+    try {
+      await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
+    } catch {}
+
+    setSaveNotice(`横向全选成功：已为【${targetAsstName}】开启当前分类下的全部技能✔`);
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  // 横向取消：清空指定助手在当前分类的所有技能
+  const revokeAllSkillsForAssistant = async (asstIdentifier: string) => {
+    const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
+    if (!matchedAsst) return;
+    const targetAsstId = matchedAsst.id;
+    const targetAsstName = matchedAsst.name;
+    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstIdentifier]);
+    const skillIdsToRemove = new Set(matrixSkills.flatMap((s) => [s.id, s.name]));
+
+    const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
+    const updatedEnabled = curEnabled.filter((id) => !skillIdsToRemove.has(id));
+
+    setAssistants((prev) =>
+      prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
+    );
+
+    const nextSkills = skills.map((s) => {
+      if (!matrixSkills.some((ms) => ms.id === s.id)) return s;
+      const currentBounds = s.boundAssistantIds || [];
+      const updatedBounds = currentBounds.filter((id) => !asstIdentifiers.has(id));
+      return { ...s, boundAssistantIds: updatedBounds };
+    });
+    setSkills(nextSkills);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+        const cached = localStorage.getItem('qitu.admin.custom_assistants');
+        if (cached) {
+          const list: any[] = JSON.parse(cached);
+          const nextList = list.map((a) =>
+            a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
+          );
+          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
+        }
+      } catch {}
+    }
+
+    try {
+      await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
+    } catch {}
+
+    setSaveNotice(`横向取消成功：已清空【${targetAsstName}】在当前分类下的全部技能✔`);
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  // 纵向全选：为某一技能绑定所有导师智能体
+  const grantAllAssistantsForSkill = async (skillId: string) => {
+    const targetSkill = skills.find((s) => s.id === skillId);
+    if (!targetSkill) return;
+
+    const allAsstIdentifiers = displayAssistants.flatMap((a) => [a.id, a.name]);
+
+    const nextAssistants = assistants.map((a) => {
+      const cur = (a.enabledSkills as string[]) || [];
+      const set = new Set(cur);
+      set.add(skillId);
+      if (targetSkill.name) set.add(targetSkill.name);
+      return { ...a, enabledSkills: Array.from(set) };
+    });
+    setAssistants(nextAssistants);
+
+    const nextSkills = skills.map((s) => {
+      if (s.id !== skillId) return s;
+      const mergedBounds = Array.from(new Set([...(s.boundAssistantIds || []), ...allAsstIdentifiers]));
+      return { ...s, boundAssistantIds: mergedBounds };
+    });
+    setSkills(nextSkills);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+        localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextAssistants));
+      } catch {}
+    }
+
+    for (const a of assistants) {
+      const cur = (a.enabledSkills as string[]) || [];
+      const set = new Set(cur);
+      set.add(skillId);
+      if (targetSkill.name) set.add(targetSkill.name);
+      try {
+        await persistAssistantBinding(a.id, 'enabledSkills', Array.from(set));
+      } catch {}
+    }
+
+    setSaveNotice(`纵向全选成功：已为所有智能体开启技能【${targetSkill.name}】✔`);
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  // 纵向取消：取消所有导师对某一技能的授权
+  const revokeAllAssistantsForSkill = async (skillId: string) => {
+    const targetSkill = skills.find((s) => s.id === skillId);
+    if (!targetSkill) return;
+
+    const nextAssistants = assistants.map((a) => {
+      const cur = (a.enabledSkills as string[]) || [];
+      return { ...a, enabledSkills: cur.filter((id) => id !== skillId && id !== targetSkill.name) };
+    });
+    setAssistants(nextAssistants);
+
+    const nextSkills = skills.map((s) => {
+      if (s.id !== skillId) return s;
+      return { ...s, boundAssistantIds: [] };
+    });
+    setSkills(nextSkills);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
+        localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextAssistants));
+      } catch {}
+    }
+
+    for (const a of assistants) {
+      const cur = (a.enabledSkills as string[]) || [];
+      try {
+        await persistAssistantBinding(a.id, 'enabledSkills', cur.filter((id) => id !== skillId && id !== targetSkill.name));
+      } catch {}
+    }
+
+    setSaveNotice(`纵向取消成功：已清空所有智能体对技能【${targetSkill.name}】的授权✔`);
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  // 全局全部全选
+  const grantEntireSkillsMatrix = async () => {
+    for (const asst of displayAssistants) {
+      await grantAllSkillsForAssistant(asst.id);
+    }
+    setSaveNotice('全局全选成功：已为所有导师开启当前分类的全部技能！✔');
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
+  // 全局全部取消
+  const revokeEntireSkillsMatrix = async () => {
+    for (const asst of displayAssistants) {
+      await revokeAllSkillsForAssistant(asst.id);
+    }
+    setSaveNotice('全局取消成功：已清空所有导师在当前分类下的全部技能授权！✔');
+    setTimeout(() => setSaveNotice(''), 2500);
+  };
+
   // 新建 Skill
   const handleCreateSkill = () => {
     const newSkill: SkillItem = {
@@ -1585,7 +1773,46 @@ export default function SkillsSettingsPage() {
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                   <th style={{ padding: '12px 16px', minWidth: '220px', color: '#334155', fontWeight: 600 }}>
-                    导师智能体 (行)
+                    <div>导师智能体 (行)</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                      支持纵向/横向一键批量授权
+                    </div>
+                    {/* 全局全部全选 / 全部取消 */}
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={grantEntireSkillsMatrix}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #3b82f6',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                        title="全局全选：为所有导师开启当前分类的全部技能"
+                      >
+                        全部全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={revokeEntireSkillsMatrix}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                        }}
+                        title="全部取消：清空所有导师在当前分类的全部技能"
+                      >
+                        全部取消
+                      </button>
+                    </div>
                   </th>
                   {matrixSkills.map((sk) => (
                     <th key={sk.id} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>
@@ -1593,8 +1820,47 @@ export default function SkillsSettingsPage() {
                         <span>📖 {sk.name}</span>
                         <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>({sk.filesCount} 个规范文件)</span>
                       </div>
+                      {/* 纵向全选 / 纵向取消 */}
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => void grantAllAssistantsForSkill(sk.id)}
+                          style={{
+                            fontSize: '10.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #bfdbfe',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                          title={`纵向全选：为所有导师开启【${sk.name}】`}
+                        >
+                          纵向全选
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void revokeAllAssistantsForSkill(sk.id)}
+                          style={{
+                            fontSize: '10.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #fecaca',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            cursor: 'pointer',
+                          }}
+                          title={`纵向取消：取消所有导师对【${sk.name}】的授权`}
+                        >
+                          纵向取消
+                        </button>
+                      </div>
                     </th>
                   ))}
+                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '160px', whiteSpace: 'nowrap' }}>
+                    横向快捷操作 (整行)
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1649,6 +1915,47 @@ export default function SkillsSettingsPage() {
                           </td>
                         );
                       })}
+
+                      {/* 横向批量快捷操作 */}
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => void grantAllSkillsForAssistant(asst.id)}
+                            style={{
+                              fontSize: '11px',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #bfdbfe',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`横向全选：为【${asst.name}】开启当前分类的所有技能`}
+                          >
+                            横向全选
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void revokeAllSkillsForAssistant(asst.id)}
+                            style={{
+                              fontSize: '11px',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #fecaca',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`横向取消：清空【${asst.name}】在当前分类的所有技能`}
+                          >
+                            横向取消
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}

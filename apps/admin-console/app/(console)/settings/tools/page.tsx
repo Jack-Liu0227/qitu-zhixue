@@ -977,6 +977,134 @@ export default function ToolsSettingsPage() {
     setTimeout(() => setNotice(''), 2500);
   };
 
+  // 纵向全选某一 MCP
+  const grantAllAssistantsForMcp = async (mcpName: string) => {
+    if (mcpName === 'ima知识库' || mcpName === IMA_ID) {
+      if (!ima?.registered) return;
+      const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: true }));
+      await saveIma({ assistantBindings: bindings });
+      return;
+    }
+    const allNames = activeAssistantsList.map((a) => a.name);
+    const nextMcp = mcpList.map((m) => {
+      if (m.name !== mcpName && m.id !== mcpName) return m;
+      const mergedBound = Array.from(new Set([...(m.boundAssistants || []), ...allNames]));
+      let updatedRawJson = m.rawJson;
+      try {
+        const parsed = JSON.parse(m.rawJson);
+        parsed.boundAssistants = mergedBound;
+        updatedRawJson = JSON.stringify(parsed, null, 2);
+      } catch {}
+      return { ...m, boundAssistants: mergedBound, rawJson: updatedRawJson };
+    });
+    setMcpList(nextMcp);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcp.filter((row) => row.id !== IMA_ID)));
+      } catch {}
+    }
+    for (const asst of assistants) {
+      const curServers = asst.mcpServerIds ? [...asst.mcpServerIds] : [];
+      if (!curServers.includes(mcpName)) {
+        const updated = [...curServers, mcpName];
+        setAssistants((prev) => prev.map((a) => (a.id === asst.id ? { ...a, mcpServerIds: updated } : a)));
+        try {
+          await persistAssistantBinding(asst.id, 'mcpServerIds', updated);
+        } catch {}
+      }
+    }
+    setNotice(`纵向全选成功：已为所有智能体开启 MCP【${mcpName}】✔`);
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 纵向取消某一 MCP
+  const revokeAllAssistantsForMcp = async (mcpName: string) => {
+    if (mcpName === 'ima知识库' || mcpName === IMA_ID) {
+      if (!ima?.registered) return;
+      const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: false }));
+      await saveIma({ assistantBindings: bindings });
+      return;
+    }
+    const allIdentifiers = new Set(activeAssistantsList.flatMap((a) => [a.id, a.name]));
+    const nextMcp = mcpList.map((m) => {
+      if (m.name !== mcpName && m.id !== mcpName) return m;
+      const remainingBound = (m.boundAssistants || []).filter((id) => !allIdentifiers.has(id));
+      let updatedRawJson = m.rawJson;
+      try {
+        const parsed = JSON.parse(m.rawJson);
+        parsed.boundAssistants = remainingBound;
+        updatedRawJson = JSON.stringify(parsed, null, 2);
+      } catch {}
+      return { ...m, boundAssistants: remainingBound, rawJson: updatedRawJson };
+    });
+    setMcpList(nextMcp);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcp.filter((row) => row.id !== IMA_ID)));
+      } catch {}
+    }
+    for (const asst of assistants) {
+      const curServers = asst.mcpServerIds ? [...asst.mcpServerIds] : [];
+      if (curServers.includes(mcpName)) {
+        const updated = curServers.filter((s) => s !== mcpName);
+        setAssistants((prev) => prev.map((a) => (a.id === asst.id ? { ...a, mcpServerIds: updated } : a)));
+        try {
+          await persistAssistantBinding(asst.id, 'mcpServerIds', updated);
+        } catch {}
+      }
+    }
+    setNotice(`纵向取消成功：已清空所有智能体对 MCP【${mcpName}】的授权✔`);
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 纵向全选图像生成
+  const grantAllAssistantsForImageGen = () => {
+    const allNames = activeAssistantsList.map((a) => a.name);
+    setImageGenAssistants(allNames);
+    setNotice('纵向全选成功：已为所有智能体开启【图像生成】✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 纵向取消图像生成
+  const revokeAllAssistantsForImageGen = () => {
+    setImageGenAssistants([]);
+    setNotice('纵向取消成功：已清空所有智能体的【图像生成】授权✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 纵向全选沙箱
+  const grantAllAssistantsForSandbox = () => {
+    const allNames = activeAssistantsList.map((a) => a.name);
+    setSandboxAssistants(allNames);
+    setNotice('纵向全选成功：已为所有智能体开启【Python 沙箱】✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 纵向取消沙箱
+  const revokeAllAssistantsForSandbox = () => {
+    setSandboxAssistants([]);
+    setNotice('纵向取消成功：已清空所有智能体的【Python 沙箱】授权✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 全局全部全选
+  const grantEntireMatrix = async () => {
+    for (const asst of activeAssistantsList) {
+      await grantAllToolsForAssistant(asst.name);
+    }
+    setNotice('全局全选成功：已为所有智能体开启全部工具与 MCP 授权！✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
+  // 全局全部取消
+  const revokeEntireMatrix = async () => {
+    for (const asst of activeAssistantsList) {
+      await revokeAllToolsForAssistant(asst.name);
+    }
+    setNotice('全局取消成功：已清空所有智能体的全部工具与 MCP 授权！✔');
+    setTimeout(() => setNotice(''), 2500);
+  };
+
   return (
     <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
       {/* 页头 */}
@@ -1115,25 +1243,174 @@ export default function ToolsSettingsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
-                  <th style={{ padding: '14px 16px', fontWeight: 700, color: '#334155', minWidth: '170px' }}>智能体角色</th>
+                  <th style={{ padding: '14px 16px', fontWeight: 700, color: '#334155', minWidth: '180px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>智能体角色 (行)</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={grantEntireMatrix}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #165dff',
+                          background: '#165dff',
+                          color: '#ffffff',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                        title="全局全选：为所有智能体开启全部工具"
+                      >
+                        全部全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={revokeEntireMatrix}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#64748b',
+                          cursor: 'pointer',
+                        }}
+                        title="全部取消：清空所有智能体的全部工具"
+                      >
+                        全部取消
+                      </button>
+                    </div>
+                  </th>
                   {mcpList.map((m) => (
-                    <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '130px' }}>
+                    <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <span style={{ fontSize: '11px', color: m.id === IMA_ID && m.status !== 'connected' ? '#94a3b8' : '#16a34a' }}>●</span>
-                        <span>{m.id === IMA_ID ? '是否使用 ima 知识库' : m.name}</span>
+                        <span>{m.id === IMA_ID ? 'ima 知识库' : m.name}</span>
                       </div>
                       <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具{m.id === IMA_ID ? ` · ${ima ? ima.enabled ? '允许调用' : '总开关关闭' : '读取中'}` : ''}</div>
+                      {/* 纵向全选 / 纵向取消 */}
+                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => void grantAllAssistantsForMcp(m.name)}
+                          style={{
+                            fontSize: '10.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #bfdbfe',
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                          title={`纵向全选：为所有智能体开启【${m.id === IMA_ID ? 'ima知识库' : m.name}】`}
+                        >
+                          纵向全选
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void revokeAllAssistantsForMcp(m.name)}
+                          style={{
+                            fontSize: '10.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid #fecaca',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            cursor: 'pointer',
+                          }}
+                          title={`纵向取消：取消所有智能体对【${m.id === IMA_ID ? 'ima知识库' : m.name}】的授权`}
+                        >
+                          纵向取消
+                        </button>
+                      </div>
                     </th>
                   ))}
-                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '120px' }}>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '130px' }}>
                     <div>🎨 图像生成</div>
                     <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 ImageGen</div>
+                    {/* 纵向全选 / 纵向取消 */}
+                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={grantAllAssistantsForImageGen}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd6fe',
+                          background: '#f5f3ff',
+                          color: '#6d28d9',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                        title="纵向全选：为所有智能体开启【图像生成】"
+                      >
+                        纵向全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={revokeAllAssistantsForImageGen}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #fecaca',
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                        }}
+                        title="纵向取消：取消所有智能体的【图像生成】授权"
+                      >
+                        纵向取消
+                      </button>
+                    </div>
                   </th>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#047857', textAlign: 'center', minWidth: '120px' }}>
+                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#047857', textAlign: 'center', minWidth: '130px' }}>
                     <div>🐍 Python 沙箱</div>
                     <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 Sandbox</div>
+                    {/* 纵向全选 / 纵向取消 */}
+                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={grantAllAssistantsForSandbox}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #a7f3d0',
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                        title="纵向全选：为所有智能体开启【Python 沙箱】"
+                      >
+                        纵向全选
+                      </button>
+                      <button
+                        type="button"
+                        onClick={revokeAllAssistantsForSandbox}
+                        style={{
+                          fontSize: '10.5px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #fecaca',
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                        }}
+                        title="纵向取消：取消所有智能体的【Python 沙箱】授权"
+                      >
+                        纵向取消
+                      </button>
+                    </div>
                   </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '130px' }}>批量快捷操作</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '160px' }}>
+                    横向快捷操作 (整行)
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1277,22 +1554,41 @@ export default function ToolsSettingsPage() {
                         })()}
                       </td>
 
-                      {/* 批量操作 */}
+                      {/* 横向批量快捷操作 */}
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                           <button
                             type="button"
                             onClick={() => grantAllToolsForAssistant(asst.name)}
-                            style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#165dff', cursor: 'pointer', fontWeight: 600 }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #bfdbfe',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                            }}
+                            title={`横向全选：为【${asst.name}】开启所有工具`}
                           >
-                            全选
+                            横向全选
                           </button>
                           <button
                             type="button"
                             onClick={() => revokeAllToolsForAssistant(asst.name)}
-                            style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', color: '#ef4444', cursor: 'pointer' }}
+                            style={{
+                              fontSize: '11px',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid #fecaca',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              cursor: 'pointer',
+                            }}
+                            title={`横向取消：清空【${asst.name}】的所有工具授权`}
                           >
-                            清空
+                            横向取消
                           </button>
                         </div>
                       </td>
