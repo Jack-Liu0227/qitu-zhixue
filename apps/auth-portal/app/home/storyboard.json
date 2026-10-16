@@ -1,13 +1,21 @@
 {
-  "title": "让校园的一滴雨，长成一个作品",
-  "video": "/media/rain-garden/story.mp4",
+  "title": "把一个好问题，做成一个能解释世界的作品",
+  "video": "/media/project-cases/story.mp4",
   "duration": 27,
+  "projects": [
+    {"id":"drone","label":"无人机工程","shortLabel":"无人机","range":[0,3]},
+    {"id":"robot","label":"桌面机器人","shortLabel":"机器人","range":[3,6]},
+    {"id":"optics","label":"光的衍射与散射","shortLabel":"光学","range":[6,9]}
+  ],
   "scenes": [
-    {"id":"observe","start":0,"label":"发现问题","title":"下雨后，这片积水能去哪儿？","description":"从校园里的真实观察开始，记录现象，由学习者选择想研究的问题。","image":"/media/rain-garden/scene-01.webp","alt":"白色校园微缩模型旁的积水、未完成的花园与测量工具"},
-    {"id":"question","start":4.4,"label":"自主提问","title":"先问清楚，再决定做什么","description":"AI 搭档用问题帮助梳理方向；学生确认意图之后，才建立正式项目。","image":"/media/rain-garden/scene-02.webp","alt":"同一校园模型前展开的蓝色笔记本、草图与问题卡片"},
-    {"id":"theory","start":8.8,"label":"理论验证","title":"水怎样穿过土壤？先找到证据","description":"观察砂石与土壤的渗透实验，理解原理。理论达标后，再进入实践。","image":"/media/rain-garden/scene-03.webp","alt":"校园模型前的透明土壤分层实验槽与量筒"},
-    {"id":"build","start":13.2,"label":"动手制作","title":"把理解，做成看得见的方案","description":"理论核验通过后，制作雨水花园模型，让水道与种植区连接起来。","image":"/media/rain-garden/scene-04.webp","alt":"校园水道通过蓝色入水口连接有透明剖面的雨水花园模型"},
-    {"id":"test","start":17.6,"label":"测试迭代","title":"试一次，再改进一点","description":"用模拟降雨检查水流，记录观察和调整。一次测试不是结论，而是下一次改进的起点。","image":"/media/rain-garden/scene-05.webp","alt":"量杯向模型水道注水，观察水流进入花园的测试场景"},
-    {"id":"reflect","start":22,"label":"反思沉淀","title":"带走的不只是作品，还有成长的证据","description":"把过程照片、实验记录与反思整理成作品档案。教师与家长仅查看授权范围内的信息。","image":"/media/rain-garden/scene-06.webp","alt":"完成的校园雨水花园模型旁摆放过程照片与观察档案"}
+    {"id":"drone-question","project":"drone","start":0,"label":"提出问题","title":"无人机怎样在风里保持航向？","description":"从飞行现象出发，先问清楚稳定、动力和安全之间的关系，再确定要验证的变量。","image":"/media/project-cases/scene-01.webp","alt":"学校创客空间工作台上的小型四旋翼无人机、风扇、图纸和测量工具"},
+    {"id":"drone-build","project":"drone","start":3,"label":"搭建验证","title":"把想法变成一台可测试的原型","description":"学习者拆解螺旋桨保护、电机、控制板和配重，完成能在室内安全测试的原型。","image":"/media/project-cases/scene-02.webp","alt":"小型教育无人机原型和螺旋桨保护、电机、控制板及降落垫"},
+    {"id":"drone-test","project":"drone","start":6,"label":"测试迭代","title":"一次飞行，留下下一次改进的证据","description":"在透明安全笼中改变气流，观察航线和降落，再根据证据调整参数和结构。","image":"/media/project-cases/scene-03.webp","alt":"透明安全笼内的小型无人机、风扇、飘带和蓝色降落垫"},
+    {"id":"robot-question","project":"robot","start":9,"label":"提出问题","title":"桌面机器人怎样读懂一个房间？","description":"从一个具体任务开始：识别路线、避开障碍，并把物品送到指定位置。","image":"/media/project-cases/scene-04.webp","alt":"学校创客空间中的桌面机器人、纸板房间、传感器和彩色方块"},
+    {"id":"robot-build","project":"robot","start":12,"label":"动手制作","title":"让传感器、代码和机械结构协同工作","description":"打开外壳，理解电机、距离传感器、舵机夹爪与控制板各自承担的任务。","image":"/media/project-cases/scene-05.webp","alt":"打开外壳的桌面机器人、传感器、电路板、舵机夹爪和纸板房间模型"},
+    {"id":"robot-test","project":"robot","start":15,"label":"测试迭代","title":"从走不通的路线里找到新线索","description":"让机器人沿着路径搬运方块，记录它在哪里判断失误，再改进路线或控制逻辑。","image":"/media/project-cases/scene-06.webp","alt":"桌面机器人沿纸板房间里的蓝色路线搬运彩色方块"},
+    {"id":"optics-question","project":"optics","start":18,"label":"提出问题","title":"为什么窄缝后会出现明暗相间的光？","description":"从光斑和雾中的光路出发，提出关于衍射、散射和观察条件的高中物理问题。","image":"/media/project-cases/scene-07.webp","alt":"高中物理光学实验台上的窄缝、透镜、光屏和安全封闭光源"},
+    {"id":"optics-evidence","project":"optics","start":21,"label":"实验验证","title":"把看见的图样，变成可以解释的证据","description":"用窄缝观察衍射形成的中央亮纹和交替暗纹，再用封闭雾室观察散射，让抽象概念落到真实装置。","image":"/media/project-cases/scene-08.webp","alt":"光学实验台上的衍射明暗条纹和封闭雾室中的散射光路"},
+    {"id":"optics-reflect","project":"optics","start":24,"label":"讲解沉淀","title":"从一个现象，讲清两个不同的过程","description":"整理衍射、散射、光路和观察条件，形成一份能向同学讲明白的高中物理解释。","image":"/media/project-cases/scene-09.webp","alt":"排列成证据链的高中物理光学装置、衍射图样、雾室和空白反思卡"}
   ]
 }

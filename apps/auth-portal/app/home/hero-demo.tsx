@@ -19,7 +19,7 @@ export function HeroTutorDemo() {
           className={`home-hero-switch-btn ${viewMode === 'dynamic' ? 'is-active' : ''}`}
           onClick={() => setViewMode('dynamic')}
         >
-          <Icon name="sparkle" size={14} /> 看一滴雨的旅程
+          <Icon name="sparkle" size={14} /> 看中学生怎样做项目
         </button>
         <button
           type="button"

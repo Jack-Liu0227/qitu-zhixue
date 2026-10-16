@@ -1,0 +1,12 @@
+﻿Use case: scientific-educational
+Asset type: homepage high-school physics case frame
+Primary request: The same high-school optics investigation is running: a narrow slit produces a clear central bright band and dimmer alternating bands on the screen, while a separate enclosed mist chamber makes the beam path visible through scattering. Keep the apparatus physical and classroom-safe.
+Scene/backdrop: Same bright physics laboratory bench and optical rail, white screen, small enclosed mist chamber.
+Subject: Diffraction pattern and scattering demonstration shown through tangible equipment, not a digital simulation.
+Style/medium: tactile paper-and-acrylic miniature model, editorial scientific photography, hands-on classroom apparatus.
+Composition/framing: 16:9 wide elevated three-quarter view, screen pattern and mist chamber both readable, no people.
+Lighting/mood: focused, explanatory, a moment of evidence.
+Color palette: chalk white, cobalt blue, pale mint, graphite, restrained red light.
+Materials/textures: acrylic, glass, metal rail, matte paper, fine mist inside sealed chamber.
+Constraints: visual continuity with scene 07; no readable labels or equations, no logos, no faces, no unsafe laser exposure, no fabricated data.
+Avoid: fantasy hologram, neon cyberpunk, generic stock photo, watermark.

@@ -1,0 +1,12 @@
+﻿Use case: stylized-concept
+Asset type: homepage project-learning case frame
+Primary request: A middle-school desktop robot project starts with a question: how can a small robot understand a room and help with a simple task? Show a friendly tabletop robot prototype, distance sensor, colored blocks, a tiny map made from paper and a notebook with blank pages.
+Scene/backdrop: Bright school makerspace desk, modular cardboard room mock-up, small robot on a marked path.
+Subject: A friendly palm-sized desktop robot with expressive but non-human mechanical features, sensors and a simple gripper.
+Style/medium: tactile paper-and-acrylic miniature model, editorial product photography, handcrafted school project.
+Composition/framing: 16:9 wide elevated three-quarter view, robot and room mock-up clearly visible, no people.
+Lighting/mood: curious, inviting, intellectually playful.
+Color palette: chalk white, cobalt blue, pale mint, graphite, a small coral accent.
+Materials/textures: 3D-printed shell, acrylic sensor window, cardboard walls, matte paper, small servos and wires.
+Constraints: sequence continuity for a three-frame case; recognizable middle-school robotics project; no readable text, no logos, no real children, no faces, no holograms.
+Avoid: humanoid android, creepy face, sci-fi neon, toy advertisement, UI screenshot, watermark.

@@ -283,7 +283,7 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 
 验收：本机与 Linux 生产构建通过；lint、typecheck、测试通过（API 724 项）；Playwright 使用网站自带演示账号，
 首页和四端在 1440、320、375、414、768px 下加载，无页面异常和非 API 静态资源失败、无页面横向溢出。
-六张 WebP 和 MP4 的线上 SHA256 与提交一致，视频返回正确 MIME 和 HTTP 206 Range。
+此前六幕版本的六张 WebP 和 MP4 已通过线上 SHA256/Range 验收；本次中学生案例扩展改为九张 WebP，发布前需按同一规则重新核对九张图片与新 MP4。
 视频暂停、章节选择、离屏暂停、离线、节流模式主动播放、系统/产品减弱动态、故障重试通过。
 真实后台标签页切换未在此次可见窗口环境中稳定复现，不将该项列为通过证据。
 

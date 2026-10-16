@@ -11,7 +11,13 @@
 .story-film-label { left: 16px; }
 .story-film-play { right: 16px; min-height: 44px; min-width: 64px; border: 1px solid var(--qitu-border); cursor: pointer; }
 .story-film-play:disabled { color: var(--qitu-muted); cursor: default; }
-.story-film-caption { padding: 22px 24px 18px; min-height: 164px; }
+.story-film-caption { padding: 18px 24px 18px; min-height: 190px; }
+.story-film-projects { display: flex; gap: 6px; margin-bottom: 15px; }
+.story-film-projects button {
+  min-height: 34px; padding: 6px 10px; border: 1px solid var(--qitu-border); border-radius: 999px;
+  color: var(--qitu-muted); background: var(--qitu-surface); font-size: .72rem; cursor: pointer;
+}
+.story-film-projects button[aria-current] { color: var(--qitu-primary); border-color: var(--qitu-primary); background: var(--qitu-primary-soft); font-weight: 700; }
 .story-film-stage { color: var(--qitu-primary); font-size: .78rem; font-weight: 700; margin: 0 0 8px; }
 .story-film-caption h3 { color: var(--qitu-heading); margin: 0 0 10px; font-size: 1.2rem; line-height: 1.5; }
 .story-film-caption > p:last-child { margin: 0; color: var(--qitu-muted); font-size: .85rem; line-height: 1.8; }
@@ -25,7 +31,9 @@
 .story-film-chapters button[aria-current] { color: var(--qitu-primary); background: var(--qitu-primary-soft); border-color: var(--qitu-primary); }
 .story-film-note { margin: 0; padding: 0 24px 18px; color: var(--qitu-muted); font-size: .7rem; line-height: 1.7; }
 @media (max-width: 414px) {
-  .story-film-caption { padding: 18px 16px; min-height: 185px; }
+  .story-film-caption { padding: 16px; min-height: 220px; }
+  .story-film-projects { margin-bottom: 12px; }
+  .story-film-projects button { padding-inline: 8px; font-size: .67rem; }
   .story-film-caption h3 { font-size: 1.05rem; }
   .story-film-chapters { padding-inline: 12px; gap: 4px; }
   .story-film-chapters button { gap: 4px; font-size: .7rem; }

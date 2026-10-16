@@ -1,0 +1,12 @@
+﻿Use case: scientific-educational
+Asset type: homepage high-school physics case frame
+Primary request: A high-school physics investigation begins with a question about why light makes different patterns after passing a narrow slit and why a beam becomes visible in a fine mist. Show a safe enclosed laser module, adjustable slit, screen, ruler and blank lab notebook on an optics bench.
+Scene/backdrop: Bright school physics laboratory bench with a simple optical rail and a clean white screen.
+Subject: Safe classroom diffraction and scattering apparatus, no exposed dangerous beam aimed toward the viewer.
+Style/medium: tactile paper-and-acrylic miniature model, editorial scientific photography, hands-on classroom apparatus.
+Composition/framing: 16:9 wide elevated three-quarter view, slit and screen form a clear optical path, no people.
+Lighting/mood: precise, curious, discovery-oriented.
+Color palette: chalk white, cobalt blue, pale mint, graphite, restrained red laser glow only at the apparatus and screen.
+Materials/textures: acrylic mounts, metal rail, matte paper, glass lens, ruler, blank notebook.
+Constraints: no readable text, no equations rendered in image, no logos, no real students, no faces, no unsafe laser exposure, no holograms.
+Avoid: fantasy laser, neon cyberpunk, generic stock photo, watermark.

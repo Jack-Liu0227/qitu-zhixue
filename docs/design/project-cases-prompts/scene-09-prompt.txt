@@ -1,0 +1,12 @@
+﻿Use case: scientific-educational
+Asset type: homepage high-school physics case frame
+Primary request: A finished high-school explanation of diffraction and scattering is represented by a clean physical display: the slit, lens, screen with bright-dark bands and sealed mist chamber are arranged as an evidence trail from question to explanation. Add a blank reflection card and a pencil, but no readable text.
+Scene/backdrop: Same bright school physics laboratory bench, calm final arrangement.
+Subject: Tangible optics apparatus and a clear diffraction pattern, emphasizing understanding rather than a finished poster.
+Style/medium: tactile paper-and-acrylic miniature model, editorial scientific photography, handcrafted classroom exhibit.
+Composition/framing: 16:9 wide elevated three-quarter view, optical path reads left to right, generous negative space, no people.
+Lighting/mood: clear, resolved, intellectually satisfying.
+Color palette: chalk white, cobalt blue, pale mint, graphite, restrained red light.
+Materials/textures: acrylic mounts, glass lens, metal rail, matte paper, sealed mist chamber, pencil.
+Constraints: visual continuity with scenes 07-08; no readable text, equations, logos, faces, unsafe laser exposure, holograms or fake scores.
+Avoid: generic stock photo, fantasy science, neon cyberpunk, watermark.

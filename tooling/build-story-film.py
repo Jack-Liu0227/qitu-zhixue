@@ -1,4 +1,4 @@
-"""Export six generated frames and assemble a silent, deterministic 27s film.
+"""Export generated frames and assemble a silent, deterministic project film.
 
 Requires Pillow and ffmpeg on PATH. No API calls or credentials are used here.
 Usage: python tooling/build-story-film.py [directory-containing-scene-01.png-etc]
@@ -11,12 +11,13 @@ import sys
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SOURCE = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'output/imagegen'
-DEST = ROOT / 'apps/auth-portal/public/media/rain-garden'
+SOURCE = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'output/imagegen/project-cases'
+DEST = ROOT / 'apps/auth-portal/public/media/project-cases'
 DEST.mkdir(parents=True, exist_ok=True)
+frame_count = 9
 inputs = []
 filters = []
-for i in range(6):
+for i in range(frame_count):
     source = SOURCE / f'scene-{i + 1:02}.png'
     revised = SOURCE / f'scene-{i + 1:02}-revised.png'
     if revised.is_file():
@@ -30,12 +31,12 @@ for i in range(6):
     inputs.extend(['-i', str(source)])
     filters.append(
         f'[{i}:v]scale=2560:1440,zoompan=z=1+0.0002*on:'
-        f'x=iw/2-iw/zoom/2:y=ih/2-ih/zoom/2:d=150:s=1280x720:fps=30,'
+        f'x=iw/2-iw/zoom/2:y=ih/2-ih/zoom/2:d=100:s=1280x720:fps=30,'
         f'format=yuv420p,settb=AVTB[v{i}]'
     )
 last = 'v0'
-for i in range(1, 6):
-    filters.append(f'[{last}][v{i}]xfade=transition=fade:duration=0.6:offset={4.4 * i:.1f}[x{i}]')
+for i in range(1, frame_count):
+    filters.append(f'[{last}][v{i}]xfade=transition=fade:duration=0.35:offset={3 * i:.1f}[x{i}]')
     last = f'x{i}'
 subprocess.run([
     'ffmpeg', '-hide_banner', '-loglevel', 'warning', '-y', *inputs,
@@ -44,4 +45,4 @@ subprocess.run([
     '-preset', 'medium', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
     str(DEST / 'story.mp4'),
 ], check=True)
-print(f'Exported six WebP frames and story.mp4 to {DEST}')
+print(f'Exported {frame_count} WebP frames and story.mp4 to {DEST}')

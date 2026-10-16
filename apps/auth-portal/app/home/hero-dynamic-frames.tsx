@@ -10,6 +10,7 @@ export function HeroDynamicFrames() {
   const video = useRef<HTMLVideoElement>(null);
   const visible = useRef(false);
   const [chapter, setChapter] = useState(0);
+  const [activeProject, setActiveProject] = useState(story.projects[0]!.id);
   const [enabled, setEnabled] = useState(false);
   const [intent, setIntent] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -73,6 +74,7 @@ export function HeroDynamicFrames() {
 
   const selectChapter = (index: number) => {
     setChapter(index);
+    setActiveProject(story.scenes[index]!.project);
     setIntent(false);
     if (video.current && video.current.readyState >= 1) video.current.currentTime = story.scenes[index]!.start + .7;
   };
@@ -88,7 +90,7 @@ export function HeroDynamicFrames() {
           hidden={still}
           src={enabled && !offline ? story.video : undefined}
           poster={story.scenes[0]!.image}
-          aria-label="校园雨水花园项目：六幅生成分镜合成的无声故事短片"
+          aria-label="中学生无人机、桌面机器人和光学探究项目：九幅生成分镜合成的无声故事短片"
           muted loop playsInline preload={enabled ? 'metadata' : 'none'}
           onPlay={() => setPlaying(true)}
           onPause={() => { setPlaying(false); setWaiting(false); }}
@@ -104,9 +106,10 @@ export function HeroDynamicFrames() {
             let index = 0;
             story.scenes.forEach((scene, i) => { if (time >= scene.start) index = i; });
             setChapter(index);
+            setActiveProject(story.scenes[index]!.project);
           }}
         />
-        <span className="story-film-label">一个问题的六个时刻</span>
+        <span className="story-film-label">三个中学生项目 · 九个时刻</span>
         <button
           type="button"
           className="story-film-play"
@@ -122,11 +125,19 @@ export function HeroDynamicFrames() {
         >{reduced ? '静态模式' : playing ? '暂停' : '播放'}</button>
       </div>
       <figcaption className="story-film-caption">
+        <nav className="story-film-projects" aria-label="选择项目案例">
+          {story.projects.map((project) => (
+            <button key={project.id} type="button" aria-current={activeProject === project.id ? 'true' : undefined}
+              onClick={() => { setActiveProject(project.id); selectChapter(project.range[0]!); }}>
+              {project.shortLabel}
+            </button>
+          ))}
+        </nav>
         <p className="story-film-stage">{current.label}</p>
         <h3>{current.title}</h3>
         <p>{current.description}</p>
       </figcaption>
-      <nav className="story-film-chapters" aria-label="选择故事章节">
+      <nav className="story-film-chapters" aria-label="选择项目时刻">
         {story.scenes.map((scene, index) => (
           <button key={scene.id} type="button" aria-current={chapter === index ? 'step' : undefined}
             onClick={() => selectChapter(index)}>

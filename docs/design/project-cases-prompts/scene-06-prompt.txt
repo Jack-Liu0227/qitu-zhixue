@@ -1,0 +1,12 @@
+﻿Use case: stylized-concept
+Asset type: homepage project-learning case frame
+Primary request: The finished desktop robot follows a simple line through a cardboard room mock-up and gently moves one colored block with its gripper. A small observation card and a second test path show iteration, without readable text or numbers.
+Scene/backdrop: Bright school makerspace desk, cardboard room, cobalt line path and pale mint target zone.
+Subject: The same friendly palm-sized educational robot in a safe, clear test scenario.
+Style/medium: tactile paper-and-acrylic miniature model, editorial product photography, handcrafted school project.
+Composition/framing: 16:9 wide elevated three-quarter view, robot and path centered, clear evidence of task and iteration, no people.
+Lighting/mood: warm focus, satisfying but not triumphant.
+Color palette: chalk white, cobalt blue, pale mint, graphite, coral accent.
+Materials/textures: 3D printed plastic, acrylic, cardboard, matte paper, colored wooden blocks.
+Constraints: visual continuity with scenes 04-05; no readable text, logos, real children, faces, holograms or fake metrics.
+Avoid: humanoid android, creepy face, neon sci-fi, toy advertisement, watermark.

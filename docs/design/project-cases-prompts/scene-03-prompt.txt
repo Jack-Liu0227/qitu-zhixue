@@ -1,0 +1,12 @@
+﻿Use case: stylized-concept
+Asset type: homepage project-learning case frame
+Primary request: The finished educational drone is being tested safely inside a small indoor flight cage above a marked landing pad. A gentle fan creates a visible change in lightweight ribbons, while the drone holds a stable path toward the pad; show evidence of iteration without any readable numbers.
+Scene/backdrop: Bright school makerspace, transparent safety cage, cobalt landing pad, simple fan, a few clipped observation cards with no readable text.
+Subject: The same compact quadcopter prototype in controlled test flight, clearly a student engineering project rather than military hardware.
+Style/medium: tactile paper-and-acrylic miniature model, editorial product photography, handcrafted school project.
+Composition/framing: 16:9 wide elevated three-quarter view, drone centered above landing pad, safe distance and calm geometry, no people.
+Lighting/mood: soft daylight, test-and-improve confidence.
+Color palette: chalk white, cobalt blue, pale mint, graphite, orange safety marker.
+Materials/textures: acrylic cage, foam board, matte paper, thin ribbons, 3D printed parts.
+Constraints: same camera height and palette as scenes 01-02; no readable text, scores or logos; no real children, faces, holograms, explosions or weapon cues.
+Avoid: outdoor disaster, military drone, neon sci-fi, generic stock photo, watermark.

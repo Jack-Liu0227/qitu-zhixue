@@ -1,0 +1,12 @@
+﻿Use case: stylized-concept
+Asset type: homepage project-learning case frame
+Primary request: A middle-school engineering project begins with a compact quadcopter on a workbench: the student asks how it can hold a stable course and return safely after wind changes. Show the question through physical clues rather than readable text.
+Scene/backdrop: A bright school makerspace workbench with a small indoor quadcopter, propeller guards, a simple wind-tunnel fan, graph paper, measuring tape and a blank notebook.
+Subject: One approachable educational drone prototype, not a military aircraft.
+Style/medium: tactile paper-and-acrylic miniature model, editorial product photography, handcrafted school project.
+Composition/framing: 16:9 wide elevated three-quarter view, one clear drone in the center, generous calm negative space, no people.
+Lighting/mood: soft daylight, curious and focused, crisp shadows.
+Color palette: chalk white, cobalt blue, pale mint, graphite, one warm orange safety marker.
+Materials/textures: foam board, acrylic, 3D-printed plastic, matte paper, small screws and wires.
+Constraints: consistent camera height and visual language for a three-frame sequence; recognizable middle-school project; no logos, no readable text, no fabricated scores, no real children, no faces, no holograms.
+Avoid: military drone, cinematic explosion, sci-fi neon, generic stock photo, UI screenshot, watermark.
