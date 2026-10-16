@@ -1,4 +1,4 @@
-import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
+﻿import { Injectable, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { FeishuReportDocument } from '@qitu/contracts';
 import { FeishuService } from './feishu.service';
@@ -23,7 +23,7 @@ export class FeishuReportWorker {
   }
 
   async deliver(input: { idempotencyKey: string; assistantId?: string; report: FeishuReportDocument }): Promise<ReportDeliveryResult> {
-    if (!input.idempotencyKey || input.idempotencyKey.length > 160) throw new ServiceUnavailableException('报告幂等键无效');
+    if (!input.idempotencyKey || input.idempotencyKey.length > 160) throw new ServiceUnavailableException('Invalid report idempotency key');
     const key = `${input.assistantId ?? 'feishu-reporting-assistant'}:${input.idempotencyKey}`;
     const hashes = (await this.feishu.getRecipientHashes(input.assistantId)).map((value) => createHash('sha256').update(value).digest('hex').slice(0, 16));
     if (this.completed.has(key)) return { status: 'already_sent', recipientCount: hashes.length, recipientHashes: hashes };
