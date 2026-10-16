@@ -7,6 +7,7 @@ import { countLabel } from './home/format';
 import { HeroTutorDemo } from './home/hero-demo';
 import { Icon, type IconName } from './home/icons';
 import { SiteNav } from './home/site-nav';
+import { ReactBitsBackground } from './home/react-bits-background';
 import { COMPETENCIES, PBL_STEPS } from './public-content';
 import { FALLBACK_STATS, loadHomeView } from './public-data';
 
@@ -47,10 +48,12 @@ export default async function HomePage() {
       <SiteNav />
 
       <main className="home-main" id="top">
-        <section className="home-hero">
+        <section className="home-hero react-bits-hero-wrapper">
+          <ReactBitsBackground />
           <div className="home-shell home-hero-grid">
             <div className="home-hero-copy">
-              <p className="home-badge">
+              <p className="home-badge react-bits-badge">
+                <span className="react-bits-badge-glow" />
                 <span className="home-badge-pill">NEW</span>AI 驱动的项目式学习平台
               </p>
               <h1 className="home-hero-title">
@@ -63,7 +66,7 @@ export default async function HomePage() {
               </p>
               <div className="home-hero-actions">
                 <Link
-                  className="home-btn home-btn--primary home-btn--lg"
+                  className="home-btn home-btn--primary home-btn--lg react-bits-star-border-btn"
                   href="/login?next=%2Fstudent%2Ftutor"
                 >
                   立即开启 AI 探索之旅 <Icon name="arrowRight" size={18} />

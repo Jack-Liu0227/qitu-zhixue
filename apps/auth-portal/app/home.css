@@ -2537,3 +2537,179 @@
     animation: none;
   }
 }
+
+/* =========================================================================
+   React Bits 灵感动态交互视觉样式库 (https://www.reactbits.dev)
+   - 粒子星网背景 (Particles & Constellation)
+   - 交互式微网格 (Squares / Grid Distortion)
+   - 动态发光渐变字体 (ShinyText)
+   - 流光交互边框按钮 (StarBorder)
+   - 聚光灯物理交互卡片 (SpotlightCard)
+   ========================================================================= */
+
+.react-bits-hero-wrapper {
+  position: relative;
+  overflow: hidden;
+  padding: 44px 0 64px;
+}
+
+.react-bits-bg-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.react-bits-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 75% 60% at 50% 30%, #000 35%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 30%, #000 35%, transparent 85%);
+  pointer-events: none;
+}
+
+.react-bits-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* React Bits 风格高光徽章 */
+.react-bits-badge {
+  position: relative;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(129, 140, 248, 0.45) !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12), inset 0 0 12px rgba(255, 255, 255, 0.8) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+  overflow: hidden;
+}
+
+.react-bits-badge:hover {
+  transform: translateY(-1px) scale(1.02);
+  border-color: #6366f1 !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.22) !important;
+}
+
+.react-bits-badge-glow {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-25deg);
+  animation: react-bits-badge-sheen 4.5s ease-in-out infinite;
+}
+
+@keyframes react-bits-badge-sheen {
+  0%, 25% { left: -100%; }
+  60%, 100% { left: 200%; }
+}
+
+/* React Bits 经典流动发光文字效果 (ShinyText) */
+.react-bits-shiny-text {
+  display: inline-block;
+  background: linear-gradient(
+    120deg,
+    #1e4fd9 0%,
+    #2563eb 20%,
+    #7c3aed 40%,
+    #0284c7 60%,
+    #1e4fd9 80%,
+    #7c3aed 100%
+  );
+  background-size: 240% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: react-bits-text-shine 5s linear infinite;
+  text-shadow: 0 0 30px rgba(37, 99, 235, 0.2);
+}
+
+@keyframes react-bits-text-shine {
+  to {
+    background-position: 240% center;
+  }
+}
+
+/* React Bits 流光描边交互按钮 (StarBorder) */
+.react-bits-star-border-btn {
+  position: relative;
+  background: linear-gradient(135deg, #1e4fd9, #0038b2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(30, 79, 217, 0.35), 0 0 0 1px rgba(129, 140, 248, 0.2) !important;
+  overflow: hidden;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.react-bits-star-border-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(30, 79, 217, 0.45), 0 0 20px rgba(56, 189, 248, 0.4) !important;
+}
+
+.react-bits-star-border-btn::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+  background-size: 300% 100%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: react-bits-star-flow 3s linear infinite;
+}
+
+.react-bits-star-border-btn:hover::after {
+  opacity: 1;
+}
+
+@keyframes react-bits-star-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 300% 0%; }
+}
+
+/* React Bits 磨砂玻璃按钮 */
+.react-bits-glass-btn {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1.5px solid rgba(196, 197, 215, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-bits-glass-btn:hover {
+  background: #ffffff !important;
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.14) !important;
+}
+
+/* React Bits 聚光灯互动容器 (SpotlightCard) */
+.react-bits-spotlight-card {
+  position: relative;
+  border-radius: 20px;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.react-bits-spotlight-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.25s ease;
+}
+
+.react-bits-hero-spotlight {
+  border-radius: 20px;
+}
+
+.react-bits-hero-spotlight:hover {
+  box-shadow: 0 20px 44px rgba(16, 42, 92, 0.12);
+}
