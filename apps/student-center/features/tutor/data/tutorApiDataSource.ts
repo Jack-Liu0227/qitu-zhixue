@@ -68,13 +68,16 @@ export class TutorApiDataSource implements TutorDataSource {
     const response = await this.fetchJson('/api/v1/projects', '项目列表加载失败');
     const data = unwrapData(response);
     if (!Array.isArray(data)) throw new TutorDataError('项目列表格式不正确', undefined, 'BAD_PROJECT_LIST_PAYLOAD');
-    return data.flatMap((item): ProjectSummary[] => {
+    const projects = data.flatMap((item): ProjectSummary[] => {
       if (typeof item !== 'object' || item === null) return [];
       const candidate = item as Record<string, unknown>;
       if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string' ||
           typeof candidate.status !== 'string' || typeof candidate.progressPercent !== 'number') return [];
       return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent }];
     });
+    const countsBody = unwrapData(await this.fetchJson(`/api/v1/tutor/session-counts?projectIds=${projects.map((project) => encodeURIComponent(project.id)).join(',')}`, '会话消息数加载失败'));
+    const counts = countsBody !== null && typeof countsBody === 'object' ? countsBody as Record<string, unknown> : {};
+    return projects.map((project) => ({ ...project, turnCount: typeof counts[project.id] === 'number' ? Number(counts[project.id]) : 0 }));
   }
 
   async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {

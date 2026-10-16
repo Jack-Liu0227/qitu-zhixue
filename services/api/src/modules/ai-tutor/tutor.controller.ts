@@ -143,6 +143,15 @@ export class TutorController {
     const actor = this.requireStudent(cookieHeader);
     return { data: await this.tutorService.getProjectContext(projectId, actor.id) };
   }
+  @Get('session-counts')
+  async getSessionCounts(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('projectIds') projectIds?: string,
+  ): Promise<{ data: Record<string, number> }> {
+    const actor = this.requireStudent(cookieHeader);
+    const ids = (projectIds ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+    return { data: await this.tutorService.getProjectSessionCounts(ids, actor.id) };
+  }
 
   /**
    * 流式执行一轮。
