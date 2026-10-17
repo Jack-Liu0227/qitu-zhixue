@@ -33,7 +33,13 @@ export function ToolParameters({
       {catalog && (
         <>
           {catalog.message && (
-            <p className={catalog.stale ? styles.warning : styles.hint}>{catalog.message}</p>
+            <p
+              className={
+                catalog.stale || catalog.source === 'legacy_manifest' ? styles.warning : styles.hint
+              }
+            >
+              {catalog.message}
+            </p>
           )}
           {catalog.fetchedAt && (
             <small>
@@ -91,7 +97,11 @@ export function ToolParameters({
                       </div>
                     )}
                     <details className={styles.schema} open>
-                      <summary>完整 inputSchema（只读）</summary>
+                      <summary>
+                        {catalog.source === 'legacy_manifest'
+                          ? '原界面 inputSchema（只读）'
+                          : '完整 inputSchema（只读）'}
+                      </summary>
                       <pre>{JSON.stringify(schema, null, 2)}</pre>
                     </details>
                   </>
