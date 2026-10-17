@@ -428,8 +428,10 @@ export class TemplateBindingService {
     assertCanGovernTemplate(actor, template, actorSchoolId);
     const version = await this.templates.findVersion(versionId);
     if (version === null || version.templateId !== templateId) throw versionNotFound();
-    // 生命周期写（create/validate/activate/retire）只允许 published 版本。
-    if (version.status !== 'published') {
+    // 生命周期写（create/validate/activate/retire）允许 published 与 piloting：
+    // 试点模板必须先有 active 绑定，tutor 才能经绑定解析团队；而 piloting → published
+    // 仍需 5 项证据门（不在此放行）。draft/archived 仍拒。
+    if (version.status !== 'published' && version.status !== 'piloting') {
       throw new NotFoundException({
         code: 'BINDING_TEMPLATE_VERSION_NOT_FOUND',
         message: '模板版本不存在或未发布',

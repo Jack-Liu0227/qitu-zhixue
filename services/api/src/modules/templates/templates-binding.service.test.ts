@@ -316,7 +316,51 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
     }
   });
 
-  it('绑定只允许指向 published 版本；draft 版本 404', async () => {
+  it('piloting 版本可创建并激活绑定（试点需绑定才能解析团队）', async () => {
+    const pilotTemplate = await h.templates.createTemplate({
+      id: 'tpl-pilot',
+      schoolId: null,
+      slug: 'optics-pilot',
+      title: '物理光学（试点）',
+      summary: '干涉衍射偏振',
+      createdBy: 'admin-1',
+      now: NOW,
+    });
+    await h.templates.createVersion({
+      id: 'ver-pilot',
+      templateId: pilotTemplate.id,
+      version: 'v1',
+      stages: DEFAULT_STAGES,
+      createdBy: 'admin-1',
+      now: NOW,
+    });
+    await h.templates.setVersionStatus('ver-pilot', 'piloting', NOW, NOW);
+
+    const created = await h.service.createBinding(
+      ADMIN,
+      pilotTemplate.id,
+      'ver-pilot',
+      { teamVersionId: 'tv-1' },
+      'k-pilot-create',
+    );
+    await h.service.validateBinding(
+      ADMIN,
+      pilotTemplate.id,
+      'ver-pilot',
+      created.binding.id,
+      'k-pilot-validate',
+    );
+    const activated = await h.service.activateBinding(
+      ADMIN,
+      pilotTemplate.id,
+      'ver-pilot',
+      created.binding.id,
+      'k-pilot-activate',
+    );
+    assert.equal(activated.binding.status, 'active');
+  });
+
+  it('绑定只允许指向 published 或 piloting 版本；draft 版本 404', async () => {
     const draftTemplate = await h.templates.createTemplate({
       id: 'tpl-2',
       schoolId: null,

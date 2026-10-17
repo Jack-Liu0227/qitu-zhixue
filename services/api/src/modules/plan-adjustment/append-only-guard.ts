@@ -66,6 +66,8 @@ export function assertAppendOnlyOutlineMutation(
       next.name !== previous.name ||
       next.type !== previous.type ||
       next.objective !== previous.objective ||
+      next.moduleId !== previous.moduleId ||
+      next.ordinal !== previous.ordinal ||
       !sameIds(next.prerequisiteIds, previous.prerequisiteIds)
     ) {
       throw new PlanAdjustmentError(

@@ -270,6 +270,23 @@ test('F4: append-only guard rejects deleting or weakening a template-required ob
     (error: unknown) => error instanceof PlanAdjustmentError && error.code === 'ADJUSTMENT_INVALID',
   );
 
+  // 重排既有节点（ordinal/moduleId 改写）也是削弱：顺序本身是教学序列，不得静默重算。
+  const reordered = before.map((objective) => (
+    objective.id === 'node-2' ? { ...objective, ordinal: 99 } : objective
+  ));
+  assert.throws(
+    () => assertAppendOnlyOutlineMutation(before, reordered),
+    (error: unknown) => error instanceof PlanAdjustmentError && error.code === 'ADJUSTMENT_INVALID',
+  );
+
+  const remoduled = before.map((objective) => (
+    objective.id === 'node-2' ? { ...objective, moduleId: 'mod-9' } : objective
+  ));
+  assert.throws(
+    () => assertAppendOnlyOutlineMutation(before, remoduled),
+    (error: unknown) => error instanceof PlanAdjustmentError && error.code === 'ADJUSTMENT_INVALID',
+  );
+
   const nonRemedialAppend = [
     ...before,
     { id: 'node-3', planId: 'plan-1', moduleId: 'mod-1', name: 'x', type: 'memory' as const, objective: 'y', prerequisiteIds: ['node-1'], ordinal: 3, isRemedial: false },

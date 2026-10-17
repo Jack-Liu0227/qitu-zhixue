@@ -19,6 +19,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { MasteryModule } from '../mastery/mastery.module';
+import { PlanAdjustmentModule } from '../plan-adjustment/plan-adjustment.module';
 import { InMemoryTutorQuizStore, TutorQuizStore } from './tutor-quiz.store';
 import { PostgresTutorQuizStore } from './tutor-quiz.store.postgres';
 import { TutorQuizService } from './tutor-quiz.service';
@@ -39,7 +40,7 @@ import { TutorQuizService } from './tutor-quiz.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule, TemplatesModule, MasteryModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule],
   controllers: [TutorController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },

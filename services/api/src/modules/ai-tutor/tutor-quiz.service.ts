@@ -1,5 +1,11 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import type { AnswerInteractiveQuizResponse, CurrentUser, LearningErrorType, TutorHintLevel } from '@qitu/contracts';
+import type {
+  AnswerInteractiveQuizResponse,
+  CurrentUser,
+  LearningErrorType,
+  StudentStuckSignal,
+  TutorHintLevel,
+} from '@qitu/contracts';
 import {
   computeMasteryScore,
   deriveObjectiveStatus,
@@ -27,6 +33,7 @@ import {
   type ObjectiveRecord,
   type PlanBundle,
 } from '../learning-plan/learning-plan.store';
+import { StuckSignalService } from '../plan-adjustment/stuck-signal.service';
 import { TutorQuizStore, type AnswerAttemptRecord } from './tutor-quiz.store';
 import { TutorService, type TutorSessionRecord } from './tutor.service';
 
@@ -53,6 +60,7 @@ export class TutorQuizService {
     private readonly audit: AuditWriter,
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() private readonly tutor?: TutorService,
+    @Optional() private readonly stuckSignals?: StuckSignalService,
   ) {}
 
   async answer(
@@ -231,7 +239,17 @@ export class TutorQuizService {
           // 阶梯推进与会话回合追加在掌握度事务提交后完成（F1.7 path (a)）。
           const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
           if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
-            await this.auditStuckSignal(actor, session, entry, scope, idempotencyKey);
+            await this.emitStuckSignal({
+              actor,
+              session,
+              entry,
+              scope,
+              idempotencyKey,
+              planId: plan.id,
+              stemNodeId: objective.id,
+              attemptId: attemptRecord.id,
+              errorType: grade.errorType ?? null,
+            });
           }
           await this.audit.write({
             actorId: actor.id,
@@ -308,6 +326,69 @@ export class TutorQuizService {
         sessionId: session.sessionId,
       },
     });
+  }
+
+  /**
+   * L3 封顶 + 答错 = 卡点信号（ pedagogy-spec §7 ）。
+   *
+   * 先写原有的 `tutor.stuck_signal` 审计（证据保底），再投递给 F4 的
+   * `StuckSignalService.ingest`（节点级去重 / 深度熔断 / 追加补救节点）。
+   * 计划调整是**旁路**：任何失败都不能影响判分结果，因此这里 catch 后
+   * 只记 warning——F4 服务内部已做 audit-only 兜底。
+   */
+  private async emitStuckSignal(input: {
+    actor: CurrentUser;
+    session: TutorSessionRecord;
+    entry: QuizBankEntry;
+    scope: string;
+    idempotencyKey: string;
+    planId: string;
+    stemNodeId: string;
+    attemptId: string;
+    errorType: LearningErrorType | null;
+  }): Promise<void> {
+    await this.auditStuckSignal(
+      input.actor,
+      input.session,
+      input.entry,
+      input.scope,
+      input.idempotencyKey,
+    );
+    if (this.stuckSignals === undefined) return;
+    const projectId = input.session.projectId;
+    if (projectId === null) return;
+    const signal: StudentStuckSignal = {
+      studentId: input.actor.id,
+      projectId,
+      planId: input.planId,
+      sessionId: input.session.sessionId,
+      stemNodeId: input.stemNodeId,
+      conceptId: input.entry.conceptId,
+      trigger: 'repeated_assessment_error',
+      triggerKey: `l3_cap:${input.actor.id}:${input.entry.conceptId}`,
+      errorTypeCode: input.errorType ?? 'repeated_wrong',
+      nodeRefs: [input.stemNodeId],
+      evidenceRefs: [input.attemptId],
+      emittedAt: new Date().toISOString(),
+    };
+    try {
+      await this.stuckSignals.ingest(signal);
+    } catch {
+      await this.audit.write({
+        actorId: input.actor.id,
+        actorRole: input.actor.role,
+        action: 'tutor.stuck_signal.ingest_failed',
+        targetType: 'tutor_session',
+        targetId: input.session.sessionId,
+        idempotencyKey: `${input.scope}:${input.idempotencyKey}:ingest`,
+        detail: {
+          quizId: input.entry.questionId,
+          conceptId: input.entry.conceptId,
+          stemNodeId: input.stemNodeId,
+          triggerKey: signal.triggerKey,
+        },
+      });
+    }
   }
 
   /* ==================== 内部：解析 / 掌握度 ==================== */
