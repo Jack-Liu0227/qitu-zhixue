@@ -34,6 +34,7 @@ import {
 import {
   latestPublishedVersionId,
   templateNotFound,
+  toTemplateVersionGovernanceView,
   toTemplateVersionView,
   toTemplateView,
   versionNotFound,
@@ -45,6 +46,7 @@ import type {
   ProjectTemplateVersionRecord,
   TemplateStage,
   TemplateView,
+  TemplateVersionGovernanceView,
   TemplateVersionView,
   UpdateTemplateInput,
   VerificationEvidence,
@@ -117,6 +119,21 @@ export class TemplateGovernanceService {
         ? await this.store.listTemplates({})
         : await this.store.listTemplates({ visibleToSchoolId: actorSchoolId });
     return Promise.all(records.map((record) => this.project(record)));
+  }
+
+  /**
+   * 治理端版本列表（含冻结正文 stages / content / rubric）。
+   *
+   * 对象级授权与写操作一致：admin 管平台 + 全校，teacher 只管本校，
+   * 其余 403；模板不存在统一 404，不泄露存在性。只读操作，无需幂等键。
+   */
+  async listGovernedVersions(
+    actor: CurrentUser,
+    templateId: string,
+  ): Promise<TemplateVersionGovernanceView[]> {
+    await this.requireGovernableTemplate(actor, templateId);
+    const versions = await this.store.listVersions(templateId);
+    return versions.map(toTemplateVersionGovernanceView);
   }
 
   /* ============================ 模板主体 ============================ */

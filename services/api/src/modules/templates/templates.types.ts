@@ -123,6 +123,18 @@ export interface TemplateVersionView {
   createdAt: string;
 }
 
+/**
+ * 治理端版本投影：在学生端投影之上暴露版本正文（`content` / `rubric`）。
+ *
+ * 仅供 `GET /api/v1/admin/project-templates/:id/versions` 使用；学生端
+ * 接口继续返回 `TemplateVersionView`，导师提示词等治理内容不外泄。
+ */
+export interface TemplateVersionGovernanceView extends TemplateVersionView {
+  content: Record<string, unknown>;
+  rubric: unknown[];
+  createdBy: string | null;
+}
+
 /* ========================== 验证评测证据 ========================== */
 
 /** 单个目标的掌握证据；`mastered` 直接来自 mastery 引擎，绝不在此重算。 */

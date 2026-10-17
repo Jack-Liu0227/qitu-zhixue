@@ -24,6 +24,7 @@ import type {
   CreateTemplateInput,
   CreateTemplateVersionInput,
   TemplateView,
+  TemplateVersionGovernanceView,
   UpdateTemplateInput,
 } from './templates.types';
 
@@ -32,6 +33,7 @@ import type {
  *
  * ```http
  * GET    /api/v1/admin/project-templates
+ * GET    /api/v1/admin/project-templates/:id/versions
  * POST   /api/v1/admin/project-templates
  * PATCH  /api/v1/admin/project-templates/:id
  * POST   /api/v1/admin/project-templates/:id/versions
@@ -59,6 +61,16 @@ export class TemplateGovernanceController {
   ): Promise<{ data: TemplateView[] }> {
     const actor = this.requireGovernanceActor(cookieHeader);
     return { data: await this.governance.listGovernedTemplates(actor) };
+  }
+
+  /** 治理端版本列表：含冻结正文（stages / content / rubric），供阶段设计编辑器读写闭环。 */
+  @Get(':id/versions')
+  async listVersions(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('id') id: string,
+  ): Promise<{ data: TemplateVersionGovernanceView[] }> {
+    const actor = this.requireGovernanceActor(cookieHeader);
+    return { data: await this.governance.listGovernedVersions(actor, id) };
   }
 
   @Post()

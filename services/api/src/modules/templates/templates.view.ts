@@ -3,6 +3,7 @@ import type {
   ProjectTemplateRecord,
   ProjectTemplateVersionRecord,
   TemplateView,
+  TemplateVersionGovernanceView,
   TemplateVersionView,
 } from './templates.types';
 
@@ -58,6 +59,18 @@ export function toTemplateVersionView(
     status: record.status,
     publishedAt: record.publishedAt?.toISOString() ?? null,
     createdAt: record.createdAt.toISOString(),
+  };
+}
+
+/** 治理端投影：在学生端投影之上带出冻结正文（content / rubric）。 */
+export function toTemplateVersionGovernanceView(
+  record: ProjectTemplateVersionRecord,
+): TemplateVersionGovernanceView {
+  return {
+    ...toTemplateVersionView(record),
+    content: { ...record.content },
+    rubric: [...record.rubric],
+    createdBy: record.createdBy,
   };
 }
 

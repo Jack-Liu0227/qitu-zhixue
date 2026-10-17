@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { AdminProjectTemplate } from '../../../../lib/api/content';
+import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
   archiveAdminTemplate,
   createAdminTemplate,
   createAdminTemplateVersion,
+  fetchAdminTemplateVersions,
   fetchAdminTemplates,
   updateAdminTemplate,
 } from '../../../../lib/api/content';
@@ -13,6 +14,13 @@ import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
 import type { AdminTeamConfig } from '@qitu/contracts';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
+/**
+ * PBL 阶段设计（name / gateRule / stagePrompt / mentorRole）。
+ *
+ * 数据来源闭环：保存在模板版本的 `content.phases`（随版本冻结），
+ * 打开编辑器时从 `GET /admin/project-templates/:id/versions` 的
+ * 最新版本读回；页面不内置任何假数据。
+ */
 interface PblPhaseDesign {
   id: string;
   name: string;
@@ -21,84 +29,76 @@ interface PblPhaseDesign {
   mentorRole: string;
 }
 
-interface EditableTemplate extends AdminProjectTemplate {
+/** 编辑器本地状态：模板元数据 + 从最新版本读出的阶段设计。 */
+interface TemplateEditorState {
+  id: string;
+  status: string;
+  title: string;
+  summary: string;
+  domain: string | null;
+  ageRange: string | null;
+  difficulty: string | null;
+  estimatedDurationMinutes: number | null;
+  learningObjectives: string[];
   linkedTeamId: string;
   phases: PblPhaseDesign[];
+  /** 阶段设计取自哪个版本；null = 该模板还没有任何版本。 */
+  sourceVersion: string | null;
 }
 
-const DEFAULT_PHASES: Record<string, PblPhaseDesign[]> = {
-  'template-python-mini-project': [
-    {
-      id: 'phase-1',
-      name: '意图确认与项目开题',
-      gateRule: '学生必须明确战机操控与关卡设想，禁止未确认即创建项目',
-      stagePrompt: '你负责引导学生阐述雷霆战机的游戏构想（飞船移动、子弹发射、敌机刷新），启发其拆解开发目标，不得直接提供现成代码。',
-      mentorRole: '雷霆战机总导师',
-    },
-    {
-      id: 'phase-2',
-      name: '核心机制探究 (TheoryMastered 硬性门禁)',
-      gateRule: '必须掌握 Pygame 事件循环与 AABB 碰撞检测数学原理后方可进入代码编写',
-      stagePrompt: '严格坚持苏格拉底式发问！询问学生“如果两架飞机的矩形边界相交，X轴和Y轴的坐标差满足什么条件？”引导学生推导 AABB 包围盒公式。在学生完全掌握理论前，坚决不进入实践环节。',
-      mentorRole: '原理教练',
-    },
-    {
-      id: 'phase-3',
-      name: '工程实践与模块编码',
-      gateRule: '必须在沙箱中成功运行并通过主循环帧率与按键事件自检',
-      stagePrompt: '作为代码向导，指导学生分步编写 Player 精灵类、Bullet 队列与 Enemy 碰撞检测。遇到报错时，引导学生阅读 Traceback 错误栈。',
-      mentorRole: '代码向导',
-    },
-    {
-      id: 'phase-4',
-      name: '作品答辩与概念反思',
-      gateRule: '完成答辩质询量规测评，生成永久成长档案',
-      stagePrompt: '针对学生的雷霆战机代码提出2-3个概念质询问题（例如“如果增加爆炸动画，你的事件循环需要做哪些改造？”），评估其真实掌握度。',
-      mentorRole: '答辩导师',
-    },
-  ],
-  'template-kinetic-energy': [
-    {
-      id: 'phase-1',
-      name: '生活现象观察与开题',
-      gateRule: '学生阐述滑板加速或小车冲坡观察，确认实验假设',
-      stagePrompt: '引导学生观察小车在不同拉力作用下的加速现象，提出探究问题：力对物体做功的大小与物体的速度变化有什么定量联系？',
-      mentorRole: '动手学动能定理总导师',
-    },
-    {
-      id: 'phase-2',
-      name: '动能定理公式推导 (TheoryMastered)',
-      gateRule: '推导恒力做功 W=F·s 与动能变化 ΔEk=½mv₂²-½mv₁²，通过测验',
-      stagePrompt: '引导学生从牛顿第二定律 a=F/m 和运动学公式 v₂²-v₁²=2as 出发，推导合外力做功与动能定理的关系，完成理论建构。',
-      mentorRole: '物理概念教练',
-    },
-    {
-      id: 'phase-3',
-      name: 'Python 物理数值仿真与绘图',
-      gateRule: '完成 Matplotlib 功-能折线图绘制与数据拟合验证',
-      stagePrompt: '指导学生使用 Python 数值模拟不同初速度和小车质量下的动能变化曲线，检查动能误差是否在 5% 以内。',
-      mentorRole: '物理仿真向导',
-    },
-    {
-      id: 'phase-4',
-      name: '实验报告答辩与反思',
-      gateRule: '提交实验报告与数据可复现证据包',
-      stagePrompt: '向学生发问：“如果考虑摩擦阻力，合外力做功如何修正？机械能守恒与动能定理有什么区别与联系？”',
-      mentorRole: '答辩导师',
-    },
-  ],
+const STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  review: '审核中',
+  published: '已发布',
+  archived: '已归档',
 };
 
+function asText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * 从版本数据解析阶段设计。只认版本里真实存在的字段：
+ * - `content.phases` 是本页保存时写入的结构，优先使用；
+ * - 否则退到版本冻结的 `stages`（id/label）生成骨架，其余字段留空由治理者补全；
+ * - 两者都没有时返回空数组，页面展示诚实空态。
+ */
+function parsePhasesFromVersion(version: AdminTemplateVersionDetail): PblPhaseDesign[] {
+  const content = (version.content ?? {}) as Record<string, unknown>;
+  if (Array.isArray(content.phases)) {
+    const parsed = content.phases
+      .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+      .map((item, index) => ({
+        id: asText(item.id).trim() || `phase-${index + 1}`,
+        name: asText(item.name),
+        gateRule: asText(item.gateRule),
+        stagePrompt: asText(item.stagePrompt),
+        mentorRole: asText(item.mentorRole),
+      }));
+    if (parsed.length > 0) return parsed;
+  }
+  return version.stages.map((stage, index) => ({
+    id: stage.id || `phase-${index + 1}`,
+    name: stage.label,
+    gateRule: '',
+    stagePrompt: '',
+    mentorRole: '',
+  }));
+}
+
 export default function AdminTemplatesPage() {
-  const [templates, setTemplates] = useState<EditableTemplate[]>([]);
+  const [templates, setTemplates] = useState<AdminProjectTemplate[]>([]);
   const [teams, setTeams] = useState<AdminTeamConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   // 模板编辑视图状态
-  const [editingTemplate, setEditingTemplate] = useState<EditableTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<TemplateEditorState | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionsError, setVersionsError] = useState<Error | null>(null);
   const [editorTab, setEditorTab] = useState<'basic' | 'workflow'>('workflow');
   const [saveNotice, setSaveNotice] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -106,90 +106,11 @@ export default function AdminTemplatesPage() {
     setError(null);
     try {
       const [tpls, teamList] = await Promise.all([
-        fetchAdminTemplates().catch(() => []),
-        fetchAdminTeamConfigs().catch(() => []),
+        fetchAdminTemplates(),
+        fetchAdminTeamConfigs(),
       ]);
-
       setTeams(teamList);
-
-      const merged: EditableTemplate[] = tpls.map((t) => {
-        const phases = DEFAULT_PHASES[t.id] || [
-          {
-            id: 'phase-1',
-            name: '意图确认',
-            gateRule: '确认探究意图与任务目标',
-            stagePrompt: '引导学生自主阐述项目构想与目标。',
-            mentorRole: '总导师',
-          },
-          {
-            id: 'phase-2',
-            name: '核心理论探究 (TheoryMastered)',
-            gateRule: '理论掌握度硬性门禁，未达标前不得进入实践',
-            stagePrompt: '苏格拉底式发问，引导学生自主掌握原理。',
-            mentorRole: '原理教练',
-          },
-          {
-            id: 'phase-3',
-            name: '工程实践',
-            gateRule: '沙箱验证与成果提交',
-            stagePrompt: '指导学生在沙箱中实践。',
-            mentorRole: '代码向导',
-          },
-          {
-            id: 'phase-4',
-            name: '答辩反思',
-            gateRule: '量规质询与学情记录',
-            stagePrompt: '评估真实掌握度与反思归档。',
-            mentorRole: '答辩导师',
-          },
-        ];
-
-        const linkedTeamId = t.id.includes('python') || t.id.includes('thunder')
-          ? 'team-thunder-fighter-pbl'
-          : 'team-kinetic-energy-pbl';
-
-        return {
-          ...t,
-          linkedTeamId,
-          phases,
-        };
-      });
-
-      let customList: EditableTemplate[] = [];
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_templates');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed)) {
-              customList = parsed.map((item: any) => ({
-                id: item.id,
-                schoolId: null,
-                scope: 'platform',
-                slug: item.id,
-                title: item.title,
-                summary: item.summary || item.title,
-                domain: 'STEM',
-                ageRange: '12-18',
-                difficulty: 'intermediate',
-                estimatedDurationMinutes: 120,
-                learningObjectives: item.tags || ['项目式学习', '科学探究'],
-                status: 'published',
-                verifiedAt: null,
-                latestPublishedVersionId: null,
-                updatedAt: item.updatedAt || new Date().toISOString(),
-                linkedTeamId: item.linkedTeamId || 'team-kinetic-energy',
-                phases: item.phases || DEFAULT_PHASES['template-kinetic-energy'] || [],
-              }));
-            }
-          }
-        } catch {}
-      }
-
-      const existingIds = new Set(merged.map((m) => m.id));
-      const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...merged];
-
-      setTemplates(combined);
+      setTemplates(tpls);
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('模板库加载失败'));
     } finally {
@@ -201,14 +122,62 @@ export default function AdminTemplatesPage() {
     void load();
   }, [load]);
 
+  /** 按需拉取某模板的版本数据，把最新版本的阶段设计读进编辑器。 */
+  const loadVersions = useCallback(async (templateId: string) => {
+    setVersionsLoading(true);
+    setVersionsError(null);
+    try {
+      const versions = await fetchAdminTemplateVersions(templateId);
+      const latest = versions.length > 0 ? versions[versions.length - 1] ?? null : null;
+      setEditingTemplate((prev) => {
+        if (prev === null || prev.id !== templateId) return prev;
+        if (latest === null) return prev;
+        const content = (latest.content ?? {}) as Record<string, unknown>;
+        return {
+          ...prev,
+          phases: parsePhasesFromVersion(latest),
+          linkedTeamId: asText(content.linkedTeamId),
+          sourceVersion: latest.version,
+        };
+      });
+    } catch (cause) {
+      setVersionsError(cause instanceof Error ? cause : new Error('版本数据加载失败'));
+    } finally {
+      setVersionsLoading(false);
+    }
+  }, []);
+
+  const openEditor = (template: AdminProjectTemplate) => {
+    setSaveNotice('');
+    setSaveError('');
+    setEditorTab('workflow');
+    setEditingTemplate({
+      id: template.id,
+      status: template.status,
+      title: template.title,
+      summary: template.summary,
+      domain: template.domain,
+      ageRange: template.ageRange,
+      difficulty: template.difficulty,
+      estimatedDurationMinutes: template.estimatedDurationMinutes,
+      learningObjectives: template.learningObjectives ?? [],
+      linkedTeamId: '',
+      phases: [],
+      sourceVersion: null,
+    });
+    void loadVersions(template.id);
+  };
+
   const handleDeleteTemplate = async (id: string, title: string) => {
-    if (!window.confirm(`确定要删除项目模板「${title}」吗？`)) return;
+    if (!window.confirm(`确定要归档项目模板「${title}」吗？`)) return;
     setSaving(true);
     try {
       const result = await archiveAdminTemplate(id);
-      setTemplates((prev) => prev.map((item) => item.id === id ? { ...item, ...result.template } : item));
+      setTemplates((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, ...result.template } : item)),
+      );
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error('template archive failed'));
+      setSaveError(cause instanceof Error ? cause.message : '模板归档失败');
     } finally {
       setSaving(false);
     }
@@ -217,96 +186,146 @@ export default function AdminTemplatesPage() {
 
   const handleCreateTemplate = async () => {
     setSaving(true);
+    setSaveError('');
     try {
       const created = await createAdminTemplate({
-      schoolId: null,
-      slug: `custom-pbl-${Date.now()}`,
-      title: `�Զ��� PBL ��Ŀģ�� ${templates.length + 1}`,
-      summary: '�Զ�����Ŀʽѧϰ̽��ģ�壬��������ͼȷ�ϵ���練˼��ȫ���̡�',
-      domain: '��ѧ��̽��',
-      ageRange: '12-18',
-      difficulty: 'medium',
-      estimatedDurationMinutes: 720,
-      learningObjectives: ['���պ��ĸ����Ƶ�', '���ɳ����֤����Ŀ���'],
+        schoolId: null,
+        slug: `custom-pbl-${Date.now()}`,
+        title: `自定义 PBL 项目模板 ${templates.length + 1}`,
+        summary: '自定义项目式学习探索模板；阶段设计与导师提示词请在编辑器中补全。',
+        domain: '跨学科探究',
+        ageRange: '12-18',
+        difficulty: 'medium',
+        estimatedDurationMinutes: 720,
+        learningObjectives: [],
       });
-    const newTpl: EditableTemplate = {
-      ...created.template,
-      title: `自定义 PBL 项目模板 ${templates.length + 1}`,
-      summary: '自定义项目式学习探索模板，包含从意图确认到答辩反思的全流程。',
-      domain: '跨学科探究',
-      learningObjectives: ['掌握核心概念推导', '完成沙箱验证与项目答辩'],
-      linkedTeamId: teams[0]?.id || 'team-thunder-fighter-pbl',
-      phases: [
-        {
-          id: 'phase-1',
-          name: '意图确认与开题',
-          gateRule: '确认探究意图与任务目标',
-          stagePrompt: '引导学生阐述项目构想，拆解探究目标。',
-          mentorRole: '总导师',
-        },
-        {
-          id: 'phase-2',
-          name: '核心理论推导 (TheoryMastered 门禁)',
-          gateRule: '理论掌握度硬性门禁，未达标前严禁进入编码实践',
-          stagePrompt: '严格坚持苏格拉底式启发引导，通过概念反问检验掌握度。',
-          mentorRole: '原理教练',
-        },
-        {
-          id: 'phase-3',
-          name: '工程实践与编码',
-          gateRule: '沙箱验证与功能测试',
-          stagePrompt: '指导学生在沙箱中分步编写代码并定位错误。',
-          mentorRole: '代码向导',
-        },
-        {
-          id: 'phase-4',
-          name: '成果答辩与反思',
-          gateRule: '量规质询与成长档案归档',
-          stagePrompt: '提出2-3个概念质询问题评估真实掌握度。',
-          mentorRole: '答辩导师',
-        },
-      ],
-    };
-    await createAdminTemplateVersion(newTpl.id, {
-      stages: newTpl.phases.map((phase) => ({ id: phase.id, label: phase.name })),
-      content: { phases: newTpl.phases, linkedTeamId: newTpl.linkedTeamId },
-    });
-      setTemplates((prev) => [newTpl, ...prev]);
-      setEditingTemplate(newTpl);
+      setTemplates((prev) => [created.template, ...prev]);
+      // 新模板还没有任何版本：直接进编辑器，由治理者补全阶段设计后保存生成 v1。
+      openEditor(created.template);
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error('template creation failed'));
+      setSaveError(cause instanceof Error ? cause.message : '模板创建失败');
     } finally {
       setSaving(false);
     }
   };
 
+  const updatePhase = (phaseId: string, patch: Partial<PblPhaseDesign>) => {
+    setEditingTemplate((prev) => {
+      if (prev === null) return prev;
+      return {
+        ...prev,
+        phases: prev.phases.map((p) => (p.id === phaseId ? { ...p, ...patch } : p)),
+      };
+    });
+  };
+
+  const addPhase = () => {
+    setEditingTemplate((prev) => {
+      if (prev === null) return prev;
+      const used = new Set(prev.phases.map((p) => p.id));
+      let index = prev.phases.length + 1;
+      while (used.has(`phase-${index}`)) index += 1;
+      return {
+        ...prev,
+        phases: [
+          ...prev.phases,
+          { id: `phase-${index}`, name: '', gateRule: '', stagePrompt: '', mentorRole: '' },
+        ],
+      };
+    });
+  };
+
+  const removePhase = (phaseId: string) => {
+    setEditingTemplate((prev) => {
+      if (prev === null) return prev;
+      return { ...prev, phases: prev.phases.filter((p) => p.id !== phaseId) };
+    });
+  };
+
   const handleSaveTemplate = async () => {
     if (!editingTemplate) return;
+    setSaveError('');
+    setSaveNotice('');
+
+    const phases = editingTemplate.phases.map((p) => ({
+      ...p,
+      name: p.name.trim(),
+      gateRule: p.gateRule.trim(),
+      stagePrompt: p.stagePrompt.trim(),
+      mentorRole: p.mentorRole.trim(),
+    }));
+    const title = editingTemplate.title.trim();
+    const summary = editingTemplate.summary.trim();
+    if (title.length === 0 || summary.length === 0) {
+      setSaveError('模板标题与摘要不能为空');
+      return;
+    }
+    if (phases.some((p) => p.name.length === 0)) {
+      setSaveError('存在未命名的阶段：请填写阶段名称，或删除该阶段');
+      return;
+    }
+
+    // 后端约束：published 模板不可改元数据（只能加新版本）；archived 模板两者都不行。
+    const canUpdateMeta = editingTemplate.status !== 'published' && editingTemplate.status !== 'archived';
+    const canCreateVersion = editingTemplate.status !== 'archived';
+    if (!canUpdateMeta && !(canCreateVersion && phases.length > 0)) {
+      setSaveError('已归档模板不能编辑，也不能生成新版本');
+      return;
+    }
+
     setSaving(true);
     try {
-      await updateAdminTemplate(editingTemplate.id, {
-      title: editingTemplate.title,
-      summary: editingTemplate.summary,
-      domain: editingTemplate.domain,
-      ageRange: editingTemplate.ageRange,
-      difficulty: editingTemplate.difficulty,
-      estimatedDurationMinutes: editingTemplate.estimatedDurationMinutes,
-      learningObjectives: editingTemplate.learningObjectives,
-    });
-      await createAdminTemplateVersion(editingTemplate.id, {
-      stages: editingTemplate.phases.map((phase) => ({ id: phase.id, label: phase.name })),
-      content: { phases: editingTemplate.phases, linkedTeamId: editingTemplate.linkedTeamId },
-    });
-    setTemplates((prev) =>
-      prev.map((t) => (t.id === editingTemplate.id ? { ...editingTemplate } : t))
-    );
-    setSaveNotice('模板与阶段 Prompt 配置已保存 ✔');
-    setTimeout(() => {
-      setSaveNotice('');
-      setEditingTemplate(null);
-    }, 600);
+      let notice: string;
+      if (canUpdateMeta) {
+        const result = await updateAdminTemplate(editingTemplate.id, {
+          title,
+          summary,
+          domain: editingTemplate.domain,
+          ageRange: editingTemplate.ageRange,
+          difficulty: editingTemplate.difficulty,
+          estimatedDurationMinutes: editingTemplate.estimatedDurationMinutes,
+          learningObjectives: editingTemplate.learningObjectives,
+        });
+        setTemplates((prev) =>
+          prev.map((t) => (t.id === result.template.id ? { ...t, ...result.template } : t)),
+        );
+        notice = '基础信息已保存 ✔';
+      } else {
+        notice = '';
+      }
+
+      if (canCreateVersion && phases.length > 0) {
+        const result = await createAdminTemplateVersion(editingTemplate.id, {
+          stages: phases.map((phase) => ({ id: phase.id, label: phase.name })),
+          content: {
+            phases,
+            linkedTeamId: editingTemplate.linkedTeamId || null,
+          },
+        });
+        setTemplates((prev) =>
+          prev.map((t) =>
+            t.id === editingTemplate.id
+              ? { ...t, status: result.template.status, latestPublishedVersionId: result.template.latestPublishedVersionId }
+              : t,
+          ),
+        );
+        setEditingTemplate((prev) =>
+          prev === null || prev.id !== editingTemplate.id
+            ? prev
+            : { ...prev, phases, title, summary, sourceVersion: result.version.version },
+        );
+        notice = `阶段设计已保存为新版本 ${result.version.version} ✔`;
+      } else if (phases.length === 0) {
+        notice = `${notice ? `${notice}；` : ''}尚未添加任何阶段，未生成新版本`;
+      }
+
+      setSaveNotice(notice);
+      window.setTimeout(() => {
+        setSaveNotice('');
+        setEditingTemplate(null);
+      }, 900);
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error('template save failed'));
+      setSaveError(cause instanceof Error ? cause.message : '模板保存失败');
     } finally {
       setSaving(false);
     }
@@ -318,6 +337,8 @@ export default function AdminTemplatesPage() {
   // 模板与 PBL 流程编辑器
   if (editingTemplate) {
     const boundTeam = teams.find((t) => t.id === editingTemplate.linkedTeamId);
+    const linkedTeamMissing =
+      editingTemplate.linkedTeamId.length > 0 && boundTeam === undefined;
 
     return (
       <div className="admin-template-editor-view">
@@ -331,26 +352,31 @@ export default function AdminTemplatesPage() {
               ← 返回模板列表
             </button>
             <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 700, color: '#1d2129' }}>
-              编辑模板：{editingTemplate.title}
+              编辑模板：{editingTemplate.title || '(未命名)'}
             </h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {saveNotice ? <span className="admin-save-notice">{saveNotice}</span> : null}
+            {saveError ? (
+              <span className="admin-save-notice" style={{ color: '#ef4444' }}>
+                {saveError}
+              </span>
+            ) : null}
             <button
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving}
+              disabled={saving || versionsLoading}
             >
-              保存模板与提示词
+              保存模板与阶段设计
             </button>
             <button
               type="button"
               className="settings-action-btn is-danger"
               onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
             >
-              🗑️ 删除
+              🗑️ 归档
             </button>
             <button
               type="button"
@@ -369,7 +395,7 @@ export default function AdminTemplatesPage() {
             className={`team-editor-tab-item${editorTab === 'workflow' ? ' is-active' : ''}`}
             onClick={() => setEditorTab('workflow')}
           >
-            PBL 四阶段设计与专属 Prompt
+            PBL 阶段设计与专属 Prompt
           </button>
           <button
             type="button"
@@ -385,61 +411,118 @@ export default function AdminTemplatesPage() {
             <div className="admin-template-workflow-intro">
               <strong>PBL 教学全流程设计与门禁管控：</strong>
               <span>
-                每个阶段均绑定专属导师角色与 Prompt。TheoryMastered 硬性门禁确保学生在通过理论验证前无法直接进入实践开发。
+                {editingTemplate.sourceVersion !== null
+                  ? `以下阶段设计读取自最新版本 ${editingTemplate.sourceVersion}；保存会生成新版本（历史版本冻结不可改）。`
+                  : '该模板还没有已保存的版本；添加阶段并保存后会生成第一个版本。'}
               </span>
             </div>
 
-            <div className="admin-template-phases-list">
-              {editingTemplate.phases.map((phase, idx) => (
-                <div key={phase.id} className="admin-template-phase-card">
-                  <div className="admin-phase-card-header">
-                    <div className="admin-phase-header-left">
-                      <span className="admin-phase-index-badge">{idx + 1}</span>
-                      <strong className="admin-phase-title-text">{phase.name}</strong>
-                      <span className="admin-phase-mentor-tag">绑定角色: {phase.mentorRole}</span>
-                    </div>
+            {versionsLoading ? (
+              <div className="admin-template-workflow-intro">
+                <span>正在加载版本数据…</span>
+              </div>
+            ) : versionsError ? (
+              <div className="admin-template-workflow-intro">
+                <span>阶段设计加载失败：{versionsError.message}</span>
+                <button
+                  type="button"
+                  className="settings-action-btn"
+                  style={{ marginLeft: '10px' }}
+                  onClick={() => void loadVersions(editingTemplate.id)}
+                >
+                  重试
+                </button>
+              </div>
+            ) : (
+              <>
+                {editingTemplate.phases.length === 0 ? (
+                  <div className="settings-empty" style={{ padding: '24px', textAlign: 'center' }}>
+                    <strong>该模板暂无已保存的阶段设计</strong>
+                    <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
+                      点击下方「添加阶段」创建第一个阶段：填写阶段名称、门禁规则、导师角色与引导
+                      Prompt；保存后会写入新版本，供 AI 搭档与项目工作流读取。
+                    </p>
                   </div>
+                ) : (
+                  <div className="admin-template-phases-list">
+                    {editingTemplate.phases.map((phase, idx) => (
+                      <div key={phase.id} className="admin-template-phase-card">
+                        <div className="admin-phase-card-header">
+                          <div className="admin-phase-header-left">
+                            <span className="admin-phase-index-badge">{idx + 1}</span>
+                            <input
+                              className="admin-input-text admin-phase-title-text"
+                              style={{ maxWidth: '280px' }}
+                              value={phase.name}
+                              placeholder="阶段名称（必填）"
+                              onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
+                            />
+                            <input
+                              className="admin-input-text"
+                              style={{ maxWidth: '200px', fontSize: '12px' }}
+                              value={phase.mentorRole}
+                              placeholder="绑定导师角色"
+                              onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="admin-skill-dot-btn"
+                            style={{ color: '#ef4444' }}
+                            title="删除该阶段"
+                            onClick={() => removePhase(phase.id)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
 
-                  <div className="admin-phase-card-body">
-                    <div className="admin-phase-gate-box">
-                      <span className="admin-phase-gate-label">🛡️ 阶段硬性门禁规则:</span>
-                      <input
-                        className="admin-input-text"
-                        style={{ flex: 1 }}
-                        value={phase.gateRule}
-                        onChange={(e) => {
-                          const updated = editingTemplate.phases.map((p) =>
-                            p.id === phase.id ? { ...p, gateRule: e.target.value } : p
-                          );
-                          setEditingTemplate({ ...editingTemplate, phases: updated });
-                        }}
-                      />
-                    </div>
+                        <div className="admin-phase-card-body">
+                          <div className="admin-phase-gate-box">
+                            <span className="admin-phase-gate-label">🛡️ 阶段硬性门禁规则:</span>
+                            <input
+                              className="admin-input-text"
+                              style={{ flex: 1 }}
+                              value={phase.gateRule}
+                              placeholder="例如：未通过理论掌握度检测前不得进入实践"
+                              onChange={(e) => updatePhase(phase.id, { gateRule: e.target.value })}
+                            />
+                          </div>
 
-                    <div className="admin-phase-prompt-box">
-                      <label className="admin-phase-prompt-label">
-                        阶段引导 Prompt (系统提示词):
-                      </label>
-                      <textarea
-                        className="admin-prompt-editor-box"
-                        rows={6}
-                        value={phase.stagePrompt}
-                        onChange={(e) => {
-                          const updated = editingTemplate.phases.map((p) =>
-                            p.id === phase.id ? { ...p, stagePrompt: e.target.value } : p
-                          );
-                          setEditingTemplate({ ...editingTemplate, phases: updated });
-                        }}
-                        placeholder="在此配置该阶段导师的苏格拉底式发问策略与引导约束..."
-                      />
-                    </div>
+                          <div className="admin-phase-prompt-box">
+                            <label className="admin-phase-prompt-label">
+                              阶段引导 Prompt (系统提示词):
+                            </label>
+                            <textarea
+                              className="admin-prompt-editor-box"
+                              rows={6}
+                              value={phase.stagePrompt}
+                              onChange={(e) => updatePhase(phase.id, { stagePrompt: e.target.value })}
+                              placeholder="在此配置该阶段导师的苏格拉底式发问策略与引导约束..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                <div style={{ marginTop: '12px' }}>
+                  <button type="button" className="settings-action-btn" onClick={addPhase}>
+                    + 添加阶段
+                  </button>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="admin-template-basic-container">
+            {editingTemplate.status === 'published' ? (
+              <div className="admin-template-workflow-intro">
+                <span>
+                  该模板已发布：基础信息不可再修改，保存只会把阶段设计写入新版本。
+                </span>
+              </div>
+            ) : null}
             <section className="admin-editor-card">
               <div className="admin-editor-card-header">
                 <span className="admin-editor-section-title">基本属性</span>
@@ -450,6 +533,7 @@ export default function AdminTemplatesPage() {
                   <input
                     className="admin-input-text"
                     value={editingTemplate.title}
+                    disabled={!canEditMeta(editingTemplate.status)}
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, title: e.target.value })
                     }
@@ -460,6 +544,7 @@ export default function AdminTemplatesPage() {
                   <textarea
                     className="team-textarea"
                     value={editingTemplate.summary}
+                    disabled={!canEditMeta(editingTemplate.status)}
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, summary: e.target.value })
                     }
@@ -467,36 +552,49 @@ export default function AdminTemplatesPage() {
                 </div>
                 <div className="admin-form-row">
                   <label className="admin-form-label">绑定导师团队</label>
-                  <select
-                    className="admin-select"
-                    value={editingTemplate.linkedTeamId}
-                    onChange={(e) =>
-                      setEditingTemplate({ ...editingTemplate, linkedTeamId: e.target.value })
-                    }
-                  >
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.id})
-                      </option>
-                    ))}
-                    {teams.length === 0 ? (
-                      <>
-                        <option value="team-thunder-fighter-pbl">雷霆战机小游戏 PBL 导师团队</option>
-                        <option value="team-kinetic-energy-pbl">动手学动能定理 PBL 导师团队</option>
-                      </>
-                    ) : null}
-                  </select>
+                  {teams.length === 0 && !linkedTeamMissing ? (
+                    <span style={{ fontSize: '12px', color: '#86909c' }}>
+                      暂无可选导师团队（团队数据为空）
+                    </span>
+                  ) : (
+                    <select
+                      className="admin-select"
+                      value={editingTemplate.linkedTeamId}
+                      onChange={(e) =>
+                        setEditingTemplate({ ...editingTemplate, linkedTeamId: e.target.value })
+                      }
+                    >
+                      <option value="">（未绑定）</option>
+                      {linkedTeamMissing ? (
+                        <option value={editingTemplate.linkedTeamId}>
+                          {editingTemplate.linkedTeamId}（不在当前团队列表）
+                        </option>
+                      ) : null}
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.id})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {boundTeam ? (
+                    <span style={{ fontSize: '12px', color: '#86909c', marginLeft: '8px' }}>
+                      当前绑定：{boundTeam.name}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="admin-form-row">
                   <label className="admin-form-label">预计时长 (分钟)</label>
                   <input
                     type="number"
                     className="admin-input-text"
-                    value={editingTemplate.estimatedDurationMinutes || 60}
+                    value={editingTemplate.estimatedDurationMinutes ?? ''}
+                    disabled={!canEditMeta(editingTemplate.status)}
                     onChange={(e) =>
                       setEditingTemplate({
                         ...editingTemplate,
-                        estimatedDurationMinutes: Number(e.target.value) || 60,
+                        estimatedDurationMinutes:
+                          e.target.value === '' ? null : Number(e.target.value) || null,
                       })
                     }
                   />
@@ -515,7 +613,7 @@ export default function AdminTemplatesPage() {
         <div className="settings-titlebox">
           <h1>项目模板库</h1>
           <div className="settings-desc">
-            Admin 统一维护项目式学习（PBL）模板。模板深度绑定指定导师团队，配置四阶段门禁与苏格拉底式引导 Prompt。
+            Admin 统一维护项目式学习（PBL）模板。阶段设计与导师提示词随模板版本冻结保存，修改即产生新版本。
           </div>
         </div>
         <div className="settings-page-actions">
@@ -523,91 +621,86 @@ export default function AdminTemplatesPage() {
             type="button"
             className="settings-action-btn is-primary"
             onClick={handleCreateTemplate}
+            disabled={saving}
           >
             + 新建项目模板
           </button>
         </div>
       </div>
 
-      <div className="admin-templates-cards-grid">
-        {templates.map((template) => {
-          const boundTeam = teams.find((t) => t.id === template.linkedTeamId);
-          const teamName = boundTeam?.name || (template.id.includes('python') || template.id.includes('thunder') ? '雷霆战机小游戏 PBL 导师团队' : '动手学动能定理 PBL 导师团队');
+      {saveError ? (
+        <div className="admin-template-workflow-intro" style={{ color: '#ef4444' }}>
+          <span>{saveError}</span>
+        </div>
+      ) : null}
 
-          return (
+      {templates.length === 0 ? (
+        <div className="settings-empty" style={{ padding: '32px', textAlign: 'center' }}>
+          <strong>模板库为空</strong>
+          <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
+            点击右上角「新建项目模板」创建第一个模板，然后在编辑器中补全阶段设计。
+          </p>
+        </div>
+      ) : (
+        <div className="admin-templates-cards-grid">
+          {templates.map((template) => (
             <div key={template.id} className="admin-template-item-card">
               <div className="admin-template-item-head">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>
-                    {template.id.includes('python') || template.id.includes('thunder') ? '🚀' : '⚡'}
-                  </span>
+                  <span style={{ fontSize: '24px' }}>📦</span>
                   <strong className="admin-template-item-title">{template.title}</strong>
                 </div>
-                <span className="admin-template-status-pill">{template.status || '已发布'}</span>
+                <span className="admin-template-status-pill">
+                  {STATUS_LABELS[template.status] ?? template.status}
+                </span>
               </div>
 
               <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
 
               <div className="admin-template-info-list">
-                <div className="admin-template-info-row" style={{ alignItems: 'center' }}>
-                  <span className="admin-template-info-label">绑定导师团队:</span>
-                  <select
-                    className="admin-select"
-                    style={{ fontSize: '12px', padding: '3px 8px', height: '28px', maxWidth: '240px' }}
-                    value={template.linkedTeamId || (template.id.includes('python') || template.id.includes('thunder') ? 'team-thunder-fighter-pbl' : 'team-kinetic-energy-pbl')}
-                    onChange={(e) => {
-                      const nextTeamId = e.target.value;
-                      setTemplates((prev) =>
-                        prev.map((t) => (t.id === template.id ? { ...t, linkedTeamId: nextTeamId } : t))
-                      );
-                    }}
-                  >
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        👥 {t.name}
-                      </option>
-                    ))}
-                    {teams.length === 0 ? (
-                      <>
-                        <option value="team-thunder-fighter-pbl">👥 雷霆战机小游戏 PBL 导师团队</option>
-                        <option value="team-kinetic-energy-pbl">👥 动手学动能定理 PBL 导师团队</option>
-                      </>
-                    ) : null}
-                  </select>
-                </div>
-                <div className="admin-template-info-row">
-                  <span className="admin-template-info-label">PBL 阶段流程:</span>
-                  <span className="admin-template-info-val">4 阶段 (含 TheoryMastered 门禁)</span>
-                </div>
                 <div className="admin-template-info-row">
                   <span className="admin-template-info-label">适用领域:</span>
-                  <span className="admin-template-info-val">{template.domain || '编程与物理科学'}</span>
+                  <span className="admin-template-info-val">{template.domain || '未设置'}</span>
+                </div>
+                <div className="admin-template-info-row">
+                  <span className="admin-template-info-label">发布版本:</span>
+                  <span className="admin-template-info-val">
+                    {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+                  </span>
                 </div>
               </div>
 
-              <div className="admin-template-card-footer" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div
+                className="admin-template-card-footer"
+                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+              >
                 <button
                   type="button"
                   className="settings-action-btn is-primary"
                   style={{ flex: 1 }}
-                  onClick={() => setEditingTemplate(template)}
+                  onClick={() => openEditor(template)}
                 >
-                  配置团队与四阶段 Prompt →
+                  配置团队与阶段设计 →
                 </button>
                 <button
                   type="button"
                   className="admin-skill-dot-btn"
                   style={{ color: '#ef4444' }}
                   onClick={() => handleDeleteTemplate(template.id, template.title)}
-                  title="删除模板"
+                  title="归档模板"
                 >
                   🗑️
                 </button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+/** 与后端约束一致：published / archived 模板的元数据不可再修改。 */
+function canEditMeta(status: string): boolean {
+  return status !== 'published' && status !== 'archived';
 }
