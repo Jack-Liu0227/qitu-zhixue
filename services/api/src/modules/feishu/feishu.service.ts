@@ -149,6 +149,10 @@ export class FeishuService {
     let domain: 'feishu' | 'lark' = 'feishu';
     const [configured] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     if (configured?.domain === 'lark') domain = 'lark';
+    if (configured) {
+      const active = await db.select({ id: feishuQrSessions.id }).from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, configured.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
+      if (active[0]) throw new BadRequestException('FEISHU_QR_ALREADY_ACTIVE');
+    }
     const accounts = domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
     let begin: Record<string, unknown>;
     try {
@@ -172,8 +176,7 @@ export class FeishuService {
     const expiresAt = new Date(Date.now() + lifetime * 1000);
     await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptModelSecret(deviceCode, key), pollIntervalSeconds, updatedAt: new Date() });
     await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.begin', targetType: 'feishu_qr_session', targetId: id, detail: { assistantId, domain, expiresAt: expiresAt.toISOString() } });
-    // Do not manufacture a non-scannable image. The client renders the server URL
-    // as a safe explicit link when a QR encoder is not installed.
+    // The admin client encodes this URL locally; no third-party QR service sees it.
     return { id, status: 'pending', verificationUriComplete, expiresAt: expiresAt.toISOString(), pollIntervalSeconds };
   }
 
@@ -214,7 +217,8 @@ export class FeishuService {
       const secretKey = requireSecretKey();
       const recipients = currentBot?.reportRecipients ?? [];
       const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
+      const bindingInsert = (tx.insert(feishuAdminBindings) as any).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
+      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
       await tx.update(feishuBots).set({ enabled: true, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: userInfo.tenant_brand === 'lark' ? 'lark' : currentBot?.domain ?? 'feishu', reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: row.createdBy, deviceCodeEncrypted: null, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
       await this.audit.write({ actorId: row.createdBy ?? null, actorRole: 'admin', action: 'admin.feishu.device.bound', targetType: 'feishu_qr_session', targetId: id, detail: { recipientHash: openIdHash, assistantId: currentBot?.assistantId } }, tx);
@@ -288,7 +292,8 @@ export class FeishuService {
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
       const recipients = currentBot?.reportRecipients ?? [];
       const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }).onConflictDoNothing();
+      const bindingInsert = (tx.insert(feishuAdminBindings) as any).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
+      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
       const nextRecipients = recipients.includes(openId) ? recipients : [...recipients, openId];
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
       await tx.update(feishuBots).set({ reportRecipients: nextRecipients, updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));

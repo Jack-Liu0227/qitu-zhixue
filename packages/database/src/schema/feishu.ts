@@ -50,3 +50,21 @@ export const feishuAdminBindings = pgTable('feishu_admin_bindings', {
   channelIdentityUniqueIdx: uniqueIndex('feishu_admin_bindings_channel_identity_unique_idx').on(table.assistantId, table.openIdHash),
   adminAssistantUniqueIdx: uniqueIndex('feishu_admin_bindings_admin_assistant_unique_idx').on(table.assistantId, table.adminUserId),
 }));
+
+/** Durable delivery ledger for report idempotency across worker restarts. */
+export const feishuReportDeliveries = pgTable('feishu_report_deliveries', {
+  id: text('id').primaryKey(),
+  assistantId: text('assistant_id').notNull(),
+  idempotencyKey: text('idempotency_key').notNull(),
+  status: text('status').notNull().default('pending'),
+  recipientHashes: jsonb('recipient_hashes').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  requestId: text('request_id'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+}, (table) => ({
+  assistantKeyUniqueIdx: uniqueIndex('feishu_report_deliveries_assistant_key_unique_idx').on(table.assistantId, table.idempotencyKey),
+  statusIdx: index('feishu_report_deliveries_status_idx').on(table.status),
+}));

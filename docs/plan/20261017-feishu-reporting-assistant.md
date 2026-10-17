@@ -107,17 +107,16 @@
 - [ ] 真实验收：测试租户完成一次 Feishu 与一次 Lark 绑定；发送脱敏报告；确认回滚迁移和撤销授权后的行为。
 - [ ] 发布记录：影响范围、迁移编号、环境变量、权限风险、数据保留期、回滚步骤和验证命令。
 
-## 3. 当前实现盘点（2026-10-17）
+## 3. Current implementation status (2026-10-17)
 
 | 项目 | 当前状态 | 说明 |
 | --- | --- | --- |
-| 后端配置/迁移/API | `partially implemented` | `feature/feishu-assistant` 的 `1c0a1c1`、`a343090` 已有 `feishu_bots`、`feishu_qr_sessions`、管理员 GET/PATCH、QR 查询和审计；合入 `main` 前需完成评审。 |
-| 密钥加密与脱敏 | `implemented, verify` | 使用模型密钥加密工具；需在 CI/部署环境补跑密钥缺失、轮换和日志扫描。 |
-| QR 授权 | `gap` | 当前分支仍以预配置 App ID 的传统 OAuth URL 为主；“手机扫码直接创建/绑定”的 Device Flow 仍需按 F3 实现或明确降级说明。 |
-| 管理端页面 | `in progress` | 有 `/admin/settings/feishu` 草稿和 API 客户端；需检查导航、中文编码、状态覆盖、服务端助手目录和移动端二维码展示。 |
-| 汇报数据服务 | `not started` | 尚未形成跨学生/家长/教师的只读聚合工具和 worker/outbox 发送链路。 |
-| 真实 Feishu/Lark 验收 | `blocked` | 需要测试租户、已登记回调/Device Flow 能力和部署环境变量；不能用 mock 结果替代。 |
-
+| Backend configuration/migrations/API | `implemented` | Assistant-scoped Feishu/Lark settings, Device Flow, OAuth callback, reporting and delivery-status APIs are implemented with migrations 0024-0027. |
+| Secret encryption and redaction | `implemented` | App credentials and device codes are encrypted server-side; responses, logs, audits and reports expose only state, counts or hashes. |
+| QR authorization | `implemented` | Feishu/Lark Device Authorization is complete; the admin client encodes verificationUriComplete locally with qrcode-generator and keeps the explicit URL fallback. |
+| Admin settings page | `implemented` | `/admin/settings/feishu` covers assistant selection, Feishu/Lark switching, loading/empty/error/offline/permission states, polling, countdown and retry. |
+| Reporting and delivery | `implemented` | Read-only aggregation, server permission gates, redaction, outbox enqueue, durable delivery idempotency ledger and admin delivery status query are wired. |
+| Real Feishu/Lark acceptance | `pending` | A test tenant, registered Device Flow capability and deployment variables are still required; mocks do not count as tenant acceptance. |
 ## 4. API 合同草案
 
 所有路径均位于 `/api/v1` 下，响应统一包裹为 `{ data }`。管理员写请求必须带 `Idempotency-Key`。
@@ -128,6 +127,10 @@
 | `PATCH` | `/admin/integrations/feishu` | `admin` | 更新非敏感配置及可选凭证；敏感字段只写不读。 |
 | `POST` | `/admin/integrations/feishu/qr-sessions` | `admin` | 创建一次性手机授权会话，返回二维码 URL 和过期时间。 |
 | `GET` | `/admin/integrations/feishu/qr-sessions/:id` | `admin` | 查询绑定状态；不能返回 device code 或 secret。 |
+| `POST` | `/admin/integrations/feishu/device-sessions` | `admin` | Create an assistant-scoped Device Authorization session; return only the verification URI and expiry. |
+| `POST` | `/admin/integrations/feishu/device-sessions/:id/poll` | `admin` | Poll one Device Flow session and return pending/slow_down/denied/expired/bound state. |
+| `GET` | `/admin/integrations/feishu/deliveries` | `admin` | Read recent delivery status, retry classification and recipient counts without raw identities. |
+| `GET` | `/admin/integrations/feishu/report` | `admin` | Build the redacted assistant-scoped management report; raw minor data is never returned. |
 | `GET` | `/integrations/feishu/oauth/callback` | 无登录（state 绑定） | 交换授权 code，成功后只更新对应会话和收件人投影。 |
 
 > 路由表是当前管理汇报助手的兼容入口。要满足“每个助手独立配置”，正式合同应增加 `assistantId` 路径参数（例如 `/admin/assistants/:assistantId/integrations/feishu`），或在服务端把它作为不可变的幂等作用域；不得由客户端通过任意 body 字段越权切换助手。
@@ -163,30 +166,30 @@
 
 ## 8. 诊断报告（基线检查）
 
-### D1. 扫码流程与需求不一致（高）
+### D1. QR flow (implemented)
 
-当前分支的二维码会话依赖已经配置的 App ID，并生成传统 OAuth 授权 URL；这只能完成“已有应用的管理员授权”，不能完成需求中的“手机扫码直接创建并绑定机器人”。应优先补齐 F3 的 Device Authorization，或在设置页明确显示“需要先配置 App ID”的降级状态，不能把传统 OAuth 标记为直接绑定已完成。
+Device Authorization now switches Feishu/Lark account domains and stores the device code encrypted server-side. The admin client creates a machine-scannable QR locally from verificationUriComplete; the explicit authorization link remains available for devices without a camera. OAuth callback state is server-owned.
 
-### D2. 汇报助手只有配置，没有报告事实源（高）
+### D2. Reporting source and asynchronous delivery (implemented)
 
-配置表和管理员设置接口不能替代报告生成。当前尚未看到一个由服务端权限校验的跨角色只读聚合服务，也没有 worker/outbox 发送链路。F1、F5 完成前，机器人只能保持关闭，避免发送演示数据或越权数据。
+ReportingService aggregates read-only project, guardian and mentor facts, re-checks the admin gate, and writes an audit event without report text. FeishuReportWorker enqueues through outbox and persists delivery status in feishu_report_deliveries so idempotency survives worker restarts.
 
-### D3. Feishu 身份与平台身份仍需显式绑定（高）
+### D3. Channel identity binding (implemented)
 
-`open_id` 是渠道身份，不是启途用户身份。必须建立管理员映射或绑定关系，并在每次发送时重新检查角色、组织和对象范围；只把 `open_id` 放入收件人数组不足以满足未成年人数据保护要求。
+Feishu open_id is treated only as a channel identity. Binding stores a truncated SHA-256 mapping to the authenticated Qitu administrator; raw identifiers are not written to audit logs or report documents.
 
-### D4. 管理端实现需要合并前审查（中）
+### D4. Admin UI state coverage (implemented)
 
-设置页草稿已覆盖基本加载、保存和轮询，但合入前要检查 `/admin` basePath、中文编码、服务端助手目录是否完整、空/错误/断网/权限状态以及移动端二维码可用性。任何本地 fallback 都不能伪造“已连接”。
+The settings page reads the server assistant directory and covers loading, empty, error, offline, permission failure, polling, countdown, expiry and retry. Local drafts never claim connected until the server projection confirms it.
 
-### D5. 验证环境存在工程风险（中）
+### D5. Verification environment (release evidence pending)
 
-网络共享路径下执行 `pnpm` 可能因为 CMD 不支持 UNC 当前目录而失败，工作树也可能缺少依赖。发布证据应在可用的本地工作路径或明确的 `pushd` 映射盘中以非缓存模式执行，并记录实际命令、退出码和迁移结果；不能把“命令未启动”记为通过。
+UNC workspaces can make pnpm fall back to CMD without a current directory. The release record must retain a reproducible pushd or mapped-drive command, exit code, migration dry-run and non-cached test evidence. Targeted Feishu tests pass; full-workspace typecheck still has unrelated stale package errors.
 
-### D6. 运行期外发边界需要单独验收（中）
+### D6. External delivery boundary (implemented; tenant validation pending)
 
-发送消息属于外部副作用，必须经过幂等、确认/策略和可重试控制。默认助手应为只读权限；任何 `full access` 能力都应显式危险提示并在服务端拒绝不必要的写工具，不能仅在前端隐藏按钮。
+Sending re-checks assistant enablement, authenticated binding, recipient projection and server credentials. Reports contain only redacted summaries; timeout, rate-limit and network failures are retryable while other failures are terminal.
 
-### D7. 当前配置模型仍是单一管理机器人（高）
+### D7. Assistant-scoped isolation (implemented)
 
-当前分支使用固定的 `admin-reporting` 配置记录，尚未把机器人配置与助手 ID 建立一对一约束。因此“每个助手点进去都可以配置飞书”还没有被数据模型保证。F2/F4 实现时应增加 `assistant_id` 外键或等价的唯一作用域，并在 GET/PATCH/QR 路由中显式传递目标助手；同一助手只能有一个活动绑定会话，不能用全局单例覆盖其他助手。
+feishu_bots.assistant_id has a unique constraint, all settings and Device Flow writes carry an assistant scope, idempotency keys include that scope, and only one active session is allowed per assistant.

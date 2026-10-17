@@ -7,16 +7,24 @@ import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
 import { FeishuService, parseFeishuPatch } from './feishu.service';
 import { ReportingService } from './reporting.service';
+import { FeishuReportWorker } from './report-worker.service';
 
 @Controller('admin/integrations/feishu')
 export class FeishuController {
-  constructor(private readonly auth: AuthService, private readonly feishu: FeishuService, private readonly idempotency: IdempotencyStore, private readonly reporting?: ReportingService) {}
+  constructor(private readonly auth: AuthService, private readonly feishu: FeishuService, private readonly idempotency: IdempotencyStore, private readonly reporting?: ReportingService, private readonly worker?: FeishuReportWorker) {}
 
   @Get('report')
   async report(@Headers('cookie') cookie: string | undefined, @Query('assistantId') assistantId?: string): Promise<{ data: unknown }> {
     const actor = requireRole(this.auth, cookie, 'admin', '管理汇报仅向管理员开放');
     if (!this.reporting) throw new BadRequestException('汇报服务不可用');
     return { data: await this.reporting.buildReport(actor, parseAssistantId(assistantId)) };
+  }
+
+  @Get('deliveries')
+  async deliveries(@Headers('cookie') cookie: string | undefined, @Query('assistantId') assistantId?: string): Promise<{ data: unknown }> {
+    requireRole(this.auth, cookie, 'admin', '发送状态仅向管理员开放');
+    if (!this.worker) throw new BadRequestException('汇报发送服务不可用');
+    return { data: await this.worker.listDeliveries(parseAssistantId(assistantId)) };
   }
 
   @Get()
