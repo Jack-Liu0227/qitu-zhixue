@@ -39,7 +39,7 @@ const SETTINGS_NAV: NavGroup[] = [
   {
     group: '内容与数据',
     items: [
-      { href: '/settings/knowledge', label: '教学知识库', icon: '▤' },
+      { href: '/settings/knowledge', label: '知识中心', icon: '▤' },
       { href: '/settings/templates', label: '项目模板库', icon: '▦' },
       { href: '/settings/profile-growth', label: '学情画像与轨迹', icon: '📊' },
       { href: '/settings/database', label: '数据库', icon: '◫' },

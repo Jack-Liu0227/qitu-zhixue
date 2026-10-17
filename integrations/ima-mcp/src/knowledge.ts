@@ -57,7 +57,7 @@ export class KnowledgeService {
       const reference = this.refs.issue({ kb, id, title, kind });
       return {
         kind, title, knowledge_base_id: kb,
-        ...(kind === 'folder' ? { folder_ref: reference } : { document_ref: reference }),
+        ...(kind === 'folder' ? { folder_ref: reference } : { document_ref: reference, document_id: mediaId }),
         ...(string(item.highlight_content) ? { excerpt: string(item.highlight_content).replace(/<\/?em>/gi, '').slice(0, 8000) } : {}),
       };
     }).filter(Boolean);

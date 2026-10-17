@@ -192,17 +192,17 @@
       "breakpoints": true
     },
     {
-      "idx": 26,
-      "version": "7",
-      "when": 1792108800000,
-      "tag": "0026_feishu_admin_bindings",
-      "breakpoints": true
-    },
-    {
       "idx": 27,
       "version": "7",
       "when": 1792195200000,
       "tag": "0027_feishu_report_deliveries",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792281600000,
+      "tag": "0028_knowledge_center",
       "breakpoints": true
     }
   ]

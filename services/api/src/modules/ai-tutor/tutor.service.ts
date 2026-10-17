@@ -37,6 +37,7 @@ import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tu
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { PlatformRegistryService, tutorAssistantIdForProject } from '../platform-registry/platform-registry.service';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
+import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
@@ -219,6 +220,7 @@ export class TutorService {
     @Optional() @Inject(LearningPlanStore) private readonly learningStore?: LearningPlanStore,
     @Optional() @Inject(ImaMcpClient) ima?: ImaMcpClient,
     @Optional() private readonly imaSettings?: ImaSettingsService,
+    @Optional() private readonly projectKnowledge?: ProjectKnowledgeService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -624,7 +626,7 @@ export class TutorService {
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     const authorizeKnowledgeTool = this.imaSettings
-      ? (toolId: string) => this.imaSettings!.canCall(this.contextReader.partner.id, toolId, tutorAssistantIdForProject(projectTitle, projectStage))
+      ? (toolId: string) => record.projectId ? Promise.resolve(false) : this.imaSettings!.canCall(this.contextReader.partner.id, toolId, tutorAssistantIdForProject(projectTitle, projectStage))
       : undefined;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
@@ -673,8 +675,25 @@ export class TutorService {
       }),
     });
 
+    let projectKnowledgeTools: TutorTurnInput['projectKnowledgeTools'];
+    let projectKnowledgeState: string | undefined;
+    if (record.projectId) {
+      // Remove legacy template/fact injection before adding evidence from the binding.
+      contextPacket.knowledgeEvidence = [];
+      contextPacket.templateEvidence = [];
+      projectKnowledgeState = '项目资料准备暂未完成；可以继续一般引导，不得声称已经查阅教材或编造引用。';
+      if (this.projectKnowledge) {
+        const assistantId = tutorAssistantIdForProject(projectTitle,projectStage);
+        const result = await this.projectKnowledge.search(request.actorId,record.projectId,assistantId,request.content ?? request.optionLabel ?? currentTaskTitle);
+        projectKnowledgeState = `项目知识库状态：${result.state}。仅能依据当前项目库的真实证据引用，不得改查其他库；资料不足须明确说明。`;
+        contextPacket.knowledgeEvidence = result.evidence.map(e=>({document:{id:e.citationId,version:e.indexVersionId!,title:e.title,summary:e.text,content:e.text,source:`${result.base?.name} · ${e.citationId}`,scope:'project' as const,active:true,tags:[]},score:e.score??0,matchedTerms:[]}));
+        if(result.base?.active_index_version_id && result.state==='ready') projectKnowledgeTools=this.projectKnowledge.tools(request.actorId,record.projectId,assistantId,result.base.active_index_version_id);
+      }
+    }
+
     if (effectiveRuntime !== null) {
       const mcpServers = await Promise.all(effectiveRuntime.mcpServers.map(async (server) => {
+        if (record.projectId) return { ...server, toolIds: [] };
         if (!authorizeKnowledgeTool || server.serverId !== 'ima-knowledge') return server;
         const decisions = await Promise.all(server.toolIds.map(async (toolId) => ({ toolId, allowed: await authorizeKnowledgeTool(toolId) })));
         return { ...server, toolIds: decisions.filter((entry) => entry.allowed).map((entry) => entry.toolId) };
@@ -698,6 +717,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
+          projectKnowledgeTools, projectKnowledgeState,
           authorizeKnowledgeTool,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
@@ -717,6 +737,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
+      projectKnowledgeTools, projectKnowledgeState,
       authorizeKnowledgeTool,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,

@@ -1,5 +1,6 @@
 import { resolveAgentModelSelection } from './agent-model-selection';
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
+import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { randomUUID } from 'node:crypto';
 import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
 import type {
@@ -250,6 +251,7 @@ export class PlatformRegistryService {
     @Inject(DATA_MODE_TOKEN) private readonly mode: DataMode,
     private readonly audit: AuditWriter,
     private readonly models: ModelRegistryService,
+    @Optional() private readonly knowledgeCenter?: KnowledgeCenterService,
   ) {}
 
   async getSnapshot(): Promise<AdminRuntimeSnapshot> {
@@ -448,7 +450,14 @@ export class PlatformRegistryService {
   private async listMcpServerRows() {
     if (!this.db) return [];
     try {
-      return await this.db.select().from(runtimeMcpServers);
+      const servers=await this.db.select().from(runtimeMcpServers);
+      if(!this.knowledgeCenter)return servers;
+      const {config}=await this.knowledgeCenter.configuration();
+      return servers.map(s=>{
+        const effective=config.mcpServers[s.id];
+        if(s.id==='ima-knowledge')return {...s,enabled:config.knowledgeEngines['ima-main']?.enabled===true};
+        return effective?{...s,enabled:effective.enabled===true,label:String(effective.name),toolIds:s.toolIds.filter(id=>(effective.tools as string[]).includes(id))}:s;
+      });
     } catch {
       return [];
     }

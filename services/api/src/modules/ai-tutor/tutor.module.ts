@@ -16,6 +16,7 @@ import { TutorService } from './tutor.service';
 import { ImaMcpClient } from './ima-mcp.client';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 /**
  * AI 搭档模块。
@@ -33,7 +34,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule],
   controllers: [TutorController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },

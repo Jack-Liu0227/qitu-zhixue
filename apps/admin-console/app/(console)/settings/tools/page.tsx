@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding, BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID } from '../../../../lib/api/assistantBindings';
+import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
 import type { AdminAssistantConfig, AdminImaSettings, AdminImaSettingsPatch } from '@qitu/contracts';
 import { fetchImaSettings, saveImaSettings, checkImaConnection } from '../../../../lib/api/ima';
 import { createIdempotentRetryKey } from '../../../../lib/api/types';
@@ -11,7 +12,7 @@ const IMA_ID = 'ima-knowledge';
 
 function imaConfig(settings: AdminImaSettings | null) {
   return {
-    name: 'ima知识库', transport: 'streamable_http', enabled: settings?.enabled ?? false,
+    name: '项目知识库检索', transport: 'streamable_http', enabled: settings?.enabled ?? false,
     description: '共享教材知识库，只读检索与原文阅读；连接凭证由服务器管理。',
     tools: settings?.tools ?? [],
     boundAssistants: settings?.assistants.filter((row) => row.authorized).map((row) => row.id) ?? [],
@@ -474,7 +475,7 @@ export default function ToolsSettingsPage() {
   const imaRetry = useRef(createIdempotentRetryKey());
   const imaCheckRetry = useRef(createIdempotentRetryKey());
   const imaRow = useMemo<SingleMcpConfig>(() => ({
-    id: IMA_ID, name: 'ima知识库', command: '', args: [], transport: 'streamable_http',
+    id: IMA_ID, name: '项目知识库检索', command: '', args: [], transport: 'streamable_http',
     status: ima?.status === 'connected' ? 'connected' : ima?.status === 'error' ? 'error' : 'disconnected',
     tools: [...(ima?.tools ?? [])],
     boundAssistants: ima?.assistants.filter((row) => row.authorized).map((row) => row.name) ?? [],
@@ -548,14 +549,14 @@ export default function ToolsSettingsPage() {
     catch (error) { setIma(null); setImaError(error instanceof Error ? error.message : 'ima 配置读取失败'); }
     finally { imaBusy.current = false; setImaPending(false); }
   };
-  useEffect(() => { void loadIma(); }, []);
+  useEffect(() => { void loadIma(); if (new URLSearchParams(window.location.search).has('knowledgeEngine')) setActiveMode('edit'); const refresh = () => void loadIma(); window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, []);
 
   const saveIma = async (patch: AdminImaSettingsPatch): Promise<boolean> => {
     if (imaBusy.current || !ima?.registered) return false;
     imaBusy.current = true; setImaPending(true); setImaError('');
     try {
       acceptIma(await saveImaSettings(patch, imaRetry.current.keyFor(JSON.stringify(patch))));
-      imaRetry.current.acknowledge(); setNotice('ima 知识库设置已保存到服务器'); return true;
+      imaRetry.current.acknowledge(); setNotice('项目知识库检索设置已保存到服务器'); return true;
     } catch (error) { setImaError(error instanceof Error ? error.message : 'ima 保存失败'); return false; }
     finally { imaBusy.current = false; setImaPending(false); }
   };
@@ -689,11 +690,11 @@ export default function ToolsSettingsPage() {
       if (selectedTarget === 'global') {
         // 保存全局配置，解析 mcpServers 并同步更新列表
         const record = parsed.mcpServers || parsed;
-        if (!ima?.registered || !record['ima知识库']) throw new Error('全局配置须保留 ima知识库 项；如需停用，请将 enabled 设为 false');
-        const managedPatch = imaPatch(record['ima知识库'], ima);
+        if (!ima?.registered || !record['项目知识库检索']) throw new Error('全局配置须保留 项目知识库检索 项；如需停用，请将 enabled 设为 false');
+        const managedPatch = imaPatch(record['项目知识库检索'], ima);
         const nextList: SingleMcpConfig[] = [];
         for (const [key, val] of Object.entries(record)) {
-          if (key === 'ima知识库') continue;
+          if (key === '项目知识库检索') continue;
           if (typeof val !== 'object' || val === null) continue;
           const v = val as Record<string, unknown>;
           const existing = mcpList.find((m) => m.name === key);
@@ -777,7 +778,7 @@ export default function ToolsSettingsPage() {
     const rawName = prompt('请输入新 MCP 名称 (例如 filesystem, sqlite, github)：');
     if (!rawName || !rawName.trim()) return;
     const name = rawName.trim().toLowerCase();
-    if (name === 'ima知识库' || name === IMA_ID) { setImaError('ima 知识库已由服务器管理，请选择现有 ima 行'); return; }
+    if (name === '项目知识库检索' || name === IMA_ID) { setImaError('项目知识库检索已由服务器管理，请选择现有 ima 行'); return; }
     const newId = `mcp-${name}-${Date.now().toString().slice(-4)}`;
     const templateObj = {
       name,
@@ -854,7 +855,7 @@ export default function ToolsSettingsPage() {
 
   // 切换 MCP 对指定助手的授权 (打上✔ 立即生效)
   const toggleMcpForAssistant = async (mcpName: string, asstName: string) => {
-    if (mcpName === 'ima知识库' || mcpName === IMA_ID) { await toggleImaAssistant(asstName); return; }
+    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) { await toggleImaAssistant(asstName); return; }
     const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
     const targetAsstId = matchedAsst?.id || asstName;
     const targetAsstName = matchedAsst?.name || asstName;
@@ -1021,7 +1022,7 @@ export default function ToolsSettingsPage() {
 
   // 纵向全选某一 MCP
   const grantAllAssistantsForMcp = async (mcpName: string) => {
-    if (mcpName === 'ima知识库' || mcpName === IMA_ID) {
+    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) {
       if (!ima?.registered) return;
       const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: true }));
       await saveIma({ assistantBindings: bindings });
@@ -1061,7 +1062,7 @@ export default function ToolsSettingsPage() {
 
   // 纵向取消某一 MCP
   const revokeAllAssistantsForMcp = async (mcpName: string) => {
-    if (mcpName === 'ima知识库' || mcpName === IMA_ID) {
+    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) {
       if (!ima?.registered) return;
       const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: false }));
       await saveIma({ assistantBindings: bindings });
@@ -1146,6 +1147,8 @@ export default function ToolsSettingsPage() {
     setNotice('全局取消成功：已清空所有智能体的全部工具与 MCP 授权！✔');
     setTimeout(() => setNotice(''), 2500);
   };
+
+  if (['edit','preview'].includes(activeMode)) return <KnowledgeConfiguration preview={activeMode === 'preview'} onMatrix={() => { setActiveMode('matrix'); void loadIma(); }} />;
 
   return (
     <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
@@ -1260,7 +1263,7 @@ export default function ToolsSettingsPage() {
         </div>
       ) : null}
       {imaError ? <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-        ima 知识库：{imaError}
+        项目知识库检索：{imaError}
         <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
       </div> : null}
 
@@ -1329,7 +1332,7 @@ export default function ToolsSettingsPage() {
                     <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <span style={{ fontSize: '11px', color: m.id === IMA_ID && m.status !== 'connected' ? '#94a3b8' : '#16a34a' }}>●</span>
-                        <span>{m.id === IMA_ID ? 'ima 知识库' : m.name}</span>
+                        <span>{m.id === IMA_ID ? '项目知识库检索' : m.name}</span>
                       </div>
                       <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具{m.id === IMA_ID ? ` · ${ima ? ima.enabled ? '允许调用' : '总开关关闭' : '读取中'}` : ''}</div>
                       {/* 纵向全选 / 纵向取消 */}
@@ -1347,7 +1350,7 @@ export default function ToolsSettingsPage() {
                             cursor: 'pointer',
                             fontWeight: 600,
                           }}
-                          title={`纵向全选：为所有智能体开启【${m.id === IMA_ID ? 'ima知识库' : m.name}】`}
+                          title={`纵向全选：为所有智能体开启【${m.id === IMA_ID ? '项目知识库检索' : m.name}】`}
                         >
                           纵向全选
                         </button>
@@ -1363,7 +1366,7 @@ export default function ToolsSettingsPage() {
                             color: '#dc2626',
                             cursor: 'pointer',
                           }}
-                          title={`纵向取消：取消所有智能体对【${m.id === IMA_ID ? 'ima知识库' : m.name}】的授权`}
+                          title={`纵向取消：取消所有智能体对【${m.id === IMA_ID ? '项目知识库检索' : m.name}】的授权`}
                         >
                           纵向取消
                         </button>
@@ -1475,10 +1478,10 @@ export default function ToolsSettingsPage() {
                           <td key={m.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
                             {m.id === IMA_ID ? <button
                               type="button" role="checkbox" aria-checked={isChecked}
-                              aria-label={`${asst.name} 是否使用 ima 知识库`}
+                              aria-label={`${asst.name} 是否使用 项目知识库检索`}
                               disabled={imaPending || !ima?.registered || !ima.assistants.some((row) => row.id === asst.id)}
                               onClick={() => void toggleImaAssistant(asst.id)}
-                              title={!ima?.enabled ? '总开关已关闭；可预设助手授权' : `${asst.name}${isChecked ? '已授权' : '未授权'} ima 知识库`}
+                              title={!ima?.enabled ? '总开关已关闭；可预设助手授权' : `${asst.name}${isChecked ? '已授权' : '未授权'} 项目知识库检索`}
                               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '5px', border: isChecked ? '1.5px solid #165dff' : '1.5px solid #cbd5e1', background: isChecked ? '#165dff' : '#ffffff', color: '#ffffff', fontSize: '14px', fontWeight: 700, cursor: imaPending ? 'wait' : 'pointer', margin: '0 auto', padding: 0 }}
                             >{isChecked ? '✓' : ''}</button> : <div
                               onClick={() => toggleMcpForAssistant(m.name, asst.name)}
@@ -1958,7 +1961,7 @@ export default function ToolsSettingsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {currentSingleMcp?.id === IMA_ID ? <>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569' }}>
-                  <input type="checkbox" role="switch" aria-label="允许调用 ima 知识库" checked={ima?.enabled ?? false} disabled={imaPending || !ima?.registered} onChange={(event) => void saveIma({ enabled: event.target.checked })} style={{ accentColor: '#165dff' }} />允许调用
+                  <input type="checkbox" role="switch" aria-label="允许调用 项目知识库检索" checked={ima?.enabled ?? false} disabled={imaPending || !ima?.registered} onChange={(event) => void saveIma({ enabled: event.target.checked })} style={{ accentColor: '#165dff' }} />允许调用
                 </label>
                 <button type="button" disabled={imaPending || !ima?.registered} onClick={() => void checkIma()} style={{ fontSize: '12px', padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: 'pointer' }}>检查连接</button>
               </> : currentSingleMcp ? (
@@ -2020,7 +2023,7 @@ export default function ToolsSettingsPage() {
               </div>
 
               <textarea
-                aria-label={selectedTarget === IMA_ID ? 'ima 知识库 JSON 配置' : 'MCP JSON 配置'}
+                aria-label={selectedTarget === IMA_ID ? '项目知识库检索 JSON 配置' : 'MCP JSON 配置'}
                 disabled={selectedTarget === IMA_ID && (imaPending || !ima?.registered)}
                 value={jsonTextDraft}
                 onChange={(e) => {

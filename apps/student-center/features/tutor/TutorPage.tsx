@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PermissionDenied } from '@qitu/ui';
+import { ProjectKnowledgeStatus } from './components/ProjectKnowledgeStatus';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
@@ -142,6 +143,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       />
       <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {error ? <div role="alert" style={{ padding: 12, color: '#9f1239', background: '#fff1f2' }}>{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
+        {session.project?.project.id && <ProjectKnowledgeStatus projectId={session.project.project.id} />}
         <ChatThread
           sessionId={session.sessionId}
           turns={session.turns}

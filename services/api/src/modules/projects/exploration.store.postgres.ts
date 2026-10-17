@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   explorationSessions,
   intentConfirmations,
@@ -159,6 +159,12 @@ export class PostgresExplorationStore extends ExplorationStore {
           .returning();
         const project = insertedProject[0];
         if (project === undefined) throw new Error('插入项目实例未返回数据行');
+        // The durable preparation job and binding commit with the confirmed project.
+        const kbId = `pkb-${project.id}`;
+        await tx.execute(sql`INSERT INTO knowledge_bases(id,name,kind,owner_user_id,project_id)
+          VALUES(${kbId},${project.title + '知识库'},'project',${project.studentUserId},${project.id})`);
+        await tx.execute(sql`INSERT INTO project_knowledge_bindings(project_id,kb_id) VALUES(${project.id},${kbId})`);
+        await tx.execute(sql`INSERT INTO knowledge_jobs(id,kb_id,operation,input_revision) VALUES(${`prepare-${project.id}`},${kbId},'prepare',1)`);
         return mapProject(project);
       });
     } catch (error) {

@@ -284,12 +284,12 @@ describe('KnowledgeService 检索作用域隔离与 verified-only', () => {
     return result.evidence.map((item) => item.document.id).sort();
   }
 
-  it('学生只看到系统 / 本校 / 本人 / 可访问项目，排除他校、他人与草稿', async () => {
+  it('正式项目禁止通过旧通用接口注入系统、校本或个人资料', async () => {
     const setup = harness();
     seed(setup.store);
     assert.deepEqual(
       await searchIds(setup.service, makeActor('student-1', 'student'), 'proj-1'),
-      ['proj-1', 'sch-a', 'stu-1', 'sys'],
+      [],
     );
   });
 
@@ -310,7 +310,7 @@ describe('KnowledgeService 检索作用域隔离与 verified-only', () => {
     seed(setup.store);
     assert.deepEqual(
       await searchIds(setup.service, makeActor('student-1', 'student'), 'proj-2'),
-      ['sch-a', 'stu-1', 'sys'],
+      [],
     );
   });
 

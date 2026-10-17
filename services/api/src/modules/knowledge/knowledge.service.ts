@@ -113,6 +113,9 @@ export class KnowledgeService {
         : false;
     const projectId = projectAccessible ? requestedProjectId : null;
 
+    // The legacy generic endpoint must not bypass the formal project's binding.
+    if (actor.role === 'student' && requestedProjectId !== null) return { evidence: [], limit };
+
     const candidates = await this.store.listVerifiedCandidates({
       actorId: context.actorId,
       schoolId: context.schoolId,

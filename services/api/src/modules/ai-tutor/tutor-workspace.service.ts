@@ -158,6 +158,8 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
     query: string;
     limit: number;
   }): Promise<readonly TutorKnowledgeSearchResult[]> {
+    // Formal projects receive facts only through ProjectKnowledgeService.
+    if (input.projectId !== null) return [];
     if (this.db === null) return [];
     const rows = await this.db.select().from(tutorKnowledgeDocuments);
     return rankDocuments(rows, input).slice(0, Math.max(1, Math.min(input.limit, 8)));

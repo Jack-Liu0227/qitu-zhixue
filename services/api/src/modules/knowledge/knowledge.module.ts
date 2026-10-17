@@ -19,6 +19,14 @@ import {
 import { KnowledgeService } from './knowledge.service';
 import { InMemoryKnowledgeStore, KnowledgeStore } from './knowledge.store';
 import { PostgresKnowledgeStore } from './knowledge.store.postgres';
+import { ModelRegistryModule } from '../model-registry/model-registry.module';
+import { KnowledgeCenterController } from './knowledge-center.controller';
+import { KnowledgeCenterService } from './knowledge-center.service';
+import { KnowledgeEngineService } from './knowledge-engine.service';
+import { KnowledgeBuildWorker } from './knowledge-build.worker';
+import { KnowledgeSourceService } from './knowledge-source.service';
+import { ProjectKnowledgeService } from './project-knowledge.service';
+import { ProjectKnowledgeController } from './project-knowledge.controller';
 
 /**
  * 作用域知识模块。
@@ -33,9 +41,10 @@ import { PostgresKnowledgeStore } from './knowledge.store.postgres';
  * （`knowledge.embed` 未接入 ModelGateway），仅作为接口预留，不参与关键词检索。
  */
 @Module({
-  imports: [AuthModule],
-  controllers: [KnowledgeController, KnowledgeAdminController],
+  imports: [AuthModule, ModelRegistryModule],
+  controllers: [KnowledgeController, KnowledgeAdminController, KnowledgeCenterController, ProjectKnowledgeController],
   providers: [
+    KnowledgeCenterService, KnowledgeEngineService, KnowledgeBuildWorker, KnowledgeSourceService, ProjectKnowledgeService,
     KnowledgeService,
     { provide: RetrievalPort, useClass: KeywordRetrievalPort },
     { provide: EmbeddingProvider, useClass: ReservedEmbeddingProvider },
@@ -61,6 +70,6 @@ import { PostgresKnowledgeStore } from './knowledge.store.postgres';
     },
     { provide: KnowledgeScopeAuthorizer, useClass: DefaultKnowledgeScopeAuthorizer },
   ],
-  exports: [KnowledgeService, RetrievalPort, EmbeddingProvider],
+  exports: [KnowledgeService, RetrievalPort, EmbeddingProvider, KnowledgeCenterService, ProjectKnowledgeService],
 })
 export class KnowledgeModule {}

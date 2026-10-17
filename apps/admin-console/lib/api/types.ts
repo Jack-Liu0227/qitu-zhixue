@@ -108,7 +108,7 @@ export function createIdempotentRetryKey(): {
 
 export interface AdminEnvelopeRequestOptions {
   path: string;
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
   body?: unknown;
   /** 仅写请求（POST/PATCH/DELETE）允许且必须携带；GET 携带会被忽略。 */
   idempotencyKey?: string;

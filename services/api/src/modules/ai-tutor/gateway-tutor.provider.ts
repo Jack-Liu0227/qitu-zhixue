@@ -111,9 +111,9 @@ export class GatewayTutorProvider implements TutorProvider {
         throw new ModelGatewayError('MODEL_USAGE_NOT_BOUND', 'Agent 尚未配置模型');
       }
       const servers = input.contextPacket?.runtime?.mcpServers ?? [];
-      let knowledgeState = '';
-      let tools: import('@qitu/model-runtime').ModelRuntimeTool[] = [];
-      if (this.ima?.isBound(servers)) {
+      let knowledgeState = input.projectKnowledgeState ?? '';
+      let tools: import('@qitu/model-runtime').ModelRuntimeTool[] = input.projectKnowledgeTools ?? [];
+      if (!input.projectId && this.ima?.isBound(servers)) {
         const discoveryId = `ima-discovery-${input.sessionId}`;
         yield { type: 'tool_call', callId: discoveryId, name: 'ima.tools.list', label: '连接教材知识库' };
         try {
@@ -136,8 +136,8 @@ export class GatewayTutorProvider implements TutorProvider {
         maxTokens: tools.length ? 1600 : level === EXPLAIN_ONLY_LEVEL ? 512 : 256,
         ...(tools.length ? { tools, timeoutMs: 90_000, onToolEvent: (event: import('@qitu/model-runtime').ModelRuntimeToolEvent) => {
           toolEvents.push(event.type === 'call'
-            ? { type: 'tool_call', callId: event.callId, name: event.name, label: '查阅 ima 教材' }
-            : { type: 'tool_result', callId: event.callId, status: event.isError ? 'error' : 'done', result: event.isError ? '教材工具调用失败' : '教材工具已返回，结果已提供给模型' });
+            ? { type: 'tool_call', callId: event.callId, name: event.name, label: input.projectId ? '查阅项目知识库' : '查阅 ima 教材' }
+            : { type: 'tool_result', callId: event.callId, status: event.isError ? 'error' : 'done', result: event.isError ? '资料暂不可用' : '已取得实际资料，结果已提供给模型' });
         } } : {}),
       }, selection);
       yield* toolEvents;
@@ -164,6 +164,9 @@ export class GatewayTutorProvider implements TutorProvider {
     // 只有答案泄露才需要把安全闸门标记为 error，避免前端把正常整理误报为失败。
     const outputLengthAdjusted = verdict.reason?.startsWith('模型回复长度') === true;
     const block = toReplyBlock(finalText, level, input.pedagogicMove);
+    if (input.projectId) for (const evidence of input.contextPacket?.knowledgeEvidence ?? []) {
+      yield {type:'block',block:{kind:'evidence',ref:`project-knowledge:${encodeURIComponent(input.projectId)}:${evidence.document.id}`}};
+    }
 
     yield {
       type: 'tool_result',

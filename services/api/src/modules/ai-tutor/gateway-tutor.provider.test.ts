@@ -89,7 +89,7 @@ async function imaInput(): Promise<TutorTurnInput> {
   packet.runtime = { policyVersion: 'test', agentDefinition: '', skills: [], tools: [], mcpServers: [
     { serverId: 'ima-knowledge', label: 'ima', transport: 'streamable_http', toolIds: ['ima_read_document'] },
   ] };
-  return { ...BASE_INPUT, contextPacket: packet };
+  return { ...BASE_INPUT, projectId: '', contextPacket: packet };
 }
 
 test('Tutor passes bound tools to the gateway, preserves truthful events and answer guard', async () => {
@@ -122,6 +122,22 @@ test('MCP failure is redacted and the model is explicitly told that knowledge co
   const events = await collect(new GatewayTutorProvider(gateway, [], ima), await imaInput());
   assert.doesNotMatch(JSON.stringify(events), /private-token/);
   assert.ok(events.some((event) => event.type === 'tool_result' && event.status === 'error' && event.result === 'ima 知识库暂不可用'));
+});
+
+test('formal project never discovers ima even when legacy runtime metadata still contains it', async () => {
+  let discovered = false;
+  const ima = new ImaMcpClient();
+  ima.toolsFor = async () => { discovered = true; throw new Error('must not discover'); };
+  const input = await imaInput(); input.projectId = 'formal-project';
+  input.projectKnowledgeState = '项目资料尚未准备好，不能编造引用';
+  const gateway = new StubGateway((_usage, request) => {
+    assert.equal(request.tools, undefined);
+    assert.match(request.messages[0]!.content, /不能编造引用/);
+    return result('你可以先描述观察到的现象吗？');
+  });
+  const events = await collect(new GatewayTutorProvider(gateway, [], ima), input);
+  assert.equal(discovered, false);
+  assert.ok(events.some(e => e.type === 'done'));
 });
 
 /* --------------------------- provider 选择 --------------------------- */

@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import type { AdminImaSettings, AdminImaSettingsPatch, CurrentUser } from '@qitu/contracts';
 import { adminAssistants, agentConfigs, agentMcpBindings, runtimeMcpServers, withTransaction, type Database } from '@qitu/database';
 import { and, eq, sql } from 'drizzle-orm';
@@ -34,6 +35,7 @@ export class ImaSettingsService {
   constructor(
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     private readonly audit: AuditWriter,
+    @Optional() private readonly knowledgeCenter?: KnowledgeCenterService,
   ) {}
 
   private database(): Database {
@@ -50,9 +52,10 @@ export class ImaSettingsService {
     const server = servers.find((row) => row.id === IMA_MCP_SERVER_ID);
     let endpointOrigin: string | null = null;
     try { endpointOrigin = new URL(server?.endpointOrigin ?? '').origin; } catch { /* unconfigured */ }
+    const unified = this.knowledgeCenter ? (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'] : undefined;
     return {
       id: IMA_MCP_SERVER_ID, label: server?.label ?? 'ima 教材知识库', registered: !!server,
-      enabled: server?.enabled ?? false,
+      enabled: unified?.enabled ?? server?.enabled ?? false,
       status: server?.status === 'connected' ? 'connected' : server?.status === 'error' ? 'error' : server ? 'unknown' : 'not_configured',
       credentialConfigured: !!(process.env.QITU_IMA_MCP_URL && process.env.QITU_IMA_MCP_TOKEN),
       endpointOrigin, transport: 'streamable_http', tools: (server?.toolIds ?? []).filter((id) => IMA_READ_TOOLS.some((tool) => tool === id)),
@@ -70,6 +73,7 @@ export class ImaSettingsService {
   }
 
   async update(actor: CurrentUser, input: AdminImaSettingsPatch): Promise<AdminImaSettings> {
+    if (this.knowledgeCenter) throw new ConflictException({code:'CONFIG_REVISION_REQUIRED',message:'ima 已迁入统一知识引擎配置，请在 JSON 工作台读取当前修订后保存'});
     const patch = parseImaPatch(input);
     await withTransaction(this.database(), async (tx) => {
       const [server] = await tx.select().from(runtimeMcpServers).where(eq(runtimeMcpServers.id, IMA_MCP_SERVER_ID)).for('update');
@@ -104,6 +108,10 @@ export class ImaSettingsService {
 
   /** A fresh, fail-closed authorization check before discovery and each tool call. */
   async canCall(agentId: string, toolId: string, assistantId?: string): Promise<boolean> {
+    if (this.knowledgeCenter) {
+      const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
+      if (!engine?.enabled || (Array.isArray(engine.config.allowedKnowledgeBaseIds) && engine.config.allowedKnowledgeBaseIds.length === 0)) return false;
+    }
     if (!this.db || !IMA_READ_TOOLS.some((tool) => tool === toolId)) return false;
     try {
       const [servers, agents, bindings, assistants] = await Promise.all([
