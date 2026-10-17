@@ -487,7 +487,12 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       completedAt: null,
     };
     this.projects.set(project.id, project);
-    await input.commit?.(project.id);
+    try {
+      await input.commit?.(project.id);
+    } catch (error) {
+      this.projects.delete(project.id);
+      throw error;
+    }
     bundle.plan = {
       ...bundle.plan,
       projectId: project.id,

@@ -314,6 +314,11 @@ export class TutorQuizService {
 
         // 提交后：提示阶梯推进、卡点 / 迷思信号、TheoryMastered 门禁桥。
         const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
+        // 提交后门禁桥：与 `learning-plan.submitAnswer` 同构，best-effort 且幂等；
+        // 事务内只写达标审计/outbox，团队链路故障不回滚已成立的理论达标。
+        if (outcome.kind === 'mapped' && outcome.gate.theoryMasteredFlip) {
+          await this.learningPlan.applyGradingGateBridge(actor.id, outcome.theorySessionId);
+        }
         if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
           if (outcome.kind === 'mapped') {
             await this.emitStuckSignal({
@@ -341,9 +346,6 @@ export class TutorQuizService {
             attemptId: outcome.attemptId,
             errorType: outcome.errorType,
           });
-        }
-        if (outcome.kind === 'mapped' && outcome.gate.theoryMasteredFlip) {
-          await this.learningPlan.applyGradingGateBridge(actor.id, outcome.theorySessionId);
         }
 
         if (outcome.kind === 'unmapped') {
