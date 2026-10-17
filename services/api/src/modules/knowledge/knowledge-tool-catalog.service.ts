@@ -3,6 +3,7 @@ import { runtimeMcpServers } from '@qitu/database';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { ProjectKnowledgeService } from './project-knowledge.service';
 import { ImaMcpClient, IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client';
+import { legacyMcpManifest } from '../platform-registry/legacy-mcp-catalog';
 
 export interface KnowledgeToolDefinition {
   name: string;
@@ -11,7 +12,7 @@ export interface KnowledgeToolDefinition {
 }
 export interface KnowledgeToolCatalog {
   tools: KnowledgeToolDefinition[];
-  source: 'runtime' | 'mcp' | 'registry';
+  source: 'runtime' | 'mcp' | 'registry' | 'legacy_manifest';
   fetchedAt: string | null;
   stale: boolean;
   message: string | null;
@@ -85,6 +86,23 @@ export class KnowledgeToolCatalogService {
     // The current registry stores tool IDs, not invented schemas or executable client commands.
     const names =
       registered?.toolIds ?? (Array.isArray(entry.tools) ? (entry.tools as string[]) : []);
+    const manifest = legacyMcpManifest(id);
+    if (manifest)
+      return {
+        tools: names.map(
+          (name) =>
+            manifest.tools.find((tool) => tool.name === name) ?? {
+              name,
+              description: '',
+              inputSchema: null,
+            },
+        ),
+        source: 'legacy_manifest',
+        fetchedAt: null,
+        stale: false,
+        message:
+          '原界面的子工具与参数定义已恢复；参数尚未通过运行中的 MCP 服务核验，连接状态以服务端检查为准。',
+      };
     return {
       tools: names.map((name) => ({ name, description: '', inputSchema: null })),
       source: 'registry',

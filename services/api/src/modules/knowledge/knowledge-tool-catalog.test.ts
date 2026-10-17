@@ -103,3 +103,55 @@ test('ima metadata caches discovery, refreshes explicitly and marks failed refre
     discovery.mock.restore();
   }
 });
+
+import { LEGACY_MCP_MANIFESTS } from '../platform-registry/legacy-mcp-catalog';
+test('restored services expose all sixteen original tools with explicit legacy provenance', async () => {
+  const manifestConfig = {
+    mcpServers: Object.fromEntries(
+      LEGACY_MCP_MANIFESTS.map((m) => [m.id, { name: m.name, tools: m.tools.map((t) => t.name) }]),
+    ),
+  };
+  const registry = LEGACY_MCP_MANIFESTS.map((m) => ({
+    id: m.id,
+    toolIds: m.tools.map((t) => t.name),
+  }));
+  const restored = {
+    configuration: async () => ({ config: manifestConfig }),
+    database: () => ({ select: () => ({ from: async () => registry }) }),
+  } as unknown as KnowledgeCenterService;
+  const service = new KnowledgeToolCatalogService(restored, project);
+  assert.deepEqual(
+    LEGACY_MCP_MANIFESTS.map((m) => m.tools.length),
+    [4, 5, 4, 3],
+  );
+  for (const manifest of LEGACY_MCP_MANIFESTS) {
+    const result = await service.list('mcpServers', manifest.id, true);
+    assert.equal(result.source, 'legacy_manifest');
+    assert.equal(result.fetchedAt, null);
+    assert.deepEqual(
+      result.tools.map((t) => t.name),
+      manifest.tools.map((t) => t.name),
+    );
+    for (const tool of result.tools) {
+      assert.equal(tool.inputSchema!['x-qitu-definition-source'], 'legacy-admin-ui-v1');
+      assert.ok(!('execute' in tool));
+      assert.ok(!JSON.stringify(tool).includes('API_KEY'));
+      const schema = tool.inputSchema!;
+      const properties = schema.properties as Record<string, unknown>;
+      for (const name of schema.required as string[]) assert.ok(Object.hasOwn(properties, name));
+    }
+  }
+  const search = (await service.list('mcpServers', 'mcp-grok-search')).tools[0]!;
+  assert.deepEqual(search.inputSchema!.required, ['query']);
+  assert.deepEqual((search.inputSchema!.properties as Record<string, unknown>).include_domains, {
+    type: 'array',
+    description: '限定检索的目标域名白名单列表',
+    items: { type: 'string' },
+  });
+  registry[0]!.toolIds = ['unknown_new_tool'];
+  assert.equal(
+    (await service.list('mcpServers', 'mcp-grok-search')).tools[0]!.inputSchema,
+    null,
+    'do not invent parameters for new tool names',
+  );
+});

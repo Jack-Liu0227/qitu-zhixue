@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
-import { persistAssistantBinding, BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID } from '../../../../lib/api/assistantBindings';
+import { persistAssistantBinding, hasMcpBinding, BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID } from '../../../../lib/api/assistantBindings';
+import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
-import type { AdminAssistantConfig, AdminImaSettings, AdminImaSettingsPatch } from '@qitu/contracts';
+import type { AdminAssistantConfig, AdminImaSettings, AdminImaSettingsPatch, AdminRuntimeMcpServer } from '@qitu/contracts';
 import { fetchImaSettings, saveImaSettings, checkImaConnection } from '../../../../lib/api/ima';
 import { createIdempotentRetryKey } from '../../../../lib/api/types';
 
@@ -48,6 +49,7 @@ export interface SingleMcpConfig {
   env?: Record<string, string>;
   transport?: 'stdio' | 'sse' | 'streamable_http';
   status: 'connected' | 'disconnected' | 'error';
+  registryStatus?: string;
   latencyMs?: number;
   tools: string[];
   boundAssistants: string[];
@@ -481,7 +483,27 @@ export default function ToolsSettingsPage() {
     boundAssistants: ima?.assistants.filter((row) => row.authorized).map((row) => row.name) ?? [],
     description: imaConfig(ima).description, rawJson: JSON.stringify(imaConfig(ima), null, 2),
   }), [ima]);
-  const mcpList = useMemo(() => [...storedMcpList, imaRow], [storedMcpList, imaRow]);
+  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [registryServers, setRegistryServers] = useState<AdminRuntimeMcpServer[]>([]);
+  const [registryError, setRegistryError] = useState('');
+  const restoredIds = new Set(['mcp-grok-search', 'mcp-chrome-devtools', 'mcp-aionui-browser', 'mcp-fetch']);
+  const loadRegistry = async () => {
+    try { const state = await fetchRuntimeSnapshot(); setRegistryServers(state.mcpServers); setRegistryError(''); }
+    catch (error) { setRegistryServers([]); setRegistryError(error instanceof Error ? error.message : 'MCP 状态读取失败'); }
+  };
+  useEffect(() => { void loadRegistry(); const refresh = () => void loadRegistry(); window.addEventListener('qitu-configuration-changed', refresh); return () => window.removeEventListener('qitu-configuration-changed', refresh); }, []);
+  const mcpList = useMemo(() => [
+    ...DEFAULT_MCP_LIST.filter((row) => restoredIds.has(row.id)).map((row): SingleMcpConfig => {
+      const live = registryServers.find((server) => server.id === row.id);
+      return { ...row, name: live?.label ?? row.name,
+        status: live?.status === 'connected' ? 'connected' : live?.status === 'error' ? 'error' : 'disconnected',
+        registryStatus: live?.status === 'not_configured' ? '未配置' : live?.status === 'connected' ? '连接正常' : live?.status === 'error' ? '连接异常' : '状态未知',
+        latencyMs: undefined,
+        boundAssistants: assistants.filter((assistant) => hasMcpBinding(assistant, row)).map((assistant) => assistant.name),
+      };
+    }),
+    ...storedMcpList.filter((row) => !restoredIds.has(row.id)), imaRow,
+  ], [storedMcpList, imaRow, registryServers, assistants]);
   // Keep all original MCP drafts and controls intact; ima is never a local draft.
   const setMcpList = (action: SetStateAction<SingleMcpConfig[]>) => setStoredMcpList((previous) =>
     (typeof action === 'function' ? action(previous) : action).filter((row) => row.id !== IMA_ID));
@@ -496,7 +518,6 @@ export default function ToolsSettingsPage() {
   const [jsonTextDraft, setJsonTextDraft] = useState<string>('');
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>('');
-  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [expandedSidebarTools, setExpandedSidebarTools] = useState<Record<string, boolean>>({});
   const [selectedToolParamKey, setSelectedToolParamKey] = useState<string | null>(null);
   const [selectedMcpIds, setSelectedMcpIds] = useState<Set<string>>(new Set());
@@ -1262,6 +1283,9 @@ export default function ToolsSettingsPage() {
           {notice}
         </div>
       ) : null}
+      {registryError && <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px' }}>
+        MCP 状态：{registryError}<button type="button" onClick={() => void loadRegistry()} style={{ marginLeft: '12px' }}>重试</button>
+      </div>}
       {imaError ? <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
         项目知识库检索：{imaError}
         <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
@@ -1331,10 +1355,10 @@ export default function ToolsSettingsPage() {
                   {mcpList.map((m) => (
                     <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ fontSize: '11px', color: m.id === IMA_ID && m.status !== 'connected' ? '#94a3b8' : '#16a34a' }}>●</span>
+                        <span style={{ fontSize: '11px', color: m.status !== 'connected' ? '#94a3b8' : '#16a34a' }}>●</span>
                         <span>{m.id === IMA_ID ? '项目知识库检索' : m.name}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具{m.id === IMA_ID ? ` · ${ima ? ima.enabled ? '允许调用' : '总开关关闭' : '读取中'}` : ''}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具{m.id === IMA_ID ? ` · ${ima ? ima.enabled ? '允许调用' : '总开关关闭' : '读取中'}` : m.registryStatus ? ` · ${m.registryStatus}` : ''}</div>
                       {/* 纵向全选 / 纵向取消 */}
                       <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
                         <button

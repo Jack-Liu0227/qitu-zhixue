@@ -71,7 +71,7 @@ export interface ToolDefinition {
 }
 export interface ToolCatalog {
   tools: ToolDefinition[];
-  source: 'runtime' | 'mcp' | 'registry';
+  source: 'runtime' | 'mcp' | 'registry' | 'legacy_manifest';
   fetchedAt: string | null;
   stale: boolean;
   message: string | null;
