@@ -34,10 +34,22 @@ import {
   type BindingRecord,
   type SnapshotRecord,
 } from './templates-binding.types';
+import type {
+  ProjectTemplateVersionRecord,
+  TemplateStatus,
+} from './templates.types';
 
 export interface BindingMutationResult {
   binding: PblTemplateTeamBinding;
   replayed: boolean;
+}
+
+/** 课程模板 slug → 当前可用版本 的解析结果（学生端读 seam）。 */
+export interface CurriculumTemplateResolution {
+  templateVersionId: string;
+  version: string;
+  status: TemplateStatus;
+  title: string;
 }
 
 const TEAM_VERSION_MISSING_MESSAGE = '团队版本不存在';
@@ -340,6 +352,68 @@ export class TemplateBindingService {
     tx?: AuditTransaction,
   ): Promise<PblTemplateTeamBinding | null> {
     return this.resolveActiveBinding(templateVersionId, tx);
+  }
+
+  /**
+   * 由课程模板 slug 解析「当前可用」的模板版本（学生端读 seam）。
+   *
+   * 作用域按学生可见性（平台 ∪ 本校）经 `listTemplates({ visibleToSchoolId })`
+   * 查找，而不是精确 `findTemplateBySlug(schoolId, slug)`——平台模板
+   * （`schoolId === null`）对学生可见，后者会漏掉它们。
+   *
+   * 优先级：
+   * 1. 已发布版本上的 active 绑定；
+   * 2. 试点（piloting）版本上的 active 绑定（bootstrap 产出的状态）；
+   * 3. 最新已发布版本（无绑定）。
+   *
+   * 试点版本没有 active 绑定不可用（无法解析团队，判分链路会断）；模板/版本
+   * 均不可用时返回 null，由调用方决定错误码——本方法是只读 seam，不自己报错。
+   */
+  async resolveCurriculumTemplateVersion(
+    actor: CurrentUser,
+    slug: string,
+  ): Promise<CurriculumTemplateResolution | null> {
+    const schoolId = await this.directory.findSchoolId(actor.id);
+    const templates = await this.templates.listTemplates({ visibleToSchoolId: schoolId });
+    const template = templates.find(
+      (record) =>
+        record.slug === slug &&
+        (record.status === 'published' || record.status === 'piloting'),
+    );
+    if (template === undefined) return null;
+
+    const versions = (await this.templates.listVersions(template.id)).filter(
+      (version) => version.status === 'published' || version.status === 'piloting',
+    );
+    if (versions.length === 0) return null;
+
+    const ranked: { version: ProjectTemplateVersionRecord; rank: number }[] = [];
+    for (const version of versions) {
+      const active = await this.bindings.findActiveBinding(version.id);
+      const hasActive = active !== null;
+      let rank: number;
+      if (version.status === 'published' && hasActive) rank = 0;
+      else if (version.status === 'piloting' && hasActive) rank = 1;
+      else if (version.status === 'published') rank = 2;
+      else continue; // piloting 无 active 绑定：不可解析团队，排除。
+      ranked.push({ version, rank });
+    }
+    if (ranked.length === 0) return null;
+
+    ranked.sort((left, right) => {
+      if (left.rank !== right.rank) return left.rank - right.rank;
+      const leftTime = left.version.publishedAt?.getTime() ?? left.version.createdAt.getTime();
+      const rightTime = right.version.publishedAt?.getTime() ?? right.version.createdAt.getTime();
+      return rightTime - leftTime;
+    });
+    const resolved = ranked[0]?.version;
+    if (resolved === undefined) return null;
+    return {
+      templateVersionId: resolved.id,
+      version: resolved.version,
+      status: resolved.status,
+      title: template.title,
+    };
   }
 
   /**

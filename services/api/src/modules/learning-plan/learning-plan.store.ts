@@ -62,6 +62,15 @@ export interface ObjectiveRecord {
   objective: string;
   prerequisiteIds: string[];
   ordinal: number;
+  /**
+   * 课程模板目标关联的知识键（= 掌握域 knowledgePointId）。
+   *
+   * 生成/内存克隆时由 `buildBundle` 从 `GeneratedObjective` 复制而来；
+   * `learning_objectives` 无对应列，Postgres 读回的记录不含此字段——掌握域
+   * 映射以 `mastery_objective_mappings.knowledgePointId` 为准（已在写时持久化），
+   * 因此读路径缺失不影响判分解析。
+   */
+  conceptId?: string | null;
 }
 
 export interface SessionRecord {
@@ -739,7 +748,8 @@ export function planObjectiveMappings(bundle: PlanBundle, schoolId: string | nul
     objectiveId: objective.id,
     templateVersion: bundle.plan.templateVersion,
     contentVersion: bundle.plan.templateVersion,
-    knowledgePointId: `local:${objective.id}`,
+    // 课程驱动目标携带稳定的概念键；通用目标回退到 plan 作用域的本地键。
+    knowledgePointId: objective.conceptId ?? `local:${objective.id}`,
     courseVersion: bundle.plan.templateVersion,
     source: 'explicit',
     mappedAt: bundle.plan.createdAt,
