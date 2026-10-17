@@ -62,7 +62,7 @@ const PRESET_ALL_MODELS: Array<{ id: string; name: string; group: 'OpenAI' | '�
   { id: 'custom-internal-pbl-v1', name: '启途智学 PBL 内置微调模型', group: '其他' },
 ];
 
-export interface PiProviderCatalogItem {
+interface PiProviderCatalogItem {
   id: string;
   name: string;
   category: string;
@@ -74,7 +74,7 @@ export interface PiProviderCatalogItem {
   description: string;
 }
 
-export const PI_AGENT_SUPPORTED_PROVIDERS: PiProviderCatalogItem[] = [
+const PI_AGENT_SUPPORTED_PROVIDERS: PiProviderCatalogItem[] = [
   {
     id: 'ali-bailian',
     name: '阿里百炼 (DashScope / 通义千问)',
