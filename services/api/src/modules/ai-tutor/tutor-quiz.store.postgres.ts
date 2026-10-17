@@ -1,5 +1,6 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { answerAttempts, type Database } from '@qitu/database';
+import type { GradeValue, LearningErrorType } from '@qitu/contracts';
 import type { AuditTransaction } from '../../common/audit/audit.service';
 import { TutorQuizStore, type AnswerAttemptRecord } from './tutor-quiz.store';
 
@@ -55,4 +56,44 @@ export class PostgresTutorQuizStore extends TutorQuizStore {
       .where(and(eq(answerAttempts.studentUserId, studentUserId), eq(answerAttempts.quizId, quizId)));
     return row?.value ?? 0;
   }
+
+  async listRecentAttemptsByConcept(
+    studentUserId: string,
+    conceptId: string,
+    limit: number,
+  ): Promise<AnswerAttemptRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(answerAttempts)
+      .where(and(
+        eq(answerAttempts.studentUserId, studentUserId),
+        eq(answerAttempts.conceptId, conceptId),
+      ))
+      .orderBy(desc(answerAttempts.createdAt))
+      .limit(limit);
+    return rows.map(mapAttemptRow);
+  }
+}
+
+function mapAttemptRow(row: typeof answerAttempts.$inferSelect): AnswerAttemptRecord {
+  return {
+    id: row.id,
+    schoolId: row.schoolId,
+    studentUserId: row.studentUserId,
+    tutorSessionId: row.tutorSessionId,
+    quizId: row.quizId,
+    objectiveId: row.objectiveId,
+    planId: row.planId,
+    conceptId: row.conceptId,
+    result: row.result as GradeValue,
+    isCorrect: row.isCorrect,
+    assessmentType: 'quiz',
+    errorType: row.errorType as LearningErrorType | null,
+    hintsUsed: row.hintsUsed,
+    attemptCount: row.attemptCount,
+    qualityBasisPoints: row.qualityBasisPoints,
+    userAnswer: row.userAnswer,
+    idempotencyKey: row.idempotencyKey,
+    createdAt: row.createdAt,
+  };
 }

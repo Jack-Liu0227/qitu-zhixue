@@ -194,7 +194,13 @@ export type ApiErrorCode =
    * 正确处理不是继续追加，而是降级为 `recommend_teacher_support` +
    * HIGH 优先级脱敏摘要（人工介入）。
    */
-  | 'ADJUSTMENT_DEPTH_CIRCUIT_BROKEN';
+  | 'ADJUSTMENT_DEPTH_CIRCUIT_BROKEN'
+  /** 已掌握或非当前待答的目标被再次提交判分（400）。 */
+  | 'QUESTION_NOT_AWAITING'
+  /** `Idempotency-Key` 请求头与 `body.idempotencyKey` 不一致（400）。 */
+  | 'IDEMPOTENCY_KEY_MISMATCH'
+  /** 计划调整 / 卡点信号摄入失败，审计兜底后重抛（503）。 */
+  | 'PLAN_ADJUSTMENT_INGEST_FAILED';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。

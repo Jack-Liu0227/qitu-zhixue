@@ -380,12 +380,14 @@ export class TutorController {
   ): Promise<{ data: AnswerInteractiveQuizResponse }> {
     const actor = this.requireStudent(cookieHeader);
     const headerKey = typeof idempotencyKeyHeader === 'string' ? idempotencyKeyHeader.trim() : '';
-    if (headerKey === '') {
-      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少 Idempotency-Key 请求头' });
-    }
     const bodyKey = typeof body.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
+    // A7：body.idempotencyKey 是唯一必填幂等键；Idempotency-Key 请求头可选，
+    // 两者同时出现且不一致时拒绝（400 IDEMPOTENCY_KEY_MISMATCH）。
     if (bodyKey === '') {
-      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少幂等键' });
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少幂等键（body.idempotencyKey）' });
+    }
+    if (headerKey !== '' && headerKey !== bodyKey) {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_MISMATCH', message: 'Idempotency-Key 与 body.idempotencyKey 不一致' });
     }
     if (this.quiz === undefined) {
       throw new NotFoundException('判分服务未启用');

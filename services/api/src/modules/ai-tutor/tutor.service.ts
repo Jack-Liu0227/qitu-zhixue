@@ -12,7 +12,10 @@ import {
 
 import type {
   AdminTeamConfig,
+  AdminTeamMember,
+  CurrentUser,
   GetTutorSessionResponse,
+  PblTeamWorkflowSpec,
   ProjectStage,
   TutorHintLevel,
   TutorIdeaCard,
@@ -27,7 +30,7 @@ import type {
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { eq } from 'drizzle-orm';
-import { projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { adminTeamVersions, projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
 import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
 import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -49,6 +52,7 @@ import { PlatformRegistryService, tutorAssistantIdForProject } from '../platform
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
 import { TemplatesService } from '../templates/templates.service';
+import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
@@ -267,6 +271,8 @@ export class TutorService {
     @Optional() private readonly projectKnowledge?: ProjectKnowledgeService,
     @Optional() private readonly templates?: TemplatesService,
     @Optional() @Inject(DATABASE_TOKEN) database?: import('@qitu/database').Database | null,
+    /** A1：模板绑定冻结快照解析；作为最后参数注入，保持既有位置化构造兼容。 */
+    @Optional() private readonly templateBindings?: TemplateBindingService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -375,6 +381,36 @@ export class TutorService {
     };
     if (this.platformRegistry === undefined) return { team: fallback, phases: [], teamConfig: null };
     try {
+      // A1：正式项目优先按项目创建时冻结的绑定快照解析团队，退役/重新激活
+      // 绑定不会改变既有项目。快照指向不可变的 teamVersionId，后写不会覆盖。
+      const snapshot = projectId !== null && templateVersionId !== null && this.templateBindings !== undefined
+        ? await this.templateBindings.resolveSnapshotForProject(projectId, templateVersionId, {
+            id: ownerId,
+            role: 'student',
+            email: '',
+            displayName: '',
+          } satisfies CurrentUser)
+        : null;
+      if (projectId !== null && snapshot !== null) {
+        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId);
+        if (frozenTeam !== null) {
+          const assistants = await this.platformRegistry.listAssistants();
+          const leaderId = frozenTeam.leaderAssistantId;
+          const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
+            ?? this.findBuiltinAssistant(leaderId);
+          const team: TutorTeamIdentity = {
+            teamId: frozenTeam.id,
+            teamName: frozenTeam.name,
+            assistantId: leader?.id ?? leaderId,
+            assistantName: leader?.name ?? fallback.assistantName,
+            assistantAvatar: leader?.avatar ?? null,
+          };
+          const phases = await this.projectPhases(frozenTeam, stage, ownerId);
+          return { team, phases, teamConfig: frozenTeam };
+        }
+      }
+
+      // 旧项目没有快照：保留原有解析路径，并写 legacy-resolution 审计（best-effort）。
       const [assistants, teams, binding] = await Promise.all([
         this.platformRegistry.listAssistants(),
         this.platformRegistry.listTeams(),
@@ -383,6 +419,9 @@ export class TutorService {
       const teamConfig = projectId === null || binding === null
         ? null
         : teams.find((team) => team.enabled && this.teamBindsTemplate(team, binding)) ?? null;
+      if (projectId !== null && teamConfig !== null && snapshot === null) {
+        await this.writeLegacyResolutionAudit(projectId, templateVersionId, teamConfig, ownerId);
+      }
       const leaderId = teamConfig?.leaderAssistantId ?? fallback.assistantId;
       const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
         ?? this.findBuiltinAssistant(leaderId);
@@ -398,6 +437,55 @@ export class TutorService {
     } catch {
       // 配置存储不可用时只返回真实存在的助手兜底，绝不编造团队名。
       return { team: fallback, phases: [], teamConfig: null };
+    }
+  }
+
+  /** 按冻结的 teamVersionId 读不可变团队版本行，形变为 tutor 只读的 AdminTeamConfig。 */
+  private async loadFrozenTeamVersion(teamVersionId: string): Promise<AdminTeamConfig | null> {
+    if (this.database === null) return null;
+    const [row] = await this.database
+      .select()
+      .from(adminTeamVersions)
+      .where(eq(adminTeamVersions.id, teamVersionId))
+      .limit(1);
+    if (row === undefined) return null;
+    const createdAt = row.createdAt.toISOString();
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      workspaceMode: row.workspaceMode as AdminTeamConfig['workspaceMode'],
+      sessionMode: row.sessionMode as AdminTeamConfig['sessionMode'],
+      leaderAssistantId: row.leaderAssistantId,
+      members: (row.members ?? []) as readonly AdminTeamMember[],
+      // 团队版本表没有并发列；tutor 只读团队身份/阶段，不消费该值。
+      concurrencyLimit: 1,
+      pblSpec: row.pblSpec as unknown as PblTeamWorkflowSpec | undefined,
+      enabled: row.enabled,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  }
+
+  /** 旧项目无快照时的降级审计；不含学生文本，失败不影响读路径。 */
+  private async writeLegacyResolutionAudit(
+    projectId: string,
+    templateVersionId: string | null,
+    teamConfig: AdminTeamConfig,
+    ownerId: string,
+  ): Promise<void> {
+    if (this.auditWriter === undefined) return;
+    try {
+      await this.auditWriter.write({
+        actorId: ownerId,
+        actorRole: 'student',
+        action: 'tutor.team.legacy-resolution',
+        targetType: 'project',
+        targetId: projectId,
+        detail: { projectId, templateVersionId, teamId: teamConfig.id, teamName: teamConfig.name },
+      });
+    } catch {
+      // 审计失败不能把会话/项目上下文读接口打挂。
     }
   }
 
@@ -569,7 +657,8 @@ export class TutorService {
   }
 
   /**
-   * F1 判分路由的下发侧：对当前计划中尚未掌握的理论目标，经
+   * F1 判分路由的下发侧：仅在服务端拥有的 concept-mastery/theory 阶段，对
+   * 当前计划中**第一个**尚未掌握的可量化（memory/procedure）理论目标，经
    * `mastery_objective_mappings` 反查稳定 conceptId，再选取不可变题库条目，
    * 只下发公开投影。`expectedKeys` / `explanation` 永不进入回合。
    * 本会话已下发过的题不重复追加（防重复推送同一道题）。
@@ -581,6 +670,10 @@ export class TutorService {
         (candidate) => candidate.projectId === record.projectId,
       );
       if (plan === undefined || plan.studentUserId !== actorId) return [];
+      // A8：只在与理论掌握相关的阶段下发；其余阶段不再夹带判断题。
+      const project = await this.learningStore.findProject(record.projectId);
+      const phase = project === null ? 'concept_mastery' : (PHASE_FOR_PROJECT_STAGE[project.status] ?? 'concept_mastery');
+      if (phase !== 'concept_mastery') return [];
       const bundle = await this.learningStore.findBundle(plan.id);
       if (bundle === null) return [];
       const objectiveById = new Map(bundle.objectives.map((objective) => [objective.id, objective]));
@@ -591,8 +684,9 @@ export class TutorService {
           if (objective !== undefined && !ordered.some((item) => item.id === objectiveId)) ordered.push(objective);
         }
       }
-      const blocks: TutorTurn['blocks'] = [];
+      // 单目标下发：只取第一个未掌握的可量化理论目标。
       for (const objective of ordered) {
+        if (objective.type !== 'memory' && objective.type !== 'procedure') continue;
         const mastery = await this.learningStore.findMastery(actorId, objective.id);
         if (mastery !== null && isObjectiveMastered(objective.type, {
           score: mastery.masteryBasisPoints / 10_000,
@@ -610,10 +704,12 @@ export class TutorService {
         const alreadyEmitted = record.turns.some((turn) =>
           turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === entry.questionId),
         );
-        if (alreadyEmitted) continue;
-        blocks.push(toQuizBlockProjection(entry));
+        // 首个待掌握目标的题已下发过：不再重复推送，也不推进到第二个目标
+        // （A5 只接受当前第一个待掌握目标）。本轮不追加新的 quiz block。
+        if (alreadyEmitted) return [];
+        return [toQuizBlockProjection(entry)];
       }
-      return blocks;
+      return [];
     } catch {
       return [];
     }

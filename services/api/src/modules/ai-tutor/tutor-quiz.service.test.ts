@@ -1,10 +1,13 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import type { CurrentUser } from '@qitu/contracts';
+import { ConflictException, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import type { CurrentUser, ProjectStage } from '@qitu/contracts';
 import type { AuditEntry } from '../../common/audit/audit-entry';
-import { AuditWriter } from '../../common/audit/audit.service';
+import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
+import { AccessPolicy } from '../../common/access/access-policy';
+import { OutboxWriter, type OutboxTransaction } from '../../common/outbox/outbox.service';
+import type { OutboxEventInput } from '../../common/outbox/outbox.types';
 import {
   IdempotencyStore,
   type IdempotencyExecuteOptions,
@@ -15,13 +18,19 @@ import { IdempotencyError } from '../../common/idempotency/idempotency.errors';
 import {
   InMemoryLearningPlanStore,
   type AttemptRecord,
+  type CompleteAssessmentInput,
+  type LearningPlanStore,
   type MasteryObjectiveMappingRecord,
   type PlanBundle,
 } from '../learning-plan/learning-plan.store';
-import { InMemoryTutorQuizStore } from './tutor-quiz.store';
+import { LearningPlanService } from '../learning-plan/learning-plan.service';
+import { PlanGenerator } from '../learning-plan/plan-generator';
+import { InMemoryTutorQuizStore, type AnswerAttemptRecord } from './tutor-quiz.store';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorService, type StreamedTutorEvent, type TutorSessionRecord } from './tutor.service';
 import type { TutorModelGateway } from './gateway-tutor.provider';
+import { StuckSignalService } from '../plan-adjustment/stuck-signal.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 
 /**
  * F1 判分路由的聚焦验证。
@@ -81,14 +90,64 @@ class SharedIdempotencyStore extends IdempotencyStore {
 
 class RecordingAuditWriter extends AuditWriter {
   readonly entries: AuditEntry[] = [];
+  readonly writeTxs: Array<{ action: string; tx: AuditTransaction | undefined }> = [];
 
-  async write(entry: AuditEntry): Promise<string> {
+  async write(entry: AuditEntry, tx?: AuditTransaction): Promise<string> {
     this.entries.push(entry);
+    this.writeTxs.push({ action: entry.action, tx });
     return `audit-${this.entries.length}`;
   }
 
   count(action: string): number {
     return this.entries.filter((entry) => entry.action === action).length;
+  }
+
+  txOf(action: string): AuditTransaction | undefined {
+    return this.writeTxs.find((record) => record.action === action)?.tx;
+  }
+}
+
+class RecordingOutboxWriter extends OutboxWriter {
+  readonly writes: OutboxEventInput[] = [];
+
+  async write(event: OutboxEventInput, _tx?: OutboxTransaction): Promise<string> {
+    this.writes.push(event);
+    return event.id;
+  }
+
+  async markPublished(): Promise<void> {}
+  async markFailed(): Promise<void> {}
+
+  topic(topic: string): number {
+    return this.writes.filter((event) => event.topic === topic).length;
+  }
+}
+
+/** 把评估事务的 tx 句柄替换为哨兵，验证 A3 判分审计/证据与掌握度同事务。 */
+class TxProbeLearningStore extends InMemoryLearningPlanStore {
+  readonly sentinel = { probe: 'assessment-tx' } as unknown as AuditTransaction;
+
+  override async withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T> {
+    return work(this, this.sentinel);
+  }
+
+  override async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    await super.completeAssessment({
+      ...input,
+      commit: async () => { await input.commit?.(this.sentinel); },
+    });
+  }
+}
+
+class TxRecordingQuizStore extends InMemoryTutorQuizStore {
+  lastTx: AuditTransaction | undefined = undefined;
+
+  override async appendAttempt(record: AnswerAttemptRecord, tx?: AuditTransaction): Promise<void> {
+    this.lastTx = tx;
+    await super.appendAttempt(record, tx);
   }
 }
 
@@ -170,7 +229,7 @@ async function seedOpticsPlan(store: InMemoryLearningPlanStore, studentUserId: s
 }
 
 /** 完整项目（含 project 记录）：用于走真实回合下发的集成测试。 */
-async function seedOpticsProject(store: InMemoryLearningPlanStore): Promise<void> {
+async function seedOpticsProject(store: InMemoryLearningPlanStore, status: ProjectStage = 'theory_learning'): Promise<void> {
   await store.createPlan(makePlanBundle(OWNER, null));
   await store.upsertObjectiveMapping(opticsMapping());
   await store.confirmPlan({
@@ -179,7 +238,7 @@ async function seedOpticsProject(store: InMemoryLearningPlanStore): Promise<void
       id: PROJECT_ID,
       studentId: OWNER,
       templateVersionId: TEMPLATE_VERSION,
-      status: 'theory_learning',
+      status,
       currentStageIndex: 2,
       stageTotal: 8,
       progressPercent: 25,
@@ -209,20 +268,53 @@ function newTutorService(learningStore?: InMemoryLearningPlanStore): TutorServic
   );
 }
 
+function newLearningPlanService(
+  store: InMemoryLearningPlanStore,
+  audit: RecordingAuditWriter,
+  idempotency: SharedIdempotencyStore,
+  input: {
+    outbox?: RecordingOutboxWriter;
+    teamRuntime?: TeamRuntimeService;
+  } = {},
+): LearningPlanService {
+  return new LearningPlanService(
+    store,
+    { generate: () => { throw new Error('判分测试不应生成计划'); } } as unknown as PlanGenerator,
+    idempotency,
+    audit,
+    input.outbox ?? ({
+      write: async () => 'outbox-id',
+      markPublished: async () => {},
+      markFailed: async () => {},
+    } as unknown as OutboxWriter),
+    {} as unknown as AccessPolicy,
+    undefined, // MasteryDomainService 未接线：走 legacy 掌握度写回（masteryEvent=null）
+    input.teamRuntime,
+  );
+}
+
 function newQuizService(input: {
   store: InMemoryLearningPlanStore;
   quizStore: InMemoryTutorQuizStore;
   idempotency: SharedIdempotencyStore;
   audit: RecordingAuditWriter;
   tutor: TutorService;
+  stuckSignals?: StuckSignalService;
+  outbox?: RecordingOutboxWriter;
+  teamRuntime?: TeamRuntimeService;
 }): TutorQuizService {
   return new TutorQuizService(
     input.store,
     input.quizStore,
     input.idempotency,
     input.audit,
+    newLearningPlanService(input.store, input.audit, input.idempotency, {
+      outbox: input.outbox,
+      teamRuntime: input.teamRuntime,
+    }),
     undefined, // MasteryDomainService 未接线：走 legacy 掌握度写回（masteryEvent=null）
     input.tutor,
+    input.stuckSignals,
   );
 }
 
@@ -431,6 +523,9 @@ test('正确作答写回掌握度；量化达标（>=0.9）才释放解析与标
   const tutor = newTutorService(store);
   const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
   forceEmitQuiz(session);
+  // 本用例聚焦「正确作答→掌握度写回」，归零会话 hint 等级，避免种子会话
+  // 的 hintLevel=2 叠扣分影响 0.5/0.75/0.9 的预期值（hint 传播另有专测）。
+  session.lastHintLevel = null;
 
   const quizStore = new InMemoryTutorQuizStore();
   const audit = new RecordingAuditWriter();
@@ -479,10 +574,151 @@ test('答错不释放答案，conceptDeltas 记录 before/after 且未掌握', a
   assert.equal(result.correct, false);
   assert.equal(result.explanation, null);
   assert.equal(result.correctKeys, null);
-  assert.equal(result.conceptDeltas[0]?.mastered, false);
-  assert.equal(result.conceptDeltas[0]?.after, 0, '答错后掌握度保持 0');
+  // A6：before === after 时不上报空 delta。
+  assert.deepEqual(result.conceptDeltas, [], '答错后 before===after，conceptDeltas 应为空');
   assert.ok(result.nextGuidance !== null, '答错应给出不含答案的引导');
   assert.doesNotMatch(result.nextGuidance ?? '', /反射角/);
+});
+
+/* ------------------------------ A5 / A2 / A3 / A9 ------------------------------ */
+
+test('已掌握目标再判分：400 QUESTION_NOT_AWAITING', async () => {
+  const store = makeLearningStore();
+  await seedOpticsPlan(store);
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+  forceEmitQuiz(session);
+  session.lastHintLevel = null;
+
+  const quiz = newQuizService({
+    store,
+    quizStore: new InMemoryTutorQuizStore(),
+    idempotency: new SharedIdempotencyStore(),
+    audit: new RecordingAuditWriter(),
+    tutor,
+  });
+
+  // 三次全对把 memory 目标推到 mastered。
+  for (let index = 1; index <= 3; index += 1) {
+    await quiz.answer(
+      student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: `master-${index}` }, `master-${index}`,
+    );
+  }
+
+  await assertHttpError(
+    () => quiz.answer(
+      student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'master-4' }, 'master-4',
+    ),
+    400,
+    'QUESTION_NOT_AWAITING',
+  );
+});
+
+test('判分走同一 TheoryMastered 门禁桥：达标翻转才发 theory_mastered 审计/outbox 与门禁', async () => {
+  const store = makeLearningStore();
+  await seedOpticsPlan(store);
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+  forceEmitQuiz(session);
+  session.lastHintLevel = null;
+
+  const audit = new RecordingAuditWriter();
+  const outbox = new RecordingOutboxWriter();
+  const gateCalls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string }> = [];
+  const teamRuntime = {
+    recordGateForStudent: async (input: { studentUserId: string; gate: string; evidenceRef: string; source: string }) => {
+      gateCalls.push(input);
+      return { status: 'recorded' as const, runId: null, gate: input.gate };
+    },
+  } as unknown as TeamRuntimeService;
+  const quiz = newQuizService({
+    store,
+    quizStore: new InMemoryTutorQuizStore(),
+    idempotency: new SharedIdempotencyStore(),
+    audit,
+    tutor,
+    outbox,
+    teamRuntime,
+  });
+
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'gate-1' }, 'gate-1');
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'gate-2' }, 'gate-2');
+  assert.equal(audit.count('learning_plan.theory_mastered'), 0, '未达标不得写 theory_mastered');
+  assert.equal(outbox.topic('learning.theory_mastered'), 0);
+  assert.equal(gateCalls.length, 0, '未达标不得写门禁证据');
+
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'gate-3' }, 'gate-3');
+  assert.equal(audit.count('learning_plan.theory_mastered'), 1, '翻转达标才写一次 theory_mastered 审计');
+  assert.equal(outbox.topic('learning.theory_mastered'), 1);
+  assert.equal(gateCalls.length, 1, '事务提交后经门禁桥写一次 TheoryMastered 证据');
+  assert.equal(gateCalls[0]?.studentUserId, OWNER);
+  assert.equal(gateCalls[0]?.gate, 'TheoryMastered');
+  assert.equal(gateCalls[0]?.source, 'learning-plan.theory-mastered');
+  assert.equal(gateCalls[0]?.evidenceRef, 'mastery:theory:session-optics');
+});
+
+test('判分审计与作答证据和掌握度写入同事务：commitTx 透传，不提交后补写', async () => {
+  const store = new TxProbeLearningStore();
+  await seedOpticsPlan(store);
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+  forceEmitQuiz(session);
+  session.lastHintLevel = null;
+
+  const quizStore = new TxRecordingQuizStore();
+  const audit = new RecordingAuditWriter();
+  const quiz = newQuizService({
+    store,
+    quizStore,
+    idempotency: new SharedIdempotencyStore(),
+    audit,
+    tutor,
+  });
+
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'tx-1' }, 'tx-1');
+
+  assert.equal(audit.count('tutor.quiz.graded'), 1, '判分审计只写一次，提交后不补写');
+  assert.equal(audit.txOf('tutor.quiz.graded'), store.sentinel, '判分审计使用评估事务句柄');
+  assert.equal(quizStore.lastTx, store.sentinel, '作答证据写入与掌握度同事务');
+  assert.notEqual(await store.findMastery(OWNER, OBJECTIVE_ID), null, '掌握度与审计同事务落库');
+});
+
+test('L3 卡点与 S1 迷思使用 contract 触发键：l3_cap:session:quiz 与 misconception:...:3', async () => {
+  const store = makeLearningStore();
+  await seedOpticsPlan(store);
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+  forceEmitQuiz(session);
+  session.lastHintLevel = null;
+
+  const quizStore = new InMemoryTutorQuizStore();
+  const ingested: Array<{ triggerKey: string; errorTypeCode: string }> = [];
+  const stuckSignals = {
+    ingest: async (signal: { triggerKey: string; errorTypeCode: string }) => {
+      ingested.push({ triggerKey: signal.triggerKey, errorTypeCode: signal.errorTypeCode });
+      return { created: true };
+    },
+  } as unknown as StuckSignalService;
+  const quiz = newQuizService({
+    store,
+    quizStore,
+    idempotency: new SharedIdempotencyStore(),
+    audit: new RecordingAuditWriter(),
+    tutor,
+    stuckSignals,
+  });
+
+  // 三次同概念同类型答错：第一次触发 L3 卡点（阶梯 1→2→3 依次推进），
+  // 第三次触发 S1 迷思（最近 3 次同错误）。
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['A'], idempotencyKey: 'sig-1' }, 'sig-1');
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['A'], idempotencyKey: 'sig-2' }, 'sig-2');
+  await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['A'], idempotencyKey: 'sig-3' }, 'sig-3');
+
+  assert.equal(ingested.length, 2, 'L3 卡点一次 + S1 迷思一次');
+  assert.ok(ingested.some((signal) => signal.triggerKey === `l3_cap:${session.sessionId}:${QUIZ_ID}`),
+    'L3 触发键必须是 l3_cap:sessionId:quizId');
+  assert.ok(ingested.some((signal) => signal.triggerKey === `misconception:${OWNER}:${CONCEPT_ID}:deviation:3`),
+    'S1 触发键必须是 misconception:studentId:conceptId:errorType:3');
 });
 
 /* ------------------------------ 幂等 / 重放 ------------------------------ */
@@ -719,6 +955,21 @@ test('executeTurn 会为未掌握理论目标追加题库公开投影，且不�
   assert.equal(quizBlocks.length, 1);
   assert.equal(quizBlocks[0]?.questionId, QUIZ_ID);
   assert.doesNotMatch(JSON.stringify(assistant), /expectedKeys|反射定律|explanation/);
+});
+
+test('题库投影仅在概念掌握阶段输出：practice 阶段不追加 quiz block（A8）', async () => {
+  const store = makeLearningStore();
+  await seedOpticsProject(store, 'practice_building');
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+
+  const before = session.turns.length;
+  await drain(tutor.runTurn(session, { content: '开始制作', idempotencyKey: 'turn-practice', actorId: OWNER }));
+
+  assert.equal(session.turns.length, before + 2, '一轮学生回合 + 助手回合');
+  const assistant = session.turns.find((turn) => turn.role === 'assistant' && turn.seq === session.lastSeq);
+  assert.ok(assistant, '助手回合存在');
+  assert.deepEqual(assistant.blocks.filter((block) => block.kind === 'quiz'), [], '非概念掌握阶段不得下发题库投影');
 });
 
 async function drain(

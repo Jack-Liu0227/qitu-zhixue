@@ -48,6 +48,13 @@ export abstract class TutorQuizStore {
 
   /** 同一 `(student, quizId)` 的累计作答次数（含本场景待写的一行前值）。 */
   abstract countAttempts(studentUserId: string, quizId: string): Promise<number>;
+
+  /** 同一 `(student, conceptId)` 的最近作答，按 `createdAt desc` 排序（S1 迷思检测）。 */
+  abstract listRecentAttemptsByConcept(
+    studentUserId: string,
+    conceptId: string,
+    limit: number,
+  ): Promise<AnswerAttemptRecord[]>;
 }
 
 /** 内存实现：仅用于 demo / test（无数据库），写入前不做重放去重。 */
@@ -71,6 +78,18 @@ export class InMemoryTutorQuizStore extends TutorQuizStore {
 
   async countAttempts(studentUserId: string, quizId: string): Promise<number> {
     return this.rows.filter((row) => row.studentUserId === studentUserId && row.quizId === quizId).length;
+  }
+
+  async listRecentAttemptsByConcept(
+    studentUserId: string,
+    conceptId: string,
+    limit: number,
+  ): Promise<AnswerAttemptRecord[]> {
+    return this.rows
+      .filter((row) => row.studentUserId === studentUserId && row.conceptId === conceptId)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .slice(0, limit)
+      .map((row) => ({ ...row }));
   }
 
   /** 测试断言专用：读回全部已写行。 */

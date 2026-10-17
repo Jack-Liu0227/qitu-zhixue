@@ -15,7 +15,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
 import { TutorService } from './tutor.service';
 import { ImaMcpClient } from './ima-mcp.client';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
-import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { LearningPlanModule } from '../learning-plan/learning-plan.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { MasteryModule } from '../mastery/mastery.module';
@@ -40,7 +40,7 @@ import { TutorQuizService } from './tutor-quiz.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule],
   controllers: [TutorController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
