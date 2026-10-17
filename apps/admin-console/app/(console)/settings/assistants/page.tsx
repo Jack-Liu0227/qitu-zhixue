@@ -30,6 +30,14 @@ interface AssistantItem {
   sortOrder: number;
 }
 
+function formatDefault(scalar?: { mode: string; value?: unknown }): string {
+  if (!scalar) return '未设置';
+  const value = Array.isArray(scalar.value)
+    ? (scalar.value.length ? scalar.value.join(', ') : '空')
+    : scalar.value;
+  return typeof value === 'string' && value ? `${scalar.mode} · ${value}` : scalar.mode;
+}
+
 function mapConfigToItem(config: AdminAssistantConfig): AssistantItem {
   return {
     id: config.id,
@@ -39,11 +47,11 @@ function mapConfigToItem(config: AdminAssistantConfig): AssistantItem {
     role: config.role || '导师助手',
     icon: config.avatar || '🤖',
     enabled: config.enabled,
-    model: config.modelId || '自动记住上次',
-    permission: (config.defaults?.permission?.value as string) || '自动记住上次',
-    thinkingLevel: (config.defaults?.thought_level?.value as string) || '自动记住上次',
-    skillsCount: config.enabledSkills ? config.enabledSkills.length : 4,
-    mcpSetting: (config.defaults?.mcps?.mode as string) || '自动记住上次',
+    model: config.modelId || '',
+    permission: formatDefault(config.defaults?.permission),
+    thinkingLevel: formatDefault(config.defaults?.thought_level),
+    skillsCount: config.enabledSkills?.length ?? 0,
+    mcpSetting: formatDefault(config.defaults?.mcps),
     systemPrompt: config.instructions || '',
     deletable: true, // 所有助手均支持管理员删除
     sortOrder: config.sortOrder ?? 0,
@@ -74,26 +82,15 @@ export default function AdminAssistantsPage() {
 
       setConfiguredModels(models);
 
-      let customList: AssistantItem[] = [];
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_assistants');
-          if (cached) {
-            customList = JSON.parse(cached);
-          }
-        } catch {}
-      }
-
-      if (backendConfigs && backendConfigs.length > 0) {
+      // 助手列表以后端接口为唯一真实来源；不再合并仅存 localStorage 的本地记录
+      if (backendConfigs) {
         // 过滤掉任何残余的 cli 示例
         const filtered = backendConfigs
           .filter((c) => (c.source as string) !== 'cli' && !c.id.startsWith('cli-'))
           .map(mapConfigToItem);
-        const existingIds = new Set(filtered.map((a) => a.id));
-        const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...filtered];
-        setAssistants(combined);
+        setAssistants(filtered);
       } else {
-        setAssistants(customList);
+        setAssistants([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('助手配置加载失败'));
@@ -150,15 +147,15 @@ export default function AdminAssistantsPage() {
       source: 'user',
       name: '',
       description: '',
-      role: '专属教学导师',
+      role: '',
       icon: '💡',
       enabled: true,
-      model: configuredModels[0]?.id || '自动记住上次',
-      permission: '读写',
-      thinkingLevel: '中 (medium)',
-      skillsCount: 3,
-      mcpSetting: '自动记住上次',
-      systemPrompt: '# 导师角色定义\n你是由启途智学 Agent SDK 驱动的项目式教学导师，采用苏格拉底式发问启发学生自主思考。',
+      model: '',
+      permission: '未设置（创建后由服务端兜底）',
+      thinkingLevel: '未设置（创建后由服务端兜底）',
+      skillsCount: 0,
+      mcpSetting: '未设置（创建后由服务端兜底）',
+      systemPrompt: '',
       deletable: true,
       sortOrder: 10,
     };
@@ -180,7 +177,7 @@ export default function AdminAssistantsPage() {
             description: editingAssistant.description,
             role: editingAssistant.role || '导师助手',
             instructions: editingAssistant.systemPrompt,
-            modelId: editingAssistant.model !== '自动记住上次' ? editingAssistant.model : undefined,
+            modelId: editingAssistant.model || undefined,
             enabled: editingAssistant.enabled,
             avatar: editingAssistant.icon,
           },
@@ -196,7 +193,7 @@ export default function AdminAssistantsPage() {
             description: editingAssistant.description,
             role: editingAssistant.role,
             instructions: editingAssistant.systemPrompt,
-            modelId: editingAssistant.model !== '自动记住上次' ? editingAssistant.model : undefined,
+            modelId: editingAssistant.model || undefined,
             enabled: editingAssistant.enabled,
             avatar: editingAssistant.icon,
           },
@@ -206,20 +203,14 @@ export default function AdminAssistantsPage() {
           prev.map((item) => (item.id === editingAssistant.id ? { ...editingAssistant } : item))
         );
       }
-      setSaveNotice('配置已生效 ✔');
+      setSaveNotice('配置已保存到服务端 ✔');
       setTimeout(() => {
         setEditingAssistant(null);
         setIsCreating(false);
       }, 500);
     } catch (err: any) {
-      setAssistants((prev) =>
-        prev.map((item) => (item.id === editingAssistant.id ? { ...editingAssistant } : item))
-      );
-      setSaveNotice('已在本地保存 ✔');
-      setTimeout(() => {
-        setEditingAssistant(null);
-        setIsCreating(false);
-      }, 500);
+      // 保存失败时如实报错，不伪造「已保存」状态，也不关闭编辑器
+      setSaveNotice(err?.message ? `保存失败：${err.message}` : '保存失败，请稍后重试');
     }
   };
 
@@ -270,16 +261,6 @@ export default function AdminAssistantsPage() {
         )
       );
       setAssistants((prev) => prev.filter((a) => !targetIds.includes(a.id)));
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_assistants');
-          if (cached) {
-            const list = JSON.parse(cached);
-            const next = list.filter((a: any) => !targetIds.includes(a.id));
-            localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(next));
-          }
-        } catch {}
-      }
       setSelected(new Set());
     } catch (err: any) {
       alert(`批量删除失败：${err?.message || '未知错误'}`);
@@ -433,7 +414,7 @@ export default function AdminAssistantsPage() {
                     setEditingAssistant({ ...editingAssistant, model: e.target.value })
                   }
                 >
-                  <option value="自动记住上次">自动记住上次</option>
+                  <option value="">未指定（跟随平台默认）</option>
                   {configuredModels.map((m) => (
                     <option key={`${m.providerId}-${m.id}`} value={m.id}>
                       {m.name} ({m.providerName || m.providerId})
@@ -457,47 +438,31 @@ export default function AdminAssistantsPage() {
               </div>
             </div>
 
-            {/* 权限 */}
+            {/* 权限（服务端默认配置，只读展示） */}
             <div className="admin-config-row">
               <div className="admin-config-label-col">
                 <span className="admin-config-icon">🛡️</span>
                 <span className="admin-config-name">权限</span>
               </div>
               <div className="admin-config-field-col">
-                <select
-                  className="admin-select"
-                  value={editingAssistant.permission}
-                  onChange={(e) =>
-                    setEditingAssistant({ ...editingAssistant, permission: e.target.value })
-                  }
-                >
-                  <option value="自动记住上次">自动记住上次</option>
-                  <option value="只读">只读模式 (Read-Only)</option>
-                  <option value="读写">读写执行 (Read-Write)</option>
-                </select>
+                <div className="admin-inline-selector">
+                  <span className="admin-selector-pill">{editingAssistant.permission}</span>
+                </div>
+                <span className="admin-config-hint">来自服务端助手默认配置（defaults.permission），前端不可伪造修改。</span>
               </div>
             </div>
 
-            {/* 思考强度 */}
+            {/* 思考强度（服务端默认配置，只读展示） */}
             <div className="admin-config-row">
               <div className="admin-config-label-col">
                 <span className="admin-config-icon">🧠</span>
                 <span className="admin-config-name">思考强度</span>
               </div>
               <div className="admin-config-field-col">
-                <select
-                  className="admin-select"
-                  value={editingAssistant.thinkingLevel}
-                  onChange={(e) =>
-                    setEditingAssistant({ ...editingAssistant, thinkingLevel: e.target.value })
-                  }
-                >
-                  <option value="自动记住上次">自动记住上次</option>
-                  <option value="关闭">关闭 (off)</option>
-                  <option value="低 (low)">低 (low) - 快速响应</option>
-                  <option value="中 (medium)">中 (medium) - 平衡模式</option>
-                  <option value="高 (high)">高 (high) - 深度推理</option>
-                </select>
+                <div className="admin-inline-selector">
+                  <span className="admin-selector-pill">{editingAssistant.thinkingLevel}</span>
+                </div>
+                <span className="admin-config-hint">来自服务端助手默认配置（defaults.thought_level），前端不可伪造修改。</span>
               </div>
             </div>
 
@@ -517,26 +482,18 @@ export default function AdminAssistantsPage() {
               </div>
             </div>
 
-            {/* MCP */}
+            {/* MCP（服务端默认配置只读展示；具体授权在工具页矩阵中操作） */}
             <div className="admin-config-row">
               <div className="admin-config-label-col">
                 <span className="admin-config-icon">📦</span>
                 <span className="admin-config-name">MCP</span>
               </div>
               <div className="admin-config-field-col">
-                <select
-                  className="admin-select"
-                  value={editingAssistant.mcpSetting}
-                  onChange={(e) =>
-                    setEditingAssistant({ ...editingAssistant, mcpSetting: e.target.value })
-                  }
-                >
-                  <option value="自动记住上次">自动记住上次</option>
-                  <option value="stdio-local">本地 stdio 服务器 (Grok / Chrome DevTools)</option>
-                  <option value="sse-remote">远程 SSE 网关</option>
-                </select>
+                <div className="admin-inline-selector">
+                  <span className="admin-selector-pill">{editingAssistant.mcpSetting}</span>
+                </div>
                 <a href="/admin/settings/tools" className="admin-config-link">
-                  前往 MCP 设置
+                  前往工具页按助手勾选 MCP 授权
                 </a>
               </div>
             </div>
@@ -737,7 +694,7 @@ export default function AdminAssistantsPage() {
 
                 <div className="admin-card-bottom-row">
                   <span className="admin-agent-meta">
-                    模型: <span className="admin-agent-tag">{item.model}</span>
+                    模型: <span className="admin-agent-tag">{item.model || '未指定'}</span>
                   </span>
                   <div className="admin-card-buttons-wrap">
                     <button

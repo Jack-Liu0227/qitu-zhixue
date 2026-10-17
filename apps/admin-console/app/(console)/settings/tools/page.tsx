@@ -1,558 +1,111 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
-import { persistAssistantBinding, hasMcpBinding, BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID } from '../../../../lib/api/assistantBindings';
+import { persistAssistantBinding, hasMcpBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
-import type { AdminAssistantConfig, AdminImaSettings, AdminImaSettingsPatch, AdminRuntimeMcpServer } from '@qitu/contracts';
+import type {
+  AdminAssistantConfig,
+  AdminImaSettings,
+  AdminImaSettingsPatch,
+  AdminRuntimeBuiltinTool,
+  AdminRuntimeMcpServer,
+  AdminRuntimeSnapshot,
+} from '@qitu/contracts';
 import { fetchImaSettings, saveImaSettings, checkImaConnection } from '../../../../lib/api/ima';
 import { createIdempotentRetryKey } from '../../../../lib/api/types';
 
 const IMA_ID = 'ima-knowledge';
 
-function imaConfig(settings: AdminImaSettings | null) {
-  return {
-    name: '项目知识库检索', transport: 'streamable_http', enabled: settings?.enabled ?? false,
-    description: '共享教材知识库，只读检索与原文阅读；连接凭证由服务器管理。',
-    tools: settings?.tools ?? [],
-    boundAssistants: settings?.assistants.filter((row) => row.authorized).map((row) => row.id) ?? [],
-  };
-}
-
-/** The existing editor shape is retained; only ima's writable fields reach its admin API. */
-function imaPatch(value: unknown, settings: AdminImaSettings): AdminImaSettingsPatch {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('ima 配置须为对象');
-  const input = value as Record<string, unknown>;
-  const current = imaConfig(settings);
-  if (Object.keys(input).some((key) => !Object.keys(current).includes(key))) throw new Error('ima 仅允许编辑 enabled 和 boundAssistants，连接凭证由服务器管理');
-  for (const field of ['name', 'transport', 'description', 'tools'] as const) {
-    if (field in input && JSON.stringify(input[field]) !== JSON.stringify(current[field])) throw new Error(`ima 的 ${field} 由服务器管理`);
-  }
-  if (typeof input.enabled !== 'boolean' || !Array.isArray(input.boundAssistants)
-    || input.boundAssistants.some((id) => typeof id !== 'string') || new Set(input.boundAssistants).size !== input.boundAssistants.length) {
-    throw new Error('ima 配置须包含布尔 enabled 和唯一助手 ID 列表 boundAssistants');
-  }
-  const ids = input.boundAssistants as string[];
-  if (ids.some((id) => !settings.assistants.some((row) => row.id === id))) throw new Error('ima 授权中包含未知助手 ID');
-  return { enabled: input.enabled, assistantBindings: settings.assistants.map((row) => ({ id: row.id, enabled: ids.includes(row.id) })) };
-}
-
-export interface SingleMcpConfig {
-  id: string;
-  name: string;
-  command: string;
-  args: string[];
-  url?: string;
-  key?: string;
-  apiKey?: string;
-  env?: Record<string, string>;
-  transport?: 'stdio' | 'sse' | 'streamable_http';
-  status: 'connected' | 'disconnected' | 'error';
-  registryStatus?: string;
-  latencyMs?: number;
-  tools: string[];
-  boundAssistants: string[];
-  description?: string;
-  rawJson: string;
-}
-
-interface ToolParamSchema {
-  name: string;
-  type: string;
-  required: boolean;
-  defaultValue?: string | number | boolean;
-  description: string;
-}
-
-const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
-  // Pi Agent 核心内置工具集 (read, write, bash, edit, glob, grep)
-  read: [
-    { name: 'path', type: 'string', required: true, description: '目标文件相对路径或绝对路径' },
-    { name: 'offset', type: 'number', required: false, defaultValue: 0, description: '字节偏移量（大文件分片读取）' },
-    { name: 'limit', type: 'number', required: false, defaultValue: 2000, description: '单次最多读取字节数或字符上限' },
-    { name: 'start_line', type: 'number', required: false, defaultValue: 1, description: '起始行号 (1-indexed)' },
-    { name: 'end_line', type: 'number', required: false, description: '结束行号 (包含此行)' },
-  ],
-  write: [
-    { name: 'path', type: 'string', required: true, description: '目标文件创建或覆盖的完整路径' },
-    { name: 'content', type: 'string', required: true, description: '写入文件的完整代码或纯文本内容' },
-    { name: 'overwrite', type: 'boolean', required: false, defaultValue: true, description: '是否直接覆盖已存在的同名文件' },
-    { name: 'append', type: 'boolean', required: false, defaultValue: false, description: '是否以追加模式写入末尾' },
-  ],
-  bash: [
-    { name: 'command', type: 'string', required: true, description: '在工作区安全沙箱中执行的 Shell 命令行指令' },
-    { name: 'cwd', type: 'string', required: false, defaultValue: '/root/qitu-zhixue', description: '执行命令的工作目录路径' },
-    { name: 'timeout_ms', type: 'number', required: false, defaultValue: 30000, description: '命令执行超时毫秒数' },
-  ],
-  edit: [
-    { name: 'path', type: 'string', required: true, description: '需要修改的目标代码文件路径' },
-    { name: 'old_str', type: 'string', required: true, description: '文件中待精确匹配的原代码段落 (需完全一致)' },
-    { name: 'new_str', type: 'string', required: true, description: '用于替换写入的目标新代码段落' },
-  ],
-  glob: [
-    { name: 'pattern', type: 'string', required: true, description: '匹配工程文件的通配符 (如 **/*.py 或 src/**/*.tsx)' },
-    { name: 'path', type: 'string', required: false, defaultValue: '.', description: '搜索起始目录' },
-  ],
-  grep: [
-    { name: 'pattern', type: 'string', required: true, description: '在工程文件中检索的正则表达式或文本' },
-    { name: 'path', type: 'string', required: false, defaultValue: '.', description: '检索起始目录' },
-    { name: 'case_sensitive', type: 'boolean', required: false, defaultValue: false, description: '是否严格区分大小写' },
-  ],
-  grok_web_search: [
-    { name: 'query', type: 'string', required: true, description: '搜索关键词、学术概念或事实提问' },
-    { name: 'max_results', type: 'number', required: false, defaultValue: 5, description: '返回的最大网页摘要条数 (1-20)' },
-    { name: 'include_domains', type: 'string[]', required: false, description: '限定检索的目标域名白名单列表' },
-  ],
-  fetch_page_markdown: [
-    { name: 'url', type: 'string', required: true, description: '目标网页完整 URL 地址' },
-    { name: 'extract_main_content', type: 'boolean', required: false, defaultValue: true, description: '是否剔除页眉页脚与广告提取正文' },
-  ],
-  knowledge_crawl: [
-    { name: 'topic', type: 'string', required: true, description: '知识图谱抓取与扩展的主题关键词' },
-    { name: 'depth', type: 'number', required: false, defaultValue: 2, description: '拓扑层级深度 (1-4)' },
-  ],
-  citation_extract: [
-    { name: 'text', type: 'string', required: true, description: '待溯源引用的学术或概念文本段落' },
-    { name: 'style', type: 'string', required: false, defaultValue: 'GB/T 7714', description: '参考文献引文格式规范' },
-  ],
-  launch_browser: [
-    { name: 'headless', type: 'boolean', required: false, defaultValue: true, description: '是否以无头后台模式运行 Chromium' },
-    { name: 'viewport', type: 'object', required: false, defaultValue: '1280x800', description: '初始视口宽度与高度配置' },
-  ],
-  navigate_page: [
-    { name: 'url', type: 'string', required: true, description: '跳转的目标页面地址 (需含 http/https 协议头)' },
-    { name: 'timeout_ms', type: 'number', required: false, defaultValue: 30000, description: '页面加载超时毫秒数' },
-  ],
-  click_element: [
-    { name: 'selector', type: 'string', required: true, description: '目标元素的 CSS 选择器或 XPath 路径' },
-    { name: 'wait_for_navigation', type: 'boolean', required: false, defaultValue: false, description: '点击后是否等待页面导航完成' },
-  ],
-  take_screenshot: [
-    { name: 'full_page', type: 'boolean', required: false, defaultValue: false, description: '是否截取滚动完整长图' },
-    { name: 'format', type: 'string', required: false, defaultValue: 'png', description: '截图格式 (png / jpeg / webp)' },
-  ],
-  capture_console: [
-    { name: 'level', type: 'string', required: false, defaultValue: 'all', description: '日志捕获级别 (error / warn / all)' },
-    { name: 'limit', type: 'number', required: false, defaultValue: 100, description: '最大捕获日志行数' },
-  ],
-  browser_tab_open: [
-    { name: 'url', type: 'string', required: true, description: '新建标签页打开的目标网址' },
-  ],
-  read_dom: [
-    { name: 'selector', type: 'string', required: false, defaultValue: 'body', description: '读取 DOM 树的根节点选择器' },
-  ],
-  execute_js_action: [
-    { name: 'script', type: 'string', required: true, description: '在浏览器上下文中安全执行的 JavaScript 代码片段' },
-  ],
-  snapshot_viewport: [
-    { name: 'selector', type: 'string', required: false, description: '指定截取的局部 DOM 节点选择器' },
-  ],
-  fetch_html: [
-    { name: 'url', type: 'string', required: true, description: '页面 HTTP 请求目标 URL' },
-  ],
-  fetch_markdown: [
-    { name: 'url', type: 'string', required: true, description: '目标页面 URL，自动抓取并转换为纯净 Markdown' },
-  ],
-  extract_links: [
-    { name: 'url', type: 'string', required: true, description: '目标页面 URL，提取所有外链与站内锚点' },
-  ],
-  search_knowledge_chunk: [
-    { name: 'query', type: 'string', required: true, description: '语义检索词或学生问题语句' },
-    { name: 'top_k', type: 'number', required: false, defaultValue: 3, description: '召回的知识切片最大数量' },
-  ],
-  query_curriculum_standard: [
-    { name: 'subject', type: 'string', required: true, description: '学科名称（物理/信息技术/数学等）' },
-    { name: 'grade', type: 'string', required: true, description: '年级学段（初中/高中）' },
-    { name: 'standard_code', type: 'string', required: false, description: '核心素养或课标维度编码' },
-  ],
-  sequentialthinking: [
-    { name: 'thought', type: 'string', required: true, description: '当前思考步骤推演内容' },
-    { name: 'thoughtNumber', type: 'number', required: true, description: '当前思考步骤序号 (1-indexed)' },
-    { name: 'totalThoughts', type: 'number', required: true, description: '预估总思考步骤数' },
-    { name: 'nextThoughtNeeded', type: 'boolean', required: true, description: '是否还需要继续进行下一步深度推理' },
-  ],
+const MCP_STATUS_TEXT: Record<AdminRuntimeMcpServer['status'], string> = {
+  connected: '连接正常',
+  disconnected: '未连接',
+  error: '连接异常',
+  not_configured: '未配置',
+  unknown: '状态未知',
 };
 
-function getToolParams(toolName: string): ToolParamSchema[] {
-  if (MCP_TOOL_PARAM_REGISTRY[toolName]) {
-    return MCP_TOOL_PARAM_REGISTRY[toolName];
-  }
-  return [
-    { name: 'query', type: 'string', required: true, description: `调用 ${toolName} 的输入数据或核心查询参数` },
-    { name: 'options', type: 'object', required: false, description: '运行环境与自定义上下文选项' },
-  ];
-}
+const BUILTIN_STATUS_TEXT: Record<AdminRuntimeBuiltinTool['status'], string> = {
+  enabled: '已启用',
+  disabled: '已停用',
+  ready: '可用',
+  unavailable: '不可用',
+  error: '异常',
+  unknown: '未知',
+};
 
-const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
-  {
-    id: 'mcp-pi-builtin',
-    name: 'pi-agent-builtin',
-    command: 'internal:pi-runtime',
-    args: ['--workspace', '/root/qitu-zhixue'],
-    url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
-    key: '',
-    env: {
-      WORKSPACE_ROOT: '/root/qitu-zhixue',
-      EXECUTION_SANDBOX: 'docker-isolated',
-      SECURITY_GATE: 'TheoryMastered-Enforced',
-    },
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 1,
-    tools: ['read', 'write', 'bash', 'edit', 'glob', 'grep'],
-    boundAssistants: ['战机架构与代码向导', '动能定理仿真与实验向导', '代码向导与答辩导师', '启途智学管家'],
-    description: 'Pi Agent 核心内置基础工具套件（包含文件读取 read、代码覆盖写入 write、终端命令执行 bash、局部精确替换 edit、代码匹配 glob、正则全文搜索 grep）。',
-    rawJson: JSON.stringify(
-      {
-        name: 'pi-agent-builtin',
-        command: 'internal:pi-runtime',
-        args: ['--workspace', '/root/qitu-zhixue'],
-        url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
-        key: '',
-        transport: 'stdio',
-        env: {
-          WORKSPACE_ROOT: '/root/qitu-zhixue',
-          EXECUTION_SANDBOX: 'docker-isolated',
-          SECURITY_GATE: 'TheoryMastered-Enforced',
-        },
-        description: 'Pi Agent 核心内置基础工具套件（包含文件读取 read、代码覆盖写入 write、终端命令执行 bash、局部精确替换 edit、代码匹配 glob、正则全文搜索 grep）。',
-        boundAssistants: ['战机架构与代码向导', '动能定理仿真与实验向导', '代码向导与答辩导师', '启途智学管家'],
-        tools: ['read', 'write', 'bash', 'edit', 'glob', 'grep'],
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'mcp-grok-search',
-    name: 'groksearch',
-    command: 'uvx',
-    args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'grok-search'],
-    url: 'https://newapi.jaycue.dpdns.org/v1',
-    key: '',
-    apiKey: '',
-    env: {
-      GROK_API_KEY: '',
-      GROK_API_URL: 'https://newapi.jaycue.dpdns.org/v1',
-      GROK_MODEL: 'grok-4.5',
-      TAVILY_API_KEY: '',
-      TAVILY_ENABLED: 'true',
-    },
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 26,
-    tools: ['grok_web_search', 'fetch_page_markdown', 'knowledge_crawl', 'citation_extract'],
-    boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-    description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索，支持学术与事实溯源。',
-    rawJson: JSON.stringify(
-      {
-        name: 'groksearch',
-        command: 'uvx',
-        args: ['--from', 'git+https://github.com/GuDaStudio/GrokSearch@grok-with-tavily', 'grok-search'],
-        url: 'https://newapi.jaycue.dpdns.org/v1',
-        key: '',
-        apiKey: '',
-        transport: 'stdio',
-        env: {
-          GROK_API_KEY: '',
-          GROK_API_URL: 'https://newapi.jaycue.dpdns.org/v1',
-          GROK_MODEL: 'grok-4.5',
-          TAVILY_API_KEY: '',
-          TAVILY_ENABLED: 'true',
-        },
-        description: '集成自 Pi/Codex 的 Grok 深度搜索与 Tavily 互联网实时检索，支持学术与事实溯源。',
-        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-        tools: ['grok_web_search', 'fetch_page_markdown', 'knowledge_crawl', 'citation_extract'],
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'mcp-chrome-devtools',
-    name: 'chrome-devtools',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
-    url: 'http://localhost:9222/devtools/mcp',
-    key: '',
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 18,
-    tools: ['launch_browser', 'navigate_page', 'click_element', 'take_screenshot', 'capture_console'],
-    boundAssistants: ['雷霆战机总导师', '代码向导与答辩导师'],
-    description: 'Chrome DevTools 自动化视口控制、页面渲染监测与前端控制台日志捕获。',
-    rawJson: JSON.stringify(
-      {
-        name: 'chrome-devtools',
-        command: 'npx',
-        args: ['-y', '@modelcontextprotocol/server-chrome-devtools'],
-        url: 'http://localhost:9222/devtools/mcp',
-        key: '',
-        transport: 'stdio',
-        description: 'Chrome DevTools 自动化视口控制、页面渲染监测与前端控制台日志捕获。',
-        boundAssistants: ['雷霆战机总导师', '代码向导与答辩导师'],
-        tools: ['launch_browser', 'navigate_page', 'click_element', 'take_screenshot', 'capture_console'],
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'mcp-aionui-browser',
-    name: 'aionui-browser',
-    command: 'npx',
-    args: ['-y', '@aionui/browser-mcp'],
-    url: 'https://browser.aionui.org/mcp/v1',
-    key: 'aion-browser-sec-key-1234',
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 22,
-    tools: ['browser_tab_open', 'read_dom', 'execute_js_action', 'snapshot_viewport'],
-    boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-    description: 'AionUI 浏览器自动化 DOM 读取与学生交互沙箱。',
-    rawJson: JSON.stringify(
-      {
-        name: 'aionui-browser',
-        command: 'npx',
-        args: ['-y', '@aionui/browser-mcp'],
-        url: 'https://browser.aionui.org/mcp/v1',
-        key: 'aion-browser-sec-key-1234',
-        transport: 'stdio',
-        description: 'AionUI 浏览器自动化 DOM 读取与学生交互沙箱。',
-        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师'],
-        tools: ['browser_tab_open', 'read_dom', 'execute_js_action', 'snapshot_viewport'],
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'mcp-fetch',
-    name: 'fetch',
-    command: 'uvx',
-    args: ['mcp-server-fetch'],
-    url: 'https://fetch.mcp.modelcontextprotocol.io/v1',
-    key: '',
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 15,
-    tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
-    boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
-    description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
-    rawJson: JSON.stringify(
-      {
-        name: 'fetch',
-        command: 'uvx',
-        args: ['mcp-server-fetch'],
-        url: 'https://fetch.mcp.modelcontextprotocol.io/v1',
-        key: '',
-        transport: 'stdio',
-        description: '官方轻量免费网页抓取与 Markdown 内容抽取 MCP 服务器。',
-        boundAssistants: ['动手学动能定理总导师', '雷霆战机总导师'],
-        tools: ['fetch_html', 'fetch_markdown', 'extract_links'],
-      },
-      null,
-      2
-    ),
-  },
-  {
-    id: 'mcp-sequential-thinking',
-    name: 'sequential-thinking',
-    command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
-    url: 'https://thinking.mcp.modelcontextprotocol.io/v1',
-    key: '',
-    apiKey: '',
-    transport: 'stdio',
-    status: 'connected',
-    latencyMs: 12,
-    tools: ['sequentialthinking'],
-    boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '启途智学管家'],
-    description: '单工具 MCP 示范：动态多步思维链推理引擎，支持单步推演与逻辑自洽性校验。',
-    rawJson: JSON.stringify(
-      {
-        name: 'sequential-thinking',
-        command: 'npx',
-        args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
-        url: 'https://thinking.mcp.modelcontextprotocol.io/v1',
-        key: '',
-        transport: 'stdio',
-        description: '单工具 MCP 示范：动态多步思维链推理引擎，支持单步推演与逻辑自洽性校验。',
-        boundAssistants: ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '启途智学管家'],
-        tools: ['sequentialthinking'],
-      },
-      null,
-      2
-    ),
-  },
-];
-
-// 将 MCP 列表序列化为全局标准 mcpServers JSON 格式
-function listToGlobalMcpJson(list: SingleMcpConfig[]): string {
-  const mcpServers: Record<string, unknown> = {};
-  for (const item of list) {
-    if (item.id === IMA_ID) { mcpServers[item.name] = JSON.parse(item.rawJson); continue; }
-    try {
-      const parsed = JSON.parse(item.rawJson);
-      mcpServers[item.name] = {
-        command: parsed.command || item.command,
-        args: parsed.args || item.args,
-        url: parsed.url || item.url,
-        key: parsed.key || item.key,
-        apiKey: parsed.apiKey || item.apiKey,
-        transport: parsed.transport || item.transport || 'stdio',
-        env: parsed.env || item.env,
-        description: parsed.description || item.description,
-        tools: parsed.tools || item.tools,
-        boundAssistants: parsed.boundAssistants || item.boundAssistants,
-      };
-    } catch {
-      mcpServers[item.name] = {
-        command: item.command,
-        args: item.args,
-        url: item.url,
-        key: item.key,
-        apiKey: item.apiKey,
-        transport: item.transport || 'stdio',
-        env: item.env,
-        description: item.description,
-        tools: item.tools,
-        boundAssistants: item.boundAssistants,
-      };
-    }
-  }
-  return JSON.stringify({ mcpServers }, null, 2);
-}
+const RISK_TEXT: Record<AdminRuntimeBuiltinTool['riskLevel'], string> = {
+  low: '低风险',
+  medium: '中风险',
+  high: '高风险',
+  unknown: '风险未知',
+};
 
 export default function ToolsSettingsPage() {
-  const [storedMcpList, setStoredMcpList] = useState<SingleMcpConfig[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('qitu.admin.mcp_list');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            let list = parsed.filter((item: SingleMcpConfig) => item.id !== IMA_ID);
-            // Ensure builtin Pi tool exists
-            if (!list.some((item: SingleMcpConfig) => item.id === 'mcp-pi-builtin' || item.name === 'pi-agent-builtin')) {
-              list.unshift(DEFAULT_MCP_LIST[0]);
-            }
-            // Ensure single-tool MCP sequential-thinking exists
-            if (!list.some((item: SingleMcpConfig) => item.id === 'mcp-sequential-thinking' || item.name === 'sequential-thinking')) {
-              const seq = DEFAULT_MCP_LIST.find((m) => m.id === 'mcp-sequential-thinking');
-              if (seq) list.push(seq);
-            }
-            // Restore any missing url / key credentials from default definitions
-            list = list.map((item: SingleMcpConfig) => {
-              const def = DEFAULT_MCP_LIST.find((d) => d.name === item.name || d.id === item.id);
-              if (def) {
-                const isGrok = item.id === 'mcp-grok-search' || item.name === 'groksearch';
-                const hasDummyKey = !item.key || item.key === 'xai-grok-search-live-key';
-                return {
-                  ...item,
-                  url: isGrok && hasDummyKey ? def.url : (item.url || def.url),
-                  key: isGrok && hasDummyKey ? def.key : (item.key || def.key),
-                  apiKey: isGrok && hasDummyKey ? def.apiKey : (item.apiKey || def.apiKey),
-                  env: isGrok && hasDummyKey ? def.env : (item.env || def.env),
-                  rawJson: isGrok && hasDummyKey ? def.rawJson : item.rawJson,
-                  transport: item.transport || def.transport || 'stdio',
-                };
-              }
-              return item;
-            });
-            return list;
-          }
-        }
-      } catch {
-        // fallback
-      }
-    }
-    return DEFAULT_MCP_LIST;
-  });
+  // ---- 运行时快照（MCP 服务器与内置工具的唯一真实来源） ----
+  const [snapshot, setSnapshot] = useState<AdminRuntimeSnapshot | null>(null);
+  const [registryPending, setRegistryPending] = useState(true);
+  const [registryError, setRegistryError] = useState('');
+
+  // ---- 助手（授权矩阵的行；绑定关系通过服务端持久化） ----
+  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
+  const [assistantsPending, setAssistantsPending] = useState(true);
+  const [assistantsError, setAssistantsError] = useState('');
+
+  // ---- 项目知识库检索（ima，服务端管理的平台工具） ----
   const [ima, setIma] = useState<AdminImaSettings | null>(null);
   const [imaError, setImaError] = useState('');
   const [imaPending, setImaPending] = useState(false);
   const imaBusy = useRef(false);
   const imaRetry = useRef(createIdempotentRetryKey());
   const imaCheckRetry = useRef(createIdempotentRetryKey());
-  const imaRow = useMemo<SingleMcpConfig>(() => ({
-    id: IMA_ID, name: '项目知识库检索', command: '', args: [], transport: 'streamable_http',
-    status: ima?.status === 'connected' ? 'connected' : ima?.status === 'error' ? 'error' : 'disconnected',
-    tools: [...(ima?.tools ?? [])],
-    boundAssistants: ima?.assistants.filter((row) => row.authorized).map((row) => row.name) ?? [],
-    description: imaConfig(ima).description, rawJson: JSON.stringify(imaConfig(ima), null, 2),
-  }), [ima]);
-  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
-  const [registryServers, setRegistryServers] = useState<AdminRuntimeMcpServer[]>([]);
-  const [registryError, setRegistryError] = useState('');
-  const restoredIds = new Set(['mcp-grok-search', 'mcp-chrome-devtools', 'mcp-aionui-browser', 'mcp-fetch']);
-  const loadRegistry = async () => {
-    try { const state = await fetchRuntimeSnapshot(); setRegistryServers(state.mcpServers); setRegistryError(''); }
-    catch (error) { setRegistryServers([]); setRegistryError(error instanceof Error ? error.message : 'MCP 状态读取失败'); }
-  };
-  useEffect(() => { void loadRegistry(); const refresh = () => void loadRegistry(); window.addEventListener('qitu-configuration-changed', refresh); return () => window.removeEventListener('qitu-configuration-changed', refresh); }, []);
-  const mcpList = useMemo(() => [
-    ...DEFAULT_MCP_LIST.filter((row) => restoredIds.has(row.id)).map((row): SingleMcpConfig => {
-      const live = registryServers.find((server) => server.id === row.id);
-      return { ...row, name: live?.label ?? row.name,
-        status: live?.status === 'connected' ? 'connected' : live?.status === 'error' ? 'error' : 'disconnected',
-        registryStatus: live?.status === 'not_configured' ? '未配置' : live?.status === 'connected' ? '连接正常' : live?.status === 'error' ? '连接异常' : '状态未知',
-        latencyMs: undefined,
-        boundAssistants: assistants.filter((assistant) => hasMcpBinding(assistant, row)).map((assistant) => assistant.name),
-      };
-    }),
-    ...storedMcpList.filter((row) => !restoredIds.has(row.id)), imaRow,
-  ], [storedMcpList, imaRow, registryServers, assistants]);
-  // Keep all original MCP drafts and controls intact; ima is never a local draft.
-  const setMcpList = (action: SetStateAction<SingleMcpConfig[]>) => setStoredMcpList((previous) =>
-    (typeof action === 'function' ? action(previous) : action).filter((row) => row.id !== IMA_ID));
 
-  // 当前选中的设置目标：'global'（总的 mcpServers 设置）或 单个 MCP 的 id
-  const [selectedTarget, setSelectedTarget] = useState<string>('global');
-
-  // 当前主工作台模式：'matrix' (启用与关闭矩阵) | 'edit' (JSON 编辑) | 'preview' (实时预览)
+  const [notice, setNotice] = useState('');
   const [activeMode, setActiveMode] = useState<'matrix' | 'edit' | 'preview'>('matrix');
 
-  // JSON 草稿与错误提示
-  const [jsonTextDraft, setJsonTextDraft] = useState<string>('');
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string>('');
-  const [expandedSidebarTools, setExpandedSidebarTools] = useState<Record<string, boolean>>({});
-  const [selectedToolParamKey, setSelectedToolParamKey] = useState<string | null>(null);
-  const [selectedMcpIds, setSelectedMcpIds] = useState<Set<string>>(new Set());
-
-  const handleBulkSetMcpStatus = (status: 'connected' | 'disconnected') => {
-    if (selectedMcpIds.size === 0) return;
-    const targetIds = Array.from(selectedMcpIds);
-    setMcpList((prev) =>
-      prev.map((m) => (targetIds.includes(m.id) ? { ...m, status } : m))
-    );
-    if (targetIds.includes(IMA_ID)) {
-      void saveIma({ enabled: status === 'connected' });
-    }
-    setSelectedMcpIds(new Set());
-    setNotice(status === 'connected' ? `已批量启用选中的 ${targetIds.length} 个 MCP 服务 ✔` : `已批量停用选中的 ${targetIds.length} 个 MCP 服务 ✔`);
+  const notify = useCallback((text: string) => {
+    setNotice(text);
     setTimeout(() => setNotice(''), 3000);
-  };
+  }, []);
 
-  const handleBulkDeleteMcps = () => {
-    if (selectedMcpIds.size === 0) return;
-    if (!window.confirm(`确定要批量删除选中的 ${selectedMcpIds.size} 个 MCP 服务配置吗？此操作不可逆。`)) return;
-    const targetIds = Array.from(selectedMcpIds);
-    const next = mcpList.filter((m) => !targetIds.includes(m.id));
-    if (next.length === 0) {
-      alert('至少保留一个 MCP 工具服务器！');
-      return;
+  const loadRegistry = useCallback(async () => {
+    setRegistryPending(true);
+    try {
+      const state = await fetchRuntimeSnapshot();
+      setSnapshot(state);
+      setRegistryError('');
+    } catch (error) {
+      setSnapshot(null);
+      setRegistryError(error instanceof Error ? error.message : 'MCP 状态读取失败');
+    } finally {
+      setRegistryPending(false);
     }
-    setMcpList(next);
-    setSelectedTarget('global');
-    setSelectedMcpIds(new Set());
-    setNotice(`已批量移除 ${targetIds.length} 个 MCP 服务配置 ✔`);
-    setTimeout(() => setNotice(''), 3000);
-  };
+  }, []);
 
-  const acceptIma = (settings: AdminImaSettings) => {
+  const loadAssistants = useCallback(async () => {
+    setAssistantsPending(true);
+    try {
+      const list = await fetchAdminAssistantConfigs();
+      setAssistants(list ?? []);
+      setAssistantsError('');
+    } catch (error) {
+      setAssistants([]);
+      setAssistantsError(error instanceof Error ? error.message : '助手列表读取失败');
+    } finally {
+      setAssistantsPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRegistry();
+    void loadAssistants();
+    const refresh = () => void loadRegistry();
+    window.addEventListener('qitu-configuration-changed', refresh);
+    return () => window.removeEventListener('qitu-configuration-changed', refresh);
+  }, [loadRegistry, loadAssistants]);
+
+  const acceptIma = useCallback((settings: AdminImaSettings) => {
     setIma(settings);
     setAssistants((previous) => previous.map((assistant) => {
       const authorized = settings.assistants.find((row) => row.id === assistant.id)?.authorized;
@@ -561,615 +114,190 @@ export default function ToolsSettingsPage() {
         ? [...new Set([...assistant.mcpServerIds, IMA_ID])]
         : assistant.mcpServerIds.filter((id) => id !== IMA_ID) };
     }));
-  };
+  }, []);
 
-  const loadIma = async () => {
+  const loadIma = useCallback(async () => {
     if (imaBusy.current) return;
     imaBusy.current = true; setImaPending(true); setImaError('');
     try { acceptIma(await fetchImaSettings()); }
     catch (error) { setIma(null); setImaError(error instanceof Error ? error.message : 'ima 配置读取失败'); }
     finally { imaBusy.current = false; setImaPending(false); }
-  };
-  useEffect(() => { void loadIma(); if (new URLSearchParams(window.location.search).has('knowledgeEngine')) setActiveMode('edit'); const refresh = () => void loadIma(); window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, []);
+  }, [acceptIma]);
 
-  const saveIma = async (patch: AdminImaSettingsPatch): Promise<boolean> => {
+  useEffect(() => {
+    void loadIma();
+    if (new URLSearchParams(window.location.search).has('knowledgeEngine')) setActiveMode('edit');
+    const refresh = () => void loadIma();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [loadIma]);
+
+  const saveIma = useCallback(async (patch: AdminImaSettingsPatch): Promise<boolean> => {
     if (imaBusy.current || !ima?.registered) return false;
     imaBusy.current = true; setImaPending(true); setImaError('');
     try {
       acceptIma(await saveImaSettings(patch, imaRetry.current.keyFor(JSON.stringify(patch))));
-      imaRetry.current.acknowledge(); setNotice('项目知识库检索设置已保存到服务器'); return true;
-    } catch (error) { setImaError(error instanceof Error ? error.message : 'ima 保存失败'); return false; }
-    finally { imaBusy.current = false; setImaPending(false); }
-  };
+      imaRetry.current.acknowledge();
+      notify('项目知识库检索设置已保存到服务器');
+      return true;
+    } catch (error) {
+      setImaError(error instanceof Error ? error.message : 'ima 保存失败');
+      return false;
+    } finally { imaBusy.current = false; setImaPending(false); }
+  }, [ima, acceptIma, notify]);
 
-  const toggleImaAssistant = async (identifier: string) => {
-    const assistant = ima?.assistants.find((row) => row.id === identifier || row.name === identifier);
-    if (assistant) await saveIma({ assistantBindings: [{ id: assistant.id, enabled: !assistant.authorized }] });
-  };
-
-  const checkIma = async () => {
+  const checkIma = useCallback(async () => {
     if (imaBusy.current || !ima?.registered) return;
     imaBusy.current = true; setImaPending(true); setImaError('');
     try {
       const result = await checkImaConnection(imaCheckRetry.current.keyFor('check'));
-      acceptIma(result); imaCheckRetry.current.acknowledge();
-      setNotice(result.status === 'connected' ? 'ima 连接检查通过，知识库读取正常' : 'ima 连接检查失败');
-    } catch (error) { setImaError(error instanceof Error ? error.message : 'ima 连接检查失败'); }
-    finally { imaBusy.current = false; setImaPending(false); }
-  };
+      acceptIma(result);
+      imaCheckRetry.current.acknowledge();
+      notify(result.status === 'connected' ? 'ima 连接检查通过，知识库读取正常' : `ima 连接检查完成，当前状态：${MCP_STATUS_TEXT[result.status]}`);
+    } catch (error) {
+      setImaError(error instanceof Error ? error.message : 'ima 连接检查失败');
+    } finally { imaBusy.current = false; setImaPending(false); }
+  }, [ima, acceptIma, notify]);
 
-  // 内置工具绑定的助手列表（支持 localStorage 读写）
-  const [imageGenAssistants, setImageGenAssistants] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('qitu.admin.imagegen_assistants');
-        if (cached) return JSON.parse(cached);
-      } catch {}
+  const mcpServers = useMemo(() => snapshot?.mcpServers ?? [], [snapshot]);
+  const builtinTools = useMemo(() => snapshot?.builtInTools ?? [], [snapshot]);
+
+  /** 服务端持久化助手绑定；失败时回滚本地状态并给出提示。 */
+  const applyAssistantPatch = useCallback(async (
+    assistantId: string,
+    field: 'mcpServerIds' | 'toolIds',
+    next: string[],
+  ): Promise<boolean> => {
+    const previous = assistants;
+    setAssistants((prev) => prev.map((a) => (a.id === assistantId ? { ...a, [field]: next } : a)));
+    try {
+      await persistAssistantBinding(assistantId, field, next);
+      return true;
+    } catch (error) {
+      setAssistants(previous);
+      notify(`绑定同步失败：${error instanceof Error ? error.message : '未知错误'}（已回滚）`);
+      return false;
     }
-    return ['雷霆战机总导师', '代码向导与答辩导师', '战机架构与代码向导'];
-  });
-  const [sandboxAssistants, setSandboxAssistants] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('qitu.admin.sandbox_assistants');
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '战机架构与代码向导', '动能定理仿真与实验向导'];
-  });
+  }, [assistants, notify]);
 
-  // 内置工具全局总开关状态
-  const [imageGenEnabled, setImageGenEnabled] = useState<boolean>(true);
-  const [sandboxEnabled, setSandboxEnabled] = useState<boolean>(true);
+  const isImaAuthorized = useCallback((assistantId: string) => {
+    if (ima) return ima.assistants.find((row) => row.id === assistantId)?.authorized ?? false;
+    return assistants.find((a) => a.id === assistantId)?.mcpServerIds.includes(IMA_ID) ?? false;
+  }, [ima, assistants]);
 
-  // 挂载时加载助手信息
-  useEffect(() => {
-    fetchAdminAssistantConfigs()
-      .then((res) => {
-        if (res && res.length > 0) setAssistants(res);
-      })
-      .catch(() => {});
+  const isMcpBound = useCallback((assistant: AdminAssistantConfig, server: AdminRuntimeMcpServer) => {
+    if (server.id === IMA_ID) return isImaAuthorized(assistant.id);
+    return hasMcpBinding(assistant, { id: server.id, name: server.label });
+  }, [isImaAuthorized]);
+
+  const isBuiltinBound = useCallback((assistant: AdminAssistantConfig, tool: AdminRuntimeBuiltinTool) => {
+    return assistant.toolIds.includes(tool.id);
   }, []);
 
-  // 持久化存储内置工具绑定
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.imagegen_assistants', JSON.stringify(imageGenAssistants));
-        localStorage.setItem('qitu.admin.sandbox_assistants', JSON.stringify(sandboxAssistants));
-      } catch {}
-    }
-  }, [imageGenAssistants, sandboxAssistants]);
-
-  // 当前可用的助手角色列表（优先使用后台真实数据，保底提供默认战队导师）
-  const activeAssistantsList = useMemo(() => {
-    if (assistants.length > 0) {
-      return assistants.map((a) => ({ id: a.id, name: a.name, role: a.role }));
-    }
-    return [
-      { id: 'qitu-assistant', name: '启途智学管家', role: '平台管家' },
-      { id: 'asst-thunder', name: '雷霆战机总导师', role: 'Leader' },
-      { id: 'asst-kinetic', name: '动手学动能定理总导师', role: 'Leader' },
-      { id: 'asst-coder', name: '代码向导与答辩导师', role: 'Teammate' },
-      { id: 'asst-coach', name: '原理教练', role: 'Coach' },
-      { id: 'asst-reviewer', name: '评审导师', role: 'Reviewer' },
-    ];
-  }, [assistants]);
-
-  // 持久化存储 MCP 列表
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(storedMcpList));
-      } catch {
-        // guard
-      }
-    }
-  }, [storedMcpList]);
-
-  // 当前选中的单独 MCP（如果是 global 则为 null）
-  const currentSingleMcp = useMemo(() => {
-    if (selectedTarget === 'global') return null;
-    return mcpList.find((m) => m.id === selectedTarget) ?? null;
-  }, [mcpList, selectedTarget]);
-
-  // 当切换选中目标时，重置并同步草稿文本
-  useEffect(() => {
-    if (selectedTarget === 'global') {
-      setJsonTextDraft(listToGlobalMcpJson(mcpList));
-    } else {
-      const single = mcpList.find((m) => m.id === selectedTarget);
-      if (single) {
-        setJsonTextDraft(single.rawJson);
-      }
-    }
-    setJsonError(null);
-  }, [selectedTarget, mcpList.length, ima]);
-
-  // 格式化当前正在编辑的 JSON
-  const handleFormatJson = () => {
-    try {
-      const parsed = JSON.parse(jsonTextDraft);
-      setJsonTextDraft(JSON.stringify(parsed, null, 2));
-      setJsonError(null);
-    } catch (err) {
-      setJsonError('格式化失败: ' + (err as Error).message);
-    }
-  };
-
-  // 保存当前 JSON 配置（支持保存全局或单独 MCP）
-  const handleSaveJson = async () => {
-    try {
-      const parsed = JSON.parse(jsonTextDraft);
-
-      if (selectedTarget === IMA_ID) {
-        if (!ima?.registered) throw new Error('请先读取 ima 服务器配置');
-        if (await saveIma(imaPatch(parsed, ima))) setJsonError(null);
-        return;
-      }
-
-      if (selectedTarget === 'global') {
-        // 保存全局配置，解析 mcpServers 并同步更新列表
-        const record = parsed.mcpServers || parsed;
-        if (!ima?.registered || !record['项目知识库检索']) throw new Error('全局配置须保留 项目知识库检索 项；如需停用，请将 enabled 设为 false');
-        const managedPatch = imaPatch(record['项目知识库检索'], ima);
-        const nextList: SingleMcpConfig[] = [];
-        for (const [key, val] of Object.entries(record)) {
-          if (key === '项目知识库检索') continue;
-          if (typeof val !== 'object' || val === null) continue;
-          const v = val as Record<string, unknown>;
-          const existing = mcpList.find((m) => m.name === key);
-          const singleObj = {
-            name: key,
-            command: typeof v.command === 'string' ? v.command : 'npx',
-            args: Array.isArray(v.args) ? v.args.map(String) : [],
-            url: typeof v.url === 'string' ? v.url : existing?.url,
-            key: typeof v.key === 'string' ? v.key : existing?.key,
-            apiKey: typeof v.apiKey === 'string' ? v.apiKey : existing?.apiKey,
-            transport: (typeof v.transport === 'string' ? (v.transport as 'stdio' | 'sse' | 'streamable_http') : existing?.transport) || 'stdio',
-            env: typeof v.env === 'object' && v.env !== null ? (v.env as Record<string, string>) : undefined,
-            description: typeof v.description === 'string' ? v.description : existing?.description,
-            tools: Array.isArray(v.tools) ? v.tools.map(String) : existing?.tools || ['tool_call'],
-            boundAssistants: Array.isArray(v.boundAssistants) ? v.boundAssistants.map(String) : existing?.boundAssistants || ['雷霆战机总导师'],
-          };
-          nextList.push({
-            id: existing ? existing.id : `mcp-${key.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`,
-            name: key,
-            command: singleObj.command,
-            args: singleObj.args,
-            url: singleObj.url,
-            key: singleObj.key,
-            apiKey: singleObj.apiKey,
-            transport: singleObj.transport,
-            env: singleObj.env,
-            status: 'connected',
-            latencyMs: existing?.latencyMs ?? 20,
-            tools: singleObj.tools,
-            boundAssistants: singleObj.boundAssistants,
-            description: singleObj.description,
-            rawJson: JSON.stringify(singleObj, null, 2),
-          });
-        }
-        if (!await saveIma(managedPatch)) return;
-        setMcpList(nextList);
-        setNotice('全局 MCP 配置（mcpServers）已成功校验并生效！✔');
-      } else if (currentSingleMcp) {
-        // 保存单个 MCP 的 JSON 配置
-        const name = parsed.name || currentSingleMcp.name;
-        const command = parsed.command || 'npx';
-        const args = Array.isArray(parsed.args) ? parsed.args.map(String) : [];
-        const url = typeof parsed.url === 'string' ? parsed.url : currentSingleMcp.url;
-        const key = typeof parsed.key === 'string' ? parsed.key : currentSingleMcp.key;
-        const apiKey = typeof parsed.apiKey === 'string' ? parsed.apiKey : currentSingleMcp.apiKey;
-        const transport = (typeof parsed.transport === 'string' ? (parsed.transport as 'stdio' | 'sse' | 'streamable_http') : currentSingleMcp.transport) || 'stdio';
-        const env = typeof parsed.env === 'object' && parsed.env !== null ? parsed.env : undefined;
-        const tools = Array.isArray(parsed.tools) ? parsed.tools.map(String) : currentSingleMcp.tools;
-        const boundAssistants = Array.isArray(parsed.boundAssistants) ? parsed.boundAssistants.map(String) : currentSingleMcp.boundAssistants;
-        const description = typeof parsed.description === 'string' ? parsed.description : currentSingleMcp.description;
-
-        const updatedMcp: SingleMcpConfig = {
-          ...currentSingleMcp,
-          name,
-          command,
-          args,
-          url,
-          key,
-          apiKey,
-          transport,
-          env,
-          tools,
-          boundAssistants,
-          description,
-          rawJson: JSON.stringify(parsed, null, 2),
-        };
-
-        setMcpList((prev) => prev.map((m) => (m.id === currentSingleMcp.id ? updatedMcp : m)));
-        setNotice(`独立 MCP【${name}】的独立 JSON 配置已更新并保存！✔`);
-      }
-
-      setJsonError(null);
-      setTimeout(() => setNotice(''), 2500);
-    } catch (err) {
-      setJsonError('JSON 语法错误: ' + (err as Error).message);
-    }
-  };
-
-  // 添加新 MCP
-  const handleAddNewMcp = () => {
-    const rawName = prompt('请输入新 MCP 名称 (例如 filesystem, sqlite, github)：');
-    if (!rawName || !rawName.trim()) return;
-    const name = rawName.trim().toLowerCase();
-    if (name === '项目知识库检索' || name === IMA_ID) { setImaError('项目知识库检索已由服务器管理，请选择现有 ima 行'); return; }
-    const newId = `mcp-${name}-${Date.now().toString().slice(-4)}`;
-    const templateObj = {
-      name,
-      command: 'npx',
-      args: [`-y`, `@modelcontextprotocol/server-${name}`],
-      env: {},
-      transport: 'stdio',
-      description: `自定义 ${name} MCP 独立服务器配置`,
-      boundAssistants: ['雷霆战机总导师'],
-      tools: [`${name}_action`, `${name}_query`],
-    };
-    const newMcp: SingleMcpConfig = {
-      id: newId,
-      name,
-      command: 'npx',
-      args: [`-y`, `@modelcontextprotocol/server-${name}`],
-      transport: 'stdio',
-      status: 'connected',
-      latencyMs: 20,
-      tools: templateObj.tools,
-      boundAssistants: templateObj.boundAssistants,
-      description: templateObj.description,
-      rawJson: JSON.stringify(templateObj, null, 2),
-    };
-
-    setMcpList((prev) => [...prev, newMcp]);
-    setSelectedTarget(newId);
-    setNotice(`已新建 MCP【${name}】并进入独立配置！✔`);
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 删除当前选中的单独 MCP
-  const handleDeleteCurrentMcp = (id: string, name: string) => {
-    if (id === IMA_ID) { void saveIma({ enabled: false }); return; }
-    if (mcpList.length <= 1) {
-      alert('至少保留一个 MCP 工具服务器！');
+  // ---- 单元格切换 ----
+  const toggleMcpForAssistant = useCallback(async (server: AdminRuntimeMcpServer, assistant: AdminAssistantConfig) => {
+    if (server.id === IMA_ID) {
+      await saveIma({ assistantBindings: [{ id: assistant.id, enabled: !isImaAuthorized(assistant.id) }] });
       return;
     }
-    if (!window.confirm(`确定要删除 MCP【${name}】配置吗？此操作不可逆。`)) return;
-    const next = mcpList.filter((m) => m.id !== id);
-    setMcpList(next);
-    setSelectedTarget('global');
-    setNotice(`MCP【${name}】已成功移除！✔`);
-    setTimeout(() => setNotice(''), 2500);
-  };
+    const bound = isMcpBound(assistant, server);
+    const next = bound
+      ? assistant.mcpServerIds.filter((value) => value !== server.id && value !== server.label)
+      : [...assistant.mcpServerIds, server.id];
+    const ok = await applyAssistantPatch(assistant.id, 'mcpServerIds', next);
+    if (ok) notify(`已${bound ? '取消' : '更新'}【${assistant.name}】对 MCP【${server.label}】的授权（已同步服务端）`);
+  }, [isMcpBound, isImaAuthorized, saveIma, applyAssistantPatch, notify]);
 
-  // 绑定 / 解绑助手
-  const toggleAssistantBinding = (asstName: string) => {
-    if (!currentSingleMcp) return;
-    if (currentSingleMcp.id === IMA_ID) { void toggleImaAssistant(asstName); return; }
-    try {
-      const parsed = JSON.parse(jsonTextDraft);
-      let list: string[] = Array.isArray(parsed.boundAssistants) ? parsed.boundAssistants : [];
-      if (list.includes(asstName)) {
-        list = list.filter((n) => n !== asstName);
-      } else {
-        list.push(asstName);
-      }
-      parsed.boundAssistants = list;
-      const formatted = JSON.stringify(parsed, null, 2);
-      setJsonTextDraft(formatted);
+  const toggleBuiltinForAssistant = useCallback(async (tool: AdminRuntimeBuiltinTool, assistant: AdminAssistantConfig) => {
+    const bound = isBuiltinBound(assistant, tool);
+    const next = bound
+      ? assistant.toolIds.filter((value) => value !== tool.id)
+      : [...assistant.toolIds, tool.id];
+    const ok = await applyAssistantPatch(assistant.id, 'toolIds', next);
+    if (ok) notify(`已${bound ? '取消' : '更新'}【${assistant.name}】对内置工具【${tool.label}】的授权（已同步服务端）`);
+  }, [isBuiltinBound, applyAssistantPatch, notify]);
 
-      setMcpList((prev) =>
-        prev.map((m) =>
-          m.id === currentSingleMcp.id
-            ? { ...m, boundAssistants: list, rawJson: formatted }
-            : m
-        )
-      );
-    } catch {
-      // json error guard
-    }
-  };
-
-  // 切换 MCP 对指定助手的授权 (打上✔ 立即生效)
-  const toggleMcpForAssistant = async (mcpName: string, asstName: string) => {
-    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) { await toggleImaAssistant(asstName); return; }
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
-    const targetAsstId = matchedAsst?.id || asstName;
-    const targetAsstName = matchedAsst?.name || asstName;
-    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstName].filter(Boolean));
-
-    let nextChecked = false;
-    const nextMcpList = mcpList.map((m) => {
-      if (m.name !== mcpName && m.id !== mcpName) return m;
-      const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
-      const hasBound = currentBound.some((id) => asstIdentifiers.has(id));
-      nextChecked = !hasBound;
-      const nextBound = hasBound
-        ? currentBound.filter((n) => !asstIdentifiers.has(n))
-        : Array.from(new Set([...currentBound, targetAsstName, targetAsstId]));
-
-      let updatedRawJson = m.rawJson;
-      try {
-        const parsed = JSON.parse(m.rawJson);
-        parsed.boundAssistants = nextBound;
-        updatedRawJson = JSON.stringify(parsed, null, 2);
-      } catch {
-        // fallback
-      }
-
-      return {
-        ...m,
-        boundAssistants: nextBound,
-        rawJson: updatedRawJson,
-      };
-    });
-    setMcpList(nextMcpList);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcpList.filter((row) => row.id !== IMA_ID)));
-      } catch {}
-    }
-
-    if (matchedAsst) {
-      const curServers: string[] = matchedAsst.mcpServerIds ? [...matchedAsst.mcpServerIds] : [];
-      const updatedServers: string[] = nextChecked
-        ? (curServers.includes(mcpName) ? curServers : [...curServers, mcpName])
-        : curServers.filter((n) => n !== mcpName && n !== targetAsstId);
-
-      setAssistants((prev) =>
-        prev.map((a) => (a.id === matchedAsst.id ? { ...a, mcpServerIds: updatedServers } : a))
-      );
-      try {
-        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', updatedServers);
-      } catch {
-        // fallback
-      }
-    }
-
-    setNotice(`已更新【${targetAsstName}】对 MCP【${mcpName}】的授权 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 切换内置工具对指定助手的授权 (打上✔ 立即生效)
-  const toggleBuiltinToolForAssistant = async (tool: 'imageGen' | 'sandbox', asstName: string) => {
-    const builtinId = tool === 'imageGen' ? BUILTIN_IMAGE_GENERATION_ID : BUILTIN_SANDBOX_ID;
-    const toolLabel = tool === 'imageGen' ? '图像生成' : 'Python 沙箱';
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
-    const targetAsstId = matchedAsst?.id || asstName;
-    const targetAsstName = matchedAsst?.name || asstName;
-    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstName].filter(Boolean));
-    let nextChecked = false;
-
-    if (tool === 'imageGen') {
-      setImageGenAssistants((prev) => {
-        const has = prev.some((id) => asstIdentifiers.has(id));
-        nextChecked = !has;
-        return has
-          ? prev.filter((n) => !asstIdentifiers.has(n))
-          : Array.from(new Set([...prev, targetAsstName, targetAsstId]));
-      });
-    } else {
-      setSandboxAssistants((prev) => {
-        const has = prev.some((id) => asstIdentifiers.has(id));
-        nextChecked = !has;
-        return has
-          ? prev.filter((n) => !asstIdentifiers.has(n))
-          : Array.from(new Set([...prev, targetAsstName, targetAsstId]));
-      });
-    }
-
-    if (matchedAsst) {
-      const curTools: string[] = matchedAsst.toolIds ? [...matchedAsst.toolIds] : [];
-      const updatedTools: string[] = nextChecked
-        ? (curTools.includes(builtinId) ? curTools : [...curTools, builtinId])
-        : curTools.filter((t) => t !== builtinId);
-
-      setAssistants((prev) =>
-        prev.map((a) => (a.id === matchedAsst.id ? { ...a, toolIds: updatedTools } : a))
-      );
-      try {
-        await persistAssistantBinding(matchedAsst.id, 'toolIds', updatedTools);
-      } catch {}
-    }
-
-    setNotice(`已更新【${targetAsstName}】对【${toolLabel}】的权限 (${nextChecked ? '打上✔ 立即生效' : '取消✔ 立即关闭'})`);
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 一键为某助手全选所有工具
-  const grantAllToolsForAssistant = async (asstName: string) => {
-    const imaAssistant = ima?.assistants.find((row) => row.id === asstName || row.name === asstName);
-    if (imaAssistant && !await saveIma({ assistantBindings: [{ id: imaAssistant.id, enabled: true }] })) return;
-    const nextMcp = mcpList.map((m) => {
-      const currentBound = Array.isArray(m.boundAssistants) ? [...m.boundAssistants] : [];
-      if (!currentBound.includes(asstName)) {
-        currentBound.push(asstName);
-      }
-      let updatedRawJson = m.rawJson;
-      try {
-        const parsed = JSON.parse(m.rawJson);
-        parsed.boundAssistants = currentBound;
-        updatedRawJson = JSON.stringify(parsed, null, 2);
-      } catch {}
-      return { ...m, boundAssistants: currentBound, rawJson: updatedRawJson };
-    });
-    setMcpList(nextMcp);
-    if (!imageGenAssistants.includes(asstName)) setImageGenAssistants((prev) => [...prev, asstName]);
-    if (!sandboxAssistants.includes(asstName)) setSandboxAssistants((prev) => [...prev, asstName]);
-
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
-    if (matchedAsst) {
-      try {
-        await persistAssistantBinding(matchedAsst.id, 'toolIds', [BUILTIN_IMAGE_GENERATION_ID, BUILTIN_SANDBOX_ID]);
-        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', nextMcp.map((m) => m.id === IMA_ID ? IMA_ID : m.name));
-      } catch {}
-    }
-    setNotice(`已为【${matchedAsst?.name || asstName}】授予全部 MCP 与内置工具权限 (打上✔ 立即生效)`);
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 一键清除某助手的所有工具授权
-  const revokeAllToolsForAssistant = async (asstName: string) => {
-    const imaAssistant = ima?.assistants.find((row) => row.id === asstName || row.name === asstName);
-    if (imaAssistant && !await saveIma({ assistantBindings: [{ id: imaAssistant.id, enabled: false }] })) return;
-    const nextMcp = mcpList.map((m) => {
-      const nextBound = (m.boundAssistants || []).filter((n) => n !== asstName);
-      let updatedRawJson = m.rawJson;
-      try {
-        const parsed = JSON.parse(m.rawJson);
-        parsed.boundAssistants = nextBound;
-        updatedRawJson = JSON.stringify(parsed, null, 2);
-      } catch {}
-      return { ...m, boundAssistants: nextBound, rawJson: updatedRawJson };
-    });
-    setMcpList(nextMcp);
-    setImageGenAssistants((prev) => prev.filter((n) => n !== asstName));
-    setSandboxAssistants((prev) => prev.filter((n) => n !== asstName));
-
-    const matchedAsst = assistants.find((a) => a.id === asstName || a.name === asstName);
-    if (matchedAsst) {
-      try {
-        await persistAssistantBinding(matchedAsst.id, 'toolIds', []);
-        await persistAssistantBinding(matchedAsst.id, 'mcpServerIds', []);
-      } catch {}
-    }
-    setNotice(`已清除【${matchedAsst?.name || asstName}】的所有工具授权 (立即生效)`);
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 纵向全选某一 MCP
-  const grantAllAssistantsForMcp = async (mcpName: string) => {
-    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) {
-      if (!ima?.registered) return;
-      const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: true }));
-      await saveIma({ assistantBindings: bindings });
+  // ---- 纵向（整列）批量操作 ----
+  const setMcpColumnForAll = useCallback(async (server: AdminRuntimeMcpServer, enabled: boolean) => {
+    if (assistants.length === 0) return;
+    if (server.id === IMA_ID) {
+      await saveIma({ assistantBindings: assistants.map((a) => ({ id: a.id, enabled })) });
       return;
     }
-    const allNames = activeAssistantsList.map((a) => a.name);
-    const nextMcp = mcpList.map((m) => {
-      if (m.name !== mcpName && m.id !== mcpName) return m;
-      const mergedBound = Array.from(new Set([...(m.boundAssistants || []), ...allNames]));
-      let updatedRawJson = m.rawJson;
-      try {
-        const parsed = JSON.parse(m.rawJson);
-        parsed.boundAssistants = mergedBound;
-        updatedRawJson = JSON.stringify(parsed, null, 2);
-      } catch {}
-      return { ...m, boundAssistants: mergedBound, rawJson: updatedRawJson };
-    });
-    setMcpList(nextMcp);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcp.filter((row) => row.id !== IMA_ID)));
-      } catch {}
+    for (const assistant of assistants) {
+      const bound = hasMcpBinding(assistant, { id: server.id, name: server.label });
+      if (bound === enabled) continue;
+      const next = enabled
+        ? [...assistant.mcpServerIds, server.id]
+        : assistant.mcpServerIds.filter((value) => value !== server.id && value !== server.label);
+      const ok = await applyAssistantPatch(assistant.id, 'mcpServerIds', next);
+      if (!ok) return;
     }
-    for (const asst of assistants) {
-      const curServers = asst.mcpServerIds ? [...asst.mcpServerIds] : [];
-      if (!curServers.includes(mcpName)) {
-        const updated = [...curServers, mcpName];
-        setAssistants((prev) => prev.map((a) => (a.id === asst.id ? { ...a, mcpServerIds: updated } : a)));
-        try {
-          await persistAssistantBinding(asst.id, 'mcpServerIds', updated);
-        } catch {}
-      }
+    notify(enabled ? `纵向全选成功：已为所有助手开启 MCP【${server.label}】` : `纵向取消成功：已清空所有助手对 MCP【${server.label}】的授权`);
+  }, [assistants, applyAssistantPatch, saveIma, notify]);
+
+  const setBuiltinColumnForAll = useCallback(async (tool: AdminRuntimeBuiltinTool, enabled: boolean) => {
+    for (const assistant of assistants) {
+      const bound = assistant.toolIds.includes(tool.id);
+      if (bound === enabled) continue;
+      const next = enabled
+        ? [...assistant.toolIds, tool.id]
+        : assistant.toolIds.filter((value) => value !== tool.id);
+      const ok = await applyAssistantPatch(assistant.id, 'toolIds', next);
+      if (!ok) return;
     }
-    setNotice(`纵向全选成功：已为所有智能体开启 MCP【${mcpName}】✔`);
-    setTimeout(() => setNotice(''), 2500);
-  };
+    notify(enabled ? `纵向全选成功：已为所有助手开启【${tool.label}】` : `纵向取消成功：已清空所有助手对【${tool.label}】的授权`);
+  }, [assistants, applyAssistantPatch, notify]);
 
-  // 纵向取消某一 MCP
-  const revokeAllAssistantsForMcp = async (mcpName: string) => {
-    if (mcpName === '项目知识库检索' || mcpName === IMA_ID) {
-      if (!ima?.registered) return;
-      const bindings = activeAssistantsList.map((a) => ({ id: a.id, enabled: false }));
-      await saveIma({ assistantBindings: bindings });
-      return;
+  // ---- 横向（整行）批量操作 ----
+  const setAssistantRow = useCallback(async (assistant: AdminAssistantConfig, enabled: boolean) => {
+    if (enabled && ima?.registered) {
+      const ok = await saveIma({ assistantBindings: [{ id: assistant.id, enabled: true }] });
+      if (!ok) return;
     }
-    const allIdentifiers = new Set(activeAssistantsList.flatMap((a) => [a.id, a.name]));
-    const nextMcp = mcpList.map((m) => {
-      if (m.name !== mcpName && m.id !== mcpName) return m;
-      const remainingBound = (m.boundAssistants || []).filter((id) => !allIdentifiers.has(id));
-      let updatedRawJson = m.rawJson;
-      try {
-        const parsed = JSON.parse(m.rawJson);
-        parsed.boundAssistants = remainingBound;
-        updatedRawJson = JSON.stringify(parsed, null, 2);
-      } catch {}
-      return { ...m, boundAssistants: remainingBound, rawJson: updatedRawJson };
-    });
-    setMcpList(nextMcp);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.mcp_list', JSON.stringify(nextMcp.filter((row) => row.id !== IMA_ID)));
-      } catch {}
+    const nextMcp = enabled
+      ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.filter((s) => s.id !== IMA_ID).map((s) => s.id)]))
+      : assistant.mcpServerIds.filter((value) => !mcpServers.some((s) => s.id !== IMA_ID && (s.id === value || s.label === value)));
+    const okMcp = await applyAssistantPatch(assistant.id, 'mcpServerIds', nextMcp);
+    if (!okMcp) return;
+    const nextTools = enabled
+      ? Array.from(new Set([...assistant.toolIds, ...builtinTools.map((t) => t.id)]))
+      : assistant.toolIds.filter((value) => !builtinTools.some((t) => t.id === value));
+    const okTools = await applyAssistantPatch(assistant.id, 'toolIds', nextTools);
+    if (!okTools) return;
+    if (!enabled && ima?.registered) await saveIma({ assistantBindings: [{ id: assistant.id, enabled: false }] });
+    notify(enabled ? `已为【${assistant.name}】开启全部工具授权` : `已清空【${assistant.name}】的全部工具授权`);
+  }, [ima, mcpServers, builtinTools, applyAssistantPatch, saveIma, notify]);
+
+  const setEntireMatrix = useCallback(async (enabled: boolean) => {
+    for (const assistant of assistants) {
+      await setAssistantRow(assistant, enabled);
     }
-    for (const asst of assistants) {
-      const curServers = asst.mcpServerIds ? [...asst.mcpServerIds] : [];
-      if (curServers.includes(mcpName)) {
-        const updated = curServers.filter((s) => s !== mcpName);
-        setAssistants((prev) => prev.map((a) => (a.id === asst.id ? { ...a, mcpServerIds: updated } : a)));
-        try {
-          await persistAssistantBinding(asst.id, 'mcpServerIds', updated);
-        } catch {}
-      }
-    }
-    setNotice(`纵向取消成功：已清空所有智能体对 MCP【${mcpName}】的授权✔`);
-    setTimeout(() => setNotice(''), 2500);
-  };
+  }, [assistants, setAssistantRow]);
 
-  // 纵向全选图像生成
-  const grantAllAssistantsForImageGen = () => {
-    const allNames = activeAssistantsList.map((a) => a.name);
-    setImageGenAssistants(allNames);
-    setNotice('纵向全选成功：已为所有智能体开启【图像生成】✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
+  const checkboxStyle = (checked: boolean, color: string, disabled = false) => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '22px',
+    height: '22px',
+    borderRadius: '5px',
+    border: `1.5px solid ${checked ? color : '#cbd5e1'}`,
+    background: checked ? color : '#ffffff',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: 700,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    userSelect: 'none' as const,
+    margin: '0 auto',
+  });
 
-  // 纵向取消图像生成
-  const revokeAllAssistantsForImageGen = () => {
-    setImageGenAssistants([]);
-    setNotice('纵向取消成功：已清空所有智能体的【图像生成】授权✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
+  if (['edit', 'preview'].includes(activeMode)) {
+    return <KnowledgeConfiguration preview={activeMode === 'preview'} onMode={(mode) => { setActiveMode(mode); if (mode === 'matrix') void loadIma(); }} />;
+  }
 
-  // 纵向全选沙箱
-  const grantAllAssistantsForSandbox = () => {
-    const allNames = activeAssistantsList.map((a) => a.name);
-    setSandboxAssistants(allNames);
-    setNotice('纵向全选成功：已为所有智能体开启【Python 沙箱】✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 纵向取消沙箱
-  const revokeAllAssistantsForSandbox = () => {
-    setSandboxAssistants([]);
-    setNotice('纵向取消成功：已清空所有智能体的【Python 沙箱】授权✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 全局全部全选
-  const grantEntireMatrix = async () => {
-    for (const asst of activeAssistantsList) {
-      await grantAllToolsForAssistant(asst.name);
-    }
-    setNotice('全局全选成功：已为所有智能体开启全部工具与 MCP 授权！✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  // 全局全部取消
-  const revokeEntireMatrix = async () => {
-    for (const asst of activeAssistantsList) {
-      await revokeAllToolsForAssistant(asst.name);
-    }
-    setNotice('全局取消成功：已清空所有智能体的全部工具与 MCP 授权！✔');
-    setTimeout(() => setNotice(''), 2500);
-  };
-
-  if (['edit','preview'].includes(activeMode)) return <KnowledgeConfiguration preview={activeMode === 'preview'} onMode={(mode) => { setActiveMode(mode); if (mode === 'matrix') void loadIma(); }} />;
+  const loading = registryPending && !snapshot;
 
   return (
     <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>
@@ -1181,7 +309,7 @@ export default function ToolsSettingsPage() {
               工具与 MCP 配置中心
             </h1>
             <p className="admin-tools-subtitle" style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-              支持智能体授权矩阵、总的 mcpServers 全局配置与任意单个 MCP 的独立 JSON 设置。编辑与预览自由切换。
+              MCP 服务器与内置工具目录来自 AI 运行时快照；授权矩阵的每次勾选都会通过助手接口持久化到服务端。JSON 编辑与预览由配置工作台（服务端持久化）承载。
             </p>
           </div>
 
@@ -1191,18 +319,13 @@ export default function ToolsSettingsPage() {
               <button
                 type="button"
                 style={{
-                  padding: '6px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '6px 14px', border: 'none', borderRadius: '6px',
                   background: activeMode === 'matrix' ? '#ffffff' : 'transparent',
                   fontWeight: activeMode === 'matrix' ? 600 : 400,
                   boxShadow: activeMode === 'matrix' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  cursor: 'pointer', fontSize: '13px',
                   color: activeMode === 'matrix' ? '#165dff' : '#64748b',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 onClick={() => setActiveMode('matrix')}
               >
@@ -1211,18 +334,13 @@ export default function ToolsSettingsPage() {
               <button
                 type="button"
                 style={{
-                  padding: '6px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '6px 14px', border: 'none', borderRadius: '6px',
                   background: activeMode === 'edit' ? '#ffffff' : 'transparent',
                   fontWeight: activeMode === 'edit' ? 600 : 400,
                   boxShadow: activeMode === 'edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  cursor: 'pointer', fontSize: '13px',
                   color: activeMode === 'edit' ? '#0f172a' : '#64748b',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 onClick={() => setActiveMode('edit')}
               >
@@ -1231,18 +349,13 @@ export default function ToolsSettingsPage() {
               <button
                 type="button"
                 style={{
-                  padding: '6px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '6px 14px', border: 'none', borderRadius: '6px',
                   background: activeMode === 'preview' ? '#ffffff' : 'transparent',
                   fontWeight: activeMode === 'preview' ? 600 : 400,
                   boxShadow: activeMode === 'preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  cursor: 'pointer',
-                  fontSize: '13px',
+                  cursor: 'pointer', fontSize: '13px',
                   color: activeMode === 'preview' ? '#0f172a' : '#64748b',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
                 }}
                 onClick={() => setActiveMode('preview')}
               >
@@ -1253,20 +366,13 @@ export default function ToolsSettingsPage() {
             <button
               type="button"
               className="settings-action-btn is-primary"
+              title="在 JSON 配置工作台中新增 MCP 服务器（服务端持久化）"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#165dff',
-                color: '#fff',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: '#165dff', color: '#fff', padding: '8px 14px', borderRadius: '8px',
+                border: 'none', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
               }}
-              onClick={handleAddNewMcp}
+              onClick={() => setActiveMode('edit')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
@@ -1279,1150 +385,317 @@ export default function ToolsSettingsPage() {
       </div>
 
       {notice ? (
-        <div style={{ marginBottom: '16px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+        <div role="status" style={{ marginBottom: '16px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
           {notice}
         </div>
       ) : null}
-      {registryError && <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px' }}>
-        MCP 状态：{registryError}<button type="button" onClick={() => void loadRegistry()} style={{ marginLeft: '12px' }}>重试</button>
-      </div>}
-      {imaError ? <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-        项目知识库检索：{imaError}
-        <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
-      </div> : null}
+      {registryError && (
+        <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px', fontSize: '13px' }}>
+          MCP / 内置工具目录：{registryError}
+          <button type="button" onClick={() => void loadRegistry()} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
+        </div>
+      )}
+      {assistantsError && (
+        <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px', fontSize: '13px' }}>
+          助手列表：{assistantsError}
+          <button type="button" onClick={() => void loadAssistants()} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
+        </div>
+      )}
+      {imaError ? (
+        <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
+          项目知识库检索：{imaError}
+          <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
+        </div>
+      ) : null}
 
-      {/* 视图 1：智能体与工具启用与关闭矩阵 */}
-      {activeMode === 'matrix' ? (
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <strong style={{ fontSize: '15px', color: '#0f172a' }}>智能体与工具启用与关闭矩阵 (Capability & Authorization Matrix)</strong>
-              <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                行代表智能体导师，列代表 MCP 工具服务与平台原生工具。在此勾选或取消勾选将即时同步至底层 MCP JSON 声明及运行时权限表。
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
-                已纳管 {activeAssistantsList.length} 位智能体 · {mcpList.length} 个 MCP 服务
-              </span>
-            </div>
-          </div>
-
-          <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '10px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
-                  <th style={{ padding: '14px 16px', fontWeight: 700, color: '#334155', minWidth: '180px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>智能体角色 (行)</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={grantEntireMatrix}
-                        style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          border: '1px solid #165dff',
-                          background: '#165dff',
-                          color: '#ffffff',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                        }}
-                        title="全局全选：为所有智能体开启全部工具"
-                      >
-                        全部全选
-                      </button>
-                      <button
-                        type="button"
-                        onClick={revokeEntireMatrix}
-                        style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#64748b',
-                          cursor: 'pointer',
-                        }}
-                        title="全部取消：清空所有智能体的全部工具"
-                      >
-                        全部取消
-                      </button>
-                    </div>
-                  </th>
-                  {mcpList.map((m) => (
-                    <th key={m.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ fontSize: '11px', color: m.status !== 'connected' ? '#94a3b8' : '#16a34a' }}>●</span>
-                        <span>{m.id === IMA_ID ? '项目知识库检索' : m.name}</span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>{m.tools.length} 个工具{m.id === IMA_ID ? ` · ${ima ? ima.enabled ? '允许调用' : '总开关关闭' : '读取中'}` : m.registryStatus ? ` · ${m.registryStatus}` : ''}</div>
-                      {/* 纵向全选 / 纵向取消 */}
-                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
-                        <button
-                          type="button"
-                          onClick={() => void grantAllAssistantsForMcp(m.name)}
-                          style={{
-                            fontSize: '10.5px',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid #bfdbfe',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                          }}
-                          title={`纵向全选：为所有智能体开启【${m.id === IMA_ID ? '项目知识库检索' : m.name}】`}
-                        >
-                          纵向全选
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void revokeAllAssistantsForMcp(m.name)}
-                          style={{
-                            fontSize: '10.5px',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid #fecaca',
-                            background: '#fef2f2',
-                            color: '#dc2626',
-                            cursor: 'pointer',
-                          }}
-                          title={`纵向取消：取消所有智能体对【${m.id === IMA_ID ? '项目知识库检索' : m.name}】的授权`}
-                        >
-                          纵向取消
-                        </button>
-                      </div>
-                    </th>
-                  ))}
-                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '130px' }}>
-                    <div>🎨 图像生成</div>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 ImageGen</div>
-                    {/* 纵向全选 / 纵向取消 */}
-                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={grantAllAssistantsForImageGen}
-                        style={{
-                          fontSize: '10.5px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd6fe',
-                          background: '#f5f3ff',
-                          color: '#6d28d9',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                        }}
-                        title="纵向全选：为所有智能体开启【图像生成】"
-                      >
-                        纵向全选
-                      </button>
-                      <button
-                        type="button"
-                        onClick={revokeAllAssistantsForImageGen}
-                        style={{
-                          fontSize: '10.5px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid #fecaca',
-                          background: '#fef2f2',
-                          color: '#dc2626',
-                          cursor: 'pointer',
-                        }}
-                        title="纵向取消：取消所有智能体的【图像生成】授权"
-                      >
-                        纵向取消
-                      </button>
-                    </div>
-                  </th>
-                  <th style={{ padding: '12px 14px', fontWeight: 700, color: '#047857', textAlign: 'center', minWidth: '130px' }}>
-                    <div>🐍 Python 沙箱</div>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>原生 Sandbox</div>
-                    {/* 纵向全选 / 纵向取消 */}
-                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={grantAllAssistantsForSandbox}
-                        style={{
-                          fontSize: '10.5px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid #a7f3d0',
-                          background: '#ecfdf5',
-                          color: '#047857',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                        }}
-                        title="纵向全选：为所有智能体开启【Python 沙箱】"
-                      >
-                        纵向全选
-                      </button>
-                      <button
-                        type="button"
-                        onClick={revokeAllAssistantsForSandbox}
-                        style={{
-                          fontSize: '10.5px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid #fecaca',
-                          background: '#fef2f2',
-                          color: '#dc2626',
-                          cursor: 'pointer',
-                        }}
-                        title="纵向取消：取消所有智能体的【Python 沙箱】授权"
-                      >
-                        纵向取消
-                      </button>
-                    </div>
-                  </th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '160px' }}>
-                    横向快捷操作 (整行)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeAssistantsList.map((asst, index) => {
-                  return (
-                    <tr key={asst.id || asst.name} style={{ borderBottom: '1px solid #f1f5f9', background: index % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{asst.name}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                          <span style={{ padding: '1px 6px', background: '#e2e8f0', borderRadius: '4px' }}>{asst.role || '智能导师'}</span>
-                        </div>
-                      </td>
-
-                      {/* MCP 列 */}
-                      {mcpList.map((m) => {
-                        const isChecked = m.boundAssistants.some(
-                          (identifier) => identifier === asst.name || identifier === asst.id
-                        );
-                        return (
-                          <td key={m.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            {m.id === IMA_ID ? <button
-                              type="button" role="checkbox" aria-checked={isChecked}
-                              aria-label={`${asst.name} 是否使用 项目知识库检索`}
-                              disabled={imaPending || !ima?.registered || !ima.assistants.some((row) => row.id === asst.id)}
-                              onClick={() => void toggleImaAssistant(asst.id)}
-                              title={!ima?.enabled ? '总开关已关闭；可预设助手授权' : `${asst.name}${isChecked ? '已授权' : '未授权'} 项目知识库检索`}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '5px', border: isChecked ? '1.5px solid #165dff' : '1.5px solid #cbd5e1', background: isChecked ? '#165dff' : '#ffffff', color: '#ffffff', fontSize: '14px', fontWeight: 700, cursor: imaPending ? 'wait' : 'pointer', margin: '0 auto', padding: 0 }}
-                            >{isChecked ? '✓' : ''}</button> : <div
-                              onClick={() => toggleMcpForAssistant(m.name, asst.name)}
-                              role="checkbox"
-                              aria-checked={isChecked}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: '5px',
-                                border: isChecked ? '1.5px solid #165dff' : '1.5px solid #cbd5e1',
-                                background: isChecked ? '#165dff' : '#ffffff',
-                                color: '#ffffff',
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease-in-out',
-                                boxShadow: isChecked ? '0 1px 3px rgba(22, 93, 255, 0.25)' : 'none',
-                                userSelect: 'none',
-                                margin: '0 auto',
-                              }}
-                              title={
-                                isChecked
-                                  ? `${asst.name} 已授权 ${m.name} (点击取消打勾即刻关闭)`
-                                  : `${asst.name} 未授权 ${m.name} (点击打上✔ 立即生效)`
-                              }
-                            >
-                              {isChecked ? '✓' : ''}
-                            </div>}
-                          </td>
-                        );
-                      })}
-
-                      {/* 图像生成 列 */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        {(() => {
-                          const isChecked = imageGenAssistants.some(
-                            (identifier) => identifier === asst.name || identifier === asst.id
-                          );
-                          return (
-                            <div
-                              onClick={() => toggleBuiltinToolForAssistant('imageGen', asst.name)}
-                              role="checkbox"
-                              aria-checked={isChecked}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: '5px',
-                                border: isChecked ? '1.5px solid #7c3aed' : '1.5px solid #cbd5e1',
-                                background: isChecked ? '#7c3aed' : '#ffffff',
-                                color: '#ffffff',
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease-in-out',
-                                boxShadow: isChecked ? '0 1px 3px rgba(124, 58, 237, 0.25)' : 'none',
-                                userSelect: 'none',
-                                margin: '0 auto',
-                              }}
-                              title={
-                                isChecked
-                                  ? `${asst.name} 已授权图像生成 (点击取消打勾即刻关闭)`
-                                  : `${asst.name} 未授权图像生成 (点击打上✔ 立即生效)`
-                              }
-                            >
-                              {isChecked ? '✓' : ''}
-                            </div>
-                          );
-                        })()}
-                      </td>
-
-                      {/* Python 沙箱 列 */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        {(() => {
-                          const isChecked = sandboxAssistants.some(
-                            (identifier) => identifier === asst.name || identifier === asst.id
-                          );
-                          return (
-                            <div
-                              onClick={() => toggleBuiltinToolForAssistant('sandbox', asst.name)}
-                              role="checkbox"
-                              aria-checked={isChecked}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: '5px',
-                                border: isChecked ? '1.5px solid #059669' : '1.5px solid #cbd5e1',
-                                background: isChecked ? '#059669' : '#ffffff',
-                                color: '#ffffff',
-                                fontSize: '14px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease-in-out',
-                                boxShadow: isChecked ? '0 1px 3px rgba(5, 150, 105, 0.25)' : 'none',
-                                userSelect: 'none',
-                                margin: '0 auto',
-                              }}
-                              title={
-                                isChecked
-                                  ? `${asst.name} 已授权 Python 沙箱 (点击取消打勾即刻关闭)`
-                                  : `${asst.name} 未授权 Python 沙箱 (点击打上✔ 立即生效)`
-                              }
-                            >
-                              {isChecked ? '✓' : ''}
-                            </div>
-                          );
-                        })()}
-                      </td>
-
-                      {/* 横向批量快捷操作 */}
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => grantAllToolsForAssistant(asst.name)}
-                            style={{
-                              fontSize: '11px',
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #bfdbfe',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                            }}
-                            title={`横向全选：为【${asst.name}】开启所有工具`}
-                          >
-                            横向全选
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => revokeAllToolsForAssistant(asst.name)}
-                            style={{
-                              fontSize: '11px',
-                              padding: '3px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid #fecaca',
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              cursor: 'pointer',
-                            }}
-                            title={`横向取消：清空【${asst.name}】的所有工具授权`}
-                          >
-                            横向取消
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      {loading || assistantsPending ? (
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+          正在读取 AI 运行时目录与助手列表…
         </div>
       ) : (
-        /* 视图 2 & 3：JSON 配置编辑与实时预览工作台 */
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '18px', alignItems: 'start' }}>
-        {/* 左侧目标选择列表 */}
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>配置目标与清单</span>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>切换编辑对象</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* 1. 总的设置入口 */}
-            <div
-              onClick={() => setSelectedTarget('global')}
-              style={{
-                padding: '12px 14px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                background: selectedTarget === 'global' ? '#eff6ff' : '#ffffff',
-                border: selectedTarget === 'global' ? '1.5px solid #165dff' : '1px solid #e2e8f0',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '14px' }}>🌐</span>
-                  <strong style={{ fontSize: '13.5px', color: selectedTarget === 'global' ? '#165dff' : '#0f172a' }}>
-                    总配置 (mcpServers 全局)
-                  </strong>
-                </div>
-                <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                  全景
+        <>
+          {/* 视图：智能体与工具启用与关闭矩阵 */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <strong style={{ fontSize: '15px', color: '#0f172a' }}>智能体与工具启用与关闭矩阵 (Capability & Authorization Matrix)</strong>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  行代表助手（来自助手配置接口），列代表 MCP 服务器与内置工具（来自 AI 运行时快照）。勾选或取消会立即通过服务端接口持久化。
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                  {assistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
                 </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                统一管理包含 {mcpList.length} 个 MCP 服务器的完整 JSON 配置
+            </div>
+
+            {assistants.length === 0 ? (
+              <div className="settings-empty" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                暂无助手配置，无法展示授权矩阵。请先在「助手」页创建助手。
               </div>
-            </div>
-
-            <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px', flexWrap: 'wrap', gap: '6px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={mcpList.length > 0 && mcpList.every((m) => selectedMcpIds.has(m.id))}
-                  onChange={(e) => {
-                    if (e.target.checked) setSelectedMcpIds(new Set(mcpList.map((m) => m.id)));
-                    else setSelectedMcpIds(new Set());
-                  }}
-                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
-                />
-                <span>全选 ({selectedMcpIds.size}/{mcpList.length})</span>
-              </label>
-              {selectedMcpIds.size > 0 && (
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleBulkSetMcpStatus('connected')}
-                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
-                    title="批量启用选中的 MCP"
-                  >
-                    批量启用
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleBulkSetMcpStatus('disconnected')}
-                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fed7aa', background: '#fff7ed', color: '#c2410c', cursor: 'pointer', fontWeight: 600 }}
-                    title="批量停用选中的 MCP"
-                  >
-                    批量停用
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBulkDeleteMcps}
-                    style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontWeight: 600 }}
-                    title="批量删除选中的 MCP"
-                  >
-                    批量删除
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 2. 各个独立的 MCP */}
-            {mcpList.map((mcp) => {
-              const isSelected = selectedTarget === mcp.id;
-              return (
-                <div
-                  key={mcp.id}
-                  onClick={() => setSelectedTarget(mcp.id)}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: isSelected ? '#f0f7ff' : '#ffffff',
-                    border: isSelected ? '1.5px solid #165dff' : '1px solid #e2e8f0',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedMcpIds.has(mcp.id)}
-                        onChange={(e) => {
-                          const next = new Set(selectedMcpIds);
-                          if (e.target.checked) next.add(mcp.id);
-                          else next.delete(mcp.id);
-                          setSelectedMcpIds(next);
-                        }}
-                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                      />
-                      <span style={{ color: isSelected ? '#165dff' : '#64748b', fontSize: '12px' }}>▶</span>
-                      <strong style={{ fontSize: '13.5px', color: isSelected ? '#165dff' : '#0f172a' }}>{mcp.name}</strong>
-                    </div>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: mcp.id === IMA_ID && mcp.status !== 'connected' ? '#64748b' : '#16a34a', background: mcp.id === IMA_ID && mcp.status !== 'connected' ? '#f1f5f9' : '#ecfdf5', padding: '1px 6px', borderRadius: '999px', fontWeight: 600 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      {mcp.id === IMA_ID ? imaPending ? '读取中' : !ima ? '待读取' : !ima.registered ? '未注册' : mcp.status === 'connected' ? '连接正常' : mcp.status === 'error' ? '连接失败' : '待检查' : `${mcp.latencyMs ?? 20}ms`}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                    {mcp.description || `${mcp.command} ${(mcp.args || []).join(' ')}`}
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px', fontSize: '11px', color: '#94a3b8' }}>
-                    <span>{mcp.tools.length} 个工具</span>
-                    <span>·</span>
-                    <span>{mcp.boundAssistants.length} 个智能体绑定</span>
-                  </div>
-
-                  {/* 子工具与输入参数展开区域 */}
-                  <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed #e2e8f0' }}>
-                    {mcp.tools.length === 1 ? (
-                      /* 单个工具：直接展开工具的参数要求，无需多余点击 */
-                      <div style={{ marginTop: '4px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 700, color: '#1e40af' }}>
-                            ⚡ {mcp.tools[0]}
-                          </span>
-                          <span style={{ fontSize: '10px', color: '#16a34a', background: '#dcfce7', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
-                            单个工具·参数已直展
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '10.5px', color: '#475569', fontWeight: 600, marginBottom: '4px' }}>
-                          输入参数传递要求 (InputSchema)：
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {getToolParams(mcp.tools[0] || '').map((param) => (
-                            <div
-                              key={param.name}
-                              style={{
-                                padding: '4px 6px',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                                <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
-                                <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px', fontSize: '10px' }}>
-                                  {param.type}
-                                </span>
-                                <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '10px' }}>
-                                  {param.required ? '必填' : '选填'}
-                                </span>
-                                {param.defaultValue !== undefined && (
-                                  <span style={{ color: '#64748b', fontSize: '10px' }}>默认: {String(param.defaultValue)}</span>
-                                )}
-                              </div>
-                              <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3, fontSize: '10.5px' }}>
-                                {param.description}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      /* 多个子工具：展示每个工具名称并支持展开参数传递要求 */
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>
-                            子工具清单 ({mcp.tools.length} 个子工具)
-                          </span>
+            ) : mcpServers.length === 0 && builtinTools.length === 0 ? (
+              <div className="settings-empty" style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                {registryError ? '运行时目录读取失败，请重试。' : 'AI 运行时未上报任何 MCP 服务器或内置工具。可通过「JSON 配置编辑」添加 MCP 服务器。'}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
+                      <th style={{ padding: '14px 16px', fontWeight: 700, color: '#334155', minWidth: '180px' }}>
+                        <div>智能体角色 (行)</div>
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '6px' }}>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedSidebarTools((prev) => ({
-                                ...prev,
-                                [mcp.id]: prev[mcp.id] === false ? true : false,
-                              }));
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              padding: '2px 0',
-                              color: '#2563eb',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
+                            onClick={() => void setEntireMatrix(true)}
+                            style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #165dff', background: '#165dff', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
+                            title="全局全选：为所有助手开启全部工具"
                           >
-                            {expandedSidebarTools[mcp.id] === false ? '展开全部子工具 ▼' : '收起子工具 ▲'}
+                            全部全选
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void setEntireMatrix(false)}
+                            style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', cursor: 'pointer' }}
+                            title="全部取消：清空所有助手的全部工具"
+                          >
+                            全部取消
                           </button>
                         </div>
-
-                        {expandedSidebarTools[mcp.id] !== false && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                            {mcp.tools.map((tool) => {
-                              const toolKey = `${mcp.id}:${tool}`;
-                              const isParamOpen = selectedToolParamKey === toolKey;
-                              const params = getToolParams(tool);
-
-                              return (
-                                <div
-                                  key={tool}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedToolParamKey(isParamOpen ? null : toolKey);
-                                  }}
-                                  style={{
-                                    padding: '6px 8px',
-                                    borderRadius: '6px',
-                                    background: isParamOpen ? '#eff6ff' : '#f8fafc',
-                                    border: `1px solid ${isParamOpen ? '#93c5fd' : '#e2e8f0'}`,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '11.5px', fontFamily: 'monospace', fontWeight: 600, color: '#1e40af' }}>
-                                      ⚡ {tool}
-                                    </span>
-                                    <span style={{ fontSize: '10.5px', color: '#2563eb' }}>
-                                      {isParamOpen ? '收起参数 ▲' : '展开参数要求 ▼'}
-                                    </span>
-                                  </div>
-
-                                  {isParamOpen && (
-                                    <div
-                                      style={{
-                                        marginTop: '6px',
-                                        paddingTop: '6px',
-                                        borderTop: '1px solid #bfdbfe',
-                                        fontSize: '11px',
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px', fontSize: '10.5px' }}>
-                                        输入参数传递要求 (InputSchema)：
-                                      </div>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {params.map((param) => (
-                                          <div
-                                            key={param.name}
-                                            style={{
-                                              padding: '4px 6px',
-                                              background: '#ffffff',
-                                              border: '1px solid #e2e8f0',
-                                              borderRadius: '4px',
-                                            }}
-                                          >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                              <code style={{ color: '#0f172a', fontWeight: 600 }}>{param.name}</code>
-                                              <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '0 4px', borderRadius: '3px', fontSize: '10px' }}>
-                                                {param.type}
-                                              </span>
-                                              <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '10px' }}>
-                                                {param.required ? '必填' : '选填'}
-                                              </span>
-                                              {param.defaultValue !== undefined && (
-                                                <span style={{ color: '#64748b', fontSize: '10px' }}>默认: {String(param.defaultValue)}</span>
-                                              )}
-                                            </div>
-                                            <div style={{ color: '#475569', marginTop: '2px', lineHeight: 1.3, fontSize: '10.5px' }}>
-                                              {param.description}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                      </th>
+                      {mcpServers.map((server) => (
+                        <th key={server.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ fontSize: '11px', color: server.status === 'connected' ? '#16a34a' : server.status === 'error' ? '#dc2626' : '#94a3b8' }}>●</span>
+                            <span>{server.id === IMA_ID ? (ima?.label || '项目知识库检索') : server.label}</span>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                            {server.toolCount === null ? '工具数未知' : `${server.toolCount} 个工具`} · {MCP_STATUS_TEXT[server.status]}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 400 }}>{server.transport} {server.enabled ? '' : '· 已停用'}</div>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => void setMcpColumnForAll(server, true)}
+                              style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
+                              title={`纵向全选：为所有助手开启【${server.label}】`}
+                            >
+                              纵向全选
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void setMcpColumnForAll(server, false)}
+                              style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                              title={`纵向取消：取消所有助手对【${server.label}】的授权`}
+                            >
+                              纵向取消
+                            </button>
+                          </div>
+                        </th>
+                      ))}
+                      {builtinTools.map((tool) => (
+                        <th key={tool.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '130px' }}>
+                          <div>{tool.label}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                            内置工具 · {BUILTIN_STATUS_TEXT[tool.status]}
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => void setBuiltinColumnForAll(tool, true)}
+                              style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #ddd6fe', background: '#f5f3ff', color: '#6d28d9', cursor: 'pointer', fontWeight: 600 }}
+                              title={`纵向全选：为所有助手开启【${tool.label}】`}
+                            >
+                              纵向全选
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void setBuiltinColumnForAll(tool, false)}
+                              style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                              title={`纵向取消：取消所有助手对【${tool.label}】的授权`}
+                            >
+                              纵向取消
+                            </button>
+                          </div>
+                        </th>
+                      ))}
+                      <th style={{ padding: '12px 16px', fontWeight: 700, color: '#334155', textAlign: 'center', minWidth: '160px' }}>
+                        横向快捷操作 (整行)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assistants.map((assistant, index) => (
+                      <tr key={assistant.id} style={{ borderBottom: '1px solid #f1f5f9', background: index % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{assistant.name}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                            <span style={{ padding: '1px 6px', background: '#e2e8f0', borderRadius: '4px' }}>{assistant.role || '智能导师'}</span>
+                          </div>
+                        </td>
 
-        {/* 右侧：合并为单一工作台（顶层按钮切换 编辑 / 预览） */}
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          {/* 标题栏 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}>{selectedTarget === 'global' ? '🌐' : '⚙️'}</span>
-              <div>
-                <strong style={{ fontSize: '15px', color: '#0f172a' }}>
-                  {selectedTarget === 'global' ? 'mcpServers.json (总配置)' : `${currentSingleMcp?.name}.json (单独配置)`}
-                </strong>
-                <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}>
-                  {activeMode === 'edit' ? '当前处于 JSON 源码编辑态' : '当前处于 结构化解析预览态'}
-                </span>
+                        {mcpServers.map((server) => {
+                          const isChecked = isMcpBound(assistant, server);
+                          const disabled = server.id === IMA_ID && (imaPending || !ima?.registered);
+                          return (
+                            <td key={server.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                              <div
+                                role="checkbox"
+                                aria-checked={isChecked}
+                                aria-label={`${assistant.name} 是否授权 ${server.label}`}
+                                tabIndex={0}
+                                onClick={() => { if (!disabled) void toggleMcpForAssistant(server, assistant); }}
+                                onKeyDown={(event) => { if (!disabled && (event.key === ' ' || event.key === 'Enter')) { event.preventDefault(); void toggleMcpForAssistant(server, assistant); } }}
+                                style={checkboxStyle(isChecked, '#165dff', disabled)}
+                                title={
+                                  disabled
+                                    ? '项目知识库检索配置读取中或未注册'
+                                    : isChecked
+                                      ? `${assistant.name} 已授权 ${server.label}（点击取消并同步服务端）`
+                                      : `${assistant.name} 未授权 ${server.label}（点击勾选并同步服务端）`
+                                }
+                              >
+                                {isChecked ? '✓' : ''}
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        {builtinTools.map((tool) => {
+                          const isChecked = isBuiltinBound(assistant, tool);
+                          return (
+                            <td key={tool.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
+                              <div
+                                role="checkbox"
+                                aria-checked={isChecked}
+                                aria-label={`${assistant.name} 是否授权内置工具 ${tool.label}`}
+                                tabIndex={0}
+                                onClick={() => void toggleBuiltinForAssistant(tool, assistant)}
+                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void toggleBuiltinForAssistant(tool, assistant); } }}
+                                style={checkboxStyle(isChecked, '#7c3aed')}
+                                title={
+                                  isChecked
+                                    ? `${assistant.name} 已授权【${tool.label}】（点击取消并同步服务端）`
+                                    : `${assistant.name} 未授权【${tool.label}】（点击勾选并同步服务端）`
+                                }
+                              >
+                                {isChecked ? '✓' : ''}
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => void setAssistantRow(assistant, true)}
+                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
+                              title={`横向全选：为【${assistant.name}】开启所有工具`}
+                            >
+                              横向全选
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void setAssistantRow(assistant, false)}
+                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                              title={`横向取消：清空【${assistant.name}】的所有工具授权`}
+                            >
+                              横向取消
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
+            )}
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {currentSingleMcp?.id === IMA_ID ? <>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569' }}>
-                  <input type="checkbox" role="switch" aria-label="允许调用 项目知识库检索" checked={ima?.enabled ?? false} disabled={imaPending || !ima?.registered} onChange={(event) => void saveIma({ enabled: event.target.checked })} style={{ accentColor: '#165dff' }} />允许调用
+          {/* 模块二：项目知识库检索（ima）状态卡 */}
+          <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <strong style={{ fontSize: '14px', color: '#0f172a' }}>{ima?.label || '项目知识库检索'}</strong>
+                  <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>服务端管理</span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  共享教材知识库，只读检索与原文阅读；连接凭证由服务器管理。当前状态：
+                  {imaPending ? ' 读取中…' : !ima ? ' 待读取' : !ima.registered ? ' 未注册' : ima.enabled ? ' 允许调用' : ' 总开关关闭'}
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#475569' }}>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label="允许调用 项目知识库检索"
+                    checked={ima?.enabled ?? false}
+                    disabled={imaPending || !ima?.registered}
+                    onChange={(event) => void saveIma({ enabled: event.target.checked })}
+                    style={{ accentColor: '#165dff' }}
+                  />
+                  允许调用
                 </label>
-                <button type="button" disabled={imaPending || !ima?.registered} onClick={() => void checkIma()} style={{ fontSize: '12px', padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: 'pointer' }}>检查连接</button>
-              </> : currentSingleMcp ? (
                 <button
                   type="button"
-                  onClick={() => handleDeleteCurrentMcp(currentSingleMcp.id, currentSingleMcp.name)}
-                  title="删除此 MCP 配置"
-                  style={{
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#dc2626',
-                    borderRadius: '6px',
-                    padding: '5px 10px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  disabled={imaPending || !ima?.registered}
+                  onClick={() => void checkIma()}
+                  style={{ fontSize: '12px', padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: imaPending ? 'wait' : 'pointer' }}
                 >
-                  🗑️ 删除该 MCP
+                  检查连接
                 </button>
-              ) : null}
-
-              {activeMode === 'edit' && (
-                <>
-                  <button
-                    type="button"
-                    style={{ fontSize: '12px', padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: 'pointer' }}
-                    onClick={handleFormatJson}
-                  >
-                    ✨ 格式化 JSON
-                  </button>
-                  <button
-                    type="button"
-                    style={{ fontSize: '12px', padding: '5px 14px', border: 'none', borderRadius: '6px', background: '#165dff', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
-                    onClick={() => void handleSaveJson()}
-                    disabled={imaPending || ((selectedTarget === IMA_ID || selectedTarget === 'global') && !ima?.registered)}
-                  >
-                    💾 保存配置
-                  </button>
-                </>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* 错误提示 */}
-          {jsonError ? (
-            <div style={{ marginTop: '12px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '12.5px' }}>
-              ⚠️ {jsonError}
+          {/* 模块三：运行时上报的内置工具（只读） */}
+          <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <strong style={{ fontSize: '15px', color: '#0f172a' }}>内置工具 (Builtin Tools)</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                以下目录由 AI 运行时快照上报（只读）。按助手的授权请在上方矩阵中勾选，写回通过助手接口持久化。
+              </p>
             </div>
-          ) : null}
 
-          {/* 核心视图切换：编辑模式 vs 预览模式（合并为单一容器） */}
-          {activeMode === 'edit' ? (
-            <div style={{ marginTop: '14px' }}>
-              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
-                {selectedTarget === 'global'
-                  ? '修改全局 mcpServers 结构，支持一次性批量配置所有 MCP 的命令、参数与环境变量。'
-                  : selectedTarget === IMA_ID ? '修改 enabled 与 boundAssistants（助手 ID）。协议、工具清单和连接凭证由服务器管理。' : `单独配置【${currentSingleMcp?.name}】的 command、args、env 与 boundAssistants。`}
+            {builtinTools.length === 0 ? (
+              <div className="settings-empty" style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                {registryError ? '运行时目录读取失败，请重试。' : 'AI 运行时未上报内置工具。'}
               </div>
-
-              <textarea
-                aria-label={selectedTarget === IMA_ID ? '项目知识库检索 JSON 配置' : 'MCP JSON 配置'}
-                disabled={selectedTarget === IMA_ID && (imaPending || !ima?.registered)}
-                value={jsonTextDraft}
-                onChange={(e) => {
-                  setJsonTextDraft(e.target.value);
-                  setJsonError(null);
-                }}
-                spellCheck={false}
-                style={{
-                  width: '100%',
-                  height: '400px',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: '13px',
-                  lineHeight: 1.5,
-                  padding: '14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: '#0f172a',
-                  color: '#e2e8f0',
-                  boxSizing: 'border-box',
-                  resize: 'vertical',
-                }}
-              />
-            </div>
-          ) : (
-            /* 预览模式：结构化解析展示 */
-            <div style={{ marginTop: '14px' }}>
-              {selectedTarget === 'global' ? (
-                /* 全局预览卡片 */
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-                    {mcpList.map((item) => (
-                      <div key={item.id} style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <strong style={{ fontSize: '13px', color: '#0f172a' }}>{item.name}</strong>
-                          <span style={{ fontSize: '11px', color: item.id === IMA_ID && item.status !== 'connected' ? '#64748b' : '#16a34a', fontWeight: 600 }}>● {item.id === IMA_ID ? item.status === 'connected' ? '连接正常' : item.status === 'error' ? '连接失败' : '待检查' : '在线'}</span>
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px' }}>
-                          {item.tools.length} 工具 · {item.boundAssistants.length} 助手
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    当前生效的全局 JSON 结构
-                  </div>
-                  <pre style={{
-                    margin: 0,
-                    background: '#0f172a',
-                    color: '#e2e8f0',
-                    padding: '14px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontFamily: 'ui-monospace, monospace',
-                    overflowX: 'auto',
-                    maxHeight: '320px',
-                    lineHeight: 1.5,
-                  }}>
-                    {jsonTextDraft}
-                  </pre>
-                </div>
-              ) : currentSingleMcp ? (
-                /* 单独 MCP 预览卡片 */
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '14px' }}>
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{selectedTarget === IMA_ID ? '知识库调用状态' : '运行命令与参数'}</div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        {selectedTarget === IMA_ID ? ima?.enabled ? '允许调用 · 仅限已授权助手' : '总开关已关闭' : `${currentSingleMcp.command} ${(currentSingleMcp.args || []).join(' ')}`}
-                      </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                {builtinTools.map((tool) => (
+                  <div key={tool.id} style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                      <strong style={{ fontSize: '13px', color: '#0f172a' }}>{tool.label}</strong>
+                      <span style={{ fontSize: '11px', color: tool.status === 'error' || tool.status === 'unavailable' ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>
+                        ● {BUILTIN_STATUS_TEXT[tool.status]}
+                      </span>
                     </div>
-
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>协议通道 & 心跳延迟</div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#16a34a', marginTop: '2px' }}>
-                        ● {currentSingleMcp.transport ?? 'stdio'} 通道 {selectedTarget === IMA_ID ? `（${currentSingleMcp.status === 'connected' ? '连接正常' : currentSingleMcp.status === 'error' ? '连接失败' : '待检查'}）` : `(${currentSingleMcp.latencyMs ?? 20}ms)`}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>服务端点 URL</div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#2563eb', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        {currentSingleMcp.url || 'stdio 进程通道 (无网络URL)'}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>真实凭据 Key / Token</div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a', marginTop: '2px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        {currentSingleMcp.key || currentSingleMcp.apiKey || (currentSingleMcp.env?.GROK_API_KEY ? '环境变量配置中' : '内嵌进程安全令牌')}
-                      </div>
+                    {tool.description ? (
+                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{tool.description}</div>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px', fontSize: '11px' }}>
+                      <span style={{ padding: '1px 6px', borderRadius: '4px', background: tool.riskLevel === 'high' ? '#fef2f2' : '#f1f5f9', color: tool.riskLevel === 'high' ? '#b91c1c' : '#475569', fontWeight: 600 }}>
+                        {RISK_TEXT[tool.riskLevel]}
+                      </span>
+                      {tool.requiresTheoryMastered === true ? (
+                        <span style={{ padding: '1px 6px', borderRadius: '4px', background: '#fff7ed', color: '#c2410c', fontWeight: 600 }}>需 TheoryMastered 门禁</span>
+                      ) : null}
+                      <span style={{ padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
+                        {tool.agentIds.length} 个角色注册
+                      </span>
                     </div>
                   </div>
-
-                  {/* 暴露的工具列表 */}
-                  <div style={{ marginBottom: '14px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                      暴露的 MCP 工具清单 ({currentSingleMcp.tools.length} 个)
-                    </div>
-
-                    {currentSingleMcp.tools.length === 1 ? (
-                      /* 单个工具：直接展开参数 */
-                      <div style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 700, fontFamily: 'monospace', color: '#1e40af' }}>
-                            ⚡ {currentSingleMcp.tools[0]}
-                          </span>
-                          <span style={{ fontSize: '11px', color: '#16a34a', background: '#dcfce7', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                            单个工具·输入参数已直接展开
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                          输入参数传递要求 (InputSchema)：
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {getToolParams(currentSingleMcp.tools[0] || '').map((param) => (
-                            <div key={param.name} style={{ padding: '6px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px' }}>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <code style={{ fontWeight: 700, color: '#0f172a' }}>{param.name}</code>
-                                <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>{param.type}</span>
-                                <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '11px' }}>{param.required ? '必填' : '选填'}</span>
-                                {param.defaultValue !== undefined && <span style={{ color: '#64748b', fontSize: '11px' }}>默认: {String(param.defaultValue)}</span>}
-                              </div>
-                              <div style={{ color: '#475569', marginTop: '3px', lineHeight: 1.4, fontSize: '11.5px' }}>{param.description}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      /* 多个子工具：展示每个工具名称并支持展开参数传递要求 */
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {currentSingleMcp.tools.map((tool) => {
-                            const isSelected = selectedToolParamKey === `${currentSingleMcp.id}:${tool}`;
-                            return (
-                              <button
-                                key={tool}
-                                type="button"
-                                onClick={() => setSelectedToolParamKey(isSelected ? null : `${currentSingleMcp.id}:${tool}`)}
-                                style={{
-                                  padding: '5px 12px',
-                                  background: isSelected ? '#1d4ed8' : '#eff6ff',
-                                  border: '1px solid',
-                                  borderColor: isSelected ? '#1d4ed8' : '#bfdbfe',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  color: isSelected ? '#ffffff' : '#1d4ed8',
-                                  fontFamily: 'monospace',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  fontWeight: 600,
-                                  transition: 'all 0.15s ease',
-                                }}
-                              >
-                                <span>⚡ {tool}</span>
-                                <span style={{ fontSize: '10px', opacity: 0.85 }}>{isSelected ? '收起 ▲' : '展开参数 ▼'}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* 如果有选中的工具，在预览卡片展示参数卡片 */}
-                        {selectedToolParamKey && selectedToolParamKey.startsWith(`${currentSingleMcp.id}:`) && (
-                          <div style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                              <strong style={{ fontSize: '13px', color: '#1e40af', fontFamily: 'monospace' }}>
-                                ⚡ {selectedToolParamKey.split(':')[1]} 输入参数传递要求
-                              </strong>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedToolParamKey(null)}
-                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '13px' }}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                              {getToolParams(selectedToolParamKey.split(':')[1] || '').map((param) => (
-                                <div key={param.name} style={{ padding: '6px 8px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '12px' }}>
-                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <code style={{ fontWeight: 700, color: '#0f172a' }}>{param.name}</code>
-                                    <span style={{ color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>{param.type}</span>
-                                    <span style={{ color: param.required ? '#dc2626' : '#64748b', fontWeight: param.required ? 600 : 400, fontSize: '11px' }}>{param.required ? '必填' : '选填'}</span>
-                                    {param.defaultValue !== undefined && <span style={{ color: '#64748b', fontSize: '11px' }}>默认: {String(param.defaultValue)}</span>}
-                                  </div>
-                                  <div style={{ color: '#475569', marginTop: '3px', lineHeight: 1.4, fontSize: '11.5px' }}>{param.description}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 原始 JSON 视图 */}
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      该 MCP 的独立 JSON 配置
-                    </div>
-                    <pre style={{
-                      margin: 0,
-                      background: '#0f172a',
-                      color: '#e2e8f0',
-                      padding: '14px',
-                      borderRadius: '8px',
-                      fontSize: '12.5px',
-                      fontFamily: 'ui-monospace, monospace',
-                      overflowX: 'auto',
-                      maxHeight: '260px',
-                      lineHeight: 1.5,
-                    }}>
-                      {jsonTextDraft}
-                    </pre>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {/* 如果是单 MCP，展示智能体绑定控制 */}
-          {currentSingleMcp ? (
-            <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <strong style={{ fontSize: '13px', color: '#0f172a' }}>已授权使用【{currentSingleMcp.name}】的智能体</strong>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>点击标签直接切换绑定</span>
+                ))}
               </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {(assistants.length > 0 ? assistants.map((a) => a.name) : ['雷霆战机总导师', '动手学动能定理总导师', '代码向导与答辩导师', '原理教练', '评审导师']).map((asstName) => {
-                  const isBound = currentSingleMcp.boundAssistants.includes(asstName);
-                  return (
-                    <button
-                      key={asstName}
-                      type="button"
-                      onClick={() => toggleAssistantBinding(asstName)}
-                      disabled={currentSingleMcp.id === IMA_ID && (imaPending || !ima?.registered)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        background: isBound ? '#165dff' : '#f1f5f9',
-                        color: isBound ? '#ffffff' : '#475569',
-                        border: isBound ? '1px solid #165dff' : '1px solid #cbd5e1',
-                        fontWeight: isBound ? 600 : 400,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      {isBound ? '✓' : '+'} {asstName}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
+            )}
+          </div>
+        </>
       )}
-
-      {/* 模块二：内置工具（图像生成与沙箱）卡片，严格对应 AdminUI/工具.png 视觉 */}
-      <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <div>
-            <strong style={{ fontSize: '15px', color: '#0f172a' }}>内置工具 (Builtin Tools)</strong>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-              配置 MCP 服务器与内置工具（如图像生成与代码沙箱）。图像生成需先在“模型”页配置支持图像的模型后才能启用。
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* 图像生成 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>图像生成 (ImageGen)</strong>
-                <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>平台原生</span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                图像模型：暂无可用本地图像模型，<a href="/settings/models" style={{ color: '#165dff', textDecoration: 'none' }}>前往配置 ⓘ</a>
-              </div>
-            </div>
-
-            <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
-              <input
-                type="checkbox"
-                checked={imageGenEnabled}
-                onChange={(e) => setImageGenEnabled(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  cursor: 'pointer',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: imageGenEnabled ? '#165dff' : '#cbd5e1',
-                  transition: '.3s',
-                  borderRadius: '22px',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    content: '""',
-                    height: '16px',
-                    width: '16px',
-                    left: imageGenEnabled ? '21px' : '3px',
-                    bottom: '3px',
-                    backgroundColor: 'white',
-                    transition: '.3s',
-                    borderRadius: '50%',
-                  }}
-                />
-              </span>
-            </label>
-          </div>
-
-          {/* Python 代码沙箱 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Python 运行沙箱 (Sandbox)</strong>
-                <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#ecfdf5', color: '#047857', fontWeight: 600 }}>安全隔离</span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                用于学生代码执行、物理公式数值仿真与游戏逻辑运行测试。
-              </div>
-            </div>
-
-            <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
-              <input
-                type="checkbox"
-                checked={sandboxEnabled}
-                onChange={(e) => setSandboxEnabled(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0 }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  cursor: 'pointer',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: sandboxEnabled ? '#165dff' : '#cbd5e1',
-                  transition: '.3s',
-                  borderRadius: '22px',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    content: '""',
-                    height: '16px',
-                    width: '16px',
-                    left: sandboxEnabled ? '21px' : '3px',
-                    bottom: '3px',
-                    backgroundColor: 'white',
-                    transition: '.3s',
-                    borderRadius: '50%',
-                  }}
-                />
-              </span>
-            </label>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
