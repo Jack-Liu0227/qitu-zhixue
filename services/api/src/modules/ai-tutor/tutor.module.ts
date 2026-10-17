@@ -18,6 +18,10 @@ import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { TemplatesModule } from '../templates/templates.module';
+import { MasteryModule } from '../mastery/mastery.module';
+import { InMemoryTutorQuizStore, TutorQuizStore } from './tutor-quiz.store';
+import { PostgresTutorQuizStore } from './tutor-quiz.store.postgres';
+import { TutorQuizService } from './tutor-quiz.service';
 
 /**
  * AI 搭档模块。
@@ -35,12 +39,24 @@ import { TemplatesModule } from '../templates/templates.module';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule, TemplatesModule],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanStorageModule, KnowledgeModule, TemplatesModule, MasteryModule],
   controllers: [TutorController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
     TutorService,
     TutorWorkspaceService,
+    TutorQuizService,
+    {
+      provide: TutorQuizStore,
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
+      useFactory: (db: Database | null, mode: DataMode): TutorQuizStore => {
+        if (db !== null) return new PostgresTutorQuizStore(db);
+        if (mode === 'live') {
+          throw new Error('live 模式缺少 DATABASE_URL：AI搭档判分存储不可用');
+        }
+        return new InMemoryTutorQuizStore();
+      },
+    },
     {
       provide: TutorSessionStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
