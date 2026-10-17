@@ -190,12 +190,21 @@ test('答案泄露：闸门改写输出，块内不含泄露措辞且标记 guar
 test('超长回复：被安全闸门截断改写，不超过档位长度', async () => {
   const long = '这是一段很长的解释。'.repeat(40) + '你觉得先看哪一步？';
   const gateway = new StubGateway(() => result(long));
-  const events = await collect(new GatewayTutorProvider(gateway));
+  const events = await collect(new GatewayTutorProvider(gateway), {
+    ...BASE_INPUT,
+    content: '请帮我看看这个问题',
+  });
 
   const block = events.find((e) => e.type === 'block');
   assert.ok(block && block.type === 'block' && block.block.kind === 'hint');
   assert.ok(block.block.text.length <= 160);
+  assert.match(block.block.text, /这是一段很长的解释/);
   assert.match(block.block.text, /？$/);
+  assert.doesNotMatch(block.block.text, /提示词太长/);
+  const guard = events.find((event) => event.type === 'tool_result' && event.callId === 'call-guard-sess-1');
+  assert.ok(guard && guard.type === 'tool_result');
+  assert.equal(guard.status, 'done');
+  assert.match(guard.result, /学生输入未被截断/);
 });
 
 /* ---------------------------- 错误语义 ---------------------------- */

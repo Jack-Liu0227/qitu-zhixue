@@ -55,6 +55,7 @@ export class TutorApiDataSource implements TutorDataSource {
   }
   private readonly projectIdBySession = new Map<string, string | null>();
   private readonly explorationIdBySession = new Map<string, string | null>();
+  private readonly sessionContextById = new Map<string, { projectId?: string; explorationId?: string }>();
   private readonly sockets = new Map<string, LiveTutorSocket>();
   private readonly sessionCursor = new Map<string, number>();
   private sessionCounter = 0;
@@ -135,17 +136,39 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 
   async getSession(sessionId: string): Promise<GetTutorSessionResponse> {
-    const projectId = this.projectIdBySession.get(sessionId);
+    let projectId = this.projectIdBySession.get(sessionId);
+    let explorationId = this.explorationIdBySession.get(sessionId) ?? undefined;
+    const context = this.sessionContextById.get(sessionId);
+    if (projectId === undefined && context !== undefined) projectId = context.projectId ?? null;
+    // Recover the durable session directly after a route transition or
+    // data-source remount. This endpoint re-checks student ownership on the
+    // server, so the browser never has to infer project context from an ID.
     if (projectId === undefined) {
-      throw new TutorDataError('会话不存在或已过期', 404, 'SESSION_NOT_FOUND');
+      const body = await this.fetchJson(
+        `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}`,
+        '会话加载失败',
+      );
+      const data = unwrapData(body);
+      if (!isTutorSessionResponse(data)) {
+        throw new TutorDataError('会话数据格式不正确', undefined, 'BAD_SESSION_PAYLOAD');
+      }
+      this.sessionCursor.set(data.sessionId, data.lastSeq);
+      this.projectIdBySession.set(data.sessionId, data.projectId);
+      this.explorationIdBySession.set(data.sessionId, data.explorationId);
+      this.sessionContextById.set(data.sessionId, {
+        ...(data.projectId ? { projectId: data.projectId } : {}),
+        ...(data.explorationId ? { explorationId: data.explorationId } : {}),
+      });
+      return data;
     }
-    const session = await this.fetchSession(
-      projectId ?? undefined,
-      this.explorationIdBySession.get(sessionId) ?? undefined,
-    );
+    const session = await this.fetchSession(projectId ?? undefined, explorationId);
     this.projectIdBySession.set(session.sessionId, projectId);
     this.sessionCursor.set(session.sessionId, session.lastSeq);
     this.explorationIdBySession.set(session.sessionId, session.explorationId);
+    this.sessionContextById.set(session.sessionId, {
+      ...(session.projectId ? { projectId: session.projectId } : {}),
+      ...(session.explorationId ? { explorationId: session.explorationId } : {}),
+    });
     return session;
   }
 
@@ -227,6 +250,10 @@ export class TutorApiDataSource implements TutorDataSource {
       throw new TutorDataError('会话数据格式不正确', undefined, 'BAD_SESSION_PAYLOAD');
     }
     this.sessionCursor.set(data.sessionId, data.lastSeq);
+    this.sessionContextById.set(data.sessionId, {
+      ...(data.projectId ? { projectId: data.projectId } : {}),
+      ...(data.explorationId ? { explorationId: data.explorationId } : {}),
+    });
     return data;
   }
 

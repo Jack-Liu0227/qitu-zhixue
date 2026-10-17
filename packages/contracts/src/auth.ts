@@ -23,6 +23,8 @@ export interface LoginRequest {
    * 首次校验的等待，不能替代它。
    */
   rememberMe?: boolean;
+  /** 学生端浏览器稳定标识，只用于区分设备；不得用作认证凭据。 */
+  deviceId?: string;
 }
 
 export interface LoginResponse {

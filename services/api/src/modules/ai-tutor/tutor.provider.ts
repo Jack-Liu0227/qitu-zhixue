@@ -173,6 +173,18 @@ export interface AnswerLeakVerdict {
  *   且仍不得命中泄露措辞。
  * - `null` 等级（仅 `stall_signal` / `review_work` 的兜底）按引导档处理。
  */
+function shortenReply(text: string, level: TutorHintLevel | null): string {
+  const limit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
+  const trimmed = text.trim();
+  if (trimmed.length <= limit) return trimmed;
+  if (level === EXPLAIN_ONLY_LEVEL) return `${trimmed.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+
+  const questionTail = '你觉得呢？';
+  const available = Math.max(1, limit - questionTail.length - 1);
+  const prefix = trimmed.slice(0, available).replace(/[，。！？；：、\s]+$/u, '').trimEnd();
+  return `${prefix}${prefix ? '，' : ''}${questionTail}`;
+}
+
 export function checkAnswerLeak(text: string, level: TutorHintLevel | null): AnswerLeakVerdict {
   const trimmed = text.trim();
   for (const marker of ANSWER_LEAK_MARKERS) {
@@ -188,8 +200,8 @@ export function checkAnswerLeak(text: string, level: TutorHintLevel | null): Ans
   if (trimmed.length > limit) {
     return {
       ok: false,
-      reason: `长度 ${trimmed.length} 超过第 ${level ?? 1} 档上限 ${limit}`,
-      replacement: '提示太长了，我把它收短一点：先说清你已经确定的那一部分，好吗？',
+      reason: `模型回复长度 ${trimmed.length} 超过第 ${level ?? 1} 档上限 ${limit}`,
+      replacement: shortenReply(trimmed, level),
     };
   }
   if (level !== EXPLAIN_ONLY_LEVEL && !SOCRATIC_TAIL.test(trimmed)) {

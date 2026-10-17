@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { SectionCard } from '@qitu/ui';
+import { DeviceManagement } from './DeviceManagement';
 
 interface CompetencyDimension {
   id: string;
@@ -306,6 +307,7 @@ export function ProfilePage() {
           </SectionCard>
         </div>
       </div>
+      <DeviceManagement />
     </div>
   );
 }

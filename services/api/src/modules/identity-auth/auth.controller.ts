@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Ip, Post, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Headers, Ip, NotFoundException, Param, Post, Res, UnauthorizedException } from '@nestjs/common';
 import type { Response } from 'express';
 import type { LoginResponse } from '@qitu/contracts';
 import { AuthService } from './auth.service';
@@ -28,6 +28,7 @@ interface LoginBody {
   email?: unknown;
   password?: unknown;
   rememberMe?: unknown;
+  deviceId?: unknown;
 }
 
 @Controller('auth')
@@ -40,6 +41,7 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('x-forwarded-for') forwardedFor: string | undefined,
     @Headers('x-forwarded-proto') forwardedProto: string | undefined,
+    @Headers('user-agent') userAgent: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     const email = this.readEmail(body);
@@ -50,7 +52,8 @@ export class AuthController {
     const clientKey =
       forwardedFor?.split(',')[0]?.trim() || ip || 'unknown';
 
-    const result = await this.authService.login(email, password, rememberMe, clientKey);
+    const deviceId = typeof body.deviceId === 'string' ? body.deviceId : undefined;
+    const result = await this.authService.login(email, password, rememberMe, clientKey, { id: deviceId, userAgent });
 
     response.cookie(SESSION_COOKIE, result.token, {
       httpOnly: true,
@@ -79,6 +82,24 @@ export class AuthController {
   logout(@Headers('cookie') cookieHeader: string | undefined, @Res({ passthrough: true }) response: Response) {
     this.authService.logout(this.readSession(cookieHeader));
     response.clearCookie(SESSION_COOKIE, { path: '/' });
+    return { data: { ok: true } };
+  }
+
+  @Get('sessions')
+  sessions(@Headers('cookie') cookieHeader?: string) {
+    const token = this.readSession(cookieHeader);
+    const session = this.authService.getSession(token);
+    if (session.user.role !== 'student') throw new ForbiddenException();
+    return { data: this.authService.listStudentDevices(session.user.id, token) };
+  }
+
+  @Delete('sessions/:id')
+  revokeSession(@Param('id') sessionId: string, @Headers('cookie') cookieHeader?: string) {
+    const session = this.authService.getSession(this.readSession(cookieHeader));
+    if (session.user.role !== 'student') throw new ForbiddenException();
+    if (!this.authService.revokeStudentDevice(session.user.id, sessionId)) {
+      throw new NotFoundException({ code: 'STUDENT_DEVICE_NOT_FOUND', message: '设备会话不存在或已退出' });
+    }
     return { data: { ok: true } };
   }
 
