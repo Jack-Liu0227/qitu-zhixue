@@ -225,6 +225,13 @@
       "when": 1792281600003,
       "tag": "0031_answer_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792281600004,
+      "tag": "0032_pbl_template_team_bindings",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,232 @@
+import type { PblBindingStatus } from '@qitu/contracts';
+import type { AuditTransaction } from '../../common/audit/audit.service';
+import type {
+  AffectedProjectRecord,
+  BindingRecord,
+  CreateBindingRecordInput,
+  InsertSnapshotRecordInput,
+  SnapshotRecord,
+  TeamVersionRecord,
+} from './templates-binding.types';
+
+/**
+ * 绑定持久化边界。
+ *
+ * 服务层只依赖本抽象；`demo` / `test` 用内存实现，`live` 用 PostgreSQL 实现。
+ * 状态机判定留在纯函数 / 服务层，存储层只做读与原子写。
+ */
+export abstract class TemplateBindingStore {
+  abstract findTeamVersion(id: string): Promise<TeamVersionRecord | null>;
+  abstract createBinding(input: CreateBindingRecordInput): Promise<BindingRecord>;
+  abstract findBinding(id: string, tx?: AuditTransaction): Promise<BindingRecord | null>;
+  abstract findActiveBinding(
+    templateVersionId: string,
+    tx?: AuditTransaction,
+  ): Promise<BindingRecord | null>;
+  abstract updateValidation(
+    id: string,
+    validation: BindingRecord['validation'],
+    now: Date,
+  ): Promise<BindingRecord>;
+  abstract setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord>;
+  /** 原子激活：先退役旧 active 行再置目标 active；并发双激活由局部唯一索引兜底。 */
+  abstract activateBinding(
+    templateVersionId: string,
+    bindingId: string,
+    now: Date,
+  ): Promise<BindingRecord>;
+  abstract retireBinding(id: string, now: Date): Promise<BindingRecord>;
+  /** `ON CONFLICT (project_id) DO NOTHING`——回填 / 冻结都幂等。 */
+  abstract insertSnapshot(input: InsertSnapshotRecordInput, tx?: AuditTransaction): Promise<void>;
+  abstract findSnapshot(projectId: string, tx?: AuditTransaction): Promise<SnapshotRecord | null>;
+  abstract listAffectedProjects(templateVersionId: string): Promise<AffectedProjectRecord[]>;
+}
+
+/**
+ * 并发双激活被局部唯一索引拒绝时抛出（23505 的绑定域翻译）。
+ * 服务层映射为 `BINDING_CONFLICT`(409)。
+ */
+export class TemplateBindingStoreConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TemplateBindingStoreConflictError';
+  }
+}
+
+/* ============================ 内存实现 ============================ */
+
+function cloneTeamVersion(record: TeamVersionRecord): TeamVersionRecord {
+  return {
+    ...record,
+    members: [...record.members],
+    pblSpec: structuredClone(record.pblSpec),
+  };
+}
+
+function cloneBinding(record: BindingRecord): BindingRecord {
+  return {
+    ...record,
+    validation: {
+      ...record.validation,
+      errors: [...record.validation.errors],
+      warnings: [...record.validation.warnings],
+    },
+  };
+}
+
+function cloneSnapshot(record: SnapshotRecord): SnapshotRecord {
+  return { ...record };
+}
+
+/**
+ * 内存实现：仅用于 `demo` / `test`。
+ *
+ * 与 `InMemoryTemplateStore` 同思路——它不是 live 持久化；live 走
+ * `PostgresTemplateBindingStore`，未配置数据库时由工厂按数据模式决定。
+ */
+export class InMemoryTemplateBindingStore extends TemplateBindingStore {
+  private readonly teamVersions = new Map<string, TeamVersionRecord>();
+  private readonly bindings = new Map<string, BindingRecord>();
+  private readonly snapshots = new Map<string, SnapshotRecord>();
+  private readonly affected = new Map<string, AffectedProjectRecord[]>();
+
+  async findTeamVersion(id: string): Promise<TeamVersionRecord | null> {
+    const record = this.teamVersions.get(id);
+    return record === undefined ? null : cloneTeamVersion(record);
+  }
+
+  async createBinding(input: CreateBindingRecordInput): Promise<BindingRecord> {
+    const record: BindingRecord = {
+      id: input.id,
+      templateVersionId: input.templateVersionId,
+      teamVersionId: input.teamVersionId,
+      status: 'draft',
+      bindingHash: input.bindingHash,
+      validation: { valid: false, errors: [], warnings: [], checkedAt: null },
+      activatedAt: null,
+      retiredAt: null,
+      createdBy: input.createdBy,
+      createdAt: input.now,
+      updatedAt: input.now,
+    };
+    this.bindings.set(record.id, record);
+    return cloneBinding(record);
+  }
+
+  async findBinding(id: string, _tx?: AuditTransaction): Promise<BindingRecord | null> {
+    const record = this.bindings.get(id);
+    return record === undefined ? null : cloneBinding(record);
+  }
+
+  async findActiveBinding(
+    templateVersionId: string,
+    _tx?: AuditTransaction,
+  ): Promise<BindingRecord | null> {
+    for (const record of this.bindings.values()) {
+      if (record.templateVersionId === templateVersionId && record.status === 'active') {
+        return cloneBinding(record);
+      }
+    }
+    return null;
+  }
+
+  async updateValidation(
+    id: string,
+    validation: BindingRecord['validation'],
+    now: Date,
+  ): Promise<BindingRecord> {
+    const record = this.bindings.get(id);
+    if (record === undefined) throw new Error(`binding not found: ${id}`);
+    record.validation = {
+      ...validation,
+      errors: [...validation.errors],
+      warnings: [...validation.warnings],
+    };
+    record.updatedAt = now;
+    return cloneBinding(record);
+  }
+
+  async setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord> {
+    const record = this.bindings.get(id);
+    if (record === undefined) throw new Error(`binding not found: ${id}`);
+    record.status = status;
+    record.updatedAt = now;
+    return cloneBinding(record);
+  }
+
+  async activateBinding(
+    templateVersionId: string,
+    bindingId: string,
+    now: Date,
+  ): Promise<BindingRecord> {
+    // 模拟数据库事务：先退役旧 active 行，再置目标 active。
+    for (const record of this.bindings.values()) {
+      if (
+        record.templateVersionId === templateVersionId &&
+        record.status === 'active' &&
+        record.id !== bindingId
+      ) {
+        record.status = 'retired';
+        record.retiredAt = now;
+        record.updatedAt = now;
+      }
+    }
+    const target = this.bindings.get(bindingId);
+    if (target === undefined) throw new Error(`binding not found: ${bindingId}`);
+    target.status = 'active';
+    target.activatedAt = now;
+    target.updatedAt = now;
+    return cloneBinding(target);
+  }
+
+  async retireBinding(id: string, now: Date): Promise<BindingRecord> {
+    const record = this.bindings.get(id);
+    if (record === undefined) throw new Error(`binding not found: ${id}`);
+    record.status = 'retired';
+    record.retiredAt = now;
+    record.updatedAt = now;
+    return cloneBinding(record);
+  }
+
+  async insertSnapshot(input: InsertSnapshotRecordInput, _tx?: AuditTransaction): Promise<void> {
+    if (this.snapshots.has(input.projectId)) return; // ON CONFLICT DO NOTHING
+    this.snapshots.set(input.projectId, {
+      projectId: input.projectId,
+      templateVersionId: input.templateVersionId,
+      bindingId: input.bindingId,
+      teamVersionId: input.teamVersionId,
+      bindingHash: input.bindingHash,
+      boundAt: input.boundAt,
+      backfilled: input.backfilled,
+    });
+  }
+
+  async findSnapshot(projectId: string, _tx?: AuditTransaction): Promise<SnapshotRecord | null> {
+    const record = this.snapshots.get(projectId);
+    return record === undefined ? null : cloneSnapshot(record);
+  }
+
+  async listAffectedProjects(templateVersionId: string): Promise<AffectedProjectRecord[]> {
+    return [...(this.affected.get(templateVersionId) ?? [])].map((project) => ({ ...project }));
+  }
+
+  /* ============================ 测试辅助 ============================ */
+
+  seedTeamVersion(record: TeamVersionRecord): void {
+    this.teamVersions.set(record.id, cloneTeamVersion(record));
+  }
+
+  seedAffectedProjects(templateVersionId: string, projects: AffectedProjectRecord[]): void {
+    this.affected.set(
+      templateVersionId,
+      projects.map((project) => ({ ...project })),
+    );
+  }
+
+  reset(): void {
+    this.teamVersions.clear();
+    this.bindings.clear();
+    this.snapshots.clear();
+    this.affected.clear();
+  }
+}

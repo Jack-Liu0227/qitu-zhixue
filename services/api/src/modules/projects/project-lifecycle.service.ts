@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type { CurrentUser, ProjectStage } from '@qitu/contracts';
 import type { QituProjectGate } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -11,6 +11,7 @@ import {
   type LearningProjectRecord,
 } from '../learning-plan/learning-plan.store';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
+import { TemplateBindingService } from '../templates/templates-binding.service';
 import { PROJECT_STAGE_ORDER } from './intent-confirmation.state-machine';
 
 export interface ProjectNextStepProjection {
@@ -64,6 +65,7 @@ export class ProjectLifecycleService {
     private readonly audit: AuditWriter,
     private readonly outbox: OutboxWriter,
     private readonly idempotency: IdempotencyStore,
+    @Optional() private readonly templateBindings?: TemplateBindingService,
   ) {}
 
   async listProjects(actor: CurrentUser): Promise<LearningProjectRecord[]> {
@@ -76,6 +78,12 @@ export class ProjectLifecycleService {
     const project = await this.store.findProject(projectId);
     if (project === null) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: '项目不存在' });
     if (!(await this.access.canReadStudent(actor, project.studentId))) throw new ForbiddenException({ code: 'PROJECT_FORBIDDEN', message: '无权访问项目' });
+    // F3：存量项目在读取路径上惰性回填绑定快照（miss 时回填 `backfilled=true`）。
+    await this.templateBindings?.resolveSnapshotForProject(
+      projectId,
+      project.templateVersionId,
+      actor,
+    );
     const plan = (await this.store.listPlansByStudent(project.studentId)).find((item) => item.projectId === projectId);
     const bundle = plan ? await this.store.findBundle(plan.id) : null;
     const stages = buildStages(project);

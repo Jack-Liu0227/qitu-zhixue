@@ -301,6 +301,9 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         .returning();
       if (inserted === undefined) throw new Error('插入项目实例未返回数据行');
 
+      // F3：绑定快照冻结在同一个事务里（无绑定时派生写入不失败项目创建）。
+      await input.commit?.(inserted.id, tx);
+
       const [updatedPlan] = await tx
         .update(learningPlans)
         .set({

@@ -58,6 +58,7 @@ import { AccessPolicy } from '../../common/access/access-policy';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { MasteryReadService } from '../mastery/mastery.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
+import { TemplateBindingService } from '../templates/templates-binding.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -148,6 +149,7 @@ export class LearningPlanService {
      * 单测与无团队链路的部署不需要它；缺失时桥调用整体跳过，只记一条日志。
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
+    @Optional() private readonly templateBindings?: TemplateBindingService,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -275,6 +277,29 @@ export class LearningPlanService {
               title: bundle.plan.goal.length > 0 ? bundle.plan.goal : bundle.plan.interest,
               subtitle: `${bundle.plan.interest} · ${bundle.plan.weeks} 周`,
               tags: [bundle.plan.interest],
+            },
+            // F3：项目插入后在同一事务里冻结生效绑定；无绑定时不失败项目创建。
+            commit: async (projectId, tx) => {
+              if (!this.templateBindings) return;
+              const outcome = await this.templateBindings.freezeProjectBinding({
+                projectId,
+                templateVersionId: bundle.plan.templateVersion,
+                boundAt: now,
+                tx,
+              });
+              if (outcome === 'omitted') {
+                this.logger.warn(
+                  `项目创建时无生效绑定，跳过快照冻结 project=${projectId} version=${bundle.plan.templateVersion}`,
+                );
+                await this.audit.write({
+                  actorId: actor.id,
+                  actorRole: actor.role,
+                  action: 'project.binding.missing',
+                  targetType: 'project',
+                  targetId: projectId,
+                  detail: { projectId, templateVersionId: bundle.plan.templateVersion },
+                }, tx);
+              }
             },
           });
 

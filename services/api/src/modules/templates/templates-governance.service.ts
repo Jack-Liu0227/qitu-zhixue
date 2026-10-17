@@ -22,6 +22,7 @@ import {
 } from './template-verification.store';
 import {
   assertCanGovernTemplate,
+  assertTemplatePilotTransition,
   assertTemplateStatusTransition,
   resolveTemplateCreationScope,
 } from './templates.policy';
@@ -330,6 +331,65 @@ export class TemplateGovernanceService {
         },
       });
       return { status: 200, body: { report: run.report, replayed: false } };
+    });
+
+    return result.replayed ? { ...result.body, replayed: true } : result.body;
+  }
+
+  /**
+   * 试点发布（D4）：把版本与模板主体同时置为 `piloting`。
+   *
+   * 只允许从 `draft` 进入（`assertTemplatePilotTransition`）；需要显式 admin
+   * reason 并写审计。试点**不改变**发布证据门禁：`publishVersion` 仍在服务端
+   * 评测通过后才允许 `piloting → published`。
+   */
+  async pilotVersion(
+    actor: CurrentUser,
+    templateId: string,
+    versionId: string,
+    idempotencyKey: string,
+    reason: string,
+  ): Promise<VersionMutationResult> {
+    const { template, version } = await this.requireGovernableVersion(actor, templateId, versionId);
+    const scope = `template.version.pilot:${actor.id}:${versionId}`;
+    const requestHash = hashIdempotentInput(scope, { templateId, versionId }, { reason });
+
+    const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      // 已是 piloting：视为幂等成功，返回当前状态。
+      if (version.status === 'piloting') {
+        return {
+          status: 200,
+          body: {
+            template: await this.project(template),
+            version: toTemplateVersionView(version),
+            replayed: true,
+          },
+        };
+      }
+      assertTemplatePilotTransition(version.status);
+
+      const now = new Date();
+      const piloted = await this.store.setVersionStatus(versionId, 'piloting', null, now);
+      const pilotedTemplate = await this.store.setTemplateStatus(templateId, 'piloting', null, null, now);
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'template.version.pilot',
+        targetType: 'project_template_version',
+        targetId: versionId,
+        idempotencyKey: `${scope}:${idempotencyKey}`,
+        reason,
+        detail: { templateId, version: piloted.version, from: version.status },
+      });
+      this.logger.log(`试点发布模板版本 template=${templateId} version=${piloted.version}`);
+      return {
+        status: 200,
+        body: {
+          template: await this.project(pilotedTemplate),
+          version: toTemplateVersionView(piloted),
+          replayed: false,
+        },
+      };
     });
 
     return result.replayed ? { ...result.body, replayed: true } : result.body;

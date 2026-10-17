@@ -205,6 +205,11 @@ export interface ConfirmPlanInput {
   /** 待创建项目；`createdAt` / `completedAt` 由存储层补齐。 */
   project: Omit<LearningProjectRecord, 'createdAt' | 'completedAt' | 'studentId'> & { studentId: string };
   now: Date;
+  /**
+   * 项目插入后、事务提交前执行（F3 绑定快照冻结）。
+   * 失败会回滚项目创建；调用方只放不会失败项目创建的派生写入（如快照）。
+   */
+  commit?: (projectId: string, tx?: AuditTransaction) => Promise<void>;
 }
 
 export interface ConfirmPlanResult {
@@ -467,6 +472,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       completedAt: null,
     };
     this.projects.set(project.id, project);
+    await input.commit?.(project.id);
     bundle.plan = {
       ...bundle.plan,
       projectId: project.id,

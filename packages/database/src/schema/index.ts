@@ -19,6 +19,7 @@ export * from './parent-export';
 export * from './pbl-gate-evidence';
 export * from './pending-questions';
 export * from './preferences';
+export * from './project-binding';
 export * from './project-templates';
 export * from './projects';
 export * from './tenancy';

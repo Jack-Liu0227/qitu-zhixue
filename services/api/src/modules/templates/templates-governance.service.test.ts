@@ -335,4 +335,44 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
       'TEMPLATE_TRANSITION_INVALID',
     );
   });
+
+  it('pilotVersion：draft → piloting 写审计；非法迁移 409 TEMPLATE_PILOT_INVALID', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, { slug: 'pilot' });
+
+    const piloted = await harness.service.pilotVersion(ADMIN, templateId, versionId, 'k-pilot', '先试点');
+    assert.equal(piloted.version.status, 'piloting');
+    assert.equal(piloted.template.status, 'piloting');
+    assert.equal(harness.audit.entries.at(-1)?.action, 'template.version.pilot');
+
+    // 同键重放幂等成功。
+    const replay = await harness.service.pilotVersion(ADMIN, templateId, versionId, 'k-pilot', '先试点');
+    assert.equal(replay.replayed, true);
+
+    // 已发布版本不可试点：409 TEMPLATE_PILOT_INVALID。
+    const published = await createDraftTemplate(harness, ADMIN, { slug: 'pilot-published' });
+    harness.evidence.seed(fullEvidence(published.versionId));
+    await harness.service.publishVersion(
+      ADMIN,
+      published.templateId,
+      published.versionId,
+      'k-pub-pilot',
+      null,
+    );
+    await assertHttpError(
+      () => harness.service.pilotVersion(ADMIN, published.templateId, published.versionId, 'k-pilot-pub', '再试点'),
+      409,
+      'TEMPLATE_PILOT_INVALID',
+    );
+  });
+
+  it('pilot 不绕过发布证据门禁：piloting 后无证据仍不可 publish', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, { slug: 'pilot-gate' });
+    await harness.service.pilotVersion(ADMIN, templateId, versionId, 'k-pilot-gate', '先试点');
+
+    await assertHttpError(
+      () => harness.service.publishVersion(ADMIN, templateId, versionId, 'k-pub-gate', null),
+      409,
+      'TEMPLATE_VERIFICATION_INCOMPLETE',
+    );
+  });
 });
