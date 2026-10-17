@@ -24,6 +24,8 @@ import type {
   ModelRuntimeResponse,
   TutorAgentModelPurpose,
   ProviderConfigPublic,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
   RefreshProviderResponse,
   UpsertProviderRequest,
 } from '@qitu/contracts';
@@ -845,6 +847,38 @@ export class ModelRegistryService implements OnModuleInit {
 
     this.logger.log(`自动拉取成功 id=${id} 模型数=${models.length}`);
     return { provider: this.toPublic(state), fetched: models.length };
+  }
+
+  /**
+   * 未保存供应商的模型发现探测（新建渠道表单里的「获取模型」）。
+   *
+   * 用管理员**表单当前值**发起一次受 SSRF / 超时 / 响应体上限保护的
+   * `/models` 拉取（复用 `probeProviderModels`，与连接测试同一套防护）。
+   * 不落库、不写审计、不改任何 Provider 状态；明文密钥只在本次调用里存在。
+   * 上游失败返回 `ok=false` + 已脱敏错误，**绝不回填预设模型**。
+   */
+  async probeModels(input: ProbeModelsRequest, actor: string): Promise<ProbeModelsResponse> {
+    const probe = await probeProviderModels({
+      baseUrl: input.baseUrl,
+      api: input.api,
+      apiKey: input.apiKey ?? '',
+      authHeader: input.authHeader ?? true,
+    });
+    // 纵深防御：fetcher 的错误已不含请求头，这里再按本次明文密钥兑底脱敏。
+    const error = probe.ok
+      ? null
+      : redactConnectionError(probe.error ?? '探测上游模型列表失败', [input.apiKey]);
+    // 日志只记地址、协议与模型个数，绝不记密钥。
+    if (probe.ok) {
+      this.logger.log(
+        `模型探测成功 baseUrl=${input.baseUrl} api=${input.api} 模型数=${probe.models.length} actor=${actor}`,
+      );
+    } else {
+      this.logger.warn(
+        `模型探测失败 baseUrl=${input.baseUrl} api=${input.api} actor=${actor} 原因=${error}`,
+      );
+    }
+    return { ok: probe.ok, models: probe.ok ? probe.models : [], error };
   }
 
   async bindUsage(usageId: string, body: BindUsageRequest, actor: string): Promise<ModelUsageBinding> {

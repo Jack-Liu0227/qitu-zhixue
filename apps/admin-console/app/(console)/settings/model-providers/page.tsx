@@ -17,6 +17,7 @@ import {
   deleteProvider,
   fetchProviders,
   newIdempotencyKey,
+  probeModels,
   refreshProvider,
   testModelConnection,
   testProviderConnection,
@@ -32,201 +33,25 @@ const API_OPTIONS: Array<{ value: ModelApi; label: string; channelType: string }
   { value: 'google-gemini', label: 'Google Gemini (Native / OpenAI Compatible)', channelType: 'Gemini' },
 ];
 
-const PRESET_ALL_MODELS: Array<{ id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' }> = [
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Thinking / 旗舰)', group: 'Google Gemini' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (超极速)', group: 'Google Gemini' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', group: 'Google Gemini' },
-  { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking', group: 'Google Gemini' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', group: 'Google Gemini' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', group: 'Google Gemini' },
-  { id: 'gpt-5.6-sol', name: 'GPT-5.6 Solar', group: 'OpenAI' },
-  { id: 'gpt-5.5', name: 'GPT-5.5 Turbo', group: 'OpenAI' },
-  { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', group: 'OpenAI' },
-  { id: 'gpt-6-astra', name: 'GPT-6 Astra', group: 'OpenAI' },
-  { id: 'gpt-6-sol', name: 'GPT-6 Solar', group: 'OpenAI' },
-  { id: 'gpt-6.1-sol', name: 'GPT-6.1 Solar Pro', group: 'OpenAI' },
-  { id: 'gpt-4o', name: 'GPT-4o Omni', group: 'OpenAI' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', group: 'OpenAI' },
-  { id: 'o1-preview', name: 'OpenAI o1 Reasoning Preview', group: 'OpenAI' },
-  { id: 'o3-mini', name: 'OpenAI o3-mini', group: 'OpenAI' },
-  { id: 'text-embedding-3-small', name: 'Embedding 3 Small', group: 'OpenAI' },
-  { id: 'qwen3.5-flash', name: 'Qwen 3.5 Flash (千问极速版)', group: '阿里百炼 / 通义千问' },
-  { id: 'qwen-plus', name: 'Qwen Plus', group: '阿里百炼 / 通义千问' },
-  { id: 'qwen-max', name: 'Qwen Max (百炼旗舰)', group: '阿里百炼 / 通义千问' },
-  { id: 'qwen-turbo', name: 'Qwen Turbo', group: '阿里百炼 / 通义千问' },
-  { id: 'deepseek-chat', name: 'DeepSeek-V3 Chat', group: 'DeepSeek' },
-  { id: 'deepseek-reasoner', name: 'DeepSeek-R1 Reasoner', group: 'DeepSeek' },
-  { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', group: 'Anthropic Claude' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', group: 'Anthropic Claude' },
-  { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', group: 'Anthropic Claude' },
-  { id: 'custom-internal-pbl-v1', name: '启途智学 PBL 内置微调模型', group: '其他' },
-];
-
-interface PiProviderCatalogItem {
-  id: string;
-  name: string;
-  category: string;
-  baseUrl: string;
-  api: ModelApi;
-  wire: string;
-  auth: string;
-  suggestedModels: string[];
-  description: string;
-}
-
-const PI_AGENT_SUPPORTED_PROVIDERS: PiProviderCatalogItem[] = [
-  {
-    id: 'ali-bailian',
-    name: '阿里百炼 (DashScope / 通义千问)',
-    category: '国产主流直连',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['qwen3.5-flash', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
-    description: '阿里云百炼官方端点，具备高并发高可用，深度适配通义千问系列主力模型。',
-  },
-  {
-    id: 'deepseek-official',
-    name: 'DeepSeek 官方开放平台',
-    category: '国产主流直连',
-    baseUrl: 'https://api.deepseek.com/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['deepseek-chat', 'deepseek-reasoner'],
-    description: 'DeepSeek 官方 API 端点，支持 DeepSeek-V3 与 DeepSeek-R1 深度长链推理。',
-  },
-  {
-    id: 'google-gemini',
-    name: 'Google Gemini 官方平台',
-    category: '国际主流基座',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    api: 'google-gemini',
-    wire: 'google-gemini',
-    auth: 'apiKey (x-goog-api-key 或 Bearer Token)',
-    suggestedModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
-    description: 'Google AI Studio 官方端点，具备原生超长上下文窗口与强大数理推导能力。',
-  },
-  {
-    id: 'openai-official',
-    name: 'OpenAI 官方开放平台',
-    category: '国际主流基座',
-    baseUrl: 'https://api.openai.com/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'o3-mini'],
-    description: 'OpenAI 官方 API，包含 GPT-4o 旗舰与 o-series 深度推理模型。',
-  },
-  {
-    id: 'anthropic-official',
-    name: 'Anthropic 官方平台 (Claude)',
-    category: '国际主流基座',
-    baseUrl: 'https://api.anthropic.com',
-    api: 'anthropic-messages',
-    wire: 'anthropic-messages',
-    auth: 'apiKey (x-api-key)',
-    suggestedModels: ['claude-3-7-sonnet', 'claude-3-5-sonnet', 'claude-3-5-haiku'],
-    description: 'Anthropic Messages 协议端点，长文本分析、代码重构与教学设计表现优异。',
-  },
-  {
-    id: 'openrouter-gateway',
-    name: 'OpenRouter 全球模型聚合路由',
-    category: '聚合代理网关',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['anthropic/claude-3.5-sonnet', 'deepseek/deepseek-r1', 'google/gemini-2.0-flash-001', 'openai/gpt-4o'],
-    description: '全球统一的多模型代理路由网关，按需无缝切换上百款主流大模型。',
-  },
-  {
-    id: 'moonshot-kimi',
-    name: 'Moonshot AI / Kimi 开放平台',
-    category: '国产长文本',
-    baseUrl: 'https://api.moonshot.cn/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-    description: '月之暗面 Kimi 官方端点，具备极强中文超长文本综合分析能力。',
-  },
-  {
-    id: 'z-ai-glm',
-    name: '智谱 AI / Z.AI (GLM)',
-    category: '国产主流直连',
-    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['glm-4-plus', 'glm-4-flash', 'glm-4-air'],
-    description: '智谱 AI 开放平台官方端点，自主研发国产基座大模型。',
-  },
-  {
-    id: 'minimax-official',
-    name: 'MiniMax 稀宇科技',
-    category: '国产主流直连',
-    baseUrl: 'https://api.minimax.chat/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['abab6.5s-chat', 'MiniMax-Text-01'],
-    description: 'MiniMax 官方开放平台，拟人对话与高并发处理能力出众。',
-  },
-  {
-    id: 'siliconflow',
-    name: 'SiliconFlow (硅基流动)',
-    category: '聚合代理网关',
-    baseUrl: 'https://api.siliconflow.cn/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'Qwen/Qwen2.5-72B-Instruct'],
-    description: '国内高速开源大模型推理托管平台，提供低成本与极速响应。',
-  },
-  {
-    id: 'groq-cloud',
-    name: 'Groq LPU 极速推理云',
-    category: '硬件加速云',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'apiKey (Bearer Token)',
-    suggestedModels: ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
-    description: '基于专用 LPU 硬件的推理云服务，每秒达数百 token 极低时延。',
-  },
-  {
-    id: 'ollama-local',
-    name: 'Ollama (本地私有化部署)',
-    category: '本地与私有集群',
-    baseUrl: 'http://localhost:11434/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: 'None (或本地自定义 Header)',
-    suggestedModels: ['qwen2.5:7b', 'deepseek-r1:8b', 'llama3:latest'],
-    description: '本地离线部署 LLM，无需外网凭证，保护未成年人与科研核心数据隐私。',
-  },
-  {
-    id: 'vllm-custom',
-    name: 'vLLM / SGLang (自建 GPU 集群服务)',
-    category: '本地与私有集群',
-    baseUrl: 'http://localhost:8000/v1',
-    api: 'openai-completions',
-    wire: 'openai-completions',
-    auth: '可选 Bearer Token',
-    suggestedModels: ['custom-pbl-qwen-72b', 'custom-physics-tutor'],
-    description: '校级或实验室机房自建的高吞吐 vLLM 服务，支持 PagedAttention 显存优化。',
-  },
-];
-
 function formatTime(value: string | null | undefined): string {
   if (!value) return '未同步';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '未同步' : date.toLocaleString('zh-CN', { hour12: false });
 }
 
-function classifyModelGroup(modelId: string): 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' {
+/**
+ * 从预置模板的 `api` / `authHeader` 如实推导鉴权方式展示文案。
+ * 与服务端 `fetch-models.ts#providerAuthHeaders` 的拼装规则一致，不编造字段。
+ */
+function presetAuthLabel(preset: ProviderPreset): string {
+  if (preset.api === 'anthropic-messages') return 'apiKey (x-api-key)';
+  return preset.authHeader ? 'apiKey (Authorization: Bearer)' : '无鉴权头';
+}
+
+/** 展示归类（仅用于弹窗分组，不是数据硬编码）。 */
+type ModelGroup = 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他';
+
+function classifyModelGroup(modelId: string): ModelGroup {
   const lower = modelId.toLowerCase();
   if (lower.includes('gemini') || lower.includes('google')) {
     return 'Google Gemini';
@@ -280,21 +105,12 @@ function SelectModelModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [isTestingSelected, setIsTestingSelected] = useState(false);
   const [isFetchingInModal, setIsFetchingInModal] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-    'Google Gemini': true,
-    OpenAI: true,
-    '阿里百炼 / 通义千问': true,
-    DeepSeek: true,
-    'Anthropic Claude': true,
-    其他: true,
-  });
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
-  // 合并候选模型与预置全量模型
+  // 候选池只来自真实数据：provider.models + 服务端拉取 / 探测结果。
+  // 绝不合并任何预设模型列表。
   const mergedPool = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; group: 'OpenAI' | '阿里百炼 / 通义千问' | 'DeepSeek' | 'Anthropic Claude' | 'Google Gemini' | '其他' }>();
-    for (const m of PRESET_ALL_MODELS) {
-      map.set(m.id, m);
-    }
+    const map = new Map<string, { id: string; name: string; group: ModelGroup }>();
     for (const c of candidateModels) {
       if (!map.has(c.id)) {
         map.set(c.id, {
@@ -326,21 +142,12 @@ function SelectModelModal({
     return base.filter((m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q));
   }, [activeTab, newModels, existingModels, searchQuery]);
 
-  // 按分类归档
+  // 按分类归档（分组列表根据实际候选动态生成，不预置固定分类）
   const groupedDisplay = useMemo(() => {
-    const groups: Record<string, typeof displayList> = {
-      'Google Gemini': [],
-      OpenAI: [],
-      '阿里百炼 / 通义千问': [],
-      DeepSeek: [],
-      'Anthropic Claude': [],
-      其他: [],
-    };
+    const groups: Record<string, typeof displayList> = {};
     for (const item of displayList) {
-      const target = groups[item.group] ?? groups['其他'];
-      if (target) {
-        target.push(item);
-      }
+      const target = groups[item.group] ?? (groups[item.group] = []);
+      target.push(item);
     }
     return groups;
   }, [displayList]);
@@ -522,7 +329,14 @@ function SelectModelModal({
           ) : null}
           <button
             type="button"
-            onClick={() => setSelectedIds(new Set(mergedPool.map((m) => m.id)))}
+            onClick={() =>
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                for (const item of displayList) next.add(item.id);
+                return next;
+              })
+            }
+            disabled={displayList.length === 0}
             style={{
               padding: '0 12px',
               height: '38px',
@@ -532,11 +346,12 @@ function SelectModelModal({
               color: '#1d4ed8',
               fontSize: '12.5px',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: displayList.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: displayList.length === 0 ? 0.6 : 1,
               whiteSpace: 'nowrap',
             }}
           >
-            全选所有模型
+            全选当前列表
           </button>
           <button
             type="button"
@@ -580,6 +395,33 @@ function SelectModelModal({
 
         {/* 分组与模型列表（支持二级折叠与多选） */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 22px 16px' }}>
+          {mergedPool.length === 0 ? (
+            <div
+              style={{
+                padding: '36px 20px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: '13px',
+                background: '#f8fafc',
+                border: '1px dashed #cbd5e1',
+                borderRadius: '10px',
+                margin: '10px 0',
+              }}
+            >
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                该通道还没有可选模型
+              </div>
+              <div>
+                请先点击上方「⚡ 获取最新模型」从上游网关拉取真实模型列表，
+                {onFetchModels ? null : '或先在通道配置中完成一次获取，'}
+                再回到这里勾选。获取失败时会展示具体原因，不会填入任何预设模型。
+              </div>
+            </div>
+          ) : displayList.length === 0 ? (
+            <div style={{ padding: '28px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+              当前标签页 / 搜索条件下没有匹配的模型
+            </div>
+          ) : null}
           {Object.entries(groupedDisplay).map(([groupName, items]) => {
             if (items.length === 0) return null;
             const isExpanded = expandedCategories[groupName] ?? true;
@@ -1263,6 +1105,12 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
   const [fetchingModels, setFetchingModels] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
 
+  // 「选择模型」弹窗的候选池：只来自已保存的 provider.models 与真实拉取 /
+  // 探测结果，绝不合并任何预设模型列表。
+  const [candidateModels, setCandidateModels] = useState<Array<{ id: string; name?: string }>>(
+    () => initial?.models ?? [],
+  );
+
   // 高级设置状态
   const [detectUpstreamUpdate, setDetectUpstreamUpdate] = useState(false);
   const [autoSyncUpstreamUpdate, setAutoSyncUpstreamUpdate] = useState(false);
@@ -1288,60 +1136,62 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
     setCustomModelInput('');
   };
 
+  /**
+   * 获取模型：只走服务端真实拉取，失败时如实展示错误。
+   *
+   * - 已保存且非复制 → `refreshProvider`（用服务端已存的地址 / 密钥）；
+   * - 未保存 / 复制 → `POST .../models/probe`（服务端代发起，受 SSRF /
+   *   超时 / 大小限制保护）。
+   *
+   * 刻意**没有**浏览器直连 `fetch(baseUrl + '/models')`（跨域失败且在浏览器
+   * 里携带密钥），也**没有**任何预设模型回退：拉不到就是拉不到。
+   */
   const handleFetchModels = async (): Promise<string[]> => {
     const url = baseUrl.trim().replace(/\/$/u, '');
     const key = keyRef.current?.value || '';
+    setError('');
+    if (!url) {
+      setError('请先填写网关 API 地址，再获取模型');
+      return [];
+    }
     setFetchingModels(true);
-    let fetchedList: string[] = [];
     try {
-      if (initial?.id) {
-        try {
-          const res = await refreshProvider(initial.id);
-          if (res?.provider?.models && res.provider.models.length > 0) {
-            fetchedList = res.provider.models.map((m) => m.id);
-          }
-        } catch (e) {
-          console.warn('refreshProvider in editor failed, falling back to direct probe', e);
+      let models: ModelDescriptor[];
+      if (initial?.id && !isCopy) {
+        const res = await refreshProvider(initial.id);
+        models = res.provider.models;
+        if (res.fetched === 0 && res.provider.lastError) {
+          setError(`获取模型失败：${res.provider.lastError}`);
+          return [];
         }
-      }
-      if (fetchedList.length === 0) {
-        if (api === 'google-gemini' || url.includes('googleapis.com')) {
-          const gUrl = `${url || 'https://generativelanguage.googleapis.com'}/v1beta/models${key ? `?key=${encodeURIComponent(key)}` : ''}`;
-          const res = await fetch(gUrl, { headers: key ? { 'x-goog-api-key': key } : {} });
-          if (res.ok) {
-            const json = await res.json();
-            if (json?.models) {
-              fetchedList = json.models.map((m: any) => m.name.replace('models/', ''));
-            }
-          }
-        } else {
-          const mUrl = `${url || 'https://api.openai.com/v1'}/models`;
-          const headers: Record<string, string> = {};
-          if (key) headers['Authorization'] = `Bearer ${key}`;
-          const res = await fetch(mUrl, { headers });
-          if (res.ok) {
-            const json = await res.json();
-            if (Array.isArray(json?.data)) {
-              fetchedList = json.data.map((m: any) => m.id);
-            }
-          }
-        }
-      }
-      if (fetchedList.length > 0) {
-        setModelTags((prev) => Array.from(new Set([...prev, ...fetchedList])));
-        alert(`成功获取并添加 ${fetchedList.length} 个最新模型！`);
-        return fetchedList;
       } else {
-        const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
-        setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
-        alert('已自动载入预置全量模型库（若直接跨域请求受限时使用标准模型库）');
-        return allPresets;
+        const res = await probeModels({
+          baseUrl: url,
+          api,
+          apiKey: key || undefined,
+          authHeader,
+        });
+        if (!res.ok) {
+          setError(`获取模型失败：${res.error ?? '上游未返回模型列表'}`);
+          return [];
+        }
+        models = res.models;
       }
-    } catch {
-      const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
-      setModelTags((prev) => Array.from(new Set([...prev, ...allPresets])));
-      alert('已自动载入预置全量模型库（若直接跨域请求受限时使用标准模型库）');
-      return allPresets;
+      if (models.length === 0) {
+        setError('上游返回了空的模型列表，请检查网关地址与密钥后重试');
+        return [];
+      }
+      const ids = models.map((m) => m.id);
+      setCandidateModels((prev) => {
+        const map = new Map(prev.map((m) => [m.id, m]));
+        for (const m of models) map.set(m.id, { id: m.id, name: m.name });
+        return Array.from(map.values());
+      });
+      setModelTags((prev) => Array.from(new Set([...prev, ...ids])));
+      return ids;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '获取模型失败');
+      return [];
     } finally {
       setFetchingModels(false);
     }
@@ -1862,9 +1712,16 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
                   <button
                     type="button"
                     onClick={() => {
-                      const allPresets = PRESET_ALL_MODELS.map((m) => m.id);
-                      setModelTags(Array.from(new Set([...modelTags, ...allPresets])));
+                      setModelTags((prev) =>
+                        Array.from(new Set([...prev, ...candidateModels.map((m) => m.id)])),
+                      );
                     }}
+                    disabled={candidateModels.length === 0}
+                    title={
+                      candidateModels.length === 0
+                        ? '候选池为空：请先点击「⚡ 获取模型」从上游拉取真实模型'
+                        : '全选当前候选池里的真实模型'
+                    }
                     style={{
                       background: '#f8fafc',
                       border: '1px solid #cbd5e1',
@@ -1873,10 +1730,11 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
                       fontWeight: 500,
                       padding: '5px 12px',
                       borderRadius: '6px',
-                      cursor: 'pointer',
+                      cursor: candidateModels.length === 0 ? 'not-allowed' : 'pointer',
+                      opacity: candidateModels.length === 0 ? 0.6 : 1,
                     }}
                   >
-                    全选所有模型
+                    全选候选模型
                   </button>
                   <button
                     type="button"
@@ -2012,7 +1870,7 @@ function ChannelEditorModal({ initial, preset, isCopy, onSaved, onClose }: Chann
         isOpen={selectModelModalOpen}
         onClose={() => setSelectModelModalOpen(false)}
         currentModelIds={modelTags}
-        candidateModels={initial?.models ?? []}
+        candidateModels={candidateModels}
         onConfirm={(newSelectedIds) => {
           setModelTags(newSelectedIds);
         }}
@@ -2121,14 +1979,13 @@ export default function AdminModelPage() {
   const [testingProvider, setTestingProvider] = useState<ProviderConfigPublic | null>(null);
   const [selectedModels, setSelectedModels] = useState<Record<string, Set<string>>>({});
 
-  // 针对特定展开通道的模型选择弹窗
-  const [batchSelectProvider, setBatchSelectProvider] = useState<ProviderConfigPublic | null>(null);
+  // 针对特定展开通道的模型选择弹窗：只记 id，实体从 data 实时派生，
+  // 保证「获取最新模型」刷新后弹窗候选池同步更新。
+  const [batchSelectProviderId, setBatchSelectProviderId] = useState<string | null>(null);
 
-  // Pi Agent 标准供应商目录选择状态
-  const [selectedPiProviderId, setSelectedPiProviderId] = useState<string>('ali-bailian');
-  const activePiProvider = useMemo(() => {
-    return PI_AGENT_SUPPORTED_PROVIDERS.find((p) => p.id === selectedPiProviderId) ?? PI_AGENT_SUPPORTED_PROVIDERS[0]!;
-  }, [selectedPiProviderId]);
+  // 供应商模板目录选中项：目录本身由服务端 `AdminProvidersResponse.presets`
+  // 下发，前端不再维护任何硬编码副本。
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -2383,6 +2240,10 @@ export default function AdminModelPage() {
   const stateView = AdminStateViews({ loading, error, onRetry: load });
   if (stateView) return <div className="admin-settings-page">{stateView}</div>;
   if (!data) return null;
+  // 供应商模板目录：全部来自服务端下发的 presets，未选择时默认第一个。
+  const presets = data.presets;
+  const activePreset = presets.find((preset) => preset.id === selectedPresetId) ?? presets[0] ?? null;
+  const batchSelectProvider = data.providers.find((provider) => provider.id === batchSelectProviderId) ?? null;
   const allSelected = providers.length > 0 && providers.every((provider) => selected.has(provider.id));
 
   return (
@@ -2699,7 +2560,7 @@ export default function AdminModelPage() {
                                   type="button"
                                   className="settings-pill-btn"
                                   style={{ background: '#165dff', color: '#fff', borderColor: '#165dff', fontWeight: 600 }}
-                                  onClick={() => setBatchSelectProvider(provider)}
+                                  onClick={() => setBatchSelectProviderId(provider.id)}
                                 >
                                   🔍 获取模型列表 (批量勾选)
                                 </button>
@@ -2925,20 +2786,20 @@ export default function AdminModelPage() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>🌐</span>
-              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: 0 }}>支持的供应商目录 (Pi Agent / Research Workbench 标准)</h2>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: 0 }}>支持的供应商目录（服务端预置模板）</h2>
               <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                13+ 供应商已就绪
+                {presets.length} 个模板已就绪
               </span>
             </div>
             <p style={{ fontSize: '12.5px', color: '#64748b', margin: '4px 0 0' }}>
-              参考自 Pi Agent 与 Desktop Integrations 标准目录。直接在下拉菜单中选择供应商通道模板，即可一键载入协议、端点与推荐模型。
+              目录由服务端随模型接入接口统一下发。选择供应商通道模板，即可一键载入协议、端点与推荐模型。
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>选择供应商模板:</label>
             <select
-              value={selectedPiProviderId}
-              onChange={(e) => setSelectedPiProviderId(e.target.value)}
+              value={activePreset?.id ?? ''}
+              onChange={(e) => setSelectedPresetId(e.target.value)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -2952,33 +2813,18 @@ export default function AdminModelPage() {
                 minWidth: '250px',
               }}
             >
-              <optgroup label="国产主流直连">
-                <option value="ali-bailian">阿里百炼 (DashScope / 通义千问)</option>
-                <option value="deepseek-official">DeepSeek 官方开放平台</option>
-                <option value="z-ai-glm">智谱 AI / Z.AI (GLM)</option>
-                <option value="minimax-official">MiniMax 稀宇科技</option>
-                <option value="moonshot-kimi">Moonshot AI / Kimi</option>
-              </optgroup>
-              <optgroup label="国际主流基座">
-                <option value="google-gemini">Google Gemini 官方平台</option>
-                <option value="openai-official">OpenAI 官方开放平台</option>
-                <option value="anthropic-official">Anthropic 官方平台 (Claude)</option>
-              </optgroup>
-              <optgroup label="聚合代理与硬件加速">
-                <option value="openrouter-gateway">OpenRouter 全球模型聚合路由</option>
-                <option value="siliconflow">SiliconFlow (硅基流动)</option>
-                <option value="groq-cloud">Groq LPU 极速推理云</option>
-              </optgroup>
-              <optgroup label="本地与私有集群">
-                <option value="ollama-local">Ollama (本地私有化部署)</option>
-                <option value="vllm-custom">vLLM / SGLang (自建 GPU 集群)</option>
-              </optgroup>
+              {presets.length === 0 ? <option value="">（服务端未下发预置模板）</option> : null}
+              {presets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* 选中供应商详情与快速应用卡片 */}
-        {activePiProvider && (
+        {/* 选中供应商详情与快速应用卡片（字段全部来自服务端 presets，不编造描述） */}
+        {activePreset && (
           <div
             style={{
               background: '#f8fafc',
@@ -2994,30 +2840,30 @@ export default function AdminModelPage() {
           >
             <div style={{ flex: 1, minWidth: '320px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '15px', color: '#0f172a' }}>{activePiProvider.name}</strong>
-                <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                  {activePiProvider.category}
-                </span>
+                <strong style={{ fontSize: '15px', color: '#0f172a' }}>{activePreset.name}</strong>
                 <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px' }}>
-                  {activePiProvider.wire}
+                  {activePreset.api}
                 </span>
               </div>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px' }}>{activePiProvider.description}</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '12px', color: '#475569' }}>
                 <div>
                   <span style={{ color: '#94a3b8' }}>网关地址: </span>
                   <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                    {activePiProvider.baseUrl}
+                    {activePreset.baseUrl}
                   </code>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8' }}>认证协议: </span>
-                  <span>{activePiProvider.auth}</span>
+                  <span style={{ color: '#94a3b8' }}>认证方式: </span>
+                  <span>{presetAuthLabel(activePreset)}</span>
                 </div>
-                <div>
-                  <span style={{ color: '#94a3b8' }}>推荐挂载模型: </span>
-                  <span style={{ fontWeight: 600, color: '#2563eb' }}>{activePiProvider.suggestedModels.join(', ')}</span>
-                </div>
+                {activePreset.suggestedModels.length > 0 ? (
+                  <div>
+                    <span style={{ color: '#94a3b8' }}>推荐挂载模型: </span>
+                    <span style={{ fontWeight: 600, color: '#2563eb' }}>
+                      {activePreset.suggestedModels.map((m) => m.id).join(', ')}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -3025,23 +2871,7 @@ export default function AdminModelPage() {
               <button
                 type="button"
                 className="settings-action-btn is-primary"
-                onClick={() => {
-                  setEditing({
-                    preset: {
-                      id: activePiProvider.id,
-                      name: activePiProvider.name,
-                      baseUrl: activePiProvider.baseUrl,
-                      api: activePiProvider.api,
-                      authHeader: true,
-                      suggestedModels: activePiProvider.suggestedModels.map((m) => ({
-                        id: m,
-                        name: m,
-                        input: ['text' as const],
-                        output: ['text' as const],
-                      })),
-                    },
-                  });
-                }}
+                onClick={() => setEditing({ preset: activePreset })}
                 style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <span>⚡</span> 基于此模板新建通道
@@ -3069,7 +2899,7 @@ export default function AdminModelPage() {
       {batchSelectProvider ? (
         <SelectModelModal
           isOpen={Boolean(batchSelectProvider)}
-          onClose={() => setBatchSelectProvider(null)}
+          onClose={() => setBatchSelectProviderId(null)}
           currentModelIds={batchSelectProvider.models.map((m) => m.id)}
           candidateModels={batchSelectProvider.models}
           onConfirm={(selectedModelIds) => {

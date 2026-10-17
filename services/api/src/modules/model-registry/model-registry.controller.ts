@@ -6,7 +6,10 @@ import type {
   BindUsageRequest,
   ConnectionTestResponse,
   CreateManualModelRequest,
+  ModelApi,
   ModelUsageBinding,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
   ProviderConfigPublic,
   RefreshProviderResponse,
   UpdateManualModelRequest,
@@ -49,6 +52,23 @@ export class ModelRegistryController {
   listProviders(@Headers('cookie') cookieHeader: string | undefined): { data: AdminProvidersResponse } {
     requireAdmin(this.authService, cookieHeader);
     return { data: this.registry.listProviders() };
+  }
+
+  /**
+   * 未保存供应商的模型发现探测（新建渠道表单里的「获取模型」）。
+   *
+   * 密钥只在请求体出现一次，不落库、不回显、不写日志；SSRF / 超时 /
+   * 响应体上限由 `fetch-models.ts` 统一防护。上游失败返回 `200 + ok=false`
+   * （已脱敏错误），与连接测试同风格；请求体字段无效才是 400。
+   */
+  @Post('admin/model-providers/models/probe')
+  @HttpCode(200)
+  async probeModels(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Body() body: ProbeModelsRequest,
+  ): Promise<{ data: ProbeModelsResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.probeModels(sanitiseProbe(body), admin.id) };
   }
 
   @Post('admin/model-providers/:id')
@@ -349,6 +369,37 @@ export class ModelRegistryController {
 
 function requireAdmin(authService: AuthService, cookieHeader: string | undefined) {
   return requireRole(authService, cookieHeader, 'admin', '模型接入配置仅向管理员开放');
+}
+
+/** probe 允许的协议：契约 `ModelApi` 全集（含 `google-gemini`）。 */
+const PROBE_MODEL_APIS: readonly ModelApi[] = [
+  'openai-completions',
+  'openai-responses',
+  'anthropic-messages',
+  'google-gemini',
+];
+
+/**
+ * probe 请求体白名单 + 形状校验。
+ *
+ * 只携带探测所需的四个字段；地址 / 密钥的**内容**合法性（SSRF、长度）
+ * 由 `fetch-models.ts` 统一判定，这里只拦「字段形状都不对」的请求。
+ */
+function sanitiseProbe(body: ProbeModelsRequest | undefined): ProbeModelsRequest {
+  if (body === null || typeof body !== 'object') {
+    throw new BadRequestException('请求体无效');
+  }
+  const baseUrl = typeof body.baseUrl === 'string' ? body.baseUrl.trim() : '';
+  if (baseUrl.length === 0 || baseUrl.length > 500) {
+    throw new BadRequestException('baseUrl 无效：需为不超过 500 字符的非空地址');
+  }
+  if (!(PROBE_MODEL_APIS as readonly string[]).includes(body.api)) {
+    throw new BadRequestException(`api 必须是 ${PROBE_MODEL_APIS.join(' | ')}`);
+  }
+  const apiKey = typeof body.apiKey === 'string' ? body.apiKey : '';
+  if (apiKey.length > 512) throw new BadRequestException('apiKey 无效');
+  const authHeader = typeof body.authHeader === 'boolean' ? body.authHeader : true;
+  return { baseUrl, api: body.api, apiKey, authHeader };
 }
 
 function throwPiImportConfigError(error: unknown): never {

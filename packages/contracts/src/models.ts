@@ -110,6 +110,34 @@ export interface RefreshProviderResponse {
   fetched: number;
 }
 
+/* ------------------------------------------------------------------ *
+ * 未保存供应商的模型发现探测（probe）
+ *
+ * 新建渠道表单里「获取模型」时，供应商还没有 id，不能走 `:id/refresh`。
+ * 这个端点用**表单当前值**发起一次受 SSRF / 超时 / 响应体上限保护的
+ * `/models` 拉取：密钥只在请求体出现一次，服务端不落库、不回显、不写日志。
+ * 失败遵循连接测试的 `ok=false` 语义（HTTP 200），错误已脱敏。
+ * ------------------------------------------------------------------ */
+
+/** `POST /admin/model-providers/models/probe` 的请求体。 */
+export interface ProbeModelsRequest {
+  baseUrl: string;
+  api: ModelApi;
+  /** 明文密钥只在本请求体出现一次；服务端绝不持久化或回显。 */
+  apiKey?: string;
+  /** true 时把密钥作为 `Authorization: Bearer` 头发送（anthropic 协议忽略）。 */
+  authHeader?: boolean;
+}
+
+/** `POST /admin/model-providers/models/probe` 的响应。 */
+export interface ProbeModelsResponse {
+  ok: boolean;
+  /** 成功时为上游真实模型；失败时为空数组。**绝不回填任何预设模型**。 */
+  models: ModelDescriptor[];
+  /** 已脱敏的错误说明；成功时为 `null`。**绝不含密钥或原始响应体**。 */
+  error: string | null;
+}
+
 /* ------------------------------ 兼容用途绑定 ------------------------------ */
 
 /** 归属的 agent，仅用于后台分组显示。 */

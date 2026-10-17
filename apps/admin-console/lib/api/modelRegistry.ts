@@ -7,6 +7,8 @@ import type {
   ConnectionTestResponse,
   CreateManualModelRequest,
   ModelUsageBinding,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
   ProviderConfigPublic,
   RefreshProviderResponse,
   UpdateManualModelRequest,
@@ -214,6 +216,18 @@ export function refreshProvider(id: string): Promise<RefreshProviderResponse> {
     'POST',
     `/api/v1/admin/model-providers/${encodeURIComponent(id)}/refresh`,
   );
+}
+
+/**
+ * 未保存供应商的模型发现探测（新建 / 复制渠道表单里的「获取模型」）。
+ *
+ * 由**服务端**代发起 `/models` 拉取（SSRF / 超时 / 大小受限），取代旧的
+ * 浏览器直连：密钥只在请求体出现一次，不落本地存储、不进 URL / 日志。
+ * 上游失败由服务端归一为 `200 + ok=false`（`error` 已脱敏），调用方必须
+ * 如实展示错误，**绝不回退到任何预设模型列表**。
+ */
+export function probeModels(body: ProbeModelsRequest): Promise<ProbeModelsResponse> {
+  return mutate<ProbeModelsResponse>('POST', '/api/v1/admin/model-providers/models/probe', body);
 }
 
 export function bindUsage(usageId: string, body: BindUsageRequest, idempotencyKey = newIdempotencyKey()): Promise<ModelUsageBinding> {
