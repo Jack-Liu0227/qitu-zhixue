@@ -184,7 +184,70 @@ export class InMemoryPlanAdjustmentStore extends PlanAdjustmentStore {
     }
 
     // 同步临界区：在第一个 await（commit 回调）之前完成全部状态变更，
-    // 保证并发的双重 ingest 只会有一方拿到 applied。
+    // 保证并发的双重 ingest 只会有一方拿到 applied。为与 Postgres 事务
+    // 同语义，先暂存既有状态，commit 回调失败时全部回滚（outline 不动、
+    // revision 不增、调整行不落），再把错误原样上抛。
+    const previousObjectives = this.objectives.get(adjustment.planId);
+    const previousTriggerId = this.byTriggerKey.get(adjustment.triggerKey);
+    const previousAdjustment = this.adjustments.get(adjustment.id);
+
+    this.applyAppend(adjustment, payload, current);
+
+    try {
+      if (commit !== undefined) await commit(undefined);
+    } catch (error) {
+      this.rollbackAppend(
+        adjustment,
+        key,
+        current,
+        previousObjectives,
+        previousTriggerId,
+        previousAdjustment,
+      );
+      throw error;
+    }
+    return { kind: 'applied', adjustment: cloneAdjustment(adjustment) };
+  }
+
+  async commitRecommend(input: RecommendAdjustmentInput): Promise<PlanAdjustmentRecord> {
+    const { adjustment, commit } = input;
+    const key = this.projectKey(adjustment.projectId, adjustment.idempotencyKey);
+    const existingId = this.byIdempotency.get(key);
+    if (existingId !== undefined) {
+      return cloneAdjustment(this.adjustments.get(existingId)!);
+    }
+
+    // 与 commitAppend 同理：先同步落行以守住幂等临界区，再 await 回调；
+    // 回调失败时回滚到暂存前状态，保证与 Postgres 事务回滚一致。
+    const previousTriggerId = this.byTriggerKey.get(adjustment.triggerKey);
+    const previousAdjustment = this.adjustments.get(adjustment.id);
+
+    this.insertAdjustment(adjustment);
+
+    try {
+      if (commit !== undefined) await commit(undefined);
+    } catch (error) {
+      this.byIdempotency.delete(key);
+      if (previousTriggerId === undefined) {
+        this.byTriggerKey.delete(adjustment.triggerKey);
+      } else {
+        this.byTriggerKey.set(adjustment.triggerKey, previousTriggerId);
+      }
+      if (previousAdjustment === undefined) {
+        this.adjustments.delete(adjustment.id);
+      } else {
+        this.adjustments.set(adjustment.id, previousAdjustment);
+      }
+      throw error;
+    }
+    return cloneAdjustment(adjustment);
+  }
+
+  private applyAppend(
+    adjustment: PlanAdjustmentRecord,
+    payload: RemediationNodePayload,
+    currentRevision: number,
+  ): void {
     const objectives = this.objectives.get(adjustment.planId) ?? [];
     this.objectives.set(adjustment.planId, [
       ...objectives,
@@ -200,22 +263,34 @@ export class InMemoryPlanAdjustmentStore extends PlanAdjustmentStore {
         isRemedial: payload.isRemedial,
       },
     ]);
-    this.planRevisions.set(adjustment.planId, current + 1);
+    this.planRevisions.set(adjustment.planId, currentRevision + 1);
     this.insertAdjustment(adjustment);
-    if (commit !== undefined) await commit(undefined);
-    return { kind: 'applied', adjustment: cloneAdjustment(adjustment) };
   }
 
-  async commitRecommend(input: RecommendAdjustmentInput): Promise<PlanAdjustmentRecord> {
-    const { adjustment, commit } = input;
-    const key = this.projectKey(adjustment.projectId, adjustment.idempotencyKey);
-    const existingId = this.byIdempotency.get(key);
-    if (existingId !== undefined) {
-      return cloneAdjustment(this.adjustments.get(existingId)!);
+  private rollbackAppend(
+    adjustment: PlanAdjustmentRecord,
+    key: string,
+    previousRevision: number,
+    previousObjectives: OutlineObjective[] | undefined,
+    previousTriggerId: string | undefined,
+    previousAdjustment: PlanAdjustmentRecord | undefined,
+  ): void {
+    if (previousObjectives === undefined) {
+      this.objectives.delete(adjustment.planId);
+    } else {
+      this.objectives.set(adjustment.planId, previousObjectives);
     }
-    this.insertAdjustment(adjustment);
-    if (commit !== undefined) await commit(undefined);
-    return cloneAdjustment(adjustment);
+    this.planRevisions.set(adjustment.planId, previousRevision);
+    this.adjustments.delete(adjustment.id);
+    this.byIdempotency.delete(key);
+    if (previousTriggerId === undefined) {
+      this.byTriggerKey.delete(adjustment.triggerKey);
+    } else {
+      this.byTriggerKey.set(adjustment.triggerKey, previousTriggerId);
+    }
+    if (previousAdjustment !== undefined) {
+      this.adjustments.set(adjustment.id, previousAdjustment);
+    }
   }
 
   private insertAdjustment(record: PlanAdjustmentRecord): void {

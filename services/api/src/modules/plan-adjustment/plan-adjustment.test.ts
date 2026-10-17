@@ -27,6 +27,8 @@ import {
 import {
   InMemoryPlanAdjustmentStore,
   type OutlineObjective,
+  type PlanAdjustmentRecord,
+  type RemediationNodePayload,
 } from './plan-adjustment.store';
 import { StuckSignalService } from './stuck-signal.service';
 
@@ -100,6 +102,58 @@ function buildHarness(objectives = baseObjectives(), revision = 1) {
   const adjustments = new PlanAdjustmentService(store, audit, outbox);
   const service = new StuckSignalService(store, adjustments);
   return { store, audit, outbox, adjustments, service };
+}
+
+/** 直接面向存储层（不经服务层）的 append 调整行夹具。 */
+function appendAdjustment(overrides: Partial<PlanAdjustmentRecord> = {}): PlanAdjustmentRecord {
+  return {
+    id: 'padj-append-failure',
+    projectId: 'proj-1',
+    planId: 'plan-1',
+    stemNodeId: 'node-1',
+    baseRevision: 1,
+    nextRevision: 2,
+    trigger: 'repeated_assessment_error',
+    evidenceRefs: ['answer_attempt:a1'],
+    action: 'append_optional_remediation',
+    status: 'applied',
+    policyVersion: 'pbl.adjustment.v1',
+    idempotencyKey: 'plan.adjustment:proj-1:node-1:repeated_assessment_error',
+    triggerKey: 'misconception:stu-1:kpi-1:structural:3',
+    remedialDepth: 0,
+    remediationPayload: appendPayload(),
+    createdAt: new Date('2026-10-18T10:00:00.000Z'),
+    updatedAt: new Date('2026-10-18T10:00:00.000Z'),
+    ...overrides,
+  };
+}
+
+function appendPayload(): RemediationNodePayload {
+  return {
+    nodeId: 'remedial:node-1:1',
+    moduleId: 'mod-1',
+    name: '补救：方向再练',
+    type: 'procedure',
+    objective: '再练习一次',
+    prerequisiteIds: ['node-1'],
+    ordinal: 3,
+    isRemedial: true,
+  };
+}
+
+/** 直接面向存储层（不经服务层）的 recommend 调整行夹具。 */
+function recommendAdjustment(overrides: Partial<PlanAdjustmentRecord> = {}): PlanAdjustmentRecord {
+  return appendAdjustment({
+    id: 'padj-recommend-failure',
+    nextRevision: 1,
+    trigger: 'explicit_stuck',
+    triggerKey: 'explicit_help:sess-1:turn-1',
+    idempotencyKey: 'plan.adjustment:proj-1:node-1:explicit_stuck',
+    action: 'recommend_teacher_support',
+    status: 'proposed',
+    remediationPayload: null,
+    ...overrides,
+  });
 }
 
 test('F4: first crossing appends one remedial node + desensitized summary, no raw text in audit detail', async () => {
@@ -318,6 +372,51 @@ test('F4: concurrent-ish double ingest of the same key yields exactly one adjust
   assert.equal([left, right].filter((result) => result.created).length, 1);
   assert.equal([left, right].filter((result) => result.replayed || !result.created).length, 1);
   assert.equal(left.adjustment?.id, right.adjustment?.id);
+});
+
+test('F4: commitAppend 回调失败 → outline/revision/调整行全部回滚，错误上抛', async () => {
+  const store = new InMemoryPlanAdjustmentStore();
+  store.seedPlan('plan-1', 1, baseObjectives());
+  const adjustment = appendAdjustment();
+  const payload = adjustment.remediationPayload;
+  assert.ok(payload, 'append adjustment must carry a remediation payload');
+  const failure = new Error('audit/outbox 事务失败');
+
+  await assert.rejects(
+    store.commitAppend({
+      adjustment,
+      payload,
+      commit: async () => {
+        throw failure;
+      },
+    }),
+    (error: unknown) => error === failure,
+  );
+
+  assert.equal((await store.listObjectives('plan-1')).length, 2, 'outline 不得新增补救节点');
+  assert.equal(await store.readPlanRevision('plan-1'), 1, 'revision 不得递增');
+  assert.equal(store.adjustmentCount, 0, '调整行不得落库');
+  assert.equal(await store.findByIdempotencyKey('proj-1', adjustment.idempotencyKey), null);
+});
+
+test('F4: commitRecommend 回调失败 → 调整行不落，错误上抛', async () => {
+  const store = new InMemoryPlanAdjustmentStore();
+  store.seedPlan('plan-1', 1, baseObjectives());
+  const adjustment = recommendAdjustment();
+  const failure = new Error('audit/outbox 事务失败');
+
+  await assert.rejects(
+    store.commitRecommend({
+      adjustment,
+      commit: async () => {
+        throw failure;
+      },
+    }),
+    (error: unknown) => error === failure,
+  );
+
+  assert.equal(store.adjustmentCount, 0, '调整行不得落库');
+  assert.equal(await store.findByIdempotencyKey('proj-1', adjustment.idempotencyKey), null);
 });
 
 test('F4: desensitized summary scan rejects raw student text beyond ids/codes', () => {

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
-import type { CurrentUser } from '@qitu/contracts';
+import type { CurrentUser, PblTemplateTeamBinding } from '@qitu/contracts';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { InMemoryTemplateViewerDirectory } from './template-evidence.store';
@@ -52,6 +52,50 @@ interface BindingHarness {
   bindings: InMemoryTemplateBindingStore;
   idempotency: FakeIdempotencyStore;
   audit: FakeAuditWriter;
+}
+
+/**
+ * 运行时形状断言（B1）：把契约 `AdminBindingMutationResponse` 的内层形状
+ * 钉死在测试里，服务端未来若多塞/漏塞字段会在本测试直接失败。
+ */
+function assertMutationResultShape(result: { binding: PblTemplateTeamBinding; replayed: boolean }): void {
+  assert.deepEqual(Object.keys(result).sort(), ['binding', 'replayed']);
+  assert.equal(typeof result.replayed, 'boolean');
+  assertBindingViewShape(result.binding);
+}
+
+function assertBindingViewShape(binding: PblTemplateTeamBinding): void {
+  assert.deepEqual(
+    Object.keys(binding).sort(),
+    [
+      'activatedAt',
+      'bindingHash',
+      'createdAt',
+      'createdBy',
+      'id',
+      'retiredAt',
+      'status',
+      'teamVersionId',
+      'templateVersionId',
+      'updatedAt',
+      'validation',
+    ],
+  );
+  assert.deepEqual(Object.keys(binding.validation).sort(), [
+    'checkedAt',
+    'errors',
+    'valid',
+    'warnings',
+  ]);
+  assert.equal(typeof binding.validation.valid, 'boolean');
+  assert.ok(Array.isArray(binding.validation.errors));
+  assert.ok(Array.isArray(binding.validation.warnings));
+  assert.equal(typeof binding.id, 'string');
+  assert.equal(typeof binding.templateVersionId, 'string');
+  assert.equal(typeof binding.teamVersionId, 'string');
+  assert.equal(typeof binding.bindingHash, 'string');
+  assert.equal(typeof binding.createdAt, 'string');
+  assert.equal(typeof binding.updatedAt, 'string');
 }
 
 function makeBindingHarness(): BindingHarness {
@@ -131,6 +175,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       { teamVersionId: 'tv-1' },
       'k-create',
     );
+    assertMutationResultShape(created);
     assert.equal(created.binding.status, 'draft');
     assert.equal(created.replayed, false);
     assert.ok(created.binding.bindingHash.length > 0);
@@ -142,6 +187,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       created.binding.id,
       'k-validate',
     );
+    assertMutationResultShape(validated);
     assert.equal(validated.binding.status, 'validated');
     assert.equal(validated.binding.validation.valid, true);
 
@@ -152,6 +198,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       created.binding.id,
       'k-activate',
     );
+    assertMutationResultShape(activated);
     assert.equal(activated.binding.status, 'active');
     assert.ok(activated.binding.activatedAt !== null);
 
@@ -163,6 +210,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       { reason: '团队解散' },
       'k-retire',
     );
+    assertMutationResultShape(retired);
     assert.equal(retired.binding.status, 'retired');
     assert.ok(retired.binding.retiredAt !== null);
 
@@ -192,6 +240,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       { teamVersionId: 'tv-1' },
       'k-replay',
     );
+    assertMutationResultShape(replay);
     assert.equal(replay.replayed, true);
     assert.equal(replay.binding.id, first.binding.id);
     assert.equal(h.idempotency.executions, 1);
