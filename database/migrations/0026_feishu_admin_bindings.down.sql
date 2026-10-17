@@ -1,1 +1,1 @@
-﻿DROP TABLE IF EXISTS "feishu_admin_bindings";
+DROP TABLE IF EXISTS "feishu_admin_bindings";

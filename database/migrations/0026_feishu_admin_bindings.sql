@@ -1,4 +1,4 @@
-﻿-- Explicitly map a Feishu/Lark channel identity to the authenticated Qitu admin
+-- Explicitly map a Feishu/Lark channel identity to the authenticated Qitu admin
 -- who completed the device flow. open_id itself is never treated as a Qitu identity.
 CREATE TABLE IF NOT EXISTS "feishu_admin_bindings" (
   "id" text PRIMARY KEY NOT NULL,
