@@ -28,7 +28,8 @@ import type {
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { eq } from 'drizzle-orm';
 import { projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
-import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
+import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
+import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
 import { AuditWriter } from '../../common/audit';
 import {
@@ -39,7 +40,7 @@ import {
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
-import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { LearningPlanStore, type ObjectiveRecord } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
 import { ImaMcpClient } from './ima-mcp.client';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
@@ -88,7 +89,7 @@ export interface StreamedTutorEvent {
  * 它们完全由已持久化回合的 `pedagogicMove` / `hintLevel` 推导，因此进程重启
  * 或换实例后语义不变，客户端也永远无法写入。
  */
-interface TutorSessionRecord extends TutorSessionSnapshot {
+export interface TutorSessionRecord extends TutorSessionSnapshot {
   lastHintLevel: TutorHintLevel | null;
   stallCount: number;
   escalated: boolean;
@@ -115,6 +116,8 @@ const EXPLORATION_CONTEXT = {
 };
 
 const TUTOR_TURN_SCOPE = 'tutor.turn';
+/** 判分答错时统一会话提示阶梯的封顶值（决策 D5）。 */
+const MAX_QUIZ_HINT_LEVEL = 3;
 
 /** 租约必须长于一轮模型生成的最坏耗时，否则慢回合可能被并发回收。 */
 const TUTOR_TURN_LEASE_MS = 120_000;
@@ -565,6 +568,57 @@ export class TutorService {
     }
   }
 
+  /**
+   * F1 判分路由的下发侧：对当前计划中尚未掌握的理论目标，经
+   * `mastery_objective_mappings` 反查稳定 conceptId，再选取不可变题库条目，
+   * 只下发公开投影。`expectedKeys` / `explanation` 永不进入回合。
+   * 本会话已下发过的题不重复追加（防重复推送同一道题）。
+   */
+  private async buildQuizBlocks(record: TutorSessionRecord, actorId: string): Promise<TutorTurn['blocks']> {
+    if (record.projectId === null || this.learningStore === undefined) return [];
+    try {
+      const plan = (await this.learningStore.listPlansByStudent(actorId)).find(
+        (candidate) => candidate.projectId === record.projectId,
+      );
+      if (plan === undefined || plan.studentUserId !== actorId) return [];
+      const bundle = await this.learningStore.findBundle(plan.id);
+      if (bundle === null) return [];
+      const objectiveById = new Map(bundle.objectives.map((objective) => [objective.id, objective]));
+      const ordered: ObjectiveRecord[] = [];
+      for (const session of bundle.sessions.slice().sort((left, right) => left.index - right.index)) {
+        for (const objectiveId of session.theoryObjectiveIds) {
+          const objective = objectiveById.get(objectiveId);
+          if (objective !== undefined && !ordered.some((item) => item.id === objectiveId)) ordered.push(objective);
+        }
+      }
+      const blocks: TutorTurn['blocks'] = [];
+      for (const objective of ordered) {
+        const mastery = await this.learningStore.findMastery(actorId, objective.id);
+        if (mastery !== null && isObjectiveMastered(objective.type, {
+          score: mastery.masteryBasisPoints / 10_000,
+          qualitativeMastered: mastery.qualitativeMastered,
+        })) continue;
+        const mapping = await this.learningStore.findObjectiveMapping({
+          planId: plan.id,
+          objectiveId: objective.id,
+          templateVersion: plan.templateVersion,
+          contentVersion: plan.templateVersion,
+        });
+        if (mapping === null) continue;
+        const entry = findQuizBankEntryByConcept(mapping.knowledgePointId);
+        if (entry === null) continue;
+        const alreadyEmitted = record.turns.some((turn) =>
+          turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === entry.questionId),
+        );
+        if (alreadyEmitted) continue;
+        blocks.push(toQuizBlockProjection(entry));
+      }
+      return blocks;
+    } catch {
+      return [];
+    }
+  }
+
   get auditEntries(): readonly AuditEntry[] {
     return this.auditLog;
   }
@@ -747,6 +801,67 @@ export class TutorService {
       stallCount: record.stallCount,
       escalated: record.escalated,
     };
+  }
+
+  /**
+   * 判分答错时推进统一会话提示阶梯（决策 D5，F1.7 path (a)）。
+   *
+   * 阶梯只在真正前进时追加一条合成助手 hint 回合，使 `last_seq` /
+   * `lastHintLevel` 与 `GET /sessions/:id/summary` 保持一致；L3 封顶时
+   * 不再追加回合（由判分服务发出卡点信号）。
+   */
+  async advanceQuizHint(
+    record: TutorSessionRecord,
+    actorId: string,
+  ): Promise<{ hintLevel: TutorHintLevel; advanced: boolean }> {
+    const releaseTurnLock = await this.acquireTurnLock(record.sessionId);
+    try {
+      if (this.durable) {
+        const latest = await this.store.findById(record.sessionId);
+        if (latest === null) throw new NotFoundException('会话不存在');
+        assertOwnedBy(latest, actorId);
+        const hydrated = this.hydrate(latest);
+        Object.assign(record, hydrated);
+        record.turns = hydrated.turns;
+      }
+      assertOwnedBy(record, actorId);
+      const baseline = record.lastHintLevel === null ? 0 : Math.min(MAX_QUIZ_HINT_LEVEL, record.lastHintLevel);
+      const next = Math.min(MAX_QUIZ_HINT_LEVEL, baseline + 1) as TutorHintLevel;
+      const advanced = next > baseline;
+      if (advanced) {
+        const seq = record.lastSeq + 1;
+        const hintTurn: TutorTurnRecord = {
+          turnId: `${record.sessionId}:assistant:${seq}`,
+          role: 'assistant',
+          blocks: [{ kind: 'hint', level: next, text: '先说说你的思路，卡在哪一步了？' }],
+          hintLevel: next,
+          stageBefore: null,
+          stageAfter: null,
+          seq,
+          createdAt: new Date().toISOString(),
+          modality: 'text',
+          author: builtinAuthor('qitu-learning-partner'),
+          pedagogicMove: 'hint',
+          expectedEvidence: null,
+          promptVersion: this.contextReader.partner.promptVersion,
+          evidenceRef: null,
+        };
+        if (this.durable) {
+          await this.store.appendTurns({
+            sessionId: record.sessionId,
+            expectedLastSeq: record.lastSeq,
+            newLastSeq: seq,
+            turns: [hintTurn],
+          });
+        }
+        record.lastSeq = seq;
+        record.turns = [...record.turns, hintTurn];
+        record.lastHintLevel = next;
+      }
+      return { hintLevel: next, advanced };
+    } finally {
+      releaseTurnLock();
+    }
   }
 
   /**
@@ -1129,6 +1244,14 @@ export class TutorService {
     // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
     const interactionBlocks = buildProjectInteractionBlocks(projectContext);
     for (const block of interactionBlocks) {
+      assistantBlocks = [...assistantBlocks, block];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
+
+    // F1 判分路由的下发侧：在助手回合持久化前，按计划未掌握理论目标追加交互题
+    //（公开投影；服务端答案/解析不进入回合）。
+    const quizBlocks = await this.buildQuizBlocks(record, request.actorId);
+    for (const block of quizBlocks) {
       assistantBlocks = [...assistantBlocks, block];
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
