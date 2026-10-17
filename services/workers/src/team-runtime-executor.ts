@@ -26,6 +26,11 @@ const MAX_GLOBAL_POLICY_CHARS = 8_000;
 const MAX_AGENT_DEFINITION_CHARS = 8_000;
 const MAX_ROLE_CHARS = 4_000;
 const MAX_SKILL_CHARS = 4_000;
+/**
+ * 读文件时的内存上限，**不是** prompt 预算。frontmatter 必须在完整内容上解析，
+ * 所以先按本上限读入、剔除 frontmatter 后再按 MAX_SKILL_CHARS 截正文。
+ */
+const MAX_SKILL_FILE_CHARS = 262_144;
 const MAX_SKILLS = 8;
 const MAX_INPUT_CHARS = 32_000;
 const MAX_OUTPUT_CHARS = 64_000;
@@ -276,7 +281,7 @@ function decryptProviderCredential(ciphertext: string | null, env: NodeJS.Proces
   }
 }
 
-async function loadAgentSkills(
+export async function loadAgentSkills(
   db: Database,
   agentId: string,
   roots?: readonly string[],
@@ -289,7 +294,8 @@ async function loadAgentSkills(
   return bindings.slice(0, MAX_SKILLS).flatMap(({ skillId }) => {
     const path = findSkillFile(skillId, skillRoots);
     if (!path) return [];
-    return [{ id: skillId, content: readBounded(path, MAX_SKILL_CHARS) }];
+    const content = readSkillContent(path, MAX_SKILL_CHARS);
+    return content === null ? [] : [{ id: skillId, content }];
   });
 }
 
@@ -298,11 +304,14 @@ function loadGlobalPolicy(options: TeamAgentRuntimeOptions): string {
   return readBounded(path, MAX_GLOBAL_POLICY_CHARS);
 }
 
-function defaultSkillRoots(env: NodeJS.ProcessEnv = process.env): string[] {
+export function defaultSkillRoots(env: NodeJS.ProcessEnv = process.env): string[] {
   const configured = env.QITU_AGENT_SKILL_ROOTS?.split(delimiter).map((item) => item.trim()).filter(Boolean);
   return configured && configured.length > 0
     ? configured
-    : [join(process.cwd(), '.agents', 'skills'), join(process.cwd(), '.pi', 'skills')];
+    : [
+      // .pi/skills 是 Pi/Herdr 开发期制品，不是应用运行时的可执行配置注册表（见 docs/admin/deployment.md）。
+      join(process.cwd(), '.agents', 'skills'),
+    ];
 }
 
 function findSkillFile(id: string, roots: readonly string[]): string | null {
@@ -318,9 +327,58 @@ function readBounded(path: string, max: number): string {
   try {
     if (!existsSync(path)) return '';
     return readFileSync(path, 'utf8').slice(0, max);
-  } catch {
+  } catch (error) {
+    if (getFsErrorCode(error) !== 'ENOENT') {
+      console.warn(`[qitu-workers] skill or policy read failed path=${path}`);
+    }
     return '';
   }
+}
+
+function readSkillContent(path: string, max: number): string | null {
+  // 必须在**完整**文件上解析 frontmatter。若像旧实现那样先按 max 截断再剔除，
+  // 超长 frontmatter 会被截在半路（缺闭合 ---）：正则不匹配 → 既漏过 dev-only
+  // 过滤，又把 frontmatter 原文当成教学规则注入 prompt。API 侧（runtime-source.ts）
+  // 本来就是先读全文再截正文，这里对齐它的语义。
+  const raw = readBounded(path, MAX_SKILL_FILE_CHARS);
+  // fail-closed：看起来有 frontmatter 却解析不出闭合块，说明文件被截断或损坏，
+  // 宁可不注入也不能把未知文本当成教学规则送进未成年人的 prompt。
+  if (raw.startsWith('---') && !FRONTMATTER_BLOCK.test(raw)) {
+    console.warn(`[qitu-workers] skill frontmatter is truncated or malformed path=${path}`);
+    return null;
+  }
+  const metadata = readFrontmatter(raw);
+  // 这是与 API 侧有意保留的临时重复；按 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b 收敛。
+  if (metadata.runtime === 'dev-only') return null;
+  return stripFrontmatter(raw).slice(0, max);
+}
+
+const FRONTMATTER_BLOCK = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+
+function readFrontmatter(raw: string): Record<string, string> {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match?.[1]) return {};
+  const result: Record<string, string> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const separator = line.indexOf(':');
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '');
+    if (key && value) result[key] = value;
+  }
+  return result;
+}
+
+function stripFrontmatter(raw: string): string {
+  // 这是与 API 侧有意保留的临时重复；按 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b 收敛。
+  return raw.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, '').trim();
+}
+
+function getFsErrorCode(error: unknown): string | undefined {
+  if (typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string') {
+    return error.code;
+  }
+  return undefined;
 }
 
 function bounded(value: string | null | undefined, max: number): string {

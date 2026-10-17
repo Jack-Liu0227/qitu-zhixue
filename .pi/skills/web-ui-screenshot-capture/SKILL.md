@@ -1,5 +1,9 @@
 ---
 name: web-ui-screenshot-capture
+# runtime 取值 dev-only —— 开发期工具，绝不得进入学生运行时。
+# 即使本目录被误移回 .agents/skills/，API（runtime-source.ts）与 workers
+# （team-runtime-executor.ts）两侧 loader 都会排除它。两道防线——目录位置 + 本标签。
+runtime: dev-only
 description: This skill should be used when a user asks to visit a web app, discover its frontend routes, log into role-specific workspaces, and save complete-page screenshots organized by interface area. It crawls same-origin links, supports demo-button or environment-based login, preserves query routes, retries slow pages, and writes a manifest with capture status.
 ---
 

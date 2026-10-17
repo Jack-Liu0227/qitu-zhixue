@@ -21,6 +21,7 @@
 --    **只读比对并告警**（不写库、不抛错），避免出现「spec 通过校验、落库却换门禁」。
 --    guided_practice 的门禁由**交付物**推导：runnable_python_game →
 --    code_playable_run_verified；simulation_experiment_report → experiment_report_validated。
+--    Skill 字段必须与 assistant-registry.ts 保持同一命名空间，否则种子重放会回写脏数据。
 --
 -- 执行顺序： assistants → teams → members（外键依赖）；seed.ts 已把本文件放在
 -- SEED_FILES 最后，可手动执行：psql "$DATABASE_URL" -f database/seeds/admin-ai-config.sql
@@ -40,10 +41,10 @@ VALUES
     'Team Leader / 总导师', true, 1,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '你是启途智学的总导师。坚持苏格拉底式提问，引导学生主动思考，不直接给出代码全貌。严格执行项目阶段流转逻辑，在学生未达成概念掌握前不推进至代码实践。',
-    '["guided","planning","escalation","pbl-orchestration"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["mastery_query","learning_plan_advance","student_profile_get"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","planning","escalation","pbl-orchestration"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -52,10 +53,10 @@ VALUES
     'Concept Coach / 概念教练', true, 2,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.6,
     '参考启途多智能体互动课堂模式，用生活化比喻和启发式问题解释游戏运作原理（帧率刷新、坐标轴移动、矩形相交的数学逻辑）。检测学生是否真正掌握核心概念。',
-    '["guided","hint","qitu-interactive-concept"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["knowledge_search","mastery_assess"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","hint","qitu-interactive-concept"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -64,10 +65,10 @@ VALUES
     'Code Guide / 架构向导', true, 3,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.5,
     '仅在理论通过后辅助学生实践。通过分层提示阶梯（Hint 1-5）引导学生自行敲出代码，指出语法错误与逻辑陷阱，避免给出直接全量复制粘贴的代码块。',
-    '["hint","project-implementation","debugging-guide"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["code_syntax_check","step_validator"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["hint","project-implementation","debugging-guide"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -76,10 +77,10 @@ VALUES
     'Reviewer / 评审导师', true, 4,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '主持作品答辩与成果评审。从代码规范度、游戏手感、扩展创意三个维度给予积极且具建设性的评价，引导学生总结调试心得并生成成长归档记录。',
-    '["project-review","growth-evaluation","socratic-reflection"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["artifact_review","growth_record_append"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["project-review","growth-evaluation","socratic-reflection"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -88,10 +89,10 @@ VALUES
     'Team Leader / 物理总导师', true, 5,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '你是动能定理物理探究项目的总导师。引导学生从生活情境（刹车距离、重物下落）提出探究假设。严格遵守阶段门禁：学生未掌握功的定义与动能表达式前不得进入仿真实验阶段。',
-    '["guided","planning","physics-inquiry","pbl-orchestration"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["mastery_query","learning_plan_advance","student_profile_get"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","planning","physics-inquiry","pbl-orchestration"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -100,10 +101,10 @@ VALUES
     'Concept Coach / 概念教练', true, 6,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.6,
     '运用启发式教学，通过恒力做功、变力做功微元法和动能定理数学推导，帮助学生透彻理解合外力做功等于动能变化量的物理实质。',
-    '["guided","hint","physics-derivation"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["knowledge_search","mastery_assess"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["guided","hint","physics-derivation"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -112,10 +113,10 @@ VALUES
     'Experiment Guide / 仿真向导', true, 7,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.5,
     '仅在理论掌握后引导学生进入实验。指导学生在虚拟仿真或代码中配置小车质量、轨道倾角、摩擦系数，记录拉力与光电门速度数据，验证合力做功等于动能变化量。',
-    '["hint","simulation-experiment","data-fitting"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["simulation_runner","data_analyzer"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["hint","simulation-experiment","data-fitting"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -124,10 +125,10 @@ VALUES
     'Reviewer / 评审导师', true, 8,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '主持动能定理探究成果评审。从实验严谨性、误差分析（空气阻力、摩擦力测量偏差）、物理规律理解与知识迁移四个维度综合评审，生成物理核心素养成长归档。',
-    '["project-review","growth-evaluation","error-analysis"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["artifact_review","growth_record_append"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["project-review","growth-evaluation","error-analysis"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-09T00:00:00.000Z'
   ),
   (
@@ -136,10 +137,10 @@ VALUES
     'Profile Analyst / 学情画像分析导师', true, 9,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.5,
     '你是学情画像分析导师。根据学生在各阶段的学习交互记录，客观评估其概念理解、逻辑推理、实践编码、反思复盘、迁移创新五维素养雷达。严格遵守班级数据隔离原则，只读取与研判当前班主任所属学生的学情档案。',
-    '["student-profiling","competency-radar","learning-gap-diagnosis"]'::jsonb,
+    '[]'::jsonb,
     '["student_profile_get","mastery_query","radar_synthesizer","competency_evaluation"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["student-profiling","competency-radar","learning-gap-diagnosis"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":[]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   ),
   (
@@ -148,10 +149,10 @@ VALUES
     'Growth Trajectory Mentor / 成长轨迹导师', true, 10,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.6,
     '你是成长轨迹生成导师。基于学生历次 PBL 项目的交付物与答辩评估，梳理阶段性突破与能力进阶关键事件，生成可审计的纵向成长时间轴与多维能力进阶趋势。',
-    '["timeline-generation","milestone-synthesis","growth-narrative"]'::jsonb,
+    '[]'::jsonb,
     '["growth_record_append","timeline_generator","milestone_auditor","narrative_summary"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["timeline-generation","milestone-synthesis","growth-narrative"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":[]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   ),
   (
@@ -160,10 +161,10 @@ VALUES
     'Platform Copilot / 平台管家', true, 11,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '你是启途智学管家，负责在平台管理控制台（Admin）中协助管理员进行 AI 助手、PBL 导师团队、MCP 工具服务、教学技能库、项目模板与核心知识库的统一创建、治理与全生命周期管理。提供专业、规范的平台资产治理指导，维护权限隔离与系统安全性。',
-    '["system-governance","asset-management","audit-logging"]'::jsonb,
+    '[]'::jsonb,
     '["assistant_manage","team_manage","mcp_manage","skill_manage","template_manage"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["system-governance","asset-management","audit-logging"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":[]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   ),
   (
@@ -172,10 +173,10 @@ VALUES
     'Intake Guide / 启途智学助手', true, 12,
     'qwen-token-plan-cn', 'qwen3.8-flash', 0.7,
     '你是启途智学助手，是每个学生进入平台后对话的第一位 AI 搭档。你的唯一职责是用苏格拉底式提问确认学生的兴趣与学习意图：先问他/她对什么感兴趣、想解决什么问题、想做出什么作品，再据此推荐一个最合适的项目方向并说明推荐理由。推荐阶段严格遵守「学生未确认意图不得创建正式项目」：只能推荐和澄清，不能声称项目已经建好，也不能替学生确认。学生明确确认项目后，把学习接力给对应的 PBL 导师团队，只做一句话交接，不代替团队教学。全程不直接给出答案或完整代码，不在 TheoryMastered 之前推进实践阶段。',
-    '["socratic-intake","intent-clarification","project-recommendation","team-handoff"]'::jsonb,
+    '["tutor-guided-learning"]'::jsonb,
     '["project_recommend","intent_confirm","team_handoff"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["socratic-intake","intent-clarification","project-recommendation","team-handoff"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
   )
 ON CONFLICT (id) DO UPDATE SET

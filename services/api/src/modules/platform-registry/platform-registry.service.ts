@@ -33,7 +33,7 @@ import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { assertParentGraph } from './agent-config.validation';
 import { assertGateConditionWritable, resolveGateConditionForPhase } from './admin-ai-config.validation';
-import type { TutorRuntimePolicy, TutorRuntimeSkill } from '../../common/tutor-runtime/runtime-source';
+import type { TutorRuntimePolicy, TutorRuntimeSkill, TutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 
 export interface EffectiveAgentRuntime {
   agent: AdminRuntimeAgent;
@@ -96,12 +96,22 @@ type MemberRow = typeof adminTeamMembers.$inferSelect;
  * 服务端兜底的助手默认项：与 `@qitu/ai-client` 内置注册表的
  * `DEFAULT_ASSISTANT_DEFAULTS` 保持一致；客户端只允许覆盖已知项，
  * 缺省字段由这里补齐（冻结契约 AdminAssistantCreateInput.defaults）。
+ *
+ * ⚠ 这是一份**人工同步的副本**，已经漂移过一次（skills 曾长期写着不存在的
+ * 'guided'/'planning'/'escalation'）。去重（导出并 import ai-client 的常量）
+ * 登记在 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b。
  */
+/**
+ * migration `0015_agent_runtime_bindings.sql:71-75` 给 `qitu-learning-partner` seed 的
+ * 唯一教学技能。健康检查直接验证它能否解析，而不是拿「目录可读」间接推导。
+ */
+const SEEDED_TEACHING_SKILL_ID = 'tutor-guided-learning';
+
 const SERVER_ASSISTANT_DEFAULTS: AssistantDefaults = {
   model: { mode: 'default', value: 'qwen3.8-flash' },
   permission: { mode: 'auto', value: 'supervised' },
   thought_level: { mode: 'high', value: 'balanced' },
-  skills: { mode: 'default', value: ['guided', 'planning', 'escalation'] },
+  skills: { mode: 'default', value: ['tutor-guided-learning'] },
   mcps: { mode: 'default', value: [] },
 };
 
@@ -272,7 +282,8 @@ export class PlatformRegistryService {
       if (databaseAvailable) agents = await this.listAgentsFromDatabase();
     }
 
-    const checks = await this.readChecks(databaseAvailable);
+    const checks = await this.readChecks(databaseAvailable, runtime);
+    const danglingBindings = await this.listDanglingAssistantBindings(runtime.skills);
     const initialization = {
       overall: checks.some((check) => check.status === 'failed') ? 'degraded' as const
         : checks.some((check) => check.status === 'missing') ? 'not_ready' as const : 'unknown' as const,
@@ -309,6 +320,7 @@ export class PlatformRegistryService {
       agents: agents.sort((a, b) => a.label.localeCompare(b.label)),
       modelOptions: this.models.listAgentModelOptions?.() ?? [],
       builtInTools: builtinToolRegistry.list(),
+      danglingBindings,
       initialization,
     };
   }
@@ -724,6 +736,7 @@ export class PlatformRegistryService {
    */
   async createAssistant(actor: CurrentUser, input: AdminAssistantCreateInput): Promise<AdminAssistantConfig> {
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
+    await this.assertAssistantReferences(input);
     const rows = await this.db.select().from(adminAssistants);
     const now = new Date();
     const id = `assistant-${randomUUID()}`;
@@ -810,6 +823,15 @@ export class PlatformRegistryService {
         }
       }
       const now = new Date();
+      // 引用校验必须晚于 existing 解析：管理面矩阵提交的是「存量数组 ± 一项」
+      // （tools/page.tsx:213-216、264-266），只有拿到存量才能只拦「本次新引入」的未知 id，
+      // 否则任何带历史脏引用的助手都无法再被授权。脏引用不在此静默清理，
+      // 由 snapshot.danglingBindings 暴露给管理面。
+      await this.assertAssistantReferences(patch, {
+        enabledSkills: existing.enabledSkills,
+        toolIds: existing.toolIds,
+        mcpServerIds: existing.mcpServerIds,
+      });
       const set: Partial<typeof adminAssistants.$inferInsert> = { updatedBy: actor.id, updatedAt: now };
       if (patch.name !== undefined) set.name = patch.name;
       if (patch.description !== undefined) set.description = patch.description;
@@ -1143,7 +1165,63 @@ export class PlatformRegistryService {
     return builtinToolRegistry.asAgentRegistryForIds(runtime.agent.toolIds);
   }
 
-  private async readChecks(databaseAvailable: boolean): Promise<AdminRuntimeSnapshot['initialization']['checks']> {
+  private async assertAssistantReferences(
+    input: Pick<AdminAssistantCreateInput, 'enabledSkills' | 'toolIds' | 'mcpServerIds'>,
+    baseline?: { enabledSkills: readonly string[]; toolIds: readonly string[]; mcpServerIds: readonly string[] },
+  ): Promise<void> {
+    const runtime = loadTutorRuntimeSource();
+    if (input.enabledSkills !== undefined) {
+      const knownSkills = new Set(runtime.skills.map((skill) => skill.id));
+      const inherited = new Set(baseline?.enabledSkills ?? []);
+      const unknownSkill = input.enabledSkills.find((skillId) => !knownSkills.has(skillId) && !inherited.has(skillId));
+      if (unknownSkill !== undefined) throw new BadRequestException(`未知的 Skill: ${unknownSkill}`);
+    }
+    if (input.toolIds !== undefined) {
+      const knownTools = new Set(builtinToolRegistry.list().map((tool) => tool.id));
+      const inherited = new Set(baseline?.toolIds ?? []);
+      const unknownTool = input.toolIds.find((toolId) => !knownTools.has(toolId) && !inherited.has(toolId));
+      if (unknownTool !== undefined) throw new BadRequestException(`未知的内置 Tool: ${unknownTool}`);
+    }
+    if (input.mcpServerIds !== undefined) {
+      const knownMcpServers = new Set((await this.listMcpServerRows()).map((server) => server.id));
+      const inherited = new Set(baseline?.mcpServerIds ?? []);
+      const unknownMcpServer = input.mcpServerIds.find((serverId) => !knownMcpServers.has(serverId) && !inherited.has(serverId));
+      if (unknownMcpServer !== undefined) throw new BadRequestException(`未知的 MCP Server: ${unknownMcpServer}`);
+    }
+  }
+
+  private async listDanglingAssistantBindings(
+    skills: readonly TutorRuntimeSkill[],
+  ): Promise<AdminRuntimeSnapshot['danglingBindings']> {
+    // null 与 [] 语义不同：null = 无法计算，[] = 确实没有脏引用。
+    // 这里绝不能 catch 后返回 []：本字段是 D3 存量脏引用的**唯一暴露面**，
+    // 把查询失败伪装成「干净」等于把 D5 的静默失败反模式复制到新监控信号上。
+    if (!this.db) return null;
+    try {
+      const [assistants, mcpServers] = await Promise.all([
+        this.db.select().from(adminAssistants),
+        this.listMcpServerRows(),
+      ]);
+      const knownSkills = new Set(skills.map((skill) => skill.id));
+      const knownTools = new Set(builtinToolRegistry.list().map((tool) => tool.id));
+      const knownMcpServers = new Set(mcpServers.map((server) => server.id));
+      return assistants.flatMap((assistant) => {
+        const unknownSkillIds = assistant.enabledSkills.filter((skillId) => !knownSkills.has(skillId));
+        const unknownToolIds = assistant.toolIds.filter((toolId) => !knownTools.has(toolId));
+        const unknownMcpServerIds = assistant.mcpServerIds.filter((serverId) => !knownMcpServers.has(serverId));
+        return unknownSkillIds.length > 0 || unknownToolIds.length > 0 || unknownMcpServerIds.length > 0
+          // source 让管理面能把「内置助手的已知存量债务」与「新出现的脏引用」分开看，
+          // 否则信号恒定非空、无法当告警用。
+          ? [{ assistantId: assistant.id, source: assistant.source, unknownSkillIds, unknownToolIds, unknownMcpServerIds }]
+          : [];
+      });
+    } catch (error) {
+      this.logger.warn(`无法计算 danglingBindings：${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
+  }
+
+  private async readChecks(databaseAvailable: boolean, runtime?: TutorRuntimeSource): Promise<AdminRuntimeSnapshot['initialization']['checks']> {
     const checkedAt = new Date().toISOString();
     const checks: AdminRuntimeSnapshot['initialization']['checks'] = [
       {
@@ -1193,6 +1271,74 @@ export class PlatformRegistryService {
         lastRun, operatorRequired: false, executeAllowed: this.db !== null && databaseAvailable && status !== 'failed',
       });
     }
+    checks.push(this.buildSkillsCheck(runtime, checkedAt));
     return checks;
+  }
+
+  /**
+   * 技能目录健康检查。
+   *
+   * 判据必须能支撑文案：不能拿「目录可读」推导「学生拿得到教学规则」。
+   * 目录可读但 seed 绑定的技能缺失/正文为空时， prompt 里什么也没有，
+   * 这正是 D5 要消灭的「看着绿其实空」，不能换个地方重犯。
+   * 反之，单个**无关**技能包损坏也不得把全局 overall 推到 degraded，
+   * 只进 detail。
+   */
+  private buildSkillsCheck(
+    runtime: TutorRuntimeSource | undefined,
+    checkedAt: string,
+  ): AdminRuntimeSnapshot['initialization']['checks'][number] {
+    const skillsSource = runtime?.skillsSource;
+    // 管理面不需要部署绝对路径；能相对化就相对化。
+    const root = skillsSource === undefined
+      ? null
+      : runtime !== undefined && skillsSource.root.startsWith(runtime.root)
+        ? skillsSource.root.slice(runtime.root.length).replace(/^\/+/, '') || '.'
+        : skillsSource.root;
+    const seeded = runtime?.skills.find((skill) => skill.id === SEEDED_TEACHING_SKILL_ID);
+    const seededReady = seeded?.status === 'ready' && seeded.content.trim().length > 0;
+    const broken = skillsSource?.brokenPackages ?? [];
+    const brokenNote = broken.length > 0
+      ? ` 另有 ${broken.length} 个技能包损坏（${broken.map((entry) => entry.id).join('、')}），不影响本项判定。`
+      : '';
+
+    let status: 'ready' | 'missing' | 'failed' | 'unknown';
+    let detail: string;
+    if (skillsSource === undefined) {
+      status = 'unknown';
+      detail = `技能目录状态无法确认；无法判定 migration 0015 seed 绑定的 ${SEEDED_TEACHING_SKILL_ID} 是否可解析。`;
+    } else if (skillsSource.status === 'missing') {
+      status = 'missing';
+      detail = `技能目录缺失（${root}）；migration 0015 seed 绑定的 ${SEEDED_TEACHING_SKILL_ID} 无法解析，学生拿不到教学规则。`;
+    } else if (skillsSource.status === 'unreadable') {
+      status = 'failed';
+      detail = `技能目录不可读（${root}）；migration 0015 seed 绑定的 ${SEEDED_TEACHING_SKILL_ID} 无法解析，学生拿不到教学规则。${skillsSource.detail ? ` 诊断：${skillsSource.detail}` : ''}`;
+    } else if (!seededReady) {
+      status = 'failed';
+      const why = seeded === undefined
+        ? '目录不存在'
+        : seeded.status !== 'ready'
+          ? `status=${seeded.status}`
+          : '正文为空';
+      detail = `技能目录可读（${root}），但 migration 0015 seed 绑定的 ${SEEDED_TEACHING_SKILL_ID} 不可用（${why}），学生拿不到教学规则。${brokenNote}`;
+    } else {
+      status = 'ready';
+      detail = `技能目录就绪（${root}），${SEEDED_TEACHING_SKILL_ID} 可解析并会注入教学规则。${brokenNote}`;
+    }
+
+    return {
+      id: 'runtime.skills',
+      label: 'Tutor 技能目录',
+      area: 'tutor',
+      status,
+      detail,
+      checkedAt,
+      remediation: status === 'ready'
+        ? null
+        : `请在部署节点确认 .agents/skills/${SEEDED_TEACHING_SKILL_ID}/SKILL.md 存在、可读且正文非空，然后重新检查运行时健康状态。`,
+      lastRun: null,
+      operatorRequired: true,
+      executeAllowed: false,
+    };
   }
 }

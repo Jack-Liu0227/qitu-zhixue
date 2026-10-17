@@ -259,6 +259,173 @@ function harness(state?: { assistants: Row[]; teams: Row[]; members: Row[] }) {
   return { service, idempotency, audits: store.calls, ...fake };
 }
 
+/** 构造一个最小可用的 TutorRuntimeSource，避开真实文件系统。 */
+function runtimeSourceStub(overrides: {
+  rootStatus?: 'ready' | 'missing' | 'unreadable';
+  detail?: string | null;
+  skills?: Array<{ id: string; status?: 'ready' | 'unavailable'; content?: string }>;
+  brokenPackages?: Array<{ id: string; detail: string }>;
+} = {}) {
+  const skills = (overrides.skills ?? [{ id: 'tutor-guided-learning' }]).map((skill) => ({
+    id: skill.id,
+    label: skill.id,
+    description: null,
+    version: null,
+    contentHash: 'hash',
+    status: skill.status ?? ('ready' as const),
+    content: skill.content ?? '教学规则正文',
+  }));
+  return {
+    root: '/deploy/qitu',
+    policy: { id: 'AGENTS.md', version: 'v1', contentHash: null, status: 'ready' as const, content: '' },
+    skills,
+    skillsSource: {
+      root: '/deploy/qitu/.agents/skills',
+      status: overrides.rootStatus ?? ('ready' as const),
+      detail: overrides.detail ?? null,
+      brokenPackages: overrides.brokenPackages ?? [],
+    },
+  };
+}
+
+function readSkillsCheck(service: unknown, runtime?: unknown) {
+  const readChecks = (service as {
+    readChecks: (databaseAvailable: boolean, runtime?: unknown) => Promise<Array<Record<string, unknown>>>;
+  }).readChecks.bind(service);
+  return readChecks(false, runtime).then((checks) => checks.find((item) => item.id === 'runtime.skills'));
+}
+
+test('runtime.skills 健康检查映射目录状态并保留运维属性', async () => {
+  const h = harness();
+  for (const [runtime, expected, detailPattern] of [
+    [runtimeSourceStub({ rootStatus: 'ready' }), 'ready', /就绪/],
+    [runtimeSourceStub({ rootStatus: 'missing' }), 'missing', /migration 0015/],
+    [runtimeSourceStub({ rootStatus: 'unreadable', detail: 'EACCES: permission denied' }), 'failed', /EACCES/],
+    [undefined, 'unknown', /无法确认/],
+  ] as const) {
+    const check = await readSkillsCheck(h.service, runtime);
+    assert.equal(check?.status, expected);
+    assert.equal(check?.area, 'tutor');
+    assert.equal(check?.operatorRequired, true);
+    assert.equal(check?.executeAllowed, false);
+    assert.match(String(check?.detail), detailPattern);
+  }
+});
+
+test('目录可读但 seed 技能不可用时必须报 failed，不得看着绿其实空', async () => {
+  const h = harness();
+  // 反例：删掉 tutor-guided-learning 但保留其他目录 —— 旧实现会报 ready
+  // 并声称「学生可以获得教学规则」，而 prompt 里实际什么也没有。
+  for (const skills of [
+    [{ id: 'some-other-skill' }],
+    [{ id: 'tutor-guided-learning', status: 'unavailable' as const, content: '' }],
+    [{ id: 'tutor-guided-learning', content: '   ' }],
+  ]) {
+    const check = await readSkillsCheck(h.service, runtimeSourceStub({ skills }));
+    assert.equal(check?.status, 'failed');
+    assert.match(String(check?.detail), /tutor-guided-learning/);
+    assert.equal(check?.remediation !== null, true);
+  }
+});
+
+test('无关技能包损坏不得把本项推离 ready，只进 detail', async () => {
+  const h = harness();
+  const check = await readSkillsCheck(h.service, runtimeSourceStub({
+    brokenPackages: [{ id: 'broken-package', detail: 'ENOENT' }],
+  }));
+  assert.equal(check?.status, 'ready', '一个坏包不得让全局 overall 变 degraded');
+  assert.match(String(check?.detail), /broken-package/);
+});
+
+test('健康检查 detail 用相对路径，不暴露部署绝对路径', async () => {
+  const h = harness();
+  const check = await readSkillsCheck(h.service, runtimeSourceStub());
+  assert.match(String(check?.detail), /\.agents\/skills/);
+  assert.equal(String(check?.detail).includes('/deploy/qitu'), false);
+});
+
+test('createAssistant 无 baseline，任何未知 Skill id 都被拒', async () => {
+  const h = harness({ assistants: [], teams: [], members: [] });
+  await assert.rejects(
+    () => h.service.createAssistant(actor(), {
+      name: '新助手', description: '', role: '', instructions: '', enabledSkills: ['fake-skill'],
+    } as never),
+    (error: unknown) => {
+      const exception = error as { getStatus: () => number; getResponse: () => unknown };
+      assert.equal(exception.getStatus(), 400);
+      assert.match(JSON.stringify(exception.getResponse()), /fake-skill/);
+      return true;
+    },
+  );
+  assert.equal(h.ops.inserts.length, 0, '被拒的创建绝不能落库');
+});
+
+test('助手 PATCH 只校验补丁中出现的引用，并报告未知 Skill id', async () => {
+  const h = harness({
+    assistants: [assistantRow({ id: 'dirty', enabledSkills: ['legacy-skill'] })], teams: [], members: [],
+  });
+  await assert.rejects(
+    () => h.service.updateAssistant(actor(), 'dirty', { enabledSkills: ['missing-skill'] }),
+    (error: unknown) => {
+      const exception = error as { getStatus: () => number; getResponse: () => unknown };
+      assert.equal(exception.getStatus(), 400);
+      assert.match(JSON.stringify(exception.getResponse()), /missing-skill/);
+      return true;
+    },
+  );
+  assert.equal(h.ops.updates.length, 0);
+  await h.service.updateAssistant(actor(), 'dirty', { name: '只改名称' });
+  assert.equal(h.ops.updates.length, 1, '不含 enabledSkills 的 PATCH 不应因存量脏数据失败');
+});
+
+test('助手 PATCH 携带存量脏引用时放行，但仍拦本次新引入的未知 id', async () => {
+  const h = harness({
+    assistants: [assistantRow({ id: 'dirty', enabledSkills: ['legacy-skill'], toolIds: ['legacy-tool'] })],
+    teams: [], members: [],
+  });
+
+  // 管理面矩阵的真实提交形状：存量数组 ± 一项（tools/page.tsx:213-216、264-266）。
+  // 若连存量脏 id 一起拒，任何历史助手都无法再被授权。
+  const updated = await h.service.updateAssistant(actor(), 'dirty', {
+    enabledSkills: ['legacy-skill', 'tutor-guided-learning'],
+    toolIds: ['legacy-tool', 'tutor.context_packet'],
+  });
+  assert.deepEqual([...updated.enabledSkills], ['legacy-skill', 'tutor-guided-learning']);
+  assert.deepEqual([...updated.toolIds], ['legacy-tool', 'tutor.context_packet']);
+
+  // 存量脏引用不被静默清理，仍由 danglingBindings 暴露。
+  const snapshot = await h.service.getSnapshot();
+  assert.deepEqual(snapshot.danglingBindings?.map((entry) => entry.assistantId), ['dirty']);
+
+  await assert.rejects(
+    () => h.service.updateAssistant(actor(), 'dirty', { toolIds: ['legacy-tool', 'another-fake'] }),
+    (error: unknown) => {
+      const exception = error as { getStatus: () => number; getResponse: () => unknown };
+      assert.equal(exception.getStatus(), 400);
+      assert.match(JSON.stringify(exception.getResponse()), /another-fake/);
+      return true;
+    },
+  );
+});
+
+test('runtime snapshot 只列出存在问题的助手绑定', async () => {
+  const h = harness({
+    assistants: [
+      assistantRow({ id: 'dirty', enabledSkills: ['missing-skill'], toolIds: ['missing-tool'], mcpServerIds: ['missing-mcp'] }),
+      assistantRow({ id: 'clean', enabledSkills: ['tutor-guided-learning'], toolIds: ['tutor.context_packet'], mcpServerIds: [] }),
+    ],
+    teams: [], members: [],
+  });
+  const snapshot = await h.service.getSnapshot();
+  assert.deepEqual(snapshot.danglingBindings, [{
+    assistantId: 'dirty',
+    source: 'builtin',
+    unknownSkillIds: ['missing-skill'],
+    unknownToolIds: ['missing-tool'],
+    unknownMcpServerIds: ['missing-mcp'],
+  }]);
+});
+
 test('POST assistants：缺少 Idempotency-Key → 400 稳定错误码，且不落库、不审计', async () => {
   const h = harness();
   const controller = new PlatformRegistryController(fakeAuth('admin'), h.service, h.idempotency);

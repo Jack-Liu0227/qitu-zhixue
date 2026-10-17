@@ -457,6 +457,26 @@ export interface AdminRuntimeSnapshot {
   agents: AdminRuntimeAgent[];
   modelOptions: AdminRuntimeModelOption[];
   builtInTools: AdminRuntimeBuiltinTool[];
+  /**
+   * 只读列出助手配置中引用了当前运行时不存在资产的绑定。
+   *
+   * `null` 与 `[]` 语义不同，管理面必须区分：
+   * - `[]`   = 确实没有脏引用
+   * - `null` = 无法计算（存储不可用或查询失败）
+   * 把查询失败伪装成 `[]` 会让这个监控信号退化成「看起来干净」。
+   */
+  danglingBindings?: Array<{
+    assistantId: string;
+    /**
+     * `'builtin' | 'generated' | 'user'`。内置助手的存量脏引用属已登记债务
+     * （见 docs/plan/20261018-skill-tool-governance-and-assignment.md §2.5），
+     * 必须与新增脏引用分开看，否则信号恒定非空、无法当告警用。
+     */
+    source: string;
+    unknownSkillIds: string[];
+    unknownToolIds: string[];
+    unknownMcpServerIds: string[];
+  }> | null;
   initialization: AdminInitializationStatus;
 }
 
