@@ -1,5 +1,7 @@
 import type { GradeValue, LearningErrorType, TutorReplyBlock } from '@qitu/contracts';
 
+export * from './optics/index.js';
+
 /**
  * 不可变题库（代码级常量，零 I/O）。
  *
@@ -31,12 +33,16 @@ export interface QuizBankEntry {
   /** SERVER-PRIVATE — 答错后的引导（不含答案）。 */
   rationaleHint: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  /** SERVER-PRIVATE — 迷思标签（stable key），与迷思库对齐；仅服务端归因用，不下发。 */
+  misconceptionTag?: string;
+  /** SERVER-PRIVATE — 迷思库错误类型短码；仅审计 / 卡点归因用，不下发。 */
+  errorTypeCode?: string;
 }
 
 /** 题库公开投影：字段闭集，结构上不含答案 / 解析 / 判分结果。 */
 export type QuizBlockProjection = Extract<TutorReplyBlock, { kind: 'quiz' }>;
 
-/** 光学概念：反射 / 折射 / 透镜（F1 光学 PBL 绑定域）。 */
+/** 光学概念题库：反射 / 折射 / 全反射 / 透镜（F5 光学 PBL 绑定域）。 */
 export const QUIZ_BANK: readonly QuizBankEntry[] = [
   {
     questionId: 'optics.reflection.q1',
@@ -82,9 +88,157 @@ export const QUIZ_BANK: readonly QuizBankEntry[] = [
       { key: 'D', text: '让光线沿原路返回' },
     ],
     expectedKeys: ['C'],
-    explanation: '凸透镜中间厚、边缘薄，对平行光线起会聚作用，平行于主光轴的光线经折射后会聚于焦点。',
+    explanation:
+      '凸透镜中间厚、边缘薄，对平行光线起会聚作用，平行于主光轴的光线经折射后会聚于焦点。',
     rationaleHint: '放大镜（凸透镜）能把太阳光聚成一个小亮点，这说明光线被怎样处理了？',
     difficulty: 'medium',
+  },
+  /* ============================ F5 光学 PBL 扩展（服务端私密） ============================ */
+  {
+    questionId: 'optics.reflection.q2',
+    conceptId: 'optics.reflection.law',
+    stem: '在反射现象中，入射角和反射角是相对哪条参考线测量的？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '镜面' },
+      { key: 'B', text: '法线' },
+      { key: 'C', text: '入射光线' },
+      { key: 'D', text: '反射光线' },
+    ],
+    expectedKeys: ['B'],
+    explanation: '入射角与反射角都以法线（垂直于镜面的线）为基准测量，而不是相对镜面。',
+    rationaleHint: '如果镜子斜着放，法线会指向哪？角应该是相对哪条“垂直的线”量出来的？',
+    difficulty: 'easy',
+    misconceptionTag: 'optics.reflection.normal_baseline',
+    errorTypeCode: 'reflection.normal_baseline',
+  },
+  {
+    questionId: 'optics.reflection.q3',
+    conceptId: 'optics.reflection.law',
+    stem: '让一束光沿原来反射光的方向射向镜面，它反射后会沿什么方向射出？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '沿原来入射光的方向射出' },
+      { key: 'B', text: '沿一个新的随机方向射出' },
+      { key: 'C', text: '不再反射' },
+      { key: 'D', text: '沿法线方向射出' },
+    ],
+    expectedKeys: ['A'],
+    explanation: '反射光路可逆：让光沿反射光方向射入，它会沿原入射光方向反向射出。',
+    rationaleHint: '你从镜子里能看见对方时，对方能看见你吗？光在反射中会不会“记得”来时的路？',
+    difficulty: 'easy',
+    misconceptionTag: 'optics.reflection.reversibility',
+    errorTypeCode: 'reflection.reversibility',
+  },
+  {
+    questionId: 'optics.refraction.q2',
+    conceptId: 'optics.refraction.law',
+    stem: '光从水中斜射入空气时，折射光线相对法线会怎样偏折？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '偏向法线' },
+      { key: 'B', text: '远离法线' },
+      { key: 'C', text: '沿法线方向射出' },
+      { key: 'D', text: '不发生偏折' },
+    ],
+    expectedKeys: ['B'],
+    explanation: '光从水（光密介质）斜射入空气（光疏介质）时，折射角大于入射角，光线远离法线。',
+    rationaleHint: '光从光密斜射向光疏，是“偏向”还是“远离”法线？把上一道题的方向反过来想。',
+    difficulty: 'medium',
+    misconceptionTag: 'optics.refraction.bend_direction',
+    errorTypeCode: 'refraction.bend_direction',
+  },
+  {
+    questionId: 'optics.refraction.q3',
+    conceptId: 'optics.refraction.law',
+    stem: '某介质的折射率 n = 2，光在该介质中的传播速度是真空光速 c 的多少？',
+    type: 'single',
+    options: [
+      { key: 'A', text: 'c/2' },
+      { key: 'B', text: '2c' },
+      { key: 'C', text: 'c' },
+      { key: 'D', text: '与折射率无关，无法判断' },
+    ],
+    expectedKeys: ['A'],
+    explanation: '折射率定义 n = c/v，所以 v = c/n = c/2；折射率越大，光速越慢。',
+    rationaleHint: '由 n = c/v 反推 v：n = 2 时，v 是 c 的一半还是 c 的两倍？',
+    difficulty: 'medium',
+    misconceptionTag: 'optics.refraction.index_velocity',
+    errorTypeCode: 'refraction.index_velocity',
+  },
+  {
+    questionId: 'optics.tir.q1',
+    conceptId: 'optics.tir.critical_angle',
+    stem: '关于发生全反射的条件，下列说法正确的是？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '只要从光密介质射向光疏介质，就必然发生全反射' },
+      { key: 'B', text: '从光密介质射向光疏介质，且入射角大于等于临界角' },
+      { key: 'C', text: '只要入射角足够大，任何界面都能发生全反射' },
+      { key: 'D', text: '从光疏介质射向光密介质，且入射角大于临界角' },
+    ],
+    expectedKeys: ['B'],
+    explanation:
+      '全反射需同时满足两个条件：光从光密射向光疏，且入射角大于等于临界角；只满足“光密到光疏”不够。',
+    rationaleHint: '“光密到光疏”和“入射角够大”两个条件，少了哪一个全反射都不会发生？',
+    difficulty: 'medium',
+    misconceptionTag: 'optics.tir.critical_angle_missing',
+    errorTypeCode: 'tir.critical_angle_missing',
+  },
+  {
+    questionId: 'optics.tir.q2',
+    conceptId: 'optics.tir.critical_angle',
+    stem: '光从折射率 n = 1.5 的玻璃射向空气时，临界角 C 满足什么关系？',
+    type: 'single',
+    options: [
+      { key: 'A', text: 'sinC = 1/1.5' },
+      { key: 'B', text: 'sinC = 1.5' },
+      { key: 'C', text: 'sinC = 1/2' },
+      { key: 'D', text: 'sinC = 1' },
+    ],
+    expectedKeys: ['A'],
+    explanation: '临界角满足 sinC = n₂/n₁（n₂ 为光疏介质折射率），对空气 n₂=1，故 sinC = 1/1.5。',
+    rationaleHint: 'sinC = n₂/n₁，n₁ 是玻璃的 1.5、n₂ 是空气的 1；代进去 sinC 会大于 1 吗？',
+    difficulty: 'hard',
+    misconceptionTag: 'optics.tir.critical_angle_formula',
+    errorTypeCode: 'tir.critical_angle_formula',
+  },
+  {
+    questionId: 'optics.lens.q2',
+    conceptId: 'optics.lens.ray_rules',
+    stem: '一条光线通过凸透镜的光心，经过透镜后它的传播方向会怎样？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '方向不变' },
+      { key: 'B', text: '偏折向焦点' },
+      { key: 'C', text: '平行于主光轴射出' },
+      { key: 'D', text: '沿原路返回' },
+    ],
+    expectedKeys: ['A'],
+    explanation: '过光心的光线经薄透镜后传播方向不变——这是三条特殊光线之一。',
+    rationaleHint: '三条特殊光线里，“过光心”的那条在薄透镜里会被“折”一下吗？',
+    difficulty: 'easy',
+    misconceptionTag: 'optics.lens.optical_center',
+    errorTypeCode: 'lens.optical_center',
+  },
+  {
+    questionId: 'optics.lens.q3',
+    conceptId: 'optics.lens.ray_rules',
+    stem: '凹透镜的焦点位于透镜的哪一侧，属于什么焦点？',
+    type: 'single',
+    options: [
+      { key: 'A', text: '入射侧的虚焦点' },
+      { key: 'B', text: '出射侧的实焦点' },
+      { key: 'C', text: '出射侧的虚焦点' },
+      { key: 'D', text: '入射侧的实焦点' },
+    ],
+    expectedKeys: ['A'],
+    explanation:
+      '凹透镜发散光线，其焦点是入射侧（与凸透镜相反）的虚焦点，由折射光线的反向延长线会聚得到。',
+    rationaleHint: '凹透镜把光线向外“推开”，这些发散的线往入射方向反向延长会聚在哪一侧？',
+    difficulty: 'medium',
+    misconceptionTag: 'optics.lens.virtual_focus',
+    errorTypeCode: 'lens.virtual_focus',
   },
 ];
 
@@ -166,7 +320,8 @@ export function gradeQuizKeys(
       errorType: 'structural',
     };
   }
-  const isCorrect = selected.length === expected.length && selected.every((key, index) => key === expected[index]);
+  const isCorrect =
+    selected.length === expected.length && selected.every((key, index) => key === expected[index]);
   return {
     questionId: entry.questionId,
     result: isCorrect ? 'correct' : 'incorrect',

@@ -101,6 +101,15 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     return row === undefined ? null : mapBinding(row);
   }
 
+  async listBindings(templateVersionId: string): Promise<BindingRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(pblTemplateTeamBindings)
+      .where(eq(pblTemplateTeamBindings.templateVersionId, templateVersionId))
+      .orderBy(pblTemplateTeamBindings.createdAt);
+    return rows.map(mapBinding);
+  }
+
   async updateValidation(
     id: string,
     validation: BindingRecord['validation'],

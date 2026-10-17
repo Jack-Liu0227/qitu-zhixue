@@ -23,6 +23,8 @@ export abstract class TemplateBindingStore {
     templateVersionId: string,
     tx?: AuditTransaction,
   ): Promise<BindingRecord | null>;
+  /** 列出某模板版本的全部绑定（含非 active 状态），按创建时间升序。 */
+  abstract listBindings(templateVersionId: string): Promise<BindingRecord[]>;
   abstract updateValidation(
     id: string,
     validation: BindingRecord['validation'],
@@ -128,6 +130,15 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
       }
     }
     return null;
+  }
+
+  async listBindings(templateVersionId: string): Promise<BindingRecord[]> {
+    const out: BindingRecord[] = [];
+    for (const record of this.bindings.values()) {
+      if (record.templateVersionId === templateVersionId) out.push(cloneBinding(record));
+    }
+    out.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    return out;
   }
 
   async updateValidation(
