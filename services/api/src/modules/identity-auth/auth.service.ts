@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { CurrentUser, LoginResponse } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
 
@@ -11,9 +11,23 @@ export interface AuthUser extends CurrentUser {
 export type PublicUser = CurrentUser;
 
 interface SessionRecord {
+  id: string;
   user: CurrentUser;
+  deviceId: string;
+  deviceName: string;
+  createdAt: number;
+  lastSeenAt: number;
   /** 会话过期时间（Unix 毫秒）。 */
   expiresAt: number;
+}
+
+export interface StudentDeviceSession {
+  id: string;
+  deviceName: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  current: boolean;
 }
 
 /** Fixed-window failure counter for one key (client address or email). */
@@ -77,6 +91,7 @@ export class AuthService {
     passwordPlain: string,
     rememberMe = false,
     clientKey = '',
+    device: { id?: string; userAgent?: string } = {},
   ): Promise<{ token: string } & LoginResponse> {
     this.assertWithinRateLimit(email, clientKey);
 
@@ -110,12 +125,36 @@ export class AuthService {
     this.attempts.delete(this.clientKeyOf(clientKey));
     this.pruneSessions();
 
+    const deviceId = normalizeDeviceId(device.id) ?? randomUUID();
+    if (user.role === 'student') {
+      const sameDeviceTokens = [...this.sessions.entries()]
+        .filter(([, session]) => session.user.id === user.id && session.deviceId === deviceId)
+        .map(([activeToken]) => activeToken);
+      const activeDevices = new Set([...this.sessions.values()]
+        .filter((session) => session.user.id === user.id)
+        .map((session) => session.deviceId));
+      const limit = studentDeviceLimit();
+      if (!activeDevices.has(deviceId) && activeDevices.size >= limit) {
+        throw new HttpException(
+          { code: 'STUDENT_DEVICE_LIMIT_REACHED', message: `学生账号最多同时登录 ${limit} 台设备，请先退出一台设备后再登录` },
+          HttpStatus.CONFLICT,
+        );
+      }
+      for (const activeToken of sameDeviceTokens) this.sessions.delete(activeToken);
+    }
+
     const token = randomBytes(32).toString('hex');
     const ttlMs = rememberMe ? REMEMBER_ME_TTL_MS : DEFAULT_SESSION_TTL_MS;
-    const expiresAt = Date.now() + ttlMs;
+    const now = Date.now();
+    const expiresAt = now + ttlMs;
 
     this.sessions.set(token, {
+      id: randomUUID(),
       user,
+      deviceId,
+      deviceName: getDeviceName(device.userAgent),
+      createdAt: now,
+      lastSeenAt: now,
       expiresAt,
     });
 
@@ -141,6 +180,7 @@ export class AuthService {
         message: '登录已失效',
       });
     }
+    record.lastSeenAt = Date.now();
     return {
       user: record.user,
       expiresAt: new Date(record.expiresAt).toISOString(),
@@ -151,6 +191,31 @@ export class AuthService {
     if (token) {
       this.sessions.delete(token);
     }
+  }
+
+  listStudentDevices(userId: string, currentToken?: string): StudentDeviceSession[] {
+    const now = Date.now();
+    return [...this.sessions.entries()]
+      .filter(([, session]) => session.user.id === userId && session.user.role === 'student' && session.expiresAt > now)
+      .map(([token, session]) => ({
+        id: session.id,
+        deviceName: session.deviceName,
+        createdAt: new Date(session.createdAt).toISOString(),
+        lastSeenAt: new Date(session.lastSeenAt).toISOString(),
+        expiresAt: new Date(session.expiresAt).toISOString(),
+        current: token === currentToken,
+      }))
+      .sort((left, right) => right.lastSeenAt.localeCompare(left.lastSeenAt));
+  }
+
+  revokeStudentDevice(userId: string, sessionId: string): boolean {
+    for (const [token, session] of this.sessions) {
+      if (session.id === sessionId && session.user.id === userId && session.user.role === 'student') {
+        this.sessions.delete(token);
+        return true;
+      }
+    }
+    return false;
   }
 
   private emailKey(email: string): string {
@@ -210,4 +275,28 @@ export class AuthService {
       this.sessions.delete(token);
     }
   }
+}
+
+function normalizeDeviceId(value: string | undefined): string | null {
+  if (typeof value !== 'string' || value.length < 8 || value.length > 120) return null;
+  return /^[a-zA-Z0-9._:-]+$/.test(value) ? value : null;
+}
+
+export function studentDeviceLimit(raw = process.env.STUDENT_MAX_DEVICES): number {
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 10) : 2;
+}
+
+function getDeviceName(userAgent: string | undefined): string {
+  const value = userAgent ?? '';
+  const browser = /Edg\//.test(value) ? 'Edge'
+    : /Firefox\//.test(value) ? 'Firefox'
+      : /Chrome\//.test(value) ? 'Chrome'
+        : /Safari\//.test(value) ? 'Safari' : '浏览器';
+  const platform = /iPhone|iPad/.test(value) ? 'iOS'
+    : /Android/.test(value) ? 'Android'
+      : /Windows/.test(value) ? 'Windows'
+        : /Macintosh|Mac OS/.test(value) ? 'macOS'
+          : /Linux/.test(value) ? 'Linux' : '设备';
+  return `${browser} · ${platform}`;
 }

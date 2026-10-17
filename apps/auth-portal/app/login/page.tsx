@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrandMark, OfflineBanner, RobotMascot } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
-import { readCachedSession, writeCachedSession } from '@qitu/auth';
+import { getOrCreateDeviceId, readCachedSession, writeCachedSession } from '@qitu/auth';
 
 const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
 
@@ -217,6 +217,7 @@ export default function LoginPage() {
         email,
         password,
         rememberMe: rememberAccount,
+        deviceId: getOrCreateDeviceId(),
       }, idempotencyKey);
 
       const payload = (await response.json().catch(() => null)) as {
@@ -226,6 +227,7 @@ export default function LoginPage() {
 
       if (!response.ok) {
         if (response.status === 401) setErrorKind('invalid');
+        else if (response.status === 409) { setErrorKind('other'); setNotice('此学生账号已登录两台设备，请先在“个人画像 → 登录设备”退出一台设备。'); }
         else if (response.status === 429) setErrorKind('rate');
         else setErrorKind('other');
         setStatus('error');

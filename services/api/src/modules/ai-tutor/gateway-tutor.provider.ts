@@ -160,6 +160,9 @@ export class GatewayTutorProvider implements TutorProvider {
     // 真实安全闸门：泄露措辞 / 长度 / 引导档必须以问句结尾。
     const verdict = checkAnswerLeak(result.text, level);
     const finalText = verdict.ok ? result.text : (verdict.replacement ?? SAFE_REPLACEMENT);
+    // 长回复只是模型输出不符合教学格式，整理后仍是一次成功的模型回复。
+    // 只有答案泄露才需要把安全闸门标记为 error，避免前端把正常整理误报为失败。
+    const outputLengthAdjusted = verdict.reason?.startsWith('模型回复长度') === true;
     const block = toReplyBlock(finalText, level, input.pedagogicMove);
 
     yield {
@@ -183,9 +186,11 @@ export class GatewayTutorProvider implements TutorProvider {
     yield {
       type: 'tool_result',
       callId: guardCallId,
-      status: verdict.ok ? 'done' : 'error',
+      status: verdict.ok || outputLengthAdjusted ? 'done' : 'error',
       result: verdict.ok
         ? `校验通过（第 ${level ?? HINT_LEVEL_MIN} 档，未包含完整答案）`
+        : outputLengthAdjusted
+          ? `模型回复已整理为第 ${level ?? HINT_LEVEL_MIN} 档长度（学生输入未被截断）`
         : `已安全改写：${verdict.reason ?? '原始回复不合规'}`,
     };
 

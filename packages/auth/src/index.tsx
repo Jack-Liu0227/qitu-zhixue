@@ -24,6 +24,23 @@ export interface AuthSession {
   expiresAt: string;
 }
 
+const DEVICE_ID_KEY = 'qitu.auth.device-id';
+
+export function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return 'server-device';
+  try {
+    const existing = window.localStorage.getItem(DEVICE_ID_KEY);
+    if (existing && /^[a-zA-Z0-9._:-]{8,120}$/.test(existing)) return existing;
+    const generated = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : 'device-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    window.localStorage.setItem(DEVICE_ID_KEY, generated);
+    return generated;
+  } catch {
+    return 'device-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+}
+
 const SESSION_STORAGE_KEY = 'qitu.auth.session';
 const SESSION_CHANGED_EVENT = 'qitu:auth-session-changed';
 
