@@ -11,9 +11,15 @@ export class PostgresTutorQuizStore extends TutorQuizStore {
     super();
   }
 
+  /**
+   * 写入一条作答证据。**按 `(student, quizId, idempotencyKey)` 幂等**：
+   * 崩溃重放（行已落库、幂等记录未完成）时静默去重，不撞唯一索引、不抛 500。
+   */
   async appendAttempt(record: AnswerAttemptRecord, tx?: AuditTransaction): Promise<void> {
     const executor = (tx ?? this.db) as Database;
-    await executor.insert(answerAttempts).values({
+    await executor
+      .insert(answerAttempts)
+      .values({
       id: record.id,
       schoolId: record.schoolId,
       studentUserId: record.studentUserId,
@@ -32,7 +38,14 @@ export class PostgresTutorQuizStore extends TutorQuizStore {
       userAnswer: record.userAnswer,
       idempotencyKey: record.idempotencyKey,
       createdAt: record.createdAt,
-    });
+    })
+      .onConflictDoNothing({
+        target: [
+          answerAttempts.studentUserId,
+          answerAttempts.quizId,
+          answerAttempts.idempotencyKey,
+        ],
+      });
   }
 
   async countAttempts(studentUserId: string, quizId: string): Promise<number> {

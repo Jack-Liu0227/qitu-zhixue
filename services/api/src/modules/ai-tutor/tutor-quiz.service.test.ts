@@ -514,6 +514,36 @@ test('同一幂等键同载荷：重放不重复执行、只写一条证据、�
   assert.equal(audit.count('tutor.quiz.graded'), 1, '重放不得再写判分审计');
 });
 
+test('崩溃重放：同一幂等键重复 append 只落一行（不撞唯一索引）', async () => {
+  const quizStore = new InMemoryTutorQuizStore();
+  const record = {
+    id: 'quiz-attempt-crash',
+    schoolId: null,
+    studentUserId: OWNER,
+    tutorSessionId: 'session-1',
+    quizId: QUIZ_ID,
+    objectiveId: null,
+    planId: null,
+    conceptId: 'opt-theory-refraction',
+    result: 'incorrect' as const,
+    isCorrect: false,
+    assessmentType: 'quiz' as const,
+    errorType: 'deviation' as const,
+    hintsUsed: 3,
+    attemptCount: 1,
+    qualityBasisPoints: 0,
+    userAnswer: '["A"]',
+    idempotencyKey: 'student.tutor.quiz.answer:u:session-1:q:crash-key',
+    createdAt: new Date(),
+  };
+  await quizStore.appendAttempt(record);
+  await quizStore.appendAttempt({ ...record, id: 'quiz-attempt-crash-2' });
+  assert.equal(quizStore.list().length, 1, '同幂等键重复写必须静默去重');
+  // 不同幂等键仍照常记录。
+  await quizStore.appendAttempt({ ...record, id: 'quiz-attempt-3', idempotencyKey: 'another-key' });
+  assert.equal(quizStore.list().length, 2);
+});
+
 test('同一幂等键不同载荷：409 IDEMPOTENCY_CONFLICT', async () => {
   const store = makeLearningStore();
   await seedOpticsPlan(store);

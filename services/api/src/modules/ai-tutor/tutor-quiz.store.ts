@@ -56,6 +56,13 @@ export class InMemoryTutorQuizStore extends TutorQuizStore {
   private readonly rows: AnswerAttemptRecord[] = [];
 
   async appendAttempt(record: AnswerAttemptRecord, _tx?: AuditTransaction): Promise<void> {
+    // 与 Postgres 实现同语义：同一幂等键只落一行（崩溃重放不得重复计数）。
+    const duplicate = this.rows.some((row) => (
+      row.studentUserId === record.studentUserId &&
+      row.quizId === record.quizId &&
+      row.idempotencyKey === record.idempotencyKey
+    ));
+    if (duplicate) return;
     this.rows.push({
       ...record,
       userAnswer: record.userAnswer,
