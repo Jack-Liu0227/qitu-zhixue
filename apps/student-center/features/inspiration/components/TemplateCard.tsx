@@ -10,6 +10,17 @@ export function templateExploreHref(templateId: string): string {
   return `/student/inspiration/recommended/${encodeURIComponent(templateId)}`;
 }
 
+/** 元信息行：只拼接服务端真实提供的字段，缺失项直接不显示。 */
+export function templateMetaLine(template: InspirationTemplate): string {
+  return [
+    template.subject || null,
+    template.difficulty,
+    template.durationWeeks !== null ? `约 ${template.durationWeeks} 周` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 export interface TemplateCardProps {
   template: InspirationTemplate;
   /** 断网只读时禁用「我想做这个」，仍可浏览模板详情。 */
@@ -32,9 +43,7 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
         </span>
         <div className="qitu-inspiration-template-heading">
           <h3 className="qitu-inspiration-template-title">{template.title}</h3>
-          <p className="qitu-inspiration-template-meta">
-            {template.subject} · {template.difficulty} · 约 {template.durationWeeks} 周
-          </p>
+          <p className="qitu-inspiration-template-meta">{templateMetaLine(template)}</p>
         </div>
       </header>
 
@@ -53,10 +62,12 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
         ))}
       </ol>
 
-      <p className="qitu-inspiration-template-outcome">
-        <span className="qitu-inspiration-template-outcome-label">成果</span>
-        <span>{template.outcome}</span>
-      </p>
+      {template.outcome ? (
+        <p className="qitu-inspiration-template-outcome">
+          <span className="qitu-inspiration-template-outcome-label">成果</span>
+          <span>{template.outcome}</span>
+        </p>
+      ) : null}
 
       <footer className="qitu-inspiration-template-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
@@ -86,7 +97,7 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
                 fontWeight: 600,
                 fontSize: '13px',
               }}
-              href={`/student/tutor?explorePrompt=${encodeURIComponent(`我想探究《${template.title}》：${template.summary}`)}&team=${template.id.includes('thunder') ? 'team-thunder-fighter' : 'team-kinetic-energy'}`}
+              href={`/student/tutor?explorePrompt=${encodeURIComponent(`我想探究《${template.title}》：${template.summary}`)}`}
             >
               💬 与AI搭档开始
             </StudentLink>

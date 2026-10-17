@@ -171,21 +171,21 @@ export default function HomePage() {
                           <span className="fact-icon">📅</span>
                           <div>
                             <small>今日任务</small>
-                            <span>{data.currentProject?.todayTask ?? '自主探究推进中'}</span>
+                            <span>{data.currentProject?.todayTask ?? '暂无记录'}</span>
                           </div>
                         </div>
                         <div className="fact-item">
                           <span className="fact-icon">🏆</span>
                           <div>
                             <small>最近完成</small>
-                            <span>{data.currentProject?.lastCompleted ?? '阶段性成果'}</span>
+                            <span>{data.currentProject?.lastCompleted ?? '暂无记录'}</span>
                           </div>
                         </div>
                         <div className="fact-item">
                           <span className="fact-icon">🧭</span>
                           <div>
                             <small>下一步计划</small>
-                            <span>{data.currentProject?.nextStep ?? '深化实验验证'}</span>
+                            <span>{data.currentProject?.nextStep ?? '暂无记录'}</span>
                           </div>
                         </div>
                       </div>
