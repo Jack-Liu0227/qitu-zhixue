@@ -14,6 +14,7 @@ import type {
   GenerateLearningPlanResponse,
   KnowledgeType,
   LearningErrorType,
+  LearningObjectiveView,
   LearningPlanView,
   LessonModuleView,
   LessonSessionView,
@@ -83,6 +84,7 @@ import {
   type GeneratePlanInput,
   type GeneratedPlan,
 } from './plan-generator';
+import { generateOpticsPlan } from './optics-plan-generator';
 import {
   MAX_GOAL_LENGTH,
   MAX_INTEREST_LENGTH,
@@ -158,10 +160,16 @@ export class LearningPlanService {
 
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown },
+    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGeneratePlanInput(rawInput);
-    const generated = this.generator.generate(input);
+    let generated: GeneratedPlan;
+    if (input.curriculumSlug !== undefined) {
+      const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
+      generated = generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
+    } else {
+      generated = this.generator.generate(input);
+    }
     validateGeneratedPlan(generated);
 
     // 去重签名必须**包含排课形状**：4 周 1×120 与 4 周 2×60 的周数、兴趣、
@@ -224,6 +232,33 @@ export class LearningPlanService {
       `生成计划 draft=${bundle.plan.id} student=${actor.id} weeks=${generated.weeks}`,
     );
     return { plan: await this.toPlanView(bundle), deduplicated: false };
+  }
+
+  /**
+   * 课程模板 slug → 当前可用版本（学生端解析）。
+   *
+   * 只经治理/绑定读 seam（`TemplateBindingService.resolveCurriculumTemplateVersion`），
+   * 不直接查模板/绑定 store。解析不到时**响亮失败**（400 `CURRICULUM_TEMPLATE_UNAVAILABLE`），
+   * 绝不静默回退到通用生成器——调用方传了 slug 就必须拿到课程驱动计划。
+   */
+  private async resolveCurriculumTemplate(
+    actor: CurrentUser,
+    slug: string,
+  ): Promise<{ templateVersionId: string }> {
+    if (this.templateBindings === undefined) {
+      throw new BadRequestException({
+        code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
+        message: '课程模板解析服务不可用',
+      });
+    }
+    const resolution = await this.templateBindings.resolveCurriculumTemplateVersion(actor, slug);
+    if (resolution === null) {
+      throw new BadRequestException({
+        code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
+        message: `课程模板 ${slug} 无可用版本或生效绑定`,
+      });
+    }
+    return { templateVersionId: resolution.templateVersionId };
   }
 
   /* ==================== 确认（唯一创建项目） ==================== */
@@ -836,6 +871,7 @@ export class LearningPlanService {
         interest: generated.interest,
         sessionsPerWeek: generated.sessions.length / generated.weeks,
         minutesPerSession: generated.minutesPerSession,
+        curriculumSlug: generated.curriculumSlug,
       }),
       confirmedAt: null,
       completedAt: null,
@@ -862,6 +898,7 @@ export class LearningPlanService {
         objective: objective.objective,
         prerequisiteIds: objective.prerequisiteIds.map(remap),
         ordinal: objective.ordinal,
+        conceptId: objective.conceptId,
       })),
       sessions: generated.sessions.map((session) => ({
         id: `${planId}:${session.id}`,
@@ -899,15 +936,23 @@ export class LearningPlanService {
         objectives: (objectiveByModule.get(module.id) ?? [])
           .slice()
           .sort((a, b) => a.ordinal - b.ordinal)
-          .map((objective) => ({
-            id: objective.id,
-            moduleId: objective.moduleId,
-            name: objective.name,
-            type: objective.type,
-            objective: objective.objective,
-            prerequisiteIds: [...objective.prerequisiteIds],
-            ordinal: objective.ordinal,
-          })),
+          .map((objective) => {
+            const view: LearningObjectiveView = {
+              id: objective.id,
+              moduleId: objective.moduleId,
+              name: objective.name,
+              type: objective.type,
+              objective: objective.objective,
+              prerequisiteIds: [...objective.prerequisiteIds],
+              ordinal: objective.ordinal,
+            };
+            // 课程驱动目标才带概念键；通用计划（无 conceptId）省略该字段，
+            // 保持对旧客户端的投影字节兼容（不加 `conceptId: null`）。
+            if (objective.conceptId !== undefined && objective.conceptId !== null) {
+              view.conceptId = objective.conceptId;
+            }
+            return view;
+          }),
       }));
     const schedule = inferPlanSchedule(bundle);
     return {
@@ -1617,6 +1662,7 @@ export function assertGeneratePlanInput(raw: {
   goal?: unknown;
   schedule?: unknown;
   sessionCount?: unknown;
+  curriculumSlug?: unknown;
 }): GeneratePlanInput {  if (typeof raw.interest !== 'string') rejectInput('interest 必须是字符串', 'interest');
   const interest = (raw.interest as string).trim();
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
@@ -1640,6 +1686,18 @@ export function assertGeneratePlanInput(raw: {
       rejectInput(`sessionCount 只能是 ${SESSION_COUNT_OPTIONS.join(' 或 ')}`, 'sessionCount');
     }
     sessionCount = raw.sessionCount;
+  }
+
+  let curriculumSlug: string | undefined;
+  if (raw.curriculumSlug !== undefined && raw.curriculumSlug !== null) {
+    if (typeof raw.curriculumSlug !== 'string') {
+      rejectInput('curriculumSlug 必须是字符串', 'curriculumSlug');
+    }
+    const slug = (raw.curriculumSlug as string).trim();
+    if (slug.length === 0 || slug.length > 120) {
+      rejectInput('curriculumSlug 长度须为 1–120 字符', 'curriculumSlug');
+    }
+    curriculumSlug = slug;
   }
 
   let schedule: PblSchedule | undefined;
@@ -1673,6 +1731,7 @@ export function assertGeneratePlanInput(raw: {
     goal,
     ...(schedule === undefined ? {} : { schedule }),
     ...(sessionCount === undefined ? {} : { sessionCount }),
+    ...(curriculumSlug === undefined ? {} : { curriculumSlug }),
   };
 }
 
@@ -1692,7 +1751,8 @@ function legacyPlanKeyPrefix(
  *
  * 排课是计划形状的一部分，必须进签名：否则「4 周 1×120」与「4 周 2×60」会
  * 撞进同一条签名，第二个请求被当成重复并被返回第一份计划的形状。
- * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`。
+ * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`；
+ * 课程驱动计划再追加 `:<curriculumSlug>`，通用计划保持旧键不变（可继续去重）。
  */
 function planIdempotencyKey(
   studentId: string,
@@ -1702,9 +1762,11 @@ function planIdempotencyKey(
     interest: string;
     sessionsPerWeek: number;
     minutesPerSession: number;
+    curriculumSlug?: string;
   },
 ): string {
-  return `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
+  const base = `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
+  return shape.curriculumSlug === undefined ? base : `${base}:${shape.curriculumSlug}`;
 }
 
 /** 由生成产物直接算出幂等键（生成路径的唯一入口）。 */
@@ -1715,6 +1777,7 @@ function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
     interest: generated.interest,
     sessionsPerWeek: generated.sessions.length / generated.weeks,
     minutesPerSession: generated.minutesPerSession,
+    curriculumSlug: generated.curriculumSlug,
   });
 }
 

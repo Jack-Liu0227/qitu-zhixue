@@ -93,6 +93,14 @@ export interface GeneratedObjective {
   objective: string;
   prerequisiteIds: string[];
   ordinal: number;
+  /**
+   * 课程模板目标关联的知识键（= 掌握域 knowledgePointId）。
+   *
+   * 仅课程驱动目标携带；通用生成器不设置（`undefined`），写入时映射回退到
+   * `local:${objectiveId}`。该字段不落 `learning_objectives` 列，只用于在
+   * `planObjectiveMappings` 写入时决定 `knowledgePointId`。
+   */
+  conceptId?: string | null;
 }
 
 export interface GeneratedModule {
@@ -142,6 +150,8 @@ export interface GeneratedPlan {
   title: string;
   interest: string;
   goal: string;
+  /** 课程模板 slug；仅课程驱动计划携带，通用计划为 `undefined`。 */
+  curriculumSlug?: string;
   modules: GeneratedModule[];
   objectives: GeneratedObjective[];
   sessions: GeneratedSession[];
@@ -158,6 +168,11 @@ export interface GeneratePlanInput {
    * 给出时必须与 `weeks` 自洽：4 节 ↔ 4 周，8 节 ↔ 4 周 2 节/周 或 8 周。
    */
   sessionCount?: PlanSessionCount;
+  /**
+   * 课程模板 slug。提供时走课程驱动生成路径（解析模板版本 + 模板内容）；
+   * 省略时走确定性通用生成器（现状不变）。
+   */
+  curriculumSlug?: string;
 }
 
 /**
@@ -462,6 +477,7 @@ export function assertGenerateInput(input: {
   goal?: unknown;
   schedule?: unknown;
   sessionCount?: unknown;
+  curriculumSlug?: unknown;
 }): GeneratePlanInput {
   const interest = typeof input.interest === 'string' ? input.interest.trim() : '';
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
@@ -540,5 +556,27 @@ export function assertGenerateInput(input: {
       );
     }
   }
-  return { interest, weeks: input.weeks, goal, schedule, sessionCount };
+  let curriculumSlug: string | undefined;
+  if (input.curriculumSlug !== undefined && input.curriculumSlug !== null) {
+    if (typeof input.curriculumSlug !== 'string') {
+      throw new PlanGenerationError('curriculumSlug 必须是字符串', [
+        { path: 'curriculumSlug', message: 'invalid curriculumSlug' },
+      ]);
+    }
+    const trimmed = input.curriculumSlug.trim();
+    if (trimmed.length === 0 || trimmed.length > 120) {
+      throw new PlanGenerationError('curriculumSlug 长度必须在 1..120 之间', [
+        { path: 'curriculumSlug', message: 'invalid curriculumSlug length' },
+      ]);
+    }
+    curriculumSlug = trimmed;
+  }
+  return {
+    interest,
+    weeks: input.weeks,
+    goal,
+    schedule,
+    ...(sessionCount === undefined ? {} : { sessionCount }),
+    ...(curriculumSlug === undefined ? {} : { curriculumSlug }),
+  };
 }
