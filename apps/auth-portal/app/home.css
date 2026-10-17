@@ -2772,16 +2772,27 @@ html {
   }
 }
 
-/* React Bits BlurFade 滚动进入动画 */
+/* React Bits BlurFade 滚动进入/渐出动画 (参考 https://www.reactbits.dev/) */
 .rb-scroll-reveal {
   opacity: 0;
-  filter: blur(12px);
-  transform: translateY(36px);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-              filter 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: blur(10px);
   will-change: opacity, filter, transform;
   width: 100%;
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rb-scroll-reveal.rb-reveal-up {
+  transform: translateY(28px);
+}
+
+.rb-scroll-reveal.rb-reveal-down {
+  transform: translateY(-28px);
+}
+
+.rb-scroll-reveal.rb-reveal-static {
+  transform: none;
 }
 
 .rb-scroll-reveal.is-visible {
@@ -2790,16 +2801,46 @@ html {
   transform: translateY(0);
 }
 
-.rb-stagger-1 {
-  transition-delay: 0.12s;
+/* 内部卡片 / 列表级联交错显现 (Staggered Children Reveal) */
+.rb-scroll-reveal .rb-stagger-1,
+.rb-scroll-reveal .rb-stagger-2,
+.rb-scroll-reveal .rb-stagger-3,
+.rb-scroll-reveal .rb-stagger-4 {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(18px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, filter, transform;
 }
 
-.rb-stagger-2 {
-  transition-delay: 0.24s;
+.rb-scroll-reveal.is-visible .rb-stagger-1 {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+  transition-delay: 0.1s;
 }
 
-.rb-stagger-3 {
-  transition-delay: 0.36s;
+.rb-scroll-reveal.is-visible .rb-stagger-2 {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+  transition-delay: 0.2s;
+}
+
+.rb-scroll-reveal.is-visible .rb-stagger-3 {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+  transition-delay: 0.3s;
+}
+
+.rb-scroll-reveal.is-visible .rb-stagger-4 {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+  transition-delay: 0.4s;
 }
 /* =========================================================================
    React Bits 全站浅色主题 & 高对比度文字排版优化

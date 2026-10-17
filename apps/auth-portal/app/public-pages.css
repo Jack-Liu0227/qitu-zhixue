@@ -392,7 +392,8 @@
 
 
 /* =========================================================================
-   ??????????????????????????????????????
+   公开页面样式规范（项目式学习、能力体系、关于我们、合作联系）
+   对齐首页 Material 3 + React Bits 浅色磨砂主题、高对比字体与动效
    ========================================================================= */
 
 .public-page {
@@ -406,7 +407,7 @@
   z-index: 1;
 }
 
-/* ???????? */
+/* 核心特点侧注面板 (Hero Note Panel) */
 .public-hero-note {
   display: flex;
   flex-direction: column;
@@ -449,7 +450,7 @@
   margin-top: 8px;
 }
 
-/* ?????????????? */
+/* 磨砂玻璃质感交互卡片 (Frosted Glass Cards) */
 .public-card {
   display: flex;
   flex-direction: column;
@@ -500,7 +501,7 @@
   line-height: 1.7;
 }
 
-/* ???????? */
+/* 核心特点侧注面板 (Hero Note Panel) */
 .public-contact-grid {
   display: grid;
   grid-template-columns: 1fr 1.15fr;
