@@ -2,11 +2,11 @@
 set -euo pipefail
 
 REMOTE="${QITU_REMOTE:-study-remote}"
-REMOTE_ROOT="${QITU_REMOTE_ROOT:-/root/team-workspaces/qitu-zhixue}"
+REMOTE_ROOT="${QITU_REMOTE_ROOT:-/root/qitu-zhixue}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STAMP="$(date +%Y%m%d%H%M%S)"
 STAGE="/tmp/qitu-config-sync-$STAMP"
-BACKUP="/root/team-workspaces/qitu-backups/qitu-config-$STAMP.tar.gz"
+BACKUP="/root/qitu-backups/qitu-config-$STAMP.tar.gz"
 
 remote_status="$(ssh -o BatchMode=yes "$REMOTE" "git -C '$REMOTE_ROOT' status --porcelain")"
 if [[ -n "$remote_status" ]]; then
@@ -35,7 +35,7 @@ paths=(
   services/api/src/main.ts
 )
 
-ssh -o BatchMode=yes "$REMOTE" "mkdir -p '$STAGE' /root/team-workspaces/qitu-backups && tar -C '$REMOTE_ROOT' --ignore-failed-read -czf '$BACKUP' ${paths[*]}"
+ssh -o BatchMode=yes "$REMOTE" "mkdir -p '$STAGE' /root/qitu-backups && tar -C '$REMOTE_ROOT' --ignore-failed-read -czf '$BACKUP' ${paths[*]}"
 
 for path in "${paths[@]}"; do
   tar -C "$ROOT" -czf - "$path" | ssh -o BatchMode=yes "$REMOTE" "mkdir -p '$STAGE' && tar -C '$STAGE' -xzf -"

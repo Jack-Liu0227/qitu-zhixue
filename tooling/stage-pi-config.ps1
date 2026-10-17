@@ -2,7 +2,7 @@
 param(
   [string]$PiConfigDir = (Join-Path $env:USERPROFILE '.pi\agent'),
   [string]$Remote = 'study-remote',
-  [string]$RemoteRoot = '/root/team-workspaces/qitu-zhixue'
+  [string]$RemoteRoot = '/root/qitu-zhixue'
 )
 
 $ErrorActionPreference = 'Stop'

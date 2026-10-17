@@ -9,7 +9,7 @@ Type=simple
 # This unit runs from the canonical checkout. There is no separate release
 # directory or symlink any more; builds happen in place while the service is
 # stopped (never build into a .next that a live process is serving).
-WorkingDirectory=/root/team-workspaces/qitu-zhixue
+WorkingDirectory=/root/qitu-zhixue
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1

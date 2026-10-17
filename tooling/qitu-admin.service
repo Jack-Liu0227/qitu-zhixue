@@ -9,7 +9,7 @@ Type=simple
 # Runs from the canonical checkout. .next must be a production build
 # (`bash tooling/start-qitu-services.sh build` with QITU_FRONTEND_MODE=production);
 # `next start` crash-loops on dev artifacts or a missing BUILD_ID.
-WorkingDirectory=/root/team-workspaces/qitu-zhixue
+WorkingDirectory=/root/qitu-zhixue
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1

@@ -82,7 +82,7 @@ const MCP_TOOL_PARAM_REGISTRY: Record<string, ToolParamSchema[]> = {
   ],
   bash: [
     { name: 'command', type: 'string', required: true, description: '在工作区安全沙箱中执行的 Shell 命令行指令' },
-    { name: 'cwd', type: 'string', required: false, defaultValue: '/root/team-workspaces/qitu-zhixue', description: '执行命令的工作目录路径' },
+    { name: 'cwd', type: 'string', required: false, defaultValue: '/root/qitu-zhixue', description: '执行命令的工作目录路径' },
     { name: 'timeout_ms', type: 'number', required: false, defaultValue: 30000, description: '命令执行超时毫秒数' },
   ],
   edit: [
@@ -189,11 +189,11 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
     id: 'mcp-pi-builtin',
     name: 'pi-agent-builtin',
     command: 'internal:pi-runtime',
-    args: ['--workspace', '/root/team-workspaces/qitu-zhixue'],
+    args: ['--workspace', '/root/qitu-zhixue'],
     url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
     key: '',
     env: {
-      WORKSPACE_ROOT: '/root/team-workspaces/qitu-zhixue',
+      WORKSPACE_ROOT: '/root/qitu-zhixue',
       EXECUTION_SANDBOX: 'docker-isolated',
       SECURITY_GATE: 'TheoryMastered-Enforced',
     },
@@ -207,12 +207,12 @@ const DEFAULT_MCP_LIST: SingleMcpConfig[] = [
       {
         name: 'pi-agent-builtin',
         command: 'internal:pi-runtime',
-        args: ['--workspace', '/root/team-workspaces/qitu-zhixue'],
+        args: ['--workspace', '/root/qitu-zhixue'],
         url: 'https://agent.qitu-zhixue.com/api/v1/tools/pi-runtime',
         key: '',
         transport: 'stdio',
         env: {
-          WORKSPACE_ROOT: '/root/team-workspaces/qitu-zhixue',
+          WORKSPACE_ROOT: '/root/qitu-zhixue',
           EXECUTION_SANDBOX: 'docker-isolated',
           SECURITY_GATE: 'TheoryMastered-Enforced',
         },

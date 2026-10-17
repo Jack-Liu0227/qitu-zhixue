@@ -73,13 +73,13 @@ Graphiti 相关操作见 `tooling/qitu-graphiti.sh`（默认 `QITU_GRAPHITI_ENAB
 
 ## 3. 与 study-remote 同步
 
-同步脚本只操作远程主工作树 `/root/team-workspaces/qitu-zhixue`，不会触碰角色工作树：
+同步脚本只操作远程主工作树 `/root/qitu-zhixue`，不会触碰角色工作树：
 
 ```text
-/root/team-workspaces/qitu-zhixue-student
-/root/team-workspaces/qitu-zhixue-parent
-/root/team-workspaces/qitu-zhixue-teacher
-/root/team-workspaces/qitu-zhixue-admin
+/root/qitu-zhixue-student
+/root/qitu-zhixue-parent
+/root/qitu-zhixue-teacher
+/root/qitu-zhixue-admin
 ```
 
 默认要求远程主工作树干净，并在覆盖前创建远程备份：
@@ -102,7 +102,7 @@ sudo systemctl reload nginx
 ```
 
 部署脚本与 Nginx 配置**不会**自动删除 Git 分支、worktree、依赖或环境文件。
-远程备份保存于 `/root/team-workspaces/qitu-backups/`。
+远程备份保存于 `/root/qitu-backups/`。
 
 ### 3.0 Runtime dependency and bootstrap checks
 
@@ -263,7 +263,7 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 
 ### 3.4 五端品牌发布与隔离构建（2026-10-17，#56）
 
-- 前端代码提交 `04be640`；服务器 Git 主工作树仍为 `/root/team-workspaces/qitu-zhixue`。
+- 前端代码提交 `04be640`；服务器 Git 主工作树仍为 `/root/qitu-zhixue`。
 - 使用 `git archive` 将该提交导出到 `/root/qitu-releases/04be640`，以冻结锁文件离线安装依赖，
   串行执行 `pnpm build --concurrency=1`。没有覆盖任何正在使用的 `.next`。
 - 五个 `qitu-<name>.service` 的 `zz-brand-story-release.conf` drop-in 设置该发布目录、

@@ -82,3 +82,6 @@ worktrees/
 # Local creative build intermediates
 /output/
 .finesse/
+
+# Local knowledge runtime service (embedding venv/models/data, relocated from /root/team-services)
+services/knowledge/

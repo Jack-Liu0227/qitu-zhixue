@@ -11,7 +11,7 @@ pnpm --filter @qitu/auth-portal build
 
 Install `tooling/qitu-auth.service` in `/etc/systemd/system/`, run
 `systemctl daemon-reload`, and enable/start `qitu-auth.service`.
-The unit runs from the canonical checkout `/root/team-workspaces/qitu-zhixue`;
+The unit runs from the canonical checkout `/root/qitu-zhixue`;
 there is no `qitu-auth-current` release symlink any more (the earlier
 symlink-based scheme was dropped — keep the unit file and the host in sync).
 Port 3100 must be free before starting it. Manage this frontend through
