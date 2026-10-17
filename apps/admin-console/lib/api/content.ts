@@ -49,6 +49,25 @@ export interface AdminTemplateStage {
   label: string;
 }
 
+/**
+ * 治理端版本详情（GET /admin/project-templates/:id/versions）。
+ *
+ * `content` 是随版本冻结的正文 JSON：阶段设计编辑器把
+ * `{ phases, linkedTeamId }` 写进去、读出来，形成读写闭环。
+ */
+export interface AdminTemplateVersionDetail {
+  id: string;
+  templateId: string;
+  version: string;
+  stages: AdminTemplateStage[];
+  content: Record<string, unknown>;
+  rubric: unknown[];
+  status: string;
+  publishedAt: string | null;
+  createdAt: string;
+  createdBy: string | null;
+}
+
 export interface AdminTemplateMutation {
   template: AdminProjectTemplate;
   replayed: boolean;
@@ -90,6 +109,10 @@ export function fetchAdminKnowledge(): Promise<AdminKnowledgeDocument[]> {
 
 export function fetchAdminTemplates(): Promise<AdminProjectTemplate[]> {
   return get('/api/v1/admin/project-templates');
+}
+
+export function fetchAdminTemplateVersions(id: string): Promise<AdminTemplateVersionDetail[]> {
+  return get(`/api/v1/admin/project-templates/${encodeURIComponent(id)}/versions`);
 }
 
 export function createAdminTemplate(input: Record<string, unknown>): Promise<AdminTemplateMutation> {

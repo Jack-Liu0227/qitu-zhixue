@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, Optional, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, HttpCode, Optional, Param, Patch, Post, Put } from '@nestjs/common';
 import type {
   AdminModelResponse,
   AdminModelUsagesResponse,
@@ -6,9 +6,16 @@ import type {
   BindUsageRequest,
   ConnectionTestResponse,
   CreateManualModelRequest,
+  DiscoverProviderModelsResponse,
+  ModelApi,
   ModelUsageBinding,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
   ProviderConfigPublic,
+  ProviderModelSelection,
   RefreshProviderResponse,
+  SetProviderModelsRequest,
+  SetProviderModelsResponse,
   UpdateManualModelRequest,
   UpsertProviderRequest,
 } from '@qitu/contracts';
@@ -23,7 +30,7 @@ import {
   type UpdateManualModelInput,
 } from './model-registry.service';
 import { QwenVoiceGatewayService } from './qwen-voice-gateway.service';
-import { resolveIdempotencyKey } from './manual-model.validation';
+import { MODEL_APIS, resolveIdempotencyKey } from './manual-model.validation';
 import { readPiImportManifest, sanitisePiImportBaseUrl, type PiImportManifest, type PiImportModel, type PiImportProvider, type PiImportResult } from './pi-import';
 
 /**
@@ -31,8 +38,9 @@ import { readPiImportManifest, sanitisePiImportBaseUrl, type PiImportManifest, t
  *
  * 三条产品规则体现在这里的接口形状上：
  *  - **供应商 / 模型 / 用途分开**，所以有三个资源而不是一个大表单。
- *  - **拉取是显式动作**（`POST :id/refresh`），不是保存时的副作用：
- *    管理员应当能保留已配好的模型列表，哪怕上游临时不可达。
+ *  - **模型发现是显式动作**：`POST :id/models/discover` / `models/probe` 只读，
+ *    不改变 Provider 或模型挂载状态；`POST :id/refresh` 只同步已挂载远程模型
+ *    的元数据；真正的挂载集合写入统一走 `PUT :id/models`；
  *  - 全部写接口只对 `admin` 开放，且密钥永不回显。
  */
 @Controller()
@@ -49,6 +57,23 @@ export class ModelRegistryController {
   listProviders(@Headers('cookie') cookieHeader: string | undefined): { data: AdminProvidersResponse } {
     requireAdmin(this.authService, cookieHeader);
     return { data: this.registry.listProviders() };
+  }
+
+  /**
+   * 未保存供应商的模型发现探测（新建渠道表单里的「获取模型」）。
+   *
+   * 密钥只在请求体出现一次，不落库、不回显、不写日志；SSRF / 超时 /
+   * 响应体上限由 `fetch-models.ts` 统一防护。上游失败返回 `200 + ok=false`
+   * （已脱敏错误），与连接测试同风格；请求体字段无效才是 400。
+   */
+  @Post('admin/model-providers/models/probe')
+  @HttpCode(200)
+  async probeModels(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Body() body: ProbeModelsRequest,
+  ): Promise<{ data: ProbeModelsResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.probeModels(sanitiseProbe(body), admin.id) };
   }
 
   @Post('admin/model-providers/:id')
@@ -193,11 +218,71 @@ export class ModelRegistryController {
   }
 
   /**
+   * 只读发现：用已保存的地址/密钥/协议拉一次上游模型列表。
+   *
+   * **不落库、不挂载、不改 `modelsFetchedAt` / `lastError`、不写审计**，所以
+   * 不需要 `Idempotency-Key`（与 `:id/test` 同类）。上游失败仍归一为
+   * `200 + ok=false` + 已脱敏错误，绝不回填任何预设模型。
+   * 用 POST 而不是 GET：它会对外发起请求，不该被预取或缓存。
+   */
+  @Post('admin/model-providers/:id/models/discover')
+  @HttpCode(200)
+  async discoverProviderModels(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('id') id: string,
+  ): Promise<{ data: DiscoverProviderModelsResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    return { data: await this.registry.discoverModels(id, admin.id) };
+  }
+
+  /**
+   * 设置挂载模型集合（唯一的挂载 / 取消入口）。
+   *
+   * 请求体是**期望的完整集合**：不在集合里的模型会被物理删除，新项会入库。
+   * 因此必须带 `Idempotency-Key`；被用途/Agent 引用的模型无法取消 → 409。
+   * 写入与审计同事务（scope 含 providerId，避免跨通道误判为重放）。
+   */
+  @Put('admin/model-providers/:id/models')
+  async setProviderModels(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyHeader: string | undefined,
+    @Param('id') id: string,
+    @Body() body: SetProviderModelsRequest,
+  ): Promise<{ data: SetProviderModelsResponse }> {
+    const admin = requireAdmin(this.authService, cookieHeader);
+    const idempotencyKey = resolveIdempotencyKey(idempotencyHeader, body?.idempotencyKey);
+    const models = sanitiseModelSelection(body);
+    const scope = `admin.model-registry.models.set:${id}`;
+    try {
+      const result = await this.idempotency.execute(
+        scope,
+        idempotencyKey,
+        hashIdempotentInput(scope, {}, { models }),
+        async () => ({
+          body: await this.registry.setProviderModels(
+            id,
+            models,
+            admin.id,
+            `${scope}:${idempotencyKey}`,
+          ),
+        }),
+      );
+      return { data: result.body };
+    } catch (error) {
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /**
    * 自动拉取上游模型列表。
    *
-   * 用 POST 而不是 GET：这会对外发起请求、改变服务端状态，不该被预取或缓存。
+   * 用 POST 而不是 GET：这会对外发起请求，不该被预取或缓存；它只同步已挂载
+   * 远程模型的元数据，不改变挂载集合。
    * 拉取失败**不返回 4xx/5xx**，而是把原因放在 `provider.lastError` 里，
    * 让管理员看到「已保存的配置 + 失败原因」，而不是整页崩掉。
+   *
+   * ⚠️ 同步**不改变挂载集合**：新发现的上游模型只进 `discovered` 报告，
+   * 必须走上面的 `PUT :id/models` 才入库。
    */
   @Post('admin/model-providers/:id/refresh')
   @HttpCode(200)
@@ -351,6 +436,71 @@ function requireAdmin(authService: AuthService, cookieHeader: string | undefined
   return requireRole(authService, cookieHeader, 'admin', '模型接入配置仅向管理员开放');
 }
 
+/** probe 允许的协议：契约 `ModelApi` 全集（含 `google-gemini`）。 */
+const PROBE_MODEL_APIS: readonly ModelApi[] = MODEL_APIS;
+
+/**
+ * `PUT :id/models` 请求体白名单。
+ *
+ * 只接收管理员真的需要声明的字段：`modelId` / `displayName` / 模态 /
+ * 上下文 / `source`。`api`、`enabled`、`id` 等一律不接受（协议属于供应商层，
+ * 集合内的模型都是已挂载）。字段**形状**在此拦截，取值范围由
+ * `manual-model.validation` 纯函数判定。
+ */
+function sanitiseModelSelection(body: SetProviderModelsRequest | undefined): ProviderModelSelection[] {
+  const raw = body === null || typeof body !== 'object' ? undefined : body.models;
+  if (raw === undefined) {
+    throw new BadRequestException('models 必填（期望的完整挂载集合；清空请传空数组）');
+  }
+  if (!Array.isArray(raw)) throw new BadRequestException('models 必须是数组');
+  if (raw.length > 500) throw new BadRequestException('单次提交模型数不得超过 500');
+
+  return raw.map((entry, index) => {
+    if (entry === null || typeof entry !== 'object') {
+      throw new BadRequestException(`models[${index}] 无效`);
+    }
+    const modelId = typeof entry.modelId === 'string' ? entry.modelId.trim() : '';
+    if (modelId.length === 0 || modelId.length > 200) {
+      throw new BadRequestException(`models[${index}].modelId 无效：需为 1-200 字符`);
+    }
+    const out: ProviderModelSelection = { modelId };
+    if (typeof entry.displayName === 'string') out.displayName = entry.displayName;
+    if (Array.isArray(entry.input)) out.input = entry.input as ProviderModelSelection['input'];
+    if (Array.isArray(entry.output)) out.output = entry.output as ProviderModelSelection['output'];
+    if (entry.contextWindow === null || typeof entry.contextWindow === 'number') {
+      out.contextWindow = entry.contextWindow;
+    }
+    if (entry.maxTokens === null || typeof entry.maxTokens === 'number') {
+      out.maxTokens = entry.maxTokens;
+    }
+    if (entry.source === 'remote' || entry.source === 'manual') out.source = entry.source;
+    return out;
+  });
+}
+
+/**
+ * probe 请求体白名单 + 形状校验。
+ *
+ * 只携带探测所需的四个字段；地址 / 密钥的**内容**合法性（SSRF、长度）
+ * 由 `fetch-models.ts` 统一判定，这里只拦「字段形状都不对」的请求。
+ */
+function sanitiseProbe(body: ProbeModelsRequest | undefined): ProbeModelsRequest {
+  if (body === null || typeof body !== 'object') {
+    throw new BadRequestException('请求体无效');
+  }
+  const baseUrl = typeof body.baseUrl === 'string' ? body.baseUrl.trim() : '';
+  if (baseUrl.length === 0 || baseUrl.length > 500) {
+    throw new BadRequestException('baseUrl 无效：需为不超过 500 字符的非空地址');
+  }
+  if (!(PROBE_MODEL_APIS as readonly string[]).includes(body.api)) {
+    throw new BadRequestException(`api 必须是 ${PROBE_MODEL_APIS.join(' | ')}`);
+  }
+  const apiKey = typeof body.apiKey === 'string' ? body.apiKey : '';
+  if (apiKey.length > 512) throw new BadRequestException('apiKey 无效');
+  const authHeader = typeof body.authHeader === 'boolean' ? body.authHeader : true;
+  return { baseUrl, api: body.api, apiKey, authHeader };
+}
+
 function throwPiImportConfigError(error: unknown): never {
   if (error instanceof Error) {
     const code = error.message;
@@ -446,7 +596,9 @@ function sanitiseProvider(body: UpsertProviderRequest | undefined): UpsertProvid
   const out: UpsertProviderRequest = {};
   if (typeof body.name === 'string') out.name = body.name;
   if (typeof body.baseUrl === 'string') out.baseUrl = body.baseUrl;
-  if (body.api === 'openai-completions' || body.api === 'openai-responses' || body.api === 'anthropic-messages') {
+  // 协议白名单必须是契约全集。这里曾写死三种，导致 `google-gemini` 被
+  // 静默丢弃：管理员在界面选了 Gemini，库里仍是 openai-completions，且不报错。
+  if (MODEL_APIS.some((value) => value === body.api)) {
     out.api = body.api;
   }
   if (typeof body.authHeader === 'boolean') out.authHeader = body.authHeader;

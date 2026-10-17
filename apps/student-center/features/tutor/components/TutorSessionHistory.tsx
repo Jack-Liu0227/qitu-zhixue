@@ -237,19 +237,20 @@ export function TutorSessionHistory({
       <aside
         className="qitu-live-session-sidebar is-collapsed"
         style={{
-          width: 64,
-          minWidth: 64,
+          width: 68,
+          minWidth: 68,
           flexShrink: 0,
-          padding: '14px 0',
+          padding: '12px 0 10px',
           border: '1px solid #e2e8f0',
           borderRadius: 14,
           background: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '12px',
+          gap: '8px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
           boxSizing: 'border-box',
+          overflow: 'hidden',
         }}
       >
         <button
@@ -258,8 +259,8 @@ export function TutorSessionHistory({
           title="展开侧边栏（会话历史）"
           aria-label="展开侧边栏（会话历史）"
           style={{
-            width: '44px',
-            height: '44px',
+            width: '52px',
+            height: '40px',
             padding: 0,
             margin: '0 auto',
             display: 'flex',
@@ -273,9 +274,10 @@ export function TutorSessionHistory({
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             boxSizing: 'border-box',
+            flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: '15px', lineHeight: 1 }}>📂</span>
+          <span style={{ fontSize: '14px', lineHeight: 1 }}>📂</span>
           <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', marginTop: '2px', lineHeight: 1 }}>展开</span>
         </button>
         <button
@@ -285,25 +287,164 @@ export function TutorSessionHistory({
           title="新建探究会话"
           aria-label="新建探究会话"
           style={{
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             padding: 0,
             margin: '0 auto',
             borderRadius: '50%',
             background: '#2563eb',
             color: '#fff',
             border: 'none',
-            fontSize: '20px',
+            fontSize: '19px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 2px 6px rgba(37,99,235,0.2)',
             boxSizing: 'border-box',
+            flexShrink: 0,
           }}
         >
           +
         </button>
+
+        {/* 折叠态仍可看到会话排列：紧凑会话轨道 */}
+        <div
+          role="list"
+          aria-label="会话历史（紧凑视图）"
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            paddingTop: '2px',
+          }}
+        >
+          {historyStatus === 'loading' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }} aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'qituHistoryPulse 1.2s ease-in-out infinite',
+                  }}
+                />
+              ))}
+            </div>
+          ) : historyStatus === 'error' ? (
+            <span
+              role="status"
+              title={historyError?.message ?? '会话历史加载失败'}
+              style={{
+                width: '44px',
+                height: '44px',
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: '10px',
+                border: '1px solid #fecaca',
+                background: '#fef2f2',
+                fontSize: '16px',
+              }}
+            >
+              ⚠️
+            </span>
+          ) : filteredSessions.length === 0 ? (
+            <span
+              title="暂无历史会话，点击 + 新建探究会话"
+              style={{
+                width: '44px',
+                height: '44px',
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: '10px',
+                border: '1px dashed #e2e8f0',
+                color: '#94a3b8',
+                fontSize: '11px',
+                textAlign: 'center',
+                lineHeight: 1.2,
+              }}
+            >
+              暂无
+              <br />
+              会话
+            </span>
+          ) : (
+            filteredSessions.map((item) => {
+              const active = isCurrentActive(item);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="listitem"
+                  onClick={() => handleSelectSession(item)}
+                  disabled={busy}
+                  title={`${item.title}${item.stageLabel ? ` · ${item.stageLabel}` : ''} · ${item.turnCount}条对话 · ${formatRelativeTime(item.updatedAt)}`}
+                  aria-label={`切换到会话：${item.title}`}
+                  aria-current={active ? 'true' : undefined}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    padding: 0,
+                    flexShrink: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    gap: 0,
+                    border: active ? '1.5px solid #3b82f6' : '1px solid #f1f5f9',
+                    borderRadius: '10px',
+                    background: active ? '#eff6ff' : '#ffffff',
+                    boxShadow: active ? '0 2px 8px rgba(59,130,246,0.15)' : 'none',
+                    cursor: busy ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = '#ffffff';
+                      e.currentTarget.style.borderColor = '#f1f5f9';
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '15px', lineHeight: 1 }} aria-hidden="true">
+                    {item.kind === 'project' ? '🚀' : '💡'}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      bottom: 3,
+                      right: 4,
+                      fontSize: '9px',
+                      fontWeight: 700,
+                      color: active ? '#1d4ed8' : '#94a3b8',
+                      background: active ? '#dbeafe' : '#f1f5f9',
+                      borderRadius: '4px',
+                      padding: '0 3px',
+                      lineHeight: '1.4',
+                    }}
+                  >
+                    {item.turnCount}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
       </aside>
     );
   }
@@ -457,11 +598,6 @@ export function TutorSessionHistory({
                         marginTop: '3px',
                       }}
                     >
-                      {active && (
-                        <span style={{ background: active ? '#dbeafe' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px' }}>
-                          {currentAssistantName}
-                        </span>
-                      )}
                       {item.stageLabel && (
                         <span style={{ background: active ? '#dbeafe' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px' }}>
                           {item.stageLabel}

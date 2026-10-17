@@ -4,6 +4,8 @@ import { EmptyState, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock,
 import { StudentLink } from '../../../components/student-link';
 import { inspirationDataSource } from '../data';
 import { useInspirationData } from '../hooks/useInspirationData';
+import { RecommendedExplorationButton } from './RecommendedExplorationButton';
+import { templateMetaLine } from './TemplateCard';
 
 export function RecommendedTemplateDetail({ templateId }: { templateId: string }) {
   const { state, offline, templates, errorCode, retrying, retry } = useInspirationData(inspirationDataSource);
@@ -26,6 +28,14 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
       />
     );
   }
+  if (state === 'offline' && template === undefined) {
+    return (
+      <div className="qitu-inspiration-detail">
+        <OfflineBanner readOnly onRetry={retry} />
+        <EmptyState title="当前无法加载推荐项目" description="恢复网络后重试，暂不会创建推荐探索。" />
+      </div>
+    );
+  }
   if (template === undefined) {
     return <EmptyState title="推荐项目不存在" description="返回灵感空间查看其他推荐方向。" />;
   }
@@ -44,31 +54,36 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
           <div className="qitu-inspiration-template-heading">
             <p className="qitu-inspiration-eyebrow">推荐项目</p>
             <h1 className="qitu-inspiration-template-title">{template.title}</h1>
-            <p className="qitu-inspiration-template-meta">
-              {template.subject} · {template.difficulty} · 约 {template.durationWeeks} 周
-            </p>
+            <p className="qitu-inspiration-template-meta">{templateMetaLine(template)}</p>
           </div>
         </header>
         <p className="qitu-inspiration-detail-summary">{template.summary}</p>
         <TagChips tags={template.tags} />
         <section aria-labelledby="recommended-stages-title">
           <h2 id="recommended-stages-title">项目路径</h2>
-          <ol className="qitu-inspiration-stages">
-            {template.stages.map((stage, index) => (
-              <li key={stage.id} className="qitu-inspiration-stage">
-                <span className="qitu-inspiration-stage-index" aria-hidden="true">{index + 1}</span>
-                <span className="qitu-inspiration-stage-label">{stage.label}</span>
-              </li>
-            ))}
-          </ol>
+          {template.stages.length > 0 ? (
+            <ol className="qitu-inspiration-stages">
+              {template.stages.map((stage, index) => (
+                <li key={stage.id} className="qitu-inspiration-stage">
+                  <span className="qitu-inspiration-stage-index" aria-hidden="true">{index + 1}</span>
+                  <span className="qitu-inspiration-stage-label">{stage.label}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>该模板还没有发布阶段明细。</p>
+          )}
         </section>
-        <section aria-labelledby="recommended-outcome-title">
-          <h2 id="recommended-outcome-title">预期成果</h2>
-          <p>{template.outcome}</p>
-        </section>
+        {template.outcome ? (
+          <section aria-labelledby="recommended-outcome-title">
+            <h2 id="recommended-outcome-title">预期成果</h2>
+            <p>{template.outcome}</p>
+          </section>
+        ) : null}
         <p className="qitu-inspiration-detail-note">
           这是推荐项目方向。确认意图后，系统才会由 Projects 服务创建正式项目；自由探索请从灵感空间的自由探索入口进入 AI搭档。
         </p>
+        <RecommendedExplorationButton template={template} disabled={offline} className="qitu-button qitu-button-primary" />
       </article>
     </div>
   );

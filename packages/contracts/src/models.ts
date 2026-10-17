@@ -20,7 +20,18 @@
  *  - 日志只记供应商 id、地址与模型个数，**不记密钥**。
  */
 
-/** 上游协议族。决定拉模型列表与发起对话的请求形状。 */
+/**
+ * 上游协议族。决定拉模型列表与发起对话的请求形状。
+ *
+ * 四个值是**四种真实线协议**，不是供应商品牌：
+ *  - `openai-completions`：`POST /v1/chat/completions`，模型目录 `GET /v1/models`；
+ *  - `openai-responses`：`POST /v1/responses`，模型目录 `GET /v1/models`；
+ *  - `anthropic-messages`：`POST /v1/messages` + `x-api-key`，目录 `GET /v1/models`；
+ *  - `google-gemini`：**Gemini 原生 v1beta**，`:generateContent` /
+ *    `:streamGenerateContent?alt=sse` + `x-goog-api-key`，目录
+ *    `GET /v1beta/models`。用 OpenAI 兼容网关代理的 Gemini 模型应登记为
+ *    `openai-completions` / `openai-responses`，不占用本协议值。
+ */
 export type ModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-gemini';
 
 /** 模型能吃／能吐的模态。 */
@@ -104,10 +115,110 @@ export interface UpsertProviderRequest {
 }
 
 /** `POST /admin/model-providers/:id/refresh` 的响应。 */
+/**
+ * `POST /admin/model-providers/:id/refresh` 的响应。
+ *
+ * 同步只**更新已挂载模型的目录元数据**，不改变挂载集合（见
+ * `docs/admin/model-registry.md` §5）：管理员勾选保存才是唯一的挂载/取消入口。
+ */
 export interface RefreshProviderResponse {
   provider: ProviderConfigPublic;
-  /** 本次拉取到的模型个数（0 表示上游没返回，或地址不对）。 */
+  /** 本次上游返回的模型总数（0 表示上游没返回，或地址不对）。 */
   fetched: number;
+  /** 上游有、但本通道**未挂载**的模型；只报告，不写入。 */
+  discovered: ModelDescriptor[];
+  /** 本通道已挂载、但本次上游列表里已消失的模型；只报告，不自动删除。 */
+  stale: ModelDescriptor[];
+}
+
+/* ------------------------------------------------------------------ *
+ * 未保存供应商的模型发现探测（probe）
+ *
+ * 新建渠道表单里「获取模型」时，供应商还没有 id，不能走 `:id/refresh`。
+ * 这个端点用**表单当前值**发起一次受 SSRF / 超时 / 响应体上限保护的
+ * `/models` 拉取：密钥只在请求体出现一次，服务端不落库、不回显、不写日志。
+ * 失败遵循连接测试的 `ok=false` 语义（HTTP 200），错误已脱敏。
+ * ------------------------------------------------------------------ */
+
+/** `POST /admin/model-providers/models/probe` 的请求体。 */
+export interface ProbeModelsRequest {
+  baseUrl: string;
+  api: ModelApi;
+  /** 明文密钥只在本请求体出现一次；服务端绝不持久化或回显。 */
+  apiKey?: string;
+  /** true 时把密钥作为 `Authorization: Bearer` 头发送（anthropic 协议忽略）。 */
+  authHeader?: boolean;
+}
+
+/** `POST /admin/model-providers/models/probe` 的响应。 */
+export interface ProbeModelsResponse {
+  ok: boolean;
+  /** 成功时为上游真实模型；失败时为空数组。**绝不回填任何预设模型**。 */
+  models: ModelDescriptor[];
+  /** 已脱敏的错误说明；成功时为 `null`。**绝不含密钥或原始响应体**。 */
+  error: string | null;
+}
+
+/* ------------------------------------------------------------------ *
+ * 模型挂载集合（管理员）
+ *
+ * 两条产品规则：
+ *  1. **获取是只读的**。`POST :id/models/discover` 与 `models/probe` 一样，
+ *     只替管理员发起一次上游 `/models` 发现，不落库、不挂载、不改任何状态；
+ *     失败遵循 `ok=false` 语义并返回已脱敏原因，绝不回填预设模型。
+ *  2. **保存才写入**。`PUT :id/models` 接收「期望挂载集合」，一次事务里
+ *     新增缺失项、物理删除不在集合里的项。被 Agent 配置或兼容用途引用的
+ *     模型一律整笔拒绝（409，`detail` 列出冲突模型），不做部分成功。
+ * ------------------------------------------------------------------ */
+
+/** `POST /admin/model-providers/:id/models/discover` 的响应。 */
+export interface DiscoverProviderModelsResponse {
+  providerId: string;
+  ok: boolean;
+  /** 上游真实模型；失败时为空数组。**绝不回填任何预设模型**。 */
+  models: ModelDescriptor[];
+  /** 已脱敏错误说明；成功时为 `null`。 */
+  error: string | null;
+  /** 其中已经挂载在本通道上的模型 id，供界面默认勾选。 */
+  mountedIds: string[];
+}
+
+/** 期望挂载集合里的单个模型条目。 */
+export interface ProviderModelSelection {
+  /** 上游真实模型 ID（不可变主键的一部分）。 */
+  modelId: string;
+  /** 展示名；省略时回落到 `modelId`。 */
+  displayName?: string;
+  /** 输入模态；上游不说模态时保守填 `['text']`，不要猜 `audio`／`image`。 */
+  input?: ModelModality[];
+  /** 输出模态；同上。 */
+  output?: ModelModality[];
+  contextWindow?: number | null;
+  maxTokens?: number | null;
+  /**
+   * 来源标记：`remote` = 选自上游发现列表（默认），`manual` = 管理员手填。
+   * 已存在的行保留其原来源，请求里的该字段只对新行生效。
+   */
+  source?: 'remote' | 'manual';
+}
+
+/** `PUT /admin/model-providers/:id/models` 的请求体。 */
+export interface SetProviderModelsRequest {
+  /** 期望的完整挂载集合；空数组表示清空该通道全部模型。 */
+  models: ProviderModelSelection[];
+  /** 与 `Idempotency-Key` 请求头二选一或保持一致（头优先）。 */
+  idempotencyKey?: string;
+}
+
+/** `PUT /admin/model-providers/:id/models` 的响应。 */
+export interface SetProviderModelsResponse {
+  provider: ProviderConfigPublic;
+  /** 本次新登记的模型 id。 */
+  created: string[];
+  /** 本次被物理删除（取消挂载）的模型 id。 */
+  removed: string[];
+  /** 本次只更新元数据、保持挂载的模型 id。 */
+  kept: string[];
 }
 
 /* ------------------------------ 兼容用途绑定 ------------------------------ */

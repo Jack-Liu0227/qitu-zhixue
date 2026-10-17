@@ -2,7 +2,7 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { eq, inArray, like } from 'drizzle-orm';
 import {
   auditLogs,
@@ -23,7 +23,9 @@ import { upsertManualModelRow } from './model-registry.persistence';
  * 覆盖：
  * - 供应商 / 密钥落库后**重启式新实例**能完整恢复；
  * - 密钥密文非明文、可用主密钥解密；缺主密钥时 live 写入 503 且不落任何行；
- * - 自动拉取远程模型、软下线未返回的模型、手工模型不被误删；
+ * - 目录同步只刷元数据：不挂载、不取消挂载，未挂载/已消失只进报告；
+ * - 只读发现不写任何行；保存集合才挂载，取消挂载是物理删除；
+ * - 被用途引用的模型不能取消挂载 → 409，不部分成功；
  * - 拉取失败保留旧列表并写 `last_error`；
  * - 用途绑定持久化、模态 / 不存在 / 已下线模型校验、`fallbackTo`、解绑；
  * - 删除供应商时显式解绑并清理其模型；
@@ -117,6 +119,20 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     return `http://127.0.0.1:${address.port}`;
   }
 
+  /**
+   * 保存期望挂载集合（「保存模型选择」的服务端入口）。
+   *
+   * `modelId` 以外字段全部可选，缺省语义与控制器一致：`source='remote'`、
+   * 模态 `['text']`、展示名回落成 `modelId`。
+   */
+  function mount(
+    service: ModelRegistryService,
+    id: string,
+    models: readonly { modelId: string; displayName?: string; source?: 'remote' | 'manual' }[],
+  ) {
+    return service.setProviderModels(id, models, RUN, `${id}:set:${randomUUID()}`);
+  }
+
   test('供应商 + 密钥落库后可被新实例恢复，且密文非明文', async () => {
     const id = providerId('crud');
     const secret = 'sk-live-crud-secret-42';
@@ -203,13 +219,13 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     assert.equal(rows[0]!.keyFingerprint, null);
   });
 
-  test('自动拉取：远程 upsert、未返回模型软下线、手工模型不被误删', async () => {
+  test('目录同步不改变挂载集合；只读发现 + 保存集合才是唯一挂载入口', async () => {
     const id = providerId('refresh');
     upstreamModels = [{ id: 'remote-a' }, { id: 'remote-b' }];
     let service = await freshService();
     await service.upsertProvider(id, { name: '拉取', baseUrl: serverBaseUrl() }, RUN);
 
-    // 直接往库里放一个手工模型，刷新时必须保留。
+    // 直接往库里放一个手工模型，同步与保存都必须保留它。
     await upsertManualModelRow(
       db,
       {
@@ -225,42 +241,80 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     );
     service = await freshService();
 
+    // 1) 只读发现：不写任何东西，连 modelsFetchedAt 都不动。
+    const found = await service.discoverModels(id, RUN);
+    assert.equal(found.ok, true);
+    assert.deepEqual(found.models.map((model) => model.id).sort(), ['remote-a', 'remote-b']);
+    assert.deepEqual(found.mountedIds, ['manual-keep']);
+    assert.equal(service.listProviders().providers.find((p) => p.id === id)!.modelsFetchedAt, null);
+    const afterDiscover = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
+    assert.deepEqual(afterDiscover.map((row) => row.modelId), ['manual-keep'], '发现不得写入任何模型行');
+
+    // 2) 同步：只刷元数据，不替管理员挂载。
     const first = await service.refreshProvider(id, RUN);
     assert.equal(first.fetched, 2);
-    let ids = first.provider.models.map((model) => model.id).sort();
+    assert.deepEqual(first.discovered.map((model) => model.id).sort(), ['remote-a', 'remote-b']);
+    assert.deepEqual(first.stale, []);
+    assert.deepEqual(
+      first.provider.models.map((model) => model.id),
+      ['manual-keep'],
+      '同步不得替管理员挂载上游模型',
+    );
+
+    // 3) 保存集合才真正挂载。
+    const saved = await mount(service, id, [
+      { modelId: 'remote-a', displayName: 'Remote A' },
+      { modelId: 'remote-b' },
+      { modelId: 'manual-keep' },
+    ]);
+    assert.deepEqual(saved.created.slice().sort(), ['remote-a', 'remote-b']);
+    assert.deepEqual(saved.kept, ['manual-keep']);
+    assert.deepEqual(saved.removed, []);
+    let ids = service.listProviders().providers.find((p) => p.id === id)!.models.map((m) => m.id).sort();
     assert.deepEqual(ids, ['manual-keep', 'remote-a', 'remote-b']);
 
-    // 第二次上游只返回 remote-a：remote-b 应软下线，手工模型仍在。
-    upstreamModels = [{ id: 'remote-a' }];
-    const second = await service.refreshProvider(id, RUN);
-    assert.equal(second.fetched, 1);
-    ids = second.provider.models.map((model) => model.id).sort();
-    assert.deepEqual(ids, ['manual-keep', 'remote-a']);
+    const savedRows = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
+    assert.equal(savedRows.find((row) => row.modelId === 'remote-a')!.source, 'remote');
+    assert.equal(savedRows.find((row) => row.modelId === 'remote-a')!.enabled, true);
+    assert.equal(
+      savedRows.find((row) => row.modelId === 'manual-keep')!.source,
+      'manual',
+      '保存集合不得改写已有行的来源',
+    );
 
-    const modelRows = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
-    const remoteB = modelRows.find((row) => row.modelId === 'remote-b');
-    assert.ok(remoteB, '软下线不物理删除行');
-    assert.equal(remoteB!.enabled, false);
-    assert.equal(remoteB!.source, 'remote');
-    const manual = modelRows.find((row) => row.modelId === 'manual-keep');
-    assert.equal(manual!.enabled, true, '手工模型不得被刷新下线');
-    assert.equal(manual!.source, 'manual');
-
-    // 新实例水合：软下线的远程模型不出现，手工模型出现。
+    // 4) 新实例水合：只出现已挂载的行。
     const restarted = await freshService();
     const restored = restarted.listProviders().providers.find((provider) => provider.id === id);
+    assert.deepEqual(restored!.models.map((model) => model.id).sort(), ['manual-keep', 'remote-a', 'remote-b']);
+
+    // 5) 上游不再返回 remote-b：只报告 stale，不自动停用 / 不自动删。
+    upstreamModels = [{ id: 'remote-a' }];
+    const second = await restarted.refreshProvider(id, RUN);
+    assert.equal(second.fetched, 1);
+    assert.deepEqual(second.stale.map((model) => model.id), ['remote-b']);
+    ids = restarted.listProviders().providers.find((p) => p.id === id)!.models.map((m) => m.id).sort();
+    assert.deepEqual(ids, ['manual-keep', 'remote-a', 'remote-b'], '同步不得替管理员取消挂载');
+
+    // 6) 取消挂载 = 物理删除；集合外的 manual 行同样被删。
+    const cleared = await mount(restarted, id, [{ modelId: 'remote-a' }]);
+    assert.deepEqual(cleared.removed.slice().sort(), ['manual-keep', 'remote-b']);
+    const leftRows = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
+    assert.deepEqual(leftRows.map((row) => row.modelId), ['remote-a'], '取消挂载必须物理删除行');
+
+    // 7) 清空集合 = 清空所有模型（「清除所有模型」的真实语义）。
+    const emptied = await mount(restarted, id, []);
+    assert.deepEqual(emptied.removed, ['remote-a']);
+    const emptyRows = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
+    assert.equal(emptyRows.length, 0);
     assert.deepEqual(
-      restored!.models.map((model) => model.id).sort(),
-      ['manual-keep', 'remote-a'],
+      restarted.listProviders().providers.find((p) => p.id === id)!.models,
+      [],
+      '内存快照与库一致：清空后不留残余',
     );
 
-    // 上游再次返回 remote-b：软下线的模型重新上线。
-    upstreamModels = [{ id: 'remote-a' }, { id: 'remote-b' }];
-    await restarted.refreshProvider(id, RUN);
-    assert.deepEqual(
-      restarted.listProviders().providers.find((p) => p.id === id)!.models.map((m) => m.id).sort(),
-      ['manual-keep', 'remote-a', 'remote-b'],
-    );
+    // 8) 重启后仍然为空：不会被任何「同步回灌」重新填上。
+    const afterRestart = await freshService();
+    assert.deepEqual(afterRestart.listProviders().providers.find((p) => p.id === id)!.models, []);
   });
 
   test('拉取失败：保留旧列表并写 last_error，不抛异常', async () => {
@@ -268,9 +322,7 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     upstreamModels = [{ id: 'kept-model' }];
     let service = await freshService();
     await service.upsertProvider(id, { name: '失败', baseUrl: serverBaseUrl() }, RUN);
-    await service.refreshProvider(id, RUN);
-
-    // 换成不可达地址，触发拉取失败。
+    await mount(service, id, [{ modelId: 'kept-model' }]);
     await service.upsertProvider(id, { baseUrl: 'http://127.0.0.1:1' }, RUN);
     const failed = await service.refreshProvider(id, RUN);
     assert.equal(failed.fetched, 0);
@@ -292,12 +344,12 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     assert.deepEqual(restored!.models.map((model) => model.id), ['kept-model']);
   });
 
-  test('用途绑定：持久化、模态 / 不存在 / 已下线模型校验、fallback 与解绑', async () => {
+  test('用途绑定：持久化、模态 / 不存在 / 已取消挂载模型校验、fallback 与解绑', async () => {
     const id = providerId('bind');
     upstreamModels = [{ id: 'text-model' }, { id: 'soon-offline' }];
     const service = await freshService();
     await service.upsertProvider(id, { name: '绑定', baseUrl: serverBaseUrl() }, RUN);
-    await service.refreshProvider(id, RUN);
+    await mount(service, id, [{ modelId: 'text-model' }, { modelId: 'soon-offline' }]);
 
     // 手工放一个只有 image 输出的模型，用来验证模态校验。
     await upsertManualModelRow(
@@ -339,13 +391,21 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     assert.equal(live!.modelId, null);
     assert.deepEqual(live!.resolved, { providerId: id, modelId: 'text-model' });
 
-    // 软下线 soon-offline 后再绑定应被拒绝。
+    // 同步只报告 stale，不取消挂载；只有保存集合才能把 soon-offline 从库里抹掉。
     upstreamModels = [{ id: 'text-model' }];
-    await fresh.refreshProvider(id, RUN);
+    const synced = await fresh.refreshProvider(id, RUN);
+    assert.deepEqual(synced.stale.map((model) => model.id), ['soon-offline']);
+    assert.deepEqual(
+      fresh.listProviders().providers.find((p) => p.id === id)!.models.map((m) => m.id).sort(),
+      ['image-only', 'soon-offline', 'text-model'],
+      '同步不得替管理员取消挂载',
+    );
+
+    await mount(fresh, id, [{ modelId: 'text-model' }, { modelId: 'image-only', source: 'manual' }]);
     await assert.rejects(
       () => fresh.bindUsage('knowledge.embed', { providerId: id, modelId: 'soon-offline' }, RUN),
       (error: unknown) => error instanceof BadRequestException,
-      '已下线模型不得被绑定',
+      '已取消挂载（行已删除）的模型不得被绑定',
     );
 
     // 解绑。
@@ -363,7 +423,7 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     upstreamModels = [{ id: 'model-x' }];
     const service = await freshService();
     await service.upsertProvider(id, { name: '待删', baseUrl: serverBaseUrl() }, RUN);
-    await service.refreshProvider(id, RUN);
+    await mount(service, id, [{ modelId: 'model-x' }]);
     await service.bindUsage('knowledge.embed', { providerId: id, modelId: 'model-x' }, RUN);
 
     const result = await service.deleteProvider(id, RUN);
@@ -389,7 +449,7 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     assert.equal(embed!.resolved, null, '供应商删除后引用用途应自动解绑');
   });
 
-  test('审计：upsert / bind / unbind / refresh / delete 均有记录且不含明文密钥', async () => {
+  test('审计：upsert / refresh / set_collection / bind / unbind / delete 均有记录且不含明文密钥', async () => {
     const id = providerId('audit');
     const secret = 'sk-audit-secret-xyz';
     upstreamModels = [{ id: 'audit-model' }];
@@ -397,6 +457,7 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
 
     await service.upsertProvider(id, { name: '审计', baseUrl: serverBaseUrl(), apiKey: secret }, RUN);
     await service.refreshProvider(id, RUN);
+    await mount(service, id, [{ modelId: 'audit-model' }]);
     await service.bindUsage('inspiration.recommend', { providerId: id, modelId: 'audit-model' }, RUN);
     await service.bindUsage('inspiration.recommend', { providerId: null, modelId: null }, RUN);
     await service.deleteProvider(id, RUN);
@@ -406,6 +467,7 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
     for (const expected of [
       'model_provider.upsert',
       'model_provider.refresh',
+      'model.set_collection',
       'model_usage.bind',
       'model_usage.unbind',
       'model_provider.delete',
@@ -415,5 +477,81 @@ describe('ModelRegistryService（真实 PostgreSQL）', { skip }, () => {
 
     const serialized = JSON.stringify(rows.map((row) => row.detail));
     assert.ok(!serialized.includes(secret), '审计详情不得包含明文密钥');
+  });
+
+  test('取消挂载受引用保护：整笔 409，不部分成功、不静默保留', async () => {
+    const id = providerId('protect');
+    upstreamModels = [{ id: 'used-model' }, { id: 'free-model' }];
+    const service = await freshService();
+    await service.upsertProvider(id, { name: '引用保护', baseUrl: serverBaseUrl() }, RUN);
+    await mount(service, id, [{ modelId: 'used-model' }, { modelId: 'free-model' }]);
+    await service.bindUsage('knowledge.embed', { providerId: id, modelId: 'used-model' }, RUN);
+
+    // 期望集合丢了 used-model → 整笔拒；free-model 也不得被动删。
+    await assert.rejects(
+      () => mount(service, id, [{ modelId: 'free-model' }]),
+      (error: unknown) => error instanceof ConflictException && /used-model/.test(error.message),
+    );
+    const rows = await db.select().from(modelModels).where(eq(modelModels.providerId, id));
+    assert.deepEqual(
+      rows.map((row) => row.modelId).sort(),
+      ['free-model', 'used-model'],
+      '409 后不得有任何行被删',
+    );
+
+    // 先解绑，再取消挂载就成功。
+    await service.bindUsage('knowledge.embed', { providerId: null, modelId: null }, RUN);
+    const removed = await mount(service, id, [{ modelId: 'free-model' }]);
+    assert.deepEqual(removed.removed, ['used-model']);
+  });
+
+  test('集合入参校验：重复 modelId / 未知模态均拒收且不写入', async () => {
+    const id = providerId('validate');
+    const service = await freshService();
+    await service.upsertProvider(id, { name: '校验', baseUrl: serverBaseUrl() }, RUN);
+
+    await assert.rejects(
+      () => mount(service, id, [{ modelId: 'dup' }, { modelId: 'dup' }]),
+      (error: unknown) => error instanceof BadRequestException,
+      '同一 modelId 重复出现应拒收',
+    );
+    await assert.rejects(
+      () =>
+        service.setProviderModels(id, [{ modelId: 'bad-modality', input: ['telepathy'] as never }], RUN, `${id}:bad`),
+      (error: unknown) => error instanceof BadRequestException,
+      '未知模态应拒收，不得猜成 text',
+    );
+    assert.deepEqual(
+      service.listProviders().providers.find((p) => p.id === id)!.models,
+      [],
+      '校验失败不得写入任何行',
+    );
+  });
+
+  test('协议白名单：google-gemini 可被供应商保存并用于只读发现', async () => {
+    const id = providerId('gemini');
+    const service = await freshService();
+    const saved = await service.upsertProvider(
+      id,
+      { name: 'Gemini 原生', baseUrl: serverBaseUrl(), api: 'google-gemini' },
+      RUN,
+    );
+    assert.equal(saved.api, 'google-gemini', 'gemini 协议不得被静默降级成 openai-completions');
+
+    // 只读发现失败时给明确原因（假服务器不提供 /v1beta/models），不回填预设模型。
+    const found = await service.discoverModels(id, RUN);
+    assert.equal(found.ok, false);
+    assert.deepEqual(found.models, []);
+    assert.ok(found.error !== null && found.error.length > 0);
+
+    // 同一通道的手工建模型不再因协议白名单被 400 拒掉。
+    const created = await service.createManualModel(
+      id,
+      { modelId: 'gemini-custom', displayName: 'Gemini 手填', api: 'google-gemini', enabled: true },
+      RUN,
+      `${id}:manual`,
+    );
+    assert.equal(created.model.api, 'google-gemini');
+    assert.equal(created.model.source, 'manual');
   });
 });

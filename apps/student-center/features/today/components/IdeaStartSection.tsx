@@ -1,4 +1,4 @@
-import { SectionCard } from '@qitu/ui';
+import { EmptyState, SectionCard } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 import type { IdeaDirection } from '../types';
@@ -21,17 +21,25 @@ export function IdeaStartSection({
       title="从一个想法开始"
       action={<StudentLink href={exploreHref}>进入灵感空间</StudentLink>}
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 12,
-        }}
-      >
-        {directions.map((direction) => (
-          <DirectionCard key={direction.templateId} direction={direction} />
-        ))}
-      </div>
+      {directions.length === 0 ? (
+        <EmptyState
+          title="暂时没有推荐方向"
+          description="模板库还没有可用的推荐，你可以先去灵感空间自由探索。"
+          action={<StudentLink href={exploreHref}>进入灵感空间</StudentLink>}
+        />
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 12,
+          }}
+        >
+          {directions.map((direction) => (
+            <DirectionCard key={direction.templateId} direction={direction} />
+          ))}
+        </div>
+      )}
     </SectionCard>
   );
 }

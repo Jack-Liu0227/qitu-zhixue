@@ -30,12 +30,35 @@
   font-size: 1rem;
 }
 
-.qitu-inspiration-detail-summary,
-.qitu-inspiration-detail-panel section p,
 .qitu-inspiration-detail-note {
   margin: 0;
   color: var(--qitu-muted);
   line-height: 1.7;
+}
+
+.qitu-inspiration-start-action {
+  display: grid;
+  gap: 6px;
+}
+
+.qitu-inspiration-start-action .qitu-button {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.qitu-inspiration-action-hint,
+.qitu-inspiration-action-error {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.qitu-inspiration-action-hint {
+  color: var(--qitu-muted);
+}
+
+.qitu-inspiration-action-error {
+  color: #b42318;
 }
 
 .qitu-inspiration-eyebrow {

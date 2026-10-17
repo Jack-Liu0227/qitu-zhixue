@@ -58,27 +58,47 @@ export function assertFetchable(rawBaseUrl: string): URL {
 }
 
 /**
- * 在 `baseUrl` 之后拼接协议路径（如 `/chat/completions`）。
+ * 拼接协议路径。
  *
- * 约定与 `pi-ai` 一致：`baseUrl` 是**网关根**（例如
- * `https://newapi.example.com`），协议层自己补 `/v1/...`。
- * 若管理员已经把 `/v1` 写进 `baseUrl`，就不再重复补。
+ * 约定：`baseUrl` 是**网关根**（例如 `https://newapi.example.com`），协议层
+ * 自己补版本段。若管理员已经把 `/v1`（或 Gemini 的 `/v1beta`）写进 `baseUrl`，
+ * 就不再重复补。
  */
 export function protocolUrl(baseUrl: string, path: string): string {
   const trimmed = baseUrl.replace(/\/+$/, '');
-  const withVersion = /\/v\d+$/.test(trimmed) ? trimmed : `${trimmed}/v1`;
+  const withVersion = /\/v\d+$/u.test(trimmed) ? trimmed : `${trimmed}/v1`;
   return `${withVersion}${path}`;
 }
 
-/** 拼出模型列表地址（`GET /v1/models`）。 */
-function modelsUrl(baseUrl: string): string {
+/**
+ * Gemini 原生 API 的根地址：剔掉已写的 `/v1`、`/v1beta`、`/models` 后缀。
+ *
+ * 因为 Gemini 的版本段是 `v1beta`，不能复用 `protocolUrl()`（它只认 `/vN`）；
+ * 而管理员从文档里复制的地址常常带 `/v1beta` 或 `/v1` 结尾。
+ */
+export function geminiApiRoot(rawBaseUrl: string): string {
+  let out = rawBaseUrl.replace(/\/+$/u, '');
+  for (;;) {
+    const next = out.replace(/\/(?:v1beta|v1|models)$/iu, '');
+    if (next === out) return out;
+    out = next;
+  }
+}
+
+/** 拼出模型列表地址（按协议选路径）。 */
+function modelsUrl(baseUrl: string, api: ModelApi): string {
+  if (api === 'google-gemini') {
+    return `${geminiApiRoot(baseUrl)}/v1beta/models`;
+  }
   return protocolUrl(baseUrl, '/models');
 }
 
 /**
- * 按协议构造供应商鉴权头。
+ * 按协议构造鉴权头。
  *
  * - `anthropic-messages`：`x-api-key` + `anthropic-version`，忽略 `authHeader`；
+ * - `google-gemini`：`x-goog-api-key`（Gemini 原生 API 只认这个头），**绝不把密钥
+ *   放进 URL query**，也忽略 `authHeader`；
  * - 其余协议：`authHeader=true` 时用 `Authorization: Bearer`，否则不带鉴权头。
  * 这里是**唯一**一处鉴权头拼装，`/models` 发现与运行时 completion 共用，
  * 避免两份实现漂移。
@@ -91,6 +111,9 @@ export function providerAuthHeaders(
   if (api === 'anthropic-messages') {
     return { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
   }
+  if (api === 'google-gemini') {
+    return { 'x-goog-api-key': apiKey };
+  }
   return authHeader ? { authorization: `Bearer ${apiKey}` } : {};
 }
 
@@ -102,7 +125,54 @@ interface RawModelEntry {
   max_tokens?: unknown;
 }
 
+/** Gemini 原生 `/v1beta/models` 的行形状。 */
+interface RawGeminiModelEntry {
+  name?: unknown;
+  displayName?: unknown;
+  inputTokenLimit?: unknown;
+  outputTokenLimit?: unknown;
+  supportedGenerationMethods?: unknown;
+}
+
+function toGeminiDescriptors(payload: unknown, api: ModelApi): ModelDescriptor[] {
+  const root: unknown = Array.isArray(payload)
+    ? payload
+    : payload !== null && typeof payload === 'object' && Array.isArray((payload as { models?: unknown }).models)
+      ? (payload as { models: unknown[] }).models
+      : null;
+  if (root === null) throw new ModelFetchError('Gemini 返回的结构里没有模型列表');
+
+  const out: ModelDescriptor[] = [];
+  for (const entry of root as RawGeminiModelEntry[]) {
+    if (entry === null || typeof entry !== 'object') continue;
+    const rawName = typeof entry.name === 'string' ? entry.name : '';
+    // 上游返回 `models/gemini-2.5-pro`；实际请求与存储只用后半段。
+    const id = rawName.replace(/^models\//u, '');
+    if (id.length === 0) continue;
+    const methods = Array.isArray(entry.supportedGenerationMethods)
+      ? entry.supportedGenerationMethods.filter((item): item is string => typeof item === 'string')
+      : [];
+    // 只收录能做对话生成的模型；embeddings / tokens 不算可用对话模型。
+    if (methods.length > 0 && !methods.includes('generateContent')) continue;
+    const displayName =
+      typeof entry.displayName === 'string' && entry.displayName.length > 0 ? entry.displayName : id;
+    out.push({
+      id,
+      name: displayName,
+      api,
+      // 保守：上游不说模态，就只声明文本能力。
+      input: ['text'] satisfies ModelModality[],
+      output: ['text'] satisfies ModelModality[],
+      contextWindow: typeof entry.inputTokenLimit === 'number' ? entry.inputTokenLimit : null,
+      maxTokens: typeof entry.outputTokenLimit === 'number' ? entry.outputTokenLimit : null,
+      source: 'fetched',
+    });
+  }
+  return out;
+}
+
 function toDescriptors(payload: unknown, api: ModelApi): ModelDescriptor[] {
+  if (api === 'google-gemini') return toGeminiDescriptors(payload, api);
   // OpenAI 风格 `{ data: [...] }`；少数网关直接返回数组。
   const list: unknown = Array.isArray(payload)
     ? payload
@@ -146,7 +216,7 @@ export interface FetchModelsInput {
 
 export async function fetchProviderModels(input: FetchModelsInput): Promise<ModelDescriptor[]> {
   const url = assertFetchable(input.baseUrl);
-  const target = modelsUrl(url.toString());
+  const target = modelsUrl(url.toString(), input.api);
 
   let response: Response;
   try {

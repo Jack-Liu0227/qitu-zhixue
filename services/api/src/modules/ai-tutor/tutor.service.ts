@@ -24,10 +24,11 @@ import type {
   TutorTeamIdentity,
   TutorToolCall,
   TutorTurn,
+  ExplorationView,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { eq } from 'drizzle-orm';
-import { projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { pblGateEvidence } from '@qitu/database';
 import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
 import { AuditWriter } from '../../common/audit';
@@ -40,16 +41,28 @@ import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
-import { createTutorProvider, type TutorModelGateway } from './gateway-tutor.provider';
+import { createTutorProvider, TUTOR_CHAT_USAGE, type TutorModelGateway } from './gateway-tutor.provider';
 import { ImaMcpClient } from './ima-mcp.client';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TutorWorkspaceService } from './tutor-workspace.service';
-import { PlatformRegistryService, tutorAssistantIdForProject } from '../platform-registry/platform-registry.service';
+import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
 import { TemplatesService } from '../templates/templates.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
+import {
+  buildRecommendationSignals,
+  parseModelRecommendation,
+  rankTemplateRecommendations,
+  parseExtractedIntent,
+  extractConservativeIntent,
+  RECOMMENDATION_MAX_EMISSIONS,
+  type RecommendationCandidate,
+  type RecommendationSignals,
+} from './tutor.recommendation';
+import type { TemplateView } from '../templates/templates.types';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
   type AppendTurnsInput,
@@ -104,7 +117,8 @@ export interface AuditEntry {
     | 'tutor.turn'
     | 'tutor.escalate'
     | 'tutor.idempotent_replay'
-    | 'tutor.guard_block';
+    | 'tutor.guard_block'
+    | 'tutor.recommendation';
   detail: string;
 }
 
@@ -157,26 +171,6 @@ function currentTaskFor(
   };
 }
 
-/**
- * 项目阶段 → PBL 阶段投影（用于阶段树与门禁状态）。
- * 阶段机见 packages/contracts 的 `ProjectStage`；PBL 阶段见 `PblPhase`。
- */
-const PHASE_FOR_PROJECT_STAGE: Record<string, string> = {
-  exploration: 'exploration',
-  intent_confirmed: 'concept_mastery',
-  theory: 'concept_mastery',
-  theory_learning: 'concept_mastery',
-  theory_check: 'concept_mastery',
-  practice: 'guided_practice',
-  practice_ready: 'guided_practice',
-  practice_building: 'guided_practice',
-  review: 'deliverable_review',
-  artifact_review: 'deliverable_review',
-  reflection: 'deliverable_review',
-  published: 'deliverable_review',
-  completed: 'deliverable_review',
-};
-
 /** `AdminTeamMember.status` → 学生端可见的智能体状态。 */
 function runtimeAgentIdsFor(assistantId: string): readonly string[] {
   // The runtime registry predates the admin assistant catalogue. This is an
@@ -208,6 +202,7 @@ export class TutorService {
 
   private readonly sessions = new Map<string, TutorSessionRecord>();
   private readonly idempotency = new Map<string, CachedTurn>();
+  private readonly intentExtractions = new Map<string, { goalUser: string; coreInterests: string[] } | null>();
   /**
    * A session has one authoritative sequence cursor. Serialize turns per
    * session so a disconnected/retried request cannot generate against the
@@ -231,7 +226,7 @@ export class TutorService {
    */
   constructor(
     @Inject(DATA_MODE_TOKEN) private readonly dataMode: DataMode,
-    @Inject(ModelGateway) gateway: TutorModelGateway,
+    @Inject(ModelGateway) private readonly gateway: TutorModelGateway,
     @Optional() private readonly platformData?: PlatformDataService,
     /**
      * 学习进度停滞信号接收端（ISSUE-T2）。
@@ -275,13 +270,13 @@ export class TutorService {
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
-  async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false): Promise<TutorProjectContext | null> {
+  async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false, explorationId?: string): Promise<TutorProjectContext | null> {
     if (this.learningStore !== undefined) {
       const selected = projectId === undefined
         ? (await this.learningStore.listProjectsByStudent(ownerId)).find((project) => !['completed', 'published'].includes(project.status))
         : await this.learningStore.findProject(projectId);
       if (!selected) return explicitExploration && projectId === undefined
-        ? this.buildExplorationContext(ownerId)
+        ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
         : null;
       if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
       const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId);
@@ -296,10 +291,10 @@ export class TutorService {
     }
     // Live teaching must never use the unrelated in-memory demo roster.
     if (this.dataMode === 'live') return explicitExploration && projectId === undefined
-      ? this.buildExplorationContext(ownerId)
+      ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
       : null;
     if (this.platformData === undefined) return explicitExploration && projectId === undefined
-      ? this.buildExplorationContext(ownerId)
+      ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
       : null;
     const projects = this.platformData.getProjectsByStudent(ownerId);
     const selected = projectId === undefined
@@ -307,7 +302,7 @@ export class TutorService {
       : this.platformData.getProject(projectId);
 
     if (selected === null || selected === undefined) return explicitExploration && projectId === undefined
-      ? this.buildExplorationContext(ownerId)
+      ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
       : null;
     if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
 
@@ -333,8 +328,24 @@ export class TutorService {
     };
   }
 
-  private async buildExplorationContext(ownerId: string): Promise<TutorProjectContext> {
-    const teamContext = await this.resolveTeamContext(null, null, 'exploration', ownerId);
+  private async loadExploration(ownerId: string, explorationId?: string): Promise<ExplorationView | undefined> {
+    if (explorationId === undefined || this.projects === undefined) return undefined;
+    return this.projects.getExploration(ownerId, explorationId);
+  }
+
+  async getExplorationProjectContext(explorationId: string, ownerId: string): Promise<TutorProjectContext> {
+    if (this.projects === undefined) throw new NotFoundException('探索会话不存在');
+    const exploration = await this.projects.getExploration(ownerId, explorationId);
+    return this.buildExplorationContext(ownerId, exploration);
+  }
+
+  private async buildExplorationContext(ownerId: string, exploration?: ExplorationView): Promise<TutorProjectContext> {
+    const teamContext = await this.resolveTeamContext(
+      exploration?.templateVersionId ? `exploration:${exploration.id}` : null,
+      exploration?.templateVersionId ?? null,
+      'exploration',
+      ownerId,
+    );
     return {
       // 探索会话没有项目：绝不返回哨兵项目，否则前端会拿 'exploration'
       // 当真实 projectId 去请求知识库与进度。身份仍由 team 携带。
@@ -372,14 +383,12 @@ export class TutorService {
     };
     if (this.platformRegistry === undefined) return { team: fallback, phases: [], teamConfig: null };
     try {
-      const [assistants, teams, binding] = await Promise.all([
+      const [assistants, teamConfig] = await Promise.all([
         this.platformRegistry.listAssistants(),
-        this.platformRegistry.listTeams(),
-        templateVersionId === null ? Promise.resolve(null) : this.findTemplateBinding(templateVersionId),
+        templateVersionId === null
+          ? Promise.resolve(null)
+          : this.platformRegistry.getTeamForTemplateVersion(templateVersionId),
       ]);
-      const teamConfig = projectId === null || binding === null
-        ? null
-        : teams.find((team) => team.enabled && this.teamBindsTemplate(team, binding)) ?? null;
       const leaderId = teamConfig?.leaderAssistantId ?? fallback.assistantId;
       const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
         ?? this.findBuiltinAssistant(leaderId);
@@ -402,33 +411,10 @@ export class TutorService {
     return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
   }
 
-  /**
-   * 真实绑定链路：projects.template_version_id → project_template_versions.template_id
-   * → project_templates，再用 admin_teams.pbl_spec.projectName 与模板 title 的冻结配置
-   * 精确匹配团队。种子中的对应关系是 template-thunder-fighter ↔ pbl-thunder-fighter、
-   * template-kinetic-energy ↔ pbl-kinetic-energy；这里不从项目标题猜团队。
-   */
-  private async findTemplateBinding(templateVersionId: string): Promise<{ id: string; title: string; slug: string } | null> {
-    if (this.database === null) return null;
-    const rows = await this.database
-      .select({ id: projectTemplates.id, title: projectTemplates.title, slug: projectTemplates.slug })
-      .from(projectTemplateVersions)
-      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
-      .where(eq(projectTemplateVersions.id, templateVersionId))
-      .limit(1);
-    return rows[0] ?? null;
-  }
-
-  private teamBindsTemplate(team: AdminTeamConfig, binding: { id: string; title: string; slug: string }): boolean {
-    const spec = team.pblSpec as (AdminTeamConfig['pblSpec'] & { projectName?: unknown; projectId?: unknown }) | undefined;
-    return spec?.projectName === binding.title || spec?.projectId === binding.id;
-  }
-
-  /** 把团队的 `pbl_spec.phases` 投影为学生端只读阶段树，门禁只读真实证据。 */
   private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string): Promise<TutorPhaseProjection[]> {
     const spec = teamConfig?.pblSpec;
     if (!spec?.phases?.length) return [];
-    const currentPhase = PHASE_FOR_PROJECT_STAGE[stage] ?? 'concept_mastery';
+    const currentPhase = pblPhaseForProjectStage(stage);
     const phases = [...spec.phases];
     const currentIndex = Math.max(0, phases.findIndex((phase) => phase.phase === currentPhase));
     const satisfiedGates = await this.loadSatisfiedGatesForStudent(ownerId);
@@ -505,15 +491,26 @@ export class TutorService {
 
   private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage): Promise<NonNullable<TutorTurn['author']>> {
     const intake = builtinAuthor('qitu-intake-assistant');
-    if (record.projectId === null) return intake;
     try {
-      const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
-      const context = await this.resolveTeamContext(record.projectId, project?.templateVersionId ?? null, stage, record.ownerId);
-      const phaseId = PHASE_FOR_PROJECT_STAGE[stage] ?? 'concept_mastery';
-      const phase = context.teamConfig?.pblSpec?.phases.find((candidate) => candidate.phase === phaseId);
+      let teamProjectId: string | null = record.projectId;
+      let templateVersionId: string | null = null;
+      if (record.projectId === null) {
+        if (this.projects === undefined || record.explorationId === null || record.explorationId === undefined) return intake;
+        const exploration = await this.projects.getExploration(record.ownerId, record.explorationId);
+        templateVersionId = exploration.templateVersionId;
+        if (templateVersionId === null) return intake;
+        teamProjectId = `exploration:${record.explorationId}`;
+      } else {
+        const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
+        templateVersionId = project?.templateVersionId ?? null;
+      }
+      const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId);
+      if (context.team.teamId === null || context.teamConfig === null) return intake;
+      const phaseId = pblPhaseForProjectStage(stage);
+      const phase = context.teamConfig.pblSpec?.phases.find((candidate) => candidate.phase === phaseId);
       const member = phase === undefined
-        ? context.teamConfig?.members.find((candidate) => candidate.assistantId === context.teamConfig?.leaderAssistantId)
-        : context.teamConfig?.members.find((candidate) => candidate.assistantId === phase.assignedAssistantId);
+        ? context.teamConfig.members.find((candidate) => candidate.assistantId === context.teamConfig?.leaderAssistantId)
+        : context.teamConfig.members.find((candidate) => candidate.assistantId === phase.assignedAssistantId);
       const authorId = phase?.assignedAssistantId ?? member?.assistantId ?? context.team.assistantId;
       const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
       const assistant = assistants.find((candidate) => candidate.id === authorId) ?? this.findBuiltinAssistant(authorId);
@@ -529,39 +526,150 @@ export class TutorService {
     }
   }
 
+  private async updateExplorationIntent(
+    record: TutorSessionRecord,
+    currentMessage: string | undefined,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const explorationId = record.explorationId;
+    if (this.projects === undefined || explorationId == null) return;
+    const sourceMessages = [
+      ...record.turns.filter((turn) => turn.role === 'student').slice(-5).flatMap((turn) =>
+        turn.blocks.filter((block): block is { kind: 'text'; text: string } => block.kind === 'text').map((block) => block.text),
+      ),
+      ...(currentMessage?.trim() ? [currentMessage.trim()] : []),
+    ].slice(-6);
+    if (sourceMessages.length === 0 || sourceMessages.some((message) => message.length > 2_000)) return;
+    try {
+      const exploration = await this.projects.getExploration(record.ownerId, explorationId);
+      if (exploration.status === 'confirmed' || exploration.status === 'closed') return;
+      let extracted: { goalUser: string; coreInterests: string[] } | null;
+      if (this.durable && this.idempotencyStore !== undefined) {
+        const extractionScope = `tutor.intent.extract:${hashRequest({ sessionId: record.sessionId })}`;
+        const extractionKey = hashRequest({ idempotencyKey });
+        const result = await this.idempotencyStore.execute<{ intent: { goalUser: string; coreInterests: string[] } | null }>(
+          extractionScope,
+          extractionKey,
+          hashRequest({ sessionId: record.sessionId, explorationId, sourceMessages }),
+          async () => ({ status: 200, body: { intent: await this.extractIntent(sourceMessages) } }),
+          { processingLeaseMs: TUTOR_TURN_LEASE_MS },
+        );
+        extracted = result.body.intent;
+      } else {
+        const cacheKey = `${record.sessionId}:${idempotencyKey}`;
+        if (this.intentExtractions.has(cacheKey)) {
+          extracted = this.intentExtractions.get(cacheKey) ?? null;
+        } else {
+          extracted = await this.extractIntent(sourceMessages);
+          this.intentExtractions.set(cacheKey, extracted);
+          if (this.intentExtractions.size > 500) this.intentExtractions.delete(this.intentExtractions.keys().next().value!);
+        }
+      }
+      if (extracted === null) return;
+      const interestsChanged = extracted.coreInterests.length !== exploration.intentDraft?.coreInterests.length
+        || extracted.coreInterests.some((interest, index) => interest !== exploration.intentDraft?.coreInterests[index]);
+      const goalChanged = extracted.goalUser !== exploration.intentDraft?.goalUser;
+      if (!interestsChanged && !goalChanged) return;
+      await this.projects.updateIntentDraft(record.ownerId, explorationId, {
+        goalUser: extracted.goalUser,
+        coreInterests: extracted.coreInterests,
+      });
+    } catch {
+      // Intent extraction/update is best-effort; it cannot fail a normal Tutor turn.
+    }
+  }
+
+  private async extractIntent(sourceMessages: readonly string[]): Promise<{ goalUser: string; coreInterests: string[] } | null> {
+    try {
+      const result = await this.gateway.complete(TUTOR_CHAT_USAGE, {
+        messages: [
+          { role: 'system', content: '从学生自己的消息中提取结构化探索意图。goalUser 必须是消息中明确提及的服务对象，coreInterests 必须是原文中的兴趣词。只返回 JSON，且只能包含 goalUser 和 coreInterests；无法明确提取任一字段时返回空字段。不得推断或补造。' },
+          { role: 'user', content: JSON.stringify({ studentMessages: sourceMessages }) },
+        ],
+        temperature: 0,
+        maxTokens: 256,
+        timeoutMs: 8_000,
+      });
+      return parseExtractedIntent(result.text, sourceMessages);
+    } catch {
+      return extractConservativeIntent(sourceMessages.join('\n'));
+    }
+  }
+
   /**
-   * 服务端组装探索会话的想法卡片：来自真实已发布模板目录，`templateId`
-   * 必须存在且 published（§4.2 契约）；每个探索会话只输出一次（幂等），
-   * 模板目录不可用时返回空数组而不是演示卡片。
+   * Recommendation is emitted only after the server-side intent gate is met.
+   * The model can reorder server candidates, but never creates or authorizes IDs.
    */
-  private async buildIdeaCardsOnce(record: TutorSessionRecord): Promise<TutorIdeaCard[]> {
-    const alreadyEmitted = record.turns.some((turn) =>
-      turn.blocks.some((block) => block.kind === 'idea_cards'),
-    );
-    if (alreadyEmitted || this.templates === undefined) return [];
+  private async buildIdeaCards(record: TutorSessionRecord, currentStudentMessage?: string): Promise<TutorIdeaCard[]> {
+    const explorationId = record.explorationId;
+    if (this.templates === undefined || this.projects === undefined || explorationId == null) return [];
+    const exploration = await this.projects.getExploration(record.ownerId, explorationId).catch(() => null);
+    if (exploration === null || exploration.templateVersionId !== null) return [];
+    const recentMessages = [
+      ...record.turns
+        .filter((turn) => turn.role === 'student')
+        .slice(-5)
+        .flatMap((turn) => turn.blocks.filter((block): block is { kind: 'text'; text: string } => block.kind === 'text').map((block) => block.text)),
+      ...(currentStudentMessage?.trim() ? [currentStudentMessage.trim()] : []),
+    ].slice(-6);
+    const signals = buildRecommendationSignals(exploration, recentMessages);
+    if (!signals.clarified) {
+      await this.commitAudit({ sessionId: record.sessionId, projectId: null, actorId: 'system', action: 'tutor.recommendation', detail: JSON.stringify({ path: 'not_clarified', signals: signals.auditSignals }) });
+      return [];
+    }
     try {
       const actor = { id: record.ownerId, email: '', displayName: '', role: 'student' as const };
-      const templates = await this.templates.listPublishedTemplates(actor);
+      const listed = await this.templates.listPublishedTemplates(actor);
+      const ranked = rankTemplateRecommendations(signals, listed);
+      const modelOrder = await this.recommendTemplateOrder(signals, ranked);
+      const ordered = modelOrder === null
+        ? ranked
+        : modelOrder.flatMap((id) => ranked.filter((candidate) => candidate.template.id === id));
+      const previousIds = new Set(record.turns.flatMap((turn) => turn.blocks.flatMap((block) => block.kind === 'idea_cards' ? block.cards.map((card) => card.templateId) : [])));
+      const emissionCount = record.turns.filter((turn) => turn.blocks.some((block) => block.kind === 'idea_cards')).length;
+      if (emissionCount >= RECOMMENDATION_MAX_EMISSIONS) return [];
       const cards: TutorIdeaCard[] = [];
-      for (const template of templates) {
-        if (cards.length >= 3) break;
-        const cardTemplate = await this.templates.getPublishedTemplate(actor, template.id).catch(() => null);
-        const card = cardTemplate === null ? null : makeIdeaCard(cardTemplate);
+      const verified: string[] = [];
+      for (const candidate of ordered) {
+        if (cards.length >= 3 || previousIds.has(candidate.template.id)) continue;
+        const published = await this.templates.getPublishedTemplate(actor, candidate.template.id).catch(() => null);
+        const card = published === null ? null : makeIdeaCard(published);
         if (card === null) {
-          await this.commitAudit({
-            sessionId: record.sessionId,
-            projectId: record.projectId,
-            actorId: 'system',
-            action: 'tutor.guard_block',
-            detail: `拒绝下发无效想法卡片 templateId=${template.id}`,
-          });
+          await this.commitAudit({ sessionId: record.sessionId, projectId: null, actorId: 'system', action: 'tutor.guard_block', detail: `推荐候选复核失败 templateId=${candidate.template.id}` });
           continue;
         }
         cards.push(card);
+        verified.push(card.templateId);
       }
+      await this.commitAudit({
+        sessionId: record.sessionId,
+        projectId: null,
+        actorId: 'system',
+        action: 'tutor.recommendation',
+        detail: JSON.stringify({ path: modelOrder === null ? 'deterministic' : 'model_reranked', signals: signals.auditSignals, candidates: ranked.map(({ template, score, reasons }) => ({ templateId: template.id, score, reasons })), verified }),
+      });
       return cards;
     } catch {
+      await this.commitAudit({ sessionId: record.sessionId, projectId: null, actorId: 'system', action: 'tutor.recommendation', detail: '推荐目录不可用；未下发模板卡片' });
       return [];
+    }
+  }
+
+  private async recommendTemplateOrder(signals: RecommendationSignals, candidates: readonly RecommendationCandidate[]): Promise<string[] | null> {
+    if (candidates.length === 0) return null;
+    try {
+      const result = await this.gateway.complete(TUTOR_CHAT_USAGE, {
+        messages: [
+          { role: 'system', content: '只可从候选 templateId 中排序，返回 JSON {"templateIds":[...]}，不得创建 ID。' },
+          { role: 'user', content: JSON.stringify({ goal: signals.goal, interests: signals.interests, candidates: candidates.map(({ template, score }) => ({ templateId: template.id, score })) }) },
+        ],
+        temperature: 0,
+        maxTokens: 300,
+        timeoutMs: 8_000,
+      });
+      return parseModelRecommendation(result.text, candidates);
+    } catch {
+      return null;
     }
   }
 
@@ -915,8 +1023,12 @@ export class TutorService {
     if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
+    // Resolve once. The exact same phase assistant id drives display, knowledge access,
+    // and every authorization check below; never re-route from the project title.
+    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
+    const conversationAssistantId = assistantAuthor.id;
     const authorizeKnowledgeTool = this.imaSettings
-      ? (toolId: string) => record.projectId ? Promise.resolve(false) : this.imaSettings!.canCall(this.contextReader.partner.id, toolId, tutorAssistantIdForProject(projectTitle, projectStage))
+      ? (toolId: string) => record.projectId ? Promise.resolve(false) : this.imaSettings!.canCall(this.contextReader.partner.id, toolId, conversationAssistantId)
       : undefined;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
@@ -933,8 +1045,8 @@ export class TutorService {
         capability === 'explore' || capability === 'plan' || capability === 'teach' || capability === 'review' || capability === 'reflect');
     }
     const configuredTutorAssistant = this.platformRegistry !== undefined
-      && typeof this.platformRegistry.getTutorAssistantStatus === 'function'
-      ? await this.platformRegistry.getTutorAssistantStatus(projectTitle, projectStage)
+      && typeof this.platformRegistry.getTutorAssistantStatusById === 'function'
+      ? await this.platformRegistry.getTutorAssistantStatusById(conversationAssistantId)
       : null;
     if (configuredTutorAssistant !== null && !configuredTutorAssistant.enabled) {
       throw new ConflictException({
@@ -973,7 +1085,7 @@ export class TutorService {
       contextPacket.templateEvidence = [];
       projectKnowledgeState = '项目资料准备暂未完成；可以继续一般引导，不得声称已经查阅教材或编造引用。';
       if (this.projectKnowledge) {
-        const assistantId = tutorAssistantIdForProject(projectTitle,projectStage);
+        const assistantId = conversationAssistantId;
         const result = await this.projectKnowledge.search(request.actorId,record.projectId,assistantId,request.content ?? request.optionLabel ?? currentTaskTitle);
         projectKnowledgeState = `项目知识库状态：${result.state}。仅能依据当前项目库的真实证据引用，不得改查其他库；资料不足须明确说明。`;
         contextPacket.knowledgeEvidence = result.evidence.map(e=>({document:{id:e.citationId,version:e.indexVersionId!,title:e.title,summary:e.text,content:e.text,source:`${result.base?.name} · ${e.citationId}`,scope:'project' as const,active:true,tags:[]},score:e.score??0,matchedTerms:[]}));
@@ -1133,11 +1245,15 @@ export class TutorService {
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
 
-    // 探索会话：由「启途智学助手」在首个完整回合后追加服务端组装的想法卡片
-    //（docs/design/20261018-tutor-workspace-interaction-contract.md §4）。
-    // 卡片来自真实已发布模板目录；学生不点击就不创建，助手不代替学生确认。
+    // Extraction is part of this idempotent turn and must precede recommendation lookup.
+    if (record.projectId === null) {
+      await this.updateExplorationIntent(record, request.content ?? request.optionLabel, request.idempotencyKey);
+    }
+
+    // 探索会话：意图记录达到澄清门槛后，由「启途智学助手」附上匹配并复核过的模板卡片。
+    // 学生不点击就不创建项目；任何确认仍只经过 Projects 的 confirm-intent 链路。
     const ideaCards = record.projectId === null
-      ? await this.buildIdeaCardsOnce(record)
+      ? await this.buildIdeaCards(record, request.content ?? request.optionLabel)
       : [];
     if (ideaCards.length > 0) {
       const ideaBlock = { kind: 'idea_cards' as const, cards: ideaCards };
@@ -1147,7 +1263,6 @@ export class TutorService {
     }
     const assistantSeq = nextSeq > baseSeq + 1 ? nextSeq : baseSeq + 2;
 
-    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
     const assistantTurn: TutorTurnRecord = {
       turnId: `${record.sessionId}:assistant:${assistantSeq}`,
       role: 'assistant',

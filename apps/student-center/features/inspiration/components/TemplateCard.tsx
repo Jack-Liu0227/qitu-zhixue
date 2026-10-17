@@ -3,17 +3,31 @@
 import { TagChips } from '@qitu/ui';
 
 import { StudentLink } from '../../../components/student-link';
+import { RecommendedExplorationButton } from './RecommendedExplorationButton';
 import type { InspirationTemplate } from '../types';
+import type { InspirationDataSource } from '../data';
 
-/** 推荐卡保留独立推荐项目详情；自由探索才进入统一 AI搭档。 */
+/** 推荐卡保留独立推荐项目详情；开始推荐探索时进入统一 AI搭档。 */
 export function templateExploreHref(templateId: string): string {
   return `/student/inspiration/recommended/${encodeURIComponent(templateId)}`;
+}
+
+/** 元信息行：只拼接服务端真实提供的字段，缺失项直接不显示。 */
+export function templateMetaLine(template: InspirationTemplate): string {
+  return [
+    template.subject || null,
+    template.difficulty,
+    template.durationWeeks !== null ? `约 ${template.durationWeeks} 周` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export interface TemplateCardProps {
   template: InspirationTemplate;
   /** 断网只读时禁用「我想做这个」，仍可浏览模板详情。 */
   readOnly?: boolean;
+  dataSource?: InspirationDataSource;
 }
 
 /**
@@ -23,7 +37,7 @@ export interface TemplateCardProps {
  * 样式全部在 `styles/inspiration.css`（qitu-inspiration-* 类），不用内联样式，
  * 这样悬停/焦点/窄屏响应式才能生效。
  */
-export function TemplateCard({ template, readOnly = false }: TemplateCardProps) {
+export function TemplateCard({ template, readOnly = false, dataSource }: TemplateCardProps) {
   return (
     <article className="qitu-inspiration-template-card">
       <header className="qitu-inspiration-template-header">
@@ -32,9 +46,7 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
         </span>
         <div className="qitu-inspiration-template-heading">
           <h3 className="qitu-inspiration-template-title">{template.title}</h3>
-          <p className="qitu-inspiration-template-meta">
-            {template.subject} · {template.difficulty} · 约 {template.durationWeeks} 周
-          </p>
+          <p className="qitu-inspiration-template-meta">{templateMetaLine(template)}</p>
         </div>
       </header>
 
@@ -53,10 +65,12 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
         ))}
       </ol>
 
-      <p className="qitu-inspiration-template-outcome">
-        <span className="qitu-inspiration-template-outcome-label">成果</span>
-        <span>{template.outcome}</span>
-      </p>
+      {template.outcome ? (
+        <p className="qitu-inspiration-template-outcome">
+          <span className="qitu-inspiration-template-outcome-label">成果</span>
+          <span>{template.outcome}</span>
+        </p>
+      ) : null}
 
       <footer className="qitu-inspiration-template-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
         <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
@@ -75,21 +89,11 @@ export function TemplateCard({ template, readOnly = false }: TemplateCardProps) 
           )}
 
           {!readOnly && (
-            <StudentLink
+            <RecommendedExplorationButton
+              template={template}
+              dataSource={dataSource}
               className="qitu-button"
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                background: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #bfdbfe',
-                fontWeight: 600,
-                fontSize: '13px',
-              }}
-              href={`/student/tutor?explorePrompt=${encodeURIComponent(`我想探究《${template.title}》：${template.summary}`)}&team=${template.id.includes('thunder') ? 'team-thunder-fighter' : 'team-kinetic-energy'}`}
-            >
-              💬 与AI搭档开始
-            </StudentLink>
+            />
           )}
         </div>
         <span className="qitu-inspiration-template-hint">

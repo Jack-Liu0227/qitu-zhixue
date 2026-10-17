@@ -56,7 +56,6 @@ export function ChatBubble({
   const segments = segmentBlocks(toUnknownBlocks(turn));
   const lastRaw = toUnknownBlocks(turn).at(-1);
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
-  const [showThoughtTrace, setShowThoughtTrace] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [speechRate, setSpeechRate] = useState<number>(() => {
@@ -256,56 +255,6 @@ export function ChatBubble({
         </div>
       </div>
       <div className="qitu-chat-body">
-        {!isStudent ? (
-          <div style={{ marginBottom: '8px' }}>
-            <button
-              type="button"
-              onClick={() => setShowThoughtTrace((prev) => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                background: showThoughtTrace ? '#ede9fe' : '#f1f5f9',
-                color: showThoughtTrace ? '#6d28d9' : '#64748b',
-                border: '1px solid',
-                borderColor: showThoughtTrace ? '#ddd6fe' : '#e2e8f0',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>🧠 导师思考与教学策略链路</span>
-              <span>{showThoughtTrace ? '▲ 收起' : '▼ 展开查看'}</span>
-            </button>
-
-            {showThoughtTrace ? (
-              <div
-                style={{
-                  marginTop: '8px',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  background: '#faf5ff',
-                  border: '1px solid #e9d5ff',
-                  fontSize: '11.5px',
-                  lineHeight: 1.6,
-                  color: '#581c87',
-                }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: '4px', color: '#6b21a8' }}>
-                  🎯 苏格拉底教学策略链路（启途启发式推理引擎）：
-                </div>
-                <ul style={{ margin: 0, paddingLeft: '16px' }}>
-                  <li><strong>认知诊断：</strong>识别学生概念盲区，阻止直接透传代码，严守项目阶段门禁。</li>
-                  <li><strong>启发式阶梯：</strong>采用控制变量法，以极值推论与生活情境引导主动思考。</li>
-                  <li><strong>动态探究：</strong>调度实验卡片（动能定理 / 动态电路探究），打通理论到实践闭环。</li>
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
         {turn.attachments && turn.attachments.length > 0 ? (
           <div className="qitu-chat-attachments" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
             {turn.attachments.map((att, attIdx) => (

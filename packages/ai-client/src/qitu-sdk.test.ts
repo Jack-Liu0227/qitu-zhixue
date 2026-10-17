@@ -5,6 +5,7 @@ const assert = {
     throw new Error('Expected SDK rejection');
   },
 };
+import { BUILTIN_ASSISTANTS } from './assistant-registry.js';
 import { createQituSDK, type QituSDK, type QituSDKPorts } from './qitu-sdk.js';
 import type { MasteryTimelinePort } from '@qitu/contracts';
 
@@ -32,4 +33,6 @@ export async function runQituSDKAssertions() {
   assert.throws(() => sdk.mastery.getCurrent({ studentId: 'other' } as never), /SDK_SCOPE_MISMATCH/);
   assert.throws(() => sdk.project.advance(''), /IDEMPOTENCY_KEY_REQUIRED/);
   assert.throws(() => createQituSDK(scope, {} as never), /SDK_PORT_NOT_CONFIGURED/);
+  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.enabledSkills.every((skillId) => skillId === 'tutor-guided-learning')), true);
+  assert.equal(BUILTIN_ASSISTANTS.every((assistant) => assistant.defaults.skills.value.every((skillId) => skillId === 'tutor-guided-learning')), true);
 }

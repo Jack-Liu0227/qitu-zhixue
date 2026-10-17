@@ -25,7 +25,21 @@
 
 ---
 
-## 2. 现状核实（2026-10-18，逐条带证据）
+### 1.1 最终简化口径（产品确认）
+
+产品绑定模型确定为：**学生选择/确认项目模板 → 模板版本的 `content.linkedTeamId` 冻结团队 → 团队 `pbl_spec.phases[].assignedAssistantId` 决定当前阶段助手**。
+
+因此本计划中原先提出的 `assistant_assignments`、student/mentor/school 六层优先级和灰度矩阵**不实施**。学校差异通过 `project_templates.schoolId` 与不同模板表达；自由探索使用 `qitu-intake-assistant`。
+
+已接入的运行期变更：
+
+- `resolveTeamContext()` 不再比较模板标题与团队 `projectName`，直接读取模板版本 `content.linkedTeamId`。
+- `tutor.service` 的项目知识库、教材 MCP 授权、助手状态均复用同一次阶段助手解析结果。
+- 学生引用接口也走同一解析入口，不再调用项目标题正则。
+- 模板编辑器已有「绑定导师团队」控件，保存位置就是模板版本 `content.linkedTeamId`，无需新增绑定表。
+- 旧标题正则 `tutorAssistantIdForProject()` 已从运行期删除；旧的兼容测试/数据只保留在历史上下文，不作为生产路由。
+
+
 
 ### 2.1 四层存储，三处断裂
 
@@ -120,20 +134,17 @@
 ╚═══════════════════════════════╤════════════════════════════════════════════╝
                                 ▼
 ╔═ L3.5 教学编排（补 D8/D9，接通已有数据）═══════════════════════════════════╗
-║ project_templates ──template_team_bindings──► admin_teams.pbl_spec            ║
+║ project_template_versions.content.linkedTeamId ──► admin_teams.pbl_spec         ║
 ║                                                    └ phases[pblPhase]         ║
 ║                                                        .assignedAssistantId   ║
-║ ProjectStage ──PROJECT_STAGE_TO_PBL_PHASE(契约常量)──► PblPhase                ║
-║ admin_team_members.pbl_phase（已存在，作为交叉校验）                           ║
+║ ProjectStage ── pbl-phase.ts ─────────────────────► PblPhase                 ║
+║ 进行中的项目冻结 template_version_id；模板标题不参与绑定或授权              ║
 ╚═══════════════════════════════╤════════════════════════════════════════════╝
                                 ▼
-╔═ L3.6 分配（补 D10：谁能用）═══════════════════════════════════════════════╗
-║ assistant_assignments(subject_type, subject_id, stage 拆列, target_type,       ║
-║                       assistant_id|team_id, priority, enabled, valid_*,        ║
-║                       source:'admin|seed')                                     ║
-║ 阶梯 student 1000 > mentor 800 > school 600 > project_template 400             ║
-║      > stage 200 > global 100 > fallback_default                              ║
-║ assistant_resolution_logs（三端留痕 + shadow divergence）                      ║
+╔═ L3.6 使用解析（不设 student/mentor/school 分配表）════════════════════════╗
+║ 学生/教师/家长使用面只读取服务端根据项目模板解析出的助手/团队投影             ║
+║ 自由探索 → qitu-intake-assistant；正式项目 → 模板版本绑定团队               ║
+║ 当前阶段助手同时用于：AI 搭档作者、项目知识库授权、教材 MCP 授权              ║
 ╚═══════════════════════════════╤════════════════════════════════════════════╝
                                 ▼
 ╔═ L4 解析与执行（服务端内部，唯一装配点）═══════════════════════════════════╗
@@ -146,8 +157,8 @@
               ▼                                    ▼
 ╔═ L5a 管理面（admin only）═══════════╗  ╔═ L5b 使用面（三端，只对话）════════╗
 ║ 技能/工具/MCP/助手/团队 CRUD         ║  ║ student：自己的项目 → 分配的助手   ║
-║ 模板↔团队绑定矩阵                    ║  ║ teacher：mentor_assignments 关联   ║
-║ 分配矩阵 + 灰度 + 影响面预览         ║  ║         的学生 → 同一助手只读投影  ║
+║ 模板编辑页：基础信息 + 阶段设计 + linkedTeamId 团队选择                   ║  ║ teacher：mentor_assignments 关联   ║
+║ ✗ 无 student/mentor/school 分配矩阵（产品不需要该层）                      ║  ║         的学生 → 同一助手只读投影  ║
 ║ 发布·回滚·归档                       ║  ║ parent ：guardian_links 关联       ║
 ║ 契约 AdminRuntimeSnapshot            ║  ║ ✗ 不可自选助手                    ║
 ║ scope admin.* + 幂等键 + 审计 ✓现状  ║  ║ 契约 PublicAssistantProjection     ║
@@ -167,35 +178,16 @@
 
 ## 4. 数据模型
 
-### 4.1 `template_team_bindings`（修 D8）
+### 4.1 ~~`template_team_bindings`~~（已废弃，采用模板版本 `content.linkedTeamId`）
 
-把 `domain-foundation.sql:29-32` 的注释约定升为一等公民关系，补齐设计文档中一直缺失的 `PblTemplate.defaultLinkedTeamId`。
+这部分原方案不再实施。现有模板治理页面已经把管理员选择的团队写入 `project_template_versions.content.linkedTeamId`，该字段随项目模板版本冻结，正好满足「进行中的项目不因管理员后续修改而漂移」。运行期通过 `getTeamForTemplateVersion()` 读取该字段并校验团队仍处于启用状态。
 
-```ts
-export const templateTeamBindings = pgTable('template_team_bindings', {
-  id: text('id').primaryKey(),
-  templateId: text('template_id').notNull()
-    .references(() => projectTemplates.id, { onDelete: 'restrict' }),
-  teamId: text('team_id').notNull()
-    .references(() => adminTeams.id, { onDelete: 'restrict' }),
-  /** null = 对该模板所有版本生效；否则只对该冻结版本生效 */
-  templateVersionId: text('template_version_id')
-    .references(() => projectTemplateVersions.id, { onDelete: 'restrict' }),
-  enabled: boolean('enabled').notNull().default(true),
-  source: text('source').notNull().default('admin'),   // Server-owned: 'admin' | 'seed'
-  createdBy: text('created_by').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({
-  // HARD CONSTRAINT: 一个模板在生效期内只能绑定一个启用团队，否则阶段→助手解析不唯一
-  oneActiveTeamPerTemplate: uniqueIndex('template_team_bindings_one_active_uq')
-    .on(table.templateId, table.templateVersionId)
-    .where(sql`${table.enabled} = true`),
-  teamIdx: index('template_team_bindings_team_idx').on(table.teamId),
-}));
-```
+不新增表、不新增迁移；官方 seed 的两个模板版本已补齐：
 
-Seed（等价替换注释约定）：`template-thunder-fighter → team-thunder-fighter-pbl`、`template-kinetic-energy → team-kinetic-energy-pbl`。
+- `ptv-thunder-fighter-v1.content.linkedTeamId = team-thunder-fighter-pbl`
+- `ptv-kinetic-energy-v1.content.linkedTeamId = team-kinetic-energy-pbl`
+
+管理员入口：`apps/admin-console/app/(console)/settings/templates/page.tsx` 的「绑定导师团队」控件。
 
 ### 4.2 `PROJECT_STAGE_TO_PBL_PHASE`（修 D9，**契约常量，不进 DB**）
 
@@ -215,47 +207,19 @@ export const PROJECT_STAGE_TO_PBL_PHASE: Readonly<Record<ProjectStage, PblPhase>
 
 同时消灭 `platform-registry.service.ts:84-87` 的第三套 legacy 命名。
 
-### 4.3 `assistant_assignments`（修 D10，`stage` 拆列）
+### 4.3 ~~`assistant_assignments`~~（已废弃）
 
-```ts
-export const assistantAssignments = pgTable('assistant_assignments', {
-  id: text('id').primaryKey(),
-  /** 'student'|'mentor'|'school'|'project_template'|'stage'|'global' */
-  subjectType: text('subject_type').notNull(),
-  /** global 固定 '*'；student/mentor=用户id；school=校id；project_template=模板id；stage=ProjectStage */
-  subjectId: text('subject_id').notNull().default('*'),
-  /** 拆列：null = 不限阶段；否则精确匹配一个 ProjectStage */
-  stage: text('stage'),
-  targetType: text('target_type').notNull().default('assistant'),  // 'assistant' | 'team'
-  assistantId: text('assistant_id').references(() => adminAssistants.id, { onDelete: 'restrict' }),
-  teamId: text('team_id').references(() => adminTeams.id, { onDelete: 'restrict' }),
-  priority: integer('priority').notNull().default(100),
-  enabled: boolean('enabled').notNull().default(true),
-  validFrom: timestamp('valid_from', { withTimezone: true }),
-  validUntil: timestamp('valid_until', { withTimezone: true }),
-  source: text('source').notNull().default('admin'),   // Server-owned: 'admin' | 'seed'
-  reason: text('reason'),
-  createdBy: text('created_by').notNull(),
-  updatedBy: text('updated_by'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  resolvedCount: integer('resolved_count').notNull().default(0),       // Server-owned
-  lastResolvedAt: timestamp('last_resolved_at', { withTimezone: true }) // Server-owned
-}, (table) => ({
-  oneActivePerSubjectStage: uniqueIndex('assistant_assignments_one_active_uq')
-    .on(table.subjectType, table.subjectId, table.stage, table.targetType)
-    .where(sql`${table.enabled} = true`),
-  // stage IS NULL 时 Postgres 唯一索引中 NULL 互不相等，需第二条 partial index
-  // （与 project_templates 的双 partial index 同一手法，见 project-templates.ts:66-75）
-  oneActiveStageless: uniqueIndex('assistant_assignments_one_active_stageless_uq')
-    .on(table.subjectType, table.subjectId, table.targetType)
-    .where(sql`${table.enabled} = true AND ${table.stage} is null`),
-  assistantIdx: index('assistant_assignments_assistant_idx').on(table.assistantId),
-  teamIdx: index('assistant_assignments_team_idx').on(table.teamId),
-  lookupIdx: index('assistant_assignments_lookup_idx')
-    .on(table.subjectType, table.subjectId, table.stage, table.enabled),
-  validityIdx: index('assistant_assignments_validity_idx').on(table.validFrom, table.validUntil),
-}));
+本产品不需要 student/mentor/school 六层分配表。助手不是脱离项目独立分配给学生，而是由「项目模板版本绑定的团队」按项目阶段决定。学校级差异用校属模板表达；自由探索使用 `qitu-intake-assistant`。
+
+阶段助手解析链：
+
+```text
+projects.template_version_id
+  → project_template_versions.content.linkedTeamId
+  → admin_teams.pbl_spec.phases[pblPhase].assignedAssistantId
+```
+
+`pblPhase` 由共享的 `services/api/src/common/pbl-phase.ts` 从 `ProjectStage` 映射得到。
 ```
 
 specificity：`student 1000 > mentor 800 > school 600 > project_template 400 > stage 200 > global 100`。
@@ -290,35 +254,35 @@ specificity：`student 1000 > mentor 800 > school 600 > project_template 400 > s
 
 ---
 
-## 5. 解析链路（8 步）
+## 5. 唯一运行期解析链
 
 ```
-三端任一入口（只带 actorId + projectId，✗ 不带 assistantId）
-① 对象级鉴权（复用 team-runtime.service.ts:1646-1673 惯例）
-   student → assertStudentScope；teacher → mentor_assignments(status='active')；
-   parent  → guardian_links/households；未命中 → 404（不泄漏存在性），记 relationRef
-② projects.template_version_id → project_template_versions.template_id = templateId
-   projects.status = ProjectStage；template_version_id IS NULL（自由探索）→ templateId=null
-③ pblPhase = PROJECT_STAGE_TO_PBL_PHASE[projectStage]
-④ 一次 SQL 查全部层级候选：subject ∈ {student, mentor, school, project_template, stage, global}
-   AND enabled AND stage IN (NULL, projectStage) AND 在有效期内
-⑤ 排序（确定性，不允许平手随机）：specificity DESC → priority DESC → updated_at DESC → id ASC
-⑥ 逐条验证目标可用（fail-closed）：
-   team      → team.enabled ∧ pbl_spec.phases[pblPhase].assignedAssistantId 存在 ∧ 该助手 enabled
-   assistant → assistant.enabled ∧ capabilities 含所需能力
-⑦ 全未命中 → 'fallback_default'（global seed 行）；仍不可用 → 'fail_closed' 抛 AGENT_ROLE_DISABLED
-⑧ 写 assistant_resolution_logs + 异步 bump resolvedCount/lastResolvedAt
-   ▼
-{ assistantId, teamId, pblPhase, assignmentId, resolutionSource }
-   ├──► projectKnowledge.search(...)  tutor.service.ts:977  ← 同一变量
-   ├──► projectKnowledge.tools(...)   tutor.service.ts:980  ← 同一变量
-   ├──► imaSettings.canCall(...)      tutor.service.ts:919  ← 同一变量
-   └──► getAgentRuntime(...).skills → contextPacket.runtime.skills（:995-1000）
+学生/教师/家长请求（客户端只提供项目或会话 id，不提供 assistantId/teamId）
+   │
+   ├─ 自由探索：无 templateVersionId → qitu-intake-assistant
+   │
+   └─ 正式项目：projects.template_version_id
+           │
+           ▼
+       project_template_versions.content.linkedTeamId（冻结）
+           │
+           ▼
+       admin_teams.id → pbl_spec.phases[PROJECT_STAGE_TO_PBL_PHASE[project.status]]
+           │
+           ▼
+       assignedAssistantId（缺 phase 助手时退 team.leaderAssistantId）
+           │
+           ├─ Tutor 显示作者 / 助手启用检查
+           ├─ 项目知识库 search / citation read 权限
+           └─ 教材 MCP assistant 授权
 ```
 
-**铁律**：`assistantId` 是三个授权面的键（项目知识库检索、知识工具、ima MCP）。⑥ 之后四个下游**必须共用同一变量**，任何一处二次计算（现状 `:919` 与 `:976` 各算一次）都是授权错位事故源。
+**不可变约束**：同一个 `assistantId` 必须在一次请求里解析一次并复用，不能再由项目标题/关键词另外推导。模板版本冻结 `linkedTeamId`，管理员新建模板版本改绑只影响之后选择该版本的新项目。
 
-**不得破坏的既有规则**：项目内 MCP `toolIds` 清空（`tutor.service.ts:985`）；`capabilities` 不含 teach 抛 `AGENT_CAPABILITY_DISABLED`（`:1001`）；助手禁用抛 `AGENT_ROLE_DISABLED`（`:948`）。
+**无绑定行为**：旧模板/未配置模板版本保持 `qitu-intake-assistant` 兜底，不让已有项目中断；Admin 模板管理页必须显示“未绑定团队”，新模板发布前建议要求绑定。不得用标题猜测补救。
+
+**团队运行边界**：当前 `admin_teams` 的成员/phase 定义用于 Tutor 身份、阶段和授权解析；独立 Team Runtime 的 `agent_configs`/`agentRoutes` 是另一套执行注册表。把管理员配置的 PBL 团队完整物化成 worker 可执行 agent graph 属 Issue #53 后续工作，不得把 `admin_assistants.id` 直接当成 `agent_configs.id`。
+
 
 ---
 
@@ -339,23 +303,16 @@ specificity：`student 1000 > mentor 800 > school 600 > project_template 400 > s
 
 ---
 
-## 7. 数据迁移
+## 7. 存量模板版本回填
 
-`tooling/backfill-project-templates.mjs`（一次性；正则活在这里，运行期不再有）：
+模板编辑页已经把 `linkedTeamId` 写入新建的 `project_template_versions.content`。存量两个正式版本通过一次性 migration 回填：
 
-1. 读现有标题正则（`platform-registry.service.ts:66-67`）：`/动能|物理|小车|kinetic|physics/i → template-kinetic-energy`；`/雷霆|战机|pygame|飞行射击|python.*游戏/i → template-thunder-fighter`
-2. 扫 `projects WHERE template_version_id IS NULL`：命中则绑定对应 `ptv-*-v1`；未命中保持 NULL（合法：真自由探索）
-3. 输出报告（命中数 / 未命中数 / 每条 title→template 决策）供人工抽检
-4. 幂等：只处理 `IS NULL` 行，可重复执行
+- `ptv-thunder-fighter-v1` → `team-thunder-fighter-pbl`
+- `ptv-kinetic-energy-v1` → `team-kinetic-energy-pbl`
 
-### 7.1 一处**有意的行为变更**（需产品签字）
+更新只针对 `linkedTeamId` 缺失的行，**不覆盖管理员已设置的值**；`database/seeds/domain-foundation.sql` 同步基线值，确保空库初始化可用。历史正式项目通过冻结的 `template_version_id` 自动解析；自由探索仍保持 `template_version_id = null`，使用 intake 助手。
 
-| 场景 | 现在（正则） | 模板化后 |
-| --- | --- | --- |
-| 自由探索项目标题「动能小车探究」且 `template_version_id IS NULL` | 命中正则 → `kinetic-concept-coach` 等专属导师 | 落 stage/global 分配 → `qitu-intake-assistant` |
-
-立场：这符合 `AGENTS.md`「学生未确认意图时不得创建正式项目」——专属导师应来自**确认意图时选定的模板**，而非标题关键词猜测。存量由第 2 步回填消除差异；增量按新规则。shadow 期该场景会被记为 divergence，属**预期内**，需在翻转前单独白名单化。
-
+不再运行项目标题正则 backfill；标题不是绑定依据。
 ---
 
 ## 8. 分阶段实施与验收台账
@@ -370,13 +327,13 @@ specificity：`student 1000 > mentor 800 > school 600 > project_template 400 > s
 | P2-a | deeptutor 边界锁定 + pin 可校验 | `UPSTREAM.md`、`test_bridge.py`、`tooling/verify-knowledge-upstream.mjs`(+test) | 静态 AST 白名单 + 运行时硬禁 + tools 钉死清单；pin 校验退出码 0；checksum 连跑两次一致 | ✅ 已实现并验证（原排期在 P1 之后，因文件零重叠提前并行） |
 | P1-a | 契约隔离 | `packages/contracts` | 编译期禁止 skill 正文进三端 DTO | ⏳ |
 | P1-b | 技能/工具目录 + 版本表 | `runtime_skills(_versions)`、`runtime_tools`；合并 `built-in-tools.ts` 双数组 | 发布→绑定→回滚全链路可跑 | ⏳ |
-| P1-c-1 | stage→phase 契约常量 + 启动校验 | `packages/contracts/src/project.ts` | 10 个 stage 全映射；`pbl_spec` 覆盖全 phase | ⏳ |
-| P1-c-2 | `template_team_bindings` + seed | 新 schema + migration + seeds | 两个模板解析出正确团队与阶段助手 | ⏳ |
-| P1-c-3 | `assistant_assignments` + `AssignmentResolver` + logs；**收口 D1/D2** | 新 schema + resolver | 单测覆盖 6 层 specificity、tie-break、fail-closed；后台绑定真正生效 | ⏳ |
+| P1-c-1 | stage→phase 契约常量 + 启动校验 | `services/api/src/common/pbl-phase.ts` | 10 个 stage 全映射；`pbl_spec` 覆盖全 phase | ✅ 已接入 |
+| P1-c-2 | 模板版本 `content.linkedTeamId` → 团队 → 阶段助手 | `tutor.service.ts`、`platform-registry.service.ts`、`domain-foundation.sql` | 两个模板版本解析出正确团队与阶段助手；不比较标题 | ✅ 已实现并验证 |
+| P1-c-3 | 收口 D1/D2；后台 Skill 绑定接入真实运行时 | `runtime_skills` 后续版本治理 | 后台绑定真正影响运行时 | ⏳ P1-b |
 | P1-c-4 | backfill 存量项目模板 | `tooling/backfill-project-templates.mjs` | 报告人工抽检；幂等可重跑 | ⏳ |
-| P1-c-5 | 接线 4 处 + shadow 模式 | `tutor.service.ts:919,926,976-980`、`project-knowledge.controller.ts:35` | shadow ≥7 天 `divergence = 0`（7.1 场景白名单） | ⏳ |
-| P1-c-6 | 翻转 `mode=on`，删运行期正则 | `platform-registry.service.ts:62-87` 降级为 fallback | 三端对话正常；三个授权面正常 | ⏳ |
-| P1-c-7 | 三端投影 + 教师/家长关联解析 | teacher-workspace / parent-companion 读接口 | 未关联 → 404；关联 → 与学生解析一致 | ⏳ |
+| P1-c-5 | 接线知识库/教材授权到同一阶段助手 | `tutor.service.ts`、`project-knowledge.controller.ts` | 聊天、引用读取、MCP 授权使用同一 assistantId | ✅ 已实现并验证 |
+| P1-c-6 | 删除项目标题正则 | `platform-registry.service.ts` | 运行期不再从标题猜助手 | ✅ 已实现并验证 |
+| P1-c-7 | 三端只读投影 | student/teacher/parent 使用面 | 未关联 → 404；关联 → 与学生解析一致 | ⏳
 | P1-d | 工具执行 + 审计 | `ToolExecutorRegistry`、`agent_tool_calls` | `toolCalls[]` 非空；`requiresTheoryMastered` 在执行点拦截 | ⏳ |
 | P1-e | 后台管理面完整化 | skills/tools/模板绑定/分配矩阵 4 页 + 影响面预览 | 建助手→绑模板→分配给一位班主任→该班学生可用 | ⏳ |
 | P2-b | sandbox sidecar（**触发后**） | 新服务 + `code-static-check-producer` 对接 | 学生代码作品真跑并写 `code_playable_run_verified` | ⏳ 需独立评审 |
@@ -386,13 +343,9 @@ specificity：`student 1000 > mentor 800 > school 600 > project_template 400 > s
 ### 8.1 灰度与回滚
 
 ```
-P1-c-1..c-4  建表/常量/seed/backfill      → QITU_ASSISTANT_ASSIGNMENT_MODE=off，零行为变化
-P1-c-5       上线 resolver                → mode=shadow，只算只记，仍用正则结果
-             观察 ≥7 天：divergence 必须为 0（7.1 场景单独白名单）
-P1-c-6       mode=on                      → 保留 fallback_default 兜底
-             管理员开始建 source='admin' 分配，先给一位班主任灰度
-P1-c-7       三端投影上线
-稳定一个版本周期后：删 mode 开关、删 tutorAssistantIdForProject 的运行期调用
+P1-c-1..c-2  共享阶段映射 + 模板版本 linkedTeamId 接线 → 直接使用冻结模板版本；缺绑定时返回通用助手并记录诊断
+P1-c-5..c-6  知识库/教材授权统一到阶段助手 + 删除标题正则 → 已完成，API 851/851 测试通过
+P1-c-7       三端使用面投影与对象级关联 → 待做
 ```
 
 回滚：`QITU_ASSISTANT_ASSIGNMENT_MODE=off` 即刻回到当前行为，**无需回滚数据库**（seed 行留着无害）。

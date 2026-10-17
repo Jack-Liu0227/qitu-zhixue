@@ -1457,6 +1457,21 @@
   align-items: flex-start;
 }
 
+/* 折叠态紧凑会话轨道：加载骨架脉冲 */
+@keyframes qituHistoryPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 768px) {
+  /* 手机端折叠轨道保持窄轨，不跟随展开侧的全宽规则 */
+  .qitu-tutor-workspace-layout > .qitu-live-session-sidebar.is-collapsed {
+    width: 68px !important;
+    flex: 0 0 68px !important;
+    max-height: none;
+  }
+}
+
 .qitu-live-session-toggle {
   flex-shrink: 0;
   max-width: 100%;

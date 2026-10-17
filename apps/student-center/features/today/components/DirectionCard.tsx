@@ -54,7 +54,9 @@ export function DirectionCard({ direction }: { direction: IdeaDirection }) {
       )}
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <strong style={{ color: colors.heading }}>{direction.title}</strong>
-        <span style={{ color: colors.muted, fontSize: 13 }}>{direction.subtitle}</span>
+        {direction.subtitle ? (
+          <span style={{ color: colors.muted, fontSize: 13 }}>{direction.subtitle}</span>
+        ) : null}
       </span>
     </StudentLink>
   );

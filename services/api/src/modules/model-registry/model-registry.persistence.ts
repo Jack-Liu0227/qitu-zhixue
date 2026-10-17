@@ -1,6 +1,6 @@
 import { and, eq, notInArray } from 'drizzle-orm';
 import { agentConfigs, modelModels, modelProviders, modelUsageBindings, type Database } from '@qitu/database';
-import type { ModelDescriptor } from '@qitu/contracts';
+import type { ModelDescriptor, ModelModality } from '@qitu/contracts';
 import type { AuditTransaction } from '../../common/audit';
 
 /**
@@ -66,6 +66,45 @@ export async function loadModelRow(
     .where(and(eq(modelModels.providerId, providerId), eq(modelModels.modelId, modelId)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** 读取单个供应商的全部模型行（**含软下线行**）。 */
+export async function loadModelRowsForProvider(
+  executor: RegistryExecutor,
+  providerId: string,
+): Promise<ModelRow[]> {
+  return executor
+    .select()
+    .from(modelModels)
+    .where(eq(modelModels.providerId, providerId))
+    .orderBy(modelModels.modelId);
+}
+
+/**
+ * 列出该供应商下**被引用**的模型 id（兼容用途绑定 + Agent 直接选择）。
+ *
+ * 取消挂载是物理删除，因此删除前必须整体算一次引用集合：宁可整笔拒绝，
+ * 也不能把运行时指向不存在的模型。
+ */
+export async function listReferencedModelIds(
+  executor: RegistryExecutor,
+  providerId: string,
+): Promise<string[]> {
+  const bindings = await executor
+    .select({ modelId: modelUsageBindings.modelId })
+    .from(modelUsageBindings)
+    .where(eq(modelUsageBindings.providerId, providerId));
+  const agents = await executor
+    .select({ modelId: agentConfigs.modelId })
+    .from(agentConfigs)
+    .where(eq(agentConfigs.modelProviderId, providerId));
+  return [
+    ...new Set(
+      [...bindings, ...agents]
+        .map((row) => row.modelId)
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ),
+  ];
 }
 
 /** 找出引用了某个 `(provider, model)` 的用途；为空表示可以安全停用 / 删除。 */
@@ -185,6 +224,24 @@ export async function markProviderFetchError(
     .where(eq(modelProviders.id, id));
 }
 
+/**
+ * 只顶 `updated_at` / `updated_by`。
+ *
+ * 用于「挂载集合已保存」这类不代表一次成功拉取、**不得**动 `models_fetched_at`
+ * 与 `last_error` 的写入。
+ */
+export async function markProviderModelsUpdated(
+  executor: RegistryExecutor,
+  id: string,
+  now: Date,
+  actor: string | null,
+): Promise<void> {
+  await executor
+    .update(modelProviders)
+    .set({ updatedAt: now, updatedBy: actor })
+    .where(eq(modelProviders.id, id));
+}
+
 /* ------------------------------- 写模型 ------------------------------- */
 
 export interface ManualModelRowInput {
@@ -240,7 +297,114 @@ export async function upsertManualModelRow(
  * 关键约束：
  * - 只动 `source='remote'` 的行，**绝不删除或禁用 manual 模型**；
  * - 不物理删除任何行，`last_seen_at` 记录最后一次被上游看到的时间，便于追溯。
+ *
+ * ⚠️ `POST :id/refresh` **已不再使用本函数**：同步不再改变挂载集合，只用
+ * `syncRemoteModelMetadata`。本函数保留给测试与历史行为复用（例如需要
+ * 「全量挂载上游模型」时）。
  */
+export async function syncRemoteModelMetadata(
+  executor: RegistryExecutor,
+  providerId: string,
+  models: readonly ModelDescriptor[],
+  now: Date,
+): Promise<void> {
+  for (const model of models) {
+    // 只更新已存在的行：新上游模型必须经过管理员勾选保存才会入库。
+    await executor
+      .update(modelModels)
+      .set({
+        displayName: model.name,
+        contextWindow: model.contextWindow,
+        maxTokens: model.maxTokens,
+        lastSeenAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(modelModels.providerId, providerId),
+          eq(modelModels.modelId, model.id),
+          eq(modelModels.source, 'remote'),
+        ),
+      );
+  }
+}
+
+/* ------------------------------ 写挂载集合 ------------------------------ */
+
+/** `PUT :id/models` 的单行输入（已由服务层校验/收敛）。 */
+export interface SelectedModelRowInput {
+  modelId: string;
+  displayName: string;
+  input: ModelModality[];
+  output: ModelModality[];
+  contextWindow: number | null;
+  maxTokens: number | null;
+  /** 仅对新行生效；已存在的行保留原来源。 */
+  source: 'remote' | 'manual';
+}
+
+/**
+ * 把模型行写进「期望挂载集合」。
+ *
+ * - 新行：按 `source` 插入并 `enabled=true`；
+ * - 已存在行（包括之前的软下线行）：只更新元数据并重新 `enabled=true`，
+ *   **不改 `source`**，避免一次保存把手工模型洗成远程模型或反之。
+ */
+export async function upsertSelectedModelRows(
+  executor: RegistryExecutor,
+  providerId: string,
+  models: readonly SelectedModelRowInput[],
+  now: Date,
+): Promise<void> {
+  for (const model of models) {
+    await executor
+      .insert(modelModels)
+      .values({
+        providerId,
+        modelId: model.modelId,
+        displayName: model.displayName,
+        inputModalities: model.input,
+        outputModalities: model.output,
+        contextWindow: model.contextWindow,
+        maxTokens: model.maxTokens,
+        source: model.source,
+        enabled: true,
+        lastSeenAt: model.source === 'remote' ? now : null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [modelModels.providerId, modelModels.modelId],
+        set: {
+          displayName: model.displayName,
+          inputModalities: model.input,
+          outputModalities: model.output,
+          contextWindow: model.contextWindow,
+          maxTokens: model.maxTokens,
+          enabled: true,
+          updatedAt: now,
+        },
+      });
+  }
+}
+
+/**
+ * 按 id 批量物理删除模型行（不区分来源）。
+ *
+ * 调用方必须已经确认这些 id 没有被用途绑定或 Agent 直接引用，否则 FK
+ * `ON DELETE RESTRICT` 会报错。
+ */
+export async function deleteModelRowsByIds(
+  executor: RegistryExecutor,
+  providerId: string,
+  modelIds: readonly string[],
+): Promise<void> {
+  for (const modelId of modelIds) {
+    await executor
+      .delete(modelModels)
+      .where(and(eq(modelModels.providerId, providerId), eq(modelModels.modelId, modelId)));
+  }
+}
+
 export async function upsertRemoteModels(
   executor: RegistryExecutor,
   providerId: string,

@@ -16,6 +16,7 @@ import type {
   AdminProvidersResponse,
   BindUsageRequest,
   ConnectionTestResponse,
+  DiscoverProviderModelsResponse,
   ModelApi,
   ModelDescriptor,
   ModelModality,
@@ -24,7 +25,11 @@ import type {
   ModelRuntimeResponse,
   TutorAgentModelPurpose,
   ProviderConfigPublic,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
+  ProviderModelSelection,
   RefreshProviderResponse,
+  SetProviderModelsResponse,
   UpsertProviderRequest,
 } from '@qitu/contracts';
 import type { Database } from '@qitu/database';
@@ -40,25 +45,31 @@ import {
 import {
   deleteBindingRow,
   deleteManualModelRow,
+  deleteModelRowsByIds,
   deleteProviderRows,
   insertManualModelRow,
   listBindingUsageIdsForModel,
   listAgentIdsForModel,
   listAgentIdsForProvider,
+  listReferencedModelIds,
   loadModelRow,
   loadModelRows,
+  loadModelRowsForProvider,
   loadProviderRow,
   loadProviderRows,
   loadUsageBindingRows,
   markProviderFetchError,
   markProviderFetchSuccess,
+  markProviderModelsUpdated,
+  syncRemoteModelMetadata,
   updateManualModelRow,
   upsertBindingRow,
   upsertManualModelRow,
   upsertProviderRow,
-  upsertRemoteModels,
+  upsertSelectedModelRows,
   type ManualModelPatch,
   type ModelRow,
+  type SelectedModelRowInput,
 } from './model-registry.persistence';
 import {
   MODEL_APIS,
@@ -108,9 +119,10 @@ import {
  * - 内存模式（demo/test）仍把明文留在进程内，仅用于兼容演示，**不适合 live**。
  *
  * 审计：
- * - provider upsert/delete、usage bind/unbind 在 live 下与业务写入同事务落审计；
- * - refresh 视为会改变模型列表的写操作，成功时同事务审计，失败时先保留
+ * - provider upsert/delete、usage bind/unbind、model collection set 在 live 下与业务写入同事务落审计；
+ * - refresh 只同步已挂载远程模型的元数据，成功时同事务审计；失败时先保留
  *   旧列表并更新 `last_error`，审计为 best-effort（不把可恢复的上游失败升级成 5xx）；
+ * - discover 是只读上游探测，不落库、不写审计；
  * - `test` 连接测试接口本任务未实现，故无审计。
  * - 不接入写幂等：控制器未接收 `Idempotency-Key`；若将来接入，scope 必须使用
  *   provider / model / usage 维度（见文档）。
@@ -773,6 +785,16 @@ export class ModelRegistryService implements OnModuleInit {
     return { id };
   }
 
+  /**
+   * 上游目录同步：**只更新元数据，不改变挂载集合**。
+   *
+   * 产品规则（对应 `docs/admin/model-registry.md` §5）：
+   *  - 拉取不再替管理员做决定——新发现的上游模型只进 `discovered` 报告，
+   *    必须管理员在「选择模型」里勾选并保存才入库；
+   *  - 上游本次未返回的已挂载模型只进 `stale` 报告，**不自动停用也不删除**，
+   *    避免网关临时少返一个模型就把 Agent 正在用的模型抹掉；
+   *  - 失败仍为可恢复状态：保留旧列表、写 `last_error`，不报 5xx。
+   */
   async refreshProvider(id: string, actor: string): Promise<RefreshProviderResponse> {
     const state = this.providers.get(id);
     if (state === undefined) throw new NotFoundException(`供应商不存在：${id}`);
@@ -811,18 +833,26 @@ export class ModelRegistryService implements OnModuleInit {
       state.lastError = message;
       state.updatedAt = now.toISOString();
       state.updatedBy = actor;
-      this.logger.warn(`自动拉取失败 id=${id} 原因=${message}`);
-      return { provider: this.toPublic(state), fetched: 0 };
+      this.logger.warn(`目录同步失败 id=${id} 原因=${message}`);
+      return { provider: this.toPublic(state), fetched: 0, discovered: [], stale: [] };
     }
 
     const now = new Date();
-    const fetched = new Map(
-      models.map((model) => [model.id, { descriptor: model, enabled: true } satisfies ModelEntry]),
-    );
+    const upstreamIds = new Set(models.map((model) => model.id));
+    const byId = new Map(models.map((model) => [model.id, model]));
+    const mountedIds = new Set([...state.fetched.keys(), ...state.manual.keys()]);
+    const discovered = models.filter((model) => !mountedIds.has(model.id));
+    // `stale` 只报「自称来自上游同步、但本次上游没返回」的行。手工行是
+    // 管理员显式声明的（常见于网关别名），上游本来就不一定认识它，
+    // 把它们当成「已消失」只会制造噪声。
+    const stale: ModelDescriptor[] = [];
+    for (const entry of state.fetched.values()) {
+      if (!upstreamIds.has(entry.descriptor.id)) stale.push(entry.descriptor);
+    }
 
     if (this.db) {
       await withTransaction(this.db, async (tx) => {
-        await upsertRemoteModels(tx, id, models, now);
+        await syncRemoteModelMetadata(tx, id, models, now);
         await markProviderFetchSuccess(tx, id, now, actor);
         await this.audit.write(
           {
@@ -830,21 +860,227 @@ export class ModelRegistryService implements OnModuleInit {
             action: 'model_provider.refresh',
             targetType: 'model_provider',
             targetId: id,
-            detail: { ok: true, fetched: models.length },
+            detail: { ok: true, fetched: models.length, discovered: discovered.length, stale: stale.length },
           },
           tx,
         );
       });
     }
 
-    state.fetched = fetched;
+    // 内存快照：只刷元数据，不新增 / 不剔除条目。手工条目保持管理员原写，
+    // 因为模态与展示名是管理员声明的，不能用上游 id 覆盖。
+    for (const entry of state.fetched.values()) {
+      const fresh = byId.get(entry.descriptor.id);
+      if (fresh === undefined) continue;
+      entry.descriptor = { ...entry.descriptor, name: fresh.name, contextWindow: fresh.contextWindow, maxTokens: fresh.maxTokens };
+    }
     state.modelsFetchedAt = now.toISOString();
     state.lastError = null;
     state.updatedAt = now.toISOString();
     state.updatedBy = actor;
 
-    this.logger.log(`自动拉取成功 id=${id} 模型数=${models.length}`);
-    return { provider: this.toPublic(state), fetched: models.length };
+    this.logger.log(
+      `目录同步成功 id=${id} 上游模型数=${models.length} 未挂载=${discovered.length} 己消失=${stale.length}`,
+    );
+    return { provider: this.toPublic(state), fetched: models.length, discovered, stale };
+  }
+
+  /**
+   * 只读发现：用**已保存**的地址与密钥拉一次上游模型列表。
+   *
+   * 与 `refreshProvider` 的关键区别：这里**不写库、不改内存、不写审计**，
+   * 也不进 `modelsFetchedAt`。它是管理员「先看看有什么」的唯一入口；要什
+   * 么模型由 `PUT :id/models` 决定。失败收敛成 `ok=false` + 已脱敏错误。
+   */
+  async discoverModels(id: string, actor: string): Promise<DiscoverProviderModelsResponse> {
+    const state = this.providers.get(id);
+    if (state === undefined) throw new NotFoundException(`供应商不存在：${id}`);
+    if (state.baseUrl.length === 0) throw new BadRequestException('请先填写网关地址');
+
+    const probe = await probeProviderModels({
+      baseUrl: state.baseUrl,
+      api: state.api,
+      apiKey: state.apiKey ?? '',
+      authHeader: state.authHeader,
+    });
+    const error = probe.ok ? null : redactConnectionError(probe.error ?? '探测上游模型列表失败', [state.apiKey]);
+    // 日志只记地址、协议与个数，绝不记密钥。
+    this.logger.log(
+      probe.ok
+        ? `只读发现成功 id=${id} api=${state.api} 模型数=${probe.models.length} 操作者=${actor}`
+        : `只读发现失败 id=${id} api=${state.api} 操作者=${actor} 原因=${error}`,
+    );
+
+    const mountedIds = [...new Set([...state.fetched.keys(), ...state.manual.keys()])];
+    return {
+      providerId: id,
+      ok: probe.ok,
+      models: probe.models,
+      error,
+      mountedIds,
+    };
+  }
+
+  /**
+   * 设置通道的挂载模型集合（**唯一的挂载 / 取消入口**）。
+   *
+   * 语义：请求体里的 `models` 是期望的完整集合。
+   *  - 不在集合里的行→ **物理删除**（按产品决定）；
+   *  - 在集合里但不存在的行→ 插入（`source` 默认 `remote`）；
+   *  - 已存在的行→ 只更新元数据，**保留原来源**。
+   *
+   * 安全：删除前先算引用集合（用途绑定 + Agent 直选），命中则整笔 409，
+   * 绝不部分成功；写入与审计同事务，日志与审计不含密钥。
+   */
+  async setProviderModels(
+    id: string,
+    selection: readonly ProviderModelSelection[],
+    actor: string,
+    auditIdempotencyKey: string,
+  ): Promise<SetProviderModelsResponse> {
+    const state = this.providers.get(id);
+    if (state === undefined) throw new NotFoundException(`供应商不存在：${id}`);
+
+    const desired: SelectedModelRowInput[] = [];
+    const seen = new Set<string>();
+    for (const raw of selection) {
+      const modelId = requireModelId(raw.modelId);
+      if (seen.has(modelId)) {
+        throw new BadRequestException(`模型重复：${modelId}；期望集合里同一个 modelId 只能出现一次`);
+      }
+      seen.add(modelId);
+      const input = normaliseModalities(raw.input ?? null, 'input');
+      const output = normaliseModalities(raw.output ?? null, 'output');
+      const contextWindow = normaliseOptionalInt(raw.contextWindow ?? null, 'contextWindow');
+      const maxTokens = normaliseOptionalInt(raw.maxTokens ?? null, 'maxTokens');
+      const displayName = raw.displayName === undefined ? modelId : requireDisplayName(raw.displayName);
+      const source = raw.source === undefined || raw.source === 'remote' ? 'remote' : raw.source;
+      if (source !== 'remote' && source !== 'manual') {
+        throw new BadRequestException(`source 只允许 remote | manual，收到 ${String(raw.source)}`);
+      }
+      desired.push({ modelId, displayName, input, output, contextWindow, maxTokens, source });
+    }
+    if (desired.length > 500) throw new BadRequestException('单次提交模型数不得超过 500');
+
+    const desiredIds = new Set(desired.map((model) => model.modelId));
+    const now = new Date();
+    const created: string[] = [];
+    const kept: string[] = [];
+    let removed: string[] = [];
+
+    if (this.db) {
+      const rows = await loadModelRowsForProvider(this.db, id);
+      const existingIds = new Set(rows.map((row) => row.modelId));
+      const toRemove = rows.map((row) => row.modelId).filter((modelId) => !desiredIds.has(modelId));
+      if (toRemove.length > 0) {
+        const referenced = new Set(await listReferencedModelIds(this.db, id));
+        const blocked = toRemove.filter((modelId) => referenced.has(modelId));
+        if (blocked.length > 0) {
+          throw new ConflictException(
+            `以下模型仍被用途或 Agent 直接引用，不能取消挂载：${blocked.slice(0, 20).join('、')}` +
+              (blocked.length > 20 ? ` 等 ${blocked.length} 个` : '') +
+              '；请先在 AI 运行时清空模型选择',
+          );
+        }
+      }
+      removed = toRemove;
+
+      for (const model of desired) {
+        if (existingIds.has(model.modelId)) kept.push(model.modelId);
+        else created.push(model.modelId);
+      }
+
+      await withTransaction(this.db, async (tx) => {
+        await deleteModelRowsByIds(tx, id, removed);
+        await upsertSelectedModelRows(tx, id, desired, now);
+        await markProviderModelsUpdated(tx, id, now, actor);
+        await this.audit.write(
+          {
+            actorId: actor,
+            action: 'model.set_collection',
+            targetType: 'model_provider',
+            targetId: id,
+            idempotencyKey: auditIdempotencyKey,
+            detail: { providerId: id, mounted: desired.length, created, removed },
+          },
+          tx,
+        );
+      });
+    } else {
+      for (const model of desired) {
+        if (this.modelEntry(state, model.modelId) !== null) kept.push(model.modelId);
+        else created.push(model.modelId);
+      }
+      removed = [...this.modelEntryIds(state)].filter((modelId) => !desiredIds.has(modelId));
+    }
+
+    // 内存快照与库保持一致：未选的行从两个桶里都摸掉，选中的按来源入桶。
+    for (const modelId of removed) {
+      state.fetched.delete(modelId);
+      state.manual.delete(modelId);
+    }
+    for (const model of desired) {
+      const descriptor: ModelDescriptor = {
+        id: model.modelId,
+        name: model.displayName,
+        api: state.api,
+        input: model.input,
+        output: model.output,
+        contextWindow: model.contextWindow,
+        maxTokens: model.maxTokens,
+        source: model.source === 'manual' ? 'manual' : 'fetched',
+      };
+      // 已存在的行保留原来源，与持久化层的 onConflictDoUpdate 一致。
+      const existing = this.modelEntry(state, model.modelId);
+      const finalDescriptor =
+        existing === null ? descriptor : { ...descriptor, source: existing.descriptor.source };
+      const bucket = finalDescriptor.source === 'manual' ? state.manual : state.fetched;
+      bucket.set(model.modelId, { descriptor: finalDescriptor, enabled: true });
+    }
+    state.updatedAt = now.toISOString();
+    state.updatedBy = actor;
+
+    this.logger.log(
+      `挂载集合已保存 id=${id} 挂载=${desired.length} 新增=${created.length} 取消=${removed.length} 操作者=${actor}`,
+    );
+    return { provider: this.toPublic(state), created, removed, kept };
+  }
+
+  /** 内存快照里当前已挂载的模型 id（两个桶都算）。 */
+  private modelEntryIds(state: ProviderState): string[] {
+    return [...new Set([...state.fetched.keys(), ...state.manual.keys()])];
+  }
+
+  /**
+   * 未保存供应商的模型发现探测（新建渠道表单里的「获取模型」）。
+   *
+   * 用管理员**表单当前值**发起一次受 SSRF / 超时 / 响应体上限保护的
+   * `/models` 拉取（复用 `probeProviderModels`，与连接测试同一套防护）。
+   * 不落库、不写审计、不改任何 Provider 状态；明文密钥只在本次调用里存在。
+   * 上游失败返回 `ok=false` + 已脱敏错误，**绝不回填预设模型**。
+   */
+  async probeModels(input: ProbeModelsRequest, actor: string): Promise<ProbeModelsResponse> {
+    const probe = await probeProviderModels({
+      baseUrl: input.baseUrl,
+      api: input.api,
+      apiKey: input.apiKey ?? '',
+      authHeader: input.authHeader ?? true,
+    });
+    // 纵深防御：fetcher 的错误已不含请求头，这里再按本次明文密钥兑底脱敏。
+    const error = probe.ok
+      ? null
+      : redactConnectionError(probe.error ?? '探测上游模型列表失败', [input.apiKey]);
+    // 日志只记地址、协议与模型个数，绝不记密钥。
+    if (probe.ok) {
+      this.logger.log(
+        `模型探测成功 baseUrl=${input.baseUrl} api=${input.api} 模型数=${probe.models.length} actor=${actor}`,
+      );
+    } else {
+      this.logger.warn(
+        `模型探测失败 baseUrl=${input.baseUrl} api=${input.api} actor=${actor} 原因=${error}`,
+      );
+    }
+    return { ok: probe.ok, models: probe.ok ? probe.models : [], error };
   }
 
   async bindUsage(usageId: string, body: BindUsageRequest, actor: string): Promise<ModelUsageBinding> {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentSkillBindings, agentToolBindings, agentMcpBindings, runtimeMcpServers, tutorPartners, type Database } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentSkillBindings, agentToolBindings, agentMcpBindings, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database } from '@qitu/database';
 import { PlatformRegistryService } from './platform-registry.service';
 import { PlatformRegistryController } from './platform-registry.controller';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
@@ -101,7 +101,7 @@ test('admin tutor-leader switch gates the student Tutor runtime binding', async 
   assert.equal((await service.getAgentRuntime(config.id)).agent.enabled, true);
 });
 
-test('student Tutor resolves phase-specific admin mentor switches', async () => {
+test('student Tutor resolves the explicitly bound phase assistant switch', async () => {
   const assistant = assistantRow({ id: 'kinetic-experiment-guide', name: '动能定理仿真与实验向导', enabled: false });
   const db = {
     select: () => ({ from: (table: unknown) => table === adminAssistants ? Promise.resolve([assistant]) : Promise.resolve([]) }),
@@ -114,7 +114,7 @@ test('student Tutor resolves phase-specific admin mentor switches', async () => 
   );
 
   assert.deepEqual(
-    await service.getTutorAssistantStatus('动手学动能定理：物理虚拟仿真与规律探究', 'practice_building'),
+    await service.getTutorAssistantStatusById('kinetic-experiment-guide'),
     { id: 'kinetic-experiment-guide', name: '动能定理仿真与实验向导', enabled: false },
   );
 });
@@ -211,12 +211,13 @@ function memberRow(overrides: Row = {}): Row {
 }
 
 /** 配置表体量小：服务层只发全表 select / insert / update / delete，假库按表名预置行即可。 */
-function fakeConfigDb(state: { assistants: Row[]; teams: Row[]; members: Row[] }) {
+function fakeConfigDb(state: { assistants: Row[]; teams: Row[]; members: Row[]; versions?: Row[] }) {
   const ops = { inserts: [] as Array<{ table: unknown; values: unknown }>, updates: [] as Array<{ table: unknown; set: Row }>, deletes: [] as unknown[] };
   const rowsFor = (table: unknown): Row[] => {
     if (table === adminAssistants) return state.assistants;
     if (table === adminTeams) return state.teams;
     if (table === adminTeamMembers) return state.members;
+    if (table === projectTemplateVersions) return state.versions ?? [];
     return [];
   };
   class Chain {

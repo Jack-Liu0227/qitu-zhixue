@@ -1,6 +1,5 @@
-import {
-  anthropicMessagesApi,
-} from './pi/api/anthropic-messages.lazy.js';
+import { anthropicMessagesApi } from './pi/api/anthropic-messages.lazy.js';
+import { googleGeminiApi } from './gemini-native.lazy.js';
 import { openAICompletionsApi } from './pi/api/openai-completions.lazy.js';
 import { openAIResponsesApi } from './pi/api/openai-responses.lazy.js';
 import { contentText } from './pi/utils/text.js';
@@ -223,7 +222,7 @@ function createPiModels(target: ModelRuntimeTarget): {
   // Anthropic uses `x-api-key` (or its OAuth variant) inside the adapter,
   // so `authHeader=false` only disables the OpenAI-compatible Bearer header.
   // It must never turn a missing Anthropic credential into a keyless request.
-  const credentialRequired = target.api === 'anthropic-messages' || target.authHeader !== false;
+  const credentialRequired = target.api === 'anthropic-messages' || target.api === 'google-gemini' || target.authHeader !== false;
   if (credentialRequired && !target.credential?.trim()) {
     throw new ModelRuntimeError('MODEL_CREDENTIAL_MISSING', '模型凭证不可用');
   }
@@ -285,7 +284,7 @@ function apiFor(api: QituModelApi): ProviderStreams {
     case 'anthropic-messages':
       return anthropicMessagesApi();
     case 'google-gemini':
-      return openAICompletionsApi();
+      return googleGeminiApi();
   }
 }
 

@@ -24,9 +24,10 @@ import type {
   WorkspaceMode,
 } from '@qitu/contracts';
 import { asc, desc, eq, sql } from 'drizzle-orm';
-import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
+import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { builtinToolRegistry } from './built-in-tools';
 import { BUILTIN_ASSISTANTS, QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THUNDER_FIGHTER_PBL_SPEC } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -59,32 +60,6 @@ function assistantIdsForRuntimeAgent(agentId: string): readonly string[] {
   return [...new Set([agentId, ...aliases])];
 }
 
-export function tutorAssistantIdForProject(projectTitle: string, projectStage: string): string {
-  if (projectStage === 'exploration' || !projectTitle || projectTitle === '自由探索') {
-    return 'qitu-intake-assistant';
-  }
-  const kineticProject = /动能|物理|小车|kinetic|physics/i.test(projectTitle);
-  const thunderProject = /雷霆|战机|pygame|飞行射击|python.*游戏/i.test(projectTitle);
-  const assistants = kineticProject
-    ? {
-        leader: 'kinetic-leader',
-        concept: 'kinetic-concept-coach',
-        practice: 'kinetic-experiment-guide',
-        review: 'kinetic-review-assessor',
-      }
-    : thunderProject
-      ? {
-        leader: 'fighter-concept-coach',
-        concept: 'fighter-concept-coach',
-        practice: 'fighter-code-guide',
-        review: 'fighter-review-assessor',
-      }
-      : { leader: 'qitu-intake-assistant', concept: 'qitu-intake-assistant', practice: 'qitu-intake-assistant', review: 'qitu-intake-assistant' };
-  if (projectStage === 'theory' || projectStage === 'theory_learning' || projectStage === 'theory_check') return assistants.concept;
-  if (projectStage === 'practice' || projectStage === 'practice_ready' || projectStage === 'practice_building') return assistants.practice;
-  if (projectStage === 'review' || projectStage === 'artifact_review' || projectStage === 'reflection') return assistants.review;
-  return assistants.leader;
-}
 
 /* ==================== admin AI 配置（助手 / 团队） ==================== */
 
@@ -364,10 +339,29 @@ export class PlatformRegistryService {
     }
   }
 
-  /** Resolve the phase-specific admin mentor used by a student Tutor turn. */
-  async getTutorAssistantStatus(projectTitle: string, projectStage: string): Promise<{ id: string; name: string; enabled: boolean } | null> {
+  /** Resolve the team frozen in a template version's content.linkedTeamId. */
+  async getTeamForTemplateVersion(templateVersionId: string): Promise<AdminTeamConfig | null> {
     if (!this.db) return null;
-    const assistantId = tutorAssistantIdForProject(projectTitle, projectStage);
+    const [version] = await this.db.select({ content: projectTemplateVersions.content })
+      .from(projectTemplateVersions)
+      .where(eq(projectTemplateVersions.id, templateVersionId))
+      .limit(1);
+    const content = version?.content as Record<string, unknown> | null | undefined;
+    const teamId = typeof content?.linkedTeamId === 'string' ? content.linkedTeamId : null;
+    if (!teamId) return null;
+    const teams = await this.listTeams();
+    return teams.find((team) => team.id === teamId && team.enabled) ?? null;
+  }
+
+  async resolveProjectAssistantId(templateVersionId: string | null, projectStage: string): Promise<string> {
+    if (templateVersionId === null) return 'qitu-intake-assistant';
+    const team = await this.getTeamForTemplateVersion(templateVersionId);
+    if (!team) return 'qitu-intake-assistant';
+    const phase = pblPhaseForProjectStage(projectStage);
+    return team.pblSpec?.phases.find((candidate) => candidate.phase === phase)?.assignedAssistantId ?? team.leaderAssistantId;
+  }
+  async getTutorAssistantStatusById(assistantId: string): Promise<{ id: string; name: string; enabled: boolean } | null> {
+    if (!this.db) return null;
     try {
       const rows = await this.db.select().from(adminAssistants);
       const assistant = rows.find((row) => row.id === assistantId);
@@ -376,6 +370,11 @@ export class PlatformRegistryService {
       return null;
     }
   }
+
+  /**
+   * Deprecated title-based lookup intentionally removed. Runtime callers must
+   * use `resolveProjectAssistantId(templateVersionId, stage)` instead.
+   */
 
   private async listAgentsFromDatabase(): Promise<AdminRuntimeAgent[]> {
     if (!this.db) return [];

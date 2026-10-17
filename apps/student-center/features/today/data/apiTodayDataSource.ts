@@ -1,202 +1,160 @@
+import { ApiError } from '@qitu/api-client';
+import type { ProjectStage } from '@qitu/contracts';
 import type { ActiveProjectSummary, IdeaDirection, NotificationList, TodayTask, TodayView } from '../types';
 import type { TodayDataSource } from './todayDataSource';
 
-const FALLBACK_DIRECTIONS: IdeaDirection[] = [
-  {
-    templateId: 'template-python-mini-project',
-    title: '雷霆战机小游戏 PBL',
-    subtitle: '基于 Pygame 打造具有主循环与 AABB 碰撞检测的太空射击游戏',
-    coverUrl: '',
-    href: '/student/inspiration?template=template-python-mini-project',
-  },
-  {
-    templateId: 'template-kinetic-energy',
-    title: '动手学动能定理 PBL',
-    subtitle: '合外力做功与动能变化规律仿真探究与 Python 数值绘图',
-    coverUrl: '',
-    href: '/student/inspiration?template=template-kinetic-energy',
-  },
-];
+/** 服务端 `GET /projects/:id/overview` 投影中本页用到的字段。 */
+interface ProjectOverviewProjection {
+  stages?: Array<{ id: string; index: number; name: string; status: 'done' | 'active' | 'pending' }>;
+  tasks?: Array<{
+    id: string;
+    stageId: string;
+    title: string;
+    description: string;
+    status: 'todo' | 'doing' | 'done' | 'locked';
+    isTodayFocus: boolean;
+  }>;
+}
 
+/**
+ * 真实 API 数据源。所有字段只来自服务端投影：
+ *  - 拉不到模板 → `directions` 为空（页面渲染既有空态），不编造推荐卡；
+ *  - 拉不到任务 → `tasks` 为空（页面渲染「今天暂时没有任务」空态）；
+ *  - 建议 / 统计没有服务端来源（Q1/Q3 gap）→ 返回 null，页面不渲染对应卡片；
+ *  - 请求失败按数据源错误约定抛 `ApiError`，由 useTodayData 映射为
+ *    offline / permission-denied / error 状态，绝不静默回退演示数据。
+ */
 export class ApiTodayDataSource implements TodayDataSource {
   private async fetchJson<T>(url: string): Promise<T | null> {
+    let response: Response;
     try {
-      const res = await fetch(url, {
+      response = await fetch(url, {
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
       });
-      if (!res.ok) return null;
-      const json = await res.json();
-      return (json.data ?? json) as T;
     } catch {
-      return null;
+      // status 0 → useTodayData 映射为 offline。
+      throw new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
     }
+    if (!response.ok) {
+      throw new ApiError(`请求 ${url} 失败`, response.status);
+    }
+    const json = (await response.json().catch(() => null)) as { data?: T } | T | null;
+    if (json === null) return null;
+    return ((json as { data?: T }).data ?? json) as T;
+  }
+
+  private async findActiveProject(): Promise<{
+    id: string;
+    title: string;
+    subtitle?: string;
+    status: string;
+    progressPercent?: number;
+    currentStageIndex?: number;
+    stageTotal?: number;
+    templateVersionId?: string;
+  } | null> {
+    const projects = await this.fetchJson<Array<{ id: string; status: string; title: string }>>('/api/v1/projects');
+    if (!projects || projects.length === 0) return null;
+    return (
+      projects.find((p) => p.status !== 'completed' && p.status !== 'archived') ??
+      projects[0] ??
+      null
+    );
   }
 
   async getToday(): Promise<TodayView> {
-    // 1. 获取真实模板列表以动态生成探索推荐 (IdeaDirection)
-    let directions: IdeaDirection[] = [];
-    try {
-      const templates = await this.fetchJson<Array<{ id: string; title: string; summary?: string }>>('/api/v1/project-templates') ||
-                        await this.fetchJson<Array<{ id: string; title: string; summary?: string }>>('/api/v1/admin/project-templates');
-      if (templates && templates.length > 0) {
-        directions = templates.map((t) => ({
-          templateId: t.id,
-          title: t.title,
-          subtitle: t.summary || (t.id.includes('thunder') || t.id.includes('python') ? 'Pygame 游戏引擎与碰撞算法' : '动能与做功物理探究'),
-          coverUrl: '',
-          href: `/student/inspiration?template=${encodeURIComponent(t.id)}`,
-        }));
-      }
-    } catch {
-      // 容错降级
-    }
+    // 1. 探索推荐方向：只用模板库真实数据，副标题只用服务端 summary。
+    const templates =
+      (await this.fetchJson<Array<{ id: string; title: string; summary?: string | null }>>(
+        '/api/v1/project-templates',
+      )) ?? [];
+    const directions: IdeaDirection[] = templates
+      .filter((t): t is { id: string; title: string; summary?: string | null } =>
+        typeof t?.id === 'string' && typeof t?.title === 'string')
+      .map((t) => ({
+        templateId: t.id,
+        title: t.title,
+        subtitle: t.summary ?? '',
+        coverUrl: '',
+        href: `/student/inspiration?template=${encodeURIComponent(t.id)}`,
+      }));
 
-    if (directions.length === 0) {
-      directions = FALLBACK_DIRECTIONS;
-    }
-
-    // 2. 获取学生真实项目与当前任务
+    // 2. 当前项目与今日任务：全部来自服务端 overview 投影。
     let activeTasks: TodayTask[] = [];
     let hasActiveProject = false;
-    try {
-      const projects = await this.fetchJson<Array<{ id: string; status: string; title: string }>>('/api/v1/projects');
-      if (projects && projects.length > 0) {
-        const active = projects.find((p) => p.status !== 'completed' && p.status !== 'archived') || projects[0];
-        if (active) {
-          hasActiveProject = true;
-          const overview = await this.fetchJson<{ tasks?: Array<{ id: string; title: string; description?: string; stageName?: string; status?: string }> }>(`/api/v1/projects/${encodeURIComponent(active.id)}/overview`);
-          if (overview?.tasks && overview.tasks.length > 0) {
-            activeTasks = overview.tasks.slice(0, 3).map((t, idx) => ({
-              id: t.id || `task-${idx}`,
-              projectId: active.id,
-              stageId: 'stage-current',
-              stageName: t.stageName || '当前阶段',
-              title: t.title,
-              description: t.description || '按引导完成沙箱探究或理论反思。',
-              isTodayFocus: idx === 0,
-              status: (t.status === 'done' || t.status === 'completed' ? 'done' : 'todo') as 'todo' | 'done',
-              actionTarget: `/student/tutor/${active.id}`,
-            }));
-          }
-        }
-      }
-    } catch {
-      // 容错
+    const active = await this.findActiveProject();
+    if (active) {
+      hasActiveProject = true;
+      const overview = await this.fetchJson<ProjectOverviewProjection>(
+        `/api/v1/projects/${encodeURIComponent(active.id)}/overview`,
+      );
+      const stageNames = new Map((overview?.stages ?? []).map((s) => [s.id, s.name]));
+      activeTasks = (overview?.tasks ?? []).slice(0, 3).map((t) => ({
+        id: t.id,
+        projectId: active.id,
+        stageId: t.stageId,
+        stageName: stageNames.get(t.stageId) ?? t.stageId,
+        title: t.title,
+        description: t.description,
+        isTodayFocus: t.isTodayFocus,
+        status: t.status === 'done' ? ('done' as const) : ('todo' as const),
+        // 导航路由，非业务数据：任务操作统一进入该项目的 AI 搭档。
+        actionTarget: `/student/tutor/${active.id}`,
+      }));
     }
-
-    if (activeTasks.length === 0 && hasActiveProject) {
-      activeTasks = [
-        {
-          id: 'task-thunder-1',
-          projectId: 'proj-active',
-          stageId: 'stage-theory',
-          stageName: '理论探究',
-          title: '理解 Pygame 主循环与事件队列原理',
-          description: '与 AI 导师探讨游戏每秒刷新的主循环结构与按键事件机制。',
-          isTodayFocus: true,
-          status: 'todo',
-          actionTarget: '/student/tutor',
-        },
-        {
-          id: 'task-thunder-2',
-          projectId: 'proj-active',
-          stageId: 'stage-theory',
-          stageName: '理论探究',
-          title: '通过 AABB 矩形包围盒碰撞检测测验',
-          description: '完成 TheoryMastered 概念门禁，方可解锁编写代码。',
-          isTodayFocus: false,
-          status: 'todo',
-          actionTarget: '/student/tutor',
-        },
-      ];
-    }
-
-    const todayDate = new Date().toISOString().split('T')[0] || '2026-10-12';
 
     return {
-      date: todayDate,
-      greetingName: '小启同学',
+      date: new Date().toISOString().slice(0, 10),
+      // Q1 gap：C1 没有服务端问候名来源；页面当前不渲染该字段，留空而非编造。
+      greetingName: '',
       avatarUrl: null,
       hasActiveProject,
       tasks: activeTasks,
-      suggestion: {
-        id: 'sug-live-1',
-        title: '苏格拉底式启发学习提示',
-        body: '遇到问题时先尝试将大目标拆解为独立模块；在理论探究阶段重点理解概念本质，严禁直接抄写现成代码。',
-        computedAt: new Date().toISOString(),
-      },
+      // Q3 gap：无服务端 AI 建议端点；null 时页面不渲染建议卡。
+      suggestion: null,
       directions,
       quickStart: {
         enabled: true,
         mode: 'navigate',
         exploreHref: '/student/inspiration',
       },
-      stats: {
-        streakDays: 3,
-        tasksCompletedThisWeek: 4,
-        projectsInProgress: hasActiveProject ? 1 : 0,
-      },
+      // Q1 gap：无服务端成长统计端点；null 而不是编造连续天数/完成数。
+      stats: null,
     };
   }
 
   async getActiveProject(): Promise<ActiveProjectSummary | null> {
-    try {
-      const projects = await this.fetchJson<Array<{
-        id: string;
-        title: string;
-        subtitle?: string;
-        status: string;
-        progressPercent?: number;
-        currentStageIndex?: number;
-        stageTotal?: number;
-        templateVersionId?: string;
-      }>>('/api/v1/projects');
+    const p = await this.findActiveProject();
+    if (!p) return null;
 
-      if (!projects || projects.length === 0) return null;
-      const p = projects.find((item) => item.status !== 'completed' && item.status !== 'archived') || projects[0];
-      if (!p) return null;
+    const overview = await this.fetchJson<ProjectOverviewProjection>(
+      `/api/v1/projects/${encodeURIComponent(p.id)}/overview`,
+    );
 
-      const overview = await this.fetchJson<{
-        stages?: Array<{ index: number; stageId: string; name: string; status: 'done' | 'active' | 'pending' }>;
-      }>(`/api/v1/projects/${encodeURIComponent(p.id)}/overview`);
-
-      const stages = overview?.stages || [
-        { index: 1, stageId: 'stage-1', name: '意图确认', status: 'done' as const },
-        { index: 2, stageId: 'stage-2', name: '理论探究 (TheoryMastered)', status: 'active' as const },
-        { index: 3, stageId: 'stage-3', name: '沙箱实践', status: 'pending' as const },
-        { index: 4, stageId: 'stage-4', name: '答辩反思', status: 'pending' as const },
-      ];
-
-      return {
-        id: p.id,
-        title: p.title || '雷霆战机小游戏开发',
-        subtitle: p.subtitle || '基于 Pygame 打造太空射击小游戏',
-        coverUrl: '',
-        templateVersionId: p.templateVersionId || 'template-python-mini-project@v1',
-        stage: 'theory_learning',
-        stageIndex: p.currentStageIndex ?? 2,
-        stageTotal: p.stageTotal ?? 4,
-        progressPercent: p.progressPercent ?? 35,
-        stages,
-      };
-    } catch {
-      return null;
-    }
+    return {
+      id: p.id,
+      title: p.title,
+      subtitle: p.subtitle ?? '',
+      coverUrl: '',
+      templateVersionId: p.templateVersionId ?? 'unknown',
+      // 服务端状态机值，客户端只透传，绝不推导或改写。
+      stage: p.status as ProjectStage,
+      stageIndex: p.currentStageIndex ?? 0,
+      stageTotal: p.stageTotal ?? 0,
+      progressPercent: p.progressPercent ?? 0,
+      stages: (overview?.stages ?? []).map((s) => ({
+        index: s.index,
+        stageId: s.id,
+        name: s.name,
+        status: s.status,
+      })),
+    };
   }
 
   async getNotifications(): Promise<NotificationList> {
-    return {
-      unreadCount: 1,
-      items: [
-        {
-          id: 'note-1',
-          type: 'mentor_todo',
-          title: '你的 PBL 导师团队已上线，可随时进入「AI 搭档」开启启发对话',
-          createdAt: new Date().toISOString(),
-          targetHref: '/student/tutor',
-        },
-      ],
-    };
+    // C3 (`GET /students/me/notifications`) 尚未实现：返回诚实空列表，
+    // 不编造「导师团队已上线」之类的假通知。
+    return { unreadCount: 0, items: [] };
   }
 }

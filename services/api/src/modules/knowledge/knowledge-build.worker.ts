@@ -154,7 +154,7 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
             ),
           );
           if (!guard) throw new KnowledgeSourceReadError('SYNC_FENCE_CHANGED');
-          await tx.execute(sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin,visibility) VALUES(${memberId},${base.id},${document.title},${document.content},${sourceChecksum},${document.revision},${JSON.stringify({ kind: 'managed-source', sourceId: syncSource.id, sourceFingerprint: document.revision, syncJobId: job.id })}::jsonb,'candidate') ON CONFLICT(kb_id,checksum) DO NOTHING`);
+          await tx.execute(sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin,visibility) VALUES(${memberId},${base.id},${document.title},${document.content},${sourceChecksum},${document.revision},${JSON.stringify({ kind: 'managed-source', sourceId: syncSource.id, sourceFingerprint: document.revision, syncJobId: job.id })}::jsonb,'candidate') ON CONFLICT(kb_id,checksum) DO UPDATE SET title=EXCLUDED.title,content=EXCLUDED.content,source_revision=EXCLUDED.source_revision,origin=EXCLUDED.origin,visibility='candidate' WHERE knowledge_base_members.origin->>'kind'='managed-source' AND knowledge_base_members.origin->>'sourceId'=EXCLUDED.origin->>'sourceId'`);
         });
       }
     }
@@ -295,7 +295,7 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
         );
         if (!sourceFence) throw new Error('SOURCE_ACCESS_REVOKED');
         await tx.execute(
-          sql`UPDATE knowledge_base_members SET visibility='superseded' WHERE kb_id=${base.id} AND visibility='active' AND origin->>'kind'='managed-source' AND origin->>'sourceId'=${syncSourceId}`,
+          sql`UPDATE knowledge_base_members SET visibility='superseded' WHERE kb_id=${base.id} AND visibility='active' AND origin->>'kind'='managed-source' AND origin->>'sourceId'=${syncSourceId} AND EXISTS (SELECT 1 FROM knowledge_base_members c WHERE c.kb_id=knowledge_base_members.kb_id AND c.visibility='candidate' AND c.origin->>'syncJobId'=${job.id} AND c.origin->>'sourceId'=${syncSourceId} AND c.title=knowledge_base_members.title)`,
         );
         await tx.execute(
           sql`UPDATE knowledge_base_members SET visibility='active' WHERE kb_id=${base.id} AND visibility='candidate' AND origin->>'syncJobId'=${job.id}`,

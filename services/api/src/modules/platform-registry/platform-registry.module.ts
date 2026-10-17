@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
 import { PlatformRegistryController } from './platform-registry.controller';
 import { PlatformRegistryService } from './platform-registry.service';
@@ -8,7 +8,7 @@ import { ImaSettingsController } from './ima-settings.controller';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 @Module({
-  imports: [AuthModule, ModelRegistryModule, KnowledgeModule],
+  imports: [AuthModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
   controllers: [PlatformRegistryController, ImaSettingsController],
   providers: [PlatformRegistryService, ImaSettingsService],
   exports: [PlatformRegistryService, ImaSettingsService],

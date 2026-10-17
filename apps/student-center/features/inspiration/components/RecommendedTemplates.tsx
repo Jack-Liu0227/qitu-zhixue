@@ -68,7 +68,7 @@ export function RecommendedTemplates({
       {(state === 'ready' || state === 'offline') && templates.length > 0 ? (
         <div className="qitu-inspiration-grid">
           {templates.map((template) => (
-            <TemplateCard key={template.id} template={template} readOnly={offline} />
+            <TemplateCard key={template.id} template={template} readOnly={offline} dataSource={dataSource} />
           ))}
         </div>
       ) : null}

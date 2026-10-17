@@ -4,10 +4,10 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { KnowledgeCenterService, checksum } from './knowledge-center.service';
 import { KnowledgeSourceSyncService, KnowledgeSourceReadError } from './knowledge-source-sync.service';
 import { KnowledgeCenterController } from './knowledge-center.controller';
 import { KnowledgeBuildWorker } from './knowledge-build.worker';
-import type { KnowledgeCenterService } from './knowledge-center.service';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import type { AuthService } from '../identity-auth/auth.service';
 
@@ -130,6 +130,132 @@ test('source write controller denies non-admin before source service invocation'
   assert.equal(called, false);
 });
 
+test('repeated unchanged source sync keeps the document active and readable', async () => {
+  type Member = {
+    id: string;
+    kb_id: string;
+    title: string;
+    content: string;
+    checksum: string;
+    source_revision: string;
+    origin: Record<string, unknown>;
+    visibility: string;
+  };
+  const members: Member[] = [];
+  const jobs = [1, 2].map((attempt) => ({
+    id: `sync-${attempt}`,
+    kb_id: 'kb',
+    state: 'queued',
+    input_revision: 2,
+    fencing_token: 1,
+    attempts: 1,
+    operation: 'sync',
+    source_id: 'source-1',
+  }));
+  const base = {
+    id: 'kb', name: '资料库', kind: 'platform', project_id: null, school_id: null,
+    owner_user_id: null, engine_instance_id: 'engine', lifecycle: 'active',
+    build_state: 'queued', active_index_version_id: null, revision: 2, updated_at: '',
+  };
+  let jobIndex = 0;
+  let activeJob = jobs[0]!;
+  const source = {
+    id: 'source-1', kind: 'folder', source_config: { path: '/allowlisted' }, status: 'syncing',
+    source_fingerprint: 'fingerprint', last_source_revision: null,
+  };
+  const db = {
+    execute: async (query: unknown) => {
+      const text = JSON.stringify(query);
+      if (text.includes('UPDATE knowledge_jobs SET state=\'discovering\'') && text.includes('RETURNING *')) {
+        activeJob = jobs[jobIndex++]!;
+        return { rows: [activeJob] };
+      }
+      if (text.includes('SELECT k.*,coalesce(u.school_id')) return { rows: [base] };
+      if (text.includes('SELECT id,kind,source_config,status,source_fingerprint,last_source_revision')) return { rows: [source] };
+      if (text.includes('SELECT k.*, (SELECT count(*)::int')) {
+        return { rows: [{ ...base, document_count: members.filter((member) => member.visibility === 'active').length }] };
+      }
+      if (text.includes('SELECT flavour,provider,external_ref')) return { rows: [] };
+      if (text.includes('SELECT id,kind,status,source_config,last_error_code')) return { rows: [] };
+      if (text.includes('SELECT agent_kind as')) return { rows: [] };
+      if (text.includes('SELECT id,kb_id,title,checksum,document_id,source_revision,origin,visibility')) {
+        return { rows: members.filter((member) => member.visibility === 'active') };
+      }
+      if (text.includes('SELECT id,status,manifest,created_at FROM knowledge_index_versions')) return { rows: [] };
+      if (text.includes('SELECT * FROM knowledge_jobs WHERE kb_id=')) return { rows: [] };
+      if (text.includes('SELECT m.* FROM knowledge_base_members')) {
+        return { rows: members.filter((member) => member.visibility === 'active') };
+      }
+      if (text.includes('SELECT * FROM knowledge_base_members WHERE kb_id=')) {
+        return { rows: members.filter((member) => member.visibility === 'active' || (member.visibility === 'candidate' && member.origin.syncJobId === activeJob.id)) };
+      }
+      return { rows: [] };
+    },
+    transaction: async (run: (tx: { execute: (query: unknown) => Promise<{ rows: unknown[] }> }) => Promise<unknown>) =>
+      run({
+        execute: async (query: unknown) => {
+          const text = JSON.stringify(query);
+          if (text.includes('SELECT j.id FROM knowledge_jobs')) return { rows: [{ id: activeJob.id }] };
+          if (text.includes("SELECT id FROM knowledge_jobs WHERE id=") && text.includes("state<>'cancelled'")) return { rows: [{ id: activeJob.id }] };
+          if (text.includes("lease_until>now()") && text.includes("state='validating'")) return { rows: [{ id: activeJob.id }] };
+          if (text.includes('SELECT revision FROM platform_configuration_revisions')) return { rows: [{ revision: 1 }] };
+          if (text.includes('SELECT revision FROM knowledge_bases')) return { rows: [{ revision: 2 }] };
+          if (text.includes('SELECT id FROM knowledge_sources WHERE id=')) return { rows: [{ id: source.id }] };
+          if (text.includes('SELECT p.id FROM knowledge_base_members')) return { rows: [] };
+          if (text.includes('INSERT INTO knowledge_base_members')) {
+            const existing = members.find((member) => member.kb_id === 'kb' && member.checksum === checksum('正文'));
+            if (!existing) {
+              members.push({
+                id: `member-${members.length + 1}`,
+                kb_id: 'kb', title: 'doc', content: '正文', checksum: checksum('正文'), source_revision: 'rev',
+                origin: { kind: 'managed-source', sourceId: source.id, syncJobId: activeJob.id },
+                visibility: 'candidate',
+              });
+            } else if (text.includes('DO UPDATE') && existing.origin.sourceId === source.id) {
+              existing.origin = { ...existing.origin, syncJobId: activeJob.id };
+              existing.source_revision = 'rev';
+              existing.visibility = 'candidate';
+            }
+            return { rows: [] };
+          }
+          if (text.includes("UPDATE knowledge_base_members SET visibility='superseded'") && text.includes("visibility='active'")) {
+            const guarded = text.includes('EXISTS');
+            for (const member of members) {
+              if (member.visibility === 'active' && member.origin.sourceId === source.id) {
+                const replacement = members.some((candidate) => candidate.visibility === 'candidate' && candidate.origin.syncJobId === activeJob.id && candidate.title === member.title);
+                if (!guarded || replacement) member.visibility = 'superseded';
+              }
+            }
+            return { rows: [] };
+          }
+          if (text.includes("UPDATE knowledge_base_members SET visibility='active'")) {
+            for (const member of members) {
+              if (member.visibility === 'candidate' && member.origin.syncJobId === activeJob.id) member.visibility = 'active';
+            }
+            return { rows: [] };
+          }
+          return { rows: [] };
+        },
+      }),
+  };
+  const center = new KnowledgeCenterService(db as never, {} as never);
+  center.configuration = async () => ({ revision: 1, config: { knowledgeEngines: { engine: { provider: 'llamaindex', enabled: true, config: {} } } } } as never);
+  const worker = new KnowledgeBuildWorker(
+    center,
+    { check: async () => ({ ok: true }), execute: async () => ({ ok: true, manifest: {} }) } as never,
+    {} as never,
+    { prepare: async () => ({ documents: [{ title: 'doc', content: '正文', revision: 'rev' }], discovered: 1, accepted: 1, rejected: 0, bytesRead: 6, pagesRead: 0, sourceRevision: 'source-rev' }) } as never,
+  );
+
+  await worker.tick();
+  await worker.tick();
+
+  assert.equal(members.length, 1, 'UNIQUE(kb_id,checksum) 应保持单一成员行');
+  assert.equal(members[0]!.visibility, 'active');
+  assert.equal((await center.bases())[0]!.document_count, 1);
+  const file = await center.file('kb', members[0]!.id);
+  assert.equal(file.content, '正文');
+});
 test('worker lease loss/cancellation fence blocks publication before index writes', async () => {
   const statements: string[] = [];
   const center = {
@@ -146,8 +272,8 @@ test('worker lease loss/cancellation fence blocks publication before index write
 
 
 test('sync cancellation/revocation boundaries never leave readable members or publish a version', async () => {
-  type Boundary = 'fetch' | 'parse' | 'upsert' | 'publish';
-  const boundaries: Boundary[] = ['fetch', 'parse', 'upsert', 'publish'];
+  type Boundary = 'fetch' | 'parse' | 'upsert' | 'publish' | 'build';
+  const boundaries: Boundary[] = ['fetch', 'parse', 'upsert', 'publish', 'build'];
   for (const boundary of boundaries) {
     const statements: string[] = [];
     let candidateRows = 0;
@@ -162,7 +288,7 @@ test('sync cancellation/revocation boundaries never leave readable members or pu
         if (text.includes('INSERT INTO knowledge_base_members')) candidateRows = 1;
         if (text.includes('INSERT INTO knowledge_index_versions')) published = true;
         statements.push(text);
-        if (text.includes('SELECT j.id')) return { rows: boundary === 'publish' ? [{ id: job.id }] : [] };
+        if (text.includes('SELECT j.id')) return { rows: boundary === 'publish' || boundary === 'build' ? [{ id: job.id }] : [] };
         if (text.includes("lease_until>now()") && text.includes("state='validating'")) return { rows: [] };
         if (text.includes('SELECT revision FROM platform_configuration_revisions')) return { rows: [{ revision: 1 }] };
         if (text.includes('SELECT revision FROM knowledge_bases')) return { rows: [{ revision: 2 }] };
@@ -197,12 +323,12 @@ test('sync cancellation/revocation boundaries never leave readable members or pu
     };
     const worker = new KnowledgeBuildWorker(
       center,
-      { check: async () => ({ ok: true, status: 'ready' }), execute: async () => ({ ok: true, manifest: {} }) } as never,
+      { check: async () => ({ ok: true, status: 'ready' }), execute: async () => boundary === 'build' ? ({ ok: false, errorCode: 'INDEX_BUILD_FAILED' }) : ({ ok: true, manifest: {} }) } as never,
       {} as never,
       sourceSync as never,
     );
     await worker.tick();
-    assert.equal(statements.some((statement) => statement.includes('INSERT INTO knowledge_base_members')), boundary === 'publish', boundary);
+    assert.equal(statements.some((statement) => statement.includes('INSERT INTO knowledge_base_members')), boundary === 'publish' || boundary === 'build', boundary);
     assert.equal(statements.some((statement) => statement.includes('INSERT INTO knowledge_index_versions')), false, boundary);
     assert.equal(candidateRows, 0, boundary);
     assert.equal(published, false, boundary);

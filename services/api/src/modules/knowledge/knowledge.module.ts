@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
@@ -29,6 +29,7 @@ import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KnowledgeConnectionService } from './knowledge-connection.service';
 import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
+import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 
 
 /**
@@ -44,7 +45,7 @@ import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
  * （`knowledge.embed` 未接入 ModelGateway），仅作为接口预留，不参与关键词检索。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule],
+  imports: [AuthModule, ModelRegistryModule, forwardRef(() => PlatformRegistryModule)],
   controllers: [
     KnowledgeController,
     KnowledgeAdminController,

@@ -43,6 +43,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const servingAssistantName = team?.assistantName ?? '启途智学助手';
   const currentAssistantName = team?.teamName ?? servingAssistantName;
   const currentIdentityName = currentAssistantName;
+  const ready = session.sessionStatus === 'ready' && session.connection === 'open';
+  const busy = session.streaming || session.submitting || composer.submitting;
 
   useEffect(() => {
     // Entering AI搭档 without an explicit exploration opens the current project.
@@ -63,9 +65,10 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     try {
       for (const key of ['qitu.tutor.sessions', 'qitu.llm.client_config', 'qitu.cached_configured_models']) localStorage.removeItem(key);
     } catch { /* Storage can be disabled; teaching does not depend on it. */ }
-    const prompt = new URLSearchParams(window.location.search).get('explorePrompt');
+    const params = new URLSearchParams(routeContextKey);
+    const prompt = params.get('explorePrompt');
     if (prompt) composer.setDraft(prompt);
-  }, [composer.setDraft]);
+  }, [composer.setDraft, routeContextKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,8 +108,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     });
   };
 
-  const ready = session.sessionStatus === 'ready' && session.connection === 'open';
-  const busy = session.streaming || session.submitting || composer.submitting;
   const error = session.submitError ?? session.streamNotice ?? (confirmationError ? { message: confirmationError } : null);
 
   async function handleOneClickCreateProject(goal: string, interest: string, templateVersionId: string) {

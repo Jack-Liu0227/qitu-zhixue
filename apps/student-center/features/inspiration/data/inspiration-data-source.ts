@@ -1,3 +1,4 @@
+import type { CreateExplorationRequest, ExplorationView } from '@qitu/contracts';
 import type { InspirationTemplate } from '../types';
 
 /** 场景选择器：让 loading / empty / error / offline / 权限失败五态都可触达。 */
@@ -11,4 +12,8 @@ export type InspirationScenario = 'ready' | 'empty' | 'error' | 'offline' | 'per
  */
 export interface InspirationDataSource {
   listTemplates(): Promise<InspirationTemplate[]>;
+  createRecommendedExploration(
+    request: CreateExplorationRequest,
+    idempotencyKey: string,
+  ): Promise<ExplorationView>;
 }

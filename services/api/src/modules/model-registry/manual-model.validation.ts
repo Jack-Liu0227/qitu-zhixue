@@ -15,10 +15,17 @@ export const MODEL_ID_MAX_LENGTH = 200;
 /** `displayName` 只用于展示，允许稍长但同样有界。 */
 export const DISPLAY_NAME_MAX_LENGTH = 200;
 
+/**
+ * 允许的协议值：与契约 `ModelApi` 全集一致。
+ *
+ * 这里曾经是三种（缺 `google-gemini`），导致 Gemini 通道下任何手工建模型都被
+ * 400 拒掉，而前端 `.catch()` 吞错后表现为「按钮没反应」。
+ */
 export const MODEL_APIS: readonly ModelApi[] = [
   'openai-completions',
   'openai-responses',
   'anthropic-messages',
+  'google-gemini',
 ];
 
 export const MODEL_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio', 'embedding'];

@@ -214,6 +214,7 @@ export default function CopilotPage() {
 
   // 1. 侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [collapsedHoverId, setCollapsedHoverId] = useState<string | null>(null);
 
   // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换
   const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
@@ -877,38 +878,129 @@ export default function CopilotPage() {
       {/* 1. 左侧会话列表与管理（支持折叠） */}
       {isSidebarCollapsed ? (
         <aside
-          onClick={() => setIsSidebarCollapsed(false)}
-          title="展开启途管家会话侧边栏"
+          title="启途智学管家会话（已折叠）"
           style={{
-            width: '42px',
+            width: '60px',
             background: 'rgba(255, 255, 255, 0.92)',
             backdropFilter: 'blur(12px)',
             borderRight: '1px solid #e4ecf7',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            padding: '14px 0',
-            cursor: 'pointer',
+            padding: '12px 0',
             flexShrink: 0,
             transition: 'all 0.2s ease',
           }}
         >
           <button
             type="button"
+            onClick={() => setIsSidebarCollapsed(false)}
+            title="展开启途管家会话侧边栏"
             style={{
-              background: 'none',
-              border: 'none',
+              width: '40px',
+              height: '40px',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '10px',
               color: '#2563eb',
               fontSize: '14px',
               cursor: 'pointer',
-              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             ▶
           </button>
-          <span style={{ writingMode: 'vertical-rl', fontSize: '12px', fontWeight: 600, color: '#64748b', letterSpacing: '0.15em' }}>
-            启途智学管家会话 ({sessions.length})
-          </span>
+          <div style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', margin: '8px 0 6px', flexShrink: 0 }}>
+            {sessions.length}
+          </div>
+          <div
+            style={{
+              flex: 1,
+              width: '100%',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '2px 0 8px',
+              minHeight: 0,
+            }}
+          >
+            {sessions.length === 0 ? (
+              <div
+                style={{
+                  writingMode: 'vertical-rl',
+                  fontSize: '11px',
+                  color: '#94a3b8',
+                  letterSpacing: '0.1em',
+                  marginTop: '8px',
+                }}
+              >
+                暂无会话
+              </div>
+            ) : (
+              sessions.map((sess) => {
+                const isActive = sess.id === currentSessionId;
+                const isHover = collapsedHoverId === sess.id;
+                return (
+                  <button
+                    key={sess.id}
+                    type="button"
+                    title={sess.title}
+                    onClick={() => setCurrentSessionId(sess.id)}
+                    onMouseEnter={() => setCollapsedHoverId(sess.id)}
+                    onMouseLeave={() => setCollapsedHoverId((prev) => (prev === sess.id ? null : prev))}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      flexShrink: 0,
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: isActive ? 700 : 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background 0.15s ease, border-color 0.15s ease',
+                      background: isActive ? '#eff6ff' : isHover ? '#f1f5f9' : '#ffffff',
+                      border: isActive ? '1px solid #2563eb' : isHover ? '1px solid #bfdbfe' : '1px solid #e4ecf7',
+                      color: isActive ? '#1d4ed8' : '#475569',
+                      boxShadow: isActive ? '0 1px 2px rgba(37,99,235,0.15)' : 'none',
+                    }}
+                  >
+                    {sess.title.trim() ? sess.title.trim().charAt(0) : '💬'}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateSession}
+            title="新建管理会话"
+            style={{
+              width: '40px',
+              height: '40px',
+              flexShrink: 0,
+              background: '#2563eb',
+              border: 'none',
+              borderRadius: '10px',
+              color: '#ffffff',
+              fontSize: '18px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 1px 2px rgba(37,99,235,0.2)',
+              marginTop: '8px',
+            }}
+          >
+            +
+          </button>
         </aside>
       ) : (
         <div

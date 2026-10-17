@@ -49,6 +49,31 @@ test('explicit exploration context returns the real intake identity without a pr
   assert.deepEqual(context?.phases, []);
 });
 
+test('recommended exploration resolves its bound template team without creating a project', async () => {
+  const tutor = makeTutor();
+  const team = {
+    id: 'team-thunder', name: '雷霆战机团队', enabled: true, leaderAssistantId: 'thunder-leader',
+    members: [], pblSpec: { projectId: 'template-thunder', phases: [] },
+  };
+  Object.assign(tutor, {
+    projects: { getExploration: async () => ({
+      id: 'exp-bound', source: 'recommended', templateVersionId: 'version-bound', status: 'exploring',
+      intentDraft: null, projectId: null, createdAt: '', updatedAt: '',
+    }) },
+    platformRegistry: {
+      listAssistants: async () => [{ id: 'thunder-leader', name: '雷霆领航员', enabled: true }],
+      listTeams: async () => [team],
+      getTeamForTemplateVersion: async () => team,
+    },
+    database: { select: () => ({ from: () => ({ innerJoin: () => ({ where: () => ({ limit: async () => [{ id: 'template-thunder', title: '雷霆战机', slug: 'thunder' }] }) }) }) }) },
+  });
+  const context = await tutor.getProjectContext(undefined, 'owner', true, 'exp-bound');
+  assert.equal(context?.project, null);
+  assert.equal(context?.team?.teamId, 'team-thunder');
+  assert.equal(context?.team?.teamName, '雷霆战机团队');
+  assert.equal(context?.team?.assistantName, '雷霆领航员');
+});
+
 test('team graph rejects a cross-student project before returning any graph data', async () => {
   const store = {
     findProject: async () => ({ ...project }),

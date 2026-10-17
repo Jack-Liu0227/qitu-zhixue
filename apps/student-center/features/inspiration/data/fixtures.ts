@@ -13,6 +13,7 @@ export const INSPIRATION_TEMPLATES: InspirationTemplate[] = [
     tags: ['游戏开发', 'Pygame', '碰撞检测', '事件循环'],
     difficulty: '进阶',
     durationWeeks: 4,
+    templateVersionId: 'thunder-fighter:v1',
     stages: [
       { id: 'thunder-explore', label: '阶段一：意图确认与开题 · 明确游戏操控与关卡设想' },
       { id: 'thunder-theory', label: '阶段二：核心机制探究 · Pygame 事件循环与 AABB 碰撞检测数学原理 (TheoryMastered 门禁)' },
@@ -30,6 +31,7 @@ export const INSPIRATION_TEMPLATES: InspirationTemplate[] = [
     tags: ['物理实验', '动能定理', '功与能量', 'Python 仿真'],
     difficulty: '进阶',
     durationWeeks: 3,
+    templateVersionId: 'kinetic-energy:v1',
     stages: [
       { id: 'kinetic-explore', label: '阶段一：现象观察与假设 · 观察小车受力与加速度变化，确认实验假设' },
       { id: 'kinetic-theory', label: '阶段二：公式推导验证 · 恒力做功 W 与动能变化 ΔEk 定量关系推导 (TheoryMastered 门禁)' },

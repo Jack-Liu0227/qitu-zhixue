@@ -140,9 +140,10 @@ export class TutorController {
   async getProjectContext(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('projectId') projectId?: string,
+    @Query('explorationId') explorationId?: string,
   ): Promise<{ data: TutorProjectContext | null }> {
     const actor = this.requireStudent(cookieHeader);
-    return { data: await this.tutorService.getProjectContext(projectId, actor.id, projectId === undefined) };
+    return { data: await this.tutorService.getProjectContext(projectId, actor.id, projectId === undefined, explorationId) };
   }
 
   /** 右侧栏「团队智能体」Tab 的只读数据源；仅对已授权项目开放。 */

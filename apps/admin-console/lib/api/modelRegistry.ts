@@ -6,9 +6,14 @@ import type {
   BindUsageRequest,
   ConnectionTestResponse,
   CreateManualModelRequest,
+  DiscoverProviderModelsResponse,
   ModelUsageBinding,
+  ProbeModelsRequest,
+  ProbeModelsResponse,
   ProviderConfigPublic,
   RefreshProviderResponse,
+  SetProviderModelsRequest,
+  SetProviderModelsResponse,
   UpdateManualModelRequest,
   UpsertProviderRequest,
 } from '@qitu/contracts';
@@ -44,7 +49,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function mutate<T>(
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PATCH' | 'DELETE' | 'PUT',
   path: string,
   body?: unknown,
   idempotencyKey?: string,
@@ -209,11 +214,43 @@ export function deleteManualModel(
   );
 }
 
+export function discoverProviderModels(id: string): Promise<DiscoverProviderModelsResponse> {
+  return mutate<DiscoverProviderModelsResponse>(
+    'POST',
+    `/api/v1/admin/model-providers/${encodeURIComponent(id)}/models/discover`,
+  );
+}
+
+export function setProviderModels(
+  id: string,
+  body: SetProviderModelsRequest,
+  idempotencyKey = newIdempotencyKey(),
+): Promise<SetProviderModelsResponse> {
+  return mutate<SetProviderModelsResponse>(
+    'PUT',
+    `/api/v1/admin/model-providers/${encodeURIComponent(id)}/models`,
+    body,
+    idempotencyKey,
+  );
+}
+
 export function refreshProvider(id: string): Promise<RefreshProviderResponse> {
   return mutate<RefreshProviderResponse>(
     'POST',
     `/api/v1/admin/model-providers/${encodeURIComponent(id)}/refresh`,
   );
+}
+
+/**
+ * 未保存供应商的模型发现探测（新建 / 复制渠道表单里的「获取模型」）。
+ *
+ * 由**服务端**代发起 `/models` 拉取（SSRF / 超时 / 大小受限），取代旧的
+ * 浏览器直连：密钥只在请求体出现一次，不落本地存储、不进 URL / 日志。
+ * 上游失败由服务端归一为 `200 + ok=false`（`error` 已脱敏），调用方必须
+ * 如实展示错误，**绝不回退到任何预设模型列表**。
+ */
+export function probeModels(body: ProbeModelsRequest): Promise<ProbeModelsResponse> {
+  return mutate<ProbeModelsResponse>('POST', '/api/v1/admin/model-providers/models/probe', body);
 }
 
 export function bindUsage(usageId: string, body: BindUsageRequest, idempotencyKey = newIdempotencyKey()): Promise<ModelUsageBinding> {

@@ -10,6 +10,8 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import {
+  adminAssistants,
+  adminTeams,
   agentConfigs,
   agentMailboxes,
   agentRoutes,
@@ -17,6 +19,7 @@ import {
   agentTeamMessages,
   agentTeamRuns,
   agentTeamTasks,
+  projectTemplateVersions,
   pblGateEvidence,
   projects,
   tutorSessions,
@@ -43,6 +46,7 @@ import {
   pblPhaseIndex,
 } from '@qitu/ai-client';
 import { DATABASE_TOKEN } from '../../database';
+import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { PBL_GATE_INTERNAL_ACTOR } from './internal-gate-actor.js';

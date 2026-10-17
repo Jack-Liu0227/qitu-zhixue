@@ -112,6 +112,32 @@ test('Qitu runtime calls a registry-resolved OpenAI compatible model', async () 
   });
 });
 
+test('Qitu runtime calls a registry-resolved Google Gemini model using the native endpoint', async () => {
+  const server = createServer(async (request, response) => {
+    assert.equal(request.url, '/v1beta/models/gemini-test:streamGenerateContent?alt=sse');
+    assert.equal(request.headers['x-goog-api-key'], 'gemini-credential');
+    assert.equal(request.headers.authorization, undefined);
+    let raw = '';
+    for await (const chunk of request) raw += String(chunk);
+    const body = JSON.parse(raw);
+    assert.deepEqual(body.contents, [{ role: 'user', parts: [{ text: 'native please' }] }]);
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.end(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: 'native response' }] }, finishReason: 'STOP' }] })}\n\n`);
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({
+      providerId: 'google-provider', providerName: 'Google', modelId: 'gemini-test',
+      baseUrl: `http://127.0.0.1:${address.port}/v1beta`, api: 'google-gemini', credential: 'gemini-credential',
+    }) });
+    const result = await runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: 'native please' }] });
+    assert.equal(result.text, 'native response');
+    assert.equal(result.api, 'google-gemini');
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
 test('Qitu runtime preserves authHeader=false for OpenAI-compatible providers', async () => {
   await withMockOpenAI((headers) => {
     assert.equal(headers.authorization, undefined);
@@ -168,6 +194,24 @@ test('Qitu runtime requires an Anthropic credential even when authHeader is fals
       modelId: 'claude-test',
       baseUrl: 'https://example.invalid',
       api: 'anthropic-messages',
+      authHeader: false,
+      credential: null,
+    }),
+  });
+  await assert.rejects(
+    runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: 'hi' }] }),
+    (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_CREDENTIAL_MISSING',
+  );
+});
+
+test('Qitu runtime requires a Google Gemini credential even when authHeader is false', async () => {
+  const runtime = createModelRuntime({
+    resolveRuntimeTarget: () => ({
+      providerId: 'google-provider',
+      providerName: 'Google',
+      modelId: 'gemini-test',
+      baseUrl: 'https://example.invalid',
+      api: 'google-gemini',
       authHeader: false,
       credential: null,
     }),

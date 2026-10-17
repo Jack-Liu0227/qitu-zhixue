@@ -335,4 +335,53 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
       'TEMPLATE_TRANSITION_INVALID',
     );
   });
+
+  it('治理读版本：返回冻结正文 content / rubric，按版本号升序', async () => {
+    const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, {
+      slug: 'read-versions',
+    });
+    const v2 = await harness.service.createVersion(
+      ADMIN,
+      templateId,
+      {
+        stages: [{ id: 'defense', label: '答辩' }],
+        content: { phases: [{ id: 'phase-1', name: '答辩反思' }] },
+        rubric: [],
+      },
+      'k-read-v2',
+    );
+
+    const versions = await harness.service.listGovernedVersions(ADMIN, templateId);
+    assert.equal(versions.length, 2);
+    assert.deepEqual(
+      versions.map((version) => version.version),
+      ['v1', 'v2'],
+    );
+    assert.equal(versions[0]!.id, versionId);
+    assert.deepEqual(versions[0]!.stages, DEFAULT_STAGES);
+    assert.deepEqual(versions[0]!.content, VERSION_INPUT.content);
+    assert.deepEqual(versions[0]!.rubric, VERSION_INPUT.rubric);
+    assert.equal(versions[0]!.createdBy, ADMIN.id);
+    assert.equal(versions[1]!.id, v2.version.id);
+    assert.deepEqual(versions[1]!.content, {
+      phases: [{ id: 'phase-1', name: '答辩反思' }],
+    });
+  });
+
+  it('治理读版本：本校 teacher 可读，他校 teacher 403，未知模板 404', async () => {
+    const { templateId } = await createDraftTemplate(harness, TEACHER_A, { slug: 'read-scope' });
+
+    const own = await harness.service.listGovernedVersions(TEACHER_A, templateId);
+    assert.equal(own.length, 1);
+
+    await assertHttpError(
+      () => harness.service.listGovernedVersions(TEACHER_B, templateId),
+      403,
+    );
+    await assertHttpError(
+      () => harness.service.listGovernedVersions(ADMIN, 'template-missing'),
+      404,
+      'TEMPLATE_NOT_FOUND',
+    );
+  });
 });

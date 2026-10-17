@@ -1,5 +1,5 @@
 import type { ModelApi } from '@qitu/contracts';
-import { providerAuthHeaders, protocolUrl } from './fetch-models';
+import { geminiApiRoot, providerAuthHeaders, protocolUrl } from './fetch-models';
 import type {
   ModelChatMessage,
   ModelCompletionRequest,
@@ -277,13 +277,76 @@ const anthropicMessages: ProviderAdapter = {
 };
 
 /**
- * Gemini providers in the registry use the OpenAI-compatible gateway shape.
- * Native Gemini discovery/testing remains available in the admin UI, while
- * runtime calls stay on the same normalized adapter contract.
+ * Gemini **原生 v1beta** 适配器。
+ *
+ * 与 `openai-completions` 的区别不是“换个名字”，而是三处真实差异：
+ *  - URL：`{root}/v1beta/models/{modelId}:generateContent`（模型在路径里，不在 body）；
+ *  - 鉴权：`x-goog-api-key`，密钥**不进 URL query**；
+ *  - 消息：`contents[].parts[].text`，system 走 `systemInstruction`，
+ *    role 只认 `user` / `model`。
+ *
+ * 本适配器只负责非流式文本补全（与其他适配器同范围）；流式与工具调用由
+ * `@qitu/model-runtime` 的 Gemini 原生实现负责。OpenAI 兼容网关代理的 Gemini
+ * 模型应该登记为 `openai-completions` / `openai-responses`。
  */
 const googleGemini: ProviderAdapter = {
-  ...openaiCompletions,
   api: 'google-gemini',
+  build(target, request) {
+    const systemParts: string[] = [];
+    const contents: { role: string; parts: { text: string }[] }[] = [];
+    for (const message of request.messages) {
+      if (message.role === 'system') {
+        systemParts.push(message.content);
+        continue;
+      }
+      // Gemini 把助手轮叫 `model`；空文本会被上游拒绝，这里不提交。
+      if (message.content.length === 0) continue;
+      contents.push({
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: message.content }],
+      });
+    }
+
+    const generationConfig: Record<string, unknown> = {};
+    if (request.temperature !== undefined) generationConfig.temperature = request.temperature;
+    if (request.maxTokens !== undefined) generationConfig.maxOutputTokens = request.maxTokens;
+
+    const body: Record<string, unknown> = { contents };
+    if (systemParts.length > 0) {
+      body.systemInstruction = { parts: [{ text: systemParts.join('\n\n') }] };
+    }
+    if (Object.keys(generationConfig).length > 0) body.generationConfig = generationConfig;
+
+    return {
+      url: `${geminiApiRoot(target.baseUrl)}/v1beta/models/${encodeURIComponent(target.modelId)}:generateContent`,
+      headers: completionHeaders(target),
+      body: JSON.stringify(body),
+    };
+  },
+  parse(payload) {
+    const root = asRecord(payload);
+    const candidates = Array.isArray(root?.candidates) ? root.candidates : [];
+    const first = asRecord(candidates[0]);
+    const content = asRecord(first?.content);
+    const parts = Array.isArray(content?.parts) ? (content.parts as unknown[]) : [];
+    const texts: string[] = [];
+    for (const part of parts) {
+      const record = asRecord(part);
+      if (record !== null && typeof record.text === 'string') texts.push(record.text);
+    }
+    const usage = asRecord(root?.usageMetadata);
+    const inputTokens = numberOrNull(usage?.promptTokenCount);
+    const outputTokens = numberOrNull(usage?.candidatesTokenCount);
+    const totalTokens = numberOrNull(usage?.totalTokenCount) ?? sumOrNull(inputTokens, outputTokens);
+    return {
+      text: texts.join(''),
+      finishReason: typeof first?.finishReason === 'string' ? first.finishReason : null,
+      usage:
+        usage === null
+          ? null
+          : { inputTokens, outputTokens, totalTokens },
+    };
+  },
 };
 
 const ADAPTERS: Record<ModelApi, ProviderAdapter> = {

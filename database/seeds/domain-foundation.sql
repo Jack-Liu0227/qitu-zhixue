@@ -155,7 +155,7 @@ VALUES
   (
     'ptv-kinetic-energy-v1', 'template-kinetic-energy', 'v1',
     '[{"id":"exploration","label":"生活情境与问题定义"},{"id":"theory","label":"功与动能核心理论掌握"},{"id":"practice","label":"轨道虚拟仿真与实验验证"},{"id":"showcase","label":"误差分析与答辩归档"}]'::jsonb,
-    '{"theoryGate":true,"suggestedWeeks":[4,6],"sessionBlocks":["problem_inquiry","formula_derivation","simulation_run","error_analysis"]}'::jsonb,
+    '{"linkedTeamId":"team-kinetic-energy-pbl","theoryGate":true,"suggestedWeeks":[4,6],"sessionBlocks":["problem_inquiry","formula_derivation","simulation_run","error_analysis"]}'::jsonb,
     '[{"id":"r1","criterion":"理论推导清晰","weight":30},{"id":"r2","criterion":"仿真实验规范与数据真实","weight":40},{"id":"r3","criterion":"误差分析深入与答辩表达","weight":30}]'::jsonb,
     'published', 'admin-demo', NOW(), NOW()
   )
@@ -175,7 +175,7 @@ VALUES
   (
     'ptv-thunder-fighter-v1', 'template-thunder-fighter', 'v1',
     '[{"id":"exploration","label":"兴趣启发与意图确认"},{"id":"concept_mastery","label":"核心原理与概念掌握"},{"id":"guided_practice","label":"架构拆解与代码构建"},{"id":"deliverable_review","label":"答辩评审与成长归档"}]'::jsonb,
-    '{"theoryGate":true,"suggestedWeeks":[4,8],"sessionBlocks":["review","theory","check","practice","reflect"]}'::jsonb,
+    '{"linkedTeamId":"team-thunder-fighter-pbl","theoryGate":true,"suggestedWeeks":[4,8],"sessionBlocks":["review","theory","check","practice","reflect"]}'::jsonb,
     '[{"id":"r1","criterion":"游戏可运行且操作有反馈","weight":40},{"id":"r2","criterion":"能解释游戏循环与碰撞检测","weight":35},{"id":"r3","criterion":"答辩展示清晰","weight":25}]'::jsonb,
     'published', 'admin-demo', NOW(), NOW()
   )

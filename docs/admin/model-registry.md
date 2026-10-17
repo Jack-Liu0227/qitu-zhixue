@@ -12,13 +12,13 @@ Provider
                 └── 用途绑定 → Agent 链路，或显式 Agent 专属覆盖
 ```
 
-当前支持的协议是 `openai-completions`、`openai-responses` 和 `anthropic-messages`。OpenAI-compatible / NewAPI 网关通常使用 `openai-completions`，模型目录通过 `GET /v1/models` 同步；同步只保存服务端允许的模型描述，不把 API Key 或原始上游响应返回浏览器。
+当前支持四种真实线协议：`openai-completions`、`openai-responses`、`anthropic-messages` 和**原生** `google-gemini`。Gemini 使用 `v1beta`、`x-goog-api-key` 与 `:generateContent` / `:streamGenerateContent`；密钥绝不放 URL query。OpenAI 兼容网关代理的 Gemini 模型应选择 OpenAI Completions 或 Responses，而不是 Gemini 原生协议。
 
 ## 2. 管理端页面与同步关系
 
 | 页面                              | 事实与操作                                                                                         |
 | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `/admin/settings/model-providers` | 新建、编辑、启停 Provider；连接测试和目录维护；配置用途模型与 Agent 链路绑定 |
+| `/admin/settings/model-providers` | 新建、编辑、启停 Provider；只读获取上游模型候选；勾选后一次保存完整挂载集合；连接测试与模型目录维护 |
 | `/admin/settings/models`          | 旧书签重定向到供应商工作区，不维护第二份模型表 |
 | `/admin/settings/ai-runtime`      | 为 Agent 选择直接的 `providerId + modelId`，配置角色定义、Tools、Skills 和 MCP                     |
 
@@ -33,6 +33,8 @@ GET    /api/v1/admin/model-providers
 POST   /api/v1/admin/model-providers/:id
 PATCH  /api/v1/admin/model-providers/:id
 DELETE /api/v1/admin/model-providers/:id
+POST   /api/v1/admin/model-providers/:id/models/discover
+PUT    /api/v1/admin/model-providers/:id/models
 POST   /api/v1/admin/model-providers/:id/refresh
 POST   /api/v1/admin/model-providers/:id/test
 POST   /api/v1/admin/model-providers/:id/models
@@ -49,7 +51,7 @@ POST   /api/v1/voice/transcriptions
 POST   /api/v1/voice/synthesis
 ```
 
-Provider、模型和 Agent 写入都需要管理员权限；写操作使用 `Idempotency-Key`，服务端校验字段白名单、协议与模型能力、引用关系和审计记录。
+Provider、模型和 Agent 写入都需要管理员权限；写操作使用 `Idempotency-Key`，服务端校验字段白名单、协议与模型能力、引用关系和审计记录。`POST .../models/discover` 只读发现，失败返回脱敏 `ok=false`；`PUT .../models` 设置期望的完整挂载集合，集合外模型物理删除，若模型仍被用途或 Agent 引用则整笔 409，不部分成功。
 
 ## 4. 运行时选择规则
 
@@ -63,7 +65,11 @@ Provider、模型和 Agent 写入都需要管理员权限；写操作使用 `Ide
 
 ## 5. 连接与模型目录
 
-连接测试只探测供应商声明的 `/v1/models`，使用对应协议的授权头并限制超时、响应大小和 SSRF 范围。刷新成功时远程模型更新为 `source=remote`；管理员手动补充的模型为 `source=manual`。远程刷新失败会保留上一次可用目录并记录 `lastError`，不能清空成“同步成功”。
+连接测试按 Provider 协议做服务端探测：OpenAI Completions/Responses 为 `GET /v1/models` + Bearer；Anthropic 为 `GET /v1/models` + `x-api-key`；原生 Gemini 为 `GET /v1beta/models` + `x-goog-api-key`。限制超时、响应大小与 SSRF 范围；API Key 不进入 URL、浏览器或错误响应。
+
+「获取模型列表」是只读发现：已保存 Provider 使用 `POST .../:id/models/discover`，新建表单使用 `POST .../models/probe`；两者只返回上游真实候选，不落库、不挂载、不改同步时间。只有管理员勾选并保存完整集合时才挂载；取消选择会物理删除集合外模型。若模型仍被 Agent / 用途引用，集合保存整体返回 409，管理员需先解除引用。
+
+`POST .../:id/refresh` 是兼容的目录元数据同步：只更新已挂载远程模型的已知元数据，不新增模型、不改变挂载集合；未挂载的上游模型列入 `discovered`，已挂载但上游未返回的远程模型列入 `stale`，均只报告、不自动删除。失败保留旧列表并记录 `lastError`。
 
 Pi 配置导入只接受服务端受限目录中的 `models.json`、`models-store.json` 和 `auth.json`，导入时忽略 OAuth token；数据库只保存加密凭证和指纹。任何 API Key、Token 或 OAuth 文件都不能提交到 Git。
 

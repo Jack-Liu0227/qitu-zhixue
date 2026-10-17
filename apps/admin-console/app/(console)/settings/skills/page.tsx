@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
-import type { AdminAssistantConfig } from '@qitu/contracts';
+import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
+import type { AdminAssistantConfig, AdminRuntimeSkill } from '@qitu/contracts';
 
 interface SkillFile {
   name: string;
@@ -21,703 +22,40 @@ interface SkillItem {
   updatedAtText: string;
   boundAssistantIds: string[];
   files: SkillFile[];
+  /** 本地登记的草稿。运行时目录中的技能为只读来源（服务端暂不支持写入技能内容）。 */
+  local?: boolean;
 }
 
-const DEFAULT_FILES_FOR_SKILL: Record<string, SkillFile[]> = {
-  'tutor-guided-learning': [
-    {
-      name: 'SKILL.md',
-      sizeBytes: 4200,
-      content: `# Tutor Guided Learning (苏格拉底短轮次启发学习规范)
-
-## 技能定位与核心目标
-本技能定义启途智学全平台 PBL 智能体在面对学生提问时的教学互动范式。
-核心指导理念为：**启发思考而非替代操作；拆解概念而非倾倒答案。**
-
-## 核心交互铁律 (Hard Constraints)
-1. **绝对禁令**：严禁在单次回复中直接提供超过 5 行的完整实现代码。
-2. **渐进支架 (Scaffolding)**：
-   - 第 1 轮：确认意图，提炼核心概念障碍，抛出 1 个反问。
-   - 第 2 轮：若学生仍困惑，提供局部伪代码或错误示范比对。
-   - 第 3 轮：引导学生自主指出错误根源并给出修改尝试。
-3. **理论门禁 (TheoryMastered)**：
-   - 在学生进入实践编码阶段前，必须经由原理教练确认其掌握核心物理/数学公式。
-
-## 适用角色与触发阶段
-- **适用智能体**：总负责人 (Leader)、原理教练 (Coach)、代码向导 (Teammate)。
-- **触发条件**：学生提问包含“怎么写”、“报错了”、“直接给我代码”等求助句式。
-`,
-    },
-    {
-      name: 'prompts/instruction.txt',
-      sizeBytes: 1820,
-      content: `[SYSTEM TUTOR CONTRACT]
-Role: Socratic Mentor Agent
-Mode: Conversational & Inquisitive
-Tone: Encouraging, rigorous, concise (under 180 words per turn).
-Rule: Always conclude your response with a thought-provoking question to nudge the student forward.
-`,
-    },
-    {
-      name: 'references/rubric.json',
-      sizeBytes: 2450,
-      content: `{
-  "rubricVersion": "2.0.0",
-  "skill": "tutor-guided-learning",
-  "criteria": [
-    { "id": "crit-socratic", "name": "苏格拉底启发比率", "weight": 0.4, "threshold": 0.85 },
-    { "id": "crit-no-direct-code", "name": "防直接透题合规性", "weight": 0.4, "threshold": 1.0 },
-    { "id": "crit-encouragement", "name": "正面探索激励性", "weight": 0.2, "threshold": 0.8 }
-  ]
-}`,
-    },
-  ],
-  'thunder-fighter-engine': [
-    {
-      name: 'SKILL.md',
-      sizeBytes: 5120,
-      content: `# Thunder Fighter Game Engine Specification
-
-## 架构概览
-本规范定义「雷霆战机」PBL 项目的标准 Pygame 主循环、精灵分层管理与帧率锁定逻辑。
-
-## 模块清单
-- \`PlayerSprite\`：玩家战机操控与键盘事件响应。
-- \`BulletQueue\`：子弹发射池与越界回收。
-- \`EnemySpawner\`：敌机定时生成、航迹插值与速度计算。
-- \`CollisionManager\`：AABB 轴对齐包围盒碰撞检测。
-`,
-    },
-    {
-      name: 'prompts/instruction.txt',
-      sizeBytes: 1200,
-      content: `Guide the student through building a pygame 60FPS loop. Focus on clock.tick(60), pygame.event.pump(), and dirty rect updating.`,
-    },
-  ],
+const SKILL_SOURCE_LABELS: Record<AdminRuntimeSkill['source'], string> = {
+  builtin: '内置',
+  configured: '已配置',
+  runtime: '运行时',
+  development: '开发环境',
+  unknown: '未知来源',
 };
 
-interface SkillCategory {
-  key: string;
-  label: string;
+/** 技能目录来自 AI 运行时快照（GET /api/v1/admin/ai-runtime），不再内置任何编造条目。 */
+function mapRuntimeSkill(skill: AdminRuntimeSkill): SkillItem {
+  const content = skill.content ?? '';
+  return {
+    id: skill.id,
+    name: skill.label,
+    description: skill.description ?? '',
+    tags: [SKILL_SOURCE_LABELS[skill.source] ?? skill.source],
+    filesCount: 1,
+    addedBy: SKILL_SOURCE_LABELS[skill.source] ?? skill.source,
+    updatedAtText: skill.version ? `v${skill.version}` : '—',
+    boundAssistantIds: [...skill.agentIds],
+    files: [{ name: 'SKILL.md', sizeBytes: new TextEncoder().encode(content).length, content }],
+  };
 }
 
-const SKILL_CATEGORIES: SkillCategory[] = [
-  { key: 'all', label: '全部技能' },
-  { key: 'guidance', label: '启发与引导' },
-  { key: 'collaboration', label: '探究与协同' },
-  { key: 'physics', label: '物理探究' },
-  { key: 'engineering', label: '工程与沙箱' },
-  { key: 'assessment', label: '答辩与反思' },
-  { key: 'governance', label: '画像与治理' },
-];
-
-const CORE_SKILLS_CATALOG: SkillItem[] = [
-  // 启发与引导
-  {
-    id: 'guided',
-    name: 'guided',
-    description: '苏格拉底短轮次启发与概念拆解规范，引导学生自主探索，严禁直接给答案。',
-    tags: ['苏格拉底', '启发式', '教学规范'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '1 天前',
-    boundAssistantIds: ['tutor-leader', 'fighter-concept-coach', 'kinetic-concept-coach', 'kinetic-leader'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2800,
-        content: '# Guided Socratic Instruction\n\n以问题启发为主，分步递进，严禁向学生直接提供完整实现代码。',
-      },
-    ],
-  },
-  {
-    id: 'hint',
-    name: 'hint',
-    description: '渐进式线索与思维支架提示（三级梯级提示：微线索、伪代码比对、定位排错）。',
-    tags: ['脚手架', '分级线索', '思维支架'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '2 天前',
-    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide', 'kinetic-concept-coach', 'kinetic-experiment-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2200,
-        content: '# Progressive Hint Scaffolding\n\n提供 3 级渐进提示，确保学生在自主思考区间完成突破。',
-      },
-    ],
-  },
-  {
-    id: 'qitu-interactive-concept',
-    name: 'qitu-interactive-concept',
-    description: '互动式概念探究与具身多模态概念对话规范，将抽象概念具象化。',
-    tags: ['概念探究', '具象化', '多模态'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['fighter-concept-coach'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2500,
-        content: '# Qitu Interactive Concept Exploration\n\n通过交互对话将核心抽象概念具象化。',
-      },
-    ],
-  },
-  {
-    id: 'tutor-guided-learning',
-    name: 'tutor-guided-learning',
-    description: '短轮次苏格拉底式启发教学与理论门禁确认规范，定义平台通用的导师教学互动准则。',
-    tags: ['教学规范', '理论门禁', '引导'],
-    filesCount: 3,
-    addedBy: '平台教研组',
-    updatedAtText: '2 天前',
-    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
-    files: DEFAULT_FILES_FOR_SKILL['tutor-guided-learning'] ?? [],
-  },
-  {
-    id: 'socratic-intake',
-    name: 'socratic-intake',
-    description: '苏格拉底接引与初始意图探询规范，用于平台管家或助手初次接收入口对话。',
-    tags: ['接收入口', '苏格拉底', '意图识别'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '4 天前',
-    boundAssistantIds: ['qitu-intake-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2100,
-        content: '# Socratic Intake Specification\n\n在学生进入项目学习前通过对话探寻学习兴趣与前置认知。',
-      },
-    ],
-  },
-  {
-    id: 'intent-clarification',
-    name: 'intent-clarification',
-    description: '学习意图与目标清晰化澄清规范，引导学生明确探究项目产出与挑战目标。',
-    tags: ['意图澄清', '目标拆解', '学情引导'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '4 天前',
-    boundAssistantIds: ['qitu-intake-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 1900,
-        content: '# Intent Clarification\n\n确认学生学习意愿，未确认意图前不得创建正式项目。',
-      },
-    ],
-  },
-
-  // 探究与协同
-  {
-    id: 'planning',
-    name: 'planning',
-    description: 'PBL 任务拆解与子阶段学习路径动态规划，形成递进式里程碑。',
-    tags: ['任务规划', '路径拆解', '里程碑'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '2 天前',
-    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2600,
-        content: '# Project Planning & Milestone Decomposition\n\n将大目标分解为可交付、可验证的微型探索阶段。',
-      },
-    ],
-  },
-  {
-    id: 'pbl-orchestration',
-    name: 'pbl-orchestration',
-    description: '多智能体教学导师团队协作流转与任务分发编排规范。',
-    tags: ['团队协同', '智能体编排', '角色交接'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '2 天前',
-    boundAssistantIds: ['tutor-leader', 'kinetic-leader'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 3100,
-        content: '# Multi-Agent PBL Orchestration\n\n统筹原理教练、代码向导与评审导师的角色分工与流转条件。',
-      },
-    ],
-  },
-  {
-    id: 'escalation',
-    name: 'escalation',
-    description: '学生卡点识别与人机协同求助升级（转交班主任或真人导师干预）。',
-    tags: ['卡点检测', '协同求助', '人机交接'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['tutor-leader'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 1800,
-        content: '# Human-in-the-Loop Escalation\n\n连续多次回答受挫或检测到消极情绪时自动触发干预预警。',
-      },
-    ],
-  },
-  {
-    id: 'project-recommendation',
-    name: 'project-recommendation',
-    description: '基于学生兴趣、前置知识画像与认知风格推荐适合的 PBL 探索项目。',
-    tags: ['项目推荐', '学情匹配', '画像推荐'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '6 天前',
-    boundAssistantIds: ['qitu-intake-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2000,
-        content: '# Project Recommendation Engine\n\n智能匹配 PBL 学习主题并生成前置学习契约。',
-      },
-    ],
-  },
-  {
-    id: 'team-handoff',
-    name: 'team-handoff',
-    description: '学生确认开启项目后，由接引助手平滑交接至项目专属导师团队规范。',
-    tags: ['团队交接', '状态同步', '流程编排'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '6 天前',
-    boundAssistantIds: ['qitu-intake-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2200,
-        content: '# Team Handoff Protocol\n\n打包对话上下文与学习目标，唤醒项目 Leader 导师团队。',
-      },
-    ],
-  },
-
-  // 物理探究
-  {
-    id: 'physics-inquiry',
-    name: 'physics-inquiry',
-    description: '物理科学探究方法论（提出假说、设计验证变量、控制变量法）。',
-    tags: ['科学探究', '假设检验', '控制变量'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['kinetic-leader'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2700,
-        content: '# Physics Inquiry Methodology\n\n引导学生提出科学假说并设计对比实验。',
-      },
-    ],
-  },
-  {
-    id: 'physics-derivation',
-    name: 'physics-derivation',
-    description: '牛顿第二定律与动能定理微元法积分推导规范，掌握公式底层物理机制。',
-    tags: ['公式推导', '微元法', '动能定理'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['kinetic-concept-coach'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2900,
-        content: '# Physics Derivation\n\n牛顿运动定律到外力做功与动能变化的数理推导引导。',
-      },
-    ],
-  },
-  {
-    id: 'simulation-experiment',
-    name: 'simulation-experiment',
-    description: '物理仿真沙箱交互指导，包括变力做功、恒力加速与动能变化曲线实时观测。',
-    tags: ['物理仿真', '虚拟实验', '曲线观测'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['kinetic-experiment-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2600,
-        content: '# Simulation Experiment\n\n指导学生操控小车滑轨、光电门与拉力传感器虚拟沙箱。',
-      },
-    ],
-  },
-  {
-    id: 'data-fitting',
-    name: 'data-fitting',
-    description: '实验数据采集、最小二乘法拟合与 W-v² 线性关系验证规范。',
-    tags: ['数据拟合', '线性回归', '实验验证'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['kinetic-experiment-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2400,
-        content: '# Data Fitting & Curve Analysis\n\n采集 (W, v) 数据点并绘制 W 与 v² 散点图完成斜率验证。',
-      },
-    ],
-  },
-  {
-    id: 'kinetic-energy-physics',
-    name: 'kinetic-energy-physics',
-    description: '动手学动能定理：合外力做功与动能变化关系模拟验证与数值推导规范。',
-    tags: ['物理仿真', '动能定理', '功与能量'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '15 天前',
-    boundAssistantIds: ['kinetic-leader', 'kinetic-concept-coach', 'kinetic-experiment-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 3800,
-        content: '# Kinetic Energy Physics Specification\n\n$$W = \\Delta E_k = \\frac{1}{2}m v_2^2 - \\frac{1}{2}m v_1^2$$',
-      },
-    ],
-  },
-  {
-    id: 'error-analysis',
-    name: 'error-analysis',
-    description: '实验系统误差与偶然误差溯源分析（导轨倾角摩擦、传感器阻尼、空气阻力）。',
-    tags: ['误差分析', '系统误差', '实验反思'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['kinetic-review-assessor'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2100,
-        content: '# Experimental Error Analysis\n\n引导学生分析实验值与理论值偏差的物理源头。',
-      },
-    ],
-  },
-
-  // 工程与沙箱
-  {
-    id: 'project-implementation',
-    name: 'project-implementation',
-    description: '工程项目模块化架构设计与代码实现规范指导，引导面向对象与模块解耦。',
-    tags: ['工程实现', '模块解耦', '代码指导'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['fighter-code-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2700,
-        content: '# Project Implementation\n\n指导学生构建清晰的模块化类结构与生命周期管理。',
-      },
-    ],
-  },
-  {
-    id: 'debugging-guide',
-    name: 'debugging-guide',
-    description: '代码断点调试、错误堆栈逆向溯源与防御性编程指导规范。',
-    tags: ['排错调试', '堆栈分析', '异常处理'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '3 天前',
-    boundAssistantIds: ['fighter-code-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2500,
-        content: '# Debugging Guide\n\n引导学生依据控制台报错精准回溯语法或逻辑异常。',
-      },
-    ],
-  },
-  {
-    id: 'thunder-fighter-engine',
-    name: 'thunder-fighter-engine',
-    description: '雷霆战机 Python/Pygame 游戏主循环引擎与渲染规范，包含帧率锁定与事件队列控制。',
-    tags: ['Pygame', '游戏引擎', '主循环'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide'],
-    files: DEFAULT_FILES_FOR_SKILL['thunder-fighter-engine'] ?? [],
-  },
-  {
-    id: 'aabb-collision-solver',
-    name: 'aabb-collision-solver',
-    description: '二维轴对齐包围盒 (AABB) 碰撞检测算法推导与子弹击中敌机判定数学规范。',
-    tags: ['物理算法', 'AABB', '碰撞检测'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '12 天前',
-    boundAssistantIds: ['fighter-concept-coach', 'fighter-code-guide'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 3100,
-        content: '# AABB Collision Solver Specification\n\n矩形碰撞判定充要条件推导与优化。',
-      },
-    ],
-  },
-
-  // 答辩与反思
-  {
-    id: 'project-review',
-    name: 'project-review',
-    description: 'PBL 项目工程质量与成果验收综合质询评估规范。',
-    tags: ['成果验收', '代码质询', '工程复盘'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '4 天前',
-    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2400,
-        content: '# Project Review\n\n综合质询工程完整度与架构合理性。',
-      },
-    ],
-  },
-  {
-    id: 'growth-evaluation',
-    name: 'growth-evaluation',
-    description: '学生素养维度（问题解决、探究坚持性、批判性思维）综合多维评价。',
-    tags: ['核心素养', '多维评价', '学情增值'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '4 天前',
-    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2300,
-        content: '# Growth Evaluation\n\n评价学生在探究过程中的反思性与解决复杂问题能力。',
-      },
-    ],
-  },
-  {
-    id: 'socratic-reflection',
-    name: 'socratic-reflection',
-    description: '苏格拉底结项三问与迁移思考（如果增加特性你会怎么做、遇到的最大卡点如何突破）。',
-    tags: ['苏格拉底', '反思复盘', '迁移思考'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '4 天前',
-    boundAssistantIds: ['fighter-review-assessor'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2500,
-        content: '# Socratic Reflection\n\n促使学生深度回顾认知重塑过程与技术突破点。',
-      },
-    ],
-  },
-  {
-    id: 'pbl-defense-rubric',
-    name: 'pbl-defense-rubric',
-    description: 'PBL 结项答辩、概念掌握度质询与作品防作弊问答评测规程。',
-    tags: ['答辩评测', '量规', '反思'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '20 天前',
-    boundAssistantIds: ['fighter-review-assessor', 'kinetic-review-assessor'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2900,
-        content: '# PBL Defense Rubric\n\n防作弊质询与概念掌握深度核验。',
-      },
-    ],
-  },
-
-  // 画像与治理
-  {
-    id: 'student-profiling',
-    name: 'student-profiling',
-    description: '动态学生认知画像与行为特征建模规范。',
-    tags: ['学生画像', '行为建模', '认知特征'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['profile-analyst-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2100,
-        content: '# Student Profiling\n\n从互动记录中提取认知水平与学习习惯指标。',
-      },
-    ],
-  },
-  {
-    id: 'competency-radar',
-    name: 'competency-radar',
-    description: '五维素养雷达图（逻辑、工程、探究、表达、反思）计算与增值分析。',
-    tags: ['素养雷达', '能力评估', '成长可视化'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['profile-analyst-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2200,
-        content: '# Competency Radar\n\n多维素养分值量化计算与动态折线图。',
-      },
-    ],
-  },
-  {
-    id: 'learning-gap-diagnosis',
-    name: 'learning-gap-diagnosis',
-    description: '薄弱知识点与认知断层自动诊断，生成个性化干预建议。',
-    tags: ['认知断层', '薄弱点诊断', '个性化干预'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['profile-analyst-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2300,
-        content: '# Learning Gap Diagnosis\n\n识别概念混淆点并输出靶向辅导策略。',
-      },
-    ],
-  },
-  {
-    id: 'timeline-generation',
-    name: 'timeline-generation',
-    description: '学习历程时间轴自动梳理与探究足迹序列化。',
-    tags: ['时间轴', '学习轨迹', '事件序列'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['growth-trajectory-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2000,
-        content: '# Learning Timeline Generation\n\n将对话、代码提交与实验数据聚合为清晰足迹流。',
-      },
-    ],
-  },
-  {
-    id: 'milestone-synthesis',
-    name: 'milestone-synthesis',
-    description: '重大突破里程碑综合提炼与关键事件卡片合成。',
-    tags: ['里程碑', '关键突破', '成果卡片'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['growth-trajectory-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2100,
-        content: '# Milestone Synthesis\n\n萃取探索转折点并生成成就徽章事件。',
-      },
-    ],
-  },
-  {
-    id: 'growth-narrative',
-    name: 'growth-narrative',
-    description: '第一人称个性化成长故事与研学报告自动叙述生成。',
-    tags: ['成长叙事', '研学报告', '故事化生成'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['growth-trajectory-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2400,
-        content: '# Growth Narrative Generation\n\n生成富有温度与科学严谨性的学生个人成长总结。',
-      },
-    ],
-  },
-  {
-    id: 'system-governance',
-    name: 'system-governance',
-    description: '平台全局合规、模型路由调度与安全兜底策略规范。',
-    tags: ['平台治理', '合规监控', '安全策略'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['qitu-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2600,
-        content: '# System Governance\n\n保护未成年人隐私与系统鲁棒性安全规则。',
-      },
-    ],
-  },
-  {
-    id: 'asset-management',
-    name: 'asset-management',
-    description: '团队、助手、技能模板、知识库等数字教育资产管理与分发规范。',
-    tags: ['资产管理', '模板分发', '知识库管理'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['qitu-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2300,
-        content: '# Asset Management\n\n资产库元数据规范与版本控制。',
-      },
-    ],
-  },
-  {
-    id: 'audit-logging',
-    name: 'audit-logging',
-    description: '关键操作不可篡改审计日志流水与行为追踪规范。',
-    tags: ['审计日志', '可追溯', '合规记录'],
-    filesCount: 2,
-    addedBy: '平台教研组',
-    updatedAtText: '5 天前',
-    boundAssistantIds: ['qitu-assistant'],
-    files: [
-      {
-        name: 'SKILL.md',
-        sizeBytes: 2000,
-        content: '# Audit Logging\n\n敏感操作、权限变更与AI决策全链路存证。',
-      },
-    ],
-  },
-];
-
 export default function SkillsSettingsPage() {
-  const [skills, setSkills] = useState<SkillItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('qitu.admin.skills_list');
-        if (cached) {
-          const parsed: SkillItem[] = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            // 将缓存的技能与 CORE_SKILLS_CATALOG 进行合并补齐
-            const cachedMap = new Map(parsed.map((s) => [s.id, s]));
-            const merged = CORE_SKILLS_CATALOG.map((core) => cachedMap.get(core.id) || core);
-            // 附加上用户自定义添加的 skill
-            parsed.forEach((custom) => {
-              if (!CORE_SKILLS_CATALOG.some((c) => c.id === custom.id)) {
-                merged.push(custom);
-              }
-            });
-            return merged;
-          }
-        }
-      } catch {}
-    }
-    return CORE_SKILLS_CATALOG;
-  });
+  const [skills, setSkills] = useState<SkillItem[]>([]);
+  const [catalogPending, setCatalogPending] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingSkill, setEditingSkill] = useState<SkillItem | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'files'>('overview');
   const [showAddAssistantModal, setShowAddAssistantModal] = useState(false);
@@ -726,14 +64,21 @@ export default function SkillsSettingsPage() {
   const [skillsViewMode, setSkillsViewMode] = useState<'list' | 'matrix'>('list');
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
 
-  // 持久化存储 skills
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(skills));
-      } catch {}
+  // 技能目录从 AI 运行时快照读取；不再向 localStorage 写入任何伪造状态
+  const loadSkillCatalog = useCallback(async () => {
+    setCatalogPending(true);
+    setCatalogError('');
+    try {
+      const snapshot = await fetchRuntimeSnapshot();
+      const runtimeSkills = (snapshot.skills ?? []).map(mapRuntimeSkill);
+      setSkills((prev) => [...runtimeSkills, ...prev.filter((s) => s.local)]);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : '技能目录读取失败');
+    } finally {
+      setCatalogPending(false);
     }
-  }, [skills]);
+  }, []);
+  useEffect(() => { void loadSkillCatalog(); }, [loadSkillCatalog]);
 
   // 文件管理状态
   const [selectedFileName, setSelectedFileName] = useState<string>('SKILL.md');
@@ -803,11 +148,6 @@ export default function SkillsSettingsPage() {
     });
 
     setSkills(nextSkills);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-      } catch {}
-    }
 
     // 2. 如果当前正在编辑此技能，实时同步 editingSkill
     if (editingSkill && editingSkill.id === skillId) {
@@ -839,20 +179,6 @@ export default function SkillsSettingsPage() {
       } catch (err) {
         console.warn('持久化助手技能绑定失败', err);
       }
-
-      // 同步更新本地 custom_assistants
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_assistants');
-          if (cached) {
-            const list: any[] = JSON.parse(cached);
-            const nextList = list.map((a) =>
-              a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
-            );
-            localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
-          }
-        } catch {}
-      }
     }
 
     setSaveNotice(
@@ -861,43 +187,11 @@ export default function SkillsSettingsPage() {
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
-  // 加载真实助手用于绑定与展示头像（同时合并管家自建助手）
+  // 加载真实助手用于绑定与展示头像（后端为唯一真实来源）
   useEffect(() => {
     fetchAdminAssistantConfigs()
-      .then((res) => {
-        let customList: AdminAssistantConfig[] = [];
-        if (typeof window !== 'undefined') {
-          try {
-            const cached = localStorage.getItem('qitu.admin.custom_assistants');
-            if (cached) customList = JSON.parse(cached);
-          } catch {}
-        }
-        const backendList = res || [];
-        const existingIds = new Set(backendList.map((a) => a.id));
-        const combined = [...customList.filter((c) => !existingIds.has(c.id)), ...backendList];
-        setAssistants(combined);
-
-        // 同步更新本地 skills 列表各技能绑定的助手 ID
-        setSkills((prevSkills) =>
-          prevSkills.map((sk) => {
-            const boundIds = combined
-              .filter((a) => ((a.enabledSkills as string[]) || []).includes(sk.id) || ((a.enabledSkills as string[]) || []).includes(sk.name))
-              .map((a) => a.id);
-            return {
-              ...sk,
-              boundAssistantIds: Array.from(new Set([...(sk.boundAssistantIds || []), ...boundIds])),
-            };
-          })
-        );
-      })
-      .catch(() => {
-        if (typeof window !== 'undefined') {
-          try {
-            const cached = localStorage.getItem('qitu.admin.custom_assistants');
-            if (cached) setAssistants(JSON.parse(cached));
-          } catch {}
-        }
-      });
+      .then((res) => setAssistants(res || []))
+      .catch(() => setAssistants([]));
   }, []);
 
   // 当切换 editingSkill 或 selectedFileName 时同步草稿
@@ -918,21 +212,9 @@ export default function SkillsSettingsPage() {
     );
   }, [skills, searchQuery]);
 
-  const matrixSkills = useMemo(() => {
-    if (selectedCategory === 'all') return skills;
-    const categoryMap: Record<string, string[]> = {
-      guidance: ['guided', 'hint', 'qitu-interactive-concept', 'tutor-guided-learning', 'socratic-intake', 'intent-clarification'],
-      collaboration: ['planning', 'pbl-orchestration', 'escalation', 'project-recommendation', 'team-handoff'],
-      physics: ['physics-inquiry', 'physics-derivation', 'simulation-experiment', 'data-fitting', 'kinetic-energy-physics', 'error-analysis'],
-      engineering: ['project-implementation', 'debugging-guide', 'thunder-fighter-engine', 'aabb-collision-solver'],
-      assessment: ['project-review', 'growth-evaluation', 'socratic-reflection', 'pbl-defense-rubric'],
-      governance: ['student-profiling', 'competency-radar', 'learning-gap-diagnosis', 'timeline-generation', 'milestone-synthesis', 'growth-narrative', 'system-governance', 'asset-management', 'audit-logging'],
-    };
-    const validIds = categoryMap[selectedCategory] || [];
-    return skills.filter((s) => validIds.includes(s.id));
-  }, [skills, selectedCategory]);
+  const matrixSkills = useMemo(() => skills, [skills]);
 
-  // 横向全选：为指定助手开启当前分类的所有技能
+  // 横向全选：为指定助手开启当前目录的所有技能
   const grantAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
@@ -955,29 +237,15 @@ export default function SkillsSettingsPage() {
     });
     setSkills(nextSkills);
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-        const cached = localStorage.getItem('qitu.admin.custom_assistants');
-        if (cached) {
-          const list: any[] = JSON.parse(cached);
-          const nextList = list.map((a) =>
-            a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
-          );
-          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
-        }
-      } catch {}
-    }
-
     try {
       await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
     } catch {}
 
-    setSaveNotice(`横向全选成功：已为【${targetAsstName}】开启当前分类下的全部技能✔`);
+    setSaveNotice(`横向全选成功：已为【${targetAsstName}】开启当前目录下的全部技能✔`);
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
-  // 横向取消：清空指定助手在当前分类的所有技能
+  // 横向取消：清空指定助手在当前目录的所有技能
   const revokeAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
@@ -1001,25 +269,11 @@ export default function SkillsSettingsPage() {
     });
     setSkills(nextSkills);
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-        const cached = localStorage.getItem('qitu.admin.custom_assistants');
-        if (cached) {
-          const list: any[] = JSON.parse(cached);
-          const nextList = list.map((a) =>
-            a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a
-          );
-          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextList));
-        }
-      } catch {}
-    }
-
     try {
       await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
     } catch {}
 
-    setSaveNotice(`横向取消成功：已清空【${targetAsstName}】在当前分类下的全部技能✔`);
+    setSaveNotice(`横向取消成功：已清空【${targetAsstName}】在当前目录下的全部技能✔`);
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
@@ -1045,13 +299,6 @@ export default function SkillsSettingsPage() {
       return { ...s, boundAssistantIds: mergedBounds };
     });
     setSkills(nextSkills);
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-        localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextAssistants));
-      } catch {}
-    }
 
     for (const a of assistants) {
       const cur = (a.enabledSkills as string[]) || [];
@@ -1084,13 +331,6 @@ export default function SkillsSettingsPage() {
     });
     setSkills(nextSkills);
 
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-        localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify(nextAssistants));
-      } catch {}
-    }
-
     for (const a of assistants) {
       const cur = (a.enabledSkills as string[]) || [];
       try {
@@ -1107,7 +347,7 @@ export default function SkillsSettingsPage() {
     for (const asst of displayAssistants) {
       await grantAllSkillsForAssistant(asst.id);
     }
-    setSaveNotice('全局全选成功：已为所有导师开启当前分类的全部技能！✔');
+    setSaveNotice('全局全选成功：已为所有导师开启当前目录的全部技能！✔');
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
@@ -1116,37 +356,35 @@ export default function SkillsSettingsPage() {
     for (const asst of displayAssistants) {
       await revokeAllSkillsForAssistant(asst.id);
     }
-    setSaveNotice('全局取消成功：已清空所有导师在当前分类下的全部技能授权！✔');
+    setSaveNotice('全局取消成功：已清空所有导师在当前目录下的全部技能授权！✔');
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
-  // 新建 Skill
+  // 新建 Skill（本地草稿：服务端暂未提供技能内容写入接口）
   const handleCreateSkill = () => {
     const newSkill: SkillItem = {
-      id: `skill-${Date.now()}`,
+      id: `local-skill-${Date.now()}`,
       name: `custom-skill-${skills.length + 1}`,
-      description: '自定义 PBL 智能体能力扩展指令与上下文约定。',
-      tags: ['自定义'],
-      filesCount: 2,
-      addedBy: '管理员',
+      description: '',
+      tags: ['本地草稿'],
+      filesCount: 1,
+      addedBy: '本地草稿（未保存到服务端）',
       updatedAtText: '刚刚',
-      boundAssistantIds: assistants[0]?.id ? [assistants[0].id] : [],
+      boundAssistantIds: [],
+      local: true,
       files: [
         {
           name: 'SKILL.md',
-          sizeBytes: 1200,
-          content: '# New Custom Skill\n\n## 技能功能定义\n请在此处编写 Markdown 技能规范与智能体调用约束。',
-        },
-        {
-          name: 'prompts/instruction.txt',
-          sizeBytes: 600,
-          content: 'You are a specialized agent executing this skill.',
+          sizeBytes: 0,
+          content: '',
         },
       ],
     };
     setSkills((prev) => [newSkill, ...prev]);
     setEditingSkill(newSkill);
     setSelectedFileName('SKILL.md');
+    setFileContentDraft('');
+    setSaveNotice('技能内容编辑仅保存在当前会话；服务端技能写入接口尚未提供。');
   };
 
   // 保存 Skill 编辑（含属性与文件）
@@ -1161,7 +399,7 @@ export default function SkillsSettingsPage() {
 
     setSkills((prev) => prev.map((s) => (s.id === editingSkill.id ? updatedSkill : s)));
     setEditingSkill(updatedSkill);
-    setSaveNotice('已成功保存所有配置与文件更改 ✔');
+    setSaveNotice('已暂存到本页会话（服务端技能内容保存暂未提供）✔');
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
@@ -1177,7 +415,7 @@ export default function SkillsSettingsPage() {
 
     setSkills((prev) => prev.map((s) => (s.id === editingSkill.id ? updatedSkill : s)));
     setEditingSkill(updatedSkill);
-    setSaveNotice(`文件 ${selectedFileName} 已保存 ✔`);
+    setSaveNotice(`文件 ${selectedFileName} 已暂存到本页会话 ✔`);
     setTimeout(() => setSaveNotice(''), 2000);
   };
 
@@ -1224,9 +462,14 @@ export default function SkillsSettingsPage() {
     }
   };
 
-  // 删除 Skill
+  // 删除 Skill（仅限本地草稿；运行时目录由服务端管理）
   const handleDeleteSkill = (id: string, name: string) => {
-    if (!window.confirm(`确定要彻底删除技能「${name}」吗？`)) return;
+    const target = skills.find((s) => s.id === id);
+    if (target && !target.local) {
+      alert(`技能「${name}」来自 AI 运行时目录，不能在前端删除；请在服务端调整。`);
+      return;
+    }
+    if (!window.confirm(`确定要移除本地技能草稿「${name}」吗？`)) return;
     setSkills((prev) => prev.filter((s) => s.id !== id));
     if (editingSkill?.id === id) {
       setEditingSkill(null);
@@ -1249,11 +492,6 @@ export default function SkillsSettingsPage() {
       };
     });
     setSkills(nextSkills);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-      } catch {}
-    }
 
     // 更新助手的 enabledSkills 并持久化
     for (const asst of assistants) {
@@ -1281,20 +519,22 @@ export default function SkillsSettingsPage() {
     setTimeout(() => setSaveNotice(''), 3000);
   };
 
-  // 批量删除技能
+  // 批量移除技能（仅限本地草稿）
   const handleBulkDeleteSkills = () => {
     if (selectedSkills.size === 0) return;
-    if (!window.confirm(`确定要彻底删除选中的 ${selectedSkills.size} 个技能规范吗？此操作不可逆。`)) return;
     const targetIds = Array.from(selectedSkills);
-    const nextSkills = skills.filter((s) => !targetIds.includes(s.id));
-    setSkills(nextSkills);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('qitu.admin.skills_list', JSON.stringify(nextSkills));
-      } catch {}
+    const deletable = skills.filter((s) => targetIds.includes(s.id) && s.local);
+    if (deletable.length === 0) {
+      setSaveNotice('选中项均来自运行时目录，不能在前端删除；请在服务端调整。');
+      setTimeout(() => setSaveNotice(''), 3000);
+      setSelectedSkills(new Set());
+      return;
     }
+    if (!window.confirm(`确定要移除选中的 ${deletable.length} 个本地技能草稿吗？运行时目录技能将被跳过。`)) return;
+    const deletableIds = new Set(deletable.map((s) => s.id));
+    setSkills((prev) => prev.filter((s) => !deletableIds.has(s.id)));
     setSelectedSkills(new Set());
-    setSaveNotice(`已成功批量删除 ${targetIds.length} 个技能 ✔`);
+    setSaveNotice(`已移除 ${deletable.length} 个本地技能草稿 ✔`);
     setTimeout(() => setSaveNotice(''), 3000);
   };
 
@@ -1373,12 +613,20 @@ export default function SkillsSettingsPage() {
             <h1 className="admin-skill-main-title">{editingSkill.name}</h1>
           </div>
           <div className="admin-skill-meta-tags">
-            <span className="admin-skill-meta-pill">✎ 手动创建</span>
+            <span className="admin-skill-meta-pill">{editingSkill.local ? '✎ 本地草稿' : `📦 ${editingSkill.addedBy}`}</span>
             <span className="admin-skill-meta-pill">📄 {editingSkill.filesCount} 个文件</span>
             <span className="admin-skill-meta-pill">👥 {editingSkill.boundAssistantIds.length} 个智能体在用</span>
-            <span className="admin-skill-meta-pill">🕒 {editingSkill.addedBy} 于 {editingSkill.updatedAtText}更新</span>
+            {!editingSkill.local && editingSkill.updatedAtText !== '—' ? (
+              <span className="admin-skill-meta-pill">🕒 {editingSkill.updatedAtText}</span>
+            ) : null}
           </div>
         </div>
+
+        {!editingSkill.local ? (
+          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
+            此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器；与助手的绑定/解绑会通过助手接口真实持久化。
+          </div>
+        ) : null}
 
         {/* 概览 / 文件 选项卡 */}
         <div className="admin-skill-tabs-bar">
@@ -1795,6 +1043,13 @@ export default function SkillsSettingsPage() {
         </div>
       </div>
 
+      {catalogError ? (
+        <div role="alert" style={{ marginTop: '12px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px', fontSize: '13px' }}>
+          技能目录：{catalogError}
+          <button type="button" onClick={() => void loadSkillCatalog()} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
+        </div>
+      ) : null}
+
       {skillsViewMode === 'matrix' ? (
         /* 助手 × 技能绑定矩阵 (行=助手, 列=技能) */
         <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
@@ -1802,35 +1057,8 @@ export default function SkillsSettingsPage() {
             <div>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>技能分配矩阵 (Skills Matrix)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                行代表教学团队中的导师助手，列代表标准技能。打上✔ 即为助手立即启用该技能，取消✔ 即刻关闭。
+                行代表教学团队中的导师助手，列代表运行时目录中的技能。打上✔ 即为助手启用该技能（通过助手接口持久化），取消✔ 即刻关闭。
               </p>
-            </div>
-
-            {/* 分类筛选标签栏 */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {SKILL_CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat.key;
-                return (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat.key)}
-                    style={{
-                      border: isSelected ? '1px solid #165dff' : '1px solid #e2e8f0',
-                      background: isSelected ? '#eff4ff' : '#ffffff',
-                      color: isSelected ? '#165dff' : '#475569',
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: isSelected ? 600 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
             </div>
           </div>
 
@@ -1858,7 +1086,7 @@ export default function SkillsSettingsPage() {
                           cursor: 'pointer',
                           fontWeight: 600,
                         }}
-                        title="全局全选：为所有导师开启当前分类的全部技能"
+                        title="全局全选：为所有导师开启当前目录的全部技能"
                       >
                         全部全选
                       </button>
@@ -1874,7 +1102,7 @@ export default function SkillsSettingsPage() {
                           color: '#64748b',
                           cursor: 'pointer',
                         }}
-                        title="全部取消：清空所有导师在当前分类的全部技能"
+                        title="全部取消：清空所有导师在当前目录的全部技能"
                       >
                         全部取消
                       </button>
@@ -1999,7 +1227,7 @@ export default function SkillsSettingsPage() {
                               fontWeight: 600,
                               whiteSpace: 'nowrap',
                             }}
-                            title={`横向全选：为【${asst.name}】开启当前分类的所有技能`}
+                            title={`横向全选：为【${asst.name}】开启当前目录的所有技能`}
                           >
                             横向全选
                           </button>
@@ -2016,7 +1244,7 @@ export default function SkillsSettingsPage() {
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
-                            title={`横向取消：清空【${asst.name}】在当前分类的所有技能`}
+                            title={`横向取消：清空【${asst.name}】在当前目录的所有技能`}
                           >
                             横向取消
                           </button>
@@ -2067,7 +1295,7 @@ export default function SkillsSettingsPage() {
                   className="settings-action-btn is-danger"
                   style={{ padding: '4px 12px', fontSize: '12px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
                   onClick={handleBulkDeleteSkills}
-                  title="彻底删除选中的技能"
+                  title="批量移除选中的本地技能草稿（运行时目录技能不可前端删除）"
                 >
                   批量删除 ({selectedSkills.size})
                 </button>
@@ -2093,12 +1321,23 @@ export default function SkillsSettingsPage() {
               </th>
               <th>名称</th>
               <th>被谁使用</th>
-              <th>添加者</th>
-              <th>更新时间 ↓</th>
+              <th>来源</th>
+              <th>版本 / 更新</th>
               <th style={{ textAlign: 'right', width: '80px' }}>操作</th>
             </tr>
           </thead>
           <tbody>
+            {catalogPending ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>正在读取 AI 运行时技能目录…</td>
+              </tr>
+            ) : filteredSkills.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                  {searchQuery ? '没有找到符合条件的技能' : 'AI 运行时暂未提供技能目录；可点击右上角「+ 新建 skill」登记本地草稿。'}
+                </td>
+              </tr>
+            ) : null}
             {filteredSkills.map((skill) => {
               const bound = assistants.filter(
                 (a) =>
@@ -2150,7 +1389,7 @@ export default function SkillsSettingsPage() {
                   </td>
                   <td>
                     <div className="admin-skill-added-by-cell">
-                      <span className="admin-skill-user-badge">Y</span>
+                      <span className="admin-skill-user-badge">{skill.local ? '✎' : '📦'}</span>
                       <span>{skill.addedBy}</span>
                     </div>
                   </td>
@@ -2175,7 +1414,7 @@ export default function SkillsSettingsPage() {
                         className="admin-skill-dot-btn"
                         style={{ color: '#ef4444' }}
                         onClick={() => handleDeleteSkill(skill.id, skill.name)}
-                        title="删除技能"
+                        title="删除（仅限本地草稿；运行时目录技能需在服务端调整）"
                       >
                         🗑️
                       </button>
