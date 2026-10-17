@@ -2,7 +2,7 @@
 name: mastery-engine
 description: Implements the mastery gate, recency-weighted mastery scoring, next-step selection precedence, and the spaced-review scheduler that decide what the next session teaches; owns the pure mastery package only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

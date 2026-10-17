@@ -2,7 +2,7 @@
 name: pedagogy-reviewer
 description: Adversarial review of AI-tutor behavior — answer leakage, hint-ladder correctness, guidance budget, escalation thresholds, and minor-data safety
 tools: read, bash
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

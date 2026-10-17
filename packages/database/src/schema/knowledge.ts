@@ -1,8 +1,11 @@
 import {
+  boolean,
+  bigint,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -11,6 +14,113 @@ import { sql } from 'drizzle-orm';
 import { schools } from './tenancy';
 import { users } from './identity';
 import { projects } from './projects';
+
+export const knowledgeBases = pgTable(
+  'knowledge_bases',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    kind: text('kind').notNull(),
+    schoolId: text('school_id'),
+    ownerUserId: text('owner_user_id'),
+    projectId: text('project_id').unique().references(() => projects.id),
+    engineInstanceId: text('engine_instance_id'),
+    lifecycle: text('lifecycle').notNull().default('active'),
+    buildState: text('build_state').notNull().default('queued'),
+    activeIndexVersionId: text('active_index_version_id'),
+    revision: integer('revision').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    projectIdx: index('knowledge_bases_project_idx').on(table.projectId),
+    lifecycleIdx: index('knowledge_bases_lifecycle_idx').on(table.lifecycle),
+  }),
+);
+
+export const knowledgeBaseConnections = pgTable(
+  'knowledge_base_connections',
+  {
+    id: text('id').primaryKey(),
+    kbId: text('kb_id').notNull().unique().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    flavour: text('flavour').notNull(),
+    provider: text('provider').notNull(),
+    externalRef: jsonb('external_ref').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    credentialRef: text('credential_ref'),
+    status: text('status').notNull(),
+    lastCheckAt: timestamp('last_check_at', { withTimezone: true }),
+    lastErrorCode: text('last_error_code'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({ providerStatusIdx: index('knowledge_base_connections_provider_idx').on(table.provider, table.status) }),
+);
+
+export const knowledgeSources = pgTable(
+  'knowledge_sources',
+  {
+    id: text('id').primaryKey(),
+    kbId: text('kb_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    sourceConfig: jsonb('source_config').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    credentialRef: text('credential_ref'),
+    scheduleHours: integer('schedule_hours'),
+    nextSyncAt: timestamp('next_sync_at', { withTimezone: true }),
+    lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+    lastSourceRevision: text('last_source_revision'),
+    status: text('status').notNull(),
+    lastErrorCode: text('last_error_code'),
+    createdBy: text('created_by').notNull(),
+    sourceFingerprint: text('source_fingerprint').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceUniqueIdx: uniqueIndex('knowledge_sources_kb_kind_fingerprint_idx').on(table.kbId, table.kind, table.sourceFingerprint),
+    syncIdx: index('knowledge_sources_sync_idx').on(table.status, table.nextSyncAt),
+  }),
+);
+
+export const knowledgeSyncRuns = pgTable(
+  'knowledge_sync_runs',
+  {
+    id: text('id').primaryKey(),
+    sourceId: text('source_id').notNull().references(() => knowledgeSources.id, { onDelete: 'cascade' }),
+    idempotencyKey: text('idempotency_key').notNull(),
+    requestHash: text('request_hash').notNull(),
+    budgetSnapshot: jsonb('budget_snapshot').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    state: text('state').notNull(),
+    discoveredCount: integer('discovered_count').notNull().default(0),
+    acceptedCount: integer('accepted_count').notNull().default(0),
+    rejectedCount: integer('rejected_count').notNull().default(0),
+    bytesRead: bigint('bytes_read', { mode: 'number' }).notNull().default(0),
+    pagesRead: integer('pages_read').notNull().default(0),
+    errorCode: text('error_code'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({ sourceKeyUniqueIdx: uniqueIndex('knowledge_sync_runs_source_key_idx').on(table.sourceId, table.idempotencyKey) }),
+);
+
+export const knowledgeBaseAgentBindings = pgTable(
+  'knowledge_base_agent_bindings',
+  {
+    kbId: text('kb_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    agentKind: text('agent_kind').notNull(),
+    agentId: text('agent_id').notNull(),
+    mode: text('mode').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    revision: integer('revision').notNull().default(1),
+    createdBy: text('created_by').notNull(),
+    updatedBy: text('updated_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.kbId, table.agentKind, table.agentId, table.mode], name: 'knowledge_base_agent_bindings_pkey' }),
+    agentIdx: index('knowledge_base_agent_bindings_agent_idx').on(table.agentKind, table.agentId, table.enabled),
+  }),
+);
 
 /**
  * Canonical, scoped knowledge base (文档 8.1 / 8.2 / ADR 0006).

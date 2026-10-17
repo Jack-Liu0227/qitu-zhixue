@@ -24,6 +24,8 @@ export { StageProgress } from './components/StageProgress';
 export { StreamCaret, ToolCallStep, ToolCallTimeline } from './components/ToolCallTimeline';
 export { TypingIndicator } from './components/TypingIndicator';
 export { TutorHeader } from './components/TutorHeader';
+export { BoardBlock } from './components/BoardBlock';
+export { MilestoneBlock } from './components/MilestoneBlock';
 
 // Hooks
 export { useComposer } from './hooks/useComposer';

@@ -2,7 +2,7 @@
 name: student-reviewer
 description: Read-only review of student-center changes for correctness, state coverage, frozen navigation, permission display, and minor-data safety
 tools: read, bash
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

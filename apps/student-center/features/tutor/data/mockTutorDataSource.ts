@@ -6,6 +6,8 @@ import type {
   CreateTutorSessionResponse,
   CreateTutorTurnRequest,
   CreateTutorTurnResponse,
+  AnswerInteractiveQuizRequest,
+  AnswerInteractiveQuizResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
@@ -87,7 +89,7 @@ export class MockTutorDataSource implements TutorDataSource {
 
   async confirmExploration(
     explorationId: string,
-    draft: { goal: string; interest: string },
+    draft: { goal: string; interest: string; templateVersionId?: string },
     _idempotencyKey: string,
   ): Promise<ConfirmIntentResponse> {
     await this.delay();
@@ -188,6 +190,22 @@ export class MockTutorDataSource implements TutorDataSource {
     this.turnKeys.set(request.idempotencyKey, response);
     this.pushStreamedTurn(sessionId, turnId, blockSeq, doneSeq, request.pedagogicMove !== undefined);
     return response;
+  }
+
+  async answerInteractiveQuiz(
+    _sessionId: string,
+    _quizId: string,
+    _request: AnswerInteractiveQuizRequest,
+  ): Promise<AnswerInteractiveQuizResponse> {
+    await this.delay();
+    this.assertReadable();
+    throw new TutorDataError('演示数据源未连接判分服务', 501, 'QUIZ_GRADING_UNAVAILABLE');
+  }
+
+  async requestQuizExplanation(_sessionId: string, _quizId: string): Promise<void> {
+    await this.delay();
+    this.assertReadable();
+    throw new TutorDataError('演示数据源未连接解析服务', 501, 'EXPLAIN_UNAVAILABLE');
   }
 
   async getSummary(_sessionId: string): Promise<TutorSessionSummary> {

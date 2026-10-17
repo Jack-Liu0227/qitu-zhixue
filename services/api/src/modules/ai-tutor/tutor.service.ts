@@ -49,6 +49,7 @@ import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
 import { TemplatesService } from '../templates/templates.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
+import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
   type AppendTurnsInput,
@@ -294,8 +295,12 @@ export class TutorService {
       };
     }
     // Live teaching must never use the unrelated in-memory demo roster.
-    if (this.dataMode === 'live') return null;
-    if (this.platformData === undefined) return null;
+    if (this.dataMode === 'live') return explicitExploration && projectId === undefined
+      ? this.buildExplorationContext(ownerId)
+      : null;
+    if (this.platformData === undefined) return explicitExploration && projectId === undefined
+      ? this.buildExplorationContext(ownerId)
+      : null;
     const projects = this.platformData.getProjectsByStudent(ownerId);
     const selected = projectId === undefined
       ? projects.find((project) => project.stage !== 'completed' && project.stage !== 'published')
@@ -331,7 +336,9 @@ export class TutorService {
   private async buildExplorationContext(ownerId: string): Promise<TutorProjectContext> {
     const teamContext = await this.resolveTeamContext(null, null, 'exploration', ownerId);
     return {
-      project: { id: 'exploration', title: EXPLORATION_CONTEXT.title, stage: EXPLORATION_CONTEXT.stage, progress: 0 },
+      // 探索会话没有项目：绝不返回哨兵项目，否则前端会拿 'exploration'
+      // 当真实 projectId 去请求知识库与进度。身份仍由 team 携带。
+      project: null,
       progress: { currentStageIndex: 0, stageTotal: PROJECT_STAGES.length, progressPercent: 0 },
       stages: PROJECT_STAGES,
       currentTask: null,
@@ -339,8 +346,8 @@ export class TutorService {
       phases: [],
     };
   }
-
-
+  /**
+   * 解析当前会话的团队／助手身份与阶段投影（服务端事实，见
    * docs/design/20261018-tutor-workspace-interaction-contract.md §3）。
    *
    * - 自由探索：`assistantId = qitu-intake-assistant`，`teamId/teamName = null`；
@@ -723,7 +730,7 @@ export class TutorService {
         status: record.source === 'exploration' ? 'active' : 'confirmed',
         projectId: record.projectId,
       },
-      turns: record.turns.map(toContractTurn),
+      turns: record.turns.map((turn) => toContractTurn(turn)),
       lastSeq: record.lastSeq,
     };
   }
@@ -903,7 +910,8 @@ export class TutorService {
       }
     }
     await this.domainWriter.initialize();
-    const liveProject = record.projectId === null ? null : (await this.getProjectContext(record.projectId, request.actorId))?.project;
+    const projectContext = record.projectId === null ? null : await this.getProjectContext(record.projectId, request.actorId);
+    const liveProject = projectContext?.project ?? null;
     if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
@@ -1119,6 +1127,12 @@ export class TutorService {
     }
 
     // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
+    const interactionBlocks = buildProjectInteractionBlocks(projectContext);
+    for (const block of interactionBlocks) {
+      assistantBlocks = [...assistantBlocks, block];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
+
     // 探索会话：由「启途智学助手」在首个完整回合后追加服务端组装的想法卡片
     //（docs/design/20261018-tutor-workspace-interaction-contract.md §4）。
     // 卡片来自真实已发布模板目录；学生不点击就不创建，助手不代替学生确认。
@@ -1470,7 +1484,7 @@ function buildTeamDelegationInput(
   };
 }
 
-function makeIdeaCard(template: Awaited<ReturnType<TemplatesService['listPublishedTemplates']>>[number]): TutorIdeaCard | null {
+export function makeIdeaCard(template: Awaited<ReturnType<TemplatesService['listPublishedTemplates']>>[number]): TutorIdeaCard | null {
   if (template.status !== 'published' || !template.latestPublishedVersionId) return null;
   const title = safeIdeaText(template.title, 120);
   const description = safeIdeaText(template.summary, 240);
@@ -1486,6 +1500,7 @@ function makeIdeaCard(template: Awaited<ReturnType<TemplatesService['listPublish
     weeks,
     rationale,
     templateId: template.id,
+    templateVersionId: template.latestPublishedVersionId,
     suggestedGoal,
     suggestedInterest,
     teamName: null,
@@ -1544,7 +1559,7 @@ function builtinAuthor(id: string): NonNullable<TutorTurn['author']> {
   };
 }
 /** 剥离服务端专用元数据，只回契约字段。 */
-function toContractTurn(turn: TutorTurnRecord): TutorTurn {
+export function toContractTurn(turn: TutorTurnRecord): TutorTurn {
   const {
     pedagogicMove: _pedagogicMove,
     expectedEvidence: _expectedEvidence,
@@ -1552,7 +1567,20 @@ function toContractTurn(turn: TutorTurnRecord): TutorTurn {
     evidenceRef: _evidenceRef,
     ...contract
   } = turn;
-  return contract;
+  // Persisted quiz blocks may contain answer-bearing fields from a future writer.
+  // Until the server has an explicit `explain` action, rebuild the safe projection.
+  const mayReleaseQuizAnswer = turn.pedagogicMove === 'explain';
+  return {
+    ...contract,
+    blocks: contract.blocks.map((block) => {
+      if (block.kind !== 'quiz' || mayReleaseQuizAnswer) return block;
+      const { explanation: _explanation, graded: _graded, ...safeQuiz } = block;
+      return {
+        ...safeQuiz,
+        options: safeQuiz.options.map(({ key, text }) => ({ key, text })),
+      };
+    }),
+  };
 }
 
 function buildStudentBlocks(request: {

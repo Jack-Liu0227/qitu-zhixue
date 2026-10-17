@@ -6,6 +6,8 @@ import type {
   CreateTutorSessionResponse,
   CreateTutorTurnRequest,
   CreateTutorTurnResponse,
+  AnswerInteractiveQuizRequest,
+  AnswerInteractiveQuizResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
@@ -22,7 +24,7 @@ import type { TutorProjectContext } from '../types';
  * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
-  confirmExploration?(explorationId: string, draft: { goal: string; interest: string }, idempotencyKey: string): Promise<ConfirmIntentResponse>;
+  confirmExploration?(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse>;
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;
   listProjects(): Promise<ProjectSummary[]>;
@@ -39,6 +41,14 @@ export interface TutorDataSource {
     sessionId: string,
     request: CreateTutorTurnRequest,
   ): Promise<CreateTutorTurnResponse>;
+  /** POST /tutor/sessions/:id/interactive/:quizId/answer — server-owned grading. */
+  answerInteractiveQuiz(
+    sessionId: string,
+    quizId: string,
+    request: AnswerInteractiveQuizRequest,
+  ): Promise<AnswerInteractiveQuizResponse>;
+  /** Explicit explain action; the server decides whether to reveal an explanation. */
+  requestQuizExplanation(sessionId: string, quizId: string): Promise<void>;
   /** GET /tutor/sessions/:id/summary — display-only ladder/stall status. */
   getSummary(sessionId: string): Promise<TutorSessionSummary>;
   /** POST /tutor/sessions/:id/feedback — idempotent feedback. */

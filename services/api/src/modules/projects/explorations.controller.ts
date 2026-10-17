@@ -90,7 +90,7 @@ export class ExplorationsController {
     @Body() body: unknown,
   ): Promise<{ data: ConfirmIntentResponse }> {
     const user = this.requireStudent(cookieHeader);
-    const request = pickFields<ConfirmIntentRequest>(body, ['note']);
+    const request = pickFields<ConfirmIntentRequest>(body, ['note', 'templateVersionId']);
     const key = requireIdempotencyKey(idempotencyKey);
     return { data: await this.projects.confirmIntent(user.id, id, key, request) };
   }

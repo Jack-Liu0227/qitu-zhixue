@@ -25,8 +25,8 @@ test('new intent-confirmed project is immediately available to Tutor without a p
     listProjectsByStudent: async (owner: string) => owner === project.studentId ? [{ ...project }] : [],
   } as unknown as LearningPlanStore;
   const tutor = makeTutor(store);
-  assert.equal((await tutor.getProjectContext(project.id, 'owner'))?.project.stage, 'intent_confirmed');
-  assert.equal((await tutor.getProjectContext(undefined, 'owner'))?.project.id, project.id);
+  assert.equal((await tutor.getProjectContext(project.id, 'owner'))?.project?.stage, 'intent_confirmed');
+  assert.equal((await tutor.getProjectContext(undefined, 'owner'))?.project?.id, project.id);
   const session = await tutor.resolveSession(project.id, 'owner');
   assert.equal(tutor.toSessionResponse(session).projectId, project.id);
   await assert.rejects(tutor.getProjectContext(project.id, 'other'), ForbiddenException);
@@ -35,6 +35,27 @@ test('new intent-confirmed project is immediately available to Tutor without a p
   assert.equal(await makeTutor().getProjectContext(project.id, 'owner'), null);
 });
 
+test('explicit exploration context returns the real intake identity without a project row', async () => {
+  const context = await makeTutor().getProjectContext(undefined, 'owner', true);
+  // 探索会话不得返回哨兵项目：否则前端会把 'exploration' 当真实 projectId。
+  assert.equal(context?.project, null);
+  assert.deepEqual(context?.team, {
+    teamId: null,
+    teamName: null,
+    assistantId: 'qitu-intake-assistant',
+    assistantName: '启途智学助手',
+    assistantAvatar: '🧭',
+  });
+  assert.deepEqual(context?.phases, []);
+});
+
+test('team graph rejects a cross-student project before returning any graph data', async () => {
+  const store = {
+    findProject: async () => ({ ...project }),
+  } as unknown as LearningPlanStore;
+  const tutor = makeTutor(store);
+  await assert.rejects(tutor.getTeamGraph(project.id, 'other'), ForbiddenException);
+});
 test('project list includes confirmed projects before a learning plan exists', async () => {
   const store = {
     listProjectsByStudent: async (owner: string) => owner === project.studentId ? [project] : [],

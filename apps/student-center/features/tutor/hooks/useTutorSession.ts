@@ -38,6 +38,8 @@ export interface TutorSessionApi {
   streamNotice: TutorViewError | null;
   dismissStreamNotice: () => void;
   submitText: (content: string, idempotencyKey: string) => Promise<void>;
+  answerQuiz: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  explainQuiz: (quizId: string) => Promise<void>;
   selectOption: (label: string) => Promise<void>;
   retryProject: () => void;
   retrySession: () => void;
@@ -64,6 +66,13 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
   const dataSource = useTutorDataSource();
 
   const [project, setProject] = useState<TutorProjectContext | null>(null);
+  /**
+   * 真实项目摘要；自由探索会话为 `null`。
+   *
+   * 服务端对探索会话仍会返回上下文（为了携带 `team` 身份），但其中
+   * `project` 为 `null`。所以「是否有项目」一律看本值，不能看 `project === null`。
+   */
+  const activeProject = project?.project ?? null;
   const [projectStatus, setProjectStatus] = useState<TutorLoadStatus>('loading');
   const [projectError, setProjectError] = useState<TutorViewError | null>(null);
   const [projectReloadKey, setProjectReloadKey] = useState(0);
@@ -167,7 +176,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     if (
       projectStatus === 'loading' ||
       projectStatus === 'error' ||
-      (project === null && projectId !== undefined)
+      (activeProject === null && projectId !== undefined)
     ) {
       // No session without a ready project. The left context panel owns the
       // project's loading/empty/error surface; mirror that state into the
@@ -205,11 +214,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
       try {
         sessionKeyRef.current ??= createIdempotencyKey();
         const created = await dataSource.createSession({
-          ...(project === null ? {} : { projectId: project.project.id }),
-          ...(project === null && new URLSearchParams(window.location.search).get('explorationId')
+          ...(activeProject === null ? {} : { projectId: activeProject.id }),
+          ...(activeProject === null && new URLSearchParams(window.location.search).get('explorationId')
             ? { explorationId: new URLSearchParams(window.location.search).get('explorationId')! }
             : {}),
-          source: project === null ? 'exploration' : 'project',
+          source: activeProject === null ? 'exploration' : 'project',
           idempotencyKey: sessionKeyRef.current,
         });
         const session = await dataSource.getSession(created.sessionId);
@@ -218,7 +227,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         setTransportOffline(false);
         setSessionId(session.sessionId);
         setExplorationId(session.explorationId);
-        if (session.explorationId !== null && project === null) {
+        if (session.explorationId !== null && activeProject === null) {
           const url = new URL(window.location.href);
           url.searchParams.set('explorationId', session.explorationId);
           window.history.replaceState(null, '', url);
@@ -391,6 +400,24 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     [runSubmission, sessionId],
   );
 
+  const answerQuiz = useCallback(
+    async (quizId: string, selectedKeys: string[], idempotencyKey: string) => {
+      if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
+      if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
+      return dataSource.answerInteractiveQuiz(sessionId, quizId, { selectedKeys, idempotencyKey });
+    },
+    [browserOffline, dataSource, sessionId, transportOffline],
+  );
+
+  const explainQuiz = useCallback(
+    async (quizId: string) => {
+      if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
+      if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
+      await dataSource.requestQuizExplanation(sessionId, quizId);
+    },
+    [browserOffline, dataSource, sessionId, transportOffline],
+  );
+
   const lastHintLevel = useMemo<TutorHintLevel | null>(() => {
     for (let index = turns.length - 1; index >= 0; index -= 1) {
       const turn = turns[index];
@@ -435,6 +462,8 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     streamNotice,
     dismissStreamNotice,
     submitText,
+    answerQuiz,
+    explainQuiz,
     selectOption,
     retryProject,
     retrySession,

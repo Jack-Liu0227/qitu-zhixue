@@ -211,6 +211,13 @@
       "when": 1792281600001,
       "tag": "0029_knowledge_file_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792281600002,
+      "tag": "0030_knowledge_connections_sources_bindings",
+      "breakpoints": true
     }
   ]
 }

@@ -36,13 +36,19 @@ export function ChatBubble({
   currentAssistantName,
   onSelectOption,
   onOneClickCreateProject,
+  onRequestQuizExplanation,
+  onAnswerQuiz,
+  projectId,
   disabled = false,
   streaming = false,
 }: {
   turn: TutorTurn;
   currentAssistantName?: string;
   onSelectOption?: (label: string, text?: string) => void;
-  onOneClickCreateProject?: (goal: string, interest: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
+  onRequestQuizExplanation?: (quizId: string) => Promise<void>;
+  onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  projectId?: string | null;
   disabled?: boolean;
   streaming?: boolean;
 }) {
@@ -325,6 +331,9 @@ export function ChatBubble({
               block={segment.raw}
               onSelectOption={onSelectOption}
               onOneClickCreateProject={onOneClickCreateProject}
+              onRequestQuizExplanation={onRequestQuizExplanation}
+              onAnswerQuiz={onAnswerQuiz}
+              projectId={projectId}
               disabled={disabled}
             />
           ) : (

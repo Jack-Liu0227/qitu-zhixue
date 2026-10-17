@@ -142,7 +142,7 @@ export class TutorController {
     @Query('projectId') projectId?: string,
   ): Promise<{ data: TutorProjectContext | null }> {
     const actor = this.requireStudent(cookieHeader);
-    return { data: await this.tutorService.getProjectContext(projectId, actor.id) };
+    return { data: await this.tutorService.getProjectContext(projectId, actor.id, projectId === undefined) };
   }
 
   /** 右侧栏「团队智能体」Tab 的只读数据源；仅对已授权项目开放。 */

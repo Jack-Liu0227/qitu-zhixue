@@ -4,8 +4,12 @@ import { requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
+
+import { KnowledgeConnectionService } from './knowledge-connection.service';
+import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
 import { requireIdempotencyKey } from './knowledge-center.request';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
+import { KnowledgeSourceSyncService } from './knowledge-source-sync.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 
 @Controller('admin')
@@ -16,6 +20,9 @@ export class KnowledgeCenterController {
     private readonly auth: AuthService,
     private readonly catalog: KnowledgeToolCatalogService,
     private readonly uploads: KnowledgeUploadService,
+    private readonly connections: KnowledgeConnectionService,
+    private readonly linkedProbe: KnowledgeLinkProbeService,
+    private readonly sourceSync: KnowledgeSourceSyncService,
   ) {}
   private actor(cookie: string | undefined) {
     return requireRole(this.auth, cookie, 'admin', '知识中心仅向管理员开放');
@@ -65,8 +72,54 @@ export class KnowledgeCenterController {
     @Body() body: unknown,
   ) {
     return {
-      data: await this.center.createBase(this.actor(cookie), body, requireIdempotencyKey(key)),
+      data: await this.connections.createBase(this.actor(cookie), body, requireIdempotencyKey(key)),
     };
+  }
+  @Post('knowledge/bases/link-probe')
+  async linkProbe(@Headers('cookie') cookie: string | undefined, @Body() body: unknown) {
+    this.actor(cookie);
+    return { data: await this.linkedProbe.probeRequest(body) };
+  }
+  @Get('knowledge/bases/:id/bindings')
+  async baseBindings(@Headers('cookie') cookie: string | undefined, @Param('id') id: string) {
+    this.actor(cookie);
+    return { data: await this.center.baseBindings(id) };
+  }
+  @Put('knowledge/bases/:id/bindings')
+  async saveBaseBindings(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return { data: await this.center.saveBaseBindings(this.actor(cookie), id, body, requireIdempotencyKey(key)) };
+  }
+  @Post('knowledge/bases/:id/connections/detach')
+  async detachConnection(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return { data: await this.connections.detach(this.actor(cookie), id, requireIdempotencyKey(key)) };
+  }
+  @Post('knowledge/bases/:id/sources')
+  async createSource(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return { data: await this.sourceSync.create(this.actor(cookie), id, body, requireIdempotencyKey(key)) };
+  }
+  @Post('knowledge/bases/:id/sources/:sourceId/sync')
+  async syncSource(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Param('sourceId') sourceId: string,
+    @Body() body: unknown,
+  ) {
+    return { data: await this.sourceSync.sync(this.actor(cookie), id, sourceId, body, requireIdempotencyKey(key)) };
   }
   @Post('knowledge/bases/:id/files')
   async add(
@@ -133,8 +186,9 @@ export class KnowledgeCenterController {
     @Param('memberId') memberId: string,
     @Body() body: unknown,
   ) {
-    requireIdempotencyKey(key);
-    return { data: await this.center.updateFile(this.actor(cookie), id, memberId, body) };
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    return { data: await this.center.updateFile(actor, id, memberId, body, idempotencyKey) };
   }
   @Get('knowledge/assistant-bindings')
   async assistantBindings(@Headers('cookie') cookie: string | undefined) {
@@ -168,9 +222,9 @@ export class KnowledgeCenterController {
     @Headers('idempotency-key') key: string | undefined,
     @Param('id') id: string,
   ) {
-    this.actor(cookie);
-    requireIdempotencyKey(key);
-    return { data: await this.engine.check(id) };
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    return { data: await this.engine.check(id, `${actor.id}:${idempotencyKey}`) };
   }
   @Get('knowledge/jobs/:id')
   async job(@Headers('cookie') cookie: string | undefined, @Param('id') id: string) {
@@ -183,8 +237,7 @@ export class KnowledgeCenterController {
     @Headers('idempotency-key') key: string | undefined,
     @Param('id') id: string,
   ) {
-    this.actor(cookie);
-    requireIdempotencyKey(key);
-    return { data: await this.center.cancel(id) };
+    const actor = this.actor(cookie);
+    return { data: await this.center.cancel(actor, id, requireIdempotencyKey(key)) };
   }
 }

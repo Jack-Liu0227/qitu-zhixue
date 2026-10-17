@@ -2,7 +2,7 @@
 name: grading-remediation
 description: Implements server-side deterministic grading for choice, short and open answers plus the error taxonomy and remediation suggestions; owns the pure grading package only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

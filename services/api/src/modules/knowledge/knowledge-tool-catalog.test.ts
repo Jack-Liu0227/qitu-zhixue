@@ -56,7 +56,11 @@ test('admin metadata requires authentication and admin role before discovery', a
     auth,
     catalog,
     {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
   );
+
   await assert.rejects(controller.tools(undefined, 'platformTools', 'project-knowledge'), {
     status: 401,
   });

@@ -47,7 +47,27 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
     }
     case 'quiz': {
       const q = value as { questionId?: unknown; stem?: unknown; options?: unknown };
-      return typeof q.questionId === 'string' && typeof q.stem === 'string' && Array.isArray(q.options);
+      return typeof q.questionId === 'string' && typeof q.stem === 'string' && Array.isArray(q.options) &&
+        q.options.every((option) => typeof option === 'object' && option !== null &&
+          typeof (option as { key?: unknown }).key === 'string' && typeof (option as { text?: unknown }).text === 'string');
+    }
+    case 'board': {
+      const board = value as { boardId?: unknown; steps?: unknown };
+      return typeof board.boardId === 'string' && Array.isArray(board.steps) && board.steps.every(isBoardStep);
+    }
+    case 'milestone': {
+      const milestone = value as { phaseId?: unknown; title?: unknown; deliverables?: unknown; gate?: unknown };
+      if (typeof milestone.phaseId !== 'string' || typeof milestone.title !== 'string' || !Array.isArray(milestone.deliverables)) return false;
+      if (!milestone.deliverables.every((item) => typeof item === 'object' && item !== null && typeof (item as { id?: unknown }).id === 'string' && typeof (item as { title?: unknown }).title === 'string' && typeof (item as { submitted?: unknown }).submitted === 'boolean')) return false;
+      const gate = milestone.gate;
+      return typeof gate === 'object' && gate !== null &&
+        (gate as { type?: unknown }).type !== undefined &&
+        ['TheoryMastered', 'review', 'none'].includes(String((gate as { type?: unknown }).type)) &&
+        ['pending', 'passed', 'failed', 'not_required'].includes(String((gate as { status?: unknown }).status));
+    }
+    case 'idea_cards': {
+      const cards = value as { cards?: unknown };
+      return Array.isArray(cards.cards) && cards.cards.every((card) => typeof card === 'object' && card !== null && typeof (card as { ideaId?: unknown }).ideaId === 'string' && typeof (card as { title?: unknown }).title === 'string' && typeof (card as { description?: unknown }).description === 'string');
     }
     case 'interactive_experiment': {
       const exp = value as { experimentId?: unknown; title?: unknown };
@@ -78,6 +98,12 @@ export function isTutorToolCall(value: unknown): value is TutorToolCall {
   return call.result === undefined || typeof call.result === 'string';
 }
 
+function isBoardStep(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const step = value as { caption?: unknown; mermaid?: unknown; tex?: unknown; svg?: unknown };
+  const representations = [step.mermaid, step.tex, step.svg].filter((item) => item !== undefined);
+  return typeof step.caption === 'string' && representations.length === 1 && representations.every((item) => typeof item === 'string');
+}
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }

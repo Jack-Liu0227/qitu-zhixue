@@ -32,11 +32,18 @@ function serializeBlock(block: TutorReplyBlock): string {
       }
       return '';
     }
+    case 'quiz':
+      return `【互动测验】${block.stem}`;
+    case 'board':
+      return `【分步白板】${block.title ?? ''}\n${block.steps.map((step, index) => `${index + 1}. ${step.caption}`).join('\n')}`;
+    case 'milestone':
+      return `【阶段检查】${block.title}\n${block.deliverables.map((item) => `${item.submitted ? '已提交' : '待提交'}：${item.title}`).join('\n')}`;
     case 'attachment':
       return `【附件】${block.fileName ?? '文件'}`;
     case 'think':
-      // 内部思考链不复制到剪贴板
       return '';
+    case 'idea_cards':
+      return block.cards.map((card) => `【项目想法】${card.title}\n${card.description}`).join('\n\n');
     default:
       return '';
   }

@@ -2,7 +2,7 @@
 name: plan-api
 description: Implements the learning-plan service module — plan generation from confirmed intent, session and answer endpoints, server-side grading calls, TheoryMastered gating, idempotency, object-level authorization, and audit
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

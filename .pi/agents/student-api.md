@@ -2,7 +2,7 @@
 name: student-api
 description: Implements the student data-plane API modules — today aggregate, inspiration and intent confirmation, project instances and stages, workbench drafts with revision CAS, and works with server-aggregated evidence
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

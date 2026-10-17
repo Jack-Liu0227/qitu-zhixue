@@ -22,10 +22,14 @@ import { KnowledgeCenterService } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { KnowledgeBuildWorker } from './knowledge-build.worker';
 import { KnowledgeSourceService } from './knowledge-source.service';
+import { KnowledgeSourceSyncService } from './knowledge-source-sync.service';
 import { ProjectKnowledgeService } from './project-knowledge.service';
 import { ProjectKnowledgeController } from './project-knowledge.controller';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
+import { KnowledgeConnectionService } from './knowledge-connection.service';
+import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
+
 
 /**
  * 作用域知识模块。
@@ -49,6 +53,9 @@ import { KnowledgeUploadService } from './knowledge-upload.service';
   ],
   providers: [
     KnowledgeUploadService,
+    KnowledgeConnectionService,
+    KnowledgeLinkProbeService,
+    KnowledgeSourceSyncService,
     KnowledgeToolCatalogService,
     KnowledgeCenterService,
     KnowledgeEngineService,

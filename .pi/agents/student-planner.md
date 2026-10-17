@@ -2,7 +2,7 @@
 name: student-planner
 description: Produces a decision-complete spec for one student-center feature module or one AI-tutor engine slice, with routes, component tree, data contracts, states, and acceptance criteria; writes only into the run directory
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

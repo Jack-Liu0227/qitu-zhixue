@@ -18,7 +18,8 @@ import {
 } from '../../common/idempotency';
 import type { TutorModelGateway } from './gateway-tutor.provider';
 import { InMemoryTutorSessionStore } from './tutor-session.store';
-import { TutorService, type StreamedTutorEvent } from './tutor.service';
+import { makeIdeaCard, TutorService, toContractTurn, type StreamedTutorEvent } from './tutor.service';
+import type { TutorTurnRecord } from './tutor-session.store';
 
 /**
  * PostgreSQL 会话/回合持久化的聚焦验证。
@@ -133,6 +134,40 @@ async function drain(
   for await (const event of generator) events.push(event);
   return events;
 }
+
+test('想法卡片冻结已发布模板版本', () => {
+  const card = makeIdeaCard({
+    id: 'tpl-1', status: 'published', latestPublishedVersionId: 'tplv-1',
+    title: '校园观察', summary: '完成一次观察', learningObjectives: ['观察'],
+    domain: '科学', estimatedDurationMinutes: 240,
+  } as never);
+  assert.equal(card?.templateId, 'tpl-1');
+  assert.equal(card?.templateVersionId, 'tplv-1');
+});
+
+test('未达标 quiz 回合读回剥除 explanation、判分和答案提示', () => {
+  const persisted = {
+    turnId: 'turn-quiz', role: 'assistant', seq: 1, createdAt: new Date().toISOString(),
+    blocks: [{ kind: 'quiz', questionId: 'q1', stem: '选择', options: [
+      { key: 'A', text: '选项一', hint: '正确答案' }, { key: 'B', text: '选项二' },
+    ], explanation: '答案解析', graded: { correct: false, attempts: 1, hintLevel: 1 } }],
+    hintLevel: 1, stageBefore: null, stageAfter: null, modality: 'text',
+    pedagogicMove: 'hint', expectedEvidence: null, promptVersion: null, evidenceRef: null,
+  } as unknown as TutorTurnRecord;
+  const projected = toContractTurn(persisted);
+  assert.doesNotMatch(JSON.stringify(projected), /答案解析|正确答案|graded|explanation/);
+});
+
+test('显式 explain 回合可返回 quiz explanation 和判分', () => {
+  const persisted = {
+    turnId: 'turn-explain', role: 'assistant', seq: 1, createdAt: new Date().toISOString(),
+    blocks: [{ kind: 'quiz', questionId: 'q1', stem: '选择', options: [{ key: 'A', text: '选项一' }],
+      explanation: '经确认的解析', graded: { correct: true, attempts: 1, hintLevel: 5 } }],
+    hintLevel: 5, stageBefore: null, stageAfter: null, modality: 'text',
+    pedagogicMove: 'explain', expectedEvidence: null, promptVersion: null, evidenceRef: null,
+  } as unknown as TutorTurnRecord;
+  assert.match(JSON.stringify(toContractTurn(persisted)), /经确认的解析/);
+});
 
 test('持久化：重启等价重载能读回会话、回合与服务端字段', async () => {
   const store = new DurableMemoryStore();

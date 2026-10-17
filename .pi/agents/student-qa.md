@@ -2,7 +2,7 @@
 name: student-qa
 description: Runs one complete verification pass over a student feature or tutor-engine slice and writes a factual qa-report.md; never fixes anything and never marks an unchecked item as passed
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

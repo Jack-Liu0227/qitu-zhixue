@@ -2,7 +2,7 @@
 name: contract-owner
 description: Single writer for shared contracts, AI-client types, barrel files, and package exports; runs the typecheck and commits so parallel writers start from a frozen interface
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

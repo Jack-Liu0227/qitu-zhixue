@@ -1,4 +1,27 @@
 import { adminEnvelopeRequest } from './types';
+
+export type ReadinessStatus =
+  | 'ready'
+  | 'needs_key'
+  | 'needs_setup'
+  | 'not_installed'
+  | 'unavailable';
+
+export interface EngineCapabilities {
+  create?: boolean;
+  connect?: boolean;
+  search?: boolean;
+  materialize?: boolean;
+}
+
+export interface EngineHealth {
+  health_status?: string;
+  status?: ReadinessStatus;
+  error_code: string | null;
+  checked_at: string | null;
+  capabilities?: EngineCapabilities;
+}
+
 export interface Engine {
   name: string;
   description: string;
@@ -21,6 +44,14 @@ export interface CenterConfig {
     platformTools: { 'project-knowledge': ToolConfig };
   };
 }
+export interface ConnectionSummary {
+  status: string;
+  flavour?: string | null;
+  provider?: string | null;
+  externalRef?: Record<string, string | number | boolean | null>;
+  lastCheckAt?: string | null;
+  lastErrorCode?: string | null;
+}
 export interface Base {
   id: string;
   name: string;
@@ -33,6 +64,38 @@ export interface Base {
   active_index_version_id: string | null;
   document_count: number;
   updated_at: string;
+  mode?: 'create_new' | 'link_existing';
+  flavour?: string | null;
+  connection?: ConnectionSummary | null;
+}
+export interface KnowledgeSource {
+  id: string;
+  kind: 'folder' | 'github' | 'web' | string;
+  status: string;
+  sourceConfig?: Record<string, unknown>;
+  scheduleHours?: number | null;
+  lastSyncAt?: string | null;
+  lastSourceRevision?: string | null;
+  lastErrorCode?: string | null;
+  jobId?: string | null;
+}
+export type AgentKind = 'admin_assistant' | 'tutor_partner' | 'runtime_agent';
+export type BindingMode = 'retrieve' | 'materialize';
+export interface KnowledgeBinding {
+  agentKind: AgentKind;
+  agentId: string;
+  agentName?: string | null;
+  mode: BindingMode;
+  enabled: boolean;
+  revision?: number;
+  effective?: boolean;
+  readonlyReason?: string | null;
+  reasons?: string[];
+}
+export interface BindingSummary {
+  bindingRevision?: number;
+  bindings: KnowledgeBinding[];
+  catalog?: KnowledgeBinding[];
 }
 export interface BaseDetail extends Base {
   files: {
@@ -43,7 +106,10 @@ export interface BaseDetail extends Base {
     origin: Record<string, unknown>;
   }[];
   versions: { id: string; status: string; created_at: string; manifest: Record<string, unknown> }[];
-  jobs: { id: string; state: string; error_code: string | null; attempts: number }[];
+  jobs: { id: string; state: string; error_code: string | null; attempts: number; operation?: string }[];
+  connection?: ConnectionSummary | null;
+  sources?: KnowledgeSource[];
+  bindings?: BindingSummary;
 }
 export interface EngineGroup {
   provider: string;
@@ -52,14 +118,15 @@ export interface EngineGroup {
   instances: (Engine & {
     id: string;
     revision: number;
-    health: { health_status: string; error_code: string | null; checked_at: string } | null;
+    configurationStatus?: string;
+    health: EngineHealth | null;
     associatedBases: { id: string; name: string }[];
     configurationUrl: string;
   })[];
 }
 export const centerRequest = <T>(
   path: string,
-  method: 'GET' | 'POST' | 'PUT' = 'GET',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   body?: unknown,
   idempotencyKey?: string,
 ) => adminEnvelopeRequest<T>({ path: `/api/v1/admin/${path}`, method, body, idempotencyKey });
@@ -103,3 +170,63 @@ export const saveAssistantBindings = (
     { expectedRevision, assistantIds },
     idempotencyKey,
   );
+
+export interface LinkProbeRequest {
+  provider: string;
+  externalPath?: string;
+  serverUrl?: string;
+  remoteKnowledgeBaseId?: string;
+  zimName?: string;
+  deviceId?: string;
+  [key: string]: string | undefined;
+}
+export interface LinkProbeResult {
+  ok: boolean;
+  provider: string;
+  version?: string | null;
+  docCount?: number | null;
+  embedding?: { compatible?: boolean; signature?: string | null };
+  warnings?: string[];
+  errorCode?: string | null;
+}
+export interface CreateBaseRequest {
+  name: string;
+  engineInstanceId: string;
+  mode: 'create_new' | 'link_existing';
+  retrievalMode?: string;
+  storageWorkspaceRef?: string;
+  connection?: Record<string, string>;
+}
+export const probeLinkedBase = (body: LinkProbeRequest, key: string) =>
+  centerRequest<LinkProbeResult>('knowledge/bases/link-probe', 'POST', body, key);
+export const createKnowledgeBase = (body: CreateBaseRequest, key: string) =>
+  centerRequest<BaseDetail>('knowledge/bases', 'POST', body, key);
+export const fetchBaseBindings = (baseId: string) =>
+  centerRequest<BindingSummary>(`knowledge/bases/${encodeURIComponent(baseId)}/bindings`);
+export const saveBaseBindings = (
+  baseId: string,
+  body: { expectedRevision?: number; bindings: KnowledgeBinding[] },
+  key: string,
+) =>
+  centerRequest<BindingSummary>(
+    `knowledge/bases/${encodeURIComponent(baseId)}/bindings`,
+    'PUT',
+    body,
+    key,
+  );
+export const createKnowledgeSource = (baseId: string, body: unknown, key: string) =>
+  centerRequest<BaseDetail>(
+    `knowledge/bases/${encodeURIComponent(baseId)}/sources`,
+    'POST',
+    body,
+    key,
+  );
+export const syncKnowledgeSource = (baseId: string, sourceId: string, body: unknown, key: string) =>
+  centerRequest<BaseDetail>(
+    `knowledge/bases/${encodeURIComponent(baseId)}/sources/${encodeURIComponent(sourceId)}/sync`,
+    'POST',
+    body,
+    key,
+  );
+export const cancelKnowledgeJob = (jobId: string, key: string) =>
+  centerRequest<unknown>(`knowledge/jobs/${encodeURIComponent(jobId)}/cancel`, 'POST', {}, key);

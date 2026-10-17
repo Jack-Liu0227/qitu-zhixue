@@ -10,6 +10,7 @@ import {
 } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { KnowledgeSourceService } from './knowledge-source.service';
+import { KnowledgeSourceSyncService, KnowledgeSourceReadError } from './knowledge-source-sync.service';
 import { materializationAllowed, type SourcePolicy } from './knowledge-source.policy';
 
 interface Job {
@@ -20,6 +21,7 @@ interface Job {
   fencing_token: number;
   attempts: number;
   operation: string;
+  source_id?: string | null;
 }
 /** Durable database queue with renewable leases and fenced publication. */
 @Injectable()
@@ -30,6 +32,7 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
     private readonly center: KnowledgeCenterService,
     private readonly engine: KnowledgeEngineService,
     private readonly sources: KnowledgeSourceService,
+    private readonly sourceSync: KnowledgeSourceSyncService,
   ) {}
   onModuleInit() {
     if (process.env.QITU_KNOWLEDGE_WORKER === 'true')
@@ -79,8 +82,8 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
           .catch(() => {});
       }, 20_000);
       await this.build(job);
-    } catch {
-      if (job) await this.fail(job, 'KNOWLEDGE_PREPARATION_FAILED').catch(() => {});
+    } catch (error) {
+      if (job) await this.fail(job, error instanceof KnowledgeSourceReadError ? error.code : 'KNOWLEDGE_PREPARATION_FAILED').catch(() => {});
     } finally {
       if (heartbeat) clearInterval(heartbeat);
       this.busy = false;
@@ -92,17 +95,29 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
         code,
       ) && job.attempts < 3;
     if (retryable) state = 'queued';
-    await this.event(job, state, { errorCode: code });
+    // A cancelled or fenced job may no longer pass event()'s lease check. Candidate
+    // members must still be hidden even when the state transition is already owned by
+    // the cancelling request.
+    await this.event(job, state, { errorCode: code }).catch(() => {});
     await this.center.database().transaction(async (tx) => {
+      await tx.execute(
+        sql`UPDATE knowledge_base_members SET visibility='superseded' WHERE kb_id=${job.kb_id} AND visibility='candidate' AND origin->>'syncJobId'=${job.id}`,
+      );
       const updated = rows(
         await tx.execute(
           sql`UPDATE knowledge_jobs SET error_code=${code},lease_until=NULL,next_attempt_at=now()+${retryable ? job.attempts * 30 : 0}*interval '1 second' WHERE id=${job.id} AND fencing_token=${job.fencing_token} AND state=${state} RETURNING id`,
         ),
       );
-      if (updated.length)
+      if (updated.length) {
         await tx.execute(
           sql`UPDATE knowledge_bases SET build_state=${state} WHERE id=${job.kb_id} AND revision=${job.input_revision}`,
         );
+        if (job.operation === 'sync') {
+          const runState = state === 'cancelled' ? 'cancelled' : state === 'queued' ? 'queued' : 'failed';
+          await tx.execute(sql`UPDATE knowledge_sync_runs SET state=${runState},error_code=${code},updated_at=now() WHERE id=${job.id}`);
+          await tx.execute(sql`UPDATE knowledge_sources SET status=CASE WHEN status='revoked' THEN 'revoked' WHEN ${state}='cancelled' THEN 'active' WHEN ${state}='queued' THEN 'syncing' ELSE 'failed' END,last_error_code=${code},updated_at=now() WHERE id=(SELECT source_id FROM knowledge_jobs WHERE id=${job.id})`);
+        }
+      }
     });
   }
   private async build(job: Job) {
@@ -111,6 +126,38 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
     );
     if (!base || base.revision !== job.input_revision)
       return this.fail(job, 'INPUT_REVISION_CHANGED');
+    let syncBatch: Awaited<ReturnType<KnowledgeSourceSyncService['prepare']>> | null = null;
+    let syncSourceId: string | null = null;
+    if (job.operation === 'sync') {
+      const [source] = await this.center.query<{
+        id: string;
+        kind: string;
+        source_config: Record<string, unknown>;
+        status: string;
+        source_fingerprint: string;
+        last_source_revision: string | null;
+      }>(sql`SELECT id,kind,source_config,status,source_fingerprint,last_source_revision FROM knowledge_sources WHERE id=${job.source_id ?? ''} AND kb_id=${base.id}`);
+      if (!source || source.status === 'revoked') return this.fail(job, 'SOURCE_ACCESS_REVOKED');
+      const syncSource = source;
+      syncSourceId = syncSource.id;
+      // Remove only staged rows. The previous active source snapshot remains readable
+      // until the new index passes validation and is atomically published.
+      await this.center.database().execute(sql`UPDATE knowledge_base_members SET visibility='superseded' WHERE kb_id=${base.id} AND visibility='candidate'`);
+      syncBatch = await this.sourceSync.prepare({ kind: syncSource.kind, source_config: syncSource.source_config });
+      for (const document of syncBatch.documents) {
+        const memberId = `source-member-${checksum(`${syncSource.id}:${document.revision}`).slice(0, 40)}`;
+        const sourceChecksum = checksum(document.content);
+        await this.center.database().transaction(async (tx) => {
+          const [guard] = rows(
+            await tx.execute(
+              sql`SELECT j.id FROM knowledge_jobs j JOIN knowledge_sources s ON s.id=j.source_id WHERE j.id=${job.id} AND j.kb_id=${base.id} AND j.source_id=${syncSource.id} AND j.fencing_token=${job.fencing_token} AND j.lease_until>now() AND j.state NOT IN ('queued','ready','failed','empty','cancelled') AND s.status='syncing' AND s.source_fingerprint=${syncSource.source_fingerprint} AND s.last_source_revision IS NOT DISTINCT FROM ${syncSource.last_source_revision} FOR UPDATE`,
+            ),
+          );
+          if (!guard) throw new KnowledgeSourceReadError('SYNC_FENCE_CHANGED');
+          await tx.execute(sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin,visibility) VALUES(${memberId},${base.id},${document.title},${document.content},${sourceChecksum},${document.revision},${JSON.stringify({ kind: 'managed-source', sourceId: syncSource.id, sourceFingerprint: document.revision, syncJobId: job.id })}::jsonb,'candidate') ON CONFLICT(kb_id,checksum) DO NOTHING`);
+        });
+      }
+    }
     const { revision: configRevision, config } = await this.center.configuration();
     const target =
       base.engine_instance_id ??
@@ -175,7 +222,9 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
       }
     }
     let members = await this.center.query<KnowledgeMember>(
-      sql`SELECT * FROM knowledge_base_members WHERE kb_id=${base.id} AND visibility='active' ORDER BY created_at`,
+      job.operation === 'sync' && syncSourceId
+        ? sql`SELECT * FROM knowledge_base_members WHERE kb_id=${base.id} AND ((visibility='active' AND (origin->>'kind' IS DISTINCT FROM 'managed-source' OR origin->>'sourceId' IS DISTINCT FROM ${syncSourceId} OR NOT EXISTS (SELECT 1 FROM knowledge_base_members c WHERE c.kb_id=${base.id} AND c.visibility='candidate' AND c.origin->>'syncJobId'=${job.id} AND c.title=knowledge_base_members.title))) OR (visibility='candidate' AND origin->>'syncJobId'=${job.id})) ORDER BY created_at`
+        : sql`SELECT * FROM knowledge_base_members WHERE kb_id=${base.id} AND visibility='active' ORDER BY created_at`,
     );
     if (base.kind === 'project') {
       const sources = await this.center.query<KnowledgeMember & SourcePolicy>(
@@ -238,6 +287,20 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
         ),
       );
       if (revoked.length) throw new Error('SOURCE_AUTHORIZATION_CHANGED');
+      if (syncSourceId) {
+        const [sourceFence] = rows<{ id: string }>(
+          await tx.execute(
+            sql`SELECT id FROM knowledge_sources WHERE id=${syncSourceId} AND kb_id=${base.id} AND status='syncing' FOR UPDATE`,
+          ),
+        );
+        if (!sourceFence) throw new Error('SOURCE_ACCESS_REVOKED');
+        await tx.execute(
+          sql`UPDATE knowledge_base_members SET visibility='superseded' WHERE kb_id=${base.id} AND visibility='active' AND origin->>'kind'='managed-source' AND origin->>'sourceId'=${syncSourceId}`,
+        );
+        await tx.execute(
+          sql`UPDATE knowledge_base_members SET visibility='active' WHERE kb_id=${base.id} AND visibility='candidate' AND origin->>'syncJobId'=${job.id}`,
+        );
+      }
       await tx.execute(
         sql`INSERT INTO knowledge_index_versions(id,kb_id,status,config_snapshot,artifact_ref,manifest) VALUES(${versionId},${base.id},'ready',${JSON.stringify({ engine, configRevision })}::jsonb,${versionId},${JSON.stringify({ ...receipt.manifest, memberIds: members.map((m) => m.id) })}::jsonb)`,
       );
@@ -247,6 +310,10 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
       await tx.execute(
         sql`UPDATE knowledge_jobs SET state='ready',lease_until=NULL,error_code=NULL,updated_at=now() WHERE id=${job.id}`,
       );
+      if (syncBatch && job.source_id) {
+        await tx.execute(sql`UPDATE knowledge_sync_runs SET state='ready',discovered_count=${syncBatch.discovered},accepted_count=${syncBatch.accepted},rejected_count=${syncBatch.rejected},bytes_read=${syncBatch.bytesRead},pages_read=${syncBatch.pagesRead},error_code=NULL,updated_at=now() WHERE id=${job.id}`);
+        await tx.execute(sql`UPDATE knowledge_sources SET status='active',last_sync_at=now(),last_source_revision=${syncBatch.sourceRevision},last_error_code=NULL,updated_at=now() WHERE id=${job.source_id}`);
+      }
       await tx.execute(
         sql`INSERT INTO knowledge_job_events(job_id,event_seq,state,detail) SELECT ${job.id},coalesce(max(event_seq),0)+1,'ready',${JSON.stringify({ versionId, documents: members.length })}::jsonb FROM knowledge_job_events WHERE job_id=${job.id}`,
       );

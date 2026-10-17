@@ -1,0 +1,12 @@
+BEGIN;
+DROP TABLE IF EXISTS knowledge_base_agent_bindings;
+DROP INDEX IF EXISTS knowledge_jobs_source_request_unique_idx;
+ALTER TABLE knowledge_jobs DROP CONSTRAINT IF EXISTS knowledge_jobs_operation_check;
+ALTER TABLE knowledge_jobs DROP COLUMN IF EXISTS budget_snapshot;
+ALTER TABLE knowledge_jobs DROP COLUMN IF EXISTS request_hash;
+ALTER TABLE knowledge_jobs DROP COLUMN IF EXISTS source_id;
+DROP TABLE IF EXISTS knowledge_sync_runs;
+DROP TABLE IF EXISTS knowledge_sources;
+DROP INDEX IF EXISTS knowledge_base_connections_provider_idx;
+DROP TABLE IF EXISTS knowledge_base_connections;
+COMMIT;

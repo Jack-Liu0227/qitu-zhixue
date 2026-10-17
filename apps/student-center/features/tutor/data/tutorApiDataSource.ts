@@ -6,6 +6,8 @@ import type {
   CreateTutorSessionResponse,
   CreateTutorTurnRequest,
   CreateTutorTurnResponse,
+  AnswerInteractiveQuizRequest,
+  AnswerInteractiveQuizResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorProjectContext as SharedTutorProjectContext,
@@ -32,7 +34,7 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
-  async confirmExploration(explorationId: string, draft: { goal: string; interest: string }, idempotencyKey: string): Promise<ConfirmIntentResponse> {
+  async confirmExploration(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse> {
     const goal = draft.goal.trim();
     const interest = draft.interest.trim();
     if (!goal || goal.length > 120 || !interest || interest.length > 24) {
@@ -48,7 +50,8 @@ export class TutorApiDataSource implements TutorDataSource {
       });
     }
     const payload = await this.fetchJson(`/api/v1/explorations/${encodeURIComponent(explorationId)}/confirm-intent`, '学习意图确认失败', {
-      method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey }, body: JSON.stringify({}),
+      method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey },
+      body: JSON.stringify({ templateVersionId: draft.templateVersionId }),
     });
     const result = unwrapData(payload) as ConfirmIntentResponse | null;
     if (!result?.project?.id) throw new TutorDataError('确认响应缺少项目', undefined, 'BAD_CONFIRMATION_PAYLOAD');
@@ -212,6 +215,36 @@ export class TutorApiDataSource implements TutorDataSource {
     };
   }
 
+  async answerInteractiveQuiz(
+    sessionId: string,
+    quizId: string,
+    request: AnswerInteractiveQuizRequest,
+  ): Promise<AnswerInteractiveQuizResponse> {
+    const payload = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/interactive/${encodeURIComponent(quizId)}/answer`,
+      '答案提交失败',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': request.idempotencyKey },
+        body: JSON.stringify({ selectedKeys: request.selectedKeys, idempotencyKey: request.idempotencyKey }),
+      },
+    );
+    const data = unwrapData(payload);
+    if (!isAnswerInteractiveQuizResponse(data, quizId)) {
+      throw new TutorDataError('判分响应格式不正确', undefined, 'BAD_QUIZ_ANSWER_PAYLOAD');
+    }
+    return data;
+  }
+
+  async requestQuizExplanation(sessionId: string, quizId: string): Promise<void> {
+    const key = `quiz-explain-${sessionId}-${quizId}`;
+    await this.submitTurn(sessionId, {
+      content: `请解释题目 ${quizId} 的这个概念`,
+      pedagogicMove: 'explain',
+      idempotencyKey: key,
+    });
+  }
+
   async getSummary(sessionId: string): Promise<TutorSessionSummary> {
     const response = await this.fetchJson(
       `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/summary`,
@@ -314,10 +347,11 @@ function isTutorProjectContext(value: unknown): value is TutorProjectContext {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Partial<SharedTutorProjectContext>;
   return (
-    typeof candidate.project?.id === 'string' &&
-    typeof candidate.project?.title === 'string' &&
-    typeof candidate.project?.stage === 'string' &&
-    typeof candidate.project?.progress === 'number' &&
+    (candidate.project === null ||
+      (typeof candidate.project?.id === 'string' &&
+        typeof candidate.project?.title === 'string' &&
+        typeof candidate.project?.stage === 'string' &&
+        typeof candidate.project?.progress === 'number')) &&
     typeof candidate.progress?.currentStageIndex === 'number' &&
     typeof candidate.progress?.stageTotal === 'number' &&
     typeof candidate.progress?.progressPercent === 'number' &&
@@ -356,6 +390,28 @@ function unwrapData(body: unknown): unknown {
     return (body as { data: unknown }).data;
   }
   return body;
+}
+
+function isAnswerInteractiveQuizResponse(value: unknown, quizId: string): value is AnswerInteractiveQuizResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<AnswerInteractiveQuizResponse>;
+  return (
+    candidate.quizId === quizId &&
+    typeof candidate.correct === 'boolean' &&
+    typeof candidate.attempts === 'number' &&
+    typeof candidate.hintLevel === 'number' &&
+    (candidate.explanation === null || typeof candidate.explanation === 'string') &&
+    (candidate.correctKeys === null || Array.isArray(candidate.correctKeys)) &&
+    Array.isArray(candidate.conceptDeltas) &&
+    candidate.conceptDeltas.every((delta) => (
+      typeof delta === 'object' && delta !== null &&
+      typeof delta.conceptId === 'string' &&
+      typeof delta.before === 'number' && typeof delta.after === 'number' &&
+      typeof delta.mastered === 'boolean'
+    )) &&
+    (candidate.nextGuidance === undefined || candidate.nextGuidance === null || typeof candidate.nextGuidance === 'string') &&
+    typeof candidate.replayed === 'boolean'
+  );
 }
 
 function isTutorSessionResponse(value: unknown): value is GetTutorSessionResponse {

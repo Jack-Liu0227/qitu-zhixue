@@ -2,7 +2,7 @@
 name: tutor-pedagogy
 description: Implements the Socratic tutoring policy — pedagogic move selection, the 1-5 hint ladder, the no-full-answer guard, and the turn record; owns the pure policy package only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

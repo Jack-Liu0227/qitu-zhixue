@@ -92,7 +92,7 @@ export const HINT_LEVEL_MIN: TutorHintLevel = 1;
 export const HINT_LEVEL_MAX: TutorHintLevel = 5;
 /** `hint` / `debug_guide` 最多爬到第 3 档。 */
 export const HINT_PATH_MAX_LEVEL: TutorHintLevel = 3;
-/** `scaffold` 渲染第 4 档（2–6 步，每步一个目标）。 */
+/** `scaffold` 每轮最多升一级，目标上限为第 4 档（2–6 步，每步一个目标）。 */
 export const SCAFFOLD_LEVEL: TutorHintLevel = 4;
 /** 第 5 档只能由 `explain` 产生。 */
 export const EXPLAIN_ONLY_LEVEL: TutorHintLevel = 5;
@@ -105,7 +105,7 @@ export const CONTINUOUS_GUIDANCE_TURN_CAP = 6;
  * 本轮应当达到的提示等级。
  *
  * 这是唯一的等级决策点：`hint` / `debug_guide` 每轮最多 +1 且不超过第 3 档；
- * `scaffold` 固定第 4 档；`explain` 是唯一能到第 5 档的入口；`review_work`
+ * `scaffold` 每轮最多 +1 且不超过第 4 档；`explain` 是唯一能到第 5 档的入口；`review_work`
  * 与 `stall_signal` 不改变等级。任何「一次跳到第 5 档」的路径在这里被挡住。
  */
 export function selectHintLevel(
@@ -115,7 +115,7 @@ export function selectHintLevel(
 ): TutorHintLevel | null {
   switch (move) {
     case 'scaffold':
-      return SCAFFOLD_LEVEL;
+      return riseFrom(previous, turnCount, SCAFFOLD_LEVEL);
     case 'explain':
       return EXPLAIN_ONLY_LEVEL;
     case 'review_work':
@@ -130,10 +130,14 @@ export function selectHintLevel(
   }
 }
 
-function riseFrom(previous: TutorHintLevel | null, turnCount: number): TutorHintLevel {
+function riseFrom(
+  previous: TutorHintLevel | null,
+  turnCount: number,
+  maximum: TutorHintLevel = HINT_PATH_MAX_LEVEL,
+): TutorHintLevel {
   if (turnCount >= CONTINUOUS_GUIDANCE_TURN_CAP && previous !== null) return previous;
   if (previous === null) return HINT_LEVEL_MIN;
-  const risen = Math.min(previous + MAX_HINT_RISE_PER_TURN, HINT_PATH_MAX_LEVEL);
+  const risen = Math.min(previous + MAX_HINT_RISE_PER_TURN, maximum);
   return Math.max(previous, risen) as TutorHintLevel;
 }
 

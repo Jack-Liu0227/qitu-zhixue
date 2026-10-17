@@ -137,7 +137,11 @@ export class PostgresExplorationStore extends ExplorationStore {
 
         await tx
           .update(explorationSessions)
-          .set({ status: 'confirmed', updatedAt: input.confirmedAt })
+          .set({
+            status: 'confirmed',
+            templateVersionId: input.project.templateVersionId,
+            updatedAt: input.confirmedAt,
+          })
           .where(eq(explorationSessions.id, input.explorationId));
 
         const insertedProject = await tx

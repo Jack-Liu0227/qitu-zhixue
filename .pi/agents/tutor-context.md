@@ -2,7 +2,7 @@
 name: tutor-context
 description: Assembles the per-turn context_packet and projects the learner profile from evidence-backed facts, minimizing minor-visible data
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

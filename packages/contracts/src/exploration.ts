@@ -89,6 +89,17 @@ export interface UpdateIntentDraftRequest {
  */
 export interface ConfirmIntentRequest {
   note?: string | null;
+  /**
+   * 可选：本次立项要冻结的已发布模板版本 id。
+   *
+   * 自由探索（`source=free`）创建时按合同不带模板，所以对话内一键立项
+   * 只能在**确认这一刻**绑定模板。服务端必须重新校验「已发布 + 该学生
+   * 可见」，绝不直接信任客户端；校验不过则拒绝确认，不得静默落成 null。
+   *
+   * 本字段必须进入幂等 requestHash：同一 `Idempotency-Key` 携不同模板版本
+   * 要返回 409，而不是静默重放首次结果。
+   */
+  templateVersionId?: string | null;
 }
 
 /**

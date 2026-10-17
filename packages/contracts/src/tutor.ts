@@ -91,6 +91,12 @@ export type TutorReplyBlock =
     }
   /**
    * 启发式题目与问答选择卡片。
+   *
+   * 选择题由服务端根据掌握度动态选取（见 `linkedConceptIds`），客户端
+   * 只渲染与回传选择，**不判分、不生成选项**。
+   *
+   * 答案泄露红线：`explanation` 与正确选项在学生未达标或未显式请求
+   * `explain` 之前不得下发；答错只给 `rationaleHint` 引导，不直接给答案。
    */
   | {
       kind: 'quiz';
@@ -100,6 +106,12 @@ export type TutorReplyBlock =
       options: { key: string; text: string; hint?: string }[];
       explanation?: string;
       selectedKey?: string;
+      /** 关联的掌握度概念 id，服务端据此动态选题与回写掌握度。 */
+      linkedConceptIds?: string[];
+      /** 答错后的引导（不包含正确答案）。 */
+      rationaleHint?: string;
+      /** 已判分结果；未作答时缺省。由服务端写入，客户端不得自行推断。 */
+      graded?: { correct: boolean; attempts: number; hintLevel: TutorHintLevel };
     }
   /**
    * 动态物理/算法参数探索实验卡片 (如动能定理控制变量法实验)。
@@ -137,6 +149,34 @@ export type TutorReplyBlock =
    * 存在且已发布的模板。学生**不点击就不创建**（未确认意图不得创建正式项目），
    * 助手不得代替学生触发确认。点击后走既有 `confirmExploration` 幂等接口。
    */
+  /**
+   * 白板式分步图示（OpenMAIC whiteboard 对应物）。
+   *
+   * 只读、逐步推进；**绝不携带脚本或任意 HTML**，只能是 mermaid/tex/svg
+   * 三种受控形式之一，由服务端生成。
+   */
+  | {
+      kind: 'board';
+      boardId: string;
+      title?: string;
+      steps: { caption: string; mermaid?: string; tex?: string; svg?: string }[];
+    }
+  /**
+   * 阶段检查卡（里程碑）：当前阶段交付物与门禁状态。
+   *
+   * 所有状态只读自服务端门禁事实（`pbl_gate_evidence`）；客户端不得推算。
+   * `TheoryMastered` 未过时不得出现实践类入口。
+   */
+  | {
+      kind: 'milestone';
+      phaseId: string;
+      title: string;
+      deliverables: { id: string; title: string; submitted: boolean }[];
+      gate: {
+        type: 'TheoryMastered' | 'review' | 'none';
+        status: 'pending' | 'passed' | 'failed' | 'not_required';
+      };
+    }
   | { kind: 'idea_cards'; cards: TutorIdeaCard[] };
 
 /** 一张可一键立项的想法卡片。 */
@@ -151,6 +191,17 @@ export interface TutorIdeaCard {
   rationale: string;
   /** 关联的项目模板 id；服务端校验存在且 published。 */
   templateId: string;
+  /**
+   * 已发布的模板**版本** id（`project_template_versions.id`）。
+   *
+   * 立项时必须回传它，服务端会重新校验「已发布 + 该学生可见」后冻结到
+   * 项目上（`projects.template_version_id`）。只有 `templateId` 不够：
+   * 团队身份与阶段投影都靠 `template_version_id` 解析，缺了它立项后
+   * 拿不到导师团队。
+   *
+   * 客户端传什么不算数：服务端不得信任此值，必须自己重查。
+   */
+  templateVersionId: string;
   /** 卡片携带的建议目标，学生可在卡片内微调后确认。 */
   suggestedGoal: string;
   /** 卡片携带的建议兴趣，学生可在卡片内微调后确认。 */
@@ -227,7 +278,16 @@ export interface TutorProjectCurrentTask {
 
 /** Server-owned project context projection used by the AI搭档 page. */
 export interface TutorProjectContext {
-  project: ProjectSummary;
+  /**
+   * 正式项目的摘要；**自由探索会话为 `null`**。
+   *
+   * 探索会话尚未创建项目（跨域硬规则：未确认意图不得创建正式项目），
+   * 因此这里绝不返回哨兵/占位项目——否则前端会把不存在的 projectId
+   * 当成真实项目去拉知识库与进度。判断「是否有项目」必须用本字段，
+   * 不能用 `TutorProjectContext` 本身是否为 null（探索会话也有上下文，
+   * 因为要携带 `team` 身份）。
+   */
+  project: ProjectSummary | null;
   progress: StageProgressDisplay;
   stages: TemplateStage[];
   currentTask: TutorProjectCurrentTask | null;
@@ -455,4 +515,37 @@ export interface CreateTutorFeedbackRequest {
 
 export interface CreateTutorFeedbackResponse {
   accepted: true;
+}
+
+/**
+ * POST /api/v1/tutor/sessions/:id/interactive/:quizId/answer
+ *
+ * 交互题作答。**判分只发生在服务端**（mastery/题库领域 owner 校验后才成为
+ * 正式掌握度事实）；同一 `idempotencyKey` 重复提交不得重复计分。
+ */
+export interface AnswerInteractiveQuizRequest {
+  /** 学生选择的选项 key（多选时为多个）。 */
+  selectedKeys: string[];
+  idempotencyKey: string;
+}
+
+export interface AnswerInteractiveQuizResponse {
+  quizId: string;
+  correct: boolean;
+  /** 该题累计作答次数（含本次）。 */
+  attempts: number;
+  /** 作答后该概念的提示阶梯等级。 */
+  hintLevel: TutorHintLevel;
+  /**
+   * 正确答案与解析：**仅在概念已达标或学生显式请求 `explain` 时才非空**。
+   * 在此之前必须为 null，避免答案泄露。
+   */
+  explanation: string | null;
+  correctKeys: string[] | null;
+  /** 关联概念的掌握度变化投影；无变化时为空数组。 */
+  conceptDeltas: { conceptId: string; before: number; after: number; mastered: boolean }[];
+  /** 下一步引导（不含答案）。 */
+  nextGuidance?: string | null;
+  /** 幂等重放标记：true 表示本次是重放，未重复计分。 */
+  replayed: boolean;
 }

@@ -7,7 +7,7 @@ tools:
   - bash
   - write
   - edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 systemPromptMode: append
 inheritProjectContext: true

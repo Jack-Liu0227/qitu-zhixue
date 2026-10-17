@@ -35,9 +35,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [teamGraph, setTeamGraph] = useState<TutorTeamGraph | null>(null);
   const [teamGraphStatus, setTeamGraphStatus] = useState<TutorLoadStatus>(projectId ? 'loading' : 'empty');
   const [teamGraphError, setTeamGraphError] = useState<TutorViewError | null>(null);
-  const confirmKey = useRef<string | null>(null);
+  const confirmKey = useRef<{ explorationId: string; templateVersionId: string; key: string } | null>(null);
 
   const team = session.project?.team;
+  /** 探索会话为 null；只有真实项目才能拉知识库与进度。 */
+  const projectSummary = session.project?.project ?? null;
   const servingAssistantName = team?.assistantName ?? '启途智学助手';
   const currentAssistantName = team?.teamName ?? servingAssistantName;
   const currentIdentityName = currentAssistantName;
@@ -107,16 +109,18 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const busy = session.streaming || session.submitting || composer.submitting;
   const error = session.submitError ?? session.streamNotice ?? (confirmationError ? { message: confirmationError } : null);
 
-  async function handleOneClickCreateProject(goal: string, interest: string) {
-    if (!session.explorationId || !source.confirmExploration || confirming) return;
+  async function handleOneClickCreateProject(goal: string, interest: string, templateVersionId: string) {
+    if (!session.explorationId || !source.confirmExploration || confirming || !templateVersionId.trim()) return;
     setConfirming(true);
     setConfirmationError(null);
-    confirmKey.current ??= createIdempotencyKey();
+    if (confirmKey.current?.explorationId !== session.explorationId || confirmKey.current.templateVersionId !== templateVersionId) {
+      confirmKey.current = { explorationId: session.explorationId, templateVersionId, key: createIdempotencyKey() };
+    }
     try {
       const result = await source.confirmExploration(
         session.explorationId,
-        { goal: goal.trim(), interest: interest.trim() },
-        confirmKey.current,
+        { goal: goal.trim(), interest: interest.trim(), templateVersionId },
+        confirmKey.current.key,
       );
       router.push(`/tutor/${encodeURIComponent(result.project.id)}`);
     } catch (cause) {
@@ -174,7 +178,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         onToggle={() => setLeftOpen(!leftOpen)}
         currentProjectId={projectId}
         currentExplorationId={session.explorationId}
-        currentTitle={session.project?.project.title}
+        currentTitle={projectSummary?.title}
         currentAssistantName={currentAssistantName}
         currentTurnCount={session.turns.length}
         busy={busy || confirming}
@@ -186,7 +190,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       />
       <div className="qitu-tutor-center-column">
         {error ? <div role="alert" className="qitu-tutor-inline-alert">{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
-        {session.project?.project.id && <ProjectKnowledgeStatus projectId={session.project.project.id} />}
+        {projectSummary?.id && <ProjectKnowledgeStatus projectId={projectSummary.id} />}
         <ChatThread
           sessionId={session.sessionId}
           turns={session.turns}
@@ -205,6 +209,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             else void session.selectOption(label).catch(() => undefined);
           }}
           onOneClickCreateProject={handleOneClickCreateProject}
+          onAnswerQuiz={(quizId, selectedKeys, idempotencyKey) => session.answerQuiz(quizId, selectedKeys, idempotencyKey)}
+          onRequestQuizExplanation={(quizId) => session.explainQuiz(quizId)}
+          projectId={projectSummary?.id ?? null}
           isConfirmingProject={confirming}
           composer={
             <Composer
@@ -242,9 +249,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             <ErrorState title="项目进度加载失败" description={session.projectError?.message} errorCode={session.projectError?.code} onRetry={session.retryProject} />
           ) : session.offline ? (
             <OfflineBanner readOnly onRetry={session.reconnect} />
-          ) : session.project ? (
+          ) : projectSummary && session.project ? (
             <>
-              <ProjectCard project={session.project.project} />
+              <ProjectCard project={projectSummary} />
               <CurrentTask task={session.project.currentTask} />
               <TutorTeamRail phases={session.project.phases ?? []} />
             </>

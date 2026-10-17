@@ -2,7 +2,7 @@
 name: tutor-api
 description: Implements the AI-tutor service module — sessions, turns, streaming, summary, feedback, idempotency, object-level authorization, and audit
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

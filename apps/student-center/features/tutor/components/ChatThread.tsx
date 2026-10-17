@@ -22,6 +22,9 @@ export function ChatThread({
   onReconnect,
   onSelectOption,
   onOneClickCreateProject,
+  onRequestQuizExplanation,
+  onAnswerQuiz,
+  projectId,
   currentAssistantName,
   isConfirmingProject = false,
   composer,
@@ -37,7 +40,10 @@ export function ChatThread({
   onRetry: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
-  onOneClickCreateProject?: (goal: string, interest: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
+  onRequestQuizExplanation?: (quizId: string) => Promise<void>;
+  onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  projectId?: string | null;
   currentAssistantName?: string;
   isConfirmingProject?: boolean;
   composer: ReactNode;
@@ -123,6 +129,9 @@ export function ChatThread({
             currentAssistantName={currentAssistantName}
             onSelectOption={onSelectOption}
             onOneClickCreateProject={onOneClickCreateProject}
+            onRequestQuizExplanation={onRequestQuizExplanation}
+            onAnswerQuiz={onAnswerQuiz}
+            projectId={projectId}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />

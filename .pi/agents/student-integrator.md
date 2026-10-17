@@ -2,7 +2,7 @@
 name: student-integrator
 description: Wires implemented feature modules into student-center routes, shell, and navigation, resolves interface mismatches at the wiring layer, and makes typecheck and build pass
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

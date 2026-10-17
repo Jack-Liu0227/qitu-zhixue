@@ -2,7 +2,7 @@
 name: curriculum-planner
 description: Implements the interest-to-plan generator that turns a child's interest into a validated 4 or 8 week, one-hour-per-session learning plan with theory-before-practice objective ordering; owns the pure curriculum package only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

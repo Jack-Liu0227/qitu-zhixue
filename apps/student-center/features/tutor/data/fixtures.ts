@@ -5,11 +5,27 @@ import type {
   TemplateStage,
   TutorSessionSummary,
   TutorTurn,
+  TutorIdeaCard,
 } from '@qitu/contracts';
 import type { TutorProjectContext } from '../types';
 
 export const MOCK_SESSION_ID = 'session-demo-001';
 export const MOCK_PROJECT_ID = 'pbl-thunder-fighter';
+
+export const MOCK_IDEA_CARDS: TutorIdeaCard[] = [
+  {
+    ideaId: 'idea-thunder-fighter',
+    title: '雷霆战机：从零打造小游戏',
+    description: '通过制作飞行射击游戏理解主循环与碰撞检测。',
+    weeks: 4,
+    rationale: '匹配编程与游戏设计兴趣。',
+    templateId: 'python-game-project',
+    templateVersionId: 'python-game-project:v1',
+    suggestedGoal: '制作一款可操作的飞行射击小游戏',
+    suggestedInterest: 'Python 游戏开发',
+    teamName: '雷霆战机团队',
+  },
+];
 
 export const MOCK_ACTIVE_PROJECT: ProjectSummary = {
   id: MOCK_PROJECT_ID,

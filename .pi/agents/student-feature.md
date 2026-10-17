@@ -2,7 +2,7 @@
 name: student-feature
 description: Implements exactly one student-center feature module against the approved spec and shared contracts, covering all five UI states; owns only its feature directory
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

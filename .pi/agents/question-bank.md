@@ -2,7 +2,7 @@
 name: question-bank
 description: Implements question generation and the answer-key boundary — builds server-side question cards and the student-safe public projection that never leaks expected answers; owns the pure questions package only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

@@ -2,19 +2,72 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  cancelKnowledgeJob,
   centerRequest,
-  fetchCenterConfig,
+  createKnowledgeBase,
+  createKnowledgeSource,
   fetchAssistantBindings,
+  fetchBaseBindings,
+  fetchCenterConfig,
+  probeLinkedBase,
   saveAssistantBindings,
+  saveBaseBindings,
+  syncKnowledgeSource,
   type AssistantBindings,
   type Base,
   type BaseDetail,
+  type BindingMode,
   type EngineGroup,
   type CenterConfig,
+  type KnowledgeBinding,
+  type LinkProbeResult,
+  type ReadinessStatus,
 } from '../../../../lib/api/knowledge-center';
 import { createIdempotentRetryKey } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 import { KnowledgeFileUpload } from '../../../../lib/components/KnowledgeFileUpload';
+const readinessLabels: Record<string, string> = {
+  ready: 'Ready',
+  needs_key: 'Needs key',
+  needs_setup: 'Needs setup',
+  not_installed: 'Not installed',
+  unavailable: 'Unavailable',
+};
+const groupLabels: Record<string, string> = {
+  local: '本地引擎',
+  server: '服务器引擎',
+  cloud: '云服务',
+  external: '外部知识源',
+  Local: '本地引擎',
+  Server: '服务器引擎',
+  Cloud: '云服务',
+  External: '外部知识源',
+};
+function engineStatus(instance: EngineGroup['instances'][number]): ReadinessStatus {
+  return (instance.health?.status ?? instance.health?.health_status ?? 'unavailable') as ReadinessStatus;
+}
+function statusText(status: string) {
+  return readinessLabels[status] ?? status;
+}
+function providerFields(provider: string) {
+  if (provider === 'kiwix') return ['serverUrl', 'zimName'];
+  if (provider === 'marginnote' || provider === 'marginnote4') return ['deviceId', 'serverUrl'];
+  if (provider === 'obsidian' || provider === 'linked') return ['externalPath'];
+  if (provider === 'weknora') return ['serverUrl', 'remoteKnowledgeBaseId'];
+  if (provider === 'ima') return ['remoteKnowledgeBaseId'];
+  if (provider === 'lightrag-server') return ['serverUrl', 'workspace'];
+  return [];
+}
+function fieldLabel(field: string) {
+  return ({
+    externalPath: '服务端允许的索引路径',
+    serverUrl: '服务端地址',
+    remoteKnowledgeBaseId: '远端知识库 ID',
+    zimName: 'ZIM 名称',
+    deviceId: '设备 ID',
+    workspace: '工作区',
+  } as Record<string, string>)[field] ?? field;
+}
 const states: Record<string, string> = {
   queued: '等待准备',
   discovering: '发现资料',
@@ -39,9 +92,16 @@ export default function KnowledgeCenterPage() {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('all');
   const [detail, setDetail] = useState<BaseDetail | null>(null);
+
   const [newBase, setNewBase] = useState(false);
+  const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState('');
   const [engine, setEngine] = useState('');
+  const [retrievalMode, setRetrievalMode] = useState('hybrid');
+  const [createMode, setCreateMode] = useState<'create_new' | 'link_existing'>('create_new');
+  const [connectionFields, setConnectionFields] = useState<Record<string, string>>({});
+  const [preflight, setPreflight] = useState<{ ok: boolean; message: string; result?: LinkProbeResult } | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [materialize, setMaterialize] = useState(false);
@@ -55,6 +115,23 @@ export default function KnowledgeCenterPage() {
   const [jobRecord, setJobRecord] = useState<{
     events: { state: string; detail: Record<string, unknown>; occurred_at: string }[];
   } | null>(null);
+  const [online, setOnline] = useState(true);
+  const [baseBindings, setBaseBindings] = useState<KnowledgeBinding[] | null>(null);
+  const [bindingRevision, setBindingRevision] = useState(0);
+  const [baseBindingDraft, setBaseBindingDraft] = useState<KnowledgeBinding[]>([]);
+  const [baseBindingError, setBaseBindingError] = useState<Error | null>(null);
+  const [sourceKind, setSourceKind] = useState<'folder' | 'github' | 'web'>('folder');
+  const [sourceValue, setSourceValue] = useState('');
+  useEffect(() => {
+    const updateOnline = () => setOnline(navigator.onLine);
+    updateOnline();
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -94,7 +171,20 @@ export default function KnowledgeCenterPage() {
     setBusy(true);
     setError(null);
     try {
-      setDetail(await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`));
+      const result = await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`);
+      setDetail(result);
+      setBaseBindingError(null);
+      try {
+        const bindingData = result.bindings ?? await fetchBaseBindings(id);
+        const availableBindings = bindingData.catalog ?? bindingData.bindings ?? [];
+        setBaseBindings(availableBindings);
+        setBaseBindingDraft(availableBindings);
+
+        setBindingRevision(bindingData.bindingRevision ?? 0);
+      } catch (bindingLoadError) {
+        setBaseBindings(null);
+        setBaseBindingError(bindingLoadError instanceof Error ? bindingLoadError : new Error('逐库绑定读取失败'));
+      }
     } catch (e) {
       setError(e instanceof Error ? e : new Error('读取失败'));
     } finally {
@@ -102,6 +192,10 @@ export default function KnowledgeCenterPage() {
     }
   }
   async function mutate(path: string, body: unknown) {
+    if (!online) {
+      setError(new Error('浏览器当前离线，写操作未发送。恢复连接后请手动重试。'));
+      return false;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -132,10 +226,10 @@ export default function KnowledgeCenterPage() {
           <div className="settings-desc">管理教学资料、项目知识库与知识引擎。</div>
         </div>
         <div className="settings-page-actions">
-          <button className="settings-action-btn" onClick={() => void load()} disabled={busy}>
+          <button className="settings-action-btn" onClick={() => void load()} disabled={busy || !online}>
             刷新
           </button>
-          <button className="settings-action-btn is-primary" onClick={() => setNewBase(true)}>
+          <button className="settings-action-btn is-primary" onClick={() => { setNewBase(true); setCreateStep(1); setPreflight(null); }} disabled={!online}>
             新建知识库
           </button>
         </div>
@@ -159,7 +253,9 @@ export default function KnowledgeCenterPage() {
         </button>
       </div>
       {view}
+      {!online && <p role="status">浏览器当前离线。写操作已禁用，恢复连接后可手动重试读取。</p>}
       {notice && <p role="status">{notice}</p>}
+
       {!loading && !error && tab === 'bases' && (
         <>
           <div className="settings-page-actions">
@@ -203,6 +299,7 @@ export default function KnowledgeCenterPage() {
                   <p>
                     有效索引：{b.active_index_version_id ? '已有版本' : '尚无'}
                     {b.active_index_version_id && b.build_state !== 'ready' ? ' · 旧版保留' : ''}
+                    {b.connection?.status && ` · 连接：${b.connection.status}`}
                   </p>
                   <button
                     className="settings-action-btn"
@@ -219,73 +316,48 @@ export default function KnowledgeCenterPage() {
       )}
       {!loading && !error && tab === 'engines' && (
         <>
-          {['本地引擎', '服务器引擎', '云服务', '外部知识源'].map((group) => (
+          {['local', 'server', 'cloud', 'external'].map((group) => (
             <section key={group}>
-              <h2 style={{ fontSize: 17, marginTop: 24 }}>{group}</h2>
+              <h2 style={{ fontSize: 17, marginTop: 24 }}>{groupLabels[group]}</h2>
               <div className="admin-knowledge-cards-grid">
                 {engines
-                  .filter((e) => e.group === group)
+                  .filter((e) => e.group === group || groupLabels[e.group] === groupLabels[group])
                   .map((e) => (
                     <article key={e.provider} className="admin-knowledge-item-card">
                       <h3>{e.name}</h3>
                       {!e.instances.length ? (
                         <>
-                          <p>未配置</p>
-                          <Link className="settings-action-btn" href="/settings/tools">
-                            添加引擎配置
-                          </Link>
+                          <p>服务端未返回实例状态</p>
+                          <Link className="settings-action-btn" href="/settings/tools">配置</Link>
                         </>
-                      ) : (
-                        e.instances.map((i) => (
+                      ) : e.instances.map((i) => {
+                        const status = engineStatus(i);
+                        const capabilities = i.health?.capabilities ?? {};
+                        return (
                           <div key={i.id}>
-                            <p>
-                              {i.name} · {i.enabled ? '已启用' : '已停用'}
-                            </p>
-                            <p>
-                              预检：
-                              {i.health?.health_status === 'ready'
-                                ? '通过'
-                                : (i.health?.error_code ?? '未检查')}
-                            </p>
-                            <p>
-                              配置修订：{i.revision} · 关联库：{i.associatedBases.length}
-                            </p>
-                            <Link
-                              className="settings-action-btn"
-                              href={`/settings/tools?knowledgeEngine=${encodeURIComponent(i.id)}`}
-                            >
-                              配置引擎
-                            </Link>
-                            <button
-                              className="settings-action-btn"
-                              disabled={busy}
-                              onClick={async () => {
-                                setBusy(true);
-                                try {
-                                  const r = await centerRequest<{
-                                    ok: boolean;
-                                    errorCode?: string;
-                                  }>(
-                                    `knowledge/engines/${i.id}/check`,
-                                    'POST',
-                                    {},
-                                    retry.current.keyFor('check:' + i.id),
-                                  );
-                                  retry.current.acknowledge();
-                                  setNotice(r.ok ? '引擎预检通过' : `预检未通过：${r.errorCode}`);
-                                  await load();
-                                } catch (e) {
-                                  setError(e instanceof Error ? e : new Error('预检失败'));
-                                } finally {
-                                  setBusy(false);
-                                }
-                              }}
-                            >
-                              检查连接
-                            </button>
+                            <p><strong>{i.name}</strong> · {statusText(status)}</p>
+                            <p>{i.enabled ? '已启用' : '已停用'} · 配置修订 {i.revision} · 关联库 {i.associatedBases.length}</p>
+                            <p>能力：{Object.entries(capabilities).filter(([, value]) => value).map(([key]) => key).join('、') || '服务端未返回能力'}</p>
+                            {status === 'needs_key' && <p role="note">需服务端配置凭证</p>}
+                            {i.health?.error_code && <p role="alert">错误码：{i.health.error_code}</p>}
+                            <Link className="settings-action-btn" href={`/settings/tools?knowledgeEngine=${encodeURIComponent(i.id)}`}>配置</Link>
+                            <button className="settings-action-btn" disabled={busy || !online} onClick={async () => {
+                              setBusy(true);
+                              setError(null);
+                              try {
+                                const result = await centerRequest<{ ok?: boolean; status?: ReadinessStatus; errorCode?: string; health?: { status?: ReadinessStatus } }>(
+                                  `knowledge/engines/${encodeURIComponent(i.id)}/check`, 'POST', {}, retry.current.keyFor('check:' + i.id),
+                                );
+                                retry.current.acknowledge();
+                                setNotice(`检查结果：${statusText(result.status ?? result.health?.status ?? (result.ok ? 'ready' : 'unavailable'))}${result.errorCode ? ` · ${result.errorCode}` : ''}`);
+                                await load();
+                              } catch (checkError) {
+                                setError(checkError instanceof Error ? checkError : new Error('预检失败'));
+                              } finally { setBusy(false); }
+                            }}>检查连接</button>
                           </div>
-                        ))
-                      )}
+                        );
+                      })}
                     </article>
                   ))}
               </div>
@@ -370,47 +442,79 @@ export default function KnowledgeCenterPage() {
               </button>
             </div>
             <div className="admin-modal-body">
-              <label>
-                名称
-                <input
-                  className="admin-input-text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={160}
-                />
-              </label>
-              <label>
-                引擎
-                <select
-                  className="admin-select"
-                  value={engine}
-                  onChange={(e) => setEngine(e.target.value)}
-                >
-                  {Object.entries(configuration?.config.knowledgeEngines ?? {}).map(([id, e]) => (
-                    <option key={id} value={id}>
-                      {e.name} · {e.enabled ? '已启用' : '未启用'}
-                    </option>
+              <p>步骤 {createStep} / 3</p>
+              {createStep === 1 && (
+                <>
+                  <p>选择知识库语义。Create new 由启途智学拥有索引生命周期；Link existing 只保存外部指针并就地检索。</p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(['create_new', 'link_existing'] as const).map((mode) => (
+                      <button key={mode} className={`settings-action-btn${createMode === mode ? ' is-primary' : ''}`} onClick={() => { setCreateMode(mode); setPreflight(null); }}>
+                        {mode === 'create_new' ? 'Create new' : 'Link existing'}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {createStep === 2 && (
+                <>
+                  <label>名称<input className="admin-input-text" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} /></label>
+                  <label>引擎<select className="admin-select" value={engine} onChange={(e) => { setEngine(e.target.value); setPreflight(null); }}>
+                    <option value="">选择服务端返回的引擎</option>
+                    {engines.flatMap((group) => group.instances.map((instance) => <option key={instance.id} value={instance.id}>{instance.name} · {statusText(engineStatus(instance))}</option>))}
+                  </select></label>
+                  <label>检索模式<select className="admin-select" value={retrievalMode} onChange={(e) => setRetrievalMode(e.target.value)}><option value="hybrid">hybrid</option><option value="global">global</option><option value="local">local</option><option value="basic">basic</option><option value="naive">naive</option><option value="agentic">agentic</option></select></label>
+                  {engine && providerFields(engines.flatMap((group) => group.instances).find((instance) => instance.id === engine)?.provider ?? '').map((field) => (
+                    <label key={field}>{fieldLabel(field)}<input className="admin-input-text" value={connectionFields[field] ?? ''} onChange={(e) => { setConnectionFields((current) => ({ ...current, [field]: e.target.value })); setPreflight(null); }} /></label>
                   ))}
-                </select>
-              </label>
-              <p>未就绪引擎可保存配置，不能建立有效索引。</p>
+                  <p>字段仅限非敏感连接信息。密钥、token、password、cookie 不在浏览器输入或回显。</p>
+                </>
+              )}
+              {createStep === 3 && (
+                <>
+                  <h3>预检与预算</h3>
+                  {preflight ? <p role={preflight.ok ? 'status' : 'alert'}>{preflight.message}</p> : <p>尚未完成服务端预检。</p>}
+                  <p>服务端决定文件、字节、页面和时间预算；前端不会提高上限。只有预检通过才可提交。</p>
+                  {preflight?.result?.warnings?.map((warning) => <p key={warning} role="note">提示：{warning}</p>)}
+                </>
+              )}
             </div>
             <div className="admin-modal-footer">
-              <button className="settings-action-btn" onClick={() => setNewBase(false)}>
-                取消
-              </button>
-              <button
-                className="settings-action-btn is-primary"
-                disabled={busy || !name.trim() || !engine}
-                onClick={async () => {
-                  if (await mutate('knowledge/bases', { name, engineInstanceId: engine })) {
-                    setNewBase(false);
-                    setName('');
+              <button className="settings-action-btn" onClick={() => { setNewBase(false); setPreflight(null); }}>取消</button>
+              {createStep > 1 && <button className="settings-action-btn" onClick={() => setCreateStep((createStep - 1) as 1 | 2 | 3)}>上一步</button>}
+              {createStep === 1 && <button className="settings-action-btn is-primary" onClick={() => setCreateStep(2)}>下一步</button>}
+              {createStep === 2 && <button className="settings-action-btn is-primary" disabled={!name.trim() || !engine || preflightBusy || !online} onClick={async () => {
+                const instance = engines.flatMap((group) => group.instances).find((item) => item.id === engine);
+                if (!instance || engineStatus(instance) !== 'ready') { setPreflight({ ok: false, message: `引擎状态为 ${statusText(engineStatus(instance!))}，不能开始创建或连接。` }); return; }
+                setPreflightBusy(true);
+                try {
+                  if (createMode === 'create_new') {
+                    const result = await centerRequest<{ ok?: boolean; status?: ReadinessStatus; errorCode?: string; health?: { status?: ReadinessStatus; capabilities?: Record<string, boolean> } }>(
+                      `knowledge/engines/${encodeURIComponent(instance.id)}/check`, 'POST', {}, retry.current.keyFor(`create-preflight:${instance.id}`),
+                    );
+                    const status = result.status ?? result.health?.status ?? (result.ok ? 'ready' : 'unavailable');
+                    const canCreate = result.health?.capabilities?.create !== false;
+                    const ok = status === 'ready' && result.errorCode === undefined && canCreate;
+                    setPreflight({ ok, message: ok ? '预检通过：服务端已验证引擎能力与配置。' : result.errorCode === 'REMOTE_CREATE_UNSUPPORTED' || !canCreate ? '该云端 provider 仅支持连接已有远端库。' : `预检未通过：${result.errorCode ?? statusText(status)}` });
+                    if (ok) setCreateStep(3);
+                  } else {
+                    const result = await probeLinkedBase({ provider: instance.provider, ...connectionFields }, retry.current.keyFor(`probe:${engine}:${JSON.stringify(connectionFields)}`));
+                    setPreflight({ ok: result.ok, result, message: result.ok ? '预检通过：服务端已验证连接/能力。' : result.errorCode === 'REMOTE_CREATE_UNSUPPORTED' ? '该云端 provider 仅支持连接已有远端库。' : `预检未通过：${result.errorCode ?? 'UNKNOWN'}` });
+                    if (result.ok) setCreateStep(3);
                   }
-                }}
-              >
-                创建
-              </button>
+                } catch (probeError) { setPreflight({ ok: false, message: probeError instanceof Error ? probeError.message : '预检失败' }); }
+                finally { setPreflightBusy(false); }
+              }}>{preflightBusy ? '预检中…' : '运行服务端预检'}</button>}
+              {createStep === 3 && <button className="settings-action-btn is-primary" disabled={busy || !preflight?.ok || !name.trim() || !engine || !online} onClick={async () => {
+                if (!preflight?.ok) return;
+                setBusy(true);
+                try {
+                  await createKnowledgeBase({ name, engineInstanceId: engine, mode: createMode, retrievalMode, connection: connectionFields }, retry.current.keyFor(`create:${name}:${engine}:${createMode}:${JSON.stringify(connectionFields)}`));
+                  retry.current.acknowledge();
+                  setNotice(createMode === 'link_existing' ? '外部知识库连接已提交' : '知识库创建已提交，索引将在后台准备');
+                  setNewBase(false); setName(''); setConnectionFields({}); setPreflight(null); setCreateStep(1); await load();
+                } catch (createError) { setError(createError instanceof Error ? createError : new Error('创建失败')); }
+                finally { setBusy(false); }
+              }}>提交{createMode === 'link_existing' ? '连接' : '创建'}</button>}
             </div>
           </section>
         </div>
@@ -435,6 +539,11 @@ export default function KnowledgeCenterPage() {
                 {states[detail.build_state] ?? detail.build_state} ·{' '}
                 {detail.kind === 'project' ? '只检索本项目资料' : '教学资料库'}
               </p>
+              {detail.active_index_version_id && detail.build_state !== 'ready' && <p role="status">当前有效旧版仍保留；新版本验证通过前不会替换。</p>}
+              <p>更换 embedding 模型必须重建新版本，不得混用不同向量空间。</p>
+              {(detail.flavour === 'kiwix' || detail.connection?.flavour === 'kiwix') && <h3>Articles / Settings</h3>}
+              {(detail.flavour === 'marginnote4' || detail.connection?.flavour === 'marginnote4') && <h3>Devices / Settings</h3>}
+              {detail.connection && <section aria-label="Connections"><h3>Connections</h3><p>连接状态：{detail.connection.status}{detail.connection.lastErrorCode ? ` · ${detail.connection.lastErrorCode}` : ''}</p><p>类型：{detail.connection.flavour ?? detail.flavour ?? 'connected'}</p></section>}
               <h3>文件及资料来源</h3>
               {detail.files.length ? (
                 detail.files.map((f) => (
@@ -526,7 +635,13 @@ export default function KnowledgeCenterPage() {
               ) : (
                 <p>暂无资料。</p>
               )}
-              {detail.kind !== 'project' && (
+              {(detail.flavour === 'kiwix' || detail.connection?.flavour === 'kiwix') ? (
+                <p>文章由 Kiwix 服务端提供，此连接不支持普通文件上传。</p>
+              ) : (detail.flavour === 'marginnote4' || detail.connection?.flavour === 'marginnote4') ? (
+                <p>资料通过 MarginNote 设备同步，此连接不支持普通文件上传。</p>
+              ) : detail.connection || detail.mode === 'link_existing' || detail.flavour ? (
+                <p>外部连接仅保存指针并就地检索，不参与原始文件上传。</p>
+              ) : detail.kind !== 'project' && (
                 <>
                   <KnowledgeFileUpload
                     key={detail.id}
@@ -566,15 +681,9 @@ export default function KnowledgeCenterPage() {
                   </label>
                   <button
                     className="settings-action-btn"
-                    disabled={busy || !title.trim() || !content.trim()}
+                    disabled={busy || !title.trim() || !content.trim() || !online}
                     onClick={async () => {
-                      if (
-                        await mutate(`knowledge/bases/${detail.id}/files`, {
-                          title,
-                          content,
-                          allowMaterialize: materialize,
-                        })
-                      ) {
+                      if (await mutate(`knowledge/bases/${detail.id}/files`, { title, content, allowMaterialize: materialize })) {
                         setTitle('');
                         setContent('');
                       }
@@ -584,6 +693,18 @@ export default function KnowledgeCenterPage() {
                   </button>
                 </>
               )}
+              <section aria-label="外部来源">
+                <h3>Linked folders / GitHub / Web</h3>
+                <label>来源类型<select className="admin-select" value={sourceKind} onChange={(event) => setSourceKind(event.target.value as 'folder' | 'github' | 'web')}><option value="folder">folder</option><option value="github">GitHub</option><option value="web">Web</option></select></label>
+                <label>{sourceKind === 'folder' ? '服务端允许的目录' : sourceKind === 'github' ? '仓库 / 分支 / 路径' : '网页 URL'}<input className="admin-input-text" value={sourceValue} onChange={(event) => setSourceValue(event.target.value)} placeholder={sourceKind === 'folder' ? '/allowlisted/path' : sourceKind === 'github' ? 'org/repo@main:path' : 'https://example.invalid'} /></label>
+                <button className="settings-action-btn" disabled={busy || !online || !sourceValue.trim()} onClick={async () => { setBusy(true); try { const saved = await createKnowledgeSource(detail.id, { kind: sourceKind, sourceConfig: sourceKind === 'folder' ? { path: sourceValue } : sourceKind === 'github' ? { repo: sourceValue } : { url: sourceValue } }, retry.current.keyFor(`source:${detail.id}:${sourceKind}:${sourceValue}`)); retry.current.acknowledge(); setDetail(saved); setSourceValue(''); setNotice('来源已保存；可手动提交同步任务'); } catch (sourceError) { setError(sourceError instanceof Error ? sourceError : new Error('来源保存失败')); } finally { setBusy(false); } }}>添加来源</button>
+                {detail.sources?.length ? detail.sources.map((source) => <div key={source.id}><p>{source.kind} · {source.status}{source.lastErrorCode ? ` · ${source.lastErrorCode}` : ''}</p>{source.lastSourceRevision && <p>来源修订：{source.lastSourceRevision}</p>}<button className="settings-action-btn" disabled={busy || !online} onClick={async () => { try { await syncKnowledgeSource(detail.id, source.id, { reason: 'manual' }, retry.current.keyFor(`sync:${detail.id}:${source.id}`)); retry.current.acknowledge(); setNotice('同步任务已提交；旧版在新版本验证前保留'); await open(detail.id); } catch (syncError) { setError(syncError instanceof Error ? syncError : new Error('同步失败')); } }}>同步</button></div>) : <p>暂无外部来源。</p>}
+              </section>
+              <section aria-label="Assistants and Partners">
+                <h3>Assistants / Partners</h3>
+                {baseBindingError ? <p role="alert">{baseBindingError.message} <button className="settings-action-btn" onClick={() => void open(detail.id)}>重试</button></p> : baseBindings === null ? <p>绑定状态不可用。</p> : baseBindings.length === 0 ? <p>暂无逐库绑定。</p> : (['admin_assistant', 'tutor_partner', 'runtime_agent'] as const).map((agentKind) => <fieldset key={agentKind}><legend>{agentKind}</legend>{baseBindingDraft.filter((binding) => binding.agentKind === agentKind).map((binding) => <div key={`${binding.agentId}:${binding.mode}`}><label><input type="checkbox" checked={binding.enabled} disabled={!online || Boolean(binding.readonlyReason ?? binding.reasons?.join('; '))} onChange={(event) => setBaseBindingDraft((current) => current.map((item) => item === binding ? { ...item, enabled: event.target.checked } : item))} />{binding.agentName ?? binding.agentId} · {binding.mode}</label>{(binding.readonlyReason || binding.reasons?.length) && <p role="note">只读：{binding.readonlyReason ?? binding.reasons?.join('；')}</p>}{binding.effective === false && !binding.readonlyReason && <p role="note">服务端判定当前无效</p>}</div>)}{!baseBindingDraft.some((binding) => binding.agentKind === agentKind) && <p>暂无此类助手绑定。</p>}</fieldset>)}
+                {baseBindings && <button className="settings-action-btn" disabled={busy || !online || Boolean(baseBindingError)} onClick={async () => { setBusy(true); try { const saved = await saveBaseBindings(detail.id, { expectedRevision: bindingRevision, bindings: baseBindingDraft }, retry.current.keyFor(`base-bindings:${detail.id}:${JSON.stringify(baseBindingDraft)}`)); retry.current.acknowledge(); setBaseBindings(saved.bindings); setBaseBindingDraft(saved.bindings); setBindingRevision(saved.bindingRevision ?? bindingRevision); setNotice('逐库绑定已保存'); } catch (saveError) { setBaseBindingError(saveError instanceof Error ? saveError : new Error('保存逐库绑定失败')); } finally { setBusy(false); } }}>保存逐库绑定（retrieve / materialize）</button>}
+              </section>
               <h3>索引版本</h3>
               {detail.versions.length ? (
                 detail.versions.map((v) => (
@@ -617,12 +738,7 @@ export default function KnowledgeCenterPage() {
                       className="settings-action-btn"
                       onClick={async () => {
                         try {
-                          await centerRequest(
-                            `knowledge/jobs/${j.id}/cancel`,
-                            'POST',
-                            {},
-                            retry.current.keyFor('cancel:' + j.id),
-                          );
+                          await cancelKnowledgeJob(j.id, retry.current.keyFor('cancel:' + j.id));
                           retry.current.acknowledge();
                           await open(detail.id);
                         } catch (e) {
@@ -646,7 +762,7 @@ export default function KnowledgeCenterPage() {
               </button>
               <button
                 className="settings-action-btn is-primary"
-                disabled={busy}
+                disabled={busy || !online}
                 onClick={() => void mutate(`knowledge/bases/${detail.id}/rebuild`, {})}
               >
                 准备 / 重建索引

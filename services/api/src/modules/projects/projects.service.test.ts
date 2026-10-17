@@ -250,6 +250,66 @@ describe('ProjectsService（T6 意图确认）', () => {
     assert.equal(gates.calls.length, 1, '尝试必须发生（不能静默跳过）');
   });
 
+  it('确认拒绝不存在、未发布及学校不可见的模板版本', async () => {
+    const store = new InMemoryExplorationStore();
+    const idempotency = new FakeIdempotencyStore();
+    const audit = new FakeAuditWriter();
+    const gates = new FakeTeamRuntimeGates();
+    const query = {
+      from() { return this; },
+      innerJoin() { return this; },
+      where() { return this; },
+      async limit() { return []; },
+    };
+    const db = { select: () => query } as unknown as import('@qitu/database').Database;
+    const service = new ProjectsService(
+      store,
+      idempotency as unknown as IdempotencyStore,
+      audit as unknown as AuditWriter,
+      db,
+      gates as unknown as TeamRuntimeService,
+    );
+    const invalidVersions: Array<[string, string]> = [
+      ['nonexistent', 'missing-version'],
+      ['draft', 'draft-version'],
+      ['school-hidden', 'hidden-school-version'],
+    ];
+    for (const [key, templateVersionId] of invalidVersions) {
+      const exploration = await service.createExploration('student-1', { source: 'free' }, `create-${key}`);
+      await service.updateIntentDraft('student-1', exploration.id, { coreInterests: ['科学'] });
+      await assertHttpError(
+        () => service.confirmIntent('student-1', exploration.id, key, { templateVersionId }),
+        400,
+        'TEMPLATE_VERSION_UNAVAILABLE',
+      );
+      assert.equal(await store.findProjectByExploration(exploration.id), null);
+    }
+  });
+
+  it('同一幂等键携带不同模板版本返回冲突', async () => {
+    const { service } = harness;
+    const created = await service.createExploration('student-1', { source: 'free' }, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+    await service.confirmIntent('student-1', created.id, 'template-key', { templateVersionId: 'tplv-a' });
+    await assertHttpError(
+      () => service.confirmIntent('student-1', created.id, 'template-key', { templateVersionId: 'tplv-b' }),
+      409,
+      'IDEMPOTENCY_CONFLICT',
+    );
+  });
+
+  it('自由探索确认缺少模板版本时拒绝，不静默创建无模板项目', async () => {
+    const { service, store } = harness;
+    const created = await service.createExploration('student-1', { source: 'free' }, 'c1');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
+    await assertHttpError(
+      () => service.confirmIntent('student-1', created.id, 'missing-template'),
+      400,
+      'TEMPLATE_VERSION_UNAVAILABLE',
+    );
+    assert.equal(await store.findProjectByExploration(created.id), null);
+  });
+
   it('同幂等键重复确认只创建一个项目', async () => {
     const { service, store } = harness;
     const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
@@ -346,8 +406,11 @@ describe('ProjectsService（T6 意图确认）', () => {
       'student-1',
       free.id,
       'k4',
+      { templateVersionId: 'tplv-free' },
     );
     assert.equal(confirmed.exploration.source, 'free', '自由探索来源必须保留');
+    assert.equal(confirmed.exploration.templateVersionId, 'tplv-free');
+    assert.equal((await harness.store.findProjectByExploration(free.id))?.templateVersionId, 'tplv-free');
     assert.equal(confirmed.project.stage, 'intent_confirmed');
   });
 

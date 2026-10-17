@@ -2,7 +2,7 @@
 name: tutor-escalation
 description: Implements deterministic stall detection and the teacher-todo escalation with idempotency and audit; owns the escalation policy and worker only
 tools: read, bash, write, edit
-model: deepseek/deepseek-flash
+model: qwen-token-plan-cn/qwen3.8-flash
 thinking: off
 spawning: false
 auto-exit: true

@@ -5,7 +5,7 @@ advertise: true
 tools:
   - read
   - bash
-model: jaycue-gpt/gpt-6.1-sol
+model: qwen-token-plan-cn/qwen3.8-max
 thinking: high
 systemPromptMode: append
 inheritProjectContext: true

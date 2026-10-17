@@ -12,7 +12,7 @@ export function IdeaCards({
   cards: TutorIdeaCard[];
   disabled: boolean;
   confirming: boolean;
-  onCreate: (goal: string, interest: string) => void;
+  onCreate: (goal: string, interest: string, templateVersionId: string) => void;
 }) {
   if (cards.length === 0) {
     return <p className="qitu-tutor-muted" role="status">当前没有可确认的项目想法。</p>;
@@ -48,10 +48,11 @@ function IdeaCard({
   card: TutorIdeaCard;
   disabled: boolean;
   confirming: boolean;
-  onCreate: (goal: string, interest: string) => void;
+  onCreate: (goal: string, interest: string, templateVersionId: string) => void;
 }) {
   const [goal, setGoal] = useState(card.suggestedGoal);
   const [interest, setInterest] = useState(card.suggestedInterest);
+  const hasTemplateVersion = typeof card.templateVersionId === 'string' && card.templateVersionId.trim().length > 0;
 
   return (
     <article className="qitu-idea-card">
@@ -79,11 +80,12 @@ function IdeaCard({
       <button
         type="button"
         className="qitu-button qitu-button-primary qitu-button-sm"
-        disabled={disabled || confirming || !goal.trim() || !interest.trim()}
-        onClick={() => onCreate(goal, interest)}
+        disabled={disabled || confirming || !goal.trim() || !interest.trim() || !hasTemplateVersion}
+        onClick={() => hasTemplateVersion && onCreate(goal, interest, card.templateVersionId)}
       >
         {confirming ? '正在创建并唤醒团队…' : '一键创建项目'}
       </button>
+      {!hasTemplateVersion ? <p role="note">该想法缺少模板版本，无法立项，请让助手重新推荐。</p> : null}
     </article>
   );
 }

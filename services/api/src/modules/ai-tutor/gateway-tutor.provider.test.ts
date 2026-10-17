@@ -18,6 +18,7 @@ import {
   type TutorProvider,
   type TutorStreamEvent,
   type TutorTurnInput,
+  selectHintLevel,
 } from './tutor.provider';
 
 /**
@@ -109,6 +110,16 @@ test('Tutor passes bound tools to the gateway, preserves truthful events and ans
   assert.ok(events.some((event) => event.type === 'tool_result' && event.callId === 'read1' && event.status === 'done'));
   assert.doesNotMatch(JSON.stringify(events), /private textbook passage/);
   assert.doesNotMatch(blocksOf(events).join(''), /答案是/);
+});
+
+test('scaffold 每轮最多升一级，explain 才能主动触达第 5 档', () => {
+  assert.equal(selectHintLevel('scaffold', 1, 2), 2);
+  assert.equal(selectHintLevel('scaffold', 2, 3), 3);
+  assert.equal(selectHintLevel('scaffold', 3, 4), 4);
+  assert.equal(selectHintLevel('scaffold', 4, 4), 4);
+  assert.equal(selectHintLevel('explain', 2, 3), 5);
+  assert.equal(selectHintLevel('review_work', 5, 4), 5);
+  assert.equal(selectHintLevel('scaffold', 5, 4), 5);
 });
 
 test('MCP failure is redacted and the model is explicitly told that knowledge could not be verified', async () => {

@@ -72,37 +72,55 @@ test('team event topics map one-to-one onto frame kinds (delegated frames come f
   assert.notEqual(PBL_GATE_SATISFIED_TOPIC, PBL_GATE_BLOCKED_TOPIC);
 });
 
-test('team frames are sanitized: raw student text never leaves the server', () => {
-  const sanitized = sanitizeTeamFramePayload({
+test('team frames use strict per-kind allowlists and drop unknown or sensitive fields', () => {
+  const sensitivePayload = {
     runId: 'run-1',
+    taskId: 'task-1',
     phase: 'guided_practice',
-    content: '学生的原始对话内容，绝不能进入流式帧',
-    text: '助手原文',
-    utterance: '原话',
-    transcript: '逐字稿',
-    messages: [{ role: 'user' }],
-    prompt: 'system prompt',
-    conversationSummary: '对话摘要原文',
-    intent: '学生原话里的意图',
     errorCode: 'PBL_GATE_THEORY_MASTERED_REQUIRED',
-    evidenceRefs: ['tutor_turn:session-1:7'],
-    longField: 'x'.repeat(500),
-  });
-  for (const leaked of ['content', 'text', 'utterance', 'transcript', 'messages', 'prompt', 'conversationSummary', 'intent']) {
-    assert.equal(leaked in sanitized, false, `${leaked} must be stripped from team frames`);
+    systemPrompt: 'SYSTEM_PROMPT_SECRET',
+    system_instruction: 'SYSTEM_INSTRUCTION_SECRET',
+    arguments: 'RAW_ARGUMENTS_SECRET',
+    toolArgs: 'RAW_TOOL_ARGS_SECRET',
+    input: 'RAW_INPUT_SECRET',
+    output: 'RAW_OUTPUT_SECRET',
+    instruction: 'RAW_INSTRUCTION_SECRET',
+    internalReasoning: 'UNKNOWN_NEW_FIELD_SECRET',
+  };
+  for (const kind of ['phase_advanced', 'gate_blocked', 'member_delegated', 'tool_invoked', 'thinking'] as const) {
+    const sanitized = sanitizeTeamFramePayload(kind, sensitivePayload);
+    for (const key of ['systemPrompt', 'system_instruction', 'arguments', 'toolArgs', 'input', 'output', 'instruction', 'internalReasoning']) {
+      assert.equal(key in sanitized, false, `${kind}.${key} must be dropped`);
+    }
   }
-  assert.equal(sanitized.runId, 'run-1');
-  assert.equal(sanitized.errorCode, 'PBL_GATE_THEORY_MASTERED_REQUIRED');
-  assert.deepEqual(sanitized.evidenceRefs, ['tutor_turn:session-1:7']);
-  assert.equal((sanitized.longField as string).length, 120);
 
-  const frameData = buildTeamFrameData('gate_blocked', {
+  const phase = buildTeamFrameData('phase_advanced', {
+    ...sensitivePayload,
+    previousPhase: 'concept_mastery',
+    passedGate: 'TheoryMastered',
+    ownerAssistantId: 'fighter-code-guide',
+    unknownNewField: 'must-not-appear',
+  });
+  assert.deepEqual(phase, {
+    frame: 'team.phase_advanced',
+    runId: 'run-1',
+    taskId: 'task-1',
+    previousPhase: 'concept_mastery',
+    phase: 'guided_practice',
+    passedGate: 'TheoryMastered',
+    ownerAssistantId: 'fighter-code-guide',
+  });
+
+  const blocked = buildTeamFrameData('gate_blocked', {
     runId: 'run-1',
     requiredGate: 'TheoryMastered',
     errorCode: 'PBL_GATE_THEORY_MASTERED_REQUIRED',
-    content: '学生原文',
+    content: 'student raw text',
   });
-  assert.equal(frameData.frame, 'team.gate_blocked');
-  assert.equal('content' in frameData, false);
-  assert.equal(frameData.requiredGate, 'TheoryMastered');
+  assert.deepEqual(blocked, {
+    frame: 'team.gate_blocked',
+    runId: 'run-1',
+    requiredGate: 'TheoryMastered',
+    errorCode: 'PBL_GATE_THEORY_MASTERED_REQUIRED',
+  });
 });

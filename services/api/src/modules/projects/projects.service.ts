@@ -187,11 +187,34 @@ export class ProjectsService {
     }
 
     const note = assertOptionalNote(input.note);
+    const requestedTemplateVersionId = normalizeConfirmTemplateVersionId(input.templateVersionId);
     const scope = `student.exploration.confirm-intent:${studentId}:${explorationId}`;
-    const requestHash = hashIdempotentInput(scope, { explorationId }, { note });
+    // Hash the request value, not the resolved value: omitted and explicit template ids
+    // are different payloads and must not silently replay under one idempotency key.
+    const requestHash = hashIdempotentInput(scope, { explorationId }, {
+      note,
+      templateVersionId: requestedTemplateVersionId,
+    });
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
+        const fresh = await this.requireOwned(studentId, explorationId);
+        const templateVersionId = fresh.templateVersionId ?? requestedTemplateVersionId;
+        if (fresh.templateVersionId !== null && requestedTemplateVersionId !== null
+          && fresh.templateVersionId !== requestedTemplateVersionId) {
+          throw new BadRequestException({
+            code: 'TEMPLATE_VERSION_UNAVAILABLE',
+            message: '探索已绑定其他模板版本',
+          });
+        }
+        if (fresh.source === 'free' && templateVersionId === null) {
+          throw new BadRequestException({
+            code: 'TEMPLATE_VERSION_UNAVAILABLE',
+            message: '确认自由探索必须选择可用模板版本',
+          });
+        }
+        await this.assertPublishedTemplateVersion(templateVersionId);
+
         // 幂等键重放之外的第二次确认：同一探索已有项目 → 直接复用。
         const existingProject = await this.store.findProjectByExploration(explorationId);
         if (existingProject !== null) {
@@ -199,7 +222,6 @@ export class ProjectsService {
           return { status: 200, body: await this.confirmResponse(current, existingProject, true) };
         }
 
-        const fresh = await this.requireOwned(studentId, explorationId);
         const now = new Date();
         const confirmed = applyConfirm(fresh.status, fresh.intentDraft, now.toISOString());
         if (!canCreateFormalProject(confirmed.status, confirmed.draft)) {
@@ -223,7 +245,7 @@ export class ProjectsService {
             project: {
               id: `proj-${randomUUID()}`,
               studentId,
-              templateVersionId: fresh.templateVersionId,
+              templateVersionId,
               status: stage,
               currentStageIndex: progress.currentStageIndex,
               stageTotal: progress.stageTotal,
@@ -508,6 +530,17 @@ function assertOptionalText(raw: unknown, label: string): string | null {
     });
   }
   return value;
+}
+
+function normalizeConfirmTemplateVersionId(raw: unknown): string | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new BadRequestException({
+      code: 'TEMPLATE_VERSION_UNAVAILABLE',
+      message: '模板版本无效或当前账号不可见',
+    });
+  }
+  return raw.trim();
 }
 
 function assertOptionalNote(raw: unknown): string {

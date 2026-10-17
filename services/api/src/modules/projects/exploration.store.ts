@@ -206,6 +206,7 @@ export class InMemoryExplorationStore extends ExplorationStore {
       );
     }
     record.status = 'confirmed';
+    record.templateVersionId = input.project.templateVersionId;
     record.updatedAt = input.confirmedAt;
     record.intentDraft = {
       ...record.intentDraft,

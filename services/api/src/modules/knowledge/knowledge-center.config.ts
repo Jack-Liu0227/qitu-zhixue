@@ -13,6 +13,95 @@ export const ENGINE_CATALOG = [
   ['marginnote', 'MarginNote 4', '外部知识源'],
   ['kiwix', 'Kiwix / ZIM', '外部知识源'],
 ] as const;
+export type KnowledgeBaseMode = 'create_new' | 'link_existing';
+export type KnowledgeBaseFlavour =
+  | 'obsidian'
+  | 'linked'
+  | 'subagent'
+  | 'lightrag_server'
+  | 'ima'
+  | 'weknora'
+  | 'marginnote4'
+  | 'kiwix';
+
+/** DeepTutor flavour names intentionally differ from the local engine id for MarginNote. */
+export const PROVIDER_FLAVIOUR: Record<string, KnowledgeBaseFlavour> = {
+  obsidian: 'obsidian',
+  'lightrag-server': 'lightrag_server',
+  ima: 'ima',
+  weknora: 'weknora',
+  marginnote: 'marginnote4',
+  kiwix: 'kiwix',
+};
+const CONNECTION_FIELDS: Record<KnowledgeBaseFlavour, string[]> = {
+  obsidian: ['vaultPath'],
+  linked: ['externalPath', 'ragProvider', 'indexVersion', 'embeddingSignature'],
+  subagent: ['agentKind', 'cwd', 'partnerId'],
+  lightrag_server: ['serverUrl', 'workspace'],
+  ima: ['remoteKnowledgeBaseId', 'clientId'],
+  weknora: ['serverUrl', 'remoteKnowledgeBaseId'],
+  marginnote4: ['deviceId', 'serverUrl'],
+  kiwix: ['serverUrl', 'zimName'],
+};
+const SECRET_FIELD = /token|password|secret|api[-_]?key|cookie|authorization|private[-_]?key|credential/i;
+export function parseKnowledgeBaseConnection(
+  provider: string,
+  mode: KnowledgeBaseMode,
+  raw: unknown,
+): { flavour: KnowledgeBaseFlavour | null; externalRef: Record<string, string> } {
+  if (mode !== 'create_new' && mode !== 'link_existing')
+    throw new BadRequestException({ code: 'CONFIG_INVALID', message: '知识库模式无效' });
+  const input = record(raw ?? {});
+  if (Object.keys(input).some((key) => SECRET_FIELD.test(key)))
+    throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: '连接配置不得包含凭证' });
+  const flavour = mode === 'link_existing' && ['llamaindex', 'graphrag', 'lightrag'].includes(provider)
+    ? 'linked'
+    : PROVIDER_FLAVIOUR[provider] ?? null;
+  if (mode === 'link_existing' && !flavour)
+    throw new BadRequestException({ code: 'REMOTE_CONNECTION_UNSUPPORTED', message: '该引擎不支持连接已有知识库' });
+  if (!flavour) return { flavour: null, externalRef: {} };
+  const allowed = new Set(CONNECTION_FIELDS[flavour]);
+  if (Object.keys(input).some((key) => !allowed.has(key)))
+    throw new BadRequestException({ code: 'CONFIG_INVALID', message: '连接配置包含未知字段' });
+  const externalRef: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value !== 'string' || !value.trim() || value.length > 2048)
+      throw new BadRequestException({ code: 'CONFIG_INVALID', message: `连接字段 ${key} 无效` });
+    if (key === 'serverUrl') {
+      let url: URL;
+      try { url = new URL(value.trim()); } catch { throw new BadRequestException({ code: 'CONFIG_INVALID', message: `连接字段 ${key} 无效` }); }
+      if (url.username || url.password || url.search || url.hash || !['https:', 'http:'].includes(url.protocol) || (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)))
+        throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: 'serverUrl 不得携带凭证或非安全明文地址' });
+    }
+    externalRef[key] = value.trim();
+  }
+  if (flavour === 'linked' && (!externalRef.externalPath || !externalRef.ragProvider))
+    throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'linked 连接需要 externalPath 与 ragProvider' });
+  if (flavour === 'linked' && externalRef.ragProvider !== provider)
+    throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'linked ragProvider 必须与选定引擎一致' });
+  return { flavour, externalRef };
+}
+
+export function redactConnection(connection: {
+  flavour: string;
+  provider: string;
+  externalRef: Record<string, unknown>;
+  status: string;
+  credentialRef?: string | null;
+  lastErrorCode?: string | null;
+}): Record<string, unknown> {
+  const externalRef = { ...connection.externalRef };
+  if (typeof externalRef.externalPath === 'string') externalRef.externalPath = '[allowlisted path]';
+  return {
+    flavour: connection.flavour,
+    provider: connection.provider,
+    externalRef,
+    credentialConfigured: Boolean(connection.credentialRef),
+    status: connection.status,
+    lastErrorCode: connection.lastErrorCode ?? null,
+  };
+}
+
 export type EngineConfig = {
   name: string;
   description: string;
@@ -151,6 +240,8 @@ export function validateKnowledgeConfig(
       if (current.knowledgeEngines[id] && current.knowledgeEngines[id].provider !== e.provider)
         invalid('已有引擎不能变更 provider');
       const config = record(e.config);
+      if (Object.keys(config).some((key) => SECRET_FIELD.test(key)))
+        throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: 'JSON 配置不得包含凭证' });
       const allowed = [...common, ...(fields[String(e.provider)] ?? [])];
       for (const [key, value] of Object.entries(config)) {
         if (!allowed.includes(key)) invalid(`${id}.config.${key} 不受支持`);

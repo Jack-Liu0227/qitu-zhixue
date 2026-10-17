@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
-import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, pblGateEvidence, type Database } from '@qitu/database';
+import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, pblGateEvidence, projects, tutorSessions, type Database } from '@qitu/database';
 import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
@@ -339,6 +339,7 @@ function agentRow(id: string) {
 test('startRun rejects a different mentor for a student that already has an active run (409)', async () => {
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-b')]]],
+    [tutorSessions, [[{ id: 'session-2', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [[], [fullRunRow({ id: 'run-a', leaderAgentId: 'leader-a' })]]],
   ]);
   const service = new TeamRuntimeService(fakeDb(queues), auditStub, outboxStub);
@@ -364,6 +365,7 @@ test('startRun replays the existing active run for the same mentor + session + p
   const existing = fullRunRow({ id: 'run-a', leaderAgentId: 'leader-a' });
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [[], [existing]]],
   ]);
   const service = new TeamRuntimeService(fakeDb(queues), auditStub, outboxStub);
@@ -453,6 +455,76 @@ function fakeDbWithProbe(queues: Map<unknown, unknown[][]>, options: { insertFai
   return { db: db as unknown as Database, probe };
 }
 
+test('startRun rejects a student using another student project with a non-disclosing 404', async () => {
+  const queues = new Map<unknown, unknown[][]>([[projects, [[]]]]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () => service.startRun(STU, {
+      leaderAgentId: 'leader-a', studentUserId: 'stu-1', projectId: 'project-owned-by-b', idempotencyKey: 'scope-project-b',
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof NotFoundException);
+      assert.equal((error.getResponse() as { code?: string }).code, 'TEAM_RUN_SCOPE_NOT_FOUND');
+      return true;
+    },
+  );
+  assert.equal(probe.insertCalls, 0);
+});
+
+test('startRun rejects a student using another student tutor session with a non-disclosing 404', async () => {
+  const queues = new Map<unknown, unknown[][]>([[tutorSessions, [[]]]]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () => service.startRun(STU, {
+      leaderAgentId: 'leader-a', studentUserId: 'stu-1', tutorSessionId: 'session-owned-by-b', idempotencyKey: 'scope-session-b',
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof NotFoundException);
+      assert.equal((error.getResponse() as { code?: string }).code, 'TEAM_RUN_SCOPE_NOT_FOUND');
+      return true;
+    },
+  );
+  assert.equal(probe.insertCalls, 0);
+});
+
+test('startRun rejects a project and tutor session that do not belong to the same project', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }]]],
+    [tutorSessions, [[{ id: 'session-a', studentId: 'stu-1', projectId: 'project-b' }]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  await assert.rejects(
+    () => service.startRun(STU, {
+      leaderAgentId: 'leader-a', studentUserId: 'stu-1', projectId: 'project-a', tutorSessionId: 'session-a', idempotencyKey: 'scope-mismatch',
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof NotFoundException);
+      assert.equal((error.getResponse() as { code?: string }).code, 'TEAM_RUN_SCOPE_NOT_FOUND');
+      return true;
+    },
+  );
+  assert.equal(probe.insertCalls, 0);
+});
+
+test('startRun accepts the student-owned project and matching tutor session', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }]]],
+    [tutorSessions, [[{ id: 'session-a', studentId: 'stu-1', projectId: 'project-a' }]]],
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [[], [], [fullRunRow({ projectId: 'project-a', tutorSessionId: 'session-a' })]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a', studentUserId: 'stu-1', projectId: 'project-a', tutorSessionId: 'session-a', idempotencyKey: 'scope-valid',
+  });
+  assert.equal(view.projectId, 'project-a');
+  assert.equal(view.tutorSessionId, 'session-a');
+  assert.equal(probe.inserts.length > 0, true);
+});
 test('startRun refuses client-forged context.phase with 400 and provably zero inserts', async () => {
   const { db, probe } = fakeDbWithProbe(new Map<unknown, unknown[][]>());
   const service = new TeamRuntimeService(db, auditStub, outboxStub);
@@ -481,8 +553,8 @@ test('startRun refuses client-forged context.phase with 400 and provably zero in
 test('startRun initializes run.context.phase to the first frozen phase server-side', async () => {
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
-    [
-      agentTeamRuns,
+    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: null }]]],
+    [agentTeamRuns,
       [
         [],
         [],
@@ -764,6 +836,7 @@ test('listSessionStreamFrames emits distinguishable, sanitized team frames', asy
   assert.equal(serialized.includes('学生原始对话'), false, 'raw student text must never appear in team frames');
   assert.equal(frames[0]?.data.frame, TEAM_FRAME_NAMES.phase_advanced);
   assert.equal(frames[1]?.data.errorCode, 'PBL_GATE_THEORY_MASTERED_REQUIRED');
+  assert.equal(frames[1]?.data.requiredGate, 'TheoryMastered');
   assert.equal(frames[3]?.data.recipientAgentId, 'fighter-concept-coach');
   assert.equal(frames[3]?.data.pblPhase, 'concept_mastery');
   // 帧载荷构造器同样剥离原文（与 SSE 层共享的机制）。
@@ -794,6 +867,7 @@ test('F2 竞态败者：插入命中班主任唯一索引 23505 → 409 TEAM_MEN
   const winner = fullRunRow({ id: 'run-race', leaderAgentId: 'leader-a', tutorSessionId: 'session-1' });
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-b')]]],
+    [tutorSessions, [[{ id: 'session-2', studentId: 'stu-1', projectId: null }]]],
     // 1) 按幂等键查 existing → 空；2) 活跃 run 检查 → 空（竞态窗口）；3) 冲突后重读 → 胜者。
     [agentTeamRuns, [[], [], [winner]]],
   ]);
@@ -828,6 +902,7 @@ test('F2 竞态败者与胜者同 leader+同会话+同项目 → 保持既有语
   const twin = fullRunRow({ id: 'run-twin', leaderAgentId: 'leader-a', tutorSessionId: 'session-1', projectId: null });
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [[], [], [twin]]],
   ]);
   const { db, probe } = fakeDbWithProbe(queues, { insertFailures: [uniqueViolation23505()] });
@@ -849,6 +924,7 @@ test('F2 同 leader 但不同会话/项目的竞态：无法安全重放 → 明
   const winner = fullRunRow({ id: 'run-other-session', leaderAgentId: 'leader-a', tutorSessionId: 'session-1' });
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-2', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [[], [], [winner]]],
   ]);
   const { db } = fakeDbWithProbe(queues, { insertFailures: [uniqueViolation23505()] });
@@ -1103,6 +1179,7 @@ test('T22 main regression: deferred ledger row → startRun flushes it → gate 
   const flushedGateEvent = { payload: { gate: 'student_confirmed_intent', phase: 'exploration', evidenceRef: 'intent_confirmation:abc', source: 'projects.confirm-intent', via: 'ledger_flush' } };
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [
       [],                     // p1 recordGateForStudent 活跃 run 查询 → 无
       [],                     // p2 startRun 幂等查询
@@ -1464,6 +1541,7 @@ test('T26: mastery flip with no active run defers to the ledger and startRun flu
   const created = fullRunRow({ id: 'run-42', studentUserId: 'stu-1', status: 'queued', context: { topic: 'physics', phase: 'concept_mastery' } });
   const queues = new Map<unknown, unknown[][]>([
     [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-42', studentId: 'stu-1', projectId: null }]]],
     [agentTeamRuns, [
       [],            // p1 recordGateForStudent：无活跃 run → 落账本
       [],            // p2 startRun 幂等查询

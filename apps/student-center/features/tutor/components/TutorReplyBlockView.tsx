@@ -14,6 +14,8 @@ import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
 import { IdeaCards } from './IdeaCards';
+import { BoardBlock } from './BoardBlock';
+import { MilestoneBlock } from './MilestoneBlock';
 
 /**
  * Safe fallback for a reply block that is not one of the five modelled
@@ -37,11 +39,17 @@ export function TutorReplyBlockView({
   block,
   onSelectOption,
   onOneClickCreateProject,
+  onRequestQuizExplanation,
+  onAnswerQuiz,
+  projectId,
   disabled = false,
 }: {
   block: TutorReplyBlock;
   onSelectOption?: (label: string, text?: string) => void;
-  onOneClickCreateProject?: (goal: string, interest: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
+  onRequestQuizExplanation?: (quizId: string) => Promise<void>;
+  onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  projectId?: string | null;
   disabled?: boolean;
 }) {
   switch (block.kind) {
@@ -105,12 +113,17 @@ export function TutorReplyBlockView({
           stem={block.stem}
           type={block.type}
           options={block.options}
-          explanation={block.explanation}
-          selectedKey={block.selectedKey}
-          onSelectOption={(key, text) => onSelectOption?.(key, text)}
+          onSubmitAnswer={onAnswerQuiz ? (selectedKeys, idempotencyKey) => onAnswerQuiz(block.questionId, selectedKeys, idempotencyKey) : undefined}
+          onRequestExplanation={onRequestQuizExplanation ? () => onRequestQuizExplanation(block.questionId) : undefined}
+          rationaleHint={block.rationaleHint}
+          graded={block.graded}
           disabled={disabled}
         />
       );
+    case 'board':
+      return <BoardBlock title={block.title} steps={block.steps} />;
+    case 'milestone':
+      return <MilestoneBlock phaseId={block.phaseId} title={block.title} deliverables={block.deliverables} gate={block.gate} projectId={projectId} />;
     case 'interactive_experiment':
       return (
         <KineticEnergyInteractiveCard

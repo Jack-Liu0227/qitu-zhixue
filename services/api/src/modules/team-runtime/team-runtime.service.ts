@@ -18,6 +18,8 @@ import {
   agentTeamRuns,
   agentTeamTasks,
   pblGateEvidence,
+  projects,
+  tutorSessions,
   type Database,
   withTransaction,
 } from '@qitu/database';
@@ -99,26 +101,27 @@ const GATE_TO_PHASE: Record<string, PblPhase> = Object.fromEntries(
   (Object.entries(PBL_GATE_BY_PHASE) as [PblPhase, string][]).map(([phase, gate]) => [gate, phase]),
 );
 
-/**
- * 未成年人数据最小化：帧载荷白名单裁剪。
- * 任何疑似原文对话的字段一律剥离；字符串截断到 120 字符。
- */
-const RAW_TEXT_KEYS = new Set([
-  'content',
-  'text',
-  'utterance',
-  'raw',
-  'transcript',
-  'messages',
-  'prompt',
-  'response',
-  'conversationSummary',
-  'intent',
-  'reply',
-  'question',
-  'answer',
-]);
-const MAX_FRAME_STRING_LENGTH = 120;
+/** 学生 SSE 帧按 kind 投影，只允许这些结构化字段。 */
+const FRAME_FIELDS: Record<TeamStreamKind, readonly string[]> = {
+  phase_advanced: ['runId', 'taskId', 'previousPhase', 'phase', 'passedGate', 'ownerAssistantId'],
+  gate_blocked: ['runId', 'taskId', 'previousPhase', 'attemptedPhase', 'phase', 'requiredGate', 'errorCode', 'trigger'],
+  member_delegated: ['runId', 'taskId', 'recipientAgentId', 'taskType', 'status', 'pblPhase'],
+  tool_invoked: ['runId', 'taskId', 'status'],
+  thinking: ['runId', 'taskId', 'phase'],
+};
+const SAFE_FRAME_ENUMS: Record<string, ReadonlySet<string>> = {
+  phase: new Set(PBL_PHASE_ORDER),
+  previousPhase: new Set(PBL_PHASE_ORDER),
+  attemptedPhase: new Set(PBL_PHASE_ORDER),
+  pblPhase: new Set(PBL_PHASE_ORDER),
+  passedGate: KNOWN_PBL_GATES,
+  requiredGate: KNOWN_PBL_GATES,
+  taskType: new Set(['interest.confirmation', 'project.recommendation', 'pbl.plan', 'pbl.advance', 'project.review', 'profile.generate', 'growth.record']),
+  status: new Set(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
+  trigger: new Set(['manual', 'autonomous', 'delegate']),
+  errorCode: new Set([...Object.values(PBL_TEAM_ERROR_CODES), ...Array.from(KNOWN_PBL_GATES, (gate) => pblGateErrorCode(gate))]),
+};
+const FRAME_ID_FIELDS = new Set(['runId', 'taskId', 'recipientAgentId', 'ownerAssistantId']);
 
 export function teamFrameName(kind: TeamStreamKind): string {
   return TEAM_FRAME_NAMES[kind];
@@ -158,24 +161,24 @@ function shortEventKey(prefix: string, ...parts: string[]): string {
   return normalizeKey(`${prefix}:${digest}`, 'team-event');
 }
 
-export function sanitizeTeamFramePayload(payload: Record<string, unknown>): Record<string, unknown> {
+export function sanitizeTeamFramePayload(kind: TeamStreamKind, payload: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    if (RAW_TEXT_KEYS.has(key)) continue;
-    if (value === null || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') {
-      out[key] = typeof value === 'string' && value.length > MAX_FRAME_STRING_LENGTH
-        ? value.slice(0, MAX_FRAME_STRING_LENGTH)
-        : value;
-    } else if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
-      out[key] = (value as string[]).slice(0, 10);
+  for (const key of FRAME_FIELDS[kind]) {
+    const value = payload[key];
+    if (typeof value !== 'string') continue;
+    if (FRAME_ID_FIELDS.has(key)) {
+      if (value.length > 0 && value.length <= 160) out[key] = value;
+      continue;
     }
+    const allowed = SAFE_FRAME_ENUMS[key];
+    if (allowed?.has(value)) out[key] = value;
   }
   return out;
 }
 
-/** 组装一帧团队事件的载荷（帧名 + 脱敏字段），供 SSE 层直接使用。 */
+/** 组装一帧团队事件的载荷（帧名 + 严格字段白名单），供 SSE 层直接使用。 */
 export function buildTeamFrameData(kind: TeamStreamKind, data: Record<string, unknown>): Record<string, unknown> {
-  return { frame: TEAM_FRAME_NAMES[kind], ...sanitizeTeamFramePayload(data) };
+  return { frame: TEAM_FRAME_NAMES[kind], ...sanitizeTeamFramePayload(kind, data) };
 }
 
 export type PblGateDecision =
@@ -633,6 +636,7 @@ export class TeamRuntimeService {
     const leaderAgentId = input.leaderAgentId?.trim() || 'qitu-learning-partner';
     const studentUserId = input.studentUserId ?? (actor.role === 'student' ? actor.id : null);
     this.assertStudentScope(actor, studentUserId);
+    await this.assertStudentObjects(actor, studentUserId, input.projectId ?? null, input.tutorSessionId ?? null);
     const leader = await this.getAgent(leaderAgentId);
     if (!leader || !leader.enabled) throw new BadRequestException('AI 导师或 Team Leader 不可用');
     const key = normalizeKey(input.idempotencyKey, 'team-run');
@@ -1639,9 +1643,34 @@ export class TeamRuntimeService {
     if (actor.role !== 'student' || run.studentUserId !== actor.id) throw new BadRequestException('无权访问该 Team Run');
   }
 
+  private async assertStudentObjects(actor: CurrentUser, studentId: string | null, projectId: string | null, tutorSessionId: string | null): Promise<void> {
+    if (actor.role !== 'student') return;
+    const db = this.requireDb();
+    if (studentId !== actor.id) throw this.studentScopeNotFound();
+    if (projectId !== null) {
+      const [project] = await db.select({ id: projects.id, studentUserId: projects.studentUserId }).from(projects).where(and(
+        eq(projects.id, projectId),
+        eq(projects.studentUserId, actor.id),
+      )).limit(1);
+      if (!project || project.studentUserId !== actor.id) throw this.studentScopeNotFound();
+    }
+    if (tutorSessionId !== null) {
+      const [session] = await db.select({ id: tutorSessions.id, studentId: tutorSessions.studentId, projectId: tutorSessions.projectId }).from(tutorSessions).where(and(
+        eq(tutorSessions.id, tutorSessionId),
+        eq(tutorSessions.studentId, actor.id),
+        projectId === null ? isNull(tutorSessions.projectId) : eq(tutorSessions.projectId, projectId),
+      )).limit(1);
+      if (!session || session.studentId !== actor.id || session.projectId !== projectId) throw this.studentScopeNotFound();
+    }
+  }
+
+  private studentScopeNotFound(): NotFoundException {
+    return new NotFoundException({ code: 'TEAM_RUN_SCOPE_NOT_FOUND', message: '项目或导师会话不存在' });
+  }
+
   private assertStudentScope(actor: CurrentUser, studentId: string | null): void {
     if (actor.role !== 'admin' && actor.role !== 'student') throw new BadRequestException('TEAM_RUN_SCOPE');
-    if (actor.role === 'student' && studentId !== actor.id) throw new BadRequestException('不能为其他学生创建 Team Run');
+    if (actor.role === 'student' && studentId !== actor.id) throw this.studentScopeNotFound();
   }
 }
 
@@ -1815,31 +1844,17 @@ function studentToolCallProjection(
   event: typeof agentTeamEvents.$inferSelect,
   task: typeof agentTeamTasks.$inferSelect | undefined,
 ): TutorTeamAgentToolCall {
-  const payload = event.payload as Record<string, unknown> | null | undefined;
-  const rawName = typeof payload?.name === 'string' ? payload.name : typeof payload?.toolName === 'string' ? payload.toolName : 'team.tool.invoked';
-  const name = rawName.replace(/[^a-zA-Z0-9._:-]/g, '').slice(0, 100) || 'team.tool.invoked';
-  const rawLabel = typeof payload?.label === 'string' ? payload.label : typeof payload?.toolLabel === 'string' ? payload.toolLabel : null;
-  const label = safeStudentText(rawLabel) ?? '调用学习工具';
-  const rawSummary = typeof payload?.summary === 'string' ? payload.summary : typeof payload?.conclusion === 'string' ? payload.conclusion : null;
-  const summary = safeStudentText(rawSummary);
-  const rawStatus = payload?.status;
-  const status: TutorTeamAgentToolCall['status'] = rawStatus === 'error' || task?.status === 'failed'
-    ? 'error' : rawStatus === 'running' || task?.status === 'running' ? 'running' : 'done';
+  const status: TutorTeamAgentToolCall['status'] = task?.status === 'failed'
+    ? 'error' : task?.status === 'running' || task?.status === 'queued' ? 'running' : 'done';
   return {
     callId: event.id,
-    name,
-    label,
+    name: 'team.tool.invoked',
+    label: '调用学习工具',
     status,
-    summary,
+    summary: status === 'error' ? '工具调用未完成' : status === 'running' ? '工具正在处理中' : '工具调用已完成',
     startedAt: event.occurredAt.toISOString(),
     finishedAt: status === 'running' ? null : event.occurredAt.toISOString(),
   };
-}
-
-function safeStudentText(value: string | null): string | null {
-  if (!value) return null;
-  if (/(?:system|developer|prompt|instruction|原始参数|系统指令|提示词|\bargs?\b|parameters?)/i.test(value)) return null;
-  return value.replace(/\s+/g, ' ').trim().slice(0, 160) || null;
 }
 function summarizePayload(payload: unknown): string | null {
   if (payload === null || payload === undefined) return null;

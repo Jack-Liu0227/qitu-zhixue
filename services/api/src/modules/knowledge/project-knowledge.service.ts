@@ -49,7 +49,7 @@ export class ProjectKnowledgeService {
       sql`SELECT m.* FROM knowledge_base_members m WHERE m.kb_id=${base.id} AND m.visibility='active'`,
     );
     const sources = await this.center.query<KnowledgeMember & SourcePolicy>(
-      sql`SELECT s.*,k.kind,k.lifecycle,k.owner_user_id,k.school_id,k.engine_instance_id FROM knowledge_base_members s JOIN knowledge_bases k ON k.id=s.kb_id WHERE s.id IN (SELECT origin->>'sourceMemberId' FROM knowledge_base_members WHERE kb_id=${base.id})`,
+      sql`SELECT s.*,k.kind,k.lifecycle,k.owner_user_id,k.school_id,k.engine_instance_id FROM knowledge_base_members s JOIN knowledge_bases k ON k.id=s.kb_id LEFT JOIN knowledge_sources ks ON ks.id=s.origin->>'sourceId' WHERE s.id IN (SELECT origin->>'sourceMemberId' FROM knowledge_base_members WHERE kb_id=${base.id}) AND (s.origin->>'kind' IS DISTINCT FROM 'managed-source' OR ks.status<>'revoked')`,
     );
     return members.filter((m) => {
       // A source permission/version change immediately removes derived evidence.
@@ -68,9 +68,13 @@ export class ProjectKnowledgeService {
     query: string,
     versionId?: string,
   ) {
+    // 全局能力门槛必须**先于**加载项目资料：撤销授权时不得触碰任何项目数据
+    // （最小化可见范围），也不得让未授权助手触发查询。
     if (!(await this.center.canRetrieve(assistantId)))
       return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [], base: null };
     const base = await this.owned(studentId, projectId);
+    if (!(await this.center.canRetrieve(assistantId, base.id)))
+      return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [], base: null };
     if (!base.active_index_version_id || base.lifecycle !== 'active')
       return { state: 'PROJECT_KB_PREPARING', evidence: [], base };
     if (versionId && versionId !== base.active_index_version_id)
@@ -100,7 +104,7 @@ export class ProjectKnowledgeService {
     });
     const freshConfig = await this.center.configuration();
     if (
-      !(await this.center.canRetrieve(assistantId)) ||
+      !(await this.center.canRetrieve(assistantId, base.id)) ||
       JSON.stringify(freshConfig.config.knowledgeEngines[base.engine_instance_id ?? '']) !==
         JSON.stringify(engine)
     )
@@ -239,8 +243,10 @@ export class ProjectKnowledgeService {
     citationId: string,
     versionId?: string,
   ) {
+    // 同 search：先过全局门槛再加载资料，撤权即失效且不触碰项目数据。
     if (!(await this.center.canRetrieve(assistantId))) throw new NotFoundException('资料不可用');
     const base = await this.owned(studentId, projectId);
+    if (!(await this.center.canRetrieve(assistantId, base.id))) throw new NotFoundException('资料不可用');
     const [version, memberId] = citationId.split('~');
     if (
       !version ||
