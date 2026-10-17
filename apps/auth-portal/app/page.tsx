@@ -7,6 +7,7 @@ import { countLabel } from './home/format';
 import { HeroTutorDemo } from './home/hero-demo';
 import { Icon, type IconName } from './home/icons';
 import { SiteNav } from './home/site-nav';
+import { ReactBitsBackground } from './home/react-bits-background';
 import { ScrollReveal } from './home/scroll-reveal';
 import { COMPETENCIES, PBL_STEPS } from './public-content';
 import { FALLBACK_STATS, loadHomeView } from './public-data';
@@ -40,6 +41,8 @@ export default async function HomePage() {
 
   return (
     <div className="home-page">
+      {/* 全局 React Bits 粒子星网与鼠标追焦交互背景 */}
+      <ReactBitsBackground />
       <SiteNav />
 
       <main className="home-main" id="top">

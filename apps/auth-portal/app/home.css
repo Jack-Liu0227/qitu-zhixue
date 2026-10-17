@@ -2735,11 +2735,11 @@ html {
 /* 全屏沉浸式页面分段：占满一整个屏幕，垂直居中排版 */
 .home-section--fullscreen {
   position: relative;
-  min-height: auto;
+  min-height: 100vh;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 72px 0;
+  padding: 80px 0;
   box-sizing: border-box;
   border: none !important;
   border-block: none !important;
