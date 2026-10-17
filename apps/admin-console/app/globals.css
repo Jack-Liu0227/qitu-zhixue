@@ -52,6 +52,15 @@ body {
 .admin-console-heading .eyebrow { margin: 0; }
 .admin-console-page-title { margin: 4px 0 0; color: var(--qitu-heading); font-size: 1.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-console-identity { display: flex; align-items: center; gap: 12px; flex-shrink: 0; white-space: nowrap; }
+.admin-console-identity .auth-logout,
+.admin-console-topbar .auth-logout {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: auto !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
 .admin-console-content {
   padding: 20px 24px 40px;
   width: 100%;
@@ -1339,8 +1348,10 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
 .admin-console-topbar .qitu-avatar,
 .admin-console-topbar [class*='avatar'] { box-shadow: 0 2px 8px rgb(27 104 248 / 18%); }
 .admin-console-topbar .auth-logout {
-  position: static;
-  flex-shrink: 0;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  flex-shrink: 0 !important;
   white-space: nowrap;
   padding: 7px 11px;
   border-color: rgb(185 198 218 / 65%);

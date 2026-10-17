@@ -57,6 +57,12 @@ export const MOCK_TURNS: TutorTurn[] = [
   {
     turnId: 'turn-1',
     role: 'assistant',
+    author: {
+      id: 'fighter-concept-coach',
+      name: '概念教练',
+      role: '概念教练',
+      color: '#2563eb',
+    },
     blocks: [
       {
         kind: 'pbl_card',
@@ -111,6 +117,12 @@ export const MOCK_TURNS: TutorTurn[] = [
   {
     turnId: 'turn-3',
     role: 'assistant',
+    author: {
+      id: 'fighter-concept-coach',
+      name: '概念教练',
+      role: '概念教练',
+      color: '#2563eb',
+    },
     blocks: [
       {
         kind: 'think',
@@ -162,6 +174,12 @@ export const MOCK_TURNS: TutorTurn[] = [
   {
     turnId: 'turn-5',
     role: 'assistant',
+    author: {
+      id: 'fighter-concept-coach',
+      name: '概念教练',
+      role: '概念教练',
+      color: '#2563eb',
+    },
     blocks: [
       {
         kind: 'think',

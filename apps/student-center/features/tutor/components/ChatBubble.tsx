@@ -8,6 +8,7 @@ import { isTutorReplyBlock, isTutorToolCall } from '../state';
 import { SafeReplyFallback, TutorReplyBlockView } from './TutorReplyBlockView';
 import { StreamCaret, ToolCallTimeline } from './ToolCallTimeline';
 import { AttachmentView } from './AttachmentView';
+import { serializeTutorTurnForClipboard } from '../lib/serializeTutorTurnForClipboard';
 
 /**
  * A render segment: either a RUN of consecutive tool calls (collapsed into one
@@ -32,11 +33,13 @@ type Segment =
  */
 export function ChatBubble({
   turn,
+  currentAssistantName,
   onSelectOption,
   disabled = false,
   streaming = false,
 }: {
   turn: TutorTurn;
+  currentAssistantName?: string;
   onSelectOption?: (label: string, text?: string) => void;
   disabled?: boolean;
   streaming?: boolean;
@@ -47,6 +50,7 @@ export function ChatBubble({
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
   const [showThoughtTrace, setShowThoughtTrace] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [speechRate, setSpeechRate] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -120,15 +124,42 @@ export function ChatBubble({
     playSpeech(speechRate);
   };
 
+  const handleCopyTurn = async () => {
+    const text = serializeTutorTurnForClipboard(turn);
+    if (!text) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (typeof document !== 'undefined') {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore clipboard error
+    }
+  };
+
+  const defaultAssistantName = currentAssistantName || '启途智学助手';
+  const displayName = isStudent ? '我' : (turn.author?.name || defaultAssistantName);
+  const avatarName = isStudent ? '我' : (displayName ? displayName.slice(0, 1) : '启');
+
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
       <div className="qitu-chat-role">
         <Avatar
-          name={isStudent ? '我' : (turn.author?.name ? turn.author.name.slice(0, 1) : '启')}
+          name={avatarName}
           size="sm"
         />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontWeight: 600 }}>{isStudent ? '我' : (turn.author?.name ?? '启途智学助手')}</span>
+          <span style={{ fontWeight: 600 }}>{displayName}</span>
           {!isStudent && turn.author?.role && (
             <span
               style={{
@@ -144,6 +175,30 @@ export function ChatBubble({
               {turn.author.role}
             </span>
           )}
+
+          {/* 纯文本与公式复制按钮（遵守防敏感信息脱敏与纯文本 TeX 导出规范） */}
+          <button
+            type="button"
+            onClick={handleCopyTurn}
+            title={copied ? '已复制到剪贴板' : '复制此条对话内容（Markdown + TeX）'}
+            style={{
+              background: copied ? '#ecfdf5' : 'transparent',
+              border: copied ? '1px solid #6ee7b7' : '1px solid transparent',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              padding: '1px 6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              color: copied ? '#059669' : '#64748b',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>{copied ? '✓' : '📋'}</span>
+            <span style={{ fontSize: '11px', fontWeight: 500 }}>{copied ? '已复制' : '复制'}</span>
+          </button>
+
           {!isStudent && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
               <button
