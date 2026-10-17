@@ -18,6 +18,7 @@ export * from './ops';
 export * from './parent-export';
 export * from './pbl-gate-evidence';
 export * from './pending-questions';
+export * from './plan-adjustments';
 export * from './preferences';
 export * from './project-binding';
 export * from './project-templates';
