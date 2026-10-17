@@ -1407,7 +1407,7 @@
 /* 统一桌面端与手机端自适应布局支持：视口全屏适配与滚轮动态滚动 */
 .qitu-tutor-workspace-layout {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   padding: 0 20px 14px;
   flex: 1 1 0%;
   min-height: 0;
@@ -1625,3 +1625,18 @@
   }
 }
 
+
+@media (min-width: 1200px) {
+  .qitu-tutor-workspace-layout {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .qitu-live-session-sidebar {
+    width: min(220px, 19vw);
+  }
+
+  .qitu-tutor-context-sidebar {
+    width: min(240px, 21vw) !important;
+  }
+}

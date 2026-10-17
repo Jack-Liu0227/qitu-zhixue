@@ -20,6 +20,18 @@ export interface HistorySessionItem {
 
 const STORAGE_KEY = 'qitu.tutor.exploration_history';
 const DELETED_STORAGE_KEY = 'qitu.tutor.deleted_exploration_history';
+const HIDDEN_PROJECTS_STORAGE_KEY = 'qitu.tutor.hidden_project_history';
+function getHiddenProjectIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(HIDDEN_PROJECTS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
 function getDeletedExplorationIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
@@ -111,12 +123,13 @@ export function TutorSessionHistory({
   const dataSource = useTutorDataSource();
   const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(() => getHiddenProjectIds());
 
   useEffect(() => {
     let cancelled = false;
     void dataSource.listProjects().then((projects) => {
       if (cancelled) return;
-      setProjectSessions(projects.map((project) => ({
+      setProjectSessions(projects.filter((project) => !hiddenProjectIds.has(project.id)).map((project) => ({
         id: project.id,
         title: project.title,
         kind: 'project',
@@ -138,7 +151,7 @@ export function TutorSessionHistory({
       if (!cancelled) setProjectSessions([]);
     });
     return () => { cancelled = true; };
-  }, [dataSource, currentProjectId, currentTurnCount]);
+  }, [dataSource, currentProjectId, currentTurnCount, hiddenProjectIds]);
 
   // 初始化并监听本地探索会话
   useEffect(() => {
@@ -163,9 +176,17 @@ export function TutorSessionHistory({
     }
   }, [currentProjectId, currentExplorationId, currentTitle, currentTurnCount]);
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = (e: React.MouseEvent, item: HistorySessionItem) => {
     e.stopPropagation();
-    deleteLocalExplorationSession(id);
+    if (!window.confirm(`确认从会话历史中删除“${item.title}”吗？\n\n仅移除历史入口，不会删除项目数据。`)) return;
+    if (item.kind === 'project') {
+      const next = new Set(hiddenProjectIds);
+      next.add(item.id);
+      try { localStorage.setItem(HIDDEN_PROJECTS_STORAGE_KEY, JSON.stringify([...next].slice(-100))); } catch { /* Storage may be unavailable. */ }
+      setHiddenProjectIds(next);
+      return;
+    }
+    deleteLocalExplorationSession(item.id);
     setExplorationHistory(getLocalExplorationHistory());
   };
 
@@ -284,7 +305,7 @@ export function TutorSessionHistory({
     <aside
       className="qitu-live-session-sidebar"
       style={{
-        width: 'min(300px, 30vw)',
+        width: 'min(220px, 19vw)',
         flexShrink: 0,
         padding: '14px 12px',
         border: '1px solid #e2e8f0',
@@ -505,10 +526,9 @@ export function TutorSessionHistory({
                     </div>
                   </div>
 
-                  {item.kind === 'exploration' && (
-                    <button
+                  <button
                       type="button"
-                      onClick={(e) => handleDelete(e, item.id)}
+                      onClick={(e) => handleDelete(e, item)}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -520,11 +540,11 @@ export function TutorSessionHistory({
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                       onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
-                      title="删除此会话记录"
+                      title="从会话历史中删除"
+                      aria-label={`从会话历史中删除${item.title}`}
                     >
                       🗑️
-                    </button>
-                  )}
+                  </button>
                 </div>
               </div>
             );

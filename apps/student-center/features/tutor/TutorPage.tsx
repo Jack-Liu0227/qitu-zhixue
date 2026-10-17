@@ -195,7 +195,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         />
       </div>
       {rightOpen ? (
-        <aside style={{ width: 'min(320px, 32vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <aside className="qitu-tutor-context-sidebar" style={{ width: 'min(240px, 21vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* 侧边栏两个 table / tab 视图切换：一个显示项目进度，一个显示各个 agent 的状态、头像、对话历史、工具调用情况 */}
           <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '4px', border: '1px solid #e2e8f0' }}>
             <button
