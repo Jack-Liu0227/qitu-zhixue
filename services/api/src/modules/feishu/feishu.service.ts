@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
 import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt } from 'drizzle-orm';
@@ -236,18 +236,18 @@ export class FeishuService {
   async sendReport(report: FeishuReportDocument, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<{ requestId?: string }> {
     const db = this.database();
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
-    if (!bot?.enabled || !bot.appId || !bot.appSecretEncrypted) throw new BadRequestException('椋炰功鏈哄櫒浜烘湭杩炴帴');
+    if (!bot?.enabled || !bot.appId || !bot.appSecretEncrypted) throw new BadRequestException('飞书机器人未连接，请先配置或通过二维码扫码绑定');
     const key = requireSecretKey();
     const secret = decryptModelSecret(bot.appSecretEncrypted, key);
     const host = bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
     const tokenResponse = await fetch(`https://${host}/open-apis/auth/v3/app_access_token/internal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ app_id: bot.appId, app_secret: secret }), signal: AbortSignal.timeout(10_000) });
     const tokenPayload = await tokenResponse.json().catch(() => ({})) as Record<string, unknown>;
     const token = String(tokenPayload.app_access_token ?? tokenPayload.tenant_access_token ?? '');
-    if (!tokenResponse.ok || !token) throw new ServiceUnavailableException('椋炰功浠ょ墝鏈嶅姟鏆備笉鍙敤');
-    const content = JSON.stringify({ summary: report.summary, range: report.range, redacted: true });
+    if (!tokenResponse.ok || !token) throw new ServiceUnavailableException('飞书令牌服务暂不可用');
+    const text = report.issueSummary?.formattedText ?? JSON.stringify({ summary: report.summary, range: report.range, redacted: true });
     let requestId: string | undefined;
     for (const recipient of bot.reportRecipients ?? []) {
-      const response = await fetch(`https://${host}/open-apis/im/v1/messages?receive_id_type=open_id`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ receive_id: recipient, msg_type: 'text', content: JSON.stringify({ text: content }) }), signal: AbortSignal.timeout(10_000) });
+      const response = await fetch(`https://${host}/open-apis/im/v1/messages?receive_id_type=open_id`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ receive_id: recipient, msg_type: 'text', content: JSON.stringify({ text }) }), signal: AbortSignal.timeout(10_000) });
       const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
       if (!response.ok) throw new ServiceUnavailableException('Feishu message delivery failed');
       requestId = String(response.headers.get('x-request-id') ?? payload.request_id ?? requestId ?? '') || undefined;

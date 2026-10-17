@@ -141,3 +141,19 @@ export function fetchFeishuQrStatus(sessionId: string): Promise<FeishuQrStatusRe
     };
   });
 }
+
+export interface FeishuDeliverResult {
+  status: 'sent' | 'already_sent' | 'retryable' | 'failed';
+  recipientCount: number;
+  recipientHashes: readonly string[];
+  requestId?: string;
+}
+
+export function deliverFeishuReport(assistantId?: string, idempotencyKey = newIdempotencyKey()): Promise<FeishuDeliverResult> {
+  const query = assistantId ? `?assistantId=${encodeURIComponent(assistantId)}` : '';
+  return request<FeishuDeliverResult>(`/api/v1/admin/integrations/feishu/deliver${query}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body: assistantId ? JSON.stringify({ assistantId }) : undefined,
+  });
+}

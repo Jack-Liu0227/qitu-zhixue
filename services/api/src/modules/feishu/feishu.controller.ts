@@ -5,6 +5,7 @@ import { AuthService } from '../identity-auth/auth.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
+import { randomUUID } from 'node:crypto';
 import { FeishuService, parseFeishuPatch } from './feishu.service';
 import { ReportingService } from './reporting.service';
 import { FeishuReportWorker } from './report-worker.service';
@@ -18,6 +19,22 @@ export class FeishuController {
     const actor = requireRole(this.auth, cookie, 'admin', '管理汇报仅向管理员开放');
     if (!this.reporting) throw new BadRequestException('汇报服务不可用');
     return { data: await this.reporting.buildReport(actor, parseAssistantId(assistantId)) };
+  }
+
+  @Post('deliver')
+  async deliver(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() body: unknown = {},
+    @Query('assistantId') queryAssistantId?: string,
+  ): Promise<{ data: unknown }> {
+    const actor = requireRole(this.auth, cookie, 'admin', '管理汇报仅向管理员开放');
+    if (!this.reporting || !this.worker) throw new BadRequestException('汇报服务不可用');
+    const assistantId = parseAssistantId(queryAssistantId ?? readAssistantId(body));
+    const idempotencyKey = key?.trim() || `deliver-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    const report = await this.reporting.buildReport(actor, assistantId);
+    const result = await this.worker.deliver({ idempotencyKey, assistantId, report });
+    return { data: result };
   }
 
   @Get('deliveries')

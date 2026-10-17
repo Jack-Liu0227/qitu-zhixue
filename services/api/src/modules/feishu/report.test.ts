@@ -40,6 +40,13 @@ test('aggregateReportFacts returns a deterministic, minimum-disclosure projectio
   assert.equal(serialised.includes('parent-raw-1'), false);
   assert.equal(serialised.includes('teacher-raw-1'), false);
   assert.match(report.students[0]!.idHash, /^[a-f0-9]{16}$/);
+
+  // Three-party issue summary and formatted message for Feishu bot
+  assert.ok(report.issueSummary);
+  assert.ok(report.issueSummary.formattedText.includes('三端问题与学情总结'));
+  assert.ok(report.issueSummary.studentIssues.length > 0);
+  assert.ok(report.issueSummary.parentIssues.length > 0);
+  assert.ok(report.issueSummary.teacherIssues.length > 0);
 });
 
 test('aggregateReportFacts uses safe defaults for omitted collections and range', () => {

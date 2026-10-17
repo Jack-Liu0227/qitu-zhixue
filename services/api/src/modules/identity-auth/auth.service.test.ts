@@ -21,7 +21,7 @@ test('student devices: default limit is two', () => {
   assert.equal(studentDeviceLimit('0'), 2);
 });
 
-test('student can use two devices concurrently; a third is rejected without evicting either', async () => {
+test('user can use two devices concurrently; a third evicts the earliest device', async () => {
   const auth = createService();
   const first = await auth.login(STUDENT.user.email, PASSWORD, false, 'ip-a', { id: 'device-0001', userAgent: 'Chrome/120 Windows' });
   const second = await auth.login(STUDENT.user.email, PASSWORD, false, 'ip-b', { id: 'device-0002', userAgent: 'Safari/17 iPhone' });
@@ -30,17 +30,15 @@ test('student can use two devices concurrently; a third is rejected without evic
   assert.equal(auth.getSession(second.token).user.id, 'student-1');
   assert.equal(auth.listStudentDevices('student-1').length, 2);
 
-  await assert.rejects(
-    auth.login(STUDENT.user.email, PASSWORD, false, 'ip-c', { id: 'device-0003' }),
-    (error: unknown) => typeof error === 'object' && error !== null && 'getStatus' in error &&
-      typeof (error as { getStatus?: unknown }).getStatus === 'function' &&
-      (error as { getStatus: () => number }).getStatus() === 409 &&
-      'getResponse' in error &&
-      JSON.stringify((error as { getResponse: () => unknown }).getResponse()).includes('STUDENT_DEVICE_LIMIT_REACHED'),
-  );
+  const third = await auth.login(STUDENT.user.email, PASSWORD, false, 'ip-c', { id: 'device-0003', userAgent: 'Firefox/120 Linux' });
 
-  assert.equal(auth.getSession(first.token).user.id, 'student-1');
+  // First device was the earliest and is now squeezed out
+  assert.throws(() => auth.getSession(first.token));
+
+  // Second and third devices remain active
   assert.equal(auth.getSession(second.token).user.id, 'student-1');
+  assert.equal(auth.getSession(third.token).user.id, 'student-1');
+  assert.equal(auth.listStudentDevices('student-1').length, 2);
 });
 
 test('same device refreshes its session; revoking another device frees a slot', async () => {

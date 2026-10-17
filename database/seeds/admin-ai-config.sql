@@ -177,6 +177,18 @@ VALUES
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["socratic-intake","intent-clarification","project-recommendation","team-handoff"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, '2026-10-01T00:00:00.000Z', '2026-10-13T00:00:00.000Z'
+  ),
+  (
+    'feishu-issue-summary-assistant', 'builtin', '三端问题总结与飞书汇报助手', '🤖',
+    '专用于汇总学生、家长与教师三端遇到的问题与反馈，通过飞书机器人发送总结消息，支持二维码扫码绑定。',
+    'Problem Summary & Feishu Bot / 三端问题总结助手', true, 13,
+    'qwen-token-plan-cn', 'qwen3.8-flash', 0.3,
+    '你是启途智学三端问题总结助手。专职汇总学生、家长与教师在平台使用、PBL项目学习、家校协同与教学辅导中遇到的难点、阻塞性问题与意见反馈。整理生成结构化的问题总结，分模块列出：1.学生端学习与技术卡点；2.家长端协同诉求；3.教师端教学关注事项。格式化后通过飞书机器人消息推送到管理者飞书群。严格执行数据脱敏与未成年人保护规范。',
+    '["reporting","issue-summary","privacy-minimization","audit"]'::jsonb,
+    '["student_status_summary","parent_status_summary","teacher_status_summary"]'::jsonb,
+    '[]'::jsonb,
+    '{"model":{"mode":"custom","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["reporting","issue-summary","privacy-minimization","audit"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    'online', false, NULL, '2026-10-17T00:00:00.000Z', '2026-10-17T00:00:00.000Z'
   )
 ON CONFLICT (id) DO UPDATE SET
   source = EXCLUDED.source,

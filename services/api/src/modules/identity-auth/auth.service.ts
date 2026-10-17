@@ -126,21 +126,37 @@ export class AuthService {
     this.pruneSessions();
 
     const deviceId = normalizeDeviceId(device.id) ?? randomUUID();
-    if (user.role === 'student') {
-      const sameDeviceTokens = [...this.sessions.entries()]
-        .filter(([, session]) => session.user.id === user.id && session.deviceId === deviceId)
-        .map(([activeToken]) => activeToken);
-      const activeDevices = new Set([...this.sessions.values()]
-        .filter((session) => session.user.id === user.id)
-        .map((session) => session.deviceId));
-      const limit = studentDeviceLimit();
-      if (!activeDevices.has(deviceId) && activeDevices.size >= limit) {
-        throw new HttpException(
-          { code: 'STUDENT_DEVICE_LIMIT_REACHED', message: `学生账号最多同时登录 ${limit} 台设备，请先退出一台设备后再登录` },
-          HttpStatus.CONFLICT,
-        );
+    const limit = deviceLimit();
+
+    // 先清理当前设备的旧会话（同一设备重复登录刷新会话）
+    const sameDeviceTokens = [...this.sessions.entries()]
+      .filter(([, session]) => session.user.id === user.id && session.deviceId === deviceId)
+      .map(([activeToken]) => activeToken);
+    for (const activeToken of sameDeviceTokens) this.sessions.delete(activeToken);
+
+    // 统计该用户在其他设备上的活跃会话
+    const otherDeviceSessions = [...this.sessions.entries()]
+      .filter(([, session]) => session.user.id === user.id && session.deviceId !== deviceId);
+
+    // 按设备分组并找出各设备最早登录时间
+    const deviceEarliestMap = new Map<string, number>();
+    for (const [, session] of otherDeviceSessions) {
+      const prev = deviceEarliestMap.get(session.deviceId);
+      if (prev === undefined || session.createdAt < prev) {
+        deviceEarliestMap.set(session.deviceId, session.createdAt);
       }
-      for (const activeToken of sameDeviceTokens) this.sessions.delete(activeToken);
+    }
+
+    // 若其他设备数达到上限，按 FIFO 规则挤掉最早登录的设备
+    if (deviceEarliestMap.size >= limit) {
+      const sortedDevices = [...deviceEarliestMap.entries()].sort((a, b) => a[1] - b[1]);
+      const evictCount = deviceEarliestMap.size - (limit - 1);
+      const devicesToEvict = new Set(sortedDevices.slice(0, evictCount).map(([dId]) => dId));
+      for (const [activeToken, session] of otherDeviceSessions) {
+        if (devicesToEvict.has(session.deviceId)) {
+          this.sessions.delete(activeToken);
+        }
+      }
     }
 
     const token = randomBytes(32).toString('hex');
@@ -282,10 +298,12 @@ function normalizeDeviceId(value: string | undefined): string | null {
   return /^[a-zA-Z0-9._:-]+$/.test(value) ? value : null;
 }
 
-export function studentDeviceLimit(raw = process.env.STUDENT_MAX_DEVICES): number {
+export function deviceLimit(raw = process.env.MAX_DEVICES ?? process.env.STUDENT_MAX_DEVICES): number {
   const parsed = Number.parseInt(raw ?? '', 10);
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 10) : 2;
 }
+
+export const studentDeviceLimit = deviceLimit;
 
 function getDeviceName(userAgent: string | undefined): string {
   const value = userAgent ?? '';
