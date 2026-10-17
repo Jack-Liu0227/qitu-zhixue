@@ -1,6 +1,6 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
 import type { AdminFeishuSettings, FeishuDeviceAuthorization, FeishuQrSession } from '@qitu/contracts';
-import { requireRole } from '../../common/access/request-auth';
+import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -16,7 +16,11 @@ export class FeishuController {
 
   @Get('report')
   async report(@Headers('cookie') cookie: string | undefined, @Query('assistantId') assistantId?: string): Promise<{ data: unknown }> {
-    const actor = requireRole(this.auth, cookie, 'admin', '管理汇报仅向管理员开放');
+    // D1：管理员看全局口径；班主任看其所带学生范围（服务端重新解析范围）。
+    const actor = requireAnyRole(this.auth, cookie);
+    if (actor.role !== 'admin' && actor.role !== 'teacher') {
+      throw new ForbiddenException('问题总结与学情汇报仅向管理员与班主任开放');
+    }
     if (!this.reporting) throw new BadRequestException('汇报服务不可用');
     return { data: await this.reporting.buildReport(actor, parseAssistantId(assistantId)) };
   }

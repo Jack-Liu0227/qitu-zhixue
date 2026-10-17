@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { FeishuReportIssueSummary } from '@qitu/contracts';
+import type { CurrentUser, FeishuReportIssueSummary } from '@qitu/contracts';
 
 export interface ReportStudentFact { id: string; stage?: string | null; progressPercent?: number | null; stalled?: boolean; projectCount?: number }
 export interface ReportParentFact { id: string; authorizedStudentCount?: number }
@@ -26,6 +26,36 @@ export interface AggregatedReport {
   issueSummary?: FeishuReportIssueSummary;
 }
 const hash = (id: string) => createHash('sha256').update(id).digest('hex').slice(0, 16);
+
+/**
+ * D1 范围解析（纯函数，便于服务层测试）：
+ * - admin：全局，或显式名单（由服务层另行校验对象级权限）；
+ * - teacher：仅当前 active 班主任分配的学生；显式名单必须是该范围的子集；
+ * - teacher 无任何分配时 forbidden（fail closed，不产出空范围冒充全量）。
+ */
+export function resolveReportScope(
+  role: CurrentUser['role'],
+  students: readonly { id: string }[],
+  mentorAssignments: readonly { studentUserId: string }[],
+  requestedStudentIds?: readonly string[],
+): { status: 'ok'; selected: string[] } | { status: 'forbidden'; reason: 'no-assignment' | 'out-of-scope' } {
+  if (role === 'teacher') {
+    const scope = [...new Set(mentorAssignments.map((row) => row.studentUserId))];
+    if (scope.length === 0) return { status: 'forbidden', reason: 'no-assignment' };
+    const selected = requestedStudentIds
+      ? scope.filter((id) => requestedStudentIds.includes(id))
+      : scope;
+    if (requestedStudentIds && requestedStudentIds.some((id) => !scope.includes(id))) {
+      return { status: 'forbidden', reason: 'out-of-scope' };
+    }
+    if (selected.length === 0) return { status: 'forbidden', reason: 'out-of-scope' };
+    return { status: 'ok', selected };
+  }
+  const selected = requestedStudentIds
+    ? students.map((row) => row.id).filter((id) => requestedStudentIds!.includes(id))
+    : students.map((row) => row.id);
+  return { status: 'ok', selected };
+}
 export function aggregateReportFacts(input: ReportAggregationInput): AggregatedReport {
   const students = input.students ?? [], parents = input.parents ?? [], teachers = input.teachers ?? [];
   const generatedAt = input.generatedAt ?? new Date().toISOString();

@@ -9,6 +9,7 @@ import type {
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
+  TutorTeamGraph,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
@@ -16,6 +17,7 @@ import {
   MOCK_ACTIVE_PROJECT,
   MOCK_PROJECT_CONTEXT,
   MOCK_PROJECT_ID,
+  MOCK_TEAM_GRAPH,
   MOCK_SESSION,
   MOCK_SESSION_ID,
   MOCK_STREAM_EVENTS,
@@ -121,6 +123,13 @@ export class MockTutorDataSource implements TutorDataSource {
       },
       replayed: false,
     };
+  }
+
+  async getTeamGraph(projectId: string): Promise<TutorTeamGraph | null> {
+    await this.delay();
+    this.assertReadable();
+    if (projectId !== MOCK_PROJECT_ID) return null;
+    return MOCK_TEAM_GRAPH;
   }
 
   async createSession(

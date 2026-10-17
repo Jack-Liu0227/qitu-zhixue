@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { TutorTurn } from '@qitu/contracts';
+import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
-import { resolveSubAgents, AgentDetailModal, type SubAgentStatus } from './TeamAgentHud';
 
 export interface HistorySessionItem {
   id: string;
@@ -97,12 +96,12 @@ interface TutorSessionHistoryProps {
   currentProjectId?: string;
   currentExplorationId?: string | null;
   currentTitle?: string;
+  currentAssistantName?: string;
   currentTurnCount: number;
   isOpen: boolean;
   onToggle: () => void;
   onNewExploration: () => void;
   onSelectProject?: (projectId: string) => void;
-  turns?: TutorTurn[];
   busy?: boolean;
 }
 
@@ -110,12 +109,12 @@ export function TutorSessionHistory({
   currentProjectId,
   currentExplorationId,
   currentTitle,
+  currentAssistantName = '启途智学助手',
   currentTurnCount,
   isOpen,
   onToggle,
   onNewExploration,
   onSelectProject,
-  turns,
   busy = false,
 }: TutorSessionHistoryProps) {
   const router = useRouter();
@@ -124,9 +123,14 @@ export function TutorSessionHistory({
   const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(() => getHiddenProjectIds());
+  const [historyStatus, setHistoryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [historyError, setHistoryError] = useState<{ message: string; status?: number; code?: string } | null>(null);
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setHistoryStatus('loading');
+    setHistoryError(null);
     void dataSource.listProjects().then((projects) => {
       if (cancelled) return;
       setProjectSessions(projects.filter((project) => !hiddenProjectIds.has(project.id)).map((project) => ({
@@ -147,11 +151,19 @@ export function TutorSessionHistory({
             : 0,
         stageLabel: project.stage,
       })));
-    }).catch(() => {
-      if (!cancelled) setProjectSessions([]);
+      setHistoryStatus('ready');
+    }).catch((cause: unknown) => {
+      if (cancelled) return;
+      const candidate = typeof cause === 'object' && cause !== null ? cause as { message?: unknown; status?: unknown; code?: unknown } : {};
+      setHistoryError({
+        message: typeof candidate.message === 'string' ? candidate.message : '历史会话加载失败',
+        status: typeof candidate.status === 'number' ? candidate.status : undefined,
+        code: typeof candidate.code === 'string' ? candidate.code : undefined,
+      });
+      setHistoryStatus('error');
     });
     return () => { cancelled = true; };
-  }, [dataSource, currentProjectId, currentTurnCount, hiddenProjectIds]);
+  }, [dataSource, currentProjectId, currentTurnCount, hiddenProjectIds, historyReloadKey]);
 
   // 初始化并监听本地探索会话
   useEffect(() => {
@@ -220,11 +232,6 @@ export function TutorSessionHistory({
     return false;
   };
 
-
-
-  const [inspectingAgent, setInspectingAgent] = useState<SubAgentStatus | null>(null);
-  const subAgents = useMemo(() => resolveSubAgents(currentProjectId, currentTitle), [currentProjectId, currentTitle]);
-
   if (!isOpen) {
     return (
       <aside
@@ -248,8 +255,8 @@ export function TutorSessionHistory({
         <button
           type="button"
           onClick={onToggle}
-          title="展开侧边栏（会话历史与团队智能体）"
-          aria-label="展开侧边栏（会话历史与团队智能体）"
+          title="展开侧边栏（会话历史）"
+          aria-label="展开侧边栏（会话历史）"
           style={{
             width: '44px',
             height: '44px',
@@ -323,7 +330,7 @@ export function TutorSessionHistory({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '16px' }}>💬</span>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史与团队</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史</h2>
         </div>
         <button
           type="button"
@@ -334,79 +341,6 @@ export function TutorSessionHistory({
         >
           收起 ◀
         </button>
-      </div>
-
-      {/* 团队智能体执行状态区（团队启动后在左侧边栏保留所有子agent的执行状态并支持点开查看详细历史） */}
-      <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ fontSize: '14px' }}>👥</span>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
-              {currentProjectId ? '导师团队智能体' : '启途智学助手'}
-            </span>
-          </div>
-          <span style={{ fontSize: '10.5px', color: '#64748b' }}>
-            {currentProjectId ? `${subAgents.length} 位协作中` : '意图探索引导'}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {subAgents.map((agent) => (
-            <button
-              key={agent.id}
-              type="button"
-              onClick={() => setInspectingAgent(agent)}
-              title="点击查看该智能体详细对话历史与工具调用"
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textAlign: 'left',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.background = '#eff6ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#cbd5e1';
-                e.currentTarget.style.background = '#ffffff';
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                <span style={{ fontSize: '15px' }}>{agent.avatar}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {agent.name}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>{agent.role}</div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    padding: '1px 5px',
-                    borderRadius: '4px',
-                    background: agent.status === 'active' ? '#dcfce7' : '#f1f5f9',
-                    color: agent.status === 'active' ? '#15803d' : '#64748b',
-                  }}
-                >
-                  ● {agent.statusLabel}
-                </span>
-                <span style={{ fontSize: '10px', color: '#94a3b8' }}>›</span>
-              </div>
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* 新建探索按钮 */}
@@ -453,7 +387,15 @@ export function TutorSessionHistory({
 
       {/* 会话列表 */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {filteredSessions.length === 0 ? (
+        {historyStatus === 'loading' ? (
+          <div className="qitu-tutor-history-loading" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>
+        ) : historyError?.status === 403 ? (
+          <PermissionDenied title="无法查看会话历史" description="当前账号没有读取会话历史的权限。" />
+        ) : historyError?.code === 'NETWORK_OFFLINE' ? (
+          <OfflineBanner readOnly onRetry={() => setHistoryReloadKey((key) => key + 1)} />
+        ) : historyStatus === 'error' ? (
+          <ErrorState title="会话历史加载失败" description={historyError?.message} errorCode={historyError?.code} onRetry={() => setHistoryReloadKey((key) => key + 1)} />
+        ) : filteredSessions.length === 0 ? (
           <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
             暂无匹配的历史会话
           </div>
@@ -515,6 +457,11 @@ export function TutorSessionHistory({
                         marginTop: '3px',
                       }}
                     >
+                      {active && (
+                        <span style={{ background: active ? '#dbeafe' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px' }}>
+                          {currentAssistantName}
+                        </span>
+                      )}
                       {item.stageLabel && (
                         <span style={{ background: active ? '#dbeafe' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px' }}>
                           {item.stageLabel}
@@ -566,13 +513,6 @@ export function TutorSessionHistory({
         <p style={{ margin: 0 }}>🔒 会话受服务端安全门禁与审计保护，未成年人数据最小化可见。</p>
       </div>
 
-      {inspectingAgent && (
-        <AgentDetailModal
-          inspectingAgent={inspectingAgent}
-          turns={turns}
-          onClose={() => setInspectingAgent(null)}
-        />
-      )}
     </aside>
   );
 }

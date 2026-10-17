@@ -21,6 +21,7 @@ import type {
   PedagogicMove,
   TutorProjectContext,
   TutorSessionSummary,
+  TutorTeamGraph,
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
@@ -142,6 +143,20 @@ export class TutorController {
   ): Promise<{ data: TutorProjectContext | null }> {
     const actor = this.requireStudent(cookieHeader);
     return { data: await this.tutorService.getProjectContext(projectId, actor.id) };
+  }
+
+  /** 右侧栏「团队智能体」Tab 的只读数据源；仅对已授权项目开放。 */
+  @Get('team-graph')
+  async getTeamGraph(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('projectId') projectId: string,
+  ): Promise<{ data: TutorTeamGraph }> {
+    const actor = this.requireStudent(cookieHeader);
+    if (!projectId || projectId.length > 160) throw new BadRequestException({
+      code: 'TUTOR_PROJECT_ID_REQUIRED',
+      message: 'team-graph 必须提供有效的 projectId',
+    });
+    return { data: await this.tutorService.getTeamGraph(projectId, actor.id) };
   }
   @Get('session-counts')
   async getSessionCounts(

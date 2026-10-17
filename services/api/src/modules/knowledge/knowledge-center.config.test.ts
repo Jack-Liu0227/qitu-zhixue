@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PROJECT_TOOL,
+  assertAssistantsBindable,
+  parseAssistantBindingsInput,
   validateKnowledgeConfig,
   type PlatformKnowledgeConfig,
 } from './knowledge-center.config';
@@ -73,4 +75,25 @@ test('global omission cannot delete an existing engine; invalid edits leave inpu
   const before = structuredClone(current);
   assert.throws(() => validateKnowledgeConfig({ ...current, knowledgeEngines: {} }, current));
   assert.deepEqual(current, before);
+});
+
+test('assistant binding input parsing rejects malformed payloads', () => {
+  assert.deepEqual(parseAssistantBindingsInput({ expectedRevision: 3, assistantIds: ['a', 'b'] }), {
+    expectedRevision: 3,
+    assistantIds: ['a', 'b'],
+  });
+  assert.throws(() => parseAssistantBindingsInput({ assistantIds: [] }), /expectedRevision/);
+  assert.throws(() => parseAssistantBindingsInput({ expectedRevision: 1 }), /assistantIds/);
+  assert.throws(() => parseAssistantBindingsInput({ expectedRevision: 1, assistantIds: ['a', 'a'] }));
+  assert.throws(() => parseAssistantBindingsInput({ expectedRevision: 1, assistantIds: ['x'.repeat(161)] }));
+});
+
+test('assistant binding requires every bound assistant to exist and be enabled', () => {
+  const rows = [
+    { id: 'tutor-leader', enabled: true },
+    { id: 'offline-agent', enabled: false },
+  ];
+  assertAssistantsBindable(['tutor-leader'], rows);
+  assert.throws(() => assertAssistantsBindable(['missing'], rows), /助手不存在或未启用/);
+  assert.throws(() => assertAssistantsBindable(['offline-agent'], rows), /助手不存在或未启用/);
 });

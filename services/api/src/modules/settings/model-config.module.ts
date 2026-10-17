@@ -3,6 +3,8 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { ModelConfigController } from './model-config.controller';
 import { ModelConfigService } from './model-config.service';
+import { SettingsRegistryController } from './settings-registry.controller';
+import { SettingsRegistryService } from './settings-registry.service';
 
 /**
  * 模型配置模块（管理员端「我的模型 / Live 模型」）。
@@ -12,8 +14,8 @@ import { ModelConfigService } from './model-config.service';
  */
 @Module({
   imports: [AuthModule, ModelRegistryModule],
-  controllers: [ModelConfigController],
-  providers: [ModelConfigService],
+  controllers: [ModelConfigController, SettingsRegistryController],
+  providers: [ModelConfigService, SettingsRegistryService],
   exports: [ModelConfigService],
 })
 export class ModelSettingsModule {}

@@ -13,6 +13,7 @@ import { CircuitSimulationCard } from './CircuitSimulationCard';
 import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
+import { IdeaCards } from './IdeaCards';
 
 /**
  * Safe fallback for a reply block that is not one of the five modelled
@@ -35,10 +36,12 @@ export function SafeReplyFallback() {
 export function TutorReplyBlockView({
   block,
   onSelectOption,
+  onOneClickCreateProject,
   disabled = false,
 }: {
   block: TutorReplyBlock;
   onSelectOption?: (label: string, text?: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string) => void;
   disabled?: boolean;
 }) {
   switch (block.kind) {
@@ -124,6 +127,17 @@ export function TutorReplyBlockView({
       );
     case 'attachment':
       return <AttachmentView attachment={block} />;
+    case 'idea_cards':
+      return onOneClickCreateProject ? (
+        <IdeaCards
+          cards={block.cards}
+          disabled={disabled}
+          confirming={disabled}
+          onCreate={onOneClickCreateProject}
+        />
+      ) : (
+        <SafeReplyFallback />
+      );
     default: {
       // Compile-time exhaustiveness: a new variant must be handled here.
       const neverBlock: never = block;

@@ -129,7 +129,35 @@ export type TutorReplyBlock =
       url: string;
       sizeText?: string;
       thumbnailUrl?: string;
-    };
+    }
+  /**
+   * 对话内一键立项的想法卡片。
+   *
+   * 由「启途智学助手」在探索会话中输出；`templateId` 必须经服务端校验为
+   * 存在且已发布的模板。学生**不点击就不创建**（未确认意图不得创建正式项目），
+   * 助手不得代替学生触发确认。点击后走既有 `confirmExploration` 幂等接口。
+   */
+  | { kind: 'idea_cards'; cards: TutorIdeaCard[] };
+
+/** 一张可一键立项的想法卡片。 */
+export interface TutorIdeaCard {
+  /** 卡片内幂等标识，用于区分同一轮的多张卡片。 */
+  ideaId: string;
+  title: string;
+  description: string;
+  /** 计划周期（周）。 */
+  weeks: 4 | 8;
+  /** 为什么适合这个学生（适配理由）。 */
+  rationale: string;
+  /** 关联的项目模板 id；服务端校验存在且 published。 */
+  templateId: string;
+  /** 卡片携带的建议目标，学生可在卡片内微调后确认。 */
+  suggestedGoal: string;
+  /** 卡片携带的建议兴趣，学生可在卡片内微调后确认。 */
+  suggestedInterest: string;
+  /** 关联团队名，例如「雷霆战机团队」，用于卡片上预告将唤醒的团队。 */
+  teamName?: string | null;
+}
 
 /** 工具调用的生命周期状态。 */
 export type TutorToolCallStatus = 'running' | 'done' | 'error';
@@ -203,6 +231,109 @@ export interface TutorProjectContext {
   progress: StageProgressDisplay;
   stages: TemplateStage[];
   currentTask: TutorProjectCurrentTask | null;
+  /**
+   * 服务端事实的团队／助手身份。
+   *
+   * 前端**不得**从项目标题正则推断团队名；未绑定时服务端返回
+   * `{ assistantName: '启途智学助手' }` 且 `teamId` 为 `null`。
+   */
+  team?: TutorTeamIdentity;
+  /** 来自 `PblTemplate.phases` 的真实阶段投影；无模板时为空数组。 */
+  phases?: TutorPhaseProjection[];
+}
+
+/**
+ * 当前会话由谁接管。
+ *
+ * 自由探索会话（无 projectId）只有 `assistantName`；正式项目会话额外携带
+ * `teamId` / `teamName`，取自 `admin_teams` 与项目模板的绑定，不来自标题猜测。
+ */
+export interface TutorTeamIdentity {
+  /** `admin_teams.id`；自由探索会话为 `null`。 */
+  teamId: string | null;
+  /** 团队展示名，例如「雷霆战机团队」；自由探索会话为 `null`。 */
+  teamName: string | null;
+  /** 本轮接管的助手 id（Leader 或探索助手）。 */
+  assistantId: string;
+  /** 本轮接管的助手展示名，例如「启途智学助手」「启途总导师」。 */
+  assistantName: string;
+  /** 助手头像（emoji 或图片 URL），缺省时前端用默认头像。 */
+  assistantAvatar?: string | null;
+}
+
+/** 项目模板阶段（`PblPhaseSpec`）的只读投影，用于右侧栏「项目进度」Tab。 */
+export interface TutorPhaseProjection {
+  phaseId: string;
+  orderIndex: number;
+  name: string;
+  /** 该阶段的责任助手展示名；缺省时前端显示「未指派」。 */
+  assignedAssistantName?: string | null;
+  assignedRole?: 'leader' | 'coach' | 'teammate' | 'reviewer' | null;
+  gateRule?: string;
+  requiresGateApproval: boolean;
+  /** 门禁当前核验结果，只读自服务端事实。 */
+  gateStatus: 'pending' | 'passed' | 'failed' | 'not_required';
+  /** 当前阶段整体状态。 */
+  status: 'locked' | 'active' | 'completed';
+  requiredDeliverables: { id: string; title: string; submitted: boolean }[];
+}
+
+/** 团队智能体运行状态（右侧栏「团队智能体」Tab）。 */
+export type TutorTeamAgentStatus = 'ready' | 'running' | 'waiting' | 'failed' | 'offline';
+
+/** 智能体参与的一次可见对话事件（已服务端过滤脱敏，不含内部提示词）。 */
+export interface TutorTeamAgentMessage {
+  messageId: string;
+  /** 面向学生的简短内容摘要，不是原始 prompt／原始参数。 */
+  summary: string;
+  direction: 'inbound' | 'outbound';
+  createdAt: string;
+}
+
+/** 智能体的一次工具调用（面向学生的标签与结论）。 */
+export interface TutorTeamAgentToolCall {
+  callId: string;
+  /** 稳定机器名，用于排查。 */
+  name: string;
+  /** 给学生看的短标签。 */
+  label: string;
+  status: TutorToolCallStatus;
+  /** 面向学生的结论摘要；不得包含内部提示词或原始参数。 */
+  summary?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+}
+
+/** 团队里一个智能体的投影。 */
+export interface TutorTeamAgent {
+  /** `admin_team_members.slot_id`。 */
+  slotId: string;
+  assistantId: string;
+  name: string;
+  role: string;
+  /** 角色中文标签，例如「概念教练 (核心原理解析)」。 */
+  roleLabel?: string | null;
+  avatar?: string | null;
+  color?: string | null;
+  status: TutorTeamAgentStatus;
+  /** 当前正在做的事的一句话摘要；空闲时为 `null`。 */
+  currentTaskSummary?: string | null;
+  /** 绑定的 PBL 阶段，例如 `concept_mastery`。 */
+  pblPhase?: string | null;
+  messages: TutorTeamAgentMessage[];
+  toolCalls: TutorTeamAgentToolCall[];
+}
+
+/**
+ * GET /api/v1/tutor/team-graph
+ *
+ * 仅对已授权的 `projectId`／`sessionId` 开放。浏览器只读渲染，
+ * 不得用图数据绕过授权或直接写状态。
+ */
+export interface TutorTeamGraph {
+  team: TutorTeamIdentity;
+  runId: string | null;
+  agents: TutorTeamAgent[];
 }
 
 

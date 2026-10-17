@@ -1,6 +1,6 @@
 # AI 搭档工作区交互合同：布局防遮挡、团队身份与对话内立项
 
-> 状态：`design / 待评审`
+> 状态：`implemented（2026-10-18 §2/§3/§4 主链路落地，测试通过）`
 > 评审基线：2026-10-18
 > 责任域：`apps/student-center/features/tutor`、`services/api/src/modules/ai-tutor`、`team-runtime`、`projects`
 > 上级基线：[`../student/tutor.md`](../student/tutor.md)、[`../design/pbl-template-team-binding-architecture.md`](./pbl-template-team-binding-architecture.md)
@@ -99,7 +99,15 @@ GET /api/v1/tutor/team-graph            # StaticAgentGraph + DynamicAgentGraph�
 - [ ] 立项后 header 团队徽标、右侧栏进度、ChatBubble 发言者名称均切换为真实团队身份。
 - [ ] 探索失败/模型不可用/模板缺失时给出明确错误，不伪造立项成功。
 
-## 5. 落地顺序建议
+## 5. 实施状态（2026-10-18）
+
+- §2 布局合同：`apps/student-center/styles/tutor.css`（dvh 渐进增强、层级合同、宽内容防裁剪）+ `TutorPage.tsx` 中列 `minHeight: 0`；ChatThread 既有近底部跟随逻辑保留。
+- §3.1 身份合同：`packages/contracts/src/tutor.ts` `TutorTeamIdentity`；`services/api/src/modules/ai-tutor/tutor.service.ts` `resolveTeamContext`（团队/助手身份服务端事实）；`TutorPage.tsx` 移除标题正则，改用 `session.project.team`。
+- §3.2 右侧栏双 Tab：进度 Tab 使用服务端 `phases` 投影（`TutorPhaseProjection`）；智能体 Tab 走 `GET /api/v1/tutor/team-graph`（`tutor.controller.ts` / `tutor.service.ts` `getTeamGraph`，名册来自 `admin_team_members` 真实配置）；左侧 `TutorSessionHistory` 已移除 agent 状态区；`TutorTeamRail` / `TeamAgentHud` 硬编码演示数据已删除。
+- §4 一键立项：`idea_cards` 块由服务端在探索会话注入（`buildIdeaCardsOnce`，来自已发布模板目录，每会话一次幂等）；前端 `IdeaCards.tsx` 渲染，点击走既有 `confirmExploration` 幂等链路；对话流内硬编码演示卡片已删除。
+- 未决：`team-graph` 的 `messages/toolCalls` 暂为空数组（mailbox 执行记录与助手目录标识空间尚未打通，见 §3.2 注释）；`AssistantDetailModal` 的执行历史待该投影打通后接真实数据。
+
+## 6. 落地顺序建议（原计划）
 
 1. 布局合同（§2）：纯 CSS/结构改动，先行合入，独立验收。
 2. 身份合同（§3.1）+ 右侧栏 Tab（§3.2）：依赖 `team-graph` 投影接口与 `project-context` 扩展。

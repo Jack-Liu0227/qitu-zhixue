@@ -10,6 +10,7 @@ import type {
   ProjectSummary,
   TutorProjectContext as SharedTutorProjectContext,
   TutorSessionSummary,
+  TutorTeamGraph,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
@@ -92,6 +93,19 @@ export class TutorApiDataSource implements TutorDataSource {
     if (data === null) return null;
     if (!isTutorProjectContext(data)) {
       throw new TutorDataError('项目上下文格式不正确', undefined, 'BAD_PROJECT_CONTEXT_PAYLOAD');
+    }
+    return data;
+  }
+
+  async getTeamGraph(projectId: string): Promise<TutorTeamGraph | null> {
+    const response = await this.fetchJson(
+      `/api/v1/tutor/team-graph?projectId=${encodeURIComponent(projectId)}`,
+      '团队智能体加载失败',
+    );
+    const data = unwrapData(response);
+    if (data === null) return null;
+    if (!isTutorTeamGraph(data)) {
+      throw new TutorDataError('团队智能体数据格式不正确', undefined, 'BAD_TEAM_GRAPH_PAYLOAD');
     }
     return data;
   }
@@ -308,7 +322,31 @@ function isTutorProjectContext(value: unknown): value is TutorProjectContext {
     typeof candidate.progress?.stageTotal === 'number' &&
     typeof candidate.progress?.progressPercent === 'number' &&
     Array.isArray(candidate.stages) &&
-    (candidate.currentTask === null || typeof candidate.currentTask === 'object')
+    (candidate.currentTask === null || typeof candidate.currentTask === 'object') &&
+    (candidate.team === undefined || isTutorTeamIdentity(candidate.team)) &&
+    (candidate.phases === undefined || Array.isArray(candidate.phases))
+  );
+}
+
+function isTutorTeamIdentity(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    (candidate.teamId === null || typeof candidate.teamId === 'string') &&
+    (candidate.teamName === null || typeof candidate.teamName === 'string') &&
+    typeof candidate.assistantId === 'string' &&
+    typeof candidate.assistantName === 'string'
+  );
+}
+
+function isTutorTeamGraph(value: unknown): value is TutorTeamGraph {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<TutorTeamGraph>;
+  return (
+    typeof candidate.team === 'object' && candidate.team !== null &&
+    isTutorTeamIdentity(candidate.team) &&
+    (candidate.runId === null || typeof candidate.runId === 'string') &&
+    Array.isArray(candidate.agents)
   );
 }
 

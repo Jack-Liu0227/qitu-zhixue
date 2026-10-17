@@ -16,6 +16,8 @@ import { AuditWriter } from '../../common/audit/audit.service';
 import {
   ENGINE_CATALOG,
   PROJECT_TOOL,
+  assertAssistantsBindable,
+  parseAssistantBindingsInput,
   record,
   validateKnowledgeConfig,
   type PlatformKnowledgeConfig,
@@ -254,6 +256,50 @@ export class KnowledgeCenterService {
       tool.boundAssistants.includes(assistantId) &&
       assistants.some((a) => a.id === assistantId && a.enabled)
     );
+  }
+
+  /**
+   * 知识库↔助手绑定（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）：
+   * 项目知识库检索工具绑定到哪些助手。只读目录 + 聚焦写入；
+   * 保存复用 platform-config 的 expectedRevision 并发控制、幂等与审计事务。
+   */
+  async assistantBindings(): Promise<{
+    revision: number;
+    assistantIds: string[];
+    catalog: { id: string; name: string; avatar: string | null; enabled: boolean }[];
+  }> {
+    const { revision, config } = await this.configuration();
+    const assistants = await this.database().select().from(adminAssistants);
+    return {
+      revision,
+      assistantIds: [...config.platformTools['project-knowledge'].boundAssistants],
+      catalog: assistants.map((assistant) => ({
+        id: assistant.id,
+        name: assistant.name,
+        avatar: assistant.avatar ?? null,
+        enabled: assistant.enabled,
+      })),
+    };
+  }
+
+  async saveAssistantBindings(actor: CurrentUser, body: unknown, key: string) {
+    const { expectedRevision, assistantIds } = parseAssistantBindingsInput(body);
+    const rows = await this.database()
+      .select({ id: adminAssistants.id, enabled: adminAssistants.enabled })
+      .from(adminAssistants);
+    assertAssistantsBindable(assistantIds, rows);
+    const { revision, config } = await this.configuration();
+    const next = {
+      ...config,
+      platformTools: {
+        ...config.platformTools,
+        'project-knowledge': {
+          ...config.platformTools['project-knowledge'],
+          boundAssistants: [...assistantIds],
+        },
+      },
+    };
+    return this.save(actor, { config: next, expectedRevision }, key);
   }
 
   async engines() {

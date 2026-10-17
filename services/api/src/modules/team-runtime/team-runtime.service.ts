@@ -21,7 +21,7 @@ import {
   type Database,
   withTransaction,
 } from '@qitu/database';
-import type { CurrentUser, PblPhase } from '@qitu/contracts';
+import type { CurrentUser, PblPhase, TutorTeamAgentMessage, TutorTeamAgentToolCall, TutorTeamAgentStatus } from '@qitu/contracts';
 import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
@@ -467,6 +467,18 @@ export interface TeamRunGraph {
   messages: readonly Record<string, unknown>[];
   events: readonly Record<string, unknown>[];
 }
+export interface StudentTeamAgentRuntimeProjection {
+  status: TutorTeamAgentStatus;
+  currentTaskSummary: string | null;
+  messages: TutorTeamAgentMessage[];
+  toolCalls: TutorTeamAgentToolCall[];
+}
+
+
+export interface StudentTeamRuntimeProjection {
+  runId: string | null;
+  agents: Record<string, StudentTeamAgentRuntimeProjection>;
+}
 
 type TeacherProjectionStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'blocked' | 'cancelled' | 'unknown' | 'idle';
 type TeacherNodeStatus = Exclude<TeacherProjectionStatus, 'idle'>;
@@ -513,6 +525,13 @@ interface AgentRow {
  * Server-owned Team Runtime. This is intentionally a persistence and routing
  * layer; model invocation and domain writes remain behind their own services.
  */
+export interface TeamRunGraph {
+  run: Record<string, unknown>;
+  tasks: readonly Record<string, unknown>[];
+  messages: readonly Record<string, unknown>[];
+  events: readonly Record<string, unknown>[];
+}
+
 @Injectable()
 export class TeamRuntimeService {
   constructor(
@@ -1332,6 +1351,76 @@ export class TeamRuntimeService {
     };
   }
 
+  /** 只读：某项目最近一次团队运行 id；无运行或无数据库时返回 null。 */
+  async getLatestRunIdForProject(projectId: string): Promise<string | null> {
+    if (!this.db) return null;
+    const [run] = await this.db
+      .select({ id: agentTeamRuns.id })
+      .from(agentTeamRuns)
+      .where(eq(agentTeamRuns.projectId, projectId))
+      .orderBy(desc(agentTeamRuns.createdAt))
+      .limit(1);
+    return run?.id ?? null;
+  }
+
+  /**
+   * 学生端团队图的动态投影。查询严格绑定 student_user_id + project_id，
+   * 并且只把运行事实的安全摘要投影出去：任务输入、消息 payload、事件 payload
+   * 永远不直接返回。
+   */
+  async getStudentTeamRuntimeProjection(
+    projectId: string,
+    studentUserId: string,
+    assistantRuntimeIds: Readonly<Record<string, readonly string[]>>,
+  ): Promise<StudentTeamRuntimeProjection> {
+    if (!this.db) return { runId: null, agents: {} };
+    const [run] = await this.db.select().from(agentTeamRuns).where(and(
+      eq(agentTeamRuns.projectId, projectId),
+      eq(agentTeamRuns.studentUserId, studentUserId),
+    )).orderBy(desc(agentTeamRuns.createdAt)).limit(1);
+    if (!run) return { runId: null, agents: {} };
+
+    const assistantIds = Object.keys(assistantRuntimeIds);
+    const runtimeIds = [...new Set(Object.values(assistantRuntimeIds).flat())];
+    if (runtimeIds.length === 0) return { runId: run.id, agents: {} };
+    const [tasks, messages, events, mailboxes] = await Promise.all([
+      this.db.select().from(agentTeamTasks).where(and(eq(agentTeamTasks.runId, run.id), inArray(agentTeamTasks.agentId, runtimeIds))).orderBy(asc(agentTeamTasks.createdAt)),
+      this.db.select().from(agentTeamMessages).where(and(
+        eq(agentTeamMessages.runId, run.id),
+        or(
+          inArray(agentTeamMessages.mailboxAgentId, runtimeIds),
+          inArray(agentTeamMessages.senderAgentId, runtimeIds),
+          inArray(agentTeamMessages.recipientAgentId, runtimeIds),
+        ),
+      )).orderBy(asc(agentTeamMessages.createdAt)),
+      this.db.select().from(agentTeamEvents).where(eq(agentTeamEvents.runId, run.id)).orderBy(asc(agentTeamEvents.occurredAt)),
+      this.db.select().from(agentMailboxes).where(inArray(agentMailboxes.agentId, runtimeIds)),
+    ]);
+    const taskById = new Map(tasks.map((task) => [task.id, task]));
+    const mailboxByAgent = new Map(mailboxes.map((mailbox) => [mailbox.agentId, mailbox]));
+    const output: Record<string, StudentTeamAgentRuntimeProjection> = {};
+
+    for (const assistantId of assistantIds) {
+      const ids = new Set(assistantRuntimeIds[assistantId] ?? []);
+      const memberTasks = tasks.filter((task) => ids.has(task.agentId));
+      const memberMessages = messages.filter((message) => ids.has(message.mailboxAgentId) || ids.has(message.senderAgentId) || ids.has(message.recipientAgentId));
+      const memberEvents = events.filter((event) => {
+        if (event.taskId === null) return false;
+        const task = taskById.get(event.taskId);
+        return task !== undefined && ids.has(task.agentId);
+      });
+      const pendingCount = [...ids].reduce((count, id) => count + (mailboxByAgent.get(id)?.pendingCount ?? 0), 0);
+      const latestTask = memberTasks.at(-1);
+      const status = studentAgentStatus(run.status, memberTasks, pendingCount, ids.has(run.leaderAgentId));
+      output[assistantId] = {
+        status,
+        currentTaskSummary: latestTask ? studentTaskSummary(latestTask.taskType, latestTask.status) : null,
+        messages: memberMessages.slice(-20).map((message) => studentMessageProjection(message, ids)),
+        toolCalls: memberEvents.filter((event) => event.topic === TEAM_TOOL_INVOKED_TOPIC).slice(-20).map((event) => studentToolCallProjection(event, taskById.get(event.taskId ?? ''))),
+      };
+    }
+    return { runId: run.id, agents: output };
+  }
   /** Read-only projection used by the teacher workspace after its assignment check. */
   async getLatestRunProjection(studentUserId: string): Promise<TeacherAgentRunProjection> {
     if (!this.db) return emptyTeacherAgentRunProjection();
@@ -1685,6 +1774,73 @@ function durationMs(start: Date | null, end: Date | null): number | null {
   return Math.max(0, end.getTime() - start.getTime());
 }
 
+function studentAgentStatus(
+  runStatus: string,
+  tasks: readonly (typeof agentTeamTasks.$inferSelect)[],
+  pendingCount: number,
+  isLeader: boolean,
+): TutorTeamAgentStatus {
+  if (tasks.some((task) => task.status === 'failed')) return 'failed';
+  if (tasks.some((task) => task.status === 'running') || (isLeader && runStatus === 'running')) return 'running';
+  if (pendingCount > 0 || tasks.some((task) => task.status === 'queued')) return 'waiting';
+  if (tasks.some((task) => task.status === 'succeeded') || (isLeader && runStatus === 'completed')) return 'ready';
+  return 'offline';
+}
+
+function studentTaskSummary(taskType: string, status: string): string {
+  const label = taskType === 'interest.confirm' ? '梳理兴趣方向'
+    : taskType === 'project.recommend' ? '整理项目建议'
+      : taskType === 'pbl.plan' ? '规划项目阶段'
+        : '协作任务';
+  return `${label}${status === 'running' ? '进行中' : status === 'succeeded' ? '已完成' : status === 'failed' ? '失败' : '等待中'}`;
+}
+
+function studentMessageProjection(
+  message: typeof agentTeamMessages.$inferSelect,
+  memberIds: ReadonlySet<string>,
+): TutorTeamAgentMessage {
+  const outbound = memberIds.has(message.senderAgentId);
+  const summary = message.messageType.endsWith('.result')
+    ? (message.status === 'delivered' ? '协作结果已返回' : '协作结果处理中')
+    : message.messageType.endsWith('.request') ? '收到一项协作任务' : '团队产生了一条协作记录';
+  return {
+    messageId: message.id,
+    summary,
+    direction: outbound ? 'outbound' : 'inbound',
+    createdAt: message.createdAt.toISOString(),
+  };
+}
+
+function studentToolCallProjection(
+  event: typeof agentTeamEvents.$inferSelect,
+  task: typeof agentTeamTasks.$inferSelect | undefined,
+): TutorTeamAgentToolCall {
+  const payload = event.payload as Record<string, unknown> | null | undefined;
+  const rawName = typeof payload?.name === 'string' ? payload.name : typeof payload?.toolName === 'string' ? payload.toolName : 'team.tool.invoked';
+  const name = rawName.replace(/[^a-zA-Z0-9._:-]/g, '').slice(0, 100) || 'team.tool.invoked';
+  const rawLabel = typeof payload?.label === 'string' ? payload.label : typeof payload?.toolLabel === 'string' ? payload.toolLabel : null;
+  const label = safeStudentText(rawLabel) ?? '调用学习工具';
+  const rawSummary = typeof payload?.summary === 'string' ? payload.summary : typeof payload?.conclusion === 'string' ? payload.conclusion : null;
+  const summary = safeStudentText(rawSummary);
+  const rawStatus = payload?.status;
+  const status: TutorTeamAgentToolCall['status'] = rawStatus === 'error' || task?.status === 'failed'
+    ? 'error' : rawStatus === 'running' || task?.status === 'running' ? 'running' : 'done';
+  return {
+    callId: event.id,
+    name,
+    label,
+    status,
+    summary,
+    startedAt: event.occurredAt.toISOString(),
+    finishedAt: status === 'running' ? null : event.occurredAt.toISOString(),
+  };
+}
+
+function safeStudentText(value: string | null): string | null {
+  if (!value) return null;
+  if (/(?:system|developer|prompt|instruction|原始参数|系统指令|提示词|\bargs?\b|parameters?)/i.test(value)) return null;
+  return value.replace(/\s+/g, ' ').trim().slice(0, 160) || null;
+}
 function summarizePayload(payload: unknown): string | null {
   if (payload === null || payload === undefined) return null;
   if (typeof payload === 'string') return payload.slice(0, 500);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { aggregateReportFacts, redactReport } from './report';
+import { aggregateReportFacts, redactReport, resolveReportScope } from './report';
 
 test('aggregateReportFacts returns a deterministic, minimum-disclosure projection', () => {
   const report = aggregateReportFacts({
@@ -96,3 +96,46 @@ test('redactReport handles arrays and leaves the caller-owned object untouched',
   assert.equal(JSON.stringify(input), snapshot);
 });
 
+
+test('resolveReportScope converges teacher scope to active mentor assignments (D1)', () => {
+  const students = [{ id: 'student-1' }, { id: 'student-2' }, { id: 'student-3' }];
+  const assignments = [{ studentUserId: 'student-1' }, { studentUserId: 'student-2' }];
+
+  const scoped = resolveReportScope('teacher', students, assignments);
+  assert.deepEqual(scoped, { status: 'ok', selected: ['student-1', 'student-2'] });
+
+  // 显式名单必须是所带学生子集；越界整体拒绝。
+  const subset = resolveReportScope('teacher', students, assignments, ['student-2']);
+  assert.deepEqual(subset, { status: 'ok', selected: ['student-2'] });
+  assert.deepEqual(
+    resolveReportScope('teacher', students, assignments, ['student-3']),
+    { status: 'forbidden', reason: 'out-of-scope' },
+  );
+
+  // 无班主任分配：fail closed，不产出空范围冒充全量。
+  assert.deepEqual(
+    resolveReportScope('teacher', students, []),
+    { status: 'forbidden', reason: 'no-assignment' },
+  );
+
+  // 管理员：全局或显式名单（对象级权限由服务层另行校验）。
+  assert.deepEqual(resolveReportScope('admin', students, []), { status: 'ok', selected: ['student-1', 'student-2', 'student-3'] });
+  assert.deepEqual(resolveReportScope('admin', students, [], ['student-1']), { status: 'ok', selected: ['student-1'] });
+});
+
+test('aggregation surfaces new issue sources without leaking raw content', () => {
+  const report = aggregateReportFacts({
+    rawIssues: {
+      studentIssues: ['共有 3 道学习计划未答题待跟进，是学生端最直接的卡点信号'],
+      parentIssues: ['汇报区间内收到 2 条家长咨询/诉求待跟进（公开站咨询通道，仅计数不含联系方式）'],
+      teacherIssues: ['当前有 1 项学生成果待班主任复核审批'],
+    },
+    students: [{ id: 's1', projectCount: 1 }],
+  });
+  const serialised = JSON.stringify(report);
+  assert.ok(report.issueSummary!.formattedText.includes('未答题待跟进'));
+  assert.ok(report.issueSummary!.formattedText.includes('家长咨询/诉求待跟进'));
+  // 脱敏红线：摘要不携带任何未成年人原文或联系方式字段。
+  assert.equal(serialised.includes('conversation'), false);
+  assert.equal(serialised.includes('phone'), false);
+});

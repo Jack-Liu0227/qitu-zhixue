@@ -136,6 +136,27 @@ export class KnowledgeCenterController {
     requireIdempotencyKey(key);
     return { data: await this.center.updateFile(this.actor(cookie), id, memberId, body) };
   }
+  @Get('knowledge/assistant-bindings')
+  async assistantBindings(@Headers('cookie') cookie: string | undefined) {
+    this.actor(cookie);
+    return { data: await this.center.assistantBindings() };
+  }
+
+  @Put('knowledge/assistant-bindings')
+  async saveAssistantBindings(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return {
+      data: await this.center.saveAssistantBindings(
+        this.actor(cookie),
+        body,
+        requireIdempotencyKey(key),
+      ),
+    };
+  }
+
   @Get('knowledge/engines')
   async engines(@Headers('cookie') cookie: string | undefined) {
     this.actor(cookie);

@@ -35,12 +35,14 @@ export function ChatBubble({
   turn,
   currentAssistantName,
   onSelectOption,
+  onOneClickCreateProject,
   disabled = false,
   streaming = false,
 }: {
   turn: TutorTurn;
   currentAssistantName?: string;
   onSelectOption?: (label: string, text?: string) => void;
+  onOneClickCreateProject?: (goal: string, interest: string) => void;
   disabled?: boolean;
   streaming?: boolean;
 }) {
@@ -322,6 +324,7 @@ export function ChatBubble({
               key={`${turn.turnId}-${index}`}
               block={segment.raw}
               onSelectOption={onSelectOption}
+              onOneClickCreateProject={onOneClickCreateProject}
               disabled={disabled}
             />
           ) : (

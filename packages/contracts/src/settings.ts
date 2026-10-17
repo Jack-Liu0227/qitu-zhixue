@@ -81,3 +81,34 @@ export interface ModelRuntimeResponse {
    */
   availableModalities: TutorModalityMode[];
 }
+
+export type AdminSettingsRegistryGroup = '工作区' | 'AI 核心架构' | '内容与数据' | '应用与会话';
+
+export type AdminSettingsRegistryBadgeKind =
+  | 'static'
+  | 'assistant-count'
+  | 'team-count'
+  | 'runtime-tools'
+  | 'runtime-skills';
+
+/**
+ * 管理端设置注册表项。服务端是设置名称、路由和分组的唯一事实源；
+ * `badgeKind` 只声明前端该卡片应读取哪一种状态，不包含伪造的数量。
+ */
+export interface AdminSettingsRegistryItem {
+  id: string;
+  /** 相对 `/admin` basePath 的真实设置路由。 */
+  href: string;
+  group: AdminSettingsRegistryGroup;
+  icon: string;
+  /** 总览卡片标题。 */
+  title: string;
+  /** 侧栏短标签。 */
+  label: string;
+  description: string;
+  accent: string;
+  badgeKind: AdminSettingsRegistryBadgeKind;
+  order: number;
+}
+
+export type AdminSettingsRegistry = AdminSettingsRegistryItem[];

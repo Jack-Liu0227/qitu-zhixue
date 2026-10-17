@@ -11,15 +11,24 @@ import {
 } from '@qitu/ai-client';
 
 import type {
+  AdminTeamConfig,
   GetTutorSessionResponse,
   ProjectStage,
   TutorHintLevel,
+  TutorIdeaCard,
+  TutorPhaseProjection,
   TutorProjectContext,
   TutorSessionSummary,
+  TutorTeamAgent,
+  TutorTeamGraph,
+  TutorTeamIdentity,
   TutorToolCall,
   TutorTurn,
 } from '@qitu/contracts';
-import { DATA_MODE_TOKEN, type DataMode } from '../../database';
+import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
+import { eq } from 'drizzle-orm';
+import { projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
 import { AuditWriter } from '../../common/audit';
 import {
@@ -38,6 +47,7 @@ import { TutorWorkspaceService } from './tutor-workspace.service';
 import { PlatformRegistryService, tutorAssistantIdForProject } from '../platform-registry/platform-registry.service';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
+import { TemplatesService } from '../templates/templates.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { InMemoryTutorSessionStore, TutorSessionStore } from './tutor-session.store';
 import {
@@ -147,6 +157,35 @@ function currentTaskFor(
 }
 
 /**
+ * 项目阶段 → PBL 阶段投影（用于阶段树与门禁状态）。
+ * 阶段机见 packages/contracts 的 `ProjectStage`；PBL 阶段见 `PblPhase`。
+ */
+const PHASE_FOR_PROJECT_STAGE: Record<string, string> = {
+  exploration: 'exploration',
+  intent_confirmed: 'concept_mastery',
+  theory: 'concept_mastery',
+  theory_learning: 'concept_mastery',
+  theory_check: 'concept_mastery',
+  practice: 'guided_practice',
+  practice_ready: 'guided_practice',
+  practice_building: 'guided_practice',
+  review: 'deliverable_review',
+  artifact_review: 'deliverable_review',
+  reflection: 'deliverable_review',
+  published: 'deliverable_review',
+  completed: 'deliverable_review',
+};
+
+/** `AdminTeamMember.status` → 学生端可见的智能体状态。 */
+function runtimeAgentIdsFor(assistantId: string): readonly string[] {
+  // The runtime registry predates the admin assistant catalogue. This is an
+  // identifier alias, not a display-name guess; all state still comes from the
+  // project-scoped Team Runtime query.
+  return assistantId === 'tutor-leader' ? ['qitu-learning-partner', 'tutor-leader'] : [assistantId];
+}
+
+
+/**
  * AI搭档的会话与回合服务。
  *
  * 存储按 `QITU_DATA_MODE` 分流：
@@ -176,6 +215,7 @@ export class TutorService {
   private readonly turnLocks = new Map<string, Promise<void>>();
   private readonly auditLog: AuditEntry[] = [];
   private readonly store: TutorSessionStore;
+  private readonly database: import('@qitu/database').Database | null;
 
   /**
    * Provider 按 `QITU_DATA_MODE` 选择：
@@ -221,28 +261,36 @@ export class TutorService {
     @Optional() @Inject(ImaMcpClient) ima?: ImaMcpClient,
     @Optional() private readonly imaSettings?: ImaSettingsService,
     @Optional() private readonly projectKnowledge?: ProjectKnowledgeService,
+    @Optional() private readonly templates?: TemplatesService,
+    @Optional() @Inject(DATABASE_TOKEN) database?: import('@qitu/database').Database | null,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
     this.contextReader = this.workspace === undefined ? createNoopTutorContextReader() : createTutorContextReader(this.workspace);
     this.domainWriter = this.workspace === undefined ? createNoopTutorDomainWriter() : createTutorDomainWriter(this.workspace);
     this.store = store ?? new InMemoryTutorSessionStore();
+    this.database = database ?? null;
 
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
-  async getProjectContext(projectId: string | undefined, ownerId: string): Promise<TutorProjectContext | null> {
+  async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false): Promise<TutorProjectContext | null> {
     if (this.learningStore !== undefined) {
       const selected = projectId === undefined
         ? (await this.learningStore.listProjectsByStudent(ownerId)).find((project) => !['completed', 'published'].includes(project.status))
         : await this.learningStore.findProject(projectId);
-      if (!selected) return null;
+      if (!selected) return explicitExploration && projectId === undefined
+        ? this.buildExplorationContext(ownerId)
+        : null;
       if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
+      const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId);
       return {
         project: { id: selected.id, title: selected.title, stage: selected.status, progress: selected.progressPercent },
         progress: { currentStageIndex: selected.currentStageIndex, stageTotal: selected.stageTotal, progressPercent: selected.progressPercent },
         stages: PROJECT_STAGES,
         currentTask: currentTaskFor(selected.id, selected.title, selected.status),
+        team: teamContext.team,
+        phases: teamContext.phases,
       };
     }
     // Live teaching must never use the unrelated in-memory demo roster.
@@ -253,11 +301,14 @@ export class TutorService {
       ? projects.find((project) => project.stage !== 'completed' && project.stage !== 'published')
       : this.platformData.getProject(projectId);
 
-    if (selected === null || selected === undefined) return null;
+    if (selected === null || selected === undefined) return explicitExploration && projectId === undefined
+      ? this.buildExplorationContext(ownerId)
+      : null;
     if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
 
     const stages = PROJECT_STAGES;
     const currentStageIndex = Math.max(0, stages.findIndex((stage) => stage.id === selected.stage));
+    const teamContext = await this.resolveTeamContext(selected.projectId, null, selected.stage, ownerId);
     return {
       project: {
         id: selected.projectId,
@@ -272,10 +323,241 @@ export class TutorService {
       },
       stages,
       currentTask: currentTaskFor(selected.projectId, selected.title, selected.stage),
+      team: teamContext.team,
+      phases: teamContext.phases,
     };
   }
 
-  /** 只会暴露给测试与内部审计；不通过 HTTP 暴露。 */
+  private async buildExplorationContext(ownerId: string): Promise<TutorProjectContext> {
+    const teamContext = await this.resolveTeamContext(null, null, 'exploration', ownerId);
+    return {
+      project: { id: 'exploration', title: EXPLORATION_CONTEXT.title, stage: EXPLORATION_CONTEXT.stage, progress: 0 },
+      progress: { currentStageIndex: 0, stageTotal: PROJECT_STAGES.length, progressPercent: 0 },
+      stages: PROJECT_STAGES,
+      currentTask: null,
+      team: teamContext.team,
+      phases: [],
+    };
+  }
+
+
+   * docs/design/20261018-tutor-workspace-interaction-contract.md §3）。
+   *
+   * - 自由探索：`assistantId = qitu-intake-assistant`，`teamId/teamName = null`；
+   * - 正式项目：项目冻结的 `templateVersionId` 沿模板版本与模板表查到真实模板，
+   *   再与 `admin_teams.pbl_spec.projectName/projectId` 绑定；助手取该团队 Leader。
+   *
+   * 注册表不可用时 fail-soft：返回基础身份与空阶段，不伪造团队名。
+   */
+  private async resolveTeamContext(
+    projectId: string | null,
+    templateVersionId: string | null,
+    stage: ProjectStage,
+    ownerId: string,
+  ): Promise<{ team: TutorTeamIdentity; phases: TutorPhaseProjection[]; teamConfig: AdminTeamConfig | null }> {
+    const intake = this.findBuiltinAssistant('qitu-intake-assistant');
+    const fallback: TutorTeamIdentity = {
+      teamId: null,
+      teamName: null,
+      assistantId: intake?.id ?? 'qitu-intake-assistant',
+      assistantName: intake?.name ?? '启途智学助手',
+      assistantAvatar: intake?.avatar ?? null,
+    };
+    if (this.platformRegistry === undefined) return { team: fallback, phases: [], teamConfig: null };
+    try {
+      const [assistants, teams, binding] = await Promise.all([
+        this.platformRegistry.listAssistants(),
+        this.platformRegistry.listTeams(),
+        templateVersionId === null ? Promise.resolve(null) : this.findTemplateBinding(templateVersionId),
+      ]);
+      const teamConfig = projectId === null || binding === null
+        ? null
+        : teams.find((team) => team.enabled && this.teamBindsTemplate(team, binding)) ?? null;
+      const leaderId = teamConfig?.leaderAssistantId ?? fallback.assistantId;
+      const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
+        ?? this.findBuiltinAssistant(leaderId);
+      const team: TutorTeamIdentity = {
+        teamId: projectId === null ? null : (teamConfig?.id ?? null),
+        teamName: projectId === null ? null : (teamConfig?.name ?? null),
+        assistantId: leader?.id ?? leaderId,
+        assistantName: leader?.name ?? fallback.assistantName,
+        assistantAvatar: leader?.avatar ?? null,
+      };
+      const phases = await this.projectPhases(teamConfig, stage, ownerId);
+      return { team, phases, teamConfig };
+    } catch {
+      // 配置存储不可用时只返回真实存在的助手兜底，绝不编造团队名。
+      return { team: fallback, phases: [], teamConfig: null };
+    }
+  }
+
+  private findBuiltinAssistant(id: string) {
+    return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
+  }
+
+  /**
+   * 真实绑定链路：projects.template_version_id → project_template_versions.template_id
+   * → project_templates，再用 admin_teams.pbl_spec.projectName 与模板 title 的冻结配置
+   * 精确匹配团队。种子中的对应关系是 template-thunder-fighter ↔ pbl-thunder-fighter、
+   * template-kinetic-energy ↔ pbl-kinetic-energy；这里不从项目标题猜团队。
+   */
+  private async findTemplateBinding(templateVersionId: string): Promise<{ id: string; title: string; slug: string } | null> {
+    if (this.database === null) return null;
+    const rows = await this.database
+      .select({ id: projectTemplates.id, title: projectTemplates.title, slug: projectTemplates.slug })
+      .from(projectTemplateVersions)
+      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
+      .where(eq(projectTemplateVersions.id, templateVersionId))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  private teamBindsTemplate(team: AdminTeamConfig, binding: { id: string; title: string; slug: string }): boolean {
+    const spec = team.pblSpec as (AdminTeamConfig['pblSpec'] & { projectName?: unknown; projectId?: unknown }) | undefined;
+    return spec?.projectName === binding.title || spec?.projectId === binding.id;
+  }
+
+  /** 把团队的 `pbl_spec.phases` 投影为学生端只读阶段树，门禁只读真实证据。 */
+  private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string): Promise<TutorPhaseProjection[]> {
+    const spec = teamConfig?.pblSpec;
+    if (!spec?.phases?.length) return [];
+    const currentPhase = PHASE_FOR_PROJECT_STAGE[stage] ?? 'concept_mastery';
+    const phases = [...spec.phases];
+    const currentIndex = Math.max(0, phases.findIndex((phase) => phase.phase === currentPhase));
+    const satisfiedGates = await this.loadSatisfiedGatesForStudent(ownerId);
+    return phases.map((phase, index) => {
+      const status: TutorPhaseProjection['status'] =
+        index < currentIndex ? 'completed' : index === currentIndex ? 'active' : 'locked';
+      const gateRule = phase.gateCondition;
+      const requiresGate = Boolean(gateRule);
+      const gatePassed = gateRule !== undefined && satisfiedGates.has(gateRule);
+      const assignedMember = teamConfig?.members.find((member) => member.assistantId === phase.assignedAssistantId);
+      return {
+        phaseId: phase.phase,
+        orderIndex: index,
+        name: phase.title,
+        assignedAssistantName: assignedMember?.assistantName ?? phase.assignedRoleLabel ?? undefined,
+        assignedRole: assignedMember?.role ?? null,
+        ...(gateRule !== undefined ? { gateRule } : {}),
+        requiresGateApproval: requiresGate,
+        gateStatus: requiresGate ? (gatePassed ? 'passed' : 'pending') : 'not_required',
+        status,
+        requiredDeliverables: phase.deliverableType
+          ? [{ id: `${phase.phase}:${phase.deliverableType}`, title: phase.deliverableType, submitted: false }]
+          : [],
+      };
+    });
+  }
+
+  private async loadSatisfiedGatesForStudent(studentId: string): Promise<Set<string>> {
+    if (this.database === null) return new Set();
+    const rows = await this.database
+      .select({ gate: pblGateEvidence.gate })
+      .from(pblGateEvidence)
+      .where(eq(pblGateEvidence.studentUserId, studentId));
+    return new Set(rows.map((row) => row.gate));
+  }
+
+  /**
+   * GET /api/v1/tutor/team-graph 的服务端实现：右侧栏「团队智能体」Tab 的
+   * 只读数据源（合同见 packages/contracts TutorTeamGraph）。
+   * 名册来自 admin_team_members 与 admin_assistants 的服务端目录；状态、任务、
+   * mailbox 消息和工具事件来自项目范围内的 Team Runtime 安全投影。
+   */
+  async getTeamGraph(projectId: string, ownerId: string): Promise<TutorTeamGraph> {
+    if (this.learningStore === undefined) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
+    const project = await this.learningStore.findProject(projectId);
+    if (!project) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
+    if (project.studentId !== ownerId) throw new ForbiddenException({ code: 'TUTOR_PROJECT_FORBIDDEN', message: '无权访问该项目' });
+    const { team, teamConfig } = await this.resolveTeamContext(project.id, project.templateVersionId, project.status, ownerId);
+    const runtimeIds: Record<string, readonly string[]> = Object.fromEntries(
+      (teamConfig?.members ?? []).map((member) => [member.assistantId, runtimeAgentIdsFor(member.assistantId)]),
+    );
+    const runtime = this.teamRuntime === undefined
+      ? { runId: null, agents: {} }
+      : await this.teamRuntime.getStudentTeamRuntimeProjection(project.id, ownerId, runtimeIds).catch(() => ({ runId: null, agents: {} }));
+    const agents: TutorTeamAgent[] = (teamConfig?.members ?? []).map((member) => {
+      const dynamic = runtime.agents[member.assistantId];
+      return {
+        slotId: member.slotId,
+        assistantId: member.assistantId,
+        name: member.assistantName,
+        role: member.role,
+        roleLabel: member.roleLabel ?? null,
+        avatar: member.avatar ?? null,
+        color: member.color ?? null,
+        status: dynamic?.status ?? 'offline',
+        currentTaskSummary: dynamic?.currentTaskSummary ?? null,
+        pblPhase: member.pblPhase ?? null,
+        messages: dynamic?.messages ?? [],
+        toolCalls: dynamic?.toolCalls ?? [],
+      };
+    });
+    return { team, runId: runtime.runId, agents };
+  }
+
+  private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage): Promise<NonNullable<TutorTurn['author']>> {
+    const intake = builtinAuthor('qitu-intake-assistant');
+    if (record.projectId === null) return intake;
+    try {
+      const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
+      const context = await this.resolveTeamContext(record.projectId, project?.templateVersionId ?? null, stage, record.ownerId);
+      const phaseId = PHASE_FOR_PROJECT_STAGE[stage] ?? 'concept_mastery';
+      const phase = context.teamConfig?.pblSpec?.phases.find((candidate) => candidate.phase === phaseId);
+      const member = phase === undefined
+        ? context.teamConfig?.members.find((candidate) => candidate.assistantId === context.teamConfig?.leaderAssistantId)
+        : context.teamConfig?.members.find((candidate) => candidate.assistantId === phase.assignedAssistantId);
+      const authorId = phase?.assignedAssistantId ?? member?.assistantId ?? context.team.assistantId;
+      const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
+      const assistant = assistants.find((candidate) => candidate.id === authorId) ?? this.findBuiltinAssistant(authorId);
+      return {
+        id: authorId,
+        name: member?.assistantName ?? assistant?.name ?? context.team.assistantName,
+        role: member?.roleLabel ?? member?.role ?? assistant?.role ?? '导师',
+        ...(assistant?.avatar ? { avatar: assistant.avatar } : {}),
+        ...(member?.color ? { color: member.color } : {}),
+      };
+    } catch {
+      return intake;
+    }
+  }
+
+  /**
+   * 服务端组装探索会话的想法卡片：来自真实已发布模板目录，`templateId`
+   * 必须存在且 published（§4.2 契约）；每个探索会话只输出一次（幂等），
+   * 模板目录不可用时返回空数组而不是演示卡片。
+   */
+  private async buildIdeaCardsOnce(record: TutorSessionRecord): Promise<TutorIdeaCard[]> {
+    const alreadyEmitted = record.turns.some((turn) =>
+      turn.blocks.some((block) => block.kind === 'idea_cards'),
+    );
+    if (alreadyEmitted || this.templates === undefined) return [];
+    try {
+      const actor = { id: record.ownerId, email: '', displayName: '', role: 'student' as const };
+      const templates = await this.templates.listPublishedTemplates(actor);
+      const cards: TutorIdeaCard[] = [];
+      for (const template of templates) {
+        if (cards.length >= 3) break;
+        const cardTemplate = await this.templates.getPublishedTemplate(actor, template.id).catch(() => null);
+        const card = cardTemplate === null ? null : makeIdeaCard(cardTemplate);
+        if (card === null) {
+          await this.commitAudit({
+            sessionId: record.sessionId,
+            projectId: record.projectId,
+            actorId: 'system',
+            action: 'tutor.guard_block',
+            detail: `拒绝下发无效想法卡片 templateId=${template.id}`,
+          });
+          continue;
+        }
+        cards.push(card);
+      }
+      return cards;
+    } catch {
+      return [];
+    }
+  }
+
   get auditEntries(): readonly AuditEntry[] {
     return this.auditLog;
   }
@@ -837,7 +1119,21 @@ export class TutorService {
     }
 
     // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
+    // 探索会话：由「启途智学助手」在首个完整回合后追加服务端组装的想法卡片
+    //（docs/design/20261018-tutor-workspace-interaction-contract.md §4）。
+    // 卡片来自真实已发布模板目录；学生不点击就不创建，助手不代替学生确认。
+    const ideaCards = record.projectId === null
+      ? await this.buildIdeaCardsOnce(record)
+      : [];
+    if (ideaCards.length > 0) {
+      const ideaBlock = { kind: 'idea_cards' as const, cards: ideaCards };
+      assistantBlocks = [...assistantBlocks, ideaBlock];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block: ideaBlock } });
+      // 块在 done 之后下发：客户端按 seq 追加到最新助手回合；刷新后以持久化回合为准。
+    }
     const assistantSeq = nextSeq > baseSeq + 1 ? nextSeq : baseSeq + 2;
+
+    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
     const assistantTurn: TutorTurnRecord = {
       turnId: `${record.sessionId}:assistant:${assistantSeq}`,
       role: 'assistant',
@@ -849,6 +1145,7 @@ export class TutorService {
       seq: assistantSeq,
       createdAt: new Date().toISOString(),
       modality: 'text',
+      author: assistantAuthor,
       // 教学动作属于学生输入；助手回合不重复记一次，避免重放时双重计数。
       pedagogicMove: null,
       expectedEvidence,
@@ -1028,6 +1325,7 @@ export class TutorService {
         seq: 2,
         createdAt: at(-580_000),
         modality: 'text',
+        author: builtinAuthor('tutor-leader'),
         pedagogicMove: 'hint',
       },
       {
@@ -1056,6 +1354,7 @@ export class TutorService {
         seq: 4,
         createdAt: at(-400_000),
         modality: 'text',
+        author: builtinAuthor('tutor-leader'),
         pedagogicMove: 'hint',
       },
       {
@@ -1083,6 +1382,7 @@ export class TutorService {
         seq: 6,
         createdAt: at(-180_000),
         modality: 'text',
+        author: builtinAuthor('tutor-leader'),
         pedagogicMove: 'hint',
       },
     ];
@@ -1170,6 +1470,35 @@ function buildTeamDelegationInput(
   };
 }
 
+function makeIdeaCard(template: Awaited<ReturnType<TemplatesService['listPublishedTemplates']>>[number]): TutorIdeaCard | null {
+  if (template.status !== 'published' || !template.latestPublishedVersionId) return null;
+  const title = safeIdeaText(template.title, 120);
+  const description = safeIdeaText(template.summary, 240);
+  const rationale = safeIdeaText(template.learningObjectives[0] ?? template.summary, 240);
+  const suggestedGoal = safeIdeaText(`完成「${template.title}」项目式学习`, 120);
+  const suggestedInterest = safeIdeaText(template.domain ?? template.title, 24);
+  if (!title || !description || !rationale || !suggestedGoal || !suggestedInterest) return null;
+  const weeks: 4 | 8 = (template.estimatedDurationMinutes ?? 0) >= 960 ? 8 : 4;
+  return {
+    ideaId: `idea-${template.id}`,
+    title,
+    description,
+    weeks,
+    rationale,
+    templateId: template.id,
+    suggestedGoal,
+    suggestedInterest,
+    teamName: null,
+  };
+}
+
+function safeIdeaText(value: string, maxLength: number): string | null {
+  const text = value.trim();
+  if (!text || text.length > maxLength) return null;
+  if (/(?:直接答案|完整代码|原始参数|系统指令|提示词|system prompt|developer message)/i.test(text)) return null;
+  return text;
+}
+
 /**
  * 统一越权文案：不区分「非法角色」「不存在」「不属于你」，
  * 避免调用方通过响应差异探测会话是否存在或属于谁。
@@ -1204,6 +1533,16 @@ function deriveSessionState(turns: readonly TutorTurnRecord[]): {
   return { lastHintLevel, stallCount, escalated };
 }
 
+function builtinAuthor(id: string): NonNullable<TutorTurn['author']> {
+  const assistant = BUILTIN_ASSISTANTS.find((candidate) => candidate.id === id)
+    ?? BUILTIN_ASSISTANTS.find((candidate) => candidate.id === 'qitu-intake-assistant');
+  return {
+    id: assistant?.id ?? id,
+    name: assistant?.name ?? '启途智学助手',
+    role: assistant?.role ?? 'Intake Guide / 启途智学助手',
+    ...(assistant?.avatar ? { avatar: assistant.avatar } : {}),
+  };
+}
 /** 剥离服务端专用元数据，只回契约字段。 */
 function toContractTurn(turn: TutorTurnRecord): TutorTurn {
   const {

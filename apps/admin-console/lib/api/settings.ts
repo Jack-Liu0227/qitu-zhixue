@@ -1,6 +1,13 @@
 import { createApiClient } from '@qitu/api-client';
-import type { AdminSettingsIndexData, ModelConfigPublic, ModelSlot, UpdateModelConfigRequest } from '@qitu/contracts';
-import { AdminOfflineError, AdminPermissionError, type DataEnvelope } from './types';
+import type {
+  AdminSettingsIndexData,
+  AdminSettingsRegistry,
+  AdminSettingsRegistryItem,
+  ModelConfigPublic,
+  ModelSlot,
+  UpdateModelConfigRequest,
+} from '@qitu/contracts';
+import { AdminOfflineError, AdminPermissionError, adminEnvelopeRequest, type DataEnvelope } from './types';
 
 export async function fetchSettings(): Promise<AdminSettingsIndexData> {
   const client = createApiClient('');
@@ -22,7 +29,32 @@ export async function fetchSettings(): Promise<AdminSettingsIndexData> {
   }
 }
 
-/** 只通过管理员端提交模型插槽配置；响应永不包含 API Key。 */
+export async function fetchSettingsRegistry(): Promise<AdminSettingsRegistry> {
+  return adminEnvelopeRequest<AdminSettingsRegistry>({ path: '/api/v1/admin/settings/registry', method: 'GET' });
+}
+
+export interface AdminSettingsBadgeState {
+  phase: 'ready' | 'error';
+  value?: string;
+}
+
+/**
+ * 每个设置域独立 settle。一个域离线、被拒绝或返回异常时，其它域仍保留结果。
+ */
+export async function loadSettingsBadgeStates<T extends Pick<AdminSettingsRegistryItem, 'id'>>(
+  items: readonly T[],
+  load: (item: T) => Promise<string>,
+): Promise<Record<string, AdminSettingsBadgeState>> {
+  const settled = await Promise.all(items.map(async (item) => {
+    try {
+      return [item.id, { phase: 'ready' as const, value: await load(item) }] as const;
+    } catch {
+      return [item.id, { phase: 'error' as const, value: '读取失败' }] as const;
+    }
+  }));
+  return Object.fromEntries(settled);
+}
+
 export async function updateModelConfig(
   slot: ModelSlot,
   body: UpdateModelConfigRequest,

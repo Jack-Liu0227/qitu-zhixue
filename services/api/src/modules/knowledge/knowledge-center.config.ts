@@ -265,3 +265,42 @@ export function validateKnowledgeConfig(
   }
   return result;
 }
+
+/**
+ * 助手绑定聚焦写入的纯校验（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）。
+ * 服务层 `saveAssistantBindings` 使用；错误经 `CONFIG_INVALID`/绑定专用码抛出。
+ */
+export function parseAssistantBindingsInput(
+  body: unknown,
+): { expectedRevision: number; assistantIds: string[] } {
+  const input = record(body);
+  if (
+    Object.keys(input).some((k) => !['expectedRevision', 'assistantIds'].includes(k)) ||
+    !Number.isInteger(input.expectedRevision) ||
+    !Array.isArray(input.assistantIds)
+  )
+    invalid('须提交 expectedRevision 与 assistantIds');
+  const assistantIds = input.assistantIds as unknown[];
+  if (
+    assistantIds.length > 300 ||
+    assistantIds.some((id) => typeof id !== 'string' || id.length > 160) ||
+    new Set(assistantIds).size !== assistantIds.length
+  )
+    invalid('助手绑定列表无效');
+  return { expectedRevision: input.expectedRevision as number, assistantIds: assistantIds as string[] };
+}
+
+/** 绑定的助手必须存在且启用；任一不满足即拒绝（400）。 */
+export function assertAssistantsBindable(
+  assistantIds: readonly string[],
+  rows: readonly { id: string; enabled: boolean }[],
+): void {
+  const known = new Map(rows.map((row) => [row.id, row.enabled]));
+  for (const id of assistantIds) {
+    if (!known.has(id) || known.get(id) !== true)
+      throw new BadRequestException({
+        code: 'KNOWLEDGE_BINDING_ASSISTANT_UNAVAILABLE',
+        message: `助手不存在或未启用：${id}`,
+      });
+  }
+}

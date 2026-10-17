@@ -84,3 +84,22 @@ export const saveCenterConfig = (
   body: { expectedRevision: number; config: CenterConfig['config'] },
   key: string,
 ) => centerRequest<CenterConfig>('platform-config', 'PUT', body, key);
+
+export interface AssistantBindings {
+  revision: number;
+  assistantIds: string[];
+  catalog: { id: string; name: string; avatar: string | null; enabled: boolean }[];
+}
+export const fetchAssistantBindings = () =>
+  centerRequest<AssistantBindings>('knowledge/assistant-bindings');
+export const saveAssistantBindings = (
+  expectedRevision: number,
+  assistantIds: string[],
+  idempotencyKey: string,
+) =>
+  centerRequest<{ revision: number }>(
+    'knowledge/assistant-bindings',
+    'PUT',
+    { expectedRevision, assistantIds },
+    idempotencyKey,
+  );

@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   centerRequest,
   fetchCenterConfig,
+  fetchAssistantBindings,
+  saveAssistantBindings,
+  type AssistantBindings,
   type Base,
   type BaseDetail,
   type EngineGroup,
@@ -45,6 +48,9 @@ export default function KnowledgeCenterPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const retry = useRef(createIdempotentRetryKey());
+  const [bindings, setBindings] = useState<AssistantBindings | null>(null);
+  const [bindingDraft, setBindingDraft] = useState<string[] | null>(null);
+  const [bindingError, setBindingError] = useState<Error | null>(null);
   const [preview, setPreview] = useState<{ title: string; content: string } | null>(null);
   const [jobRecord, setJobRecord] = useState<{
     events: { state: string; detail: Record<string, unknown>; occurred_at: string }[];
@@ -53,15 +59,19 @@ export default function KnowledgeCenterPage() {
     setLoading(true);
     setError(null);
     try {
-      const [b, e, c] = await Promise.all([
+      const [b, e, c, ab] = await Promise.all([
         centerRequest<Base[]>('knowledge/bases'),
         centerRequest<EngineGroup[]>('knowledge/engines'),
         fetchCenterConfig(),
+        fetchAssistantBindings().catch(() => null),
       ]);
       setBases(b);
       setEngines(e);
       setConfiguration(c);
       setEngine(Object.keys(c.config.knowledgeEngines)[0] ?? '');
+      setBindings(ab);
+      setBindingDraft(ab ? [...ab.assistantIds] : null);
+      setBindingError(ab ? null : new Error('助手绑定读取失败（权限或存储不可用）'));
     } catch (e) {
       setError(e instanceof Error ? e : new Error('知识中心读取失败'));
     } finally {
@@ -281,6 +291,67 @@ export default function KnowledgeCenterPage() {
               </div>
             </section>
           ))}
+          <section aria-label="检索助手绑定" style={{ marginTop: 32, borderTop: '1px solid var(--border, #e4ecf7)', paddingTop: 16 }}>
+            <h2 style={{ fontSize: 17 }}>检索助手绑定</h2>
+            <p style={{ color: '#64748b', fontSize: 13 }}>
+              「项目知识库检索」工具当前绑定的助手；每轮对话由服务端重新解析（canRetrieve），未绑定或停用的助手不会检索项目知识库。
+            </p>
+            {bindingError ? (
+              <p role="alert" style={{ color: '#b42318' }}>{bindingError.message}</p>
+            ) : !bindings || bindingDraft === null ? (
+              <p>正在读取助手绑定…</p>
+            ) : bindings.catalog.filter((a) => a.enabled).length === 0 ? (
+              <p>暂无可绑定的启用助手。</p>
+            ) : (
+              <>
+                <div className="admin-knowledge-cards-grid">
+                  {bindings.catalog
+                    .filter((a) => a.enabled)
+                    .map((a) => (
+                      <label key={a.id} className="admin-knowledge-item-card" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={bindingDraft.includes(a.id)}
+                          onChange={(event) => {
+                            setBindingDraft(
+                              event.target.checked
+                                ? [...bindingDraft, a.id]
+                                : bindingDraft.filter((id) => id !== a.id),
+                            );
+                          }}
+                        />
+                        <span>{a.avatar ? `${a.avatar} ` : ''}{a.name}</span>
+                      </label>
+                    ))}
+                </div>
+                <button
+                  className="settings-action-btn"
+                  disabled={busy}
+                  onClick={async () => {
+                    if (!bindings || bindingDraft === null) return;
+                    setBusy(true);
+                    try {
+                      await saveAssistantBindings(
+                        bindings.revision,
+                        bindingDraft,
+                        retry.current.keyFor('bindings:' + bindingDraft.join(',')),
+                      );
+                      retry.current.acknowledge();
+                      setNotice('助手绑定已保存');
+                      await load();
+                    } catch (e) {
+                      setError(e instanceof Error ? e : new Error('助手绑定保存失败'));
+                      await load();
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  保存助手绑定（配置修订 {bindings.revision}）
+                </button>
+              </>
+            )}
+          </section>
         </>
       )}
       {newBase && (

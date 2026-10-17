@@ -4,10 +4,28 @@
   width: 100%;
   max-width: 100%;
   height: calc(100vh - 65px);
+  /* 移动端软键盘弹出时 dvh 随可视视口收缩，保证 Composer 与最新消息可见；
+     不支持 dvh 的浏览器丢弃本行并回退到上面的 100vh。 */
+  height: calc(100dvh - 65px);
   margin: 0;
   overflow: hidden;
   box-sizing: border-box;
 }
+
+/* 布局层级合同（docs/design/20261018-tutor-workspace-interaction-contract.md §2.1）：
+   header / 侧栏 / 中列各自独立层级，任何情况下侧栏与 header 不得覆盖中列对话区；
+   中列 Composer 在文档流内（见 .qitu-tutor-col-center .qitu-composer），不使用 fixed/sticky。 */
+.qitu-tutor-header { position: relative; z-index: 3; }
+.qitu-tutor-workspace-layout > aside { position: relative; z-index: 2; }
+.qitu-tutor-workspace-layout > div { position: relative; z-index: 1; min-height: 0; }
+
+/* 宽内容防裁剪合同（§2.2-2）：中列横向溢出只允许在气泡内部滚动/换行，
+   不允许把侧栏或 Composer 顶出视口，也不允许被侧栏压盖。 */
+.qitu-tutor-col-center .qitu-chat-bubble { min-width: 0; overflow-wrap: anywhere; }
+.qitu-tutor-col-center .qitu-chat-bubble > * { min-width: 0; max-width: 100%; }
+.qitu-tutor-col-center .qitu-markdown-math-content { overflow-wrap: anywhere; }
+.qitu-tutor-col-center .qitu-chat-bubble code,
+.qitu-tutor-col-center .qitu-markdown-math-content code { overflow-wrap: anywhere; word-break: break-all; }
 
 .qitu-tutor-header {
   flex: 0 0 auto;
@@ -1220,7 +1238,7 @@
 .qitu-tutor-progress-sidebar > .qitu-tutor-col-left { min-width: 0; }
 .qitu-tutor-progress-toggle { position: absolute; z-index: 5; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px; border: 1px solid var(--qitu-border); border-radius: 7px; background: #fff; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .68rem; box-shadow: 0 2px 8px rgba(16, 42, 92, .05); }
 .qitu-tutor-progress-toggle:hover, .qitu-tutor-progress-toggle:focus-visible { border-color: var(--qitu-primary-border); background: var(--qitu-primary-soft); color: var(--qitu-primary); outline: none; }
-.qitu-tutor-progress-collapsed-mark { position: sticky; top: 0; display: grid; min-height: 128px; place-items: center; border: 1px solid var(--qitu-primary-border); border-radius: 12px; background: var(--qitu-primary-soft); color: var(--qitu-primary); font-size: 1.2rem; }
+.qitu-tutor-progress-collapsed-mark { position: static; top: 0; display: grid; min-height: 128px; place-items: center; border: 1px solid var(--qitu-primary-border); border-radius: 12px; background: var(--qitu-primary-soft); color: var(--qitu-primary); font-size: 1.2rem; }
 .qitu-tutor-grid.is-progress-collapsed { grid-template-columns: 58px minmax(0, 1fr) !important; }
 .qitu-tutor-grid.is-progress-collapsed .qitu-tutor-progress-toggle { right: 50%; transform: translateX(50%); padding: 0 7px; }
 .qitu-tutor-grid.is-progress-collapsed .qitu-tutor-progress-toggle span:last-child { display: none; }
@@ -1243,7 +1261,7 @@
 .qitu-tutor-header { padding: 18px 32px 10px; }
 .qitu-tutor-grid { grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) !important; gap: 18px; padding: 16px 32px 40px; align-items: stretch; }
 .qitu-tutor-pinned-sidebar { position: relative; min-width: 0; }
-.qitu-tutor-pinned-sources { position: sticky; top: 0; display: grid; gap: 12px; max-height: calc(100vh - 150px); overflow: auto; padding: 16px; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); }
+.qitu-tutor-pinned-sources { position: static; top: 0; display: grid; gap: 12px; max-height: calc(100vh - 150px); overflow: auto; padding: 16px; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); }
 .qitu-tutor-pinned-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--qitu-border); }
 .qitu-tutor-pinned-header p { margin: 0 0 3px; color: var(--qitu-primary); font-size: .64rem; font-weight: 800; letter-spacing: .1em; }
 .qitu-tutor-pinned-header h2 { margin: 0; color: var(--qitu-heading); font-size: .92rem; }
@@ -1390,6 +1408,7 @@
 
 /* Final full-chat layout: Qitu natural flex column paradigm */
 .qitu-tutor-grid-full-chat { display: block; width: 100%; height: calc(100vh - 168px); min-height: 560px; padding: 10px 32px 28px; }
+.qitu-tutor-grid-full-chat { height: calc(100dvh - 168px); } /* dvh 渐进增强，旧浏览器忽略 */
 .qitu-tutor-grid-full-chat > .qitu-tutor-col-center { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; max-width: none; border: 1px solid var(--qitu-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(16, 42, 92, .04); overflow: hidden; }
 .qitu-tutor-grid-full-chat .qitu-chat-thread { flex: 1 1 auto; min-height: 0; max-width: none; width: 100%; overflow-y: scroll; overscroll-behavior: contain; scrollbar-width: auto; scrollbar-color: #94a3b8 #f8fafc; padding: 24px clamp(18px, 4vw, 48px) 32px; }
 .qitu-tutor-grid-full-chat .qitu-chat-thread::-webkit-scrollbar { width: 10px; }
@@ -1498,97 +1517,6 @@
   }
 }
 
-/* 独立立项确认弹窗：居中浮层，保证聊天框与输入框零被遮挡、零挤压 */
-.qitu-intent-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  animation: qitu-intent-fade-in 0.18s ease-out;
-}
-
-.qitu-intent-modal {
-  background: #ffffff;
-  border-radius: 16px;
-  width: min(540px, 94vw);
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 24px 48px rgba(16, 42, 92, 0.18), 0 4px 12px rgba(0, 0, 0, 0.06);
-  padding: 24px;
-  border: 1.5px solid #bfdbfe;
-  animation: qitu-intent-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.qitu-intent-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.qitu-intent-modal-body {
-  display: flex;
-  flex-direction: column;
-}
-
-.qitu-intent-modal-body input,
-.qitu-intent-modal-body textarea {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid #bfdbfe;
-  border-radius: 8px;
-  color: #102a5c;
-  background: #ffffff;
-  font: inherit;
-  font-size: 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.qitu-intent-modal-body input:focus,
-.qitu-intent-modal-body textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-.qitu-intent-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-@keyframes qitu-intent-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes qitu-intent-scale-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* 兼容旧样式类名 */
-.qitu-tutor-intent-confirmation {
-  padding: 14px;
-  border: 1px solid #bfdbfe;
-  border-radius: 12px;
-  background: #eff6ff;
-}
-.qitu-tutor-intent-confirmation label { display: grid; gap: 5px; margin-block: 10px; font-size: 13px; font-weight: 600; }
-.qitu-tutor-intent-confirmation input, .qitu-tutor-intent-confirmation textarea { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid #bfdbfe; border-radius: 8px; color: #102a5c; background: white; font: inherit; }
-.qitu-tutor-intent-confirmation textarea { min-height: 58px; resize: vertical; }
-
 @media (max-width: 768px) {
   .qitu-tutor-workspace-layout {
     flex-direction: column;
@@ -1639,4 +1567,202 @@
   .qitu-tutor-context-sidebar {
     width: min(240px, 21vw) !important;
   }
+}
+
+/* Final workspace contract overrides. Every level owns a bounded flex context. */
+.qitu-tutor-page,
+.qitu-tutor-workspace-layout,
+.qitu-tutor-center-column,
+.qitu-tutor-col-center {
+  min-height: 0;
+}
+
+.qitu-tutor-page {
+  height: calc(100dvh - 65px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.qitu-tutor-header {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 3;
+}
+
+.qitu-tutor-workspace-layout {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.qitu-tutor-workspace-layout > aside,
+.qitu-live-session-sidebar,
+.qitu-tutor-context-sidebar {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+.qitu-tutor-center-column {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.qitu-tutor-col-center {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.qitu-tutor-col-center .qitu-chat-thread {
+  flex: 1 1 0 !important;
+  min-width: 0;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scroll-behavior: auto;
+}
+
+.qitu-tutor-col-center .qitu-composer {
+  flex: 0 0 auto !important;
+  min-width: 0;
+  position: relative !important;
+  bottom: auto !important;
+  z-index: 1;
+  padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+}
+
+.qitu-chat-body,
+.qitu-chat-body > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.qitu-chat-body pre,
+.qitu-chat-body table,
+.qitu-chat-body .qitu-artifact-preview {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.qitu-tutor-header-copy,
+.qitu-tutor-header-actions,
+.qitu-tutor-title-row {
+  min-width: 0;
+}
+
+.qitu-tutor-header-copy { flex: 1 1 auto; }
+.qitu-tutor-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qitu-tutor-title-row h1 { margin: 0; }
+.qitu-tutor-header-actions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.qitu-tutor-identity-badge { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 10px; border: 1px solid #bfdbfe; border-radius: 999px; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.qitu-tutor-identity-badge.is-team { color: #1d4ed8; background: #dbeafe; }
+.qitu-tutor-identity-badge.is-assistant { color: #15803d; background: #f0fdf4; border-color: #bbf7d0; }
+.qitu-tutor-inline-alert { flex: 0 0 auto; padding: 10px 12px; color: #9f1239; background: #fff1f2; border-bottom: 1px solid #fecdd3; }
+.qitu-tutor-inline-alert button { margin-left: 8px; border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; }
+.qitu-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.qitu-tutor-context-sidebar { width: min(280px, 23vw); flex: 0 0 min(280px, 23vw); display: flex; flex-direction: column; gap: 12px; padding: 12px; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.qitu-tutor-sidebar-tabs { display: flex; flex: 0 0 auto; gap: 4px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 8px; background: #eef2f7; }
+.qitu-tutor-sidebar-tabs button { flex: 1 1 0; min-width: 0; padding: 7px 5px; border: 0; border-radius: 6px; background: transparent; color: #64748b; font: inherit; font-size: 12px; cursor: pointer; }
+.qitu-tutor-sidebar-tabs button.is-active { background: #fff; color: #1d4ed8; font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+.qitu-tutor-state-panel { padding: 16px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; color: #475569; }
+.qitu-tutor-state-panel strong { display: block; color: #1e293b; font-size: 13px; }
+.qitu-tutor-state-panel p { margin: 6px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; }
+
+.qitu-tutor-team-summary { display: flex; gap: 9px; align-items: center; padding: 11px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; }
+.qitu-tutor-team-summary-mark { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border-radius: 8px; background: #eff6ff; }
+.qitu-tutor-team-summary-copy { display: grid; min-width: 0; gap: 2px; }
+.qitu-tutor-team-summary-copy strong { color: #0f172a; font-size: 13px; overflow-wrap: anywhere; }
+.qitu-tutor-team-summary-copy span { color: #64748b; font-size: 11px; line-height: 1.35; }
+.qitu-tutor-agent-list { display: grid; gap: 8px; }
+.qitu-tutor-agent-card { border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; overflow: hidden; }
+.qitu-tutor-agent-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.qitu-tutor-agent-avatar { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 auto; border: 1px solid; border-radius: 8px; background: #f8fafc; overflow: hidden; }
+.qitu-tutor-agent-copy { display: grid; min-width: 0; flex: 1 1 auto; gap: 2px; }
+.qitu-tutor-agent-copy strong { color: #1e293b; font-size: 12px; overflow-wrap: anywhere; }
+.qitu-tutor-agent-copy span { color: #64748b; font-size: 10.5px; overflow-wrap: anywhere; }
+.qitu-tutor-agent-status { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; font-size: 10.5px; font-weight: 700; }
+.qitu-tutor-agent-status i { width: 6px; height: 6px; border-radius: 50%; }
+.qitu-tutor-agent-chevron { color: #94a3b8; font-size: 14px; }
+.qitu-tutor-agent-task { margin: 0; padding: 0 10px 9px 48px; color: #475569; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.qitu-tutor-agent-details { display: grid; gap: 12px; padding: 10px; border-top: 1px solid #f1f5f9; background: #f8fafc; }
+.qitu-tutor-agent-details h4 { margin: 0 0 6px; color: #334155; font-size: 11px; }
+.qitu-tutor-agent-messages { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.qitu-tutor-agent-messages li { display: grid; grid-template-columns: auto 1fr; gap: 4px 7px; padding: 7px; border: 1px solid #e2e8f0; border-radius: 7px; background: #fff; }
+.qitu-tutor-agent-messages li > span { color: #2563eb; font-size: 10px; font-weight: 700; }
+.qitu-tutor-agent-messages p { grid-column: 1 / -1; margin: 0; color: #475569; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.qitu-tutor-agent-messages time { grid-column: 1 / -1; color: #94a3b8; font-size: 10px; }
+
+.qitu-tutor-phase-tree { flex: 0 0 auto; min-width: 0; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.qitu-tutor-phase-tree-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.qitu-tutor-phase-tree-heading > div { display: grid; gap: 2px; }
+.qitu-tutor-phase-tree-heading span { color: #2563eb; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.qitu-tutor-phase-tree-heading h3 { margin: 0; color: #0f172a; font-size: 14px; }
+.qitu-tutor-phase-tree-heading > span { color: #64748b; font-size: 10px; letter-spacing: 0; }
+.qitu-tutor-phase-tree ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.qitu-tutor-phase { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.qitu-tutor-phase.is-active { border-color: #93c5fd; background: #eff6ff; }
+.qitu-tutor-phase-toggle { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 8px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.qitu-tutor-phase-order { display: grid; place-items: center; width: 21px; height: 21px; flex: 0 0 auto; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 10px; font-weight: 700; }
+.qitu-tutor-phase.is-completed .qitu-tutor-phase-order { background: #16a34a; color: #fff; }
+.qitu-tutor-phase.is-active .qitu-tutor-phase-order { background: #2563eb; color: #fff; }
+.qitu-tutor-phase-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.qitu-tutor-phase-copy strong { color: #1e293b; font-size: 12px; overflow-wrap: anywhere; }
+.qitu-tutor-phase-copy span { color: #64748b; font-size: 10px; }
+.qitu-tutor-phase-details { display: grid; gap: 6px; padding: 8px 10px 10px 37px; border-top: 1px solid #f1f5f9; }
+.qitu-tutor-phase-details p { margin: 0; color: #64748b; font-size: 10.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.qitu-tutor-deliverables { display: grid; gap: 4px; color: #64748b; font-size: 10.5px; }
+.qitu-tutor-deliverables strong { color: #334155; font-size: 10.5px; }
+.qitu-tutor-deliverables span.is-submitted { color: #15803d; }
+
+.qitu-idea-cards { display: grid; gap: 10px; margin: 14px 0; padding: 12px; border: 1px solid #bfdbfe; border-radius: 10px; background: #f8fbff; }
+.qitu-idea-cards > header { display: grid; gap: 3px; }
+.qitu-idea-cards > header strong { color: #102a5c; font-size: 13px; }
+.qitu-idea-cards > header span { color: #64748b; font-size: 11px; }
+.qitu-idea-card-list { display: grid; gap: 9px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.qitu-idea-card { display: grid; gap: 9px; min-width: 0; padding: 11px; border: 1px solid #dbe5f3; border-radius: 8px; background: #fff; }
+.qitu-idea-card-heading { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
+.qitu-idea-card-heading h3 { margin: 0; color: #0f172a; font-size: 13px; overflow-wrap: anywhere; }
+.qitu-idea-card-heading p { margin: 4px 0 0; color: #475569; font-size: 11px; line-height: 1.45; }
+.qitu-idea-weeks { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
+.qitu-idea-card dl { display: grid; gap: 5px; margin: 0; }
+.qitu-idea-card dl > div { display: grid; gap: 2px; }
+.qitu-idea-card dt { color: #64748b; font-size: 10px; font-weight: 700; }
+.qitu-idea-card dd { margin: 0; color: #334155; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.qitu-idea-card-fields { display: grid; gap: 6px; }
+.qitu-idea-card-fields label { display: grid; gap: 3px; color: #475569; font-size: 10px; font-weight: 700; }
+.qitu-idea-card-fields input, .qitu-idea-card-fields textarea { box-sizing: border-box; width: 100%; min-width: 0; padding: 6px 7px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b; background: #fff; font: inherit; font-size: 11px; resize: vertical; }
+.qitu-idea-card-fields input:focus, .qitu-idea-card-fields textarea:focus { border-color: #2563eb; outline: 2px solid #bfdbfe; }
+.qitu-idea-card .qitu-button { width: 100%; }
+
+.qitu-tutor-empty-thread { max-width: 520px; margin: 40px auto; padding: 24px; border: 1px solid #bfdbfe; border-radius: 12px; background: #f8fbff; text-align: center; }
+.qitu-tutor-empty-thread h3 { margin: 0 0 8px; color: #102a5c; font-size: 18px; }
+.qitu-tutor-empty-thread p { margin: 0 0 16px; color: #64748b; font-size: 13px; line-height: 1.6; }
+
+@media (max-width: 768px) {
+  .qitu-tutor-workspace-layout { flex-direction: column; gap: 8px; padding: 0 8px max(10px, env(safe-area-inset-bottom)); }
+  .qitu-tutor-workspace-layout > aside { width: 100% !important; flex: 0 0 auto; max-height: min(28vh, 156px); }
+  .qitu-tutor-center-column { flex: 1 1 0; min-height: 220px; }
+  .qitu-tutor-context-sidebar { flex: 0 0 auto; max-height: min(30vh, 190px); }
+  .qitu-tutor-header { align-items: flex-start; padding: 8px 12px; }
+  .qitu-tutor-header-actions { width: 100%; justify-content: space-between; }
+  .qitu-tutor-header-subtitle { max-width: 100%; }
+  .qitu-tutor-col-center .qitu-composer { padding-inline: 12px !important; }
+  .qitu-idea-card-list { grid-template-columns: 1fr; }
 }

@@ -1,6 +1,6 @@
 # 飞书汇报助手合并与问题总结能力实施任务
 
-> 状态：`planned / 助手合并已完成`
+> 状态：`implemented（D1 聚合与范围 / D3 发送链路 / D5 测试已通过；真实验收 D5 末项仍待测试租户）`
 > 评审基线：2026-10-18
 > 责任域：`feedback` / `mentor` / `parent`（只读投影）/ `feishu` / `admin` / `workers`
 > 专属实施代理：`.pi/agents/issue-digest-feishu.md`
@@ -49,9 +49,9 @@
 ### D1. 助手登记与只读聚合合同（P0）
 
 - [x] 助手合并完成：`feishu-reporting-assistant`（学生-家长-教师汇报与问题总结助手，模型 `gpt-6.1-sol`、权限 read-only、`team_selectable=false`、sort 90）已吸收三端问题总结职责（skills 增加 `issue-summary`），登记于 `packages/ai-client/src/assistant-registry.ts`、`database/seeds/feishu-reporting-assistant.sql`、`qitu_dev` 库；`database/seeds/admin-ai-config.sql` 移除独立行，seed 内含重复 ID 的幂等 DELETE。
-- [ ] 定义只读聚合服务：输入时间范围 + 收件人范围，输出分类计数、热点问题、待处理清单、数据来源与脱敏标记。
-- [ ] 摘要生成时重新解析收件人角色与范围（班主任只能看到当前所带学生相关的问题；管理员按组织范围），不信任客户端或飞书配置中的范围字段。
-- [ ] 越权对象返回 `403`；聚合读操作留审计事件但不记录原文。
+- [x] 定义只读聚合服务：输入时间范围 + 收件人范围，输出分类计数、热点问题、待处理清单、数据来源与脱敏标记（`services/api/src/modules/feishu/report.ts` `aggregateReportFacts` + `resolveReportScope`）。
+- [x] 摘要生成时重新解析收件人角色与范围：管理员按全局/显式名单（对象级校验），班主任从 `mentor_assignments` 重新解析所带学生范围、无分配 fail closed、显式名单越界整体拒绝（`reporting.service.ts` + `resolveReportScope` 纯函数及测试）。聚合源新增学生端未答题卡点（`pending_questions` awaiting）与家长端公开站咨询计数（`consultation_requests`，仅管理员、只输出计数）。
+- [x] 越权对象返回 `403`（学生/家长角色在触碰存储前拒绝）；审计记录 actorRole、范围人数与计数，不记录原文。
 
 **验收**：班主任账号聚合结果只含其学生范围；`403`/范围外对象不出现在摘要；审计可回答「谁、何时、聚合了哪个范围」。
 
@@ -66,7 +66,7 @@
 
 ### D3. 摘要生成、发送与回执（P1，复用 outbox/report-worker）
 
-- [ ] 通过 worker/outbox 按配置周期（日报/周报/按需）生成并发送；消息带时间范围、来源和脱敏标记。
+- [x] 通过 worker/outbox 生成并发送（既有 `report-worker.service.ts` 幂等/退避/死信链路不变）；消息含时间范围、来源标记与「已脱敏」标记（`issueSummary.formattedText`）。
 - [ ] 发送前重新校验：助手启用、收件人授权范围、绑定状态、Feishu 凭证。
 - [ ] 对 Feishu API 超时、限流、撤回授权实现指数退避、死信/人工重试与状态观测。
 - [ ] 记录发送结果与哈希化收件人标识，不记录消息全文；管理端可查看最近发送状态。
@@ -80,9 +80,9 @@
 
 ### D5. 测试与验收（P0）
 
-- [ ] 聚合范围测试：班主任/管理员范围、越权 `403`、空数据。
-- [ ] 脱敏测试：摘要、日志、审计中无原始对话/语音/内部标签明文。
-- [ ] 发送幂等与失败重试测试；Feishu 不可用 `503`。
+- [x] 聚合范围测试：班主任范围收敛、无分配 fail closed、越界名单拒绝、角色门（`report.test.ts`、`reporting.service.test.ts`）。
+- [x] 脱敏测试：摘要不含 conversation/phone 等敏感字段（`report.test.ts`）。
+- [x] 发送幂等与失败重试测试沿用既有用例（`report-worker.service.test.ts`）；数据库不可用 `503`。
 - [ ] 前端状态测试：轮询停止、过期重试、助手切换、移动视口。
 - [ ] 真实验收：测试租户完成一次扫码绑定与一次问题摘要发送。
 

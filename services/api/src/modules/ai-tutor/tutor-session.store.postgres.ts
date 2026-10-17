@@ -12,6 +12,7 @@ import type {
   TutorOutputModality,
   TutorReplyBlock,
   TutorSessionSource,
+  TutorTurn,
   TutorTurnModality,
 } from '@qitu/contracts';
 import {
@@ -43,6 +44,7 @@ interface TurnContentEnvelope {
   evidenceRef: string | null;
   modality: TutorTurnModality;
   outputModality?: TutorOutputModality;
+  author?: TutorTurn['author'];
 }
 
 type TutorSessionRow = typeof tutorSessions.$inferSelect;
@@ -174,6 +176,7 @@ function toRow(
     evidenceRef: turn.evidenceRef,
     modality: turn.modality,
     ...(turn.outputModality !== undefined ? { outputModality: turn.outputModality } : {}),
+    ...(turn.author !== undefined ? { author: turn.author } : {}),
   };
   return {
     id: turn.turnId,
@@ -204,6 +207,7 @@ function fromRow(row: TutorTurnRow): TutorTurnRecord {
     ...(envelope.outputModality !== undefined
       ? { outputModality: envelope.outputModality }
       : {}),
+    ...(envelope.author !== undefined ? { author: envelope.author } : {}),
     pedagogicMove: (row.pedagogicMove ?? null) as PedagogicMove | null,
     expectedEvidence: envelope.expectedEvidence,
     promptVersion: envelope.promptVersion,

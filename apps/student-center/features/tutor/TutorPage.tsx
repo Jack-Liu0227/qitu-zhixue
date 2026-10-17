@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { PermissionDenied } from '@qitu/ui';
+import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
+import type { TutorTeamGraph } from '@qitu/contracts';
 import { ProjectKnowledgeStatus } from './components/ProjectKnowledgeStatus';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
@@ -10,10 +11,12 @@ import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
+import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
+import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
 export function TutorPage({ projectId }: { projectId?: string }) {
@@ -29,34 +32,76 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [rightSidebarTab, setRightSidebarTab] = useState<'progress' | 'agents'>('progress');
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [teamGraph, setTeamGraph] = useState<TutorTeamGraph | null>(null);
+  const [teamGraphStatus, setTeamGraphStatus] = useState<TutorLoadStatus>(projectId ? 'loading' : 'empty');
+  const [teamGraphError, setTeamGraphError] = useState<TutorViewError | null>(null);
   const confirmKey = useRef<string | null>(null);
 
-  const isThunder = /雷霆|战机|pygame|fighter/i.test(session.project?.project.title ?? '');
-  const teamName = projectId ? (isThunder ? '雷霆战机团队' : '动能定理导师团队') : '启途智学助手';
+  const team = session.project?.team;
+  const servingAssistantName = team?.assistantName ?? '启途智学助手';
+  const currentAssistantName = team?.teamName ?? servingAssistantName;
+  const currentIdentityName = currentAssistantName;
 
   useEffect(() => {
-    // 若进入学生端 AI 对话时未指定项目且未要求新探索，直接进入当前正在进行的执行中项目团队
+    // Entering AI搭档 without an explicit exploration opens the current project.
     if (!projectId && !searchParams.get('new') && !searchParams.get('explorationId') && !searchParams.get('explorePrompt')) {
       let cancelled = false;
       void source.listProjects().then((projects) => {
         if (cancelled) return;
         const activeProject = projects.find((p) => p.stage !== 'completed') ?? projects[0];
-        if (activeProject) {
-          router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
-        }
-      }).catch(() => {});
+        if (activeProject) router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
+      }).catch(() => {
+        // The session surface will expose the server error; never insert demo data.
+      });
       return () => { cancelled = true; };
     }
   }, [projectId, searchParams, source, router]);
 
   useEffect(() => {
-    // Discard legacy browser-stored credentials and fabricated transcripts.
     try {
       for (const key of ['qitu.tutor.sessions', 'qitu.llm.client_config', 'qitu.cached_configured_models']) localStorage.removeItem(key);
     } catch { /* Storage can be disabled; teaching does not depend on it. */ }
     const prompt = new URLSearchParams(window.location.search).get('explorePrompt');
     if (prompt) composer.setDraft(prompt);
   }, [composer.setDraft]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!projectId) {
+      setTeamGraph(null);
+      setTeamGraphStatus('empty');
+      setTeamGraphError(null);
+      return () => { cancelled = true; };
+    }
+    setTeamGraphStatus('loading');
+    setTeamGraphError(null);
+    void source.getTeamGraph(projectId).then((graph) => {
+      if (cancelled) return;
+      setTeamGraph(graph);
+      setTeamGraphStatus(graph === null ? 'empty' : 'ready');
+    }).catch((cause: unknown) => {
+      if (cancelled) return;
+      const error = toViewError(cause);
+      setTeamGraph(null);
+      setTeamGraphError(error);
+      setTeamGraphStatus('error');
+    });
+    return () => { cancelled = true; };
+  }, [projectId, source]);
+
+  const retryTeamGraph = () => {
+    if (!projectId) return;
+    setTeamGraphStatus('loading');
+    setTeamGraphError(null);
+    void source.getTeamGraph(projectId).then((graph) => {
+      setTeamGraph(graph);
+      setTeamGraphStatus(graph === null ? 'empty' : 'ready');
+    }).catch((cause: unknown) => {
+      setTeamGraph(null);
+      setTeamGraphError(toViewError(cause));
+      setTeamGraphStatus('error');
+    });
+  };
 
   const ready = session.sessionStatus === 'ready' && session.connection === 'open';
   const busy = session.streaming || session.submitting || composer.submitting;
@@ -94,50 +139,33 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   if (session.permissionDenied) return <PermissionDenied title="无法进入 AI搭档" description="你没有访问这个会话的权限，请返回上一页。" />;
 
   return <div className="qitu-tutor-page">
-    <header className="qitu-tutor-header" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-      <div>
+    <header className="qitu-tutor-header">
+      <div className="qitu-tutor-header-copy">
         <p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ margin: 0 }}>AI搭档</h1>
-          <span
-            style={{
-              fontSize: '13px',
-              fontWeight: 700,
-              padding: '2px 10px',
-              borderRadius: '999px',
-              background: projectId ? '#dbeafe' : '#f0fdf4',
-              color: projectId ? '#1d4ed8' : '#15803d',
-              border: `1px solid ${projectId ? '#bfdbfe' : '#bbf7d0'}`,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <span>{projectId ? '👥' : '🧭'}</span>
-            <span>{teamName}</span>
+        <div className="qitu-tutor-title-row">
+          <h1>AI搭档</h1>
+          <span className={`qitu-tutor-identity-badge ${team?.teamName ? 'is-team' : 'is-assistant'}`}>
+            <span aria-hidden="true">{team?.assistantAvatar ?? (team?.teamName ? '👥' : '🧭')}</span>
+            <span>{currentIdentityName}</span>
           </span>
         </div>
         <p className="qitu-tutor-header-subtitle">
-          {projectId
-            ? `已由专属导师团队【${teamName}】接管辅导；理论掌握由服务端核验。`
+          {team?.teamName
+            ? `已由专属导师团队【${team.teamName}】接管辅导；当前发言助手为${servingAssistantName}。`
             : '由「启途智学助手」接管初步对话，确认意图后推荐项目，一键立项并唤醒导师团队。'}
         </p>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="qitu-tutor-header-actions">
         <span role="status">
           {session.offline
             ? '离线 · 暂停发送'
             : session.sessionStatus === 'error'
-              ? session.sessionError?.status === 401
-                ? '登录已失效'
-                : '会话加载失败'
-              : busy
-                ? '导师正在处理'
-                : ready
-                  ? '教学会话已连接'
-                  : '正在连接教学会话'}
+              ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
+              : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}
         </span>
-        <button type="button" className="qitu-button qitu-button-ghost" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>项目与进度</button>
+        <button type="button" className="qitu-button qitu-button-ghost" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>
+          项目与进度
+        </button>
       </div>
     </header>
     <div className="qitu-tutor-workspace-layout">
@@ -147,8 +175,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         currentProjectId={projectId}
         currentExplorationId={session.explorationId}
         currentTitle={session.project?.project.title}
+        currentAssistantName={currentAssistantName}
         currentTurnCount={session.turns.length}
-        turns={session.turns}
         busy={busy || confirming}
         onNewExploration={newExploration}
         onSelectProject={(targetProjectId) => {
@@ -156,13 +184,13 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           router.push(`/tutor/${encodeURIComponent(targetProjectId)}`, { scroll: false });
         }}
       />
-      <div style={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {error ? <div role="alert" style={{ padding: 12, color: '#9f1239', background: '#fff1f2' }}>{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
+      <div className="qitu-tutor-center-column">
+        {error ? <div role="alert" className="qitu-tutor-inline-alert">{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
         {session.project?.project.id && <ProjectKnowledgeStatus projectId={session.project.project.id} />}
         <ChatThread
           sessionId={session.sessionId}
           turns={session.turns}
-          currentAssistantName={teamName}
+          currentAssistantName={currentAssistantName}
           status={session.sessionStatus === 'ready' && session.turns.length === 0 ? 'empty' : session.sessionStatus}
           error={session.sessionError}
           streaming={session.streaming}
@@ -178,7 +206,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           }}
           onOneClickCreateProject={handleOneClickCreateProject}
           isConfirmingProject={confirming}
-          isExploration={!projectId}
           composer={
             <Composer
               draft={composer.draft}
@@ -189,76 +216,55 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               offline={session.offline}
               submitting={busy}
               disabled={!ready}
-              onSubmit={(atts) => {
-                void composer.submit(composer.draft, session.submitText, atts);
-              }}
+              onSubmit={(atts) => { void composer.submit(composer.draft, session.submitText, atts); }}
             />
           }
         />
       </div>
       {rightOpen ? (
-        <aside className="qitu-tutor-context-sidebar" style={{ width: 'min(240px, 21vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* 侧边栏两个 table / tab 视图切换：一个显示项目进度，一个显示各个 agent 的状态、头像、对话历史、工具调用情况 */}
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '4px', border: '1px solid #e2e8f0' }}>
-            <button
-              type="button"
-              onClick={() => setRightSidebarTab('progress')}
-              style={{
-                flex: 1,
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: rightSidebarTab === 'progress' ? 700 : 500,
-                background: rightSidebarTab === 'progress' ? '#ffffff' : 'transparent',
-                color: rightSidebarTab === 'progress' ? '#1d4ed8' : '#64748b',
-                border: 'none',
-                borderRadius: '7px',
-                cursor: 'pointer',
-                boxShadow: rightSidebarTab === 'progress' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              📊 项目进度
-            </button>
-            <button
-              type="button"
-              onClick={() => setRightSidebarTab('agents')}
-              style={{
-                flex: 1,
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: rightSidebarTab === 'agents' ? 700 : 500,
-                background: rightSidebarTab === 'agents' ? '#ffffff' : 'transparent',
-                color: rightSidebarTab === 'agents' ? '#1d4ed8' : '#64748b',
-                border: 'none',
-                borderRadius: '7px',
-                cursor: 'pointer',
-                boxShadow: rightSidebarTab === 'agents' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              👥 团队智能体
-            </button>
+        <aside className="qitu-tutor-context-sidebar" aria-label="项目进度与团队智能体">
+          <div className="qitu-tutor-sidebar-tabs" role="tablist" aria-label="项目侧栏视图">
+            <button type="button" role="tab" aria-selected={rightSidebarTab === 'progress'} className={rightSidebarTab === 'progress' ? 'is-active' : ''} onClick={() => setRightSidebarTab('progress')}>项目进度</button>
+            <button type="button" role="tab" aria-selected={rightSidebarTab === 'agents'} className={rightSidebarTab === 'agents' ? 'is-active' : ''} onClick={() => setRightSidebarTab('agents')}>团队智能体</button>
           </div>
-
           {rightSidebarTab === 'agents' ? (
             <TeamAgentHud
-              currentProjectId={projectId}
-              currentTitle={session.project?.project.title}
-              turns={session.turns}
+              graph={teamGraph}
+              status={teamGraphStatus}
+              error={teamGraphError}
+              offline={session.offline}
+              permissionDenied={teamGraphError?.status === 403}
+              onRetry={retryTeamGraph}
             />
+          ) : session.projectStatus === 'loading' ? (
+            <div className="qitu-tutor-state-panel" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>
+          ) : session.projectStatus === 'error' ? (
+            <ErrorState title="项目进度加载失败" description={session.projectError?.message} errorCode={session.projectError?.code} onRetry={session.retryProject} />
+          ) : session.offline ? (
+            <OfflineBanner readOnly onRetry={session.reconnect} />
           ) : session.project ? (
             <>
               <ProjectCard project={session.project.project} />
               <CurrentTask task={session.project.currentTask} />
+              <TutorTeamRail phases={session.project.phases ?? []} />
             </>
           ) : (
-            <div style={{ padding: '14px 16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px 0', color: '#1e293b' }}>正在形成的方向</h3>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.6 }}>当前处于自由探索阶段，尚未创建正式项目。可在中间对话流中直接点击启途智学助手推荐的项目一键立项并唤醒导师团队。</p>
-            </div>
+            <div className="qitu-tutor-state-panel" role="status"><strong>自由探索中</strong><p>尚未创建正式项目。项目进度会在你确认想法并创建后显示。</p></div>
           )}
         </aside>
       ) : null}
     </div>
   </div>;
+}
+
+function toViewError(error: unknown): TutorViewError {
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as { message?: unknown; status?: unknown; code?: unknown };
+    return {
+      message: typeof candidate.message === 'string' ? candidate.message : '团队智能体加载失败',
+      status: typeof candidate.status === 'number' ? candidate.status : undefined,
+      code: typeof candidate.code === 'string' ? candidate.code : undefined,
+    };
+  }
+  return { message: '团队智能体加载失败' };
 }

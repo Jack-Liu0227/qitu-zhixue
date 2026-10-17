@@ -46,6 +46,41 @@ export const MOCK_PROJECT_CONTEXT: TutorProjectContext = {
     detail: '在战机概念教练引导下，理解事件更新绘制三步法与 AABB 几何相交原理。',
     isTodayFocus: true,
   },
+  team: {
+    teamId: 'team-demo-tutor',
+    teamName: '雷霆战机团队',
+    assistantId: 'fighter-concept-coach',
+    assistantName: '概念教练',
+    assistantAvatar: '🚀',
+  },
+  phases: [
+    {
+      phaseId: 'phase-concept', orderIndex: 1, name: '核心原理探索',
+      assignedAssistantName: '概念教练', assignedRole: 'coach',
+      requiresGateApproval: true, gateStatus: 'pending', status: 'active',
+      requiredDeliverables: [{ id: 'deliverable-loop', title: '游戏主循环理解记录', submitted: false }],
+    },
+  ],
+};
+
+export const MOCK_TEAM_GRAPH: import('@qitu/contracts').TutorTeamGraph = {
+  team: {
+    teamId: 'team-demo-tutor',
+    teamName: '雷霆战机团队',
+    assistantId: 'fighter-concept-coach',
+    assistantName: '概念教练',
+    assistantAvatar: '🚀',
+  },
+  runId: 'run-demo-tutor',
+  agents: [
+    {
+      slotId: 'slot-concept', assistantId: 'fighter-concept-coach', name: '概念教练',
+      role: 'concept_coach', roleLabel: '概念教练', avatar: '🚀', color: '#2563eb',
+      status: 'ready', currentTaskSummary: '引导理解游戏主循环与碰撞检测原理', pblPhase: 'concept_mastery',
+      messages: [{ messageId: 'message-demo-1', summary: '已整理当前阶段的概念引导重点。', direction: 'outbound', createdAt: '2026-09-26T02:00:00.000Z' }],
+      toolCalls: [{ callId: 'tool-demo-1', name: 'query_mastery_status', label: '查询掌握度与门禁状态', status: 'done', summary: '理论阶段待评估。', startedAt: '2026-09-26T02:00:00.000Z', finishedAt: '2026-09-26T02:00:01.000Z' }],
+    },
+  ],
 };
 
 /**
