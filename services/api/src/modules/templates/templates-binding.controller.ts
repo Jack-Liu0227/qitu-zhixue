@@ -9,10 +9,10 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
-import type { CurrentUser } from '@qitu/contracts';
+import type { AdminBindingMutationResponse, AdminBindingPreview, CurrentUser } from '@qitu/contracts';
 import { pickFields, requireAnyRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
-import { TemplateBindingService, type BindingMutationResult } from './templates-binding.service';
+import { TemplateBindingService } from './templates-binding.service';
 
 /**
  * 模板版本 ↔ 团队版本绑定治理接口（F2，Admin / 授权教职工）。
@@ -44,7 +44,7 @@ export class TemplateBindingController {
     @Headers('cookie') cookieHeader: string | undefined,
     @Param('id') id: string,
     @Param('versionId') versionId: string,
-  ): Promise<{ data: Awaited<ReturnType<TemplateBindingService['previewBindings']>> }> {
+  ): Promise<{ data: AdminBindingPreview }> {
     const actor = this.requireGovernanceActor(cookieHeader);
     return { data: await this.bindings.previewBindings(actor, id, versionId) };
   }
@@ -56,7 +56,7 @@ export class TemplateBindingController {
     @Param('id') id: string,
     @Param('versionId') versionId: string,
     @Body() body: unknown,
-  ): Promise<{ data: BindingMutationResult }> {
+  ): Promise<AdminBindingMutationResponse> {
     const actor = this.requireGovernanceActor(cookieHeader);
     const request = pickFields<{ teamVersionId?: string }>(body, ['teamVersionId']);
     if (typeof request.teamVersionId !== 'string' || request.teamVersionId.trim().length === 0) {
@@ -85,7 +85,7 @@ export class TemplateBindingController {
     @Param('id') id: string,
     @Param('versionId') versionId: string,
     @Param('bindingId') bindingId: string,
-  ): Promise<{ data: BindingMutationResult }> {
+  ): Promise<AdminBindingMutationResponse> {
     const actor = this.requireGovernanceActor(cookieHeader);
     const key = requireIdempotencyKey(idempotencyKey);
     return {
@@ -101,7 +101,7 @@ export class TemplateBindingController {
     @Param('id') id: string,
     @Param('versionId') versionId: string,
     @Param('bindingId') bindingId: string,
-  ): Promise<{ data: BindingMutationResult }> {
+  ): Promise<AdminBindingMutationResponse> {
     const actor = this.requireGovernanceActor(cookieHeader);
     const key = requireIdempotencyKey(idempotencyKey);
     return {
@@ -118,7 +118,7 @@ export class TemplateBindingController {
     @Param('versionId') versionId: string,
     @Param('bindingId') bindingId: string,
     @Body() body: unknown,
-  ): Promise<{ data: BindingMutationResult }> {
+  ): Promise<AdminBindingMutationResponse> {
     const actor = this.requireGovernanceActor(cookieHeader);
     const request = pickFields<{ reason?: string }>(body, ['reason']);
     const key = requireIdempotencyKey(idempotencyKey);

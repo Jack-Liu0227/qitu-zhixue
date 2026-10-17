@@ -136,6 +136,21 @@ export interface AdminBindingPreview {
 }
 
 /**
+ * 绑定治理写动作（create / validate / activate / retire）的统一响应体。
+ *
+ * 四个写动作的响应形状完全相同：`data.binding` 是迁移后的绑定视图，
+ * `data.replayed === true` 表示命中幂等缓存复用既有行（未产生新写）。
+ * 控制器直接以本类型标注返回，避免与 `AdminBindingPreview`（内层契约）
+ * 各自发明 `{ data: ... }` 外壳。
+ */
+export interface AdminBindingMutationResponse {
+  data: {
+    binding: PblTemplateTeamBinding;
+    replayed: boolean;
+  };
+}
+
+/**
  * 绑定治理动作的幂等作用域前缀（服务端 `IdempotencyStore.execute` 使用）。
  * 作用域必须再拼上资源 id，例如
  * `` `${ADMIN_TEMPLATE_BINDING_IDEMPOTENCY_SCOPES.activate}:${bindingId}` ``。
