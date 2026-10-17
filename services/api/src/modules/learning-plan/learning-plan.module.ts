@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
 import { MasteryModule } from '../mastery/mastery.module';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
+import { TemplatesModule } from '../templates/templates.module';
 import { LearningPlanStorageModule } from './learning-plan-storage.module';
 import { LearningPlanController } from './learning-plan.controller';
 import { LearningPlanService } from './learning-plan.service';
@@ -19,7 +20,7 @@ import { DeterministicPlanGenerator, PlanGenerator } from './plan-generator';
  * 依赖是单向的（team-runtime 不依赖 learning-plan），因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
   controllers: [LearningPlanController],
   providers: [LearningPlanService, { provide: PlanGenerator, useFactory: () => new DeterministicPlanGenerator() }],
   exports: [LearningPlanService, LearningPlanStorageModule],

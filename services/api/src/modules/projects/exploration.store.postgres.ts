@@ -163,6 +163,8 @@ export class PostgresExplorationStore extends ExplorationStore {
           .returning();
         const project = insertedProject[0];
         if (project === undefined) throw new Error('插入项目实例未返回数据行');
+        // F3：绑定快照冻结在同一个事务里（无绑定时派生写入不失败项目创建）。
+        await input.commit?.(project.id, tx);
         // The durable preparation job and binding commit with the confirmed project.
         const kbId = `pkb-${project.id}`;
         await tx.execute(sql`INSERT INTO knowledge_bases(id,name,kind,owner_user_id,project_id)

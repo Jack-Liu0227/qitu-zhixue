@@ -15,8 +15,8 @@ import type { TemplateView, TemplateVersionView } from './templates.types';
 /**
  * 学生端（受作用域约束的）模板只读服务。
  *
- * 只读已发布模板；可见范围 = 平台模板 ∪ 本校模板（`school_id` 由服务端从会话解析，
- * 客户端无法伪造）。未发布 / 他校模板一律 403，不泄露存在性。
+ * 只读已发布 / 试点中模板；可见范围 = 平台模板 ∪ 本校模板（`school_id` 由服务端
+ * 从会话解析，客户端无法伪造）。未发布 / 他校模板一律 403，不泄露存在性。
  */
 @Injectable()
 export class TemplatesService {
@@ -28,10 +28,14 @@ export class TemplatesService {
   async listPublishedTemplates(actor: CurrentUser): Promise<TemplateView[]> {
     const schoolId = await this.directory.findSchoolId(actor.id);
     const records = await this.store.listTemplates({
-      status: 'published',
       visibleToSchoolId: schoolId,
     });
-    return Promise.all(records.map((record) => this.project(record)));
+    // 学生可见态 = published ∪ piloting（试点模板可被学生选用）。
+    return Promise.all(
+      records
+        .filter((record) => record.status === 'published' || record.status === 'piloting')
+        .map((record) => this.project(record)),
+    );
   }
 
   async getPublishedTemplate(actor: CurrentUser, templateId: string): Promise<TemplateView> {
@@ -52,7 +56,7 @@ export class TemplatesService {
     assertStudentCanReadTemplate(record, schoolId);
     const versions = await this.store.listVersions(templateId);
     return versions
-      .filter((version) => version.status === 'published')
+      .filter((version) => version.status === 'published' || version.status === 'piloting')
       .map(toTemplateVersionView);
   }
 
@@ -69,7 +73,7 @@ export class TemplatesService {
     if (
       version === null ||
       version.templateId !== templateId ||
-      version.status !== 'published'
+      (version.status !== 'published' && version.status !== 'piloting')
     ) {
       throw versionNotFound();
     }

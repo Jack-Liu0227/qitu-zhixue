@@ -6,8 +6,8 @@
  * 修改内容必须产生**新版本**，绝不原地改写（ADR 0006 / 产品文档 7.4）。
  */
 
-/** 模板与模板版本共用的生命周期状态。只有 `published` 对学生可见 / 可推荐。 */
-export type TemplateStatus = 'draft' | 'review' | 'published' | 'archived';
+/** 模板与模板版本共用的生命周期状态。`published` / `piloting` 对学生可见 / 可推荐。 */
+export type TemplateStatus = 'draft' | 'review' | 'piloting' | 'published' | 'archived';
 
 /** 模板定义里的展示阶段（随版本冻结）。 */
 export interface TemplateStage {

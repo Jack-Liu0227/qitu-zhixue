@@ -1,4 +1,5 @@
 import type { ExplorationSource, ExplorationStatus, ProjectStage } from '@qitu/contracts';
+import type { AuditTransaction } from '../../common/audit/audit.service';
 
 /**
  * T6 探索 / 意图确认的持久化边界。
@@ -75,6 +76,11 @@ export interface PersistConfirmationInput {
   };
   /** 待创建的项目实例；`createdAt` / `completedAt` 由存储层补齐。 */
   project: Omit<ProjectRecord, 'createdAt' | 'completedAt' | 'sourceExplorationId'>;
+  /**
+   * 项目插入后、事务提交前执行（F3 绑定快照冻结）。
+   * 失败会回滚项目创建；调用方只放不会失败项目创建的派生写入（如快照）。
+   */
+  commit?: (projectId: string, tx?: AuditTransaction) => Promise<void>;
 }
 
 /**
@@ -222,6 +228,7 @@ export class InMemoryExplorationStore extends ExplorationStore {
       completedAt: null,
     };
     this.projects.set(project.id, project);
+    await input.commit?.(project.id);
     return cloneProject(project);
   }
 
