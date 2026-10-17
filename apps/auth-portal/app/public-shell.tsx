@@ -2,15 +2,13 @@ import Link from 'next/link';
 
 import { Icon } from './home/icons';
 import { SiteNav } from './home/site-nav';
+import { ReactBitsBackground } from './home/react-bits-background';
 
 export function PublicPageShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="home-page public-page">
-      <div className="home-orbs" aria-hidden="true">
-        <span className="home-orb home-orb--primary" />
-        <span className="home-orb home-orb--mint" />
-        <span className="home-orb home-orb--violet" />
-      </div>
+      {/* 全局 React Bits 粒子星网与鼠标追焦交互背景 */}
+      <ReactBitsBackground />
       <SiteNav />
       <main className="public-main">{children}</main>
       <PublicFooter />
