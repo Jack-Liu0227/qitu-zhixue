@@ -121,7 +121,16 @@ export function TutorSessionHistory({
         kind: 'project',
         projectId: project.id,
         updatedAt: new Date().toISOString(),
-        turnCount: project.id === currentProjectId ? currentTurnCount : (project.turnCount ?? 0),
+        // The project list is the persisted source of truth. During the first
+        // render of a project route the session has not loaded yet, so
+        // `currentTurnCount` is temporarily zero and must not erase the count
+        // returned by the API. Keep the live session count only as a fallback
+        // for data sources that do not provide a persisted count.
+        turnCount: typeof project.turnCount === 'number'
+          ? project.turnCount
+          : project.id === currentProjectId
+            ? currentTurnCount
+            : 0,
         stageLabel: project.stage,
       })));
     }).catch(() => {
