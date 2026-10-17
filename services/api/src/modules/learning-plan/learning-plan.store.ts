@@ -240,7 +240,10 @@ export abstract class LearningPlanStore {
   abstract studentSchoolId(studentId: string): Promise<string | null>;
   abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
   abstract findMasteryEvent(id: string): Promise<MasteryEventRecord | null>;
-  abstract withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
+  abstract withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T>;
   /**
    * 按签名读取既有草稿。
    *
@@ -385,14 +388,17 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     }
   }
 
-  async withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+  async withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T> {
     const previous = this.assessmentLocks.get(studentId) ?? Promise.resolve();
     let release!: () => void;
     const current = new Promise<void>((resolve) => { release = resolve; });
     this.assessmentLocks.set(studentId, current);
     await previous;
     try {
-      return await work(this);
+      return await work(this, undefined);
     } finally {
       release();
       if (this.assessmentLocks.get(studentId) === current) this.assessmentLocks.delete(studentId);

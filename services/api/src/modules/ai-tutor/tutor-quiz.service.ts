@@ -1,8 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import type {
   AnswerInteractiveQuizResponse,
   CurrentUser,
   LearningErrorType,
+  Role,
   StudentStuckSignal,
   TutorHintLevel,
 } from '@qitu/contracts';
@@ -23,8 +24,9 @@ import {
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
-import { AuditWriter } from '../../common/audit/audit.service';
+import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
+import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import {
   LearningPlanStore,
   newId,
@@ -32,6 +34,7 @@ import {
   type MasteryRecord,
   type ObjectiveRecord,
   type PlanBundle,
+  type SessionRecord,
 } from '../learning-plan/learning-plan.store';
 import { StuckSignalService } from '../plan-adjustment/stuck-signal.service';
 import { TutorQuizStore, type AnswerAttemptRecord } from './tutor-quiz.store';
@@ -58,6 +61,7 @@ export class TutorQuizService {
     private readonly quizStore: TutorQuizStore,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    private readonly learningPlan: LearningPlanService,
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() private readonly tutor?: TutorService,
     @Optional() private readonly stuckSignals?: StuckSignalService,
@@ -108,7 +112,7 @@ export class TutorQuizService {
 
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
-        const response = await this.store.withAssessmentTransaction(actor.id, async (scopedStore) => {
+        const outcome = await this.store.withAssessmentTransaction(actor.id, async (scopedStore, tx) => {
           // 事务内重读计划：plan 归属 / objective 解析都以最新事实为准。
           const plans = await scopedStore.listPlansByStudent(actor.id);
           const plan = plans.find((candidate) => candidate.projectId === projectId);
@@ -130,8 +134,30 @@ export class TutorQuizService {
             });
           }
           const objective = await this.resolveObjective(scopedStore, bundle, entry);
+
+          // A5：事务内重读掌握度，已掌握 / 非当前待答目标 → 400 QUESTION_NOT_AWAITING。
+          if (objective !== null) {
+            const existingMastery = await scopedStore.findMastery(actor.id, objective.id);
+            if (existingMastery !== null && isObjectiveMastered(objective.type, {
+              score: existingMastery.masteryBasisPoints / 10_000,
+              qualitativeMastered: existingMastery.qualitativeMastered,
+            })) {
+              throw new BadRequestException({
+                code: 'QUESTION_NOT_AWAITING',
+                message: '该目标已掌握，不能重复判分',
+              });
+            }
+            const pending = await this.firstPendingQuantitativeObjective(scopedStore, actor.id, bundle);
+            if (pending === null || pending.id !== objective.id) {
+              throw new BadRequestException({
+                code: 'QUESTION_NOT_AWAITING',
+                message: '该题不属于当前待掌握的目标',
+              });
+            }
+          }
+
           const attemptCount = (await this.quizStore.countAttempts(actor.id, quizId)) + 1;
-          // 答错推进阶梯前的会话等级，作为本次作答的证据（决策 D5）。
+          // A4：作答证据的 hint 等级直接取会话等级，不维护第二份计数。
           const hintsUsed = session.lastHintLevel ?? 0;
           const now = new Date();
 
@@ -158,11 +184,8 @@ export class TutorQuizService {
 
           // 概念未映射：不写掌握度，只记录证据 + 审计告警（决策 D1 边界）。
           if (objective === null) {
-            await this.quizStore.appendAttempt(attemptRecord);
-            const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
-            if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
-              await this.auditStuckSignal(actor, session, entry, scope, idempotencyKey);
-            }
+            // A3：证据与审计都落在当前评估事务内，不存在判分提交后的补写。
+            await this.quizStore.appendAttempt(attemptRecord, tx);
             await this.audit.write({
               actorId: actor.id,
               actorRole: actor.role,
@@ -170,14 +193,15 @@ export class TutorQuizService {
               targetType: 'tutor_session',
               targetId: session.sessionId,
               idempotencyKey: `${scope}:${idempotencyKey}`,
-              detail: { quizId, conceptId: entry.conceptId, correct: grade.isCorrect, hintLevel },
-            });
+              detail: { quizId, conceptId: entry.conceptId, correct: grade.isCorrect, hintLevel: hintsUsed },
+            }, tx);
             return {
-              status: 200,
-              body: this.responseForUnmapped(quizId, grade, attemptCount, hintLevel),
+              kind: 'unmapped' as const,
+              attemptCount,
             };
           }
 
+          const theorySession = this.findTheorySession(bundle);
           const existing = await scopedStore.listAttempts(actor.id, objective.id);
           const attempt = this.buildAttempt({
             studentId: actor.id,
@@ -186,6 +210,7 @@ export class TutorQuizService {
             quizId,
             grade,
             attemptCount: existing.length + 1,
+            hintsUsed,
             now,
           });
           const before = (await scopedStore.findMastery(actor.id, objective.id))?.masteryBasisPoints ?? 0;
@@ -227,63 +252,116 @@ export class TutorQuizService {
             qualitativeMastered: masteryToPersist.qualitativeMastered,
           });
 
+          // A2：权威 TheoryMastered 门禁，复用 learning-plan 的单一实现。
+          const gate = await this.learningPlan.evaluateGradingGate({
+            store: scopedStore,
+            bundle,
+            session: theorySession,
+            candidateMastery: masteryToPersist,
+          });
+
           await scopedStore.completeAssessment({
             attempt,
             mastery: masteryToPersist,
             masteryEvent,
-            commit: async (tx) => {
-              await this.quizStore.appendAttempt(attemptRecord, tx);
+            commit: async (commitTx) => {
+              await this.quizStore.appendAttempt(attemptRecord, commitTx);
+              await this.learningPlan.emitGradingAssessmentEvents({
+                actor,
+                bundle,
+                session: theorySession,
+                masteryEvent,
+                theoryMasteredFlip: gate.theoryMasteredFlip,
+              }, commitTx);
+              // A3：tutor.quiz.graded 审计与掌握度写入同事务，不再提交后补写。
+              await this.audit.write({
+                actorId: actor.id,
+                actorRole: actor.role,
+                action: 'tutor.quiz.graded',
+                targetType: 'tutor_session',
+                targetId: session.sessionId,
+                idempotencyKey: `${scope}:${idempotencyKey}`,
+                detail: {
+                  quizId,
+                  objectiveId: objective.id,
+                  conceptId: entry.conceptId,
+                  correct: grade.isCorrect,
+                  attempts: attemptCount,
+                  hintLevel: hintsUsed,
+                  replayed: false,
+                },
+              }, commitTx);
             },
           });
 
-          // 阶梯推进与会话回合追加在掌握度事务提交后完成（F1.7 path (a)）。
-          const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
-          if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
+          return {
+            kind: 'mapped' as const,
+            entry,
+            grade,
+            objective,
+            attemptCount,
+            before,
+            after,
+            masteredAfter,
+            theorySessionId: theorySession.id,
+            gate,
+            planId: plan.id,
+            stemNodeId: objective.id,
+            attemptId: attemptRecord.id,
+            errorType: grade.errorType,
+          };
+        });
+
+        // 提交后：提示阶梯推进、卡点 / 迷思信号、TheoryMastered 门禁桥。
+        const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
+        if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
+          if (outcome.kind === 'mapped') {
             await this.emitStuckSignal({
               actor,
               session,
               entry,
               scope,
               idempotencyKey,
-              planId: plan.id,
-              stemNodeId: objective.id,
-              attemptId: attemptRecord.id,
-              errorType: grade.errorType ?? null,
+              planId: outcome.planId,
+              stemNodeId: outcome.stemNodeId,
+              attemptId: outcome.attemptId,
+              errorType: outcome.errorType ?? null,
             });
+          } else {
+            await this.auditStuckSignal(actor, session, entry, scope, idempotencyKey);
           }
-          await this.audit.write({
-            actorId: actor.id,
-            actorRole: actor.role,
-            action: 'tutor.quiz.graded',
-            targetType: 'tutor_session',
-            targetId: session.sessionId,
-            idempotencyKey: `${scope}:${idempotencyKey}`,
-            detail: {
-              quizId,
-              objectiveId: objective.id,
-              conceptId: entry.conceptId,
-              correct: grade.isCorrect,
-              attempts: attemptCount,
-              hintLevel,
-              replayed: false,
-            },
+        }
+        if (outcome.kind === 'mapped' && !grade.isCorrect && outcome.errorType !== null) {
+          await this.emitMisconceptionSignal({
+            actor,
+            session,
+            entry,
+            planId: outcome.planId,
+            stemNodeId: outcome.stemNodeId,
+            attemptId: outcome.attemptId,
+            errorType: outcome.errorType,
           });
+        }
+        if (outcome.kind === 'mapped' && outcome.gate.theoryMasteredFlip) {
+          await this.learningPlan.applyGradingGateBridge(actor.id, outcome.theorySessionId);
+        }
 
-          return {
-            status: 200,
-            body: this.buildResponse({
-              entry,
-              grade,
-              objective,
-              attemptCount,
-              hintLevel,
-              before,
-              after,
-              masteredAfter,
-            }),
-          };
-        });
-        return response;
+        if (outcome.kind === 'unmapped') {
+          return { status: 200, body: this.responseForUnmapped(quizId, grade, outcome.attemptCount, hintLevel) };
+        }
+        return {
+          status: 200,
+          body: this.buildResponse({
+            entry: outcome.entry,
+            grade: outcome.grade,
+            objective: outcome.objective,
+            attemptCount: outcome.attemptCount,
+            hintLevel,
+            before: outcome.before,
+            after: outcome.after,
+            masteredAfter: outcome.masteredAfter,
+          }),
+        };
       });
       const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
@@ -365,33 +443,150 @@ export class TutorQuizService {
       stemNodeId: input.stemNodeId,
       conceptId: input.entry.conceptId,
       trigger: 'repeated_assessment_error',
-      triggerKey: `l3_cap:${input.actor.id}:${input.entry.conceptId}`,
+      // A9：L3 触发键改为 `l3_cap:${sessionId}:${quizId}`（原实现误用 actorId:conceptId）。
+      triggerKey: `l3_cap:${input.session.sessionId}:${input.entry.questionId}`,
       errorTypeCode: input.errorType ?? 'repeated_wrong',
       nodeRefs: [input.stemNodeId],
       evidenceRefs: [input.attemptId],
       emittedAt: new Date().toISOString(),
     };
+    await this.ingestSignal(signal, {
+      actorId: input.actor.id,
+      actorRole: input.actor.role,
+      targetId: input.session.sessionId,
+      idempotencyKey: `${input.scope}:${input.idempotencyKey}:ingest`,
+      detail: {
+        quizId: input.entry.questionId,
+        conceptId: input.entry.conceptId,
+        stemNodeId: input.stemNodeId,
+        triggerKey: signal.triggerKey,
+      },
+    });
+  }
+
+  /**
+   * S1 迷思检测（pedagogy-spec §7）：同一 concept 最近 3 次作答均为同类型
+   * 错误（非 null errorType 且答错）时，发 `misconception:...:3` 信号。
+   * 与 L3 相互独立；只有映射到计划目标的概念才有 stemNodeId 可发信号。
+   */
+  private async emitMisconceptionSignal(input: {
+    actor: CurrentUser;
+    session: TutorSessionRecord;
+    entry: QuizBankEntry;
+    planId: string;
+    stemNodeId: string;
+    attemptId: string;
+    errorType: LearningErrorType;
+  }): Promise<void> {
+    if (this.stuckSignals === undefined) return;
+    const projectId = input.session.projectId;
+    if (projectId === null) return;
+    const recent = await this.quizStore.listRecentAttemptsByConcept(
+      input.actor.id,
+      input.entry.conceptId,
+      3,
+    );
+    const sameMisconception = recent.filter(
+      (row) => !row.isCorrect && row.errorType === input.errorType,
+    ).length;
+    if (sameMisconception < 3) return;
+
+    const signal: StudentStuckSignal = {
+      studentId: input.actor.id,
+      projectId,
+      planId: input.planId,
+      sessionId: input.session.sessionId,
+      stemNodeId: input.stemNodeId,
+      conceptId: input.entry.conceptId,
+      trigger: 'repeated_assessment_error',
+      triggerKey: `misconception:${input.actor.id}:${input.entry.conceptId}:${input.errorType}:3`,
+      errorTypeCode: input.errorType,
+      nodeRefs: [input.stemNodeId],
+      evidenceRefs: [input.attemptId],
+      emittedAt: new Date().toISOString(),
+    };
+    await this.ingestSignal(signal, {
+      actorId: input.actor.id,
+      actorRole: input.actor.role,
+      targetId: input.session.sessionId,
+      idempotencyKey: `${input.planId}:${input.entry.conceptId}:misconception:ingest`,
+      detail: {
+        quizId: input.entry.questionId,
+        conceptId: input.entry.conceptId,
+        stemNodeId: input.stemNodeId,
+        triggerKey: signal.triggerKey,
+      },
+    });
+  }
+
+  /** 卡点 / 迷思信号统一投递：失败只写 audit-only 兜底，不影响判分结果。 */
+  private async ingestSignal(
+    signal: StudentStuckSignal,
+    context: {
+      actorId: string;
+      actorRole: Role;
+      targetId: string;
+      idempotencyKey: string;
+      detail: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    if (this.stuckSignals === undefined) return;
     try {
       await this.stuckSignals.ingest(signal);
     } catch {
       await this.audit.write({
-        actorId: input.actor.id,
-        actorRole: input.actor.role,
+        actorId: context.actorId,
+        actorRole: context.actorRole,
         action: 'tutor.stuck_signal.ingest_failed',
         targetType: 'tutor_session',
-        targetId: input.session.sessionId,
-        idempotencyKey: `${input.scope}:${input.idempotencyKey}:ingest`,
-        detail: {
-          quizId: input.entry.questionId,
-          conceptId: input.entry.conceptId,
-          stemNodeId: input.stemNodeId,
-          triggerKey: signal.triggerKey,
-        },
+        targetId: context.targetId,
+        idempotencyKey: context.idempotencyKey,
+        detail: context.detail,
       });
     }
   }
 
   /* ==================== 内部：解析 / 掌握度 ==================== */
+
+  /** 计划的理论会话（`theoryObjectiveIds` 非空），门禁评估的唯一锚点。 */
+  private findTheorySession(bundle: PlanBundle): SessionRecord {
+    const ordered = bundle.sessions.slice().sort((left, right) => left.index - right.index);
+    const theory = ordered.find((session) => session.theoryObjectiveIds.length > 0);
+    if (theory !== undefined) return theory;
+    throw new ConflictException({
+      code: 'PBL_INTENT_NOT_CONFIRMED',
+      message: '学习计划缺少理论会话，不能判分',
+    });
+  }
+
+  /**
+   * 当前第一个尚未掌握的可量化（memory / procedure）理论目标，与下发侧
+   * `buildQuizBlocks` 的同一排序逻辑对齐；无待掌握目标时返回 null。
+   */
+  private async firstPendingQuantitativeObjective(
+    scopedStore: LearningPlanStore,
+    studentId: string,
+    bundle: PlanBundle,
+  ): Promise<ObjectiveRecord | null> {
+    const objectiveById = new Map(bundle.objectives.map((objective) => [objective.id, objective]));
+    const ordered: ObjectiveRecord[] = [];
+    for (const session of bundle.sessions.slice().sort((left, right) => left.index - right.index)) {
+      for (const objectiveId of session.theoryObjectiveIds) {
+        const objective = objectiveById.get(objectiveId);
+        if (objective !== undefined && !ordered.some((item) => item.id === objectiveId)) ordered.push(objective);
+      }
+    }
+    for (const objective of ordered) {
+      if (objective.type !== 'memory' && objective.type !== 'procedure') continue;
+      const mastery = await scopedStore.findMastery(studentId, objective.id);
+      if (mastery !== null && isObjectiveMastered(objective.type, {
+        score: mastery.masteryBasisPoints / 10_000,
+        qualitativeMastered: mastery.qualitativeMastered,
+      })) continue;
+      return objective;
+    }
+    return null;
+  }
 
   private async resolveObjective(
     scopedStore: LearningPlanStore,
@@ -417,6 +612,7 @@ export class TutorQuizService {
     quizId: string;
     grade: QuizKeyGrade;
     attemptCount: number;
+    hintsUsed: number;
     now: Date;
   }): AttemptRecord {
     return {
@@ -429,7 +625,7 @@ export class TutorQuizService {
       isCorrect: input.grade.isCorrect,
       assessmentType: 'quiz',
       errorType: input.grade.errorType as LearningErrorType | null,
-      hintsUsed: 0,
+      hintsUsed: input.hintsUsed,
       attemptCount: input.attemptCount,
       qualityBasisPoints: qualityBasisPoints(input.grade.score),
       userAnswer: null,
@@ -500,6 +696,16 @@ export class TutorQuizService {
     // 答案 / 解析释放：仅当量化概念已达标（>= 0.9）。concept/design 定性概念
     // 判分永不释放标准答案（见 pedagogy-spec §9）；显式 explain 走回合流程。
     const release = quantitative && input.after >= 0.9;
+    const beforeNormalized = input.before / 10_000;
+    // A6：before === after 时概念没有净变化，conceptDeltas 必须为空数组。
+    const conceptDeltas = beforeNormalized === input.after
+      ? []
+      : [{
+          conceptId: entry.conceptId,
+          before: beforeNormalized,
+          after: input.after,
+          mastered: input.masteredAfter,
+        }];
     return {
       quizId: entry.questionId,
       correct: grade.isCorrect,
@@ -507,12 +713,7 @@ export class TutorQuizService {
       hintLevel: input.hintLevel,
       explanation: release ? entry.explanation : null,
       correctKeys: release ? [...entry.expectedKeys] : null,
-      conceptDeltas: [{
-        conceptId: entry.conceptId,
-        before: input.before / 10_000,
-        after: input.after,
-        mastered: input.masteredAfter,
-      }],
+      conceptDeltas,
       nextGuidance: grade.isCorrect ? null : entry.rationaleHint,
       replayed: false,
     };

@@ -117,11 +117,14 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     });
   }
 
-  async withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+  async withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T> {
     return withTransaction(this.db, async (tx) => {
       // A student-wide lock also serializes gates spanning several theory objectives.
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['mastery', studentId])}, 0))`);
-      return work(new PostgresLearningPlanStore(tx as unknown as Database, true));
+      return work(new PostgresLearningPlanStore(tx as unknown as Database, true), tx);
     });
   }
 

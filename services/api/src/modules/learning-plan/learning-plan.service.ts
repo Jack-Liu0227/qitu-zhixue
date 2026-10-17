@@ -734,6 +734,63 @@ export class LearningPlanService {
     }
   }
 
+  /**
+   * F1 判分门禁桥（A2）：在**调用方自有的事务**内评估 TheoryMastered 门禁，
+   * 与 `submitAnswer` 共用 `computeTheoryMastered` / `theoryMasteredWithCandidate`，
+   * 不再在 tutor 判分侧重写一份门禁逻辑。调用方（TutorQuizService）传入事务
+   * 作用域 store，本方法不开启任何事务。
+   */
+  async evaluateGradingGate(input: {
+    store: LearningPlanStore;
+    bundle: PlanBundle;
+    session: SessionRecord;
+    candidateMastery: MasteryRecord;
+  }): Promise<{ theoryMastered: boolean; practiceUnlocked: boolean; theoryMasteredFlip: boolean }> {
+    const states = await this.loadStatesFromStore(input.store, input.bundle.plan.studentUserId, input.bundle);
+    const wasMastered = computeTheoryMastered(input.session.theoryObjectiveIds, states);
+    const isMastered = this.theoryMasteredWithCandidate(input.session, states, input.candidateMastery);
+    const updatedStates = new Map(states);
+    updatedStates.set(
+      input.candidateMastery.objectiveId,
+      this.toState(input.candidateMastery, input.candidateMastery.knowledgeType),
+    );
+    return {
+      theoryMastered: isMastered,
+      practiceUnlocked: this.isPracticeUnlocked(input.session, updatedStates),
+      theoryMasteredFlip: !wasMastered && isMastered,
+    };
+  }
+
+  /**
+   * F1 判分门禁桥（A2）：在调用方评估事务的 commit 回调里发掌握度评估 /
+   * 理论达标审计与 outbox 事件，复用 `submitAnswer` 的同一对 helper。
+   */
+  async emitGradingAssessmentEvents(
+    input: {
+      actor: CurrentUser;
+      bundle: PlanBundle;
+      session: SessionRecord;
+      masteryEvent: MasteryEventRecord | null;
+      theoryMasteredFlip: boolean;
+    },
+    tx?: AuditTransaction,
+  ): Promise<void> {
+    if (input.masteryEvent !== null) {
+      await this.emitMasteryAssessed(input.masteryEvent, tx as AuditTransaction);
+    }
+    if (input.theoryMasteredFlip) {
+      await this.emitTheoryMastered(input.actor, input.bundle, input.session, tx);
+    }
+  }
+
+  /**
+   * F1 判分门禁桥（A2）：**事务提交后**调用 `recordTheoryMasteredGate`。
+   * 门禁写入失败绝不能回滚已成立的理论达标。
+   */
+  async applyGradingGateBridge(studentId: string, sessionId: string): Promise<void> {
+    await this.recordTheoryMasteredGate(studentId, sessionId);
+  }
+
   private async withAssessmentStore<T>(studentId: string, work: (scoped: LearningPlanService) => Promise<T>): Promise<T> {
     return this.store.withAssessmentTransaction(studentId, async (scopedStore) => {
       // 作用域实例必须**原样带上**可选依赖：所有 emitTheoryMastered / 门禁桥调用
@@ -936,9 +993,18 @@ export class LearningPlanService {
     studentId: string,
     bundle: PlanBundle,
   ): Promise<Map<string, ObjectiveMasteryState>> {
+    return this.loadStatesFromStore(this.store, studentId, bundle);
+  }
+
+  /** 从指定 store（事务作用域或外部）读取掌握度投影，单一实现。 */
+  private async loadStatesFromStore(
+    store: LearningPlanStore,
+    studentId: string,
+    bundle: PlanBundle,
+  ): Promise<Map<string, ObjectiveMasteryState>> {
     const states = new Map<string, ObjectiveMasteryState>();
     for (const objective of bundle.objectives) {
-      const record = await this.store.findMastery(studentId, objective.id);
+      const record = await store.findMastery(studentId, objective.id);
       if (record !== null) states.set(objective.id, this.toState(record, objective.type));
     }
     return states;
