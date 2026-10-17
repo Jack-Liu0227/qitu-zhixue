@@ -45,14 +45,14 @@ CREATE TABLE knowledge_engine_checks (
 );
 -- Map legacy documents by real scope identifiers, never by title.
 INSERT INTO knowledge_bases(id,name,kind,school_id,owner_user_id,project_id,build_state)
-SELECT 'legacy-'||md5(scope||coalesce(school_id,'')||coalesce(owner_user_id,'')||coalesce(project_id,'')),
+SELECT 'legacy-'||md5(jsonb_build_array(scope,school_id,owner_user_id,project_id)::text),
   CASE WHEN scope='project' THEN coalesce((SELECT title FROM projects p WHERE p.id=d.project_id),'项目')||'知识库'
     WHEN scope='school' THEN '校本资料库' WHEN scope='student' THEN '个人资料库' ELSE '平台资料库' END,
   CASE WHEN scope='system' THEN 'platform' ELSE scope END, school_id, owner_user_id, project_id,'unindexed'
 FROM knowledge_documents d GROUP BY scope,school_id,owner_user_id,project_id ON CONFLICT DO NOTHING;
 INSERT INTO knowledge_base_members(id,kb_id,document_id,title,content,checksum,source_revision,origin)
-SELECT 'legacy-member-'||d.id, 'legacy-'||md5(scope||coalesce(school_id,'')||coalesce(owner_user_id,'')||coalesce(project_id,'')),
-  d.id,d.title,d.content,coalesce(d.checksum,md5(d.content)),d.version,
+SELECT 'legacy-member-'||d.id, 'legacy-'||md5(jsonb_build_array(scope,school_id,owner_user_id,project_id)::text),
+  d.id,d.title,d.content,encode(sha256(convert_to(d.content,'UTF8')),'hex'),d.version,
   jsonb_build_object('kind','legacy','documentId',d.id,'revision',d.version,'canMaterialize',false)
 FROM knowledge_documents d ON CONFLICT DO NOTHING;
 INSERT INTO project_knowledge_bindings(project_id,kb_id)

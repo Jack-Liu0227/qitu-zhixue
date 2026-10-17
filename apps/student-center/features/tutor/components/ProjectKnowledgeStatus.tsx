@@ -21,8 +21,12 @@ export function ProjectKnowledgeStatus({ projectId }: { projectId: string }) {
         if (closed) return;
         setState(body.data);
         setError('');
-        if (!['ready', 'failed', 'empty', 'cancelled'].includes(body.data.state))
-          timer = setTimeout(() => void load(), 8000);
+        timer = setTimeout(
+          () => void load(),
+          ['ready', 'failed', 'empty', 'cancelled', 'unavailable'].includes(body.data.state)
+            ? 30000
+            : 8000,
+        );
       } catch {
         if (!closed) {
           setError('项目资料状态暂时无法读取');
@@ -43,6 +47,7 @@ export function ProjectKnowledgeStatus({ projectId }: { projectId: string }) {
     collecting: '已选取相关资料，正在整理原文',
     indexing: '正在建立项目知识库',
     validating: '正在核对项目资料',
+    unavailable: '项目资料暂不可用',
     ready: '项目资料已准备好',
     failed: '项目资料准备暂未完成，请稍后重试',
     empty: '暂无获授权的项目资料',

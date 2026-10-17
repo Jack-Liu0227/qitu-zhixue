@@ -502,9 +502,17 @@ export class KnowledgeCenterService {
     };
   }
   async cancel(id: string) {
-    await this.database().execute(
-      sql`UPDATE knowledge_jobs SET state='cancelled',fencing_token=fencing_token+1,lease_until=NULL,updated_at=now() WHERE id=${id} AND state NOT IN ('ready','failed','empty')`,
-    );
+    await this.database().transaction(async (tx) => {
+      const jobs = rows<{ kb_id: string; input_revision: number }>(
+        await tx.execute(
+          sql`UPDATE knowledge_jobs SET state='cancelled',fencing_token=fencing_token+1,lease_until=NULL,updated_at=now() WHERE id=${id} AND state NOT IN ('ready','failed','empty','cancelled') RETURNING kb_id,input_revision`,
+        ),
+      );
+      if (jobs[0])
+        await tx.execute(
+          sql`UPDATE knowledge_bases SET build_state='cancelled',updated_at=now() WHERE id=${jobs[0].kb_id} AND revision=${jobs[0].input_revision}`,
+        );
+    });
     return this.job(id);
   }
 }

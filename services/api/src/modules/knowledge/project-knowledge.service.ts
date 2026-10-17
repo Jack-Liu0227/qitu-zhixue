@@ -28,11 +28,17 @@ export class ProjectKnowledgeService {
     const [job] = await this.center.query<{ id: string; state: string }>(
       sql`SELECT id,state FROM knowledge_jobs WHERE kb_id=${base.id} ORDER BY created_at DESC LIMIT 1`,
     );
+    const { config } = await this.center.configuration();
+    const effectiveState =
+      base.active_index_version_id &&
+      !config.knowledgeEngines[base.engine_instance_id ?? '']?.enabled
+        ? 'unavailable'
+        : base.build_state;
     return {
       knowledgeBaseId: base.id,
       name: base.name,
       mode: 'project_only',
-      state: base.build_state,
+      state: effectiveState,
       activeIndexVersionId: base.active_index_version_id,
       jobId: job?.id ?? null,
     };

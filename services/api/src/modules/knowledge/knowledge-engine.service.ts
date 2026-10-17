@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import type { EngineConfig } from './knowledge-center.config';
+import { ImaMcpClient } from '../ai-tutor/ima-mcp.client';
 
 export interface EngineHit {
   memberId: string;
@@ -45,10 +46,13 @@ export class KnowledgeEngineService {
         providerId: reference.slice(0, separator),
         modelId: reference.slice(separator + 1),
       });
+      if (!target.api.startsWith('openai-'))
+        return { ok: false, errorCode: 'EMBEDDING_PROTOCOL_UNSUPPORTED' };
+      const endpoint = target.baseUrl.replace(/\/+$/, '');
       embedding = {
         model: target.modelId,
         api_key: target.credential,
-        base_url: target.baseUrl,
+        base_url: endpoint.endsWith('/embeddings') ? endpoint : `${endpoint}/embeddings`,
         binding: 'openai',
         dim: 0,
         request_timeout: 60,
@@ -111,13 +115,45 @@ export class KnowledgeEngineService {
   async check(id: string) {
     const { revision, config } = await this.center.configuration();
     const engine = config.knowledgeEngines[id];
-    const receipt = engine
-      ? await this.execute(engine, { operation: 'check' })
-      : { ok: false, errorCode: 'ENGINE_NOT_CONFIGURED' };
+    let receipt: EngineReceipt;
+    if (
+      engine?.enabled &&
+      engine.provider === 'ima' &&
+      engine.config.connectionRef === 'ima-legacy'
+    ) {
+      try {
+        const tools = await new ImaMcpClient().toolsFor(
+          [
+            {
+              serverId: 'ima-knowledge',
+              label: 'ima',
+              transport: 'streamable_http',
+              toolIds: ['ima_list_knowledge_bases'],
+            },
+          ],
+          async () => {
+            const current = await this.center.configuration();
+            return (
+              current.config.knowledgeEngines[id]?.enabled === true && current.revision === revision
+            );
+          },
+        );
+        const response = await tools[0]?.execute({});
+        const catalog = response && !response.isError ? JSON.parse(response.text) : null;
+        receipt = Array.isArray(catalog?.knowledge_bases)
+          ? { ok: true, manifest: { accessibleBases: catalog.knowledge_bases.length } }
+          : { ok: false, errorCode: 'SOURCE_CONNECTION_UNAVAILABLE' };
+      } catch {
+        receipt = { ok: false, errorCode: 'SOURCE_CONNECTION_UNAVAILABLE' };
+      }
+    } else
+      receipt = engine
+        ? await this.execute(engine, { operation: 'check' })
+        : { ok: false, errorCode: 'ENGINE_NOT_CONFIGURED' };
     await this.center
       .database()
       .execute(
-        sql`INSERT INTO knowledge_engine_checks(instance_id,config_revision,health_status,error_code,capabilities) VALUES(${id},${revision},${receipt.ok ? 'ready' : 'unavailable'},${receipt.errorCode ?? null},${JSON.stringify({ canIndex: receipt.ok, canSearch: receipt.ok, canMaterialize: receipt.ok })}::jsonb) ON CONFLICT(instance_id) DO UPDATE SET config_revision=excluded.config_revision,health_status=excluded.health_status,error_code=excluded.error_code,capabilities=excluded.capabilities,checked_at=now()`,
+        sql`INSERT INTO knowledge_engine_checks(instance_id,config_revision,health_status,error_code,capabilities) VALUES(${id},${revision},${receipt.ok ? 'ready' : 'unavailable'},${receipt.errorCode ?? null},${JSON.stringify({ canIndex: receipt.ok && engine?.provider === 'llamaindex', canSearch: receipt.ok, canMaterialize: receipt.ok && (engine?.provider !== 'ima' || engine.config.allowMaterialize === true) })}::jsonb) ON CONFLICT(instance_id) DO UPDATE SET config_revision=excluded.config_revision,health_status=excluded.health_status,error_code=excluded.error_code,capabilities=excluded.capabilities,checked_at=now()`,
       );
     return { instanceId: id, revision, ...receipt, checkedAt: new Date().toISOString() };
   }

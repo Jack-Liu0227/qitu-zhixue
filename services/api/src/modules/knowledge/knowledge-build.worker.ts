@@ -52,6 +52,9 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
         sql`UPDATE knowledge_jobs SET state=${state},updated_at=now() WHERE id=${job.id}`,
       );
       await tx.execute(
+        sql`UPDATE knowledge_bases SET build_state=${state},updated_at=now() WHERE id=${job.kb_id} AND revision=${job.input_revision} AND lifecycle='active'`,
+      );
+      await tx.execute(
         sql`INSERT INTO knowledge_job_events(job_id,event_seq,state,detail) SELECT ${job.id},coalesce(max(event_seq),0)+1,${state},${JSON.stringify(detail)}::jsonb FROM knowledge_job_events WHERE job_id=${job.id}`,
       );
     });

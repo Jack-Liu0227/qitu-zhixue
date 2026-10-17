@@ -258,6 +258,9 @@ importers:
         specifier: ^19.1.0
         version: 19.3.0
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.4
       '@types/react':
         specifier: ^19.0.0
         version: 19.3.0
