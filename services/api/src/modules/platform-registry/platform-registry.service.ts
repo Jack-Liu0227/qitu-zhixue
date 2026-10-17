@@ -28,7 +28,7 @@ import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBi
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { builtinToolRegistry } from './built-in-tools';
-import { QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THUNDER_FIGHTER_PBL_SPEC } from '@qitu/ai-client';
+import { BUILTIN_ASSISTANTS, QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THUNDER_FIGHTER_PBL_SPEC } from '@qitu/ai-client';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { assertParentGraph } from './agent-config.validation';
@@ -658,11 +658,63 @@ export class PlatformRegistryService {
 
   async listAssistants(): Promise<AdminAssistantConfig[]> {
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
-    const rows = await this.db
+    let rows = await this.db
       .select()
       .from(adminAssistants)
       .orderBy(asc(adminAssistants.sortOrder), asc(adminAssistants.id));
-    return rows.map(toAssistantConfig);
+
+    const existingIds = new Set(rows.map((r) => r.id));
+    const missingBuiltins = BUILTIN_ASSISTANTS.filter((b) => !existingIds.has(b.id));
+
+    if (missingBuiltins.length > 0) {
+      try {
+        const now = new Date();
+        const toInsert = missingBuiltins.map((b) => ({
+          id: b.id,
+          source: 'builtin',
+          name: b.name,
+          avatar: b.avatar ?? null,
+          description: b.description,
+          role: b.role,
+          enabled: b.enabled,
+          sortOrder: b.sortOrder,
+          modelProviderId: b.modelProviderId ?? null,
+          modelId: b.modelId ?? null,
+          temperature: b.temperature ?? null,
+          instructions: b.instructions,
+          enabledSkills: [...b.enabledSkills],
+          toolIds: [...b.toolIds],
+          mcpServerIds: [...b.mcpServerIds],
+          defaults: mergeAssistantDefaults(b.defaults) as unknown as Record<string, unknown>,
+          agentStatus: b.agentStatus,
+          agentStatusMessage: b.agentStatusMessage ?? null,
+          teamSelectable: b.teamSelectable,
+          createdAt: b.createdAt ? new Date(b.createdAt) : now,
+          updatedAt: b.updatedAt ? new Date(b.updatedAt) : now,
+        }));
+        const insertBuilder = this.db.insert(adminAssistants).values(toInsert as any);
+        if (typeof (insertBuilder as any)?.onConflictDoNothing === 'function') {
+          await (insertBuilder as any).onConflictDoNothing();
+        } else {
+          await insertBuilder;
+        }
+        rows = await this.db
+          .select()
+          .from(adminAssistants)
+          .orderBy(asc(adminAssistants.sortOrder), asc(adminAssistants.id));
+      } catch (err) {
+        this.logger.warn(`Failed to auto-seed missing builtin assistants: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    const configs = rows.map(toAssistantConfig);
+    const finalIds = new Set(configs.map((c) => c.id));
+    for (const b of BUILTIN_ASSISTANTS) {
+      if (!finalIds.has(b.id)) {
+        configs.push({ ...b });
+      }
+    }
+    return configs.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id.localeCompare(b.id));
   }
 
   /**
@@ -722,8 +774,41 @@ export class PlatformRegistryService {
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
     return withTransaction(this.db, async (tx) => {
       const rows = await tx.select().from(adminAssistants);
-      const existing = rows.find((row) => row.id === assistantId);
-      if (!existing) throw new NotFoundException('助手不存在');
+      let existing = rows.find((row) => row.id === assistantId);
+      if (!existing) {
+        const builtin = BUILTIN_ASSISTANTS.find((b) => b.id === assistantId);
+        if (builtin) {
+          const now = new Date();
+          const record: AssistantRow = {
+            id: builtin.id,
+            source: 'builtin',
+            name: builtin.name,
+            avatar: builtin.avatar ?? null,
+            description: builtin.description,
+            role: builtin.role,
+            enabled: builtin.enabled,
+            sortOrder: builtin.sortOrder,
+            modelProviderId: builtin.modelProviderId ?? null,
+            modelId: builtin.modelId ?? null,
+            temperature: builtin.temperature ?? null,
+            instructions: builtin.instructions,
+            enabledSkills: [...builtin.enabledSkills],
+            toolIds: [...builtin.toolIds],
+            mcpServerIds: [...builtin.mcpServerIds],
+            defaults: mergeAssistantDefaults(builtin.defaults) as unknown as Record<string, unknown>,
+            agentStatus: builtin.agentStatus,
+            agentStatusMessage: builtin.agentStatusMessage ?? null,
+            teamSelectable: builtin.teamSelectable,
+            updatedBy: actor.id,
+            createdAt: builtin.createdAt ? new Date(builtin.createdAt) : now,
+            updatedAt: now,
+          };
+          await tx.insert(adminAssistants).values({ ...record });
+          existing = record;
+        } else {
+          throw new NotFoundException('助手不存在');
+        }
+      }
       const now = new Date();
       const set: Partial<typeof adminAssistants.$inferInsert> = { updatedBy: actor.id, updatedAt: now };
       if (patch.name !== undefined) set.name = patch.name;

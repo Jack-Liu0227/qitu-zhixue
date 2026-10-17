@@ -230,7 +230,13 @@ function fakeConfigDb(state: { assistants: Row[]; teams: Row[]; members: Row[] }
   }
   const executor = {
     select: () => ({ from: (table: unknown) => new Chain(rowsFor(table)) }),
-    insert: (table: unknown) => ({ values: (values: unknown) => { ops.inserts.push({ table, values }); return Promise.resolve(); } }),
+    insert: (table: unknown) => ({
+      values: (values: unknown) => {
+        ops.inserts.push({ table, values });
+        const p = Promise.resolve();
+        return Object.assign(p, { onConflictDoNothing: () => p });
+      },
+    }),
     update: (table: unknown) => ({
       set: (patch: Row) => ({ where: () => { ops.updates.push({ table, set: patch }); return Promise.resolve(); } }),
     }),

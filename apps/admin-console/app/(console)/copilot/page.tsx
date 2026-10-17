@@ -308,6 +308,13 @@ export default function CopilotPage() {
       icon: '🌱',
       systemPrompt: '你是成长轨迹故事生成助手，负责提炼探究历程重大里程碑并生成第一人称个性化研学成长报告。',
     },
+    {
+      id: 'feishu-issue-summary-assistant',
+      name: '三端问题总结与飞书汇报助手',
+      role: '三端问题总结助手',
+      icon: '🤖',
+      systemPrompt: '你是启途智学三端问题总结助手。专职汇总学生、家长与教师在平台使用、PBL项目学习、家校协同与教学辅导中遇到的难点、阻塞性问题与意见反馈。整理生成结构化的问题总结并通过飞书机器人推送。严格执行数据脱敏与未成年人保护规范。',
+    },
   ];
 
   const allTestableAssistants = useMemo(() => {
