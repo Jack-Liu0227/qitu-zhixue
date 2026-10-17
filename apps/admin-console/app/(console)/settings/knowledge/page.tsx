@@ -114,7 +114,7 @@ export default function KnowledgeCenterPage() {
   }
   const view = AdminStateViews({ loading, error, onRetry: load });
   return (
-    <div className="admin-settings-page">
+    <div className="admin-settings-page knowledge-center-page">
       <div className="settings-pagehead">
         <div className="settings-titlebox">
           <h1>知识中心</h1>

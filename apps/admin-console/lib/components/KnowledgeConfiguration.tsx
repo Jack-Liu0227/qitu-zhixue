@@ -114,7 +114,7 @@ export function KnowledgeConfiguration({
     setNotice('已添加到草稿，保存后生效');
   }
   return (
-    <section className="admin-settings-page" aria-label="统一 JSON 配置工作台">
+    <section className="admin-settings-page knowledge-config-workbench" aria-label="统一 JSON 配置工作台">
       <div className="settings-pagehead">
         <div>
           <h2>JSON 配置编辑</h2>

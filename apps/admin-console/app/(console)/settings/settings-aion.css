@@ -3629,3 +3629,27 @@
 
 
 
+
+/* Keep intrinsic select/textarea widths inside the settings content column. */
+.knowledge-config-workbench { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.knowledge-config-workbench > * { min-width: 0; max-width: 100%; }
+.knowledge-config-workbench > label { display: grid; gap: 8px; }
+.knowledge-config-workbench .admin-select { width: 100%; min-width: 0; max-width: 100%; }
+.knowledge-config-workbench .settings-page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.knowledge-config-workbench p { overflow-wrap: anywhere; }
+@media (max-width: 860px) {
+  .knowledge-config-workbench .settings-pagehead { flex-direction: column; align-items: stretch; gap: 12px; }
+  .knowledge-config-workbench .settings-pagehead h2 { margin: 0; }
+}
+
+.knowledge-center-page { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.knowledge-center-page > * { min-width: 0; max-width: 100%; }
+.knowledge-center-page .admin-knowledge-cards-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.knowledge-center-page .admin-knowledge-item-card { min-width: 0; gap: 12px; padding: 18px; overflow-wrap: anywhere; }
+.knowledge-center-page .admin-knowledge-item-card h2,
+.knowledge-center-page .admin-knowledge-item-card p { margin: 0; }
+.knowledge-center-page .settings-page-actions { flex-wrap: wrap; }
+.knowledge-center-page input, .knowledge-center-page select { min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 860px) {
+  .knowledge-center-page .settings-pagehead { flex-direction: column; align-items: stretch; gap: 12px; }
+}
