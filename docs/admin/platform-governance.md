@@ -45,7 +45,13 @@ Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、�
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.
 
-### ima 调用治理与状态登记
+### 项目知识库与 JSON 配置树
+
+当前知识相关配置统一位于“项目知识库”下，ima 作为知识引擎实例纳入其中。JSON 工作台保留原双卡布局，子工具可展开查看真实参数；目标映射、管理员目录接口及未提供 schema 的状态边界见 [工具与 MCP JSON 配置树](./mcp-json-tree.md)。统一配置以 `platform-config` 修订为准。
+
+### 历史 ima 集成兼容说明
+
+以下记录旧版 ima 专用接口与迁移背景；当前配置入口与项目检索治理以知识中心及上述统一配置树为准。
 
 `设置 → 工具与 MCP` 的 ima 总开关、助手授权矩阵、运行时 Agent 绑定、JSON 编辑及预览均读取服务端配置。`GET/PATCH /api/v1/admin/ai-runtime/mcp/ima-knowledge` 只向管理员开放；写入必须携带幂等键，并在事务内审计。`POST .../check` 实际完成 MCP 握手并读取知识库清单；连接正常与允许调用是两个独立状态，关闭总开关仍可检查连接。
 

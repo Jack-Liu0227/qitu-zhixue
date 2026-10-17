@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Headers, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Put, Query } from '@nestjs/common';
 import { requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { requireIdempotencyKey } from './knowledge-center.request';
+import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 
 @Controller('admin')
 export class KnowledgeCenterController {
@@ -11,6 +12,7 @@ export class KnowledgeCenterController {
     private readonly center: KnowledgeCenterService,
     private readonly engine: KnowledgeEngineService,
     private readonly auth: AuthService,
+    private readonly catalog: KnowledgeToolCatalogService,
   ) {}
   private actor(cookie: string | undefined) {
     return requireRole(this.auth, cookie, 'admin', '知识中心仅向管理员开放');
@@ -32,6 +34,16 @@ export class KnowledgeCenterController {
   async validate(@Headers('cookie') cookie: string | undefined, @Body() body: unknown) {
     this.actor(cookie);
     return { data: await this.center.validate(body) };
+  }
+  @Get('platform-config/tools/:section/:id')
+  async tools(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('section') section: string,
+    @Param('id') id: string,
+    @Query('refresh') refresh?: string,
+  ) {
+    this.actor(cookie);
+    return { data: await this.catalog.list(section, id, refresh === '1') };
   }
   @Get('knowledge/bases')
   async bases(@Headers('cookie') cookie: string | undefined) {

@@ -4,10 +4,7 @@ import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
 import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeAdminController } from './knowledge-admin.controller';
-import {
-  EmbeddingProvider,
-  ReservedEmbeddingProvider,
-} from './knowledge.embedding.port';
+import { EmbeddingProvider, ReservedEmbeddingProvider } from './knowledge.embedding.port';
 import { KeywordRetrievalPort, RetrievalPort } from './knowledge.retrieval.port';
 import {
   DefaultKnowledgeScopeAuthorizer,
@@ -27,6 +24,7 @@ import { KnowledgeBuildWorker } from './knowledge-build.worker';
 import { KnowledgeSourceService } from './knowledge-source.service';
 import { ProjectKnowledgeService } from './project-knowledge.service';
 import { ProjectKnowledgeController } from './project-knowledge.controller';
+import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 
 /**
  * 作用域知识模块。
@@ -42,9 +40,19 @@ import { ProjectKnowledgeController } from './project-knowledge.controller';
  */
 @Module({
   imports: [AuthModule, ModelRegistryModule],
-  controllers: [KnowledgeController, KnowledgeAdminController, KnowledgeCenterController, ProjectKnowledgeController],
+  controllers: [
+    KnowledgeController,
+    KnowledgeAdminController,
+    KnowledgeCenterController,
+    ProjectKnowledgeController,
+  ],
   providers: [
-    KnowledgeCenterService, KnowledgeEngineService, KnowledgeBuildWorker, KnowledgeSourceService, ProjectKnowledgeService,
+    KnowledgeToolCatalogService,
+    KnowledgeCenterService,
+    KnowledgeEngineService,
+    KnowledgeBuildWorker,
+    KnowledgeSourceService,
+    ProjectKnowledgeService,
     KnowledgeService,
     { provide: RetrievalPort, useClass: KeywordRetrievalPort },
     { provide: EmbeddingProvider, useClass: ReservedEmbeddingProvider },
@@ -70,6 +78,12 @@ import { ProjectKnowledgeController } from './project-knowledge.controller';
     },
     { provide: KnowledgeScopeAuthorizer, useClass: DefaultKnowledgeScopeAuthorizer },
   ],
-  exports: [KnowledgeService, RetrievalPort, EmbeddingProvider, KnowledgeCenterService, ProjectKnowledgeService],
+  exports: [
+    KnowledgeService,
+    RetrievalPort,
+    EmbeddingProvider,
+    KnowledgeCenterService,
+    ProjectKnowledgeService,
+  ],
 })
 export class KnowledgeModule {}

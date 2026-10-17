@@ -1148,7 +1148,7 @@ export default function ToolsSettingsPage() {
     setTimeout(() => setNotice(''), 2500);
   };
 
-  if (['edit','preview'].includes(activeMode)) return <KnowledgeConfiguration preview={activeMode === 'preview'} onMatrix={() => { setActiveMode('matrix'); void loadIma(); }} />;
+  if (['edit','preview'].includes(activeMode)) return <KnowledgeConfiguration preview={activeMode === 'preview'} onMode={(mode) => { setActiveMode(mode); if (mode === 'matrix') void loadIma(); }} />;
 
   return (
     <div className="admin-tools-page-view" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '32px' }}>

@@ -64,6 +64,22 @@ export const centerRequest = <T>(
   idempotencyKey?: string,
 ) => adminEnvelopeRequest<T>({ path: `/api/v1/admin/${path}`, method, body, idempotencyKey });
 export const fetchCenterConfig = () => centerRequest<CenterConfig>('platform-config');
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown> | null;
+}
+export interface ToolCatalog {
+  tools: ToolDefinition[];
+  source: 'runtime' | 'mcp' | 'registry';
+  fetchedAt: string | null;
+  stale: boolean;
+  message: string | null;
+}
+export const fetchToolCatalog = (target: string, refresh = false) =>
+  centerRequest<ToolCatalog>(
+    `platform-config/tools/${target.split('/').map(encodeURIComponent).join('/')}${refresh ? '?refresh=1' : ''}`,
+  );
 export const saveCenterConfig = (
   body: { expectedRevision: number; config: CenterConfig['config'] },
   key: string,
