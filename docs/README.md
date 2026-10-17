@@ -27,7 +27,7 @@
 | `teacher/` | 班主任工作台、学生、问题、统计和平台知识能力边界             | [`teacher/dashboard.md`](./teacher/dashboard.md)                 |
 | `parent/`  | 授权成长投影、进展、消息和导出                               | [`parent/home.md`](./parent/home.md)                             |
 | `sdk/`     | Agent Runtime、Team Runtime、领域 Facade、浏览器客户端和记忆 | [`sdk/overview.md`](./sdk/overview.md)                           |
-| `design/`  | PBL 教学设计与模板团队绑定架构、品牌故事规范                 | [`design/pbl-template-team-binding-architecture.md`](./design/pbl-template-team-binding-architecture.md) ; [`design/pbl-reference-implementation-and-chat-history.md`](./design/pbl-reference-implementation-and-chat-history.md) |
+| `design/`  | PBL 教学设计与模板团队绑定架构、品牌故事规范、学生端 AI 搭档工作区/知识中心/PBL 动态交互设计                 | [`design/pbl-template-team-binding-architecture.md`](./design/pbl-template-team-binding-architecture.md) ; [`design/pbl-reference-implementation-and-chat-history.md`](./design/pbl-reference-implementation-and-chat-history.md) ; [`design/20261018-tutor-workspace-interaction-contract.md`](./design/20261018-tutor-workspace-interaction-contract.md) ; [`design/20261018-knowledge-center-deeptutor-reference.md`](./design/20261018-knowledge-center-deeptutor-reference.md) ; [`design/20261018-pbl-dynamic-interaction-openmaic.md`](./design/20261018-pbl-dynamic-interaction-openmaic.md) |
 | `plan/`    | 已评审的实施计划、任务拆解、试点门槛和发布台账                 | [`plan/README.md`](./plan/README.md)                             |
 
 `aboutus/` 是产品叙事目录，不是新的运行时责任域；接口、状态机和权限合同仍以对应平台文档和代码为准。

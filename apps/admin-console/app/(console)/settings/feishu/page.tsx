@@ -127,7 +127,7 @@ export default function FeishuSettingsPage() {
       setAssistants(list);
       setConfig((cur) => {
         if (cur.reportAssistantId) return cur;
-        const preferred = list.find((a) => a.id === 'feishu-issue-summary-assistant') ?? list[0];
+        const preferred = list.find((a) => a.id === 'feishu-reporting-assistant') ?? list[0];
         return preferred ? { ...cur, reportAssistantId: preferred.id } : cur;
       });
     }).catch((err) => {
