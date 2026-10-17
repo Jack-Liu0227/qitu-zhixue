@@ -24,13 +24,18 @@ function enhanceKineticFormula(latex: string): string {
 }
 
 function renderKaTeX(latex: string, displayMode: boolean): string {
+  if (latex.length > 4096) {
+    return `<span class="katex-fallback">${latex}</span>`;
+  }
   try {
     const formatted = enhanceKineticFormula(latex.trim());
     return katex.renderToString(formatted, {
       displayMode,
       throwOnError: false,
       output: 'htmlAndMathml',
-      trust: true,
+      trust: false,
+      strict: 'warn',
+      errorColor: '#b42318',
     });
   } catch {
     return `<span class="katex-fallback">${latex}</span>`;

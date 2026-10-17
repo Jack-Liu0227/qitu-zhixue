@@ -60,6 +60,9 @@ function assistantIdsForRuntimeAgent(agentId: string): readonly string[] {
 }
 
 export function tutorAssistantIdForProject(projectTitle: string, projectStage: string): string {
+  if (projectStage === 'exploration' || !projectTitle || projectTitle === '自由探索') {
+    return 'qitu-intake-assistant';
+  }
   const kineticProject = /动能|物理|小车|kinetic|physics/i.test(projectTitle);
   const thunderProject = /雷霆|战机|pygame|飞行射击|python.*游戏/i.test(projectTitle);
   const assistants = kineticProject
@@ -71,12 +74,12 @@ export function tutorAssistantIdForProject(projectTitle: string, projectStage: s
       }
     : thunderProject
       ? {
-        leader: 'tutor-leader',
+        leader: 'fighter-concept-coach',
         concept: 'fighter-concept-coach',
         practice: 'fighter-code-guide',
         review: 'fighter-review-assessor',
       }
-      : { leader: 'tutor-leader', concept: 'tutor-leader', practice: 'tutor-leader', review: 'tutor-leader' };
+      : { leader: 'qitu-intake-assistant', concept: 'qitu-intake-assistant', practice: 'qitu-intake-assistant', review: 'qitu-intake-assistant' };
   if (projectStage === 'theory' || projectStage === 'theory_learning' || projectStage === 'theory_check') return assistants.concept;
   if (projectStage === 'practice' || projectStage === 'practice_ready' || projectStage === 'practice_building') return assistants.practice;
   if (projectStage === 'review' || projectStage === 'artifact_review' || projectStage === 'reflection') return assistants.review;

@@ -121,7 +121,14 @@ export default function FeishuSettingsPage() {
       setConfig({ ...EMPTY, ...value });
       setRemainingSeconds(secondsUntil(value.expiresAt));
     }).catch((err) => setError(err instanceof Error ? err : new Error('Failed to load Feishu settings')));
-    await fetchAdminAssistantConfigs().then(setAssistants).catch((err) => {
+    await fetchAdminAssistantConfigs().then((list) => {
+      setAssistants(list);
+      setConfig((cur) => {
+        if (cur.reportAssistantId) return cur;
+        const preferred = list.find((a) => a.id === 'feishu-issue-summary-assistant') ?? list[0];
+        return preferred ? { ...cur, reportAssistantId: preferred.id } : cur;
+      });
+    }).catch((err) => {
       setAssistants([]);
       setAssistantError(err instanceof Error ? err : new Error('Failed to load assistants'));
     });

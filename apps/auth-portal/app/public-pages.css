@@ -591,3 +591,39 @@
 .public-contact-list a:hover {
   color: #1e4fd9;
 }
+
+/* ---- 修复公共页面（项目式学习、能力体系、关于我们）首屏排版与留白 ---- */
+.public-main .home-hero-title,
+.public-hero-heading .home-hero-title,
+.home-hero-copy .home-hero-title {
+  display: block !important;
+  text-wrap: normal !important;
+  word-break: normal !important;
+  line-height: 1.25 !important;
+}
+
+.public-main .home-hero-title span,
+.public-hero-heading .home-hero-title span,
+.home-hero-copy .home-hero-title span {
+  display: inline !important;
+}
+
+.public-main .home-hero-grid,
+.public-main .public-hero-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr) !important;
+  gap: clamp(28px, 4vw, 56px) !important;
+  align-items: center !important;
+}
+
+.public-main .public-hero-note {
+  width: 100% !important;
+  max-width: 520px !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 900px) {
+  .public-main .home-hero-grid,
+  .public-main .public-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -389,7 +389,45 @@ export default function ProgressPage() {
                   </article>
                 ))
               ) : filteredWorks.length === 0 ? (
-                <p className="empty-inline" role="status">没有符合当前筛选的作品。</p>
+                <div
+                  style={{
+                    padding: '32px 20px',
+                    textAlign: 'center',
+                    background: '#f8fafc',
+                    borderRadius: '14px',
+                    border: '1px dashed #cbd5e1',
+                    margin: '16px 0',
+                  }}
+                  role="status"
+                >
+                  <p style={{ margin: '0 0 10px', color: '#475569', fontSize: '14px', fontWeight: 600 }}>
+                    {search.trim()
+                      ? `未找到与「${search.trim()}」相关的作品`
+                      : statusFilter === 'completed'
+                        ? '暂无已完成的作品，孩子正在推进当前进行中的探究项目。'
+                        : statusFilter === 'in_progress'
+                          ? '暂无进行中的作品。'
+                          : '暂无作品记录。'}
+                  </p>
+                  {(statusFilter !== 'all' || search.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => { setStatusFilter('all'); setSearch(''); }}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        color: 'var(--qitu-primary)',
+                        background: '#fff',
+                        border: '1px solid var(--qitu-primary-border)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      查看全部作品（{works.length}）
+                    </button>
+                  )}
+                </div>
               ) : null}
             </div>
           </>

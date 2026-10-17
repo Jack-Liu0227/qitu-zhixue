@@ -69,17 +69,22 @@
 
 /* The shared state icon is 72px; this illustration contains a full mascot and note. */
 .qitu-growth-empty .qitu-state-illustration {
-  width: auto;
-  height: auto;
+  width: auto !important;
+  height: auto !important;
   max-width: 100%;
-  margin-bottom: 8px;
-  border-radius: 0;
-  background: transparent;
+  margin-bottom: 24px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .qitu-growth-empty .qitu-robot {
-  display: block;
-  flex-shrink: 0;
+  display: block !important;
+  margin: 0 auto !important;
+  flex-shrink: 0 !important;
 }
 
 .qitu-growth-empty .qitu-handwritten {
@@ -95,8 +100,10 @@
   background: transparent !important;
   border-radius: 0 !important;
   display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
   justify-content: center !important;
-  margin-bottom: 12px;
+  margin-bottom: 24px !important;
 }
 
 .qitu-growth-empty-illustration {

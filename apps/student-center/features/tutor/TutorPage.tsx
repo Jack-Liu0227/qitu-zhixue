@@ -35,6 +35,21 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const teamName = projectId ? (isThunder ? '雷霆战机团队' : '动能定理导师团队') : '启途智学助手';
 
   useEffect(() => {
+    // 若进入学生端 AI 对话时未指定项目且未要求新探索，直接进入当前正在进行的执行中项目团队
+    if (!projectId && !searchParams.get('new') && !searchParams.get('explorationId') && !searchParams.get('explorePrompt')) {
+      let cancelled = false;
+      void source.listProjects().then((projects) => {
+        if (cancelled) return;
+        const activeProject = projects.find((p) => p.stage !== 'completed') ?? projects[0];
+        if (activeProject) {
+          router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
+        }
+      }).catch(() => {});
+      return () => { cancelled = true; };
+    }
+  }, [projectId, searchParams, source, router]);
+
+  useEffect(() => {
     // Discard legacy browser-stored credentials and fabricated transcripts.
     try {
       for (const key of ['qitu.tutor.sessions', 'qitu.llm.client_config', 'qitu.cached_configured_models']) localStorage.removeItem(key);
@@ -147,6 +162,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         <ChatThread
           sessionId={session.sessionId}
           turns={session.turns}
+          currentAssistantName={teamName}
           status={session.sessionStatus === 'ready' && session.turns.length === 0 ? 'empty' : session.sessionStatus}
           error={session.sessionError}
           streaming={session.streaming}
@@ -181,7 +197,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         />
       </div>
       {rightOpen ? (
-        <aside style={{ width: 'min(320px, 32vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <aside className="qitu-tutor-context-sidebar" style={{ width: 'min(240px, 21vw)', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* 侧边栏两个 table / tab 视图切换：一个显示项目进度，一个显示各个 agent 的状态、头像、对话历史、工具调用情况 */}
           <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '4px', border: '1px solid #e2e8f0' }}>
             <button

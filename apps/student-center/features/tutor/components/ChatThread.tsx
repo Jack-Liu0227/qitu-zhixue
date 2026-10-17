@@ -35,6 +35,7 @@ export function ChatThread({
   onReconnect,
   onSelectOption,
   onOneClickCreateProject,
+  currentAssistantName,
   isConfirmingProject = false,
   isExploration = false,
   subAgentHud,
@@ -52,6 +53,7 @@ export function ChatThread({
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string) => void;
+  currentAssistantName?: string;
   isConfirmingProject?: boolean;
   isExploration?: boolean;
   subAgentHud?: ReactNode;
@@ -255,6 +257,7 @@ export function ChatThread({
           <ChatBubble
             key={turn.turnId}
             turn={turn}
+            currentAssistantName={currentAssistantName}
             onSelectOption={onSelectOption}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}

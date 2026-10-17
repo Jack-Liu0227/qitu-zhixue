@@ -379,14 +379,14 @@ export function pblGatesRequiredToEnter(phase: PblPhase): string[] {
 export const THUNDER_FIGHTER_TEAM_MEMBERS: readonly AdminTeamMember[] = [
   {
     slotId: 'slot-leader',
-    assistantId: 'tutor-leader',
-    assistantName: '启途总导师',
+    assistantId: 'qitu-intake-assistant',
+    assistantName: '启途智学助手',
     role: 'leader',
-    roleLabel: '总导师 (流程推进与意图把控)',
-    avatar: '👨‍🏫',
+    roleLabel: '启途智学助手 (意图引导与课题推荐)',
+    avatar: '🧭',
     status: 'active',
     model: 'qwen3.8-flash',
-    color: 'var(--brand)',
+    color: '#2563eb',
     pblPhase: 'exploration',
   },
   {

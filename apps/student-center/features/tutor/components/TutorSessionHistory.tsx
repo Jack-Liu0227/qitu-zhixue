@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TutorTurn } from '@qitu/contracts';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
+import { resolveSubAgents, AgentDetailModal, type SubAgentStatus } from './TeamAgentHud';
 
 export interface HistorySessionItem {
   id: string;
@@ -19,6 +20,18 @@ export interface HistorySessionItem {
 
 const STORAGE_KEY = 'qitu.tutor.exploration_history';
 const DELETED_STORAGE_KEY = 'qitu.tutor.deleted_exploration_history';
+const HIDDEN_PROJECTS_STORAGE_KEY = 'qitu.tutor.hidden_project_history';
+function getHiddenProjectIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(HIDDEN_PROJECTS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
 function getDeletedExplorationIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
@@ -110,12 +123,13 @@ export function TutorSessionHistory({
   const dataSource = useTutorDataSource();
   const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(() => getHiddenProjectIds());
 
   useEffect(() => {
     let cancelled = false;
     void dataSource.listProjects().then((projects) => {
       if (cancelled) return;
-      setProjectSessions(projects.map((project) => ({
+      setProjectSessions(projects.filter((project) => !hiddenProjectIds.has(project.id)).map((project) => ({
         id: project.id,
         title: project.title,
         kind: 'project',
@@ -137,7 +151,7 @@ export function TutorSessionHistory({
       if (!cancelled) setProjectSessions([]);
     });
     return () => { cancelled = true; };
-  }, [dataSource, currentProjectId, currentTurnCount]);
+  }, [dataSource, currentProjectId, currentTurnCount, hiddenProjectIds]);
 
   // 初始化并监听本地探索会话
   useEffect(() => {
@@ -162,9 +176,17 @@ export function TutorSessionHistory({
     }
   }, [currentProjectId, currentExplorationId, currentTitle, currentTurnCount]);
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = (e: React.MouseEvent, item: HistorySessionItem) => {
     e.stopPropagation();
-    deleteLocalExplorationSession(id);
+    if (!window.confirm(`确认从会话历史中删除“${item.title}”吗？\n\n仅移除历史入口，不会删除项目数据。`)) return;
+    if (item.kind === 'project') {
+      const next = new Set(hiddenProjectIds);
+      next.add(item.id);
+      try { localStorage.setItem(HIDDEN_PROJECTS_STORAGE_KEY, JSON.stringify([...next].slice(-100))); } catch { /* Storage may be unavailable. */ }
+      setHiddenProjectIds(next);
+      return;
+    }
+    deleteLocalExplorationSession(item.id);
     setExplorationHistory(getLocalExplorationHistory());
   };
 
@@ -200,20 +222,25 @@ export function TutorSessionHistory({
 
 
 
+  const [inspectingAgent, setInspectingAgent] = useState<SubAgentStatus | null>(null);
+  const subAgents = useMemo(() => resolveSubAgents(currentProjectId, currentTitle), [currentProjectId, currentTitle]);
+
   if (!isOpen) {
     return (
       <aside
+        className="qitu-live-session-sidebar is-collapsed"
         style={{
-          width: 52,
+          width: 64,
+          minWidth: 64,
           flexShrink: 0,
           padding: '14px 0',
-          border: '1px solid #e4ecf7',
+          border: '1px solid #e2e8f0',
           borderRadius: 14,
           background: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '14px',
+          gap: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
           boxSizing: 'border-box',
         }}
@@ -221,24 +248,28 @@ export function TutorSessionHistory({
         <button
           type="button"
           onClick={onToggle}
-          title="展开会话历史侧边栏"
-          aria-label="展开会话历史侧边栏"
+          title="展开侧边栏（会话历史与团队智能体）"
+          aria-label="展开侧边栏（会话历史与团队智能体）"
           style={{
-            width: '36px',
-            height: '36px',
+            width: '44px',
+            height: '44px',
             padding: 0,
             margin: '0 auto',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             border: '1px solid #cbd5e1',
-            borderRadius: '8px',
+            borderRadius: '10px',
             background: '#f8fafc',
+            color: '#1e293b',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
+            boxSizing: 'border-box',
           }}
         >
-          <span style={{ fontSize: '16px' }}>📂</span>
+          <span style={{ fontSize: '15px', lineHeight: 1 }}>📂</span>
+          <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', marginTop: '2px', lineHeight: 1 }}>展开</span>
         </button>
         <button
           type="button"
@@ -247,20 +278,21 @@ export function TutorSessionHistory({
           title="新建探究会话"
           aria-label="新建探究会话"
           style={{
-            width: '36px',
-            height: '36px',
+            width: '40px',
+            height: '40px',
             padding: 0,
             margin: '0 auto',
             borderRadius: '50%',
             background: '#2563eb',
             color: '#fff',
             border: 'none',
-            fontSize: '18px',
+            fontSize: '20px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 2px 6px rgba(37,99,235,0.2)',
+            boxSizing: 'border-box',
           }}
         >
           +
@@ -273,7 +305,7 @@ export function TutorSessionHistory({
     <aside
       className="qitu-live-session-sidebar"
       style={{
-        width: 'min(280px, 28vw)',
+        width: 'min(220px, 19vw)',
         flexShrink: 0,
         padding: '14px 12px',
         border: '1px solid #e2e8f0',
@@ -284,13 +316,14 @@ export function TutorSessionHistory({
         boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
         height: '100%',
         minHeight: '520px',
+        boxSizing: 'border-box',
       }}
     >
       {/* 顶部工具栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '16px' }}>💬</span>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史与团队</h2>
         </div>
         <button
           type="button"
@@ -301,6 +334,79 @@ export function TutorSessionHistory({
         >
           收起 ◀
         </button>
+      </div>
+
+      {/* 团队智能体执行状态区（团队启动后在左侧边栏保留所有子agent的执行状态并支持点开查看详细历史） */}
+      <div style={{ marginBottom: '14px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ fontSize: '14px' }}>👥</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
+              {currentProjectId ? '导师团队智能体' : '启途智学助手'}
+            </span>
+          </div>
+          <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+            {currentProjectId ? `${subAgents.length} 位协作中` : '意图探索引导'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {subAgents.map((agent) => (
+            <button
+              key={agent.id}
+              type="button"
+              onClick={() => setInspectingAgent(agent)}
+              title="点击查看该智能体详细对话历史与工具调用"
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.background = '#eff6ff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.background = '#ffffff';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                <span style={{ fontSize: '15px' }}>{agent.avatar}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {agent.name}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#64748b' }}>{agent.role}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: agent.status === 'active' ? '#dcfce7' : '#f1f5f9',
+                    color: agent.status === 'active' ? '#15803d' : '#64748b',
+                  }}
+                >
+                  ● {agent.statusLabel}
+                </span>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>›</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 新建探索按钮 */}
@@ -420,10 +526,9 @@ export function TutorSessionHistory({
                     </div>
                   </div>
 
-                  {item.kind === 'exploration' && (
-                    <button
+                  <button
                       type="button"
-                      onClick={(e) => handleDelete(e, item.id)}
+                      onClick={(e) => handleDelete(e, item)}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -435,11 +540,11 @@ export function TutorSessionHistory({
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                       onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
-                      title="删除此会话记录"
+                      title="从会话历史中删除"
+                      aria-label={`从会话历史中删除${item.title}`}
                     >
                       🗑️
-                    </button>
-                  )}
+                  </button>
                 </div>
               </div>
             );
@@ -460,6 +565,14 @@ export function TutorSessionHistory({
       >
         <p style={{ margin: 0 }}>🔒 会话受服务端安全门禁与审计保护，未成年人数据最小化可见。</p>
       </div>
+
+      {inspectingAgent && (
+        <AgentDetailModal
+          inspectingAgent={inspectingAgent}
+          turns={turns}
+          onClose={() => setInspectingAgent(null)}
+        />
+      )}
     </aside>
   );
 }

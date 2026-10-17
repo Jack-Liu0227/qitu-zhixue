@@ -36,6 +36,12 @@ h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-heigh
 .auth-loading { display: grid; min-height: 100vh; place-items: center; color: var(--qitu-muted); }
 .auth-logout { position: fixed; top: 16px; right: 6vw; z-index: 10; padding: 8px 12px; border: 1px solid var(--qitu-border); border-radius: 5px; background: white; color: var(--qitu-muted); cursor: pointer; font: inherit; font-size: .82rem; }
 .auth-logout:hover { border-color: #0038b2; color: #0038b2; }
+:is(.admin-console-topbar, .admin-console-identity, .parent-identity, .qtx-topbar, .qitu-student-account) .auth-logout {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: auto !important;
+}
 
 :root {
   --qitu-primary: #0038b2;
