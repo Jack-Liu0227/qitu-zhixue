@@ -24,7 +24,7 @@
 export type ModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages' | 'google-gemini';
 
 /** 模型能吃／能吐的模态。 */
-export type ModelModality = 'text' | 'image' | 'audio';
+export type ModelModality = 'text' | 'image' | 'audio' | 'embedding';
 
 export interface ModelDescriptor {
   /** 上游模型标识，例如 `qwen-audio-3.0-realtime-plus`。 */

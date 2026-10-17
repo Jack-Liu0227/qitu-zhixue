@@ -20,8 +20,8 @@ export type TutorAgentCapability =
 export interface TutorAgentModelPurpose {
   usageId: string;
   available: boolean;
-  input: readonly ('text' | 'image' | 'audio')[];
-  output: readonly ('text' | 'image' | 'audio')[];
+  input: readonly ('text' | 'image' | 'audio' | 'embedding')[];
+  output: readonly ('text' | 'image' | 'audio' | 'embedding')[];
   modelId: string | null;
 }
 

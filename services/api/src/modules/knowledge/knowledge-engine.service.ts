@@ -46,6 +46,8 @@ export class KnowledgeEngineService {
         providerId: reference.slice(0, separator),
         modelId: reference.slice(separator + 1),
       });
+      if (!target.output?.includes('embedding'))
+        return { ok: false, errorCode: 'EMBEDDING_MODEL_REQUIRED' };
       if (!target.api.startsWith('openai-'))
         return { ok: false, errorCode: 'EMBEDDING_PROTOCOL_UNSUPPORTED' };
       const endpoint = target.baseUrl.replace(/\/+$/, '');

@@ -959,7 +959,7 @@
 .runtime-section-head span { color: #8190a5; font-size: 12px; }
 
 @media (max-width: 860px) {
-  .settings-sider { width: 72px; padding: 14px 8px; }
+  .settings-sider { width: 72px; min-width: 72px; max-width: 72px; padding: 14px 8px; }
   .settings-sider-head { justify-content: center; padding-inline: 0; }
   .settings-sider-title, .settings-sider-group, .settings-sider-label { display: none; }
   .settings-sider-item { justify-content: center; padding-inline: 0; }
@@ -970,7 +970,7 @@
 
 @media (max-width: 620px) {
   .settings-shell { min-height: calc(100vh - 56px); }
-  .settings-sider { width: 58px; }
+  .settings-sider { width: 58px; min-width: 58px; max-width: 58px; }
   .settings-main { padding: 20px 14px 36px; }
   .settings-overview-grid { grid-template-columns: 1fr; }
   .admin-page-header { align-items: flex-start; gap: 14px; }

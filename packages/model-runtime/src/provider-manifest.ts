@@ -16,7 +16,7 @@ const SAFE_APIS: readonly ModelApi[] = [
   'anthropic-messages',
   'google-gemini',
 ];
-const SAFE_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio'];
+const SAFE_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio', 'embedding'];
 const SAFE_VOICE_OPERATIONS = ['asr', 'tts', 'realtime'] as const;
 const SECRET_KEY =
   /^(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|credential|authorization)$/i;

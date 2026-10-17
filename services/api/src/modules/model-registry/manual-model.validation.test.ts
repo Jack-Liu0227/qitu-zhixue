@@ -72,3 +72,9 @@ test('resolveIdempotencyKey：头部优先、二者一致可、拒绝空与不�
     assert.throws(() => resolveIdempotencyKey(empty, empty), BadRequestException);
   }
 });
+
+test('embedding modality is explicit and does not declare chat output', () => {
+  assert.deepEqual(normaliseModalities(['embedding', 'embedding'], 'output'), ['embedding']);
+  assert.deepEqual(normaliseModalities(['text'], 'input'), ['text']);
+  assert.deepEqual(normaliseModalities(undefined, 'output'), ['text']);
+});

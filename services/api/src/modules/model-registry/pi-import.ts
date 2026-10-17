@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { VoiceGatewayOperation } from '@qitu/contracts';
 
 export type PiModelApi = 'openai-completions' | 'openai-responses' | 'anthropic-messages';
-export type PiModelModality = 'text' | 'image' | 'audio';
+export type PiModelModality = 'text' | 'image' | 'audio' | 'embedding';
 
 /** Internal import shape. `apiKey` is never returned by an HTTP controller. */
 export interface PiImportManifest {
@@ -64,7 +64,7 @@ export interface VoiceModelOption {
 }
 
 const APIS = new Set<PiModelApi>(['openai-completions', 'openai-responses', 'anthropic-messages']);
-const MODALITIES = new Set<PiModelModality>(['text', 'image', 'audio']);
+const MODALITIES = new Set<PiModelModality>(['text', 'image', 'audio', 'embedding']);
 
 /**
  * Read pi's server-mounted config directory without ever serializing secrets.

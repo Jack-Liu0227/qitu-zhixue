@@ -28,7 +28,7 @@ export interface ModelRuntimeTarget {
   credential?: string | null;
   /** OpenAI-compatible providers may explicitly opt out of Bearer auth. */
   authHeader?: boolean;
-  input?: readonly ('text' | 'image' | 'audio')[];
+  input?: readonly ('text' | 'image' | 'audio' | 'embedding')[];
   contextWindow?: number | null;
   maxTokens?: number | null;
 }

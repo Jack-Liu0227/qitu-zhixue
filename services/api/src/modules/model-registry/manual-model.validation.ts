@@ -21,7 +21,7 @@ export const MODEL_APIS: readonly ModelApi[] = [
   'anthropic-messages',
 ];
 
-export const MODEL_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio'];
+export const MODEL_MODALITIES: readonly ModelModality[] = ['text', 'image', 'audio', 'embedding'];
 
 function badRequest(message: string): never {
   throw new BadRequestException(message);

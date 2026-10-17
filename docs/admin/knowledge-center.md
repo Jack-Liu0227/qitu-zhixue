@@ -57,3 +57,11 @@ API 的配置与权限测试包含在 `pnpm --filter @qitu/api test`。真实数
 `/api/v1/admin/platform-config` 及 `/api/v1/admin/knowledge/*` 仅管理员可访问。新增写接口要求 `Idempotency-Key`；配置保存额外要求 `expectedRevision`。`/api/v1/student/projects/:id/knowledge` 和引用接口只允许项目所属学生读取。
 
 配置保存成功表示服务端配置已持久化；引擎连接健康由独立预检返回。不可把配置开关、依赖已安装或旧索引存在当作真实检索已经可用。
+
+## 本地中文向量服务
+
+已部署 `BAAI/bge-small-zh-v1.5`（FastEmbed ONNX CPU，512 维），仅监听 `127.0.0.1:4115`。服务源码为 `integrations/deeptutor-knowledge/local_embedding_server.py`，使用独立 Python venv、只读模型缓存及 systemd 内存/CPU 限额；模型下载完成后按离线模式启动，不依赖外部向量接口。
+
+供应商 `qitu-local` 的 baseURL 为 `http://127.0.0.1:4115/v1`，模型 `bge-small-zh-v1.5` 输入 `text`、输出 `embedding`。向量模型不会被声明成聊天模型。服务 bearer 密钥只保存在 root 可读环境文件和已有加密模型注册表，不能提交 Git 或 JSON 配置。配置 `llamaindex-main.config.embeddingModelRef` 为 `qitu-local:bge-small-zh-v1.5` 后须执行引擎检查。
+
+`tooling/verify-knowledge-local.cjs` 在隔离数据库运行真实本地向量预检、项目确认事务、原始 DeepTutor 索引、中文语义检索、原文引用、跨项目拒绝及撤权验证。运行时将服务密钥通过环境传入，不写入脚本或日志。本地模型就绪不会自动批准旧资料或扩大 ima 白名单。

@@ -421,10 +421,10 @@ function parsePiModel(value: unknown, index: number, providerId: string): PiImpo
   };
 }
 
-function parseModalities(value: unknown): Array<'text' | 'image' | 'audio'> | undefined {
+function parseModalities(value: unknown): Array<'text' | 'image' | 'audio' | 'embedding'> | undefined {
   if (!Array.isArray(value)) return undefined;
-  const allowed = new Set(['text', 'image', 'audio']);
-  const result = [...new Set(value.filter((item): item is 'text' | 'image' | 'audio' => typeof item === 'string' && allowed.has(item)))];
+  const allowed = new Set(['text', 'image', 'audio', 'embedding']);
+  const result = [...new Set(value.filter((item): item is 'text' | 'image' | 'audio' | 'embedding' => typeof item === 'string' && allowed.has(item)))];
   return result.length > 0 ? result : undefined;
 }
 
