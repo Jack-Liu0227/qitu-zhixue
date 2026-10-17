@@ -25,6 +25,8 @@ export * from './models.js';
 export * from './errors.js';
 export * from './learning-plan.js';
 export * from './pbl-learning.js';
+export * from './project-binding.js';
+export * from './plan-adjustment.js';
 export * from './mastery.js';
 export * from './public-content.js';
 

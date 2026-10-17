@@ -5,7 +5,23 @@ export const PBL_LEARNING_CONTRACT_VERSION = 'qitu.pbl-learning.v1' as const;
 
 export type PblDurationWeeks = 4 | 8;
 export type PblPlanStatus = 'draft' | 'active' | 'completed' | 'archived';
-export type PblTemplateStatus = 'draft' | 'published' | 'archived';
+/**
+ * 模板版本生命周期（服务端状态机，客户端只读）。
+ *
+ * 迁移（decisions D4）：
+ *
+ *   draft → piloting → published → archived
+ *                ↘ archived
+ *
+ * - `draft → piloting`：治理端点 `POST /admin/project-templates/:id/versions/:versionId/pilot`，
+ *   需显式 admin reason + 审计，不落验证 run。
+ * - `piloting`：学生端模板列表可见，并由 `status === 'piloting'` 标识为试点；
+ *   这是「新模板先小范围真实使用、再补证据」的正规链，避免 seed 直插。
+ * - `piloting → published`：**仍走既有证据门（5 项校验，含已完成项目）**，
+ *   试点不弱化任何验证条件。
+ * - `piloting → archived`：允许随时下线试点。
+ */
+export type PblTemplateStatus = 'draft' | 'piloting' | 'published' | 'archived';
 
 /**
  * A schedule is deliberately explicit because `weeks` alone cannot tell us

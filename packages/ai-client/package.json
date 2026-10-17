@@ -57,6 +57,10 @@
     "./grading": {
       "types": "./dist/grading/index.d.ts",
       "default": "./dist/grading/index.js"
+    },
+    "./quiz-bank": {
+      "types": "./dist/quiz-bank/index.d.ts",
+      "default": "./dist/quiz-bank/index.js"
     }
   },
   "files": [

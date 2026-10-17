@@ -141,7 +141,60 @@ export type ApiErrorCode =
   /** 公开咨询表单内容不合法（400）：必填缺失、字段未知或格式不符。 */
   | 'CONSULTATION_INVALID'
   /** 公开咨询所需持久化 / 审计能力不可用（503）。 */
-  | 'CONSULTATION_UNAVAILABLE';
+  | 'CONSULTATION_UNAVAILABLE'
+  /**
+   * 在探索会话 / 无学习计划的会话上判分（409）。
+   *
+   * 对应 api-spec F1.2：`tutor_sessions.project_id` 为 null（探索态）或按
+   * `project_id` 查不到 `learning_plans` 行。探索 → 正式项目的唯一入口是
+   * `confirmIntent` / `confirmPlan`，不得用判分接口绕过意图确认。
+   */
+  | 'PBL_INTENT_NOT_CONFIRMED'
+  /**
+   * `quizId` 不属于本会话已下发的题目集合，或不在不可变题库中（404）。
+   *
+   * 两种原因共用一个码，避免用「404 / 403」差异探测题库里有哪些题。
+   */
+  | 'TUTOR_QUIZ_NOT_EMITTED'
+  /**
+   * 同一模板版本并发激活第二个 active 绑定（409）。
+   *
+   * 数据库局部唯一索引
+   * `pbl_template_team_bindings_one_active_per_template_idx`
+   * （`WHERE status = 'active'`）是最终兜底；正确处理是重读当前绑定，
+   * 而不是重试写入。
+   */
+  | 'BINDING_CONFLICT'
+  /** 绑定校验未通过（400）：`validation.valid === false`。 */
+  | 'BINDING_INVALID'
+  /** 绑定 id 不存在，或对当前账号不可见（404）。 */
+  | 'BINDING_NOT_FOUND'
+  /** 引用的模板版本不存在或未发布（404）。 */
+  | 'BINDING_TEMPLATE_VERSION_NOT_FOUND'
+  /** 绑定状态迁移非法，例如退役一个 `draft`（409）。 */
+  | 'BINDING_TRANSITION_INVALID'
+  /**
+   * 模板版本当前状态不允许进入 `piloting` 试点（409）。
+   *
+   * 试点迁移必须带显式 admin reason 并写审计；缺少 reason 属于请求体
+   * 校验失败（400），不归这个码。
+   */
+  | 'TEMPLATE_PILOT_INVALID'
+  /** 乐观锁自动 rebase 重试超过 `MAX_AUTO_REBASE_ATTEMPTS`(3)（409）。 */
+  | 'ADJUSTMENT_REBASE_EXHAUSTED'
+  /** 最终一次非 rebase 提交的 base revision 仍不匹配（409）。 */
+  | 'ADJUSTMENT_CONFLICT'
+  /** 调整动作 / 触发源 / 证据非法，或试图删除、削弱模板必需目标（400）。 */
+  | 'ADJUSTMENT_INVALID'
+  /** 调整记录 id 不存在（404）。 */
+  | 'ADJUSTMENT_NOT_FOUND'
+  /**
+   * 同一 stem node 的补救深度已到 `MAX_REMEDIAL_DEPTH`(1)（409）。
+   *
+   * 正确处理不是继续追加，而是降级为 `recommend_teacher_support` +
+   * HIGH 优先级脱敏摘要（人工介入）。
+   */
+  | 'ADJUSTMENT_DEPTH_CIRCUIT_BROKEN';
 
 /**
  * `MODALITY_UNAVAILABLE` 的详情。
