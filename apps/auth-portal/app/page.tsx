@@ -48,7 +48,8 @@ export default async function HomePage() {
       <main className="home-main" id="top">
         {/* 第 1 屏：Hero 首屏互动入口 */}
         <section className="home-hero react-bits-hero-wrapper home-section--fullscreen">
-          <div className="home-shell home-hero-grid">
+          <ScrollReveal>
+            <div className="home-shell home-hero-grid">
             <div className="home-hero-copy">
               <p className="home-badge react-bits-badge">
                 <span className="react-bits-badge-glow" />
@@ -115,6 +116,7 @@ export default async function HomePage() {
             </div>
             <HeroTutorDemo />
           </div>
+          </ScrollReveal>
         </section>
 
         {/* 第 2 屏：项目式学习路径（全屏沉浸 + 每次翻阅均触发渐入） */}
