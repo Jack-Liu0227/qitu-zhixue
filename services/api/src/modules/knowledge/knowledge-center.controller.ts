@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Headers, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Put, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { requireIdempotencyKey } from './knowledge-center.request';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
+import { KnowledgeUploadService } from './knowledge-upload.service';
 
 @Controller('admin')
 export class KnowledgeCenterController {
@@ -13,6 +15,7 @@ export class KnowledgeCenterController {
     private readonly engine: KnowledgeEngineService,
     private readonly auth: AuthService,
     private readonly catalog: KnowledgeToolCatalogService,
+    private readonly uploads: KnowledgeUploadService,
   ) {}
   private actor(cookie: string | undefined) {
     return requireRole(this.auth, cookie, 'admin', '知识中心仅向管理员开放');
@@ -84,6 +87,34 @@ export class KnowledgeCenterController {
   ) {
     const actor = this.actor(cookie);
     return { data: await this.center.rebuild(id, `${actor.id}:${requireIdempotencyKey(key)}`) };
+  }
+  @Post('knowledge/bases/:id/uploads')
+  async upload(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return {
+      data: await this.uploads.upload(this.actor(cookie), id, body, requireIdempotencyKey(key)),
+    };
+  }
+  @Get('knowledge/bases/:id/files/:memberId/original')
+  async original(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Res() response: Response,
+  ) {
+    this.actor(cookie);
+    const file = await this.center.original(id, memberId);
+    response.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="document"; filename*=UTF-8''${encodeURIComponent(file.file_name).replace(/'/g, '%27')}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    response.send(file.body);
   }
   @Get('knowledge/bases/:id/files/:memberId')
   async file(

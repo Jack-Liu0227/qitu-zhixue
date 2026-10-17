@@ -46,7 +46,7 @@ API 的配置与权限测试包含在 `pnpm --filter @qitu/api test`。真实数
 ## 尚未达到整份文档的内容
 
 - 除 LlamaIndex 和 ima 来源适配外，其他引擎只有真实配置清单及未就绪说明；GraphRAG、LightRAG、PageIndex 专用推理路径及其他外部源尚未接通，不能标为可用。
-- 当前上传入口仅支持文本和 Markdown。PDF/Office 本地批量上传、文件夹管理、挂载同步、GitHub/网页来源及定时同步尚未实现。
+- 已支持 PDF/Office/EPUB 等文件批量上传。文件夹管理、挂载同步、GitHub/网页来源及定时同步尚未实现。
 - 当前选材采用有记录的元数据规则降级，不调用新的规划 Agent；尚未实现完整的网关规划、预算配置及逐文档 UI。
 - ima 当前只在有限预算内发现和读取相关资料；未实现上游文档全量变更/撤回订阅或文档级外部权限实时同步。平台侧停用、白名单及导入许可的撤销在下一次受控读取立即生效。
 - 默认库、影响预览、移动、扫描页 OCR 与图像覆盖管理，以及 MarginNote/Kiwix 特殊面板待后续实现。
@@ -65,3 +65,15 @@ API 的配置与权限测试包含在 `pnpm --filter @qitu/api test`。真实数
 供应商 `qitu-local` 的 baseURL 为 `http://127.0.0.1:4115/v1`，模型 `bge-small-zh-v1.5` 输入 `text`、输出 `embedding`。向量模型不会被声明成聊天模型。服务 bearer 密钥只保存在 root 可读环境文件和已有加密模型注册表，不能提交 Git 或 JSON 配置。配置 `llamaindex-main.config.embeddingModelRef` 为 `qitu-local:bge-small-zh-v1.5` 后须执行引擎检查。
 
 `tooling/verify-knowledge-local.cjs` 在隔离数据库运行真实本地向量预检、项目确认事务、原始 DeepTutor 索引、中文语义检索、原文引用、跨项目拒绝及撤权验证。运行时将服务密钥通过环境传入，不写入脚本或日志。本地模型就绪不会自动批准旧资料或扩大 ima 白名单。
+
+## 多格式文件上传
+
+教学资料库详情中的“上传文件”支持每批最多 20 个文件、单文件最多 10 MiB。支持 PDF、DOCX、XLSX、PPTX、EPUB、TXT、MD/Markdown、CSV/TSV、JSON、XML、YAML/YML、HTML/HTM、RST、TeX；按文件显示解析结果，可重试未完成项。旧 DOC/XLS/PPT 须先转换；扫描件、纯图片和文档内插图当前不执行 OCR。
+
+复用固定 DeepTutor `document_extractor` 的文本路径，排除图片占位符。保留 PDF 页码、Office 可提取的表格/工作表/幻灯片文本。HTML 不执行脚本或获取外部资源。提取不静默截断：正文超过 5 MiB、PDF 超过 500 页、压缩包展开量超限、加密、损坏或无正文均失败，不创建资料或索引任务。
+
+`POST /api/v1/admin/knowledge/bases/:id/uploads` 使用 `{fileName,base64,allowMaterialize}` 和 `Idempotency-Key`。仅管理员可访问，项目库拒绝直接上传。最多两个独立 Python 解析子进程，超时 60 秒；子进程不接收模型凭据，日志和响应不包含原始解析器异常。
+
+应用 `0029_knowledge_file_uploads.sql`，将原文件以 bytea 保存至 `knowledge_file_originals`，与正文、真实原文件 SHA-256 和审计同事务提交。正文进入既有索引与受控项目导入；“下载原文件”需管理员登录且资料仍有效。数据库备份包含原文件，回滚应用保留新增表；down migration 在有文件时拒绝执行。
+
+运行 `integrations/deeptutor-knowledge/test_extract_upload.py` 验证真实解析器。真实项目闭环在既有隔离数据库脚本中设置 `QITU_KNOWLEDGE_VERIFY_UPLOAD_PATH` 指向 DOCX，验证上传幂等、原文件一致性、失败不入库及本地 BGE 索引、项目检索、原文引用与撤权。

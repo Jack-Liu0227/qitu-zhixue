@@ -11,6 +11,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import type { CurrentUser } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
+import type { ParsedUpload } from './knowledge-upload.service';
 import { AuditWriter } from '../../common/audit/audit.service';
 import {
   ENGINE_CATALOG,
@@ -342,7 +343,7 @@ export class KnowledgeCenterService {
       throw new ConflictException('幂等键已用于其他知识库');
     return saved;
   }
-  async addFile(actor: CurrentUser, id: string, body: unknown, key: string) {
+  async addFile(actor: CurrentUser, id: string, body: unknown, key: string, upload?: ParsedUpload) {
     const base = await this.base(id);
     const input = record(body);
     if (base.kind === 'project' || base.lifecycle !== 'active')
@@ -359,12 +360,21 @@ export class KnowledgeCenterService {
     )
       throw new BadRequestException('资料需包含标题、正文和导入许可，正文不超过 5 MiB');
     const memberId = `material-${checksum(`${actor.id}:${id}:${key}`).slice(0, 32)}`;
-    const requestHash = checksum(JSON.stringify(input));
+    const requestHash = checksum(
+      JSON.stringify({
+        ...input,
+        ...(upload ? { originalChecksum: upload.originalChecksum, fileName: upload.fileName } : {}),
+      }),
+    );
     const hash = checksum(input.content);
     await this.database().transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT id FROM knowledge_bases WHERE id=${id} AND lifecycle='active' FOR UPDATE`,
+      const [locked] = rows<KnowledgeBaseRow>(
+        await tx.execute(
+          sql`SELECT id,kind FROM knowledge_bases WHERE id=${id} AND lifecycle='active' FOR UPDATE`,
+        ),
       );
+      if (!locked || locked.kind === 'project')
+        throw new BadRequestException('知识库已删除或不可上传');
       const [existing] = rows<{ checksum: string; origin: { requestHash: string } }>(
         await tx.execute(
           sql`SELECT checksum,origin FROM knowledge_base_members WHERE id=${memberId}`,
@@ -372,6 +382,21 @@ export class KnowledgeCenterService {
       );
       if (existing && existing.origin.requestHash !== requestHash)
         throw new ConflictException('幂等键已用于其他资料');
+      if (upload && !existing) {
+        const [usage] = rows<{ documents: number; bytes: number }>(
+          await tx.execute(
+            sql`SELECT count(*)::int documents,coalesce(sum(octet_length(content)),0)::float8 bytes FROM knowledge_base_members WHERE kb_id=${id} AND visibility='active'`,
+          ),
+        );
+        if (
+          usage!.documents >= 20 ||
+          usage!.bytes + Buffer.byteLength(input.content as string) > 7 * 1024 * 1024
+        )
+          throw new BadRequestException({
+            code: 'KNOWLEDGE_LIBRARY_LIMIT',
+            message: '当前引擎每库最多 20 份资料、正文合计 7 MiB，请分库保存后重试。',
+          });
+      }
       const [duplicate] = rows<{ id: string }>(
         await tx.execute(
           sql`SELECT id FROM knowledge_base_members WHERE kb_id=${id} AND checksum=${hash}`,
@@ -379,9 +404,24 @@ export class KnowledgeCenterService {
       );
       if (duplicate && duplicate.id !== memberId)
         throw new ConflictException('该正文已经在知识库中，请编辑已有资料');
+      const fileMetadata = upload
+        ? {
+            fileName: upload.fileName,
+            mimeType: upload.mimeType,
+            byteSize: upload.byteSize,
+            originalChecksum: upload.originalChecksum,
+            parser: upload.parser,
+            upstreamCommit: upload.upstreamCommit,
+            pageCount: upload.pageCount,
+          }
+        : {};
       await tx.execute(
-        sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin) VALUES(${memberId},${id},${input.title},${input.content},${hash},${hash},${JSON.stringify({ kind: 'admin-upload', canMaterialize: input.allowMaterialize, reviewedBy: actor.id, requestHash })}::jsonb) ON CONFLICT DO NOTHING`,
+        sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin) VALUES(${memberId},${id},${input.title},${input.content},${hash},${hash},${JSON.stringify({ kind: 'admin-upload', canMaterialize: input.allowMaterialize, reviewedBy: actor.id, requestHash, ...fileMetadata })}::jsonb) ON CONFLICT DO NOTHING`,
       );
+      if (upload)
+        await tx.execute(
+          sql`INSERT INTO knowledge_file_originals(member_id,file_name,mime_type,byte_size,checksum,body) VALUES(${memberId},${upload.fileName},${upload.mimeType},${upload.byteSize},${upload.originalChecksum},decode(${upload.base64},'base64')) ON CONFLICT DO NOTHING`,
+        );
       if (!existing)
         await tx.execute(
           sql`UPDATE knowledge_bases SET revision=revision+1,build_state='unindexed',updated_at=now() WHERE id=${id}`,
@@ -438,6 +478,14 @@ export class KnowledgeCenterService {
     );
     if (!file) throw new NotFoundException('资料不可用');
     return file;
+  }
+  async original(id: string, memberId: string) {
+    await this.file(id, memberId);
+    const [original] = await this.query<{ file_name: string; mime_type: string; body: Buffer }>(
+      sql`SELECT file_name,mime_type,body FROM knowledge_file_originals WHERE member_id=${memberId}`,
+    );
+    if (!original) throw new NotFoundException('此资料没有原始上传文件');
+    return original;
   }
   async updateFile(actor: CurrentUser, id: string, memberId: string, body: unknown) {
     const base = await this.base(id);

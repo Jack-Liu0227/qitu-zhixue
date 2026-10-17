@@ -25,6 +25,7 @@ import { KnowledgeSourceService } from './knowledge-source.service';
 import { ProjectKnowledgeService } from './project-knowledge.service';
 import { ProjectKnowledgeController } from './project-knowledge.controller';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
+import { KnowledgeUploadService } from './knowledge-upload.service';
 
 /**
  * 作用域知识模块。
@@ -47,6 +48,7 @@ import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
     ProjectKnowledgeController,
   ],
   providers: [
+    KnowledgeUploadService,
     KnowledgeToolCatalogService,
     KnowledgeCenterService,
     KnowledgeEngineService,

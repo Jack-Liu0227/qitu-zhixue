@@ -55,6 +55,7 @@ test('admin metadata requires authentication and admin role before discovery', a
     {} as KnowledgeEngineService,
     auth,
     catalog,
+    {} as never,
   );
   await assert.rejects(controller.tools(undefined, 'platformTools', 'project-knowledge'), {
     status: 401,
@@ -66,6 +67,17 @@ test('admin metadata requires authentication and admin role before discovery', a
   assert.equal(calls, 0);
   await controller.tools('qitu_session=admin', 'platformTools', 'project-knowledge');
   assert.equal(calls, 1);
+  await assert.rejects(controller.upload(undefined, 'upload-key', 'any-base', {}), { status: 401 });
+  await assert.rejects(controller.upload('qitu_session=student', 'upload-key', 'any-base', {}), {
+    status: 403,
+  });
+  await assert.rejects(controller.original(undefined, 'any-base', 'any-file', {} as never), {
+    status: 401,
+  });
+  await assert.rejects(
+    controller.original('qitu_session=student', 'any-base', 'any-file', {} as never),
+    { status: 403 },
+  );
 });
 
 test('ima metadata caches discovery, refreshes explicitly and marks failed refresh stale', async () => {

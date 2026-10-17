@@ -11,6 +11,7 @@ import {
 } from '../../../../lib/api/knowledge-center';
 import { createIdempotentRetryKey } from '../../../../lib/api/types';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
+import { KnowledgeFileUpload } from '../../../../lib/components/KnowledgeFileUpload';
 const states: Record<string, string> = {
   queued: '等待准备',
   discovering: '发现资料',
@@ -410,6 +411,14 @@ export default function KnowledgeCenterPage() {
                     >
                       下载正文
                     </button>
+                    {detail.kind !== 'project' && typeof f.origin.fileName === 'string' && (
+                      <a
+                        className="settings-action-btn"
+                        href={`/api/v1/admin/knowledge/bases/${encodeURIComponent(detail.id)}/files/${encodeURIComponent(f.id)}/original`}
+                      >
+                        下载原文件
+                      </a>
+                    )}
                     {detail.kind !== 'project' && (
                       <>
                         <button
@@ -448,7 +457,16 @@ export default function KnowledgeCenterPage() {
               )}
               {detail.kind !== 'project' && (
                 <>
-                  <h3>添加资料</h3>
+                  <KnowledgeFileUpload
+                    key={detail.id}
+                    baseId={detail.id}
+                    onSaved={async (saved) => {
+                      setDetail(saved);
+                      setNotice('文件已保存，索引正在后台准备');
+                      await load();
+                    }}
+                  />
+                  <h3>手动添加正文</h3>
                   <label>
                     文档标题
                     <input
@@ -456,23 +474,6 @@ export default function KnowledgeCenterPage() {
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       maxLength={160}
-                    />
-                  </label>
-                  <label>
-                    读取文本或 Markdown 文件
-                    <input
-                      type="file"
-                      accept=".txt,.md"
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        if (f.size > 5 * 1024 * 1024) {
-                          setError(new Error('文件超过 5 MiB'));
-                          return;
-                        }
-                        setTitle(f.name);
-                        setContent(await f.text());
-                      }}
                     />
                   </label>
                   <textarea
