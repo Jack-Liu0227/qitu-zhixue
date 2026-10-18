@@ -3,14 +3,17 @@
 ## 项目基线
 
 - 产品名称：启途智学
+- 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**，以真实任务挑战、探究证据链与人机协同育人为核心。
 - 主要开发文档：`docs/README.md`；按责任域阅读 `docs/admin/platform-governance.md`、`docs/student/today.md`、`docs/teacher/dashboard.md`、`docs/parent/home.md`、`docs/sdk/overview.md`。
-- 代码结构采用 Monorepo。
+- 代码结构采用 Monorepo（`apps/`、`packages/`、`services/`）。
+- 学生端核心交互：对话入口集中于学生端的 **AI搭档（`/student/tutor`）**，并保留 **灵感空间（`/student/inspiration`）** 的探索与项目详情跳转入口。
 - 四个平台共享认证、API 合同、权限和数据模型。
 - 首期采用模块化单体后端与异步任务，不提前拆分大量微服务。
 
 ## 必须遵守
 
 - 不改变已经冻结的产品导航和 UI 信息架构，除非先更新产品文档并通过评审。
+- 后台控制权全在 Admin：所有模型底座与提供商（Model Providers / Model Gateway）、运行时技能、项目与课程模板、知识库范围和全局教学策略均由 Admin 后台统一控制，客户端不得自行路由或越权覆盖。
 - 前端权限只负责显示；所有对象级权限必须在后端再次校验。
 - 项目状态转换、AI 决策、成长档案和审计日志不能由客户端直接写入。
 - 一个学生同一时间只能有一个当前班主任。
@@ -50,8 +53,15 @@
 - `optics_experiment` 目前是结构化可视化原型。正式接入前必须补 `specVersion`、`objectiveId`、稳定 `actionId`、幂等事件、观测证据和 CER/rubric 引用；摘要文本不能直接成为掌握度或作品通过事实。
 - 光学实验只允许注册的单缝衍射和封闭细雾室散射模型；禁止模型生成任意 HTML/JS、开放浏览器工具或不安全激光操作指令。
 
-## Runtime Skills 与 Admin 约束
+## 动态展示与交互体验
 
+- 学习全过程坚持“PBL 驱动的 AI 育人共成长”，强化多维动态展示与沉浸式交互体验：前端标配 Mermaid 流程拓扑图、KaTeX 数学/物理公式、BoardBlock 看板卡片、微观实验仿真（如单缝衍射与细雾室散射）及自动首轮启发式开场引导（auto-launch opening turn）。
+- 拒绝纯静态长文本灌输：交互严格遵循“回答/探究产生证据 -> 服务端策略选择下一教学动作”的双循环，通过追问、动态提示、例子与实时板书促进学生思维进阶。
+- 对话核心入口为学生端“AI搭档”（`/student/tutor`），并与“灵感空间”（`/student/inspiration`）保持跳转连通，实现从灵感捕捉到项目式深度探究的无缝流转。
+
+## Admin 全局控制与 Runtime 约束
+
+- 后台控制全在 Admin（`apps/admin-console`）：统一收口模型底座与提供商网关（Model Providers / Model Gateway，默认启途运行时引擎）、运行时技能矩阵（Runtime Skills）、项目模板生命周期、知识库/IMA 范围及全平台策略配置；客户端严禁私自硬编码或变更路由。
 - Admin 技能矩阵只提交运行时目录返回的 canonical skill ID；不得把展示名称与 ID 混写进 `enabledSkills`。本地草稿只能在当前会话编辑，不能绑定运行时助手或伪装成已发布技能。
 - 批量绑定使用幂等 PATCH，服务端回读结果后再显示成功；部分失败、权限失败、目录读取失败和回读失败必须明确提示，不能乐观地显示“已生效”。
 - 运行时快照、线上探测结果和本地源码不是同一事实层；诊断报告必须区分“源码存在”“配置存在”“已发布/已启用”“真实请求成功”。

@@ -52,10 +52,8 @@ export function buildProjectInteractionBlocks(
   }
 
   // Gated practice simulation: Only emit optics interactive experiment if TheoryMastered passed and in practice phase
-  const opticsProject =
-    context.project.templateVersionId?.startsWith('optics-physical-inquiry') === true ||
-    context.project.templateVersionId?.startsWith('tplv-8931f') === true ||
-    /光学/i.test(context.project.title || '');
+  const opticsProject = (context.project as typeof context.project & { templateVersionId?: string | null })
+    .templateVersionId?.startsWith('optics-physical-inquiry') === true;
   if (theoryGatePassed && active && isPracticePhase(active) && opticsProject) {
     blocks.push({
       kind: 'optics_experiment',
@@ -67,7 +65,7 @@ export function buildProjectInteractionBlocks(
       objectiveId: 'opt-practice-measure',
       sessionIndex: 10,
       allowedActions: ['set_parameter', 'run', 'record_observation', 'submit_evidence'],
-    });
+    } as TutorReplyBlock);
   }
 
   return blocks;

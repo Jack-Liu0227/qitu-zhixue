@@ -5,7 +5,7 @@ set -e
 cat << 'JSON' > /tmp/student_login.json
 {
   "email": "student@qtzx.local",
-  "password": "student"
+  "password": "student123"
 }
 JSON
 
