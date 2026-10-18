@@ -4,11 +4,11 @@ import type {
   ModelConfigPublic,
   ModelRuntimeResponse,
   ModelSlot,
+  ModelSlotOption,
   UpdateModelConfigRequest,
 } from '@qitu/contracts';
 import { requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
-import { ModelConfigService } from './model-config.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -16,19 +16,16 @@ import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 const SLOTS = new Set<ModelSlot>(['text', 'live']);
 
 /**
- * 「我的模型 / Live 模型」配置接口。
+ * 模型配置接口（向后兼容）。
  *
- * - 写接口只对 `admin` 开放：模型与密钥属于平台级配置，任何学生/家长/班主任
- *   都不得改动。
- * - 读运行时信息对所有已登录角色开放，且只返回模型标识，不含任何密钥材料。
- *
- * 注意：`apiKey` 会出现在请求体里，但**不会**出现在任何响应、日志或错误
- * 信息里；对外只给不可逆指纹（见 `ModelConfigService`）。
+ * 统一收敛至 `ModelRegistryService` 作为唯一事实源：
+ * - 读 slots 与 options 时动态解析注册表中的当前用途绑定与已知模型目录；
+ * - PATCH slot 时直接写入对应的用途绑定（text -> tutor.chat, live -> tutor.live）；
+ * - 运行时摘要直接调用 `registry.getRuntimeSummary()`。
  */
 @Controller()
 export class ModelConfigController {
   constructor(
-    private readonly models: ModelConfigService,
     private readonly registry: ModelRegistryService,
     private readonly authService: AuthService,
     private readonly idempotency: IdempotencyStore,
@@ -37,7 +34,7 @@ export class ModelConfigController {
   @Get('admin/models')
   getAdminModels(@Headers('cookie') cookieHeader: string | undefined): { data: AdminModelsResponse } {
     requireRole(this.authService, cookieHeader, 'admin', '模型配置仅向管理员开放');
-    return { data: { slots: this.models.listPublic(), options: this.models.getOptions() } };
+    return { data: this.getAdminModelsData() };
   }
 
   @Patch('admin/models/:slot')
@@ -52,9 +49,16 @@ export class ModelConfigController {
       throw new ForbiddenException('未知的模型插槽');
     }
     if (!idempotencyKey?.trim() || idempotencyKey.length > 160) throw new BadRequestException('Idempotency-Key 必填');
-    const scope = `legacy-model-config:${slot}`;
+    const scope = `model-config:${slot}`;
     const input = sanitiseBody(body);
-    const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { ...input }, {}), async () => ({ status: 200, body: this.models.update(slot as ModelSlot, input, admin.id) }));
+    const usageId = slot === 'live' ? 'tutor.live' : 'tutor.chat';
+
+    const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { ...input }, {}), async () => {
+      if (input.provider !== undefined && input.modelId !== undefined) {
+        await this.registry.bindUsage(usageId, { providerId: input.provider, modelId: input.modelId }, admin.id);
+      }
+      return { status: 200, body: this.resolveSlotPublic(slot as ModelSlot) };
+    });
     return { data: result.body };
   }
 
@@ -63,6 +67,63 @@ export class ModelConfigController {
   getRuntime(@Headers('cookie') cookieHeader: string | undefined): { data: ModelRuntimeResponse } {
     requireAnyRole(this.authService, cookieHeader);
     return { data: this.registry.getRuntimeSummary() };
+  }
+
+  private resolveSlotPublic(slot: ModelSlot): ModelConfigPublic {
+    const usageId = slot === 'live' ? 'tutor.live' : 'tutor.chat';
+    const bound = this.registry.resolve(usageId);
+    if (!bound) {
+      return {
+        slot,
+        provider: '',
+        modelId: '',
+        baseUrl: null,
+        configured: false,
+        keyFingerprint: null,
+        updatedAt: null,
+        updatedBy: null,
+      };
+    }
+    const providers = this.registry.listProviders().providers;
+    const provider = providers.find((p) => p.id === bound.providerId);
+    return {
+      slot,
+      provider: bound.providerId,
+      modelId: bound.modelId,
+      baseUrl: provider?.baseUrl ?? null,
+      configured: provider?.auth.configured ?? false,
+      keyFingerprint: provider?.auth.keyFingerprint ?? null,
+      updatedAt: provider?.updatedAt ?? null,
+      updatedBy: provider?.updatedBy ?? null,
+    };
+  }
+
+  private getAdminModelsData(): AdminModelsResponse {
+    const slots: ModelConfigPublic[] = [
+      this.resolveSlotPublic('text'),
+      this.resolveSlotPublic('live'),
+    ];
+
+    const providers = this.registry.listProviders().providers;
+    const options: ModelSlotOption[] = [];
+
+    for (const provider of providers) {
+      if (!provider.enabled) continue;
+      for (const model of provider.models) {
+        const isAudio = model.input.includes('audio') || model.output.includes('audio');
+        options.push({
+          provider: provider.id,
+          modelId: model.id,
+          label: `${provider.name} · ${model.name || model.id}`,
+          slot: isAudio ? 'live' : 'text',
+          requiresApiKey: true,
+          supportsInput: model.input.includes('audio') ? ['text', 'voice'] : ['text'],
+          supportsOutput: model.output.includes('audio') ? ['text', 'voice'] : ['text'],
+        });
+      }
+    }
+
+    return { slots, options };
   }
 }
 

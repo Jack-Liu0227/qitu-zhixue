@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type {
   ModelConfigPublic,
@@ -8,6 +8,7 @@ import type {
   TutorModalityMode,
   UpdateModelConfigRequest,
 } from '@qitu/contracts';
+import { ModelRegistryService } from '../model-registry/model-registry.service';
 
 /**
  * 兼容旧管理员页面的两个模型插槽。
@@ -117,7 +118,7 @@ export class ModelConfigService {
   private readonly logger = new Logger(ModelConfigService.name);
   private readonly state = new Map<ModelSlot, SlotState>();
 
-  constructor() {
+  constructor(@Optional() private readonly registry?: ModelRegistryService) {
     for (const slot of SLOTS) {
       this.state.set(slot, {
         ...DEFAULTS[slot],
@@ -126,7 +127,6 @@ export class ModelConfigService {
         updatedAt: null,
         updatedBy: null,
       });
-      // 只打印插槽与模型标识；环境变量里的密钥是否存在也不打印。
       this.logger.log(`模型插槽 ${slot} → ${DEFAULTS[slot].provider}/${DEFAULTS[slot].modelId}`);
     }
   }
@@ -134,10 +134,58 @@ export class ModelConfigService {
   /* ------------------------------- 读 ------------------------------- */
 
   getOptions(): ModelSlotOption[] {
+    if (this.registry) {
+      const providers = this.registry.listProviders().providers;
+      const options: ModelSlotOption[] = [];
+      for (const provider of providers) {
+        if (!provider.enabled) continue;
+        for (const model of provider.models) {
+          const isAudio = model.input.includes('audio') || model.output.includes('audio');
+          options.push({
+            provider: provider.id,
+            modelId: model.id,
+            label: `${provider.name} · ${model.name || model.id}`,
+            slot: isAudio ? 'live' : 'text',
+            requiresApiKey: true,
+            supportsInput: model.input.includes('audio') ? ['text', 'voice'] : ['text'],
+            supportsOutput: model.output.includes('audio') ? ['text', 'voice'] : ['text'],
+          });
+        }
+      }
+      return options;
+    }
     return OPTIONS;
   }
 
   getPublic(slot: ModelSlot): ModelConfigPublic {
+    if (this.registry) {
+      const usageId = slot === 'live' ? 'tutor.live' : 'tutor.chat';
+      const bound = this.registry.resolve(usageId);
+      if (!bound) {
+        return {
+          slot,
+          provider: '',
+          modelId: '',
+          baseUrl: null,
+          configured: false,
+          keyFingerprint: null,
+          updatedAt: null,
+          updatedBy: null,
+        };
+      }
+      const providers = this.registry.listProviders().providers;
+      const provider = providers.find((p) => p.id === bound.providerId);
+      return {
+        slot,
+        provider: bound.providerId,
+        modelId: bound.modelId,
+        baseUrl: provider?.baseUrl ?? null,
+        configured: provider?.auth.configured ?? false,
+        keyFingerprint: provider?.auth.keyFingerprint ?? null,
+        updatedAt: provider?.updatedAt ?? null,
+        updatedBy: provider?.updatedBy ?? null,
+      };
+    }
     const state = this.requireState(slot);
     const secret = this.resolveSecret(slot);
     return {
@@ -157,6 +205,9 @@ export class ModelConfigService {
   }
 
   getRuntime(): ModelRuntimeResponse {
+    if (this.registry) {
+      return this.registry.getRuntimeSummary();
+    }
     const text = this.getPublic('text');
     const live = this.getPublic('live');
     return {
