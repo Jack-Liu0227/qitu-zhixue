@@ -87,7 +87,7 @@ Grok Search 给出的“SimPBL ACL 2026”及其成绩增益、认知负荷变�
 
 
 | Optics follow-up | The repository now contains diffraction/scattering wave modules, two simulation prompts, practice objectives, and an `optics_experiment` renderer. | The renderer is still a local visual prototype: it needs stable action IDs, experiment versioning, persisted observations, CER evidence, and server-side policy before it can affect a project artifact or rubric. |
-| Optics objective count | The current source and `optics-plan.e2e.test.ts` cover 14 objectives (2 exploration + 4 theory + 6 practice + 2 review). | The older `docs/pedagogy/optics-pbl.md` says 12 objectives and should be reconciled with the source in a follow-up documentation issue. |
+| Optics objective count | The current source and `optics-plan.e2e.test.ts` cover 12 core objectives (2 exploration + 4 theory + 4 practice + 2 review), plus four qualitative non-gated wave modules. | Diffraction/scattering are currently optional domain activities, not independent objectives or mastery gates; promoting them requires a new template version, question mapping, rubric and tests. |
 | Team Runtime | Typed delegation 包括 `pbl.plan`、`pbl.advance`、`project.review`；有 run/task/mailbox、对象范围、阶段门禁、客户端 context 白名单与只读团队投影。 | 团队结果依然是候选；必须在模板版本/项目绑定上下文中解析，不能由学生请求指定任意团队/Agent/阶段。 |
 | 隐私/审计 | AGENTS.md 强制对象级授权、最小可见范围、敏感访问审计，禁止客户端直接写阶段、掌握度、成长和审计；异步写走 owner/事件。 | 动态调整的依据建议持久化为事件/证据引用与结构化 reason code，而不是复制原始对话或语音到计划日志。 |
 
