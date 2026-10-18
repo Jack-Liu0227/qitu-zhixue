@@ -18,6 +18,20 @@ import { createIdempotentRetryKey } from '../../../../lib/api/types';
 
 const IMA_ID = 'ima-knowledge';
 
+function projectImaPatch(
+  settings: AdminImaSettings,
+  patch: AdminImaSettingsPatch,
+): AdminImaSettings {
+  return {
+    ...settings,
+    enabled: patch.enabled ?? settings.enabled,
+    assistants: settings.assistants.map((assistant) => {
+      const binding = patch.assistantBindings?.find((row) => row.id === assistant.id);
+      return binding ? { ...assistant, authorized: binding.enabled } : assistant;
+    }),
+  };
+}
+
 const MCP_STATUS_TEXT: Record<AdminRuntimeMcpServer['status'], string> = {
   connected: '连接正常',
   disconnected: '未连接',
@@ -58,6 +72,10 @@ export default function ToolsSettingsPage() {
   const [imaError, setImaError] = useState('');
   const [imaPending, setImaPending] = useState(false);
   const imaBusy = useRef(false);
+  const [imaSaving, setImaSaving] = useState(false);
+  const confirmedIma = useRef<AdminImaSettings | null>(null);
+  const queuedIma = useRef<{ patch: AdminImaSettingsPatch }[]>([]);
+  const imaSaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
   const imaRetry = useRef(createIdempotentRetryKey());
   const imaCheckRetry = useRef(createIdempotentRetryKey());
 
@@ -105,16 +123,34 @@ export default function ToolsSettingsPage() {
     return () => window.removeEventListener('qitu-configuration-changed', refresh);
   }, [loadRegistry, loadAssistants]);
 
-  const acceptIma = useCallback((settings: AdminImaSettings) => {
+  const displayIma = useCallback((settings: AdminImaSettings) => {
     setIma(settings);
-    setAssistants((previous) => previous.map((assistant) => {
-      const authorized = settings.assistants.find((row) => row.id === assistant.id)?.authorized;
-      if (authorized === undefined) return assistant;
-      return { ...assistant, mcpServerIds: authorized
-        ? [...new Set([...assistant.mcpServerIds, IMA_ID])]
-        : assistant.mcpServerIds.filter((id) => id !== IMA_ID) };
-    }));
+    setAssistants((previous) =>
+      previous.map((assistant) => {
+        const authorized = settings.assistants.find((row) => row.id === assistant.id)?.authorized;
+        if (authorized === undefined) return assistant;
+        return {
+          ...assistant,
+          mcpServerIds: authorized
+            ? [...new Set([...assistant.mcpServerIds, IMA_ID])]
+            : assistant.mcpServerIds.filter((id) => id !== IMA_ID),
+        };
+      }),
+    );
   }, []);
+
+  const acceptIma = useCallback(
+    (settings: AdminImaSettings) => {
+      confirmedIma.current = settings;
+      displayIma(
+        queuedIma.current.reduce(
+          (state, operation) => projectImaPatch(state, operation.patch),
+          settings,
+        ),
+      );
+    },
+    [displayIma],
+  );
 
   const loadIma = useCallback(async () => {
     if (imaBusy.current) return;
@@ -132,19 +168,55 @@ export default function ToolsSettingsPage() {
     return () => window.removeEventListener('focus', refresh);
   }, [loadIma]);
 
-  const saveIma = useCallback(async (patch: AdminImaSettingsPatch): Promise<boolean> => {
-    if (imaBusy.current || !ima?.registered) return false;
-    imaBusy.current = true; setImaPending(true); setImaError('');
-    try {
-      acceptIma(await saveImaSettings(patch, imaRetry.current.keyFor(JSON.stringify(patch))));
-      imaRetry.current.acknowledge();
-      notify('知识库检索设置已保存到服务器');
-      return true;
-    } catch (error) {
-      setImaError(error instanceof Error ? error.message : 'ima 保存失败');
-      return false;
-    } finally { imaBusy.current = false; setImaPending(false); }
-  }, [ima, acceptIma, notify]);
+  const saveIma = useCallback(
+    (patch: AdminImaSettingsPatch): Promise<boolean> => {
+      const confirmed = confirmedIma.current;
+      if (!confirmed?.registered || (imaBusy.current && queuedIma.current.length === 0))
+        return Promise.resolve(false);
+      const operation = { patch };
+      queuedIma.current.push(operation);
+      imaBusy.current = true;
+      setImaPending(true);
+      setImaSaving(true);
+      setImaError('');
+      acceptIma(confirmed);
+
+      // Preserve click order and platform revisions; older replies must not erase newer clicks.
+      const save = async (): Promise<boolean> => {
+        let ok = false;
+        try {
+          const settings = await saveImaSettings(
+            patch,
+            imaRetry.current.keyFor(JSON.stringify(patch)),
+          );
+          imaRetry.current.acknowledge();
+          queuedIma.current = queuedIma.current.filter((item) => item !== operation);
+          acceptIma(settings);
+          ok = true;
+        } catch (error) {
+          queuedIma.current = queuedIma.current.filter((item) => item !== operation);
+          if (confirmedIma.current) acceptIma(confirmedIma.current);
+          setImaError(error instanceof Error ? error.message : '知识库检索授权保存失败');
+          // Reconcile an uncertain response or revision conflict before the next queued write.
+          try {
+            acceptIma(await fetchImaSettings());
+          } catch {
+            /* Keep confirmed state and the visible error. */
+          }
+        } finally {
+          const pending = queuedIma.current.length > 0;
+          imaBusy.current = pending;
+          setImaPending(pending);
+          setImaSaving(pending);
+        }
+        return ok;
+      };
+      const result = imaSaveQueue.current.then(save, save);
+      imaSaveQueue.current = result;
+      return result;
+    },
+    [acceptIma],
+  );
 
   const checkIma = useCallback(async () => {
     if (imaBusy.current || !ima?.registered) return;
@@ -425,6 +497,7 @@ export default function ToolsSettingsPage() {
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                  <span role="status" aria-live="polite">{imaSaving ? '正在保存知识库检索授权… · ' : ''}</span>
                   {assistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
                 </span>
               </div>
@@ -537,12 +610,13 @@ export default function ToolsSettingsPage() {
 
                         {mcpServers.map((server) => {
                           const isChecked = isMcpBound(assistant, server);
-                          const disabled = server.id === IMA_ID && (imaPending || !ima?.registered);
+                          const disabled = server.id === IMA_ID && (!ima?.registered || (imaPending && !imaSaving));
                           return (
                             <td key={server.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
                               <div
                                 role="checkbox"
                                 aria-checked={isChecked}
+                                aria-disabled={disabled}
                                 aria-label={`${assistant.name} 是否授权 ${server.label}`}
                                 tabIndex={0}
                                 onClick={() => { if (!disabled) void toggleMcpForAssistant(server, assistant); }}
@@ -624,7 +698,7 @@ export default function ToolsSettingsPage() {
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
                   共享教材知识库，只读检索与原文阅读；连接凭证由服务器管理。当前状态：
-                  {imaPending ? ' 读取中…' : !ima ? ' 待读取' : !ima.registered ? ' 未注册' : ima.enabled ? ' 允许调用' : ' 总开关关闭'}
+                  {imaSaving ? ' 正在保存…' : imaPending ? ' 读取中…' : !ima ? ' 待读取' : !ima.registered ? ' 未注册' : ima.enabled ? ' 允许调用' : ' 总开关关闭'}
                 </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
