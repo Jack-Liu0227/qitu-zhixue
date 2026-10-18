@@ -11,6 +11,7 @@ import { AiTutorModule } from './modules/ai-tutor/tutor.module';
 import { AgentMemoryModule } from './modules/agent-memory/agent-memory.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { LearningPlanModule } from './modules/learning-plan/learning-plan.module';
+import { PlanAdjustmentModule } from './modules/plan-adjustment/plan-adjustment.module';
 import { AuthModule } from './modules/identity-auth/auth.module';
 import { ModelRegistryModule } from './modules/model-registry/model-registry.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
@@ -49,6 +50,7 @@ import { FeishuModule } from './modules/feishu/feishu.module';
     AgentMemoryModule,
     GrowthModule,
     LearningPlanModule,
+    PlanAdjustmentModule,
     MasteryModule,
     QituSDKModule,
     ModelRegistryModule,

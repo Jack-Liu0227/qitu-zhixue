@@ -1,4 +1,5 @@
 export * from './admin-ai-config';
+export * from './answer-attempts';
 export * from './agent-memory';
 export * from './agent-runtime';
 export * from './team-runtime';
@@ -17,7 +18,9 @@ export * from './ops';
 export * from './parent-export';
 export * from './pbl-gate-evidence';
 export * from './pending-questions';
+export * from './plan-adjustments';
 export * from './preferences';
+export * from './project-binding';
 export * from './project-templates';
 export * from './projects';
 export * from './tenancy';

@@ -62,6 +62,15 @@ export interface ObjectiveRecord {
   objective: string;
   prerequisiteIds: string[];
   ordinal: number;
+  /**
+   * 课程模板目标关联的知识键（= 掌握域 knowledgePointId）。
+   *
+   * 生成/内存克隆时由 `buildBundle` 从 `GeneratedObjective` 复制而来；
+   * `learning_objectives` 无对应列，Postgres 读回的记录不含此字段——掌握域
+   * 映射以 `mastery_objective_mappings.knowledgePointId` 为准（已在写时持久化），
+   * 因此读路径缺失不影响判分解析。
+   */
+  conceptId?: string | null;
 }
 
 export interface SessionRecord {
@@ -205,6 +214,11 @@ export interface ConfirmPlanInput {
   /** 待创建项目；`createdAt` / `completedAt` 由存储层补齐。 */
   project: Omit<LearningProjectRecord, 'createdAt' | 'completedAt' | 'studentId'> & { studentId: string };
   now: Date;
+  /**
+   * 项目插入后、事务提交前执行（F3 绑定快照冻结）。
+   * 失败会回滚项目创建；调用方只放不会失败项目创建的派生写入（如快照）。
+   */
+  commit?: (projectId: string, tx?: AuditTransaction) => Promise<void>;
 }
 
 export interface ConfirmPlanResult {
@@ -235,7 +249,10 @@ export abstract class LearningPlanStore {
   abstract studentSchoolId(studentId: string): Promise<string | null>;
   abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
   abstract findMasteryEvent(id: string): Promise<MasteryEventRecord | null>;
-  abstract withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
+  abstract withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T>;
   /**
    * 按签名读取既有草稿。
    *
@@ -380,14 +397,17 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     }
   }
 
-  async withAssessmentTransaction<T>(studentId: string, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+  async withAssessmentTransaction<T>(
+    studentId: string,
+    work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
+  ): Promise<T> {
     const previous = this.assessmentLocks.get(studentId) ?? Promise.resolve();
     let release!: () => void;
     const current = new Promise<void>((resolve) => { release = resolve; });
     this.assessmentLocks.set(studentId, current);
     await previous;
     try {
-      return await work(this);
+      return await work(this, undefined);
     } finally {
       release();
       if (this.assessmentLocks.get(studentId) === current) this.assessmentLocks.delete(studentId);
@@ -467,6 +487,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       completedAt: null,
     };
     this.projects.set(project.id, project);
+    await input.commit?.(project.id);
     bundle.plan = {
       ...bundle.plan,
       projectId: project.id,
@@ -727,7 +748,8 @@ export function planObjectiveMappings(bundle: PlanBundle, schoolId: string | nul
     objectiveId: objective.id,
     templateVersion: bundle.plan.templateVersion,
     contentVersion: bundle.plan.templateVersion,
-    knowledgePointId: `local:${objective.id}`,
+    // 课程驱动目标携带稳定的概念键；通用目标回退到 plan 作用域的本地键。
+    knowledgePointId: objective.conceptId ?? `local:${objective.id}`,
     courseVersion: bundle.plan.templateVersion,
     source: 'explicit',
     mappedAt: bundle.plan.createdAt,

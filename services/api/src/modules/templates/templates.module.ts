@@ -12,6 +12,10 @@ import {
 import { PostgresTemplateVerificationStore } from './template-verification.store.postgres';
 import { TemplateGovernanceController } from './templates-governance.controller';
 import { TemplateGovernanceService } from './templates-governance.service';
+import { TemplateBindingController } from './templates-binding.controller';
+import { TemplateBindingService } from './templates-binding.service';
+import { InMemoryTemplateBindingStore, TemplateBindingStore } from './templates-binding.store';
+import { PostgresTemplateBindingStore } from './templates-binding.store.postgres';
 import { TemplateStore, InMemoryTemplateStore } from './templates.store';
 import { PostgresTemplateStore } from './templates.store.postgres';
 import { TemplatesController } from './templates.controller';
@@ -33,10 +37,22 @@ import { TemplatesService } from './templates.service';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [TemplatesController, TemplateGovernanceController],
+  controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController],
   providers: [
     TemplatesService,
     TemplateGovernanceService,
+    TemplateBindingService,
+    {
+      provide: TemplateBindingStore,
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
+      useFactory: (db: Database | null, mode: DataMode): TemplateBindingStore => {
+        if (db !== null) return new PostgresTemplateBindingStore(db);
+        if (mode === 'live') {
+          throw new Error('live 模式缺少 DATABASE_URL：模板绑定存储不可用');
+        }
+        return new InMemoryTemplateBindingStore();
+      },
+    },
     {
       provide: TemplateStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
@@ -82,6 +98,6 @@ import { TemplatesService } from './templates.service';
       },
     },
   ],
-  exports: [TemplatesService, TemplateGovernanceService],
+  exports: [TemplatesService, TemplateGovernanceService, TemplateBindingService],
 })
 export class TemplatesModule {}

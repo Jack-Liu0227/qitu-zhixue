@@ -39,6 +39,7 @@ import type {
  * POST   /api/v1/admin/project-templates/:id/versions
  * POST   /api/v1/admin/project-templates/:id/versions/:versionId/verify
  * POST   /api/v1/admin/project-templates/:id/versions/:versionId/publish
+ * POST   /api/v1/admin/project-templates/:id/versions/:versionId/pilot
  * POST   /api/v1/admin/project-templates/:id/archive
  * POST   /api/v1/admin/project-templates/:id/rollback
  * ```
@@ -169,6 +170,30 @@ export class TemplateGovernanceController {
         key,
         normalizeReason(request.reason),
       ),
+    };
+  }
+
+  @Post(':id/versions/:versionId/pilot')
+  @HttpCode(200)
+  async pilotVersion(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('id') id: string,
+    @Param('versionId') versionId: string,
+    @Body() body: unknown,
+  ): Promise<{ data: VersionMutationResult }> {
+    const actor = this.requireGovernanceActor(cookieHeader);
+    const request = pickFields<{ reason?: string | null }>(body, ['reason']);
+    const reason = normalizeReason(request.reason);
+    if (reason === null) {
+      throw new BadRequestException({
+        code: 'TEMPLATE_INPUT_INVALID',
+        message: '试点发布必须提供 reason',
+      });
+    }
+    const key = requireIdempotencyKey(idempotencyKey);
+    return {
+      data: await this.governance.pilotVersion(actor, id, versionId, key, reason),
     };
   }
 

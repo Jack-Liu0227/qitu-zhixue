@@ -39,6 +39,8 @@ export interface SessionPlanShape {
   sessionCount: number;
   minutesPerSession: number;
   schedule?: PblSchedule;
+  /** 课程模板 slug；仅课程驱动计划携带（通用计划为 `undefined`）。 */
+  curriculumSlug?: string;
   title: string;
   interest: string;
   goal: string;
@@ -131,7 +133,29 @@ const SESSION_BLOCK_KINDS: readonly SessionBlockKind[] = [
   'practice',
   'reflect',
 ];
-const THEORY_TYPES: readonly KnowledgeType[] = ['memory', 'concept'];
+/**
+ * 通用生成器的门禁承载类型：`memory | concept`。
+ *
+ * 冻结的旧口径，通用计划保持字节不变（`obj-t-2` 是 `concept` 型门禁目标，
+ * 现有回归测试依赖它）。**仅**在 `curriculumSlug === undefined` 的计划上生效。
+ */
+const LEGACY_GATED_THEORY_TYPES: readonly KnowledgeType[] = ['memory', 'concept'];
+/**
+ * 课程驱动计划的门禁承载类型：`memory | procedure`。
+ *
+ * 门禁承载目标必须可被确定性判分打开，即 `memory | procedure`。课程驱动计划
+ * （光学）的 `opt-theory-lens` 是 `procedure` 型目标，因此这里**不能**沿用旧的
+ * `memory | concept` 口径——`concept` 是质化目标，判分打不开门禁。
+ */
+const GATED_THEORY_TYPES: readonly KnowledgeType[] = ['memory', 'procedure'];
+/**
+ * 实践目标的合法「理论前置」类型。
+ *
+ * 与门禁承载不同：通用生成器的实践前置是 `memory | concept`，课程驱动计划的
+ * 实践前置（如 `opt-practice-setup` → `opt-theory-lens`）是 `procedure`。两者都
+ * 合法，仍拒绝 `design` 前置（回归测试「实践目标的非理论前置被拒」保留）。
+ */
+const PRACTICE_PREREQUISITE_TYPES: readonly KnowledgeType[] = ['memory', 'concept', 'procedure'];
 /** 每一节课都必须出现的分段。实践段只在有实践目标的课次出现（见校验说明）。 */
 const REQUIRED_BLOCK_KINDS: readonly SessionBlockKind[] = ['review', 'theory', 'check', 'reflect'];
 /** 五段的规范顺序。导出给生成器与测试共用，避免第三份顺序表。 */
@@ -479,10 +503,16 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     }
     for (const objectiveId of session.theoryObjectiveIds) {
       const objective = objectiveById.get(objectiveId);
-      if (objective !== undefined && !THEORY_TYPES.includes(objective.type)) {
+      // 课程驱动计划只允许 `memory | procedure` 承载门禁；通用计划保持冻结的
+      // `memory | concept` 旧口径（不改旧计划的字节与回归行为）。
+      const gatedTypes = plan.curriculumSlug === undefined ? LEGACY_GATED_THEORY_TYPES : GATED_THEORY_TYPES;
+      if (objective !== undefined && !gatedTypes.includes(objective.type)) {
         errors.push({
           path: sessionPath,
-          message: `理论门禁目标 ${objectiveId} 必须是 memory 或 concept`,
+          message:
+            plan.curriculumSlug === undefined
+              ? `理论门禁目标 ${objectiveId} 必须是 memory 或 concept`
+              : `理论门禁目标 ${objectiveId} 必须是 memory 或 procedure`,
         });
       }
     }
@@ -503,7 +533,7 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
         }
         const theoryPrerequisites = objective.prerequisiteIds.filter((candidateId) => {
           const candidate = objectiveById.get(candidateId);
-          return candidate !== undefined && THEORY_TYPES.includes(candidate.type);
+          return candidate !== undefined && PRACTICE_PREREQUISITE_TYPES.includes(candidate.type);
         });
         if (theoryPrerequisites.length === 0) {
           errors.push({
@@ -524,7 +554,7 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
         }
       }
     }
-    const sessionObjectives = sessionObjectiveIds(session);
+    const sessionObjectives = sessionTaughtObjectiveIds(session);
     if (sessionObjectives.length > MAX_OBJECTIVES_PER_SESSION) {
       errors.push({
         path: sessionPath,
@@ -582,6 +612,24 @@ function sessionObjectiveIds(session: PlanSessionShape): string[] {
     ...new Set([
       ...session.blocks.flatMap((block) => [...block.objectiveIds]),
       ...session.theoryObjectiveIds,
+      ...session.practiceObjectiveIds,
+    ]),
+  ];
+}
+
+/**
+ * 课次「实际讲授 / 实践」的目标（分块引用 + 实践），按出现顺序去重。
+ *
+ * `MAX_OBJECTIVES_PER_SESSION` 计数**不包含理论门禁引用**：课程驱动计划里
+ * 实践课需要把 4 个门禁承载目标全部挂进 `theoryObjectiveIds`（`TheoryMastered`
+ * 按该集合计算），但那些是「回顾 / 门禁」而不是本节新教目标；若计入会误伤
+ * 「4 门禁 + 2 实践」的合法光学实践课。覆盖率和 `objectiveSessionIndex` 仍用
+ * 完整集合 `sessionObjectiveIds`。
+ */
+function sessionTaughtObjectiveIds(session: PlanSessionShape): string[] {
+  return [
+    ...new Set([
+      ...session.blocks.flatMap((block) => [...block.objectiveIds]),
       ...session.practiceObjectiveIds,
     ]),
   ];

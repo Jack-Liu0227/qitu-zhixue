@@ -14,6 +14,7 @@ import type {
   GenerateLearningPlanResponse,
   KnowledgeType,
   LearningErrorType,
+  LearningObjectiveView,
   LearningPlanView,
   LessonModuleView,
   LessonSessionView,
@@ -58,6 +59,7 @@ import { AccessPolicy } from '../../common/access/access-policy';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { MasteryReadService } from '../mastery/mastery.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
+import { TemplateBindingService } from '../templates/templates-binding.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -82,6 +84,7 @@ import {
   type GeneratePlanInput,
   type GeneratedPlan,
 } from './plan-generator';
+import { generateOpticsPlan } from './optics-plan-generator';
 import {
   MAX_GOAL_LENGTH,
   MAX_INTEREST_LENGTH,
@@ -148,6 +151,7 @@ export class LearningPlanService {
      * 单测与无团队链路的部署不需要它；缺失时桥调用整体跳过，只记一条日志。
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
+    @Optional() private readonly templateBindings?: TemplateBindingService,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
@@ -156,10 +160,16 @@ export class LearningPlanService {
 
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown },
+    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGeneratePlanInput(rawInput);
-    const generated = this.generator.generate(input);
+    let generated: GeneratedPlan;
+    if (input.curriculumSlug !== undefined) {
+      const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
+      generated = generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
+    } else {
+      generated = this.generator.generate(input);
+    }
     validateGeneratedPlan(generated);
 
     // 去重签名必须**包含排课形状**：4 周 1×120 与 4 周 2×60 的周数、兴趣、
@@ -224,6 +234,33 @@ export class LearningPlanService {
     return { plan: await this.toPlanView(bundle), deduplicated: false };
   }
 
+  /**
+   * 课程模板 slug → 当前可用版本（学生端解析）。
+   *
+   * 只经治理/绑定读 seam（`TemplateBindingService.resolveCurriculumTemplateVersion`），
+   * 不直接查模板/绑定 store。解析不到时**响亮失败**（400 `CURRICULUM_TEMPLATE_UNAVAILABLE`），
+   * 绝不静默回退到通用生成器——调用方传了 slug 就必须拿到课程驱动计划。
+   */
+  private async resolveCurriculumTemplate(
+    actor: CurrentUser,
+    slug: string,
+  ): Promise<{ templateVersionId: string }> {
+    if (this.templateBindings === undefined) {
+      throw new BadRequestException({
+        code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
+        message: '课程模板解析服务不可用',
+      });
+    }
+    const resolution = await this.templateBindings.resolveCurriculumTemplateVersion(actor, slug);
+    if (resolution === null) {
+      throw new BadRequestException({
+        code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
+        message: `课程模板 ${slug} 无可用版本或生效绑定`,
+      });
+    }
+    return { templateVersionId: resolution.templateVersionId };
+  }
+
   /* ==================== 确认（唯一创建项目） ==================== */
 
   async confirmPlan(
@@ -275,6 +312,29 @@ export class LearningPlanService {
               title: bundle.plan.goal.length > 0 ? bundle.plan.goal : bundle.plan.interest,
               subtitle: `${bundle.plan.interest} · ${bundle.plan.weeks} 周`,
               tags: [bundle.plan.interest],
+            },
+            // F3：项目插入后在同一事务里冻结生效绑定；无绑定时不失败项目创建。
+            commit: async (projectId, tx) => {
+              if (!this.templateBindings) return;
+              const outcome = await this.templateBindings.freezeProjectBinding({
+                projectId,
+                templateVersionId: bundle.plan.templateVersion,
+                boundAt: now,
+                tx,
+              });
+              if (outcome === 'omitted') {
+                this.logger.warn(
+                  `项目创建时无生效绑定，跳过快照冻结 project=${projectId} version=${bundle.plan.templateVersion}`,
+                );
+                await this.audit.write({
+                  actorId: actor.id,
+                  actorRole: actor.role,
+                  action: 'project.binding.missing',
+                  targetType: 'project',
+                  targetId: projectId,
+                  detail: { projectId, templateVersionId: bundle.plan.templateVersion },
+                }, tx);
+              }
             },
           });
 
@@ -709,6 +769,63 @@ export class LearningPlanService {
     }
   }
 
+  /**
+   * F1 判分门禁桥（A2）：在**调用方自有的事务**内评估 TheoryMastered 门禁，
+   * 与 `submitAnswer` 共用 `computeTheoryMastered` / `theoryMasteredWithCandidate`，
+   * 不再在 tutor 判分侧重写一份门禁逻辑。调用方（TutorQuizService）传入事务
+   * 作用域 store，本方法不开启任何事务。
+   */
+  async evaluateGradingGate(input: {
+    store: LearningPlanStore;
+    bundle: PlanBundle;
+    session: SessionRecord;
+    candidateMastery: MasteryRecord;
+  }): Promise<{ theoryMastered: boolean; practiceUnlocked: boolean; theoryMasteredFlip: boolean }> {
+    const states = await this.loadStatesFromStore(input.store, input.bundle.plan.studentUserId, input.bundle);
+    const wasMastered = computeTheoryMastered(input.session.theoryObjectiveIds, states);
+    const isMastered = this.theoryMasteredWithCandidate(input.session, states, input.candidateMastery);
+    const updatedStates = new Map(states);
+    updatedStates.set(
+      input.candidateMastery.objectiveId,
+      this.toState(input.candidateMastery, input.candidateMastery.knowledgeType),
+    );
+    return {
+      theoryMastered: isMastered,
+      practiceUnlocked: this.isPracticeUnlocked(input.session, updatedStates),
+      theoryMasteredFlip: !wasMastered && isMastered,
+    };
+  }
+
+  /**
+   * F1 判分门禁桥（A2）：在调用方评估事务的 commit 回调里发掌握度评估 /
+   * 理论达标审计与 outbox 事件，复用 `submitAnswer` 的同一对 helper。
+   */
+  async emitGradingAssessmentEvents(
+    input: {
+      actor: CurrentUser;
+      bundle: PlanBundle;
+      session: SessionRecord;
+      masteryEvent: MasteryEventRecord | null;
+      theoryMasteredFlip: boolean;
+    },
+    tx?: AuditTransaction,
+  ): Promise<void> {
+    if (input.masteryEvent !== null) {
+      await this.emitMasteryAssessed(input.masteryEvent, tx as AuditTransaction);
+    }
+    if (input.theoryMasteredFlip) {
+      await this.emitTheoryMastered(input.actor, input.bundle, input.session, tx);
+    }
+  }
+
+  /**
+   * F1 判分门禁桥（A2）：**事务提交后**调用 `recordTheoryMasteredGate`。
+   * 门禁写入失败绝不能回滚已成立的理论达标。
+   */
+  async applyGradingGateBridge(studentId: string, sessionId: string): Promise<void> {
+    await this.recordTheoryMasteredGate(studentId, sessionId);
+  }
+
   private async withAssessmentStore<T>(studentId: string, work: (scoped: LearningPlanService) => Promise<T>): Promise<T> {
     return this.store.withAssessmentTransaction(studentId, async (scopedStore) => {
       // 作用域实例必须**原样带上**可选依赖：所有 emitTheoryMastered / 门禁桥调用
@@ -754,6 +871,7 @@ export class LearningPlanService {
         interest: generated.interest,
         sessionsPerWeek: generated.sessions.length / generated.weeks,
         minutesPerSession: generated.minutesPerSession,
+        curriculumSlug: generated.curriculumSlug,
       }),
       confirmedAt: null,
       completedAt: null,
@@ -780,6 +898,7 @@ export class LearningPlanService {
         objective: objective.objective,
         prerequisiteIds: objective.prerequisiteIds.map(remap),
         ordinal: objective.ordinal,
+        conceptId: objective.conceptId,
       })),
       sessions: generated.sessions.map((session) => ({
         id: `${planId}:${session.id}`,
@@ -817,15 +936,23 @@ export class LearningPlanService {
         objectives: (objectiveByModule.get(module.id) ?? [])
           .slice()
           .sort((a, b) => a.ordinal - b.ordinal)
-          .map((objective) => ({
-            id: objective.id,
-            moduleId: objective.moduleId,
-            name: objective.name,
-            type: objective.type,
-            objective: objective.objective,
-            prerequisiteIds: [...objective.prerequisiteIds],
-            ordinal: objective.ordinal,
-          })),
+          .map((objective) => {
+            const view: LearningObjectiveView = {
+              id: objective.id,
+              moduleId: objective.moduleId,
+              name: objective.name,
+              type: objective.type,
+              objective: objective.objective,
+              prerequisiteIds: [...objective.prerequisiteIds],
+              ordinal: objective.ordinal,
+            };
+            // 课程驱动目标才带概念键；通用计划（无 conceptId）省略该字段，
+            // 保持对旧客户端的投影字节兼容（不加 `conceptId: null`）。
+            if (objective.conceptId !== undefined && objective.conceptId !== null) {
+              view.conceptId = objective.conceptId;
+            }
+            return view;
+          }),
       }));
     const schedule = inferPlanSchedule(bundle);
     return {
@@ -911,9 +1038,18 @@ export class LearningPlanService {
     studentId: string,
     bundle: PlanBundle,
   ): Promise<Map<string, ObjectiveMasteryState>> {
+    return this.loadStatesFromStore(this.store, studentId, bundle);
+  }
+
+  /** 从指定 store（事务作用域或外部）读取掌握度投影，单一实现。 */
+  private async loadStatesFromStore(
+    store: LearningPlanStore,
+    studentId: string,
+    bundle: PlanBundle,
+  ): Promise<Map<string, ObjectiveMasteryState>> {
     const states = new Map<string, ObjectiveMasteryState>();
     for (const objective of bundle.objectives) {
-      const record = await this.store.findMastery(studentId, objective.id);
+      const record = await store.findMastery(studentId, objective.id);
       if (record !== null) states.set(objective.id, this.toState(record, objective.type));
     }
     return states;
@@ -1526,6 +1662,7 @@ export function assertGeneratePlanInput(raw: {
   goal?: unknown;
   schedule?: unknown;
   sessionCount?: unknown;
+  curriculumSlug?: unknown;
 }): GeneratePlanInput {  if (typeof raw.interest !== 'string') rejectInput('interest 必须是字符串', 'interest');
   const interest = (raw.interest as string).trim();
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
@@ -1549,6 +1686,18 @@ export function assertGeneratePlanInput(raw: {
       rejectInput(`sessionCount 只能是 ${SESSION_COUNT_OPTIONS.join(' 或 ')}`, 'sessionCount');
     }
     sessionCount = raw.sessionCount;
+  }
+
+  let curriculumSlug: string | undefined;
+  if (raw.curriculumSlug !== undefined && raw.curriculumSlug !== null) {
+    if (typeof raw.curriculumSlug !== 'string') {
+      rejectInput('curriculumSlug 必须是字符串', 'curriculumSlug');
+    }
+    const slug = (raw.curriculumSlug as string).trim();
+    if (slug.length === 0 || slug.length > 120) {
+      rejectInput('curriculumSlug 长度须为 1–120 字符', 'curriculumSlug');
+    }
+    curriculumSlug = slug;
   }
 
   let schedule: PblSchedule | undefined;
@@ -1582,6 +1731,7 @@ export function assertGeneratePlanInput(raw: {
     goal,
     ...(schedule === undefined ? {} : { schedule }),
     ...(sessionCount === undefined ? {} : { sessionCount }),
+    ...(curriculumSlug === undefined ? {} : { curriculumSlug }),
   };
 }
 
@@ -1601,7 +1751,8 @@ function legacyPlanKeyPrefix(
  *
  * 排课是计划形状的一部分，必须进签名：否则「4 周 1×120」与「4 周 2×60」会
  * 撞进同一条签名，第二个请求被当成重复并被返回第一份计划的形状。
- * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`。
+ * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`；
+ * 课程驱动计划再追加 `:<curriculumSlug>`，通用计划保持旧键不变（可继续去重）。
  */
 function planIdempotencyKey(
   studentId: string,
@@ -1611,9 +1762,11 @@ function planIdempotencyKey(
     interest: string;
     sessionsPerWeek: number;
     minutesPerSession: number;
+    curriculumSlug?: string;
   },
 ): string {
-  return `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
+  const base = `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
+  return shape.curriculumSlug === undefined ? base : `${base}:${shape.curriculumSlug}`;
 }
 
 /** 由生成产物直接算出幂等键（生成路径的唯一入口）。 */
@@ -1624,6 +1777,7 @@ function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
     interest: generated.interest,
     sessionsPerWeek: generated.sessions.length / generated.weeks,
     minutesPerSession: generated.minutesPerSession,
+    curriculumSlug: generated.curriculumSlug,
   });
 }
 

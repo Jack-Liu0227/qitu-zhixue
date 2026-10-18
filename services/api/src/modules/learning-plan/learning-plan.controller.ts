@@ -64,17 +64,19 @@ export class LearningPlanController {
   ): Promise<{ data: GenerateLearningPlanResponse }> {
     const user = this.requireStudent(cookieHeader);
     assertNoServerOwnedFields(body);
-    // 白名单只保留学生能表达的输入：兴趣、周数、目标、排期，外加显式的课次
-    // 数量（4 或 8）。`sessionCount` 决定「这节课还是那节课」这类结构，因此必须
-    // 显式在白名单里——它**不是**服务端状态（掌握度 / 阶段 / 项目归属），不会
-    // 因为出现在请求体而被 `assertNoServerOwnedFields` 拒绝。
+    // 白名单只保留学生能表达的输入：兴趣、周数、目标、排期、课程模板 slug，
+    // 外加显式的课次数量（4 或 8）。`sessionCount` 决定「这节课还是那节课」这类
+    // 结构，`curriculumSlug` 决定走通用生成器还是课程驱动生成器；两者都**不是**
+    // 服务端状态（掌握度 / 阶段 / 项目归属），不会因为出现在请求体而被
+    // `assertNoServerOwnedFields` 拒绝。
     const request = pickFields<{
       interest: unknown;
       weeks: unknown;
       goal?: unknown;
       schedule?: PblSchedule;
       sessionCount?: unknown;
-    }>(body, ['interest', 'weeks', 'goal', 'schedule', 'sessionCount']);
+      curriculumSlug?: unknown;
+    }>(body, ['interest', 'weeks', 'goal', 'schedule', 'sessionCount', 'curriculumSlug']);
     return { data: await this.guard(() => this.plans.generatePlan(user, request)) };
   }
 

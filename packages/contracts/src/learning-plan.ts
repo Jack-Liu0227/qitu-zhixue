@@ -98,6 +98,14 @@ export interface LearningObjectiveView {
   objective: string;
   prerequisiteIds: string[];
   ordinal: number;
+  /**
+   * 课程模板目标关联的知识键（= 掌握域 knowledgePointId）。
+   *
+   * 仅当目标是「课程模板驱动」的目标且携带概念身份时出现；通用生成计划
+   * （`obj-t-*` / `obj-p-*`）不携带该字段（省略而非 `null`），掌握域映射
+   * 仍以持久化的 `mastery_objective_mappings` 为准。
+   */
+  conceptId?: string | null;
 }
 
 /** 模块（周）投影。 */
@@ -154,6 +162,11 @@ export interface GenerateLearningPlanRequest {
   weeks: LearningPlanWeeks;
   goal?: string | null;
   schedule?: PblSchedule;
+  /**
+   * 课程模板 slug（可选）。提供时按模板治理 / 生效绑定解析模板版本，从模板
+   * 内容生成计划（课程驱动路径）；省略时走确定性通用生成器（现状不变）。
+   */
+  curriculumSlug?: string | null;
 }
 
 export interface GenerateLearningPlanResponse {

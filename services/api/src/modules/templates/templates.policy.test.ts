@@ -5,6 +5,7 @@ import type { Role } from '@qitu/contracts';
 import {
   assertCanGovernTemplate,
   assertStudentCanReadTemplate,
+  assertTemplatePilotTransition,
   assertTemplateStatusTransition,
   canGovernTemplate,
   canStudentReadTemplate,
@@ -39,9 +40,11 @@ function template(overrides: Partial<ProjectTemplateRecord> = {}): ProjectTempla
 }
 
 describe('模板状态机', () => {
-  it('允许 draft/review → published，拒绝 published → draft 与 archived 迁出', () => {
+  it('允许 draft/review → published，允许 draft → piloting → published，拒绝 published → draft 与 archived 迁出', () => {
     assert.doesNotThrow(() => assertTemplateStatusTransition('draft', 'published'));
     assert.doesNotThrow(() => assertTemplateStatusTransition('review', 'published'));
+    assert.doesNotThrow(() => assertTemplateStatusTransition('draft', 'piloting'));
+    assert.doesNotThrow(() => assertTemplateStatusTransition('piloting', 'published'));
     assert.doesNotThrow(() => assertTemplateStatusTransition('published', 'archived'));
     for (const [from, to] of [
       ['published', 'draft'],
@@ -61,14 +64,33 @@ describe('模板状态机', () => {
   });
 });
 
+describe('试点迁移（TEMPLATE_PILOT_INVALID）', () => {
+  it('仅 draft 可进入 piloting；其余状态 409 TEMPLATE_PILOT_INVALID', () => {
+    assert.doesNotThrow(() => assertTemplatePilotTransition('draft'));
+    for (const from of ['review', 'piloting', 'published', 'archived'] as TemplateStatus[]) {
+      assert.throws(
+        () => assertTemplatePilotTransition(from),
+        (error: unknown) => {
+          const http = error as { getStatus?: () => number; getResponse?: () => { code?: string } };
+          assert.equal(http.getStatus?.(), 409);
+          assert.equal(http.getResponse?.().code, 'TEMPLATE_PILOT_INVALID');
+          return true;
+        },
+      );
+    }
+  });
+});
+
 describe('学生读取作用域', () => {
   it('平台模板对任意学校已发布可见', () => {
     assert.equal(canStudentReadTemplate(template({ status: 'published' }), 'school-b'), true);
   });
 
-  it('未发布模板一律不可见', () => {
+  it('未发布模板一律不可见；试点中模板可见', () => {
     assert.equal(canStudentReadTemplate(template({ status: 'draft' }), null), false);
     assert.equal(canStudentReadTemplate(template({ status: 'review' }), 'school-a'), false);
+    assert.equal(canStudentReadTemplate(template({ status: 'piloting' }), 'school-a'), true);
+    assert.equal(canStudentReadTemplate(template({ status: 'piloting' }), null), true);
   });
 
   it('校属模板只对本校可见，他校 / 无学校 403', () => {

@@ -11,12 +11,15 @@ import {
   Query,
   Res,
   UnauthorizedException,
+  NotFoundException,
   Optional,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
+  AnswerInteractiveQuizResponse,
   CreateTutorSessionResponse,
   CreateTutorTurnResponse,
+  CurrentUser,
   GetTutorSessionResponse,
   PedagogicMove,
   TutorProjectContext,
@@ -25,6 +28,7 @@ import type {
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { TutorQuizService } from './tutor-quiz.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TeamRuntimeService, teamFrameName, type TeamStreamFrame } from '../team-runtime/team-runtime.service.js';
 import type { StreamedTutorEvent } from './tutor.service';
@@ -83,6 +87,7 @@ export class TutorController {
      * 可选注入：Team Runtime 未接线时对话流保持原样（fail-closed）。
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
+    @Optional() private readonly quiz?: TutorQuizService,
   ) {}
 
   @Get('templates')
@@ -365,6 +370,40 @@ export class TutorController {
     };
   }
 
+  @Post('sessions/:id/interactive/:quizId/answer')
+  @HttpCode(200)
+  async answerInteractiveQuiz(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Param('quizId') quizId: string,
+    @Body() body: { selectedKeys?: unknown; idempotencyKey?: unknown },
+  ): Promise<{ data: AnswerInteractiveQuizResponse }> {
+    const actor = this.requireStudent(cookieHeader);
+    const headerKey = typeof idempotencyKeyHeader === 'string' ? idempotencyKeyHeader.trim() : '';
+    const bodyKey = typeof body.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
+    // A7：body.idempotencyKey 是唯一必填幂等键；Idempotency-Key 请求头可选，
+    // 两者同时出现且不一致时拒绝（400 IDEMPOTENCY_KEY_MISMATCH）。
+    if (bodyKey === '') {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少幂等键（body.idempotencyKey）' });
+    }
+    if (headerKey !== '' && headerKey !== bodyKey) {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_MISMATCH', message: 'Idempotency-Key 与 body.idempotencyKey 不一致' });
+    }
+    if (this.quiz === undefined) {
+      throw new NotFoundException('判分服务未启用');
+    }
+    const record = await this.tutorService.loadSession(id, actor.id);
+    const data = await this.quiz.answer(
+      actor,
+      record,
+      quizId,
+      { selectedKeys: body.selectedKeys, idempotencyKey: bodyKey },
+      bodyKey,
+    );
+    return { data };
+  }
+
   @Get('sessions/:id/summary')
   async getSummary(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -377,7 +416,7 @@ export class TutorController {
 
   /* ------------------------------ 内部 ------------------------------ */
 
-  private requireStudent(cookieHeader: string | undefined): { id: string } {
+  private requireStudent(cookieHeader: string | undefined): CurrentUser {
     const token = readCookie(cookieHeader, SESSION_COOKIE);
     if (token === undefined) throw new UnauthorizedException('请先登录');
     const session = this.authService.getSession(token);

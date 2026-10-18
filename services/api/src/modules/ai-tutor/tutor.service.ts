@@ -12,7 +12,10 @@ import {
 
 import type {
   AdminTeamConfig,
+  AdminTeamMember,
+  CurrentUser,
   GetTutorSessionResponse,
+  PblTeamWorkflowSpec,
   ProjectStage,
   TutorHintLevel,
   TutorIdeaCard,
@@ -28,8 +31,9 @@ import type {
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { eq } from 'drizzle-orm';
-import { pblGateEvidence } from '@qitu/database';
-import { BUILTIN_ASSISTANTS } from '@qitu/ai-client';
+import { adminTeamVersions, projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
+import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
 import { AuditWriter } from '../../common/audit';
 import {
@@ -40,7 +44,7 @@ import {
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
-import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { LearningPlanStore, type ObjectiveRecord } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, TUTOR_CHAT_USAGE, type TutorModelGateway } from './gateway-tutor.provider';
 import { ImaMcpClient } from './ima-mcp.client';
 import { buildTutorRuntimeBlocks, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
@@ -50,6 +54,7 @@ import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
 import { TemplatesService } from '../templates/templates.service';
+import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
 import {
@@ -101,7 +106,7 @@ export interface StreamedTutorEvent {
  * 它们完全由已持久化回合的 `pedagogicMove` / `hintLevel` 推导，因此进程重启
  * 或换实例后语义不变，客户端也永远无法写入。
  */
-interface TutorSessionRecord extends TutorSessionSnapshot {
+export interface TutorSessionRecord extends TutorSessionSnapshot {
   lastHintLevel: TutorHintLevel | null;
   stallCount: number;
   escalated: boolean;
@@ -129,6 +134,8 @@ const EXPLORATION_CONTEXT = {
 };
 
 const TUTOR_TURN_SCOPE = 'tutor.turn';
+/** 判分答错时统一会话提示阶梯的封顶值（决策 D5）。 */
+const MAX_QUIZ_HINT_LEVEL = 3;
 
 /** 租约必须长于一轮模型生成的最坏耗时，否则慢回合可能被并发回收。 */
 const TUTOR_TURN_LEASE_MS = 120_000;
@@ -259,6 +266,8 @@ export class TutorService {
     @Optional() private readonly projectKnowledge?: ProjectKnowledgeService,
     @Optional() private readonly templates?: TemplatesService,
     @Optional() @Inject(DATABASE_TOKEN) database?: import('@qitu/database').Database | null,
+    /** A1：模板绑定冻结快照解析；作为最后参数注入，保持既有位置化构造兼容。 */
+    @Optional() private readonly templateBindings?: TemplateBindingService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -383,12 +392,55 @@ export class TutorService {
     };
     if (this.platformRegistry === undefined) return { team: fallback, phases: [], teamConfig: null };
     try {
-      const [assistants, teamConfig] = await Promise.all([
+      // A1：正式项目优先按项目创建时冻结的绑定快照解析团队，退役/重新激活
+      // 绑定不会改变既有项目。快照指向不可变的 teamVersionId，后写不会覆盖。
+      const snapshot = projectId !== null && templateVersionId !== null && this.templateBindings !== undefined
+        ? await this.templateBindings.resolveSnapshotForProject(projectId, templateVersionId, {
+            id: ownerId,
+            role: 'student',
+            email: '',
+            displayName: '',
+          } satisfies CurrentUser)
+        : null;
+      if (projectId !== null && snapshot !== null) {
+        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId);
+        if (frozenTeam !== null) {
+          const assistants = await this.platformRegistry.listAssistants();
+          const leaderId = frozenTeam.leaderAssistantId;
+          const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
+            ?? this.findBuiltinAssistant(leaderId);
+          const team: TutorTeamIdentity = {
+            teamId: frozenTeam.id,
+            teamName: frozenTeam.name,
+            assistantId: leader?.id ?? leaderId,
+            assistantName: leader?.name ?? fallback.assistantName,
+            assistantAvatar: leader?.avatar ?? null,
+          };
+          const phases = await this.projectPhases(frozenTeam, stage, ownerId);
+          return { team, phases, teamConfig: frozenTeam };
+        }
+      }
+
+      // 旧项目没有快照：保留原有解析路径，并写 legacy-resolution 审计（best-effort）。
+      const [assistants, directTeam] = await Promise.all([
         this.platformRegistry.listAssistants(),
-        templateVersionId === null
+        templateVersionId === null || typeof this.platformRegistry.getTeamForTemplateVersion !== 'function'
           ? Promise.resolve(null)
           : this.platformRegistry.getTeamForTemplateVersion(templateVersionId),
       ]);
+      let teamConfig = directTeam;
+      if (teamConfig === null && templateVersionId !== null) {
+        const [teams, binding] = await Promise.all([
+          this.platformRegistry.listTeams(),
+          this.findTemplateBinding(templateVersionId),
+        ]);
+        teamConfig = binding === null
+          ? null
+          : teams.find((team) => team.enabled && this.teamBindsTemplate(team, binding)) ?? null;
+      }
+      if (projectId !== null && teamConfig !== null && snapshot === null) {
+        await this.writeLegacyResolutionAudit(projectId, templateVersionId, teamConfig, ownerId);
+      }
       const leaderId = teamConfig?.leaderAssistantId ?? fallback.assistantId;
       const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
         ?? this.findBuiltinAssistant(leaderId);
@@ -407,8 +459,73 @@ export class TutorService {
     }
   }
 
+  /** 按冻结的 teamVersionId 读不可变团队版本行，形变为 tutor 只读的 AdminTeamConfig。 */
+  private async loadFrozenTeamVersion(teamVersionId: string): Promise<AdminTeamConfig | null> {
+    if (this.database === null) return null;
+    const [row] = await this.database
+      .select()
+      .from(adminTeamVersions)
+      .where(eq(adminTeamVersions.id, teamVersionId))
+      .limit(1);
+    if (row === undefined) return null;
+    const createdAt = row.createdAt.toISOString();
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      workspaceMode: row.workspaceMode as AdminTeamConfig['workspaceMode'],
+      sessionMode: row.sessionMode as AdminTeamConfig['sessionMode'],
+      leaderAssistantId: row.leaderAssistantId,
+      members: (row.members ?? []) as readonly AdminTeamMember[],
+      // 团队版本表没有并发列；tutor 只读团队身份/阶段，不消费该值。
+      concurrencyLimit: 1,
+      pblSpec: row.pblSpec as unknown as PblTeamWorkflowSpec | undefined,
+      enabled: row.enabled,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  }
+
+  /** 旧项目无快照时的降级审计；不含学生文本，失败不影响读路径。 */
+  private async writeLegacyResolutionAudit(
+    projectId: string,
+    templateVersionId: string | null,
+    teamConfig: AdminTeamConfig,
+    ownerId: string,
+  ): Promise<void> {
+    if (this.auditWriter === undefined) return;
+    try {
+      await this.auditWriter.write({
+        actorId: ownerId,
+        actorRole: 'student',
+        action: 'tutor.team.legacy-resolution',
+        targetType: 'project',
+        targetId: projectId,
+        detail: { projectId, templateVersionId, teamId: teamConfig.id, teamName: teamConfig.name },
+      });
+    } catch {
+      // 审计失败不能把会话/项目上下文读接口打挂。
+    }
+  }
+
   private findBuiltinAssistant(id: string) {
     return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
+  }
+
+  private async findTemplateBinding(templateVersionId: string): Promise<{ id: string; title: string; slug: string } | null> {
+    if (this.database === null) return null;
+    const rows = await this.database
+      .select({ id: projectTemplates.id, title: projectTemplates.title, slug: projectTemplates.slug })
+      .from(projectTemplateVersions)
+      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
+      .where(eq(projectTemplateVersions.id, templateVersionId))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  private teamBindsTemplate(team: AdminTeamConfig, binding: { id: string; title: string; slug: string }): boolean {
+    const spec = team.pblSpec as (AdminTeamConfig['pblSpec'] & { projectName?: unknown; projectId?: unknown }) | undefined;
+    return spec?.projectName === binding.title || spec?.projectId === binding.id;
   }
 
   private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string): Promise<TutorPhaseProjection[]> {
@@ -673,6 +790,65 @@ export class TutorService {
     }
   }
 
+  /**
+   * F1 判分路由的下发侧：仅在服务端拥有的 concept-mastery/theory 阶段，对
+   * 当前计划中**第一个**尚未掌握的可量化（memory/procedure）理论目标，经
+   * `mastery_objective_mappings` 反查稳定 conceptId，再选取不可变题库条目，
+   * 只下发公开投影。`expectedKeys` / `explanation` 永不进入回合。
+   * 本会话已下发过的题不重复追加（防重复推送同一道题）。
+   */
+  private async buildQuizBlocks(record: TutorSessionRecord, actorId: string): Promise<TutorTurn['blocks']> {
+    if (record.projectId === null || this.learningStore === undefined) return [];
+    try {
+      const plan = (await this.learningStore.listPlansByStudent(actorId)).find(
+        (candidate) => candidate.projectId === record.projectId,
+      );
+      if (plan === undefined || plan.studentUserId !== actorId) return [];
+      // A8：只在与理论掌握相关的阶段下发；其余阶段不再夹带判断题。
+      const project = await this.learningStore.findProject(record.projectId);
+      const phase = project === null ? 'concept_mastery' : pblPhaseForProjectStage(project.status);
+      if (phase !== 'concept_mastery') return [];
+      const bundle = await this.learningStore.findBundle(plan.id);
+      if (bundle === null) return [];
+      const objectiveById = new Map(bundle.objectives.map((objective) => [objective.id, objective]));
+      const ordered: ObjectiveRecord[] = [];
+      for (const session of bundle.sessions.slice().sort((left, right) => left.index - right.index)) {
+        for (const objectiveId of session.theoryObjectiveIds) {
+          const objective = objectiveById.get(objectiveId);
+          if (objective !== undefined && !ordered.some((item) => item.id === objectiveId)) ordered.push(objective);
+        }
+      }
+      // 单目标下发：只取第一个未掌握的可量化理论目标。
+      for (const objective of ordered) {
+        if (objective.type !== 'memory' && objective.type !== 'procedure') continue;
+        const mastery = await this.learningStore.findMastery(actorId, objective.id);
+        if (mastery !== null && isObjectiveMastered(objective.type, {
+          score: mastery.masteryBasisPoints / 10_000,
+          qualitativeMastered: mastery.qualitativeMastered,
+        })) continue;
+        const mapping = await this.learningStore.findObjectiveMapping({
+          planId: plan.id,
+          objectiveId: objective.id,
+          templateVersion: plan.templateVersion,
+          contentVersion: plan.templateVersion,
+        });
+        if (mapping === null) continue;
+        const entry = findQuizBankEntryByConcept(mapping.knowledgePointId);
+        if (entry === null) continue;
+        const alreadyEmitted = record.turns.some((turn) =>
+          turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === entry.questionId),
+        );
+        // 首个待掌握目标的题已下发过：不再重复推送，也不推进到第二个目标
+        // （A5 只接受当前第一个待掌握目标）。本轮不追加新的 quiz block。
+        if (alreadyEmitted) return [];
+        return [toQuizBlockProjection(entry)];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
   get auditEntries(): readonly AuditEntry[] {
     return this.auditLog;
   }
@@ -855,6 +1031,67 @@ export class TutorService {
       stallCount: record.stallCount,
       escalated: record.escalated,
     };
+  }
+
+  /**
+   * 判分答错时推进统一会话提示阶梯（决策 D5，F1.7 path (a)）。
+   *
+   * 阶梯只在真正前进时追加一条合成助手 hint 回合，使 `last_seq` /
+   * `lastHintLevel` 与 `GET /sessions/:id/summary` 保持一致；L3 封顶时
+   * 不再追加回合（由判分服务发出卡点信号）。
+   */
+  async advanceQuizHint(
+    record: TutorSessionRecord,
+    actorId: string,
+  ): Promise<{ hintLevel: TutorHintLevel; advanced: boolean }> {
+    const releaseTurnLock = await this.acquireTurnLock(record.sessionId);
+    try {
+      if (this.durable) {
+        const latest = await this.store.findById(record.sessionId);
+        if (latest === null) throw new NotFoundException('会话不存在');
+        assertOwnedBy(latest, actorId);
+        const hydrated = this.hydrate(latest);
+        Object.assign(record, hydrated);
+        record.turns = hydrated.turns;
+      }
+      assertOwnedBy(record, actorId);
+      const baseline = record.lastHintLevel === null ? 0 : Math.min(MAX_QUIZ_HINT_LEVEL, record.lastHintLevel);
+      const next = Math.min(MAX_QUIZ_HINT_LEVEL, baseline + 1) as TutorHintLevel;
+      const advanced = next > baseline;
+      if (advanced) {
+        const seq = record.lastSeq + 1;
+        const hintTurn: TutorTurnRecord = {
+          turnId: `${record.sessionId}:assistant:${seq}`,
+          role: 'assistant',
+          blocks: [{ kind: 'hint', level: next, text: '先说说你的思路，卡在哪一步了？' }],
+          hintLevel: next,
+          stageBefore: null,
+          stageAfter: null,
+          seq,
+          createdAt: new Date().toISOString(),
+          modality: 'text',
+          author: builtinAuthor('qitu-learning-partner'),
+          pedagogicMove: 'hint',
+          expectedEvidence: null,
+          promptVersion: this.contextReader.partner.promptVersion,
+          evidenceRef: null,
+        };
+        if (this.durable) {
+          await this.store.appendTurns({
+            sessionId: record.sessionId,
+            expectedLastSeq: record.lastSeq,
+            newLastSeq: seq,
+            turns: [hintTurn],
+          });
+        }
+        record.lastSeq = seq;
+        record.turns = [...record.turns, hintTurn];
+        record.lastHintLevel = next;
+      }
+      return { hintLevel: next, advanced };
+    } finally {
+      releaseTurnLock();
+    }
   }
 
   /**
@@ -1248,6 +1485,13 @@ export class TutorService {
     // Extraction is part of this idempotent turn and must precede recommendation lookup.
     if (record.projectId === null) {
       await this.updateExplorationIntent(record, request.content ?? request.optionLabel, request.idempotencyKey);
+    }
+
+    // F1 判分路由的下发侧：在助手回合持久化前，按计划未掌握理论目标追加交互题。
+    const quizBlocks = await this.buildQuizBlocks(record, request.actorId);
+    for (const block of quizBlocks) {
+      assistantBlocks = [...assistantBlocks, block];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
 
     // 探索会话：意图记录达到澄清门槛后，由「启途智学助手」附上匹配并复核过的模板卡片。

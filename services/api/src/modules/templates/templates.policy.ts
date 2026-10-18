@@ -15,10 +15,11 @@ import type { ProjectTemplateRecord, TemplateStatus } from './templates.types';
 
 const FORBIDDEN_MESSAGE = '无权访问该资源';
 
-/** 允许的状态迁移。`published` 是学生可见的终态；`archived` 不可再迁出。 */
+/** 允许的状态迁移。`published` / `piloting` 是学生可见态；`archived` 不可再迁出。 */
 const STATUS_TRANSITIONS: Record<TemplateStatus, readonly TemplateStatus[]> = {
-  draft: ['review', 'published', 'archived'],
+  draft: ['review', 'piloting', 'published', 'archived'],
   review: ['draft', 'published', 'archived'],
+  piloting: ['published', 'archived'],
   published: ['archived'],
   archived: [],
 };
@@ -27,6 +28,22 @@ export class TemplateStatusError extends ConflictException {
   constructor(message: string) {
     super({ code: 'TEMPLATE_TRANSITION_INVALID', message });
     this.name = 'TemplateStatusError';
+  }
+}
+
+/**
+ * 试点迁移的唯一入口断言（api-spec D4）。
+ *
+ * 只有 `draft` 可以进入 `piloting`（先试点后发布）；`review` / `published` /
+ * `archived` 均不允许。`TEMPLATE_PILOT_INVALID` 与 `TEMPLATE_TRANSITION_INVALID`
+ * 分开：试点是一个独立的产品动作，需要显式 admin reason 并写审计。
+ */
+export function assertTemplatePilotTransition(from: TemplateStatus): void {
+  if (from !== 'draft') {
+    throw new ConflictException({
+      code: 'TEMPLATE_PILOT_INVALID',
+      message: `模板状态 ${from} 不允许进入试点（仅 draft 可试点）`,
+    });
   }
 }
 
@@ -40,12 +57,12 @@ export function assertTemplateStatusTransition(
   }
 }
 
-/** 某模板是否对指定学校的学生可见（只读已发布）。 */
+/** 某模板是否对指定学校的学生可见（只读已发布 / 试点中）。 */
 export function canStudentReadTemplate(
   template: ProjectTemplateRecord,
   viewerSchoolId: string | null,
 ): boolean {
-  if (template.status !== 'published') return false;
+  if (template.status !== 'published' && template.status !== 'piloting') return false;
   if (template.schoolId === null) return true;
   return viewerSchoolId !== null && template.schoolId === viewerSchoolId;
 }

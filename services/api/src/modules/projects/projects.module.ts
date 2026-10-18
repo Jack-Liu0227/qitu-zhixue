@@ -8,6 +8,7 @@ import { ExplorationsController } from './explorations.controller';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { MasteryModule } from '../mastery/mastery.module';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
+import { TemplatesModule } from '../templates/templates.module';
 import { ProjectLifecycleController } from './project-lifecycle.controller';
 import { ProjectLifecycleService } from './project-lifecycle.service';
 import { ProjectsService } from './projects.service';
@@ -28,7 +29,7 @@ import { ProjectsService } from './projects.service';
  * 该模块不反向依赖 ProjectsModule，因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
   controllers: [ExplorationsController, ProjectLifecycleController],
   providers: [
     ProjectsService,
