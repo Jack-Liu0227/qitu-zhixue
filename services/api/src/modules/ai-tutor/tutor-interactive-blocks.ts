@@ -67,7 +67,7 @@ export function buildProjectInteractionBlocks(
 
 function isOpticsProject(project: { title: string } | null | undefined): boolean {
   if (!project) return false;
-  return /optics|光学|散射|衍射|光路/iu.test(project.title);
+  return /optics|光|散射|衍射|折射|反射|透镜/iu.test(project.title);
 }
 
 function isPracticePhase(phase: TutorPhaseProjection): boolean {

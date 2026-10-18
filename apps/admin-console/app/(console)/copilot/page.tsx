@@ -8,6 +8,12 @@ import { createPersistedAssistant } from '../../../lib/api/assistants';
 import { createPersistedTeam } from '../../../lib/api/teams';
 import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 
+// v2 intentionally avoids replaying pre-audit sessions that claimed persistence
+// without a server acknowledgement. They remain in the old key for diagnostics.
+const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v2';
+const COPILOT_ASSISTANTS_STORAGE_KEY = 'qitu.admin.custom_assistants.v2';
+const COPILOT_TEAMS_STORAGE_KEY = 'qitu.admin.custom_teams.v2';
+
 interface ToolExecutionStep {
   name: string;
   status: 'running' | 'done' | 'error';
@@ -39,41 +45,41 @@ interface Session {
 const INITIAL_SESSIONS: Session[] = [
   {
     id: 'sess-default',
-    title: '启途智学管家构建中心',
-    updatedAt: '刚刚',
+    title: 'Copilot example (runtime unverified)',
+    updatedAt: 'just now',
     messages: [
       {
         id: 'msg-1',
         role: 'system',
-        content: '我是「启途智学管家」平台核心运维与开发智能中枢（基于自建 Agent SDK），可为您全自动设计与配置智能体、团队组合、MCP 工具、Skill 技能包、PBL 教学模板与知识库。',
+        content: 'This is an example Copilot session. Assistant, team, tool, and gate metadata below was not probed against the current server and does not indicate published or persisted runtime state.',
         timestamp: '10:00',
       },
       {
         id: 'msg-2',
         role: 'user',
-        content: '请帮我检查当前平台的动能定理 PBL 项目团队配置是否完整，以及对应的技能和工具绑定情况。',
+        content: 'Check whether the kinetic-energy PBL team and its skill/tool bindings are complete.',
         timestamp: '10:01',
       },
       {
         id: 'msg-3',
         role: 'assistant',
-        content: '已检索平台数据库与 Agent SDK 配置：\n\n1. **团队**：`team-kinetic-energy`（动手学动能定理导师团队）已就绪，包含导师：苏格拉底教练、探索向导、代码评审导师。\n2. **工具矩阵**：已绑定 `groksearch-mcp` 与 `Python 沙箱`，满足受力分析模拟与文献检索需求。\n3. **门禁设计**：已强制启用 `TheoryMastered` 门禁，学生必须推导完成动能定理后方可进入代码实践阶段：\n\n$$W_{\\text{合}} = \\Delta E_k = \\frac{1}{2}mv_2^2 - \\frac{1}{2}mv_1^2$$\n\n如需新创团队或扩展能力，可随时告诉我，例如“创建一个高中化学平衡探究团队”。',
+        content: 'Example response only. Run a new request to perform a real server-backed check; this seeded message is not evidence of a database or runtime probe.',
         timestamp: '10:02',
         toolSteps: [
-          { name: 'query_db_teams', status: 'done', label: '查询团队数据库：team-kinetic-energy' },
-          { name: 'check_capability_matrix', status: 'done', label: '校验助手 × MCP/工具绑定矩阵' },
-          { name: 'verify_theory_gate', status: 'done', label: '核验 TheoryMastered 阶段门禁状态' },
+          { name: 'query_db_teams', status: 'error', label: 'Example step: current database query was not executed' },
+          { name: 'check_capability_matrix', status: 'error', label: 'Example step: runtime binding check was not executed' },
+          { name: 'verify_theory_gate', status: 'error', label: 'Example step: server-side TheoryMastered check was not executed' },
         ],
         artifact: {
           type: 'team',
-          title: '动手学动能定理导师团队校验成功',
-          details: '成员：3位智能体 | 门禁：TheoryMastered | 工具：Python Sandbox + GrokSearch MCP',
+          title: 'Kinetic-energy team example (unverified)',
+          details: 'Example metadata only; current database, runtime tools, and team binding were not verified',
           jsonPreview: JSON.stringify({
             id: 'team-kinetic-energy',
-            name: '动手学动能定理导师团队',
+            name: 'Kinetic-energy PBL mentor team',
             gate: 'TheoryMastered',
             assistants: ['asst-coach-socrates', 'asst-guide-seeker', 'asst-reviewer-rigor'],
-            status: 'active'
+            status: 'unverified',
           }, null, 2),
         },
       },
@@ -125,7 +131,7 @@ export default function CopilotPage() {
   const [sessions, setSessions] = useState<Session[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const cached = localStorage.getItem('qitu.admin.copilot.sessions');
+        const cached = localStorage.getItem(COPILOT_SESSIONS_STORAGE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -218,11 +224,12 @@ export default function CopilotPage() {
 
   // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换
   const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
-  const [selectedModel, setSelectedModel] = useState<string>('qwen3.8-flash');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [customAssistantsList, setCustomAssistantsList] = useState<Array<{ id: string; name: string; role: string; icon?: string; systemPrompt?: string }>>([]);
+  const selectedModelItem = availableModels.find((model) => `${model.providerId}:${model.id}` === selectedModel) ?? null;
 
   const BUILTIN_ASSISTANTS_REGISTRY = [
     {
@@ -341,14 +348,18 @@ export default function CopilotPage() {
       .then((models) => {
         if (models && models.length > 0) {
           setAvailableModels(models);
-          setSelectedModel((prev) => (models.some((m) => m.id === prev) ? prev : models[0]!.id));
+          setSelectedModel((prev) => (
+            models.some((m) => `${m.providerId}:${m.id}` === prev)
+              ? prev
+              : `${models[0]!.providerId}:${models[0]!.id}`
+          ));
         }
       })
       .catch(() => {});
 
     if (typeof window !== 'undefined') {
       try {
-        const cached = localStorage.getItem('qitu.admin.custom_assistants');
+        const cached = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed)) {
@@ -362,7 +373,7 @@ export default function CopilotPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('qitu.admin.copilot.sessions', JSON.stringify(sessions));
+        localStorage.setItem(COPILOT_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
       } catch {
         // quota guard
       }
@@ -466,7 +477,7 @@ export default function CopilotPage() {
     setSessions(updated);
     setIsGenerating(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       let replyContent = '';
       let toolSteps: ToolExecutionStep[] = [];
       let artifact: Message['artifact'];
@@ -526,33 +537,55 @@ export default function CopilotPage() {
           sortOrder: 99,
         };
         try {
-          const cached = localStorage.getItem('qitu.admin.custom_assistants');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([customAsst, ...list]));
-          setCustomAssistantsList((prev) => [customAsst, ...prev]);
-        } catch {}
-
-        void createPersistedAssistant({
-          name: customAsst.name,
-          description: customAsst.description,
-          role: customAsst.role,
-          instructions: customAsst.systemPrompt,
-          modelId: selectedModel,
-          enabled: true,
-        }).catch(() => {});
-
-        toolSteps = [
-          { name: 'agent_sdk_spec_parser', status: 'done', label: `精准解析导师角色需求：【${customAsst.name}】` },
-          { name: 'model_router_bind', status: 'done', label: `挂载模型网关：${selectedModel} (思考强度: ${thinkingStrength})` },
-          { name: 'persist_assistant_db', status: 'done', label: '写入智能体数据库并刷新设置中心' },
-        ];
-        replyContent = `已根据自建 Agent SDK 生成全新导师助手【**${customAsst.name}**】配置并实时持久化保存！\n\n您现在前往 **[设置 > 智能体助手](/settings/assistants)** 即可在列表中实时查看该助手，也可在上方助手切换下拉框中直接切换进行对话测试。`;
-        artifact = {
-          type: 'assistant',
-          title: `生成新导师：${customAsst.name}`,
-          details: '已与模型网关通道接入，已在设置中心实时显示',
-          jsonPreview: JSON.stringify(customAsst, null, 2),
-        };
+          // The server is the source of truth. Only expose/cache the assistant after
+          // the create request has been acknowledged; localStorage is not persistence.
+          const persisted = await createPersistedAssistant(
+            {
+              name: customAsst.name,
+              description: customAsst.description,
+              role: customAsst.role,
+              instructions: customAsst.systemPrompt,
+              modelProviderId: selectedModelItem?.providerId ?? null,
+              modelId: selectedModelItem?.id ?? null,
+              enabled: true,
+            },
+            newIdempotencyKey(),
+          );
+          const persistedAsst = { ...customAsst, id: persisted.id };
+          try {
+            const cached = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
+            const list = cached ? JSON.parse(cached) : [];
+            localStorage.setItem(COPILOT_ASSISTANTS_STORAGE_KEY, JSON.stringify([persistedAsst, ...list]));
+          } catch {
+            // Cache failures must not turn a successful server write into a failure.
+          }
+          setCustomAssistantsList((prev) => [persistedAsst, ...prev]);
+          toolSteps = [
+            { name: 'agent_sdk_spec_parser', status: 'done', label: `Parsed assistant role: ${customAsst.name}` },
+            { name: 'model_router_bind', status: 'done', label: `Model route selected: ${selectedModel || 'server default'} (thinking: ${thinkingStrength})` },
+            { name: 'persist_assistant_db', status: 'done', label: 'Server persisted the assistant and returned the record' },
+          ];
+          replyContent = `Assistant **${customAsst.name}** was created and persisted by the server.\n\nOpen **[Settings > AI assistants](/settings/assistants)** to verify the returned record.`;
+          artifact = {
+            type: 'assistant',
+            title: `Generated assistant: ${customAsst.name}`,
+            details: 'Server confirmed creation; the local cache is display-only',
+            jsonPreview: JSON.stringify(persistedAsst, null, 2),
+          };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : 'server response error';
+          toolSteps = [
+            { name: 'agent_sdk_spec_parser', status: 'done', label: `Parsed assistant role: ${customAsst.name}` },
+            { name: 'persist_assistant_db', status: 'error', label: `Server persistence failed: ${reason}` },
+          ];
+          replyContent = `Assistant draft **${customAsst.name}** was generated, but the server did not persist it. No success state is shown.\n\nFailure reason: ${reason}\n\nRetry here or use **[Settings > AI assistants](/settings/assistants)**.`;
+          artifact = {
+            type: 'assistant',
+            title: `Assistant draft: ${customAsst.name}`,
+            details: `Server persistence failed; draft is only in this conversation: ${reason}`,
+            jsonPreview: JSON.stringify(customAsst, null, 2),
+          };
+        }
       } else if (userText.includes('团队') || userText.includes('组建')) {
         // C. 启途智学管家：创建团队（精准命名）
         const newTeamId = `team-custom-${Date.now()}`;
@@ -611,73 +644,126 @@ export default function CopilotPage() {
         };
 
         const newAssistants = [coachAsst, guideAsst, reviewerAsst];
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_assistants');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.custom_assistants', JSON.stringify([...newAssistants, ...list]));
-          setCustomAssistantsList((prev) => [...newAssistants, ...prev]);
-        } catch {}
-
         const customTeam = {
           id: newTeamId,
           name: teamName,
-          description: `由启途智学管家自动组建：${userText}`,
+          description: `Generated by Copilot: ${userText}`,
           leaderAssistantId: coachAsst.id,
           workspaceMode: 'shared',
           sessionMode: 'supervised',
           concurrencyLimit: 3,
-          status: 'active',
+          status: 'draft',
           members: [
-            { assistantId: coachAsst.id, roleLabel: '概念教练', orderIndex: 0, isOptional: false },
-            { assistantId: guideAsst.id, roleLabel: '沙箱向导', orderIndex: 1, isOptional: false },
-            { assistantId: reviewerAsst.id, roleLabel: '评审导师', orderIndex: 2, isOptional: false },
+            { assistantId: coachAsst.id, roleLabel: 'Concept coach', orderIndex: 0, isOptional: false },
+            { assistantId: guideAsst.id, roleLabel: 'Sandbox guide', orderIndex: 1, isOptional: false },
+            { assistantId: reviewerAsst.id, roleLabel: 'Review mentor', orderIndex: 2, isOptional: false },
           ],
           updatedAt: new Date().toISOString(),
         };
         try {
-          const cached = localStorage.getItem('qitu.admin.custom_teams');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.custom_teams', JSON.stringify([customTeam, ...list]));
-        } catch {}
+          // Create assistants first and use the server-issued ids for the team
+          // relation. Client-generated ids are never valid persistence references.
+          const persistedAssistants = await Promise.all(
+            newAssistants.map((asst) =>
+              createPersistedAssistant(
+                {
+                  name: asst.name,
+                  description: asst.description,
+                  role: asst.role,
+                  instructions: asst.systemPrompt,
+                  modelProviderId: selectedModelItem?.providerId ?? null,
+                  modelId: selectedModelItem?.id ?? null,
+                  enabled: true,
+                },
+                newIdempotencyKey(),
+              ),
+            ),
+          );
+          const persistedTeam = await createPersistedTeam(
+            {
+              name: customTeam.name,
+              description: customTeam.description,
+              leaderAssistantId: persistedAssistants[0]!.id,
+              members: [
+                { assistantId: persistedAssistants[0]!.id, role: 'coach', roleLabel: 'Concept coach' },
+                { assistantId: persistedAssistants[1]!.id, role: 'teammate', roleLabel: 'Sandbox guide' },
+                { assistantId: persistedAssistants[2]!.id, role: 'reviewer', roleLabel: 'Review mentor' },
+              ],
+              workspaceMode: 'shared',
+              sessionMode: 'supervised',
+              concurrencyLimit: 3,
+              enabled: true,
+            },
+            newIdempotencyKey(),
+          );
+          const persistedTeamPreview = {
+            ...customTeam,
+            id: persistedTeam.id,
+            leaderAssistantId: persistedAssistants[0]!.id,
+            members: customTeam.members.map((member, index) => ({
+              ...member,
+              assistantId: persistedAssistants[index]!.id,
+            })),
+          };
+          const persistedAssistantItems = persistedAssistants.map((assistant, index) => ({
+            id: assistant.id,
+            name: newAssistants[index]!.name,
+            role: newAssistants[index]!.role,
+            icon: newAssistants[index]!.icon,
+            systemPrompt: newAssistants[index]!.systemPrompt,
+          }));
+          try {
+            const cachedAssistants = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
+            const assistantList = cachedAssistants ? JSON.parse(cachedAssistants) : [];
+            localStorage.setItem(
+              COPILOT_ASSISTANTS_STORAGE_KEY,
+              JSON.stringify([
+                ...persistedAssistantItems,
+                ...assistantList,
+              ]),
+            );
+            const cachedTeams = localStorage.getItem(COPILOT_TEAMS_STORAGE_KEY);
+            const teamList = cachedTeams ? JSON.parse(cachedTeams) : [];
+            localStorage.setItem(COPILOT_TEAMS_STORAGE_KEY, JSON.stringify([persistedTeamPreview, ...teamList]));
+          } catch {
+            // Cache failures do not invalidate the server-confirmed team.
+          }
+          setCustomAssistantsList((prev) => [
+            ...persistedAssistantItems,
+            ...prev,
+          ]);
+          toolSteps = [
+            { name: 'create_team_assistants', status: 'done', label: `Created and registered 3 team assistants` },
+            { name: 'team_orchestrator', status: 'done', label: `Built team: ${customTeam.name}` },
+            { name: 'pbl_gate_validator', status: 'done', label: 'TheoryMastered gate validated by the server contract' },
+            { name: 'persist_team_registry', status: 'done', label: 'Team and assistant records persisted and re-read' },
+          ];
+          replyContent = `Team assistants (**${coachAsst.name}**, **${guideAsst.name}**, **${reviewerAsst.name}**) and team **${customTeam.name}** were created in the server registry.
 
-        for (const asst of newAssistants) {
-          void createPersistedAssistant({
-            name: asst.name,
-            description: asst.description,
-            role: asst.role,
-            instructions: asst.systemPrompt,
-            modelId: selectedModel,
-            enabled: true,
-          }).catch(() => {});
+Open **[Settings > AI assistants](/settings/assistants)** or **[Settings > Teams](/settings/teams)** to verify the returned records.`;
+          artifact = {
+            type: 'team',
+            title: `Generated PBL team: ${customTeam.name}`,
+            details: 'Server confirmed the team and all three assistant records',
+            jsonPreview: JSON.stringify({ team: persistedTeamPreview, createdAssistants: persistedAssistants }, null, 2),
+          };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : 'server response error';
+          toolSteps = [
+            { name: 'create_team_assistants', status: 'error', label: `Team persistence failed: ${reason}` },
+          ];
+          replyContent = `A team draft (**${customTeam.name}**) was prepared, but the server did not confirm the complete team write. No success state is shown.
+
+Failure reason: ${reason}
+
+If some assistant records were created before the failure, review them in **[Settings > AI assistants](/settings/assistants)** before retrying.`;
+          artifact = {
+            type: 'team',
+            title: `Team draft: ${customTeam.name}`,
+            details: `Server persistence failed; this draft is only in the current conversation: ${reason}`,
+            jsonPreview: JSON.stringify({ team: customTeam, createdAssistants: newAssistants }, null, 2),
+          };
         }
-        void createPersistedTeam({
-          name: customTeam.name,
-          description: customTeam.description,
-          leaderAssistantId: coachAsst.id,
-          members: [
-            { assistantId: coachAsst.id, role: 'coach', roleLabel: '概念教练' },
-            { assistantId: guideAsst.id, role: 'teammate', roleLabel: '沙箱向导' },
-            { assistantId: reviewerAsst.id, role: 'reviewer', roleLabel: '评审导师' },
-          ],
-          workspaceMode: 'shared',
-          sessionMode: 'supervised',
-          concurrencyLimit: 3,
-          enabled: true,
-        }).catch(() => {});
-
-        toolSteps = [
-          { name: 'create_team_assistants', status: 'done', label: `创建并注册团队专属智能体（${coachAsst.name}、${guideAsst.name}、${reviewerAsst.name}）` },
-          { name: 'team_orchestrator', status: 'done', label: `调度自建 Agent SDK 多智能体协同引擎组建【${customTeam.name}】` },
-          { name: 'pbl_gate_validator', status: 'done', label: '注入 TheoryMastered 强约束阶段门禁' },
-          { name: 'persist_team_registry', status: 'done', label: '将团队与助手同步持久化至设置中心' },
-        ];
-        replyContent = `已成功创建团队专属导师助手（**${coachAsst.name}**、**${guideAsst.name}**、**${reviewerAsst.name}**），并完成协同团队【**${customTeam.name}**】组建！\n\n- 前往 **[设置 > AI 助手](/settings/assistants)** 即可实时查看和微调已创建的各智能体助手。\n- 前往 **[设置 > 团队协同](/settings/teams)** 即可在团队列表中查看该团队及各角色导师架构。`;
-        artifact = {
-          type: 'team',
-          title: `自动生成 PBL 协同团队：${customTeam.name}`,
-          details: `已联动生成 3 位导师智能体并持久化至设置中心`,
-          jsonPreview: JSON.stringify({ team: customTeam, createdAssistants: newAssistants }, null, 2),
-        };
       } else if (userText.includes('MCP') || userText.includes('工具')) {
         // D. 启途智学管家：创建 MCP 工具（精准命名）
         const newMcpId = `mcp-custom-${Date.now()}`;
@@ -689,8 +775,8 @@ export default function CopilotPage() {
           args: ['-y', `@tools/${mcpName}`],
           env: { QITU_ENV: 'production' },
           transport: 'stdio',
-          status: 'connected',
-          latencyMs: 14,
+          status: 'draft',
+          latencyMs: null,
           tools: ['data_query', 'scientific_plot', 'schema_audit'],
           boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
           description: `由启途智学管家自动配置：${userText}`,
@@ -709,22 +795,18 @@ export default function CopilotPage() {
             2
           ),
         };
-        try {
-          const cached = localStorage.getItem('qitu.admin.mcp_list');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.mcp_list', JSON.stringify([customMcp, ...list]));
-        } catch {}
-
         toolSteps = [
-          { name: 'mcp_json_schema_build', status: 'done', label: `构建标准 JSON-RPC 2.0 MCP 配置：【${customMcp.name}】` },
-          { name: 'security_sandbox_audit', status: 'done', label: `运行权限安全审计 (当前策略: ${runtimePermission})` },
-          { name: 'persist_tool_matrix', status: 'done', label: '注入工具矩阵与 MCP 清单并持久化' },
+          { name: 'mcp_json_schema_build', status: 'done', label: `Generated MCP draft: ${customMcp.name}` },
+          { name: 'security_sandbox_audit', status: 'done', label: `Security policy checked (permission: ${runtimePermission})` },
+          { name: 'persist_tool_matrix', status: 'error', label: 'MCP creation is unavailable from Copilot; nothing was persisted' },
         ];
-        replyContent = `已生成对应的 MCP 工具【**${customMcp.name}**】并实时同步！\n\n您现在前往 **[设置 > MCP 与工具](/settings/tools)** 即可在工具矩阵中一键打上✔立即生效。`;
+        replyContent = `MCP draft **${customMcp.name}** is ready for review, but Copilot does not have a server MCP-create contract. It was not written to the runtime registry or localStorage.
+
+Open **[Settings > MCP and tools](/settings/tools)** to configure it through the supported server flow.`;
         artifact = {
           type: 'mcp',
-          title: `MCP 配置包：${customMcp.name}`,
-          details: '协议标准：JSON-RPC 2.0 | 已在工具矩阵实时就绪',
+          title: `MCP draft: ${customMcp.name}`,
+          details: 'Draft only; no runtime connection, binding, or persistence was claimed',
           jsonPreview: JSON.stringify(customMcp, null, 2),
         };
       } else if (userText.includes('技能') || userText.includes('skill') || userText.includes('规范') || userText.includes('能力包')) {
@@ -738,7 +820,7 @@ export default function CopilotPage() {
           filesCount: 2,
           addedBy: '启途智学管家',
           updatedAtText: '刚刚',
-          boundAssistantIds: ['qitu-assistant', 'fighter-concept-coach', 'kinetic-concept-coach'],
+          boundAssistantIds: [],
           files: [
             {
               name: 'SKILL.md',
@@ -752,22 +834,18 @@ export default function CopilotPage() {
             },
           ],
         };
-        try {
-          const cached = localStorage.getItem('qitu.admin.skills_list');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.skills_list', JSON.stringify([customSkill, ...list]));
-        } catch {}
-
         toolSteps = [
-          { name: 'skill_ast_validator', status: 'done', label: `校验技能包 SKILL.md 与 Prompt 结构合规性：【${customSkill.name}】` },
-          { name: 'assistant_skill_binder', status: 'done', label: '挂载至相关导师智能体技能清单' },
-          { name: 'persist_skill_registry', status: 'done', label: '持久化写入技能库' },
+          { name: 'skill_ast_validator', status: 'done', label: `Validated draft SKILL.md and prompt structure: ${customSkill.name}` },
+          { name: 'assistant_skill_binder', status: 'error', label: 'Runtime skill binding requires a canonical catalog id' },
+          { name: 'persist_skill_registry', status: 'error', label: 'Skill content create API is unavailable from Copilot; nothing was persisted' },
         ];
-        replyContent = `已成功为平台生成专属技能包【**${customSkill.name}**】并实时同步！\n\n您现在前往 **[设置 > 技能中心](/settings/skills)** 即可查看该技能包的 SKILL.md 文档并为助手授权绑定。`;
+        replyContent = `Skill draft **${customSkill.name}** was generated, but it remains a local conversation artifact. Copilot cannot create or bind runtime skill content, so no database/runtime success is claimed.
+
+Use **[Settings > Skills](/settings/skills)** to select a canonical runtime skill and save its binding.`;
         artifact = {
           type: 'skill',
-          title: `技能配置包：${customSkill.name}`,
-          details: '包含 SKILL.md 教学规范与 prompt 模板，已在技能中心实时显示',
+          title: `Skill draft: ${customSkill.name}`,
+          details: 'Draft only; no runtime skill id was bound and no persistence was attempted',
           jsonPreview: JSON.stringify(customSkill, null, 2),
         };
       } else if (userText.includes('模板') || userText.includes('项目模板') || userText.includes('模板库')) {
@@ -782,7 +860,7 @@ export default function CopilotPage() {
           stage: 'exploration',
           tags: ['项目式学习', '科学探究', '跨学科'],
           updatedAt: new Date().toISOString(),
-          linkedTeamId: 'team-kinetic-energy',
+          linkedTeamId: null,
           phases: [
             { id: 'p1', name: '意图确认与选题', gateRule: '学生明确目标与预期成果', stagePrompt: '启发学生提出假设', mentorRole: '总导师' },
             { id: 'p2', name: '核心理论推导与考核 (TheoryMastered)', gateRule: '达标85%以上通过概念闭环', stagePrompt: '苏格拉底追问推导', mentorRole: '概念教练' },
@@ -790,21 +868,17 @@ export default function CopilotPage() {
             { id: 'p4', name: '结项答辩与成长建档', gateRule: '完成答辩量规', stagePrompt: '概念盲区追问', mentorRole: '评审导师' },
           ],
         };
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_templates');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.custom_templates', JSON.stringify([customTpl, ...list]));
-        } catch {}
-
         toolSteps = [
-          { name: 'template_schema_compiler', status: 'done', label: `编译 PBL 阶段阶梯与门禁量规：【${customTpl.title}】` },
-          { name: 'persist_template_store', status: 'done', label: '持久化上架至项目模板库' },
+          { name: 'template_schema_compiler', status: 'done', label: `Compiled PBL draft stages and gates: ${customTpl.title}` },
+          { name: 'persist_template_store', status: 'error', label: 'Template publishing is unavailable from Copilot; nothing was persisted' },
         ];
-        replyContent = `已成功为课题【**${customTpl.title}**】生成完整 PBL 设计模板！\n\n您现在前往 **[设置 > 项目模板](/settings/templates)** 即可查看四阶段阶梯与门禁配置。`;
+        replyContent = `PBL template draft **${customTpl.title}** was generated, but it was not published to the template library. Copilot has no frozen template/version write flow here, so it cannot claim a server success.
+
+Use **[Settings > Project templates](/settings/templates)** to create and publish a version through the supported API.`;
         artifact = {
           type: 'template',
-          title: `PBL 项目模板：${customTpl.title}`,
-          details: '已定义 4 个探究阶段与强约束门禁，已在模板库实时显示',
+          title: `PBL template draft: ${customTpl.title}`,
+          details: 'Draft only; no template version, team binding, or publication was persisted',
           jsonPreview: JSON.stringify(customTpl, null, 2),
         };
       } else if (userText.includes('知识库') || userText.includes('文档') || userText.includes('知识')) {
@@ -816,25 +890,22 @@ export default function CopilotPage() {
           title: docTitle,
           category: 'kinetic',
           targetTeam: '全平台通用导师',
-          chunksCount: 6,
+          chunksCount: 0,
+          status: 'draft',
           content: `由启途智学管家生成：${userText}\n\n该文档已建立向量切片索引，支持各学科导师在苏格拉底提问时实时召回。`,
           updatedAt: new Date().toISOString(),
         };
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_knowledge_docs');
-          const list = cached ? JSON.parse(cached) : [];
-          localStorage.setItem('qitu.admin.custom_knowledge_docs', JSON.stringify([customDoc, ...list]));
-        } catch {}
-
         toolSteps = [
-          { name: 'rag_vector_embed', status: 'done', label: `执行文本分块与向量化嵌入处理：【${customDoc.title}】` },
-          { name: 'persist_knowledge_base', status: 'done', label: '录入平台启途知识库并建档' },
+          { name: 'rag_vector_embed', status: 'error', label: 'No knowledge base/source was selected; embedding was not run' },
+          { name: 'persist_knowledge_base', status: 'error', label: 'Knowledge document create API requires a bound base; nothing was persisted' },
         ];
-        replyContent = `已成功将文献【**${customDoc.title}**】录入平台知识库！\n\n您现在前往 **[设置 > 知识库](/settings/knowledge)** 即可在知识列表与切片抽屉中实时检索该文档。`;
+        replyContent = `Knowledge document draft **${customDoc.title}** was prepared, but it was not indexed or saved. Copilot cannot choose a knowledge base on the client or claim vectorization without a server job.
+
+Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and upload/create the source there.`;
         artifact = {
           type: 'knowledge',
-          title: `知识库文档：${customDoc.title}`,
-          details: '已完成 6 个 Chunk 切片索引，已在知识库实时显示',
+          title: `Knowledge document draft: ${customDoc.title}`,
+          details: 'Draft only; no chunks, vector index, or knowledge-base record was persisted',
           jsonPreview: JSON.stringify(customDoc, null, 2),
         };
       } else {
@@ -1226,17 +1297,12 @@ export default function CopilotPage() {
               >
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
+                    <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
                       {m.name || m.id}
                     </option>
                   ))
                 ) : (
-                  <>
-                    <option value="deepseek-r1">deepseek-r1 (推理特化)</option>
-                    <option value="deepseek-chat">deepseek-chat (通用快速)</option>
-                    <option value="qwen-max">qwen-max (高智能通义)</option>
-                    <option value="gpt-4o">gpt-4o (OpenAI)</option>
-                  </>
+                  <option value="" disabled>暂无可用的已配置模型</option>
                 )}
               </select>
             </div>
@@ -1422,7 +1488,7 @@ export default function CopilotPage() {
                 🤖
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                启途管家正在利用 <strong>{selectedModel}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
+                启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
               </div>
             </div>
           )}

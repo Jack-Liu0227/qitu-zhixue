@@ -1,7 +1,7 @@
 # 项目式学习动态交互深度调研报告
 
 > 状态：`research / proposal`
-> 调研日期：2026-10-18
+> 调研日期：2026-10-19（含二次 Grok MCP 复核）
 > 研究对象：项目与团队绑定、项目大纲/计划生成、跟随学生回答动态调整
 > 项目：启途智学（模块化单体、PostgreSQL、Worker、Team Runtime）
 
@@ -38,6 +38,15 @@ OpenMAIC 值得借鉴的是结构化大纲到可执行 PBL 任务的分步生成
 检索系统状态检查显示 Grok API 连通成功；但 MCP `web_search` 响应的 `sources_count` 均为 0，`get_sources` 返回空列表，`web_fetch` 对官方 URL 的提取也失败过一次以上，另有一次检索超时。因此，本报告不把 Grok 生成的回答文本当作可引用事实，也不声称完成了系统综述或同行评审文献审查。为了满足可复核性，以下关于上游功能的判断以仓库快照与正式 README/代码链接为准；后续如能获得可验证的 Grok Search 来源，应补充来源链接、访问日期和对应主张。
 
 在本次报告整理时另做了一轮四主题并行复查，OpenMAIC、DeepTutor、PBL 证据和 UNESCO 指南的 `web_search` 均再次返回 `sources_count: 0`，相应 `get_sources` 也全为空。搜索回答甚至出现“未找到 OpenMAIC 官方仓库”等与已知上游仓库相矛盾的断言，以及没有链接佐证的政策概述；这些回答被作为检索质量告警处理，不纳入事实依据。后文因此区分“Grok 检索记录”和“独立上游/项目材料核查”，不把前者包装成成功的文献检索。
+
+### 3.1 2026-10-19 二次复核记录
+
+本轮通过 Grok Search MCP 重新检查了四个问题：OpenMAIC 官方仓库与 PBL v2、DeepTutor 掌握路径、PBLWorks/UNESCO 的治理参考，以及光学衍射/散射的高中教学落点。代表性会话为 `fb629d00ee36`、`bbaa3df0c5ec`、`c1b2aeb4e261`、`97cbe08e161b`、`12358e7a1435`；每个会话的 `sources_count` 均为 `0`，`get_sources` 为空。因此：
+
+- MCP 输出只能作为检索线索，不能单独证明仓库功能、学习效果、法规条文或任何百分比收益；
+- OpenMAIC 与 DeepTutor 的产品事实以本地源码快照（`OpenMAIC/`、`DeepTutor/`）和上游固定 commit 链接交叉核验；
+- PBLWorks、UNESCO、UNICEF 链接仅作为设计/风险参考，不能替代学校隐私评审或法律意见；
+- 本报告不把 Grok 生成的“无来源摘要”改写成论文证据，也不引用未经可复核的效果数字。
 
 
 ## 4. 上游项目核查

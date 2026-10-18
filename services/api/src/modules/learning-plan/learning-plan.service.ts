@@ -81,9 +81,9 @@ import {
 import {
   PlanGenerationError,
   PlanGenerator,
-  CURRICULUM_TEMPLATE_VERSION,
   type GeneratePlanInput,
   type GeneratedPlan,
+  type PlanSessionCount,
 } from './plan-generator';
 import { generateOpticsPlan } from './optics-plan-generator';
 import { OPTICS_TEMPLATE_SLUG } from '../templates/content/optics';
@@ -321,9 +321,16 @@ export class LearningPlanService {
               subtitle: `${bundle.plan.interest} · ${bundle.plan.weeks} 周`,
               tags: [bundle.plan.interest],
             },
-            // F3：项目插入后在同一事务里冻结生效绑定；无绑定时不失败项目创建。
+            // F3: a formal project must carry an immutable binding snapshot. A
+            // warning-only omission leaves Tutor without a governed team,
+            // template, and MCP scope, so fail closed before returning success.
             commit: async (projectId, tx) => {
-              if (!this.templateBindings) return;
+              if (!this.templateBindings) {
+                throw new ConflictException({
+                  code: 'CURRICULUM_BINDING_UNAVAILABLE',
+                  message: '课程模板绑定服务不可用，无法确认项目',
+                });
+              }
               const outcome = await this.templateBindings.freezeProjectBinding({
                 projectId,
                 templateVersionId: bundle.plan.templateVersion,
@@ -331,23 +338,10 @@ export class LearningPlanService {
                 tx,
               });
               if (outcome === 'omitted') {
-                if (bundle.plan.templateVersion !== CURRICULUM_TEMPLATE_VERSION) {
-                  throw new ConflictException({
-                    code: 'CURRICULUM_BINDING_UNAVAILABLE',
-                    message: '课程模板绑定已失效，无法确认项目',
-                  });
-                }
-                this.logger.warn(
-                  `项目创建时无生效绑定，跳过快照冻结 project=${projectId} version=${bundle.plan.templateVersion}`,
-                );
-                await this.audit.write({
-                  actorId: actor.id,
-                  actorRole: actor.role,
-                  action: 'project.binding.missing',
-                  targetType: 'project',
-                  targetId: projectId,
-                  detail: { projectId, templateVersionId: bundle.plan.templateVersion },
-                }, tx);
+                throw new ConflictException({
+                  code: 'CURRICULUM_BINDING_UNAVAILABLE',
+                  message: '课程模板绑定已失效，无法确认项目',
+                });
               }
             },
           });
@@ -977,6 +971,7 @@ export class LearningPlanService {
       templateVersion: bundle.plan.templateVersion,
       status: bundle.plan.status,
       version: bundle.plan.version,
+      ...(isPlanSessionCount(bundle.sessions.length) ? { sessionCount: bundle.sessions.length } : {}),
       modules,
       sessions: bundle.sessions
         .slice()
@@ -1667,6 +1662,10 @@ function rejectInput(message: string, path: string): never {
   throw new PlanGenerationError(message, [{ path, message }]);
 }
 
+function isPlanSessionCount(value: number): value is PlanSessionCount {
+  return value === 4 || value === 8 || value === 16;
+}
+
 export function assertGeneratePlanInput(raw: {
   interest: unknown;
   weeks: unknown;
@@ -1691,12 +1690,12 @@ export function assertGeneratePlanInput(raw: {
     goal = text.length === 0 ? null : text;
   }
 
-  let sessionCount: 4 | 8 | undefined;
+  let sessionCount: PlanSessionCount | undefined;
   if (raw.sessionCount !== undefined && raw.sessionCount !== null) {
-    if (raw.sessionCount !== 4 && raw.sessionCount !== 8) {
+    if (!SESSION_COUNT_OPTIONS.includes(raw.sessionCount as PlanSessionCount)) {
       rejectInput(`sessionCount 只能是 ${SESSION_COUNT_OPTIONS.join(' 或 ')}`, 'sessionCount');
     }
-    sessionCount = raw.sessionCount;
+    sessionCount = raw.sessionCount as PlanSessionCount;
   }
 
   let curriculumSlug: string | undefined;

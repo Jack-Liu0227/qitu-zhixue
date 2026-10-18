@@ -22,7 +22,7 @@
 
 ## PBL 能力核对
 
-- **AI 搭档**：探索会话可创建，用户意图确认前不会生成正式项目；但真实模型服务超时阻断了对话引导和全流程。现网配置/上游健康需要运维核查，不能通过静默 fallback 或伪造回答绕过。学生“我的项目”详情数据源还有独立缺口：理论内容/题目当前为空，理论校验、任务完成/提交、反思和作品预签名会返回本地 `501 SERVER_CONTRACT_REQUIRED`，因此项目详情页尚不能完成生产 PBL 全流程。
+- **AI partner / student project detail**: Exploration and intent confirmation are server-backed, but the upstream model timeout still blocks a verified live end-to-end flow. The project adapter now reads learning-plan material/questions, submits server-graded answers, presigns files, creates artifacts, and records practice evidence through the read-only learningPlanId projection. Reflection persistence still returns 501 SERVER_CONTRACT_REQUIRED, and mentor-note projection remains empty because no reflection/mentor-note owner/API exists yet; do not claim a complete production PBL loop until those contracts are added.
 - **Skills**：线上 Admin 运行时快照显示 1 项 ready 技能，但模型上游异常使技能注入和版本未能端到端确认。源码 Admin 技能矩阵此前把技能名与 ID 一起提交，而服务端只接受注册 ID，且失败时仍显示成功；本工作区已改为仅提交 ID、失败后回读服务端状态并如实提示。技能内容创建/编辑仍是本地草稿，因为服务端没有对应写接口。
 - **MCP / 知识库**：代码存在绑定授权、服务器工具清单和知识引用读取；线上 Admin 显示 5 个 MCP。未执行真实学生知识检索，因为 AI 请求无法进入正常生成。
 - **团队**：模板版本与团队运行时的绑定设计及项目阶段角色解析已在源码中；线上只有 2 个已启用团队，且探索未确认前没有项目团队投影。本次尚无可用的线上光学团队绑定证据。
@@ -35,7 +35,7 @@
 - 已修复源码 `GET /api/v1/admin/teachers` 未注册的问题，并添加 Nest 路由元数据测试；已增加 `/teacher/knowledge` 兼容跳转页，不改动教师冻结导航。两项均须部署后再做线上验证。
 - 本工作区已给家长首页、进展页和消息页添加“最新请求优先”保护，并在切换孩子时清除前一孩子的数据，避免较慢的旧响应覆盖当前孩子视图；尚未部署线上复测。
 - 线上 Admin 设置页打开时观察到 7 个 Next 静态 chunk 请求返回 400，涉及 profile-growth、database、dialogs、ops、appearance、system、about。更像是部署静态资源不一致，需要用同一构建产物重新部署并清理旧 chunk 缓存后复验。
-- 当前机器依赖目录中的 `@qitu/*` 包快照早于源码；`pnpm --filter @qitu/api typecheck` 报出大量跨包类型不一致，无法作为本次更改的有效验证。离线 `pnpm install` 在 NAS 工作区长时间解包，本次已中止，未完成依赖重建。
+- Local verification: rebuilding @qitu/contracts, @qitu/database, and @qitu/agent-memory made pnpm --filter @qitu/api typecheck pass. @qitu/contracts build and @qitu/ai-client build/test also pass; student/Admin typecheck remain blocked only by the pre-existing @qitu/ui/preferences / @qitu/design-tokens eyecare export snapshot mismatch.
 - 需先修复线上模型网关超时，再以学生账号重跑：确认意图 → 正式项目 → 4 项服务端掌握度证据 → `TheoryMastered` → 安全实践/模拟 → 数据分析与作品 → 教师复核 → 反思/成长记录；同时验证每个阶段的工具/技能/MCP 绑定和数据库审计记录。
 
 ## 验证边界

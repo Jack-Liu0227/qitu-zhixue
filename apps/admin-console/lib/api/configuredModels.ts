@@ -47,27 +47,12 @@ export async function fetchAvailableConfiguredModels(): Promise<ConfiguredModelI
       }
     }
 
-    // 检查管理员本地浏览器缓存中是否有已保存的已配置模型 (qitu.admin.custom_models)
-    if (typeof window !== 'undefined') {
+    // 同步将真实获取到的配置模型写入缓存，供离线提示使用
+    if (typeof window !== 'undefined' && result.length > 0) {
       try {
-        const localCustom = localStorage.getItem('qitu.admin.custom_models');
-        if (localCustom) {
-          const parsed: ConfiguredModelItem[] = JSON.parse(localCustom);
-          if (Array.isArray(parsed)) {
-            for (const item of parsed) {
-              if (item && item.id && !result.some((r) => r.id === item.id && r.providerId === item.providerId)) {
-                result.push(item);
-              }
-            }
-          }
-        }
-
-        // 若成功获取到了已配置模型，同步写入本地缓存
-        if (result.length > 0) {
-          localStorage.setItem('qitu.cached_configured_models', JSON.stringify(result));
-        }
+        localStorage.setItem('qitu.cached_configured_models', JSON.stringify(result));
       } catch {
-        // 忽略本地存储异常
+        // 忽略存储配额异常
       }
     }
 

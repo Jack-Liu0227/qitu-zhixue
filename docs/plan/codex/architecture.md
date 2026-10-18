@@ -188,3 +188,9 @@ interface ProjectPlanAdjustment {
 - [`../../design/pbl-reference-implementation-and-chat-history.md`](../../design/pbl-reference-implementation-and-chat-history.md)
 - [`../../design/20261018-pbl-dynamic-interaction-openmaic.md`](../../design/20261018-pbl-dynamic-interaction-openmaic.md)
 - [`../../sdk/team-runtime.md`](../../sdk/team-runtime.md)
+
+## 8. Implementation Status
+
+This document is an architecture proposal, not proof that the optics protocol is implemented. The current source boundary, UNC workspace limitation, and remaining P0/P1 gates are tracked in the [gap audit](./gap-audit-20261019.md).
+
+The Theme-Session-Team-IMA evolution is specified in [theme-session-team-ima-design.md](./theme-session-team-ima-design.md). It extends this architecture; it does not introduce a parallel curriculum owner or bypass the existing project, plan, mastery, Tutor, Team Runtime, or audit boundaries.

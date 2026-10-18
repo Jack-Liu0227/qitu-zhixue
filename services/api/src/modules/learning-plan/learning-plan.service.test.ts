@@ -133,6 +133,10 @@ function makeHarness(
   const outbox = new FakeOutboxWriter();
   const access = new FakeAccessPolicy();
   const teamRuntime = new FakeTeamRuntime();
+  const templateBindings = {
+    freezeProjectBinding: async () => 'frozen',
+    resolveCurriculumTemplateVersion: async () => null,
+  };
   const service = new LearningPlanService(
     store,
     generator,
@@ -142,6 +146,7 @@ function makeHarness(
     access as unknown as AccessPolicy,
     undefined,
     teamRuntime as unknown as TeamRuntimeService,
+    templateBindings as never,
   );
   return { service, store, idempotency, audit, outbox, access, teamRuntime };
 }

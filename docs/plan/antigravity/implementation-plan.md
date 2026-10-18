@@ -1,4 +1,6 @@
 # 启途智学自适应 PBL 与多智能体协同实施计划
+> HISTORICAL COMPARISON ONLY: use `docs/plan/codex` as the canonical proposal. This document must not define a parallel PBL state, binding, or plan store.
+
 
 > **文档标识**：`docs/plan/antigravity/implementation-plan.md`  
 > **版本**：v1.0.0  

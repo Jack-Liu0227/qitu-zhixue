@@ -122,3 +122,23 @@ pnpm check:basepath
 3. 哪些项目模板允许模型生成候选题目，哪些必须只用教研审核题库；开放探究题不默认转成单选题。
 4. 哪类计划变更可由服务端自动加入可选补救，哪些需要学生确认或教师批准。
 5. 数据留存期和教师/家长的计划调整可见范围需由产品与隐私负责人评审，开发任务不可自行放宽。
+
+## 6. Audit gate (2026-10-19)
+
+Before starting P1 optics event work, reproduce package resolution outside the UNC install snapshot. The source builds pass for contracts, ai-client, and database, but API typecheck currently resolves stale workspace package copies and therefore cannot certify the contract graph. See [gap-audit-20261019.md](./gap-audit-20261019.md).
+
+No optics experiment result may be promoted from the current renderer into mastery, artifact, plan-revision, or growth state. The title-based projection, static wave steps, generic summary submission, and `piloting` visibility are explicitly pre-production gaps, not accepted implementation.
+
+Local SQL/model-probe artifacts are not an implementation shortcut: isolate them to disposable databases and validate the same Projects, Learning Plan, Mastery, binding, permission, and audit owners before any shared-environment run.
+
+## 7. Theme-Session-Team-IMA increment
+
+The new theme-first proposal is tracked in [theme-session-team-ima-design.md](./theme-session-team-ima-design.md). Implement it in this order:
+
+1. Add one versioned Theme/Session/Interactive/IMA grant contract and export it from `@qitu/contracts`; migrate the generator to consume it instead of creating a second curriculum shape.
+2. Extend template-team binding validation and project snapshots with role-map coverage, IMA server/tool/knowledge-base allow-lists, and grant-aware binding hashes.
+3. Add deterministic 4/8/16-session schedule generation and a PostgreSQL `PlanOutlineStore`; derive the active session and assistant role only from the frozen snapshot.
+4. Pass the grant into the Tutor runtime, validate IMA tool arguments against allowed knowledge bases, and persist bounded citation evidence with replay/idempotency tests.
+5. Replace title-based optics projection with template-version/session allow-listing, then connect the optics action/event protocol and adaptive misconception policy.
+
+The 16-session optics pilot is 8 weeks x 2 sessions. It reuses the existing 12 core objectives and qualitative diffraction/scattering modules; it is not permission to add unreviewed mastery objectives or to bypass `TheoryMastered`.

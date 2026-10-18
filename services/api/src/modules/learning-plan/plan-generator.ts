@@ -47,7 +47,7 @@ export {
  * 本文件先落地类型，`packages/contracts` 的对应导出是 WS1 的写入边界（此处
  * **不**改 contracts），接线方式见文件末尾的说明与最终报告里的 hand-off。
  */
-export type PlanSessionCount = 4 | 8;
+export type PlanSessionCount = 4 | 8 | 16;
 
 /**
  * 计划生成 + 不可信模型输出的校验边界（纯函数）。
@@ -534,8 +534,8 @@ export function assertGenerateInput(input: {
   }
   let sessionCount: PlanSessionCount | undefined;
   if (input.sessionCount !== undefined && input.sessionCount !== null) {
-    if (input.sessionCount !== 4 && input.sessionCount !== 8) {
-      throw new PlanGenerationError('sessionCount 只能是 4 或 8', [
+    if (input.sessionCount !== 4 && input.sessionCount !== 8 && input.sessionCount !== 16) {
+      throw new PlanGenerationError('sessionCount 只能是 4、8 或 16', [
         { path: 'sessionCount', message: 'invalid sessionCount' },
       ]);
     }

@@ -28,21 +28,28 @@ export function TheoryCheck({
   onMastered,
 }: TheoryCheckProps) {
   const { mutate, pending, error, result } = useTheorySubmit(projectId);
-  const [selected, setSelected] = useState<Record<string, number>>({});
+  const [selected, setSelected] = useState<Record<string, number | string>>({});
 
   const canSubmit =
     !pending &&
     !mastered &&
     !offline &&
-    questions.every((question) => selected[question.id] !== undefined);
+    questions.every((question) => {
+      const value = selected[question.id];
+      return value !== undefined && (typeof value !== 'string' || value.trim().length > 0);
+    });
 
   const handleSubmit = async (): Promise<void> => {
     const answers: TheoryAnswer[] = questions
       .filter((question) => selected[question.id] !== undefined)
-      .map((question) => ({
-        questionId: question.id,
-        optionIndex: selected[question.id] ?? 0,
-      }));
+      .map((question) => {
+        const value = selected[question.id];
+        return {
+          questionId: question.id,
+          optionIndex: typeof value === 'number' ? value : 0,
+          answer: typeof value === 'string' ? value : undefined,
+        };
+      });
     const response = await mutate(answers);
     if (response) onMastered?.(response.theoryMastered);
   };
@@ -53,24 +60,31 @@ export function TheoryCheck({
         {questions.map((question) => (
           <li key={question.id} className="qitu-theory-question">
             <p>{question.prompt}</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {question.options.map((option, index) => (
-                <li key={`${question.id}-${index}`}>
-                  <label>
-                    <input
-                      type="radio"
-                      name={question.id}
-                      checked={selected[question.id] === index}
-                      disabled={mastered || offline}
-                      onChange={() =>
-                        setSelected((current) => ({ ...current, [question.id]: index }))
-                      }
-                    />
-                    <span>{option}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+            {question.allowFreeText || question.options.length === 0 ? (
+              <textarea
+                value={typeof selected[question.id] === 'string' ? selected[question.id] : ''}
+                disabled={mastered || offline}
+                onChange={(event) => setSelected((current) => ({ ...current, [question.id]: event.target.value }))}
+                placeholder="用自己的话回答"
+              />
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {question.options.map((option, index) => (
+                  <li key={`${question.id}-${index}`}>
+                    <label>
+                      <input
+                        type="radio"
+                        name={question.id}
+                        checked={selected[question.id] === index}
+                        disabled={mastered || offline}
+                        onChange={() => setSelected((current) => ({ ...current, [question.id]: index }))}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
       </ol>

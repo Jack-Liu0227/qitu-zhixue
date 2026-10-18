@@ -422,6 +422,7 @@ export const OPTICS_PHASES: readonly PblTemplatePhase[] = [
 
 export const OPTICS_SCHEDULES: readonly PblTemplateSchedule[] = [
   { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60, moduleCount: 4 },
+  { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60, moduleCount: 8, sessionCount: 16 },
 ];
 
 export const OPTICS_TEMPLATE_SPEC: ProjectTemplateSpec = {

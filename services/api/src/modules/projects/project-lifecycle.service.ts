@@ -42,6 +42,9 @@ function toProjectProjection(project: LearningProjectRecord) {
     theoryMastered: project.currentStageIndex >= PROJECT_STAGE_ORDER.indexOf('practice_ready'),
     completedAt: project.completedAt?.toISOString() ?? null,
     sourceExplorationId: null,
+    // The plan id is a read-only correlation key.  Student clients use it to
+    // follow the governed learning-plan endpoints; they cannot mutate it.
+    learningPlanId: null as string | null,
   };
 }
 
@@ -97,8 +100,10 @@ export class ProjectLifecycleService {
       order: session.index,
     })) ?? [];
     const nextStage = PROJECT_STAGE_ORDER[PROJECT_STAGE_ORDER.indexOf(project.status) + 1] ?? null;
+    const projectProjection = toProjectProjection(project);
+    projectProjection.learningPlanId = plan?.id ?? null;
     return {
-      project: toProjectProjection(project),
+      project: projectProjection,
       stages,
       tasks,
       nextStep: nextStage ? { title: `继续推进「${project.title}」`, description: '完成当前阶段的服务端任务后再请求推进。', targetStage: nextStage, deepLink: `/student/projects/${project.id}?mode=${nextStage === 'practice_ready' || nextStage === 'practice_building' ? 'practice' : 'learn'}` } : null,

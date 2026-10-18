@@ -12,3 +12,5 @@
 ## 适用范围
 
 本方案优先复用 `projects`、`learning-plan`、`mastery`、`ai-tutor` 和 `team-runtime` 的既有 owner、契约与持久化能力；不新增学生端一级导航，不替换现有 PBL 状态机，也不把上游开源项目的产品声明当作学习效果证据。
+- [Implementation gap audit](./gap-audit-20261019.md): current source, workspace contract, and change-set acceptance findings.
+- [Theme-Session-Team-IMA design delta](./theme-session-team-ima-design.md): the proposed theme-first schedule, deep team binding, and IMA knowledge-base integration mapped onto existing owners.

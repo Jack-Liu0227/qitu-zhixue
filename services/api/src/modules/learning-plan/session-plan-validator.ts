@@ -123,7 +123,7 @@ export const MINUTES_PER_SESSION = 60;
 /** 单节课最多几个目标（与 `@qitu/ai-client` 的 `MAX_OBJECTIVES_PER_SESSION` 一致）。 */
 export const MAX_OBJECTIVES_PER_SESSION = 4;
 /** 合法课次数量。 */
-export const SESSION_COUNT_OPTIONS: readonly number[] = [4, 8];
+export const SESSION_COUNT_OPTIONS: readonly number[] = [4, 8, 16];
 
 const KNOWLEDGE_TYPES: readonly KnowledgeType[] = ['memory', 'concept', 'procedure', 'design'];
 const SESSION_BLOCK_KINDS: readonly SessionBlockKind[] = [

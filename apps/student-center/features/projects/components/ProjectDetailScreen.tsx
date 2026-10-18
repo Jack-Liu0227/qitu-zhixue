@@ -78,6 +78,12 @@ function ProjectLearnPanel({
               questions={content.questions}
               mastered={mastered}
               offline={parentOffline || offline}
+                onMastered={(isMastered) => {
+                  // The server issues one pending question at a time.  A
+                  // non-mastered response therefore refreshes the next bounded
+                  // question instead of pretending the static card is complete.
+                  if (!isMastered) theory.retry();
+                }}
             />
           ) : null}
         </>

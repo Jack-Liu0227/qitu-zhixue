@@ -1,5 +1,6 @@
 import type { ProjectSummary } from './project.js';
 import type { PblSchedule } from './pbl-learning.js';
+import type { PlanSessionCount } from './curriculum.js';
 
 /**
  * 4/8 周学习计划与掌握度契约。
@@ -146,6 +147,8 @@ export interface LearningPlanView {
   templateVersion: string;
   status: LearningPlanStatus;
   version: number;
+  /** Explicit lesson count; legacy plans may omit it and derive it from sessions. */
+  sessionCount?: PlanSessionCount;
   modules: LessonModuleView[];
   sessions: LessonSessionView[];
   confirmedAt: string | null;
@@ -160,6 +163,7 @@ export interface LearningPlanView {
 export interface GenerateLearningPlanRequest {
   interest: string;
   weeks: LearningPlanWeeks;
+  sessionCount?: PlanSessionCount;
   goal?: string | null;
   schedule?: PblSchedule;
   /**

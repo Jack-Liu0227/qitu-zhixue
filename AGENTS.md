@@ -61,3 +61,20 @@
 - 开始修改前先检查 `git status` 和目标文件 diff；发现不属于当前任务的用户修改时不得回滚或覆盖，需在结果中列出并单独验证。
 - 跨 workspace 类型检查先按依赖顺序构建 `@qitu/contracts`、`@qitu/database`、`@qitu/ai-client` 等包，再运行 API/应用测试；不能把依赖快照不一致导致的全量 typecheck 错误当作业务修复完成。
 - 研究、架构和实施文档入口为 `docs/plan/codex/README.md`；光学领域细节见 `docs/plan/codex/optics-scattering-diffraction-analysis.md`。文档中的效果数字必须有可复核来源，Grok MCP 返回 `sources_count: 0` 时只能记录为检索线索。
+
+## Audit Addendum (2026-10-19)
+
+- Runtime optics selection must use the frozen template/binding snapshot (`templateVersionId`, `bindingId`, `teamVersionId`, and hash); never infer it from a project title, team name, display label, or client-supplied identifier.
+- Formal project confirmation must fail closed when the active binding snapshot cannot be frozen in the same transaction; a warning-only `omitted` binding is not an accepted success path.
+- Theme/session/team/IMA data must remain one versioned contract. Prefer the existing `ProjectTemplateSpec` + schedule owners or explicitly migrate/re-export a new contract; do not create a second curriculum schema in parallel.
+- The draft `packages/contracts/src/curriculum.ts` is only canonical after it is tracked, tested, and wired to template/bootstrap/API owners. A new 16-session optics shape must use a new template version; never mutate `optics-physical-inquiry:v1` in place or let two schedule schemas drift.
+- IMA MCP access is read-only and binding-scoped: the frozen project snapshot must authorize both tool IDs and knowledge-base IDs. Never trust model/client tool arguments to select a knowledge base; validate or inject the scope server-side and persist bounded citation metadata.
+- An `optics_experiment` block is not production evidence until its contract includes `specVersion`, `objectiveId`, stable `actionId`, idempotency, server range validation, persisted observations, and CER/rubric references. A client summary sent as ordinary tutor text is not evidence.
+- Admin `enabledSkills` writes must contain only canonical IDs returned by the runtime catalog. Normalize legacy display names before a PATCH; block saves when the catalog is unavailable instead of sending an unvalidated full array.
+- `docs/plan/codex` is the canonical current proposal. `docs/plan/antigravity` and `docs/plan/combined` are historical/comparison material and must not introduce parallel PBL state, binding, or plan stores.
+- Any learning-effect number in research documentation requires a reproducible source. Grok MCP responses with `sources_count: 0` are leads only and must not be cited as empirical evidence.
+- On the UNC workspace, `node_modules` may be an install snapshot rather than a workspace link. Record that limitation and build source packages in dependency order before attributing type errors to business code.
+- Ad-hoc SQL or Node scripts that seed `TheoryMastered`, mastery events, provider/model bindings, or encrypted provider-key probes are development fixtures only. Keep them out of production migrations, scope them to an isolated database, make writes idempotent and auditable, and never commit secrets or raw learner data.
+- Student project adapters may only call server-owned plan, answer, evidence, and artifact contracts; a cached task/session id or client summary is not proof of completion, mastery, or experiment evidence. Unsupported reflection or dynamic-action paths must remain visibly unsupported until a versioned API exists.
+- Model pickers must preserve the `(modelProviderId, modelId)` pair. Never send a bare model id when multiple enabled providers can expose the same id; provider/model selectors must fail closed when the configured catalog is unavailable.
+- Grok Search MCP is an evidence-discovery aid, not a citation source by itself. Record the session id and `sources_count`; when sources are empty, use the result only to guide repository/official-link verification and do not claim learning-effect numbers or legal conclusions.

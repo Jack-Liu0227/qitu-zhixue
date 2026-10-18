@@ -29,6 +29,7 @@ export * from './project-binding.js';
 export * from './plan-adjustment.js';
 export * from './mastery.js';
 export * from './public-content.js';
+export * from './curriculum.js';
 
 /**
  * 数据来源模式（唯一真源）。

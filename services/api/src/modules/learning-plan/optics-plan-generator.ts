@@ -14,6 +14,8 @@ import {
 } from '@qitu/ai-client/quiz-bank';
 import {
   OPTICS_SESSION_MODULES,
+  getOpticsSessionModules,
+  type OpticsSessionModule,
 } from '../templates/content/optics';
 import { PlanGenerationError } from './session-plan-validator';
 import type {
@@ -23,6 +25,7 @@ import type {
   GeneratedPlan,
   GeneratedSession,
   GeneratePlanInput,
+  PlanSessionCount,
 } from './plan-generator';
 
 /**
@@ -32,27 +35,34 @@ import type {
  * 命中光学模板时才由服务层调用本函数。内容单一真源：
  * - `OPTICS_OBJECTIVES` / `OPTICS_GATED_OBJECTIVE_IDS` / `OPTICS_SCHEDULES` /
  *   `OPTICS_TEMPLATE_SPEC` ← `@qitu/ai-client/quiz-bank`；
- * - `OPTICS_SESSION_MODULES` ← `services/api/src/modules/templates/content/optics.ts`。
+ * - `OPTICS_SESSION_MODULES` / `OPTICS_16_SESSION_MODULES` ← `services/api/src/modules/templates/content/optics.ts`。
  *
  * 不在此重新推导目标树 / 课次表；只把冻结的模板内容投影为学习计划形状：
- * - 14 objectives, including scattering/diffraction activities after the theory gate;
+ * - 12 core objectives; scattering/diffraction remain optional qualitative wave
+ *   activities after the theory gate and are not additional mastery objectives;
  * - `knowledgeType` 来自目标自身字段（与 `OPTICS_KNOWLEDGE_TYPES` 同源；`reflection`
  *   目标为 null，本文件按「永不做门禁 / 永不算分」的定性目标投影为 `design`，
  *   不改内容真源）；
- * - 4 周 × 2 节 × 60 分钟固定排课（与 `OPTICS_SCHEDULES[0]` 一致）。
+ * - 支持 4 周 8 节 或 8 周 16 节排课（与 `OPTICS_SCHEDULES` 一致）。
  */
 
-const OPTICS_SCHEDULE_SOURCE = OPTICS_SCHEDULES[0];
-if (OPTICS_SCHEDULE_SOURCE === undefined) {
-  throw new Error('光学模板缺少固定排期（OPTICS_SCHEDULES 为空）');
-}
-/** 课程固定的 PBL 排期（从内容层取出，而不是在此写死第二份）。 */
-const OPTICS_SCHEDULE: PblSchedule = {
-  durationWeeks: OPTICS_SCHEDULE_SOURCE.durationWeeks,
-  weeklyMinutes: OPTICS_SCHEDULE_SOURCE.weeklyMinutes,
-  sessionsPerWeek: OPTICS_SCHEDULE_SOURCE.sessionsPerWeek,
-  sessionMinutes: OPTICS_SCHEDULE_SOURCE.sessionMinutes,
+const OPTICS_SCHEDULE_4W: PblSchedule = {
+  durationWeeks: 4,
+  weeklyMinutes: 120,
+  sessionsPerWeek: 2,
+  sessionMinutes: 60,
 };
+
+const OPTICS_SCHEDULE_8W: PblSchedule = {
+  durationWeeks: 8,
+  weeklyMinutes: 120,
+  sessionsPerWeek: 2,
+  sessionMinutes: 60,
+};
+
+function getScheduleForWeeks(weeks: number): PblSchedule {
+  return weeks === 8 ? OPTICS_SCHEDULE_8W : OPTICS_SCHEDULE_4W;
+}
 
 /** reflection 目标没有 `knowledgeType`，学习计划仍需要一个合法 `KnowledgeType`。 */
 const REFLECTION_PLAN_TYPE: KnowledgeType = 'design';
@@ -76,9 +86,9 @@ function reject(path: string, message: string): never {
 }
 
 /** 目标首次出现的周（由课次模块表推导），用于挂到周模块。 */
-function objectiveWeekMap(): Map<string, number> {
+function objectiveWeekMap(modules: readonly OpticsSessionModule[]): Map<string, number> {
   const byObjective = new Map<string, number>();
-  for (const sessionModule of OPTICS_SESSION_MODULES) {
+  for (const sessionModule of modules) {
     for (const objectiveId of sessionModule.objectiveIds) {
       if (!byObjective.has(objectiveId)) byObjective.set(objectiveId, sessionModule.week);
     }
@@ -90,29 +100,35 @@ export function generateOpticsPlan(
   input: GeneratePlanInput,
   context: OpticsPlanContext,
 ): GeneratedPlan {
-  // 光学排课是课程内容的一部分：4 周 × 2 节 × 60 分钟。学生输入的 weeks /
-  // sessionCount / schedule 与之冲突时拒绝，而不是静默忽略。
-  if (input.weeks !== 4) {
-    reject('weeks', `光学课程模板固定为 4 周（2 节/周），收到 ${input.weeks} 周`);
+  // 光学排课支持：4 周（8 节）或 8 周（16 节），每周 2 节 × 60 分钟。
+  const allowedWeeks = [4, 8];
+  if (!allowedWeeks.includes(input.weeks)) {
+    reject('weeks', `光学课程模板支持 4 周（8 节）或 8 周（16 节），收到 ${input.weeks} 周`);
   }
-  if (input.sessionCount !== undefined && input.sessionCount !== 8) {
-    reject('sessionCount', `光学课程模板固定为 8 节（4 周 × 2 节），收到 ${input.sessionCount}`);
+  const weeks = input.weeks as 4 | 8;
+  const expectedSessions = weeks * 2;
+  if (input.sessionCount !== undefined && input.sessionCount !== expectedSessions) {
+    reject('sessionCount', `光学课程模板 ${weeks} 周对应 ${expectedSessions} 节，收到 ${input.sessionCount}`);
   }
-  if (input.schedule !== undefined && !sameSchedule(input.schedule, OPTICS_SCHEDULE)) {
+  const expectedSchedule = getScheduleForWeeks(weeks);
+  if (input.schedule !== undefined && !sameSchedule(input.schedule, expectedSchedule)) {
     reject(
       'schedule',
-      '光学课程模板排课固定为 4 周 × 2 节 × 60 分钟，收到的 schedule 不一致',
+      `光学课程模板排课为 ${weeks} 周 × 2 节 × 60 分钟，收到的 schedule 不一致`,
     );
   }
 
-  const weeks = 4;
-  const minutesPerSession = OPTICS_SCHEDULE.sessionMinutes;
-  const totalSessions = weeks * OPTICS_SCHEDULE.sessionsPerWeek; // 8
-  const weekOfObjective = objectiveWeekMap();
+  const sessionModules = getOpticsSessionModules(weeks);
+  const minutesPerSession = expectedSchedule.sessionMinutes;
+  // The optics schedule is intentionally closed: four weeks is eight
+  // sessions and eight weeks is sixteen sessions. Keep the literal union
+  // instead of widening it to `number` at the contract boundary.
+  const totalSessions: PlanSessionCount = weeks === 4 ? 8 : 16;
+  const weekOfObjective = objectiveWeekMap(sessionModules);
 
   const modules: GeneratedModule[] = [];
   for (let week = 1; week <= weeks; week += 1) {
-    const weekSessions = OPTICS_SESSION_MODULES.filter((item) => item.week === week);
+    const weekSessions = sessionModules.filter((item) => item.week === week);
     const first = weekSessions[0];
     modules.push({
       id: `opt-mod-w${week}`,
@@ -142,15 +158,15 @@ export function generateOpticsPlan(
   });
 
   const previousTaught = (index: number): string[] => {
-    const previous = OPTICS_SESSION_MODULES[index - 1];
+    const previous = sessionModules[index - 1];
     return previous === undefined ? [] : [...previous.objectiveIds];
   };
 
-  const sessions: GeneratedSession[] = OPTICS_SESSION_MODULES.map((sessionModule, index) => {
+  const sessions: GeneratedSession[] = sessionModules.map((sessionModule, index) => {
     const shape = sessionBlockShapeFor(minutesPerSession, index);
     const isFirstTheorySession =
       sessionModule.phase === 'concept_mastery' &&
-      OPTICS_SESSION_MODULES.findIndex((item) => item.phase === 'concept_mastery') === index;
+      sessionModules.findIndex((item) => item.phase === 'concept_mastery') === index;
     const practiceObjectiveIds =
       sessionModule.phase === 'guided_practice' ? [...sessionModule.objectiveIds] : [];
     const theoryObjectiveIds =
@@ -173,8 +189,9 @@ export function generateOpticsPlan(
         ),
       ];
       const theoryObjectiveIdsForBlock = prerequisites.length > 0 ? prerequisites : [...sessionModule.objectiveIds];
+      const reviewObjectiveIds = prerequisites.length > 0 ? prerequisites : previousTaught(index).slice(0, 2);
       blocks.push(
-        block(index, 'review', shape.review, previousTaught(index)),
+        block(index, 'review', shape.review, reviewObjectiveIds),
         block(index, 'theory', shape.theory, theoryObjectiveIdsForBlock),
         block(index, 'check', shape.check, theoryObjectiveIdsForBlock),
         block(index, 'practice', shape.practice, [...sessionModule.objectiveIds], prerequisites),
@@ -206,9 +223,9 @@ export function generateOpticsPlan(
   return {
     templateVersion: context.templateVersion,
     weeks,
-    sessionCount: 8,
+    sessionCount: totalSessions as PlanSessionCount,
     minutesPerSession,
-    schedule: OPTICS_SCHEDULE,
+    schedule: expectedSchedule,
     title: `${input.interest} · ${weeks} 周光学探究计划`,
     interest: input.interest,
     goal: (input.goal ?? '').trim() || OPTICS_TEMPLATE_SPEC.description,

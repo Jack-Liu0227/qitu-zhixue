@@ -118,7 +118,7 @@ export default function ProfileGrowthSettingsPage() {
   const [parentReadonlyAccess, setParentReadonlyAccess] = useState(true);
 
   // AI 分析引擎与助手绑定
-  const [profilingModel, setProfilingModel] = useState('gpt-4o');
+  const [profilingModel, setProfilingModel] = useState('');
   const [refreshCycle, setRefreshCycle] = useState('realtime-phase');
   const [saveNotice, setSaveNotice] = useState('');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
@@ -131,7 +131,7 @@ export default function ProfileGrowthSettingsPage() {
       .then((models) => {
         if (models && models.length > 0 && models[0]) {
           setAvailableModels(models);
-          setProfilingModel(models[0].id);
+          setProfilingModel(`${models[0].providerId}:${models[0].id}`);
         }
       })
       .catch(() => {});
@@ -150,23 +150,17 @@ export default function ProfileGrowthSettingsPage() {
       alert(`当前启用的维度权重之和为 ${totalWeight}%，请调整至 100% 后保存。`);
       return;
     }
-    try {
-      const pAst = assistants.find((a) => a.id === profileAssistantId);
-      if (pAst && pAst.modelId) {
-        await updatePersistedAssistant(profileAssistantId, {
-          modelId: pAst.modelId,
-          modelProviderId: pAst.modelProviderId || 'qwen-token-plan-cn',
-        }).catch(() => {});
-      }
-      const gAst = assistants.find((a) => a.id === growthAssistantId);
-      if (gAst && gAst.modelId) {
-        await updatePersistedAssistant(growthAssistantId, {
-          modelId: gAst.modelId,
-          modelProviderId: gAst.modelProviderId || 'qwen-token-plan-cn',
-        }).catch(() => {});
-      }
-    } catch {
-      // ignore
+    const updates = [profileAssistantId, growthAssistantId]
+      .map((assistantId) => assistants.find((assistant) => assistant.id === assistantId))
+      .filter((assistant): assistant is AdminAssistantConfig => Boolean(assistant?.modelId))
+      .map((assistant) => updatePersistedAssistant(assistant.id, {
+        modelId: assistant.modelId,
+        modelProviderId: assistant.modelProviderId || null,
+      }));
+    const results = await Promise.allSettled(updates);
+    if (results.some((result) => result.status === 'rejected')) {
+      setSaveNotice('部分助手配置保存失败；请检查权限或网络后重试。');
+      return;
     }
     setSaveNotice('学情画像与成长轨迹专任助手及模型配置已成功保存并同步全平台！✔');
     setTimeout(() => setSaveNotice(''), 2500);
@@ -529,27 +523,28 @@ export default function ProfileGrowthSettingsPage() {
                   画像分析助手模型（直接绑定于该助手）
                 </label>
                 <select
-                  value={assistants.find((a) => a.id === profileAssistantId)?.modelId || 'qwen3.8-flash'}
+                  value={(() => {
+                    const assistant = assistants.find((a) => a.id === profileAssistantId);
+                    return assistant?.modelId && assistant.modelProviderId
+                      ? `${assistant.modelProviderId}:${assistant.modelId}`
+                      : '';
+                  })()}
                   onChange={(e) => {
-                    const newModel = e.target.value;
+                    const [modelProviderId, modelId] = e.target.value.split(':', 2);
                     setAssistants((prev) =>
-                      prev.map((a) => (a.id === profileAssistantId ? { ...a, modelId: newModel } : a))
+                      prev.map((a) => (a.id === profileAssistantId ? { ...a, modelId: modelId || null, modelProviderId: modelProviderId || null } : a))
                     );
                   }}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
                   {availableModels.length > 0 ? (
                     availableModels.map((m) => (
-                      <option key={m.id} value={m.id}>
+                      <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
                         {m.name || m.id}
                       </option>
                     ))
                   ) : (
-                    <>
-                      <option value="qwen3.8-flash">Qwen 3.8 Flash (推荐/低延迟)</option>
-                      <option value="gpt-4o">GPT-4o (高精度画像建模)</option>
-                      <option value="deepseek-v4-pro">DeepSeek V4 Pro (深度归因)</option>
-                    </>
+                    <option value="" disabled>暂无可用的已配置模型</option>
                   )}
                 </select>
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#64748b' }}>
@@ -586,27 +581,28 @@ export default function ProfileGrowthSettingsPage() {
                   成长轨迹助手模型（直接绑定于该助手）
                 </label>
                 <select
-                  value={assistants.find((a) => a.id === growthAssistantId)?.modelId || 'qwen3.8-flash'}
+                  value={(() => {
+                    const assistant = assistants.find((a) => a.id === growthAssistantId);
+                    return assistant?.modelId && assistant.modelProviderId
+                      ? `${assistant.modelProviderId}:${assistant.modelId}`
+                      : '';
+                  })()}
                   onChange={(e) => {
-                    const newModel = e.target.value;
+                    const [modelProviderId, modelId] = e.target.value.split(':', 2);
                     setAssistants((prev) =>
-                      prev.map((a) => (a.id === growthAssistantId ? { ...a, modelId: newModel } : a))
+                      prev.map((a) => (a.id === growthAssistantId ? { ...a, modelId: modelId || null, modelProviderId: modelProviderId || null } : a))
                     );
                   }}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
                   {availableModels.length > 0 ? (
                     availableModels.map((m) => (
-                      <option key={m.id} value={m.id}>
+                      <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
                         {m.name || m.id}
                       </option>
                     ))
                   ) : (
-                    <>
-                      <option value="qwen3.8-flash">Qwen 3.8 Flash (推荐/低延迟)</option>
-                      <option value="gpt-4o">GPT-4o (长周期轨迹叙事)</option>
-                      <option value="claude-3-5-sonnet">Claude 3.5 Sonnet (反思提炼)</option>
-                    </>
+                    <option value="" disabled>暂无可用的已配置模型</option>
                   )}
                 </select>
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#64748b' }}>

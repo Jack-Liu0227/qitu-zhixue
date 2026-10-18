@@ -77,6 +77,7 @@ export interface PblTemplatePhase {
 
 export interface PblTemplateSchedule extends PblSchedule {
   moduleCount: number;
+  sessionCount?: number;
 }
 
 export interface ProjectTemplateSpec {

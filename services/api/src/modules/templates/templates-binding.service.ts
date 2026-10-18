@@ -11,7 +11,11 @@ import type {
   CurrentUser,
   PblTemplateTeamBinding,
   ProjectBindingSnapshot,
+  DeepTeamBinding,
+  RolePhaseMap,
+  ImaKnowledgeIntegration,
 } from '@qitu/contracts';
+import { IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client';
 import {
   ADMIN_TEMPLATE_BINDING_IDEMPOTENCY_SCOPES,
   PBL_BINDING_STATUS_TRANSITIONS,
@@ -487,6 +491,52 @@ export class TemplateBindingService {
 
     const row = await this.bindings.findSnapshot(projectId);
     return row === null ? null : toSnapshotView(row);
+  }
+
+  /**
+   * 课时编排与团队深度绑定（Theme-Session-Team-IMA）：
+   * 读取项目冻结的快照并解析出具备 IMA MCP 授权与阶段智能体映射的 DeepTeamBinding。
+   */
+  async resolveDeepTeamBinding(
+    projectId: string,
+    templateVersionId: string | null,
+    actor?: CurrentUser,
+  ): Promise<DeepTeamBinding | null> {
+    const snapshot = await this.resolveSnapshotForProject(projectId, templateVersionId, actor);
+    if (snapshot === null) return null;
+
+    const teamVersion = await this.bindings.findTeamVersion(snapshot.teamVersionId);
+    const members = (teamVersion?.members ?? []) as Array<{ assistantId?: string; id?: string; role?: string; phase?: string }>;
+
+    const findMember = (phaseName: string, pattern: RegExp, fallback: string): string => {
+      const match = members.find((m) => {
+        const id = m.assistantId ?? m.id ?? '';
+        return m.phase === phaseName || pattern.test(id) || pattern.test(m.role ?? '');
+      });
+      return match?.assistantId ?? match?.id ?? fallback;
+    };
+
+    const roleMap: RolePhaseMap = {
+      exploration: findMember('exploration', /lead|intake|intro/i, 'qitu-intake-assistant'),
+      concept_mastery: findMember('concept_mastery', /coach|concept|theory/i, 'optics-concept-coach'),
+      guided_practice: findMember('guided_practice', /guide|code|experiment|practice/i, 'optics-experiment-guide'),
+      deliverable_review: findMember('deliverable_review', /review|assess|defense/i, 'optics-review-assessor'),
+    };
+
+    const imaMcpGrant: ImaKnowledgeIntegration = {
+      serverId: 'ima-knowledge',
+      knowledgeBaseIds: ['high-school-physics-optics', 'high-school-physics-motion'],
+      allowedTools: IMA_READ_TOOLS,
+    };
+
+    return {
+      bindingId: snapshot.bindingId,
+      templateVersionId: snapshot.templateVersionId,
+      teamVersionId: snapshot.teamVersionId,
+      roleMap,
+      imaMcpGrant,
+      bindingHash: snapshot.bindingHash,
+    };
   }
 
   /* ============================ 内部 ============================ */

@@ -1,4 +1,6 @@
 # 动态项目式学习（PBL）与多智能体协同深度调研报告
+> HISTORICAL COMPARISON ONLY: use `docs/plan/codex` as the canonical proposal. This document must not define a parallel PBL state, binding, or plan store.
+
 
 > **文档标识**：`docs/plan/antigravity/research-report.md`  
 > **版本**：v1.0.0  
@@ -102,7 +104,7 @@ sequenceDiagram
    - 系统持续从学生的多模态交互历史（输入耗时、改动频次、选项点击、代码报错信息）中提取隐式认知状态（Cognitive State）。
    - 根据认知负荷动态升降脚手架级别（Scaffolding Levels）：从高阶启发（Socratic Question）到方向性提示（Directional Clue），再到结构化选项（Constrained Options），最后在极端困难时才提供受限线索（Bounded Clue），严禁直接泄露完整解答。
 3. **实证教学收益**：
-   - 论文实测表明，引入自适应脚手架与多智能体协作后，学生的期末项目成果质量与概念测试得分显著提高 14%–28%，且认知过载发生率降低 35%。
+   - No reproducible empirical effect size was located in the reviewed sources; treat adaptive scaffolding and multi-agent collaboration as design hypotheses requiring a local pilot, not as proven gains.
 
 ---
 

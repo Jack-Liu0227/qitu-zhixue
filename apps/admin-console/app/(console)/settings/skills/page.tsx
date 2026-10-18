@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
@@ -65,6 +65,25 @@ export default function SkillsSettingsPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [skillsViewMode, setSkillsViewMode] = useState<'list' | 'matrix'>('list');
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
+  const saveInFlightRef = useRef(false);
+
+  // Normalize legacy display names before sending the full enabledSkills array.
+  const normalizeSkillIds = useCallback((values: readonly string[]) => {
+    const byId = new Set(skills.filter((skill) => !skill.local).map((skill) => skill.id));
+    const byName = new Map(skills.filter((skill) => !skill.local).map((skill) => [skill.name, skill.id]));
+    return [...new Set(values.flatMap((value) => {
+      if (byId.has(value)) return [value];
+      const canonicalId = byName.get(value);
+      return canonicalId ? [canonicalId] : [];
+    }))];
+  }, [skills]);
+
+  const hasUnmappedSkillValue = useCallback((values: readonly string[]) => {
+    const runtimeSkills = skills.filter((skill) => !skill.local);
+    const ids = new Set(runtimeSkills.map((skill) => skill.id));
+    const names = new Set(runtimeSkills.map((skill) => skill.name));
+    return values.some((value) => !ids.has(value) && !names.has(value));
+  }, [skills]);
 
   // 技能目录从 AI 运行时快照读取；不再向 localStorage 写入任何伪造状态
   const loadSkillCatalog = useCallback(async () => {
@@ -107,11 +126,11 @@ export default function SkillsSettingsPage() {
       // 优先从最新的 assistants 状态中读取该助手的 enabledSkills
       const matched = assistants.find((a) => a.id === asst.id || a.name === asst.name);
       const enabledList = (matched?.enabledSkills as string[]) || asst.enabledSkills || [];
-      if (enabledList.includes(sk.id) || enabledList.includes(sk.name)) {
+      if (enabledList.includes(sk.id)) {
         return true;
       }
       // 回退兼容：检查技能的 boundAssistantIds
-      return (sk.boundAssistantIds || []).includes(asst.id) || (sk.boundAssistantIds || []).includes(asst.name);
+      return (sk.boundAssistantIds || []).includes(asst.id);
     },
     [assistants]
   );
@@ -123,7 +142,7 @@ export default function SkillsSettingsPage() {
       ...skill,
       boundAssistantIds: latest
         .filter((assistant) => assistant.enabledSkills.includes(skill.id))
-        .flatMap((assistant) => [assistant.id, assistant.name]),
+        .map((assistant) => assistant.id),
     })));
     return latest;
   }, []);
@@ -132,23 +151,46 @@ export default function SkillsSettingsPage() {
     updates: Array<{ assistantId: string; enabledSkills: string[] }>,
     successMessage: string,
   ) => {
-    const results = await Promise.allSettled(
-      updates.map(({ assistantId, enabledSkills }) =>
-        persistAssistantBinding(assistantId, 'enabledSkills', enabledSkills),
-      ),
-    );
-    try {
-      await reloadBindings();
-    } catch {
-      setSaveNotice('保存状态无法确认，请刷新后重试。');
+    if (saveInFlightRef.current) {
+      setSaveNotice('Another binding save is still in progress; wait for it to finish.');
       return false;
     }
-    const failed = results.some((result) => result.status === 'rejected');
-    setSaveNotice(failed ? '保存未完全成功，请检查失败项后重试。' : successMessage);
-    setTimeout(() => setSaveNotice(''), 2500);
-    return !failed;
-  };
+    if (catalogPending || catalogError) {
+      setSaveNotice('Runtime skill catalog is unavailable; refresh before saving bindings.');
+      return false;
+    }
+    if (!skills.some((skill) => !skill.local)) {
+      setSaveNotice('Runtime skill catalog is empty; refresh before saving bindings.');
+      return false;
+    }
+    // Never drop an unknown value when the catalog may be partial or stale:
+    // silently removing a binding would overwrite state the admin cannot see.
+    if (updates.some(({ enabledSkills }) => hasUnmappedSkillValue(enabledSkills))) {
+      setSaveNotice('Some existing skill bindings are not in the complete catalog; refresh before saving.');
+      return false;
+    }
 
+    saveInFlightRef.current = true;
+    try {
+      const results = await Promise.allSettled(
+        updates.map(({ assistantId, enabledSkills }) =>
+          persistAssistantBinding(assistantId, 'enabledSkills', normalizeSkillIds(enabledSkills)),
+        ),
+      );
+      try {
+        await reloadBindings();
+      } catch {
+        setSaveNotice('Unable to confirm binding state; refresh and retry.');
+        return false;
+      }
+      const failed = results.some((result) => result.status === 'rejected');
+      setSaveNotice(failed ? 'Some bindings failed to save; review and retry.' : successMessage);
+      setTimeout(() => setSaveNotice(''), 2500);
+      return !failed;
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  };
   // 矩阵中切换技能绑定 (打上✔ 立即生效)
   const toggleSkillForAssistant = async (skillId: string, asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
@@ -163,10 +205,11 @@ export default function SkillsSettingsPage() {
       return;
     }
 
-    const currentlyChecked = matchedAsst.enabledSkills.includes(skillId);
+    const currentIds = normalizeSkillIds(matchedAsst.enabledSkills);
+    const currentlyChecked = currentIds.includes(skillId);
     const updatedEnabled = currentlyChecked
-      ? matchedAsst.enabledSkills.filter((id) => id !== skillId)
-      : [...new Set([...matchedAsst.enabledSkills, skillId])];
+      ? currentIds.filter((id) => id !== skillId)
+      : [...new Set([...currentIds, skillId])];
     await persistBindings(
       [{ assistantId: matchedAsst.id, enabledSkills: updatedEnabled }],
       '技能绑定已保存。',
@@ -175,7 +218,10 @@ export default function SkillsSettingsPage() {
 
   // 加载真实助手用于绑定与展示头像（后端为唯一真实来源）
   useEffect(() => {
-    void reloadBindings().catch(() => setAssistants([]));
+    void reloadBindings().catch(() => {
+      setAssistants([]);
+      setSaveNotice('Assistant binding state is unavailable; retry before editing bindings.');
+    });
   }, [reloadBindings]);
 
   // 当切换 editingSkill 或 selectedFileName 时同步草稿
@@ -203,8 +249,7 @@ export default function SkillsSettingsPage() {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
     const skillIds = matrixSkills.filter((skill) => !skill.local).map((skill) => skill.id);
-    const existing = matchedAsst.enabledSkills.filter((id) => !matrixSkills.some((skill) => skill.name === id));
-    const enabledSkills = [...new Set([...existing, ...skillIds])];
+    const enabledSkills = [...new Set([...normalizeSkillIds(matchedAsst.enabledSkills), ...skillIds])];
     await persistBindings(
       [{ assistantId: matchedAsst.id, enabledSkills }],
       `已为【${matchedAsst.name}】保存当前目录的技能绑定。`,
@@ -215,8 +260,8 @@ export default function SkillsSettingsPage() {
   const revokeAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
-    const idsToRemove = new Set(matrixSkills.flatMap((skill) => [skill.id, skill.name]));
-    const enabledSkills = matchedAsst.enabledSkills.filter((id) => !idsToRemove.has(id));
+    const idsToRemove = new Set(matrixSkills.map((skill) => skill.id));
+    const enabledSkills = normalizeSkillIds(matchedAsst.enabledSkills).filter((id) => !idsToRemove.has(id));
     await persistBindings(
       [{ assistantId: matchedAsst.id, enabledSkills }],
       `已移除【${matchedAsst.name}】在当前目录的技能绑定。`,
@@ -234,7 +279,7 @@ export default function SkillsSettingsPage() {
     await persistBindings(
       assistants.map((assistant) => ({
         assistantId: assistant.id,
-        enabledSkills: [...new Set([...assistant.enabledSkills, skillId])],
+        enabledSkills: [...new Set([...normalizeSkillIds(assistant.enabledSkills), skillId])],
       })),
       `已保存所有助手对【${targetSkill.name}】的技能绑定。`,
     );
@@ -247,7 +292,7 @@ export default function SkillsSettingsPage() {
     await persistBindings(
       assistants.map((assistant) => ({
         assistantId: assistant.id,
-        enabledSkills: assistant.enabledSkills.filter((id) => id !== skillId && id !== targetSkill.name),
+        enabledSkills: normalizeSkillIds(assistant.enabledSkills).filter((id) => id !== skillId),
       })),
       `已移除所有助手对【${targetSkill.name}】的技能绑定。`,
     );
@@ -259,7 +304,7 @@ export default function SkillsSettingsPage() {
     await persistBindings(
       assistants.map((assistant) => ({
         assistantId: assistant.id,
-        enabledSkills: [...new Set([...assistant.enabledSkills, ...skillIds])],
+        enabledSkills: [...new Set([...normalizeSkillIds(assistant.enabledSkills), ...skillIds])],
       })),
       '已保存所有助手的技能绑定。',
     );
@@ -267,11 +312,11 @@ export default function SkillsSettingsPage() {
 
   // 全局全部取消
   const revokeEntireSkillsMatrix = async () => {
-    const idsToRemove = new Set(matrixSkills.flatMap((skill) => [skill.id, skill.name]));
+    const idsToRemove = new Set(matrixSkills.map((skill) => skill.id));
     await persistBindings(
       assistants.map((assistant) => ({
         assistantId: assistant.id,
-        enabledSkills: assistant.enabledSkills.filter((id) => !idsToRemove.has(id)),
+        enabledSkills: normalizeSkillIds(assistant.enabledSkills).filter((id) => !idsToRemove.has(id)),
       })),
       '已移除所有助手在当前目录的技能绑定。',
     );
@@ -403,12 +448,12 @@ export default function SkillsSettingsPage() {
       return;
     }
     const skillIds = targetSkills.map((skill) => skill.id);
-    const removeSet = new Set(targetSkills.flatMap((skill) => [skill.id, skill.name]));
+    const removeSet = new Set(targetSkills.map((skill) => skill.id));
     const updates = assistants.map((assistant) => ({
       assistantId: assistant.id,
       enabledSkills: enable
-        ? [...new Set([...assistant.enabledSkills, ...skillIds])]
-        : assistant.enabledSkills.filter((id) => !removeSet.has(id)),
+        ? [...new Set([...normalizeSkillIds(assistant.enabledSkills), ...skillIds])]
+        : normalizeSkillIds(assistant.enabledSkills).filter((id) => !removeSet.has(id)),
     }));
     const saved = await persistBindings(
       updates,

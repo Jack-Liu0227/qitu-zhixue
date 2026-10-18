@@ -306,6 +306,52 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     }
   });
 
+  it('生成 16 课时光学课程计划：8 周 16 节，覆盖衍射与散射，TheoryMastered 门禁在第 8 节', async () => {
+    const report = await seedOpticsBinding(
+      h.templates,
+      h.bindings,
+      h.bindingStore,
+      h.governance,
+    );
+
+    const generated = await h.plans.generatePlan(STUDENT, {
+      interest: '光学16课时探究',
+      weeks: 8,
+      sessionCount: 16,
+      curriculumSlug: 'optics-physical-inquiry',
+    });
+
+    assert.equal(generated.deduplicated, false);
+    assert.equal(generated.plan.templateVersion, report.versionId);
+    assert.equal(generated.plan.weeks, 8);
+    assert.equal(generated.plan.sessions.length, 16);
+    assert.equal(generated.plan.modules.length, 8, '8 个周模块');
+
+    const confirmed = await h.plans.confirmPlan(STUDENT, generated.plan.id, 'confirm-optics-16s', {});
+    assert.ok(confirmed.project.id.startsWith('proj-'));
+
+    const sessions = await h.plans.listSessions(STUDENT, generated.plan.id);
+    assert.equal(sessions.length, 16, '共 16 节课');
+
+    // 门禁在第 8 节（index 7，前 8 节为理论掌握）
+    const gateSession = sessions[7];
+    assert.ok(gateSession !== undefined);
+    assert.equal(gateSession.theoryObjectiveIds.length, 4, '第 8 节承载全部 4 个理论门禁目标');
+
+    // 实践课在第 9 至 14 节（index 8 ~ 13），门禁前均处于锁定状态
+    const practiceSessions = sessions.slice(8, 14);
+    assert.equal(practiceSessions.length, 6, '实践课共 6 节');
+    for (const s of practiceSessions) {
+      assert.equal(s.practiceUnlocked, false, 'TheoryMastered 前实践课保持锁定');
+    }
+
+    // 衍射与散射在实践期第 5 周与第 6 周模块中（modules[4], modules[5]）
+    const week5Module = generated.plan.modules[4];
+    const week6Module = generated.plan.modules[5];
+    assert.ok(week5Module?.objective.includes('衍射'), '第 5 周覆盖单缝衍射条纹仿真');
+    assert.ok(week6Module?.name.includes('散射') || week6Module?.objective.includes('散射'), '第 6 周覆盖微粒介质散射仿真');
+  });
+
   it('解析不到生效绑定时响亮失败（CURRICULUM_TEMPLATE_UNAVAILABLE），不静默回退', async () => {
     await assert.rejects(
       h.plans.generatePlan(STUDENT, {

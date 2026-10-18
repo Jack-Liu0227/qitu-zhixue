@@ -48,6 +48,8 @@ export interface ProjectDetail extends ProjectListItem {
    * （并入 GET /projects/:id 或独立端点）。客户端只读，不写。
    */
   theoryMastered: boolean;
+  /** Read-only correlation to the server-owned learning plan. */
+  learningPlanId?: string | null;
 }
 
 /** C4 阶段视图。`name` 逐字来自模板，代码中不设阶段名常量。 */
@@ -95,10 +97,13 @@ export interface TheoryQuestion {
   id: string;
   prompt: string;
   options: string[];
+  /** Open questions are rendered as a text response instead of radio buttons. */
+  allowFreeText?: boolean;
 }
 export interface TheoryAnswer {
   questionId: string;
   optionIndex: number;
+  answer?: string;
 }
 /** C6 响应（`passed:false` 属正常业务态，非 409）。 */
 export interface TheoryCheckResult {
