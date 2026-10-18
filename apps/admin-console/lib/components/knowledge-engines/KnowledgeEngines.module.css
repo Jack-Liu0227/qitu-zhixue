@@ -582,3 +582,55 @@
     font-size: 14px !important;
   }
 }
+
+.hostedDetail {
+  max-width: 1040px;
+  margin: 8px auto 0;
+}
+.hostedDetail .detailHeader {
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 17px;
+}
+.hostedTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hostedTitle h2 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.hostedDetail .detailHeader p {
+  color: #93a2b7;
+  font-size: 11px;
+  margin-top: 5px;
+}
+.instancePicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 25px;
+  font-size: 12px;
+  color: #8193ad;
+}
+.instancePicker select {
+  max-width: 360px;
+}
+@media (max-width: 640px) {
+  .hostedTitle {
+    gap: 7px;
+  }
+  .hostedTitle h2 {
+    font-size: 21px;
+  }
+  .hostedDetail .detailHeader > div {
+    min-width: 0;
+  }
+  .instancePicker {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

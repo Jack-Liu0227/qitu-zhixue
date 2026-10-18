@@ -13,19 +13,19 @@
 
 ## 引擎及行为
 
-| 引擎 | 关键配置 | 实际后端行为 |
-| --- | --- | --- |
-| LlamaIndex | 嵌入模型、向量/BM25、重排、FAISS/HNSW、分块及图像并发 | 保留已验证的原始 RAGService 管线，真实嵌入请求预检 |
-| PageIndex OSS | 索引与推理模型 | 官方本地 SDK，保留原始 PDF，索引后通过只读 SDK 工具推理读取 |
-| GraphRAG | 聊天/嵌入模型、local/global/drift/basic、社区层级与选择 | 原始 GraphRAG 管线，文本单元与文件成员映射；无可验证出处的生成摘要不作为材料 |
-| LightRAG | 基础/抽取/关键词/查询/视觉模型、模式及并发 | 原生 SDK、角色配置与模型快照；视觉模型未绑定时关闭视觉 |
-| LightRAG Server | 服务地址、模式 | 原始 HTTP 客户端，认证状态与密钥检查，检索仅返回上下文 |
-| PageIndex Cloud | 服务端凭证、推理读取模型 | 官方 Cloud SDK 发现读取工具验证认证；上传文档、构建索引，使用推理工具读取 |
-| ima | MCP 连接引用、远端库白名单、原文收集授权 | 沿用现有 MCP 凭证；列库验证账户，关联时验证库 ID，检索受白名单限制 |
-| WeKnora | 地址及远端库 ID | 原始 REST 客户端列库验证身份及资源，调用检索接口 |
-| Obsidian | Vault 路径 | 仅检查服务器允许目录；同步使用现有知识来源流程，不把目录检查当成检索能力 |
-| MarginNote | 已同步资料数据库、设备 ID | 原始 MarginNoteStore 检查设备活动状态、搜索同步笔记；设备采集及配对由插件完成 |
-| Kiwix | 服务地址及 ZIM 名称 | 原始客户端列归档、检查目标、读取全文检索结果 |
+| 引擎            | 关键配置                                                | 实际后端行为                                                                  |
+| --------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| LlamaIndex      | 嵌入模型、向量/BM25、重排、FAISS/HNSW、分块及图像并发   | 保留已验证的原始 RAGService 管线，真实嵌入请求预检                            |
+| PageIndex OSS   | 索引与推理模型                                          | 官方本地 SDK，保留原始 PDF，索引后通过只读 SDK 工具推理读取                   |
+| GraphRAG        | 聊天/嵌入模型、local/global/drift/basic、社区层级与选择 | 原始 GraphRAG 管线，文本单元与文件成员映射；无可验证出处的生成摘要不作为材料  |
+| LightRAG        | 基础/抽取/关键词/查询/视觉模型、模式及并发              | 原生 SDK、角色配置与模型快照；视觉模型未绑定时关闭视觉                        |
+| LightRAG Server | 服务地址、模式                                          | 原始 HTTP 客户端，认证状态与密钥检查，检索仅返回上下文                        |
+| PageIndex Cloud | 服务端凭证、推理读取模型                                | 官方 Cloud SDK 发现读取工具验证认证；上传文档、构建索引，使用推理工具读取     |
+| ima             | MCP 连接引用、远端库白名单、原文收集授权                | 沿用现有 MCP 凭证；列库验证账户，关联时验证库 ID，检索受白名单限制            |
+| WeKnora         | 地址及远端库 ID                                         | 原始 REST 客户端列库验证身份及资源，调用检索接口                              |
+| Obsidian        | Vault 路径                                              | 仅检查服务器允许目录；同步使用现有知识来源流程，不把目录检查当成检索能力      |
+| MarginNote      | 已同步资料数据库、设备 ID                               | 原始 MarginNoteStore 检查设备活动状态、搜索同步笔记；设备采集及配对由插件完成 |
+| Kiwix           | 服务地址及 ZIM 名称                                     | 原始客户端列归档、检查目标、读取全文检索结果                                  |
 
 PageIndex 在上游明确禁止普通 RAG search；适配器使用官方只读工具、最多 8 轮推理，从真实页面读取中形成命中，最终生成的回答不当作证据。OSS 仅接受有原始 PDF 的材料，缺少时返回 `PAGEINDEX_PDF_ORIGINAL_REQUIRED`。单次材料请求受 7 MiB 预算限制。
 
@@ -50,3 +50,33 @@ PageIndex 在上游明确禁止普通 RAG search；适配器使用官方只读�
 所有引擎配置、模型选项及检查接口仅限管理员。学生端依然按已有知识库权限检索，不因添加引擎扩大访问范围。新实例默认关闭，不自动绑定新模型或更改现有库。
 
 验证包括 API 回归测试、配置非法字段/密钥/范围拒绝、ima MCP 元数据与库授权、真实 LightRAG HTTP 客户端协议、PageIndex 页面证据隔离、MarginNote 撤销设备、Python 模块边界、生产构建、管理员页面与未授权接口。外部引擎的端到端索引仍需真实服务、可选依赖和对应凭证，不能用依赖探测代替真实业务验收。
+
+## 远程引擎配置页（2026-10-18）
+
+LightRAG Server、PageIndex Cloud、Tencent ima、WeKnora 采用参照 DeepTutor 的分区：引擎介绍、可折叠环境要求、连接/账户凭证、检索模式（仅 LightRAG Server）、实例高级设置和关联知识库。沿用启途配色、字体和响应式卡片。其余本地引擎与工具 JSON 树保持原有结构。
+
+网页表单与工具中心 JSON 编辑器共用 `knowledgeEngines[实例ID].config`，不额外维护凭证表。按管理员要求，URL、ID 和 API Key 均可直接查看和修改，明文保存于平台配置修订。保存沿用管理员权限、版本冲突保护、幂等写入和脱敏审计。审计只记录修订号，不包含配置正文。
+
+```json
+{
+  "name": "Tencent ima",
+  "description": "腾讯 ima 知识库",
+  "provider": "ima",
+  "enabled": true,
+  "config": {
+    "server_url": "https://ima.qq.com",
+    "clientId": "填写 Client ID",
+    "apiKey": "填写 API Key",
+    "allowedKnowledgeBaseIds": ["授权的知识库 ID"]
+  }
+}
+```
+
+- LightRAG Server：`server_url`、可选 `apiKey`、`mode` 和 `top_k`；五种模式采用卡片选择。
+- PageIndex Cloud：官方 `server_url=https://api.pageindex.ai`、`apiKey`、`llmModelRef`。服务地址由官方 SDK 固定使用；非官方地址在检查时明确拒绝，避免无效配置被误报成功。
+- Tencent ima：官方 `server_url=https://ima.qq.com`、`clientId`、`apiKey`、`allowedKnowledgeBaseIds`。配置凭证时使用 DeepTutor OpenAPI 客户端；未配置时继续兼容已有 MCP 桥接，不更改既有白名单与智能体权限。
+- WeKnora：`server_url`、`apiKey`、可选 `remoteKnowledgeBaseId`。只检索已有远程知识库，资料与索引由 WeKnora 管理。
+
+临时测试接口 `POST /api/v1/admin/knowledge/engines/:id/probe` 接收当前 `engine`，用与 JSON 相同的合同校验并执行真实检查，不保存配置或健康状态。修改草稿使旧测试结果失效。正式 `/check` 只检查保存后的配置；平台修订变化使旧健康状态失效。单库覆盖到不同服务 URL 时不自动转发实例原有密钥。
+
+覆盖保存与幂等回放、权限拒绝、URL/ID/API Key 合同、真实上游客户端请求、桌面/平板/手机布局和表单与 JSON 一致性。尚未安装或未配置的外部引擎如实显示状态，不以填写配置代替连接成功。

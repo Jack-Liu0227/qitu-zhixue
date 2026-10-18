@@ -59,6 +59,30 @@ async def remote(data):
     config.update(data.get("externalRef", {}))
     url = config.get("serverUrl") or config.get("server_url")
     query = str(data.get("query", ""))[:2000]
+    credentials = {k: config[k] for k in ("apiKey", "clientId") if k in config}
+    credentials.update(data.get("credentials") or {})
+    if provider == "ima":
+        if url and url.rstrip("/") != "https://ima.qq.com":
+            return result(False, error="ENGINE_CLOUD_URL_UNSUPPORTED")
+        from deeptutor.services.rag.pipelines.ima.config import ImaConfig
+        from deeptutor.services.rag.pipelines.ima.client import ImaClient
+        key, client_id = credentials.get("apiKey", ""), credentials.get("clientId", "")
+        if not key or not client_id:
+            return result(False, "needs_key", "ENGINE_NEEDS_KEY")
+        remote_id = config.get("remoteKnowledgeBaseId") or data.get("remoteKnowledgeBaseId", "")
+        client = ImaClient(ImaConfig(client_id, key, remote_id), timeout=12)
+        if op == "connect":
+            if not remote_id:
+                return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
+            if not await client.get_knowledge_base():
+                return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
+        elif op == "search":
+            page = await client.search_knowledge(query, limit=8)
+            return result(True, manifest={"items": [{"media_id": item.media_id, "title": item.title, "highlight_content": item.highlight} for item in page.documents]})
+        else:
+            found = await client.search_knowledge_bases()
+            return result(True, manifest={"accessibleBases": len(found.get("knowledge_bases", []))}, checks=[check("account", "ima 账户与知识库访问", True, "官方 OpenAPI 认证检查通过")])
+        return result(True)
     if provider == "obsidian":
         try:
             path = allowed_path(config.get("vaultPath"))
@@ -90,7 +114,7 @@ async def remote(data):
     if provider == "lightrag-server":
         from deeptutor.services.rag.pipelines.lightrag_server.config import LightRagServerConfig
         from deeptutor.services.rag.pipelines.lightrag_server.client import LightRagServerClient
-        client = LightRagServerClient(LightRagServerConfig(url, os.getenv("QITU_LIGHTRAG_SERVER_API_KEY", "")), timeout=12)
+        client = LightRagServerClient(LightRagServerConfig(url, credentials.get("apiKey", os.getenv("QITU_LIGHTRAG_SERVER_API_KEY", ""))), timeout=12)
         status = await client.auth_status()
         valid = ("auth_configured" in status or "core_version" in status) and await client.verify_key()
         if not valid:
@@ -102,7 +126,7 @@ async def remote(data):
     if provider == "weknora":
         from deeptutor.services.rag.pipelines.weknora.config import WeKnoraConfig
         from deeptutor.services.rag.pipelines.weknora.client import WeKnoraClient
-        key = os.getenv("QITU_WEKNORA_API_KEY", "")
+        key = credentials.get("apiKey", os.getenv("QITU_WEKNORA_API_KEY", ""))
         if not key:
             return result(False, "needs_key", "ENGINE_NEEDS_KEY")
         remote_id = config.get("remoteKnowledgeBaseId", "")
@@ -149,7 +173,9 @@ async def local(data):
         return result(False, error="MODEL_NOT_BOUND", checks=checks)
     if provider in {"pageindex", "pageindex-oss"}:
         if provider == "pageindex":
-            key = os.getenv("QITU_PAGEINDEX_CLOUD_TOKEN", "") or os.getenv("QITU_PAGEINDEX_API_KEY", "")
+            if config.get("server_url", "https://api.pageindex.ai").rstrip("/") != "https://api.pageindex.ai":
+                return result(False, error="ENGINE_CLOUD_URL_UNSUPPORTED", checks=checks)
+            key = (data.get("credentials") or config).get("apiKey", os.getenv("QITU_PAGEINDEX_CLOUD_TOKEN", "") or os.getenv("QITU_PAGEINDEX_API_KEY", ""))
             if not key:
                 return result(False, "needs_key", "ENGINE_NEEDS_KEY", checks=checks)
             from deeptutor.services.rag.pipelines.pageindex.config import PageIndexConfig
@@ -366,7 +392,7 @@ async def run(data):
     if (source / "QITU_PIN").read_text().strip() != PIN:
         return result(False, "unavailable", "UPSTREAM_VERSION_MISMATCH")
     provider = data.get("provider")
-    if provider not in LOCAL | {"lightrag-server","weknora","kiwix","obsidian","marginnote"}:
+    if provider not in LOCAL | {"ima","lightrag-server","weknora","kiwix","obsidian","marginnote"}:
         return result(False,error="ENGINE_ADAPTER_NOT_READY")
     if data.get("operation") not in {"check","connect","build","search"}:
         return result(False,error="ENGINE_OPERATION_INVALID")

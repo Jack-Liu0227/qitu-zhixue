@@ -43,10 +43,38 @@ const healthLabels: Record<string, string> = {
 };
 const message = (e: unknown) => (e instanceof Error ? e.message : '请求失败，请重试');
 const json = (value: unknown) => JSON.stringify(value, null, 2);
-function valueAt(state: CenterConfig, target: string) {
+function valueAt(state: CenterConfig, target: string): unknown {
   const [section, id] = target.split('/');
-  if (target === 'global') return state.config;
-  if (section === 'knowledgeEngines') return state.config.knowledgeEngines[id!];
+  if (target === 'global')
+    return {
+      ...state.config,
+      knowledgeEngines: Object.fromEntries(
+        Object.keys(state.config.knowledgeEngines).map((id) => [
+          id,
+          valueAt(state, `knowledgeEngines/${id}`),
+        ]),
+      ),
+    };
+  if (section === 'knowledgeEngines') {
+    const engine = state.config.knowledgeEngines[id!];
+    if (engine && ['lightrag-server', 'pageindex', 'ima', 'weknora'].includes(engine.provider))
+      return {
+        ...engine,
+        config: {
+          server_url:
+            engine.provider === 'ima'
+              ? 'https://ima.qq.com'
+              : engine.provider === 'pageindex'
+                ? 'https://api.pageindex.ai'
+                : '',
+          apiKey: '',
+          ...(engine.provider === 'ima' ? { clientId: '' } : {}),
+          ...(engine.provider === 'weknora' ? { remoteKnowledgeBaseId: '' } : {}),
+          ...engine.config,
+        },
+      };
+    return engine;
+  }
   if (section === 'mcpServers') return state.config.mcpServers[id!];
   return state.config.platformTools['project-knowledge'];
 }
@@ -612,7 +640,7 @@ export function KnowledgeConfiguration({
               {target === 'global'
                 ? '全局包含 mcpServers、knowledgeEngines、platformTools；修改后统一校验并保存。'
                 : target.startsWith('knowledgeEngines/')
-                  ? '配置此知识引擎实例；模型使用 providerId:modelId 引用，凭证使用连接引用。'
+                  ? '配置此知识引擎实例；URL 使用 server_url，账户 ID 使用 clientId，API Key 使用 apiKey。与知识中心表单同步。'
                   : target === PROJECT
                     ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
                     : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}

@@ -75,6 +75,16 @@ const server = f(
   '连接设置',
   '独立服务的 HTTP(S) 地址；私有地址需在服务器允许清单中登记',
 );
+const apiKey = f(
+  'apiKey',
+  'API Key',
+  'string',
+  '连接凭证',
+  '管理员可在网页表单或 JSON 中查看和修改',
+  '',
+);
+const cloudUrl = (url: string) =>
+  f('server_url', '服务地址', 'string', '连接设置', '官方云端服务地址，由上游客户端使用', url);
 const source = [
   f(
     'allowedKnowledgeBaseIds',
@@ -210,12 +220,13 @@ const defs: Record<string, Omit<EngineDefinition, 'provider' | 'upstreamCommit'>
     description: '连接自行部署的 LightRAG Server，就地检索远端图谱与向量。',
     icon: 'lightrag.jpg',
     modes: ['naive', 'local', 'global', 'hybrid', 'mix'],
-    prerequisites: '需先部署 LightRAG Server；API key 仅在服务器凭证配置中提供。',
+    prerequisites: '需先部署 LightRAG Server；API Key 可在网页或 JSON 配置中编辑。',
     installHint: null,
     modelKinds: [],
     management: ['设置默认服务地址', '认证检查', '选择检索模式', '连接已有知识库'],
     fields: [
       server,
+      apiKey,
       f(
         'mode',
         '默认检索模式',
@@ -237,7 +248,7 @@ const defs: Record<string, Omit<EngineDefinition, 'provider' | 'upstreamCommit'>
     installHint: null,
     modelKinds: ['llm'],
     management: ['凭证状态检查', '推理读取模型', '连接检查', '查看关联知识库'],
-    fields: [model('llmModelRef', '推理读取模型')],
+    fields: [cloudUrl('https://api.pageindex.ai'), apiKey, model('llmModelRef', '推理读取模型')],
   },
   ima: {
     description: '连接腾讯 ima 已有知识库，检索资料、浏览文档并读取原文。',
@@ -249,6 +260,9 @@ const defs: Record<string, Omit<EngineDefinition, 'provider' | 'upstreamCommit'>
     modelKinds: [],
     management: ['账户连接检查', '远端库授权', '原文收集授权', '连接已有知识库'],
     fields: [
+      cloudUrl('https://ima.qq.com'),
+      apiKey,
+      f('clientId', 'Client ID', 'string', '连接凭证', 'ima 账户的 OpenAPI Client ID', ''),
       f('connectionRef', '连接引用', 'string', '连接设置', '使用服务器已有 ima 桥接', 'ima-legacy'),
       ...source,
     ],
@@ -263,6 +277,7 @@ const defs: Record<string, Omit<EngineDefinition, 'provider' | 'upstreamCommit'>
     management: ['默认服务地址', '认证检查', '连接已有知识库'],
     fields: [
       server,
+      apiKey,
       f(
         'remoteKnowledgeBaseId',
         '默认远端库 ID',

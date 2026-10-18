@@ -1,0 +1,444 @@
+.root {
+  color: #243b5a;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.8;
+  padding-bottom: 16px;
+}
+.intro {
+  color: #6b7f9b;
+  font-size: 14px;
+  margin: -12px 0 32px !important;
+  max-width: 880px;
+}
+.section {
+  margin-top: 30px;
+}
+.section h3,
+.environment summary,
+.advanced summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #647b9a;
+  margin: 0 0 14px;
+}
+.section h3 > svg,
+.root summary svg {
+  color: #7d91ad;
+  flex-shrink: 0;
+}
+.card {
+  border: 1px solid #e1e8f2;
+  border-radius: 18px;
+  padding: 26px 28px;
+  background: #fff;
+  min-width: 0;
+}
+.card > p {
+  color: #71829b;
+  margin: 0 0 22px;
+  line-height: 1.9;
+  max-width: 900px;
+}
+.environment summary,
+.advanced summary {
+  cursor: pointer;
+  list-style: none;
+  justify-content: space-between;
+}
+.environment summary::-webkit-details-marker,
+.advanced summary::-webkit-details-marker {
+  display: none;
+}
+.root summary > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.chevron {
+  font-size: 19px;
+  transition: transform 0.15s;
+}
+details[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+.fields {
+  display: grid;
+  gap: 22px;
+}
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #415b7e;
+}
+.fields label > span {
+  font-weight: 400;
+  color: #8796ad;
+}
+.root input:not([type='checkbox']),
+.root select,
+.root textarea {
+  border: 1px solid #dfe7f1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #304c70;
+  background: #fcfdff;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  outline-color: #9bbbf4;
+  box-sizing: border-box;
+}
+.root input::placeholder {
+  color: #9ba9bd;
+  font-weight: 400;
+}
+.root input:read-only {
+  color: #8b9bb0;
+  background: #f7f9fc;
+}
+.secretInput {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.secretInput input {
+  padding-right: 66px !important;
+}
+.secretInput button {
+  position: absolute;
+  right: 7px;
+  padding: 5px 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+  font-size: 11px !important;
+}
+.root button {
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid #dfe7f2;
+  border-radius: 10px;
+  padding: 10px 17px;
+  background: #fff;
+  color: #4a6487;
+  line-height: 1.6;
+}
+.root button:hover:enabled {
+  border-color: #93b5f4;
+  background: #f6f9ff;
+}
+.root button:focus-visible,
+.root summary:focus-visible,
+.root a:focus-visible {
+  outline: 3px solid #adc9fa;
+  outline-offset: 3px;
+}
+.root button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.root button.primary {
+  background: #2468ed;
+  color: #fff;
+  border-color: #2468ed;
+  padding-inline: 22px;
+  box-shadow: 0 3px 7px #2468ed12;
+}
+.root button.primary:hover:enabled {
+  background: #195bda;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.actions > span {
+  color: #8899af;
+  font-size: 11px;
+}
+.formFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #edf1f7;
+}
+.formFooter > div:first-child {
+  font-size: 11px;
+  color: #8494aa;
+}
+.root a {
+  color: #2468ed;
+  text-decoration: none;
+  font-size: 12px;
+}
+.footnote {
+  display: block;
+  color: #91a0b5;
+  font-size: 11px;
+  margin-top: 13px;
+  font-weight: 400;
+}
+.credentialBadge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5fb;
+  color: #7087a7;
+  font-size: 10px;
+  font-weight: 500;
+}
+.sectionHint {
+  color: #8092ac;
+  font-size: 12px;
+  margin: -5px 0 16px !important;
+}
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.root .modeCard {
+  text-align: left;
+  border-radius: 14px;
+  padding: 19px 21px;
+  min-width: 0;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.modeCard > div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.modeCard code {
+  font-size: 13px;
+  color: #365477;
+}
+.modeCard strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #617b9f;
+}
+.modeCard p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: #8293ab;
+  line-height: 1.8;
+}
+.root .modeCard.selected {
+  border-color: #5988ed;
+  background: #f3f7ff;
+  box-shadow: inset 0 0 0 1px #5988ed22;
+}
+.selected > div > span {
+  color: #2468ed;
+  font-weight: 700;
+}
+.fields .toggle {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.toggle input {
+  accent-color: #2468ed;
+  width: 15px;
+  height: 15px;
+}
+.toggle span {
+  font-size: 11px;
+}
+.baseCount {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #eaf1fc;
+  font-size: 11px;
+  color: #5e7faa;
+}
+.empty {
+  border: 1px dashed #dfe7f2;
+  border-radius: 18px;
+  padding: 34px 22px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 9px;
+  color: #8c9db4;
+  background: #fcfdff;
+}
+.empty > svg {
+  width: 27px;
+  height: 27px;
+  margin-bottom: 2px;
+  color: #a7bad3;
+}
+.empty strong {
+  font-weight: 500;
+  font-size: 13px;
+}
+.empty p {
+  font-size: 11px;
+  margin: 0;
+  color: #9aa8ba;
+}
+.baseList {
+  border: 1px solid #e1e8f2;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.root .baseList button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  gap: 14px;
+  border: 0;
+  border-radius: 0;
+  padding: 18px 22px;
+}
+.baseList button + button {
+  border-top: 1px solid #edf1f7 !important;
+}
+.baseIcon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f0f5fd;
+  color: #6283b1;
+  flex-shrink: 0;
+}
+.baseList button > span:nth-child(2) {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.baseList small {
+  display: block;
+  font-size: 10px;
+  color: #8b9cb3;
+}
+.baseList button > span:last-child {
+  font-size: 11px;
+  color: #3473de;
+}
+.error,
+.success {
+  padding: 13px 16px;
+  margin: 15px 0;
+  border-radius: 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.error {
+  background: #fff2f2;
+  color: #b14d58;
+}
+.success {
+  background: #edf8f3;
+  color: #338164;
+}
+.error p,
+.success p {
+  margin: 3px 0 0;
+}
+.error button {
+  margin-left: 12px;
+  padding: 4px 9px;
+}
+.loading {
+  color: #8094b0;
+  font-size: 12px;
+  padding-bottom: 16px;
+}
+.checks {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f7;
+}
+.checks > div {
+  display: flex;
+  gap: 10px;
+  padding-top: 12px;
+}
+.checks p {
+  margin: 0;
+  font-size: 12px;
+}
+.checks small {
+  display: block;
+  font-size: 11px;
+  color: #8698b1;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.goodText {
+  color: #318168;
+}
+.warnText {
+  color: #ad7c33;
+}
+@media (max-width: 640px) {
+  .root {
+    font-size: 13px;
+  }
+  .card {
+    padding: 21px 19px;
+    border-radius: 14px;
+  }
+  .intro {
+    font-size: 12px;
+    margin-bottom: 24px !important;
+  }
+  .section {
+    margin-top: 24px;
+  }
+  .formFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .formFooter .actions {
+    width: 100%;
+  }
+  .formFooter .actions button {
+    flex: 1;
+  }
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+  .root .modeCard {
+    padding: 17px 19px;
+  }
+  .baseList button > span:last-child {
+    font-size: 0;
+  }
+  .baseList button > span:last-child::after {
+    content: '↗';
+    font-size: 15px;
+  }
+  .credentialBadge {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 640px) {
+  .root .formFooter button {
+    padding-inline: 12px;
+    white-space: nowrap;
+  }
+}

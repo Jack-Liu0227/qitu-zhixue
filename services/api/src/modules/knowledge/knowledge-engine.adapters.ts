@@ -35,6 +35,12 @@ function envCredential(...names: string[]): string | null {
 export class ImaKnowledgeAdapter implements KnowledgeEngineAdapter {
   readonly provider = 'ima';
   private readonly client = new ImaMcpClient();
+  constructor(
+    private readonly direct?: (
+      engine: EngineConfig,
+      input: Record<string, unknown>,
+    ) => Promise<AdapterReceipt | null>,
+  ) {}
   private configured() {
     return Boolean(process.env.QITU_IMA_MCP_URL && envCredential('QITU_IMA_MCP_TOKEN'));
   }
@@ -48,12 +54,14 @@ export class ImaKnowledgeAdapter implements KnowledgeEngineAdapter {
       },
     ]);
   }
-  async readiness(): Promise<AdapterReceipt> {
-    if (!this.configured())
-      return { ok: false, status: 'needs_key', errorCode: 'ENGINE_NEEDS_KEY' };
-    return this.check({} as EngineConfig);
+  async readiness(engine?: EngineConfig): Promise<AdapterReceipt> {
+    return this.check(engine);
   }
   async check(_engine?: EngineConfig): Promise<AdapterReceipt> {
+    if (_engine && this.direct) {
+      const receipt = await this.direct(_engine, { operation: 'check' });
+      if (receipt) return receipt;
+    }
     if (!this.configured())
       return { ok: false, status: 'needs_key', errorCode: 'ENGINE_NEEDS_KEY' };
     try {
@@ -76,6 +84,10 @@ export class ImaKnowledgeAdapter implements KnowledgeEngineAdapter {
     _engine: EngineConfig,
     externalRef: Record<string, string>,
   ): Promise<AdapterReceipt> {
+    if (this.direct) {
+      const receipt = await this.direct(_engine, { operation: 'connect', externalRef });
+      if (receipt) return receipt;
+    }
     const checked = await this.check();
     if (!checked.ok) return checked;
     const id = externalRef.remoteKnowledgeBaseId;
@@ -109,6 +121,14 @@ export class ImaKnowledgeAdapter implements KnowledgeEngineAdapter {
       !engine.config.allowedKnowledgeBaseIds.includes(id)
     )
       return { ok: false, status: 'needs_setup', errorCode: 'SOURCE_NOT_AUTHORIZED' };
+    if (this.direct) {
+      const receipt = await this.direct(engine, {
+        ...input,
+        remoteKnowledgeBaseId: id,
+        operation: 'search',
+      });
+      if (receipt) return receipt;
+    }
     try {
       const tool = (await this.tools()).find((t) => t.name === 'ima_search_knowledge');
       if (!tool) return { ok: false, status: 'unavailable', errorCode: 'SOURCE_TOOL_UNAVAILABLE' };
@@ -160,9 +180,7 @@ class UpstreamAdapter implements KnowledgeEngineAdapter {
   }
 }
 export class KnowledgeAdapterRegistry {
-  private readonly adapters = new Map<string, KnowledgeEngineAdapter>([
-    ['ima', new ImaKnowledgeAdapter()],
-  ]);
+  private readonly adapters = new Map<string, KnowledgeEngineAdapter>();
   constructor(
     execute?: (
       engine: EngineConfig,
@@ -174,7 +192,12 @@ export class KnowledgeAdapterRegistry {
       manifest?: Record<string, unknown>;
       checks?: AdapterReceipt['checks'];
     }>,
+    imaDirect?: (
+      engine: EngineConfig,
+      input: Record<string, unknown>,
+    ) => Promise<AdapterReceipt | null>,
   ) {
+    this.adapters.set('ima', new ImaKnowledgeAdapter(imaDirect));
     if (execute)
       for (const provider of ['weknora', 'lightrag-server', 'kiwix', 'obsidian', 'marginnote'])
         this.adapters.set(

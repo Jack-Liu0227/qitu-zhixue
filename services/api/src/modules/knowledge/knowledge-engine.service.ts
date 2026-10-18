@@ -1,4 +1,10 @@
-import { Injectable, Inject, Optional, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Inject,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { spawn } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { engineDefinition } from './knowledge-engine.catalog';
@@ -10,7 +16,8 @@ import {
   throwHttpForIdempotencyError,
 } from '../../common/idempotency';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
-import type { EngineConfig } from './knowledge-center.config';
+import { record, validateKnowledgeConfig, type EngineConfig } from './knowledge-center.config';
+const REMOTE_CREDENTIAL_PROVIDERS = ['lightrag-server', 'pageindex', 'ima', 'weknora'];
 import { KnowledgeAdapterRegistry, type EngineReadiness } from './knowledge-engine.adapters';
 
 export interface EngineHit {
@@ -31,8 +38,13 @@ export interface EngineReceipt {
 /** Private process adapter. No paths, credentials or raw upstream diagnostics cross the API. */
 @Injectable()
 export class KnowledgeEngineService {
-  private readonly adapters = new KnowledgeAdapterRegistry((engine, request) =>
-    this.upstream(engine, request),
+  private readonly adapters = new KnowledgeAdapterRegistry(
+    (engine, request) => this.upstream(engine, request),
+    async (engine, request) => {
+      if (!engine.config.apiKey && !engine.config.clientId) return null;
+      const receipt = await this.upstream(engine, request);
+      return { ...receipt, status: receipt.status ?? (receipt.ok ? 'ready' : 'unavailable') };
+    },
   );
   constructor(
     private readonly center: KnowledgeCenterService,
@@ -93,15 +105,13 @@ export class KnowledgeEngineService {
     });
   }
   modelOptions() {
-    return this.models
-      .listAgentModelOptions()
-      .map((model) => ({
-        value: `${model.providerId}:${model.modelId}`,
-        label: model.label,
-        available: model.available,
-        input: model.input,
-        output: model.output,
-      }));
+    return this.models.listAgentModelOptions().map((model) => ({
+      value: `${model.providerId}:${model.modelId}`,
+      label: model.label,
+      available: model.available,
+      input: model.input,
+      output: model.output,
+    }));
   }
   private async upstream(
     engine: EngineConfig,
@@ -163,8 +173,29 @@ export class KnowledgeEngineService {
         });
       }
     }
+    const credentials = REMOTE_CREDENTIAL_PROVIDERS.includes(engine.provider)
+      ? Object.fromEntries(
+          ['apiKey', 'clientId']
+            .filter((key) => engine.config[key] !== undefined)
+            .map((key) => [key, engine.config[key]]),
+        )
+      : undefined;
+    const overrideUrl = (request.externalRef as Record<string, unknown> | undefined)?.serverUrl;
+    if (
+      credentials &&
+      overrideUrl &&
+      String(overrideUrl).replace(/\/+$/, '') !==
+        String(engine.config.server_url ?? '').replace(/\/+$/, '')
+    )
+      credentials.apiKey = '';
     const receipt = await this.callBridge(
-      { ...request, provider: engine.provider, config: engine.config, models: resolved },
+      {
+        ...request,
+        credentials,
+        provider: engine.provider,
+        config: engine.config,
+        models: resolved,
+      },
       true,
     );
     if (receipt.ok && checks.some((c) => !c.ok && !c.optional))
@@ -232,6 +263,24 @@ export class KnowledgeEngineService {
       child.stdin.on('error', () => {});
       child.stdin.end(JSON.stringify(request));
     });
+  }
+  async probe(id: string, body: unknown) {
+    const input = record(body);
+    if (Object.keys(input).some((key) => !['engine'].includes(key)))
+      throw new BadRequestException('连接测试参数无效');
+    const { config } = await this.center.configuration();
+    const next = validateKnowledgeConfig(
+      { knowledgeEngines: { ...config.knowledgeEngines, [id]: input.engine } },
+      config,
+    );
+    const engine = next.knowledgeEngines[id]!;
+    if (!REMOTE_CREDENTIAL_PROVIDERS.includes(engine.provider))
+      throw new BadRequestException('该引擎不支持连接预检');
+    if (engine.provider === 'ima') {
+      if (!engine.config.apiKey && !engine.config.clientId)
+        return this.adapterFor('ima')!.check(engine);
+    }
+    return this.upstream(engine, { operation: 'check' });
   }
   async check(id: string, key?: string) {
     const run = async () => {

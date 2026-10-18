@@ -269,10 +269,19 @@ export function validateKnowledgeConfig(
       if (current.knowledgeEngines[id] && current.knowledgeEngines[id].provider !== e.provider)
         invalid('已有引擎不能变更 provider');
       const config = record(e.config);
-      if (Object.keys(config).some((key) => SECRET_FIELD.test(key)))
+      if (
+        Object.keys(config).some(
+          (key) =>
+            SECRET_FIELD.test(key) &&
+            !(
+              key === 'apiKey' &&
+              ['lightrag-server', 'pageindex', 'ima', 'weknora'].includes(String(e.provider))
+            ),
+        )
+      )
         throw new BadRequestException({
           code: 'CONFIG_SECRET_FORBIDDEN',
-          message: 'JSON 配置不得包含凭证',
+          message: '仅远程知识引擎允许通过 apiKey 配置 API 凭证',
         });
       const definition = engineDefinition(String(e.provider));
       const allowed = [
@@ -312,6 +321,16 @@ export function validateKnowledgeConfig(
           )
             invalid(`${key} 清单无效`);
         }
+        if (
+          key === 'apiKey' &&
+          (typeof value !== 'string' || value.length > 2048 || /[\r\n\x00]/.test(value))
+        )
+          invalid('API Key 格式无效');
+        if (
+          key === 'clientId' &&
+          (typeof value !== 'string' || value.length > 256 || /[\r\n\x00]/.test(value))
+        )
+          invalid('Client ID 格式无效');
         if (key === 'server_url') {
           let url: URL;
           try {

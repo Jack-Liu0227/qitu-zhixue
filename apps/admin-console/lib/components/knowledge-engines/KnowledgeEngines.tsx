@@ -12,6 +12,7 @@ import {
 } from '../../api/knowledge-center';
 import { createIdempotentRetryKey } from '../../api/types';
 import styles from './KnowledgeEngines.module.css';
+import { RemoteEngineSettings } from './RemoteEngineSettings';
 
 const labels: Record<string, string> = {
   ready: '可用',
@@ -98,6 +99,12 @@ export function KnowledgeEngines({
   const [models, setModels] = useState<ModelOption[]>([]);
   const [query, setQuery] = useState('');
   const retry = useRef(createIdempotentRetryKey());
+  const detailRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!provider) return;
+    for (let node = detailRef.current; node; node = node.parentElement)
+      node.scrollTo({ top: 0, behavior: 'instant' });
+  }, [provider, instanceId]);
   const group = engines.find((e) => e.provider === provider);
   const instance = group?.instances.find((i) => i.id === instanceId);
   useEffect(() => {
@@ -122,7 +129,14 @@ export function KnowledgeEngines({
             description: target.description,
             provider: target.provider,
             enabled: target.enabled,
-            config: structuredClone(target.config),
+            config: {
+              ...Object.fromEntries(
+                (e.definition?.fields ?? [])
+                  .filter((f) => f.default !== undefined)
+                  .map((f) => [f.key, f.default]),
+              ),
+              ...structuredClone(target.config),
+            },
           }
         : {
             name: e.name,
@@ -148,7 +162,7 @@ export function KnowledgeEngines({
     setDirty(false);
   };
   const save = async () => {
-    if (!draft) return;
+    if (!draft) return false;
     setBusy(true);
     setError('');
     setNotice('');
@@ -177,8 +191,10 @@ export function KnowledgeEngines({
       setCheck(null);
       setNotice('配置已保存；请重新检查连接后使用。');
       await onChanged();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存失败');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -325,8 +341,69 @@ export function KnowledgeEngines({
   };
   if (group && draft) {
     const status = instance?.health?.health_status ?? instance?.health?.status ?? 'unchecked';
+    if (['lightrag-server', 'pageindex', 'ima', 'weknora'].includes(group.provider))
+      return (
+        <section
+          className={`${styles.root} ${styles.hostedDetail}`}
+          aria-label="知识引擎详情"
+          ref={detailRef}
+        >
+          <button className={styles.back} onClick={back}>
+            ← 全部知识引擎
+          </button>
+          <div className={styles.detailHeader}>
+            <Icon engine={group} size={42} />
+            <div>
+              <div className={styles.hostedTitle}>
+                <h2>{group.name}</h2>
+                <Badge status={dirty ? 'needs_setup' : status} />
+              </div>
+              <p>{group.group} · 远程连接</p>
+            </div>
+          </div>
+          {group.instances.length > 1 && (
+            <label className={styles.instancePicker}>
+              切换引擎实例
+              <select
+                aria-label="切换引擎实例"
+                value={instanceId}
+                onChange={(e) => {
+                  if (!dirty || window.confirm('放弃未保存修改？')) open(group, e.target.value);
+                }}
+              >
+                {group.instances.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} · {i.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {error && (
+            <div role="alert" className={styles.error}>
+              {error}
+            </div>
+          )}
+          <RemoteEngineSettings
+            key={`${group.provider}:${instanceId}`}
+            group={group}
+            draft={draft}
+            instanceId={instanceId}
+            dirty={dirty}
+            busy={busy}
+            online={online}
+            check={check}
+            onChange={change}
+            onSave={save}
+            onInspect={inspect}
+            onChanged={onChanged}
+            onOpenBase={onOpenBase}
+            renderField={field}
+          />
+        </section>
+      );
     return (
-      <section className={styles.root} aria-label="知识引擎详情">
+      <section className={styles.root} aria-label="知识引擎详情" ref={detailRef}>
         <button className={styles.back} onClick={back}>
           ← 全部知识引擎
         </button>

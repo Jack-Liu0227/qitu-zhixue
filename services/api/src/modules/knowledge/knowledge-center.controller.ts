@@ -55,6 +55,15 @@ export class KnowledgeCenterController {
     this.actor(cookie);
     return { data: await this.catalog.list(section, id, refresh === '1') };
   }
+  @Post('knowledge/engines/:id/probe')
+  async probeEngine(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    this.actor(cookie);
+    return { data: await this.engine.probe(id, body) };
+  }
   @Get('knowledge/bases')
   async bases(@Headers('cookie') cookie: string | undefined) {
     this.actor(cookie);
