@@ -33,6 +33,7 @@ export default function MessagesPage() {
   const [acting, setActing] = useState(false);
   const pendingAction = useRef<{ key: string; resource: string; action: 'read' | 'mute' } | null>(null);
   const latestLoad = useRef(0);
+  const activeChildId = useRef('');
 
   const load = useCallback((id: string) => {
     const requestId = ++latestLoad.current;
@@ -66,6 +67,7 @@ export default function MessagesPage() {
         setChildren(r.data);
         const id = r.data[0]?.childId ?? '';
         setChildId(id);
+        activeChildId.current = id;
         if (id) load(id);
         else setState('empty');
       })
@@ -76,34 +78,40 @@ export default function MessagesPage() {
 
   const selectChild = (id: string) => {
     setChildId(id);
+    activeChildId.current = id;
+    setActing(false);
+    pendingAction.current = null;
     load(id);
   };
 
   const act = async (action: 'read' | 'mute') => {
     if (!childId || !selected || acting) return;
+    const actionChildId = childId;
     setActing(true);
-    const resource = `${childId}:${selected}`;
+    const resource = `${actionChildId}:${selected}`;
     if (pendingAction.current?.resource !== resource || pendingAction.current.action !== action) {
       pendingAction.current = { key: crypto.randomUUID(), resource, action };
     }
     try {
       await parentApi.post(
-        `/api/v1/parent/children/${encodeURIComponent(childId)}/messages/${encodeURIComponent(selected)}/ack`,
+        `/api/v1/parent/children/${encodeURIComponent(actionChildId)}/messages/${encodeURIComponent(selected)}/ack`,
         { action },
         { idempotencyKey: pendingAction.current.key },
       );
       pendingAction.current = null;
-      load(childId);
+      if (activeChildId.current === actionChildId) load(actionChildId);
     } catch (e) {
-      setState(
-        e instanceof Error &&
-          'code' in e &&
-          (e as { code?: string }).code === 'MESSAGE_ACTION_NOT_APPLICABLE'
-          ? 'action-error'
-          : 'error',
-      );
+      if (activeChildId.current === actionChildId) {
+        setState(
+          e instanceof Error &&
+            'code' in e &&
+            (e as { code?: string }).code === 'MESSAGE_ACTION_NOT_APPLICABLE'
+            ? 'action-error'
+            : 'error',
+        );
+      }
     } finally {
-      setActing(false);
+      if (activeChildId.current === actionChildId) setActing(false);
     }
   };
 
