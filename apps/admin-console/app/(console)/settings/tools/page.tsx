@@ -1,36 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding, hasMcpBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
 import type {
   AdminAssistantConfig,
-  AdminImaSettings,
-  AdminImaSettingsPatch,
   AdminRuntimeBuiltinTool,
   AdminRuntimeMcpServer,
   AdminRuntimeSnapshot,
 } from '@qitu/contracts';
-import { fetchImaSettings, saveImaSettings, checkImaConnection } from '../../../../lib/api/ima';
-import { createIdempotentRetryKey } from '../../../../lib/api/types';
 
 const IMA_ID = 'ima-knowledge';
-
-function projectImaPatch(
-  settings: AdminImaSettings,
-  patch: AdminImaSettingsPatch,
-): AdminImaSettings {
-  return {
-    ...settings,
-    enabled: patch.enabled ?? settings.enabled,
-    assistants: settings.assistants.map((assistant) => {
-      const binding = patch.assistantBindings?.find((row) => row.id === assistant.id);
-      return binding ? { ...assistant, authorized: binding.enabled } : assistant;
-    }),
-  };
-}
 
 const MCP_STATUS_TEXT: Record<AdminRuntimeMcpServer['status'], string> = {
   connected: '连接正常',
@@ -66,18 +48,6 @@ export default function ToolsSettingsPage() {
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [assistantsPending, setAssistantsPending] = useState(true);
   const [assistantsError, setAssistantsError] = useState('');
-
-  // ---- 知识库检索（ima，服务端管理的平台工具） ----
-  const [ima, setIma] = useState<AdminImaSettings | null>(null);
-  const [imaError, setImaError] = useState('');
-  const [imaPending, setImaPending] = useState(false);
-  const imaBusy = useRef(false);
-  const [imaSaving, setImaSaving] = useState(false);
-  const confirmedIma = useRef<AdminImaSettings | null>(null);
-  const queuedIma = useRef<{ patch: AdminImaSettingsPatch }[]>([]);
-  const imaSaveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
-  const imaRetry = useRef(createIdempotentRetryKey());
-  const imaCheckRetry = useRef(createIdempotentRetryKey());
 
   const [notice, setNotice] = useState('');
   const [activeMode, setActiveMode] = useState<'matrix' | 'edit' | 'preview'>('matrix');
@@ -123,115 +93,16 @@ export default function ToolsSettingsPage() {
     return () => window.removeEventListener('qitu-configuration-changed', refresh);
   }, [loadRegistry, loadAssistants]);
 
-  const displayIma = useCallback((settings: AdminImaSettings) => {
-    setIma(settings);
-    setAssistants((previous) =>
-      previous.map((assistant) => {
-        const authorized = settings.assistants.find((row) => row.id === assistant.id)?.authorized;
-        if (authorized === undefined) return assistant;
-        return {
-          ...assistant,
-          mcpServerIds: authorized
-            ? [...new Set([...assistant.mcpServerIds, IMA_ID])]
-            : assistant.mcpServerIds.filter((id) => id !== IMA_ID),
-        };
-      }),
-    );
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('knowledgeEngine')) setActiveMode('edit');
   }, []);
 
-  const acceptIma = useCallback(
-    (settings: AdminImaSettings) => {
-      confirmedIma.current = settings;
-      displayIma(
-        queuedIma.current.reduce(
-          (state, operation) => projectImaPatch(state, operation.patch),
-          settings,
-        ),
-      );
-    },
-    [displayIma],
+  // Knowledge Center manages knowledge access. Hidden services must also be
+  // excluded from the matrix's row/column bulk operations.
+  const mcpServers = useMemo(
+    () => snapshot?.mcpServers.filter((server) => server.id !== IMA_ID) ?? [],
+    [snapshot],
   );
-
-  const loadIma = useCallback(async () => {
-    if (imaBusy.current) return;
-    imaBusy.current = true; setImaPending(true); setImaError('');
-    try { acceptIma(await fetchImaSettings()); }
-    catch (error) { setIma(null); setImaError(error instanceof Error ? error.message : 'ima 配置读取失败'); }
-    finally { imaBusy.current = false; setImaPending(false); }
-  }, [acceptIma]);
-
-  useEffect(() => {
-    void loadIma();
-    if (new URLSearchParams(window.location.search).has('knowledgeEngine')) setActiveMode('edit');
-    const refresh = () => void loadIma();
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
-  }, [loadIma]);
-
-  const saveIma = useCallback(
-    (patch: AdminImaSettingsPatch): Promise<boolean> => {
-      const confirmed = confirmedIma.current;
-      if (!confirmed?.registered || (imaBusy.current && queuedIma.current.length === 0))
-        return Promise.resolve(false);
-      const operation = { patch };
-      queuedIma.current.push(operation);
-      imaBusy.current = true;
-      setImaPending(true);
-      setImaSaving(true);
-      setImaError('');
-      acceptIma(confirmed);
-
-      // Preserve click order and platform revisions; older replies must not erase newer clicks.
-      const save = async (): Promise<boolean> => {
-        let ok = false;
-        try {
-          const settings = await saveImaSettings(
-            patch,
-            imaRetry.current.keyFor(JSON.stringify(patch)),
-          );
-          imaRetry.current.acknowledge();
-          queuedIma.current = queuedIma.current.filter((item) => item !== operation);
-          acceptIma(settings);
-          ok = true;
-        } catch (error) {
-          queuedIma.current = queuedIma.current.filter((item) => item !== operation);
-          if (confirmedIma.current) acceptIma(confirmedIma.current);
-          setImaError(error instanceof Error ? error.message : '知识库检索授权保存失败');
-          // Reconcile an uncertain response or revision conflict before the next queued write.
-          try {
-            acceptIma(await fetchImaSettings());
-          } catch {
-            /* Keep confirmed state and the visible error. */
-          }
-        } finally {
-          const pending = queuedIma.current.length > 0;
-          imaBusy.current = pending;
-          setImaPending(pending);
-          setImaSaving(pending);
-        }
-        return ok;
-      };
-      const result = imaSaveQueue.current.then(save, save);
-      imaSaveQueue.current = result;
-      return result;
-    },
-    [acceptIma],
-  );
-
-  const checkIma = useCallback(async () => {
-    if (imaBusy.current || !ima?.registered) return;
-    imaBusy.current = true; setImaPending(true); setImaError('');
-    try {
-      const result = await checkImaConnection(imaCheckRetry.current.keyFor('check'));
-      acceptIma(result);
-      imaCheckRetry.current.acknowledge();
-      notify(result.status === 'connected' ? 'ima 连接检查通过，知识库读取正常' : `ima 连接检查完成，当前状态：${MCP_STATUS_TEXT[result.status]}`);
-    } catch (error) {
-      setImaError(error instanceof Error ? error.message : 'ima 连接检查失败');
-    } finally { imaBusy.current = false; setImaPending(false); }
-  }, [ima, acceptIma, notify]);
-
-  const mcpServers = useMemo(() => snapshot?.mcpServers ?? [], [snapshot]);
   const builtinTools = useMemo(() => snapshot?.builtInTools ?? [], [snapshot]);
 
   /** 服务端持久化助手绑定；失败时回滚本地状态并给出提示。 */
@@ -252,15 +123,9 @@ export default function ToolsSettingsPage() {
     }
   }, [assistants, notify]);
 
-  const isImaAuthorized = useCallback((assistantId: string) => {
-    if (ima) return ima.assistants.find((row) => row.id === assistantId)?.authorized ?? false;
-    return assistants.find((a) => a.id === assistantId)?.mcpServerIds.includes(IMA_ID) ?? false;
-  }, [ima, assistants]);
-
   const isMcpBound = useCallback((assistant: AdminAssistantConfig, server: AdminRuntimeMcpServer) => {
-    if (server.id === IMA_ID) return isImaAuthorized(assistant.id);
     return hasMcpBinding(assistant, { id: server.id, name: server.label });
-  }, [isImaAuthorized]);
+  }, []);
 
   const isBuiltinBound = useCallback((assistant: AdminAssistantConfig, tool: AdminRuntimeBuiltinTool) => {
     return assistant.toolIds.includes(tool.id);
@@ -268,17 +133,13 @@ export default function ToolsSettingsPage() {
 
   // ---- 单元格切换 ----
   const toggleMcpForAssistant = useCallback(async (server: AdminRuntimeMcpServer, assistant: AdminAssistantConfig) => {
-    if (server.id === IMA_ID) {
-      await saveIma({ assistantBindings: [{ id: assistant.id, enabled: !isImaAuthorized(assistant.id) }] });
-      return;
-    }
     const bound = isMcpBound(assistant, server);
     const next = bound
       ? assistant.mcpServerIds.filter((value) => value !== server.id && value !== server.label)
       : [...assistant.mcpServerIds, server.id];
     const ok = await applyAssistantPatch(assistant.id, 'mcpServerIds', next);
     if (ok) notify(`已${bound ? '取消' : '更新'}【${assistant.name}】对 MCP【${server.label}】的授权（已同步服务端）`);
-  }, [isMcpBound, isImaAuthorized, saveIma, applyAssistantPatch, notify]);
+  }, [isMcpBound, applyAssistantPatch, notify]);
 
   const toggleBuiltinForAssistant = useCallback(async (tool: AdminRuntimeBuiltinTool, assistant: AdminAssistantConfig) => {
     const bound = isBuiltinBound(assistant, tool);
@@ -292,10 +153,6 @@ export default function ToolsSettingsPage() {
   // ---- 纵向（整列）批量操作 ----
   const setMcpColumnForAll = useCallback(async (server: AdminRuntimeMcpServer, enabled: boolean) => {
     if (assistants.length === 0) return;
-    if (server.id === IMA_ID) {
-      await saveIma({ assistantBindings: assistants.map((a) => ({ id: a.id, enabled })) });
-      return;
-    }
     for (const assistant of assistants) {
       const bound = hasMcpBinding(assistant, { id: server.id, name: server.label });
       if (bound === enabled) continue;
@@ -306,7 +163,7 @@ export default function ToolsSettingsPage() {
       if (!ok) return;
     }
     notify(enabled ? `纵向全选成功：已为所有助手开启 MCP【${server.label}】` : `纵向取消成功：已清空所有助手对 MCP【${server.label}】的授权`);
-  }, [assistants, applyAssistantPatch, saveIma, notify]);
+  }, [assistants, applyAssistantPatch, notify]);
 
   const setBuiltinColumnForAll = useCallback(async (tool: AdminRuntimeBuiltinTool, enabled: boolean) => {
     for (const assistant of assistants) {
@@ -323,13 +180,9 @@ export default function ToolsSettingsPage() {
 
   // ---- 横向（整行）批量操作 ----
   const setAssistantRow = useCallback(async (assistant: AdminAssistantConfig, enabled: boolean) => {
-    if (enabled && ima?.registered) {
-      const ok = await saveIma({ assistantBindings: [{ id: assistant.id, enabled: true }] });
-      if (!ok) return;
-    }
     const nextMcp = enabled
-      ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.filter((s) => s.id !== IMA_ID).map((s) => s.id)]))
-      : assistant.mcpServerIds.filter((value) => !mcpServers.some((s) => s.id !== IMA_ID && (s.id === value || s.label === value)));
+      ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.map((s) => s.id)]))
+      : assistant.mcpServerIds.filter((value) => !mcpServers.some((s) => s.id === value || s.label === value));
     const okMcp = await applyAssistantPatch(assistant.id, 'mcpServerIds', nextMcp);
     if (!okMcp) return;
     const nextTools = enabled
@@ -337,9 +190,8 @@ export default function ToolsSettingsPage() {
       : assistant.toolIds.filter((value) => !builtinTools.some((t) => t.id === value));
     const okTools = await applyAssistantPatch(assistant.id, 'toolIds', nextTools);
     if (!okTools) return;
-    if (!enabled && ima?.registered) await saveIma({ assistantBindings: [{ id: assistant.id, enabled: false }] });
-    notify(enabled ? `已为【${assistant.name}】开启全部工具授权` : `已清空【${assistant.name}】的全部工具授权`);
-  }, [ima, mcpServers, builtinTools, applyAssistantPatch, saveIma, notify]);
+    notify(enabled ? `已为【${assistant.name}】开启当前可见工具授权` : `已清空【${assistant.name}】的当前可见工具授权`);
+  }, [mcpServers, builtinTools, applyAssistantPatch, notify]);
 
   const setEntireMatrix = useCallback(async (enabled: boolean) => {
     for (const assistant of assistants) {
@@ -366,7 +218,7 @@ export default function ToolsSettingsPage() {
   });
 
   if (['edit', 'preview'].includes(activeMode)) {
-    return <KnowledgeConfiguration preview={activeMode === 'preview'} onMode={(mode) => { setActiveMode(mode); if (mode === 'matrix') void loadIma(); }} />;
+    return <KnowledgeConfiguration preview={activeMode === 'preview'} onMode={setActiveMode} />;
   }
 
   const loading = registryPending && !snapshot;
@@ -473,12 +325,7 @@ export default function ToolsSettingsPage() {
           <button type="button" onClick={() => void loadAssistants()} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
         </div>
       )}
-      {imaError ? (
-        <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-          知识库检索：{imaError}
-          <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
-        </div>
-      ) : null}
+
 
       {loading || assistantsPending ? (
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
@@ -497,7 +344,6 @@ export default function ToolsSettingsPage() {
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
-                  <span role="status" aria-live="polite">{imaSaving ? '正在保存知识库检索授权… · ' : ''}</span>
                   {assistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
                 </span>
               </div>
@@ -523,7 +369,7 @@ export default function ToolsSettingsPage() {
                             type="button"
                             onClick={() => void setEntireMatrix(true)}
                             style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #165dff', background: '#165dff', color: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
-                            title="全局全选：为所有助手开启全部工具"
+                            title="全局全选：为所有助手开启当前可见工具"
                           >
                             全部全选
                           </button>
@@ -541,7 +387,7 @@ export default function ToolsSettingsPage() {
                         <th key={server.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                             <span style={{ fontSize: '11px', color: server.status === 'connected' ? '#16a34a' : server.status === 'error' ? '#dc2626' : '#94a3b8' }}>●</span>
-                            <span>{server.id === IMA_ID ? (ima?.label || '知识库检索') : server.label}</span>
+                            <span>{server.label}</span>
                           </div>
                           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                             {server.toolCount === null ? '工具数未知' : `${server.toolCount} 个工具`} · {MCP_STATUS_TEXT[server.status]}
@@ -610,22 +456,18 @@ export default function ToolsSettingsPage() {
 
                         {mcpServers.map((server) => {
                           const isChecked = isMcpBound(assistant, server);
-                          const disabled = server.id === IMA_ID && (!ima?.registered || (imaPending && !imaSaving));
                           return (
                             <td key={server.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
                               <div
                                 role="checkbox"
                                 aria-checked={isChecked}
-                                aria-disabled={disabled}
                                 aria-label={`${assistant.name} 是否授权 ${server.label}`}
                                 tabIndex={0}
-                                onClick={() => { if (!disabled) void toggleMcpForAssistant(server, assistant); }}
-                                onKeyDown={(event) => { if (!disabled && (event.key === ' ' || event.key === 'Enter')) { event.preventDefault(); void toggleMcpForAssistant(server, assistant); } }}
-                                style={checkboxStyle(isChecked, '#165dff', disabled)}
+                                onClick={() => void toggleMcpForAssistant(server, assistant)}
+                                onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); void toggleMcpForAssistant(server, assistant); } }}
+                                style={checkboxStyle(isChecked, '#165dff')}
                                 title={
-                                  disabled
-                                    ? '知识库检索配置读取中或未注册'
-                                    : isChecked
+                                  isChecked
                                       ? `${assistant.name} 已授权 ${server.label}（点击取消并同步服务端）`
                                       : `${assistant.name} 未授权 ${server.label}（点击勾选并同步服务端）`
                                 }
@@ -666,7 +508,7 @@ export default function ToolsSettingsPage() {
                               type="button"
                               onClick={() => void setAssistantRow(assistant, true)}
                               style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600 }}
-                              title={`横向全选：为【${assistant.name}】开启所有工具`}
+                              title={`横向全选：为【${assistant.name}】开启当前可见工具`}
                             >
                               横向全选
                             </button>
@@ -674,7 +516,7 @@ export default function ToolsSettingsPage() {
                               type="button"
                               onClick={() => void setAssistantRow(assistant, false)}
                               style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                              title={`横向取消：清空【${assistant.name}】的所有工具授权`}
+                              title={`横向取消：清空【${assistant.name}】的当前可见工具授权`}
                             >
                               横向取消
                             </button>
@@ -688,45 +530,7 @@ export default function ToolsSettingsPage() {
             )}
           </div>
 
-          {/* 模块二：知识库检索（ima）状态卡 */}
-          <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <strong style={{ fontSize: '14px', color: '#0f172a' }}>{ima?.label || '知识库检索'}</strong>
-                  <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>服务端管理</span>
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                  共享教材知识库，只读检索与原文阅读；连接凭证由服务器管理。当前状态：
-                  {imaSaving ? ' 正在保存…' : imaPending ? ' 读取中…' : !ima ? ' 待读取' : !ima.registered ? ' 未注册' : ima.enabled ? ' 允许调用' : ' 总开关关闭'}
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#475569' }}>
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    aria-label="允许调用 知识库检索"
-                    checked={ima?.enabled ?? false}
-                    disabled={imaPending || !ima?.registered}
-                    onChange={(event) => void saveIma({ enabled: event.target.checked })}
-                    style={{ accentColor: '#165dff' }}
-                  />
-                  允许调用
-                </label>
-                <button
-                  type="button"
-                  disabled={imaPending || !ima?.registered}
-                  onClick={() => void checkIma()}
-                  style={{ fontSize: '12px', padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', cursor: imaPending ? 'wait' : 'pointer' }}
-                >
-                  检查连接
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 模块三：运行时上报的内置工具（只读） */}
+          {/* 模块二：运行时上报的内置工具（只读） */}
           <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
             <div style={{ marginBottom: '14px' }}>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>内置工具 (Builtin Tools)</strong>
