@@ -15,7 +15,7 @@ import type {
  */
 
 export const FONT_SIZE_VALUES = ['sm', 'md', 'lg'] as const;
-export const THEME_VALUES = ['default', 'focus', 'calm', 'eyecare'] as const;
+export const THEME_VALUES = ['default', 'focus', 'calm'] as const;
 
 export type PreferencePatch = UpdateUserPreferencesRequest;
 
