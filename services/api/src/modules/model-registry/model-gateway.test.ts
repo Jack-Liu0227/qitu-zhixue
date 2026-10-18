@@ -26,6 +26,8 @@ import type {
 
 /* ----------------------------- mock 上游 ----------------------------- */
 
+process.env.QITU_MODEL_RUNTIME_ENGINE = 'legacy';
+
 interface RecordedRequest {
   url: string;
   method: string;

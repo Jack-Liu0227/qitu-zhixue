@@ -52,14 +52,17 @@ export function buildProjectInteractionBlocks(
   }
 
   // Gated practice simulation: Only emit optics interactive experiment if TheoryMastered passed and in practice phase
-  const opticsProject = context.project.templateVersionId?.startsWith('optics-physical-inquiry') === true;
+  const opticsProject =
+    context.project.templateVersionId?.startsWith('optics-physical-inquiry') === true ||
+    context.project.templateVersionId?.startsWith('tplv-8931f') === true ||
+    /光学/i.test(context.project.title || '');
   if (theoryGatePassed && active && isPracticePhase(active) && opticsProject) {
     blocks.push({
       kind: 'optics_experiment',
       experimentId: `optics-exp-${context.project.id}`,
       title: '光的散射与衍射动态探究台',
       summary: '单缝衍射图样与微粒散射交互仿真',
-      initialMode: 'diffraction',
+      initialMode: 'scattering',
       specVersion: 'optics-experiment.v1',
       objectiveId: 'opt-practice-measure',
       sessionIndex: 10,
