@@ -81,10 +81,12 @@ import {
 import {
   PlanGenerationError,
   PlanGenerator,
+  CURRICULUM_TEMPLATE_VERSION,
   type GeneratePlanInput,
   type GeneratedPlan,
 } from './plan-generator';
 import { generateOpticsPlan } from './optics-plan-generator';
+import { OPTICS_TEMPLATE_SLUG } from '../templates/content/optics';
 import {
   MAX_GOAL_LENGTH,
   MAX_INTEREST_LENGTH,
@@ -165,6 +167,12 @@ export class LearningPlanService {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
+      if (input.curriculumSlug !== OPTICS_TEMPLATE_SLUG) {
+        throw new BadRequestException({
+          code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
+          message: `课程模板 ${input.curriculumSlug} 尚无对应计划生成器`,
+        });
+      }
       const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
       generated = generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
     } else {
@@ -323,6 +331,12 @@ export class LearningPlanService {
                 tx,
               });
               if (outcome === 'omitted') {
+                if (bundle.plan.templateVersion !== CURRICULUM_TEMPLATE_VERSION) {
+                  throw new ConflictException({
+                    code: 'CURRICULUM_BINDING_UNAVAILABLE',
+                    message: '课程模板绑定已失效，无法确认项目',
+                  });
+                }
                 this.logger.warn(
                   `项目创建时无生效绑定，跳过快照冻结 project=${projectId} version=${bundle.plan.templateVersion}`,
                 );
@@ -451,7 +465,6 @@ export class LearningPlanService {
       { planId, sessionId, questionId },
       { answer: body.answer },
     );
-    // 由**本次新执行**（非重放）的业务回调置位，事务提交后据此触发门禁桥。
     let theoryMasteredFlip = false;
     try {
       const result = await this.idempotency.execute(
@@ -552,8 +565,6 @@ export class LearningPlanService {
               message: '该题已作答',
             });
           }
-          // 门禁证据的**调用意图**只由事务内的状态翻转决定；真正写入放在事务外
-          // （见下方 recordTheoryMasteredGate），避免门禁写入把合法达标一起回滚。
           theoryMasteredFlip = shouldEmitTheoryMastered;
 
           const updatedStates = await scoped.loadStates(actor, fresh);
@@ -575,9 +586,6 @@ export class LearningPlanService {
           };
         }),
       );
-      // 门禁桥：**在幂等 `execute` 之外、业务事务之外**调用。
-      // - 放在重放路径之前不看结果，是因为重放根本不执行回调，标志位保持 false；
-      // - 放在事务之外，是因为门禁写入失败绝不能回滚已成立的理论达标。
       if (theoryMasteredFlip && !result.replayed) {
         await this.recordTheoryMasteredGate(actor.id, sessionId);
       }
@@ -705,7 +713,6 @@ export class LearningPlanService {
               }, tx as AuditTransaction);
             },
           });
-          // 同 submitAnswer：门禁写入在事务外执行，此处只置位调用意图。
           theoryMasteredFlip = shouldEmitTheoryMastered;
           const updatedStates = await scoped.loadStates(actor, fresh);
           return {
@@ -720,10 +727,10 @@ export class LearningPlanService {
           };
         }),
       );
+      const resp = result.body;
       if (theoryMasteredFlip && !result.replayed) {
         await this.recordTheoryMasteredGate(actor.id, sessionId);
       }
-      const resp = result.body;
       return result.replayed ? { ...resp, replayed: true } : resp;
     } catch (error) {
       throwHttpForIdempotencyError(error);
@@ -814,13 +821,17 @@ export class LearningPlanService {
       await this.emitMasteryAssessed(input.masteryEvent, tx as AuditTransaction);
     }
     if (input.theoryMasteredFlip) {
+      // 与 `submitAnswer` 同构：事务内只写达标审计与 outbox，**不**直写门禁。
+      // 门禁由调用方在提交后走 `applyGradingGateBridge`（best-effort、幂等键
+      // `gate:${student}:${gate}:${evidenceRef}` 兜底），团队链路故障不得让
+      // 一次正确作答整体回滚。
       await this.emitTheoryMastered(input.actor, input.bundle, input.session, tx);
     }
   }
 
   /**
-   * F1 判分门禁桥（A2）：**事务提交后**调用 `recordTheoryMasteredGate`。
-   * 门禁写入失败绝不能回滚已成立的理论达标。
+   * F1 判分门禁桥（A2）：判分调用方在评估事务 commit 回调中写入门禁证据。
+   * 事务失败时掌握度、达标事件与门禁证据一并回滚。
    */
   async applyGradingGateBridge(studentId: string, sessionId: string): Promise<void> {
     await this.recordTheoryMasteredGate(studentId, sessionId);

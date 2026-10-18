@@ -614,8 +614,8 @@ test('已掌握目标再判分：400 QUESTION_NOT_AWAITING', async () => {
   );
 });
 
-test('判分走同一 TheoryMastered 门禁桥：达标翻转才发 theory_mastered 审计/outbox 与门禁', async () => {
-  const store = makeLearningStore();
+test('判分在提交后经门禁桥写 TheoryMastered，且只在达标翻转时写一次', async () => {
+  const store = new TxProbeLearningStore();
   await seedOpticsPlan(store);
   const tutor = newTutorService(store);
   const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
@@ -624,10 +624,13 @@ test('判分走同一 TheoryMastered 门禁桥：达标翻转才发 theory_maste
 
   const audit = new RecordingAuditWriter();
   const outbox = new RecordingOutboxWriter();
-  const gateCalls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string }> = [];
+  const gateCalls: Array<{ studentUserId: string; gate: string; evidenceRef: string; source: string; tx?: AuditTransaction }> = [];
   const teamRuntime = {
-    recordGateForStudent: async (input: { studentUserId: string; gate: string; evidenceRef: string; source: string }) => {
-      gateCalls.push(input);
+    recordGateForStudent: async (
+      input: { studentUserId: string; gate: string; evidenceRef: string; source: string },
+      tx?: AuditTransaction,
+    ) => {
+      gateCalls.push({ ...input, tx });
       return { status: 'recorded' as const, runId: null, gate: input.gate };
     },
   } as unknown as TeamRuntimeService;
@@ -650,11 +653,41 @@ test('判分走同一 TheoryMastered 门禁桥：达标翻转才发 theory_maste
   await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: 'gate-3' }, 'gate-3');
   assert.equal(audit.count('learning_plan.theory_mastered'), 1, '翻转达标才写一次 theory_mastered 审计');
   assert.equal(outbox.topic('learning.theory_mastered'), 1);
-  assert.equal(gateCalls.length, 1, '事务提交后经门禁桥写一次 TheoryMastered 证据');
+  assert.equal(gateCalls.length, 1, '门禁桥只在达标翻转时调用一次');
   assert.equal(gateCalls[0]?.studentUserId, OWNER);
   assert.equal(gateCalls[0]?.gate, 'TheoryMastered');
   assert.equal(gateCalls[0]?.source, 'learning-plan.theory-mastered');
+  assert.equal(gateCalls[0]?.tx, undefined, '门禁桥在提交后执行：不带事务句柄（与 submitAnswer 同构）');
   assert.equal(gateCalls[0]?.evidenceRef, 'mastery:theory:session-optics');
+});
+
+test('门禁桥 best-effort：团队链路写入失败不影响已成立的作答与掌握度', async () => {
+  const store = makeLearningStore();
+  await seedOpticsPlan(store);
+  const tutor = newTutorService(store);
+  const session = tutor.getOrCreateSession(PROJECT_ID, OWNER);
+  forceEmitQuiz(session);
+  session.lastHintLevel = null;
+
+  const teamRuntime = {
+    recordGateForStudent: async () => {
+      throw new Error('team-runtime unavailable');
+    },
+  } as unknown as TeamRuntimeService;
+  const quiz = newQuizService({
+    store,
+    quizStore: new InMemoryTutorQuizStore(),
+    idempotency: new SharedIdempotencyStore(),
+    audit: new RecordingAuditWriter(),
+    tutor,
+    teamRuntime,
+  });
+
+  for (const attempt of ['bf-1', 'bf-2', 'bf-3']) {
+    const result = await quiz.answer(student(OWNER), session, QUIZ_ID, { selectedKeys: ['B'], idempotencyKey: attempt }, attempt);
+    assert.equal(result.correct, true, `${attempt} 判分不受门禁桥故障影响`);
+  }
+  assert.notEqual(await store.findMastery(OWNER, OBJECTIVE_ID), null, '掌握度已落库');
 });
 
 test('判分审计与作答证据和掌握度写入同事务：commitTx 透传，不提交后补写', async () => {

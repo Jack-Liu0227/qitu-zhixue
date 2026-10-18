@@ -47,7 +47,7 @@ import {
 } from '@qitu/ai-client';
 import { DATABASE_TOKEN } from '../../database';
 import { pblPhaseForProjectStage } from '../../common/pbl-phase';
-import { AuditWriter } from '../../common/audit/audit.service';
+import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { OutboxWriter } from '../../common/outbox/outbox.service';
 import { PBL_GATE_INTERNAL_ACTOR } from './internal-gate-actor.js';
 
@@ -984,13 +984,13 @@ export class TeamRuntimeService {
     evidenceRef: string;
     source: string;
     idempotencyKey?: string;
-  }): Promise<{ status: 'recorded' | 'already_satisfied' | 'deferred'; runId: string | null; gate: string; reason?: string }> {
+  }, tx?: AuditTransaction): Promise<{ status: 'recorded' | 'already_satisfied' | 'deferred'; runId: string | null; gate: string; reason?: string }> {
     // 非法 gate 在任何写入之前拒绝（0 事件 0 审计）。
     const gate = input.gate?.trim();
     if (!gate || !KNOWN_PBL_GATES.has(gate)) {
       throw new BadRequestException({ code: PBL_TEAM_ERROR_CODES.GATE_UNKNOWN, message: '门禁条件不在冻结规格枚举内', allowed: Array.from(KNOWN_PBL_GATES) });
     }
-    const db = this.requireDb();
+    const db = tx ?? this.requireDb();
     const evidenceRef = input.evidenceRef?.trim() ?? '';
     const studentUserId = input.studentUserId?.trim();
     if (!studentUserId) throw new BadRequestException({ code: 'TEAM_GATE_STUDENT_REQUIRED', message: '缺少 studentUserId' });
@@ -1026,6 +1026,7 @@ export class TeamRuntimeService {
             target: [pblGateEvidence.studentUserId, pblGateEvidence.gate, pblGateEvidence.evidenceRef],
           });
       } catch (error) {
+        if (tx) throw error;
         // 记账失败不抛错不回滚调用方业务；但不得静默吞。
         this.logger.error(`PBL 待冲刷门禁账本写入失败（学生 ${studentUserId}，门禁 ${gate}）：${String(error)}`);
       }
