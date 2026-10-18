@@ -21,6 +21,7 @@ import type {
   TutorIdeaCard,
   TutorPhaseProjection,
   TutorProjectContext,
+  TutorReplyBlock,
   TutorSessionSummary,
   TutorTeamAgent,
   TutorTeamGraph,
@@ -986,7 +987,7 @@ export class TutorService {
     } catch {
       return snapshot;
     }
-    if (!projectContext) return snapshot;
+    if (!projectContext || !projectContext.project) return snapshot;
 
     const tplId = projectContext.project.templateVersionId ?? '';
     const title = projectContext.project.title ?? '';
@@ -997,9 +998,9 @@ export class TutorService {
 
     if (!isOptics) return snapshot;
 
-    const leaderName = projectContext.team.assistantName || '物理总导师';
-    const leaderId = projectContext.team.assistantId || 'optics-leader';
-    const leaderAvatar = projectContext.team.assistantAvatar || '🌈';
+    const leaderName = projectContext.team?.assistantName || '物理总导师';
+    const leaderId = projectContext.team?.assistantId || 'optics-leader';
+    const leaderAvatar = projectContext.team?.assistantAvatar || '🌈';
 
     const openingBlocks: TutorReplyBlock[] = [
       {
@@ -1045,7 +1046,7 @@ export class TutorService {
       evidenceRef: null,
       modality: 'text',
       author: {
-        assistantId: leaderId,
+        id: leaderId,
         name: leaderName,
         role: 'leader',
         avatar: leaderAvatar,
