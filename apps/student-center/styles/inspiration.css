@@ -5,7 +5,7 @@
  * 与「我的项目」的 ProjectTabs 保持完全一致的观感；
  * 按钮、标签纸、卡片容器复用 @qitu/ui/styles.css 的 .qitu-button / .qitu-tag-chip。
  *
- * 模板卡里的「我想做这个」只是跳到探索确认流程，不创建正式项目。
+ * 模板卡里的开始动作会创建对应项目并冻结模板团队绑定。
  */
 
 .qitu-inspiration-detail {

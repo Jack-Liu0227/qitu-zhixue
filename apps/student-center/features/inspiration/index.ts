@@ -1,7 +1,7 @@
 /**
  * Student-center 「灵感空间」 feature module (route `/student/inspiration`).
  *
- * 推荐项目保留独立详情流程；推荐探索和自由探索都进入 `/student/tutor`。
+ * 推荐项目保留独立详情流程；点击开始后直接创建项目并进入对应团队。
  */
 export type { InspirationTemplate, InspirationDifficulty } from './types';
 

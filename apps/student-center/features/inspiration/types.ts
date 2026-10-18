@@ -11,7 +11,7 @@ export type { TemplateStage } from '@qitu/contracts';
 
 export type InspirationDifficulty = '入门' | '进阶' | '挑战';
 
-/** 一条推荐项目模板（只读展示；点击后进入推荐详情/确认流程，不直接创建项目）。 */
+/** 一条推荐项目模板（只读展示；点击开始后创建对应项目并进入团队）。 */
 export interface InspirationTemplate {
   id: string;
   title: string;

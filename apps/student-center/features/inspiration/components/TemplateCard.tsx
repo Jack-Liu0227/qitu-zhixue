@@ -32,7 +32,7 @@ export interface TemplateCardProps {
 
 /**
  * 推荐项目模板卡。只读展示，不写项目状态、不创建正式项目；
- * 唯一动作是进入推荐项目详情，推荐确认流程仍属于灵感空间/Projects owner。
+ * 唯一动作是进入推荐项目详情，项目创建和团队绑定均由灵感空间/Projects owner 完成。
  *
  * 样式全部在 `styles/inspiration.css`（qitu-inspiration-* 类），不用内联样式，
  * 这样悬停/焦点/窄屏响应式才能生效。
@@ -97,7 +97,7 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
           )}
         </div>
         <span className="qitu-inspiration-template-hint">
-          {readOnly ? '恢复网络后再查看推荐详情' : '支持直接跳转与 AI 导师团队开始意图探讨'}
+          {readOnly ? '恢复网络后再查看推荐详情' : '点击开始后直接进入对应 AI 导师团队'}
         </span>
       </footer>
     </article>
