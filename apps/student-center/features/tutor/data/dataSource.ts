@@ -30,8 +30,6 @@ export interface TutorDataSource {
   listProjects(): Promise<ProjectSummary[]>;
   /** GET /projects/:id + /stages + /tasks — left-column display projection. */
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
-  /** GET /tutor/project-context?explorationId=... - team identity for exploration routes. */
-  getExplorationContext(explorationId: string): Promise<TutorProjectContext | null>;
   /** GET /tutor/team-graph?projectId=... — server-filtered agent projection. */
   getTeamGraph(projectId: string): Promise<TutorTeamGraph | null>;
   /** POST /tutor/sessions — idempotent session creation. */
