@@ -384,7 +384,6 @@ describe('TemplateGovernanceService（治理写 + 验证晋升）', () => {
       'TEMPLATE_NOT_FOUND',
     );
   });
-
   it('pilotVersion：draft → piloting 写审计；非法迁移 409 TEMPLATE_PILOT_INVALID', async () => {
     const { templateId, versionId } = await createDraftTemplate(harness, ADMIN, { slug: 'pilot' });
 
