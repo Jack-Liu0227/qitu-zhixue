@@ -109,18 +109,11 @@ export function KnowledgeFileUpload({
     }
   }
   return (
-    <section className={styles.panel} aria-label="批量上传文件">
-      <h3>上传文件</h3>
-      <p>
-        支持
-        PDF、Word（DOCX）、Excel（XLSX）、PowerPoint（PPTX）、EPUB，以及文本、Markdown、CSV、JSON、HTML
-        等格式。每批最多 20 个，每个不超过 10 MiB。
-      </p>
-      <p>
-        扫描件或纯图片文档请先进行 OCR；旧版 DOC、XLS、PPT
-        请另存为新版格式。上传成功后可预览正文、下载原文件。
-      </p>
-      <p>当前引擎每库最多 20 份资料，提取正文合计不超过 7 MiB；超出时请分库保存。</p>
+    <section className={`${styles.panel} ${styles.uploadPanel}`} aria-label="批量上传文件">
+      <div className={styles.uploadHeading}>
+        <h3>上传文件</h3>
+        <p>将文档添加到知识库，解析后即可用于检索。</p>
+      </div>
       <button
         className={styles.dropzone}
         disabled={running}
@@ -131,9 +124,11 @@ export function KnowledgeFileUpload({
           if (!running) pick(Array.from(e.dataTransfer.files));
         }}
       >
-        <Glyph name="upload" size={30} />
-        <strong>选择文件…</strong>
-        <span>点击选择或将文档拖放到此处</span>
+        <span className={styles.uploadIcon}>
+          <Glyph name="upload" size={26} />
+        </span>
+        <strong>点击选择文件，或拖放到此处</strong>
+        <span>每批最多 20 个文件 · 单个文件不超过 10 MiB</span>
       </button>
       <input
         ref={picker}
@@ -160,15 +155,23 @@ export function KnowledgeFileUpload({
           e.target.value = '';
         }}
       />
-      <button
-        className={styles.textButton}
-        disabled={running}
-        onClick={() => folderPicker.current?.click()}
-      >
-        或上传文件夹（一次性导入）
-      </button>
+      <div className={styles.uploadFormats}>
+        <strong>支持格式</strong>
+        <span>
+          PDF、Word（DOCX）、Excel（XLSX）、PowerPoint（PPTX）、EPUB，以及文本、Markdown、CSV、JSON、HTML
+          等
+        </span>
+      </div>
+      <div className={styles.uploadTips}>
+        <strong>上传须知</strong>
+        <ul>
+          <li>扫描件或纯图片文档请先进行 OCR；旧版 DOC、XLS、PPT 请另存为新版格式。</li>
+          <li>当前引擎每库最多 20 份资料，提取正文合计不超过 7 MiB，超出时请分库保存。</li>
+          <li>上传成功后，可预览正文并下载原文件。</li>
+        </ul>
+      </div>
       {entries.length > 0 && (
-        <ul className="knowledge-upload-list" aria-live="polite">
+        <ul className={styles.uploadList} aria-live="polite">
           {entries.map((row) => (
             <li key={row.key} data-upload-state={row.state}>
               <strong>{row.file.name}</strong>
@@ -179,18 +182,31 @@ export function KnowledgeFileUpload({
           ))}
         </ul>
       )}
-      {message && <p role="alert">{message}</p>}
-      <button
-        className="settings-action-btn is-primary"
-        disabled={running || !entries.some((row) => ['pending', 'failed'].includes(row.state))}
-        onClick={() => void upload()}
-      >
-        {running
-          ? '正在上传与解析…'
-          : entries.some((row) => row.state === 'failed')
-            ? '重试未完成文件'
-            : '上传并保存文件'}
-      </button>
+      {message && (
+        <div className={styles.error} role="alert">
+          {message}
+        </div>
+      )}
+      <div className={styles.uploadActions}>
+        <button
+          className={styles.textButton}
+          disabled={running}
+          onClick={() => folderPicker.current?.click()}
+        >
+          <Glyph name="upload" size={16} /> 上传文件夹
+        </button>
+        <button
+          className={styles.primary}
+          disabled={running || !entries.some((row) => ['pending', 'failed'].includes(row.state))}
+          onClick={() => void upload()}
+        >
+          {running
+            ? '正在上传与解析…'
+            : entries.some((row) => row.state === 'failed')
+              ? '重试未完成文件'
+              : '上传并保存文件'}
+        </button>
+      </div>
     </section>
   );
 }

@@ -1148,3 +1148,158 @@
     transition: none;
   }
 }
+
+.uploadPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.uploadHeading h3 {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.uploadHeading p {
+  margin: 6px 0 0;
+  color: #7b899c;
+  font-size: 13px;
+}
+.dropzone {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 208px;
+  padding: 28px 20px;
+  border: 1px dashed #b9cdf0;
+  border-radius: 12px;
+  background: #f8faff;
+  color: #7386a2;
+  text-align: center;
+  cursor: pointer;
+  line-height: 1.8;
+}
+.dropzone:hover:not(:disabled) {
+  border-color: #165dff;
+  background: #f1f6ff;
+}
+.dropzone:focus-visible {
+  outline: 3px solid #b4cdff;
+  outline-offset: 3px;
+}
+.uploadIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  color: #165dff;
+  background: #eaf1ff;
+}
+.dropzone strong {
+  color: #3e5677;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dropzone > span:last-child {
+  font-size: 12px;
+}
+.uploadFormats {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 14px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #7b899c;
+}
+.uploadFormats strong,
+.uploadTips > strong {
+  font-weight: 500;
+  color: #536881;
+}
+.uploadTips {
+  border-radius: 10px;
+  background: #f7f9fc;
+  padding: 15px 18px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #7b899c;
+}
+.uploadTips ul {
+  margin: 7px 0 0;
+  padding-left: 17px;
+}
+.uploadTips li + li {
+  margin-top: 5px;
+}
+.uploadActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #edf1f6;
+  padding-top: 18px;
+}
+.uploadList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e5eaf1;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.uploadList li {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.uploadList li + li {
+  border-top: 1px solid #edf1f6;
+}
+.uploadList strong {
+  color: #435873;
+  font-weight: 500;
+}
+.uploadList span {
+  color: #7b899c;
+}
+.uploadList li[data-upload-state='failed'] span,
+.uploadList li[data-upload-state='invalid'] span {
+  color: #c63e4d;
+}
+.uploadList li[data-upload-state='saved'] span {
+  color: #3d8876;
+}
+@media (max-width: 480px) {
+  .uploadPanel {
+    padding: 16px;
+    gap: 17px;
+  }
+  .dropzone {
+    min-height: 200px;
+    padding: 22px 14px;
+  }
+  .uploadFormats {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .uploadTips {
+    padding: 13px 14px;
+  }
+  .uploadActions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .uploadActions button {
+    min-height: 42px;
+  }
+}
