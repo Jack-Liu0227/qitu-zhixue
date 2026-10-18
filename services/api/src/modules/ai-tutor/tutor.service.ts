@@ -12,7 +12,6 @@ import {
 
 import type {
   AdminTeamConfig,
-  AdminTeamMember,
   CurrentUser,
   GetTutorSessionResponse,
   PblTeamWorkflowSpec,
@@ -58,6 +57,7 @@ import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
+import { resolveFrozenTeamMembers } from './tutor-team-members';
 import {
   buildRecommendationSignals,
   parseModelRecommendation,
@@ -410,9 +410,9 @@ export class TutorService {
           } satisfies CurrentUser)
         : null;
       if (projectId !== null && snapshot !== null) {
-        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId);
+        const assistants = await this.platformRegistry.listAssistants();
+        const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId, assistants);
         if (frozenTeam !== null) {
-          const assistants = await this.platformRegistry.listAssistants();
           const leaderId = frozenTeam.leaderAssistantId;
           const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
             ?? this.findBuiltinAssistant(leaderId);
@@ -467,7 +467,10 @@ export class TutorService {
   }
 
   /** 按冻结的 teamVersionId 读不可变团队版本行，形变为 tutor 只读的 AdminTeamConfig。 */
-  private async loadFrozenTeamVersion(teamVersionId: string): Promise<AdminTeamConfig | null> {
+  private async loadFrozenTeamVersion(
+    teamVersionId: string,
+    assistants: Awaited<ReturnType<PlatformRegistryService['listAssistants']>>,
+  ): Promise<AdminTeamConfig | null> {
     if (this.database === null) return null;
     const [row] = await this.database
       .select()
@@ -477,13 +480,16 @@ export class TutorService {
     if (row === undefined) return null;
     const createdAt = row.createdAt.toISOString();
     return {
-      id: row.id,
+      id: row.teamId,
       name: row.name,
       description: row.description,
       workspaceMode: row.workspaceMode as AdminTeamConfig['workspaceMode'],
       sessionMode: row.sessionMode as AdminTeamConfig['sessionMode'],
       leaderAssistantId: row.leaderAssistantId,
-      members: (row.members ?? []) as readonly AdminTeamMember[],
+      members: resolveFrozenTeamMembers({
+        versionId: row.id, members: row.members, leaderAssistantId: row.leaderAssistantId,
+        pblSpec: row.pblSpec as unknown as PblTeamWorkflowSpec | undefined, assistants,
+      }),
       // 团队版本表没有并发列；tutor 只读团队身份/阶段，不消费该值。
       concurrencyLimit: 1,
       pblSpec: row.pblSpec as unknown as PblTeamWorkflowSpec | undefined,
@@ -590,9 +596,15 @@ export class TutorService {
     const runtimeIds: Record<string, readonly string[]> = Object.fromEntries(
       (teamConfig?.members ?? []).map((member) => [member.assistantId, runtimeAgentIdsFor(member.assistantId)]),
     );
+    let runtimeAvailable = true;
     const runtime = this.teamRuntime === undefined
       ? { runId: null, agents: {} }
-      : await this.teamRuntime.getStudentTeamRuntimeProjection(project.id, ownerId, runtimeIds).catch(() => ({ runId: null, agents: {} }));
+      : await this.teamRuntime.getStudentTeamRuntimeProjection(project.id, ownerId, runtimeIds).catch(() => {
+          runtimeAvailable = false;
+          return { runId: null, agents: {} };
+        });
+    const assistants = await this.platformRegistry?.listAssistants().catch(() => []) ?? [];
+    const enabledIds = new Set(assistants.filter((assistant) => assistant.enabled).map((assistant) => assistant.id));
     const agents: TutorTeamAgent[] = (teamConfig?.members ?? []).map((member) => {
       const dynamic = runtime.agents[member.assistantId];
       return {
@@ -603,7 +615,8 @@ export class TutorService {
         roleLabel: member.roleLabel ?? null,
         avatar: member.avatar ?? null,
         color: member.color ?? null,
-        status: dynamic?.status ?? 'offline',
+        status: !teamConfig?.enabled || !enabledIds.has(member.assistantId) || !runtimeAvailable
+          ? 'offline' : dynamic?.status ?? 'ready',
         currentTaskSummary: dynamic?.currentTaskSummary ?? null,
         pblPhase: member.pblPhase ?? null,
         messages: dynamic?.messages ?? [],

@@ -211,6 +211,11 @@ export class InMemoryExplorationStore extends ExplorationStore {
         `project already exists for exploration: ${input.explorationId}`,
       );
     }
+    // Run the binding precondition before publishing in-memory state, matching transaction rollback.
+    await input.commit?.(input.project.id);
+    if (this.findProjectByExplorationSync(input.explorationId) !== null) {
+      throw new ExplorationStoreConflictError('project already exists for exploration: ' + input.explorationId);
+    }
     record.status = 'confirmed';
     record.templateVersionId = input.project.templateVersionId;
     record.updatedAt = input.confirmedAt;
@@ -228,7 +233,6 @@ export class InMemoryExplorationStore extends ExplorationStore {
       completedAt: null,
     };
     this.projects.set(project.id, project);
-    await input.commit?.(project.id);
     return cloneProject(project);
   }
 

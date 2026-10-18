@@ -163,7 +163,7 @@ export class PostgresExplorationStore extends ExplorationStore {
           .returning();
         const project = insertedProject[0];
         if (project === undefined) throw new Error('插入项目实例未返回数据行');
-        // F3：绑定快照冻结在同一个事务里（无绑定时派生写入不失败项目创建）。
+        // 绑定快照在同一事务冻结；配置缺失时 commit 抛错，整体回滚。
         await input.commit?.(project.id, tx);
         return mapProject(project);
       });

@@ -91,3 +91,11 @@ GET  /api/v1/admin/model-voice
 - Clipboard API 不可用时回退到临时 `textarea`；复制不发请求、不写入会话、不记录正文。按钮必须支持键盘、屏幕阅读器、离线历史和触控。
 
 绑定实体、迁移、API、验证、错误码和验收清单见 [`../design/pbl-reference-implementation-and-chat-history.md`](../design/pbl-reference-implementation-and-chat-history.md)。
+
+## 9. 项目导师团队（2026-10-19）
+
+- 正式项目读取冻结绑定中的团队版本；团队 ID 与团队版本 ID 分开，不以标题或可变的当前团队名册替代历史配置。
+- 历史简写成员按冻结的 assistantId、phaseScope/阶段分配解析，补齐稳定槽位、姓名与角色。冻结字段优先；缺少姓名或头像时关联真实助手目录。
+- GET /api/v1/tutor/team-graph 保留项目所属学生校验。真实启用的团队与助手在无任务时显示 ready；running/failed、消息与工具调用只来自项目范围内的 Team Runtime；禁用、助手缺失或运行时查询失败显示 offline。
+- 项目确认必须在创建事务内冻结模板/团队绑定；缺少绑定或绑定服务时返回 503 PROJECT_TEAM_BINDING_UNAVAILABLE，探索确认与项目插入一并回滚，可在管理员修复配置后重试。错误日志只含项目/模板版本 ID。
+- 回归覆盖简写/完整冻结成员、可变名册隔离、禁用、运行时失败、跨学生访问及绑定缺失后的回滚与重试。

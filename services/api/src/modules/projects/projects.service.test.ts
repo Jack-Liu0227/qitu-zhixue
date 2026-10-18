@@ -9,6 +9,7 @@ import { IdempotencyError } from '../../common/idempotency/idempotency.errors';
 import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { InMemoryExplorationStore } from './exploration.store';
 import { ProjectsService } from './projects.service';
+import type { TemplateBindingService } from '../templates/templates-binding.service';
 import type { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
 
 /* ------------------------------------------------------------------ *
@@ -80,7 +81,7 @@ interface Harness {
   gates: FakeTeamRuntimeGates;
 }
 
-function makeHarness(): Harness {
+function makeHarness(bindingOutcome: 'frozen' | 'omitted' | 'missing' = 'frozen'): Harness {
   const store = new InMemoryExplorationStore();
   const idempotency = new FakeIdempotencyStore();
   const audit = new FakeAuditWriter();
@@ -91,6 +92,9 @@ function makeHarness(): Harness {
     audit as unknown as AuditWriter,
     null,
     gates as unknown as TeamRuntimeService,
+    bindingOutcome === 'missing' ? undefined : {
+      freezeProjectBinding: async () => bindingOutcome,
+    } as unknown as TemplateBindingService,
   );
   return { service, store, idempotency, audit, gates };
 }
@@ -461,3 +465,18 @@ describe('ProjectsService（T6 意图确认）', () => {
     assert.equal(back.status, 'exploring');
   });
 });
+
+for (const outcome of ['omitted', 'missing'] as const) {
+  it('团队绑定 ' + outcome + ' 时确认失败且不留下无团队项目，可修复后重试', async () => {
+    const { service, store } = makeHarness(outcome);
+    const created = await service.createExploration('student-1', RECOMMENDED, 'binding-create');
+    await service.updateIntentDraft('student-1', created.id, { coreInterests: ['光学'] });
+    const before = await store.findExploration(created.id);
+    await assertHttpError(() => service.confirmIntent('student-1', created.id, 'binding-confirm'), 503, 'PROJECT_TEAM_BINDING_UNAVAILABLE');
+    assert.equal(await store.findProjectByExploration(created.id), null);
+    assert.deepEqual(await store.findExploration(created.id), before);
+    Object.assign(service, { templateBindings: { freezeProjectBinding: async () => 'frozen' } });
+    const result = await service.confirmIntent('student-1', created.id, 'binding-confirm');
+    assert.ok(result.project.id);
+  });
+}

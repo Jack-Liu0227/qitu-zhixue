@@ -70,8 +70,8 @@ const TEAM_VERSION_MISSING_MESSAGE = '团队版本不存在';
  *    局部唯一索引拒绝并发双激活 → `BINDING_CONFLICT`(409)。
  * 4. **幂等 + 审计**：create / validate / activate / retire 都要求
  *    `Idempotency-Key`，并写 `AuditWriter`（不含团队指令正文）。
- * 5. **冻结 / 回填**：`freezeProjectBinding` 在项目创建事务里写快照；无绑定时不
- *    失败项目创建。`resolveSnapshotForProject` 在 miss 时回填（`backfilled=true`）。
+ * 5. **冻结 / 回填**：`freezeProjectBinding` 在项目创建事务里写快照；正式项目
+ *    调用方必须拒绝无绑定的 omitted 结果并回滚。`resolveSnapshotForProject` 在 miss 时回填（`backfilled=true`）。
  */
 @Injectable()
 export class TemplateBindingService {
@@ -422,7 +422,7 @@ export class TemplateBindingService {
 
   /**
    * F3 项目创建冻结：在创建事务里把生效绑定落成快照（`backfilled=false`）。
-   * 无 active 绑定返回 `'omitted'`，由调用方记 warn + 审计，不失败项目创建。
+   * 无 active 绑定返回 `'omitted'`；正式项目确认调用方必须抛错并回滚事务。
    */
   async freezeProjectBinding(input: {
     projectId: string;
