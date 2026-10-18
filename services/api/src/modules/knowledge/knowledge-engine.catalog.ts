@@ -77,14 +77,6 @@ const server = f(
 );
 const source = [
   f(
-    'allowMaterialize',
-    '允许用于项目建库',
-    'boolean',
-    '来源授权',
-    '允许将可读取的完整原文收集到项目专属知识库',
-    false,
-  ),
-  f(
     'allowedKnowledgeBaseIds',
     '允许的远端知识库',
     'list',

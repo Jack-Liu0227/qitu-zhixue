@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PROJECT_TOOL,
+  KNOWLEDGE_TOOL,
   assertAssistantsBindable,
   parseAssistantBindingsInput,
   validateKnowledgeConfig,
@@ -23,7 +23,7 @@ function baseline(): PlatformKnowledgeConfig {
       },
     },
     platformTools: {
-      'project-knowledge': { ...PROJECT_TOOL, enabled: false, boundAssistants: [] },
+      'project-knowledge': { ...KNOWLEDGE_TOOL, enabled: false, boundAssistants: [] },
     },
   };
 }

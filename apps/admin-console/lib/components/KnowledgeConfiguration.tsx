@@ -405,7 +405,7 @@ export function KnowledgeConfiguration({
               <span>全局</span>
               <p>
                 统一管理 {Object.keys(snapshot.config.mcpServers).length} 个 MCP
-                服务及知识引擎、项目工具扩展。
+                服务及知识引擎、知识库工具扩展。
               </p>
             </button>
             <h3 className={styles.sectionTitle}>单个 MCP 独立设置（点击单独配置）</h3>
@@ -451,7 +451,7 @@ export function KnowledgeConfiguration({
                 <button
                   type="button"
                   className={styles.arrow}
-                  aria-label="展开项目知识库"
+                  aria-label="展开知识库"
                   aria-expanded={!!expanded[PROJECT]}
                   onClick={() => expand(PROJECT)}
                 >
@@ -465,7 +465,7 @@ export function KnowledgeConfiguration({
                     if (!expanded[PROJECT]) expand(PROJECT);
                   }}
                 >
-                  项目知识库
+                  知识库
                 </button>
                 <span className={styles.badge}>
                   {snapshot.config.platformTools['project-knowledge'].enabled
@@ -614,7 +614,7 @@ export function KnowledgeConfiguration({
                 : target.startsWith('knowledgeEngines/')
                   ? '配置此知识引擎实例；模型使用 providerId:modelId 引用，凭证使用连接引用。'
                   : target === PROJECT
-                    ? '修改 enabled 与 boundAssistants（助手 ID）。项目检索始终限定于当前项目知识库。'
+                    ? '修改 enabled 与 boundAssistants（助手 ID）。仅检索管理员授权的知识库，无需为项目单独建库。'
                     : '编辑已注册服务的名称、开关与授权工具；连接地址和凭证由服务器管理。'}
             </p>
             <textarea
@@ -629,12 +629,12 @@ export function KnowledgeConfiguration({
               <div className={styles.bindings}>
                 <strong>
                   {target.startsWith('knowledgeEngines/')
-                    ? '项目知识库共用的智能体授权'
+                    ? '知识库共用的智能体授权'
                     : '已授权使用的智能体'}
                 </strong>
                 <p>
                   {target.startsWith('knowledgeEngines/')
-                    ? '引擎用于后台建库，项目对话使用统一检索授权。'
+                    ? '引擎用于手动建库与检索，对话使用统一知识库授权。'
                     : '授权状态与智能体授权矩阵共用。'}
                 </p>
                 <div className={styles.tags}>
@@ -746,7 +746,7 @@ export function KnowledgeConfiguration({
             ) : (
               <p>
                 当前环境支持编辑已注册的
-                MCP。新增服务须先在服务器登记连接与工具定义；登记后重新读取即可配置和授权。知识引擎请从“项目知识库”中添加。
+                MCP。新增服务须先在服务器登记连接与工具定义；登记后重新读取即可配置和授权。知识引擎请从“知识库”中添加。
               </p>
             )}
             <div className={styles.actions}>

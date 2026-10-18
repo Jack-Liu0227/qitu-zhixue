@@ -10,6 +10,7 @@ const { KnowledgeCenterService } = api(
   './.tmp/test-dist/modules/knowledge/knowledge-center.service.js',
 );
 const { AuditService } = api('./.tmp/test-dist/common/audit/audit.service.js');
+const { IdempotencyService } = api('./.tmp/test-dist/common/idempotency/idempotency.service.js');
 const { KnowledgeBuildWorker } = api(
   './.tmp/test-dist/modules/knowledge/knowledge-build.worker.js',
 );
@@ -27,7 +28,7 @@ const actor = {
   await db.execute(
     sql`INSERT INTO users(id,email,display_name,role,password_hash) VALUES(${actor.id},${actor.email},'Verification','admin','disabled') ON CONFLICT DO NOTHING`,
   );
-  const center = new KnowledgeCenterService(db, new AuditService(db));
+  const center = new KnowledgeCenterService(db, new AuditService(db), new IdempotencyService(db));
   const initial = await center.configuration();
   const edits = await Promise.allSettled(
     ['one', 'two'].map((k) =>
@@ -82,15 +83,15 @@ const actor = {
     'concurrent upload collision rejected',
   );
   const before = await center.base(base.id);
-  await center.updateFile(actor, base.id, before.files[0].id, { allowMaterialize: false });
+  await center.updateFile(actor, base.id, before.files[0].id, { deleted: true }, 'delete-file-once');
   const revoked = await center.base(base.id);
-  await center.updateFile(actor, base.id, before.files[0].id, { allowMaterialize: false });
+  await center.updateFile(actor, base.id, before.files[0].id, { deleted: true }, 'delete-file-once');
   assert.equal(
     (await center.base(base.id)).revision,
     revoked.revision,
-    'repeated revocation is idempotent',
+    'repeated manual file deletion is idempotent',
   );
-  assert.equal((await center.file(base.id, before.files[0].id)).origin.canMaterialize, false);
+  await assert.rejects(center.file(base.id, before.files[0].id));
   const builds = await Promise.all([
     center.rebuild(base.id, 'rebuild-once'),
     center.rebuild(base.id, 'rebuild-once'),
@@ -100,7 +101,7 @@ const actor = {
   const worker = new KnowledgeBuildWorker(
     center,
     { check: async () => ({ ok: false, errorCode: 'MODEL_NOT_BOUND' }) },
-    { discover: async () => ({ imported: 0, failures: 0, catalogComplete: true }) },
+    {},
   );
   await worker.tick();
   const outcome = await center.base(base.id);

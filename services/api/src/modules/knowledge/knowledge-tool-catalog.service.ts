@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { runtimeMcpServers } from '@qitu/database';
 import { KnowledgeCenterService } from './knowledge-center.service';
-import { ProjectKnowledgeService } from './project-knowledge.service';
+import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
 import { ImaMcpClient, IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client';
 import { legacyMcpManifest } from '../platform-registry/legacy-mcp-catalog';
 
@@ -25,7 +25,7 @@ export class KnowledgeToolCatalogService {
   private inflight: Promise<KnowledgeToolCatalog> | null = null;
   constructor(
     private readonly center: KnowledgeCenterService,
-    private readonly project: ProjectKnowledgeService,
+    private readonly knowledge: KnowledgeRetrievalService,
   ) {}
 
   async list(section: string, id: string, refresh = false): Promise<KnowledgeToolCatalog> {
@@ -39,7 +39,7 @@ export class KnowledgeToolCatalogService {
     if (section === 'platformTools') {
       if (id !== 'project-knowledge') throw new NotFoundException('工具未注册');
       return {
-        tools: this.project.tools('', '', '', '').map(({ name, description, inputSchema }) => ({
+        tools: this.knowledge.tools('', '').map(({ name, description, inputSchema }) => ({
           name,
           description,
           inputSchema,
@@ -61,7 +61,7 @@ export class KnowledgeToolCatalogService {
           stale: false,
           message:
             engine.provider === 'llamaindex'
-              ? '通过项目知识库的搜索、阅读工具使用此索引引擎，没有独立模型工具。'
+              ? '通过已授权知识库的搜索、阅读工具使用此索引引擎，没有独立模型工具。'
               : '此引擎未登记独立工具定义，实际适配状态请查看知识中心。',
         };
       if (engine.config.connectionRef !== 'ima-legacy')

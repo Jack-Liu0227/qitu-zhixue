@@ -53,7 +53,7 @@ export default function ToolsSettingsPage() {
   const [assistantsPending, setAssistantsPending] = useState(true);
   const [assistantsError, setAssistantsError] = useState('');
 
-  // ---- 项目知识库检索（ima，服务端管理的平台工具） ----
+  // ---- 知识库检索（ima，服务端管理的平台工具） ----
   const [ima, setIma] = useState<AdminImaSettings | null>(null);
   const [imaError, setImaError] = useState('');
   const [imaPending, setImaPending] = useState(false);
@@ -138,7 +138,7 @@ export default function ToolsSettingsPage() {
     try {
       acceptIma(await saveImaSettings(patch, imaRetry.current.keyFor(JSON.stringify(patch))));
       imaRetry.current.acknowledge();
-      notify('项目知识库检索设置已保存到服务器');
+      notify('知识库检索设置已保存到服务器');
       return true;
     } catch (error) {
       setImaError(error instanceof Error ? error.message : 'ima 保存失败');
@@ -403,7 +403,7 @@ export default function ToolsSettingsPage() {
       )}
       {imaError ? (
         <div role="alert" style={{ marginBottom: '16px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-          项目知识库检索：{imaError}
+          知识库检索：{imaError}
           <button type="button" onClick={() => void loadIma()} disabled={imaPending} style={{ marginLeft: '12px', color: '#165dff', border: 'none', background: 'none', cursor: 'pointer' }}>重试</button>
         </div>
       ) : null}
@@ -468,7 +468,7 @@ export default function ToolsSettingsPage() {
                         <th key={server.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b', textAlign: 'center', minWidth: '140px' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                             <span style={{ fontSize: '11px', color: server.status === 'connected' ? '#16a34a' : server.status === 'error' ? '#dc2626' : '#94a3b8' }}>●</span>
-                            <span>{server.id === IMA_ID ? (ima?.label || '项目知识库检索') : server.label}</span>
+                            <span>{server.id === IMA_ID ? (ima?.label || '知识库检索') : server.label}</span>
                           </div>
                           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                             {server.toolCount === null ? '工具数未知' : `${server.toolCount} 个工具`} · {MCP_STATUS_TEXT[server.status]}
@@ -550,7 +550,7 @@ export default function ToolsSettingsPage() {
                                 style={checkboxStyle(isChecked, '#165dff', disabled)}
                                 title={
                                   disabled
-                                    ? '项目知识库检索配置读取中或未注册'
+                                    ? '知识库检索配置读取中或未注册'
                                     : isChecked
                                       ? `${assistant.name} 已授权 ${server.label}（点击取消并同步服务端）`
                                       : `${assistant.name} 未授权 ${server.label}（点击勾选并同步服务端）`
@@ -614,12 +614,12 @@ export default function ToolsSettingsPage() {
             )}
           </div>
 
-          {/* 模块二：项目知识库检索（ima）状态卡 */}
+          {/* 模块二：知识库检索（ima）状态卡 */}
           <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <strong style={{ fontSize: '14px', color: '#0f172a' }}>{ima?.label || '项目知识库检索'}</strong>
+                  <strong style={{ fontSize: '14px', color: '#0f172a' }}>{ima?.label || '知识库检索'}</strong>
                   <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', background: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>服务端管理</span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
@@ -632,7 +632,7 @@ export default function ToolsSettingsPage() {
                   <input
                     type="checkbox"
                     role="switch"
-                    aria-label="允许调用 项目知识库检索"
+                    aria-label="允许调用 知识库检索"
                     checked={ima?.enabled ?? false}
                     disabled={imaPending || !ima?.registered}
                     onChange={(event) => void saveIma({ enabled: event.target.checked })}

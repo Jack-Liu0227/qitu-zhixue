@@ -53,11 +53,11 @@ export function validateUpload(body: unknown) {
     Object.keys(input).some((k) => !['fileName', 'base64', 'allowMaterialize'].includes(k)) ||
     typeof input.fileName !== 'string' ||
     typeof input.base64 !== 'string' ||
-    typeof input.allowMaterialize !== 'boolean'
+    (input.allowMaterialize !== undefined && typeof input.allowMaterialize !== 'boolean')
   )
     throw new BadRequestException({
       code: 'UPLOAD_INVALID',
-      message: '请选择文件，并确认项目导入许可。',
+      message: '请选择有效文件。',
     });
   const fileName = input.fileName
     .normalize('NFC')
@@ -90,7 +90,7 @@ export function validateUpload(body: unknown) {
     fileName,
     base64: input.base64,
     bytes,
-    allowMaterialize: input.allowMaterialize,
+    allowMaterialize: false,
     mimeType: MIMES[extension] ?? 'text/plain',
     originalChecksum: createHash('sha256').update(bytes).digest('hex'),
   };
@@ -155,7 +155,7 @@ export class KnowledgeUploadService {
         {
           title: input.fileName,
           content: result.content,
-          allowMaterialize: input.allowMaterialize,
+          allowMaterialize: false,
         },
         key,
         {

@@ -9,9 +9,7 @@ import {
   type KnowledgeBaseRow,
 } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
-import { KnowledgeSourceService } from './knowledge-source.service';
 import { KnowledgeSourceSyncService, KnowledgeSourceReadError } from './knowledge-source-sync.service';
-import { materializationAllowed, type SourcePolicy } from './knowledge-source.policy';
 
 interface Job {
   id: string;
@@ -31,7 +29,6 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly center: KnowledgeCenterService,
     private readonly engine: KnowledgeEngineService,
-    private readonly sources: KnowledgeSourceService,
     private readonly sourceSync: KnowledgeSourceSyncService,
   ) {}
   onModuleInit() {
@@ -126,6 +123,7 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
     );
     if (!base || base.revision !== job.input_revision)
       return this.fail(job, 'INPUT_REVISION_CHANGED');
+    if (base.kind === 'project') return this.fail(job, 'PROJECT_KNOWLEDGE_RETIRED', 'cancelled');
     let syncBatch: Awaited<ReturnType<KnowledgeSourceSyncService['prepare']>> | null = null;
     let syncSourceId: string | null = null;
     if (job.operation === 'sync') {
@@ -170,75 +168,12 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
     if (!engine?.enabled) return this.fail(job, 'ENGINE_NOT_READY');
     const check = await this.engine.check(target!);
     if (!check.ok) return this.fail(job, check.errorCode ?? 'ENGINE_NOT_READY');
-    await this.event(job, 'planning', {
-      planner: 'metadata-rules',
-      reason: '专用规划模型未绑定，采用已记录的元数据规则',
-    });
-    if (base.kind === 'project') {
-      const imported = await this.sources.discover(base.name.replace(/知识库$/, ''));
-      await this.event(job, 'discovering', imported);
-      const sources = (
-        await this.center.query<KnowledgeMember & SourcePolicy>(
-          sql`SELECT m.*,k.kind,k.lifecycle,k.owner_user_id,k.school_id,k.engine_instance_id FROM knowledge_base_members m JOIN knowledge_bases k ON k.id=m.kb_id WHERE k.kind<>'project' AND k.lifecycle='active' AND m.visibility='active' AND m.origin->>'canMaterialize'='true' AND (k.kind='platform' OR (k.kind='school' AND k.school_id=${base.school_id}) OR (k.kind='student' AND k.owner_user_id=${base.owner_user_id})) ORDER BY m.created_at DESC LIMIT 200`,
-        )
-      ).filter((s) => materializationAllowed(s, base, config));
-      const words = Array.from(
-        new Set(
-          base.name
-            .replace(/知识库$/, '')
-            .toLowerCase()
-            .match(/[a-z0-9]+|[\u4e00-\u9fff]{2}/g) ?? [],
-        ),
-      );
-      const selected = sources
-        .map((m) => ({
-          m,
-          score: words.filter((w) =>
-            (m.title + ' ' + m.content.slice(0, 1000)).toLowerCase().includes(w),
-          ).length,
-        }))
-        .filter((x) => x.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 20);
-      if (!selected.length) return this.fail(job, 'NO_ELIGIBLE_SOURCE', 'empty');
-      await this.event(job, 'collecting', {
-        selectedDocuments: selected.length,
-        catalogDocuments: sources.length,
-        catalogComplete: sources.length < 200,
-      });
-      for (const { m } of selected) {
-        const sourceBase = (await this.center.bases()).find((k) => k.id === m.kb_id);
-        if (
-          sourceBase?.engine_instance_id &&
-          !config.knowledgeEngines[sourceBase.engine_instance_id]?.enabled
-        )
-          continue;
-        const memberId = `pm-${checksum(`${base.id}:${m.id}`).slice(0, 48)}`;
-        await this.center
-          .database()
-          .execute(
-            sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin) VALUES(${memberId},${base.id},${m.title},${m.content},${m.checksum},${m.source_revision},${JSON.stringify({ ...m.origin, sourceMemberId: m.id, sourceKnowledgeBaseId: m.kb_id, sourceRevision: m.source_revision })}::jsonb) ON CONFLICT(kb_id,checksum) DO NOTHING`,
-          );
-      }
-    }
-    let members = await this.center.query<KnowledgeMember>(
+    await this.event(job, 'planning', { mode: 'manual', reason: '索引管理员添加的资料' });
+    const members = await this.center.query<KnowledgeMember>(
       job.operation === 'sync' && syncSourceId
         ? sql`SELECT * FROM knowledge_base_members WHERE kb_id=${base.id} AND ((visibility='active' AND (origin->>'kind' IS DISTINCT FROM 'managed-source' OR origin->>'sourceId' IS DISTINCT FROM ${syncSourceId} OR NOT EXISTS (SELECT 1 FROM knowledge_base_members c WHERE c.kb_id=${base.id} AND c.visibility='candidate' AND c.origin->>'syncJobId'=${job.id} AND c.title=knowledge_base_members.title))) OR (visibility='candidate' AND origin->>'syncJobId'=${job.id})) ORDER BY created_at`
         : sql`SELECT * FROM knowledge_base_members WHERE kb_id=${base.id} AND visibility='active' ORDER BY created_at`,
     );
-    if (base.kind === 'project') {
-      const sources = await this.center.query<KnowledgeMember & SourcePolicy>(
-        sql`SELECT m.*,k.kind,k.lifecycle,k.owner_user_id,k.school_id,k.engine_instance_id FROM knowledge_base_members m JOIN knowledge_bases k ON k.id=m.kb_id WHERE m.id IN (SELECT origin->>'sourceMemberId' FROM knowledge_base_members WHERE kb_id=${base.id})`,
-      );
-      members = members.filter((m) =>
-        sources.some(
-          (s) =>
-            s.id === m.origin.sourceMemberId &&
-            s.checksum === m.checksum &&
-            materializationAllowed(s, base, config),
-        ),
-      );
-    }
     if (!members.length) return this.fail(job, 'NO_ELIGIBLE_SOURCE', 'empty');
     if (
       members.length > 20 ||

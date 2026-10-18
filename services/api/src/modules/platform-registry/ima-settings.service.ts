@@ -109,6 +109,7 @@ export class ImaSettingsService {
   /** A fresh, fail-closed authorization check before discovery and each tool call. */
   async canCall(agentId: string, toolId: string, assistantId?: string): Promise<boolean> {
     if (this.knowledgeCenter) {
+      if (!assistantId || !(await this.knowledgeCenter.canRetrieve(assistantId))) return false;
       const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
       if (!engine?.enabled || (Array.isArray(engine.config.allowedKnowledgeBaseIds) && engine.config.allowedKnowledgeBaseIds.length === 0)) return false;
     }

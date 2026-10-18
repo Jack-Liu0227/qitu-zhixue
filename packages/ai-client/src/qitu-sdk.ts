@@ -132,7 +132,7 @@ const BUILTIN_TOOLS: Record<string, QituToolDefinition> = {
   knowledge_search: {
     id: 'knowledge_search',
     name: '学科与项目知识检索',
-    description: '在平台项目知识库中检索概念、算法公式及参考示例',
+    description: '在已授权知识库中检索概念、算法公式及参考示例',
   },
 };
 

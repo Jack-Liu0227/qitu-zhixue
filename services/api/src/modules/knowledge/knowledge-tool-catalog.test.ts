@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test, mock } from 'node:test';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeCenterController } from './knowledge-center.controller';
-import { ProjectKnowledgeService } from './project-knowledge.service';
+import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
 import type { KnowledgeCenterService } from './knowledge-center.service';
 import type { KnowledgeEngineService } from './knowledge-engine.service';
 import type { AuthService } from '../identity-auth/auth.service';
@@ -23,12 +23,12 @@ const center = {
     }),
   }),
 } as unknown as KnowledgeCenterService;
-const project = new ProjectKnowledgeService(center, {} as KnowledgeEngineService);
+const project = new KnowledgeRetrievalService(center, {} as KnowledgeEngineService);
 
-test('project metadata shares runtime schemas, without any retrieval execution', async () => {
+test('knowledge metadata shares runtime schemas, without any retrieval execution', async () => {
   const service = new KnowledgeToolCatalogService(center, project);
   const expected = project
-    .tools('', '', '', '')
+    .tools('', '')
     .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
   assert.deepEqual((await service.list('platformTools', 'project-knowledge')).tools, expected);
   assert.equal(expected[0]!.inputSchema.additionalProperties, false);

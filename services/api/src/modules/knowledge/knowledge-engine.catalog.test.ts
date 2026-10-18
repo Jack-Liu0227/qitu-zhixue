@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   ENGINE_CATALOG,
   validateKnowledgeConfig,
-  PROJECT_TOOL,
+  KNOWLEDGE_TOOL,
   type PlatformKnowledgeConfig,
 } from './knowledge-center.config';
 import { ENGINE_DEFINITIONS, engineDefinition } from './knowledge-engine.catalog';
@@ -32,7 +32,7 @@ test('DeepTutor catalog covers every engine, mode and editable upstream field wi
 const current: PlatformKnowledgeConfig = {
   mcpServers: {},
   knowledgeEngines: {},
-  platformTools: { 'project-knowledge': { ...PROJECT_TOOL, enabled: false, boundAssistants: [] } },
+  platformTools: { 'project-knowledge': { ...KNOWLEDGE_TOOL, enabled: false, boundAssistants: [] } },
 };
 test('upstream field names and defaults round-trip through the unified configuration validator', () => {
   for (const definition of ENGINE_DEFINITIONS) {

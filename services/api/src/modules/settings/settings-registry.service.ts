@@ -71,7 +71,7 @@ const REGISTRY: AdminSettingsRegistry = [
   },
   {
     id: 'knowledge', href: '/settings/knowledge', group: '内容与数据', icon: '▤', title: '知识中心', label: '知识中心',
-    description: '管理资料、项目知识库、索引任务与知识引擎。', accent: 'slate', badgeKind: 'static', order: 10,
+    description: '手动创建知识库，管理资料、索引任务与知识引擎。', accent: 'slate', badgeKind: 'static', order: 10,
   },
   {
     id: 'templates', href: '/settings/templates', group: '内容与数据', icon: '▦', title: '项目模板库', label: '项目模板库',

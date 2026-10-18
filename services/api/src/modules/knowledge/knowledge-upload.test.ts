@@ -8,7 +8,7 @@ const body = (fileName = '物理资料.docx', content: Buffer = Buffer.from('tes
   base64: content.toString('base64'),
   allowMaterialize: false,
 });
-test('upload validation normalizes paths and keeps original bytes and explicit permission', () => {
+test('upload validation normalizes paths and keeps original bytes without project import permission', () => {
   const input = validateUpload(body('C:\\tmp\\物理资料.DOCX'));
   assert.equal(input.fileName, '物理资料.DOCX');
   assert.equal(
@@ -27,7 +27,7 @@ test('upload validation rejects unsupported/legacy types and fields instead of t
     BadRequestException,
   );
   assert.throws(
-    () => validateUpload({ ...body(), allowMaterialize: undefined }),
+    () => validateUpload({ ...body(), allowMaterialize: 'yes' }),
     BadRequestException,
   );
 });

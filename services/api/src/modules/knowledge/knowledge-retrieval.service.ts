@@ -1,0 +1,207 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
+import type { ModelRuntimeTool } from '@qitu/model-runtime';
+import {
+  KnowledgeCenterService,
+  type KnowledgeBaseRow,
+  type KnowledgeMember,
+} from './knowledge-center.service';
+import { KnowledgeEngineService } from './knowledge-engine.service';
+
+/** Read-only access to administrator-managed bases. Projects never provision or own a base. */
+@Injectable()
+export class KnowledgeRetrievalService {
+  constructor(
+    private readonly center: KnowledgeCenterService,
+    private readonly engine: KnowledgeEngineService,
+  ) {}
+
+  private async accessible(studentId: string, assistantId: string) {
+    if (!(await this.center.canRetrieve(assistantId))) return [];
+    return this.center.query<KnowledgeBaseRow>(sql`SELECT k.* FROM knowledge_bases k
+      JOIN users u ON u.id=${studentId}
+      JOIN knowledge_base_agent_bindings b ON b.kb_id=k.id AND b.agent_kind='admin_assistant'
+        AND b.agent_id=${assistantId} AND b.mode='retrieve' AND b.enabled=true
+      WHERE k.lifecycle='active' AND (k.kind='platform' OR
+        (k.kind='school' AND k.school_id=u.school_id) OR
+        (k.kind='student' AND k.owner_user_id=u.id)) ORDER BY k.id`);
+  }
+
+  private async members(base: KnowledgeBaseRow) {
+    return this.center.query<KnowledgeMember>(sql`SELECT m.* FROM knowledge_base_members m
+      LEFT JOIN knowledge_sources s ON s.id=m.origin->>'sourceId'
+      WHERE m.kb_id=${base.id} AND m.visibility='active'
+        AND (m.origin->>'kind' IS DISTINCT FROM 'managed-source' OR s.status<>'revoked')`);
+  }
+
+  private async snapshot(base: KnowledgeBaseRow) {
+    if (!base.active_index_version_id) return null;
+    const { config } = await this.center.configuration();
+    const engine = config.knowledgeEngines[base.engine_instance_id ?? ''];
+    if (!engine?.enabled) return null;
+    const [version] = await this.center.query<{
+      config_snapshot: { engine: unknown };
+      manifest: { memberIds?: string[] };
+    }>(
+      sql`SELECT config_snapshot,manifest FROM knowledge_index_versions WHERE id=${base.active_index_version_id} AND kb_id=${base.id} AND status='ready'`,
+    );
+    if (!version || JSON.stringify(version.config_snapshot.engine) !== JSON.stringify(engine))
+      return null;
+    const members = (await this.members(base)).filter((m) =>
+      version.manifest.memberIds?.includes(m.id),
+    );
+    return { engine, members };
+  }
+
+  async search(studentId: string, assistantId: string, query: string, topK = 5) {
+    if (!(await this.center.canRetrieve(assistantId)))
+      return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [] };
+    const bases = await this.accessible(studentId, assistantId);
+    const evidence: {
+      citationId: string;
+      knowledgeBaseId: string;
+      knowledgeBase: string;
+      indexVersionId: string;
+      title: string;
+      text: string;
+      origin: Record<string, unknown>;
+      locator: Record<string, unknown> | null;
+      score: number | null;
+    }[] = [];
+    // Bound work per turn. A large catalogue does not trigger unbounded engine calls.
+    for (const base of bases.slice(0, 20)) {
+      const snapshot = await this.snapshot(base);
+      if (!snapshot?.members.length) continue;
+      const receipt = await this.engine.execute(snapshot.engine, {
+        operation: 'search',
+        kbId: base.id,
+        versionId: base.active_index_version_id,
+        query: query.slice(0, 2000),
+        allowedMemberIds: snapshot.members.map((m) => m.id),
+        topK,
+      });
+      if (!receipt.ok) continue;
+      // Revocation, scope, index replacement and source mutation take effect in this turn.
+      const fresh = (await this.accessible(studentId, assistantId)).find((k) => k.id === base.id);
+      if (!fresh || fresh.active_index_version_id !== base.active_index_version_id) continue;
+      const current = await this.snapshot(fresh);
+      if (!current || JSON.stringify(current.engine) !== JSON.stringify(snapshot.engine)) continue;
+      for (const hit of receipt.hits ?? []) {
+        const member = snapshot.members.find(
+          (m) =>
+            m.id === hit.memberId &&
+            current.members.some((f) => f.id === m.id && f.checksum === m.checksum),
+        );
+        if (!member || !hit.text) continue;
+        evidence.push({
+          citationId: `${base.active_index_version_id}~${member.id}`,
+          knowledgeBaseId: base.id,
+          knowledgeBase: base.name,
+          indexVersionId: base.active_index_version_id!,
+          title: member.title,
+          text: hit.text,
+          origin: member.origin,
+          locator: hit.locator,
+          score: hit.score,
+        });
+      }
+    }
+    evidence.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    return {
+      state: evidence.length ? 'ready' : 'NO_KNOWLEDGE_EVIDENCE',
+      evidence: evidence.slice(0, topK),
+    };
+  }
+
+  async read(studentId: string, assistantId: string, citationId: string) {
+    const parts = citationId.split('~');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) throw new NotFoundException('资料不可用');
+    const [versionId, memberId] = parts;
+    const base = (await this.accessible(studentId, assistantId)).find(
+      (k) => k.active_index_version_id === versionId,
+    );
+    if (!base) throw new NotFoundException('资料不可用');
+    const snapshot = await this.snapshot(base);
+    const member = snapshot?.members.find((m) => m.id === memberId);
+    if (!member || !(await this.center.canRetrieve(assistantId, base.id)))
+      throw new NotFoundException('资料不可用');
+    const fresh = (await this.accessible(studentId, assistantId)).find((k) => k.id === base.id);
+    if (!fresh || fresh.active_index_version_id !== versionId)
+      throw new NotFoundException('资料不可用');
+    return {
+      citationId,
+      title: member.title,
+      text: member.content.slice(0, 24000),
+      origin: member.origin,
+      knowledgeBase: base.name,
+      locator: null,
+    };
+  }
+
+  tools(studentId: string, assistantId: string): ModelRuntimeTool[] {
+    return [
+      {
+        name: 'knowledge_search',
+        description: '检索管理员授权的知识库，只返回真实资料证据',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', minLength: 1, maxLength: 2000 },
+            topK: { type: 'integer', minimum: 1, maximum: 8 },
+          },
+          required: ['query'],
+          additionalProperties: false,
+        },
+        execute: async (args) => {
+          if (
+            !args ||
+            typeof args !== 'object' ||
+            Array.isArray(args) ||
+            Object.keys(args).some((k) => !['query', 'topK'].includes(k)) ||
+            typeof args.query !== 'string' ||
+            !args.query.trim() ||
+            args.query.length > 2000 ||
+            (args.topK !== undefined &&
+              (!Number.isInteger(args.topK) || Number(args.topK) < 1 || Number(args.topK) > 8))
+          )
+            return { isError: true, text: 'INVALID_ARGUMENT' };
+          const result = await this.search(
+            studentId,
+            assistantId,
+            args.query,
+            args.topK as number | undefined,
+          );
+          return { isError: result.state !== 'ready', text: JSON.stringify(result) };
+        },
+      },
+      {
+        name: 'knowledge_read',
+        description: '读取已授权知识库中检索命中的来源正文',
+        inputSchema: {
+          type: 'object',
+          properties: { citationId: { type: 'string' } },
+          required: ['citationId'],
+          additionalProperties: false,
+        },
+        execute: async (args) => {
+          if (
+            !args ||
+            typeof args !== 'object' ||
+            Array.isArray(args) ||
+            Object.keys(args).some((k) => k !== 'citationId') ||
+            typeof args.citationId !== 'string'
+          )
+            return { isError: true, text: 'INVALID_ARGUMENT' };
+          try {
+            return {
+              isError: false,
+              text: JSON.stringify(await this.read(studentId, assistantId, args.citationId)),
+            };
+          } catch {
+            return { isError: true, text: 'RESOURCE_UNAVAILABLE' };
+          }
+        },
+      },
+    ];
+  }
+}

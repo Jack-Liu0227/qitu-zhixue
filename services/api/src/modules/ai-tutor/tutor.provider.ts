@@ -14,8 +14,8 @@ import type { TutorContextPacket } from '@qitu/ai-client';
  * 任何改动。契约与流式事件是与前端共享的，换实现不会改变线上协议。
  */
 export interface TutorTurnInput {
-  projectKnowledgeTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
-  projectKnowledgeState?: string;
+  knowledgeTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
+  knowledgeState?: string;
   /** Server-only fresh authorization closure; never serialized or supplied by browsers. */
   authorizeKnowledgeTool?: (toolId: string) => Promise<boolean>;
   projectId: string;

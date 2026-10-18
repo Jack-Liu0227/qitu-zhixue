@@ -45,9 +45,9 @@ Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、�
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.
 
-### 项目知识库与 JSON 配置树
+### 知识库与 JSON 配置树
 
-当前知识相关配置统一位于“项目知识库”下，ima 作为知识引擎实例纳入其中。JSON 工作台保留原双卡布局，子工具可展开查看真实参数；目标映射、管理员目录接口及未提供 schema 的状态边界见 [工具与 MCP JSON 配置树](./mcp-json-tree.md)。统一配置以 `platform-config` 修订为准。
+当前知识相关配置统一位于“知识库”下，ima 作为知识引擎实例纳入其中。JSON 工作台保留原双卡布局，子工具可展开查看真实参数；目标映射、管理员目录接口及未提供 schema 的状态边界见 [工具与 MCP JSON 配置树](./mcp-json-tree.md)。统一配置以 `platform-config` 修订为准。
 
 ### 历史 ima 集成兼容说明
 

@@ -29,7 +29,7 @@ import {
 } from '../../common/idempotency';
 import {
   ENGINE_CATALOG,
-  PROJECT_TOOL,
+  KNOWLEDGE_TOOL,
   assertAssistantsBindable,
   parseAssistantBindingsInput,
   record,
@@ -111,7 +111,11 @@ export class KnowledgeCenterService {
     const [latest] = await this.query<{ revision: number; config: PlatformKnowledgeConfig }>(
       sql`SELECT revision,config FROM platform_configuration_revisions ORDER BY revision DESC LIMIT 1`,
     );
-    if (latest) return latest;
+    // Preserve saved enablement/bindings under the legacy key while updating the registered tools.
+    if (latest) return { ...latest, config: { ...latest.config, platformTools: {
+      ...latest.config.platformTools,
+      'project-knowledge': { ...latest.config.platformTools['project-knowledge'], ...KNOWLEDGE_TOOL },
+    } } };
     const [servers, assistants] = await Promise.all([
       db.select().from(runtimeMcpServers),
       db.select().from(adminAssistants),
@@ -129,7 +133,7 @@ export class KnowledgeCenterService {
       knowledgeEngines: {
         'llamaindex-main': {
           name: 'LlamaIndex',
-          description: '项目原文索引与检索',
+          description: '知识库原文索引与检索',
           provider: 'llamaindex',
           enabled: false,
           config: { retrieval_profile: 'hybrid', top_k: 5 },
@@ -152,7 +156,7 @@ export class KnowledgeCenterService {
       },
       platformTools: {
         'project-knowledge': {
-          ...PROJECT_TOOL,
+          ...KNOWLEDGE_TOOL,
           enabled: ima?.enabled ?? false,
           boundAssistants: assistants
             .filter((a) => a.mcpServerIds.includes('ima-knowledge'))
@@ -388,11 +392,7 @@ export class KnowledgeCenterService {
         ),
       );
       if (!base) throw new NotFoundException('知识库不可用');
-      if (base.kind === 'project' && parsed.some((row) => row.agentKind !== 'admin_assistant'))
-        throw new BadRequestException({
-          code: 'KNOWLEDGE_BINDING_NOT_ALLOWED',
-          message: '项目库只允许显式助手授权',
-        });
+      if (base.kind === 'project') throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
       if (base.revision !== input.expectedRevision)
         throw new ConflictException({
           code: 'KNOWLEDGE_BINDING_CONFLICT',
@@ -436,7 +436,7 @@ export class KnowledgeCenterService {
 
   /**
    *   * 知识库↔助手绑定（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）：
-   * 项目知识库检索工具绑定到哪些助手。只读目录 + 聚焦写入；
+   * 知识库检索工具绑定到哪些助手。只读目录 + 聚焦写入；
    * 保存复用 platform-config 的 expectedRevision 并发控制、幂等与审计事务。
    */
   async assistantBindings(): Promise<{
@@ -548,7 +548,7 @@ export class KnowledgeCenterService {
     return {
       ...base,
       files: await this.query<Omit<KnowledgeMember, 'content'>>(
-        sql`SELECT id,kb_id,title,checksum,document_id,source_revision,origin,visibility FROM knowledge_base_members m LEFT JOIN knowledge_sources s ON s.id=m.origin->>'sourceId' WHERE m.kb_id=${id} AND m.visibility='active' AND (m.origin->>'kind' IS DISTINCT FROM 'managed-source' OR s.status<>'revoked') ORDER BY m.created_at`,
+        sql`SELECT m.id,m.kb_id,m.title,m.checksum,m.document_id,m.source_revision,m.origin,m.visibility FROM knowledge_base_members m LEFT JOIN knowledge_sources s ON s.id=m.origin->>'sourceId' WHERE m.kb_id=${id} AND m.visibility='active' AND (m.origin->>'kind' IS DISTINCT FROM 'managed-source' OR s.status<>'revoked') ORDER BY m.created_at`,
       ),
       versions: await this.query(
         sql`SELECT id,status,manifest,created_at FROM knowledge_index_versions WHERE kb_id=${id} ORDER BY created_at DESC`,
@@ -619,7 +619,7 @@ export class KnowledgeCenterService {
     const base = await this.base(id);
     const input = record(body);
     if (base.kind === 'project' || base.lifecycle !== 'active')
-      throw new BadRequestException('项目资料由准备任务管理');
+      throw new BadRequestException('该历史知识库只读，或知识库已停用');
     if (
       Object.keys(input).some((k) => !['title', 'content', 'allowMaterialize'].includes(k)) ||
       typeof input.title !== 'string' ||
@@ -628,9 +628,9 @@ export class KnowledgeCenterService {
       typeof input.content !== 'string' ||
       !input.content.trim() ||
       Buffer.byteLength(input.content) > 5 * 1024 * 1024 ||
-      typeof input.allowMaterialize !== 'boolean'
+      (input.allowMaterialize !== undefined && typeof input.allowMaterialize !== 'boolean')
     )
-      throw new BadRequestException('资料需包含标题、正文和导入许可，正文不超过 5 MiB');
+      throw new BadRequestException('资料需包含标题和正文，正文不超过 5 MiB');
     const memberId = `material-${checksum(`${actor.id}:${id}:${key}`).slice(0, 32)}`;
     const requestHash = checksum(
       JSON.stringify({
@@ -688,7 +688,7 @@ export class KnowledgeCenterService {
           }
         : {};
       await tx.execute(
-        sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin) VALUES(${memberId},${id},${input.title},${input.content},${hash},${hash},${JSON.stringify({ kind: 'admin-upload', canMaterialize: input.allowMaterialize, reviewedBy: actor.id, requestHash, ...fileMetadata })}::jsonb) ON CONFLICT DO NOTHING`,
+        sql`INSERT INTO knowledge_base_members(id,kb_id,title,content,checksum,source_revision,origin) VALUES(${memberId},${id},${input.title},${input.content},${hash},${hash},${JSON.stringify({ kind: 'admin-upload', canMaterialize: false, reviewedBy: actor.id, requestHash, ...fileMetadata })}::jsonb) ON CONFLICT DO NOTHING`,
       );
       if (upload)
         await tx.execute(
@@ -721,6 +721,7 @@ export class KnowledgeCenterService {
         ),
       );
       if (!base) throw new NotFoundException('知识库不可用');
+      if (base.kind === 'project') throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
       const [replay] = rows(await tx.execute(sql`SELECT id FROM knowledge_jobs WHERE id=${jobId}`));
       if (replay) return;
       const [running] = rows<{ id: string; input_revision: number }>(
@@ -738,7 +739,7 @@ export class KnowledgeCenterService {
         sql`UPDATE knowledge_bases SET revision=${revision},build_state='queued',updated_at=now() WHERE id=${id}`,
       );
       await tx.execute(
-        sql`INSERT INTO knowledge_jobs(id,kb_id,operation,input_revision) VALUES(${jobId},${id},${base.kind === 'project' ? 'prepare' : 'index'},${revision})`,
+        sql`INSERT INTO knowledge_jobs(id,kb_id,operation,input_revision) VALUES(${jobId},${id},${'index'},${revision})`,
       );
     });
     return this.base(id);
@@ -763,7 +764,7 @@ export class KnowledgeCenterService {
     const base = await this.base(id);
     const input = record(body);
     if (base.kind === 'project' || base.lifecycle !== 'active')
-      throw new BadRequestException('项目资料由准备任务管理');
+      throw new BadRequestException('该历史知识库只读，或知识库已停用');
     if (
       Object.keys(input).some((k) => !['allowMaterialize', 'deleted'].includes(k)) ||
       !Object.keys(input).length ||

@@ -16,7 +16,7 @@ function fixture() {
     table === runtimeMcpServers ? [server] : table === agentConfigs ? [agent] : table === agentMcpBindings ? [binding] : table === adminAssistants ? [assistant, leader] : [],
   ) }) } as unknown as Database;
   const service = new ImaSettingsService(db, { write: async () => 'audit' } as never);
-  return { service, server, agent, assistant, leader, binding };
+  return { service, server, agent, assistant, leader, binding, db };
 }
 
 test('ima gates require global, runtime binding, tool allowlist and current phase assistant; revocation is immediate', async () => {
@@ -78,4 +78,19 @@ test('ima mutations require an idempotency key and do not touch storage when mis
   const controller = new ImaSettingsController(auth as never, {} as never, {} as never);
   await assert.rejects(() => controller.update('qitu_session=test', undefined, { enabled: false }), (error: unknown) => (error as { getStatus(): number }).getStatus() === 400);
   await assert.rejects(() => controller.check('qitu_session=test', undefined));
+});
+
+
+test('unified knowledge capability revocation also blocks legacy ima MCP for project dialogue', async () => {
+  const h = fixture();
+  let allowed = true;
+  const center = {
+    canRetrieve: async (id: string) => allowed && id === h.assistant.id,
+    configuration: async () => ({config: {knowledgeEngines: {'ima-main': {enabled: true, config: {allowedKnowledgeBaseIds: ['approved']}}}}}),
+  };
+  const service = new ImaSettingsService(h.db, {} as never, center as never);
+  assert.equal(await service.canCall(h.agent.id, 'ima_list_knowledge_bases', h.assistant.id), true);
+  allowed = false;
+  assert.equal(await service.canCall(h.agent.id, 'ima_list_knowledge_bases', h.assistant.id), false);
+  assert.equal(await service.canCall(h.agent.id, 'ima_list_knowledge_bases'), false);
 });

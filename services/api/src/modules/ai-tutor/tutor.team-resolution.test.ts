@@ -93,7 +93,7 @@ function newTutor(input: {
     input.learningStore, // learningStore (13)
     undefined, // ima
     undefined, // imaSettings
-    undefined, // projectKnowledge
+    undefined, // managedKnowledge
     undefined, // templates
     input.database, // database (18)
     input.templateBindings, // templateBindings (19)

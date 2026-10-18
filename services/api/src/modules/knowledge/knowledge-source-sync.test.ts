@@ -243,7 +243,6 @@ test('repeated unchanged source sync keeps the document active and readable', as
   const worker = new KnowledgeBuildWorker(
     center,
     { check: async () => ({ ok: true }), execute: async () => ({ ok: true, manifest: {} }) } as never,
-    {} as never,
     { prepare: async () => ({ documents: [{ title: 'doc', content: '正文', revision: 'rev' }], discovered: 1, accepted: 1, rejected: 0, bytesRead: 6, pagesRead: 0, sourceRevision: 'source-rev' }) } as never,
   );
 
@@ -265,7 +264,7 @@ test('worker lease loss/cancellation fence blocks publication before index write
       }),
     }),
   } as unknown as KnowledgeCenterService;
-  const worker = new KnowledgeBuildWorker(center, {} as never, {} as never, {} as never);
+  const worker = new KnowledgeBuildWorker(center, {} as never, {} as never);
   await assert.rejects(worker.event({ id: 'sync-job', kb_id: 'kb', state: 'cancelled', input_revision: 2, fencing_token: 3, attempts: 1, operation: 'sync' }, 'validating'), /JOB_LEASE_LOST/);
   assert.equal(statements.some((statement) => statement.includes('knowledge_index_versions')), false);
 });
@@ -324,7 +323,6 @@ test('sync cancellation/revocation boundaries never leave readable members or pu
     const worker = new KnowledgeBuildWorker(
       center,
       { check: async () => ({ ok: true, status: 'ready' }), execute: async () => boundary === 'build' ? ({ ok: false, errorCode: 'INDEX_BUILD_FAILED' }) : ({ ok: true, manifest: {} }) } as never,
-      {} as never,
       sourceSync as never,
     );
     await worker.tick();

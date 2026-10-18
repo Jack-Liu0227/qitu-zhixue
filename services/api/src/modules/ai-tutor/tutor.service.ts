@@ -52,7 +52,7 @@ import { TutorWorkspaceService } from './tutor-workspace.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
-import { ProjectKnowledgeService } from '../knowledge/project-knowledge.service';
+import { KnowledgeRetrievalService } from '../knowledge/knowledge-retrieval.service';
 import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
@@ -263,7 +263,7 @@ export class TutorService {
     @Optional() @Inject(LearningPlanStore) private readonly learningStore?: LearningPlanStore,
     @Optional() @Inject(ImaMcpClient) ima?: ImaMcpClient,
     @Optional() private readonly imaSettings?: ImaSettingsService,
-    @Optional() private readonly projectKnowledge?: ProjectKnowledgeService,
+    @Optional() private readonly managedKnowledge?: KnowledgeRetrievalService,
     @Optional() private readonly templates?: TemplatesService,
     @Optional() @Inject(DATABASE_TOKEN) database?: import('@qitu/database').Database | null,
     /** A1：模板绑定冻结快照解析；作为最后参数注入，保持既有位置化构造兼容。 */
@@ -1265,7 +1265,7 @@ export class TutorService {
     const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
     const conversationAssistantId = assistantAuthor.id;
     const authorizeKnowledgeTool = this.imaSettings
-      ? (toolId: string) => record.projectId ? Promise.resolve(false) : this.imaSettings!.canCall(this.contextReader.partner.id, toolId, conversationAssistantId)
+      ? (toolId: string) => this.imaSettings!.canCall(this.contextReader.partner.id, toolId, conversationAssistantId)
       : undefined;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
@@ -1314,25 +1314,28 @@ export class TutorService {
       }),
     });
 
-    let projectKnowledgeTools: TutorTurnInput['projectKnowledgeTools'];
-    let projectKnowledgeState: string | undefined;
-    if (record.projectId) {
-      // Remove legacy template/fact injection before adding evidence from the binding.
+    let knowledgeTools: TutorTurnInput['knowledgeTools'];
+    let knowledgeState: string | undefined;
+    if (this.managedKnowledge) {
+      // Facts come from authorized manual bases, independent of project provisioning.
       contextPacket.knowledgeEvidence = [];
-      contextPacket.templateEvidence = [];
-      projectKnowledgeState = '项目资料准备暂未完成；可以继续一般引导，不得声称已经查阅教材或编造引用。';
-      if (this.projectKnowledge) {
-        const assistantId = conversationAssistantId;
-        const result = await this.projectKnowledge.search(request.actorId,record.projectId,assistantId,request.content ?? request.optionLabel ?? currentTaskTitle);
-        projectKnowledgeState = `项目知识库状态：${result.state}。仅能依据当前项目库的真实证据引用，不得改查其他库；资料不足须明确说明。`;
-        contextPacket.knowledgeEvidence = result.evidence.map(e=>({document:{id:e.citationId,version:e.indexVersionId!,title:e.title,summary:e.text,content:e.text,source:`${result.base?.name} · ${e.citationId}`,scope:'project' as const,active:true,tags:[]},score:e.score??0,matchedTerms:[]}));
-        if(result.base?.active_index_version_id && result.state==='ready') projectKnowledgeTools=this.projectKnowledge.tools(request.actorId,record.projectId,assistantId,result.base.active_index_version_id);
+      knowledgeState = '仅引用实际检索或读取的资料；资料不足或未授权时明确说明，不得编造引用。';
+      try {
+        const result = await this.managedKnowledge.search(request.actorId, conversationAssistantId,
+          request.content ?? request.optionLabel ?? currentTaskTitle);
+        contextPacket.knowledgeEvidence = result.evidence.map(e => ({document: {
+          id: e.citationId, version: e.indexVersionId, title: e.title, summary: e.text, content: e.text,
+          source: `${e.knowledgeBase} · ${e.citationId}`, scope: 'system' as const, active: true, tags: [],
+        }, score: e.score ?? 0, matchedTerms: []}));
+        if (result.state !== 'CAPABILITY_NOT_AUTHORIZED')
+          knowledgeTools = this.managedKnowledge.tools(request.actorId, conversationAssistantId);
+      } catch {
+        knowledgeState = '知识库本轮暂不可用，可以继续一般引导；不得声称已查证资料或编造引用。';
       }
     }
 
     if (effectiveRuntime !== null) {
       const mcpServers = await Promise.all(effectiveRuntime.mcpServers.map(async (server) => {
-        if (record.projectId) return { ...server, toolIds: [] };
         if (!authorizeKnowledgeTool || server.serverId !== 'ima-knowledge') return server;
         const decisions = await Promise.all(server.toolIds.map(async (toolId) => ({ toolId, allowed: await authorizeKnowledgeTool(toolId) })));
         return { ...server, toolIds: decisions.filter((entry) => entry.allowed).map((entry) => entry.toolId) };
@@ -1356,7 +1359,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
-          projectKnowledgeTools, projectKnowledgeState,
+          knowledgeTools, knowledgeState,
           authorizeKnowledgeTool,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
@@ -1376,7 +1379,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
-      projectKnowledgeTools, projectKnowledgeState,
+      knowledgeTools, knowledgeState,
       authorizeKnowledgeTool,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,

@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { KnowledgeEngines } from '../../../../lib/components/knowledge-engines/KnowledgeEngines';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   cancelKnowledgeJob,
   centerRequest,
@@ -115,7 +116,6 @@ export default function KnowledgeCenterPage() {
   const [preflightBusy, setPreflightBusy] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [materialize, setMaterialize] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const retry = useRef(createIdempotentRetryKey());
@@ -235,7 +235,7 @@ export default function KnowledgeCenterPage() {
       <div className="settings-pagehead">
         <div className="settings-titlebox">
           <h1>知识中心</h1>
-          <div className="settings-desc">管理教学资料、项目知识库与知识引擎。</div>
+          <div className="settings-desc">手动创建知识库，管理教学资料与知识引擎。</div>
         </div>
         <div className="settings-page-actions">
           <button
@@ -286,7 +286,7 @@ export default function KnowledgeCenterPage() {
             <input
               className="admin-input-text"
               aria-label="搜索知识库"
-              placeholder="搜索名称或项目 ID"
+              placeholder="搜索知识库名称"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -299,7 +299,7 @@ export default function KnowledgeCenterPage() {
               <option value="all">全部知识库</option>
               <option value="platform">平台资料</option>
               <option value="school">校本资料</option>
-              <option value="project">项目知识库</option>
+              <option value="project">历史自动知识库（只读）</option>
             </select>
           </div>
           <div className="admin-knowledge-cards-grid">
@@ -314,7 +314,7 @@ export default function KnowledgeCenterPage() {
                   <h2 style={{ fontSize: 17 }}>{b.name}</h2>
                   <p>
                     {states[b.build_state] ?? b.build_state}
-                    {b.kind === 'project' ? ' · 项目自动生成' : ''}
+                    {b.kind === 'project' ? ' · 历史自动知识库（只读）' : ''}
                   </p>
                   <p>
                     资料：{b.document_count} 份 · 引擎：{b.engine_instance_id ?? '未绑定'}
@@ -352,7 +352,7 @@ export default function KnowledgeCenterPage() {
           >
             <h2 style={{ fontSize: 17 }}>检索助手绑定</h2>
             <p style={{ color: '#64748b', fontSize: 13 }}>
-              「项目知识库检索」工具当前绑定的助手；每轮对话由服务端重新解析（canRetrieve），未绑定或停用的助手不会检索项目知识库。
+              「知识库检索」工具当前绑定的助手；每轮对话由服务端重新解析（canRetrieve），未绑定或停用的助手不会检索知识库。
             </p>
             {bindingError ? (
               <p role="alert" style={{ color: '#b42318' }}>
@@ -422,13 +422,13 @@ export default function KnowledgeCenterPage() {
         </>
       )}
       {newBase && (
-        <div className="admin-modal-overlay">
+        <KnowledgeDialog>
           <section
             role="dialog"
             aria-modal="true"
             aria-label="新建知识库"
             className="admin-modal-card"
-            style={{ width: 'min(94vw,600px)' }}
+            style={{ width: 'min(94vw,600px)', maxHeight: '90dvh', overflowY: 'auto' }}
           >
             <div className="admin-modal-header">
               <h2>新建知识库</h2>
@@ -697,10 +697,10 @@ export default function KnowledgeCenterPage() {
               )}
             </div>
           </section>
-        </div>
+        </KnowledgeDialog>
       )}
       {detail && (
-        <div className="admin-modal-overlay">
+        <KnowledgeDialog>
           <section
             role="dialog"
             aria-modal="true"
@@ -717,7 +717,7 @@ export default function KnowledgeCenterPage() {
             <div className="admin-modal-body">
               <p>
                 {states[detail.build_state] ?? detail.build_state} ·{' '}
-                {detail.kind === 'project' ? '只检索本项目资料' : '教学资料库'}
+                {detail.kind === 'project' ? '历史自动知识库（只读，不再检索）' : '教学资料库'}
               </p>
               {detail.active_index_version_id && detail.build_state !== 'ready' && (
                 <p role="status">当前有效旧版仍保留；新版本验证通过前不会替换。</p>
@@ -798,21 +798,10 @@ export default function KnowledgeCenterPage() {
                         <button
                           className="settings-action-btn"
                           disabled={busy}
-                          onClick={() =>
-                            void mutate(`knowledge/bases/${detail.id}/files/${f.id}`, {
-                              allowMaterialize: f.origin.canMaterialize !== true,
-                            })
-                          }
-                        >
-                          {f.origin.canMaterialize === true ? '撤销项目导入许可' : '允许项目导入'}
-                        </button>
-                        <button
-                          className="settings-action-btn"
-                          disabled={busy}
                           onClick={() => {
                             if (
                               window.confirm(
-                                '删除后将立即停止此资料的检索与派生引用，保留历史来源记录。',
+                                '删除后将立即停止此资料的检索，保留历史来源记录。',
                               )
                             )
                               void mutate(`knowledge/bases/${detail.id}/files/${f.id}`, {
@@ -834,7 +823,7 @@ export default function KnowledgeCenterPage() {
               ) : detail.flavour === 'marginnote4' ||
                 detail.connection?.flavour === 'marginnote4' ? (
                 <p>资料通过 MarginNote 设备同步，此连接不支持普通文件上传。</p>
-              ) : detail.connection || detail.mode === 'link_existing' || detail.flavour ? (
+              ) : (detail.connection && detail.connection.status !== 'not_applicable') || detail.mode === 'link_existing' || detail.flavour ? (
                 <p>外部连接仅保存指针并就地检索，不参与原始文件上传。</p>
               ) : (
                 detail.kind !== 'project' && (
@@ -867,14 +856,6 @@ export default function KnowledgeCenterPage() {
                       onChange={(e) => setContent(e.target.value)}
                       placeholder="输入或上传真实资料正文"
                     />
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={materialize}
-                        onChange={(e) => setMaterialize(e.target.checked)}
-                      />
-                      我已确认资料来源，允许导入项目知识库
-                    </label>
                     <button
                       className="settings-action-btn"
                       disabled={busy || !title.trim() || !content.trim() || !online}
@@ -883,7 +864,6 @@ export default function KnowledgeCenterPage() {
                           await mutate(`knowledge/bases/${detail.id}/files`, {
                             title,
                             content,
-                            allowMaterialize: materialize,
                           })
                         ) {
                           setTitle('');
@@ -1021,7 +1001,7 @@ export default function KnowledgeCenterPage() {
                       <fieldset key={agentKind}>
                         <legend>{agentKind}</legend>
                         {baseBindingDraft
-                          .filter((binding) => binding.agentKind === agentKind)
+                          .filter((binding) => binding.agentKind === agentKind && binding.mode === 'retrieve')
                           .map((binding) => (
                             <div key={`${binding.agentId}:${binding.mode}`}>
                               <label>
@@ -1064,7 +1044,7 @@ export default function KnowledgeCenterPage() {
                 {baseBindings && (
                   <button
                     className="settings-action-btn"
-                    disabled={busy || !online || Boolean(baseBindingError)}
+                    disabled={detail.kind === 'project' || busy || !online || Boolean(baseBindingError)}
                     onClick={async () => {
                       setBusy(true);
                       try {
@@ -1089,7 +1069,7 @@ export default function KnowledgeCenterPage() {
                       }
                     }}
                   >
-                    保存逐库绑定（retrieve / materialize）
+                    保存逐库检索授权
                   </button>
                 )}
               </section>
@@ -1150,7 +1130,7 @@ export default function KnowledgeCenterPage() {
               </button>
               <button
                 className="settings-action-btn is-primary"
-                disabled={busy || !online}
+                disabled={detail.kind === 'project' || busy || !online}
                 onClick={() => void mutate(`knowledge/bases/${detail.id}/rebuild`, {})}
               >
                 准备 / 重建索引
@@ -1160,10 +1140,10 @@ export default function KnowledgeCenterPage() {
               </button>
             </div>
           </section>
-        </div>
+        </KnowledgeDialog>
       )}
       {preview && (
-        <div className="admin-modal-overlay">
+        <KnowledgeDialog>
           <section
             role="dialog"
             aria-modal="true"
@@ -1184,10 +1164,10 @@ export default function KnowledgeCenterPage() {
               {preview.content}
             </pre>
           </section>
-        </div>
+        </KnowledgeDialog>
       )}
       {jobRecord && (
-        <div className="admin-modal-overlay">
+        <KnowledgeDialog>
           <section
             role="dialog"
             aria-modal="true"
@@ -1218,8 +1198,14 @@ export default function KnowledgeCenterPage() {
               )}
             </div>
           </section>
-        </div>
+        </KnowledgeDialog>
       )}
     </div>
   );
+}
+
+
+/** Keep fixed dialogs outside the scrolling settings container. */
+function KnowledgeDialog({ children }: { children: ReactNode }) {
+  return createPortal(<div className="admin-modal-overlay">{children}</div>, document.body);
 }

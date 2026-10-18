@@ -150,10 +150,10 @@ export interface PlatformKnowledgeConfig {
   knowledgeEngines: Record<string, EngineConfig>;
   platformTools: { 'project-knowledge': ProjectToolConfig };
 }
-export const PROJECT_TOOL = {
-  name: '项目知识库检索',
-  description: '检索和阅读当前项目绑定的知识库',
-  tools: ['project_knowledge_search', 'project_knowledge_read'],
+export const KNOWLEDGE_TOOL = {
+  name: '知识库检索',
+  description: '检索和阅读管理员授权的知识库',
+  tools: ['knowledge_search', 'knowledge_read'],
 };
 const common = [
   'connectionRef',
@@ -422,9 +422,9 @@ export function validateKnowledgeConfig(
       Object.keys(t).some(
         (k) => !['name', 'description', 'tools', 'enabled', 'boundAssistants'].includes(k),
       ) ||
-      t.name !== PROJECT_TOOL.name ||
-      t.description !== PROJECT_TOOL.description ||
-      JSON.stringify(t.tools) !== JSON.stringify(PROJECT_TOOL.tools)
+      t.name !== KNOWLEDGE_TOOL.name ||
+      t.description !== KNOWLEDGE_TOOL.description ||
+      JSON.stringify(t.tools) !== JSON.stringify(KNOWLEDGE_TOOL.tools)
     )
       invalid('平台工具注册字段只读');
     if (
@@ -434,7 +434,7 @@ export function validateKnowledgeConfig(
       t.boundAssistants.some((x) => typeof x !== 'string') ||
       new Set(t.boundAssistants).size !== t.boundAssistants.length
     )
-      invalid('项目检索授权无效');
+      invalid('知识库检索授权无效');
     result.platformTools['project-knowledge'] = t as unknown as ProjectToolConfig;
   }
   return result;

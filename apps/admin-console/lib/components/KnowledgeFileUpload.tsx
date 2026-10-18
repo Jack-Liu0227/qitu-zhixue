@@ -46,7 +46,6 @@ export function KnowledgeFileUpload({
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [running, setRunning] = useState(false);
-  const [permission, setPermission] = useState(false);
   const [message, setMessage] = useState('');
   const update = (key: string, state: Entry['state'], message: string) =>
     setEntries((current) =>
@@ -67,7 +66,6 @@ export function KnowledgeFileUpload({
             {
               fileName: row.file.name,
               base64: await readBase64(row.file),
-              allowMaterialize: permission,
             },
             row.key,
           );
@@ -132,15 +130,6 @@ export function KnowledgeFileUpload({
             );
           }}
         />
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={permission}
-          disabled={running || entries.some((row) => row.state === 'failed')}
-          onChange={(event) => setPermission(event.target.checked)}
-        />
-        我已确认资料来源，允许这些文件导入项目知识库
       </label>
       {entries.length > 0 && (
         <ul className="knowledge-upload-list" aria-live="polite">

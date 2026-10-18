@@ -21,10 +21,9 @@ import { KnowledgeCenterController } from './knowledge-center.controller';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { KnowledgeBuildWorker } from './knowledge-build.worker';
-import { KnowledgeSourceService } from './knowledge-source.service';
 import { KnowledgeSourceSyncService } from './knowledge-source-sync.service';
-import { ProjectKnowledgeService } from './project-knowledge.service';
-import { ProjectKnowledgeController } from './project-knowledge.controller';
+import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
+import { KnowledgeRetrievalController } from './knowledge-retrieval.controller';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KnowledgeConnectionService } from './knowledge-connection.service';
@@ -50,7 +49,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     KnowledgeController,
     KnowledgeAdminController,
     KnowledgeCenterController,
-    ProjectKnowledgeController,
+    KnowledgeRetrievalController,
   ],
   providers: [
     KnowledgeUploadService,
@@ -61,8 +60,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     KnowledgeCenterService,
     KnowledgeEngineService,
     KnowledgeBuildWorker,
-    KnowledgeSourceService,
-    ProjectKnowledgeService,
+    KnowledgeRetrievalService,
     KnowledgeService,
     { provide: RetrievalPort, useClass: KeywordRetrievalPort },
     { provide: EmbeddingProvider, useClass: ReservedEmbeddingProvider },
@@ -93,7 +91,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     RetrievalPort,
     EmbeddingProvider,
     KnowledgeCenterService,
-    ProjectKnowledgeService,
+    KnowledgeRetrievalService,
   ],
 })
 export class KnowledgeModule {}

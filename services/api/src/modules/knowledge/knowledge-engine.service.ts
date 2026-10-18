@@ -262,7 +262,7 @@ export class KnowledgeEngineService {
       await this.center
         .database()
         .execute(
-          sql`INSERT INTO knowledge_engine_checks(instance_id,config_revision,health_status,error_code,capabilities) VALUES(${id},${revision},${receipt.status ?? (receipt.ok ? 'ready' : 'unavailable')},${receipt.errorCode ?? null},${JSON.stringify({ canIndex: receipt.ok && ['llamaindex', 'graphrag', 'lightrag'].includes(engine?.provider ?? ''), canSearch: receipt.ok && !['obsidian', 'marginnote', 'pageindex', 'pageindex-oss'].includes(engine?.provider ?? ''), canMaterialize: receipt.ok && (engine?.provider !== 'ima' || engine.config.allowMaterialize === true) })}::jsonb) ON CONFLICT(instance_id) DO UPDATE SET config_revision=excluded.config_revision,health_status=excluded.health_status,error_code=excluded.error_code,capabilities=excluded.capabilities,checked_at=now()`,
+          sql`INSERT INTO knowledge_engine_checks(instance_id,config_revision,health_status,error_code,capabilities) VALUES(${id},${revision},${receipt.status ?? (receipt.ok ? 'ready' : 'unavailable')},${receipt.errorCode ?? null},${JSON.stringify({ canIndex: receipt.ok && ['llamaindex', 'graphrag', 'lightrag'].includes(engine?.provider ?? ''), canSearch: receipt.ok && !['obsidian', 'marginnote', 'pageindex', 'pageindex-oss'].includes(engine?.provider ?? ''), canMaterialize: false })}::jsonb) ON CONFLICT(instance_id) DO UPDATE SET config_revision=excluded.config_revision,health_status=excluded.health_status,error_code=excluded.error_code,capabilities=excluded.capabilities,checked_at=now()`,
         );
       return { instanceId: id, revision, ...receipt, checkedAt: new Date().toISOString() };
     };

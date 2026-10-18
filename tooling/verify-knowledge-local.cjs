@@ -11,7 +11,7 @@ const root = './.tmp/test-dist/';
 const { KnowledgeCenterService } = api(root + 'modules/knowledge/knowledge-center.service.js');
 const { KnowledgeEngineService } = api(root + 'modules/knowledge/knowledge-engine.service.js');
 const { KnowledgeBuildWorker } = api(root + 'modules/knowledge/knowledge-build.worker.js');
-const { ProjectKnowledgeService } = api(root + 'modules/knowledge/project-knowledge.service.js');
+const { KnowledgeRetrievalService } = api(root + 'modules/knowledge/knowledge-retrieval.service.js');
 const { PostgresExplorationStore } = api(root + 'modules/projects/exploration.store.postgres.js');
 const { AuditService } = api(root + 'common/audit/audit.service.js');
 const connection = process.env.QITU_KNOWLEDGE_VERIFY_DATABASE_URL;
@@ -22,6 +22,7 @@ if (!token) throw new Error('Local embedding service token required');
 const db = createDb(connection);
 const suffix = randomUUID().slice(0, 8);
 const student = 'local-student-' + suffix;
+const otherStudent = 'other-student-' + suffix;
 const assistant = 'local-tutor-' + suffix;
 const actor = {
   id: 'local-admin-' + suffix,
@@ -33,6 +34,7 @@ const actor = {
   for (const [id, role] of [
     [actor.id, 'admin'],
     [student, 'student'],
+    [otherStudent, 'student'],
   ])
     await db.execute(
       sql`INSERT INTO users(id,email,display_name,role,password_hash) VALUES(${id},${id + '@example.invalid'},'Verification',${role},'disabled')`,
@@ -166,41 +168,36 @@ const actor = {
       tags: ['动能'],
     },
   });
-  const knowledge = new ProjectKnowledgeService(center, engine);
-  let status = await knowledge.status(student, project);
-  assert.equal(status.name, '动能研究知识库');
-  assert.ok(status.jobId);
-  const worker = new KnowledgeBuildWorker(center, engine, {
-    discover: async () => ({ imported: 0, failures: 0, catalogComplete: true }),
-  });
-  for (let attempt = 0; attempt < 5; attempt++) {
+  assert.equal((await center.query(sql`SELECT count(*)::int n FROM knowledge_bases WHERE project_id=${project}`))[0].n, 0);
+  assert.equal((await center.query(sql`SELECT count(*)::int n FROM project_knowledge_bindings WHERE project_id=${project}`))[0].n, 0);
+  assert.equal((await center.query(sql`SELECT count(*)::int n FROM knowledge_jobs WHERE id=${'prepare-' + project}`))[0].n, 0);
+  await db.execute(sql`INSERT INTO knowledge_base_agent_bindings(kb_id,agent_kind,agent_id,mode,enabled,revision,created_by,updated_by) VALUES(${source.id},'admin_assistant',${assistant},'retrieve',true,1,${actor.id},${actor.id})`);
+  const worker = new KnowledgeBuildWorker(center, engine, {});
+  for (let attempt = 0; attempt < 12; attempt++) {
     await worker.tick();
-    status = await knowledge.status(student, project);
-    if (status.state === 'ready') break;
+    if ((await center.base(source.id)).build_state === 'ready') break;
   }
-  assert.equal(status.state, 'ready', JSON.stringify(await center.base(status.knowledgeBaseId)));
-  const result = await knowledge.search(
-    student,
-    project,
-    assistant,
-    '速度变为两倍，动能如何变化？',
-  );
+  const status = await center.base(source.id);
+  assert.equal(status.build_state, 'ready', JSON.stringify(status));
+  const knowledge = new KnowledgeRetrievalService(center, engine);
+  const result = await knowledge.search(student, assistant, '速度变为两倍，动能如何变化？');
   assert.equal(result.state, 'ready');
-  assert.ok(result.evidence.length);
+  assert.equal(result.evidence[0].knowledgeBaseId, source.id);
   const citation = result.evidence[0].citationId;
-  const read = await knowledge.read(student, project, assistant, citation);
-  assert.match(read.text, /四倍/);
-  assert.ok(read.origin.sourceMemberId);
-  await assert.rejects(knowledge.search('foreign-student', project, assistant, '动能'));
-  await center.updateFile(actor, source.id, source.files[0].id, { allowMaterialize: false });
-  assert.equal((await knowledge.search(student, project, assistant, '动能')).evidence.length, 0);
-  await assert.rejects(knowledge.read(student, project, assistant, citation));
-  const bound = await center.base(status.knowledgeBaseId);
-  assert.equal(
-    bound.active_index_version_id,
-    status.activeIndexVersionId,
-    'revocation does not erase historical version',
-  );
+  assert.match((await knowledge.read(student, assistant, citation)).text, /四倍/);
+  assert.ok((await knowledge.search(otherStudent, assistant, '动能')).evidence.length);
+  await db.execute(sql`UPDATE knowledge_bases SET kind='student',owner_user_id=${student} WHERE id=${source.id}`);
+  assert.equal((await knowledge.search(otherStudent, assistant, '动能')).evidence.length, 0);
+  await assert.rejects(knowledge.read(otherStudent, assistant, citation));
+  assert.ok((await knowledge.search(student, assistant, '动能')).evidence.length);
+  await db.execute(sql`UPDATE knowledge_bases SET kind='project',project_id=${project} WHERE id=${source.id}`);
+  assert.equal((await knowledge.search(student, assistant, '动能')).evidence.length, 0);
+  await assert.rejects(center.rebuild(source.id, 'retired-' + suffix));
+  await db.execute(sql`UPDATE knowledge_bases SET kind='platform',project_id=NULL WHERE id=${source.id}`);
+  await db.execute(sql`UPDATE knowledge_base_agent_bindings SET enabled=false WHERE kb_id=${source.id}`);
+  assert.equal((await knowledge.search(student, assistant, '动能')).evidence.length, 0);
+  await assert.rejects(knowledge.read(student, assistant, citation));
+  assert.equal((await center.base(source.id)).active_index_version_id, status.active_index_version_id);
   console.log(
     JSON.stringify({
       status: 'PASS',
@@ -209,12 +206,13 @@ const actor = {
       binaryUpload: !!process.env.QITU_KNOWLEDGE_VERIFY_UPLOAD_PATH,
       checks: [
         'actual embedding preflight',
-        'confirmation atomically creates project+base+binding+job',
+        'project confirmation creates no base, binding or preparation job',
         'original DeepTutor build and validation',
-        'project-only Chinese semantic retrieval',
+        'authorized manual base Chinese semantic retrieval',
         'original full text citation',
-        'foreign project denial',
-        'source revocation blocks search and read',
+        'shared manual platform base',
+        'private owner scope enforced and retired project base excluded',
+        'per-base revocation blocks search and read',
         'historical index retained',
       ],
     }),

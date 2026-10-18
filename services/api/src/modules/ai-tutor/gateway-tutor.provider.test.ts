@@ -135,19 +135,19 @@ test('MCP failure is redacted and the model is explicitly told that knowledge co
   assert.ok(events.some((event) => event.type === 'tool_result' && event.status === 'error' && event.result === 'ima 知识库暂不可用'));
 });
 
-test('formal project never discovers ima even when legacy runtime metadata still contains it', async () => {
+test('project dialogue can use authorized ima without a dedicated project base', async () => {
   let discovered = false;
   const ima = new ImaMcpClient();
-  ima.toolsFor = async () => { discovered = true; throw new Error('must not discover'); };
+  ima.toolsFor = async () => { discovered = true; return [{ name: 'ima_read_document', description: 'read', inputSchema: {type: 'object'}, execute: async () => ({text: 'real source'}) }]; };
   const input = await imaInput(); input.projectId = 'formal-project';
-  input.projectKnowledgeState = '项目资料尚未准备好，不能编造引用';
+  input.knowledgeState = '仅引用实际检索资料';
   const gateway = new StubGateway((_usage, request) => {
-    assert.equal(request.tools, undefined);
-    assert.match(request.messages[0]!.content, /不能编造引用/);
+    assert.equal(request.tools?.[0]?.name, 'ima_read_document');
+    assert.match(request.messages[0]!.content, /引用必须来自实际读取结果/);
     return result('你可以先描述观察到的现象吗？');
   });
   const events = await collect(new GatewayTutorProvider(gateway, [], ima), input);
-  assert.equal(discovered, false);
+  assert.equal(discovered, true);
   assert.ok(events.some(e => e.type === 'done'));
 });
 

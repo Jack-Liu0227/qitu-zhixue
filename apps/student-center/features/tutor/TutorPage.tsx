@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import type { TutorTeamGraph } from '@qitu/contracts';
-import { ProjectKnowledgeStatus } from './components/ProjectKnowledgeStatus';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
@@ -191,7 +190,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       />
       <div className="qitu-tutor-center-column">
         {error ? <div role="alert" className="qitu-tutor-inline-alert">{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
-        {projectSummary?.id && <ProjectKnowledgeStatus projectId={projectSummary.id} />}
         <ChatThread
           sessionId={session.sessionId}
           turns={session.turns}
