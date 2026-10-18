@@ -56,6 +56,8 @@ export function runOpticsQuizBankAssertions(): void {
     equal(step.mode, 'simulation', `${step.id} must be simulation-only before the gate`);
     equal(step.physicalActivityGate, 'TheoryMastered', `${step.id} physical activity gate`);
     assert(step.expectedEvidence.length > 0, `${step.id} must define expected evidence`);
+    assert(/virtual|simulated|simulation/iu.test(step.prompt), `${step.id} prompt must be explicitly virtual`);
+    assert(/no physical|do not|not.*apparatus/iu.test(step.prompt), `${step.id} must prohibit pre-gate physical work`);
   }
   for (const module of OPTICS_WAVE_MODULES) {
     equal(module.gradingGated, false, `${module.moduleId} 必须标记非门禁`);

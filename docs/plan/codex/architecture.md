@@ -140,6 +140,16 @@ interface ProjectPlanAdjustment {
 
 同一基础 revision 使用乐观锁。变更追加新 revision，不覆盖已确认的大纲/历史快照；不能改写 `ProjectStage`、`TheoryMastered` 或 gate evidence。任何“跳过必做任务”“替换核心目标”“放行实践”的建议必须拒绝或交由具备权限的领域命令/教师流程。
 
+### 3.6 光学散射与衍射领域落地
+
+`optics-physical-inquiry` 沿用同一套项目计划和门禁，当前源码实际覆盖 14 个目标（探索 2、理论 4、实践 6、评审 2）。散射与衍射是实践目标和非门禁波动模块；`TheoryMastered` 之前可以展示低风险模拟提示，但不能开放实践工具，也不能把模拟结果直接计入掌握度。
+
+- 现有 `optics_experiment` block 和 `OpticsDiffractionScatteringCard` 是前端可视化原型。它们可以继续作为 renderer，但必须补齐 `specVersion`、`objectiveId`、服务端控制范围、稳定 `actionId` 和幂等事件；当前仅通过 `onSelectOption` 发送摘要文本，不能作为正式实验证据。
+- 衍射实验固定单缝模型和受控变量（`lambda`、`slitWidth`、`screenDistance`），记录中央亮纹宽度/第一暗纹位置；散射实验以封闭细雾室的侧向可见性比较为主，记录粒子尺度、波长、观察角度和可见性。模型输出标记为模拟，不宣称替代真实测量。
+- Tutor 运行时采用 `Observe -> Predict -> Manipulate -> Measure -> Explain -> Challenge -> Submit` 微循环；服务端策略根据 observation/prediction/measurement/CER evidence 和结构化 misconception 选择追问、提示、例子、检查题、补救或教师介入。
+- 不新增“散射/衍射”一级导航，也不新增第二套 mastery 表；项目详情投影计划、阶段和证据，Tutor 工作区承载连续问答和实验卡，理论页只保留复习/门禁检查。
+- 领域专用目标 DAG、分支示例、实验合同和试点指标见 [光学散射与衍射领域方案](./optics-scattering-diffraction-analysis.md)。
+
 ## 4. 责任边界与接口流
 
 | 责任 | Owner | 读/写边界 |

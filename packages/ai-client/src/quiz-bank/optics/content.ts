@@ -113,8 +113,8 @@ export const OPTICS_WAVE_INQUIRY_STEPS: readonly OpticsWaveInquiryStep[] = [
     conceptId: 'optics.wave.diffraction',
     mode: 'simulation',
     physicalActivityGate: 'TheoryMastered',
-    prompt: 'Reduce the slit width while keeping source and screen distance fixed. What happens to the central bright band?',
-    expectedEvidence: 'A narrower slit produces a wider central diffraction envelope; record slit width and band width.',
+    prompt: 'In the virtual diffraction simulator, reduce the slit width while keeping the virtual source and screen distance fixed. What happens to the central bright band? Do not assemble physical apparatus before TheoryMastered.',
+    expectedEvidence: 'A narrower slit produces a wider central diffraction envelope; record the simulated slit width and band width (no physical setup).',
     toolHint: 'simulation_runner',
   },
   {
@@ -122,8 +122,8 @@ export const OPTICS_WAVE_INQUIRY_STEPS: readonly OpticsWaveInquiryStep[] = [
     conceptId: 'optics.wave.scattering',
     mode: 'simulation',
     physicalActivityGate: 'TheoryMastered',
-    prompt: 'Add a sealed fine-mist chamber without changing the source. Why can the beam path become visible from the side?',
-    expectedEvidence: 'Particles redirect a small amount of light toward the observer; record visibility and keep the enclosure closed.',
+    prompt: 'In the virtual scattering simulator, add a sealed fine-mist chamber without changing the virtual source. Why can the beam path become visible from the side? Do not handle mist or lasers before TheoryMastered.',
+    expectedEvidence: 'The simulated particles redirect a small amount of light toward the observer; record visibility and keep the virtual enclosure closed (no physical setup).',
     toolHint: 'data_analyzer',
   },
 ];

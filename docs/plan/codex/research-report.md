@@ -39,7 +39,10 @@ OpenMAIC 值得借鉴的是结构化大纲到可执行 PBL 任务的分步生成
 
 在本次报告整理时另做了一轮四主题并行复查，OpenMAIC、DeepTutor、PBL 证据和 UNESCO 指南的 `web_search` 均再次返回 `sources_count: 0`，相应 `get_sources` 也全为空。搜索回答甚至出现“未找到 OpenMAIC 官方仓库”等与已知上游仓库相矛盾的断言，以及没有链接佐证的政策概述；这些回答被作为检索质量告警处理，不纳入事实依据。后文因此区分“Grok 检索记录”和“独立上游/项目材料核查”，不把前者包装成成功的文献检索。
 
+
 ## 4. 上游项目核查
+
+Optics-focused Grok follow-up sessions were also recorded: `520d804cfa5e` (OpenMAIC), `443ec4d0194c` (DeepTutor), `9a1959ff33ea` and `52acde66d064` (high-school PBL and single-slit diffraction), `62d0c27f183c` (adaptive scaffolding and minors), and `7b5a8feb44f8` / `8ff760629201` (PBL evidence and diffraction misconceptions). These results informed the domain proposal in [optics-scattering-diffraction-analysis.md](./optics-scattering-diffraction-analysis.md); no unverified learning-effect number from the MCP output is used as evidence.
 
 本地上游检出在调研日的快照：OpenMAIC `ecb940c136cc5b4ea56dc81b2505e64eff1dea29`；DeepTutor `a053fecf6eeca51ded680de8b8fc41ef63857b11`。仓库内容可通过下面的正式上游链接复核。
 
@@ -80,7 +83,11 @@ Grok Search 给出的“SimPBL ACL 2026”及其成绩增益、认知负荷变�
 | 项目/模板 | `project_template_versions` 不可变；`projects.template_version_id` 冻结模板版本；学生通过确认意图创建正式项目。 | 模板与 `admin_teams` 的一等版本绑定还未形成。Tutor 运行时的团队解析仍从模板/`pbl_spec` 配置匹配；需替换为唯一、可验证的绑定 ID。 |
 | 计划/大纲 | `learning-plan` 已有确定性计划生成、目标 DAG、课次时长校验、`PlanOutline` 派生与按课次惰性教学计划；确认计划时创建项目的 owner 流程已定义。 | `PlanOutlineStore` 已定义但源码/文档显示正式持久化尚待接线；课程生成未等同于带项目阶段/团队责任人的完整执行安排。 |
 | 掌握度 | `pending_questions` 服务端保有答案；作答由 `learning-plan` / `mastery` 服务端判分；`mastery_events` 是追加式事实，门禁有 `TheoryMastered` owner。 | 需要让项目 Tutor 的 quiz/action 与目标映射和掌握度证据一一对应；不可新建第二套算法/掌握记录。 |
-| Tutor 交互 | `TutorReplyBlock` 已有 `options`、`quiz`、`interactive_experiment`、`circuit_experiment`、`pbl_card`、`idea_cards`；现有 quiz 回答接口带幂等键。 | 普通选择目前主要以 `optionLabel` 进入 turn；若需要可靠分支，应传稳定 option/action ID，并由服务端校验动作与项目/节点版本。`board` 等资产不应为“像 OpenMAIC”而抢先扩展。 |
+| Tutor 交互 | `TutorReplyBlock` 已有 `options`、`quiz`、`interactive_experiment`、`circuit_experiment`, `optics_experiment`、`pbl_card`、`idea_cards`；现有 quiz 回答接口带幂等键。 | 普通选择目前主要以 `optionLabel` 进入 turn；若需要可靠分支，应传稳定 option/action ID，并由服务端校验动作与项目/节点版本。`board` 等资产不应为“像 OpenMAIC”而抢先扩展。 |
+
+
+| Optics follow-up | The repository now contains diffraction/scattering wave modules, two simulation prompts, practice objectives, and an `optics_experiment` renderer. | The renderer is still a local visual prototype: it needs stable action IDs, experiment versioning, persisted observations, CER evidence, and server-side policy before it can affect a project artifact or rubric. |
+| Optics objective count | The current source and `optics-plan.e2e.test.ts` cover 14 objectives (2 exploration + 4 theory + 6 practice + 2 review). | The older `docs/pedagogy/optics-pbl.md` says 12 objectives and should be reconciled with the source in a follow-up documentation issue. |
 | Team Runtime | Typed delegation 包括 `pbl.plan`、`pbl.advance`、`project.review`；有 run/task/mailbox、对象范围、阶段门禁、客户端 context 白名单与只读团队投影。 | 团队结果依然是候选；必须在模板版本/项目绑定上下文中解析，不能由学生请求指定任意团队/Agent/阶段。 |
 | 隐私/审计 | AGENTS.md 强制对象级授权、最小可见范围、敏感访问审计，禁止客户端直接写阶段、掌握度、成长和审计；异步写走 owner/事件。 | 动态调整的依据建议持久化为事件/证据引用与结构化 reason code，而不是复制原始对话或语音到计划日志。 |
 

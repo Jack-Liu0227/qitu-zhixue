@@ -52,6 +52,8 @@ const GATED_CONCEPT_BY_OBJECTIVE: Readonly<Record<string, string>> = {
   'opt-theory-refraction': 'optics.refraction.law',
   'opt-theory-tir': 'optics.tir.critical_angle',
   'opt-theory-lens': 'optics.lens.ray_rules',
+  'opt-practice-diffraction': 'optics.wave.diffraction',
+  'opt-practice-scattering': 'optics.wave.scattering',
 };
 
 class FakeOutboxWriter {
@@ -254,7 +256,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     h = makeHarness();
   });
 
-  it('生成光学课程计划：模板版本来自生效绑定，12 个目标带概念键，4 周 8 节', async () => {
+  it('生成光学课程计划：模板版本来自生效绑定，14 个目标带概念键，4 周 8 节', async () => {
     const report = await seedOpticsBinding(
       h.templates,
       h.bindings,
@@ -303,7 +305,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       if (expectedConceptId === undefined) {
         assert.equal(objective.conceptId, undefined, `非门禁目标 ${rawId} 不投影 conceptId`);
       } else {
-        assert.equal(objective.conceptId, expectedConceptId, `门禁目标 ${rawId} 投影 conceptId`);
+        assert.equal(objective.conceptId, expectedConceptId, `有显式知识键的目标 ${rawId} 投影 conceptId`);
       }
     }
   });
@@ -370,6 +372,15 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     const confirmed = await h.plans.confirmPlan(STUDENT, generated.plan.id, 'confirm-optics', {});
     assert.ok(confirmed.project.id.startsWith('proj-'), '确认后创建项目');
 
+    const beforeGateSessions = await h.plans.listSessions(STUDENT, generated.plan.id);
+    const lockedPracticeSessions = beforeGateSessions.filter((item) => item.practiceObjectiveIds.length > 0);
+    assert.ok(lockedPracticeSessions.length > 0, '理论门禁前存在待解锁的实践会话');
+    assert.equal(
+      lockedPracticeSessions.every((item) => !item.practiceUnlocked),
+      true,
+      'TheoryMastered 前实践会话保持锁定',
+    );
+
     const session = makeTutorSession(confirmed.project.id);
 
     for (const objectiveId of Object.keys(GATED_QUIZ_BY_OBJECTIVE)) {
@@ -421,6 +432,20 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     const gateSession = sessions.find((item) => item.theoryObjectiveIds.length === 4);
     assert.ok(gateSession !== undefined, '存在承载完整门禁集合的会话');
     assert.equal(gateSession.theoryMastered, true, '门禁会话理论达标');
+
+    const practiceObjectiveIds = new Set(
+      practiceSessions.flatMap((item) => item.practiceObjectiveIds),
+    );
+    assert.equal(
+      practiceObjectiveIds.has('opt-practice-diffraction'),
+      true,
+      'TheoryMastered 后实践会话包含衍射探究目标',
+    );
+    assert.equal(
+      practiceObjectiveIds.has('opt-practice-scattering'),
+      true,
+      'TheoryMastered 后实践会话包含散射探究目标',
+    );
 
     const theoryGates = h.teamRuntime.calls.filter((call) => call.gate === 'TheoryMastered');
     assert.equal(theoryGates.length, 1, 'TheoryMastered 门禁恰好记录一次');

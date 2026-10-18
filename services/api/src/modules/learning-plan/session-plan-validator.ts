@@ -629,7 +629,9 @@ function sessionObjectiveIds(session: PlanSessionShape): string[] {
 function sessionTaughtObjectiveIds(session: PlanSessionShape): string[] {
   return [
     ...new Set([
-      ...session.blocks.flatMap((block) => [...block.objectiveIds]),
+      ...session.blocks
+        .filter((block) => block.kind !== 'review')
+        .flatMap((block) => [...block.objectiveIds]),
       ...session.practiceObjectiveIds,
     ]),
   ];
