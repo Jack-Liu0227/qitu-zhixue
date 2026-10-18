@@ -43,6 +43,18 @@ EXP_ID=$(curl -s -X POST http://127.0.0.1:4100/api/v1/explorations \
   -d @/tmp/create_exp.json | jq -r '.data.id')
 echo "Exploration ID: $EXP_ID"
 
+# Draft intent
+cat << JSON > /tmp/draft_exp.json
+{
+  "goalUser": "探究光的路径：从反射定律到透镜成像",
+  "coreInterests": ["物理光学"]
+}
+JSON
+curl -s -X PATCH http://127.0.0.1:4100/api/v1/explorations/$EXP_ID \
+  -H "Content-Type: application/json" \
+  -b /tmp/student_cookies.txt \
+  -d @/tmp/draft_exp.json > /dev/null
+
 # Confirm intent
 cat << JSON > /tmp/confirm_exp.json
 {

@@ -65,47 +65,6 @@ export class ModelGateway {
     request: ModelCompletionRequest,
     selection?: ModelRuntimeModelSelection,
   ): Promise<ModelCompletionResult> {
-    if (runtimeEngine() === 'qitu' || request.tools?.length) return this.completeWithQituRuntime(usageId, request, selection);
-    const target = selection
-      ? this.resolveSelectedTarget(selection)
-      : this.resolver.resolveRuntimeTarget(usageId);
-    return this.execute(usageId, target, request);
-  }
-
-  /**
-   * 流式 seam（**尚未接线**）。
-   *
-   * 事件形状见 {@link ModelStreamEvent}：`text-delta` / `done` / `error`。
-   * 未来由协议适配器把各自的分片事件映射到这里，调用方无需感知协议。
-   * 当前实现直接抛 `MODEL_STREAM_NOT_IMPLEMENTED`，避免让调用方误以为
-   * 已支持流式而写出依赖增量的逻辑。
-   */
-  async *stream(
-    usageId: string,
-    request: ModelCompletionRequest,
-    selection?: ModelRuntimeModelSelection,
-  ): AsyncGenerator<ModelStreamEvent> {
-    if (runtimeEngine() === 'qitu') {
-      for await (const event of this.runtime.stream({ usageId, ...request, ...selection })) {
-        if (event.type === 'text-delta') yield { type: 'text-delta', text: event.text };
-        else if (event.type === 'done') yield { type: 'done', result: event.result };
-        else if (event.type === 'error') yield event;
-      }
-      return;
-    }
-    void usageId;
-    void request;
-    throw new ModelGatewayError(
-      'MODEL_STREAM_NOT_IMPLEMENTED',
-      '流式模型调用尚未接线；本任务只交付非流式 complete()。',
-    );
-  }
-
-  private async completeWithQituRuntime(
-    usageId: string,
-    request: ModelCompletionRequest,
-    selection?: ModelRuntimeModelSelection,
-  ): Promise<ModelCompletionResult> {
     try {
       return await this.runtime.complete({ usageId, ...request, ...selection });
     } catch (error) {
@@ -119,77 +78,24 @@ export class ModelGateway {
     }
   }
 
-  private resolveSelectedTarget(selection: ModelRuntimeModelSelection): ModelRuntimeTarget {
-    if (!this.resolver.resolveRuntimeTargetByModel) {
-      throw new ModelGatewayError('MODEL_NOT_FOUND', '当前运行时不支持 Agent 级模型选择');
-    }
-    return this.resolver.resolveRuntimeTargetByModel(selection);
-  }
-
-  private async execute(
+  /**
+   * 流式补全生成器。
+   */
+  async *stream(
     usageId: string,
-    target: ModelRuntimeTarget,
     request: ModelCompletionRequest,
-  ): Promise<ModelCompletionResult> {
-    assertRequest(request);
-    const adapter = adapterFor(target.api);
-    const built = adapter.build(target, request);
-    const timeoutMs = clampTimeout(request.timeoutMs);
-
-    const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    const signal =
-      request.signal !== undefined
-        ? AbortSignal.any([request.signal, timeoutSignal])
-        : timeoutSignal;
-
-    let response: Response;
-    try {
-      response = await fetch(built.url, {
-        method: 'POST',
-        headers: built.headers,
-        body: built.body,
-        signal,
-      });
-    } catch (error) {
-      throw translateTransportError(error, request.signal, timeoutMs);
+    selection?: ModelRuntimeModelSelection,
+  ): AsyncGenerator<ModelStreamEvent> {
+    for await (const event of this.runtime.stream({ usageId, ...request, ...selection })) {
+      if (event.type === 'text-delta') yield { type: 'text-delta', text: event.text };
+      else if (event.type === 'done') yield { type: 'done', result: event.result };
+      else if (event.type === 'error') yield event;
     }
-
-    if (!response.ok) {
-      // 丢弃响应体：可能夹带上游回显的请求内容。只保留状态码。
-      throw new ModelGatewayError(
-        'MODEL_UPSTREAM_HTTP_ERROR',
-        `模型网关返回 HTTP ${response.status}`,
-        {
-          upstreamStatus: response.status,
-          retryable: response.status === 429 || response.status >= 500,
-        },
-      );
-    }
-
-    const payload = await readJson(response);
-    const parsed = adapter.parse(payload);
-    if (parsed.text.trim().length === 0) {
-      throw new ModelGatewayError('MODEL_EMPTY_RESPONSE', '模型网关返回了空文本');
-    }
-
-    // 只记录非敏感元数据；绝不打印 prompt / 凭证 / 输出正文。
-    this.logger.log(
-      `模型调用完成 usage=${usageId} provider=${target.providerId} model=${target.modelId} api=${target.api} 字数=${parsed.text.length}`,
-    );
-
-    return {
-      providerId: target.providerId,
-      modelId: target.modelId,
-      api: target.api,
-      text: parsed.text,
-      finishReason: parsed.finishReason,
-      usage: parsed.usage,
-    };
   }
 }
 
-export function runtimeEngine(): 'qitu' | 'legacy' {
-  return process.env.QITU_MODEL_RUNTIME_ENGINE === 'legacy' ? 'legacy' : 'qitu';
+export function runtimeEngine(): 'qitu' {
+  return 'qitu';
 }
 
 function assertRequest(request: ModelCompletionRequest): void {
