@@ -142,7 +142,7 @@ interface ProjectPlanAdjustment {
 
 ### 3.6 光学散射与衍射领域落地
 
-`optics-physical-inquiry` 沿用同一套项目计划和门禁，当前源码实际覆盖 14 个目标（探索 2、理论 4、实践 6、评审 2）。散射与衍射是实践目标和非门禁波动模块；`TheoryMastered` 之前可以展示低风险模拟提示，但不能开放实践工具，也不能把模拟结果直接计入掌握度。
+`optics-physical-inquiry` 沿用同一套项目计划和门禁，当前源码实际覆盖 12 个核心目标（探索 2、理论 4、实践 4、评审 2），另有干涉、衍射、散射、偏振 4 个非门禁质化波动模块。散射与衍射目前是实践阶段的领域扩展提示，不是新的核心目标；`TheoryMastered` 之前可以展示低风险模拟提示，但不能开放实践工具，也不能把模拟结果直接计入掌握度。
 
 - 现有 `optics_experiment` block 和 `OpticsDiffractionScatteringCard` 是前端可视化原型。它们可以继续作为 renderer，但必须补齐 `specVersion`、`objectiveId`、服务端控制范围、稳定 `actionId` 和幂等事件；当前仅通过 `onSelectOption` 发送摘要文本，不能作为正式实验证据。
 - 衍射实验固定单缝模型和受控变量（`lambda`、`slitWidth`、`screenDistance`），记录中央亮纹宽度/第一暗纹位置；散射实验以封闭细雾室的侧向可见性比较为主，记录粒子尺度、波长、观察角度和可见性。模型输出标记为模拟，不宣称替代真实测量。
