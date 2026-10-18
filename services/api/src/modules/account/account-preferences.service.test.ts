@@ -120,6 +120,9 @@ test('parsePreferenceUpdate 只接受允许的字号与主题', () => {
     fontSize: 'lg',
     theme: 'calm',
   });
+  assert.deepEqual(parsePreferenceUpdate({ theme: 'eyecare' }), {
+    theme: 'eyecare',
+  });
   for (const bad of ['xl', 'LARGE', '', 12, null]) {
     assert.throws(() => parsePreferenceUpdate({ fontSize: bad }));
   }

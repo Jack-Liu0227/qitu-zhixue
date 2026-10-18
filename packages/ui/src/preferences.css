@@ -61,9 +61,9 @@ html {
   padding: 14px;
   border: 1px solid var(--qitu-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--qitu-surface, #ffffff);
   color: var(--qitu-text);
-  box-shadow: 0 14px 40px rgba(15, 40, 80, 0.16);
+  box-shadow: var(--qitu-brand-shadow, 0 14px 40px rgba(15, 40, 80, 0.16));
   text-align: left;
 }
 
@@ -152,4 +152,287 @@ html {
   font: inherit;
   font-size: 0.76rem;
   cursor: pointer;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * 护眼模式控制浮窗与快捷按钮样式（高优先级层叠，永不被遮挡）
+ * ------------------------------------------------------------------ */
+.qitu-eyecare-quick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  z-index: 1000;
+}
+
+.qitu-eyecare-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 999px;
+  background: var(--qitu-surface, #ffffff);
+  color: var(--qitu-text, #3a3a3a);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.qitu-eyecare-quick-btn:hover {
+  border-color: var(--qitu-primary, #2d6a4f);
+  color: var(--qitu-primary, #2d6a4f);
+  background: var(--qitu-primary-soft, #f4f8f4);
+}
+
+.qitu-eyecare-quick-btn.is-active {
+  background: var(--qitu-primary-soft, #e6dfc8);
+  border-color: var(--qitu-primary, #2d6a4f);
+  color: var(--qitu-primary, #2d6a4f);
+  box-shadow: 0 0 0 1px var(--qitu-primary, #2d6a4f);
+}
+
+.qitu-eyecare-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 10000 !important;
+  width: min(340px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 16px;
+  background: var(--qitu-surface, #faf6ed);
+  color: var(--qitu-text, #4a4a4a);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+  text-align: left;
+}
+
+.qitu-eyecare-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.qitu-eyecare-popover-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.96rem;
+  color: var(--qitu-heading, #3a3a3a);
+}
+
+.qitu-eyecare-toggle-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.qitu-eyecare-toggle-btn.is-on {
+  background: #2d6a4f;
+  color: #ffffff;
+}
+
+.qitu-eyecare-toggle-btn.is-off {
+  background: var(--qitu-page, #f5f0e1);
+  color: var(--qitu-muted, #666666);
+  border-color: var(--qitu-border, #ddd6c5);
+}
+
+.qitu-eyecare-subdesc {
+  margin: 0 0 12px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--qitu-muted, #666666);
+}
+
+.qitu-eyecare-section {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--qitu-border, #ddd6c5);
+}
+
+.qitu-eyecare-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 8px;
+}
+
+.qitu-eyecare-section-label {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--qitu-heading, #3a3a3a);
+  margin-bottom: 8px;
+}
+
+.qitu-eyecare-tones-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.qitu-eyecare-tone-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--qitu-border, #ddd6c5);
+  background: var(--qitu-page, #f5f0e1);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.qitu-eyecare-tone-card:hover {
+  border-color: var(--qitu-primary, #2d6a4f);
+}
+
+.qitu-eyecare-tone-card.is-selected {
+  border-color: var(--qitu-primary, #2d6a4f);
+  box-shadow: 0 0 0 2px var(--qitu-primary, #2d6a4f);
+  background: var(--qitu-surface, #ffffff);
+}
+
+.qitu-eyecare-tone-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qitu-eyecare-tone-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.qitu-eyecare-tone-name {
+  font-size: 0.78rem;
+  color: var(--qitu-heading, #3a3a3a);
+}
+
+.qitu-eyecare-tone-code {
+  font-size: 0.68rem;
+  color: var(--qitu-muted, #666666);
+  font-family: monospace;
+}
+
+.qitu-eyecare-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.qitu-eyecare-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qitu-eyecare-switch-text strong {
+  font-size: 0.8rem;
+  color: var(--qitu-heading, #3a3a3a);
+}
+
+.qitu-eyecare-switch-text span {
+  font-size: 0.7rem;
+  color: var(--qitu-muted, #666666);
+  line-height: 1.4;
+}
+
+.qitu-eyecare-switch-row input {
+  accent-color: var(--qitu-primary, #2d6a4f);
+  width: 16px;
+  height: 16px;
+}
+
+.qitu-eyecare-popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.qitu-eyecare-badge-aa {
+  font-size: 0.7rem;
+  color: #2d6a4f;
+  font-weight: 600;
+  background: rgba(45, 106, 79, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.qitu-eyecare-close-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: var(--qitu-primary, #2d6a4f);
+  color: #ffffff;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 偏好设置内的护眼子控制区 */
+.qitu-prefs-eyecare-subbox {
+  margin: 8px 0 12px;
+  padding: 10px;
+  background: var(--qitu-surface-inset, #efe8d6);
+  border: 1px solid var(--qitu-border, #ddd6c5);
+  border-radius: 8px;
+}
+
+.qitu-prefs-sublegend {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--qitu-heading, #3a3a3a);
+  margin-bottom: 6px;
+}
+
+.qitu-prefs-tone-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qitu-prefs-tone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--qitu-border);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.qitu-prefs-tone-chip.is-active {
+  box-shadow: 0 0 0 1.5px currentColor;
+  font-weight: 700;
+}
+
+.qitu-prefs-tone-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

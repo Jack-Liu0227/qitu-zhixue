@@ -60,9 +60,13 @@ body {
 .qitu-student-identity {
   display: grid;
   gap: 14px;
+  position: relative;
+  z-index: 100;
 }
 
 .qitu-student-account {
+  position: relative;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -168,4 +172,19 @@ body {
 .qitu-today-page {
   max-width: 100% !important;
   width: 100% !important;
+}
+
+
+.qitu-prefs,
+.qitu-eyecare-quick {
+  position: relative !important;
+  z-index: 101 !important;
+}
+
+.qitu-prefs-panel,
+.qitu-eyecare-popover {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  z-index: 10000 !important;
 }

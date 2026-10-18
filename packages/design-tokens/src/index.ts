@@ -10,6 +10,32 @@ export const colors = {
   border: '#DDE5F0',
   text: '#30435F',
   muted: '#566780',
+  surface: '#FDFEFE',
+  darkPage: '#131822',
+  darkSurface: '#1B2230',
+  darkSurfaceInset: '#161C27',
+  darkHeading: '#E2E8F0',
+  darkText: '#CBD5E1',
+  darkMuted: '#8899A6',
+  darkBorder: '#283446',
+  darkPrimary: '#4D88FF',
+  darkPrimarySoft: '#1E2C44',
+  // 护眼暖米与豆沙绿系色盘（WCAG AA 对比度 ≥ 4.5:1，低饱和度强调色）
+  eyecareWarmBeige: '#F5F0E1',
+  eyecareWarmSurface: '#FAF6ED',
+  eyecareWarmSurfaceInset: '#EFE8D6',
+  eyecareBeanGreen: '#E8F0E3',
+  eyecareBeanSurface: '#F1F7EE',
+  eyecareBeanSurfaceInset: '#DFEAD8',
+  eyecareMintGreen: '#C7EDCC',
+  eyecareMintSurface: '#D6F2DA',
+  eyecareMintSurfaceInset: '#BBE5C1',
+  eyecareTextDark: '#3A3A3A',
+  eyecareTextSoft: '#4A4A4A',
+  eyecareMuted: '#666666',
+  eyecareBorder: '#DDD6C5',
+  eyecarePrimary: '#2D6A4F',
+  eyecarePrimarySoft: '#E6DFC8',
 } as const;
 
 export type DesignColor = keyof typeof colors;
@@ -177,6 +203,16 @@ export const preferenceThemes = {
     '--qitu-primary': colors.completed,
     '--qitu-primary-soft': semanticColors.completed.soft,
   },
+  /** 暗色护眼：温润柔和夜间低刺激色调，降低蓝光与视觉疲劳。 */
+  eyecare: {
+    '--qitu-page': colors.eyecareWarmBeige,
+    '--qitu-heading': colors.eyecareTextDark,
+    '--qitu-text': colors.eyecareTextSoft,
+    '--qitu-muted': colors.eyecareMuted,
+    '--qitu-border': colors.eyecareBorder,
+    '--qitu-primary': colors.eyecarePrimary,
+    '--qitu-primary-soft': colors.eyecarePrimarySoft,
+  },
 } as const;
 
 export type PreferenceTheme = keyof typeof preferenceThemes;
@@ -191,3 +227,74 @@ export function buildPreferenceVariables(input: {
     '--qitu-font-size': preferenceFontSizes[input.fontSize],
   };
 }
+
+
+/**
+ * 护眼模式多档底色预设（暖米色 / 豆沙绿 / 青豆绿 / 柔夜灰）。
+ * 严格遵照 WCAG AA 标准：正文深灰（#3A3A3A / #4A4A4A），对比度 ≥ 4.5:1。
+ * 强调色降低饱和度，避免高亮纯白与刺眼纯蓝。
+ */
+export const eyecareTones = {
+  beige: {
+    id: 'beige',
+    label: '暖米色 (推荐)',
+    code: '#F5F0E1',
+    desc: '柔和羊皮纸暖调，温润不刺眼',
+    page: colors.eyecareWarmBeige,
+    surface: colors.eyecareWarmSurface,
+    surfaceInset: colors.eyecareWarmSurfaceInset,
+    heading: colors.eyecareTextDark,
+    text: colors.eyecareTextSoft,
+    muted: colors.eyecareMuted,
+    border: colors.eyecareBorder,
+    primary: colors.eyecarePrimary,
+    primarySoft: colors.eyecarePrimarySoft,
+  },
+  bean: {
+    id: 'bean',
+    label: '豆沙绿',
+    code: '#E8F0E3',
+    desc: '清爽柔和豆沙绿，舒缓视疲劳',
+    page: colors.eyecareBeanGreen,
+    surface: colors.eyecareBeanSurface,
+    surfaceInset: colors.eyecareBeanSurfaceInset,
+    heading: colors.eyecareTextDark,
+    text: colors.eyecareTextSoft,
+    muted: '#636D5F',
+    border: '#C8D7C0',
+    primary: '#2D6A4F',
+    primarySoft: '#D8E7D1',
+  },
+  mint: {
+    id: 'mint',
+    label: '青豆绿',
+    code: '#C7EDCC',
+    desc: '经典防视疲劳水绿，降低光线眩光',
+    page: colors.eyecareMintGreen,
+    surface: colors.eyecareMintSurface,
+    surfaceInset: colors.eyecareMintSurfaceInset,
+    heading: '#2E3830',
+    text: '#3E4A40',
+    muted: '#526055',
+    border: '#A8D7AF',
+    primary: '#245B43',
+    primarySoft: '#B4E2BC',
+  },
+  dark: {
+    id: 'dark',
+    label: '柔夜灰',
+    code: '#1A202A',
+    desc: '弱光或夜间暗色，沉稳柔和光感',
+    page: colors.darkPage,
+    surface: colors.darkSurface,
+    surfaceInset: colors.darkSurfaceInset,
+    heading: colors.darkHeading,
+    text: colors.darkText,
+    muted: colors.darkMuted,
+    border: colors.darkBorder,
+    primary: colors.darkPrimary,
+    primarySoft: colors.darkPrimarySoft,
+  },
+} as const;
+
+export type EyecareToneId = keyof typeof eyecareTones;
