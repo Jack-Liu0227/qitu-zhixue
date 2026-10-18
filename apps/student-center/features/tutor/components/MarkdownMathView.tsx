@@ -52,8 +52,8 @@ export function MarkdownMathView({ content }: { content: string }) {
         // 2. Generic code block
         if (part.startsWith('```') && part.endsWith('```')) {
           const match = part.match(/^```([a-zA-Z0-9_-]*)\s*([\s\S]*?)```$/);
-          const lang = match ? match[1] : '';
-          const code = match ? match[2].trim() : part.slice(3, -3).trim();
+          const lang = match && match[1] ? match[1] : '';
+          const code = (match && match[2] ? match[2] : part.slice(3, -3)).trim();
           return (
             <div
               key={index}
