@@ -4,7 +4,6 @@ import {
   centerRequest,
   createKnowledgeBase,
   fetchAssistantBindings,
-  saveAssistantBindings,
   saveBaseBindings,
   type AssistantBindings,
   type Base,
@@ -15,6 +14,7 @@ import { createIdempotentRetryKey, newIdempotencyKey } from '../../api/types';
 import { KnowledgeEngines } from '../knowledge-engines/KnowledgeEngines';
 import { CreateLibraryModal, type LibraryCreation } from './CreateLibraryModal';
 import { LibraryDetail } from './LibraryDetail';
+import { LibraryAssistantBindings } from './LibraryAssistantBindings';
 import {
   EngineIcon,
   fileBase64,
@@ -32,7 +32,7 @@ export function KnowledgeLibrary() {
   const [engines, setEngines] = useState<EngineGroup[]>([]);
   const [models, setModels] = useState<ModelOption[]>([]);
   const [assistants, setAssistants] = useState<AssistantBindings | null>(null);
-  const [globalDraft, setGlobalDraft] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -43,6 +43,18 @@ export function KnowledgeLibrary() {
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(true);
   const retry = useRef(createIdempotentRetryKey());
+  const bindingContainer = useRef<HTMLDivElement>(null);
+  const [bindingHeight, setBindingHeight] = useState(0);
+  useEffect(() => {
+    const container = bindingContainer.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry)
+        setBindingHeight((height) => Math.max(height, Math.ceil(entry.contentRect.height)));
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [loading, tab, Boolean(detail)]);
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     setError('');
@@ -56,7 +68,6 @@ export function KnowledgeLibrary() {
       setBases(libraries);
       setEngines(groups);
       setAssistants(catalog);
-      setGlobalDraft(catalog.assistantIds);
       setModels(options);
     } catch (e) {
       setError(message(e));
@@ -76,6 +87,7 @@ export function KnowledgeLibrary() {
     };
   }, [load]);
   const open = async (id: string) => {
+    setSelectedId(id);
     setBusy(true);
     setError('');
     try {
@@ -148,6 +160,7 @@ export function KnowledgeLibrary() {
           .find((g) => g.provider === filter)
           ?.instances.some((i) => i.id === b.engine_instance_id)),
   );
+  const selectedBase = visible.find((base) => base.id === selectedId);
   return (
     <div className={`admin-settings-page ${styles.root}`}>
       {!detail && (
@@ -248,7 +261,7 @@ export function KnowledgeLibrary() {
                 </option>
               ))}
             </select>
-            <span>{visible.length} 个知识库</span>
+            <span>{visible.length} 个知识库 · 单击选择，双击打开</span>
           </div>
           {visible.length === 0 ? (
             <div className={styles.empty}>
@@ -270,11 +283,24 @@ export function KnowledgeLibrary() {
                 );
                 return (
                   <button
-                    className={styles.libraryCard}
+                    className={`${styles.libraryCard} ${selectedId === base.id ? styles.librarySelected : ''}`}
+                    aria-label={base.name}
+                    aria-pressed={selectedId === base.id}
+                    aria-describedby="library-selection-hint"
                     key={base.id}
                     disabled={busy}
-                    onClick={() => void open(base.id)}
+                    onClick={() => setSelectedId(base.id)}
+                    onDoubleClick={() => void open(base.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void open(base.id);
+                      }
+                    }}
                   >
+                    <span className={styles.selectionBox} aria-hidden="true">
+                      {selectedId === base.id ? '✓' : ''}
+                    </span>
                     <div className={styles.split}>
                       <EngineIcon group={group} size={36} />
                       <span
@@ -299,68 +325,31 @@ export function KnowledgeLibrary() {
               })}
             </div>
           )}
-          <details className={styles.globalBindings} aria-label="检索助手绑定">
-            <summary>
-              <Glyph name="assistant" />
-              检索助手绑定<span>平台检索权限</span>
-            </summary>
-            <p>
-              管理助手是否具备知识库检索能力。具体允许检索哪些资料，在各知识库的“AI
-              助手”中绑定；绑定知识库时会同步开启相应助手的检索能力。
-            </p>
-            {assistants ? (
-              <>
-                <div className={styles.assistantGrid}>
-                  {assistants.catalog.map((a) => (
-                    <label className={styles.assistantCard} key={a.id}>
-                      <input
-                        type="checkbox"
-                        disabled={busy || !online || !a.enabled}
-                        checked={globalDraft.includes(a.id)}
-                        onChange={(e) =>
-                          setGlobalDraft(
-                            e.target.checked
-                              ? [...globalDraft, a.id]
-                              : globalDraft.filter((id) => id !== a.id),
-                          )
-                        }
-                      />
-                      <span>
-                        {a.avatar || '✦'} {a.name}
-                        {!a.enabled ? '（已停用）' : ''}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  className={styles.secondary}
-                  disabled={busy || !online}
-                  onClick={async () => {
-                    setBusy(true);
-                    setError('');
-                    try {
-                      await saveAssistantBindings(
-                        assistants.revision,
-                        globalDraft,
-                        retry.current.keyFor('global:' + JSON.stringify(globalDraft)),
-                      );
-                      retry.current.acknowledge();
-                      await load(true);
-                      setNotice('平台检索权限已保存');
-                    } catch (e) {
-                      setError(message(e));
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  保存助手绑定
-                </button>
-              </>
+          <p id="library-selection-hint" className={styles.selectionHint}>
+            单击知识库查看助手绑定，双击打开详情；键盘空格选择，Enter 打开。
+          </p>
+          <div
+            ref={bindingContainer}
+            className={styles.bindingContainer}
+            style={{ minHeight: bindingHeight || undefined }}
+          >
+            {selectedBase ? (
+              <LibraryAssistantBindings
+                key={selectedBase.id}
+                base={selectedBase}
+                online={online}
+                onBusyChange={setBusy}
+                onSaved={() => load(true)}
+              />
             ) : (
-              <p>助手目录读取失败，请重试。</p>
+              <section className={styles.globalBindings} aria-label="检索助手绑定">
+                <h2 className={styles.bindingTitle}>
+                  <Glyph name="assistant" /> 检索助手绑定
+                </h2>
+                <p>请先选择一个知识库，查看和管理它绑定的 AI 助手。</p>
+              </section>
             )}
-          </details>
+          </div>
         </>
       )}
       {create && (

@@ -1303,3 +1303,74 @@
     min-height: 42px;
   }
 }
+
+.libraryCard {
+  position: relative;
+  padding-top: 48px;
+}
+.librarySelected {
+  border-color: #6c97ff;
+  background: #f8faff;
+  box-shadow: 0 0 0 2px #165dff12;
+}
+.libraryCard:focus-visible {
+  outline: 3px solid #b4cdff;
+  outline-offset: 3px;
+}
+.selectionBox {
+  position: absolute;
+  top: 17px;
+  left: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 19px;
+  height: 19px;
+  border: 1px solid #c7d2e1;
+  border-radius: 5px;
+  background: white;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+}
+.librarySelected .selectionBox {
+  background: #165dff;
+  border-color: #165dff;
+}
+.selectionHint {
+  color: #8894a5;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 14px 0 0;
+}
+.bindingTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #3a4d68;
+  font-size: 14px;
+  font-weight: 600;
+}
+.bindingActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  color: #8894a5;
+}
+.bindingActions button {
+  margin-top: 0;
+}
+@media (max-width: 480px) {
+  .bindingActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.bindingContainer {
+  display: flow-root;
+}
