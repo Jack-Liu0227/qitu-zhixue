@@ -31,7 +31,7 @@
 当前源码已经把散射和衍射加入光学内容，但它们的成熟度不同：
 
 - `packages/ai-client/src/quiz-bank/optics/content.ts` 有 4 个门禁理论目标（反射、折射、全反射、透镜），以及 4 个非门禁波动模块（干涉、衍射、散射、偏振）。
-- 当前项目总目标数是 **14 个**：探索 2、理论掌握 4、引导实践 6（其中包括 `opt-practice-diffraction` 和 `opt-practice-scattering`）、作品评审 2。仓库中较早的 `docs/pedagogy/optics-pbl.md` 仍写“12 个目标”，应以源码和 `optics-plan.e2e.test.ts` 的 14 个目标为准，后续应修正文档漂移。
+- 当前项目有 **12 个核心目标**：探索 2、理论掌握 4、引导实践 4、作品评审 2；另有干涉、衍射、散射、偏振 4 个非门禁质化波动模块和两条模拟提示。散射/衍射目前不是独立的核心 objective，也没有自己的 mastery 门禁；后续若要把它们变成正式项目目标，必须先更新模板版本、计划测试、题库、量规和门禁设计，不能只改标题。
 - `OPTICS_WAVE_INQUIRY_STEPS` 已定义两个证据优先的模拟提示：固定光源与屏距改变缝宽，以及在封闭细雾室中比较侧向可见性；两者标记为 `TheoryMastered` 前只能模拟，不得把模拟结果当作实践门禁证据。
 - `packages/ai-client/src/quiz-bank/optics/misconceptions.ts` 和 `optics-quiz-bank.test.ts` 为现有反射、折射、全反射、透镜题目提供错误类型和补救提示。散射/衍射还需要补充同等粒度的题目、错误类型和开放作答评分。
 
@@ -71,10 +71,9 @@ opt-intent-question -> opt-theory-reflection -> opt-theory-refraction
 opt-theory-refraction -> opt-theory-tir -> opt-theory-lens
 opt-theory-lens -> opt-practice-setup -> opt-practice-measure
 opt-practice-measure -> opt-practice-fit
-opt-practice-measure -> opt-practice-diffraction
-opt-practice-measure -> opt-practice-scattering
-opt-practice-fit + opt-practice-diffraction + opt-practice-scattering
-  -> opt-practice-report -> opt-review-defend -> opt-review-reflect
+opt-practice-measure -> opt-practice-fit -> opt-practice-report
+opt-practice-measure -> optional wave inquiry (diffraction/scattering)
+opt-practice-report -> opt-review-defend -> opt-review-reflect
 ```
 
 散射和衍射目标在实践阶段，但前置的物理概念可以用低风险模拟预演；实践解锁仍由现有 `TheoryMastered` owner 决定。
@@ -225,7 +224,7 @@ interface OpticsExperimentEvent {
 | 需求 | 复用现有模块 | 首期改动 |
 | --- | --- | --- |
 | 项目绑定团队 | `projects` + template binding + Team Runtime | 立项冻结 `bindingId/teamVersionId/hash`，不再按名称猜团队 |
-| 大纲与课次 | `learning-plan`、`DeterministicPlanGenerator`、`PlanOutlineStore` | 持久化大纲；14 个目标和 DAG 由模板决定；LLM 只做候选文案 |
+| 大纲与课次 | `learning-plan`、`DeterministicPlanGenerator`、`PlanOutlineStore` | 持久化大纲；12 个核心目标和 DAG 由模板决定，波动模块作为非门禁活动；LLM 只做候选文案 |
 | 题目和掌握 | `packages/ai-client` 题库、`TutorQuizService`、`mastery` | 增加散射/衍射题和错误类型；保持单一判分入口 |
 | 动态问答 | `ai-tutor`、SSE、`TutorReplyBlock` | 加 `optionId/actionId`、`objectiveId`、策略版本；服务端输出有限 `TutorNextAction` |
 | 实验卡 | `optics_experiment` renderer | 扩展 spec/version/controls；把完成回调改为幂等事件，不直接传摘要文本 |
