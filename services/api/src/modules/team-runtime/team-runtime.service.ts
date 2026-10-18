@@ -1861,17 +1861,18 @@ function durationMs(start: Date | null, end: Date | null): number | null {
   return Math.max(0, end.getTime() - start.getTime());
 }
 
-function studentAgentStatus(
+export function studentAgentStatus(
   runStatus: string,
-  tasks: readonly (typeof agentTeamTasks.$inferSelect)[],
+  tasks: ReadonlyArray<Pick<typeof agentTeamTasks.$inferSelect, 'status'>>,
   pendingCount: number,
   isLeader: boolean,
 ): TutorTeamAgentStatus {
   if (tasks.some((task) => task.status === 'failed')) return 'failed';
   if (tasks.some((task) => task.status === 'running') || (isLeader && runStatus === 'running')) return 'running';
   if (pendingCount > 0 || tasks.some((task) => task.status === 'queued')) return 'waiting';
-  if (tasks.some((task) => task.status === 'succeeded') || (isLeader && runStatus === 'completed')) return 'ready';
-  return 'offline';
+  // The projection receives the configured roster, not worker heartbeats. No task means idle;
+  // TutorService separately checks team/assistant enablement and runtime query failures.
+  return 'ready';
 }
 
 function studentTaskSummary(taskType: string, status: string): string {
