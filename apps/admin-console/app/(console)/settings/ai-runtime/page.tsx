@@ -8,7 +8,7 @@ export default function AiRuntimePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/settings/assistants');
+    router.replace('/settings');
   }, [router]);
 
   return (
@@ -17,11 +17,11 @@ export default function AiRuntimePage() {
         AI 运行时已解耦拆分
       </h2>
       <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '24px' }}>
-        AI 运行时能力已全面拆分为助手、团队、模型、技能与工具独立管理。正在为您跳转到助手页面…
+        AI 运行时入口已移除，相关能力已拆分到助手、团队、模型、技能与工具设置。
       </p>
       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-        <Link href="/settings/assistants" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
-          助手管理
+        <Link href="/settings" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+          设置总览
         </Link>
         <Link href="/settings/teams" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
           团队管理

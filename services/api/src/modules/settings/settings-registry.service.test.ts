@@ -16,19 +16,19 @@ function authFor(role: CurrentUser['role']) {
 
 test('settings registry covers every settings route, including the overview route', () => {
   assertSettingsRegistryCoverage();
-  assert.equal(ADMIN_SETTINGS_ROUTE_MANIFEST.length, 20);
-  assert.equal(SETTINGS_REGISTRY.length, 20);
+  assert.equal(ADMIN_SETTINGS_ROUTE_MANIFEST.length, 19);
+  assert.equal(SETTINGS_REGISTRY.length, 19);
   assert.deepEqual(
     new Set(SETTINGS_REGISTRY.map((item) => item.id)),
     new Set(ADMIN_SETTINGS_ROUTE_MANIFEST),
   );
-  assert.equal(new Set(SETTINGS_REGISTRY.map((item) => item.href)).size, 20);
+  assert.equal(new Set(SETTINGS_REGISTRY.map((item) => item.href)).size, 19);
 });
 
 test('settings registry endpoint requires an administrator', () => {
   const registry = new SettingsRegistryService();
   const controller = new SettingsRegistryController(authFor('admin') as never, registry);
-  assert.equal(controller.getRegistry('qitu_session=admin').data.length, 20);
+  assert.equal(controller.getRegistry('qitu_session=admin').data.length, 19);
 
   for (const role of ['student', 'teacher', 'parent'] as const) {
     const denied = new SettingsRegistryController(authFor(role) as never, registry);

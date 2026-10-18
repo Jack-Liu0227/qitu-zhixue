@@ -28,7 +28,6 @@ const FALLBACK_SETTINGS_NAV: NavGroup[] = [
   {
     group: 'AI 核心架构',
     items: [
-      { href: '/settings/ai-runtime', label: 'AI 运行时', icon: '⌘' },
       { href: '/settings/assistants', label: 'AI 助手', icon: '🤖' },
       { href: '/settings/feishu', label: '飞书机器人', icon: '🪽' },
       { href: '/settings/teams', label: '协作团队', icon: '👥' },

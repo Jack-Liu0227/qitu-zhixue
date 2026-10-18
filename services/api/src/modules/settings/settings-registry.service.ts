@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import type { AdminSettingsRegistry, AdminSettingsRegistryItem } from '@qitu/contracts';
 
 /**
- * 设置页路由清单。总览自身也是一个设置路由，因此完整清单应有 20 项：
- * 19 个设置目录 + `/settings` 总览。
+ * 设置页路由清单。总览自身也是一个设置路由，因此完整清单应有 19 项：
+ * 18 个设置目录 + `/settings` 总览。AI 运行时已拆分到助手、团队、模型、技能和工具页，
+ * 不再作为独立设置入口展示。
  */
 export const ADMIN_SETTINGS_ROUTE_MANIFEST = [
   'about',
   'account',
-  'ai-runtime',
   'appearance',
   'assistants',
   'database',
@@ -36,10 +36,6 @@ const REGISTRY: AdminSettingsRegistry = [
   {
     id: 'account', href: '/settings/account', group: '工作区', icon: '👤', title: '账号设置', label: '账号设置',
     description: '管理管理员账号资料与登录安全偏好。', accent: 'blue', badgeKind: 'static', order: 10,
-  },
-  {
-    id: 'ai-runtime', href: '/settings/ai-runtime', group: 'AI 核心架构', icon: '⌘', title: 'AI 运行时', label: 'AI 运行时',
-    description: '查看 AI 运行时治理入口及助手、模型、技能和工具的拆分配置。', accent: 'violet', badgeKind: 'static', order: 10,
   },
   {
     id: 'assistants', href: '/settings/assistants', group: 'AI 核心架构', icon: '🤖', title: 'AI 助手', label: 'AI 助手',

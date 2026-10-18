@@ -43,7 +43,7 @@ export function ModelSettingsPrototype() {
           <h2 id="model-settings-title">AI 学习搭档</h2>
           <p className={styles.subtitle}>配置 Agent 默认行为、模型参数与安全边界。</p>
         </div>
-        <Link className={styles.headerLink} href="/settings/ai-runtime">管理 Agent <span aria-hidden="true">→</span></Link>
+        <Link className={styles.headerLink} href="/settings/assistants">管理助手 <span aria-hidden="true">→</span></Link>
       </header>
 
       <div className={styles.sections}>
@@ -123,7 +123,7 @@ export function ModelSettingsPrototype() {
                   ))}
                 </div>
               </details>
-              <small>快捷选择当前 Agent 已启用的技能。<Link className={styles.auxiliaryLink} href="/settings/ai-runtime">前往技能中心管理</Link></small>
+              <small>快捷选择当前 Agent 已启用的技能。<Link className={styles.auxiliaryLink} href="/settings/skills">前往技能中心管理</Link></small>
             </div>
           </div>
         </section>
@@ -142,7 +142,7 @@ export function ModelSettingsPrototype() {
                 <option value="default">始终使用默认连接</option>
                 <option value="ask">每次询问</option>
               </select>
-              <small>连接凭据和服务器由后台安全管理。<Link className={styles.auxiliaryLink} href="/settings/ai-runtime?tab=mcp">前往 MCP 设置</Link></small>
+              <small>连接凭据和服务器由后台安全管理。<Link className={styles.auxiliaryLink} href="/settings/tools?tab=mcp">前往 MCP 设置</Link></small>
             </label>
           </div>
         </section>
@@ -156,7 +156,7 @@ export function ModelSettingsPrototype() {
           <div className={styles.policyList}>
             <label className={styles.policy}><span><strong>答案泄露防护</strong><small>优先提供分步提示，不直接输出完整解答。</small></span><input type="checkbox" defaultChecked /></label>
             <label className={styles.policy}><span><strong>高风险内容拦截</strong><small>遇到不适龄或安全风险内容时停止生成并提示求助。</small></span><input type="checkbox" defaultChecked /></label>
-            <div className={styles.policyHint}>策略由服务端执行并留存审计记录。<Link href="/settings/ai-runtime">查看运行时治理</Link></div>
+            <div className={styles.policyHint}>策略由服务端执行并留存审计记录。<Link href="/settings/tools">查看工具治理</Link></div>
           </div>
         </section>
 
@@ -177,7 +177,7 @@ export function ModelSettingsPrototype() {
           <div className={styles.editorFooter}><span>{prompt.length} 个字符</span><span>提示词由服务端安全加载，不包含密钥或个人敏感信息。</span></div>
         </section>
       </div>
-      <footer className={styles.prototypeFooter}><span>原型预览 · 配置变更请前往对应管理页保存</span><Link href="/settings/ai-runtime">打开 AI 运行时 <span aria-hidden="true">→</span></Link></footer>
+      <footer className={styles.prototypeFooter}><span>原型预览 · 配置变更请前往对应管理页保存</span><Link href="/settings/assistants">打开助手设置 <span aria-hidden="true">→</span></Link></footer>
     </section>
   );
 }
