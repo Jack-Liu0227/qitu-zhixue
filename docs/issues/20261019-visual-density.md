@@ -4,8 +4,8 @@
 
 - Request: visually review student, parent, teacher and Admin at `http://122.51.130.204`, reduce unnecessary whitespace, fix squeezed/obscured controls, and replace legacy robot marks.
 - Implementation: frontend presentation only. Frozen navigation, teaching gates, permissions, provider routing and persisted avatar IDs stay unchanged.
-- Release status: local source implementation and isolated verification; **not deployed to the public server**.
-- Do not deploy the entire dirty worktree as this change. Other ongoing work includes documentation, model configuration, runtime, tutor renderers and API modules.
+- Release status: deployed as part of the user-authorized, reviewed integration release `8413ef811e19cf0e1c029fc05150325b39076111` on `study-remote` at 2026-10-19 06:22:27 Asia/Shanghai.
+- This is not a blind deployment of the dirty worktree or a UI-only release. The coordinated release also contains separately reviewed documentation, model configuration, runtime, tutor-renderer and API fixes; see the [takeover release record](../plan/codex/takeover-validation-20261019.md).
 
 ## Findings And Fixes
 
@@ -72,4 +72,4 @@ The UNC installation's `node_modules/@qitu/*` entries are installation snapshots
 - No project, mastery, evidence, feedback, provider or runtime configuration writes during the visual checks. The final browser reports record zero attempted writes.
 - Parent request identity/latest-request guards remain intact. Displayed projections are not promoted to learning/completion facts.
 - Existing unrelated modifications were retained, including concurrent changes within the tutor renderer and Admin model-selection area. They are not part of this visual change's claimed implementation.
-- Verification distinguishes current source/local build from the currently published site. Release only the reviewed frontend/shared-UI change, then repeat the route sweep against the deployed artifact.
+- The browser coverage counts above remain the original isolated/local verification, not a repeated authenticated production sweep. The later release verifies 12 public routes and their CSS/JS, all five companion images against the source SHA256, anonymous redirects, and public home/login at 375/768/1440px; no production login or teaching writes were performed in that release smoke test.

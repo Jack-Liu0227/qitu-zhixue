@@ -130,3 +130,11 @@ pnpm --filter @qitu/api exec node --test .tmp/test-dist/modules/projects/project
 修复内容、命令、此前失败的归因与剩余发布条件见 [三线接管修复与验证](./takeover-validation-20261019.md)。本节取代历史轮次作为这些测试项的最新本地状态，不取代真实模型、数据库、IMA、实验事件和完整 16 课时验收。未部署或写入生产数据。
 
 用户确认并行修改后，最终 API 仍为 947 项全部通过，学生端 28 项通过，五个前端 typecheck 与 production build 通过。Admin 尾修增加标签测试后，Runtime 与模型选择共 34 项通过。学生端、家长端和 Admin 的新增本地浏览器 fixture 检查见接管记录第 3.1 节。用户随后授权部署与推送，执行结果单列于接管记录第 5 节；本节之前的“未部署”描述保留其历史轮次范围。
+
+## 8. 用户授权的实际发布
+
+代码提交 `8413ef811e19cf0e1c029fc05150325b39076111` 已推送 GitHub 和 `study-remote` 的 main。服务器在独立 release 安装冻结依赖并串行构建，Linux API 947 项全部通过，五个前端 production build 通过。2026-10-19 06:22:27（Asia/Shanghai）完成 API 与五个前端的逐服务切换；构建后 1,490 个 Git blob 与提交匹配，实际 Node 运行目录和依赖路径已核对。
+
+本机 Nginx 与公网各 12 条路由及其 CSS/JS 通过；五端新助手图标与源图 SHA256 一致。公网 readiness 为 live、database/redis 均 ok，受保护 API 匿名 401。可见浏览器检查首页和登录页的三个尺寸及四端匿名重定向，无 pageerror、HTTP 5xx 或写请求。不把该匿名检查当作登录后业务或真实推理验收，也未验证视频播放。
+
+未执行迁移、教学造数、门禁注入或模板/团队删除。独立 worker 仍停用，其他工作树 eyeprotect、IMA、embedding 相关单元未重启。旧产物、配置备份、脚本与验证假设修正见 [接管发布记录](./takeover-validation-20261019.md) 第 5 节；动态生成、IMA/实验证据和完整 16 课时仍未完成验收。后续文档提交只更新两端 main，不改变此次生产产物 SHA。

@@ -63,7 +63,7 @@ bash tooling/start-qitu-services.sh build     # 强制重建 runtime 包 + 前�
 - 当前五个前端均由 systemd 托管并运行**生产构建 `next start`**：`qitu-auth`（`:3100`）、
   `qitu-student`（`:3101`）、`qitu-parent`（`:3102`）、`qitu-teacher`（`:3103`）、`qitu-admin`（`:3104`）。
   2026-10-17 的隔离发布使用服务 drop-in 指向独立目录，详见 §3.4；不能仅从仓库中的单元模板推断实际运行目录。
-  API / workers 维持原归属；本次前端发布不重启它们。
+  API / workers 的最新归属及 2026-10-19 发布见 §3.5；API 当前运行编译产物，不是 watch，独立 workers 维持停用。
 - 生产模式的单元同样**必须先有构建**：`bash tooling/start-qitu-services.sh build`。
   缺 `.next/BUILD_ID` 时单元会 crash-loop（`/` 与 `/login` 直接 502），`status` 会打印该提示。
   不要改用在 `:3100` 跑 `next dev` 来「救活」它（见 [`tooling/auth-production.md`](../../tooling/auth-production.md)）。
@@ -90,7 +90,9 @@ bash tooling/sync-study-remote.sh
 ALLOW_REMOTE_DIRTY=1 bash tooling/sync-study-remote.sh
 ```
 
-同步完成后，在服务器主工作树执行：
+以下为历史开发启动流程。**当前正式发布采用 §3.5 的隔离构建与逐服务切换，不使用全局 `stop/clean/restart`**；全局清理可能影响其他工作树的 worker。不要在正在服务的 `.next` 上原地构建。
+
+历史同步完成后，在服务器主工作树执行：
 
 ```bash
 # 先预编译再 restart：restart 内部的构建失败会把服务停在半路上
@@ -232,8 +234,7 @@ bash tooling/start-qitu-services.sh status
 - `next start` 没有 HMR；开发调试用 `QITU_FRONTEND_MODE=dev`（仓库默认）。
 - 端口、basePath、nginx 配置均不变；应用内 `/api/:path*` rewrites 仍指向 `QITU_API_ORIGIN`
   （默认 `127.0.0.1:4100`）。
-- services/api 故意保留 `nest start --watch`（远程主工作树在活跃开发）——它仍是最大的单一占用；
-  要再降可把 ExecStart 换成 `node dist/main`，代价是失去热重载。
+- 上述 watch 归属是早期开发状态。2026-10-19 实际 API 已由专属 launcher 运行 `node services/api/dist/main.js`，当前正式归属以 §3.5 和 systemd 回读为准。
 
 ### 3.3 页面 200 但 CSS/JS 丢失
 
@@ -263,6 +264,8 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 
 ### 3.4 五端品牌发布与隔离构建（2026-10-17，#56）
 
+> 本节是 10 月 17 日历史记录，不是当前回滚指令。最新服务归属与不可变旧产物回滚见 §3.5；服务器 main 已推进，不能直接把运行目录指回 main 充当旧版本。
+
 - 前端代码提交 `04be640`；服务器 Git 主工作树仍为 `/root/qitu-zhixue`。
 - 使用 `git archive` 将该提交导出到 `/root/qitu-releases/04be640`，以冻结锁文件离线安装依赖，
   串行执行 `pnpm build --concurrency=1`。没有覆盖任何正在使用的 `.next`。
@@ -286,6 +289,25 @@ python3 tooling/check-frontend-assets.py --route /login --route /student/today
 此前六幕版本的六张 WebP 和 MP4 已通过线上 SHA256/Range 验收；本次中学生案例扩展改为九张 WebP，发布前需按同一规则重新核对九张图片与新 MP4。
 视频暂停、章节选择、离屏暂停、离线、节流模式主动播放、系统/产品减弱动态、故障重试通过。
 真实后台标签页切换未在此次可见窗口环境中稳定复现，不将该项列为通过证据。
+
+### 3.5 三线接管集成发布（2026-10-19）
+
+- 发布产物：`8413ef811e19cf0e1c029fc05150325b39076111`，目录 `/root/qitu-releases/8413ef811e19cf0e1c029fc05150325b39076111`。2026-10-19 06:22:27（Asia/Shanghai）完成切换。
+- 经用户授权，代码已推送 GitHub main；服务器先接收非当前 release ref，在隔离构建与验收通过后才快进 main。后续文档回填提交不改变生产产物 SHA。
+- Node 22.22.1、pnpm 10.10.0；以 postgres 安装冻结锁文件，按依赖图构建 API/workers，运行 Linux API 测试 947/947，然后串行构建五个前端。没有覆盖旧进程的 `.next`，构建后 1,490 个 Git blob 与提交匹配。
+- 六个正式单元 `qitu-api/auth/student/parent/teacher/admin.service` 均 active，通过各自 `zzzzzz-release.conf` 指向该 release，保持原端口和 Nginx。API 以 postgres 执行编译产物，专属 launcher 仅变更 `NODE_PATH`，保留既存受限配置、知识 Python/vendor/data 路径。实际 Node cwd 和依赖解析均在此 release。
+- readiness 为 live、database/redis 均 ok；本机 Nginx 和公网各 12 条路由及 CSS/JS 通过，五端助手图标与源图 SHA256 一致。匿名保护接口 401；首页/登录三个尺寸和四端匿名重定向的可见浏览器检查通过，没有 pageerror、HTTP 5xx 或写请求。
+- 未执行数据库迁移、教学造数或门禁注入。独立 worker 未运行，只编译、不新增消费者；另 7 个 eyeprotect/IMA/embedding 相关单元 MainPID/状态未变化。未使用全局启动脚本的 stop/clean/restart。
+
+**回滚**：旧版本 `8e8f9b4` 的源码、依赖、五端 `.next` 和 API/worker dist 已保存为独立产物；原单元配置在 `.release-unit-backup/`。旧依赖已验证在 rollback 目录内解析。服务器 main 已同步，不可仅删除新 drop-in 回主树；使用专属脚本切回旧产物：
+
+```bash
+bash /root/qitu-releases/rollback-before-8413ef811e19cf0e1c029fc05150325b39076111/activate-rollback.sh
+```
+
+脚本已通过 Bash 语法检查，未在成功发布后执行人为回滚演练。它只操作上述六个单元，不改 Git 历史、数据库或其他工作树。
+
+API Linux 测试日志、运行复核和受限审计脚本分别位于 release 的 `.release-api-test.log`、`.release-live-verification.json`、`.release-audit/`。完整结果和验证限制见 [接管修复与发布记录](../plan/codex/takeover-validation-20261019.md)。本轮没有真实模型/IMA 请求或登录后完整 16 课时验收，不能据此宣布全动态 PBL 完成；HTTP 冒烟也不是 TLS/生产隐私安全认证。
 
 ## 4. Pi/Herdr 开发 Agent（非运行时）
 

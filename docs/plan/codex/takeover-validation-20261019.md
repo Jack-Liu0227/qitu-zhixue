@@ -1,6 +1,6 @@
 # 2026-10-19 三线接管修复与验证
 
-> 基线为 `8e8f9b4e2824c62e879ab032d2a40ec8c3454691` 加本轮工作区修改，不是已发布版本。
+> 修复基线为 `8e8f9b4e2824c62e879ab032d2a40ec8c3454691` 加本轮工作区修改；发布产物为 `8413ef811e19cf0e1c029fc05150325b39076111`，实际部署见第 5 节。后续文档提交不改变产物 SHA。
 > 架构与待实施范围以 [最新实施计划](./implementation-plan.md) 和 [实时生成总架构](./architecture.md) 为准。本记录不把安全回退、模型协议测试或实验预览当作完整动态 PBL 验收。
 
 ## 1. 接管来源与边界
@@ -126,4 +126,39 @@ Next 提示本机多个锁文件导致 tracing root 推断警告。未修改用�
 
 发布前只读核查发现，服务器 `main@8e8f9b4` 干净，配置为 `receive.denyCurrentBranch=updateInstead`；直接推送 main 会立即改动当前运行目录。五个前端和 API 实际均由 systemd 在 `/root/qitu-zhixue` 运行。API 使用 postgres 用户、专属 launcher 和固定 `NODE_PATH`，不是 watch。独立 worker 当前未运行，发布不顺手新增消费者，也不改动另一工作树的 eyeprotect、IMA 或 embedding 服务。
 
-发布采用冻结提交的独立目录构建、保留旧运行产物和单元配置、逐服务切换及检查，全部成功后再同步服务器 main。复用既存受限配置，不输出凭据，不执行数据库迁移、教学造数、门禁注入或模板/团队删除。实际提交、切换和线上探测结果在执行后补记，不以本节计划代替成功证据。
+发布采用冻结提交的独立目录构建、保留旧运行产物和单元配置、逐服务切换及检查，全部成功后再同步服务器 main。复用既存受限配置，不输出凭据，不执行数据库迁移、教学造数、门禁注入或模板/团队删除。
+
+### 5.1 实际执行结果
+
+| 项目 | 结果 |
+| --- | --- |
+| 代码提交 | `8413ef811e19cf0e1c029fc05150325b39076111`，128 个文件，包含用户确认保留的 UI 与文档修改 |
+| GitHub | 已按用户要求直接推送 `origin/main`，没有强推 |
+| 服务器 Git | 先推独立 release ref；切换和线上检查成功后，再将 `/root/qitu-zhixue` 的 `main` 快进至该代码提交，工作树干净 |
+| 隔离目录 | `/root/qitu-releases/8413ef811e19cf0e1c029fc05150325b39076111` |
+| 切换完成 | Asia/Shanghai `2026-10-19T06:22:27+08:00` |
+| 产物对应 | 构建后逐字节匹配冻结提交的 1,490 个 Git blob；六个 API workspace 依赖均解析到此 release 的 `packages/*/dist` |
+| Linux 验证 | 冻结锁文件安装、API/worker 依赖图构建及 API 编译通过；API 947/947、75 suites、0 失败/取消；五个前端 production build 通过 |
+| 实际服务 | `qitu-api/auth/student/parent/teacher/admin.service` 全部 active，WorkingDirectory 均为该 release；API 的真实 Node 子进程 cwd 与 `NODE_PATH` 也指向此 release |
+| 健康状态 | 本机与公网 `/api/v1/health/ready` 均为 HTTP 200、`status=ready`、`dataMode=live`、database/redis 均 `ok` |
+| 静态资源 | 本机 Nginx 与公网各检查 12 条路由，页面及其 CSS/JS 均通过；五端新助手 PNG 均 HTTP 200，SHA256 与源图一致 |
+| 权限边界 | 匿名 projects/admin overview 均 HTTP 401；受保护页面按既有角色入口跳转，不展示 Tutor 输入区 |
+| 未触碰的服务 | 独立 worker 仍未运行；7 个既存 eyeprotect/IMA/embedding 相关 systemd 单元的 MainPID 与状态和切换前一致 |
+
+API 仍使用原 launcher 的受限配置来源，仅替换专属副本中的 `NODE_PATH`。没有批量替换知识 Python、vendor 或数据路径。运行时政策和技能源码从 release 读取，目录/政策为 ready、发现 1 个技能；这不是 Admin 已启用或真实模型调用成功的证明。Admin 构建出现非致命 webpack 缓存快照告警，构建与静态资源验证仍通过。
+
+公网可见 Chromium 冒烟检查首页、登录页在 375/768/1440px 下无页面横向溢出、已加载图片无损坏，以及四端匿名跳转。最终无 pageerror、HTTP 5xx 或写请求。未登录生产账号，未读取学生会话或提交教学操作；媒体请求被测试脚本主动阻止，因此没有把视频播放列作本次线上通过项。本机报告为 `qitu-release-anonymous-report.json`。
+
+两处验证假设曾纠正，未修改线上业务来迎合测试：父级 `runuser` 的 cwd 为 `/`，实际 API Node 子进程才应检查 release cwd；家长/Admin 的既有匿名目标分别是 `/parent/login`、`/admin/login`，并非全部跳转 `/`。按真实进程与既有路由重验后通过。
+
+### 5.2 回滚与后续同步
+
+- 旧源码、完整运行依赖、五端 `.next`、API/worker dist 保存在 `/root/qitu-releases/rollback-before-8413ef811e19cf0e1c029fc05150325b39076111`。不包含环境或认证文件，六个 workspace 依赖已确认在旧目录内解析。
+- 原单元配置位于该目录的 `.release-unit-backup/`；专属旧 API launcher 已创建。现用覆盖文件为六个单元各自的 `zzzzzz-release.conf`，保留更早的 drop-in。
+- 服务器 main 已同步，不能简单删除覆盖文件回到主树；应运行下列专属脚本切回保存的旧产物。脚本已做 Bash 语法检查，未在成功发布后人为执行回滚演练。
+
+```bash
+bash /root/qitu-releases/rollback-before-8413ef811e19cf0e1c029fc05150325b39076111/activate-rollback.sh
+```
+
+构建/切换/复核脚本和匿名浏览器报告保存在 release 的受限 `.release-audit/`；API Linux 日志为 `.release-api-test.log`，运行复核为 `.release-live-verification.json`。本节及部署文档的回填使用独立文档提交同步两端 main，生产仍运行上述代码 SHA，不把后续文档 HEAD 冒充构建产物。完整动态 PBL 的未完成项仍以第 4 节为准。
