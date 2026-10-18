@@ -316,10 +316,6 @@ export function KnowledgeConfiguration({
       setPending(false);
     }
   }
-  const engines = {
-    ...snapshot?.config.knowledgeEngines,
-    ...(staged ? { [staged.id]: staged.engine } : {}),
-  };
   const current = snapshot
     ? staged && target === `knowledgeEngines/${staged.id}`
       ? staged.engine
@@ -343,12 +339,6 @@ export function KnowledgeConfiguration({
     target === 'global'
       ? '总配置（mcpServers 全局）'
       : `${String(currentObject?.name ?? target.split('/')[1])}.json（单独配置）`;
-  const engineHealth = (id: string) => {
-    const instance = groups.flatMap((g) => g.instances).find((e) => e.id === id);
-    const status =
-      instance && instance.revision === snapshot?.revision ? instance.health?.health_status : null;
-    return status ? (healthLabels[status] ?? status) : '未检查';
-  };
   return (
     <div className={`${styles.page} admin-tools-page-view`}>
       <header className={styles.header}>
@@ -474,99 +464,6 @@ export function KnowledgeConfiguration({
                 </div>
               );
             })}
-            <div className={`${styles.target} ${target === PROJECT ? styles.selected : ''}`}>
-              <div className={styles.targetHeading}>
-                <button
-                  type="button"
-                  className={styles.arrow}
-                  aria-label="展开知识库"
-                  aria-expanded={!!expanded[PROJECT]}
-                  onClick={() => expand(PROJECT)}
-                >
-                  {expanded[PROJECT] ? '▾' : '▸'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.targetName}
-                  onClick={() => {
-                    select(PROJECT);
-                    if (!expanded[PROJECT]) expand(PROJECT);
-                  }}
-                >
-                  知识库
-                </button>
-                <span className={styles.badge}>
-                  {snapshot.config.platformTools['project-knowledge'].enabled
-                    ? '允许调用'
-                    : '已停用'}
-                </span>
-              </div>
-              <p>
-                {projectBindings.length} 个智能体绑定 · {Object.keys(engines).length} 个知识引擎
-              </p>
-              {expanded[PROJECT] && (
-                <div className={styles.children}>
-                  {toolList(PROJECT)}
-                  <h3 className={styles.sectionTitle}>知识引擎</h3>
-                  {Object.entries(engines).map(([id, engine]) => {
-                    const key = `knowledgeEngines/${id}`;
-                    return (
-                      <div
-                        key={key}
-                        className={`${styles.engine} ${target === key ? styles.selected : ''}`}
-                      >
-                        <div className={styles.targetHeading}>
-                          <button
-                            type="button"
-                            className={styles.arrow}
-                            aria-label={`展开 ${engine.name} 子工具`}
-                            aria-expanded={!!expanded[key]}
-                            onClick={() => expand(key)}
-                          >
-                            {expanded[key] ? '▾' : '▸'}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.targetName}
-                            onClick={() => select(key)}
-                          >
-                            {engine.name}
-                          </button>
-                        </div>
-                        <small>
-                          {id} · {engine.provider}
-                        </small>
-                        <p>
-                          {staged?.id === id
-                            ? '未保存草稿'
-                            : `${engine.enabled ? '已启用' : '已停用'} · ${engineHealth(id)}`}
-                        </p>
-                        {expanded[key] &&
-                          (staged?.id === id ? (
-                            <p className={styles.hint}>保存后可读取工具目录。</p>
-                          ) : (
-                            toolList(key)
-                          ))}
-                      </div>
-                    );
-                  })}
-                  {!preview && (
-                    <button
-                      type="button"
-                      className={styles.link}
-                      onClick={() =>
-                        guard(() => {
-                          setNewId('');
-                          setDialog('engine');
-                        })
-                      }
-                    >
-                      ＋ 添加知识引擎
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
           </aside>
           <section className={`${styles.card} ${styles.editorCard}`} aria-label="JSON 配置工作区">
             <div className={styles.cardHeading}>
@@ -774,7 +671,7 @@ export function KnowledgeConfiguration({
             ) : (
               <p>
                 当前环境支持编辑已注册的
-                MCP。新增服务须先在服务器登记连接与工具定义；登记后重新读取即可配置和授权。知识引擎请从“知识库”中添加。
+                MCP。新增服务须先在服务器登记连接与工具定义；登记后重新读取即可配置和授权。知识引擎请在“知识中心”的“知识引擎”中管理。
               </p>
             )}
             <div className={styles.actions}>
