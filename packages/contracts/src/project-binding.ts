@@ -85,6 +85,12 @@ export interface ProjectBindingSnapshot {
   bindingId: string;
   teamVersionId: string;
   bindingHash: string;
+  /** Immutable, binding-scoped IMA grant copied at project confirmation. */
+  imaGrant?: {
+    serverId: 'ima-knowledge';
+    knowledgeBaseIds: readonly string[];
+    allowedTools: readonly string[];
+  } | null;
   boundAt: string;
   backfilled: boolean;
 }

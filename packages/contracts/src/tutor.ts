@@ -140,6 +140,10 @@ export type TutorReplyBlock =
       title: string;
       summary?: string;
       initialMode?: 'diffraction' | 'scattering';
+      specVersion: string;
+      objectiveId: string;
+      sessionIndex: number;
+      allowedActions: readonly ('set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
     }
   /**
    * 学生或导师发送的图片与文件附件。

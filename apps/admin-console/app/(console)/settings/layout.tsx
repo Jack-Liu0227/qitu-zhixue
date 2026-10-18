@@ -32,7 +32,6 @@ const FALLBACK_SETTINGS_NAV: NavGroup[] = [
       { href: '/settings/feishu', label: '飞书机器人', icon: '🪽' },
       { href: '/settings/teams', label: '协作团队', icon: '👥' },
       { href: '/settings/model-providers', label: '模型接入', icon: '◈' },
-      { href: '/settings/models', label: '旧模型入口', icon: '◉' },
       { href: '/settings/skills', label: '技能中心', icon: 'ϟ' },
       { href: '/settings/tools', label: '工具与 MCP', icon: '🧰' },
       { href: '/settings/plugins', label: '生态插件', icon: '🧩' },
@@ -67,6 +66,7 @@ function toInternal(pathname: string): string {
 function registryGroups(registry: AdminSettingsRegistry): NavGroup[] {
   const groups = new Map<string, AdminSettingsRegistryItem[]>();
   for (const item of registry) {
+    if (item.id === 'models') continue;
     const items = groups.get(item.group) ?? [];
     items.push(item);
     groups.set(item.group, items);

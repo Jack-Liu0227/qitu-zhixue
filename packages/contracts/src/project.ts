@@ -30,6 +30,8 @@ export interface ProjectSummary {
   title: string;
   stage: ProjectStage;
   progress: number;
+  /** Server-owned template version used for deterministic runtime capability gates. */
+  templateVersionId?: string | null;
   /** Number of persisted student/assistant turns in the AI tutor session. */
   turnCount?: number;
 }

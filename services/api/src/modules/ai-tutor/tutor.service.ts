@@ -290,7 +290,13 @@ export class TutorService {
       if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
       const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId);
       return {
-        project: { id: selected.id, title: selected.title, stage: selected.status, progress: selected.progressPercent },
+        project: {
+          id: selected.id,
+          title: selected.title,
+          stage: selected.status,
+          progress: selected.progressPercent,
+          templateVersionId: selected.templateVersionId,
+        },
         progress: { currentStageIndex: selected.currentStageIndex, stageTotal: selected.stageTotal, progressPercent: selected.progressPercent },
         stages: PROJECT_STAGES,
         currentTask: currentTaskFor(selected.id, selected.title, selected.status),

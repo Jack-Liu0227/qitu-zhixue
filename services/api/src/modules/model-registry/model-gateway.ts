@@ -189,7 +189,7 @@ export class ModelGateway {
 }
 
 export function runtimeEngine(): 'qitu' | 'legacy' {
-  return process.env.QITU_MODEL_RUNTIME_ENGINE === 'qitu' ? 'qitu' : 'legacy';
+  return process.env.QITU_MODEL_RUNTIME_ENGINE === 'legacy' ? 'legacy' : 'qitu';
 }
 
 function assertRequest(request: ModelCompletionRequest): void {

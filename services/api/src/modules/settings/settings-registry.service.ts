@@ -54,7 +54,7 @@ const REGISTRY: AdminSettingsRegistry = [
     description: '管理供应商网关、凭证、通道与模型目录。', accent: 'blue', badgeKind: 'static', order: 50,
   },
   {
-    id: 'models', href: '/settings/models', group: 'AI 核心架构', icon: '◉', title: '模型兼容入口', label: '旧模型入口',
+    id: 'models', href: '/settings/models', group: 'AI 核心架构', icon: '◉', title: '模型接入与通道', label: '模型接入 (兼容跳转)',
     description: '保留旧书签兼容，模型目录统一在模型接入与通道中维护。', accent: 'blue', badgeKind: 'static', order: 60,
   },
   {
