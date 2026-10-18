@@ -66,3 +66,31 @@ test('TheoryMastered 通过后允许当前实践阶段 milestone', () => {
   assert.equal(milestone?.kind, 'milestone');
   if (milestone?.kind === 'milestone') assert.equal(milestone.phaseId, 'guided_practice');
 });
+
+test('光学项目且通过 TheoryMastered 后，实践阶段注入 optics_experiment 块', () => {
+  const opticsPassedContext: TutorProjectContext = {
+    ...baseContext,
+    project: { ...baseContext.project!, title: '高中物理光学散射与衍射探究' },
+    phases: baseContext.phases!.map((phase) => phase.phaseId === 'concept_mastery'
+      ? { ...phase, gateStatus: 'passed' as const }
+      : phase),
+  };
+  const blocks = buildProjectInteractionBlocks(opticsPassedContext);
+  const expBlock = blocks.find((block) => block.kind === 'optics_experiment');
+  assert.equal(expBlock !== undefined, true, '应生成 optics_experiment 块');
+  if (expBlock?.kind === 'optics_experiment') {
+    assert.equal(expBlock.title, '光的散射与衍射动态探究台');
+    assert.equal(expBlock.initialMode, 'scattering');
+  }
+});
+
+test('光学项目未通过 TheoryMastered 时，不得注入 optics_experiment 块', () => {
+  const opticsPendingContext: TutorProjectContext = {
+    ...baseContext,
+    project: { ...baseContext.project!, title: '高中物理光学散射与衍射探究' },
+  };
+  const blocks = buildProjectInteractionBlocks(opticsPendingContext);
+  const expBlock = blocks.find((block) => block.kind === 'optics_experiment');
+  assert.equal(expBlock === undefined, true, '理论未掌握时严禁注入实践实验块');
+});
+

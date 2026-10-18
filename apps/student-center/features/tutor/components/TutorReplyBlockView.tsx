@@ -10,6 +10,7 @@ import { ArtifactFileCard } from './ArtifactFileCard';
 import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 import { CircuitSimulationCard } from './CircuitSimulationCard';
+import { OpticsDiffractionScatteringCard } from './OpticsDiffractionScatteringCard';
 import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
@@ -136,6 +137,14 @@ export function TutorReplyBlockView({
         <CircuitSimulationCard
           disabled={disabled}
           onExperimentComplete={(summary) => onSelectOption?.('电路探究结论', summary)}
+        />
+      );
+    case 'optics_experiment':
+      return (
+        <OpticsDiffractionScatteringCard
+          disabled={disabled}
+          initialMode={block.initialMode}
+          onExperimentComplete={(summary) => onSelectOption?.('光学探究结论', summary)}
         />
       );
     case 'attachment':

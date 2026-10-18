@@ -1,11 +1,11 @@
 # 启途智学自适应 PBL 与多智能体协同融合架构设计方案
 
-> **文档标识**：`docs/plan/combined/architecture.md`
-> **版本**：v1.0.0
-> **生效基线**：2026-10-18
-> **方案来源**：综合 [`../antigravity/architecture-design.md`](../antigravity/architecture-design.md) 与 [`../codex/architecture.md`](../codex/architecture.md)
-> **上级基线**：[`../../AGENTS.md`](../../AGENTS.md) · [`../design/pbl-template-team-binding-architecture.md`](../design/pbl-template-team-binding-architecture.md) · [`../design/20261018-pbl-dynamic-interaction-openmaic.md`](../design/20261018-pbl-dynamic-interaction-openmaic.md)
-> **责任领域**：`projects` / `learning-plan` / `ai-tutor` / `mastery` / `team-runtime` / `apps/student-center`
+> **文档标识**：`docs/plan/combined/architecture.md`  
+> **版本**：v1.0.0  
+> **生效基线**：2026-10-18  
+> **方案来源**：综合 [`../antigravity/architecture-design.md`](../antigravity/architecture-design.md) 与 [`../codex/architecture.md`](../codex/architecture.md)  
+> **上级基线**：[`../../AGENTS.md`](../../AGENTS.md) · [`../design/pbl-template-team-binding-architecture.md`](../design/pbl-template-team-binding-architecture.md) · [`../design/20261018-pbl-dynamic-interaction-openmaic.md`](../design/20261018-pbl-dynamic-interaction-openmaic.md)  
+> **责任领域**：`projects` / `learning-plan` / `ai-tutor` / `mastery` / `team-runtime` / `apps/student-center`  
 
 ---
 

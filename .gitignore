@@ -85,3 +85,4 @@ worktrees/
 
 # Local knowledge runtime service (embedding venv/models/data, relocated from /root/team-services)
 services/knowledge/
+.playwright-mcp/

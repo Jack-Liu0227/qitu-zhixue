@@ -93,6 +93,41 @@ export interface OpticsWaveModule {
   gradingGated: false;
 }
 
+/** Evidence-first prompts used by the guided-practice assistant. These are
+ * deliberately qualitative: they enrich the optics flow without weakening
+ * the four-objective TheoryMastered gate. */
+export interface OpticsWaveInquiryStep {
+  id: string;
+  conceptId: string;
+  /** The pre-gate activity is a simulation/projection only; no apparatus work. */
+  mode: 'simulation';
+  physicalActivityGate: 'TheoryMastered';
+  prompt: string;
+  expectedEvidence: string;
+  toolHint: 'knowledge_search' | 'simulation_runner' | 'data_analyzer';
+}
+
+export const OPTICS_WAVE_INQUIRY_STEPS: readonly OpticsWaveInquiryStep[] = [
+  {
+    id: 'opt-wave-diffraction-observe',
+    conceptId: 'optics.wave.diffraction',
+    mode: 'simulation',
+    physicalActivityGate: 'TheoryMastered',
+    prompt: 'Reduce the slit width while keeping source and screen distance fixed. What happens to the central bright band?',
+    expectedEvidence: 'A narrower slit produces a wider central diffraction envelope; record slit width and band width.',
+    toolHint: 'simulation_runner',
+  },
+  {
+    id: 'opt-wave-scattering-observe',
+    conceptId: 'optics.wave.scattering',
+    mode: 'simulation',
+    physicalActivityGate: 'TheoryMastered',
+    prompt: 'Add a sealed fine-mist chamber without changing the source. Why can the beam path become visible from the side?',
+    expectedEvidence: 'Particles redirect a small amount of light toward the observer; record visibility and keep the enclosure closed.',
+    toolHint: 'data_analyzer',
+  },
+];
+
 /** 3 个质化波动模块（干涉 / 衍射 / 偏振），本期不判分、不做门禁承载。 */
 export const OPTICS_WAVE_MODULES: readonly OpticsWaveModule[] = [
   {
@@ -109,6 +144,14 @@ export const OPTICS_WAVE_MODULES: readonly OpticsWaveModule[] = [
     knowledgeType: 'concept',
     title: '光的衍射：明显衍射条件与条纹特征',
     description: '理解障碍物/缝宽与波长可比时发生明显衍射，能定性比较单缝与双缝现象。',
+    gradingGated: false,
+  },
+  {
+    moduleId: 'opt-wave-scattering',
+    conceptId: 'optics.wave.scattering',
+    knowledgeType: 'concept',
+    title: 'Scattering: why a beam becomes visible in a medium',
+    description: 'Fine particles or density variations redirect light from the beam path toward an observer.',
     gradingGated: false,
   },
   {
@@ -249,6 +292,26 @@ export const OPTICS_OBJECTIVES: readonly OpticsObjective[] = [
     description: '撰写探究报告：装置图、数据表、拟合图、误差来源、结论边界。',
     prerequisiteIds: ['opt-practice-fit'],
   },
+  {
+    id: 'opt-practice-diffraction',
+    phase: 'guided_practice',
+    kind: 'concept',
+    knowledgeType: 'concept',
+    conceptId: 'optics.wave.diffraction',
+    title: 'Measure how slit width changes the diffraction pattern',
+    description: 'Vary one slit width at a time, keep the source and screen distance fixed, and record the central-band width as evidence of diffraction.',
+    prerequisiteIds: ['opt-practice-measure'],
+  },
+  {
+    id: 'opt-practice-scattering',
+    phase: 'guided_practice',
+    kind: 'concept',
+    knowledgeType: 'concept',
+    conceptId: 'optics.wave.scattering',
+    title: 'Explain why a sealed mist chamber reveals the beam path',
+    description: 'Compare beam visibility with and without a sealed fine-mist chamber, keep the source unchanged, and explain side-scattered light.',
+    prerequisiteIds: ['opt-practice-measure'],
+  },
   /* ---------- deliverable_review（质化 / 归档，非门禁） ---------- */
   {
     id: 'opt-review-defend',
@@ -360,6 +423,8 @@ export const OPTICS_PHASES: readonly PblTemplatePhase[] = [
       'opt-practice-measure',
       'opt-practice-fit',
       'opt-practice-report',
+      'opt-practice-diffraction',
+      'opt-practice-scattering',
     ],
     gateCondition: 'experiment_report_validated' as GateConditionId,
     deliverableType: 'simulation_experiment_report',
@@ -407,3 +472,4 @@ export const OPTICS_TEMPLATE_SPEC: ProjectTemplateSpec = {
   rubricId: 'rubric-optics-inquiry-v1',
   teamId: 'team-optics-inquiry',
 };
+

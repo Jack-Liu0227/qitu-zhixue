@@ -4,6 +4,7 @@ import {
   OPTICS_LEGACY_CONCEPT_ALIASES,
   OPTICS_OBJECTIVES,
   OPTICS_THEORY_CONCEPTS,
+  OPTICS_WAVE_INQUIRY_STEPS,
   OPTICS_WAVE_MODULES,
   opticsConceptExists,
 } from './optics/index.js';
@@ -48,7 +49,14 @@ export function runOpticsQuizBankAssertions(): void {
   );
 
   // 3 个波动模块：concept/design 质化，显式非门禁。
-  equal(OPTICS_WAVE_MODULES.length, 3, '波动模块应为 3 个');
+  equal(OPTICS_WAVE_MODULES.length, 4, 'wave modules should include scattering');
+  equal(OPTICS_WAVE_INQUIRY_STEPS.length, 2, 'diffraction and scattering evidence prompts');
+  for (const step of OPTICS_WAVE_INQUIRY_STEPS) {
+    assert(OPTICS_WAVE_MODULES.some((module) => module.conceptId === step.conceptId), `${step.id} conceptId must exist`);
+    equal(step.mode, 'simulation', `${step.id} must be simulation-only before the gate`);
+    equal(step.physicalActivityGate, 'TheoryMastered', `${step.id} physical activity gate`);
+    assert(step.expectedEvidence.length > 0, `${step.id} must define expected evidence`);
+  }
   for (const module of OPTICS_WAVE_MODULES) {
     equal(module.gradingGated, false, `${module.moduleId} 必须标记非门禁`);
     assert(

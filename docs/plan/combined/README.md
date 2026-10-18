@@ -1,10 +1,10 @@
 # 自适应 PBL 与多智能体协同融合方案（Combined Proposal）
 
-> **文档标识**：`docs/plan/combined/README.md`
-> **版本**：v1.0.0
-> **生效基线**：2026-10-18
-> **方案来源**：综合评估与融合 [`../antigravity/`](../antigravity/) 与 [`../codex/`](../codex/) 两套方案
-> **责任领域**：`projects` / `learning-plan` / `ai-tutor` / `mastery` / `team-runtime` / `apps/student-center`
+> **文档标识**：`docs/plan/combined/README.md`  
+> **版本**：v1.0.0  
+> **生效基线**：2026-10-18  
+> **方案来源**：综合评估与融合 [`../antigravity/`](../antigravity/) 与 [`../codex/`](../codex/) 两套方案  
+> **责任领域**：`projects` / `learning-plan` / `ai-tutor` / `mastery` / `team-runtime` / `apps/student-center`  
 
 ---
 
@@ -39,11 +39,11 @@
 ## 3. 融合方案采用原因 (Rationale for Adoption)
 
 ### 3.1 消除架构膨胀与数据双写隐患
-原 Antigravity 方案提出了独立的 `pbl_syllabi`、`pbl_syllabus_nodes` 与 `pbl_project_plans` 体系，这与启途智学已有的 `learning-plan`、`PlanOutline`、`project_template_versions` 存在重叠。若直接采用，势必导致“学生在研项目有两套大纲数据”的双写和一致性风险。
+原 Antigravity 方案提出了独立的 `pbl_syllabi`、`pbl_syllabus_nodes` 与 `pbl_project_plans` 体系，这与启途智学已有的 `learning-plan`、`PlanOutline`、`project_template_versions` 存在重叠。若直接采用，势必导致“学生在研项目有两套大纲数据”的双写和一致性风险。  
 融合方案采纳 Codex 的单体收敛原则，将大纲与计划统一收敛至既有 `learning-plan` 领域内，以扩展字段（`isRemedial` 标识、乐观锁 `baseRevision`）实现动态自适应，保留单一数据权威源。
 
 ### 3.2 补齐前端 PBL 探究的具身与多模态体验
-原 Codex 方案偏向后端工程防御，对学生端在探究学习中的交互形态未作具体展开，仅依赖通用文本和基础卡片，易使 PBL 学习体验退化为普通问答对话。
+原 Codex 方案偏向后端工程防御，对学生端在探究学习中的交互形态未作具体展开，仅依赖通用文本和基础卡片，易使 PBL 学习体验退化为普通问答对话。  
 融合方案完整采纳 Antigravity 提出的 OpenMAIC 交互资产协议（`QuizBlock`、`OptionsBlock`、`BoardBlock`、`SimulationBlock`、`MilestoneBlock`）以及直观的三级提示阶梯栏（`HintLadderBar`），赋予学生在概念推导、公式演算和参数仿真中的沉浸式交互能力。
 
 ### 3.3 坚守“状态权威在服务端”与“未成年人数据安全”红线

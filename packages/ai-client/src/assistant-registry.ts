@@ -14,7 +14,7 @@ const DEFAULT_ASSISTANT_DEFAULTS: AssistantDefaults = {
 };
 
 /**
- * Builtin assistants seeded for the platform, including the Thunder Fighter PBL team members.
+ * Builtin assistants seeded for the platform, including domain-specific PBL teams.
  */
 export const BUILTIN_ASSISTANTS: readonly AdminAssistantConfig[] = [
   {

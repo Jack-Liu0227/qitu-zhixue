@@ -303,6 +303,7 @@ export class AdminController {
   }
 
   /* ==================== 教师数据 ==================== */
+  @Get('teachers')
   async getTeachers(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('search') search?: string,

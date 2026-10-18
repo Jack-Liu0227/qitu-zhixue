@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type {
   TutorGrowthSignal,
   TutorKnowledgeDocument,
@@ -114,8 +114,11 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
       .from(projectTemplateVersions)
       .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
       .where(and(
-        eq(projectTemplates.status, 'published'),
-        eq(projectTemplateVersions.status, 'published'),
+        // Pilot versions are intentionally student-visible. Optics bootstrap
+        // stops at `piloting` until the evidence gate is approved, so filtering
+        // to `published` here would make the pilot unreachable from AI Partner.
+        inArray(projectTemplates.status, ['published', 'piloting']),
+        inArray(projectTemplateVersions.status, ['published', 'piloting']),
         // 平台模板是所有学生都可见的安全基础；校级模板待接入 student school projection。
         isNull(projectTemplates.schoolId),
       ));

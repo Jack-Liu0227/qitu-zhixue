@@ -7,6 +7,7 @@ import {
   OPTICS_SCHEDULES,
   OPTICS_TEMPLATE_SPEC,
   OPTICS_WAVE_MODULES,
+  OPTICS_WAVE_INQUIRY_STEPS,
 } from '@qitu/ai-client/quiz-bank';
 import type {
   CreateTemplateInput,
@@ -129,7 +130,7 @@ export const OPTICS_SESSION_MODULES: readonly OpticsSessionModule[] = [
     session: 1,
     title: '拟合数据与撰写探究报告',
     phase: 'guided_practice',
-    objectiveIds: ['opt-practice-fit', 'opt-practice-report'],
+    objectiveIds: ['opt-practice-fit', 'opt-practice-report', 'opt-practice-diffraction', 'opt-practice-scattering'],
     minutes: 60,
   },
   {
@@ -159,6 +160,7 @@ export const OPTICS_VERSION_CONTENT: Record<string, unknown> = {
     title: module.title,
     description: module.description,
   })),
+  waveInquirySteps: OPTICS_WAVE_INQUIRY_STEPS,
 };
 
 export const OPTICS_VERSION_INPUT: CreateTemplateVersionInput = {

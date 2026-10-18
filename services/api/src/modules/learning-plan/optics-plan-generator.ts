@@ -35,7 +35,7 @@ import type {
  * - `OPTICS_SESSION_MODULES` ← `services/api/src/modules/templates/content/optics.ts`。
  *
  * 不在此重新推导目标树 / 课次表；只把冻结的模板内容投影为学习计划形状：
- * - 12 个真实目标（`opt-*`），`conceptId` 来自内容层；
+ * - 14 objectives, including scattering/diffraction activities after the theory gate;
  * - `knowledgeType` 来自目标自身字段（与 `OPTICS_KNOWLEDGE_TYPES` 同源；`reflection`
  *   目标为 null，本文件按「永不做门禁 / 永不算分」的定性目标投影为 `design`，
  *   不改内容真源）；

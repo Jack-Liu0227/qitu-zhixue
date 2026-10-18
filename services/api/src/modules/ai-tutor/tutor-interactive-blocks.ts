@@ -51,7 +51,23 @@ export function buildProjectInteractionBlocks(
     });
   }
 
+  // Gated practice simulation: Only emit optics interactive experiment if TheoryMastered passed and in practice phase
+  if (theoryGatePassed && active && isPracticePhase(active) && isOpticsProject(context.project)) {
+    blocks.push({
+      kind: 'optics_experiment',
+      experimentId: `optics-exp-${context.project.id}`,
+      title: '光的散射与衍射动态探究台',
+      summary: '单缝衍射图样与微粒散射交互仿真',
+      initialMode: /散射|天际|微粒/iu.test(context.project.title) ? 'scattering' : 'diffraction',
+    });
+  }
+
   return blocks;
+}
+
+function isOpticsProject(project: { title: string } | null | undefined): boolean {
+  if (!project) return false;
+  return /optics|光学|散射|衍射|光路/iu.test(project.title);
 }
 
 function isPracticePhase(phase: TutorPhaseProjection): boolean {

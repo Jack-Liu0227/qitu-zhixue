@@ -1,10 +1,10 @@
 # 启途智学自适应 PBL 与多智能体协同融合实施计划
 
-> **文档标识**：`docs/plan/combined/implementation-plan.md`
-> **版本**：v1.0.0
-> **生效基线**：2026-10-18
-> **前置依赖**：[`./architecture.md`](./architecture.md) · [`../antigravity/implementation-plan.md`](../antigravity/implementation-plan.md) · [`../codex/implementation-plan.md`](../codex/implementation-plan.md)
-> **责任领域**：`packages/contracts` / `packages/database` / `services/api` / `apps/student-center` / `apps/admin-console`
+> **文档标识**：`docs/plan/combined/implementation-plan.md`  
+> **版本**：v1.0.0  
+> **生效基线**：2026-10-18  
+> **前置依赖**：[`./architecture.md`](./architecture.md) · [`../antigravity/implementation-plan.md`](../antigravity/implementation-plan.md) · [`../codex/implementation-plan.md`](../codex/implementation-plan.md)  
+> **责任领域**：`packages/contracts` / `packages/database` / `services/api` / `apps/student-center` / `apps/admin-console`  
 
 ---
 

@@ -272,7 +272,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     assert.equal(generated.plan.templateVersion, report.versionId, 'templateVersion 使用解析出的版本 id');
 
     const objectives = flattenObjectives(generated.plan);
-    assert.equal(objectives.length, 12, '12 个真实光学目标');
+    assert.equal(objectives.length, 14, '14 个真实光学目标');
     assert.equal(generated.plan.modules.length, 4, '4 个周模块');
 
     const expectedOrder = [
@@ -286,6 +286,8 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       'opt-practice-measure',
       'opt-practice-fit',
       'opt-practice-report',
+      'opt-practice-diffraction',
+      'opt-practice-scattering',
       'opt-review-defend',
       'opt-review-reflect',
     ];

@@ -132,6 +132,16 @@ export type TutorReplyBlock =
       summary?: string;
     }
   /**
+   * 动态光学散射与单缝衍射物理参数探究卡片。
+   */
+  | {
+      kind: 'optics_experiment';
+      experimentId: string;
+      title: string;
+      summary?: string;
+      initialMode?: 'diffraction' | 'scattering';
+    }
+  /**
    * 学生或导师发送的图片与文件附件。
    */
   | {
