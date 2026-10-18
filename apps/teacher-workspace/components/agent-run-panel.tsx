@@ -72,7 +72,7 @@ export function AgentRunPanel({ studentId }: { studentId: string }) {
       {state.status === 'error' ? <ErrorState title="执行记录加载失败" description={state.message} onRetry={() => void load()} /> : null}
       {state.status === 'empty' ? <p className="qtx-muted">暂无可查看的 Agent 执行记录。</p> : null}
       {state.status === 'ready' ? (
-        <div className="qtx-agent-run-content">
+        <div className="qtx-agent-run-content" role="region" aria-label="协作记录明细" tabIndex={0}>
           <AgentRunGraph
             nodes={state.data.nodes}
             description={`${state.data.runId ? `Run ${state.data.runId}` : '暂无 Run ID'} · ${state.data.generatedAt ?? '时间未知'}`}

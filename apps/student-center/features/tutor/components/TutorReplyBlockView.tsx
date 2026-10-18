@@ -142,9 +142,8 @@ export function TutorReplyBlockView({
     case 'optics_experiment':
       return (
         <OpticsDiffractionScatteringCard
-          disabled={disabled}
+          disabled
           initialMode={block.initialMode}
-          onExperimentComplete={(summary) => onSelectOption?.('光学探究结论', summary)}
         />
       );
     case 'attachment':

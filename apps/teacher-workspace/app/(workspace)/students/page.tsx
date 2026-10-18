@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -159,7 +161,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
   };
 
   return (
-    <div className="qtx-col-5 qtx-card" style={{ overflow: 'hidden' }}>
+    <div className="qtx-col-5 qtx-card qtx-student-detail" role="region" aria-label="学生详情" tabIndex={0}>
       <div
         style={{
           padding: 14,
@@ -523,22 +525,9 @@ export default function StudentsPage() {
           <div className="qtx-banner-slogan">每个孩子的兴趣主线，都值得被持续看见。</div>
           <div className="qtx-banner-right">
             <div className="qtx-bubble">
-              {data.dataSource === 'demo' ? '🧪 演示数据' : '🤖 学生名册已更新～'}
+              {data.dataSource === 'demo' ? '🧪 演示数据' : '学生名册已更新～'}
             </div>
-            <div
-              style={{
-                width: 54,
-                height: 54,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,#38bdf8,#6366f1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 26,
-              }}
-            >
-              🤖
-            </div>
+            <RobotMascot size={40} decorative />
           </div>
         </div>
       </section>

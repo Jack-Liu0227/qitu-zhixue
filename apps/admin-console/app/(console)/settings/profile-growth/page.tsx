@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
+import { fetchAvailableConfiguredModels, configuredModelKey, configuredModelPatch, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
 import { fetchAdminAssistantConfigs, updatePersistedAssistant } from '../../../../lib/api/assistants';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
@@ -122,47 +122,56 @@ export default function ProfileGrowthSettingsPage() {
   const [refreshCycle, setRefreshCycle] = useState('realtime-phase');
   const [saveNotice, setSaveNotice] = useState('');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
+  const [catalogReady, setCatalogReady] = useState(false);
   const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
   const [profileAssistantId, setProfileAssistantId] = useState('profile-analyst-assistant');
   const [growthAssistantId, setGrowthAssistantId] = useState('growth-trajectory-assistant');
 
   useEffect(() => {
-    fetchAvailableConfiguredModels()
-      .then((models) => {
-        if (models && models.length > 0 && models[0]) {
-          setAvailableModels(models);
-          setProfilingModel(`${models[0].providerId}:${models[0].id}`);
-        }
-      })
-      .catch(() => {});
-
-    fetchAdminAssistantConfigs()
-      .then((res) => {
-        if (res && res.length > 0) setAssistants(res);
-      })
-      .catch(() => {});
+    let current = true;
+    Promise.all([fetchAvailableConfiguredModels(), fetchAdminAssistantConfigs()])
+      .then(([models, configs]) => {
+        if (!current) return;
+        setAvailableModels(models); setAssistants(configs); setCatalogReady(true);
+        setProfilingModel(models[0] ? configuredModelKey(models[0]) : '');
+      }).catch(() => {
+        if (current) { setAvailableModels([]); setCatalogReady(false); setSaveNotice('目录读取失败，模型绑定已禁用；请刷新重试。'); }
+      });
+    return () => { current = false; };
   }, []);
 
   const totalWeight = dimensions.reduce((sum, d) => sum + (d.enabled ? d.weight : 0), 0);
+  const profileAssistant = assistants.find((assistant) => assistant.id === profileAssistantId);
+  const growthAssistant = assistants.find((assistant) => assistant.id === growthAssistantId);
+  const profileModelValue = profileAssistant?.modelId
+    ? configuredModelKey({ providerId: profileAssistant.modelProviderId || '', id: profileAssistant.modelId }) : '';
+  const growthModelValue = growthAssistant?.modelId
+    ? configuredModelKey({ providerId: growthAssistant.modelProviderId || '', id: growthAssistant.modelId }) : '';
 
   const handleSave = async () => {
+    if (!catalogReady) { setSaveNotice('目录尚未就绪，不能保存模型绑定。'); return; }
     if (totalWeight !== 100) {
       alert(`当前启用的维度权重之和为 ${totalWeight}%，请调整至 100% 后保存。`);
       return;
     }
-    const updates = [profileAssistantId, growthAssistantId]
-      .map((assistantId) => assistants.find((assistant) => assistant.id === assistantId))
-      .filter((assistant): assistant is AdminAssistantConfig => Boolean(assistant?.modelId))
-      .map((assistant) => updatePersistedAssistant(assistant.id, {
-        modelId: assistant.modelId,
-        modelProviderId: assistant.modelProviderId || null,
-      }));
+    const targets = [...new Set([profileAssistantId, growthAssistantId])].map((id) => assistants.find((assistant) => assistant.id === id));
+    if (targets.some((assistant) => !assistant?.modelId || !assistant.modelProviderId || !availableModels.some((model) => model.providerId === assistant.modelProviderId && model.id === assistant.modelId))) {
+      setSaveNotice('请选择真实助手及当前目录中的完整供应商与模型绑定。'); return;
+    }
+    const updates = targets.map((assistant) => {
+      if (!assistant) throw new Error('助手目录已变化');
+      return updatePersistedAssistant(assistant.id, { modelId: assistant.modelId, modelProviderId: assistant.modelProviderId });
+    });
     const results = await Promise.allSettled(updates);
     if (results.some((result) => result.status === 'rejected')) {
       setSaveNotice('部分助手配置保存失败；请检查权限或网络后重试。');
       return;
     }
-    setSaveNotice('学情画像与成长轨迹专任助手及模型配置已成功保存并同步全平台！✔');
+    try {
+      const readback = await fetchAdminAssistantConfigs();
+      if (targets.some((target) => !target || !readback.some((saved) => saved.id === target.id && saved.modelId === target.modelId && saved.modelProviderId === target.modelProviderId))) throw new Error('模型绑定回读不一致');
+    } catch { setSaveNotice('写入后回读失败，请刷新核验，不确认已生效。'); return; }
+    setSaveNotice('助手模型绑定已回读确认；页面上的画像策略与维度开关尚未接入持久化，不代表全平台策略已生效。');
     setTimeout(() => setSaveNotice(''), 2500);
   };
 
@@ -187,7 +196,7 @@ export default function ProfileGrowthSettingsPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {saveNotice ? (
-            <span style={{ fontSize: '13px', color: '#16a34a', fontWeight: 600 }}>{saveNotice}</span>
+            <span role="status" style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{saveNotice}</span>
           ) : null}
           <button
             type="button"
@@ -523,23 +532,22 @@ export default function ProfileGrowthSettingsPage() {
                   画像分析助手模型（直接绑定于该助手）
                 </label>
                 <select
-                  value={(() => {
-                    const assistant = assistants.find((a) => a.id === profileAssistantId);
-                    return assistant?.modelId && assistant.modelProviderId
-                      ? `${assistant.modelProviderId}:${assistant.modelId}`
-                      : '';
-                  })()}
+                  aria-label="画像分析助手模型"
+                  disabled={!catalogReady}
+                  value={profileModelValue}
                   onChange={(e) => {
-                    const [modelProviderId, modelId] = e.target.value.split(':', 2);
+                    const patch = configuredModelPatch(e.target.value, availableModels);
                     setAssistants((prev) =>
-                      prev.map((a) => (a.id === profileAssistantId ? { ...a, modelId: modelId || null, modelProviderId: modelProviderId || null } : a))
+                      prev.map((a) => (a.id === profileAssistantId ? { ...a, ...patch } : a))
                     );
                   }}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
+                  <option value="" disabled>未绑定，请选择供应商与模型</option>
+                  {profileModelValue && !availableModels.some((model) => configuredModelKey(model) === profileModelValue) ? <option value={profileModelValue} disabled>当前绑定不可用，请重新选择</option> : null}
                   {availableModels.length > 0 ? (
                     availableModels.map((m) => (
-                      <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
+                      <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
                         {m.name || m.id}
                       </option>
                     ))
@@ -581,23 +589,22 @@ export default function ProfileGrowthSettingsPage() {
                   成长轨迹助手模型（直接绑定于该助手）
                 </label>
                 <select
-                  value={(() => {
-                    const assistant = assistants.find((a) => a.id === growthAssistantId);
-                    return assistant?.modelId && assistant.modelProviderId
-                      ? `${assistant.modelProviderId}:${assistant.modelId}`
-                      : '';
-                  })()}
+                  aria-label="成长轨迹助手模型"
+                  disabled={!catalogReady}
+                  value={growthModelValue}
                   onChange={(e) => {
-                    const [modelProviderId, modelId] = e.target.value.split(':', 2);
+                    const patch = configuredModelPatch(e.target.value, availableModels);
                     setAssistants((prev) =>
-                      prev.map((a) => (a.id === growthAssistantId ? { ...a, modelId: modelId || null, modelProviderId: modelProviderId || null } : a))
+                      prev.map((a) => (a.id === growthAssistantId ? { ...a, ...patch } : a))
                     );
                   }}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
+                  <option value="" disabled>未绑定，请选择供应商与模型</option>
+                  {growthModelValue && !availableModels.some((model) => configuredModelKey(model) === growthModelValue) ? <option value={growthModelValue} disabled>当前绑定不可用，请重新选择</option> : null}
                   {availableModels.length > 0 ? (
                     availableModels.map((m) => (
-                      <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
+                      <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
                         {m.name || m.id}
                       </option>
                     ))

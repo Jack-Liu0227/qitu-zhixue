@@ -12,7 +12,6 @@ import {
 
 import type {
   AdminTeamConfig,
-  CurrentUser,
   GetTutorSessionResponse,
   PblTeamWorkflowSpec,
   ProjectStage,
@@ -57,6 +56,7 @@ import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
+import { buildProjectOpeningBlocks } from './tutor-opening';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
 import {
   buildRecommendationSignals,
@@ -289,7 +289,7 @@ export class TutorService {
         ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
         : null;
       if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
-      const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId);
+      const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId, false, true);
       return {
         project: {
           id: selected.id,
@@ -361,6 +361,7 @@ export class TutorService {
       exploration?.templateVersionId ?? null,
       'exploration',
       ownerId,
+      true,
     );
     return {
       // 探索会话没有项目：绝不返回哨兵项目，否则前端会拿 'exploration'
@@ -378,16 +379,18 @@ export class TutorService {
    * docs/design/20261018-tutor-workspace-interaction-contract.md §3）。
    *
    * - 自由探索：`assistantId = qitu-intake-assistant`，`teamId/teamName = null`；
-   * - 正式项目：项目冻结的 `templateVersionId` 沿模板版本与模板表查到真实模板，
-   *   再与 `admin_teams.pbl_spec.projectName/projectId` 绑定；助手取该团队 Leader。
+   * - 正式项目：只读确认时冻结的绑定与团队版本；缺失/旧回填时显式要求重新确认。
+   * - 推荐探索：按服务端模板绑定解析团队，不创建正式项目或冻结授权。
    *
-   * 注册表不可用时 fail-soft：返回基础身份与空阶段，不伪造团队名。
+   * 正式项目配置不可用时显式报错；探索会话可返回基础身份但不伪造团队名。
    */
   private async resolveTeamContext(
     projectId: string | null,
     templateVersionId: string | null,
     stage: ProjectStage,
     ownerId: string,
+    exploration = false,
+    requireAvailable = false,
   ): Promise<{ team: TutorTeamIdentity; phases: TutorPhaseProjection[]; teamConfig: AdminTeamConfig | null }> {
     const intake = this.findBuiltinAssistant('qitu-intake-assistant');
     const fallback: TutorTeamIdentity = {
@@ -401,21 +404,21 @@ export class TutorService {
     try {
       // A1：正式项目优先按项目创建时冻结的绑定快照解析团队，退役/重新激活
       // 绑定不会改变既有项目。快照指向不可变的 teamVersionId，后写不会覆盖。
-      const snapshot = projectId !== null && templateVersionId !== null && this.templateBindings !== undefined
-        ? await this.templateBindings.resolveSnapshotForProject(projectId, templateVersionId, {
-            id: ownerId,
-            role: 'student',
-            email: '',
-            displayName: '',
-          } satisfies CurrentUser)
+      const governedProject = projectId !== null && !exploration && this.templateBindings !== undefined;
+      const snapshot = governedProject
+        ? await this.templateBindings!.findFrozenSnapshotForProject(projectId, templateVersionId)
         : null;
+      if (governedProject && snapshot === null) {
+        throw new ConflictException({ code: 'PROJECT_BINDING_RECONFIRM_REQUIRED', message: '项目缺少有效的冻结团队绑定，请联系老师或管理员重新确认。' });
+      }
       if (projectId !== null && snapshot !== null) {
         const assistants = await this.platformRegistry.listAssistants();
         const frozenTeam = await this.loadFrozenTeamVersion(snapshot.teamVersionId, assistants);
         if (frozenTeam !== null) {
           const leaderId = frozenTeam.leaderAssistantId;
-          const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
+          const leader = assistants.find((candidate) => candidate.id === leaderId)
             ?? this.findBuiltinAssistant(leaderId);
+          if (requireAvailable && (!frozenTeam.enabled || !leader || !leader.enabled)) throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目导师当前不可用，请联系老师或管理员。' });
           const team: TutorTeamIdentity = {
             teamId: frozenTeam.id,
             teamName: frozenTeam.name,
@@ -426,9 +429,10 @@ export class TutorService {
           const phases = await this.projectPhases(frozenTeam, stage, ownerId);
           return { team, phases, teamConfig: frozenTeam };
         }
+        throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目冻结的导师团队不可用，请联系老师或管理员。' });
       }
 
-      // 旧项目没有快照：保留原有解析路径，并写 legacy-resolution 审计（best-effort）。
+      // Compatibility for exploration and isolated fixtures without the governed binding service.
       const [assistants, directTeam] = await Promise.all([
         this.platformRegistry.listAssistants(),
         templateVersionId === null || typeof this.platformRegistry.getTeamForTemplateVersion !== 'function'
@@ -460,7 +464,11 @@ export class TutorService {
       };
       const phases = await this.projectPhases(teamConfig, stage, ownerId);
       return { team, phases, teamConfig };
-    } catch {
+    } catch (error) {
+      if (error instanceof ConflictException) throw error;
+      if (projectId !== null && !exploration && this.templateBindings !== undefined) {
+        throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '暂时无法读取项目冻结的导师团队，请重试或联系管理员。' });
+      }
       // 配置存储不可用时只返回真实存在的助手兜底，绝不编造团队名。
       return { team: fallback, phases: [], teamConfig: null };
     }
@@ -641,7 +649,7 @@ export class TutorService {
         const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
         templateVersionId = project?.templateVersionId ?? null;
       }
-      const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId);
+      const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId, record.projectId === null, true);
       if (context.team.teamId === null || context.teamConfig === null) return intake;
       const phaseId = pblPhaseForProjectStage(stage);
       const phase = context.teamConfig.pblSpec?.phases.find((candidate) => candidate.phase === phaseId);
@@ -1002,59 +1010,22 @@ export class TutorService {
     }
     if (!projectContext || !projectContext.project) return snapshot;
 
-    const tplId = projectContext.project.templateVersionId ?? '';
-    const title = projectContext.project.title ?? '';
-    const isOptics =
-      tplId.startsWith('tplv-8931f') ||
-      tplId.includes('optics') ||
-      title.includes('光');
-
-    if (!isOptics) return snapshot;
-
-    const leaderName = projectContext.team?.assistantName || '物理总导师';
-    const leaderId = projectContext.team?.assistantId || 'optics-leader';
-    const leaderAvatar = projectContext.team?.assistantAvatar || '🌈';
-
-    const openingBlocks: TutorReplyBlock[] = [
-      {
-        kind: 'pbl_card',
-        phase: 'exploration',
-        title: '探究光的路径：从反射定律到透镜成像',
-        teammateLabel: `${leaderName} · 启途物理光学团队`,
-        summary: '共 16 课时深度探究：从生活光影发问、定律推导与概念掌握，到狭缝衍射与微粒散射物理仿真实验，最终完成科学探究报告与答辩。',
-        tags: ['物理光学', '几何光学', '波动光学', '16课时完整探究'],
-        actionLabel: '开启第 1 课时',
-      },
-      {
-        kind: 'text',
-        text: `同学你好！欢迎来到**「探究光的路径：从反射定律到透镜成像」**项目式学习！\n\n我是你的${leaderName}。整个项目我们为你配备了专属的导师团队：\n- 🌈 **物理总导师**：陪伴你从日常现象发现问题、确立探究计划；\n- 🔦 **概念教练**：引导你推导光的反射、折射、全反射定律与透镜成像公式；\n- 🔬 **仿真向导**：在掌握理论后带你搭建虚拟光路，开展单缝衍射与微粒散射实验；\n- 🎖️ **评审导师**：指导你组织 CER 证据链，完成项目答辩与素养档案归档。\n\n在开启第 1 课时前，你能先告诉我：你在生活中见过的哪些光影现象最让你感到好奇？比如雨后彩虹、水中的倒影，还是玻璃杯里折断的筷子？`,
-      },
-      {
-        kind: 'board',
-        boardId: 'optics-curriculum-overview',
-        title: '16 课时探究路线图',
-        steps: [
-          {
-            caption: '探究路线全览：从生活经验发问，进阶到科学定量实验与答辩',
-            mermaid: `graph TD
-  A["Phase 1: Exploration (Sessions 1-2)"] --> B["Phase 2: Concept Mastery (Sessions 3-8)"]
-  B --> C["Phase 3: Guided Practice (Sessions 9-14)"]
-  C --> D["Phase 4: Deliverable Review (Sessions 15-16)"]`,
-          },
-        ],
-      },
-    ];
+    const openingBlocks = buildProjectOpeningBlocks(projectContext);
+    if (openingBlocks.length === 0 || !projectContext.team) return snapshot;
+    const leaderName = projectContext.team.assistantName;
+    const leaderId = projectContext.team.assistantId;
+    const leaderAvatar = projectContext.team.assistantAvatar ?? undefined;
 
     const openingTurn: TutorTurnRecord = {
       turnId: `${snapshot.sessionId}:assistant:1`,
       role: 'assistant',
       seq: 1,
       createdAt: new Date().toISOString(),
-      stageBefore: 'exploration',
-      stageAfter: 'exploration',
+      stageBefore: projectContext.project.stage,
+      stageAfter: projectContext.project.stage,
       pedagogicMove: 'hint',
       hintLevel: 1,
-      expectedEvidence: '提出对生活光影现象的好奇与观察思考',
+      expectedEvidence: '提出当前问题或已有探究尝试',
       promptVersion: this.contextReader.partner.promptVersion,
       evidenceRef: null,
       modality: 'text',

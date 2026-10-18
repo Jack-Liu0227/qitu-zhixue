@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
@@ -672,7 +674,7 @@ export default function SkillsSettingsPage() {
                   {boundAssistants.map((assistant) => (
                     <div key={assistant.id} className="admin-skill-agent-row">
                       <div className="admin-skill-agent-avatar-wrap">
-                        {assistant.avatar || '🤖'}
+                        <AssistantGlyph value={assistant.avatar} />
                       </div>
                       <div className="admin-skill-agent-info">
                         <strong className="admin-skill-agent-name">{assistant.name}</strong>
@@ -1107,7 +1109,7 @@ export default function SkillsSettingsPage() {
                     <tr key={asst.id} style={{ background: isEven ? '#ffffff' : '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '18px' }}>{asst.avatar}</span>
+                          <span style={{ fontSize: '18px' }}><AssistantGlyph value={asst.avatar} /></span>
                           <div>
                             <strong style={{ color: '#0f172a', display: 'block' }}>{asst.name}</strong>
                             <span style={{ fontSize: '12px', color: '#64748b' }}>{asst.role}</span>
@@ -1319,7 +1321,7 @@ export default function SkillsSettingsPage() {
                     <div className="admin-skill-avatar-stack">
                       {bound.slice(0, 3).map((a) => (
                         <div key={a.id} className="admin-skill-avatar-circle" title={a.name}>
-                          {a.avatar || '🤖'}
+                          <AssistantGlyph value={a.avatar} />
                         </div>
                       ))}
                       {bound.length > 3 ? (

@@ -94,6 +94,6 @@
 
 ## 4. 相关文档
 
-- [`20261017-feishu-reporting-assistant.md`](./20261017-feishu-reporting-assistant.md)：飞书基础设施与验收基线
+- [2026-10-17 汇报助手早期方案](../archive/pre-20261018/plan/20261017-feishu-reporting-assistant.md)：飞书基础设施与验收设计的历史来源，不代表真实租户验收通过
 - [`../teacher/dashboard.md`](../teacher/dashboard.md)：教师问题列表事实源
 - [`../parent/home.md`](../parent/home.md)：家长消息与授权投影边界

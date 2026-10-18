@@ -80,7 +80,9 @@ DeepTutor 固定版本桥（QITU_PIN=6cf793bd，每操作独立进程，stdin JS
 
 ## 4. 参考方案（DeepTutor 上游核实补充）
 
-本节只记录可由上游固定版本或官方文档直接核实的事实；它不是本仓库已交付能力清单。上游代码证据固定在 DeepTutor commit `6cf793bd868ba5ecbe64722936d4be8fab5a01df`，本仓库当前适配器也声明了同一 pin（[`integrations/deeptutor-knowledge/UPSTREAM.md`](../../integrations/deeptutor-knowledge/UPSTREAM.md:3-9)）。
+> 本节的仓库“当前”对照与代码行号保留 2026-10-18 调研快照，不能作为最新实现结论；多引擎分派、管理员手动建库/关联和来源面板已有后续变更。当前状态以 [`../admin/knowledge-center.md`](../admin/knowledge-center.md)、[`../admin/knowledge-engines.md`](../admin/knowledge-engines.md) 及 owner 源码为准，上游能力也不等于已部署或真实请求成功。
+
+本节只记录可由上游固定版本或官方文档直接核实的事实；它不是本仓库已交付能力清单。上游代码证据固定在 DeepTutor commit `6cf793bd868ba5ecbe64722936d4be8fab5a01df`，本仓库当前适配器也声明了同一 pin（[`integrations/deeptutor-knowledge/UPSTREAM.md`](../../integrations/deeptutor-knowledge/UPSTREAM.md#L3-L9)）。
 
 ### 4.1 检索结果与来源状态
 
@@ -111,7 +113,7 @@ DeepTutor 默认 KB 是 indexed：chunk → embed → retrieve，`type` 可以�
 
 上游还明确：所有 connected flavour 不在 `base_dir` 下创建本地 KB 目录，不参与 embedding reconcile，删除 DeepTutor 条目不得触碰外部资源；`external_root_of()` 只对 `linked`/`obsidian` 返回本地路径。`NON_RETRIEVABLE_KB_TYPES` 仅含 `obsidian`、`subagent`、`marginnote4`，所以「connected」不能等同于「不可检索」。以上均来自上游 `kb_types.py` 的 `CONNECTED_KB_TYPES`、`NON_RETRIEVABLE_KB_TYPES`、`supports_rag_retrieval()` 与 `external_root_of()`。
 
-本仓库当前 `ENGINE_CATALOG` 已列出这些 provider（[`services/api/src/modules/knowledge/knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts:3-15)），但 `knowledge-engine.service.ts` 当前只对 `llamaindex` 执行桥接，其余 provider 仍返回未就绪错误（[`services/api/src/modules/knowledge/knowledge-engine.service.ts`](../../services/api/src/modules/knowledge/knowledge-engine.service.ts:24-35)）。因此本节不把上游清单写成已实现。
+本仓库当前 `ENGINE_CATALOG` 已列出这些 provider（[`services/api/src/modules/knowledge/knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts#L3-L15)），但 `knowledge-engine.service.ts` 当前只对 `llamaindex` 执行桥接，其余 provider 仍返回未就绪错误（[`services/api/src/modules/knowledge/knowledge-engine.service.ts`](../../services/api/src/modules/knowledge/knowledge-engine.service.ts#L24-L35)）。因此本节不把上游清单写成已实现。
 
 ### 4.3 引擎目录、四态和创建流程
 
@@ -124,7 +126,7 @@ DeepTutor 默认 KB 是 indexed：chunk → embed → retrieve，`type` 可以�
 | `Needs setup` | 依赖或远端目标尚未完成配置 | 显示下一步配置入口和稳定错误码 |
 | `Not installed` | 可选本地包/能力未安装 | 不能创建为可用 KB |
 
-上游新建流程的第一选择是 **Create new** 或 **Link existing**，随后选择名称、index engine、retrieval mode、storage workspace（account library 或 ready workspace）和文档。`PageIndex Cloud` 由托管服务接收上传；`LlamaIndex` 只有验证通过后才发布新索引。上述状态与流程来自官方 Knowledge Center 文档；本仓库现有创建接口目前只收 `name` 与 `engineInstanceId`（[`services/api/src/modules/knowledge/knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts:313-344)），需按新规格扩展。
+上游新建流程的第一选择是 **Create new** 或 **Link existing**，随后选择名称、index engine、retrieval mode、storage workspace（account library 或 ready workspace）和文档。`PageIndex Cloud` 由托管服务接收上传；`LlamaIndex` 只有验证通过后才发布新索引。上述状态与流程来自官方 Knowledge Center 文档；本仓库现有创建接口目前只收 `name` 与 `engineInstanceId`（[`services/api/src/modules/knowledge/knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts#L313-L344)），需按新规格扩展。
 
 ### 4.4 KB 面板与特殊面板矩阵
 
@@ -136,7 +138,7 @@ DeepTutor 默认 KB 是 indexed：chunk → embed → retrieve，`type` 可以�
 | `obsidian` | 外部能力导航 | live vault 指针；无本地索引 |
 | `linked` | 普通检索面板 | 读取外部既有索引；不上传、不重建 |
 
-版本目录是扁平 `version-N`，按 embedding signature 关联构建所用 embedding 与 LightRAG 模型；重建保留旧版。中断恢复会复用已验证的解析并重跑 embedding，取消等待安全边界。官方文档还明确：更换 embedding 模型必须重建，原生 LightRAG 发现模型不匹配时拒绝查询。当前仓库已有 `knowledge_index_versions`、发布栅栏和失败不替换旧版的实现（[`database/migrations/0028_knowledge_center.sql`](../../database/migrations/0028_knowledge_center.sql:25-40)、[`services/api/src/modules/knowledge/knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts:219-252)），但来源面板和 connected 语义尚未交付。
+版本目录是扁平 `version-N`，按 embedding signature 关联构建所用 embedding 与 LightRAG 模型；重建保留旧版。中断恢复会复用已验证的解析并重跑 embedding，取消等待安全边界。官方文档还明确：更换 embedding 模型必须重建，原生 LightRAG 发现模型不匹配时拒绝查询。当前仓库已有 `knowledge_index_versions`、发布栅栏和失败不替换旧版的实现（[`database/migrations/0028_knowledge_center.sql`](../../database/migrations/0028_knowledge_center.sql#L25-L40)、[`services/api/src/modules/knowledge/knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts#L219-L252)），但来源面板和 connected 语义尚未交付。
 
 ### 4.5 文档解析引擎与安全默认
 
@@ -152,7 +154,7 @@ DeepTutor 默认 KB 是 indexed：chunk → embed → retrieve，`type` 可以�
 | PyMuPDF4LLM | 轻量、无 CUDA；PDF、电子书、XPS、图片、文本和 Markdown |
 | LiteParse | 轻量结构化解析；无本地模型下载 |
 
-**本地模型下载默认关闭，必须得到显式许可。** 这条是安全默认，不因解析器显示为 `Ready` 而自动下载。仓库当前上传链路实际复用固定 DeepTutor 文本抽取，并明确不做 OCR（[`docs/admin/knowledge-center.md`](../admin/knowledge-center.md:69-77)），所以解析器清单只是参考事实，不是已实现清单。
+**本地模型下载默认关闭，必须得到显式许可。** 这条是安全默认，不因解析器显示为 `Ready` 而自动下载。仓库当前上传链路实际复用固定 DeepTutor 文本抽取，并明确不做 OCR（[`docs/admin/knowledge-center.md`](../admin/knowledge-center.md#L69-L77)），所以解析器清单只是参考事实，不是已实现清单。
 
 ### 4.6 KB ↔ Partner/agent 的真实粒度
 
@@ -163,7 +165,7 @@ DeepTutor 默认 KB 是 indexed：chunk → embed → retrieve，`type` 可以�
 3. 官方明确 Obsidian、MarginNote、subagent bases 在 Partner Library 分配时被拒绝；普通 KB 是 copy，connected KB 是 pointer。
 4. Home 的 KB selector 是会话级 sticky context，可以一次附加一个或多个 KB；这与 Partner 的 workspace 级 Library 分配不同。
 
-上游官方说明了 workspace/assignment 的行为，但本次可访问材料没有给出公开的 SQL/ORM 表名。**DeepTutor Partner 与 KB 的内部持久化表结构：未证实。** 启途智学不能据此伪造上游表结构；本仓库应以自身 `admin_assistants`、`tutor_partners`、`agent_configs` 和知识中心表为事实源（[`packages/database/src/schema/admin-ai-config.ts`](../../packages/database/src/schema/admin-ai-config.ts:18-56)、[`packages/database/src/schema/tutor-workspace.ts`](../../packages/database/src/schema/tutor-workspace.ts:6-19)、[`database/migrations/0015_agent_runtime_bindings.sql`](../../database/migrations/0015_agent_runtime_bindings.sql:1-37)）。
+上游官方说明了 workspace/assignment 的行为，但本次可访问材料没有给出公开的 SQL/ORM 表名。**DeepTutor Partner 与 KB 的内部持久化表结构：未证实。** 启途智学不能据此伪造上游表结构；本仓库应以自身 `admin_assistants`、`tutor_partners`、`agent_configs` 和知识中心表为事实源（[`packages/database/src/schema/admin-ai-config.ts`](../../packages/database/src/schema/admin-ai-config.ts#L18-L56)、[`packages/database/src/schema/tutor-workspace.ts`](../../packages/database/src/schema/tutor-workspace.ts#L6-L19)、[`database/migrations/0015_agent_runtime_bindings.sql`](../../database/migrations/0015_agent_runtime_bindings.sql#L1-L37)）。
 
 实现上的对应关系和数据迁移方案见新文档 [`20261018-knowledge-center-gap-spec.md`](./20261018-knowledge-center-gap-spec.md)。
 

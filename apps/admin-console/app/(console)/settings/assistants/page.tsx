@@ -1,5 +1,8 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+import Link from 'next/link';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 import {
@@ -9,7 +12,7 @@ import {
   deletePersistedAssistant,
 } from '../../../../lib/api/assistants';
 import { newIdempotencyKey } from '../../../../lib/api/modelRegistry';
-import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
+import { fetchAvailableConfiguredModels, configuredModelKey, configuredModelLabel, configuredModelPatch, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
 interface AssistantItem {
@@ -47,7 +50,7 @@ function mapConfigToItem(config: AdminAssistantConfig): AssistantItem {
     role: config.role || '导师助手',
     icon: config.avatar || '🤖',
     enabled: config.enabled,
-    model: config.modelId || '',
+    model: config.modelId ? configuredModelKey({ providerId: config.modelProviderId || '', id: config.modelId }) : '',
     permission: formatDefault(config.defaults?.permission),
     thinkingLevel: formatDefault(config.defaults?.thought_level),
     skillsCount: config.enabledSkills?.length ?? 0,
@@ -76,8 +79,8 @@ export default function AdminAssistantsPage() {
     setError(null);
     try {
       const [backendConfigs, models] = await Promise.all([
-        fetchAdminAssistantConfigs().catch(() => null),
-        fetchAvailableConfiguredModels().catch(() => []),
+        fetchAdminAssistantConfigs(),
+        fetchAvailableConfiguredModels(),
       ]);
 
       setConfiguredModels(models);
@@ -164,6 +167,7 @@ export default function AdminAssistantsPage() {
 
   const handleSaveEditor = async () => {
     if (!editingAssistant) return;
+    if (loading || error) { setSaveNotice('模型目录尚未就绪，请重新加载后保存。'); return; }
     if (!editingAssistant.name.trim()) {
       alert('请输入助手名称');
       return;
@@ -177,7 +181,7 @@ export default function AdminAssistantsPage() {
             description: editingAssistant.description,
             role: editingAssistant.role || '导师助手',
             instructions: editingAssistant.systemPrompt,
-            modelId: editingAssistant.model || undefined,
+            ...configuredModelPatch(editingAssistant.model, configuredModels),
             enabled: editingAssistant.enabled,
             avatar: editingAssistant.icon,
           },
@@ -193,7 +197,7 @@ export default function AdminAssistantsPage() {
             description: editingAssistant.description,
             role: editingAssistant.role,
             instructions: editingAssistant.systemPrompt,
-            modelId: editingAssistant.model || undefined,
+            ...configuredModelPatch(editingAssistant.model, configuredModels),
             enabled: editingAssistant.enabled,
             avatar: editingAssistant.icon,
           },
@@ -335,7 +339,7 @@ export default function AdminAssistantsPage() {
           <div className="admin-identity-content">
             <div className="admin-identity-avatar-col">
               <div className="admin-identity-avatar-box">
-                <span className="admin-identity-avatar-icon">{editingAssistant.icon}</span>
+                <span className="admin-identity-avatar-icon"><AssistantGlyph value={editingAssistant.icon} size={64} /></span>
               </div>
               <button
                 type="button"
@@ -415,8 +419,9 @@ export default function AdminAssistantsPage() {
                   }
                 >
                   <option value="">未指定（跟随平台默认）</option>
+                  {editingAssistant.model && !configuredModels.some((model) => configuredModelKey(model) === editingAssistant.model) ? <option value={editingAssistant.model} disabled>当前绑定不可用，请重新选择</option> : null}
                   {configuredModels.map((m) => (
-                    <option key={`${m.providerId}-${m.id}`} value={m.id}>
+                    <option key={`${m.providerId}-${m.id}`} value={configuredModelKey(m)}>
                       {m.name} ({m.providerName || m.providerId})
                     </option>
                   ))}
@@ -428,12 +433,12 @@ export default function AdminAssistantsPage() {
                   <span className="admin-config-hint">
                     来自 NewAPI / 模型供应商通道自动拉取的可用模型。
                   </span>
-                  <a
+                  <Link
                     href="/settings/model-providers"
                     style={{ fontSize: '11.5px', color: '#165dff', textDecoration: 'none', fontWeight: 500 }}
                   >
                     管理模型通道与拉取 ↗
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -664,7 +669,7 @@ export default function AdminAssistantsPage() {
                       }}
                       style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <div className="admin-card-icon-box">{item.icon}</div>
+                    <div className="admin-card-icon-box"><AssistantGlyph value={item.icon} size={30} /></div>
                   </div>
                   <div className="admin-card-actions-group">
                     <button
@@ -694,7 +699,7 @@ export default function AdminAssistantsPage() {
 
                 <div className="admin-card-bottom-row">
                   <span className="admin-agent-meta">
-                    模型: <span className="admin-agent-tag">{item.model || '未指定'}</span>
+                    模型: <span className="admin-agent-tag" title={configuredModelLabel(item.model, configuredModels)}>{configuredModelLabel(item.model, configuredModels)}</span>
                   </span>
                   <div className="admin-card-buttons-wrap">
                     <button

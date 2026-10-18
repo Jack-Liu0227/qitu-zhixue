@@ -589,6 +589,7 @@ export function TutorSessionHistory({
                       {item.title}
                     </div>
                     <div
+                      className="qitu-history-session-meta"
                       style={{
                         display: 'flex',
                         alignItems: 'center',

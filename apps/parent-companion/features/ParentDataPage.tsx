@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { OfflineBanner, Button, RobotMascot } from '@qitu/ui';
+import { OfflineBanner, Button } from '@qitu/ui';
 import {
   parentApi,
   ParentOfflineError,
@@ -94,10 +94,8 @@ export function PageFrame({
 }) {
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading" aria-label={title}>
         <div>
-          <p className="parent-eyebrow">家长陪伴中心</p>
-          <h2>{title}</h2>
           <p className="page-subtitle">{subtitle ?? '用 AI 陪伴孩子，发现更大的可能'}</p>
         </div>
         <DemoPill source={source} />
@@ -129,13 +127,6 @@ export function DataState({
   if (state.status === 'error') return <ErrorView retry={reload} />;
   if (state.status === 'empty') return <EmptyView title={emptyTitle} />;
   return <>{children}</>;
-}
-export function HeroMascot() {
-  return (
-    <div className="hero-mascot">
-      <RobotMascot size={82} mood="happy" />
-    </div>
-  );
 }
 export function safeData<T extends object>(data: ParentPageData<T>): T & { dataSource?: string } {
   return data;

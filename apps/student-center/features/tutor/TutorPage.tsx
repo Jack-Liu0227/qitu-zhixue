@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
@@ -28,6 +30,16 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const composer = useComposer();
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1100px)');
+    const syncPanels = () => {
+      setLeftOpen(!query.matches);
+      setRightOpen(!query.matches);
+    };
+    syncPanels();
+    query.addEventListener('change', syncPanels);
+    return () => query.removeEventListener('change', syncPanels);
+  }, []);
   const [rightSidebarTab, setRightSidebarTab] = useState<'progress' | 'agents'>('progress');
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
@@ -35,6 +47,16 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [teamGraphStatus, setTeamGraphStatus] = useState<TutorLoadStatus>(projectId ? 'loading' : 'empty');
   const [teamGraphError, setTeamGraphError] = useState<TutorViewError | null>(null);
   const confirmKey = useRef<{ explorationId: string; templateVersionId: string; key: string } | null>(null);
+
+  function toggleHistory() {
+    if (!leftOpen && window.matchMedia('(max-width: 768px)').matches) setRightOpen(false);
+    setLeftOpen(!leftOpen);
+  }
+
+  function toggleContext() {
+    if (!rightOpen && window.matchMedia('(max-width: 768px)').matches) setLeftOpen(false);
+    setRightOpen(!rightOpen);
+  }
 
   const team = session.project?.team;
   /** 探索会话为 null；只有真实项目才能拉知识库与进度。 */
@@ -149,8 +171,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         <div className="qitu-tutor-title-row">
           <h1>AI搭档</h1>
           <span className={`qitu-tutor-identity-badge ${team?.teamName ? 'is-team' : 'is-assistant'}`}>
-            <span aria-hidden="true">{team?.assistantAvatar ?? (team?.teamName ? '👥' : '🧭')}</span>
-            <span>{currentIdentityName}</span>
+            <span aria-hidden="true"><AssistantGlyph value={team?.assistantAvatar ?? (team?.teamName ? "👥" : null)} size={20} /></span>
+            <span title={currentIdentityName}>{currentIdentityName}</span>
           </span>
         </div>
         <p className="qitu-tutor-header-subtitle">
@@ -167,7 +189,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
               : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}
         </span>
-        <button type="button" className="qitu-button qitu-button-ghost" onClick={() => setRightOpen(!rightOpen)} aria-expanded={rightOpen}>
+        <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
         </button>
       </div>
@@ -175,7 +197,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     <div className="qitu-tutor-workspace-layout">
       <TutorSessionHistory
         isOpen={leftOpen}
-        onToggle={() => setLeftOpen(!leftOpen)}
+        onToggle={toggleHistory}
         currentProjectId={projectId}
         currentExplorationId={session.explorationId}
         currentTitle={projectSummary?.title}

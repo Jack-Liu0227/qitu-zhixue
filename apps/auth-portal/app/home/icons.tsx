@@ -1,3 +1,4 @@
+import { RobotMascot } from '@qitu/ui';
 import type { SVGProps } from 'react';
 
 /**
@@ -109,6 +110,7 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
 }
 
 export function Icon({ name, size = 20, ...rest }: IconProps) {
+  if (name === 'robot') return <RobotMascot size={size} decorative className={rest.className} />;
   const filled = FILLED.has(name);
   return (
     <svg

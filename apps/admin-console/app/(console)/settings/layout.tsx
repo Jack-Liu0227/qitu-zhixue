@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -7,6 +9,7 @@ import type { AdminSettingsRegistry, AdminSettingsRegistryItem } from '@qitu/con
 import { fetchSettingsRegistry } from '../../../lib/api/settings';
 import { AdminOfflineError, AdminPermissionError } from '../../../lib/api/types';
 import './settings-aion.css';
+import './settings-compact.css';
 
 interface NavItem {
   href: string;
@@ -152,7 +155,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 const active = isItemActive(item.href);
                 return (
                   <Link key={item.href} href={item.href} className={`settings-sider-item ${active ? 'is-active' : ''}`} title={`${grp.group} · ${item.label}`} aria-current={active ? 'page' : undefined}>
-                    <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
+                    <span className="settings-sider-icon" aria-hidden="true"><AssistantGlyph value={item.icon} size={20} /></span>
                     {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
                   </Link>
                 );

@@ -74,7 +74,7 @@ export function AddMemberModal({
               <option value="">-- 请选择助手 --</option>
               {availableAssistants.map((assistant) => (
                 <option key={assistant.id} value={assistant.id}>
-                  {assistant.avatar} {assistant.name} ({assistant.role})
+                  {assistant.avatar?.startsWith('🤖') ? 'AI' : assistant.avatar} {assistant.name} ({assistant.role})
                 </option>
               ))}
             </select>

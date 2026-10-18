@@ -3,6 +3,52 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import { createModelRuntime, ModelRuntimeError } from './runtime.js';
 
+for (const status of [401, 403, 429, 500]) {
+  test(`native HTTP ${status} retains safe status and retryability without provider bodies`, async () => {
+    const secret = 'private-upstream-fixture';
+    const server = createServer((_request, response) => {
+      response.writeHead(status, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: { message: secret } }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    try {
+      const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test', modelId: 'test',
+        baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', credential: secret }) });
+      await assert.rejects(runtime.complete({ usageId: 'test', messages: [{ role: 'user', content: 'hello' }] }), (error: unknown) => {
+        assert.ok(error instanceof ModelRuntimeError);
+        assert.equal(error.code, 'MODEL_UPSTREAM_HTTP_ERROR');
+        assert.equal(error.upstreamStatus, status);
+        assert.equal(error.retryable, status === 429 || status >= 500);
+        assert.equal(`${error.message}${JSON.stringify(error)}`.includes(secret), false);
+        return true;
+      });
+    } finally { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
+  });
+}
+
+test('complete and stream distinguish caller cancellation from deadline expiry', async () => {
+  const server = createServer(() => {});
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  try {
+    const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test', modelId: 'test',
+      baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', credential: 'fixture' }) });
+    const request = { usageId: 'test', messages: [{ role: 'user' as const, content: 'hello' }], timeoutMs: 30 };
+    await assert.rejects(runtime.complete(request), (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_TIMEOUT' && error.retryable);
+    const aborted = AbortSignal.abort();
+    await assert.rejects(runtime.complete({ ...request, signal: aborted }), (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_ABORTED' && !error.retryable);
+    for (const signal of [undefined, aborted]) {
+      const events = [];
+      for await (const event of runtime.stream({ ...request, signal })) events.push(event);
+      assert.deepEqual(events.map((event) => event.type), ['error']);
+      assert.equal(events[0]?.type === 'error' && events[0].code, signal ? 'MODEL_REQUEST_ABORTED' : 'MODEL_REQUEST_TIMEOUT');
+    }
+  } finally { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
 test('native tool loop returns actual tool output to the model and denies unregistered tools', async () => {
   let requests = 0;
   let executions = 0;

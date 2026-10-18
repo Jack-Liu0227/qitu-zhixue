@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, SectionCard } from '@qitu/ui';
 import {
@@ -207,7 +209,7 @@ export default function MessagesPage() {
                         <p>{focus.whatHappened}</p>
                       </div>
                       <div className="focus-quadrant">
-                        <h3>🤖 系统已经做了什么</h3>
+                        <h3><RobotMascot size={20} decorative /> 系统已经做了什么</h3>
                         <p>{focus.whatSystemDid}</p>
                       </div>
                       <div className="focus-quadrant">

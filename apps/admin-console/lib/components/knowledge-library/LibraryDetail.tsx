@@ -1,4 +1,6 @@
 'use client';
+
+import { AssistantGlyph } from '@qitu/ui';
 // Layout and operations adapted from DeepTutor KnowledgeBaseDetail/KbFilesTab (6cf793bd, MIT).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -883,7 +885,7 @@ export function LibraryDetail({
                         />
                         <span>
                           <strong>
-                            {b.avatar || '✦'} {b.agentName ?? b.agentId}
+                            <AssistantGlyph value={b.avatar} size={20} /> {b.agentName ?? b.agentId}
                           </strong>
                           <small>
                             {b.readonlyReason ??

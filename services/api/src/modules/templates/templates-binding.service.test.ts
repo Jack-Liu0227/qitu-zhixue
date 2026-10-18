@@ -603,4 +603,29 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
     assert.equal(resolved, null);
     assert.equal(h.audit.entries.length, 0);
   });
+
+  it('runtime snapshot reads are side-effect free and reject backfilled, mismatched or corrupt bindings', async () => {
+    const created = await h.service.createBinding(
+      ADMIN, published.templateId, published.versionId, { teamVersionId: 'tv-1' }, 'runtime-create',
+    );
+    await h.service.validateBinding(ADMIN, published.templateId, published.versionId, created.binding.id, 'runtime-validate');
+    await h.service.activateBinding(ADMIN, published.templateId, published.versionId, created.binding.id, 'runtime-activate');
+    h.audit.entries.length = 0;
+
+    assert.equal(await h.service.findFrozenSnapshotForProject('legacy', published.versionId), null);
+    assert.equal(await h.bindings.findSnapshot('legacy'), null);
+    assert.equal(h.audit.entries.length, 0);
+
+    await h.service.freezeProjectBinding({ projectId: 'confirmed', templateVersionId: published.versionId, boundAt: NOW });
+    assert.equal((await h.service.findFrozenSnapshotForProject('confirmed', published.versionId))?.bindingId, created.binding.id);
+    assert.equal(await h.service.findFrozenSnapshotForProject('confirmed', 'another-version'), null);
+    assert.equal(await h.service.findFrozenSnapshotForProject('confirmed', null), null);
+
+    const frozen = (await h.bindings.findSnapshot('confirmed'))!;
+    await h.bindings.insertSnapshot({ ...frozen, projectId: 'backfilled', backfilled: true });
+    await h.bindings.insertSnapshot({ ...frozen, projectId: 'corrupt', bindingHash: 'not-the-frozen-hash' });
+    assert.equal(await h.service.findFrozenSnapshotForProject('backfilled', published.versionId), null);
+    assert.equal(await h.service.findFrozenSnapshotForProject('corrupt', published.versionId), null);
+    assert.equal(h.audit.entries.length, 0);
+  });
 });

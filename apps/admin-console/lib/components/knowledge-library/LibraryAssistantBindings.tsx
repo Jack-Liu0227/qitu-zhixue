@@ -1,4 +1,6 @@
 'use client';
+
+import { AssistantGlyph } from '@qitu/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchBaseBindings,
@@ -162,7 +164,7 @@ export function LibraryAssistantBindings({
                   />
                   <span>
                     <strong>
-                      {binding.avatar || '✦'} {binding.agentName ?? binding.agentId}
+                      <AssistantGlyph value={binding.avatar} size={20} /> {binding.agentName ?? binding.agentId}
                     </strong>
                     <small>
                       {binding.targetEnabled === false

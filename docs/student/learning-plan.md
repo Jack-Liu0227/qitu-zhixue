@@ -1,5 +1,7 @@
 # 学习计划、掌握度与先理论后实践
 
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。驱动探究双循环与分步解锁机制。
 > 「兴趣 → 4/8 周学习计划 → 先理论后实践 → 完成作品」的服务端能力。
 > 不新增导航、不新增页面概念，落在既有「项目实例」之上。
 > 实现入口：`packages/ai-client/src/curriculum.ts`、
@@ -9,25 +11,27 @@
 ## 1. 模型
 
 ```text
-LearningGoal（兴趣 + 目标作品 + 4|8 次课 + 每节 60|120 分钟）
+LearningGoal（兴趣 + 目标作品 + 4|8|16 次课 + 每节 60|120 分钟）
 └── Outline（确认时派生的大纲，确认后不可变，逐节列出目标与分块）
     └── Session（第 N 次课）
         ├── reviewBlock    复习 / 导入
         ├── theoryBlock    objectives: memory | concept
-        ├── checkBlock     检查（出题 + 服务端判分） ──► TheoryMastered
+        ├── checkBlock     检查（出题 + 服务端判分，汇入掌握度证据）
         ├── practiceBlock  objectives: procedure | design，产出 evidence
         └── reflectBlock   反思复盘
 ```
 
 - `KnowledgeType = 'memory' | 'concept' | 'procedure' | 'design'`。
-- **课次是单元**：`sessionCount: 4 | 8` 是显式输入，`weeks` 只是排期容器。
+- **课次是单元**：`sessionCount: 4 | 8 | 16` 是显式输入，`weeks` 只是排期容器。
   不再由 `weeks` 乘出课次数。
 - 每节分块合计**恰好等于** `minutesPerSession`（60 或 120）。
 - 理论课不排 `practice` 分块（该节没有实践目标），其时长并入理论讲解。
 - `sessionBlockShapeFor(sessionMinutes, ordinal)` 是**唯一**的分块策略；入参是
   单节时长与课次序号，不是周索引。
 
-### 1.1 实现状态（2026-10-15）
+### 1.1 既有生成器基线（2026-10-15 历史实现记录）
+
+以下记录描述既有 4/8 课次生成器，不代表当前所有排期。当前服务端 `PlanSessionCount` 和生成输入已接受 `4 | 8 | 16`；这不证明 16 课时已完整消费冻结模板内容/hash、绑定及 IMA 合同。最新治理要求和接线缺口以 [`../plan/codex/theme-session-team-ima-design.md`](../plan/codex/theme-session-team-ima-design.md) 为准；16 课时必须使用新模板版本与 bootstrap identity，不原地改变 `optics-physical-inquiry:v1`。
 
 **已实现**（`curriculum.ts`，纯函数、无 DB / 无网络）：
 
@@ -96,10 +100,12 @@ POST /api/v1/learning-plans/:id/sessions/:sessionId/evidence     提交实践证
 ```
 
 生成入参白名单：`interest` / `weeks` / `goal` / `schedule` / `sessionCount`。
-`sessionCount` 是学生可以表达的结构选择（4 或 8 次课），**不是**服务端状态；
+`sessionCount` 是学生可以表达的结构选择（4、8 或 16 次课，仍受服务端模板与排期校验），**不是**服务端状态；
 掌握度、阶段、`theoryMastered`、`projectId` 等仍然一律 400。
 
 ## 5. 硬规则映射
+
+光学课程有 12 个排程目标、4 个阶段和 4 个质化波动模块。散射与衍射属于实践/非门禁波动模块，不新增 `TheoryMastered` 目标；课时检查点不是完成事实，第 8 节不自动写入 `TheoryMastered`，第 14/16 节不自动批准报告或归档。session/task 完成也不能冒充项目阶段推进；项目、mastery 和作品事实只能由对应服务端 owner 基于证据写入。
 
 | 硬规则 | 处理 |
 |---|---|

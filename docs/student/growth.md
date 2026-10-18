@@ -1,7 +1,8 @@
 # 成长轨迹
 
-> 学生端第 6 项（`/student/growth`），2026-09-26 由 ADR 0004 提升为一级导航（追加在末尾，
-> 原五项顺序不变）。责任域：Growth（成长记录与投影）+ Mastery（掌握度时间线）。
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。作为人机协同育人与素养进阶的关键证据档案。
+> 学生端第 6 项（`/student/growth`），责任域：Growth（成长记录与投影）+ Mastery（掌握度时间线）。
 > 实现入口：`apps/student-center/features/growth/**`、`services/api/src/modules/growth`、
 > `services/api/src/modules/mastery`。
 

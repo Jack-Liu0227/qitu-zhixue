@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AttentionStudents } from '../../../components/attention-students';
@@ -125,23 +127,9 @@ function DashboardContent({
           </div>
           <div className="qtx-banner-right">
             <div className="qtx-bubble">
-              {roster.dataSource === 'demo' ? '🧪 演示数据' : '🤖 已为你整理今日待办～'}
+              {roster.dataSource === 'demo' ? '🧪 演示数据' : '已为你整理今日待办～'}
             </div>
-            <div
-              style={{
-                width: 54,
-                height: 54,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,#38bdf8,#6366f1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 26,
-                boxShadow: '0 8px 20px rgba(99,102,241,.28)',
-              }}
-            >
-              🤖
-            </div>
+            <RobotMascot size={40} decorative />
           </div>
         </div>
       </section>

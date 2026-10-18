@@ -17,6 +17,10 @@
     "features/growth/components/ObservationNote.tsx",
     "features/growth/components/ObservationNote.test.tsx",
     "features/projects/lib/links.ts",
-    "features/projects/lib/links.test.ts"
+    "features/projects/lib/links.test.ts",
+    "features/tutor/components/MarkdownMathView.test.tsx",
+    "features/tutor/components/OpticsDiffractionScatteringCard.test.tsx",
+    "features/tutor/lib/opticsPreviewModel.test.ts",
+    "features/inspiration/data/inspiration-api-data-source.test.ts"
   ]
 }

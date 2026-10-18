@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Badge, Button, ProgressBar, SectionCard } from '@qitu/ui';
-import { useCurrentUser } from '@qitu/auth';
+import { Badge, Button, ProgressBar, RobotMascot, SectionCard } from '@qitu/ui';
 import {
   parentApi,
   ParentOfflineError,
@@ -11,15 +10,9 @@ import {
   type ChildRef,
   type ParentHomePageData,
 } from './parentApi';
-import { ChildPicker, DataState, HeroMascot, PageFrame } from './ParentDataPage';
-import { formatShortDate, greeting } from './parentFormat';
+import { ChildPicker, DataState, PageFrame } from './ParentDataPage';
+import { formatShortDate } from './parentFormat';
 
-/**
- * 首页（参考稿 `首页.png`）。
- *
- * 称呼与问候都取当前登录家长和当前时刻，不写死在文案里——演示库里有两个
- * 家长账号（演示家长 / 演示家长二），写死会让第二个账号看到别人的名字。
- */
 import { ProjectVisual } from './ProjectVisual';
 
 const KPI_CONFIG: Record<string, { icon: string; tone: string; unitHint?: string }> = {
@@ -30,7 +23,6 @@ const KPI_CONFIG: Record<string, { icon: string; tone: string; unitHint?: string
 };
 
 export default function HomePage() {
-  const user = useCurrentUser();
   const [children, setChildren] = useState<ChildRef[]>([]);
   const [childId, setChildId] = useState('');
   const [data, setData] = useState<ParentHomePageData | null>(null);
@@ -74,9 +66,6 @@ export default function HomePage() {
       .catch(() => setState('error'));
   }, [load]);
 
-  const childName = data?.childDisplayName ?? '';
-  const parentName = user?.displayName ?? user?.email ?? '家长';
-
   const copySuggestedQuestion = () => {
     if (!data?.suggestedQuestion?.text) return;
     navigator.clipboard?.writeText(data.suggestedQuestion.text).then(() => {
@@ -88,20 +77,8 @@ export default function HomePage() {
   return (
     <PageFrame title="首页" subtitle="了解今天的学习状态，在需要时给予恰当支持" source={data?.dataSource}>
       <div className="home-welcome">
-        <div className="welcome-text-wrap">
-          <span className="welcome-badge">今日学情速览</span>
-          <h2>
-            {greeting()}
-            {parentName ? `，${parentName}` : ''}
-          </h2>
-          <p>
-            {childName
-              ? `了解 ${childName} 今天的探究学习状态，在关键节点给予鼓励与支持`
-              : '了解孩子今天的探究学习状态，在关键节点给予鼓励与支持'}
-          </p>
-        </div>
+        <RobotMascot size={38} decorative />
         <div className="home-child">
-          <HeroMascot />
           <span className="home-child-label">当前关注孩子</span>
           <ChildPicker
             children={children}
@@ -232,13 +209,15 @@ export default function HomePage() {
                           “{data.suggestedQuestion.text}”
                         </blockquote>
                         <div className="question-actions">
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             className="btn-copy-question"
                             onClick={copySuggestedQuestion}
                           >
                             {copiedQuestion ? '✓ 已复制到剪贴板' : '📋 复制提问建议'}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : null}

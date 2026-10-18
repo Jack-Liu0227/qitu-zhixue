@@ -4,9 +4,9 @@ import React from 'react';
 import katex from 'katex';
 import { MermaidView } from './MermaidView';
 
-function renderKaTeX(latex: string, displayMode: boolean): string {
+function renderKaTeX(latex: string, displayMode: boolean): string | null {
   if (latex.length > 4096) {
-    return `<span class="katex-fallback">${latex}</span>`;
+    return null;
   }
   try {
     return katex.renderToString(latex.trim(), {
@@ -16,9 +16,11 @@ function renderKaTeX(latex: string, displayMode: boolean): string {
       trust: false,
       strict: 'ignore',
       errorColor: '#b42318',
+      maxExpand: 200,
+      maxSize: 20,
     });
   } catch {
-    return `<span class="katex-fallback">${latex}</span>`;
+    return null;
   }
 }
 
@@ -33,10 +35,11 @@ function renderKaTeX(latex: string, displayMode: boolean): string {
  */
 export function MarkdownMathView({ content }: { content: string }) {
   if (!content) return null;
+  const normalizedContent = content.replace(/\r\n?/g, '\n');
 
   // Split content by mermaid blocks, code blocks, and block math ($$ ... $$ or \[ ... \])
-  const blockRegex = /(```mermaid[\s\S]*?```|```[a-zA-Z0-9_-]*[\s\S]*?```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
-  const parts = content.split(blockRegex);
+  const blockRegex = /(```[a-zA-Z0-9_-]*[\s\S]*?```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
+  const parts = normalizedContent.split(blockRegex);
 
   return (
     <div className="qitu-markdown-math-content" style={{ fontSize: '14.5px', lineHeight: 1.75, color: 'inherit' }}>
@@ -44,7 +47,7 @@ export function MarkdownMathView({ content }: { content: string }) {
         if (!part) return null;
 
         // 1. Mermaid code block
-        if (part.startsWith('```mermaid') && part.endsWith('```')) {
+        if (/^```mermaid\s/i.test(part) && part.endsWith('```')) {
           const code = part.replace(/^```mermaid\s*/i, '').replace(/```$/, '').trim();
           return <MermaidView key={index} code={code} />;
         }
@@ -118,10 +121,10 @@ export function MarkdownMathView({ content }: { content: string }) {
                 boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)',
               }}
             >
-              <div
+              {html === null ? <code className="katex-fallback">{rawMath}</code> : <div
                 dangerouslySetInnerHTML={{ __html: html }}
                 style={{ textAlign: 'center', fontSize: '18px', padding: '6px 0' }}
-              />
+              />}
             </div>
           );
         }
@@ -181,7 +184,7 @@ function MarkdownParagraph({ text }: { text: string }) {
 
 function InlineRichText({ text }: { text: string }) {
   // Parse inline math ($...$ or \(...\)), code (`...`), bold (**...**)
-  const tokens = text.split(/(\$[^$\n]+?\$|\\\([\s\S]+?\\\)|`[^`\n]+?`|\*\*[^*]+?\*\*)/g);
+  const tokens = text.split(/(`[^`\n]+?`|\*\*[^*]+?\*\*|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g);
 
   return (
     <>
@@ -195,6 +198,7 @@ function InlineRichText({ text }: { text: string }) {
         ) {
           const rawMath = token.startsWith('$') ? token.slice(1, -1) : token.slice(2, -2);
           const html = renderKaTeX(rawMath, false);
+          if (html === null) return <code key={idx} className="katex-fallback">{rawMath}</code>;
           return (
             <span
               key={idx}
@@ -233,7 +237,7 @@ function InlineRichText({ text }: { text: string }) {
           const bold = token.slice(2, -2);
           return (
             <strong key={idx} style={{ fontWeight: 600, color: '#0f172a' }}>
-              {bold}
+              <InlineRichText text={bold} />
             </strong>
           );
         }

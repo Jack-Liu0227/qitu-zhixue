@@ -165,10 +165,11 @@ export function ChatBubble({
           name={avatarName}
           size="sm"
         />
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontWeight: 600 }}>{displayName}</span>
+        <div className="qitu-chat-role-details">
+          <span className="qitu-chat-author" style={{ fontWeight: 600 }}>{displayName}</span>
           {!isStudent && turn.author?.role && (
             <span
+              className="qitu-chat-author-role"
               style={{
                 fontSize: '10.5px',
                 fontWeight: 600,
@@ -207,7 +208,7 @@ export function ChatBubble({
           </button>
 
           {!isStudent && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+            <div className="qitu-chat-speech-actions">
               <button
                 type="button"
                 onClick={handleToggleSpeech}

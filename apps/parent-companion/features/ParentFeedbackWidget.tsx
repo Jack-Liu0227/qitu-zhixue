@@ -23,7 +23,7 @@ import {
 } from './feedback';
 
 /**
- * 全局「联系班主任 / 意见反馈」轻量浮窗（默认收起，固定在右下角）。
+ * 全局反馈面板由顶栏或页面内的联系入口打开；收起时不覆盖页面内容。
  *
  * 与消息页、首页共用 `features/feedback` 的同一套提交服务，服务端只有一条工单链路。
  * 约束（继承 AGENTS.md 与产品文档）：
@@ -411,6 +411,8 @@ export function ParentFeedbackWidget() {
     );
   };
 
+  if (!open) return null;
+
   return (
     <div className="parent-feedback" data-open={open ? 'true' : undefined}>
       {open ? (
@@ -433,16 +435,6 @@ export function ParentFeedbackWidget() {
         </section>
       ) : null}
 
-      <button
-        type="button"
-        className="parent-feedback-toggle"
-        aria-expanded={open}
-        aria-controls="parent-feedback-panel"
-        onClick={() => (open ? closePanel() : openPanel())}
-      >
-        <span aria-hidden="true">✎</span>
-        <span>联系班主任</span>
-      </button>
     </div>
   );
 }

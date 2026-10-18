@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type {
@@ -96,7 +98,7 @@ export default function AdminStudentStatisticsPage() {
           <p>从学习活跃度、项目阶段到家校绑定，用一张清晰的数据全景图支持日常治理。</p>
           <div className="admin-hero-signals"><span><AdminMetricIcon name="activity" />学习态势实时同步</span><span><AdminMetricIcon name="coverage" />数据权限隔离运行</span></div>
         </div>
-        <div className="admin-hero-mascot"><span className="admin-hero-bubble">每一次专注学习，都是智慧萌芽</span><img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" /></div>
+        <div className="admin-hero-mascot"><span className="admin-hero-bubble">每一次专注学习，都是智慧萌芽</span><RobotMascot size={64} decorative /></div>
       </Card>
 
       <div className="admin-page-header admin-statistics-heading">

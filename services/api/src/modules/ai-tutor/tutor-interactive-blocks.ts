@@ -51,28 +51,13 @@ export function buildProjectInteractionBlocks(
     });
   }
 
-  // Gated practice simulation: Only emit optics interactive experiment if TheoryMastered passed and in practice phase
-  const opticsProject = (context.project as typeof context.project & { templateVersionId?: string | null })
-    .templateVersionId?.startsWith('optics-physical-inquiry') === true;
-  if (theoryGatePassed && active && isPracticePhase(active) && opticsProject) {
-    blocks.push({
-      kind: 'optics_experiment',
-      experimentId: `optics-exp-${context.project.id}`,
-      title: '光的散射与衍射动态探究台',
-      summary: '单缝衍射图样与微粒散射交互仿真',
-      initialMode: 'scattering',
-      specVersion: 'optics-experiment.v1',
-      objectiveId: 'opt-practice-measure',
-      sessionIndex: 10,
-      allowedActions: ['set_parameter', 'run', 'record_observation', 'submit_evidence'],
-    } as TutorReplyBlock);
-  }
-
+  // Formal experiment actions require a frozen lesson scope and server-issued action instance.
+  // Phase/title/version labels alone never authorize a tool or claim saved evidence.
   return blocks;
 }
 
 function isPracticePhase(phase: TutorPhaseProjection): boolean {
-  return phase.phaseId === 'guided_practice' || /practice|实践|制作|动手/i.test(phase.name);
+  return phase.phaseId === 'guided_practice';
 }
 
 function escapeMermaidLabel(value: string): string {

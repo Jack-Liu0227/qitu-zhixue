@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import { useState } from 'react';
 import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import type { TutorTeamAgent, TutorTeamGraph } from '@qitu/contracts';
@@ -78,7 +80,7 @@ export function TeamAgentHud({
     <section className="qitu-tutor-team-hud" aria-label="团队智能体">
       <div className="qitu-tutor-team-summary">
         <div className="qitu-tutor-team-summary-mark" aria-hidden="true">
-          {graph.team?.assistantAvatar ?? '👥'}
+          <AssistantGlyph value={graph.team?.assistantAvatar ?? "👥"} size={28} />
         </div>
         <div className="qitu-tutor-team-summary-copy">
           <strong>{graph.team?.teamName ?? graph.team?.assistantName ?? '导师团队'}</strong>

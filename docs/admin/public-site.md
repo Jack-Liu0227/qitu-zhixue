@@ -67,7 +67,7 @@ POST /api/v1/public/consultations
 
 公开页面使用产品名称“启途智学”和 `QITU ZHIXUE` 标识，品牌资产位于 `apps/auth-portal/public/brand-logo.png`、`brand-mark.png`。关于产品定位和 AI 与人共成长的内容维护在 [`../aboutus/README.md`](../aboutus/README.md)，不要把营销文案复制为接口或权限合同。
 
-首页展示三个中学生项目案例（无人机工程、桌面机器人、光的衍射与散射），由生成图片合成无声短片，不是真实学生录像。剧本、素材来源、减弱动态/离线降级和四端共享视觉约束见 [`../design/brand-story.md`](../design/brand-story.md)。导航与公开数据接口保持不变。
+首页展示三个中学生项目案例（无人机工程、桌面机器人、光的衍射与散射），由生成图片合成无声短片，不是真实学生录像。历史剧本、素材来源及减弱动态/离线降级设计见 [已归档的品牌故事草案](../archive/pre-20261018/design/brand-story.md)；当前产品叙事以 [`../aboutus/README.md`](../aboutus/README.md) 为准。导航与公开数据接口保持不变。
 
 ## 6. 未决事项
 

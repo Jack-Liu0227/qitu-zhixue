@@ -1,6 +1,8 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { PRODUCT_NAME, colors } from '@qitu/design-tokens';
 import { BrandMark } from './brand';
+import { RobotMascot } from './assistant';
+export { RobotMascot } from './assistant';
 
 export interface NavItem {
   href: string;
@@ -57,6 +59,7 @@ export function StudentShell({
   renderLink,
   navCollapsed,
   onToggleNav,
+  className = '',
 }: {
   brandName?: string;
   navItems: NavItem[];
@@ -75,9 +78,10 @@ export function StudentShell({
   navCollapsed?: boolean;
   /** 传入即显示收起 / 展开按钮。 */
   onToggleNav?: () => void;
+  className?: string;
 }) {
   return (
-    <div className="qitu-student-shell">
+    <div className={`qitu-student-shell ${className}`.trim()}>
       <NavSidebar
         brandName={brandName}
         items={navItems}
@@ -228,50 +232,6 @@ export function BreadcrumbBar({
         );
       })}
     </nav>
-  );
-}
-
-export function RobotMascot({
-  size = 96,
-  mood = 'happy',
-}: {
-  size?: number;
-  mood?: 'happy' | 'thinking' | 'cheering';
-}) {
-  return (
-    <svg
-      className={`qitu-robot qitu-robot-${mood}`}
-      width={size}
-      height={size}
-      viewBox="0 0 120 120"
-      role="img"
-      aria-label={`${mood === 'happy' ? '开心' : mood === 'thinking' ? '思考中' : '加油'}的机器人`}
-    >
-      {/* 天线 */}
-      <line x1="60" y1="34" x2="60" y2="22" stroke={colors.primary} strokeWidth="4" strokeLinecap="round" />
-      <circle cx="60" cy="15" r="6" fill={colors.attention} />
-      {/* 耳朵 */}
-      <rect x="16" y="52" width="9" height="20" rx="4.5" fill={colors.primary} />
-      <rect x="95" y="52" width="9" height="20" rx="4.5" fill={colors.primary} />
-      {/* 头部 */}
-      <rect x="25" y="34" width="70" height="58" rx="18" fill={colors.primary} />
-      {/* 面部 */}
-      <rect x="34" y="42" width="52" height="42" rx="13" fill="#FFFFFF" />
-      {/* 眼睛 */}
-      {mood === 'thinking' ? (
-        <path d="M43 52 Q49 47 55 52" stroke={colors.heading} strokeWidth="3" fill="none" strokeLinecap="round" />
-      ) : null}
-      <circle cx="49" cy="60" r="5" fill={colors.heading} />
-      <circle cx="71" cy="60" r="5" fill={colors.heading} />
-      {/* 嘴巴 */}
-      {mood === 'happy' ? (
-        <path d="M48 72 Q60 82 72 72" stroke={colors.heading} strokeWidth="4" fill="none" strokeLinecap="round" />
-      ) : mood === 'thinking' ? (
-        <rect x="54" y="70" width="12" height="4" rx="2" fill={colors.heading} />
-      ) : (
-        <path d="M46 68 Q60 86 74 68 Q60 76 46 68 Z" fill={colors.heading} />
-      )}
-    </svg>
   );
 }
 

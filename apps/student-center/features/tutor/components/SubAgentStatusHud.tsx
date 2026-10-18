@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import React, { useEffect, useState } from 'react';
 
 export interface SubAgentInfo {
@@ -75,7 +77,7 @@ export function SubAgentStatusHud({
       }}
     >
       <span style={{ color: '#64748b', fontWeight: 600, fontSize: '11px', whiteSpace: 'nowrap' }}>
-        🤖 活跃协作 Agent:
+        <RobotMascot size={18} decorative /> 活跃协作 Agent:
       </span>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>

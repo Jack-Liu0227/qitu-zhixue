@@ -5,10 +5,10 @@
 > 责任域：`ai-tutor` / `team-runtime` / `mastery` / `projects` / `apps/student-center/features/tutor`
 > 调研来源（2026-10 抓取）：
 > - OpenMAIC（THU-MAIC/OpenMAIC，MIT）：多智能体交互课堂；「describe a topic → outline → AI teacher + AI classmates 讲授，含 slides、whiteboard、quizzes、interactive simulations、PBL 活动」；服务端先行（v1.2：course 生成与 provider 配置移到服务端）。
-> - SimPBL（ACL 2026, THU）：PBL 多智能体框架，orchestrator agent 从交互日志提供自适应脚手架 + collaborator agents 边界感知协作；实测学习者考试成绩 +14%。
+> - SimPBL：PBL 多智能体框架的检索线索，包含从交互日志提供自适应脚手架与边界感知协作的设计方向；论文身份与实验结论尚缺本文可复核来源，不引用学习效果数字。
 > - OpenMAIC-Project：PBL 桌面端；planner sessions 与 learning-phase sessions 分离；角色化协作者 + 沙箱工作区（chat、documents、files、code、terminal、browser 工具）。
 > - DeepTutor：Question Generator / 题库 / 结构化选项交互（本仓库学生端已有 `OptionChips`、`HintLevelIndicator` 对应物）。
-> 上级基线：[`../student/tutor.md`](../student/tutor.md)、[`../sdk/team-runtime.md`](../sdk/team-runtime.md)、[`./pbl-template-team-binding-architecture.md`](./pbl-template-team-binding-architecture.md)
+> 上级基线：[`../student/tutor.md`](../student/tutor.md)、[`../sdk/team-runtime.md`](../sdk/team-runtime.md)、[`../plan/codex/theme-session-team-ima-design.md`](../plan/codex/theme-session-team-ima-design.md)；[早期绑定设计（归档）](../archive/pre-20261018/design/pbl-template-team-binding-architecture.md) 仅作历史比较。
 
 ## 1. 需求解读
 

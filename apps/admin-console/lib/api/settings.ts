@@ -3,9 +3,6 @@ import type {
   AdminSettingsIndexData,
   AdminSettingsRegistry,
   AdminSettingsRegistryItem,
-  ModelConfigPublic,
-  ModelSlot,
-  UpdateModelConfigRequest,
 } from '@qitu/contracts';
 import { AdminOfflineError, AdminPermissionError, adminEnvelopeRequest, type DataEnvelope } from './types';
 
@@ -53,28 +50,4 @@ export async function loadSettingsBadgeStates<T extends Pick<AdminSettingsRegist
     }
   }));
   return Object.fromEntries(settled);
-}
-
-export async function updateModelConfig(
-  slot: ModelSlot,
-  body: UpdateModelConfigRequest,
-): Promise<ModelConfigPublic> {
-  let response: Response;
-  try {
-    response = await fetch(`/api/v1/admin/models/${encodeURIComponent(slot)}`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new AdminOfflineError();
-  }
-  if (response.status === 401 || response.status === 403) throw new AdminPermissionError();
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(payload?.message ?? `模型配置失败（HTTP ${response.status}）`);
-  }
-  const payload = (await response.json()) as DataEnvelope<ModelConfigPublic>;
-  return payload.data;
 }

@@ -1,9 +1,11 @@
 'use client';
 
+import { AssistantGlyph, RobotMascot } from '@qitu/ui';
+
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { fetchAvailableConfiguredModels, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
+import { fetchAvailableConfiguredModels, configuredModelKey, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
 import { createPersistedAssistant } from '../../../lib/api/assistants';
 import { createPersistedTeam } from '../../../lib/api/teams';
 import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
@@ -229,7 +231,7 @@ export default function CopilotPage() {
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [customAssistantsList, setCustomAssistantsList] = useState<Array<{ id: string; name: string; role: string; icon?: string; systemPrompt?: string }>>([]);
-  const selectedModelItem = availableModels.find((model) => `${model.providerId}:${model.id}` === selectedModel) ?? null;
+  const selectedModelItem = availableModels.find((model) => configuredModelKey(model) === selectedModel) ?? null;
 
   const BUILTIN_ASSISTANTS_REGISTRY = [
     {
@@ -349,9 +351,9 @@ export default function CopilotPage() {
         if (models && models.length > 0) {
           setAvailableModels(models);
           setSelectedModel((prev) => (
-            models.some((m) => `${m.providerId}:${m.id}` === prev)
+            models.some((m) => configuredModelKey(m) === prev)
               ? prev
-              : `${models[0]!.providerId}:${models[0]!.id}`
+              : configuredModelKey(models[0]!)
           ));
         }
       })
@@ -539,6 +541,7 @@ export default function CopilotPage() {
         try {
           // The server is the source of truth. Only expose/cache the assistant after
           // the create request has been acknowledged; localStorage is not persistence.
+          if (!selectedModelItem) throw new Error('模型目录不可用或选择已失效，请刷新后重新选择。');
           const persisted = await createPersistedAssistant(
             {
               name: customAsst.name,
@@ -663,6 +666,7 @@ export default function CopilotPage() {
         try {
           // Create assistants first and use the server-issued ids for the team
           // relation. Client-generated ids are never valid persistence references.
+          if (!selectedModelItem) throw new Error('模型目录不可用或选择已失效，请刷新后重新选择。');
           const persistedAssistants = await Promise.all(
             newAssistants.map((asst) =>
               createPersistedAssistant(
@@ -1088,7 +1092,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '18px' }}>🤖</span> 启途智学管家
+                <span style={{ fontSize: '18px' }}><RobotMascot size={22} decorative /></span> 启途智学管家
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0284c7', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
@@ -1233,7 +1237,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}>🤖 交互助手:</span>
+              <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
               <select
                 value={selectedAssistantId}
                 onChange={(e) => setSelectedAssistantId(e.target.value)}
@@ -1297,7 +1301,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               >
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
-                    <option key={`${m.providerId}:${m.id}`} value={`${m.providerId}:${m.id}`}>
+                    <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
                       {m.name || m.id}
                     </option>
                   ))
@@ -1332,7 +1336,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
         {selectedAssistantId !== 'qitu-assistant' && (
           <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}>{activeTestAssistant.icon || '🤖'}</span>
+              <span style={{ fontSize: '16px' }}><AssistantGlyph value={activeTestAssistant.icon} /></span>
               <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
               <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 遵循自建 Agent SDK 教学与交互约束）</span>
             </div>
@@ -1372,7 +1376,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               >
                 {!isUser && (
                   <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                    🤖
+                    <RobotMascot size={28} decorative />
                   </div>
                 )}
                 <div>
@@ -1443,7 +1447,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                               href="/settings/assistants"
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
                             >
-                              🤖 查看创建的导师助手
+                              <RobotMascot size={18} decorative /> 查看创建的导师助手
                             </Link>
                           </>
                         )}
@@ -1452,7 +1456,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                             href="/settings/assistants"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
                           >
-                            🤖 前往助手设置查看
+                            <RobotMascot size={18} decorative /> 前往助手设置查看
                           </Link>
                         )}
                         {msg.artifact.type === 'mcp' && (
@@ -1485,7 +1489,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           {isGenerating && (
             <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                🤖
+                <RobotMascot size={28} decorative />
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
                 启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...

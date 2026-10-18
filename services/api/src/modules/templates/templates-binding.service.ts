@@ -449,6 +449,25 @@ export class TemplateBindingService {
   }
 
   /**
+   * Read only the binding frozen during confirmation; reads cannot grant new semantics.
+   * Legacy backfills require an explicit governed reconfirmation before runtime use.
+   */
+  async findFrozenSnapshotForProject(
+    projectId: string,
+    templateVersionId: string | null,
+  ): Promise<ProjectBindingSnapshot | null> {
+    if (templateVersionId === null) return null;
+    const snapshot = await this.bindings.findSnapshot(projectId);
+    if (snapshot === null || snapshot.backfilled || snapshot.projectId !== projectId
+      || snapshot.templateVersionId !== templateVersionId) return null;
+    const binding = await this.bindings.findBinding(snapshot.bindingId);
+    if (binding === null || binding.templateVersionId !== templateVersionId
+      || binding.teamVersionId !== snapshot.teamVersionId
+      || binding.bindingHash !== snapshot.bindingHash) return null;
+    return toSnapshotView(snapshot);
+  }
+
+  /**
    * F3 存量项目回填：读快照，miss 时按当前 active 绑定惰性回填
    * （`backfilled=true`，`ON CONFLICT DO NOTHING`）。无绑定返回 null，绝不报错。
    */

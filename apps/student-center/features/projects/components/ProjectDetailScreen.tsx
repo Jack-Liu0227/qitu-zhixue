@@ -180,17 +180,19 @@ export function ProjectDetailScreen({
 
         return (
           <div className="qitu-project-detail-screen">
-            <BreadcrumbBar
-              renderLink={renderBreadcrumbLink}
-              items={[
-                { label: '我的项目', href: '/student/projects' },
-                { label: project.title },
-              ]}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <StudentLink className="qitu-button" href={`/student/growth?projectId=${project.id}`}>
-                查看成长轨迹
-              </StudentLink>
+            <div className="qitu-project-detail-toolbar">
+              <BreadcrumbBar
+                renderLink={renderBreadcrumbLink}
+                items={[
+                  { label: '我的项目', href: '/student/projects' },
+                  { label: project.title },
+                ]}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <StudentLink className="qitu-button" href={`/student/growth?projectId=${project.id}`}>
+                  查看成长轨迹
+                </StudentLink>
+              </div>
             </div>
             <ProjectHeader
               title={project.title}

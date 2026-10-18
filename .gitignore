@@ -56,7 +56,7 @@ tooling/rebuild-teacher-3105-preview.sh
 # Reference repository kept outside the product repository
 AionUi/
 AdminUI/
-Archive/
+/Archive/
 DeepTutor/
 OpenMAIC/
 New API.html

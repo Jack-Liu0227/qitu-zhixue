@@ -80,6 +80,14 @@ export function ParentShell({ children }: { children: ReactNode }) {
             <div className="parent-identity">
               <Avatar name={user?.displayName ?? user?.email ?? '演示家长'} size="sm" />
               <span>{user?.displayName ?? '演示家长'}</span>
+              <button
+                type="button"
+                className="parent-contact-button qitu-button qitu-button-ghost"
+                aria-haspopup="dialog"
+                onClick={() => window.dispatchEvent(new CustomEvent('qitu:open-parent-feedback'))}
+              >
+                联系班主任
+              </button>
               <PreferencesMenu />
               <LogoutButton redirectTo="/" />
             </div>

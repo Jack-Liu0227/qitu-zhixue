@@ -16,27 +16,23 @@
 
 启途智学自主研发学习闭环、掌握路径、练习和可恢复运行；融合 PBL 四阶段、课堂活动、AI 角色协作和互动工作区规范。目标是能力和交互模式的高效协同，统一遵循启途教学规范与工程架构。
 
-## 紧迫性与并行分组
+## 活跃实施方案与权威基线（Canonical）
 
-| 优先级 | 任务 | 负责人域 | 可否并行 | 依赖 | 对应现有 Issue |
-| --- | --- | --- | --- | --- | --- |
-| P0 | [领域合同与时间模型](./p0-domain-contracts.md) | contracts / learning-plan / projects | 基础任务 | 无 | #54 |
-| P0 | [后端教学闭环与门禁](./p0-learning-loop.md) | learning-plan / projects / mastery | 与 P0 合同并行设计 | P0 合同 | #54 |
-| P0 | [作品证据与验收合同](./p0-evidence-review.md) | works / feedback / teacher | 与后端闭环并行设计 | P0 合同 | #54 |
-| P1 | [项目模板与课程生成](./p1-template-curriculum.md) | admin / learning-plan | 可并行 | P0 合同 | #54、#57 |
-| P1 | [项目 Agent Team 编排](./p1-agent-team.md) | ai-tutor / team-runtime / workers | 可并行 | P0 合同；依赖模板字段 | #53、#54、#57 |
-| P1 | [学生与教师交互体验](./p1-learning-experience.md) | student / teacher UI | 可并行 | P0 闭环 API 草案 | #48、#56 |
-| P2 | [参考项目能力迁移与运行时收敛](./p2-runtime-migration.md) | ai-client / model-runtime | 可并行 | P0/P1 合同稳定 | #49、#50、#51、#53 |
-| P2 | [试点验证、观测与发布门槛](./p2-pilot-verification.md) | QA / workers / admin | 可并行 | 至少一条端到端闭环 | #52、#54 |
-| P0/P1 | [飞书/Lark 管理汇报助手](./20261017-feishu-reporting-assistant.md) | admin / ai-tutor / workers / compliance | P0 基线与授权先行，P1 发送链路随后 | 管理员助手目录、密钥存储、真实 Feishu/Lark 测试租户 | 待立项 |
-| P0/P1 | [问题总结助手（issue-digest-assistant）](./20261018-issue-digest-feishu-assistant.md) | feedback / mentor / parent / feishu / workers | 复用飞书基础设施，可与汇报助手并行 | 20261017 飞书任务验收基线 | 待立项 |
+| 规范 / 计划 | 责任域 | 状态 | 入口 |
+| --- | --- | --- | --- |
+| **Codex 总体架构与实施计划** | 全平台 / 架构 / 运行时 | Canonical 当前提案 | [`codex/README.md`](./codex/README.md) |
+| **物理光学 PBL 深度探究与 CER 证据** | 课程 / 评测 / 仿真 | Canonical 当前提案 | [`codex/optics-scattering-diffraction-analysis.md`](./codex/optics-scattering-diffraction-analysis.md) |
+| **主题-课时-团队-知识库架构设计** | contracts / templates / ai-tutor | Canonical 当前提案 | [`codex/theme-session-team-ima-design.md`](./codex/theme-session-team-ima-design.md) |
+| **技能/工具治理与助手绑定记录** | admin / platform-registry / workers | 2026-10-18 实施记录，部分合同已由当前 Codex 基线替代 | [`20261018-skill-tool-governance-and-assignment.md`](./20261018-skill-tool-governance-and-assignment.md) |
+| **问题总结助手（飞书助理）** | feedback / mentor / parent / feishu | 主链路已有实施记录，真实测试租户验收仍待完成 | [`20261018-issue-digest-feishu-assistant.md`](./20261018-issue-digest-feishu-assistant.md) |
 
-## 推荐执行顺序
+## 历史规划与对比草案归档
 
-1. P0 三项先完成合同评审；其中领域合同是其他任务的共同输入。
-2. P1 四项并行实现。模板与 Team Runtime 使用同一份模板版本和阶段标识。
-3. 用一个固定的 4 周机器人模板跑通端到端试点，再扩展到 8 周和编程模板。
-4. P2 专注于已被试点证明有价值的进阶能力，避免先建设通用平台。
+2026-10-18 之前的早期里程碑任务与探索对比草案已归档至 [`../archive/pre-20261018/plan/`](../archive/pre-20261018/plan/)，包括：
+- 早期基础任务：`p0-domain-contracts.md`、`p0-learning-loop.md`、`p0-evidence-review.md`
+- 早期并行推进：`p1-template-curriculum.md`、`p1-agent-team.md`、`p1-learning-experience.md`
+- 早期试点与验证：`p2-pilot-verification.md`、`p2-release-readiness.md`、`p2-runtime-migration.md`、`teaching-routing-redis-verification-20261015.md`
+- 历史对比方案：`antigravity/`、`combined/`（禁止引入平行的 PBL 状态机或数据源）
 
 ## 共同验收底线
 

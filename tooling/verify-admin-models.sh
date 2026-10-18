@@ -1,32 +1,25 @@
 #!/usr/bin/env bash
-set -e
-
-cat << 'JSON' > /tmp/admin_login.json
-{
-  "email": "admin@qtzx.local",
-  "password": "admin123"
-}
-JSON
-
-echo "=== 1. Login as Admin ==="
-curl -s -i -X POST http://127.0.0.1:4100/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d @/tmp/admin_login.json \
-  -c /tmp/admin_cookies.txt > /tmp/admin_login_res.txt
-head -n 1 /tmp/admin_login_res.txt
-tail -n 1 /tmp/admin_login_res.txt
-echo ""
-
-echo "=== 2. Admin Models (/api/v1/admin/models) ==="
-curl -s -X GET http://127.0.0.1:4100/api/v1/admin/models \
-  -b /tmp/admin_cookies.txt | jq .
-echo ""
-
-echo "=== 3. Model Runtime (/api/v1/models/runtime) ==="
-curl -s -X GET http://127.0.0.1:4100/api/v1/models/runtime \
-  -b /tmp/admin_cookies.txt | jq .
-echo ""
-
-echo "=== 4. Settings Registry (/api/v1/admin/settings/registry) ==="
-curl -s -X GET http://127.0.0.1:4100/api/v1/admin/settings/registry \
-  -b /tmp/admin_cookies.txt | jq '.data | length'
+# Read-only configuration checks. These do not prove inference success.
+set -euo pipefail
+umask 077
+: "${QITU_ADMIN_EMAIL:?Set QITU_ADMIN_EMAIL}"
+: "${QITU_ADMIN_PASSWORD:?Set QITU_ADMIN_PASSWORD}"
+base="${QITU_API_BASE:-http://127.0.0.1:4100/api/v1}"
+work="$(mktemp -d)"
+trap 'rm -rf -- "$work"' EXIT
+export QITU_ADMIN_EMAIL QITU_ADMIN_PASSWORD
+python3 -c 'import json,os; print(json.dumps({"email":os.environ["QITU_ADMIN_EMAIL"],"password":os.environ["QITU_ADMIN_PASSWORD"]}))' > "$work/login.json"
+curl --fail --silent --show-error -X POST "$base/auth/login" \
+  -H 'Content-Type: application/json' --data-binary "@$work/login.json" \
+  -c "$work/cookies" > "$work/login-response.json"
+# Never print login responses, session tokens, provider secrets or student data.
+echo '=== Provider catalog (configuration only) ==='
+curl --fail --silent --show-error "$base/admin/model-providers" -b "$work/cookies" |
+  jq '.data | {providers: [.providers[] | {id, enabled, modelCount: (.models | length)}]}'
+echo '=== Governed usage bindings (configuration only) ==='
+curl --fail --silent --show-error "$base/admin/model-usages" -b "$work/cookies" |
+  jq '.data | {bindingCount: (.bindings | length), usageCount: (.usages | length)}'
+echo '=== Runtime modality projection (not an inference receipt) ==='
+curl --fail --silent --show-error "$base/models/runtime" -b "$work/cookies" | jq '.data'
+echo '=== Settings registry ==='
+curl --fail --silent --show-error "$base/admin/settings/registry" -b "$work/cookies" | jq '.data | length'

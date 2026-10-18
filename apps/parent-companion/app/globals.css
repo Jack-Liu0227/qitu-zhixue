@@ -1084,3 +1084,63 @@ body {
 }
 
 .qitu-parent-login-logo { margin: 0 auto 20px; }
+
+/* Compact reading layout: one page heading and one child selector. */
+.parent-topbar { min-height: 60px; padding: 10px 20px; gap: 12px; }
+.parent-topbar h1 { font-size: 1.25rem; }
+.parent-content { padding: 16px 20px 28px; }
+.page-heading { margin-bottom: 12px; align-items: center; gap: 12px; }
+.page-subtitle { margin: 0; font-size: .88rem; line-height: 1.5; }
+.demo-pill { flex-shrink: 0; }
+.home-welcome { justify-content: flex-start; padding: 10px 14px; margin-bottom: 14px; gap: 12px; box-shadow: none; border-radius: 12px; }
+.home-child { flex: 1; min-width: 0; flex-direction: row; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.child-picker { margin: 0; gap: 8px; }
+.child-chip { padding: 6px 10px; }
+.kpi-grid { gap: 12px; margin-bottom: 16px; }
+.kpi-card { padding: 16px; }
+.kpi-value { font-size: clamp(1.3rem, 2vw, 1.8rem); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.home-grid { gap: 16px; align-items: start; }
+.home-grid.lower { margin-top: 16px; align-items: start; }
+.project-panel { grid-template-columns: 120px minmax(0, 1fr); gap: 16px; }
+.project-visual { display: grid; place-items: center; min-height: 128px; }
+.project-visual > .qitu-robot { position: relative; z-index: 1; }
+.project-facts-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.fact-item { padding: 8px 10px; }
+.fact-item > div { min-width: 0; display: grid; gap: 3px; line-height: 1.5; }
+.question-box { padding: 12px; border-radius: 12px; background: #f3f9ff; border: 1px solid #dceafb; }
+.question-box-head { display: flex; align-items: flex-start; gap: 6px; font-size: .82rem; line-height: 1.5; }
+.question-content { margin: 10px 0; font-size: .88rem; line-height: 1.65; overflow-wrap: anywhere; }
+.question-actions, .attention-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.attention-actions { margin-top: 12px; }
+.parent-feedback-panel { max-height: calc(100dvh - 100px); overflow-y: auto; margin-bottom: 0; }
+.parent-contact-button { font-size: .8rem; white-space: nowrap; padding: 8px 10px; }
+@media (min-width: 1280px) {
+  .project-facts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .parent-topbar { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .parent-topbar .parent-eyebrow { display: none; }
+  .parent-identity { flex-wrap: wrap; gap: 8px; }
+  .home-welcome { flex-direction: row; align-items: center; }
+  .page-heading { flex-direction: row; align-items: center; }
+}
+@media (max-width: 768px) {
+  .parent-topbar { padding: 10px 12px; gap: 8px; }
+  .parent-content { padding: 12px; }
+  .parent-identity { width: 100%; }
+  .parent-identity > .qitu-avatar { display: none; }
+  .parent-identity > span { flex: 1; min-width: 0; font-size: .82rem; }
+  .parent-contact-button { padding: 7px 8px; }
+  .parent-identity .auth-logout { padding: 7px 8px; }
+  .home-child { flex-direction: column; align-items: flex-start; }
+  .home-welcome > .qitu-robot { display: none; }
+  .kpi-grid, .message-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi-card { padding: 12px; min-width: 0; }
+  .kpi-header { gap: 6px; }
+  .kpi-label { font-size: .76rem; }
+  .kpi-icon-pill { width: 26px; height: 26px; flex-shrink: 0; }
+  .kpi-value { font-size: 1.25rem; }
+  .project-panel { grid-template-columns: minmax(0, 1fr); }
+  .project-visual-wrapper { display: none; }
+}

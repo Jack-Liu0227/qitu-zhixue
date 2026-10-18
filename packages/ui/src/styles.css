@@ -180,7 +180,7 @@ h1 { color: var(--qitu-heading); font-size: clamp(2rem, 5vw, 4.5rem); line-heigh
 .qitu-button-ghost { background: white; border-color: var(--qitu-border); color: var(--qitu-muted); }
 
 /* ---- States ---- */
-.qitu-state { display: grid; place-items: center; gap: 8px; text-align: center; padding: 48px 24px; color: var(--qitu-muted); }
+.qitu-state { display: grid; place-items: center; gap: 8px; text-align: center; padding: 28px 20px; color: var(--qitu-muted); }
 .qitu-state-illustration { margin-bottom: 8px; }
 .qitu-state-title { margin: 0; color: var(--qitu-heading); font-size: 1.2rem; }
 .qitu-state-description { margin: 0; max-width: 420px; line-height: 1.7; }
@@ -421,8 +421,9 @@ summary:focus-visible,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--qitu-space-lg);
-  padding: 18px var(--qitu-space-xxl);
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--qitu-border);
 }
 .qitu-section-card-title,
@@ -431,9 +432,9 @@ summary:focus-visible,
 .qitu-card-heading { min-width: 0; }
 .qitu-card-description { margin: 4px 0 0; color: var(--qitu-muted); font-size: 0.88rem; line-height: 1.5; }
 .qitu-card-action,
-.qitu-section-card-action { display: flex; align-items: center; gap: var(--qitu-space-sm); }
+.qitu-section-card-action { display: flex; align-items: center; flex-wrap: wrap; gap: var(--qitu-space-sm); }
 .qitu-card.is-padded .qitu-card-body,
-.qitu-section-card.is-padded .qitu-section-card-body { padding: 20px var(--qitu-space-xxl); }
+.qitu-section-card.is-padded .qitu-section-card-body { padding: 16px 18px; }
 .qitu-card-footer {
   padding: 14px var(--qitu-space-xxl);
   border-top: 1px solid var(--qitu-border);
@@ -1595,7 +1596,11 @@ summary:focus-visible,
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--qitu-space-md);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+.qitu-team-graph-header > div { min-width: 0; }
 
 .qitu-team-graph-header h3 {
   margin: 0;
@@ -1690,6 +1695,7 @@ summary:focus-visible,
   color: var(--qitu-muted);
   font-size: 0.8rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .qitu-team-node p {
@@ -1826,7 +1832,7 @@ summary:focus-visible,
 .qitu-team-activity-item time { color: var(--qitu-muted); font-size: 0.72rem; }
 .qitu-team-activity-item > div { display: grid; gap: 3px; min-width: 0; }
 .qitu-team-activity-item strong { color: var(--qitu-heading); font-size: 0.8rem; }
-.qitu-team-activity-item small { color: var(--qitu-muted); font-size: 0.72rem; }
+.qitu-team-activity-item small { color: var(--qitu-muted); font-size: 0.72rem; overflow-wrap: anywhere; }
 
 @media (max-width: 700px) {
   .qitu-team-node-lanes { grid-template-columns: minmax(0, 1fr); }

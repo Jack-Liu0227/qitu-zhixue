@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { realpath } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { delimiter, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { parseKnowledgeBaseConnection } from './knowledge-center.config';
 import { KnowledgeCenterService } from './knowledge-center.service';
@@ -28,14 +28,14 @@ export class KnowledgeLinkProbeService {
   ) {}
   private roots(): string[] {
     return (process.env.QITU_KNOWLEDGE_LINK_ROOTS ?? process.env.QITU_KNOWLEDGE_DATA ?? '')
-      .split(':')
+      .split(delimiter)
       .map((root) => root.trim())
       .filter(Boolean)
       .map((root) => resolve(root));
   }
   private within(path: string, root: string): boolean {
     const rel = relative(root, path);
-    return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/') && !rel.includes('\\'));
+    return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
   }
   async probe(
     provider: string,
@@ -148,10 +148,21 @@ export class KnowledgeLinkProbeService {
     const version = versions[0]!;
     let manifest: Record<string, unknown> = {};
     try {
-      manifest = JSON.parse(await readFile(join(path, version, 'manifest.json'), 'utf8')) as Record<
-        string,
-        unknown
-      >;
+      const manifestPath = await realpath(join(path, version, 'manifest.json'));
+      if (!this.within(manifestPath, path))
+        return {
+          ok: false,
+          provider,
+          version,
+          docCount: 0,
+          embedding: { compatible: null },
+          warnings: [],
+          errorCode: 'LINKED_PATH_NOT_ALLOWED',
+        };
+      const parsed: unknown = JSON.parse(await readFile(manifestPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        throw new Error('Invalid linked-index manifest');
+      manifest = parsed as Record<string, unknown>;
     } catch {
       return {
         ok: false,

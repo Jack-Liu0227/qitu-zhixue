@@ -1,6 +1,8 @@
 # 灵感空间
 
-> 学生端第 2 项（`/student/inspiration`）。承载「推荐项目」和「自由探索」两个入口。
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。
+> 学生端第 2 项（`/student/inspiration`）。承载「推荐项目」和「自由探索」两个入口，自由探索直接跳转至学生端核心对话入口 **AI搭档（`/student/tutor`）**。
 > 实现入口：`apps/student-center/features/inspiration/**`、`services/api/src/modules/templates`、
 > `services/api/src/modules/ai-tutor`。
 

@@ -1,6 +1,9 @@
 # 平台治理（管理端总览）
 
-管理端是平台治理控制面，默认展示聚合指标、权限关系、模型供应商、AI 运行时和初始化状态，不承担班主任的日常学生处理。
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 治理原则：**后台控制权全在 Admin**。所有模型底座与提供商网关（Model Providers / Model Gateway，默认启途运行时引擎）、运行时技能矩阵（Runtime Skills）、项目与课程模板生命周期、知识库/IMA 范围及全平台策略配置由 Admin 后台集中收口控制，客户端不得自行路由或越权覆盖。
+>
+> 管理端是平台治理控制面，默认展示聚合指标、权限关系、模型供应商、AI 运行时和初始化状态，不承担班主任的日常学生处理。
 
 ## 页面与导航
 
@@ -40,7 +43,7 @@ Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不�
 
 ### Feishu/Lark 管理汇报助手
 
-Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、二维码会话、凭证轮换和发送状态均由服务端持久化并审计；`open_id` 必须映射到启途管理员后才能生成报告。报告助手只读聚合学生、家长授权投影和教师运营摘要，默认最小化可见范围，禁止发送原始未成年人对话或语音。手机扫码绑定、状态机、错误码和真实租户验收以 [`../plan/20261017-feishu-reporting-assistant.md`](../plan/20261017-feishu-reporting-assistant.md) 为准。
+Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、二维码会话、凭证轮换和发送状态均由服务端持久化并审计；`open_id` 必须映射到启途管理员后才能生成报告。报告助手只读聚合学生、家长授权投影和教师运营摘要，默认最小化可见范围，禁止发送原始未成年人对话或语音。手机扫码绑定、状态机、错误码和真实租户验收的当前台账见 [`../plan/20261018-issue-digest-feishu-assistant.md`](../plan/20261018-issue-digest-feishu-assistant.md)；[2026-10-17 早期方案](../archive/pre-20261018/plan/20261017-feishu-reporting-assistant.md) 仅作历史参考，不代表真实租户验收通过。
 <!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.

@@ -152,21 +152,22 @@ async function completeWithPi(
 
   // Keep the full native assistant/tool transcript so the final response is
   // grounded in actual results. Bound both wall time and tool work per turn.
-  const signal = AbortSignal.any([AbortSignal.timeout(Math.min(Math.max(input.timeoutMs ?? 90_000, 100), 120_000)), ...(input.signal ? [input.signal] : [])]);
+  const transport = requestTransport(input);
+  const { signal } = transport;
   const tools = input.tools ?? [];
   context.tools = tools.map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.inputSchema as Tool['parameters'] }));
   let toolCount = 0;
   for (;;) {
     let message: AssistantMessage;
     try {
-      message = await models.complete(model, context, { ...toPiOptions(input), signal });
+      message = await models.complete(model, context, transport.options);
     } catch (error) {
-      throw mapRuntimeError(error, signal);
+      throw transport.failure(error);
     }
 
+    if (signal?.aborted || transport.error()) throw transport.failure();
     if (message.stopReason === 'aborted') {
-      if (!input.signal?.aborted && signal.aborted) throw new ModelRuntimeError('MODEL_REQUEST_TIMEOUT', '模型工具回合超时', { retryable: true });
-      throw new ModelRuntimeError('MODEL_REQUEST_ABORTED', '模型调用已被调用方取消');
+      throw transport.failure();
     }
     if (message.stopReason === 'error') {
       throw new ModelRuntimeError('MODEL_STREAM_ERROR', '模型调用失败', { retryable: true });
@@ -180,7 +181,7 @@ async function completeWithPi(
     }
     context.messages.push(message);
     for (const call of calls) {
-      if (signal.aborted) throw new ModelRuntimeError('MODEL_REQUEST_TIMEOUT', '模型工具回合超时', { retryable: true });
+      if (signal?.aborted) throw transport.failure();
       if (++toolCount > 8) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', '模型工具调用次数超过上限');
       const tool = tools.find((candidate) => candidate.name === call.name);
       let output: { text: string; isError?: boolean } = { text: 'TOOL_NOT_ALLOWED', isError: true };
@@ -203,14 +204,20 @@ async function* streamWithPi(
   assertRequest(input);
   const target = await resolveTarget(resolver, input);
   const { models, model } = createPiModels(target);
-  const stream = models.stream(model, toPiContext(input, target), toPiOptions(input));
+  const transport = requestTransport(input);
+  const stream = models.stream(model, toPiContext(input, target), transport.options);
 
   try {
     for await (const event of stream) {
+      if (event.type === 'error' || transport.options.signal?.aborted || transport.error()) {
+        const mapped = transport.failure();
+        yield { type: 'error', code: mapped.code, message: mapped.message, retryable: mapped.retryable };
+        return;
+      }
       yield* mapPiEvent(target, event);
     }
   } catch (error) {
-    const mapped = mapRuntimeError(error, input.signal);
+    const mapped = transport.failure(error);
     yield { type: 'error', code: mapped.code, message: mapped.message, retryable: mapped.retryable };
   }
 }
@@ -231,7 +238,7 @@ function createPiModels(target: ModelRuntimeTarget): {
   const provider = createProvider({
     id: target.providerId,
     name: target.providerName,
-    baseUrl: normalizeBaseUrl(target.baseUrl),
+    baseUrl: normalizeBaseUrl(target.baseUrl, target.api),
     models: [model],
     auth: {
       apiKey: {
@@ -263,7 +270,7 @@ function toPiModel(target: ModelRuntimeTarget): Model<Api> {
     name: target.modelId,
     api: target.api,
     provider: target.providerId,
-    baseUrl: normalizeBaseUrl(target.baseUrl),
+    baseUrl: normalizeBaseUrl(target.baseUrl, target.api),
     reasoning: false,
     input: (target.input ?? ['text']).filter(
       (modality): modality is 'text' | 'image' => modality === 'text' || modality === 'image',
@@ -316,6 +323,45 @@ function toPiOptions(input: ModelRuntimeRequest): StreamOptions {
     signal: input.signal,
     sessionId: input.requestId,
   };
+}
+
+function requestTransport(input: ModelRuntimeRequest) {
+  const timeoutMs = input.timeoutMs !== undefined && Number.isFinite(input.timeoutMs)
+    ? Math.min(Math.max(Math.trunc(input.timeoutMs), 1), 120_000) : 90_000;
+  const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(input.signal ? [input.signal] : [])]);
+  let transportError: ModelRuntimeError | undefined;
+  const failure = (cause?: unknown): ModelRuntimeError => {
+    if (input.signal?.aborted) return new ModelRuntimeError('MODEL_REQUEST_ABORTED', '模型调用已被调用方取消');
+    if (signal.aborted) return new ModelRuntimeError('MODEL_REQUEST_TIMEOUT', '模型调用超时', { retryable: true });
+    return transportError ?? (cause ? mapRuntimeError(cause) : new ModelRuntimeError('MODEL_STREAM_ERROR', '模型调用失败', { retryable: true }));
+  };
+  const options: StreamOptions = {
+    ...toPiOptions(input), signal, timeoutMs, maxRetries: 0,
+    // SDK adapters encode failures in assistant events. Preserve only safe
+    // transport metadata before that conversion; never inspect provider bodies.
+    fetch: async (resource, init) => {
+      try {
+        const response = await globalThis.fetch(resource, init);
+        if (!response.ok) {
+          transportError = new ModelRuntimeError('MODEL_UPSTREAM_HTTP_ERROR', '模型网关返回错误状态', {
+            upstreamStatus: response.status,
+            retryable: response.status === 429 || response.status >= 500,
+          });
+        } else if (!response.headers.get('content-type')?.toLowerCase().includes('text/event-stream')) {
+          transportError = new ModelRuntimeError('MODEL_RESPONSE_INVALID', '模型网关未返回原生事件流');
+        }
+        if (transportError) {
+          await response.body?.cancel();
+          throw transportError;
+        }
+        return response;
+      } catch (error) {
+        transportError ??= mapRuntimeError(error);
+        throw failure(error);
+      }
+    },
+  };
+  return { options, signal, failure, error: () => transportError };
 }
 
 function mapPiEvent(target: ModelRuntimeTarget, event: AssistantMessageEvent): ModelRuntimeEvent[] {
@@ -426,7 +472,7 @@ function mapRuntimeError(error: unknown, signal?: AbortSignal): ModelRuntimeErro
   return new ModelRuntimeError('MODEL_TRANSPORT_ERROR', '无法连接模型网关', { retryable: true });
 }
 
-function normalizeBaseUrl(value: string): string {
+function normalizeBaseUrl(value: string, api: QituModelApi): string {
   try {
     const url = new URL(value);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -439,7 +485,10 @@ function normalizeBaseUrl(value: string): string {
       throw new Error('credential-bearing URL');
     }
     const pathname = url.pathname.replace(/\/+$/, '');
-    if (!pathname.endsWith('/v1')) url.pathname = `${pathname}/v1`;
+    // Anthropic adds /v1/messages itself; OpenAI adds only the resource.
+    // Keep gateway prefixes without producing /v1/v1/messages.
+    if (api === 'anthropic-messages') url.pathname = pathname.replace(/\/v1$/, '');
+    else if (api !== 'google-gemini' && !pathname.endsWith('/v1')) url.pathname = `${pathname}/v1`;
     return url.toString().replace(/\/$/, '');
   } catch {
     throw new ModelRuntimeError('MODEL_REQUEST_INVALID', '模型网关地址无效');

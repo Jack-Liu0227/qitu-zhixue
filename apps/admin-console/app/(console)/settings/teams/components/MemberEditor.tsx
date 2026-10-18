@@ -26,7 +26,6 @@ export function MemberEditor({
   const [formData, setFormData] = useState({
     role: member.role,
     roleLabel: member.roleLabel || getRoleLabel(member.role),
-    model: member.model || 'auto',
     systemPrompt: assistant?.instructions || '',
   });
 
@@ -34,7 +33,6 @@ export function MemberEditor({
     await onSave({
       role: formData.role,
       roleLabel: formData.roleLabel,
-      model: formData.model !== 'auto' ? formData.model : undefined,
     });
     onClose();
   };
@@ -316,17 +314,7 @@ function GeneralSettingsPanel({
 
       <div className="form-group">
         <label>默认模型</label>
-        <select
-          value={formData.model}
-          onChange={(e) => onChange({ ...formData, model: e.target.value })}
-        >
-          <option value="auto">自动选择</option>
-          {configuredModels.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-            </option>
-          ))}
-        </select>
+        <p>跟随已绑定助手的供应商与模型。请在助手设置中统一管理；团队成员不另存裸模型覆盖。</p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 # 高中物理“光的散射与衍射”PBL 领域方案
 
 > 状态：`proposal / 领域教学与交互设计`
-> 日期：2026-10-18
+> 原源码复核基线 f88bb73；2026-10-19 同步真实 AI 生成需求与参考 HEAD 8e8f9b4 的计划。历史物理/测试发现不等于已重新验收当前工作区。
 > 适用项目：启途智学 `optics-physical-inquiry`
 > 关联文档：[调研报告](./research-report.md) · [架构方案](./architecture.md) · [实施计划](./implementation-plan.md)
 
@@ -39,14 +39,14 @@
 
 当前工作树已有 `optics_experiment` 结构化块和 `OpticsDiffractionScatteringCard` 原型：
 
-- 服务端 `services/api/src/modules/ai-tutor/tutor-interactive-blocks.ts` 只在光学项目、实践阶段、`TheoryMastered` 已通过时投影实验卡；这符合“理论掌握前不得进入实践”的硬规则。
+- 服务端投影已有实践阶段与 TheoryMastered 检查，但光学身份仍用 templateVersionId 前缀，不能匹配治理生成的真实 tplv-* ID，也没有冻结实验 allow-list。它是意图上的门禁，不是已验收的实验授权链路。
 - 前端 `apps/student-center/features/tutor/components/OpticsDiffractionScatteringCard.tsx` 提供衍射/散射模式切换。衍射模式调节波长 `λ`、缝宽 `a`、屏距 `D`，显示 `sinc²` 形状和中央亮纹宽度；散射模式调节粒子半径与波长，显示尺寸参数和定性 Rayleigh/Mie 判断。
-- 当前完成回调仍通过 `onSelectOption` 发送标签和摘要文本，没有稳定的 `actionId`、实验版本、逐步操作事件、观测证据或服务端持久化。因此它是**安全的可视化原型**，还不是可计入 PBL 量规的实验运行时。
+- block 已有 specVersion/objectiveId/sessionIndex/allowedActions；但回调仍通过 onSelectOption 发送摘要，没有具体动作实例、观测事件和服务端落库。它是**尚待物理/权限验收的可视化原型**，不是正式实验证据。
 - 这张卡的结果应标记为“模型/模拟预测”，不能直接写入 `TheoryMastered`、实验报告通过或成长档案；物理量范围、计算模型和安全文案必须由服务端合同固定，不能由模型生成任意脚本。
 
 ### 2.3 网站信息架构上的落点
 
-学生端已有冻结导航：今天、灵感空间、AI 搭档、我的项目、作品展厅、成长轨迹、个人画像。截图和页面代码显示 AI 搭档是三栏工作区（会话、对话、项目/团队状态），项目详情负责阶段与交付物，理论页负责检查题。建议：
+学生端已有冻结导航：今天、灵感空间、AI 搭档、我的项目、作品展厅、成长轨迹、个人画像。页面源码显示 AI 搭档是三栏工作区（会话、对话、项目/团队状态），项目详情负责阶段与交付物，理论页负责检查题。建议：
 
 - **不新建“散射/衍射”一级页面**；把实验卡、问题卡、当前目标和证据提交嵌入 AI 搭档/项目工作区。
 - 项目详情页显示计划、大纲、阶段、交付物和只读实验摘要；Tutor 页负责连续对话和下一动作。
@@ -78,7 +78,7 @@ opt-practice-report -> opt-review-defend -> opt-review-reflect
 
 散射和衍射目标在实践阶段，但前置的物理概念可以用低风险模拟预演；实践解锁仍由现有 `TheoryMastered` owner 决定。
 
-### 3.3 4 周 / 8 课次建议
+### 3.3 兼容排期：4 周 / 8 课次建议
 
 | 课次 | 阶段 | 学生活动 | 主要证据 | Tutor 重点 |
 | --- | --- | --- | --- | --- |
@@ -91,9 +91,11 @@ opt-practice-report -> opt-review-defend -> opt-review-reflect
 | 7 | guided_practice | 扫描缝宽/波长；比较雾室开关；拟合与误差 | 数据表、图、散射解释 | 数据分析、异常值和边界条件 |
 | 8 | deliverable_review | 提交报告、答辩、反思 | 作品、rubric、反思 | 先问证据，再给迁移问题 |
 
+新方案以 8 周 / 16 课时为主，完整课表/角色见 [一体化架构](./theme-session-team-ima-design.md)。上表仅为 8 节兼容参考，不能以此验收新 16 节版本。
+
 ## 4. 光学专用互动协议
 
-### 4.1 每轮状态机
+### 4.1 每轮教学动作顺序（不是第二套 PBL 状态机）
 
 ```text
 Observe -> Predict -> Manipulate -> Measure -> Explain -> Challenge -> Submit
@@ -131,7 +133,7 @@ Observe -> Predict -> Manipulate -> Measure -> Explain -> Challenge -> Submit
 1. 服务端将答案映射到 `optics.diffraction.inverse_slit_width`，不立即揭示公式。
 2. Tutor 给 Level 1 追问：“保持波长和屏距不变，只把缝宽从 100 μm 调到 50 μm；屏上中央亮纹的边界向外还是向内移动？”
 3. 学生操作模拟器并提交观察；若仍错，给出“第一暗纹满足 `sinθ = λ/a`”的局部提示，再要求用自己的话解释分母变化。
-4. 连续两次同类错误只追加同目标补救活动；不降低 `TheoryMastered` 以外的门槛，也不跳过实践证据。
+4. 重复同类错误可触发同目标补救候选；次数阈值属于可审核的策略版本，并非已验证通用规律。任何门禁都不得降低，也不跳过实践证据。
 
 **分支 B：把散射说成光“穿过空气所以被看见”**
 
@@ -153,7 +155,7 @@ Tutor 暂停计算，要求补一行“改变了什么—看到了什么—因�
 2. Level 2：给出对比实验或图中局部标记。
 3. Level 3：给出相关定律的符号形式，不代入结果。
 4. Level 4：展示一个相似例子，要求学生迁移到当前参数。
-5. Level 5：仅在学生明确请求解释且服务端允许时给出完整解释；记录提示依赖，不直接写掌握成功。
+5. Level 5：学生明确求助且服务端允许时，提供受限概念/方法解释；仍不输出活动测验最终答案或可抄 CER/报告。记录支架，不直接记掌握。
 
 答对并能说明证据后，下一题减少提示；连续独立完成两次后优先给迁移题。提示等级是 Tutor 投影，不是学生可写入的掌握度字段。
 
@@ -208,7 +210,10 @@ interface OpticsExperimentEvent {
   sessionId: string;
   experimentId: string;
   experimentVersion: string;
-  actionId: 'set_parameter' | 'run' | 'record_observation' | 'submit_evidence';
+  actionId: string; // 服务端签发的具体实例，不能用动作种类代替
+  actionKind: 'set_parameter' | 'run' | 'record_observation' | 'submit_evidence';
+  modelVersion: string;
+  sourceKind: 'simulation' | 'physical';
   config: Record<string, number>;
   observations?: Array<{ key: string; value: string | number; unit?: string }>;
   evidenceRef?: string;
@@ -217,7 +222,7 @@ interface OpticsExperimentEvent {
 }
 ```
 
-事件是追加式事实；“实验完成”“作品通过”“掌握”必须由对应 owner 根据证据计算，不能由 `actionId = run` 推导。
+这是服务端持久化事件投影，不是允许学生写 id/createdAt/归属的请求体；幂等键从 HTTP header 接收后记录。事件是追加事实，完成/通过/掌握由 owner 判定，不能由 actionKind=run 推导。
 
 ## 6. 系统落地映射
 
@@ -258,7 +263,7 @@ type OpticsTutorNextAction =
 - Quiz 投影不包含答案、解析、错误标签或服务端阈值；开放回答不直接改 mastery。
 - SSE 断线可重放；前端覆盖 loading、empty、error、offline、permission-denied 和提交冲突。
 
-### 7.2 四周试点指标
+### 7.2 试点指标（16 课时为主，四周仅兼容冒烟）
 
 只报告描述统计和安全指标，不在无对照样本时宣称因果效果：
 
@@ -289,3 +294,49 @@ type OpticsTutorNextAction =
 - UNESCO 生成式 AI 教育指南：<https://unesdoc.unesco.org/ark:/48223/pf0000386693>
 - UNICEF AI for Children：<https://www.unicef.org/globalinsight/reports/policy-guidance-ai-children>
 
+
+## 9. 物理正确性与可复现验收补充
+
+### 9.1 单缝模型域
+
+远场、单色、理想单缝的暗纹条件为 a sin(theta_m)=m lambda；屏上精确几何位置 y_m=D tan(arcsin(m lambda/a))，中央宽度为 2 y_1。只有小角时才用 2 lambda D/a；还需远场条件，不能只因参数在滑块范围就视为满足。lambda 使用介质内波长时须说明约定。
+
+以当前默认 lambda=632.8 nm、a=50 um、D=1 m，近似中央宽度 25.312 mm；a 加倍为 100 um 应约减半。上述是模型计算回归样例，绝非实测。sinc 中 beta=0 取连续极限 1；归一化强度不等于绝对亮度或光能总量不变。测试需覆盖单位换算、对称性、暗纹位置、变量趋势、采样分辨率与域外提示。
+
+固定 50 um 不能作为普遍明显/不明显衍射阈值；是否能分辨取决于 lambda/a、几何、仪器/显示分辨率等。远场条件或小角条件不满足时应拒绝该定量模式，或切换另一个已经验证并注册的模型，不能静默截断来伪造规律。
+
+参考：OpenStax [Single-Slit Diffraction](https://openstax.org/books/university-physics-volume-3/pages/4-1-single-slit-diffraction)，本轮 URL HTTP 200；用于物理模型，不作 PBL 效果证据。
+
+### 9.2 散射不是域外继续套用同一公式
+
+尺寸参数若以真空波长 lambda0 定义，应为 x=2 pi n_medium r/lambda0；若使用介质波长则为 2 pi r/lambda。必须记录波长约定/介质。Rayleigh 的 lambda^-4 比较需小粒子与其他条件相同等前提，不是任意粒径/材料/观察角下的通式。
+
+当前默认 r=25 nm、lambda=450 nm、n_medium=1 给 x 约 0.349；代码用 x<0.1 判 Rayleigh，就不能把其余情况直接标成“微粒大于波长、各色均匀乳白”。这里 r 明显仍小于 lambda。完整球形粒子散射还涉及折射率、角度、粒子分布等；现有两个滑块不足以支持普遍精密 Mie 断言。
+
+单色入射的弹性散射不会凭空变成白光。MVP 应先展示粒子使光散向观察者的定性证据，域外显示“本模型不作定量判断”；云雾白色涉及入射光谱/粒子分布等，不能用它给所有单色参数染白。
+
+### 9.3 证据和界面真实性
+
+- 自动计算结果标“模型计算”，学生读图记录标“模拟观察”；真实测量另有仪器/条件/教师安全确认。
+- 先记录学生预测，再允许操作，避免自动摘要把待探究规律提前完整写出。
+- 按钮收到持久化回执后才称已保存；普通聊天摘要只能显示已发给 AI搭档，不能声称进入作品证据链。
+- 引用 supporting textbook 不代表学生独立掌握；CER 需要实际 observation IDs，不能只用教材句子替代数据。
+- 不以“结合 OpenMAIC/DeepTutor”文案宣称实际调用了上游系统；本项目借鉴交互模式，并非已经集成其运行引擎。
+
+## 10. 光学任务中的真实 AI 生成
+
+本节是待实施教学行为，不是实际模型请求记录。绑定、Runtime 与传输合同统一遵循 [总架构](./architecture.md)，不在光学模块另建生成引擎。
+
+| 时点 | 真实生成内容 | 固定约束 |
+| --- | --- | --- |
+| 大纲预览 | 围绕学生生活兴趣生成驱动问题、观察任务与活动情境 | 12 核心目标、审核排期、安全与门禁不变 |
+| 进入当前课时 | 责任导师结合已有证据生成本节开场、板书与问题 | 不覆盖 pending，不按固定 1–16 范围猜授权 |
+| 学生给出预测 | 生成控制变量的追问和操作建议 | 原始预测保留，不能替学生改正确 |
+| 学生提交观测 | 根据已保存读数生成对照、解释和反例 | 仅引用有效 observation IDs，模拟不标实测 |
+| CER 与答辩 | 生成证据缺口、模型局限和量规质询 | 不代写最终报告，不自动批准作品 |
+
+单缝任务示例：学生预测“缝越窄，亮纹越窄”，先保存预测；实验向导实际调用模型，生成固定波长和屏距的单变量比较问题。学生提交两组模拟观察后，再围绕其读数实时追问。若混淆亮纹宽度与亮度，下一轮澄清这两个量；若已正确解释，则提出迁移问题，不重复固定提示。
+
+AI 生成参数候选，注册物理模型负责计算，证据 owner 保存参数、模型版本、读数来源和单位。模型不能直接编造模拟输出。散射域外只能生成定性边界说明，不能临时编一个未验证 Mie 求解器。
+
+验收需保存受控实际模型生成 ID、导师和配置版本、provider/model、证据引用及互动结果。相同请求重放不能再次判分或重复保存观测；不同回答必须产生有教学理由的不同下一轮。相关工作项为 G3A、G3B、Q4、E5 和 S6。

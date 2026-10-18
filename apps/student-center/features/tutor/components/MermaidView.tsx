@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useState } from 'react';
+import { renderMermaid } from '../lib/renderMermaid';
 
 interface MermaidViewProps {
   code: string;
@@ -9,14 +10,14 @@ interface MermaidViewProps {
 
 export function MermaidView({ code, className }: MermaidViewProps) {
   const reactId = useId();
-  const safeId = useMemo(() => `mermaid_${reactId.replace(/[^a-zA-Z0-9]/g, '_')}_${Math.random().toString(36).substring(2, 7)}`, [reactId]);
+  const safeId = useMemo(() => `mermaid_${reactId.replace(/[^a-zA-Z0-9]/g, '_')}`, [reactId]);
   const [svgHtml, setSvgHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const trimmedCode = useMemo(() => {
     let clean = (code || '').trim();
-    if (clean.startsWith('```mermaid')) {
+    if (/^```mermaid\s/i.test(clean)) {
       clean = clean.replace(/^```mermaid\s*/i, '').replace(/```$/, '').trim();
     } else if (clean.startsWith('```')) {
       clean = clean.replace(/^```[a-zA-Z0-9_-]*\s*/i, '').replace(/```$/, '').trim();
@@ -26,6 +27,8 @@ export function MermaidView({ code, className }: MermaidViewProps) {
 
   useEffect(() => {
     let cancelled = false;
+    setSvgHtml(null);
+    setError(null);
 
     async function renderDiagram() {
       if (!trimmedCode) {
@@ -36,16 +39,7 @@ export function MermaidView({ code, className }: MermaidViewProps) {
       setError(null);
 
       try {
-        const mermaidModule = await import('mermaid');
-        const mermaid = mermaidModule.default;
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: 'neutral',
-          securityLevel: 'loose',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-        });
-
-        const { svg } = await mermaid.render(safeId, trimmedCode);
+        const svg = await renderMermaid(safeId, trimmedCode);
 
         if (!cancelled) {
           setSvgHtml(svg);
@@ -84,7 +78,7 @@ export function MermaidView({ code, className }: MermaidViewProps) {
         aria-label="Mermaid diagram fallback"
       >
         <div style={{ fontWeight: 600, marginBottom: '6px', color: '#475569' }}>
-          📊 Diagram Specification:
+          图示暂时无法渲染，已保留文字结构：
         </div>
         <pre
           style={{
@@ -105,7 +99,7 @@ export function MermaidView({ code, className }: MermaidViewProps) {
     );
   }
 
-  if (loading && !svgHtml) {
+  if (loading) {
     return (
       <div
         className="qitu-mermaid-loading"
@@ -120,7 +114,7 @@ export function MermaidView({ code, className }: MermaidViewProps) {
           border: '1px solid #e2e8f0',
         }}
       >
-        <span>Rendering diagram...</span>
+        <span role="status">正在渲染图示...</span>
       </div>
     );
   }

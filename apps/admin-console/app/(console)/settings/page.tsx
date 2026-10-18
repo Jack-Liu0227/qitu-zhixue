@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { AdminSettingsRegistry, AdminSettingsRegistryBadgeKind, AdminSettingsRegistryItem } from '@qitu/contracts';
@@ -157,7 +159,7 @@ export default function SettingsIndexPage() {
               const badge = item.badgeKind === 'static' ? staticBadge(item.badgeKind) : state?.phase === 'error' ? '读取失败' : state?.phase === 'ready' ? state.value : '读取中';
               return (
                 <Link key={item.id} href={item.href} className={`settings-overview-card is-${item.accent}`}>
-                  <span className="settings-overview-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="settings-overview-icon" aria-hidden="true"><AssistantGlyph value={item.icon} size={28} /></span>
                   <span className="settings-overview-copy">
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                       <strong>{item.title}</strong>

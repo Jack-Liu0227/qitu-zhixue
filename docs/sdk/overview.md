@@ -1,6 +1,7 @@
 # SDK 与 Agent Runtime · 总览
 
-> SDK 只提供**合同、边界和组合能力**，不替代领域服务。
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 架构原则：**后台控制权全在 Admin**。SDK 只提供**合同、边界和组合能力**，不替代领域服务；模型配置与提供商统一归口 Admin 控制。
 > 实现入口：`packages/contracts`、`packages/ai-client`、`packages/api-client`。
 
 ## 1. 分层

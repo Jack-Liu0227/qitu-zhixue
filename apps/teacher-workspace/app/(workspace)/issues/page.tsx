@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useState, useEffect, useRef } from 'react';
 import {
   AlertIcon,
@@ -648,22 +650,9 @@ export default function IssuesPage() {
             <div className="qtx-bubble">
               {data.dataSource === 'demo'
                 ? '🧪 演示数据'
-                : `🤖 ${data.totals.open} 条待处理告警等待确认～`}
+                : `${data.totals.open} 条待处理告警等待确认～`}
             </div>
-            <div
-              style={{
-                width: 54,
-                height: 54,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,#38bdf8,#6366f1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 26,
-              }}
-            >
-              🤖
-            </div>
+            <RobotMascot size={40} decorative />
           </div>
         </div>
       </section>

@@ -19,14 +19,13 @@ import type {
  * - 三种协议（openai-completions / openai-responses / anthropic-messages）的
  *   路径、鉴权头、请求体与文本解析，重点是 **OpenAI Responses 的 output text**；
  * - 统一错误：HTTP 错误脱敏（不含密钥）、超时、调用方取消、空文本；
- * - 未接线：`stream` 明确抛 `MODEL_STREAM_NOT_IMPLEMENTED`；
+ * - 原生 SSE 流式完成与错误，不保留旧的非流式协议分支；
  * - 解析层：真实 `ModelRegistryService` 内存模式下 usage fallback 与
  *   binding / secret 缺失时的明确不可用错误码。
  */
 
 /* ----------------------------- mock 上游 ----------------------------- */
 
-process.env.QITU_MODEL_RUNTIME_ENGINE = 'legacy';
 
 interface RecordedRequest {
   url: string;
@@ -122,146 +121,102 @@ const USER_MESSAGE: ModelCompletionRequest = {
 
 /* ------------------------- 1. 三种协议适配 ------------------------- */
 
-test('openai-completions：走 /v1/chat/completions，Bearer 鉴权，解析文本与 usage', async () => {
-  const upstream = await startUpstream((_request, res) => {
-    sendJson(res, 200, {
-      choices: [{ message: { role: 'assistant', content: '回答文本' }, finish_reason: 'stop' }],
-      usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 },
-    });
-  });
+function sendEvents(res: ServerResponse, events: unknown[], named = false): void {
+  res.writeHead(200, { 'content-type': 'text/event-stream' });
+  res.end(events.map((event) => `${named && typeof event === 'object' && event && 'type' in event ? `event: ${event.type}\n` : ''}data: ${JSON.stringify(event)}\n\n`).join(''));
+}
+
+function sendChat(res: ServerResponse, text: string): void {
+  sendEvents(res, [
+    { id: 'chat-test', choices: [{ index: 0, delta: { role: 'assistant', content: text }, finish_reason: null }] },
+    { id: 'chat-test', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 } },
+  ]);
+}
+
+test('native chat SSE preserves protocol path, credentials, messages and usage', async () => {
+  const upstream = await startUpstream((_request, res) => sendChat(res, 'native answer'));
   try {
-    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'openai-completions')).complete(
-      'tutor.chat',
-      USER_MESSAGE,
-    );
-    assert.equal(result.text, '回答文本');
+    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'openai-completions')).complete('tutor.chat', USER_MESSAGE);
+    assert.equal(result.text, 'native answer');
     assert.equal(result.finishReason, 'stop');
     assert.deepEqual(result.usage, { inputTokens: 3, outputTokens: 5, totalTokens: 8 });
-    assert.equal(result.api, 'openai-completions');
-
-    const first = upstream.requests[0];
-    assert.ok(first);
+    const first = upstream.requests[0]!;
     assert.equal(first.url, '/v1/chat/completions');
     assert.equal(first.method, 'POST');
-    assert.equal(first.headers['authorization'], `Bearer ${SECRET}`);
-    const body = first.body as Record<string, unknown>;
-    assert.equal(body.model, 'test-model');
-    assert.equal(body.stream, false);
-    assert.deepEqual(body.messages, [{ role: 'user', content: '你好' }]);
-    // 结果里绝不回带凭证。
+    assert.equal(first.headers.authorization, `Bearer ${SECRET}`);
+    assert.ok(first.body && typeof first.body === 'object' && 'stream' in first.body && 'messages' in first.body);
+    assert.equal(first.body.stream, true);
+    assert.deepEqual(first.body.messages, USER_MESSAGE.messages);
     assert.equal(JSON.stringify(result).includes(SECRET), false);
-  } finally {
-    await upstream.close();
-  }
+  } finally { await upstream.close(); }
 });
 
-test('openai-responses：走 /v1/responses，解析 output[] 的 output_text（跳过 reasoning）', async () => {
-  const upstream = await startUpstream((_request, res) => {
-    sendJson(res, 200, {
-      id: 'resp_1',
-      status: 'completed',
-      output: [
-        { type: 'reasoning', summary: [] },
-        {
-          type: 'message',
-          role: 'assistant',
-          content: [
-            { type: 'output_text', text: '第一段', annotations: [] },
-            { type: 'output_text', text: '，第二段', annotations: [] },
-          ],
-        },
-      ],
-      usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 },
-    });
-  });
+test('native Responses SSE preserves text, input and usage', async () => {
+  const item = { type: 'message', id: 'msg_1', role: 'assistant', content: [{ type: 'output_text', text: 'response answer', annotations: [] }] };
+  const upstream = await startUpstream((_request, res) => sendEvents(res, [
+    { type: 'response.created', response: { id: 'resp_1' } },
+    { type: 'response.output_item.added', output_index: 0, item: { ...item, content: [] } },
+    { type: 'response.output_text.delta', output_index: 0, content_index: 0, delta: 'response answer' },
+    { type: 'response.output_item.done', output_index: 0, item },
+    { type: 'response.completed', response: { id: 'resp_1', status: 'completed', output: [item], usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 } } },
+  ]));
   try {
-    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'openai-responses')).complete(
-      'tutor.chat',
-      { messages: [{ role: 'system', content: '系统提示' }, ...USER_MESSAGE.messages] },
-    );
-    assert.equal(result.text, '第一段，第二段');
-    assert.equal(result.finishReason, 'completed');
+    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'openai-responses')).complete('tutor.chat', { messages: [{ role: 'system', content: 'system instruction' }, ...USER_MESSAGE.messages] });
+    assert.equal(result.text, 'response answer');
+    assert.equal(result.finishReason, 'stop');
     assert.deepEqual(result.usage, { inputTokens: 11, outputTokens: 7, totalTokens: 18 });
-
-    const first = upstream.requests[0];
-    assert.ok(first);
+    const first = upstream.requests[0]!;
     assert.equal(first.url, '/v1/responses');
-    assert.equal(first.headers['authorization'], `Bearer ${SECRET}`);
-    const body = first.body as Record<string, unknown>;
-    // Responses 用 instructions 承载 system，input 只放非 system。
-    assert.equal(body.instructions, '系统提示');
-    assert.deepEqual(body.input, [{ role: 'user', content: '你好' }]);
-    assert.equal(body.stream, false);
-  } finally {
-    await upstream.close();
-  }
+    assert.equal(first.headers.authorization, `Bearer ${SECRET}`);
+    assert.ok(first.body && typeof first.body === 'object' && 'stream' in first.body && 'input' in first.body);
+    assert.equal(first.body.stream, true);
+    assert.match(JSON.stringify(first.body.input), /system instruction/);
+    assert.match(JSON.stringify(first.body.input), /你好/);
+  } finally { await upstream.close(); }
 });
 
-test('openai-responses：顶层 output_text 兜底也能解析', async () => {
-  const upstream = await startUpstream((_request, res) => {
-    sendJson(res, 200, { status: 'completed', output_text: '直接给出的文本' });
-  });
+test('native runtime rejects legacy JSON completion instead of claiming streaming success', async () => {
+  const upstream = await startUpstream((_request, res) => sendJson(res, 200, { output_text: 'not SSE' }));
   try {
-    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'openai-responses')).complete(
-      'tutor.chat',
-      USER_MESSAGE,
-    );
-    assert.equal(result.text, '直接给出的文本');
-  } finally {
-    await upstream.close();
-  }
+    await assert.rejects(gatewayFor(makeTarget(upstream.baseUrl, 'openai-responses')).complete('tutor.chat', USER_MESSAGE),
+      (error: unknown) => error instanceof ModelGatewayError && error.code === 'MODEL_RESPONSE_INVALID');
+  } finally { await upstream.close(); }
 });
 
-test('anthropic-messages：走 /v1/messages，x-api-key + anthropic-version，system 独立字段', async () => {
-  const upstream = await startUpstream((_request, res) => {
-    sendJson(res, 200, {
-      content: [
-        { type: 'text', text: '安' },
-        { type: 'text', text: '回答' },
-      ],
-      stop_reason: 'end_turn',
-      usage: { input_tokens: 9, output_tokens: 4 },
-    });
-  });
+test('native Anthropic SSE preserves path, x-api-key, system and usage', async () => {
+  const upstream = await startUpstream((_request, res) => sendEvents(res, [
+    { type: 'message_start', message: { id: 'msg_1', type: 'message', role: 'assistant', model: 'test-model', content: [], usage: { input_tokens: 9, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'anthropic answer' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 4 } },
+    { type: 'message_stop' },
+  ], true));
   try {
-    const result = await gatewayFor(makeTarget(upstream.baseUrl, 'anthropic-messages')).complete(
-      'tutor.chat',
-      { messages: [{ role: 'system', content: '你是老师' }, ...USER_MESSAGE.messages] },
-    );
-    assert.equal(result.text, '安回答');
-    assert.equal(result.finishReason, 'end_turn');
-    assert.deepEqual(result.usage, { inputTokens: 9, outputTokens: 4, totalTokens: 13 });
-
-    const first = upstream.requests[0];
-    assert.ok(first);
-    assert.equal(first.url, '/v1/messages');
-    assert.equal(first.headers['x-api-key'], SECRET);
-    assert.equal(first.headers['anthropic-version'], '2023-06-01');
-    assert.equal(first.headers['authorization'], undefined);
-    const body = first.body as Record<string, unknown>;
-    assert.equal(body.system, '你是老师');
-    // Anthropic 的 max_tokens 必填，未指定时用保守默认。
-    assert.equal(typeof body.max_tokens, 'number');
-    assert.deepEqual(body.messages, [{ role: 'user', content: '你好' }]);
-  } finally {
-    await upstream.close();
-  }
+    for (const baseUrl of [upstream.baseUrl, `${upstream.baseUrl}/v1`]) {
+      const result = await gatewayFor(makeTarget(baseUrl, 'anthropic-messages')).complete('tutor.chat', { messages: [{ role: 'system', content: 'system instruction' }, ...USER_MESSAGE.messages] });
+      assert.equal(result.text, 'anthropic answer');
+      assert.equal(result.finishReason, 'stop');
+      assert.deepEqual(result.usage, { inputTokens: 9, outputTokens: 4, totalTokens: 13 });
+      const first = upstream.requests.at(-1)!;
+      assert.equal(new URL(first.url, upstream.baseUrl).pathname, '/v1/messages');
+      assert.equal(new URL(first.url, upstream.baseUrl).searchParams.get('beta'), 'true');
+      assert.equal(first.headers['x-api-key'], SECRET);
+      assert.equal(first.headers['anthropic-version'], '2023-06-01');
+      assert.equal(first.headers.authorization, undefined);
+      assert.ok(first.body && typeof first.body === 'object' && 'system' in first.body && 'stream' in first.body);
+      assert.equal(first.body.stream, true);
+      assert.match(JSON.stringify(first.body.system), /system instruction/);
+    }
+  } finally { await upstream.close(); }
 });
 
-test('baseUrl 已含 /v1 时不重复拼接', async () => {
-  const upstream = await startUpstream((_request, res) => {
-    sendJson(res, 200, { choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }] });
-  });
+test('native baseUrl containing /v1 is not duplicated', async () => {
+  const upstream = await startUpstream((_request, res) => sendChat(res, 'ok'));
   try {
-    const target = makeTarget(`${upstream.baseUrl}/v1`, 'openai-completions');
-    await gatewayFor(target).complete('tutor.chat', USER_MESSAGE);
-    const first = upstream.requests[0];
-    assert.ok(first);
-    assert.equal(first.url, '/v1/chat/completions');
-    assert.equal(first.url.includes('/v1/v1/'), false);
-  } finally {
-    await upstream.close();
-  }
+    await gatewayFor(makeTarget(`${upstream.baseUrl}/v1`, 'openai-completions')).complete('tutor.chat', USER_MESSAGE);
+    assert.equal(upstream.requests[0]?.url, '/v1/chat/completions');
+  } finally { await upstream.close(); }
 });
 
 /* --------------------------- 2. 错误与脱敏 --------------------------- */
@@ -334,7 +289,7 @@ test('调用方 AbortSignal：抛 MODEL_REQUEST_ABORTED（不可重试）', asyn
 
 test('空文本：抛 MODEL_EMPTY_RESPONSE；非法 JSON：抛 MODEL_RESPONSE_INVALID', async () => {
   const empty = await startUpstream((_request, res) => {
-    sendJson(res, 200, { choices: [{ message: { content: '' }, finish_reason: 'stop' }] });
+    sendChat(res, '');
   });
   const broken = await startUpstream((_request, res) => {
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -355,17 +310,15 @@ test('空文本：抛 MODEL_EMPTY_RESPONSE；非法 JSON：抛 MODEL_RESPONSE_IN
   }
 });
 
-test('stream seam 未接线：明确抛 MODEL_STREAM_NOT_IMPLEMENTED', async () => {
-  const gateway = gatewayFor(makeTarget('http://127.0.0.1:9', 'openai-completions'));
-  await assert.rejects(
-    async () => {
-      for await (const _event of gateway.stream('tutor.chat', USER_MESSAGE)) {
-        void _event;
-      }
-    },
-    (error: unknown) =>
-      error instanceof ModelGatewayError && error.code === 'MODEL_STREAM_NOT_IMPLEMENTED',
-  );
+test('native stream emits upstream deltas and one final result', async () => {
+  const upstream = await startUpstream((_request, res) => sendChat(res, 'real upstream delta'));
+  try {
+    const events = [];
+    for await (const event of gatewayFor(makeTarget(upstream.baseUrl, 'openai-completions')).stream('tutor.chat', USER_MESSAGE)) events.push(event);
+    assert.deepEqual(events.filter((event) => event.type === 'text-delta').map((event) => event.text), ['real upstream delta']);
+    assert.equal(events.filter((event) => event.type === 'done').length, 1);
+    assert.equal(events.some((event) => event.type === 'error'), false);
+  } finally { await upstream.close(); }
 });
 
 /* ------------------- 3. registry 解析 / fallback / 不可用 ------------------- */

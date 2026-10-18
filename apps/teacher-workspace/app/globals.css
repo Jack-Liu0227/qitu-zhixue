@@ -434,7 +434,48 @@ a { color: inherit; text-decoration: none; }
   .qtx-attention-student > .qtx-btn { justify-self: stretch; justify-content: center; min-height: 40px; }
   .qtx-attention-metrics { border-top: 1px solid var(--qtx-border-soft); padding-top: 12px; }
 }
-.qtx-agent-run-content { display: grid; gap: 12px; }
+.qtx-agent-run-content { display: grid; gap: 12px; max-height: 640px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.qtx-agent-run-content:focus-visible { outline: 2px solid var(--qtx-blue); outline-offset: 3px; }
+.qtx-student-detail { overflow: hidden; }
+@media (min-width: 961px) {
+  .qtx-student-detail { max-height: max(420px, calc(100dvh - 275px)); overflow-y: auto; overscroll-behavior: contain; }
+  .qtx-student-detail .qtx-agent-run-content { max-height: none; overflow: visible; scrollbar-gutter: auto; }
+}
+.qtx-student-detail:focus-visible { outline: 2px solid var(--qtx-blue); outline-offset: 3px; }
+
+/* Keep teaching data above decoration and let short panels fit their content. */
+.qtx-content { padding: 14px 20px 24px; }
+.qtx-page { gap: 14px; }
+.qtx-grid { gap: 14px; align-items: start; }
+.qtx-panel { padding: 16px; min-width: 0; }
+.qtx-panel-header { gap: 10px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 10px; }
+.qtx-banner { padding: 12px 16px; border-radius: 12px; box-shadow: none; }
+.qtx-banner-inner { gap: 12px; }
+.qtx-banner-left { gap: 10px; min-width: 0; flex: 1; }
+.qtx-banner-avatar { width: 40px; height: 40px; }
+.qtx-banner h2 { font-size: 18px; }
+.qtx-banner-slogan { display: none; }
+.qtx-banner-right { gap: 8px; }
+.qtx-metric { padding: 14px; gap: 10px; min-width: 0; }
+.qtx-metric-icon { width: 38px; height: 38px; }
+.qtx-metric-value { font-variant-numeric: tabular-nums; }
+.qtx-topbar { gap: 12px; }
+.qtx-topbar > :first-child { min-width: 0; margin-right: auto; }
+.qtx-user-name { overflow-wrap: anywhere; }
+.qtx-btn { white-space: normal; height: auto; }
+.qtx-table { display: block; max-width: 100%; overflow-x: auto; }
+@media (max-width: 768px) {
+  .qtx-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .qtx-metric { padding: 12px; gap: 8px; }
+  .qtx-metric-icon { width: 30px; height: 30px; }
+  .qtx-metric-label { font-size: 11px; }
+  .qtx-metric-value { font-size: 23px; }
+  .qtx-banner-left { flex-basis: 100%; }
+  .qtx-banner-right { margin-left: 50px; }
+  .qtx-banner-right > .qitu-robot { display: none; }
+  .qtx-topbar { flex-wrap: wrap; height: auto; min-height: 58px; gap: 8px; }
+  .qtx-user { padding: 3px 6px; gap: 6px; }
+}
 
 /* ============ Reduced motion ============ */
 @media (prefers-reduced-motion: reduce) {

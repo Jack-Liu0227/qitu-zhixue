@@ -1,5 +1,7 @@
 'use client';
 
+import { RobotMascot } from '@qitu/ui';
+
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { AdminOverviewPageData } from '@qitu/contracts';
@@ -54,27 +56,9 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="admin-overview-page">
-      <Card variant="soft" className="admin-hero-banner">
-        <div className="admin-hero-copy">
-          <div className="admin-hero-badges">
-            <span className="admin-live-badge"><i />AI 智学领航管家</span>
-            <span className="admin-hero-note">数据治理节点实时巡检守护中</span>
-          </div>
-          <h1>你好，管理员！<em>启途智学 AI 助手</em> 已就绪</h1>
-          <p>全天候聚合平台运行状态、学习活跃度与关系治理指标，让每一次管理决策都有清晰的数据依据。</p>
-          <div className="admin-hero-signals">
-            <span><AdminMetricIcon name="coverage" />服务协同运行</span>
-            <span><AdminMetricIcon name="activity" />聚合数据实时同步</span>
-          </div>
-        </div>
-        <div className="admin-hero-mascot">
-          <span className="admin-hero-bubble">一起守护智慧教育生态</span>
-          <img src="/admin/frontend_pictures/3d14d7e2-1727-48f6-b3a4-42e4fe49ce77.png" alt="AI 教育机器人助手" />
-        </div>
-      </Card>
-
       <div className="admin-page-header admin-page-header-refresh">
         <div className="admin-page-header-title">
+          <RobotMascot size={42} decorative />
           <div>
             <span className="admin-section-eyebrow">PLATFORM OVERVIEW</span>
             <h2>治理概览</h2>

@@ -73,19 +73,23 @@
 - 跨 workspace 类型检查先按依赖顺序构建 `@qitu/contracts`、`@qitu/database`、`@qitu/ai-client` 等包，再运行 API/应用测试；不能把依赖快照不一致导致的全量 typecheck 错误当作业务修复完成。
 - 研究、架构和实施文档入口为 `docs/plan/codex/README.md`；光学领域细节见 `docs/plan/codex/optics-scattering-diffraction-analysis.md`。文档中的效果数字必须有可复核来源，Grok MCP 返回 `sources_count: 0` 时只能记录为检索线索。
 
-## Audit Addendum (2026-10-19)
+## Theme-Session-Team-IMA 实施约束（2026-10-19）
 
-- Runtime optics selection must use the frozen template/binding snapshot (`templateVersionId`, `bindingId`, `teamVersionId`, and hash); never infer it from a project title, team name, display label, or client-supplied identifier.
-- Formal project confirmation must fail closed when the active binding snapshot cannot be frozen in the same transaction; a warning-only `omitted` binding is not an accepted success path.
-- Theme/session/team/IMA data must remain one versioned contract. Prefer the existing `ProjectTemplateSpec` + schedule owners or explicitly migrate/re-export a new contract; do not create a second curriculum schema in parallel.
-- The draft `packages/contracts/src/curriculum.ts` is only canonical after it is tracked, tested, and wired to template/bootstrap/API owners. A new 16-session optics shape must use a new template version; never mutate `optics-physical-inquiry:v1` in place or let two schedule schemas drift.
-- IMA MCP access is read-only and binding-scoped: the frozen project snapshot must authorize both tool IDs and knowledge-base IDs. Never trust model/client tool arguments to select a knowledge base; validate or inject the scope server-side and persist bounded citation metadata.
-- An `optics_experiment` block is not production evidence until its contract includes `specVersion`, `objectiveId`, stable `actionId`, idempotency, server range validation, persisted observations, and CER/rubric references. A client summary sent as ordinary tutor text is not evidence.
-- Admin `enabledSkills` writes must contain only canonical IDs returned by the runtime catalog. Normalize legacy display names before a PATCH; block saves when the catalog is unavailable instead of sending an unvalidated full array.
-- `docs/plan/codex` is the canonical current proposal. `docs/plan/antigravity` and `docs/plan/combined` are historical/comparison material and must not introduce parallel PBL state, binding, or plan stores.
-- Any learning-effect number in research documentation requires a reproducible source. Grok MCP responses with `sources_count: 0` are leads only and must not be cited as empirical evidence.
-- On the UNC workspace, `node_modules` may be an install snapshot rather than a workspace link. Record that limitation and build source packages in dependency order before attributing type errors to business code.
-- Ad-hoc SQL or Node scripts that seed `TheoryMastered`, mastery events, provider/model bindings, or encrypted provider-key probes are development fixtures only. Keep them out of production migrations, scope them to an isolated database, make writes idempotent and auditable, and never commit secrets or raw learner data.
-- Student project adapters may only call server-owned plan, answer, evidence, and artifact contracts; a cached task/session id or client summary is not proof of completion, mastery, or experiment evidence. Unsupported reflection or dynamic-action paths must remain visibly unsupported until a versioned API exists.
-- Model pickers must preserve the `(modelProviderId, modelId)` pair. Never send a bare model id when multiple enabled providers can expose the same id; provider/model selectors must fail closed when the configured catalog is unavailable.
-- Grok Search MCP is an evidence-discovery aid, not a citation source by itself. Record the session id and `sources_count`; when sources are empty, use the result only to guide repository/official-link verification and do not claim learning-effect numbers or legal conclusions.
+- Theme、Session、团队角色和 IMA 范围属于同一版本化教学合同。curriculum.ts 已跟踪/导出不代表已成为唯一真源；须显式迁入/投影 ProjectTemplateSpec，接线 validator、bootstrap、API 与测试，禁止平行 curriculum schema。
+- 生成器须消费实际冻结模板内容/hash，不只给全局常量结果贴 templateVersionId。16 课时用新模板版本/bootstrap identity；多排期冻结审核 profile，禁止原地改变 optics-physical-inquiry:v1。
+- confirmIntent 与 confirmPlan 均在同一事务冻结模板/binding/团队版本/hash；缺绑定 fail closed，不接受 warning-only omitted。通用项目也有受治理路径；历史无快照项目不在读时静默按当前 active 授予新语义。
+- roleMap/IMA grant/内容与策略版本进入 binding hash 和项目快照，角色须是真实成员。运行路由取实际 frozen session/task，禁止标题/团队名/ID 前缀/成员正则/全局 1–16/fallback 助手猜授权；非法或非整数索引拒绝。
+- 课时检查点不是完成事实：第 8 节不自动 TheoryMastered，第 14/16 节不自动批准报告/归档。探索可用已有 draft/exploration，显式确认前不能创建正式项目。
+- IMA 权限为冻结项目 grant、当前 Admin 全局授权、当前助手/工具和对象权限的交集。缺 scope 默认拒绝；撤权立即生效，新增库不扩大旧项目。四只读工具均约束，包含列库过滤、搜索/列文档参数和读文档 provenance。
+- document_ref 签名有效或桥允许某库，不代表本项目有权限；服务端维护有期限的 KB/project provenance，不信任模型/浏览器声明，过期重新检索。只存有界引用元数据，不虚构页码，不复制全文到成长/家长投影。
+- 检索材料是不可信证据，不是指令，不得改角色/工具/门禁/答案披露；引用不证明学生掌握。不可用须明确未核验，不把模型猜测伪装教材事实。
+- 当前题和判分复用既有 owner/store；求助不自动判错或覆盖 pending。选项/动作用服务端稳定实例 ID、project/session/revision scope 与幂等键，不把 label/缓存 ID 当授权。
+- optics_experiment 类型字段不等于正式协议。须有 action 实例、服务端参数/模型域验证、幂等事件、持久化 observations 和 CER/rubric refs，收到 owner 回执才显示已保存；摘要/滑块/run 不能直接变成 mastery/作品通过/成长事实。
+- 光学模拟区分模型计算/模拟观察/真实测量。Rayleigh 关系只用于批准域；禁止非 Rayleigh 一律白色 Mie、单色散射变白、公式值标实测。真实实验需教师安全审核，护目镜提示不能代替安全方案。
+- 学生适配器只调用 server-owned plan/answer/action/evidence/artifact 合同；session/task 完成不误用项目 advance，stage index 不当 session index。未支持 reflection/action 明确显示，跨请求证据写入可恢复且幂等。
+- Admin enabledSkills 仅存 runtime catalog canonical ID；旧名规范化，目录不全/不可用阻止全数组 PATCH，不静默删未知绑定。批量按真实回读显示部分成功/失败，草稿不等于发布。
+- 模型选择保留 (modelProviderId, modelId)，目录不可用 fail closed，不只传同名裸 ID；模板不另存供应商密钥/路由 URL。
+- docs/plan/codex 为当前方案入口；antigravity/combined 只作历史比较，不引入平行 PBL/binding/plan/mastery 状态库。
+- Grok MCP 记录 session ID/sources_count；来源为 0 仅记线索/失败，不引用其摘要为论文、学习效果或法律结论。所有效果数字须可复核来源。
+- UNC node_modules 可能是安装快照，按真实依赖图构建并记录解析。旧错误未复现应修正文档，但 typecheck 不替代行为测试/生产验收。
+- 手工 SQL/Node 造数、TheoryMastered/mastery 注入、provider 批改/密钥解密探测只限可丢弃隔离 fixture；不进生产迁移、不制造验收成功、不提交秘密或原始学生数据。

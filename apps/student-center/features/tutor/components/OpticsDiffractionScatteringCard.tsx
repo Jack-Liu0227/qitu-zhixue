@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { diffractionPreview, scatteringPreview } from '../lib/opticsPreviewModel';
 
 export interface OpticsDiffractionScatteringCardProps {
-  onExperimentComplete?: (summary: string) => void;
   disabled?: boolean;
   initialMode?: 'diffraction' | 'scattering';
 }
@@ -47,7 +47,6 @@ function wavelengthToRgb(wavelength: number): string {
 }
 
 export function OpticsDiffractionScatteringCard({
-  onExperimentComplete,
   disabled = false,
   initialMode = 'diffraction',
 }: OpticsDiffractionScatteringCardProps) {
@@ -65,8 +64,7 @@ export function OpticsDiffractionScatteringCard({
   // 衍射物理计算
   const lambdaM = wavelength * 1e-9;
   const slitWidthM = slitWidth * 1e-6;
-  const centralBandWidthMm = (2 * lambdaM * screenDistance) / slitWidthM * 1000;
-  const firstMinAngleMrad = (lambdaM / slitWidthM) * 1000;
+  const { centralBandWidthMm, firstMinAngleMrad } = diffractionPreview(wavelength, slitWidth, screenDistance);
 
   // 衍射光强分布曲线采样 (50 个点)
   const intensityPoints = useMemo(() => {
@@ -76,7 +74,7 @@ export function OpticsDiffractionScatteringCard({
     for (let i = 0; i <= steps; i++) {
       const xMm = -spanMm + (2 * spanMm * i) / steps;
       const xM = xMm * 1e-3;
-      const theta = xM / screenDistance;
+      const theta = Math.atan(xM / screenDistance);
       const beta = (Math.PI * slitWidthM * Math.sin(theta)) / lambdaM;
       let intensity = 1.0;
       if (Math.abs(beta) > 1e-5) {
@@ -99,22 +97,10 @@ export function OpticsDiffractionScatteringCard({
   }, [intensityPoints]);
 
   // 散射物理计算
-  const sizeParameter = (2 * Math.PI * (particleRadius * 1e-9)) / (scatteringWavelength * 1e-9);
-  const isRayleigh = sizeParameter < 0.1;
-  const rayleighRatio = Math.pow(700 / scatteringWavelength, 4);
+  const { sizeParameter, isRayleigh, rayleighRatio } = scatteringPreview(scatteringWavelength, particleRadius);
 
   const beamColor = wavelengthToRgb(wavelength);
   const scatterColor = wavelengthToRgb(scatteringWavelength);
-
-  const handleCommitSummary = () => {
-    let summary = '';
-    if (mode === 'diffraction') {
-      summary = `【单缝衍射实验】波长 ${wavelength} nm，缝宽 ${slitWidth} μm，屏距 ${screenDistance} m。实测中央明条纹宽度 Δx = ${centralBandWidthMm.toFixed(2)} mm，第一级极小衍射角 θ₁ = ${firstMinAngleMrad.toFixed(2)} mrad。验证规律：缝宽越小、波长越长，衍射越明显。`;
-    } else {
-      summary = `【介质散射实验】波长 ${scatteringWavelength} nm，微粒半径 ${particleRadius} nm，尺寸参数 x = ${sizeParameter.toFixed(3)}。判定属于${isRayleigh ? '瑞利散射 (I ∝ 1/λ⁴，蓝紫光强烈散射)' : '米氏散射 (各波长均匀散射，呈乳白色)'}，相对 700nm 红光散射比为 ${rayleighRatio.toFixed(2)} 倍。`;
-    }
-    onExperimentComplete?.(summary);
-  };
 
   return (
     <div
@@ -133,10 +119,10 @@ export function OpticsDiffractionScatteringCard({
           <span style={{ fontSize: '20px' }}>🌈</span>
           <div>
             <h4 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700 }}>
-              光的散射与衍射动态探究台 (PBL 核心模块)
+              光的散射与衍射模型预览
             </h4>
             <span style={{ fontSize: '12px', color: '#64748b' }}>
-              结合 OpenMAIC 多模态仿真与 DeepTutor 变量引导，探索光的波动性与微粒特征
+              仅为计算示意，不是真实测量；正式实验运行与观测保存尚未接入
             </span>
           </div>
         </div>
@@ -255,7 +241,7 @@ export function OpticsDiffractionScatteringCard({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: '11.5px', marginBottom: '8px' }}>
               <span>光屏上光强分布理论曲线 I(θ) = I₀(sinβ/β)²</span>
-              <span style={{ color: '#38bdf8' }}>中央条纹宽度 Δx = {centralBandWidthMm.toFixed(2)} mm</span>
+              <span style={{ color: '#38bdf8' }}>模型计算中央条纹宽度 Δx = {centralBandWidthMm.toFixed(2)} mm</span>
             </div>
 
             <svg width="100%" height="95" viewBox="0 0 400 95" style={{ display: 'block' }}>
@@ -335,7 +321,7 @@ export function OpticsDiffractionScatteringCard({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                 <span style={{ color: '#475569', fontWeight: 600 }}>微粒半径 r: {particleRadius} nm</span>
                 <span style={{ color: isRayleigh ? '#2563eb' : '#d97706', fontWeight: 600 }}>
-                  {isRayleigh ? '微粒 << λ (瑞利散射)' : '微粒 ≥ λ (米氏散射)'}
+                  {isRayleigh ? '瑞利近似适用' : '超出本预览的瑞利近似域'}
                 </span>
               </div>
               <input
@@ -361,9 +347,9 @@ export function OpticsDiffractionScatteringCard({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: '11.5px', marginBottom: '8px' }}>
-              <span>密闭水雾槽与激光光路观察 (丁达尔效应与波长反比)</span>
+              <span>封闭细雾室单色光散射示意（非真实实验操作）</span>
               <span style={{ color: isRayleigh ? '#60a5fa' : '#f59e0b' }}>
-                相对 700nm 散射比: {rayleighRatio.toFixed(1)}x
+                {rayleighRatio === null ? `尺寸参数 x = ${sizeParameter.toFixed(3)}；不计算强度比` : `模型相对 700nm 散射比: ${rayleighRatio.toFixed(1)}x`}
               </span>
             </div>
 
@@ -384,9 +370,9 @@ export function OpticsDiffractionScatteringCard({
                 style={{
                   width: '100%',
                   height: '6px',
-                  background: isRayleigh ? scatterColor : '#f1f5f9',
+                  background: scatterColor,
                   opacity: Math.min(1.0, 0.25 + (particleRadius / 100) * 0.7),
-                  boxShadow: `0 0 16px ${isRayleigh ? scatterColor : '#ffffff'}`,
+                  boxShadow: `0 0 16px ${scatterColor}`,
                   borderRadius: '3px',
                 }}
               />
@@ -399,34 +385,14 @@ export function OpticsDiffractionScatteringCard({
                   color: '#94a3b8',
                 }}
               >
-                {isRayleigh ? '晴空散射原理：蓝紫光被强烈散射 (I ∝ 1/λ⁴)' : '白云/大雾原理：大颗粒对各色光无差别散射'}
+                {isRayleigh ? '瑞利近似下比较不同入射波长；单色散射光仍保持入射颜色' : '域外不推断米氏散射强度或颜色；单色散射不会自动变白'}
               </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 提交探究结论按钮 */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={handleCommitSummary}
-        style={{
-          width: '100%',
-          padding: '10px 16px',
-          background: disabled ? '#94a3b8' : 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
-          color: '#ffffff',
-          fontWeight: 600,
-          fontSize: '13.5px',
-          border: 'none',
-          borderRadius: '10px',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        ✔ 提交光学实验探究数据至作品证据链
-      </button>
+      <p role="note">此预览不保存观测，不提交作品证据，也不改变掌握度。真实实验须由教师审核安全方案。</p>
     </div>
   );
 }

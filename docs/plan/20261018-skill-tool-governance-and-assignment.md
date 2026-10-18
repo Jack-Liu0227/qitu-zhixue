@@ -4,7 +4,9 @@
 > 评审基线：2026-10-18
 > 责任域：`platform-registry` / `ai-tutor` / `team-runtime` / `admin-console` / `contracts` / `database`
 > 关联 Issue：[#57](https://github.com/Jack-Liu0227/qitu-zhixue/issues/57)（Admin AI 配置中心：Skills/工具/MCP 治理）· [#50](https://github.com/Jack-Liu0227/qitu-zhixue/issues/50)（插件框架与工具授权审计）· [#53](https://github.com/Jack-Liu0227/qitu-zhixue/issues/53)（Agent SDK 运行时解析与工具执行）· [#54](https://github.com/Jack-Liu0227/qitu-zhixue/issues/54)（PBL 模板与团队绑定）
-> 上级基线：[`../../AGENTS.md`](../../AGENTS.md)、[`../README.md`](../README.md)、[`../admin/platform-governance.md`](../admin/platform-governance.md)、[`../design/pbl-template-team-binding-architecture.md`](../design/pbl-template-team-binding-architecture.md)
+> 上级基线：[`../../AGENTS.md`](../../AGENTS.md)、[`../README.md`](../README.md)、[`../admin/platform-governance.md`](../admin/platform-governance.md)、[早期绑定设计（归档）](../archive/pre-20261018/design/pbl-template-team-binding-architecture.md)
+
+> 2026-10-19 状态说明：本文保留 2026-10-18 的实施与评审快照，不是当前运行时授权合同。最新边界以 [`codex/theme-session-team-ima-design.md`](./codex/theme-session-team-ima-design.md) 和 [`codex/gap-audit-20261019.md`](./codex/gap-audit-20261019.md) 为准。下文历史 `linkedTeamId`/leader fallback/读时回填描述不授予新语义：正式项目确认须事务冻结模板、binding、团队版本及 hash，缺绑定 fail closed；历史无快照项目不得读时静默套用当前 active。路由必须取实际 frozen session/task，IMA 为冻结 grant、当前 Admin 授权、当前助手/工具及对象权限的交集。旧测试数量不代表当前生产验收通过。
 
 本文是需求拆解和验收台账，不把未完成的代码描述成已交付能力。每一项合入 `main` 前必须逐项满足验收条件并同步状态。
 

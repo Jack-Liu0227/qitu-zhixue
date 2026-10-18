@@ -9,6 +9,7 @@ import type { PlatformRegistryService } from '../platform-registry/platform-regi
 import type { TemplateBindingService } from '../templates/templates-binding.service';
 import type { LearningPlanStore, LearningProjectRecord } from '../learning-plan/learning-plan.store';
 import type { AdminTeamConfig } from '@qitu/contracts';
+import { ConflictException } from '@nestjs/common';
 
 /**
  * A1：正式项目必须按创建时冻结的绑定快照解析团队；退役/重新激活绑定不得改写
@@ -113,7 +114,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
   } as unknown as LearningPlanStore;
 
   const templateBindings = {
-    resolveSnapshotForProject: async () => ({
+    findFrozenSnapshotForProject: async () => ({
       projectId: project.id,
       templateVersionId: project.templateVersionId,
       bindingId: 'binding-frozen',
@@ -154,51 +155,23 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
     '快照命中不得再走 legacy-resolution');
 });
 
-test('旧项目无快照：保留原解析路径并写 tutor.team.legacy-resolution 审计', async () => {
-  const entries: AuditEntry[] = [];
-  const auditWriter = {
-    write: async (entry: AuditEntry) => { entries.push(entry); return 'audit-1'; },
-  } as unknown as AuditWriter;
-
-  const learningStore = {
-    findProject: async () => ({ ...project }),
-    listProjectsByStudent: async () => [],
-  } as unknown as LearningPlanStore;
-
-  const templateBindings = {
-    resolveSnapshotForProject: async () => null,
-  } as unknown as TemplateBindingService;
-
-  const platformRegistry = {
-    listAssistants: async () => [{
-      id: 'assistant-stale', source: 'admin', name: '旧助手', avatar: '🏛️', description: '', role: 'assistant',
-      enabled: true, sortOrder: 0, modelProviderId: null, modelId: null, instructions: '', enabledSkills: [],
-      toolIds: [], mcpServerIds: [],
-    }],
-    listTeams: async () => [{
-      id: 'team-stale', name: '旧团队', description: '', workspaceMode: 'guided', sessionMode: '1v1',
-      leaderAssistantId: 'assistant-stale', members: [], concurrencyLimit: 1,
-      pblSpec: { projectName: '光学' }, enabled: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
-    }],
-  } as unknown as PlatformRegistryService;
-
+test('missing frozen snapshot fails visibly without a legacy team fallback', async () => {
+  let legacyReads = 0;
   const tutor = newTutor({
-    learningStore,
-    platformRegistry,
-    database: fakeDb({ binding: { id: 'template-optics', title: '光学', slug: 'optics' } }),
-    auditWriter,
-    templateBindings,
+    learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
+    templateBindings: { findFrozenSnapshotForProject: async () => null } as unknown as TemplateBindingService,
+    database: fakeDb({}),
+    platformRegistry: {
+      listTeams: async () => { legacyReads += 1; return []; },
+      getTeamForTemplateVersion: async () => { legacyReads += 1; return null; },
+    } as unknown as PlatformRegistryService,
   });
-
-  const context = await tutor.getProjectContext(project.id, 'owner');
-  assert.equal(context?.team?.teamId, 'team-stale');
-  assert.equal(context?.team?.teamName, '旧团队');
-
-  const legacy = entries.find((entry) => entry.action === 'tutor.team.legacy-resolution');
-  assert.ok(legacy !== undefined, '旧项目无快照必须写 legacy-resolution 审计');
-  assert.equal(legacy.targetType, 'project');
-  assert.equal(legacy.targetId, project.id);
-  assert.equal((legacy.detail as { teamId?: string }).teamId, 'team-stale');
+  await assert.rejects(tutor.getProjectContext(project.id, 'owner'), (error: unknown) => {
+    assert.ok(error instanceof ConflictException);
+    assert.equal((error.getResponse() as { code: string }).code, 'PROJECT_BINDING_RECONFIRM_REQUIRED');
+    return true;
+  });
+  assert.equal(legacyReads, 0);
 });
 
 const opticsMembers = [
@@ -211,7 +184,7 @@ const opticsMembers = [
 function opticsTutor(options: { disabled?: string; missing?: string; runtimeStatus?: 'running' | 'failed'; runtimeError?: boolean; teamEnabled?: boolean } = {}) {
   const tutor = newTutor({
     learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
-    templateBindings: { resolveSnapshotForProject: async () => ({ teamVersionId: 'tv-optics-1' }) } as unknown as TemplateBindingService,
+    templateBindings: { findFrozenSnapshotForProject: async () => ({ teamVersionId: 'tv-optics-1' }) } as unknown as TemplateBindingService,
     database: fakeDb({ frozenTeam: frozenTeamRow({
       leaderAssistantId: 'optics-concept-coach',
       members: opticsMembers as unknown as AdminTeamConfig['members'],

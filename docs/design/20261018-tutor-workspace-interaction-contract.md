@@ -3,7 +3,7 @@
 > 状态：`implemented（2026-10-18 §2/§3/§4 主链路落地，测试通过）`
 > 评审基线：2026-10-18
 > 责任域：`apps/student-center/features/tutor`、`services/api/src/modules/ai-tutor`、`team-runtime`、`projects`
-> 上级基线：[`../student/tutor.md`](../student/tutor.md)、[`../design/pbl-template-team-binding-architecture.md`](./pbl-template-team-binding-architecture.md)
+> 上级基线：[`../student/tutor.md`](../student/tutor.md)、[`../plan/codex/theme-session-team-ima-design.md`](../plan/codex/theme-session-team-ima-design.md)；[早期绑定设计（归档）](../archive/pre-20261018/design/pbl-template-team-binding-architecture.md) 仅作历史比较。
 
 本文定义学生端 AI 搭档三项交互合同的验收形态：① 对话内容不得被顶部、侧边、底部任何区域遮挡；② 助手召唤后展示真实团队/助手身份，右侧栏双 Tab（项目进度 / 团队智能体），左侧不再展示 agent 状态；③ 项目创建在对话内由「启途智学助手」接管并一键立项，不再依赖「立项准备」手动表单。
 

@@ -1,4 +1,5 @@
 'use client';
+import { AssistantGlyph } from '@qitu/ui';
 // Adapted from HKUDS/DeepTutor CreateKbModal.tsx at 6cf793bd (MIT); Qitu APIs and admin authorization.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -614,7 +615,7 @@ export function CreateLibraryModal({
                       }
                     />
                     <span>
-                      {a.avatar || '✦'} {a.name}
+                      <AssistantGlyph value={a.avatar} size={20} /> {a.name}
                       {!a.enabled ? '（已停用）' : ''}
                     </span>
                   </label>

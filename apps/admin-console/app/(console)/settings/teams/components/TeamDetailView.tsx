@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig, AdminTeamUpdateInput } from '@qitu/contracts';
 import { useState } from 'react';
 
@@ -130,7 +132,7 @@ function MembersPanel({
               onClick={() => onOpenMemberEdit(member)}
             >
               <div className="member-card-avatar">
-                {member.avatar || assistant?.avatar || '🤖'}
+                <AssistantGlyph value={member.avatar || assistant?.avatar} size={30} />
               </div>
               <div className="member-card-info">
                 <div className="member-card-name">

@@ -1,0 +1,83 @@
+/* Wrap toolbars before long titles can collapse into a vertical strip. */
+.settings-pagehead,
+.admin-page-header,
+.admin-assistants-top-header { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.settings-titlebox { flex: 1 1 280px; }
+.settings-page-actions,
+.admin-page-header-actions,
+.admin-assistants-header-right { min-width: 0; max-width: 100%; flex-wrap: wrap; gap: 8px; }
+.settings-main { padding: 16px 18px 28px; }
+.settings-sider { width: 196px; min-width: 196px; max-width: 196px; }
+.settings-overview-page,
+.admin-settings-page { gap: 16px; }
+.settings-overview-intro { padding: 14px 16px; gap: 12px; }
+.settings-overview-intro h2 { font-size: 18px; }
+.settings-overview-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.settings-overview-card { min-height: 88px; padding: 12px 14px; }
+.admin-assistants-cards-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.admin-assistant-card { padding: 14px; }
+.admin-assistant-card .admin-card-bottom-row { flex-wrap: wrap; gap: 8px; }
+.admin-assistant-card .admin-agent-meta { flex: 1 1 140px; min-width: 0; align-items: flex-start; }
+.admin-assistant-card .admin-agent-tag { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.admin-assistant-card .admin-card-buttons-wrap { flex: 0 0 auto; margin-left: auto; }
+.settings-action-btn { min-height: 36px; height: auto; white-space: normal; }
+.settings-page-actions input { min-width: 0; max-width: 100%; }
+.admin-assistant-topbar-actions { flex-wrap: wrap; gap: 8px; }
+.admin-template-status-pill { flex-shrink: 0; white-space: nowrap; }
+.admin-template-item-head > div { min-width: 0; }
+.admin-template-editor-topbar { flex-wrap: wrap; gap: 10px; }
+.settings-shell .admin-editor-card { padding: 16px; gap: 12px; }
+.settings-shell .admin-form-row { margin-bottom: 0; }
+.settings-shell .admin-form-row > .admin-form-label { display: flex; flex-direction: row; align-items: center; gap: 2px; }
+.member-editor-container .instruction-editor { min-height: 220px; height: clamp(220px, 36dvh, 400px); }
+.member-editor-container .instruction-preview { min-height: 220px; }
+
+@media (max-width: 860px) {
+  .settings-sider { width: 58px; min-width: 58px; max-width: 58px; }
+  .settings-page-actions { width: 100%; }
+  .settings-page-actions input { flex: 1 1 160px; }
+}
+
+/* Same settings navigation and order, presented as a labelled scrolling rail. */
+@media (max-width: 620px) {
+  .settings-shell { flex-direction: column; min-height: 0; }
+  .settings-shell .settings-sider,
+  .settings-shell .settings-sider.is-collapsed {
+    position: static;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 6px 10px !important;
+    border-right: 0;
+    border-bottom: 1px solid #e4eaf2;
+  }
+  .settings-shell .settings-sider-head { display: none; }
+  .settings-sider-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .settings-sider-section { display: contents; }
+  .settings-sider-group, .settings-sider-divider { display: none; }
+  .settings-shell .settings-sider .settings-sider-item {
+    width: auto !important;
+    height: auto !important;
+    min-height: 36px;
+    flex: 0 0 auto;
+    margin: 0 !important;
+    padding: 6px 10px !important;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .settings-shell .settings-sider .settings-sider-label { display: inline !important; }
+  .settings-main { padding: 14px 12px 24px; overflow: visible; }
+  .settings-pagehead, .admin-assistants-top-header { flex-direction: column; align-items: stretch; }
+  .settings-titlebox { flex: 0 1 auto; width: 100%; }
+  .settings-titlebox h1 { font-size: 23px; }
+  .settings-titlebox .settings-desc { margin-top: 6px; }
+  .settings-page-actions { justify-content: flex-start; }
+  .settings-overview-intro { padding: 12px; }
+  .admin-config-row, .admin-form-row { grid-template-columns: minmax(0, 1fr); gap: 8px; flex-direction: column; align-items: stretch; }
+  .admin-config-label-col, .admin-config-field-col { width: 100%; min-width: 0; }
+  .admin-identity-content { flex-direction: column; gap: 14px; }
+  .admin-identity-fields { width: 100%; }
+  .admin-assistant-editor-topbar { flex-wrap: wrap; gap: 10px; }
+  .settings-shell .admin-prompt-editor-box { min-height: 180px; }
+  .team-detail-view .guide-editor, .team-detail-view .guide-preview { min-height: 220px; }
+}

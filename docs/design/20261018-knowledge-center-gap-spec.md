@@ -6,6 +6,8 @@
 
 本规格只定义需求 2 的可实施边界：支持本地与云端知识库的连接和创建、来源同步、知识库与助手/Partner 绑定。它是待实现规格，不把建议字段、接口或 UI 当作已实现事实。当前唯一事实源仍是 [`docs/admin/knowledge-center.md`](../admin/knowledge-center.md)；本文件不替代它，也不要求本任务修改它。
 
+> 2026-10-19 对齐说明：本文件的现状表、行号和后续方案是 2026-10-18 需求拟定时的对照记录，部分已由管理员手动知识库与多引擎实现替代，不是当前功能缺口清单。项目自动建库/导入路径已退役；当前 API、授权与实现状态以 [`../admin/knowledge-center.md`](../admin/knowledge-center.md) 和 [`../admin/knowledge-engines.md`](../admin/knowledge-engines.md) 为准。冻结项目 IMA grant 等新增治理要求以 [`../plan/codex/theme-session-team-ima-design.md`](../plan/codex/theme-session-team-ima-design.md) 为准，不把旧项目绑定或桥接白名单当成项目授权。
+
 ## 1. 事实与取舍
 
 ### 1.1 检索报告
@@ -28,16 +30,16 @@
 
 | 现状 | 证据 | 对规格的影响 |
 | --- | --- | --- |
-| 引擎目录已有 LlamaIndex、PageIndex OSS、GraphRAG、LightRAG、LightRAG Server、PageIndex Cloud、ima、WeKnora、Obsidian、MarginNote、Kiwix | [`knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts:3-15) | 扩展已有 provider，不另造第二个目录 |
-| 配置字段已做白名单；当前云/外部 provider 的字段为空 | [`knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts:40-86) | 云连接字段放受控连接记录，不能借 JSON 编辑器绕过白名单 |
-| `KnowledgeEngineService.execute` 目前只执行 `llamaindex`，其他 provider 返回未就绪错误 | [`knowledge-engine.service.ts`](../../services/api/src/modules/knowledge/knowledge-engine.service.ts:24-35) | 先扩展 adapter dispatch，再开放创建/连接按钮 |
-| bridge 当前固定导入 `RAGService`，固定 `provider="llamaindex"` | [`bridge.py`](../../integrations/deeptutor-knowledge/bridge.py:29-50) | 必须按 provider 分派并对 request/config 做字段白名单 |
-| 已有 `knowledge_jobs` 租约、fencing token、阶段事件、取消和有限重试 | [`knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts:31-104) | `sync` 复用 durable queue，不新增第二个任务系统 |
-| 已有版本验证后原子发布，并在发布事务再次检查来源授权 | [`knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts:219-252) | 来源同步必须先生成候选版本，成功后才替换活动版本 |
-| 现有库表、项目绑定、版本和任务表来自 `0028`；原文件表来自 `0029` | [`0028_knowledge_center.sql`](../../database/migrations/0028_knowledge_center.sql:7-45)、[`0029_knowledge_file_uploads.sql`](../../database/migrations/0029_knowledge_file_uploads.sql:1-12) | 新能力需要新迁移；不得把外部凭证塞入现有 `origin` 或 `config_snapshot` |
-| `canRetrieve(assistantId)` 当前检查平台工具开关、assistant allowlist、assistant enabled | [`knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts:248-257) | 新逐库绑定必须是此链条的额外 AND 条件，不能旁路 |
-| 当前项目检索前后都会调用 `canRetrieve`，并检查项目归属、版本和来源许可 | [`project-knowledge.service.ts`](../../services/api/src/modules/knowledge/project-knowledge.service.ts:64-107) | 撤权即失效的行为延续到通用绑定 |
-| 当前管理端只有知识库/知识引擎双 Tab、文件与重建操作 | [`settings/knowledge/page.tsx`](../../apps/admin-console/app/(console)/settings/knowledge/page.tsx:29-115) | 在既有知识库详情中增加来源、连接状态和绑定面板，不改变顶层导航 |
+| 引擎目录已有 LlamaIndex、PageIndex OSS、GraphRAG、LightRAG、LightRAG Server、PageIndex Cloud、ima、WeKnora、Obsidian、MarginNote、Kiwix | [`knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts#L3-L15) | 扩展已有 provider，不另造第二个目录 |
+| 配置字段已做白名单；当前云/外部 provider 的字段为空 | [`knowledge-center.config.ts`](../../services/api/src/modules/knowledge/knowledge-center.config.ts#L40-L86) | 云连接字段放受控连接记录，不能借 JSON 编辑器绕过白名单 |
+| `KnowledgeEngineService.execute` 目前只执行 `llamaindex`，其他 provider 返回未就绪错误 | [`knowledge-engine.service.ts`](../../services/api/src/modules/knowledge/knowledge-engine.service.ts#L24-L35) | 先扩展 adapter dispatch，再开放创建/连接按钮 |
+| bridge 当前固定导入 `RAGService`，固定 `provider="llamaindex"` | [`bridge.py`](../../integrations/deeptutor-knowledge/bridge.py#L29-L50) | 必须按 provider 分派并对 request/config 做字段白名单 |
+| 已有 `knowledge_jobs` 租约、fencing token、阶段事件、取消和有限重试 | [`knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts#L31-L104) | `sync` 复用 durable queue，不新增第二个任务系统 |
+| 已有版本验证后原子发布，并在发布事务再次检查来源授权 | [`knowledge-build.worker.ts`](../../services/api/src/modules/knowledge/knowledge-build.worker.ts#L219-L252) | 来源同步必须先生成候选版本，成功后才替换活动版本 |
+| 现有库表、项目绑定、版本和任务表来自 `0028`；原文件表来自 `0029` | [`0028_knowledge_center.sql`](../../database/migrations/0028_knowledge_center.sql#L7-L45)、[`0029_knowledge_file_uploads.sql`](../../database/migrations/0029_knowledge_file_uploads.sql#L1-L12) | 新能力需要新迁移；不得把外部凭证塞入现有 `origin` 或 `config_snapshot` |
+| `canRetrieve(assistantId)` 当前检查平台工具开关、assistant allowlist、assistant enabled | [`knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts#L248-L257) | 新逐库绑定必须是此链条的额外 AND 条件，不能旁路 |
+| 旧 `project-knowledge.service.ts` 已退役；当前引用入口检查项目归属，检索层执行助手/知识库权限与有效性复查 | [`knowledge-retrieval.controller.ts`](../../services/api/src/modules/knowledge/knowledge-retrieval.controller.ts)、[`knowledge-retrieval.service.ts`](../../services/api/src/modules/knowledge/knowledge-retrieval.service.ts) | 不恢复自动项目建库；冻结项目 grant 的接线另按当前治理合同验收 |
+| 当前管理端只有知识库/知识引擎双 Tab、文件与重建操作 | [`settings/knowledge/page.tsx`](../../apps/admin-console/app/(console)/settings/knowledge/page.tsx#L29-L115) | 在既有知识库详情中增加来源、连接状态和绑定面板，不改变顶层导航 |
 
 ### 1.3 设计取舍
 
@@ -147,7 +149,7 @@
 
 1. `platformTools.project-knowledge.enabled` 与现有 `boundAssistants` 是平台能力门槛，继续保留；它们不被逐库绑定替换。
 2. 新增 `KnowledgeCenterService.canRetrieve(assistantId, knowledgeBaseId?)`：无 `knowledgeBaseId` 时保持现有行为；有 KB 时先执行现有全局检查，再检查 `knowledge_base_agent_bindings.enabled=true`。所有项目检索、通用助手检索和远端 adapter 查询统一调用它。
-3. `project_knowledge_bindings` 仍只表达“项目属于哪个项目库”，不被新表替代。项目学生归属、当前项目、有效版本和来源许可继续由 [`project-knowledge.service.ts`](../../services/api/src/modules/knowledge/project-knowledge.service.ts:19-62) 校验。
+3. `project_knowledge_bindings` 现仅作历史记录，不授予当前检索权限，不因创建/确认项目自动建库。当前引用入口和检索实现分别见 [`knowledge-retrieval.controller.ts`](../../services/api/src/modules/knowledge/knowledge-retrieval.controller.ts)、[`knowledge-retrieval.service.ts`](../../services/api/src/modules/knowledge/knowledge-retrieval.service.ts)；冻结项目 grant 的范围不能由旧表或助手全局绑定代替。
 4. ima 的 `allowedKnowledgeBaseIds` 是远端来源白名单，`allowMaterialize` 是是否允许复制原文；新逐库绑定不能扩大这两个范围。若 `mode=materialize`，三者必须同时满足：助手逐库授权、ima 远端 ID 白名单、服务端物化许可。
 5. `tutor_partners`/`agent_configs` 目标必须经过运行时身份映射；不能因为 Partner 拥有一条 memory 或 session 就自动获得所有 KB。Partner 会话的检索调用仍传入稳定的 assistant/partner ID，并经过同一 `canRetrieve` 链。
 6. 未成年人资料默认只在其所属学生/项目/学校对象范围内可见；逐库绑定列表不得返回其他学生原文、source 内容或密钥。绑定变更写服务端审计，客户端不能写审计记录。
@@ -282,8 +284,8 @@ interface KnowledgeEngineAdapter {
 
 **凭证解析：**
 
-- `ModelRegistryService` 负责 `embeddingModelRef`、`llmModelRef` 等模型引用和模型 provider 的运行时 target；现有校验已经要求模型引用存在（[`knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts:137-173)）。
-- provider API credential 只能通过服务端登记的 `credential_ref` 或部署环境读取。现有 ima 连接已从 `QITU_IMA_MCP_URL`、`QITU_IMA_MCP_TOKEN` 判定 credentialConfigured（[`services/api/src/modules/platform-registry/ima-settings.service.ts`](../../services/api/src/modules/platform-registry/ima-settings.service.ts:46-51)）；新 adapter 延续这一服务端路径。
+- `ModelRegistryService` 负责 `embeddingModelRef`、`llmModelRef` 等模型引用和模型 provider 的运行时 target；现有校验已经要求模型引用存在（[`knowledge-center.service.ts`](../../services/api/src/modules/knowledge/knowledge-center.service.ts#L137-L173)）。
+- provider API credential 只能通过服务端登记的 `credential_ref` 或部署环境读取。现有 ima 连接已从 `QITU_IMA_MCP_URL`、`QITU_IMA_MCP_TOKEN` 判定 credentialConfigured（[`services/api/src/modules/platform-registry/ima-settings.service.ts`](../../services/api/src/modules/platform-registry/ima-settings.service.ts#L46-L51)）；新 adapter 延续这一服务端路径。
 - API 调用在进程内短暂持有 secret；不写 `platform_configuration_revisions.config`、`knowledge_*` 的 JSON、审计 detail、job event、stdout/stderr、浏览器响应、Git 或日志。
 - 任何前端 JSON editor 提交 `apiKey`/`token`/`password` 都返回 `CONFIG_SECRET_FORBIDDEN`。如未来需要录入凭证，必须做独立的服务端受保护登记流程，成功后前端只得到 `credentialConfigured: true`。
 

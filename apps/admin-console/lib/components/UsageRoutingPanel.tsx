@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AdminModelUsagesResponse, AdminRuntimeSnapshot, ProviderConfigPublic } from '@qitu/contracts';
 import { fetchUsages, newIdempotencyKey, bindUsage } from '../api/modelRegistry';
 import { fetchRuntimeSnapshot, updateRuntimeAgent } from '../api/runtime';
@@ -11,35 +11,51 @@ export function UsageRoutingPanel({ providers }: { providers: ProviderConfigPubl
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const requestId = useRef(0);
   const load = useCallback(async () => {
-    try { const [usages, snapshot] = await Promise.all([fetchUsages(), fetchRuntimeSnapshot()]); setData(usages); setRuntime(snapshot); setError(''); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '用途路由加载失败'); }
+    const current = ++requestId.current;
+    setData(null); setRuntime(null); setNotice(''); setError('');
+    try {
+      const [usages, snapshot] = await Promise.all([fetchUsages(), fetchRuntimeSnapshot()]);
+      if (current !== requestId.current) throw new Error('配置读取已过期，请重新加载');
+      setData(usages); setRuntime(snapshot); setError('');
+      return { usages, snapshot };
+    } catch (cause) {
+      if (current === requestId.current) { setData(null); setRuntime(null); setNotice(''); setError(cause instanceof Error ? cause.message : '用途路由加载失败'); }
+      throw cause;
+    }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load().catch(() => {}); return () => { requestId.current++; }; }, [load, providers]);
   const options = runtime?.modelOptions?.filter((option) => option.available) ?? [];
 
   async function saveUsage(usageId: string, value: string) {
     setBusy(usageId); setError(''); setNotice('');
     try {
       const option = options.find((item) => JSON.stringify([item.providerId, item.modelId]) === value);
+      if (!data || !runtime || (value && !option)) throw new Error('模型目录不可用，请重新加载后选择');
       await bindUsage(usageId, { providerId: option?.providerId ?? null, modelId: option?.modelId ?? null });
-      await load(); setNotice('用途绑定已保存；采用该用途的链路将在下一次调用时生效。');
+      const readback = (await load()).usages.bindings.find((item) => item.usageId === usageId);
+      if (!readback || (readback.providerId ?? null) !== (option?.providerId ?? null) || (readback.modelId ?? null) !== (option?.modelId ?? null)) throw new Error('保存后的用途绑定回读不一致，请重新加载核验');
+      setNotice('用途绑定已回读确认；采用该用途的链路将在下一次调用时生效。');
     } catch (cause) { setError(cause instanceof Error ? cause.message : '保存失败'); }
     finally { setBusy(null); }
   }
 
   async function bindAgent(agentId: string, usage: string) {
-    setBusy(agentId); setError('');
+    setBusy(agentId); setError(''); setNotice('');
     try {
+      if (!data || !runtime) throw new Error('模型目录不可用，请重新加载');
       await updateRuntimeAgent(agentId, { modelUsage: usage, modelProviderId: null, modelId: null }, newIdempotencyKey());
-      await load(); setNotice('链路已改为按用途自动分发，不再保留该 Agent 的模型覆盖。');
+      const agent = (await load()).snapshot.agents.find((item) => item.id === agentId);
+      if (agent?.modelBinding !== 'usage' || agent.modelUsage !== usage) throw new Error('链路配置回读不一致，请重新加载核验');
+      setNotice('链路已回读确认按用途自动分发，不再保留该 Agent 的模型覆盖。');
     } catch (cause) { setError(cause instanceof Error ? cause.message : '链路绑定失败'); }
     finally { setBusy(null); }
   }
 
   return <section className="provider-presets" aria-label="模型用途场景分发与链路绑定">
     <div className="runtime-section-head"><h2>模型用途场景分发与链路绑定</h2><span>管理员指定用途模型，链路自动遵循；学生不能自由切换。不会按模型名称猜测能力或静默换模。</span></div>
-    {error ? <p role="alert" className="qitu-field-error">{error} <button onClick={() => void load()}>重新加载</button></p> : null}
+    {error ? <p role="alert" className="qitu-field-error">{error} <button disabled={busy !== null} onClick={() => void load().catch(() => {})}>重新加载</button></p> : null}
     {notice ? <p role="status">{notice}</p> : null}
     {!data && !error ? <p role="status">正在读取真实用途配置…</p> : null}
     <div className="provider-preset-grid">{data?.usages.map((usage) => {

@@ -1,5 +1,7 @@
 # 作品展厅
 
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。作为探究成果与阶段作品的证据展示平台。
 > 学生端第 5 项（`/student/works`）。承载已发布作品、版本历程、项目证据、作品互动。
 > 责任域：Works（作品唯一写入者）。
 > 实现入口：`apps/student-center/features/works/**`、`services/api/src/modules/works`。

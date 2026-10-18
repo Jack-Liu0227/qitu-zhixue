@@ -1,5 +1,7 @@
 # 今天
 
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。
 > 学生端入口页（`/student/today`）。责任域：Projects & Learning，聚合读模型。
 > 实现入口：`apps/student-center/features/today/**`、`services/api/src/modules/platform-data`、
 > `services/api/src/modules/projects`、`services/api/src/modules/ai-tutor`。

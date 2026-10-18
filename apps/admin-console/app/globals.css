@@ -1818,3 +1818,39 @@ section[aria-label="模型用途场景分发与链路绑定"] .provider-preset s
     transition: none;
   }
 }
+
+/* Denser operational views; six overview metrics never leave an orphan row. */
+.admin-console-content { padding: 18px 20px 28px; }
+.admin-console-content:has(.settings-shell) { padding: 0 !important; }
+.admin-overview-page, .admin-statistics-page, .admin-relationships-page { gap: 16px; }
+.admin-hero-banner.admin-card { min-height: 0; padding: 14px 18px; gap: 16px; }
+.admin-hero-copy { min-width: 0; flex: 1; max-width: none; }
+.admin-hero-copy h1 { font-size: clamp(1.1rem, 1.7vw, 1.5rem); }
+.admin-hero-copy p { margin-top: 6px; font-size: .82rem; }
+.admin-hero-badges { margin-bottom: 8px; }
+.admin-hero-signals, .admin-hero-bubble { display: none; }
+.admin-hero-mascot { align-self: center; min-width: 64px; margin: 0; }
+.admin-hero-mascot .qitu-robot { filter: none; }
+.admin-overview-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; gap: 12px; }
+.admin-stat-card { padding: 14px 16px; min-width: 0; }
+.admin-stat-value { font-variant-numeric: tabular-nums; }
+.admin-settings-panels, .admin-settings-metrics, .admin-runtime-cards { gap: 16px; }
+.admin-page-header, .admin-detail-header { flex-wrap: wrap; gap: 12px; }
+.admin-page-header > *, .admin-detail-header > * { min-width: 0; }
+.admin-page-header-actions { flex-wrap: wrap; }
+.admin-governance-refresh { padding: 18px; }
+@media (max-width: 768px) {
+  .admin-console-topbar { gap: 8px; flex-wrap: wrap; }
+  .admin-console-heading { flex: 1 1 auto; gap: 8px; }
+  .admin-console-heading .eyebrow { display: none; }
+  .admin-console-identity { gap: 6px; }
+  .admin-console-identity .qitu-avatar { display: none; }
+  .admin-console-topbar .auth-logout { padding: 8px; }
+  .admin-console-content { padding: 12px !important; }
+  .admin-overview-stats, .admin-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
+  .admin-hero-banner.admin-card { padding: 12px; }
+  .admin-hero-note { display: none; }
+  .admin-stat-card { padding: 12px; }
+  .admin-stat-card-topline { flex-wrap: wrap; }
+  .admin-stat-value { font-size: 1.65rem; }
+}

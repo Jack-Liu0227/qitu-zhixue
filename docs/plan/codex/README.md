@@ -1,16 +1,32 @@
 # 自适应 PBL 调研与实施包
 
-> 状态：`proposal`。这组文档是基于现有仓库和上游项目核查形成的架构建议，不替代已评审的产品合同，也不表示功能已经实现。
+> 最新方案更新于 2026-10-19，参考 HEAD `8e8f9b4` 和本轮读取的工作区。用户有并行修改，不表示当前工作区已经验收。
+> 本次将真实 AI 实时生成设为必需能力。历史研究与完整测试仍保留原基线，不能当作最新发布证明。
 
-## 文档
+## 阅读顺序
 
-- [调研报告](./research-report.md)：Grok Search 检索记录、上游项目核查、可迁移模式和证据边界。
-- [架构方案](./architecture.md)：项目—模板—团队绑定、计划生成、回答驱动调整及权限/持久化边界。
-- [实施计划](./implementation-plan.md)：分阶段工作项、依赖、验收标准、试点与回滚门槛。
-- [光学散射与衍射领域方案](./optics-scattering-diffraction-analysis.md)：高中物理 PBL 的目标 DAG、实验模型、问答分支、动态动作协议与试点验收。
+1. [实时生成总架构](./architecture.md)：项目与团队如何绑定、三层真实生成、Runtime/SSE、证据和失败边界。
+2. [最新实施计划](./implementation-plan.md)：完成部分、依赖图、G3A/G3B 生成任务、下一批 PR 和验收。
+3. [Theme-Session-Team-IMA 细则](./theme-session-team-ima-design.md)：唯一合同、冻结角色/授权与 16 课时教案。
+4. [源码差距审计](./gap-audit-20261019.md)：最新提交增量，以及带原基线的历史发现。
+5. [光学散射与衍射方案](./optics-scattering-diffraction-analysis.md)：物理模型、实时生成分支、预测/观察/CER 和实验事件。
+6. [深度调研](./research-report.md)：Grok MCP 记录、OpenMAIC/DeepTutor 固定快照和证据限制。
+7. [验证记录](./validation-20261019.md)：分轮次记录测试、网站检查和文档检查，明确未验证项。
+8. [三线接管修复与验证](./takeover-validation-20261019.md)：本轮修复、本地干净依赖验证与剩余发布条件；不代表已经部署。
 
-## 适用范围
+## 本次变化
 
-本方案优先复用 `projects`、`learning-plan`、`mastery`、`ai-tutor` 和 `team-runtime` 的既有 owner、契约与持久化能力；不新增学生端一级导航，不替换现有 PBL 状态机，也不把上游开源项目的产品声明当作学习效果证据。
-- [Implementation gap audit](./gap-audit-20261019.md): current source, workspace contract, and change-set acceptance findings.
-- [Theme-Session-Team-IMA design delta](./theme-session-team-ima-design.md): the proposed theme-first schedule, deep team binding, and IMA knowledge-base integration mapped onto existing owners.
+- 真实 AI 生成进入大纲、课时按需展开和每轮问答，不再把模型规划写成可选增强。
+- 现有绑定扩展角色、生成用途、配置版本、技能/Schema/模型策略及知识授权；展示导师与真实调用使用同一解析结果。
+- `da18a9d` 的缺绑定拒绝立项、冻结导师恢复和 `8e8f9b4` 的 idle/ready 修复列为已有基础，不重复开发。
+- 优先完成真实角色流式生成、当前题恢复与一个单缝衍射证据闭环，再扩展完整 16 课时。
+
+## 核心决定
+
+- 复用 Projects/Learning Plan/Mastery/Tutor/Team Runtime/Works，不新增平行课程合同、PBL 状态机或问答/掌握库。
+- 先冻结教学内容、团队角色与 IMA 授权，再开放动态动作；不是先让模型自治再靠 UI 限制。
+- AI 生成候选，服务端验证并签发题目/动作。安全文本可预览，未校验的结构化块不可操作，摘要不能伪装已保存证据。
+- 回答/操作产生证据，服务端选择下一教学动作；阶段、TheoryMastered、作品通过与成长仍由 owner 写入。
+- 16 课时为 8 周 × 2 节 × 60 分钟，沿用 12 核心目标；散射/衍射不新增 TheoryMastered 目标。
+- 历史 Grok 检索无可引用来源，上游事实取自固定 commit 源码。本次架构文档更新没有重新执行外部调研或宣称学习效果。
+- 保持 AI搭档/灵感空间导航；antigravity/combined 为历史比较，不引入平行运行入口。

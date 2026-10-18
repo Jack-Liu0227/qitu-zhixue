@@ -1,16 +1,11 @@
 import { createModelRuntime, isModelRuntimeError, type ModelRuntime } from '@qitu/model-runtime';
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { adapterFor } from './model-gateway.adapters';
+import { Inject, Injectable } from '@nestjs/common';
 import { ModelGatewayError, type ModelGatewayErrorCode } from './model-gateway.errors';
 import {
-  DEFAULT_COMPLETION_TIMEOUT_MS,
-  MAX_COMPLETION_RESPONSE_BYTES,
-  MAX_COMPLETION_TIMEOUT_MS,
   type ModelCompletionRequest,
   type ModelCompletionResult,
   type ModelRuntimeModelSelection,
   type ModelRuntimeResolver,
-  type ModelRuntimeTarget,
   type ModelStreamEvent,
 } from './model-gateway.types';
 
@@ -20,32 +15,9 @@ import {
  */
 export const MODEL_RUNTIME_RESOLVER = Symbol('MODEL_RUNTIME_RESOLVER');
 
-/**
- * Runtime `ModelGateway`：业务模块真正调用 LLM 的**唯一**入口。
- *
- * 分层：
- * ```
- *   业务（AI搭档 / 成长 / 知识库）   ← 只依赖本类，拿不到密钥
- *        │  complete(usageId, { messages })
- *        ▼
- *   ModelGateway（resolve + 超时 + 取消 + 脱敏 + 归一化）
- *        │  resolveRuntimeTarget(usageId)  → 含明文凭证（仅本类可见）
- *        ▼
- *   ProviderAdapter（openai-completions / openai-responses / anthropic-messages）
- * ```
- *
- * 安全边界：
- * - 明文凭证只在本类内用于构造鉴权头，**绝不**进入返回值、日志或错误；
- * - 上游 HTTP 失败只暴露状态码，正文丢弃，避免夹带密钥 / 用户内容；
- * - 错误统一为 {@link ModelGatewayError}，业务方按 `code` 分支。
- *
- * 本任务只交付**非流式** `complete`；`stream` 已预留事件形状但**未接线**，
- * 并在调用时抛 `MODEL_STREAM_NOT_IMPLEMENTED`，绝不假装支持流式。也**尚未**
- * 接入 AI搭档 / 成长 / 知识库任何业务（见 `docs/admin/model-registry.md` §8）。
- */
+/** The server-owned model registry is resolved only by the shared native runtime. */
 @Injectable()
 export class ModelGateway {
-  private readonly logger = new Logger(ModelGateway.name);
   private readonly runtime: ModelRuntime;
 
   constructor(@Inject(MODEL_RUNTIME_RESOLVER) private readonly resolver: ModelRuntimeResolver) {
@@ -92,76 +64,4 @@ export class ModelGateway {
       else if (event.type === 'error') yield event;
     }
   }
-}
-
-export function runtimeEngine(): 'qitu' {
-  return 'qitu';
-}
-
-function assertRequest(request: ModelCompletionRequest): void {
-  if (!Array.isArray(request.messages) || request.messages.length === 0) {
-    throw new ModelGatewayError('MODEL_REQUEST_INVALID', '至少需要一条消息');
-  }
-  for (const message of request.messages) {
-    if (message.role !== 'system' && message.role !== 'user' && message.role !== 'assistant') {
-      throw new ModelGatewayError('MODEL_REQUEST_INVALID', `未知的消息角色：${String(message.role)}`);
-    }
-    if (typeof message.content !== 'string') {
-      throw new ModelGatewayError('MODEL_REQUEST_INVALID', '消息内容必须是字符串');
-    }
-  }
-}
-
-/** 把调用方超时收敛到 [1, MAX] 区间；缺省用默认值。 */
-function clampTimeout(value: number | undefined): number {
-  if (value === undefined || !Number.isFinite(value)) return DEFAULT_COMPLETION_TIMEOUT_MS;
-  return Math.min(Math.max(Math.trunc(value), 1), MAX_COMPLETION_TIMEOUT_MS);
-}
-
-/** 读取响应体并解析 JSON，带大小上限，失败信息不含正文。 */
-async function readJson(response: Response): Promise<unknown> {
-  let text: string;
-  try {
-    text = await response.text();
-  } catch {
-    throw new ModelGatewayError('MODEL_RESPONSE_INVALID', '读取模型网关响应失败', {
-      retryable: true,
-    });
-  }
-  if (text.length > MAX_COMPLETION_RESPONSE_BYTES) {
-    throw new ModelGatewayError('MODEL_RESPONSE_INVALID', '模型网关响应过大，已中止');
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new ModelGatewayError('MODEL_RESPONSE_INVALID', '模型网关响应不是合法 JSON');
-  }
-}
-
-/**
- * 区分「调用方取消」与「超时」，两者都是 AbortError，但语义与可重试性不同。
- * 消息与 cause 都不带 URL / 请求头，避免泄露凭证。
- */
-function translateTransportError(
-  error: unknown,
-  callerSignal: AbortSignal | undefined,
-  timeoutMs: number,
-): ModelGatewayError {
-  // 先看调用方信号：只要它已中止，就归因为调用方取消。
-  if (callerSignal?.aborted === true) {
-    return new ModelGatewayError('MODEL_REQUEST_ABORTED', '模型调用已被调用方取消');
-  }
-  // 注意：Node 的 `AbortSignal.timeout` 以 `TimeoutError` 中止，而手动
-  // `abort()` 是 `AbortError`，两者都要归到超时。
-  const name = error instanceof Error ? error.name : '';
-  if (name === 'AbortError' || name === 'TimeoutError') {
-    return new ModelGatewayError(
-      'MODEL_REQUEST_TIMEOUT',
-      `模型调用超时（${timeoutMs}ms）`,
-      { retryable: true },
-    );
-  }
-  return new ModelGatewayError('MODEL_TRANSPORT_ERROR', '无法连接模型网关', {
-    retryable: true,
-  });
 }

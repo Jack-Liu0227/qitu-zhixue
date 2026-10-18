@@ -1,7 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
-import { Avatar, GreetingBanner, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
+import { Avatar, GreetingBanner, RobotMascot, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -75,15 +75,7 @@ function InspirationIcon() {
 }
 
 function TutorIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="7.5" width="16" height="11" rx="3" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="9.2" cy="12.6" r="1.2" fill="currentColor" />
-      <circle cx="14.8" cy="12.6" r="1.2" fill="currentColor" />
-      <path d="M9.2 16.2h5.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 7.5V5.8M9.5 3.8h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  return <RobotMascot size={22} decorative />;
 }
 
 function ProjectsIcon() {
@@ -211,7 +203,7 @@ function toInternalPath(pathname: string): string {
  * shell's own header, next to the student's name, so the current student is
  * always identifiable and the control never overlaps the banner.
  */
-function StudentIdentityHeader({ onToggleNav, navExpanded }: { onToggleNav?: () => void; navExpanded: boolean }) {
+function StudentIdentityHeader({ onToggleNav, navExpanded, showGreeting }: { onToggleNav?: () => void; navExpanded: boolean; showGreeting: boolean }) {
   const user = useCurrentUser();
   const name = user?.displayName?.trim() ?? '';
   const displayName = name.length > 0 ? name : '同学';
@@ -243,14 +235,15 @@ function StudentIdentityHeader({ onToggleNav, navExpanded }: { onToggleNav?: () 
         <PreferencesMenu />
         <LogoutButton />
       </div>
-      <GreetingBanner
+      {showGreeting ? <GreetingBanner
         studentName={displayName}
         message={
           name.length > 0
             ? '准备好开始今天的学习了吗？'
             : '欢迎来到启途智学，开始今天的学习吧。'
         }
-      />
+        mascot={<RobotMascot size={52} decorative />}
+      /> : null}
     </div>
   );
 }
@@ -313,7 +306,8 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
     <StudentShell
       navItems={NAV_ITEMS}
       activeHref={active ? `${BASE_PATH}${active.path}` : ''}
-      header={<StudentIdentityHeader onToggleNav={toggleNav} navExpanded={!collapsed} />}
+      header={<StudentIdentityHeader onToggleNav={toggleNav} navExpanded={!collapsed} showGreeting={internalPath === '/today' || internalPath === '/'} />}
+      className={internalPath === '/tutor' || internalPath.startsWith('/tutor/') ? 'is-tutor-workspace' : ''}
       renderLink={renderNavLink}
       navCollapsed={collapsed}
       onToggleNav={toggleNav}

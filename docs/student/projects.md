@@ -1,5 +1,7 @@
 # 我的项目
 
+> 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
+> 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。以项目为载体推进探究证据链沉淀。
 > 学生端第 4 项（`/student/projects`，详情 `/student/projects/[projectId]`）。
 > Projects & Learning 是项目状态的**唯一写入者**（ADR 0002）。
 > 实现入口：`apps/student-center/features/projects/**`、
