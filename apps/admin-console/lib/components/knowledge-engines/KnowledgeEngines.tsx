@@ -499,9 +499,6 @@ export function KnowledgeEngines({
                 >
                   检查环境与连接
                 </button>
-                <Link href={`/settings/tools?knowledgeEngine=${encodeURIComponent(instanceId)}`}>
-                  JSON 配置 ↗
-                </Link>
               </div>
               <p className={styles.caption}>
                 {dirty

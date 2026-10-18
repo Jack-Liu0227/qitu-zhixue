@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import {
   centerRequest,
@@ -452,9 +451,6 @@ export function RemoteEngineSettings({
                 .map(renderField)}
             </div>
             <div className={styles.formFooter}>
-              <Link href={`/settings/tools?knowledgeEngine=${encodeURIComponent(instanceId)}`}>
-                前往 JSON 配置 ↗
-              </Link>
               <button
                 className={styles.primary}
                 onClick={() => void save()}
