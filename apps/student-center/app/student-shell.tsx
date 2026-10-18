@@ -2,7 +2,7 @@
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
 import { Avatar, GreetingBanner, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
-import { EyecareQuickButton, PreferencesMenu } from '@qitu/ui/preferences';
+import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -240,7 +240,6 @@ function StudentIdentityHeader({ onToggleNav, navExpanded }: { onToggleNav?: () 
           <span className="qitu-student-account-label">当前学生</span>
           <span className="qitu-student-account-name">{displayName}</span>
         </span>
-        <EyecareQuickButton />
         <PreferencesMenu />
         <LogoutButton />
       </div>

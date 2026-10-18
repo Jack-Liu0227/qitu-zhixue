@@ -13,7 +13,7 @@ export const PREFERENCE_FONT_SIZES = ['sm', 'md', 'lg'] as const;
 export type FontSizePreference = (typeof PREFERENCE_FONT_SIZES)[number];
 
 /** 允许的主题预设。每个 id 必须对应设计令牌里的主题预设。 */
-export const PREFERENCE_THEMES = ['default', 'focus', 'calm', 'eyecare'] as const;
+export const PREFERENCE_THEMES = ['default', 'focus', 'calm'] as const;
 export type ThemePreference = (typeof PREFERENCE_THEMES)[number];
 
 /** 服务端存储并经四端共用的偏好快照。 */

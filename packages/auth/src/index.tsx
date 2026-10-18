@@ -12,8 +12,7 @@ import { OfflineBanner } from '@qitu/ui';
 
 // 本地一键预览开关：脚本里设置 NEXT_PUBLIC_DEV_BYPASS_AUTH=1 时跳过真实登录。
 // 生产构建不会设置该变量，行为不受影响。
-declare const process: { env?: Record<string, string | undefined> } | undefined;
-const DEV_BYPASS_AUTH = typeof process !== 'undefined' && process?.env?.NEXT_PUBLIC_DEV_BYPASS_AUTH === '1';
+const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === '1';
 
 export type AuthState = 'anonymous' | 'authenticated' | 'refreshing';
 
