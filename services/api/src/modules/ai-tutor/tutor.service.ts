@@ -1272,7 +1272,25 @@ export class TutorService {
     const partner = this.workspace === undefined
       ? this.contextReader.partner
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
-    const effectiveRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAgentRuntime(partner.id);
+    // Team phase routing returns an admin assistant id (for example tutor-leader),
+    // while the runtime registry may use its compatibility id (qitu-learning-partner).
+    // Resolve the configured runtime from the routed assistant so model selection
+    // follows the same mentor that authored the turn.
+    let effectiveRuntime: Awaited<ReturnType<NonNullable<typeof this.platformRegistry>['getAgentRuntime']>> | null = null;
+    if (this.platformRegistry !== undefined) {
+      const runtimeCandidates = [...new Set([
+        ...runtimeAgentIdsFor(conversationAssistantId),
+        partner.id,
+      ])];
+      for (const runtimeAgentId of runtimeCandidates) {
+        try {
+          effectiveRuntime = await this.platformRegistry.getAgentRuntime(runtimeAgentId);
+          break;
+        } catch {
+          // Intake or legacy assistants may not have a dedicated runtime row.
+        }
+      }
+    }
     if (effectiveRuntime !== null) {
       partner.displayName = effectiveRuntime.agent.label;
       partner.roleDefinition = effectiveRuntime.agent.roleDefinition;

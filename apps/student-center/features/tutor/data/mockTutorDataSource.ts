@@ -87,6 +87,12 @@ export class MockTutorDataSource implements TutorDataSource {
     return MOCK_PROJECT_CONTEXT;
   }
 
+  async getExplorationContext(_explorationId: string): Promise<TutorProjectContext | null> {
+    await this.delay();
+    this.assertReadable();
+    return { ...MOCK_PROJECT_CONTEXT, project: null };
+  }
+
   async confirmExploration(
     explorationId: string,
     draft: { goal: string; interest: string; templateVersionId?: string },

@@ -89,9 +89,16 @@ export class TutorApiDataSource implements TutorDataSource {
     return this.fetchProjectContext(projectId);
   }
 
-  private async fetchProjectContext(projectId?: string): Promise<TutorProjectContext | null> {
-    const query = projectId === undefined ? '' : `?projectId=${encodeURIComponent(projectId)}`;
-    const response = await this.fetchJson(`/api/v1/tutor/project-context${query}`, '项目信息加载失败');
+  async getExplorationContext(explorationId: string): Promise<TutorProjectContext | null> {
+    return this.fetchProjectContext(undefined, explorationId);
+  }
+
+  private async fetchProjectContext(projectId?: string, explorationId?: string): Promise<TutorProjectContext | null> {
+    const params = new URLSearchParams();
+    if (projectId !== undefined) params.set('projectId', projectId);
+    if (explorationId !== undefined) params.set('explorationId', explorationId);
+    const query = params.toString() === '' ? '' : '?' + params.toString();
+    const response = await this.fetchJson('/api/v1/tutor/project-context' + query, '项目信息加载失败');
     const data = unwrapData(response);
     if (data === null) return null;
     if (!isTutorProjectContext(data)) {

@@ -127,13 +127,20 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
 
     const load = async () => {
       try {
-        const hasExplicitExploration =
-          new URLSearchParams(window.location.search).has('explorationId') ||
+        const explicitExplorationId = new URLSearchParams(window.location.search).get('explorationId');
+        const hasExplicitExploration = explicitExplorationId !== null ||
           new URLSearchParams(window.location.search).has('new');
 
         if (projectId === undefined && hasExplicitExploration) {
-          setProject(null);
-          setProjectStatus('empty');
+          if (explicitExplorationId === null) {
+            setProject(null);
+            setProjectStatus('empty');
+            return;
+          }
+          const context = await dataSource.getExplorationContext(explicitExplorationId);
+          if (cancelled || generation !== projectLoadGenerationRef.current) return;
+          setProject(context);
+          setProjectStatus(context === null ? 'empty' : 'ready');
           return;
         }
         if (projectId !== undefined) {
