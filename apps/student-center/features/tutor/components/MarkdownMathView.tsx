@@ -1,40 +1,20 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import katex from 'katex';
-
-/**
- * Enhanced LaTeX with semantic physics colors:
- * - W (Work): Blue #2563eb
- * - Ek / ΔEk (Kinetic Energy): Purple #9333ea
- * - m (Mass): Emerald #16a34a
- * - v (Velocity): Orange #ea580c
- */
-function enhanceKineticFormula(latex: string): string {
-  if (latex.includes('\\color')) return latex;
-  if (!latex.includes('E_k') && !latex.includes('mv') && !latex.includes('W')) return latex;
-
-  return latex
-    .replace(/W_\{?\\text\{合\}\}?/g, '{\\color{#2563eb}W_{\\text{合}}}')
-    .replace(/\\Delta E_k/g, '{\\color{#9333ea}\\Delta E_k}')
-    .replace(/E_k/g, '{\\color{#9333ea}E_k}')
-    .replace(/(?<![a-zA-Z\\])m(?![a-zA-Z])/g, '{\\color{#16a34a}m}')
-    .replace(/v_([12])/g, '{\\color{#ea580c}v_$1}')
-    .replace(/(?<![a-zA-Z\\])v(?![a-zA-Z_0-9])/g, '{\\color{#ea580c}v}');
-}
+import { MermaidView } from './MermaidView';
 
 function renderKaTeX(latex: string, displayMode: boolean): string {
   if (latex.length > 4096) {
     return `<span class="katex-fallback">${latex}</span>`;
   }
   try {
-    const formatted = enhanceKineticFormula(latex.trim());
-    return katex.renderToString(formatted, {
+    return katex.renderToString(latex.trim(), {
       displayMode,
       throwOnError: false,
       output: 'htmlAndMathml',
       trust: false,
-      strict: 'warn',
+      strict: 'ignore',
       errorColor: '#b42318',
     });
   } catch {
@@ -43,26 +23,87 @@ function renderKaTeX(latex: string, displayMode: boolean): string {
 }
 
 /**
- * KaTeX powered Markdown & Math renderer for PBL tutor.
+ * Enhanced KaTeX & Markdown & Mermaid renderer for PBL tutor.
  * Supports:
- * - Block math: $$ ... $$
- * - Inline math: $ ... $
- * - Colorized physics variables (W, m, v, Ek)
- * - Variable explanation badge legend
+ * - Mermaid diagrams: ```mermaid ... ```
+ * - Code blocks: ```language ... ```
+ * - Block math: $$ ... $$ and \[ ... \]
+ * - Inline math: $ ... $ and \( ... \)
+ * - Rich markdown: bold, inline code, ordered/unordered lists, paragraphs
  */
 export function MarkdownMathView({ content }: { content: string }) {
   if (!content) return null;
 
-  // Split content by block math $$ ... $$
-  const parts = content.split(/(\$\$[\s\S]*?\$\$)/g);
+  // Split content by mermaid blocks, code blocks, and block math ($$ ... $$ or \[ ... \])
+  const blockRegex = /(```mermaid[\s\S]*?```|```[a-zA-Z0-9_-]*[\s\S]*?```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
+  const parts = content.split(blockRegex);
 
   return (
     <div className="qitu-markdown-math-content" style={{ fontSize: '14.5px', lineHeight: 1.75, color: 'inherit' }}>
       {parts.map((part, index) => {
-        if (part.startsWith('$$') && part.endsWith('$$')) {
-          const rawMath = part.slice(2, -2).trim();
+        if (!part) return null;
+
+        // 1. Mermaid code block
+        if (part.startsWith('```mermaid') && part.endsWith('```')) {
+          const code = part.replace(/^```mermaid\s*/i, '').replace(/```$/, '').trim();
+          return <MermaidView key={index} code={code} />;
+        }
+
+        // 2. Generic code block
+        if (part.startsWith('```') && part.endsWith('```')) {
+          const match = part.match(/^```([a-zA-Z0-9_-]*)\s*([\s\S]*?)```$/);
+          const lang = match ? match[1] : '';
+          const code = match ? match[2].trim() : part.slice(3, -3).trim();
+          return (
+            <div
+              key={index}
+              style={{
+                margin: '12px 0',
+                borderRadius: '8px',
+                background: '#0f172a',
+                color: '#f8fafc',
+                overflow: 'hidden',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              {lang ? (
+                <div
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    background: '#1e293b',
+                    borderBottom: '1px solid #334155',
+                    textTransform: 'uppercase',
+                    fontFamily: 'JetBrains Mono, Consolas, monospace',
+                  }}
+                >
+                  {lang}
+                </div>
+              ) : null}
+              <pre
+                style={{
+                  margin: 0,
+                  padding: '12px 16px',
+                  fontSize: '13px',
+                  fontFamily: 'JetBrains Mono, Consolas, monospace',
+                  overflowX: 'auto',
+                  lineHeight: 1.6,
+                }}
+              >
+                <code>{code}</code>
+              </pre>
+            </div>
+          );
+        }
+
+        // 3. Block Math: $$ ... $$ or \[ ... \]
+        if (
+          (part.startsWith('$$') && part.endsWith('$$')) ||
+          (part.startsWith('\\[') && part.endsWith('\\]'))
+        ) {
+          const rawMath = part.startsWith('$$') ? part.slice(2, -2).trim() : part.slice(2, -2).trim();
           const html = renderKaTeX(rawMath, true);
-          const isKinetic = rawMath.includes('E_k') || rawMath.includes('mv') || rawMath.includes('W');
 
           return (
             <div
@@ -81,40 +122,11 @@ export function MarkdownMathView({ content }: { content: string }) {
                 dangerouslySetInnerHTML={{ __html: html }}
                 style={{ textAlign: 'center', fontSize: '18px', padding: '6px 0' }}
               />
-
-              {isKinetic && (
-                <div
-                  style={{
-                    marginTop: '10px',
-                    paddingTop: '8px',
-                    borderTop: '1px dashed #cbd5e1',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    fontSize: '11.5px',
-                  }}
-                >
-                  <span style={{ color: '#64748b', fontWeight: 600 }}>变量色彩导读：</span>
-                  <span style={{ color: '#1d4ed8', fontWeight: 600, background: '#eff6ff', padding: '2px 8px', borderRadius: '4px' }}>
-                    ● W 做功 (力与位移累积)
-                  </span>
-                  <span style={{ color: '#7e22ce', fontWeight: 600, background: '#faf5ff', padding: '2px 8px', borderRadius: '4px' }}>
-                    ● ΔEk 动能改变量
-                  </span>
-                  <span style={{ color: '#15803d', fontWeight: 600, background: '#f0fdf4', padding: '2px 8px', borderRadius: '4px' }}>
-                    ● m 质量 (线性影响)
-                  </span>
-                  <span style={{ color: '#c2410c', fontWeight: 600, background: '#fff7ed', padding: '2px 8px', borderRadius: '4px' }}>
-                    ● v 速度 (平方倍增影响)
-                  </span>
-                </div>
-              )}
             </div>
           );
         }
 
+        // 4. Regular markdown paragraphs / lists
         return <MarkdownParagraph key={index} text={part} />;
       })}
     </div>
@@ -168,14 +180,20 @@ function MarkdownParagraph({ text }: { text: string }) {
 }
 
 function InlineRichText({ text }: { text: string }) {
-  // Parse inline math ($...$), code (`...`), bold (**...**)
-  const tokens = text.split(/(\$[^$\n]+?\$|`[^`\n]+?`|\*\*[^*]+?\*\*)/g);
+  // Parse inline math ($...$ or \(...\)), code (`...`), bold (**...**)
+  const tokens = text.split(/(\$[^$\n]+?\$|\\\([\s\S]+?\\\)|`[^`\n]+?`|\*\*[^*]+?\*\*)/g);
 
   return (
     <>
       {tokens.map((token, idx) => {
-        if (token.startsWith('$') && token.endsWith('$') && token.length > 2) {
-          const rawMath = token.slice(1, -1);
+        if (!token) return null;
+
+        // Inline math ($...$ or \(...\))
+        if (
+          (token.startsWith('$') && token.endsWith('$') && token.length > 2) ||
+          (token.startsWith('\\(') && token.endsWith('\\)') && token.length > 4)
+        ) {
+          const rawMath = token.startsWith('$') ? token.slice(1, -1) : token.slice(2, -2);
           const html = renderKaTeX(rawMath, false);
           return (
             <span
@@ -190,6 +208,7 @@ function InlineRichText({ text }: { text: string }) {
           );
         }
 
+        // Inline code (`...`)
         if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
           const code = token.slice(1, -1);
           return (
@@ -209,6 +228,7 @@ function InlineRichText({ text }: { text: string }) {
           );
         }
 
+        // Bold (**...**)
         if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
           const bold = token.slice(2, -2);
           return (

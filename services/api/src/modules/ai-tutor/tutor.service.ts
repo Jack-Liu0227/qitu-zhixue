@@ -920,15 +920,21 @@ export class TutorService {
       return this.getOrCreateSession(projectId, ownerId, explorationId);
     }
     const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : `session-${projectId}`;
-    const existing = await this.store.findById(sessionId);
+    let existing = await this.store.findById(sessionId);
     if (existing !== null) {
       assertOwnedBy(existing, ownerId);
+      if (projectId !== null && existing.turns.length === 0) {
+        existing = await this.ensureOpeningTurn(existing, projectId, ownerId);
+      }
       return this.hydrate(existing);
     }
     if (projectId !== null) {
-      const projectSession = await this.store.findByProject(projectId);
+      let projectSession = await this.store.findByProject(projectId);
       if (projectSession !== null) {
         assertOwnedBy(projectSession, ownerId);
+        if (projectSession.turns.length === 0) {
+          projectSession = await this.ensureOpeningTurn(projectSession, projectId, ownerId);
+        }
         return this.hydrate(projectSession);
       }
     }
@@ -944,7 +950,7 @@ export class TutorService {
       source,
       createdAt,
     });
-    const record = this.hydrate({
+    let snapshot: TutorSessionSnapshot = {
       sessionId,
       ownerId,
       projectId,
@@ -953,7 +959,11 @@ export class TutorService {
       createdAt,
       lastSeq: 0,
       turns: [],
-    });
+    };
+    if (projectId !== null) {
+      snapshot = await this.ensureOpeningTurn(snapshot, projectId, ownerId);
+    }
+    const record = this.hydrate(snapshot);
     await this.commitAudit({
       sessionId: record.sessionId,
       projectId: record.projectId,
@@ -962,6 +972,102 @@ export class TutorService {
       detail: projectId === null ? '学生开启自由探索会话' : '学生开启 AI搭档会话',
     });
     return record;
+  }
+
+  private async ensureOpeningTurn(
+    snapshot: TutorSessionSnapshot,
+    projectId: string,
+    ownerId: string,
+  ): Promise<TutorSessionSnapshot> {
+    if (snapshot.turns.length > 0) return snapshot;
+    let projectContext: TutorProjectContext | null = null;
+    try {
+      projectContext = await this.getProjectContext(projectId, ownerId);
+    } catch {
+      return snapshot;
+    }
+    if (!projectContext) return snapshot;
+
+    const tplId = projectContext.project.templateVersionId ?? '';
+    const title = projectContext.project.title ?? '';
+    const isOptics =
+      tplId.startsWith('tplv-8931f') ||
+      tplId.includes('optics') ||
+      title.includes('光');
+
+    if (!isOptics) return snapshot;
+
+    const leaderName = projectContext.team.assistantName || '物理总导师';
+    const leaderId = projectContext.team.assistantId || 'optics-leader';
+    const leaderAvatar = projectContext.team.assistantAvatar || '🌈';
+
+    const openingBlocks: TutorReplyBlock[] = [
+      {
+        kind: 'pbl_card',
+        phase: 'exploration',
+        title: '探究光的路径：从反射定律到透镜成像',
+        teammateLabel: `${leaderName} · 启途物理光学团队`,
+        summary: '共 16 课时深度探究：从生活光影发问、定律推导与概念掌握，到狭缝衍射与微粒散射物理仿真实验，最终完成科学探究报告与答辩。',
+        tags: ['物理光学', '几何光学', '波动光学', '16课时完整探究'],
+        actionLabel: '开启第 1 课时',
+      },
+      {
+        kind: 'text',
+        text: `同学你好！欢迎来到**「探究光的路径：从反射定律到透镜成像」**项目式学习！\n\n我是你的${leaderName}。整个项目我们为你配备了专属的导师团队：\n- 🌈 **物理总导师**：陪伴你从日常现象发现问题、确立探究计划；\n- 🔦 **概念教练**：引导你推导光的反射、折射、全反射定律与透镜成像公式；\n- 🔬 **仿真向导**：在掌握理论后带你搭建虚拟光路，开展单缝衍射与微粒散射实验；\n- 🎖️ **评审导师**：指导你组织 CER 证据链，完成项目答辩与素养档案归档。\n\n在开启第 1 课时前，你能先告诉我：你在生活中见过的哪些光影现象最让你感到好奇？比如雨后彩虹、水中的倒影，还是玻璃杯里折断的筷子？`,
+      },
+      {
+        kind: 'board',
+        boardId: 'optics-curriculum-overview',
+        title: '16 课时探究路线图',
+        steps: [
+          {
+            caption: '探究路线全览：从生活经验发问，进阶到科学定量实验与答辩',
+            mermaid: `graph TD
+  A["Phase 1: Exploration (Sessions 1-2)"] --> B["Phase 2: Concept Mastery (Sessions 3-8)"]
+  B --> C["Phase 3: Guided Practice (Sessions 9-14)"]
+  C --> D["Phase 4: Deliverable Review (Sessions 15-16)"]`,
+          },
+        ],
+      },
+    ];
+
+    const openingTurn: TutorTurnRecord = {
+      turnId: `${snapshot.sessionId}:assistant:1`,
+      role: 'assistant',
+      seq: 1,
+      createdAt: new Date().toISOString(),
+      stageBefore: 'exploration',
+      stageAfter: 'exploration',
+      pedagogicMove: 'hint',
+      hintLevel: 1,
+      expectedEvidence: '提出对生活光影现象的好奇与观察思考',
+      promptVersion: this.contextReader.partner.promptVersion,
+      evidenceRef: null,
+      modality: 'text',
+      author: {
+        assistantId: leaderId,
+        name: leaderName,
+        role: 'leader',
+        avatar: leaderAvatar,
+      },
+      blocks: openingBlocks,
+    };
+
+    try {
+      await this.store.appendTurns({
+        sessionId: snapshot.sessionId,
+        expectedLastSeq: 0,
+        newLastSeq: 1,
+        turns: [openingTurn],
+      });
+      return {
+        ...snapshot,
+        lastSeq: 1,
+        turns: [openingTurn],
+      };
+    } catch {
+      return snapshot;
+    }
   }
 
   /**

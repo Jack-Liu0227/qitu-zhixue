@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MarkdownMathView } from './MarkdownMathView';
+import { MermaidView } from './MermaidView';
 
 type BoardStep = { caption: string; mermaid?: string; tex?: string; svg?: string };
 
@@ -15,7 +16,7 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
       <p className="qitu-board-caption">{step.caption}</p>
       <div className="qitu-board-canvas">
         {step.tex ? <MarkdownMathView content={`$$${step.tex}$$`} /> : null}
-        {step.mermaid ? <MermaidFallback source={step.mermaid} /> : null}
+        {step.mermaid ? <MermaidView code={step.mermaid} /> : null}
         {step.svg ? <SafeSvg source={step.svg} /> : null}
       </div>
       <footer className="qitu-board-footer">
@@ -24,11 +25,6 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
       </footer>
     </section>
   );
-}
-
-function MermaidFallback({ source }: { source: string }) {
-  const lines = source.split('\n').map((line) => line.trim()).filter(Boolean);
-  return <div className="qitu-board-mermaid-fallback" role="img" aria-label="Mermaid 图示的结构化文本降级"><strong>图示结构</strong><ol>{lines.slice(0, 40).map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ol><small>当前环境未加载 Mermaid 渲染器，已安全降级为只读结构化文本。</small></div>;
 }
 
 function SafeSvg({ source }: { source: string }) {

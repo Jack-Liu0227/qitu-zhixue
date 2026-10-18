@@ -2,9 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { AdminSettingsRegistry, AdminSettingsRegistryItem } from '@qitu/contracts';
 
 /**
- * 设置页路由清单。总览自身也是一个设置路由，因此完整清单应有 19 项：
- * 18 个设置目录 + `/settings` 总览。AI 运行时已拆分到助手、团队、模型、技能和工具页，
- * 不再作为独立设置入口展示。
+ * 设置页路由清单。总览自身也是一个设置路由，完整清单应有 18 项：
+ * 17 个设置目录 + `/settings` 总览。模型配置已完全收拢至 model-providers（模型接入）。
  */
 export const ADMIN_SETTINGS_ROUTE_MANIFEST = [
   'about',
@@ -16,7 +15,6 @@ export const ADMIN_SETTINGS_ROUTE_MANIFEST = [
   'feishu',
   'knowledge',
   'model-providers',
-  'models',
   'ops',
   'plugins',
   'profile-growth',
@@ -52,10 +50,6 @@ const REGISTRY: AdminSettingsRegistry = [
   {
     id: 'model-providers', href: '/settings/model-providers', group: 'AI 核心架构', icon: '◈', title: '模型接入与通道', label: '模型接入',
     description: '管理供应商网关、凭证、通道与模型目录。', accent: 'blue', badgeKind: 'static', order: 50,
-  },
-  {
-    id: 'models', href: '/settings/models', group: 'AI 核心架构', icon: '◉', title: '模型接入与通道', label: '模型接入 (兼容跳转)',
-    description: '保留旧书签兼容，模型目录统一在模型接入与通道中维护。', accent: 'blue', badgeKind: 'static', order: 60,
   },
   {
     id: 'skills', href: '/settings/skills', group: 'AI 核心架构', icon: 'ϟ', title: '技能中心', label: '技能中心',

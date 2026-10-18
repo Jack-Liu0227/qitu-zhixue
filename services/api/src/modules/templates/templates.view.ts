@@ -74,13 +74,13 @@ export function toTemplateVersionGovernanceView(
   };
 }
 
-/** 取已发布版本里版本号最大者作为「当前版本」。 */
+/** 取已发布或试点版本里版本号最大者作为「当前版本」。 */
 export function latestPublishedVersionId(
   versions: ProjectTemplateVersionRecord[],
 ): string | null {
   let latest: ProjectTemplateVersionRecord | null = null;
   for (const version of versions) {
-    if (version.status !== 'published') continue;
+    if (version.status !== 'published' && version.status !== 'piloting') continue;
     if (latest === null || version.createdAt.getTime() >= latest.createdAt.getTime()) {
       latest = version;
     }
