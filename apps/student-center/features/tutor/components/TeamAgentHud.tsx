@@ -65,7 +65,7 @@ export function TeamAgentHud({
       />
     );
   }
-  if (status === 'empty' || graph === null || graph.agents.length === 0) {
+  if (status === 'empty' || graph === null || !Array.isArray(graph.agents) || graph.agents.length === 0) {
     return (
       <div className="qitu-tutor-state-panel" role="status">
         <strong>暂无团队智能体投影</strong>
@@ -78,11 +78,11 @@ export function TeamAgentHud({
     <section className="qitu-tutor-team-hud" aria-label="团队智能体">
       <div className="qitu-tutor-team-summary">
         <div className="qitu-tutor-team-summary-mark" aria-hidden="true">
-          {graph.team.assistantAvatar ?? '👥'}
+          {graph.team?.assistantAvatar ?? '👥'}
         </div>
         <div className="qitu-tutor-team-summary-copy">
-          <strong>{graph.team.teamName ?? graph.team.assistantName}</strong>
-          <span>{graph.agents.length} 位智能体 · {graph.team.assistantName} 接管当前对话</span>
+          <strong>{graph.team?.teamName ?? graph.team?.assistantName ?? '导师团队'}</strong>
+          <span>{graph.agents.length} 位智能体 · {graph.team?.assistantName ?? '导师'} 接管当前对话</span>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export function TeamAgentHud({
                 onClick={() => setExpandedAgentId(expanded ? null : agent.slotId)}
               >
                 <span className="qitu-tutor-agent-avatar" style={{ borderColor: agent.color ?? '#cbd5e1' }}>
-                  {agent.avatar ?? agent.name.slice(0, 1)}
+                  {agent.avatar ?? (typeof agent.name === 'string' && agent.name.length > 0 ? agent.name.slice(0, 1) : '导')}
                 </span>
                 <span className="qitu-tutor-agent-copy">
                   <strong>{agent.name}</strong>
@@ -123,7 +123,7 @@ export function TeamAgentHud({
 }
 
 function AgentDetails({ agent }: { agent: TutorTeamAgent }) {
-  const toolCalls = agent.toolCalls.map((call) => ({
+  const toolCalls = (Array.isArray(agent.toolCalls) ? agent.toolCalls : []).map((call) => ({
     callId: call.callId,
     name: call.name,
     label: call.label,
@@ -135,11 +135,11 @@ function AgentDetails({ agent }: { agent: TutorTeamAgent }) {
     <div className="qitu-tutor-agent-details">
       <section>
         <h4>对话摘要</h4>
-        {agent.messages.length === 0 ? (
+        {(!Array.isArray(agent.messages) || agent.messages.length === 0) ? (
           <p className="qitu-tutor-muted">当前阶段暂无可展示的对话事件。</p>
         ) : (
           <ol className="qitu-tutor-agent-messages">
-            {agent.messages.map((message) => (
+            {(Array.isArray(agent.messages) ? agent.messages : []).map((message) => (
               <li key={message.messageId}>
                 <span>{message.direction === 'outbound' ? '发出' : '收到'}</span>
                 <p>{message.summary}</p>
