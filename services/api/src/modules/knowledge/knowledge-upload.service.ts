@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { KnowledgeCenterService } from './knowledge-center.service';
 import { record } from './knowledge-center.config';
 
-export const UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
 export const UPLOAD_EXTENSIONS = [
   'pdf',
   'docx',
@@ -78,13 +78,13 @@ export function validateUpload(body: unknown) {
   )
     throw new BadRequestException({
       code: 'FILE_SIZE_LIMIT',
-      message: '文件为空、编码无效或超过 10 MiB。',
+      message: '文件为空、编码无效或超过 100 MiB。',
     });
   const bytes = Buffer.from(input.base64, 'base64');
   if (!bytes.length || bytes.length > UPLOAD_MAX_BYTES || bytes.toString('base64') !== input.base64)
     throw new BadRequestException({
       code: 'UPLOAD_INVALID',
-      message: '文件编码无效或超过 10 MiB。',
+      message: '文件编码无效或超过 100 MiB。',
     });
   return {
     fileName,

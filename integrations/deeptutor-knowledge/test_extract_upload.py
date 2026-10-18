@@ -59,6 +59,28 @@ class ExtractionTests(unittest.TestCase):
         self.assertFalse(self.parse('fake.pdf', b'not a PDF')['ok'])
         self.assertFalse(self.parse('fake.txt', b'\x00\x01binary')['ok'])
 
+    def test_100_mib_docx_boundary(self):
+        # Stored non-text assets keep this a valid large Office file while its
+        # extracted text stays below the separate text/zip expansion limits.
+        docx, expected = fixtures()['physics.docx']
+        with zipfile.ZipFile(io.BytesIO(docx)) as original:
+            files = {name: original.read(name) for name in original.namelist()}
+        def build(last_size):
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as z:
+                for name, content in files.items(): z.writestr(name, content)
+                for index in range(3): z.writestr(f'word/media/padding{index}.bin', b'x' * (25 * 1024 * 1024))
+                z.writestr('word/media/padding3.bin', b'x' * last_size)
+            return buffer.getvalue()
+        limit = 100 * 1024 * 1024
+        overhead = len(build(0))
+        data = build(limit - overhead)
+        self.assertEqual(len(data), limit)
+        result = self.parse('limit.docx', data)
+        self.assertTrue(result['ok'], result)
+        self.assertIn(expected, result['content'])
+        self.assertEqual(self.parse('oversized.docx', data + b'x')['errorCode'], 'FILE_SIZE_LIMIT')
+
     def test_limits_no_silent_truncation(self):
         self.assertEqual(self.parse('bomb.docx', archive({'word/document.xml': 'x' * (2 * 1024 * 1024)}))['errorCode'], 'ARCHIVE_LIMIT')
         self.assertEqual(self.parse('large.txt', b'x' * (5 * 1024 * 1024 + 1))['errorCode'], 'EXTRACTED_TEXT_LIMIT')

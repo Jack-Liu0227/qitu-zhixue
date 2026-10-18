@@ -8,6 +8,9 @@ async function bootstrap() {
   // Voice transcription transports a short base64 audio payload in JSON. Set
   // the limit explicitly while keeping the parser bounded for every route.
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  // A 100 MiB knowledge file expands to about 134 MiB in base64 JSON.
+  // Keep the larger request allowance scoped to the document upload endpoint.
+  app.use(/^\/api\/v1\/admin\/knowledge\/bases\/[^/]+\/uploads\/?$/, json({ limit: '140mb' }));
   app.use(json({ limit: '20mb' }));
   app.use(urlencoded({ extended: true, limit: '1mb' }));
   app.setGlobalPrefix('api/v1');

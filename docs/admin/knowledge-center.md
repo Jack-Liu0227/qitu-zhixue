@@ -18,7 +18,7 @@
 
 ## 文件与索引
 
-管理员在知识库详情上传 PDF、DOCX、XLSX、PPTX、EPUB、TXT、Markdown、CSV/TSV、JSON/XML/YAML、HTML、RST、TeX；单文件不超过 10 MiB，每批最多 20 个。旧 DOC/XLS/PPT 须先转换，扫描件须先 OCR。正文超过 5 MiB、PDF 超过 500 页、加密、损坏、无正文或展开超限会失败，不创建成员或索引任务。
+管理员在知识库详情上传 PDF、DOCX、XLSX、PPTX、EPUB、TXT、Markdown、CSV/TSV、JSON/XML/YAML、HTML、RST、TeX；单文件不超过 100 MiB，每批最多 20 个。旧 DOC/XLS/PPT 须先转换，扫描件须先 OCR。正文超过 5 MiB、PDF 超过 500 页、加密、损坏、无正文或展开超限会失败，不创建成员或索引任务。
 
 `POST /admin/knowledge/bases/:id/uploads` 使用 `{fileName,base64}` 和 `Idempotency-Key`；直接正文使用 `{title,content}`。原文件、真实校验和与正文保留；保存后异步构建索引。队列保留租约、栅栏、重试、取消、版本快照、实际校验和原子发布。失败不会替换已有有效索引。
 
@@ -41,3 +41,29 @@ LlamaIndex 使用固定 DeepTutor `6cf793bd868ba5ecbe64722936d4be8fab5a01df` 原
 设置提供改名、默认库、删除；普通本地库可选择已配置引擎，变更后清除有效索引指针、等待重建。删除为软删除，取消任务并撤销来源/连接，不删除远端原文件。有效的默认库在授权范围内优先查询。来源可手动或按 1–720 小时计划同步；worker 按分钟领取到期来源，仍经过原有预算、允许列表、审计和发布栅栏。
 
 `0034_knowledge_library.sql` 增加 `library_settings` 与 24 小时远端证据缓存。缓存按助手、知识库、连接及引擎指纹隔离，读取时再次检查权限；过期记录由 worker 清理。`tooling/verify-knowledge-library.cjs` 仅允许隔离数据库，验证真实 BGE、原生 DeepTutor 建索引/关联、多助手检索、原文、修订冲突、幂等、文件夹和撤权。
+
+### 100 MiB 文件上传部署要求
+
+部署前执行 `0035_knowledge_upload_100mb` 迁移，扩大原文件存储约束；降级迁移遇到超过 10 MiB 的现有文件会拒绝执行，不删除资料。
+
+单文件上限为 100 MiB（104,857,600 字节），包含创建知识库时选择文件与详情页添加文件。上传仍逐个发送，每批最多 20 个；正文、页数和解压限制沿用原规则。API 仅对 `/api/v1/admin/knowledge/bases/:id/uploads` 放宽 JSON 请求体至 140 MiB，容纳 Base64 的体积增长，其他 JSON 接口仍为 20 MiB。
+
+Nginx 须在通用 `/api/` 代理之外增加下列专用 location（保留现有转发头），并执行 `nginx -t` 后 reload。此路由关闭请求缓冲，避免大文件写入代理临时目录，并给上传保留足够时间；其他路由的 50 MiB 限额不变。
+
+```nginx
+location ~ ^/api/v1/admin/knowledge/bases/[^/]+/uploads/?$ {
+    client_max_body_size 140m;
+    client_body_timeout 300s;
+    proxy_request_buffering off;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_http_version 1.1;
+    proxy_pass http://127.0.0.1:4100;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```

@@ -60,7 +60,7 @@ export function KnowledgeFileUpload({
     setEntries(
       files.map((file) => {
         const supported = extensions.includes(file.name.split('.').pop()?.toLowerCase() ?? '');
-        const valid = supported && file.size > 0 && file.size <= 10 * 1024 * 1024;
+        const valid = supported && file.size > 0 && file.size <= 100 * 1024 * 1024;
         return {
           file,
           key: newIdempotencyKey(),
@@ -68,7 +68,7 @@ export function KnowledgeFileUpload({
           message: !supported
             ? '不支持此格式，请转换后上传。'
             : !valid
-              ? '文件为空或超过 10 MiB。'
+              ? '文件为空或超过 100 MiB。'
               : '等待上传',
         };
       }),
@@ -128,7 +128,7 @@ export function KnowledgeFileUpload({
           <Glyph name="upload" size={26} />
         </span>
         <strong>点击选择文件，或拖放到此处</strong>
-        <span>每批最多 20 个文件 · 单个文件不超过 10 MiB</span>
+        <span>每批最多 20 个文件 · 单个文件不超过 100 MiB</span>
       </button>
       <input
         ref={picker}

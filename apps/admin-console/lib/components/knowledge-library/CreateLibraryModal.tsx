@@ -163,8 +163,8 @@ export function CreateLibraryModal({
   }
   function pickFiles(selected: FileList | null) {
     const next = Array.from(selected ?? []);
-    if (next.length > 20 || next.some((f) => f.size <= 0 || f.size > 10 * 1024 * 1024)) {
-      setError('每批最多 20 个文件，每个文件需大于 0 且不超过 10 MiB。');
+    if (next.length > 20 || next.some((f) => f.size <= 0 || f.size > 100 * 1024 * 1024)) {
+      setError('每批最多 20 个文件，每个文件需大于 0 且不超过 100 MiB。');
       return;
     }
     setFiles(next);

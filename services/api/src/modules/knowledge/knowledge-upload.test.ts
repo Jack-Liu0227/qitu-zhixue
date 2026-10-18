@@ -26,10 +26,7 @@ test('upload validation rejects unsupported/legacy types and fields instead of t
     () => validateUpload({ ...body(), mimeType: 'application/pdf' }),
     BadRequestException,
   );
-  assert.throws(
-    () => validateUpload({ ...body(), allowMaterialize: 'yes' }),
-    BadRequestException,
-  );
+  assert.throws(() => validateUpload({ ...body(), allowMaterialize: 'yes' }), BadRequestException);
 });
 test('upload validation rejects noncanonical base64, empty and oversized bytes', () => {
   for (const base64 of ['', '!!!', 'dGVzdA', 'dGVzdA===', 'dGVzdA==\n', 'dGVzdB=='])
@@ -38,6 +35,7 @@ test('upload validation rejects noncanonical base64, empty and oversized bytes',
     () => validateUpload(body('large.txt', Buffer.alloc(UPLOAD_MAX_BYTES + 1))),
     BadRequestException,
   );
+  assert.equal(UPLOAD_MAX_BYTES, 100 * 1024 * 1024);
   assert.equal(
     validateUpload(body('limit.txt', Buffer.alloc(UPLOAD_MAX_BYTES, 65))).bytes.length,
     UPLOAD_MAX_BYTES,

@@ -13,7 +13,7 @@ import sys
 import zipfile
 
 PIN = "6cf793bd868ba5ecbe64722936d4be8fab5a01df"
-MAX_BYTES = 10 * 1024 * 1024
+MAX_BYTES = 100 * 1024 * 1024
 MAX_TEXT_BYTES = 5 * 1024 * 1024
 EXTENSIONS = {".pdf", ".docx", ".xlsx", ".pptx", ".epub", ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".xml", ".yaml", ".yml", ".html", ".htm", ".rst", ".tex"}
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     try:
         resource.setrlimit(resource.RLIMIT_AS, (1536 * 1024 * 1024,) * 2)
         resource.setrlimit(resource.RLIMIT_CPU, (45, 45))
-        request = json.loads(sys.stdin.read(15 * 1024 * 1024))
+        request = json.loads(sys.stdin.read(140 * 1024 * 1024))
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             result = extract(request)
     except ImportError:
