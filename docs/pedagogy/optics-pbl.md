@@ -19,17 +19,19 @@ ADR 0006）的模板内容，**不写任何 seed SQL**，内容只能经治理�
 | `opt-theory-tir`        | `optics.tir.critical_angle` | `memory`      | 全反射条件与临界角 `sinC = n₂/n₁`    |
 | `opt-theory-lens`       | `optics.lens.ray_rules`     | `procedure`   | 三条特殊光线作图定像                 |
 
-### 1.2 质化波动模块（3 个，非门禁、不判分）
+### 1.2 质化波动模块（4 个，非门禁、不判分）
 
 | 模块 | 概念键                     | knowledgeType |
 | ---- | -------------------------- | ------------- |
 | 干涉 | `optics.wave.interference` | `concept`     |
 | 衍射 | `optics.wave.diffraction`  | `concept`     |
+| 散射 | `optics.wave.scattering`   | `concept`     |
 | 偏振 | `optics.wave.polarization` | `design`      |
 
 ### 1.3 目标树与排期
 
 - 12 个目标、4 阶段：`exploration` → `concept_mastery` → `guided_practice` → `deliverable_review`。
+- 波动探究（单缝衍射与介质散射）作为质化实验仿真（OpticsDiffractionScatteringCard）在通过 `TheoryMastered` 门禁后动态嵌入，不挤占阶段目标与排期。
 - 排期：4 周 × 每周 2 节 × 60 分钟（`moduleCount: 4`）。
 - 门禁：`concept_mastery` 的 4 个 `memory|procedure` 目标决定 `TheoryMastered`；
   在 `TheoryMastered` 之前不得进入 `guided_practice`。

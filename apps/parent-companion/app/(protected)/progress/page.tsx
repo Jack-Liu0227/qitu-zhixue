@@ -214,24 +214,29 @@ export default function ProgressPage() {
   const [tab, setTab] = useState<Tab>('project');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const latestLoad = useRef(0);
 
   const load = useCallback((id: string) => {
+    const requestId = ++latestLoad.current;
+    setData(null);
     setState('loading');
     void parentApi
       .progress(id)
       .then((r) => {
+        if (requestId !== latestLoad.current) return;
         setData(r.data);
         setState('ready');
       })
-      .catch((e) =>
+      .catch((e) => {
+        if (requestId !== latestLoad.current) return;
         setState(
           e instanceof ParentPermissionError
             ? 'permission'
             : e instanceof ParentOfflineError
               ? 'offline'
               : 'error',
-        ),
-      );
+        );
+      });
   }, []);
 
   useEffect(() => {
@@ -299,7 +304,7 @@ export default function ProgressPage() {
       </div>
 
       <DataState
-        state={{ status }}
+        state={{ status: state }}
         reload={() => childId && load(childId)}
         emptyTitle="还没有绑定孩子"
       >

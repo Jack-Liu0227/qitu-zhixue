@@ -32,25 +32,31 @@ export default function MessagesPage() {
 
   const [acting, setActing] = useState(false);
   const pendingAction = useRef<{ key: string; resource: string; action: 'read' | 'mute' } | null>(null);
+  const latestLoad = useRef(0);
 
   const load = useCallback((id: string) => {
+    const requestId = ++latestLoad.current;
+    setData(null);
+    setSelected('');
     setState('loading');
     void parentApi
       .messages(id)
       .then((r) => {
+        if (requestId !== latestLoad.current) return;
         setData(r.data);
         setSelected(r.data.messages[0]?.id ?? '');
         setState('ready');
       })
-      .catch((e) =>
+      .catch((e) => {
+        if (requestId !== latestLoad.current) return;
         setState(
           e instanceof ParentPermissionError
             ? 'permission'
             : e instanceof ParentOfflineError
               ? 'offline'
               : 'error',
-        ),
-      );
+        );
+      });
   }, []);
 
   useEffect(() => {
@@ -116,7 +122,7 @@ export default function MessagesPage() {
         <Button onClick={openFeedback}>提交反馈</Button>
       </div>
 
-      <DataState state={{ status }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
+      <DataState state={{ status: state }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
         {data ? (
           <>
             <div className="message-summary">

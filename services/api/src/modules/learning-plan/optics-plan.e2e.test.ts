@@ -52,8 +52,6 @@ const GATED_CONCEPT_BY_OBJECTIVE: Readonly<Record<string, string>> = {
   'opt-theory-refraction': 'optics.refraction.law',
   'opt-theory-tir': 'optics.tir.critical_angle',
   'opt-theory-lens': 'optics.lens.ray_rules',
-  'opt-practice-diffraction': 'optics.wave.diffraction',
-  'opt-practice-scattering': 'optics.wave.scattering',
 };
 
 class FakeOutboxWriter {
@@ -256,7 +254,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     h = makeHarness();
   });
 
-  it('生成光学课程计划：模板版本来自生效绑定，14 个目标带概念键，4 周 8 节', async () => {
+  it('生成光学课程计划：模板版本来自生效绑定，12 个目标带概念键，4 周 8 节', async () => {
     const report = await seedOpticsBinding(
       h.templates,
       h.bindings,
@@ -274,7 +272,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     assert.equal(generated.plan.templateVersion, report.versionId, 'templateVersion 使用解析出的版本 id');
 
     const objectives = flattenObjectives(generated.plan);
-    assert.equal(objectives.length, 14, '14 个真实光学目标');
+    assert.equal(objectives.length, 12, '12 个真实光学目标');
     assert.equal(generated.plan.modules.length, 4, '4 个周模块');
 
     const expectedOrder = [
@@ -288,8 +286,6 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       'opt-practice-measure',
       'opt-practice-fit',
       'opt-practice-report',
-      'opt-practice-diffraction',
-      'opt-practice-scattering',
       'opt-review-defend',
       'opt-review-reflect',
     ];
@@ -305,7 +301,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       if (expectedConceptId === undefined) {
         assert.equal(objective.conceptId, undefined, `非门禁目标 ${rawId} 不投影 conceptId`);
       } else {
-        assert.equal(objective.conceptId, expectedConceptId, `有显式知识键的目标 ${rawId} 投影 conceptId`);
+        assert.equal(objective.conceptId, expectedConceptId, `门禁目标 ${rawId} 投影 conceptId`);
       }
     }
   });
@@ -432,20 +428,6 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     const gateSession = sessions.find((item) => item.theoryObjectiveIds.length === 4);
     assert.ok(gateSession !== undefined, '存在承载完整门禁集合的会话');
     assert.equal(gateSession.theoryMastered, true, '门禁会话理论达标');
-
-    const practiceObjectiveIds = new Set(
-      practiceSessions.flatMap((item) => item.practiceObjectiveIds),
-    );
-    assert.equal(
-      practiceObjectiveIds.has('opt-practice-diffraction'),
-      true,
-      'TheoryMastered 后实践会话包含衍射探究目标',
-    );
-    assert.equal(
-      practiceObjectiveIds.has('opt-practice-scattering'),
-      true,
-      'TheoryMastered 后实践会话包含散射探究目标',
-    );
 
     const theoryGates = h.teamRuntime.calls.filter((call) => call.gate === 'TheoryMastered');
     assert.equal(theoryGates.length, 1, 'TheoryMastered 门禁恰好记录一次');

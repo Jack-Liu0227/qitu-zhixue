@@ -63,6 +63,8 @@
 - 把既有 quiz 块与 `pending_questions`/答案 owner 统一；明确每类题目的唯一判分入口，不重复计入 mastery。
 - 建立版本化的 `TutorActionPolicy`（纯函数优先）：待答问题、当前 objective、错误类型、正确/错误 attempt、显式 hint/explain、既有 stall policy 和门禁投影决定有限下一动作。
 - 先用模板题库/已审核题目；LLM 变体只生成候选，验证答案字段隔离、选项结构、objective 引用、题干长度、单解检查和答案泄露过滤后才能给学生。
+- 光学模板先落地 `Observe -> Predict -> Manipulate -> Measure -> Explain -> Challenge -> Submit` 微循环；为 `optics_experiment` 增加 `specVersion`、`objectiveId`、受控参数和稳定 `actionId`，实验回调改为幂等事件，不把摘要文本当作正式证据。
+- 为 `optics.wave.diffraction`、`optics.wave.scattering` 增加开放观察/CER 题、错误类型和补救提示；衍射使用单缝 `lambda/a/D` 受控变量，散射使用封闭细雾室的可见性比较，均不绕过 `TheoryMastered`。
 - SSE 通过既有回复/团队帧展示题目与 Agent 身份；UI 处理 loading、提交中、重复/重放、错误、离线保留草稿和权限失败。
 
 **验收**：两次相同 quiz/action 提交只落一份 attempt/event；未答题优先级最高；错答不会在 gate/mastery 未达标时泄漏答案；文本/选项/测验都不让客户端写 pedagogic move、hint level 或 mastery；`TheoryMastered` 之前不出现实践模拟/工具。
@@ -85,6 +87,7 @@
 
 - 先使用固定模板与确定性计划，不同时试点任意模拟、任意 HTML、开放 MCP 或自动阶段推进。
 - 端到端回放：立项、绑定、首个 quiz/选项、答错提示升级、答对掌握、实践门禁、证据提交、人工介入、重复请求和断网恢复。
+- 增加一条光学回放：同一项目先验证理论门禁，再运行衍射和散射模拟，记录参数/观察/CER，检查错误分支、提示淡出、作品引用和教师最小化卡点摘要。
 - 衡量可行性与教学体验：完成率、各课次继续率、必需证据质量（rubric）、概念前/后测、提示层级/独立作答比例、卡点/教师介入、题目歧义或泄漏、运行错误和权限拒绝；给定样本不足时只报告描述统计。
 - 分别进行教师设计评审、移动/桌面 UI 评审、安全/隐私检查、数据保留/删除检查。通过后逐步提高 feature flag 比例；否则关闭新绑定解析/宏观调整开关，保留只读记录和已冻结项目语义。
 

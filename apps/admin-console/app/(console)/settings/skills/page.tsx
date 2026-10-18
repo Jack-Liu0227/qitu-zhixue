@@ -45,7 +45,9 @@ function mapRuntimeSkill(skill: AdminRuntimeSkill): SkillItem {
     filesCount: 1,
     addedBy: SKILL_SOURCE_LABELS[skill.source] ?? skill.source,
     updatedAtText: skill.version ? `v${skill.version}` : '—',
-    boundAssistantIds: [...skill.agentIds],
+    // Runtime Agent IDs are not AdminAssistantConfig IDs; binding state comes
+    // from the persisted assistant configuration fetched separately.
+    boundAssistantIds: [],
     files: [{ name: 'SKILL.md', sizeBytes: new TextEncoder().encode(content).length, content }],
   };
 }
@@ -114,85 +116,67 @@ export default function SkillsSettingsPage() {
     [assistants]
   );
 
+  const reloadBindings = useCallback(async () => {
+    const latest = await fetchAdminAssistantConfigs();
+    setAssistants(latest);
+    setSkills((current) => current.map((skill) => ({
+      ...skill,
+      boundAssistantIds: latest
+        .filter((assistant) => assistant.enabledSkills.includes(skill.id))
+        .flatMap((assistant) => [assistant.id, assistant.name]),
+    })));
+    return latest;
+  }, []);
+
+  const persistBindings = async (
+    updates: Array<{ assistantId: string; enabledSkills: string[] }>,
+    successMessage: string,
+  ) => {
+    const results = await Promise.allSettled(
+      updates.map(({ assistantId, enabledSkills }) =>
+        persistAssistantBinding(assistantId, 'enabledSkills', enabledSkills),
+      ),
+    );
+    try {
+      await reloadBindings();
+    } catch {
+      setSaveNotice('保存状态无法确认，请刷新后重试。');
+      return false;
+    }
+    const failed = results.some((result) => result.status === 'rejected');
+    setSaveNotice(failed ? '保存未完全成功，请检查失败项后重试。' : successMessage);
+    setTimeout(() => setSaveNotice(''), 2500);
+    return !failed;
+  };
+
   // 矩阵中切换技能绑定 (打上✔ 立即生效)
   const toggleSkillForAssistant = async (skillId: string, asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
-    const targetAsstId = matchedAsst?.id || asstIdentifier;
-    const targetAsstName = matchedAsst?.name || asstIdentifier;
-    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstIdentifier].filter(Boolean));
-
-    const currentSkill = skills.find((s) => s.id === skillId);
+    const currentSkill = skills.find((skill) => skill.id === skillId);
     if (!currentSkill) return;
-
-    // 当前是否已经绑定
-    const currentlyChecked = isSkillBoundToAssistant(currentSkill, {
-      id: targetAsstId,
-      name: targetAsstName,
-      enabledSkills: matchedAsst?.enabledSkills as string[],
-    });
-    const nextChecked = !currentlyChecked;
-
-    // 1. 更新技能列表中的 boundAssistantIds 并写入本地持久化
-    const nextSkills = skills.map((s) => {
-      if (s.id !== skillId) return s;
-      let nextBounds: string[];
-      if (nextChecked) {
-        const set = new Set(s.boundAssistantIds || []);
-        set.add(targetAsstId);
-        if (targetAsstName) set.add(targetAsstName);
-        nextBounds = Array.from(set);
-      } else {
-        nextBounds = (s.boundAssistantIds || []).filter((id) => !asstIdentifiers.has(id));
-      }
-      return { ...s, boundAssistantIds: nextBounds };
-    });
-
-    setSkills(nextSkills);
-
-    // 2. 如果当前正在编辑此技能，实时同步 editingSkill
-    if (editingSkill && editingSkill.id === skillId) {
-      const updatedBounds = nextChecked
-        ? Array.from(new Set([...editingSkill.boundAssistantIds, targetAsstId, targetAsstName]))
-        : editingSkill.boundAssistantIds.filter((id) => !asstIdentifiers.has(id));
-      setEditingSkill({ ...editingSkill, boundAssistantIds: updatedBounds });
+    if (!matchedAsst) {
+      setSaveNotice('未找到服务端助手配置，绑定未更改。');
+      return;
+    }
+    if (currentSkill.local) {
+      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+      return;
     }
 
-    // 3. 更新助手对象中的 enabledSkills 并持久化至服务端
-    if (matchedAsst) {
-      const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
-      let updatedEnabled: string[];
-      if (nextChecked) {
-        const set = new Set(curEnabled);
-        set.add(skillId);
-        if (currentSkill.name) set.add(currentSkill.name);
-        updatedEnabled = Array.from(set);
-      } else {
-        updatedEnabled = curEnabled.filter((id) => id !== skillId && id !== currentSkill.name);
-      }
-
-      setAssistants((prev) =>
-        prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
-      );
-
-      try {
-        await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
-      } catch (err) {
-        console.warn('持久化助手技能绑定失败', err);
-      }
-    }
-
-    setSaveNotice(
-      `已更新【${targetAsstName}】的技能【${currentSkill.name}】(${nextChecked ? '已打上✔ 立即生效' : '取消✔ 立即关闭'})`
+    const currentlyChecked = matchedAsst.enabledSkills.includes(skillId);
+    const updatedEnabled = currentlyChecked
+      ? matchedAsst.enabledSkills.filter((id) => id !== skillId)
+      : [...new Set([...matchedAsst.enabledSkills, skillId])];
+    await persistBindings(
+      [{ assistantId: matchedAsst.id, enabledSkills: updatedEnabled }],
+      '技能绑定已保存。',
     );
-    setTimeout(() => setSaveNotice(''), 2500);
   };
 
   // 加载真实助手用于绑定与展示头像（后端为唯一真实来源）
   useEffect(() => {
-    fetchAdminAssistantConfigs()
-      .then((res) => setAssistants(res || []))
-      .catch(() => setAssistants([]));
-  }, []);
+    void reloadBindings().catch(() => setAssistants([]));
+  }, [reloadBindings]);
 
   // 当切换 editingSkill 或 selectedFileName 时同步草稿
   useEffect(() => {
@@ -218,146 +202,79 @@ export default function SkillsSettingsPage() {
   const grantAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
-    const targetAsstId = matchedAsst.id;
-    const targetAsstName = matchedAsst.name;
-    const skillIdsToAdd = matrixSkills.flatMap((s) => [s.id, s.name]);
-
-    const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
-    const updatedEnabled = Array.from(new Set([...curEnabled, ...skillIdsToAdd]));
-
-    setAssistants((prev) =>
-      prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
+    const skillIds = matrixSkills.filter((skill) => !skill.local).map((skill) => skill.id);
+    const existing = matchedAsst.enabledSkills.filter((id) => !matrixSkills.some((skill) => skill.name === id));
+    const enabledSkills = [...new Set([...existing, ...skillIds])];
+    await persistBindings(
+      [{ assistantId: matchedAsst.id, enabledSkills }],
+      `已为【${matchedAsst.name}】保存当前目录的技能绑定。`,
     );
-
-    const nextSkills = skills.map((s) => {
-      if (!matrixSkills.some((ms) => ms.id === s.id)) return s;
-      const currentBounds = s.boundAssistantIds || [];
-      const updatedBounds = Array.from(new Set([...currentBounds, targetAsstId, targetAsstName]));
-      return { ...s, boundAssistantIds: updatedBounds };
-    });
-    setSkills(nextSkills);
-
-    try {
-      await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
-    } catch {}
-
-    setSaveNotice(`横向全选成功：已为【${targetAsstName}】开启当前目录下的全部技能✔`);
-    setTimeout(() => setSaveNotice(''), 2500);
   };
 
   // 横向取消：清空指定助手在当前目录的所有技能
   const revokeAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
-    const targetAsstId = matchedAsst.id;
-    const targetAsstName = matchedAsst.name;
-    const asstIdentifiers = new Set([targetAsstId, targetAsstName, asstIdentifier]);
-    const skillIdsToRemove = new Set(matrixSkills.flatMap((s) => [s.id, s.name]));
-
-    const curEnabled: string[] = matchedAsst.enabledSkills ? [...matchedAsst.enabledSkills] : [];
-    const updatedEnabled = curEnabled.filter((id) => !skillIdsToRemove.has(id));
-
-    setAssistants((prev) =>
-      prev.map((a) => (a.id === matchedAsst.id ? { ...a, enabledSkills: updatedEnabled } : a))
+    const idsToRemove = new Set(matrixSkills.flatMap((skill) => [skill.id, skill.name]));
+    const enabledSkills = matchedAsst.enabledSkills.filter((id) => !idsToRemove.has(id));
+    await persistBindings(
+      [{ assistantId: matchedAsst.id, enabledSkills }],
+      `已移除【${matchedAsst.name}】在当前目录的技能绑定。`,
     );
-
-    const nextSkills = skills.map((s) => {
-      if (!matrixSkills.some((ms) => ms.id === s.id)) return s;
-      const currentBounds = s.boundAssistantIds || [];
-      const updatedBounds = currentBounds.filter((id) => !asstIdentifiers.has(id));
-      return { ...s, boundAssistantIds: updatedBounds };
-    });
-    setSkills(nextSkills);
-
-    try {
-      await persistAssistantBinding(matchedAsst.id, 'enabledSkills', updatedEnabled);
-    } catch {}
-
-    setSaveNotice(`横向取消成功：已清空【${targetAsstName}】在当前目录下的全部技能✔`);
-    setTimeout(() => setSaveNotice(''), 2500);
   };
 
   // 纵向全选：为某一技能绑定所有导师智能体
   const grantAllAssistantsForSkill = async (skillId: string) => {
-    const targetSkill = skills.find((s) => s.id === skillId);
+    const targetSkill = skills.find((skill) => skill.id === skillId);
     if (!targetSkill) return;
-
-    const allAsstIdentifiers = displayAssistants.flatMap((a) => [a.id, a.name]);
-
-    const nextAssistants = assistants.map((a) => {
-      const cur = (a.enabledSkills as string[]) || [];
-      const set = new Set(cur);
-      set.add(skillId);
-      if (targetSkill.name) set.add(targetSkill.name);
-      return { ...a, enabledSkills: Array.from(set) };
-    });
-    setAssistants(nextAssistants);
-
-    const nextSkills = skills.map((s) => {
-      if (s.id !== skillId) return s;
-      const mergedBounds = Array.from(new Set([...(s.boundAssistantIds || []), ...allAsstIdentifiers]));
-      return { ...s, boundAssistantIds: mergedBounds };
-    });
-    setSkills(nextSkills);
-
-    for (const a of assistants) {
-      const cur = (a.enabledSkills as string[]) || [];
-      const set = new Set(cur);
-      set.add(skillId);
-      if (targetSkill.name) set.add(targetSkill.name);
-      try {
-        await persistAssistantBinding(a.id, 'enabledSkills', Array.from(set));
-      } catch {}
+    if (targetSkill.local) {
+      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+      return;
     }
-
-    setSaveNotice(`纵向全选成功：已为所有智能体开启技能【${targetSkill.name}】✔`);
-    setTimeout(() => setSaveNotice(''), 2500);
+    await persistBindings(
+      assistants.map((assistant) => ({
+        assistantId: assistant.id,
+        enabledSkills: [...new Set([...assistant.enabledSkills, skillId])],
+      })),
+      `已保存所有助手对【${targetSkill.name}】的技能绑定。`,
+    );
   };
 
   // 纵向取消：取消所有导师对某一技能的授权
   const revokeAllAssistantsForSkill = async (skillId: string) => {
-    const targetSkill = skills.find((s) => s.id === skillId);
+    const targetSkill = skills.find((skill) => skill.id === skillId);
     if (!targetSkill) return;
-
-    const nextAssistants = assistants.map((a) => {
-      const cur = (a.enabledSkills as string[]) || [];
-      return { ...a, enabledSkills: cur.filter((id) => id !== skillId && id !== targetSkill.name) };
-    });
-    setAssistants(nextAssistants);
-
-    const nextSkills = skills.map((s) => {
-      if (s.id !== skillId) return s;
-      return { ...s, boundAssistantIds: [] };
-    });
-    setSkills(nextSkills);
-
-    for (const a of assistants) {
-      const cur = (a.enabledSkills as string[]) || [];
-      try {
-        await persistAssistantBinding(a.id, 'enabledSkills', cur.filter((id) => id !== skillId && id !== targetSkill.name));
-      } catch {}
-    }
-
-    setSaveNotice(`纵向取消成功：已清空所有智能体对技能【${targetSkill.name}】的授权✔`);
-    setTimeout(() => setSaveNotice(''), 2500);
+    await persistBindings(
+      assistants.map((assistant) => ({
+        assistantId: assistant.id,
+        enabledSkills: assistant.enabledSkills.filter((id) => id !== skillId && id !== targetSkill.name),
+      })),
+      `已移除所有助手对【${targetSkill.name}】的技能绑定。`,
+    );
   };
 
   // 全局全部全选
   const grantEntireSkillsMatrix = async () => {
-    for (const asst of displayAssistants) {
-      await grantAllSkillsForAssistant(asst.id);
-    }
-    setSaveNotice('全局全选成功：已为所有导师开启当前目录的全部技能！✔');
-    setTimeout(() => setSaveNotice(''), 2500);
+    const skillIds = matrixSkills.filter((skill) => !skill.local).map((skill) => skill.id);
+    await persistBindings(
+      assistants.map((assistant) => ({
+        assistantId: assistant.id,
+        enabledSkills: [...new Set([...assistant.enabledSkills, ...skillIds])],
+      })),
+      '已保存所有助手的技能绑定。',
+    );
   };
 
   // 全局全部取消
   const revokeEntireSkillsMatrix = async () => {
-    for (const asst of displayAssistants) {
-      await revokeAllSkillsForAssistant(asst.id);
-    }
-    setSaveNotice('全局取消成功：已清空所有导师在当前目录下的全部技能授权！✔');
-    setTimeout(() => setSaveNotice(''), 2500);
+    const idsToRemove = new Set(matrixSkills.flatMap((skill) => [skill.id, skill.name]));
+    await persistBindings(
+      assistants.map((assistant) => ({
+        assistantId: assistant.id,
+        enabledSkills: assistant.enabledSkills.filter((id) => !idsToRemove.has(id)),
+      })),
+      '已移除所有助手在当前目录的技能绑定。',
+    );
   };
 
   // 新建 Skill（本地草稿：服务端暂未提供技能内容写入接口）
@@ -480,43 +397,24 @@ export default function SkillsSettingsPage() {
   const handleBulkSetSkillsEnabled = async (enable: boolean) => {
     if (selectedSkills.size === 0) return;
     const targetIds = Array.from(selectedSkills);
-    const targetSkills = skills.filter((s) => targetIds.includes(s.id));
-    const allAsstIds = assistants.map((a) => a.id);
-    
-    // 更新技能对象的 boundAssistantIds
-    const nextSkills = skills.map((s) => {
-      if (!targetIds.includes(s.id)) return s;
-      return {
-        ...s,
-        boundAssistantIds: enable ? Array.from(new Set([...s.boundAssistantIds, ...allAsstIds])) : [],
-      };
-    });
-    setSkills(nextSkills);
-
-    // 更新助手的 enabledSkills 并持久化
-    for (const asst of assistants) {
-      const current = asst.enabledSkills ? [...asst.enabledSkills] : [];
-      let updated: string[];
-      if (enable) {
-        updated = Array.from(new Set([...current, ...targetIds, ...targetSkills.map((t) => t.name)]));
-      } else {
-        const removeSet = new Set([...targetIds, ...targetSkills.map((t) => t.name)]);
-        updated = current.filter((id) => !removeSet.has(id));
-      }
-      persistAssistantBinding(asst.id, 'enabledSkills', updated).catch(() => null);
+    const targetSkills = skills.filter((skill) => targetIds.includes(skill.id));
+    if (targetSkills.some((skill) => skill.local)) {
+      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+      return;
     }
-    setAssistants((prev) =>
-      prev.map((a) => {
-        const cur = a.enabledSkills ? [...a.enabledSkills] : [];
-        const updated = enable
-          ? Array.from(new Set([...cur, ...targetIds, ...targetSkills.map((t) => t.name)]))
-          : cur.filter((id) => !targetIds.includes(id) && !targetSkills.some((t) => t.name === id));
-        return { ...a, enabledSkills: updated };
-      })
+    const skillIds = targetSkills.map((skill) => skill.id);
+    const removeSet = new Set(targetSkills.flatMap((skill) => [skill.id, skill.name]));
+    const updates = assistants.map((assistant) => ({
+      assistantId: assistant.id,
+      enabledSkills: enable
+        ? [...new Set([...assistant.enabledSkills, ...skillIds])]
+        : assistant.enabledSkills.filter((id) => !removeSet.has(id)),
+    }));
+    const saved = await persistBindings(
+      updates,
+      enable ? '已开启所选技能。' : '已关闭所选技能。',
     );
-    setSelectedSkills(new Set());
-    setSaveNotice(enable ? '已批量为全部导师开启选中的技能 ✔' : '已批量关闭选中的技能 ✔');
-    setTimeout(() => setSaveNotice(''), 3000);
+    if (saved) setSelectedSkills(new Set());
   };
 
   // 批量移除技能（仅限本地草稿）

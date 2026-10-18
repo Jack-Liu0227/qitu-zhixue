@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, ProgressBar, SectionCard } from '@qitu/ui';
 import { useCurrentUser } from '@qitu/auth';
@@ -36,24 +36,29 @@ export default function HomePage() {
   const [data, setData] = useState<ParentHomePageData | null>(null);
   const [state, setState] = useState('loading');
   const [copiedQuestion, setCopiedQuestion] = useState(false);
+  const latestLoad = useRef(0);
 
   const load = useCallback((id: string) => {
+    const requestId = ++latestLoad.current;
+    setData(null);
     setState('loading');
     void parentApi
       .home(id)
       .then((r) => {
+        if (requestId !== latestLoad.current) return;
         setData(r.data);
         setState('ready');
       })
-      .catch((e) =>
+      .catch((e) => {
+        if (requestId !== latestLoad.current) return;
         setState(
           e instanceof ParentPermissionError
             ? 'permission'
             : e instanceof ParentOfflineError
               ? 'offline'
               : 'error',
-        ),
-      );
+        );
+      });
   }, []);
 
   useEffect(() => {

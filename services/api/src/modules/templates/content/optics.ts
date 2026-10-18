@@ -130,7 +130,7 @@ export const OPTICS_SESSION_MODULES: readonly OpticsSessionModule[] = [
     session: 1,
     title: '拟合数据与撰写探究报告',
     phase: 'guided_practice',
-    objectiveIds: ['opt-practice-fit', 'opt-practice-report', 'opt-practice-diffraction', 'opt-practice-scattering'],
+    objectiveIds: ['opt-practice-fit', 'opt-practice-report'],
     minutes: 60,
   },
   {
