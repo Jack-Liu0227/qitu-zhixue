@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminTeamVersions, projectTemplateVersions, type Database } from '@qitu/database';
+import { adminTeamVersions, projectTemplateVersions, pblGateEvidence, type Database } from '@qitu/database';
 import { TutorService } from './tutor.service';
 import type { TutorModelGateway } from './gateway-tutor.provider';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -33,6 +33,7 @@ const project: LearningProjectRecord = {
 function fakeDb(input: { frozenTeam?: unknown; binding?: unknown }): Database {
   const select = () => ({
     from: (table: unknown) => {
+      if (table === pblGateEvidence) return { where: async () => [] };
       if (table === adminTeamVersions) {
         return {
           where: () => ({ limit: async () => (input.frozenTeam === undefined ? [] : [input.frozenTeam]) }),
@@ -146,7 +147,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
   });
 
   const context = await tutor.getProjectContext(project.id, 'owner');
-  assert.equal(context?.team?.teamId, 'team-ver-frozen');
+  assert.equal(context?.team?.teamId, 'team-frozen');
   assert.equal(context?.team?.teamName, '冻结团队');
   assert.equal(context?.team?.assistantId, 'assistant-frozen');
   assert.equal(entries.some((entry) => entry.action === 'tutor.team.legacy-resolution'), false,
@@ -198,4 +199,74 @@ test('旧项目无快照：保留原解析路径并写 tutor.team.legacy-resolut
   assert.equal(legacy.targetType, 'project');
   assert.equal(legacy.targetId, project.id);
   assert.equal((legacy.detail as { teamId?: string }).teamId, 'team-stale');
+});
+
+const opticsMembers = [
+  { assistantId: 'optics-leader', roleLabel: '物理总导师', phaseScope: 'exploration' },
+  { assistantId: 'optics-concept-coach', roleLabel: '概念教练', phaseScope: 'concept_mastery' },
+  { assistantId: 'optics-experiment-guide', roleLabel: '仿真向导', phaseScope: 'guided_practice' },
+  { assistantId: 'optics-review-assessor', roleLabel: '评审导师', phaseScope: 'deliverable_review' },
+];
+
+function opticsTutor(options: { disabled?: string; missing?: string; runtimeStatus?: 'running' | 'failed'; runtimeError?: boolean; teamEnabled?: boolean } = {}) {
+  const tutor = newTutor({
+    learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
+    templateBindings: { resolveSnapshotForProject: async () => ({ teamVersionId: 'tv-optics-1' }) } as unknown as TemplateBindingService,
+    database: fakeDb({ frozenTeam: frozenTeamRow({
+      leaderAssistantId: 'optics-concept-coach',
+      members: opticsMembers as unknown as AdminTeamConfig['members'],
+      enabled: options.teamEnabled ?? true,
+      pblSpec: { phases: opticsMembers.map((m) => ({ phase: m.phaseScope, assignedAssistantId: m.assistantId, title: m.roleLabel })) } as unknown as AdminTeamConfig['pblSpec'],
+    }) }),
+    platformRegistry: {
+      listAssistants: async () => opticsMembers.filter((m) => m.assistantId !== options.missing).map((m) => ({ id: m.assistantId, name: m.roleLabel + '真实姓名', enabled: m.assistantId !== options.disabled, avatar: '🔦' })),
+      listTeams: async () => { throw Error('frozen teams must not use live roster'); },
+    } as unknown as PlatformRegistryService,
+  });
+  Object.assign(tutor, { teamRuntime: { getStudentTeamRuntimeProjection: async () => {
+    if (options.runtimeError) throw Error('runtime unavailable');
+    return { runId: options.runtimeStatus ? 'run-real' : null, agents: options.runtimeStatus ? {
+      'optics-concept-coach': { status: options.runtimeStatus, currentTaskSummary: '真实任务', messages: [], toolCalls: [] },
+    } : {} };
+  } } });
+  return tutor;
+}
+
+test('简写冻结团队解析出四位真实导师、稳定槽位、角色和阶段，不从可变团队替换名册', async () => {
+  const tutor = opticsTutor();
+  const graph = await tutor.getTeamGraph(project.id, 'owner');
+  const again = await tutor.getTeamGraph(project.id, 'owner');
+  assert.equal(graph.team.teamId, 'team-frozen');
+  assert.equal(graph.agents.length, 4);
+  assert.deepEqual(graph.agents.map((a) => a.assistantId), opticsMembers.map((m) => m.assistantId));
+  assert.deepEqual(graph.agents.map((a) => a.pblPhase), opticsMembers.map((m) => m.phaseScope));
+  assert.deepEqual(graph.agents.map((a) => a.role), ['coach', 'leader', 'coach', 'reviewer']);
+  for (const agent of graph.agents) {
+    assert.ok(agent.slotId);
+    assert.ok(agent.name.endsWith('真实姓名'));
+    assert.equal(agent.status, 'ready');
+    assert.deepEqual(agent.messages, []);
+    assert.deepEqual(agent.toolCalls, []);
+  }
+  assert.deepEqual(graph.agents.map((a) => a.slotId), again.agents.map((a) => a.slotId));
+  assert.equal(graph.runId, null);
+  await assert.rejects(() => tutor.getTeamGraph(project.id, 'other-student'), (error: any) => error.getStatus() === 403);
+});
+
+test('禁用助手或团队保持 offline，真实 runtime 状态保留，runtime 失败不可伪装就绪', async () => {
+  for (const status of ['running', 'failed'] as const) {
+    const graph = await opticsTutor({ runtimeStatus: status }).getTeamGraph(project.id, 'owner');
+    assert.equal(graph.runId, 'run-real');
+    assert.equal(graph.agents[1]?.status, status);
+    assert.equal(graph.agents[1]?.currentTaskSummary, '真实任务');
+  }
+  const disabled = await opticsTutor({ disabled: 'optics-concept-coach', runtimeStatus: 'running' }).getTeamGraph(project.id, 'owner');
+  assert.equal(disabled.agents[1]?.status, 'offline');
+  const missing = await opticsTutor({ missing: 'optics-experiment-guide' }).getTeamGraph(project.id, 'owner');
+  assert.equal(missing.agents[2]?.status, 'offline');
+  assert.equal(missing.agents[2]?.assistantId, 'optics-experiment-guide');
+  for (const options of [{ runtimeError: true }, { teamEnabled: false }]) {
+    const graph = await opticsTutor(options).getTeamGraph(project.id, 'owner');
+    assert.ok(graph.agents.every((a) => a.status === 'offline'));
+  }
 });

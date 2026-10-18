@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
   Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -256,27 +257,17 @@ export class ProjectsService {
               subtitle: confirmed.draft.preferredForm,
               tags: [...confirmed.draft.coreInterests],
             },
-            // F3：项目插入后在同一事务里冻结生效绑定；无绑定时不失败项目创建。
+            // 正式项目与冻结团队绑定必须在同一事务内成立。
             commit: async (projectId, tx) => {
-              if (!this.templateBindings) return;
-              const outcome = await this.templateBindings.freezeProjectBinding({
-                projectId,
-                templateVersionId,
-                boundAt: now,
-                tx,
+              const outcome = await this.templateBindings?.freezeProjectBinding({
+                projectId, templateVersionId, boundAt: now, tx,
               });
-              if (outcome === 'omitted') {
-                this.logger.warn(
-                  `项目创建时无生效绑定，跳过快照冻结 project=${projectId} version=${templateVersionId ?? 'null'}`,
-                );
-                await this.audit.write({
-                  actorId: studentId,
-                  actorRole: 'student',
-                  action: 'project.binding.missing',
-                  targetType: 'project',
-                  targetId: projectId,
-                  detail: { projectId, templateVersionId },
-                }, tx);
+              if (outcome !== 'frozen') {
+                this.logger.error('项目团队绑定不可用 project=' + projectId + ' version=' + templateVersionId);
+                throw new ServiceUnavailableException({
+                  code: 'PROJECT_TEAM_BINDING_UNAVAILABLE',
+                  message: '项目导师团队尚未配置完成，请联系管理员后重试',
+                });
               }
             },
           });
