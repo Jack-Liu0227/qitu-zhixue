@@ -13,6 +13,7 @@ import type {
   TutorProjectContext as SharedTutorProjectContext,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorTeamAgent,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
@@ -117,7 +118,7 @@ export class TutorApiDataSource implements TutorDataSource {
     if (!isTutorTeamGraph(data)) {
       throw new TutorDataError('团队智能体数据格式不正确', undefined, 'BAD_TEAM_GRAPH_PAYLOAD');
     }
-    return data;
+    return normalizeTutorTeamGraph(data);
   }
 
   async createSession(
@@ -392,6 +393,50 @@ function isTutorTeamGraph(value: unknown): value is TutorTeamGraph {
 }
 
 
+
+function normalizeTutorTeamGraph(graph: TutorTeamGraph): TutorTeamGraph {
+  const agents = graph.agents.map((raw, index) => {
+    const agent = raw as Partial<TutorTeamAgent>;
+    return {
+      slotId: typeof agent.slotId === 'string' && agent.slotId.length > 0 ? agent.slotId : 'slot-' + index,
+      assistantId: typeof agent.assistantId === 'string' ? agent.assistantId : 'assistant-' + index,
+      name: typeof agent.name === 'string' && agent.name.length > 0 ? agent.name : '未命名智能体',
+      role: typeof agent.role === 'string' ? agent.role : '导师',
+      roleLabel: typeof agent.roleLabel === 'string' || agent.roleLabel === null ? agent.roleLabel : null,
+      avatar: typeof agent.avatar === 'string' || agent.avatar === null ? agent.avatar : null,
+      color: typeof agent.color === 'string' || agent.color === null ? agent.color : null,
+      status: isTutorTeamAgentStatus(agent.status) ? agent.status : 'offline',
+      currentTaskSummary: typeof agent.currentTaskSummary === 'string' || agent.currentTaskSummary === null ? agent.currentTaskSummary : null,
+      pblPhase: typeof agent.pblPhase === 'string' || agent.pblPhase === null ? agent.pblPhase : null,
+      messages: Array.isArray(agent.messages) ? agent.messages.filter(isTutorTeamAgentMessage) : [],
+      toolCalls: Array.isArray(agent.toolCalls) ? agent.toolCalls.filter(isTutorTeamAgentToolCall) : [],
+    };
+  });
+  return { ...graph, agents };
+}
+
+function isTutorTeamAgentStatus(value: unknown): value is TutorTeamAgent['status'] {
+  return value === 'ready' || value === 'running' || value === 'waiting' || value === 'failed' || value === 'offline';
+}
+
+function isTutorTeamAgentMessage(value: unknown): value is TutorTeamAgent['messages'][number] {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.messageId === 'string' && typeof item.summary === 'string' &&
+    (item.direction === 'inbound' || item.direction === 'outbound') && typeof item.createdAt === 'string';
+}
+
+function isTutorTeamAgentToolCall(value: unknown): value is TutorTeamAgent['toolCalls'][number] {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.callId === 'string' && typeof item.name === 'string' &&
+    typeof item.label === 'string' && isTutorToolCallStatus(item.status) &&
+    typeof item.startedAt === 'string';
+}
+
+function isTutorToolCallStatus(value: unknown): boolean {
+  return value === 'running' || value === 'done' || value === 'error';
+}
 function unwrapData(body: unknown): unknown {
   if (typeof body === 'object' && body !== null && 'data' in body) {
     return (body as { data: unknown }).data;
