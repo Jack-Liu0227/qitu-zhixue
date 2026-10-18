@@ -32,4 +32,12 @@ This boundary prevents the skill hub from becoming a second writable source of t
 
 If sandbox support is needed in the future, it must be an independent sidecar exposing only sandbox capabilities. Skill packages must still be published through git/DB and loaded only after publication. This is conditional on the reproducible-build requirements below being complete; see `docs/plan/20261018-skill-tool-governance-and-assignment.md`, section 9.
 
+## Extended engine process
+
+`engine_runtime.py` adds the pinned GraphRAG, LightRAG, PageIndex OSS/Cloud pipelines and the original LightRAG Server, WeKnora and Kiwix clients. Its direct import boundary permits `deeptutor.services.rag.*`, embedding, LLM configuration, scoped model selection and the specific `deeptutor.capabilities.marginnote4.store` module for existing paired-device data. It never starts upstream HTTP/admin endpoints. The original `bridge.py` import allowlist remains unchanged. `test_engine_runtime.py` checks the new direct-import boundary separately.
+
+The initiating Qitu admin/project checks own authorization. Only Qitu-resolved model references enter the private process; upstream model selection is scoped to those bindings in process memory, without changing the upstream model catalog. PageIndex uses its own read-only SDK tools in a bounded reasoning loop; ordinary RAG search is deliberately not used for it. Evidence is restricted to authorized document members and actual page reads.
+
+See `docs/admin/knowledge-engines.md` for config fields, optional dependencies, service credential variables and operational limits.
+
 Reproducible builds require the upstream pin to be verifiable, with installation steps and checksums checked into the repository. The pin is checked by `tooling/verify-knowledge-upstream.mjs`; installation instructions and a source checksum are not yet checked in and remain a follow-up requirement.

@@ -247,11 +247,24 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
       return this.fail(job, 'MATERIAL_BUDGET_EXCEEDED');
     await this.event(job, 'indexing', { documents: members.length });
     const versionId = randomUUID();
+    const material = [];
+    for (const m of members) {
+      let original;
+      if (engine.provider === 'pageindex-oss') {
+        const [file] = await this.center.query<{ mime_type: string; body: string }>(
+          sql`SELECT mime_type,encode(body,'base64') body FROM knowledge_file_originals WHERE member_id=${String(m.origin.sourceMemberId ?? m.id)}`,
+        );
+        if (!file || file.mime_type !== 'application/pdf') return this.fail(job, 'PAGEINDEX_PDF_ORIGINAL_REQUIRED');
+        original = { mimeType: file.mime_type, body: file.body.replace(/\s/g, '') };
+      }
+      material.push({ id: m.id, content: m.content, ...(original ? { original } : {}) });
+    }
+    if (Buffer.byteLength(JSON.stringify(material)) > 7 * 1024 * 1024) return this.fail(job, 'MATERIAL_BUDGET_EXCEEDED');
     const receipt = await this.engine.execute(engine, {
       operation: 'build',
       kbId: base.id,
       versionId,
-      members: members.map((m) => ({ id: m.id, content: m.content })),
+      members: material,
       testQuery: members[0]!.title,
     });
     if (!receipt.ok) return this.fail(job, receipt.errorCode ?? 'INDEX_BUILD_FAILED');

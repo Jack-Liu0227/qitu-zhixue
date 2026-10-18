@@ -1,3 +1,4 @@
+import { engineDefinition, ENGINE_FIELD_ALIASES } from './knowledge-engine.catalog';
 import { BadRequestException } from '@nestjs/common';
 
 export const ENGINE_CATALOG = [
@@ -43,7 +44,8 @@ const CONNECTION_FIELDS: Record<KnowledgeBaseFlavour, string[]> = {
   marginnote4: ['deviceId', 'serverUrl'],
   kiwix: ['serverUrl', 'zimName'],
 };
-const SECRET_FIELD = /token|password|secret|api[-_]?key|cookie|authorization|private[-_]?key|credential/i;
+const SECRET_FIELD =
+  /token|password|secret|api[-_]?key|cookie|authorization|private[-_]?key|credential/i;
 export function parseKnowledgeBaseConnection(
   provider: string,
   mode: KnowledgeBaseMode,
@@ -53,12 +55,19 @@ export function parseKnowledgeBaseConnection(
     throw new BadRequestException({ code: 'CONFIG_INVALID', message: '知识库模式无效' });
   const input = record(raw ?? {});
   if (Object.keys(input).some((key) => SECRET_FIELD.test(key)))
-    throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: '连接配置不得包含凭证' });
-  const flavour = mode === 'link_existing' && ['llamaindex', 'graphrag', 'lightrag'].includes(provider)
-    ? 'linked'
-    : PROVIDER_FLAVIOUR[provider] ?? null;
+    throw new BadRequestException({
+      code: 'CONFIG_SECRET_FORBIDDEN',
+      message: '连接配置不得包含凭证',
+    });
+  const flavour =
+    mode === 'link_existing' && ['llamaindex', 'graphrag', 'lightrag'].includes(provider)
+      ? 'linked'
+      : (PROVIDER_FLAVIOUR[provider] ?? null);
   if (mode === 'link_existing' && !flavour)
-    throw new BadRequestException({ code: 'REMOTE_CONNECTION_UNSUPPORTED', message: '该引擎不支持连接已有知识库' });
+    throw new BadRequestException({
+      code: 'REMOTE_CONNECTION_UNSUPPORTED',
+      message: '该引擎不支持连接已有知识库',
+    });
   if (!flavour) return { flavour: null, externalRef: {} };
   const allowed = new Set(CONNECTION_FIELDS[flavour]);
   if (Object.keys(input).some((key) => !allowed.has(key)))
@@ -69,16 +78,36 @@ export function parseKnowledgeBaseConnection(
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: `连接字段 ${key} 无效` });
     if (key === 'serverUrl') {
       let url: URL;
-      try { url = new URL(value.trim()); } catch { throw new BadRequestException({ code: 'CONFIG_INVALID', message: `连接字段 ${key} 无效` }); }
-      if (url.username || url.password || url.search || url.hash || !['https:', 'http:'].includes(url.protocol) || (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)))
-        throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: 'serverUrl 不得携带凭证或非安全明文地址' });
+      try {
+        url = new URL(value.trim());
+      } catch {
+        throw new BadRequestException({ code: 'CONFIG_INVALID', message: `连接字段 ${key} 无效` });
+      }
+      if (
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        !['https:', 'http:'].includes(url.protocol) ||
+        (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname))
+      )
+        throw new BadRequestException({
+          code: 'CONFIG_SECRET_FORBIDDEN',
+          message: 'serverUrl 不得携带凭证或非安全明文地址',
+        });
     }
     externalRef[key] = value.trim();
   }
   if (flavour === 'linked' && (!externalRef.externalPath || !externalRef.ragProvider))
-    throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'linked 连接需要 externalPath 与 ragProvider' });
+    throw new BadRequestException({
+      code: 'CONFIG_INVALID',
+      message: 'linked 连接需要 externalPath 与 ragProvider',
+    });
   if (flavour === 'linked' && externalRef.ragProvider !== provider)
-    throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'linked ragProvider 必须与选定引擎一致' });
+    throw new BadRequestException({
+      code: 'CONFIG_INVALID',
+      message: 'linked ragProvider 必须与选定引擎一致',
+    });
   return { flavour, externalRef };
 }
 
@@ -241,10 +270,64 @@ export function validateKnowledgeConfig(
         invalid('已有引擎不能变更 provider');
       const config = record(e.config);
       if (Object.keys(config).some((key) => SECRET_FIELD.test(key)))
-        throw new BadRequestException({ code: 'CONFIG_SECRET_FORBIDDEN', message: 'JSON 配置不得包含凭证' });
-      const allowed = [...common, ...(fields[String(e.provider)] ?? [])];
+        throw new BadRequestException({
+          code: 'CONFIG_SECRET_FORBIDDEN',
+          message: 'JSON 配置不得包含凭证',
+        });
+      const definition = engineDefinition(String(e.provider));
+      const allowed = [
+        ...common,
+        ...(fields[String(e.provider)] ?? []),
+        ...definition.fields.map((f) => f.key),
+      ];
       for (const [key, value] of Object.entries(config)) {
         if (!allowed.includes(key)) invalid(`${id}.config.${key} 不受支持`);
+        const field = definition.fields.find((f) => f.key === (ENGINE_FIELD_ALIASES[key] ?? key));
+        if (field) {
+          if (
+            field.type === 'number' &&
+            (typeof value !== 'number' ||
+              !Number.isInteger(value) ||
+              value < (field.min ?? 0) ||
+              value > (field.max ?? 100000))
+          )
+            invalid(`${key} 超出允许范围`);
+          if (field.type === 'boolean' && typeof value !== 'boolean') invalid(`${key} 须为布尔值`);
+          if (
+            field.type === 'select' &&
+            (typeof value !== 'string' || !field.options?.includes(value))
+          )
+            invalid(`${key} 选项无效`);
+          if (
+            ['string', 'model'].includes(field.type) &&
+            (typeof value !== 'string' || value.length > 2048)
+          )
+            invalid(`${key} 须为有界文本`);
+          if (
+            field.type === 'list' &&
+            value !== null &&
+            (!Array.isArray(value) ||
+              value.length > 500 ||
+              value.some((v) => typeof v !== 'string' || !v || v.length > 160))
+          )
+            invalid(`${key} 清单无效`);
+        }
+        if (key === 'server_url') {
+          let url: URL;
+          try {
+            url = new URL(String(value));
+          } catch {
+            invalid('server_url 无效');
+          }
+          if (
+            !['https:', 'http:'].includes(url.protocol) ||
+            url.username ||
+            url.password ||
+            url.search ||
+            url.hash
+          )
+            invalid('server_url 不得携带凭证或查询参数');
+        }
         if (
           key.endsWith('Ref') &&
           (typeof value !== 'string' || !/^[a-zA-Z0-9._:/-]{1,160}$/.test(value))
@@ -361,9 +444,10 @@ export function validateKnowledgeConfig(
  * 助手绑定聚焦写入的纯校验（docs/design/20261018-knowledge-center-deeptutor-reference.md §2）。
  * 服务层 `saveAssistantBindings` 使用；错误经 `CONFIG_INVALID`/绑定专用码抛出。
  */
-export function parseAssistantBindingsInput(
-  body: unknown,
-): { expectedRevision: number; assistantIds: string[] } {
+export function parseAssistantBindingsInput(body: unknown): {
+  expectedRevision: number;
+  assistantIds: string[];
+} {
   const input = record(body);
   if (
     Object.keys(input).some((k) => !['expectedRevision', 'assistantIds'].includes(k)) ||
@@ -378,7 +462,10 @@ export function parseAssistantBindingsInput(
     new Set(assistantIds).size !== assistantIds.length
   )
     invalid('助手绑定列表无效');
-  return { expectedRevision: input.expectedRevision as number, assistantIds: assistantIds as string[] };
+  return {
+    expectedRevision: input.expectedRevision as number,
+    assistantIds: assistantIds as string[],
+  };
 }
 
 /** 绑定的助手必须存在且启用；任一不满足即拒绝（400）。 */

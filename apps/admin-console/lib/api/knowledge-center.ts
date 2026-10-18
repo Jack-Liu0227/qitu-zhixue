@@ -5,9 +5,14 @@ export type ReadinessStatus =
   | 'needs_key'
   | 'needs_setup'
   | 'not_installed'
-  | 'unavailable';
+  | 'unavailable'
+  | 'unreachable'
+  | 'unchecked';
 
 export interface EngineCapabilities {
+  canIndex?: boolean;
+  canSearch?: boolean;
+  canMaterialize?: boolean;
   create?: boolean;
   connect?: boolean;
   search?: boolean;
@@ -106,12 +111,50 @@ export interface BaseDetail extends Base {
     origin: Record<string, unknown>;
   }[];
   versions: { id: string; status: string; created_at: string; manifest: Record<string, unknown> }[];
-  jobs: { id: string; state: string; error_code: string | null; attempts: number; operation?: string }[];
+  jobs: {
+    id: string;
+    state: string;
+    error_code: string | null;
+    attempts: number;
+    operation?: string;
+  }[];
   connection?: ConnectionSummary | null;
   sources?: KnowledgeSource[];
   bindings?: BindingSummary;
 }
+export interface EngineField {
+  key: string;
+  label: string;
+  type: 'string' | 'number' | 'boolean' | 'select' | 'model' | 'list';
+  group: string;
+  description: string;
+  default?: unknown;
+  options?: string[];
+  min?: number;
+  max?: number;
+}
+export interface EngineDefinition {
+  provider: string;
+  description: string;
+  icon: string | null;
+  modes: string[];
+  prerequisites: string;
+  installHint: string | null;
+  modelKinds: string[];
+  management: string[];
+  fields: EngineField[];
+  upstreamCommit: string;
+}
+export interface EngineCheck {
+  ok: boolean;
+  status?: ReadinessStatus;
+  errorCode?: string;
+  checks?: { key: string; label: string; ok: boolean; detail: string; optional: boolean }[];
+  checkedAt?: string;
+  manifest?: Record<string, unknown>;
+}
 export interface EngineGroup {
+  definition?: EngineDefinition;
   provider: string;
   name: string;
   group: string;

@@ -1,3 +1,4 @@
+import { engineDefinition } from './knowledge-engine.catalog';
 import {
   BadRequestException,
   ConflictException,
@@ -7,14 +8,25 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { adminAssistants, agentConfigs, runtimeMcpServers, modelModels, tutorPartners, type Database } from '@qitu/database';
+import {
+  adminAssistants,
+  agentConfigs,
+  runtimeMcpServers,
+  modelModels,
+  tutorPartners,
+  type Database,
+} from '@qitu/database';
 import { sql, type SQL } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import type { CurrentUser } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import type { ParsedUpload } from './knowledge-upload.service';
 import { AuditWriter } from '../../common/audit/audit.service';
-import { IdempotencyStore, hashIdempotentInput, throwHttpForIdempotencyError } from '../../common/idempotency';
+import {
+  IdempotencyStore,
+  hashIdempotentInput,
+  throwHttpForIdempotencyError,
+} from '../../common/idempotency';
 import {
   ENGINE_CATALOG,
   PROJECT_TOOL,
@@ -72,8 +84,7 @@ export class KnowledgeCenterService {
     body: unknown,
     handler: () => Promise<T>,
   ): Promise<T> {
-    if (!this.idempotency)
-      throw new ServiceUnavailableException('知识中心幂等存储不可用');
+    if (!this.idempotency) throw new ServiceUnavailableException('知识中心幂等存储不可用');
     try {
       const result = await this.idempotency.execute(
         scope,
@@ -294,55 +305,131 @@ export class KnowledgeCenterService {
     const base = await this.base(knowledgeBaseId);
     return {
       bindingRevision: base.revision,
-      bindings: await this.query(sql`SELECT agent_kind as "agentKind",agent_id as "agentId",mode,enabled,revision FROM knowledge_base_agent_bindings WHERE kb_id=${knowledgeBaseId} ORDER BY agent_kind,agent_id,mode`),
+      bindings: await this.query(
+        sql`SELECT agent_kind as "agentKind",agent_id as "agentId",mode,enabled,revision FROM knowledge_base_agent_bindings WHERE kb_id=${knowledgeBaseId} ORDER BY agent_kind,agent_id,mode`,
+      ),
     };
   }
 
   async saveBaseBindings(actor: CurrentUser, knowledgeBaseId: string, body: unknown, key: string) {
     const input = record(body);
-    if (Object.keys(input).some((field) => !['expectedRevision', 'bindings'].includes(field)) ||
-      !Number.isInteger(input.expectedRevision) || !Array.isArray(input.bindings))
+    if (
+      Object.keys(input).some((field) => !['expectedRevision', 'bindings'].includes(field)) ||
+      !Number.isInteger(input.expectedRevision) ||
+      !Array.isArray(input.bindings)
+    )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定请求无效' });
     const wanted = input.bindings as unknown[];
-    if (wanted.length > 500) throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定数量超限' });
+    if (wanted.length > 500)
+      throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定数量超限' });
     const parsed = wanted.map((raw) => {
       const row = record(raw);
-      if (Object.keys(row).some((field) => !['agentKind', 'agentId', 'mode', 'enabled'].includes(field)) ||
+      if (
+        Object.keys(row).some(
+          (field) => !['agentKind', 'agentId', 'mode', 'enabled'].includes(field),
+        ) ||
         !['admin_assistant', 'tutor_partner', 'runtime_agent'].includes(String(row.agentKind)) ||
-        !['retrieve', 'materialize'].includes(String(row.mode)) || typeof row.agentId !== 'string' ||
-        !row.agentId || row.agentId.length > 160 || typeof row.enabled !== 'boolean')
+        !['retrieve', 'materialize'].includes(String(row.mode)) ||
+        typeof row.agentId !== 'string' ||
+        !row.agentId ||
+        row.agentId.length > 160 ||
+        typeof row.enabled !== 'boolean'
+      )
         throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定目标字段无效' });
-      return { agentKind: row.agentKind as string, agentId: row.agentId, mode: row.mode as string, enabled: row.enabled };
+      return {
+        agentKind: row.agentKind as string,
+        agentId: row.agentId,
+        mode: row.mode as string,
+        enabled: row.enabled,
+      };
     });
     const unique = new Set(parsed.map((row) => `${row.agentKind}:${row.agentId}:${row.mode}`));
-    if (unique.size !== parsed.length) throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定不能重复' });
-    const assistants = await this.database().select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants);
-    const partners = await this.database().select({ id: tutorPartners.id, enabled: tutorPartners.enabled }).from(tutorPartners);
-    const agents = await this.database().select({ id: agentConfigs.id, enabled: agentConfigs.enabled }).from(agentConfigs);
+    if (unique.size !== parsed.length)
+      throw new BadRequestException({ code: 'CONFIG_INVALID', message: '绑定不能重复' });
+    const assistants = await this.database()
+      .select({ id: adminAssistants.id, enabled: adminAssistants.enabled })
+      .from(adminAssistants);
+    const partners = await this.database()
+      .select({ id: tutorPartners.id, enabled: tutorPartners.enabled })
+      .from(tutorPartners);
+    const agents = await this.database()
+      .select({ id: agentConfigs.id, enabled: agentConfigs.enabled })
+      .from(agentConfigs);
     for (const row of parsed) {
-      const catalog = row.agentKind === 'admin_assistant' ? assistants : row.agentKind === 'tutor_partner' ? partners : agents;
+      const catalog =
+        row.agentKind === 'admin_assistant'
+          ? assistants
+          : row.agentKind === 'tutor_partner'
+            ? partners
+            : agents;
       const target = catalog.find((entry) => entry.id === row.agentId);
-      if (!target) throw new BadRequestException({ code: 'AGENT_NOT_FOUND', message: '绑定目标不存在' });
-      if (!target.enabled && row.enabled) throw new BadRequestException({ code: 'AGENT_DISABLED', message: '绑定目标已停用' });
+      if (!target)
+        throw new BadRequestException({ code: 'AGENT_NOT_FOUND', message: '绑定目标不存在' });
+      if (!target.enabled && row.enabled)
+        throw new BadRequestException({ code: 'AGENT_DISABLED', message: '绑定目标已停用' });
     }
     const hash = checksum(JSON.stringify({ knowledgeBaseId, body }));
     const replayId = `knowledge.binding.${actor.id}.${key}`;
-    const [replay] = await this.query<{ detail: { requestHash?: string }; target_id: string }>(sql`SELECT detail,target_id FROM audit_logs WHERE idempotency_key=${replayId}`);
+    const [replay] = await this.query<{ detail: { requestHash?: string }; target_id: string }>(
+      sql`SELECT detail,target_id FROM audit_logs WHERE idempotency_key=${replayId}`,
+    );
     if (replay) {
-      if (replay.detail?.requestHash !== hash) throw new ConflictException({ code: 'IDEMPOTENCY_CONFLICT', message: '幂等键已用于其他绑定请求' });
-      return { knowledgeBaseId, ...await this.baseBindings(knowledgeBaseId) };
+      if (replay.detail?.requestHash !== hash)
+        throw new ConflictException({
+          code: 'IDEMPOTENCY_CONFLICT',
+          message: '幂等键已用于其他绑定请求',
+        });
+      return { knowledgeBaseId, ...(await this.baseBindings(knowledgeBaseId)) };
     }
     return this.database().transaction(async (tx) => {
-      const [base] = rows<{ revision: number; kind: string }>(await tx.execute(sql`SELECT revision,kind FROM knowledge_bases WHERE id=${knowledgeBaseId} AND lifecycle='active' FOR UPDATE`));
+      const [base] = rows<{ revision: number; kind: string }>(
+        await tx.execute(
+          sql`SELECT revision,kind FROM knowledge_bases WHERE id=${knowledgeBaseId} AND lifecycle='active' FOR UPDATE`,
+        ),
+      );
       if (!base) throw new NotFoundException('知识库不可用');
       if (base.kind === 'project' && parsed.some((row) => row.agentKind !== 'admin_assistant'))
-        throw new BadRequestException({ code: 'KNOWLEDGE_BINDING_NOT_ALLOWED', message: '项目库只允许显式助手授权' });
-      if (base.revision !== input.expectedRevision) throw new ConflictException({ code: 'KNOWLEDGE_BINDING_CONFLICT', message: '知识库修订已变化' });
+        throw new BadRequestException({
+          code: 'KNOWLEDGE_BINDING_NOT_ALLOWED',
+          message: '项目库只允许显式助手授权',
+        });
+      if (base.revision !== input.expectedRevision)
+        throw new ConflictException({
+          code: 'KNOWLEDGE_BINDING_CONFLICT',
+          message: '知识库修订已变化',
+        });
       const nextRevision = base.revision + 1;
-      await tx.execute(sql`DELETE FROM knowledge_base_agent_bindings WHERE kb_id=${knowledgeBaseId}`);
-      for (const row of parsed) await tx.execute(sql`INSERT INTO knowledge_base_agent_bindings(kb_id,agent_kind,agent_id,mode,enabled,revision,created_by,updated_by) VALUES(${knowledgeBaseId},${row.agentKind},${row.agentId},${row.mode},${row.enabled},${nextRevision},${actor.id},${actor.id})`);
-      await tx.execute(sql`UPDATE knowledge_bases SET revision=${nextRevision},updated_at=now() WHERE id=${knowledgeBaseId}`);
-      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'knowledge.base.bindings.save', targetType: 'knowledge_base', targetId: String(nextRevision), idempotencyKey: replayId, detail: { requestHash: hash, bindingCount: parsed.length, bindingIdsHash: checksum(parsed.map((row) => `${row.agentKind}:${row.agentId}:${row.mode}`).sort().join('|')) } }, tx);
+      await tx.execute(
+        sql`DELETE FROM knowledge_base_agent_bindings WHERE kb_id=${knowledgeBaseId}`,
+      );
+      for (const row of parsed)
+        await tx.execute(
+          sql`INSERT INTO knowledge_base_agent_bindings(kb_id,agent_kind,agent_id,mode,enabled,revision,created_by,updated_by) VALUES(${knowledgeBaseId},${row.agentKind},${row.agentId},${row.mode},${row.enabled},${nextRevision},${actor.id},${actor.id})`,
+        );
+      await tx.execute(
+        sql`UPDATE knowledge_bases SET revision=${nextRevision},updated_at=now() WHERE id=${knowledgeBaseId}`,
+      );
+      await this.audit.write(
+        {
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: 'knowledge.base.bindings.save',
+          targetType: 'knowledge_base',
+          targetId: String(nextRevision),
+          idempotencyKey: replayId,
+          detail: {
+            requestHash: hash,
+            bindingCount: parsed.length,
+            bindingIdsHash: checksum(
+              parsed
+                .map((row) => `${row.agentKind}:${row.agentId}:${row.mode}`)
+                .sort()
+                .join('|'),
+            ),
+          },
+        },
+        tx,
+      );
       return { knowledgeBaseId, bindingRevision: nextRevision, bindings: parsed };
     });
   }
@@ -406,6 +493,7 @@ export class KnowledgeCenterService {
       provider,
       name,
       group,
+      definition: engineDefinition(provider),
       instances: Object.entries(config.knowledgeEngines)
         .filter(([, e]) => e.provider === provider)
         .map(([id, e]) => ({
@@ -433,11 +521,30 @@ export class KnowledgeCenterService {
     const base = (await this.bases()).find((b) => b.id === id);
     if (!base) throw new NotFoundException('知识库不可用');
     const [connection] = await this.query<{
-      flavour: string; provider: string; external_ref: Record<string, unknown>;
-      credential_ref: string | null; status: string; last_error_code: string | null;
-    }>(sql`SELECT flavour,provider,external_ref,credential_ref,status,last_error_code FROM knowledge_base_connections WHERE kb_id=${id}`);
-    const sources = await this.query<{ id: string; kind: string; status: string; source_config: Record<string, unknown>; last_error_code: string | null; last_source_revision: string | null; schedule_hours: number | null; last_sync_at: string | null }>(sql`SELECT id,kind,status,source_config,last_error_code,last_source_revision,schedule_hours,last_sync_at FROM knowledge_sources WHERE kb_id=${id} ORDER BY created_at`);
-    const bindings = await this.query(sql`SELECT agent_kind as "agentKind",agent_id as "agentId",mode,enabled,revision FROM knowledge_base_agent_bindings WHERE kb_id=${id} ORDER BY agent_kind,agent_id,mode`);
+      flavour: string;
+      provider: string;
+      external_ref: Record<string, unknown>;
+      credential_ref: string | null;
+      status: string;
+      last_error_code: string | null;
+    }>(
+      sql`SELECT flavour,provider,external_ref,credential_ref,status,last_error_code FROM knowledge_base_connections WHERE kb_id=${id}`,
+    );
+    const sources = await this.query<{
+      id: string;
+      kind: string;
+      status: string;
+      source_config: Record<string, unknown>;
+      last_error_code: string | null;
+      last_source_revision: string | null;
+      schedule_hours: number | null;
+      last_sync_at: string | null;
+    }>(
+      sql`SELECT id,kind,status,source_config,last_error_code,last_source_revision,schedule_hours,last_sync_at FROM knowledge_sources WHERE kb_id=${id} ORDER BY created_at`,
+    );
+    const bindings = await this.query(
+      sql`SELECT agent_kind as "agentKind",agent_id as "agentId",mode,enabled,revision FROM knowledge_base_agent_bindings WHERE kb_id=${id} ORDER BY agent_kind,agent_id,mode`,
+    );
     return {
       ...base,
       files: await this.query<Omit<KnowledgeMember, 'content'>>(
@@ -449,9 +556,30 @@ export class KnowledgeCenterService {
       jobs: await this.query(
         sql`SELECT * FROM knowledge_jobs WHERE kb_id=${id} ORDER BY created_at DESC`,
       ),
-      connection: connection ? redactConnection({ flavour: connection.flavour, provider: connection.provider, externalRef: connection.external_ref, credentialRef: connection.credential_ref, status: connection.status, lastErrorCode: connection.last_error_code }) : { status: 'not_applicable' },
+      connection: connection
+        ? redactConnection({
+            flavour: connection.flavour,
+            provider: connection.provider,
+            externalRef: connection.external_ref,
+            credentialRef: connection.credential_ref,
+            status: connection.status,
+            lastErrorCode: connection.last_error_code,
+          })
+        : { status: 'not_applicable' },
       bindings: { bindingRevision: base.revision, bindings },
-      sources: sources.map((source) => ({ id: source.id, kind: source.kind, status: source.status, sourceConfig: source.kind === 'folder' ? { ...source.source_config, path: '[allowlisted path]' } : source.source_config, lastErrorCode: source.last_error_code, lastSourceRevision: source.last_source_revision, scheduleHours: source.schedule_hours, lastSyncAt: source.last_sync_at })),
+      sources: sources.map((source) => ({
+        id: source.id,
+        kind: source.kind,
+        status: source.status,
+        sourceConfig:
+          source.kind === 'folder'
+            ? { ...source.source_config, path: '[allowlisted path]' }
+            : source.source_config,
+        lastErrorCode: source.last_error_code,
+        lastSourceRevision: source.last_source_revision,
+        scheduleHours: source.schedule_hours,
+        lastSyncAt: source.last_sync_at,
+      })),
     };
   }
   async createBase(actor: CurrentUser, body: unknown, key: string) {
@@ -631,13 +759,7 @@ export class KnowledgeCenterService {
     if (!original) throw new NotFoundException('此资料没有原始上传文件');
     return original;
   }
-  async updateFile(
-    actor: CurrentUser,
-    id: string,
-    memberId: string,
-    body: unknown,
-    key: string,
-  ) {
+  async updateFile(actor: CurrentUser, id: string, memberId: string, body: unknown, key: string) {
     const base = await this.base(id);
     const input = record(body);
     if (base.kind === 'project' || base.lifecycle !== 'active')
@@ -720,8 +842,12 @@ export class KnowledgeCenterService {
             sql`UPDATE knowledge_bases SET build_state='cancelled',updated_at=now() WHERE id=${jobs[0].kb_id} AND revision=${jobs[0].input_revision}`,
           );
           if (jobs[0].source_id) {
-            await tx.execute(sql`UPDATE knowledge_sync_runs SET state='cancelled',error_code='SYNC_CANCELLED',updated_at=now() WHERE id=${id}`);
-            await tx.execute(sql`UPDATE knowledge_sources SET status=CASE WHEN status='revoked' THEN 'revoked' ELSE 'active' END,last_error_code='SYNC_CANCELLED',updated_at=now() WHERE id=${jobs[0].source_id}`);
+            await tx.execute(
+              sql`UPDATE knowledge_sync_runs SET state='cancelled',error_code='SYNC_CANCELLED',updated_at=now() WHERE id=${id}`,
+            );
+            await tx.execute(
+              sql`UPDATE knowledge_sources SET status=CASE WHEN status='revoked' THEN 'revoked' ELSE 'active' END,last_error_code='SYNC_CANCELLED',updated_at=now() WHERE id=${jobs[0].source_id}`,
+            );
           }
           await this.audit.write(
             {

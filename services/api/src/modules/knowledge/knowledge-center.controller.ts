@@ -92,7 +92,14 @@ export class KnowledgeCenterController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return { data: await this.center.saveBaseBindings(this.actor(cookie), id, body, requireIdempotencyKey(key)) };
+    return {
+      data: await this.center.saveBaseBindings(
+        this.actor(cookie),
+        id,
+        body,
+        requireIdempotencyKey(key),
+      ),
+    };
   }
   @Post('knowledge/bases/:id/connections/detach')
   async detachConnection(
@@ -100,7 +107,9 @@ export class KnowledgeCenterController {
     @Headers('idempotency-key') key: string | undefined,
     @Param('id') id: string,
   ) {
-    return { data: await this.connections.detach(this.actor(cookie), id, requireIdempotencyKey(key)) };
+    return {
+      data: await this.connections.detach(this.actor(cookie), id, requireIdempotencyKey(key)),
+    };
   }
   @Post('knowledge/bases/:id/sources')
   async createSource(
@@ -109,7 +118,9 @@ export class KnowledgeCenterController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return { data: await this.sourceSync.create(this.actor(cookie), id, body, requireIdempotencyKey(key)) };
+    return {
+      data: await this.sourceSync.create(this.actor(cookie), id, body, requireIdempotencyKey(key)),
+    };
   }
   @Post('knowledge/bases/:id/sources/:sourceId/sync')
   async syncSource(
@@ -119,7 +130,15 @@ export class KnowledgeCenterController {
     @Param('sourceId') sourceId: string,
     @Body() body: unknown,
   ) {
-    return { data: await this.sourceSync.sync(this.actor(cookie), id, sourceId, body, requireIdempotencyKey(key)) };
+    return {
+      data: await this.sourceSync.sync(
+        this.actor(cookie),
+        id,
+        sourceId,
+        body,
+        requireIdempotencyKey(key),
+      ),
+    };
   }
   @Post('knowledge/bases/:id/files')
   async add(
@@ -211,6 +230,11 @@ export class KnowledgeCenterController {
     };
   }
 
+  @Get('knowledge/engine-models')
+  engineModels(@Headers('cookie') cookie: string | undefined) {
+    this.actor(cookie);
+    return { data: this.engine.modelOptions() };
+  }
   @Get('knowledge/engines')
   async engines(@Headers('cookie') cookie: string | undefined) {
     this.actor(cookie);
