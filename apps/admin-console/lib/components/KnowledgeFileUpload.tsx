@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { centerRequest, type BaseDetail } from '../api/knowledge-center';
 import { newIdempotencyKey } from '../api/types';
+import { Glyph } from './knowledge-library/shared';
+import styles from './knowledge-library/KnowledgeLibrary.module.css';
 
 const extensions = [
   'pdf',
@@ -47,6 +49,31 @@ export function KnowledgeFileUpload({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState('');
+  const picker = useRef<HTMLInputElement>(null);
+  const folderPicker = useRef<HTMLInputElement>(null);
+  function pick(files: File[]) {
+    if (files.length > 20) {
+      setMessage('每批最多选择 20 个文件，请分批上传。');
+      return;
+    }
+    setMessage('');
+    setEntries(
+      files.map((file) => {
+        const supported = extensions.includes(file.name.split('.').pop()?.toLowerCase() ?? '');
+        const valid = supported && file.size > 0 && file.size <= 10 * 1024 * 1024;
+        return {
+          file,
+          key: newIdempotencyKey(),
+          state: valid ? 'pending' : 'invalid',
+          message: !supported
+            ? '不支持此格式，请转换后上传。'
+            : !valid
+              ? '文件为空或超过 10 MiB。'
+              : '等待上传',
+        };
+      }),
+    );
+  }
   const update = (key: string, state: Entry['state'], message: string) =>
     setEntries((current) =>
       current.map((row) => (row.key === key ? { ...row, state, message } : row)),
@@ -82,7 +109,7 @@ export function KnowledgeFileUpload({
     }
   }
   return (
-    <section className="knowledge-upload-panel" aria-label="批量上传文件">
+    <section className={styles.panel} aria-label="批量上传文件">
       <h3>上传文件</h3>
       <p>
         支持
@@ -94,43 +121,52 @@ export function KnowledgeFileUpload({
         请另存为新版格式。上传成功后可预览正文、下载原文件。
       </p>
       <p>当前引擎每库最多 20 份资料，提取正文合计不超过 7 MiB；超出时请分库保存。</p>
-      <label>
-        选择文件（可多选）
-        <input
-          type="file"
-          multiple
-          aria-label="选择知识库文件"
-          accept={extensions.map((e) => '.' + e).join(',')}
-          disabled={running}
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            event.target.value = '';
-            if (files.length > 20) {
-              setMessage('每批最多选择 20 个文件，请分批上传。');
-              return;
-            }
-            setMessage('');
-            setEntries(
-              files.map((file) => {
-                const supported = extensions.includes(
-                  file.name.split('.').pop()?.toLowerCase() ?? '',
-                );
-                const valid = supported && file.size > 0 && file.size <= 10 * 1024 * 1024;
-                return {
-                  file,
-                  key: newIdempotencyKey(),
-                  state: valid ? 'pending' : 'invalid',
-                  message: !supported
-                    ? '不支持此格式，请转换后上传。'
-                    : !valid
-                      ? '文件为空或超过 10 MiB。'
-                      : '等待上传',
-                };
-              }),
-            );
-          }}
-        />
-      </label>
+      <button
+        className={styles.dropzone}
+        disabled={running}
+        onClick={() => picker.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!running) pick(Array.from(e.dataTransfer.files));
+        }}
+      >
+        <Glyph name="upload" size={30} />
+        <strong>选择文件…</strong>
+        <span>点击选择或将文档拖放到此处</span>
+      </button>
+      <input
+        ref={picker}
+        hidden
+        type="file"
+        multiple
+        aria-label="选择知识库文件"
+        accept={extensions.map((e) => '.' + e).join(',')}
+        disabled={running}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          pick(files);
+        }}
+      />
+      <input
+        ref={folderPicker}
+        hidden
+        type="file"
+        multiple
+        {...{ webkitdirectory: '' }}
+        onChange={(e) => {
+          pick(Array.from(e.target.files ?? []));
+          e.target.value = '';
+        }}
+      />
+      <button
+        className={styles.textButton}
+        disabled={running}
+        onClick={() => folderPicker.current?.click()}
+      >
+        或上传文件夹（一次性导入）
+      </button>
       {entries.length > 0 && (
         <ul className="knowledge-upload-list" aria-live="polite">
           {entries.map((row) => (

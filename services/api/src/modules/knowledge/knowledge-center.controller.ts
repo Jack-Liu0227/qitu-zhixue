@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Headers, Param, Post, Put, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Optional,
+  Param,
+  Post,
+  Put,
+  Query,
+  Res,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
@@ -11,6 +23,7 @@ import { requireIdempotencyKey } from './knowledge-center.request';
 import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeSourceSyncService } from './knowledge-source-sync.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
+import { KnowledgeLibraryService } from './knowledge-library.service';
 
 @Controller('admin')
 export class KnowledgeCenterController {
@@ -23,6 +36,7 @@ export class KnowledgeCenterController {
     private readonly connections: KnowledgeConnectionService,
     private readonly linkedProbe: KnowledgeLinkProbeService,
     private readonly sourceSync: KnowledgeSourceSyncService,
+    @Optional() private readonly library?: KnowledgeLibraryService,
   ) {}
   private actor(cookie: string | undefined) {
     return requireRole(this.auth, cookie, 'admin', '知识中心仅向管理员开放');
@@ -89,10 +103,63 @@ export class KnowledgeCenterController {
     this.actor(cookie);
     return { data: await this.linkedProbe.probeRequest(body) };
   }
+  @Post('knowledge/bases/connection-probe')
+  async connectionProbe(@Headers('cookie') cookie: string | undefined, @Body() body: unknown) {
+    this.actor(cookie);
+    return { data: await this.connections.probe(body) };
+  }
   @Get('knowledge/bases/:id/bindings')
   async baseBindings(@Headers('cookie') cookie: string | undefined, @Param('id') id: string) {
     this.actor(cookie);
     return { data: await this.center.baseBindings(id) };
+  }
+  @Post('knowledge/bases/:id/settings')
+  async librarySettings(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
+    return { data: await this.library.manage(actor, id, body, requireIdempotencyKey(key)) };
+  }
+  @Get('knowledge/bases/:id/remote-files')
+  async remoteFiles(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Query('folderId') folderId?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    this.actor(cookie);
+    if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
+    return { data: await this.library.documents(id, folderId, cursor) };
+  }
+  @Get('knowledge/bases/:id/remote-files/:documentId')
+  async remoteFile(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @Query('folderId') folderId?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    this.actor(cookie);
+    if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
+    return { data: await this.library.document(id, documentId, folderId, cursor) };
+  }
+  @Post('knowledge/bases/:id/sources/:sourceId/settings')
+  async sourceSettings(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Param('sourceId') sourceId: string,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
+    return {
+      data: await this.library.source(actor, id, sourceId, body, requireIdempotencyKey(key)),
+    };
   }
   @Put('knowledge/bases/:id/bindings')
   async saveBaseBindings(
@@ -186,12 +253,16 @@ export class KnowledgeCenterController {
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @Res() response: Response,
+    @Query('inline') inline?: string,
   ) {
     this.actor(cookie);
     const file = await this.center.original(id, memberId);
     response.set({
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="document"; filename*=UTF-8''${encodeURIComponent(file.file_name).replace(/'/g, '%27')}`,
+      'Content-Type':
+        inline === '1' && file.mime_type === 'application/pdf'
+          ? 'application/pdf'
+          : 'application/octet-stream',
+      'Content-Disposition': `${inline === '1' && file.mime_type === 'application/pdf' ? 'inline' : 'attachment'}; filename="document"; filename*=UTF-8''${encodeURIComponent(file.file_name).replace(/'/g, '%27')}`,
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     });

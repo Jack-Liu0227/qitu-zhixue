@@ -108,9 +108,10 @@ class EngineRuntimeTests(unittest.TestCase):
             self.assertEqual(asyncio.run(runtime.remote(request))["errorCode"], "REMOTE_RESOURCE_NOT_FOUND")
             request.update(operation="search", remoteKnowledgeBaseId="known-kb", externalRef={}, query="question")
             found = asyncio.run(runtime.remote(request))
-            self.assertEqual(found["manifest"]["items"][0]["media_id"],"doc-1")
-            self.assertEqual(found["manifest"]["items"][0]["highlight_content"],"grounded snippet")
-            self.assertEqual(calls[-1][1]["knowledge_base_id"], "known-kb")
+            self.assertEqual(found["manifest"]["items"][0]["chunk_id"],"doc-1")
+            self.assertEqual(found["manifest"]["items"][0]["content"],"grounded snippet")
+            self.assertEqual(next(body for method,body in calls if method=='search_knowledge')["knowledge_base_id"], "known-kb")
+            self.assertTrue(any(method=='get_media_info' for method,body in calls), 'thin snippets invoke upstream full-text hydration')
 
     def test_weknora_edited_key_reaches_real_rest_client(self):
         calls = []

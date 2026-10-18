@@ -38,6 +38,10 @@ async def run(data):
             settings[upstream] = settings.pop(local)
     upstream_config._load_runtime_settings = lambda: settings
     with embedding_config_scope(embedding):
+        from linked_runtime import linked_request
+        linked = await linked_request(data, RAGService)
+        if linked is not None:
+            return linked
         if data["operation"] == "check":
             client = get_embedding_client(embedding)
             # Actual vector request; dependency import alone is insufficient.

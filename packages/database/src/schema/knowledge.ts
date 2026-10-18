@@ -23,12 +23,18 @@ export const knowledgeBases = pgTable(
     kind: text('kind').notNull(),
     schoolId: text('school_id'),
     ownerUserId: text('owner_user_id'),
-    projectId: text('project_id').unique().references(() => projects.id),
+    projectId: text('project_id')
+      .unique()
+      .references(() => projects.id),
     engineInstanceId: text('engine_instance_id'),
     lifecycle: text('lifecycle').notNull().default('active'),
     buildState: text('build_state').notNull().default('queued'),
     activeIndexVersionId: text('active_index_version_id'),
     revision: integer('revision').notNull().default(1),
+    librarySettings: jsonb('library_settings')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -42,10 +48,16 @@ export const knowledgeBaseConnections = pgTable(
   'knowledge_base_connections',
   {
     id: text('id').primaryKey(),
-    kbId: text('kb_id').notNull().unique().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    kbId: text('kb_id')
+      .notNull()
+      .unique()
+      .references(() => knowledgeBases.id, { onDelete: 'cascade' }),
     flavour: text('flavour').notNull(),
     provider: text('provider').notNull(),
-    externalRef: jsonb('external_ref').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    externalRef: jsonb('external_ref')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     credentialRef: text('credential_ref'),
     status: text('status').notNull(),
     lastCheckAt: timestamp('last_check_at', { withTimezone: true }),
@@ -53,16 +65,47 @@ export const knowledgeBaseConnections = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({ providerStatusIdx: index('knowledge_base_connections_provider_idx').on(table.provider, table.status) }),
+  (table) => ({
+    providerStatusIdx: index('knowledge_base_connections_provider_idx').on(
+      table.provider,
+      table.status,
+    ),
+  }),
+);
+
+export const knowledgeRemoteEvidence = pgTable(
+  'knowledge_remote_evidence',
+  {
+    id: text('id').primaryKey(),
+    kbId: text('kb_id')
+      .notNull()
+      .references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    assistantId: text('assistant_id').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    origin: jsonb('origin')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({ expiryIdx: index('knowledge_remote_evidence_expiry_idx').on(table.expiresAt) }),
 );
 
 export const knowledgeSources = pgTable(
   'knowledge_sources',
   {
     id: text('id').primaryKey(),
-    kbId: text('kb_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    kbId: text('kb_id')
+      .notNull()
+      .references(() => knowledgeBases.id, { onDelete: 'cascade' }),
     kind: text('kind').notNull(),
-    sourceConfig: jsonb('source_config').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    sourceConfig: jsonb('source_config')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     credentialRef: text('credential_ref'),
     scheduleHours: integer('schedule_hours'),
     nextSyncAt: timestamp('next_sync_at', { withTimezone: true }),
@@ -76,7 +119,11 @@ export const knowledgeSources = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    sourceUniqueIdx: uniqueIndex('knowledge_sources_kb_kind_fingerprint_idx').on(table.kbId, table.kind, table.sourceFingerprint),
+    sourceUniqueIdx: uniqueIndex('knowledge_sources_kb_kind_fingerprint_idx').on(
+      table.kbId,
+      table.kind,
+      table.sourceFingerprint,
+    ),
     syncIdx: index('knowledge_sources_sync_idx').on(table.status, table.nextSyncAt),
   }),
 );
@@ -85,10 +132,15 @@ export const knowledgeSyncRuns = pgTable(
   'knowledge_sync_runs',
   {
     id: text('id').primaryKey(),
-    sourceId: text('source_id').notNull().references(() => knowledgeSources.id, { onDelete: 'cascade' }),
+    sourceId: text('source_id')
+      .notNull()
+      .references(() => knowledgeSources.id, { onDelete: 'cascade' }),
     idempotencyKey: text('idempotency_key').notNull(),
     requestHash: text('request_hash').notNull(),
-    budgetSnapshot: jsonb('budget_snapshot').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    budgetSnapshot: jsonb('budget_snapshot')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     state: text('state').notNull(),
     discoveredCount: integer('discovered_count').notNull().default(0),
     acceptedCount: integer('accepted_count').notNull().default(0),
@@ -99,13 +151,20 @@ export const knowledgeSyncRuns = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({ sourceKeyUniqueIdx: uniqueIndex('knowledge_sync_runs_source_key_idx').on(table.sourceId, table.idempotencyKey) }),
+  (table) => ({
+    sourceKeyUniqueIdx: uniqueIndex('knowledge_sync_runs_source_key_idx').on(
+      table.sourceId,
+      table.idempotencyKey,
+    ),
+  }),
 );
 
 export const knowledgeBaseAgentBindings = pgTable(
   'knowledge_base_agent_bindings',
   {
-    kbId: text('kb_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+    kbId: text('kb_id')
+      .notNull()
+      .references(() => knowledgeBases.id, { onDelete: 'cascade' }),
     agentKind: text('agent_kind').notNull(),
     agentId: text('agent_id').notNull(),
     mode: text('mode').notNull(),
@@ -117,8 +176,15 @@ export const knowledgeBaseAgentBindings = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.kbId, table.agentKind, table.agentId, table.mode], name: 'knowledge_base_agent_bindings_pkey' }),
-    agentIdx: index('knowledge_base_agent_bindings_agent_idx').on(table.agentKind, table.agentId, table.enabled),
+    pk: primaryKey({
+      columns: [table.kbId, table.agentKind, table.agentId, table.mode],
+      name: 'knowledge_base_agent_bindings_pkey',
+    }),
+    agentIdx: index('knowledge_base_agent_bindings_agent_idx').on(
+      table.agentKind,
+      table.agentId,
+      table.enabled,
+    ),
   }),
 );
 
@@ -156,7 +222,10 @@ export const knowledgeDocuments = pgTable(
     projectId: text('project_id').references(() => projects.id),
     title: text('title').notNull(),
     summary: text('summary').notNull().default(''),
-    tags: jsonb('tags').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    tags: jsonb('tags')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     content: text('content').notNull(),
     /** 来源标识（如 `qitu-curriculum-policy`、上传文件名）。 */
     source: text('source').notNull(),

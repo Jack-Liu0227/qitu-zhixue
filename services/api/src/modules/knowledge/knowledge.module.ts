@@ -28,6 +28,7 @@ import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KnowledgeConnectionService } from './knowledge-connection.service';
 import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
+import { KnowledgeLibraryService } from './knowledge-library.service';
 import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 
 
@@ -53,6 +54,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
   ],
   providers: [
     KnowledgeUploadService,
+    KnowledgeLibraryService,
     KnowledgeConnectionService,
     KnowledgeLinkProbeService,
     KnowledgeSourceSyncService,

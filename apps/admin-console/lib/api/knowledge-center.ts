@@ -69,6 +69,15 @@ export interface Base {
   active_index_version_id: string | null;
   document_count: number;
   updated_at: string;
+  created_at?: string;
+  revision?: number;
+  assistant_count?: number;
+  library_settings?: {
+    folders?: string[];
+    storageWorkspaceRef?: string;
+    isDefault?: boolean;
+    engineOverrides?: Record<string, unknown>;
+  };
   mode?: 'create_new' | 'link_existing';
   flavour?: string | null;
   connection?: ConnectionSummary | null;
@@ -94,6 +103,8 @@ export interface KnowledgeBinding {
   enabled: boolean;
   revision?: number;
   effective?: boolean;
+  targetEnabled?: boolean;
+  avatar?: string | null;
   readonlyReason?: string | null;
   reasons?: string[];
 }
@@ -239,6 +250,7 @@ export interface CreateBaseRequest {
   retrievalMode?: string;
   storageWorkspaceRef?: string;
   connection?: Record<string, string>;
+  embeddingModelRef?: string;
 }
 export const probeLinkedBase = (body: LinkProbeRequest, key: string) =>
   centerRequest<LinkProbeResult>('knowledge/bases/link-probe', 'POST', body, key);

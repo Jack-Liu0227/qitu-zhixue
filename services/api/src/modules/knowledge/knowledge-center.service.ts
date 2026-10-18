@@ -52,6 +52,7 @@ export interface KnowledgeBaseRow {
   revision: number;
   updated_at: string;
   document_count: number;
+  library_settings?: Record<string, unknown>;
 }
 export interface KnowledgeMember {
   id: string;
@@ -112,10 +113,20 @@ export class KnowledgeCenterService {
       sql`SELECT revision,config FROM platform_configuration_revisions ORDER BY revision DESC LIMIT 1`,
     );
     // Preserve saved enablement/bindings under the legacy key while updating the registered tools.
-    if (latest) return { ...latest, config: { ...latest.config, platformTools: {
-      ...latest.config.platformTools,
-      'project-knowledge': { ...latest.config.platformTools['project-knowledge'], ...KNOWLEDGE_TOOL },
-    } } };
+    if (latest)
+      return {
+        ...latest,
+        config: {
+          ...latest.config,
+          platformTools: {
+            ...latest.config.platformTools,
+            'project-knowledge': {
+              ...latest.config.platformTools['project-knowledge'],
+              ...KNOWLEDGE_TOOL,
+            },
+          },
+        },
+      };
     const [servers, assistants] = await Promise.all([
       db.select().from(runtimeMcpServers),
       db.select().from(adminAssistants),
@@ -307,11 +318,36 @@ export class KnowledgeCenterService {
 
   async baseBindings(knowledgeBaseId: string) {
     const base = await this.base(knowledgeBaseId);
+    const saved = base.bindings.bindings as {
+      agentKind: string;
+      agentId: string;
+      mode: string;
+      enabled: boolean;
+    }[];
+    const { config } = await this.configuration();
+    const tool = config.platformTools['project-knowledge'];
+    const assistants = await this.database().select().from(adminAssistants);
     return {
       bindingRevision: base.revision,
-      bindings: await this.query(
-        sql`SELECT agent_kind as "agentKind",agent_id as "agentId",mode,enabled,revision FROM knowledge_base_agent_bindings WHERE kb_id=${knowledgeBaseId} ORDER BY agent_kind,agent_id,mode`,
-      ),
+      bindings: saved,
+      catalog: assistants.map((a) => {
+        const binding = saved.find(
+          (b) => b.agentKind === 'admin_assistant' && b.agentId === a.id && b.mode === 'retrieve',
+        );
+        const enabled = binding?.enabled ?? false;
+        return {
+          agentKind: 'admin_assistant',
+          agentId: a.id,
+          agentName: a.name,
+          avatar: a.avatar,
+          mode: 'retrieve',
+          enabled,
+          targetEnabled: a.enabled,
+          effective: enabled && a.enabled && tool.enabled && tool.boundAssistants.includes(a.id),
+          readonlyReason: !a.enabled ? '助手已停用' : null,
+          reasons: !tool.enabled ? ['知识库检索总开关关闭'] : [],
+        };
+      }),
     };
   }
 
@@ -386,13 +422,16 @@ export class KnowledgeCenterService {
       return { knowledgeBaseId, ...(await this.baseBindings(knowledgeBaseId)) };
     }
     return this.database().transaction(async (tx) => {
+      // Same configuration lock as the JSON editor; a per-library grant also grants the tool.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(281017)`);
       const [base] = rows<{ revision: number; kind: string }>(
         await tx.execute(
           sql`SELECT revision,kind FROM knowledge_bases WHERE id=${knowledgeBaseId} AND lifecycle='active' FOR UPDATE`,
         ),
       );
       if (!base) throw new NotFoundException('知识库不可用');
-      if (base.kind === 'project') throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
+      if (base.kind === 'project')
+        throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
       if (base.revision !== input.expectedRevision)
         throw new ConflictException({
           code: 'KNOWLEDGE_BINDING_CONFLICT',
@@ -406,6 +445,34 @@ export class KnowledgeCenterService {
         await tx.execute(
           sql`INSERT INTO knowledge_base_agent_bindings(kb_id,agent_kind,agent_id,mode,enabled,revision,created_by,updated_by) VALUES(${knowledgeBaseId},${row.agentKind},${row.agentId},${row.mode},${row.enabled},${nextRevision},${actor.id},${actor.id})`,
         );
+      const selectedAssistants = parsed
+        .filter(
+          (row) => row.agentKind === 'admin_assistant' && row.mode === 'retrieve' && row.enabled,
+        )
+        .map((row) => row.agentId);
+      if (selectedAssistants.length) {
+        const [current] = rows<{ revision: number; config: PlatformKnowledgeConfig }>(
+          await tx.execute(
+            sql`SELECT revision,config FROM platform_configuration_revisions ORDER BY revision DESC LIMIT 1`,
+          ),
+        );
+        if (current) {
+          const tool = current.config.platformTools['project-knowledge'];
+          const allowed = [...new Set([...tool.boundAssistants, ...selectedAssistants])];
+          if (allowed.length !== tool.boundAssistants.length) {
+            const config = {
+              ...current.config,
+              platformTools: {
+                ...current.config.platformTools,
+                'project-knowledge': { ...tool, boundAssistants: allowed },
+              },
+            };
+            await tx.execute(
+              sql`INSERT INTO platform_configuration_revisions(revision,config,updated_by,idempotency_key,request_hash) VALUES(${current.revision + 1},${JSON.stringify(config)}::jsonb,${actor.id},${`library-grant:${key}`},${hash})`,
+            );
+          }
+        }
+      }
       await tx.execute(
         sql`UPDATE knowledge_bases SET revision=${nextRevision},updated_at=now() WHERE id=${knowledgeBaseId}`,
       );
@@ -514,7 +581,7 @@ export class KnowledgeCenterService {
 
   async bases() {
     return this.query<KnowledgeBaseRow>(
-      sql`SELECT k.*, (SELECT count(*)::int FROM knowledge_base_members m WHERE m.kb_id=k.id AND m.visibility='active') document_count FROM knowledge_bases k WHERE lifecycle<>'deleted' ORDER BY updated_at DESC`,
+      sql`SELECT k.*, (SELECT count(*)::int FROM knowledge_base_members m WHERE m.kb_id=k.id AND m.visibility='active') document_count, (SELECT count(*)::int FROM knowledge_base_agent_bindings b WHERE b.kb_id=k.id AND b.agent_kind='admin_assistant' AND b.enabled=true AND b.mode='retrieve') assistant_count FROM knowledge_bases k WHERE lifecycle<>'deleted' ORDER BY updated_at DESC`,
     );
   }
   async base(id: string) {
@@ -585,7 +652,16 @@ export class KnowledgeCenterService {
   async createBase(actor: CurrentUser, body: unknown, key: string) {
     const input = record(body);
     if (
-      Object.keys(input).some((k) => !['name', 'engineInstanceId'].includes(k)) ||
+      Object.keys(input).some(
+        (k) =>
+          ![
+            'name',
+            'engineInstanceId',
+            'embeddingModelRef',
+            'retrievalMode',
+            'storageWorkspaceRef',
+          ].includes(k),
+      ) ||
       typeof input.name !== 'string' ||
       !input.name.trim() ||
       input.name.length > 160
@@ -598,18 +674,63 @@ export class KnowledgeCenterService {
     )
       throw new BadRequestException('请选择已配置引擎');
     const id = `kb-${checksum(`${actor.id}:${key}`).slice(0, 32)}`;
+    if (input.storageWorkspaceRef !== undefined && input.storageWorkspaceRef !== 'account')
+      throw new BadRequestException('请选择账户资源库');
+    const selectedEngine = config.config.knowledgeEngines[input.engineInstanceId as string]!;
+    const overrides: Record<string, unknown> = {};
+    if (input.embeddingModelRef !== undefined) {
+      if (typeof input.embeddingModelRef !== 'string')
+        throw new BadRequestException('嵌入模型无效');
+      const models = await this.database().select().from(modelModels);
+      const model = models.find((m) => `${m.providerId}:${m.modelId}` === input.embeddingModelRef);
+      if (
+        !model ||
+        !(Array.isArray(model.outputModalities) && model.outputModalities.includes('embedding'))
+      )
+        throw new BadRequestException('请选择已配置的嵌入模型');
+      overrides.embeddingModelRef = input.embeddingModelRef;
+    }
+    if (input.retrievalMode !== undefined) {
+      if (
+        typeof input.retrievalMode !== 'string' ||
+        !engineDefinition(selectedEngine.provider).modes.includes(input.retrievalMode)
+      )
+        throw new BadRequestException('检索模式无效');
+      overrides[selectedEngine.provider === 'llamaindex' ? 'retrieval_profile' : 'mode'] =
+        input.retrievalMode;
+    }
+    const settings = { storageWorkspaceRef: 'account', engineOverrides: overrides };
     const [existing] = await this.query<KnowledgeBaseRow>(
       sql`SELECT * FROM knowledge_bases WHERE id=${id}`,
     );
     if (
       existing &&
       (existing.name !== input.name.trim() ||
-        existing.engine_instance_id !== input.engineInstanceId)
+        existing.engine_instance_id !== input.engineInstanceId ||
+        JSON.stringify(existing.library_settings?.engineOverrides ?? {}) !==
+          JSON.stringify(overrides))
     )
       throw new ConflictException('幂等键已用于其他知识库');
-    await this.database().execute(
-      sql`INSERT INTO knowledge_bases(id,name,kind,engine_instance_id,build_state) VALUES(${id},${input.name.trim()},'platform',${input.engineInstanceId},'unindexed') ON CONFLICT DO NOTHING`,
-    );
+    await this.database().transaction(async (tx) => {
+      const inserted = rows(
+        await tx.execute(
+          sql`INSERT INTO knowledge_bases(id,name,kind,engine_instance_id,build_state,library_settings) VALUES(${id},${String(input.name).trim()},'platform',${String(input.engineInstanceId)},'unindexed',${JSON.stringify(settings)}::jsonb) ON CONFLICT DO NOTHING RETURNING id`,
+        ),
+      );
+      if (inserted.length)
+        await this.audit.write(
+          {
+            actorId: actor.id,
+            actorRole: actor.role,
+            action: 'knowledge.base.create',
+            targetType: 'knowledge_base',
+            targetId: id,
+            idempotencyKey: `knowledge.base.create:${actor.id}:${key}`,
+            detail: { engineInstanceId: input.engineInstanceId },
+          },
+          tx,
+        );
+    });
     const saved = await this.base(id);
     if (saved.name !== input.name.trim() || saved.engine_instance_id !== input.engineInstanceId)
       throw new ConflictException('幂等键已用于其他知识库');
@@ -721,7 +842,8 @@ export class KnowledgeCenterService {
         ),
       );
       if (!base) throw new NotFoundException('知识库不可用');
-      if (base.kind === 'project') throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
+      if (base.kind === 'project')
+        throw new BadRequestException('历史自动知识库不再构建，请手动创建知识库');
       const [replay] = rows(await tx.execute(sql`SELECT id FROM knowledge_jobs WHERE id=${jobId}`));
       if (replay) return;
       const [running] = rows<{ id: string; input_revision: number }>(

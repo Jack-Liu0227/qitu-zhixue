@@ -78,7 +78,20 @@ async def remote(data):
                 return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
         elif op == "search":
             page = await client.search_knowledge(query, limit=8)
-            return result(True, manifest={"items": [{"media_id": item.media_id, "title": item.title, "highlight_content": item.highlight} for item in page.documents]})
+            from deeptutor.services.rag.pipelines.ima.sources import documents_to_sources
+            from deeptutor.services.rag.pipelines.ima.pipeline import ImaPipeline
+            sources = documents_to_sources(page.documents)
+            await ImaPipeline()._hydrate(client, sources)
+            return result(True, manifest={"items": [s for s in sources if str(s.get('content') or '').strip()]})
+        elif op == 'documents':
+            page = await client.get_knowledge_list(folder_id=str(data.get('folderId') or ''), cursor=str(data.get('cursor') or ''), limit=50)
+            return result(True, manifest={'items': [{'id':d.media_id,'title':d.title,'origin':{}} for d in page.documents],
+                'folders':[{'id':f.folder_id,'name':f.name} for f in page.folders], 'nextCursor':page.next_cursor, 'isEnd':page.is_end})
+        elif op == 'read_document':
+            from deeptutor.services.rag.pipelines.ima.media import extract_text
+            media = await client.get_media_content(str(data.get('documentId') or ''))
+            text = await extract_text(media, max_chars=100000) if media else ''
+            return result(bool(text), error=None if text else 'SOURCE_DOCUMENT_UNAVAILABLE', manifest={'content':text})
         else:
             found = await client.search_knowledge_bases()
             return result(True, manifest={"accessibleBases": len(found.get("knowledge_bases", []))}, checks=[check("account", "ima 账户与知识库访问", True, "官方 OpenAPI 认证检查通过")])
@@ -86,6 +99,9 @@ async def remote(data):
     if provider == "obsidian":
         try:
             path = allowed_path(config.get("vaultPath"))
+            if op in {'documents', 'read_document'}:
+                from linked_runtime import directory_request
+                return directory_request(path, data)
             # No recursive scan, write, or synthetic search success during preflight.
             readable = os.access(path, os.R_OK)
             return result(readable, error=None if readable else "LINKED_PATH_NOT_READABLE", manifest={"directoryReadable": readable, "connectionVerified": readable,
@@ -121,7 +137,9 @@ async def remote(data):
             return result(False, "needs_key", "REMOTE_AUTH_FAILED")
         if op == "search":
             found = await client.query_context(query, config.get("mode", "mix"))
-            return result(True, manifest=found)
+            return result(True, manifest={**found, 'items': [{'title':'LightRAG 检索上下文','text':found['content'],'references':found['sources']}] if found.get('content') else []})
+        if op in {'documents', 'read_document'}:
+            return result(False, error='SOURCE_DOCUMENTS_UNAVAILABLE')
         return result(True, checks=[check("server", "LightRAG 服务与认证", True, "官方 auth-status / pipeline_status 检查通过")])
     if provider == "weknora":
         from deeptutor.services.rag.pipelines.weknora.config import WeKnoraConfig
@@ -136,6 +154,8 @@ async def remote(data):
             return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
         if op == "search":
             return result(True, manifest={"items": (await client.search(query))[:8]})
+        if op in {'documents', 'read_document'}:
+            return result(False, error='SOURCE_DOCUMENTS_UNAVAILABLE')
         return result(True, manifest={"accessibleBases": len(bases)}, checks=[check("server", "WeKnora 服务与认证", True, "官方知识库列表接口检查通过")])
     if provider == "kiwix":
         from deeptutor.services.rag.pipelines.kiwix.client import KiwixClient
@@ -225,6 +245,10 @@ async def local(data):
             effort = config.get(role + "_reasoning_effort", "default")
             config["role_models"][role] = {"mode":"model" if key in models else "disabled" if role == "vlm" else "inherit", "selection":{"profile_id":"qitu","model_id":key} if key in models else None,"reasoning_effort":None if effort == "default" or (role == "vlm" and key not in models) else effort,"max_async":config.get(role+"_max_async",config.get("llm_model_max_async",4)),"timeout":config.get(role+"_timeout",config.get("llm_timeout",240))}
     with embedding_config_scope(embedding):
+        from linked_runtime import linked_request
+        linked = await linked_request(data, RAGService)
+        if linked is not None:
+            return linked
         if op == "check":
             from deeptutor.services.rag.preflight import engine_preflight
             report = engine_preflight(provider)

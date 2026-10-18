@@ -9,6 +9,7 @@ import {
   type KnowledgeBaseRow,
 } from './knowledge-center.service';
 import { KnowledgeEngineService } from './knowledge-engine.service';
+import { libraryEngine } from './knowledge-library.service';
 import { KnowledgeSourceSyncService, KnowledgeSourceReadError } from './knowledge-source-sync.service';
 
 interface Job {
@@ -26,6 +27,7 @@ interface Job {
 export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
   private timer?: ReturnType<typeof setInterval>;
   private busy = false;
+  private lastMaintenance = 0;
   constructor(
     private readonly center: KnowledgeCenterService,
     private readonly engine: KnowledgeEngineService,
@@ -65,6 +67,11 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
     let job: Job | undefined;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     try {
+      if (Date.now() - this.lastMaintenance > 60_000) {
+        this.lastMaintenance = Date.now();
+        await this.center.database().execute(sql`DELETE FROM knowledge_remote_evidence WHERE expires_at<now()`);
+        await this.sourceSync.scheduleDue?.();
+      }
       [job] = await this.center.query<Job>(
         sql`UPDATE knowledge_jobs SET state='discovering',attempts=attempts+1,fencing_token=fencing_token+1,lease_until=now()+interval '90 seconds',updated_at=now() WHERE id=(SELECT id FROM knowledge_jobs WHERE (state='queued' OR (state NOT IN ('ready','empty','failed','cancelled') AND lease_until<now())) AND next_attempt_at<=now() ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`,
       );
@@ -164,9 +171,10 @@ export class KnowledgeBuildWorker implements OnModuleInit, OnModuleDestroy {
           config.knowledgeEngines[id]?.provider === 'llamaindex' &&
           config.knowledgeEngines[id]?.enabled,
       );
-    const engine = target ? config.knowledgeEngines[target] : undefined;
+    const registered = target ? config.knowledgeEngines[target] : undefined;
+    const engine = registered ? libraryEngine(base, registered) : undefined;
     if (!engine?.enabled) return this.fail(job, 'ENGINE_NOT_READY');
-    const check = await this.engine.check(target!);
+    const check = await this.engine.execute(engine, { operation: 'check' });
     if (!check.ok) return this.fail(job, check.errorCode ?? 'ENGINE_NOT_READY');
     await this.event(job, 'planning', { mode: 'manual', reason: '索引管理员添加的资料' });
     const members = await this.center.query<KnowledgeMember>(

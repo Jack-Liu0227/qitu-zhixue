@@ -56,6 +56,8 @@ export class KnowledgeEngineService {
   }
   async execute(engine: EngineConfig, request: Record<string, unknown>): Promise<EngineReceipt> {
     if (!engine.enabled) return { ok: false, status: 'unavailable', errorCode: 'ENGINE_DISABLED' };
+    if (['documents', 'read_document'].includes(String(request.operation)) && engine.provider !== 'llamaindex')
+      return this.upstream(engine, request);
     const adapter = this.adapterFor(engine.provider);
     if (adapter) {
       const receipt =
