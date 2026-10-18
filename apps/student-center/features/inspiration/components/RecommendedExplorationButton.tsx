@@ -15,7 +15,7 @@ interface RecommendedExplorationButtonProps {
   disabled?: boolean;
 }
 
-/** Creates the server-owned exploration before entering Tutor. */
+/** Creates the server-owned project and its template team before entering Tutor. */
 export function RecommendedExplorationButton({
   template,
   dataSource = inspirationDataSource,
@@ -36,11 +36,8 @@ export function RecommendedExplorationButton({
     setError(null);
     keyRef.current ??= createInspirationIdempotencyKey();
     try {
-      const exploration = await dataSource.createRecommendedExploration(
-        { source: 'recommended', templateVersionId },
-        keyRef.current,
-      );
-      router.push(`/tutor?explorationId=${encodeURIComponent(exploration.id)}`);
+      const result = await dataSource.startRecommendedProject(template, keyRef.current);
+      router.push(`/tutor/${encodeURIComponent(result.project.id)}`);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 403) {
         setError('当前账号没有权限开始这个推荐探索。');
@@ -63,9 +60,9 @@ export function RecommendedExplorationButton({
         aria-disabled={pending || unavailable || disabled}
         title={unavailable ? '该推荐项目尚无已发布模板版本' : disabled ? '当前网络不可用' : undefined}
       >
-        {pending ? '正在接入团队…' : unavailable ? '暂不可开始' : '💬 与AI搭档开始'}
+        {pending ? '正在创建项目…' : unavailable ? '暂不可开始' : '💬 与AI搭档开始'}
       </button>
-      {unavailable ? <p className="qitu-inspiration-action-hint">该推荐项目尚无已发布版本，暂不能建立团队探索。</p> : null}
+      {unavailable ? <p className="qitu-inspiration-action-hint">该推荐项目尚无已发布版本，暂不能创建项目。</p> : null}
       {disabled && !unavailable ? <p className="qitu-inspiration-action-hint">当前网络不可用，恢复网络后再开始。</p> : null}
       {error ? <p className="qitu-inspiration-action-error" role="alert">{error}</p> : null}
     </div>
