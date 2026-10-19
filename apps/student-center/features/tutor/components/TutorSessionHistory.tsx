@@ -243,7 +243,7 @@ export function TutorSessionHistory({
           padding: '12px 0 10px',
           border: '1px solid #e2e8f0',
           borderRadius: 14,
-          background: '#ffffff',
+          background: 'var(--qitu-surface, #ffffff)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -391,6 +391,7 @@ export function TutorSessionHistory({
                   title={`${item.title}${item.stageLabel ? ` · ${item.stageLabel}` : ''} · ${item.turnCount}条对话 · ${formatRelativeTime(item.updatedAt)}`}
                   aria-label={`切换到会话：${item.title}`}
                   aria-current={active ? 'true' : undefined}
+                  className={`qitu-history-collapsed-btn ${active ? 'is-active' : ''}`}
                   style={{
                     width: '44px',
                     height: '44px',
@@ -401,7 +402,7 @@ export function TutorSessionHistory({
                     gap: 0,
                     border: active ? '1.5px solid #3b82f6' : '1px solid #f1f5f9',
                     borderRadius: '10px',
-                    background: active ? '#eff6ff' : '#ffffff',
+                    background: active ? 'var(--qitu-primary-soft, #eff6ff)' : 'var(--qitu-surface, #ffffff)',
                     boxShadow: active ? '0 2px 8px rgba(59,130,246,0.15)' : 'none',
                     cursor: busy ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
@@ -415,7 +416,7 @@ export function TutorSessionHistory({
                   }}
                   onMouseLeave={(e) => {
                     if (!active) {
-                      e.currentTarget.style.background = '#ffffff';
+                      e.currentTarget.style.background = 'var(--qitu-surface, #ffffff)';
                       e.currentTarget.style.borderColor = '#f1f5f9';
                     }
                   }}
@@ -458,7 +459,7 @@ export function TutorSessionHistory({
         padding: '14px 12px',
         border: '1px solid #e2e8f0',
         borderRadius: 14,
-        background: '#ffffff',
+        background: 'var(--qitu-surface, #ffffff)',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
@@ -547,11 +548,12 @@ export function TutorSessionHistory({
               <div
                 key={item.id}
                 onClick={() => handleSelectSession(item)}
+                className={`qitu-history-session-card ${active ? 'is-active' : ''}`}
                 style={{
                   padding: '10px 10px',
                   borderRadius: '10px',
                   border: active ? '1.5px solid #3b82f6' : '1px solid #f1f5f9',
-                  background: active ? '#eff6ff' : '#ffffff',
+                  background: active ? 'var(--qitu-primary-soft, #eff6ff)' : 'var(--qitu-surface, #ffffff)',
                   cursor: 'pointer',
                   position: 'relative',
                   transition: 'all 0.15s ease',
@@ -565,7 +567,7 @@ export function TutorSessionHistory({
                 }}
                 onMouseLeave={(e) => {
                   if (!active) {
-                    e.currentTarget.style.background = '#ffffff';
+                    e.currentTarget.style.background = 'var(--qitu-surface, #ffffff)';
                     e.currentTarget.style.borderColor = '#f1f5f9';
                   }
                 }}
