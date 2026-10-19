@@ -48,7 +48,7 @@ bash /root/qitu-releases/63e3be882f1b1d7ccfbc0122bc14bf0b354785e3/.release-audit
 
 ## Follow-up release: assistant/team display contract
 
-Commit `19fc1a7` separates the Admin Copilot toolbar into independent live
+Release commit `c899f49` (code change `19fc1a7`) separates the Admin Copilot toolbar into independent live
 Assistant and Team selectors. The Assistant selector renders only enabled
 assistant records; the Team selector renders only enabled teams and reports a
 member count derived from enabled assistants. Team members are no longer
@@ -58,5 +58,10 @@ fallback. Deleted or disabled records reset only their own selector.
 Focused regression coverage is in `tooling/copilot-catalog.test.mjs` (6/6
 passing). The Windows UNC Admin typecheck remains blocked by the pre-existing
 missing `pdfjs-dist` installation snapshot; no changed-file TypeScript error was
-reported. The release must be built from a clean Linux dependency graph before
-switching the Admin production unit.
+reported. Linux release `/root/qitu-releases/c899f498d9abb2cfad79763aebd3dfbd5fc416a7`
+was built from the frozen lockfile: Admin typecheck, all five frontend
+production builds, API/worker dependency builds, and the 10 focused catalog/
+Feishu QR tests passed. All six formal `qitu-{api,auth,student,parent,teacher,admin}.service`
+units now point to this release and are active; readiness and the five frontend
+probes return HTTP 200. Existing preferences edits remain uncommitted on the
+server. Independent eye/IMA/embedding services were intentionally not restarted.

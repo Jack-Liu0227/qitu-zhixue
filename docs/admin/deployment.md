@@ -311,7 +311,7 @@ API Linux 测试日志、运行复核和受限审计脚本分别位于 release �
 
 ### 3.6 主站 main 统一发布与管家目录修复（2026-10-19 晚间）
 
-生产代码 follow-up commit 为 `19fc1a7`，用于修复管家助手/团队目录显示契约；完成 Linux 构建后再统一切换六个正式单元。此前 `63e3be882f1b1d7ccfbc0122bc14bf0b354785e3` 的生产切换、0036 迁移和服务器两处 preferences 保留事实仍由 [本次发布记录](./release-20261019-main.md) 记录。本节不表示完整 PBL 能力验收。
+生产代码 follow-up release 为 `c899f498d9abb2cfad79763aebd3dfbd5fc416a7`（代码变更 `19fc1a7`），用于修复管家助手/团队目录显示契约；六个正式单元已完成隔离构建和统一切换。此前 `63e3be882f1b1d7ccfbc0122bc14bf0b354785e3` 的生产切换、0036 迁移和服务器两处 preferences 保留事实仍由 [本次发布记录](./release-20261019-main.md) 记录。本节不表示完整 PBL 能力验收。
 
 ## 4. Pi/Herdr 开发 Agent（非运行时）
 
