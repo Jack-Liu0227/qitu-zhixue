@@ -33,6 +33,8 @@ test('all Feishu admin read/write endpoints enforce the server-side admin role',
   await assert.rejects(() => instance.update('qitu_session=test', 'key-1', { enabled: true }), ForbiddenException);
   await assert.rejects(() => instance.createQr('qitu_session=test', 'key-1', {}), ForbiddenException);
   await assert.rejects(() => instance.getQr('qitu_session=test', 'qr-1'), ForbiddenException);
+  await assert.rejects(() => instance.beginDevice('qitu_session=test', 'key-1', {}), ForbiddenException);
+  await assert.rejects(() => instance.pollDevice('qitu_session=test', 'qr-1'), ForbiddenException);
 });
 
 test('write endpoints reject missing or overlong idempotency keys before invoking services', async () => {
@@ -44,7 +46,20 @@ test('write endpoints reject missing or overlong idempotency keys before invokin
   await assert.rejects(() => instance.update('qitu_session=test', undefined, { enabled: true }), BadRequestException);
   await assert.rejects(() => instance.createQr('qitu_session=test', '   ', {}), BadRequestException);
   await assert.rejects(() => instance.update('qitu_session=test', 'x'.repeat(161), { enabled: true }), BadRequestException);
+  await assert.rejects(() => instance.beginDevice('qitu_session=test', undefined, {}), BadRequestException);
+  await assert.rejects(() => instance.beginDevice('qitu_session=test', 'x'.repeat(161), {}), BadRequestException);
   assert.equal(called, 0);
+});
+
+test('QR reads and device polls forward the authenticated admin for object-level checks', async () => {
+  const actors: CurrentUser[] = [];
+  const instance = controller(admin, {
+    getQrSession: async (_id: string, actor: CurrentUser) => { actors.push(actor); return {}; },
+    pollDeviceAuthorization: async (_id: string, actor: CurrentUser) => { actors.push(actor); return {}; },
+  });
+  await instance.getQr('qitu_session=test', 'qr-1');
+  await instance.pollDevice('qitu_session=test', 'qr-1');
+  assert.deepEqual(actors, [admin, admin]);
 });
 
 test('admin GET delegates to the service and returns a data envelope', async () => {

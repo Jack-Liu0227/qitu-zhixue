@@ -28,6 +28,10 @@ import {
   OPTICS_BOOTSTRAP_KEY,
   OPTICS_TEMPLATE_INPUT,
   OPTICS_VERSION_INPUT,
+  OPTICS_16_BOOTSTRAP_KEY,
+  OPTICS_16_TEMPLATE_SLUG,
+  OPTICS_16_TEMPLATE_INPUT,
+  OPTICS_16_VERSION_INPUT,
 } from '../modules/templates/content/optics';
 import {
   OpticsBootstrapError,
@@ -108,6 +112,38 @@ function run(h: BootstrapHarness, teamVersionId = TEAM_VERSION_ID): Promise<Opti
     { teamVersionId, actor: ADMIN, pilotReason: 'test pilot' },
   );
 }
+
+it('16-session bootstrap has a distinct opt-in identity and does not rewrite legacy v1', async () => {
+  const h = makeBootstrapHarness();
+  h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
+  const legacy = await run(h);
+  const legacyBefore = await h.templates.findVersion(legacy.versionId);
+  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2' as const };
+  const fresh = await runOpticsTemplateBootstrap(h, args);
+  const replay = await runOpticsTemplateBootstrap(h, args);
+  assert.notEqual(fresh.templateId, legacy.templateId);
+  assert.notEqual(fresh.versionId, legacy.versionId);
+  assert.equal(replay.versionId, fresh.versionId);
+  assert.equal(replay.bindingId, fresh.bindingId);
+  assert.equal((await h.templates.findTemplate(fresh.templateId))?.slug, OPTICS_16_TEMPLATE_SLUG);
+  assert.equal((await h.templates.findVersion(fresh.versionId))?.content.bootstrapKey, OPTICS_16_BOOTSTRAP_KEY);
+  assert.deepEqual(await h.templates.findVersion(legacy.versionId), legacyBefore);
+});
+
+it('refuses a stale 16-session bootstrap payload without modifying or activating it', async () => {
+  const h = makeBootstrapHarness();
+  h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
+  const created = await h.governance.createTemplate(ADMIN, OPTICS_16_TEMPLATE_INPUT, 'stale-template');
+  const stale = await h.governance.createVersion(ADMIN, created.template.id, {
+    ...OPTICS_16_VERSION_INPUT, rubric: [{ id: 'old-rubric', weight: 100 }],
+  }, 'stale-version');
+  await assert.rejects(() => runOpticsTemplateBootstrap(h, {
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2',
+  }), /identity has different content/);
+  assert.equal((await h.templates.findVersion(stale.version.id))?.status, 'draft');
+  assert.deepEqual((await h.templates.listVersions(created.template.id)).map((version) => version.id), [stale.version.id]);
+  assert.deepEqual(await h.bindingStore.listBindings(stale.version.id), []);
+});
 
 describe('optics-template-bootstrap（光学模板引导）', () => {
   let h: BootstrapHarness;

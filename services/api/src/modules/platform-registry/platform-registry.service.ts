@@ -1,5 +1,5 @@
 import { resolveAgentModelSelection } from './agent-model-selection';
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { randomUUID } from 'node:crypto';
 import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
@@ -33,6 +33,7 @@ import { BUILTIN_ASSISTANTS, QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THU
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { assertParentGraph } from './agent-config.validation';
+import { assistantIdsForRuntimeAgent, runtimeIdsForAssistant } from './assistant-runtime-identity';
 import { assertGateConditionWritable, resolveGateConditionForPhase } from './admin-ai-config.validation';
 import type { TutorRuntimePolicy, TutorRuntimeSkill, TutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 
@@ -43,23 +44,6 @@ export interface EffectiveAgentRuntime {
   tools: readonly TutorAgentToolDescriptor[];
   mcpServers: readonly TutorAgentMcpDescriptor[];
 }
-
-/**
- * The admin assistant catalogue and the runtime Agent registry use different
- * identifiers. Keep the deliberate compatibility binding here so an admin
- * switch is also a runtime guard for the student Tutor.
- */
-const ADMIN_ASSISTANT_RUNTIME_BINDINGS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  'tutor-leader': ['qitu-learning-partner'],
-});
-
-function assistantIdsForRuntimeAgent(agentId: string): readonly string[] {
-  const aliases = Object.entries(ADMIN_ASSISTANT_RUNTIME_BINDINGS)
-    .filter(([, runtimeIds]) => runtimeIds.includes(agentId))
-    .map(([assistantId]) => assistantId);
-  return [...new Set([agentId, ...aliases])];
-}
-
 
 /* ==================== admin AI 配置（助手 / 团队） ==================== */
 
@@ -319,6 +303,63 @@ export class PlatformRegistryService {
         toolIds: (effectiveAgent.mcpToolIds[server.id] ?? server.toolIds).filter((toolId) => server.toolIds.includes(toolId)),
       }));
     return { agent: effectiveAgent, policy: runtime.policy, skills: selectedSkills, tools, mcpServers };
+  }
+
+  /**
+   * The teaching assistant catalogue owns its duplicated prompt/model/capability
+   * bindings. Runtime-only Agents keep their existing resolver; no dual writes.
+   * This is a current configuration projection, not a frozen teaching bundle.
+   */
+  async getAssistantRuntime(assistantId: string): Promise<EffectiveAgentRuntime> {
+    if (!this.db) throw new ServiceUnavailableException('Assistant configuration storage is unavailable');
+    const assistants = await this.db.select().from(adminAssistants);
+    const assistant = assistants.find((row) => row.id === assistantId);
+    if (!assistant) throw new NotFoundException({ code: 'ASSISTANT_NOT_FOUND', message: 'Teaching assistant is unavailable' });
+
+    const runtime = loadTutorRuntimeSource();
+    const selectedSkills = runtime.skills.filter((skill) => assistant.enabledSkills.includes(skill.id) && skill.status === 'ready');
+    if (assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
+      throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
+    }
+    // Only exact identity and the explicit historical leader alias may restrict
+    // this assistant. Another role's configuration is never inherited.
+    const runtimeIds = new Set(runtimeIdsForAssistant(assistantId));
+    const configs = (await this.db.select().from(agentConfigs)).filter((config) => runtimeIds.has(config.id));
+    const mcpBindings = configs.length === 0 ? [] : await this.db.select().from(agentMcpBindings);
+    const exactConfig = configs.find((config) => config.id === assistantId);
+    const enabled = assistant.enabled && configs.every((config) => config.enabled);
+    const modelUsage = exactConfig?.modelUsage ?? 'tutor.chat';
+    const selection = resolveAgentModelSelection({
+      modelProviderId: assistant.modelProviderId, modelId: assistant.modelId, modelUsage,
+    }, (usage) => this.models.resolvePurpose(usage).available ? this.models.resolve(usage) : null);
+    const selectedModel = (this.models.listAgentModelOptions?.() ?? [])
+      .find((option) => option.providerId === selection.providerId && option.modelId === selection.modelId);
+    const mcpServers = (await this.listMcpServerRows())
+      .filter((server) => server.enabled && assistant.mcpServerIds.includes(server.id))
+      .map((server) => ({
+        serverId: server.id, label: server.label,
+        transport: server.transport as TutorAgentMcpDescriptor['transport'],
+        toolIds: server.toolIds.filter((toolId) => configs.every((config) => mcpBindings.some((binding) =>
+          binding.agentId === config.id && binding.mcpServerId === server.id && binding.enabled && binding.allowedToolIds.includes(toolId)))),
+      })).filter((server) => server.toolIds.length > 0)
+      .sort((left, right) => left.serverId.localeCompare(right.serverId));
+    return {
+      agent: {
+        id: assistant.id, label: assistant.name, description: assistant.description, role: assistant.role,
+        roleDefinition: assistant.role, agentDefinition: assistant.instructions,
+        parentAgentId: exactConfig?.parentAgentId ?? null, enabled, status: enabled ? 'enabled' : 'disabled',
+        modelUsage, modelBinding: assistant.modelProviderId === null && assistant.modelId === null ? 'usage' : 'agent',
+        modelProviderId: selection.providerId, modelId: selection.modelId,
+        modelLabel: selectedModel?.modelLabel ?? null, modelAvailable: selectedModel?.available ?? false,
+        promptVersion: `admin-assistant:${assistant.id}:${assistant.updatedAt.toISOString()}`,
+        capabilities: ['teach'].filter((capability) => configs.every((config) => config.capabilities.includes(capability))),
+        skillIds: [...assistant.enabledSkills], toolIds: [...assistant.toolIds],
+        mcpServerIds: [...assistant.mcpServerIds],
+        mcpToolIds: Object.fromEntries(mcpServers.map((server) => [server.serverId, [...server.toolIds]])),
+      },
+      policy: runtime.policy, skills: selectedSkills,
+      tools: builtinToolRegistry.listForAgentIds(assistant.toolIds), mcpServers,
+    };
   }
 
   /**

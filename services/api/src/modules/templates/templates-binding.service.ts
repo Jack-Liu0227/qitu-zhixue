@@ -54,6 +54,7 @@ export interface CurriculumTemplateResolution {
   version: string;
   status: TemplateStatus;
   title: string;
+  content: Record<string, unknown>;
 }
 
 const TEAM_VERSION_MISSING_MESSAGE = '团队版本不存在';
@@ -417,6 +418,7 @@ export class TemplateBindingService {
       version: resolved.version,
       status: resolved.status,
       title: template.title,
+      content: resolved.content,
     };
   }
 

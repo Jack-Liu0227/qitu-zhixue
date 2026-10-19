@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
+import { assertTemplateTeachingContent } from './templates.content-validator';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
@@ -728,6 +729,7 @@ function normalizeVersionInput(input: CreateTemplateVersionInput): CreateTemplat
     });
   }
   const rubric = input.rubric ?? [];
+  assertTemplateTeachingContent(content, stages);
   if (!Array.isArray(rubric)) {
     throw new BadRequestException({
       code: 'TEMPLATE_INPUT_INVALID',

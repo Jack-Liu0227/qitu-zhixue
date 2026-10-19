@@ -15,6 +15,7 @@ import {
   type FeishuQrStatusResponse,
 } from '../../../../lib/api/feishu';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
+import { applyFeishuQrStatus, pollFeishuQrSession } from '../../../../lib/api/feishu-qr';
 import { AdminOfflineError, AdminPermissionError, createIdempotentRetryKey } from '../../../../lib/api/types';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 import './feishu.css';
@@ -85,34 +86,31 @@ export default function FeishuSettingsPage() {
   const [qrError, setQrError] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [online, setOnline] = useState(true);
-  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelPolling = useRef<(() => void) | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeSessionId = useRef<string | null>(null);
+  const qrRequestId = useRef(0);
   const saveRetry = useRef(createIdempotentRetryKey());
   const qrRetry = useRef(createIdempotentRetryKey());
 
   const stopPolling = useCallback(() => {
-    if (pollTimer.current) clearInterval(pollTimer.current);
-    pollTimer.current = null;
+    cancelPolling.current?.();
+    cancelPolling.current = null;
     activeSessionId.current = null;
+    qrRequestId.current += 1;
   }, []);
 
   const applyQrStatus = useCallback((status: FeishuQrStatusResponse) => {
     if (activeSessionId.current !== status.id) return;
-    const connectionStatus: FeishuConnectionStatus = status.status === 'bound'
-      ? 'connected'
-      : status.status === 'pending' ? 'pending' : 'error';
-    setConfig((current) => ({
-      ...current,
-      status: connectionStatus,
-      credentialConfigured: status.credentialConfigured,
-      qrSessionId: status.id,
-      qrCodeUrl: status.authorizationUrl,
-      qrCodeDataUrl: status.qrCodeDataUrl ?? encodeAuthorizationQr(status.authorizationUrl),
-      expiresAt: status.expiresAt,
-    }));
+    setConfig((current) => {
+      const next = applyFeishuQrStatus(current, status);
+      if (status.status === 'pending') next.qrCodeDataUrl ??= encodeAuthorizationQr(next.qrCodeUrl);
+      return next;
+    });
+    setQrError(status.status === 'expired' ? 'This authorization session expired. Start a new session to try again.'
+      : status.status === 'cancelled' ? 'Authorization was cancelled. Start a new session to try again.' : '');
     setRemainingSeconds(secondsUntil(status.expiresAt));
-    if (connectionStatus !== 'pending') stopPolling();
+    if (status.status !== 'pending') stopPolling();
   }, [stopPolling]);
 
   const load = useCallback(async () => {
@@ -160,7 +158,7 @@ export default function FeishuSettingsPage() {
       setRemainingSeconds(seconds);
       if (seconds === 0) {
         stopPolling();
-        setConfig((current) => ({ ...current, status: 'error' }));
+        setConfig((current) => ({ ...current, status: 'error', qrCodeUrl: undefined, qrCodeDataUrl: undefined }));
         setQrError('This authorization session expired. Start a new session to try again.');
       }
     }, 1000);
@@ -174,6 +172,8 @@ export default function FeishuSettingsPage() {
     if (key === 'reportAssistantId' || key === 'domain') {
       setRemainingSeconds(null);
       stopPolling();
+      setQrLoading(false);
+      setQrError('');
     }
     setConfig((current) => {
       const next = { ...current, [key]: value };
@@ -228,24 +228,31 @@ export default function FeishuSettingsPage() {
     setQrLoading(true);
     setQrError('');
     stopPolling();
+    const requestId = qrRequestId.current;
     try {
       const qr = await startFeishuQrLogin(config.reportAssistantId, idempotencyKey);
+      if (requestId !== qrRequestId.current) return;
       qrRetry.current.acknowledge();
       setConfig((current) => ({ ...current, status: 'pending', qrSessionId: qr.sessionId, qrCodeUrl: qr.authorizationUrl, qrCodeDataUrl: qr.qrCodeDataUrl ?? encodeAuthorizationQr(qr.authorizationUrl), expiresAt: qr.expiresAt }));
       setRemainingSeconds(secondsUntil(qr.expiresAt));
       activeSessionId.current = qr.sessionId;
-      pollTimer.current = setInterval(async () => {
-        try {
-          applyQrStatus(await fetchFeishuQrStatus(qr.sessionId));
-        } catch (err) {
+      cancelPolling.current = pollFeishuQrSession({
+        sessionId: qr.sessionId,
+        pollIntervalSeconds: qr.pollIntervalSeconds,
+        poll: fetchFeishuQrStatus,
+        onStatus: applyQrStatus,
+        onError: (err) => {
           if (err instanceof AdminOfflineError) setQrError('Network unavailable. Polling will resume automatically.');
-          else if (err instanceof AdminPermissionError) { setQrError(err.message); stopPolling(); }
-        }
-      }, 3000);
+          else if (err instanceof AdminPermissionError) { setQrError(err.message); stopPolling(); return false; }
+          else setQrError('Could not check authorization status. Retrying automatically; you can still scan the QR code.');
+          return true;
+        },
+      });
     } catch (err) {
+      if (requestId !== qrRequestId.current) return;
       setQrError(err instanceof Error ? err.message : 'QR session failed. Retry without changing the form.');
     } finally {
-      setQrLoading(false);
+      if (requestId === qrRequestId.current) setQrLoading(false);
     }
   };
 

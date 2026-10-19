@@ -10,6 +10,7 @@ import {
 } from './optics/index.js';
 import { MISCONCEPTION_REMEDIATIONS, knownMisconceptionTag } from './optics/misconceptions.js';
 import { QUIZ_BANK, toQuizBlockProjection } from './index.js';
+import { runOpticsCurriculumAssertions } from './optics/curriculum.test.js';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -33,6 +34,7 @@ function deepEqual<T>(actual: T, expected: T, message: string): void {
 
 /** 内容 / 题库 / 迷思库不变量断言，由 `pnpm --filter @qitu/ai-client test` 调用。 */
 export function runOpticsQuizBankAssertions(): void {
+  runOpticsCurriculumAssertions();
   /* ============================ 内容不变量 ============================ */
 
   // 4 个理论概念：memory ×3 + procedure ×1。

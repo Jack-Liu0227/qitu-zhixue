@@ -636,39 +636,40 @@ export class TutorService {
 
   private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage): Promise<NonNullable<TutorTurn['author']>> {
     const intake = builtinAuthor('qitu-intake-assistant');
-    try {
-      let teamProjectId: string | null = record.projectId;
-      let templateVersionId: string | null = null;
-      if (record.projectId === null) {
-        if (this.projects === undefined || record.explorationId === null || record.explorationId === undefined) return intake;
-        const exploration = await this.projects.getExploration(record.ownerId, record.explorationId);
-        templateVersionId = exploration.templateVersionId;
-        if (templateVersionId === null) return intake;
-        teamProjectId = `exploration:${record.explorationId}`;
-      } else {
-        const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
-        templateVersionId = project?.templateVersionId ?? null;
-      }
-      const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId, record.projectId === null, true);
-      if (context.team.teamId === null || context.teamConfig === null) return intake;
-      const phaseId = pblPhaseForProjectStage(stage);
-      const phase = context.teamConfig.pblSpec?.phases.find((candidate) => candidate.phase === phaseId);
-      const member = phase === undefined
-        ? context.teamConfig.members.find((candidate) => candidate.assistantId === context.teamConfig?.leaderAssistantId)
-        : context.teamConfig.members.find((candidate) => candidate.assistantId === phase.assignedAssistantId);
-      const authorId = phase?.assignedAssistantId ?? member?.assistantId ?? context.team.assistantId;
-      const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
-      const assistant = assistants.find((candidate) => candidate.id === authorId) ?? this.findBuiltinAssistant(authorId);
-      return {
-        id: authorId,
-        name: member?.assistantName ?? assistant?.name ?? context.team.assistantName,
-        role: member?.roleLabel ?? member?.role ?? assistant?.role ?? '导师',
-        ...(assistant?.avatar ? { avatar: assistant.avatar } : {}),
-        ...(member?.color ? { color: member.color } : {}),
-      };
-    } catch {
-      return intake;
+    let teamProjectId: string | null = record.projectId;
+    let templateVersionId: string | null = null;
+    if (record.projectId === null) {
+      if (this.projects === undefined || record.explorationId == null) return intake;
+      const exploration = await this.projects.getExploration(record.ownerId, record.explorationId);
+      templateVersionId = exploration.templateVersionId;
+      if (templateVersionId === null) return intake;
+      teamProjectId = `exploration:${record.explorationId}`;
+    } else {
+      const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
+      templateVersionId = project?.templateVersionId ?? null;
     }
+    const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId, record.projectId === null, true);
+    if (context.team.teamId === null || context.teamConfig === null) {
+      if (this.platformRegistry === undefined) return intake; // Isolated fixtures without runtime governance.
+      throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目导师团队当前不可用' });
+    }
+    const phaseId = pblPhaseForProjectStage(stage);
+    const phase = context.teamConfig.pblSpec?.phases?.find((candidate) => candidate.phase === phaseId);
+    const member = context.teamConfig.members.find((candidate) => candidate.assistantId === phase?.assignedAssistantId);
+    if (phase === undefined || member === undefined) {
+      throw new ConflictException({ code: 'PROJECT_PHASE_ASSISTANT_UNAVAILABLE', message: '当前阶段缺少有效的团队导师' });
+    }
+    const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
+    const assistant = assistants.find((candidate) => candidate.id === member.assistantId);
+    if (!assistant || !assistant.enabled) {
+      throw new ConflictException({ code: 'AGENT_ROLE_DISABLED', message: '当前阶段导师暂不可用' });
+    }
+    return {
+      id: assistant.id, name: assistant.name,
+      role: member.roleLabel ?? member.role ?? assistant.role,
+      ...(assistant.avatar ? { avatar: assistant.avatar } : {}),
+      ...(member.color ? { color: member.color } : {}),
+    };
   }
 
   private async updateExplorationIntent(
@@ -1328,29 +1329,6 @@ export class TutorService {
   ): Promise<StreamedTutorEvent[]> {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
-    // Team Runtime is an observability/delegation boundary. Tutor turns remain
-    // usable when the optional runtime tables are not migrated yet; failures
-    // are intentionally fail-closed and never expose student content.
-    let teamRunId: string | null = null;
-    if (this.teamRuntime !== undefined) {
-      try {
-        const run = await this.teamRuntime.startRun(
-          { id: request.actorId, email: '', displayName: '', role: 'student' },
-          {
-            studentUserId: request.actorId,
-            projectId: record.projectId,
-            tutorSessionId: record.sessionId,
-            trigger: 'tutor.turn',
-            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null },
-            idempotencyKey: `tutor-team-run:${record.sessionId}:${request.idempotencyKey}`,
-          },
-        );
-        teamRunId = typeof run.id === 'string' ? run.id : null;
-      } catch {
-        // Existing Tutor behavior must not regress because Team Runtime is
-        // being rolled out independently from the conversation path.
-      }
-    }
     await this.domainWriter.initialize();
     const projectContext = record.projectId === null ? null : await this.getProjectContext(record.projectId, request.actorId);
     const liveProject = projectContext?.project ?? null;
@@ -1362,31 +1340,27 @@ export class TutorService {
     const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
     const conversationAssistantId = assistantAuthor.id;
     const authorizeKnowledgeTool = this.imaSettings
-      ? (toolId: string) => this.imaSettings!.canCall(this.contextReader.partner.id, toolId, conversationAssistantId)
+      ? (toolId: string) => this.imaSettings!.canCall(conversationAssistantId, toolId, conversationAssistantId)
       : undefined;
     const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
-    const partner = this.workspace === undefined
+    const basePartner = this.workspace === undefined
       ? this.contextReader.partner
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
-    const effectiveRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAgentRuntime(partner.id);
+    const partner = { ...basePartner, id: conversationAssistantId };
+    const effectiveRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAssistantRuntime(conversationAssistantId);
     if (effectiveRuntime !== null) {
+      if (effectiveRuntime.agent.id !== conversationAssistantId) {
+        throw new ConflictException({ code: 'ASSISTANT_RUNTIME_IDENTITY_MISMATCH', message: '导师运行身份不一致，请联系管理员' });
+      }
       partner.displayName = effectiveRuntime.agent.label;
+      assistantAuthor.name = effectiveRuntime.agent.label;
       partner.roleDefinition = effectiveRuntime.agent.roleDefinition;
       partner.enabled = effectiveRuntime.agent.enabled;
+      partner.modelUsage = effectiveRuntime.agent.modelUsage ?? 'tutor.chat';
       partner.promptVersion = effectiveRuntime.agent.promptVersion ?? partner.promptVersion;
       partner.capabilities = effectiveRuntime.agent.capabilities.filter((capability): capability is typeof partner.capabilities[number] =>
         capability === 'explore' || capability === 'plan' || capability === 'teach' || capability === 'review' || capability === 'reflect');
-    }
-    const configuredTutorAssistant = this.platformRegistry !== undefined
-      && typeof this.platformRegistry.getTutorAssistantStatusById === 'function'
-      ? await this.platformRegistry.getTutorAssistantStatusById(conversationAssistantId)
-      : null;
-    if (configuredTutorAssistant !== null && !configuredTutorAssistant.enabled) {
-      throw new ConflictException({
-        code: 'AGENT_ROLE_DISABLED',
-        message: `当前阶段导师「${configuredTutorAssistant.name}」暂未启用`,
-      });
     }
     const contextReader = this.workspace === undefined
       ? this.contextReader
@@ -1410,6 +1384,7 @@ export class TutorService {
           : [];
       }),
     });
+    contextPacket.partner = partner;
 
     let knowledgeTools: TutorTurnInput['knowledgeTools'];
     let knowledgeState: string | undefined;
@@ -1447,6 +1422,29 @@ export class TutorService {
     }
 
     if (!contextPacket.partner.capabilities.includes('teach')) throw new ConflictException({ code: 'AGENT_CAPABILITY_DISABLED', message: 'AI 学习搭档当前不提供教学能力' });
+    // Team Runtime is an observability/delegation boundary. Tutor turns remain
+    // usable when the optional runtime tables are not migrated yet; failures
+    // are intentionally fail-closed and never expose student content.
+    let teamRunId: string | null = null;
+    if (this.teamRuntime !== undefined) {
+      try {
+        const run = await this.teamRuntime.startRun(
+          { id: request.actorId, email: '', displayName: '', role: 'student' },
+          {
+            studentUserId: request.actorId,
+            projectId: record.projectId,
+            tutorSessionId: record.sessionId,
+            trigger: 'tutor.turn',
+            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null, assistantId: conversationAssistantId },
+            idempotencyKey: `tutor-team-run:${record.sessionId}:${request.idempotencyKey}`,
+          },
+        );
+        teamRunId = typeof run.id === 'string' ? run.id : null;
+      } catch {
+        // Existing Tutor behavior must not regress because Team Runtime is
+        // being rolled out independently from the conversation path.
+      }
+    }
     const useUnifiedSDK = this.sdkFactory !== undefined
       && (this.dataMode !== 'live' || effectiveRuntime === null || effectiveRuntime.agent.modelAvailable);
     const unifiedSDK = useUnifiedSDK ? this.sdkFactory!.create(
@@ -1470,6 +1468,7 @@ export class TutorService {
         : effectiveRuntime.agent.modelProviderId !== null && effectiveRuntime.agent.modelId !== null
           ? { providerId: effectiveRuntime.agent.modelProviderId, modelId: effectiveRuntime.agent.modelId }
       : null,
+      effectiveRuntime === null ? undefined : { assistantId: conversationAssistantId, configurationHash: hashRequest(effectiveRuntime) },
     ) : undefined;
     if (unifiedSDK) {
       contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
@@ -1667,6 +1666,11 @@ export class TutorService {
             studentUserId: request.actorId,
             projectId: record.projectId,
             sessionId: record.sessionId,
+            assistantId: conversationAssistantId,
+            modelProviderId: effectiveRuntime?.agent.modelProviderId ?? null,
+            modelId: effectiveRuntime?.agent.modelId ?? null,
+            skillIds: effectiveRuntime?.skills.map((skill) => skill.id) ?? [],
+            toolIds: effectiveRuntime?.tools.map((tool) => tool.id) ?? [],
             assistantSeq,
             stage: projectStage,
             evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
@@ -1712,7 +1716,7 @@ export class TutorService {
             : [];
         for (const task of tasks) {
           await this.teamRuntime.delegateIfAvailable(leaderActor, teamRunId, {
-            senderAgentId: 'qitu-learning-partner',
+            senderAgentId: conversationAssistantId,
             recipientAgentId: task.recipientAgentId,
             taskType: task.taskType,
             input: task.input,

@@ -122,6 +122,8 @@ export interface GeneratedBlock {
    * `reflect`，所以只靠 `activity` 无法还原）。
    */
   kind: SessionBlockKind;
+  guidance?: string;
+  evidenceRequirements?: readonly string[];
   objectiveIds: string[];
   prerequisiteObjectiveIds: string[];
 }

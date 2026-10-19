@@ -22,7 +22,6 @@ import type {
   NextStepView,
   ProjectSummary,
   PublicQuestion,
-  SessionBlock,
   StartSessionResponse,
   SubmitAnswerResponse,
   SubmitEvidenceResponse,
@@ -86,7 +85,8 @@ import {
   type PlanSessionCount,
 } from './plan-generator';
 import { generateOpticsPlan } from './optics-plan-generator';
-import { OPTICS_TEMPLATE_SLUG } from '../templates/content/optics';
+import { generatePlanFromTemplate } from './template-plan-generator';
+import { OPTICS_TEMPLATE_SLUG, OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
 import {
   MAX_GOAL_LENGTH,
   MAX_INTEREST_LENGTH,
@@ -167,14 +167,16 @@ export class LearningPlanService {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
-      if (input.curriculumSlug !== OPTICS_TEMPLATE_SLUG) {
+      if (input.curriculumSlug !== OPTICS_TEMPLATE_SLUG && input.curriculumSlug !== OPTICS_16_TEMPLATE_SLUG) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `课程模板 ${input.curriculumSlug} 尚无对应计划生成器`,
         });
       }
       const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
-      generated = generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
+      generated = input.curriculumSlug === OPTICS_16_TEMPLATE_SLUG
+        ? generatePlanFromTemplate(input, { templateVersion: resolution.templateVersionId, templateSpec: resolution.content.pbl })
+        : generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
     } else {
       generated = this.generator.generate(input);
     }
@@ -252,7 +254,7 @@ export class LearningPlanService {
   private async resolveCurriculumTemplate(
     actor: CurrentUser,
     slug: string,
-  ): Promise<{ templateVersionId: string }> {
+  ): Promise<{ templateVersionId: string; content: Record<string, unknown> }> {
     if (this.templateBindings === undefined) {
       throw new BadRequestException({
         code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
@@ -266,7 +268,7 @@ export class LearningPlanService {
         message: `课程模板 ${slug} 无可用版本或生效绑定`,
       });
     }
-    return { templateVersionId: resolution.templateVersionId };
+    return { templateVersionId: resolution.templateVersionId, content: resolution.content };
   }
 
   /* ==================== 确认（唯一创建项目） ==================== */
@@ -910,9 +912,12 @@ export class LearningPlanService {
         planId,
         moduleId: moduleIdMap.get(session.moduleId) ?? session.moduleId,
         index: session.index,
+        title: session.title,
         blocks: session.blocks.map((block) => ({
-          kind: blockKindOf(block.activity),
+          kind: block.kind,
           minutes: block.minutes,
+          ...(block.guidance === undefined ? {} : { title: block.title, guidance: block.guidance }),
+          ...(block.evidenceRequirements === undefined ? {} : { evidenceRequirements: [...block.evidenceRequirements] }),
         })),
         theoryObjectiveIds: session.theoryObjectiveIds.map(remap),
         practiceObjectiveIds: session.practiceObjectiveIds.map(remap),
@@ -997,8 +1002,14 @@ export class LearningPlanService {
       index: session.index,
       week: Math.floor(session.index / sessionsPerWeek) + 1,
       day: (session.index % sessionsPerWeek) + 1,
-      title: `${bundle.plan.interest} · 第 ${session.index + 1} 节`,
-      blocks: session.blocks.map((block) => ({ kind: block.kind, minutes: block.minutes })),
+      title: session.title ?? `${bundle.plan.interest} · 第 ${session.index + 1} 节`,
+      blocks: session.blocks.map((block) => ({
+        kind: block.kind,
+        minutes: block.minutes,
+        ...(block.title === undefined ? {} : { title: block.title }),
+        ...(block.guidance === undefined ? {} : { guidance: block.guidance }),
+        ...(block.evidenceRequirements === undefined ? {} : { evidenceRequirements: [...block.evidenceRequirements] }),
+      })),
       theoryObjectiveIds: [...session.theoryObjectiveIds],
       practiceObjectiveIds: [...session.practiceObjectiveIds],
       mode: session.mode,
@@ -1838,19 +1849,4 @@ function inferPlanSchedule(bundle: PlanBundle): PblSchedule | null {
     sessionsPerWeek,
     sessionMinutes: bundle.plan.minutesPerSession === 120 ? 120 : 60,
   };
-}
-
-function blockKindOf(activity: string): SessionBlock['kind'] {
-  switch (activity) {
-    case 'review':
-      return 'review';
-    case 'learn':
-      return 'theory';
-    case 'reflect':
-      return 'check';
-    case 'practice':
-      return 'practice';
-    default:
-      return 'theory';
-  }
 }

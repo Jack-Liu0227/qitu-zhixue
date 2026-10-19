@@ -1,173 +1,82 @@
-# Theme-Session-Team-IMA 一体化架构
+# Theme、Session、团队与知识范围合同
 
-> 状态：方案，待 Issue/架构评审；不表示已实现。
-> 2026-10-19 方案同步至参考 HEAD `8e8f9b4`；旧源码测试仍按原基线记录。
-> 生成路由、真实模型执行和 SSE 以 [总架构](./architecture.md) 为准；本文细化同一方案，不定义第二份运行合同。
+> 状态：M1 合同、显式新 bootstrap、新 slug 生成器和路由校验已有源码，本地全量离线验证已通过；profile/digest/技能冻结与知识授权未接。2026-10-19。
+> 这是 [总架构](./architecture.md) 的细则，不是另一份 curriculum/PBL schema。执行进度见 [实施计划](./implementation-plan.md)。
 
-## 1. 接纳新思路，复用原 owner
+## 1. 合同归入唯一模板
 
-Theme 定义驱动问题、目标 DAG、产物/量规/安全；Session 是教学原子，周仅是排期容器；Deep Binding 定义 AI 团队责任和知识权限；IMA 提供来源，不替学生作答，不拥有掌握/阶段/作品/成长写权。
+Theme 描述驱动问题、目标、产物、rubric 与安全约束。Session 描述教学任务、目标引用、时间和责任角色。周只承载排期，不授予工具权限。角色是模板需求，绑定时必须映射到团队真实成员和助手。
 
-OpenMAIC 的结构化规划/任务锚点、DeepTutor 的题卡/pending 循环迁入现有 Projects、Learning Plan、Mastery、Tutor、Team Runtime、Works，不复制第二后台或数据库。
+当前结构沿用 `ProjectTemplateSpec` 治理 envelope，已合入 `theme.drivingQuestion` 和 `curriculum.profiles`。旧 `curriculum.ts` 导出已改为派生别名，不再平行定义教学语义。新模板 ID 为 `pbl-optics-inquiry-16s`、version `v2-16s`、profile `optics-16x60-v2`、API slug `optics-physical-inquiry-16s`、bootstrap key `optics-physical-inquiry:16s-v2`。CLI 显式 `--curriculum-16s` 才选新模板，默认旧 `optics-physical-inquiry:v1` 正文与 identity 不变。
 
-真实 AI 生成是必需能力。模板提供教学约束，绑定团队实际生成大纲、课时教学和逐轮内容；确定性代码验证目标、时长、工具与证据，不用常量话术代替生成。
+模板规定内容与能力需求，binding 编译实际团队、助手配置、精确 Skill 制品、模型策略、工具 schema 和 KB ceilings。项目保存不可变 artifact 引用及完整性信息。模板不保存供应商 secret、路由 URL、任意 HTML/JS 或浏览器可自选 grant。
 
-```mermaid
-flowchart TD
-  A[Admin 审核主题/课时/团队/知识范围] --> V[不可变模板版本与团队版本]
-  V --> B[校验并激活 binding]
-  B --> D[学生预览与探索草稿]
-  D --> C[显式确认意图]
-  C --> S[事务冻结内容/角色/IMA授权/hash]
-  S --> R[服务端解析真实当前课时与任务]
-  R --> K[授权交集 + IMA只读依据]
-  K --> M[责任导师通过既有 Runtime 实际调用模型]
-  M --> Check[生成候选校验与 owner 接受]
-  Check --> T[Tutor 一目标一问题 + 按需板书/公式/注册实验]
-  T --> E[回答/预测/操作/观察/提交]
-  E --> O[领域owner保存证据]
-  O --> P[有限下一教学动作]
-  P --> R
-  O --> G[既有门禁与正式评审]
-```
+## 2. 校验与内容消费
 
-## 2. 单一版本合同
+`parseProjectTemplateSpec` 已严格拒绝未知字段、非法或非整数 session index、重复/缺失序号、未定义目标、DAG 循环、无效阶段/覆盖、时长不自洽及非法字段。实际 schedule、stable session ID 和 checkpoint 属于该合同。教学顺序是有序序列；role/KB 等集合的规范顺序由编译合同定义，不能排序后改变课程顺序。
 
-curriculum.ts 已跟踪/导出并可构建，但不等于它已成为 bootstrap/API 唯一真源。推荐把 v2 纳入 ProjectTemplateSpec 治理 envelope，保留显式 v1 兼容读取：
+新 slug 的生成器已收到解析版本的实际 `content.pbl`，按真实目标、profile、sessions 和 blocks 生成草稿；模板创建 validator、新 bootstrap 与 API 入口已有接线。旧 slug 仍走 legacy generator。目标仍是最终消费冻结正文/hash/profile，目前这些字段未冻结，不能将“读取实际版本”写成“项目历史内容已不可变”。反思 block kind、课时标题与活动指导已接入保存和回读，标题使用 0036 可空列并保留历史 fallback；迁移尚未部署，真实数据库验收待执行。
+
+正式确认仍复用 `confirmIntent` 与 `confirmPlan`，目前只核对同一版本并冻结既有 binding snapshot，不按 slug 重选版本。尚无 profile ID、content digest、Skill artifact 冻结与确认时完整重解析。既有事务冻结不能弱化为 warning-only omitted。后续将 artifact ref 加入同事务后，再验收重试、revision 冲突和回滚。探索草稿允许在正式确认前生成受治理候选，但不能因此创建正式项目或提前借用项目权限。
+
+## 3. 显式路由和身份
 
 ```text
-ProjectTemplateSpec(versioned)
-  theme + objective DAG + gates + deliverables + rubric refs
-  curriculum(scheduleProfiles + TemplateSessionSpec[])
-  registered interactive spec refs
-
-PblTemplateTeamBinding(bindingSpecVersion)
-  templateVersionId + templateContentHash
-  teamVersionId + teamSpecHash
-  roleMap + roleMapHash
-  generationRoutes + immutable generationProfile refs/hashes
-  imaGrant + imaGrantHash
-  policyVersion + bindingHash
-
-ProjectBindingSnapshot
-  immutable refs + role/generation/grant projection + hashes + boundAt
+actor/project permission
+ -> frozen project snapshot and artifact integrity
+ -> actual schedule profile, session, task and pending question
+ -> approved role slot, real team member and assistant
+ -> purpose-specific model pair, pinned skills and allowed tools
+ -> current restrictions and task gates
+ -> candidate generation and domain-owner acceptance
 ```
 
-当前 pbl-learning、curriculum、ai-client 内容和 server modules 的兼容投影需自动比对；生成器读取该版本保存的内容，不只贴版本 ID。16 节创建新版本/bootstrap identity，不原地改 v1。若新版本支持两种排期，冻结审核 profile，不按 weeks 临时换语义。
+禁止按标题、团队名、版本 ID 前缀、成员正则、全局 1–16 或 fallback assistant 猜授权。当前 `getPhaseAndRoleForSession` 已要求实际 profile，TeamRuntime route 已要求真实成员；索引越界、非整数、角色未映射均拒绝，不默认送到 reviewer。完整 profile/project snapshot 与 runtime action 的接线仍是后续工作。
 
-校验：sessionIndex 连续唯一正整数；内部旧表 0-based 只在一处适配；总课时/分钟自洽；五块时长为非负整数且合计正确；目标存在/DAG 无环；重复复习合法；阶段/门禁/工具/动作使用注册闭集，不用 `| string` 逃逸。interactiveSpec 只引用注册版本，模型不得提供 HTML/JS/URL/参数权限。
+当前 Tutor/SDK 以真实助手贯穿 `displayAuthor.assistantId = effectiveRuntime.assistantId = executionTrace.assistantId`，并带同一模型 pair、skills/tools 与 IMA 当前授权。SDK 每轮回读配置 hash，配置或 model pair 不一致拒绝。本轮使用 Admin assistant 当前字段，保留 runtime-only Agent 路径，未完成全局写源迁移。助手历史指令、模型和 Skill 包尚未冻结。后台专家可提供候选，但不能扩大前台任务授权，日志保留其真实身份。
 
-## 3. 深绑定与确认事务
+## 4. 16 课时参考教案
 
-一个 template version 同时最多一个 active binding；历史可保留多个 retired。反向团队版本能否复用于多模板由产品确认，不能从“每模板一团队”自行推出双向一对一。
+以下内容已进入新模板源码，尚非已发布数据库配置。8 周、每周 2 节、每节 60 分钟。沿用 12 个核心排程目标和四阶段。散射、衍射是非门禁实践模块，不能变成新的 TheoryMastered 目标。第 8/14/16 节 checkpoint 只请求已有 owner 验证，不写完成事实。
 
-激活检查 Leader 和四角色均为真实成员、助手/技能/模型配置获批、phase/session 覆盖、路由与 IMA server/tool/KB 合法；缺角色拒绝，不靠 ID 正则和默认助手填空。模型凭据/路由仍属于 Admin Runtime，模板只引用版本，不另存密钥/供应商 URL。
-
-生成用途包含 outline、session、dialogue、experiment 和 review。按用途选择固定成员或实际课时 owner，并解析该成员的不可变生成配置。配置含真实提示词内容/hash、canonical skill 及版本、Schema、模型策略和预算，不能只冻结助手名称。
-
-两个确认入口共用事务：校验学生草稿/显式确认 → 锁定或版本检查 active binding → 核验内容/排期/角色/授权/hash → 创建项目/计划关系/快照/确认大纲 revision → 审计或可靠 outbox → 提交。任一步失败回滚，同幂等键回放同一结果。通用项目也走明确受治理路径。
-
-当前 confirmIntent 的缺绑定拒绝已完成，接下来补完整生成绑定和集成验收。大纲在正式确认前由真实 AI 生成并作为草稿保存；确认时重新核验该草稿的模板/绑定 hash 与 revision，不重新取一份 active 绑定接到旧大纲上。
-
-历史缺快照项目走来源可追溯的迁移候选/确认，不能在读时按当前 active 绑定静默授予。课时 1–2 可由已有 exploration/plan draft 承载，确认后关联探索证据；不得因第 1 节开始而自动立项。8/14/16 节为检查点，不按时间自动通过。
-
-## 4. 课时角色解析
-
-```text
-actor/project 对象权限
- -> frozen snapshot + hash
- -> frozen content + scheduleProfile
- -> 当前 session/task/objective/pending question
- -> roleMap 中真实成员与获批 Runtime
- -> generation purpose + 该成员的生成配置版本
- -> 实时门禁/撤权
- -> 有限 action / TutorReplyBlock
-```
-
-禁止客户端按 teamName/title、版本 ID 前缀、裸 modelId、缓存 session 自行路由。全局 1–16 阶段范围只能是具体教案辅助，不是所有模板的策略；非法索引或缺映射直接拒绝。展示中的助手身份必须与真实模型/知识授权使用同一个服务端解析结果。
-
-## 5. IMA 项目授权交集
-
-复用已有知识中心 allow-list、MCP 只读限制和桥级签名引用；补冻结项目 scope 到每次调用。
-
-```text
-effectiveGrant = frozen project grant
-               intersect current Admin global grants
-               intersect current assistant/tool grants
-               intersect actor/project permissions
-```
-
-- 快照是授权上限；撤权立即阻断，新增库不自动扩大旧项目。
-- 四工具全覆盖：列库过滤，搜索/列文档验证或注入 KB；读文档核验签名引用到 KB/project 的服务端 provenance，不能只检查 token 格式。
-- opaque document_ref 不天然是本项目 capability；服务端映射有期限，过期/重启后重新检索，不信任模型/浏览器声明。
-- /opt/qitu-ima 为部署细节，URL/凭据仅服务端；调用次数、耗时、响应和引用数量有界。
-- 保存实际可得的 KB/document/version/section/page 与摘录 hash，不虚构页码，不复制教材全文到成长/家长投影。
-- 检索内容是不可信证据，不是指令，不能改角色、工具、门禁或答案披露；活动题答案/最终可抄报告结论需隔离。
-- 只读不等于教材版权许可；摘录/留存范围需学校与平台审核，不在本文作法律结论。
-- 不可用则显示 knowledge_unverified，使用已审核本地材料或教师核实，不把模型猜测标成教材事实。
-
-## 6. 回答驱动双循环
-
-微循环选下一教学动作，宏观循环仅产生带 evidence/revision 的同目标可选补救或教师支持候选；不另建 mastery/pending store。
-
-微循环不是只挑固定话术。策略确定允许动作，责任导师读取学生当前回答和已提交证据，实时生成具体追问、提示或图解。planRevision 与 interactionRevision 分开，普通对话不重写整份 16 节计划。
-
-| 可观察信号 | 下一动作 | 禁止捷径 |
-| --- | --- | --- |
-| 有待答题但学生先求助 | 保留题，给符合 hint level 的支架 | 求助自动判错/覆盖原题 |
-| 控制变量不清 | 追问只改变哪个量 | 关键词正确就记掌握 |
-| 预测缝越窄亮纹越窄 | 保存预测，做单变量对照并要求读数 | 直接写最终 CER |
-| 解释与数据冲突 | 指向 observation，给比较/反例 | 修改预测或读数凑结论 |
-| 散射参数超出模型域 | 提示边界，定性/教师支持 | 域外套 lambda^-4 或一律白色 Mie |
-| 多次独立证据重复卡点 | owner 提补救候选，按 revision 确认 | 删必做目标/自动过门/贴情绪标签 |
-| 提交报告/答辩 | 绑定作品版本/rubric 的候选反馈 | Agent 批准作品/写成长分 |
-
-策略先授权/快照/门禁，再识别作答与求助，再选一个目标的一步动作。预测/CER 不天然是唯一答案测验。DeepTutor 已答卡披露答案的做法不直接照搬，继续执行启途 hint 策略；必要物理事实可按教学规则引用，不借检索代写最终作业。
-
-## 7. 16 课时教案
-
-8 周 × 2 节 × 60 分钟；复用 12 核心目标，散射/衍射为非门禁实践活动。
-
-| 节 | 教学任务 | 责任角色 | 证据/检查点 |
+| 节 | 任务 | 角色槽 | 证据或限制 |
 | --- | --- | --- | --- |
-| 1 | 观察折光、光束可见性、条纹 | Lead | 现象记录；无实践工具 |
-| 2 | 聚焦驱动问题与产物 | Lead | 显式确认；此前草稿 |
-| 3 | 反射与法线 | Concept Coach | 概念题尝试/解释 |
-| 4 | 镜像与模型边界 | Concept Coach | 作图/反例，重复反射目标 |
-| 5 | 折射/介质光速/波前 | Concept Coach + IMA | 引用与启发式问答 |
-| 6 | 全反射条件 | Concept Coach | 临界条件诊断 |
-| 7 | 透镜实像/虚像 | Concept Coach | 光路与概念检查 |
-| 8 | 综合诊断 | Concept Coach | owner 判 TheoryMastered；未过继续补救 |
-| 9 | 校准与变量控制 | Lab Guide | 门禁后实验 action/单位检查 |
-| 10 | 单缝预测与测量 | Lab Guide | prediction/参数/observations/modelVersion |
-| 11 | 封闭细雾室散射对照 | Lab Guide | 观察角/粒径/波长/适用域 |
-| 12 | 图表拟合/误差 | Lab Guide | 多次读数/趋势/局限 |
-| 13 | CER 草稿与质疑 | Lab Guide | 引用具体证据，不代写结论 |
-| 14 | 报告修订提交 | Lab + Works owner | 作品/证据/量规，不自动批准 |
-| 15 | 评审答辩 | Review Assessor | 候选反馈与教师决策 |
-| 16 | 反思归档 | Review + Growth owner | 基于事实，不从聊天臆测雷达分 |
+| 1 | 观察光学现象，记录差异 | inquiry/lead | draft，低风险材料，无实践工具 |
+| 2 | 聚焦驱动问题与产物 | inquiry/lead | 学生显式确认，不能按课时自动立项 |
+| 3 | 反射与法线 | concept | 当前题与解释 |
+| 4 | 镜像与模型边界 | concept | 反例/作图，允许复习同一目标 |
+| 5 | 折射和介质 | concept，按需 curator | 有范围的引用，命中不证明掌握 |
+| 6 | 全反射条件 | concept | 临界条件诊断 |
+| 7 | 透镜成像 | concept | 光路和概念证据 |
+| 8 | 综合诊断 | concept | mastery owner 判门禁；未过继续同目标补救 |
+| 9 | 校准、单位与变量 | lab | TheoryMastered 后注册实践 action |
+| 10 | 单缝预测与比较 | lab | prediction、参数、模型版本、observations |
+| 11 | 封闭细雾室散射对照 | lab | 区分定性结果和模型适用域 |
+| 12 | 图表、趋势和误差 | analyst | 引用已存读数，不补造测量 |
+| 13 | CER 草稿与质疑 | lab/reviewer | 具体 observation refs，不代写结论 |
+| 14 | 报告修订与提交 | lab/reviewer | works 接受版本，不自动批准 |
+| 15 | 答辩、边界和评审 | reviewer | 候选反馈，正式评审仍归 owner |
+| 16 | 反思与归档建议 | reviewer/lead | 不自动归档、打分或写成长事实 |
 
-五段式 practice 在理论门禁前仅为纸笔/现象材料/概念练习，不因 block 名称而开放实践工具。
+角色槽是模板职责要求，不是七个已存在助手。绑定必须使用真实 roster；一个获批助手可承担多槽。一次由一个前台导师负责，不默认多 Agent 并行。五段式课时的 practice 块名也不能绕过理论门禁，门禁前只能纸笔、概念练习和低风险提示。
 
-## 8. 最小动作协议（建议，尚未实现）
+## 5. 回答驱动下一动作
 
-扩展现有 session 合同，建议 `POST /learning-plans/:planId/sessions/:sessionId/actions`，不新建 pbl-dynamic API。
+微循环是“回答/操作产生证据，策略选择下一教学动作”。宏观循环只提出带 evidence/revision 的补救或教师支持，不另建 pending/mastery store。
 
-```ts
-type OpticsActionInput = {
-  actionId: string; // 服务端签发的具体实例，不是 'run' 字符串
-  actionKind: 'predict' | 'set_parameter' | 'run' | 'record_observation' | 'submit_cer';
-  experimentId: string;
-  specVersion: string;
-  baseRevision: number;
-  payload: unknown; // 按 actionKind 的闭集 schema 在系统边界验证
-};
-```
+| 信号 | 可接受下一步 | 不可接受捷径 |
+| --- | --- | --- |
+| 待答题时求助 | 保留原题，给分级支架 | 自动判错或覆盖 pending |
+| 预测与模型结果冲突 | 保留预测，要求比较已存观察 | 改学生原答案凑结论 |
+| 控制变量缺失 | 追问只改变哪个量 | 关键词命中就标掌握 |
+| CER 没有数据 | 指向证据缺口和修订问题 | 引教材替代学生观察 |
+| 超模型域或来源不可用 | 明示未核验/域外，建议教师支持 | 编造 Mie 结果或教材事实 |
+| 学生提交作品 | works/feedback 校验版本、证据和 rubric | Agent 直接 approve 或写成长分 |
 
-幂等键走 header；project/session/objective/actor/团队/grant 从服务器签发 scope 解析。拒绝跨项目、过期动作、非有限/越界参数和不相容模型。accepted action 追加事件，保存 revision、参数/单位、modelVersion、模拟/真实标记、预测/观察和证据引用；响应返回 owner eventId/revision/nextAction。run 不等于完成，SSE 重放不重复计分。
+模型在允许动作内生成文案，不产生 `advance_stage`、`mark_mastered`、`approve_artifact`。稳定题目/选项/action ID 由 owner 签发，作用域包含 project/session/revision；label 和缓存 ID 不能授权。普通对话不重写整个计划 revision。
 
-## 9. 验收
+## 6. IMA 与实验引用
 
-先一个可重放衍射任务，再散射/CER/16 节。覆盖冻结回滚、真实 tplv ID、角色覆盖、非法索引、跨 KB/document、撤权、pending 恢复、动作幂等、CER 引用、门禁、断网和移动端。配置缺失不得默默改绑或 demo 成功。工作项见实施计划。
+IMA 有效权限为冻结项目、当前 Admin、真实助手/工具、对象权限和当前任务的交集。四工具、参数/结果过滤与限期 provenance 统一遵循 [MCP 治理](./mcp-tool-governance.md)，不在这里另建 grant store。缺 scope 默认拒绝，撤权立即生效，新增库不扩旧项目。
 
-真实生成另需受控实际模型请求记录，证明显示的导师与执行的提示词、技能、provider/model 相同来源。安全文本可以流式预览，完整互动块必须先校验、持久化和签发权限。模型接口存在、ready 状态和动画都不能替代此验收。
+实验协议细化见 [光学方案](./optics-scattering-diffraction-analysis.md)。action 签发、参数/模型域、幂等事件、observations 和 CER 引用都需要服务端 owner 回执。摘要发给 Tutor 不代表证据已保存；读到教材不等于学生掌握。

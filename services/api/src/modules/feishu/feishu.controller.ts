@@ -96,8 +96,8 @@ export class FeishuController {
 
   @Get('qr-sessions/:id')
   async getQr(@Headers('cookie') cookie: string | undefined, @Param('id') id: string): Promise<{ data: FeishuQrSession }> {
-    requireRole(this.auth, cookie, 'admin', '飞书配置仅向管理员开放');
-    return { data: await this.feishu.getQrSession(id) };
+    const actor = requireRole(this.auth, cookie, 'admin', '飞书配置仅向管理员开放');
+    return { data: await this.feishu.getQrSession(id, actor) };
   }
 
   @Post('device-sessions/:id/poll')

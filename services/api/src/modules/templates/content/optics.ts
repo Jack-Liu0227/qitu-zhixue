@@ -2,6 +2,7 @@ import type { KnowledgeType, PblPhase } from '@qitu/contracts';
 import {
   assertOpticsObjectiveTypePolicy,
   OPTICS_GATED_OBJECTIVE_IDS,
+  OPTICS_16_SESSION_TEMPLATE_SPEC,
   OPTICS_OBJECTIVES,
   OPTICS_PHASES,
   OPTICS_SCHEDULES,
@@ -28,6 +29,9 @@ export const OPTICS_TEMPLATE_SLUG = 'optics-physical-inquiry';
 
 /** 幂等解析标记：跨进程重跑时据此在 `listVersions` 里解析出同一版本。 */
 export const OPTICS_BOOTSTRAP_KEY = 'optics-physical-inquiry:v1';
+
+export const OPTICS_16_TEMPLATE_SLUG = 'optics-physical-inquiry-16s';
+export const OPTICS_16_BOOTSTRAP_KEY = 'optics-physical-inquiry:16s-v2';
 
 export const OPTICS_TEMPLATE_STAGES: TemplateStage[] = [
   { id: 'exploration', label: '生活情境启发与探究课题确认' },
@@ -325,6 +329,24 @@ export const OPTICS_VERSION_INPUT: CreateTemplateVersionInput = {
   stages: OPTICS_TEMPLATE_STAGES,
   content: OPTICS_VERSION_CONTENT,
   rubric: OPTICS_RUBRIC,
+};
+
+/** Explicit opt-in source; the legacy v1 payload above remains unchanged. */
+export const OPTICS_16_VERSION_INPUT: CreateTemplateVersionInput = {
+  stages: OPTICS_TEMPLATE_STAGES,
+  content: { bootstrapKey: OPTICS_16_BOOTSTRAP_KEY, pbl: OPTICS_16_SESSION_TEMPLATE_SPEC },
+  rubric: OPTICS_RUBRIC,
+};
+
+export const OPTICS_16_TEMPLATE_INPUT: CreateTemplateInput = {
+  ...OPTICS_TEMPLATE_INPUT,
+  slug: OPTICS_16_TEMPLATE_SLUG,
+  title: OPTICS_16_SESSION_TEMPLATE_SPEC.title,
+  summary: OPTICS_16_SESSION_TEMPLATE_SPEC.description,
+  estimatedDurationMinutes: 960,
+  requiredMaterials: [...OPTICS_16_SESSION_TEMPLATE_SPEC.materials],
+  learningObjectives: OPTICS_16_SESSION_TEMPLATE_SPEC.objectives.map((objective) => objective.title),
+  safetyNotes: OPTICS_16_SESSION_TEMPLATE_SPEC.safetyRequirements.join('; '),
 };
 
 /**

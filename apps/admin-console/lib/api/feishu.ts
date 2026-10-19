@@ -33,6 +33,7 @@ export interface FeishuQrResponse {
   authorizationUrl: string;
   expiresAt: string;
   qrCodeDataUrl?: string;
+  pollIntervalSeconds?: number;
 }
 
 export interface FeishuQrStatusResponse {
@@ -42,6 +43,7 @@ export interface FeishuQrStatusResponse {
   expiresAt: string;
   credentialConfigured: boolean;
   qrCodeDataUrl?: string;
+  pollIntervalSeconds?: number;
 }
 
 function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
@@ -69,7 +71,7 @@ function mapQr(value: FeishuQrSession | FeishuDeviceAuthorization): FeishuQrResp
     : typeof candidate.qrCode === 'string' && candidate.qrCode.startsWith('data:image/')
       ? candidate.qrCode
       : undefined;
-  return { sessionId: value.id, status: value.status, authorizationUrl, expiresAt: value.expiresAt, qrCodeDataUrl };
+  return { sessionId: value.id, status: value.status, authorizationUrl, expiresAt: value.expiresAt, qrCodeDataUrl, pollIntervalSeconds: value.pollIntervalSeconds };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -138,6 +140,7 @@ export function fetchFeishuQrStatus(sessionId: string): Promise<FeishuQrStatusRe
       expiresAt: session.expiresAt,
       credentialConfigured: session.status === 'bound' || candidate.credentialConfigured === true,
       qrCodeDataUrl,
+      pollIntervalSeconds: session.pollIntervalSeconds,
     };
   });
 }

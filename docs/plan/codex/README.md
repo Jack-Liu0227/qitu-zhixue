@@ -1,32 +1,68 @@
-# 自适应 PBL 调研与实施包
+# PBL 能力链架构与实施入口
 
-> 最新方案更新于 2026-10-19，架构方案参考 HEAD `8e8f9b4` 和当时读取的工作区。后续修复与发布单独记录，不表示完整动态 PBL 已实现或验收。
-> 本次将真实 AI 实时生成设为必需能力。历史研究与完整测试仍保留原基线，不能当作最新发布证明。
+> 状态：2026-10-19 / capability-v1-m1 首批源码已实现，本地全量离线验证已通过（1040 项 API 测试），生产未验收；源码基线 `43a0307eb776185d7561f213d75b3d7312616aa9` 加当前工作树。
+> 本轮复用已有联网研究，实现唯一模板合同、纯编译器与 Tutor 身份一致性，并收口全部当前方案文档。没有安装/发布新 Skill/MCP、迁移数据或部署新功能。目标设计不等于全部接线完成。
 
-## 阅读顺序
+## 当前交付边界
 
-1. [实时生成总架构](./architecture.md)：项目与团队如何绑定、三层真实生成、Runtime/SSE、证据和失败边界。
-2. [最新实施计划](./implementation-plan.md)：完成部分、依赖图、G3A/G3B 生成任务、下一批 PR 和验收。
-3. [Theme-Session-Team-IMA 细则](./theme-session-team-ima-design.md)：唯一合同、冻结角色/授权与 16 课时教案。
-4. [源码差距审计](./gap-audit-20261019.md)：最新提交增量，以及带原基线的历史发现。
-5. [光学散射与衍射方案](./optics-scattering-diffraction-analysis.md)：物理模型、实时生成分支、预测/观察/CER 和实验事件。
-6. [深度调研](./research-report.md)：Grok MCP 记录、OpenMAIC/DeepTutor 固定快照和证据限制。
-7. [验证记录](./validation-20261019.md)：分轮次记录测试、网站检查和文档检查，明确未验证项。
-8. [三线接管修复与验证](./takeover-validation-20261019.md)：本轮修复、干净依赖验证、`8413ef8` 的实际发布与回滚，以及尚未完成的动态 PBL 条件。
+M0 基线审计部分完成，不能宣称所有 characterization tests 已完成。M1 已实现以下源码切片；focused runner 已通过，本地全量离线验证通过，但不将未接线能力标为 verified。实际结果统一写入 [验证记录](./validation-20261019.md) 和 [机器可读状态](./delivery-status.json)。
 
-## 本次变化
+- `ProjectTemplateSpec` 统一 Theme/课时合同与严格解析。新 16 节模板使用 `v2-16s`、profile `optics-16x60-v2`；显式 `--curriculum-16s` bootstrap，默认旧 v1 不变。
+- 新 slug `optics-physical-inquiry-16s` 根据实际版本正文生成草稿，旧 slug 保留兼容生成器；反思 block kind、课时标题与活动指导已接入保存/回读，0036 标题迁移尚未部署。
+- 纯编译器验证实际 profile、真实成员/角色、模型 pair、精确 Skill 制品、工具 schema 和 KB ceilings，输出确定性 payload/digest。尚无制品入库、activate 或项目确认冻结接线。
+- Tutor/SDK 的显示、模型、技能、trace 与 IMA 当前授权使用真实助手身份。当前教学能力来自 Admin assistant 字段；这是过渡解析，不是已迁移为 `agent_configs` 或历史版本冻结。SDK 每轮回读并校验配置 hash 和模型 pair。
 
-- 真实 AI 生成进入大纲、课时按需展开和每轮问答，不再把模型规划写成可选增强。
-- 现有绑定扩展角色、生成用途、配置版本、技能/Schema/模型策略及知识授权；展示导师与真实调用使用同一解析结果。
-- `da18a9d` 的缺绑定拒绝立项、冻结导师恢复和 `8e8f9b4` 的 idle/ready 修复列为已有基础，不重复开发。
-- 优先完成真实角色流式生成、当前题恢复与一个单缝衍射证据闭环，再扩展完整 16 课时。
+两个确认入口目前只冻结既有同版本 binding snapshot。profile/digest/Skill 尚未冻结，session 路由的真实 profile/member 检查也不能冒称冻结制品运行时完成。
 
-## 核心决定
+后续 M2–M6 的不可变制品、两个确认事务、完整运行时、IMA 项目权限、实验闭环和灰度部署仍未完成。现有教学源码保持 1 项，新增 8 项与后续 6 项均为候选，未发布。新增授权不扩大旧项目，当前禁用与撤权立即收紧。
 
-- 复用 Projects/Learning Plan/Mastery/Tutor/Team Runtime/Works，不新增平行课程合同、PBL 状态机或问答/掌握库。
-- 先冻结教学内容、团队角色与 IMA 授权，再开放动态动作；不是先让模型自治再靠 UI 限制。
-- AI 生成候选，服务端验证并签发题目/动作。安全文本可预览，未校验的结构化块不可操作，摘要不能伪装已保存证据。
-- 回答/操作产生证据，服务端选择下一教学动作；阶段、TheoryMastered、作品通过与成长仍由 owner 写入。
-- 16 课时为 8 周 × 2 节 × 60 分钟，沿用 12 核心目标；散射/衍射不新增 TheoryMastered 目标。
-- 历史 Grok 检索无可引用来源，上游事实取自固定 commit 源码。本次架构文档更新没有重新执行外部调研或宣称学习效果。
-- 保持 AI搭档/灵感空间导航；antigravity/combined 为历史比较，不引入平行运行入口。
+## 推荐路线
+
+把“项目模板 → 团队 → 助手 → Skills → Tools/MCP”接成一条受 Admin 治理的版本化能力链，而不是把更多提示词一次性塞给所有助手。
+
+- 编写时复用：少量经过许可、安全和教学评审的 canonical Skill；模板声明目标、课时、角色和能力需求。
+- 绑定时编译：现有 binding owner 把实际模板正文、排期、真实成员、助手定义、选定 Skill 制品、模型策略与知识授权编译成不可变清单。
+- 确认时冻结：沿用正式确认事务冻结清单引用/hash；未确认意图仍只使用 exploration/draft。
+- 运行时收紧：同一次解析决定展示导师、真实模型、技能和工具；冻结上限与当前授权求交，再减去撤权集合。新增能力不扩大旧项目。
+- 学习事实不外包：AI 实时生成大纲、课时与对话候选；Projects、Learning Plan、Mastery、Works/Feedback 继续校验并写正式事实。
+
+## 阅读顺序与单一责任
+
+| 文档 | 唯一主责 |
+| --- | --- |
+| [总架构](./architecture.md) | 版本链、owner、编译/运行接口、两方案取舍 |
+| [实施计划](./implementation-plan.md) | PR 依赖、迁移、验收、灰度与回滚 |
+| [技能目录](./skills-catalog.md) | 首批 8 项与后续 6 项候选技能、角色矩阵、导入/评测 |
+| [MCP 与工具治理](./mcp-tool-governance.md) | IMA 四工具、项目授权/provenance、外部适配器 |
+| [Theme-Session-Team 合同](./theme-session-team-ima-design.md) | 模板真源、排期、显式路由和 16 课时示例 |
+| [差距审计](./gap-audit-20261019.md) | 当前代码事实、风险、源码路径与闭环条件 |
+| [光学领域方案](./optics-scattering-diffraction-analysis.md) | 模型域、安全、动作/观测/CER 协议 |
+| [研究报告](./research-report.md) | 检索范围、固定来源、许可筛选、证据限制 |
+| [来源锁](./source-lock.json) | 抓取 URL/hash、固定仓库 commit、Grok 零来源记录 |
+| [本轮验证](./validation-20261019.md) | 本轮构建/测试、文档检查及未执行的生产验收 |
+| [交付状态](./delivery-status.json) | 每个切片的状态、证据层和未完成边界 |
+| [既有发布基线](./takeover-validation-20261019.md) | 历史发布 SHA 和原始记录入口，不冒充本轮部署 |
+
+## 先修什么
+
+当前只有 `tutor-guided-learning@1.0.0` 一个教学 Skill；`.pi/agents` 的 31 个开发角色不是生产教学团队。扩展技能之前，以下基线缺口按状态逐项关闭：
+
+1. 教学链已改读 Admin assistant 的当前配置，runtime-only Agent 路径保留；全局单一写端迁移和 Worker 统一尚未完成。
+2. phase 导师身份已贯穿 Tutor/SDK 实际生成；本地全量离线回归通过，不等于历史配置冻结。
+3. Theme/Session 已归入唯一模板合同并接新模板消费端；profile、Skill/助手/工具和项目 IMA grant 尚未完整冻结。
+4. 项目级门禁、四个 IMA 工具参数/引用范围，以及 Worker 的真实工具执行边界。
+
+已保留用户确认的三个知识库提交 `7463af8`、`43a8680`、`43a0307`：Admin 列库验证和 PDF 原文阅读是新增基础，但不等于学生项目级 IMA 权限已完成。验收区分源码存在、配置存在、发布启用、真实请求成功和学习效果。
+
+## 清理结果
+
+原有 9 份当前文档已按责任重建/更新，另保留 Skill、MCP、来源锁与交付状态。旧正文逐字节归档到 [更新前快照](../../archive/codex-before-capability-20261019/README.md)，保留原路径/替代路径与 SHA-256 [清单](../../archive/codex-before-capability-20261019/manifest.json)。历史失败、修复和发布记录保留，不再与当前方案混写。
+
+运行 `node tooling/check-codex-plan.mjs` 检查当前链接、所有归档清单 hash、JSON 和状态证据；`--self-test` 验证拒绝路径。脚本只读，不改 archive，也不证明业务或生产成功。
+
+`antigravity/combined` 继续仅作 [历史比较](../../archive/pre-20261018/README.md)。不新建平行课程、PBL、binding、pending 或 mastery 状态库；不改变 AI搭档 `/student/tutor` 与灵感空间 `/student/inspiration` 导航。
+
+
+## Optics 16-Session Template
+
+Implementation and rollout boundaries: [16-session template](../../admin/optics-16-session-template.md).

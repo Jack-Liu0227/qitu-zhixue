@@ -88,6 +88,10 @@ export type LearningPlanErrorCode =
 export interface SessionBlock {
   kind: SessionBlockKind;
   minutes: number;
+  /** Frozen template guidance; omitted by legacy plans. Not assessment facts. */
+  title?: string;
+  guidance?: string;
+  evidenceRequirements?: readonly string[];
 }
 
 /** 目标投影（不含前置的循环图内部结构之外的服务端字段）。 */

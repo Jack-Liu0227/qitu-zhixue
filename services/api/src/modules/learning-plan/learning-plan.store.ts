@@ -78,6 +78,7 @@ export interface SessionRecord {
   planId: string;
   moduleId: string;
   index: number;
+  title?: string | null;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
   practiceObjectiveIds: string[];
@@ -739,7 +740,9 @@ function clonePendingQuestion(record: PendingQuestionRecord): PendingQuestionRec
 function cloneSession(session: SessionRecord): SessionRecord {
   return {
     ...session,
-    blocks: session.blocks.map((block) => ({ ...block })),
+    blocks: session.blocks.map((block) => ({ ...block,
+      ...(block.evidenceRequirements === undefined ? {} : { evidenceRequirements: [...block.evidenceRequirements] }),
+    })),
     theoryObjectiveIds: [...session.theoryObjectiveIds],
     practiceObjectiveIds: [...session.practiceObjectiveIds],
   };

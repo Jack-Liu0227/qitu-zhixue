@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
 import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
 import { and, eq, gt } from 'drizzle-orm';
@@ -6,6 +6,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { decryptModelSecret, encryptModelSecret, readModelSecretKey } from '../../common/secrets/model-secret';
+import { decryptDeviceAuthorization, encryptDeviceAuthorization } from './device-authorization';
 
 export const FEISHU_BOT_ID = 'admin-reporting' as const;
 export const DEFAULT_FEISHU_ASSISTANT_ID = 'feishu-reporting-assistant' as const;
@@ -118,7 +119,7 @@ export class FeishuService {
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     if (!bot?.appId) throw new BadRequestException('璇峰厛閰嶇疆椋炰功 App ID');
     const existing = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, bot.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
-    if (existing[0]) return this.getQrSession(existing[0].id);
+    if (existing[0]) return this.getQrSession(existing[0].id, actor);
     const id = randomUUID();
     const state = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + 10 * 60_000);
@@ -129,12 +130,18 @@ export class FeishuService {
     return { id, status: 'pending', authorizationUrl, expiresAt: expiresAt.toISOString(), pollIntervalSeconds: 5 };
   }
 
-  async getQrSession(id: string): Promise<FeishuQrSession> {
+  async getQrSession(id: string, actor?: CurrentUser): Promise<FeishuQrSession> {
     const db = this.database();
     const [row] = await db.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, id));
     if (!row) throw new NotFoundException('浜岀淮鐮佷細璇濅笉瀛樺湪');
+    if (actor && row.createdBy !== actor.id) throw new ForbiddenException('Forbidden QR session');
     const status = row.status === 'pending' && row.expiresAt.getTime() <= Date.now() ? 'expired' : row.status as FeishuQrSession['status'];
     if (status !== row.status) await db.update(feishuQrSessions).set({ status, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
+    if (status !== 'pending') return { id: row.id, status, authorizationUrl: '', expiresAt: row.expiresAt.toISOString(), pollIntervalSeconds: row.pollIntervalSeconds };
+    if (row.deviceCodeEncrypted) {
+      const authorizationUrl = decryptDeviceAuthorization(row.deviceCodeEncrypted, requireSecretKey()).verificationUriComplete ?? '';
+      return { id: row.id, status, authorizationUrl, expiresAt: row.expiresAt.toISOString(), pollIntervalSeconds: row.pollIntervalSeconds };
+    }
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, row.botId));
     const host = bot?.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
     const appId = bot?.appId;
@@ -150,8 +157,24 @@ export class FeishuService {
     const [configured] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     if (configured?.domain === 'lark') domain = 'lark';
     if (configured) {
-      const active = await db.select({ id: feishuQrSessions.id }).from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, configured.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
-      if (active[0]) throw new BadRequestException('FEISHU_QR_ALREADY_ACTIVE');
+      const [active] = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, configured.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
+      if (active) {
+        if (active.createdBy !== actor.id || !active.deviceCodeEncrypted) {
+          throw new BadRequestException({ code: 'FEISHU_QR_ALREADY_ACTIVE', message: 'An authorization is already active. Return to the administrator session that started it, or wait for it to expire.' });
+        }
+        const session = decryptDeviceAuthorization(active.deviceCodeEncrypted, requireSecretKey());
+        if (session.verificationUriComplete) {
+          return { id: active.id, status: 'pending', verificationUriComplete: session.verificationUriComplete, expiresAt: active.expiresAt.toISOString(), pollIntervalSeconds: active.pollIntervalSeconds };
+        }
+        // Pre-fix sessions did not retain the QR URL. Retire only this admin's unrecoverable session.
+        await withTransaction(db, async (tx) => {
+          const retired = await tx.update(feishuQrSessions).set({ status: 'cancelled', deviceCodeEncrypted: null, updatedAt: new Date() })
+            .where(and(eq(feishuQrSessions.id, active.id), eq(feishuQrSessions.status, 'pending'), eq(feishuQrSessions.createdBy, actor.id)))
+            .returning({ id: feishuQrSessions.id });
+          if (!retired.length) throw new ConflictException({ code: 'FEISHU_QR_SESSION_CHANGED', message: 'Authorization changed while restarting. Refresh its status before trying again.' });
+          await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.cancel', targetType: 'feishu_qr_session', targetId: active.id, detail: { reason: 'verification_url_unavailable', assistantId } }, tx);
+        });
+      }
     }
     const accounts = domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
     let begin: Record<string, unknown>;
@@ -166,15 +189,19 @@ export class FeishuService {
     const deviceCode = String(begin.device_code ?? '');
     const verificationUriComplete = String(begin.verification_uri_complete ?? begin.verification_uri ?? '');
     if (!deviceCode || !verificationUriComplete) throw new ServiceUnavailableException('Feishu returned invalid device authorization data');
-    const lifetime = Math.max(30, Math.min(600, Number(begin.expire_in ?? 600)));
-    const pollIntervalSeconds = Math.max(1, Math.min(30, Number(begin.interval ?? 5)));
+    const lifetime = Number(begin.expire_in ?? 600);
+    const pollIntervalSeconds = Number(begin.interval ?? 5);
+    const expiresAt = new Date(Date.now() + lifetime * 1000);
+    if (!Number.isSafeInteger(lifetime) || lifetime <= 0 || !Number.isFinite(expiresAt.getTime())
+      || !Number.isSafeInteger(pollIntervalSeconds) || pollIntervalSeconds < 1 || pollIntervalSeconds > 2_147_483) {
+      throw new ServiceUnavailableException('Feishu returned invalid device authorization timing');
+    }
     const key = requireSecretKey();
     const botId = configured?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`);
     if (!configured) await db.insert(feishuBots).values({ id: botId, assistantId, domain, enabled: false, reportRecipients: [], updatedAt: new Date() });
     const id = randomUUID();
     const state = randomBytes(24).toString('base64url');
-    const expiresAt = new Date(Date.now() + lifetime * 1000);
-    await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptModelSecret(deviceCode, key), pollIntervalSeconds, updatedAt: new Date() });
+    await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptDeviceAuthorization({ deviceCode, verificationUriComplete }, key), pollIntervalSeconds, updatedAt: new Date() });
     await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.begin', targetType: 'feishu_qr_session', targetId: id, detail: { assistantId, domain, expiresAt: expiresAt.toISOString() } });
     // The admin client encodes this URL locally; no third-party QR service sees it.
     return { id, status: 'pending', verificationUriComplete, expiresAt: expiresAt.toISOString(), pollIntervalSeconds };
@@ -185,14 +212,13 @@ export class FeishuService {
     const db = this.database();
     const [row] = await db.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, id));
     if (!row) throw new NotFoundException('浜岀淮鐮佷細璇濅笉瀛樺湪');
-    if (actor && row.createdBy && actor.id !== row.createdBy) throw new ForbiddenException('Forbidden QR session');
+    if (actor && actor.id !== row.createdBy) throw new ForbiddenException('Forbidden QR session');
     if (row.status !== 'pending') return this.getQrSession(id);
     if (row.expiresAt.getTime() <= Date.now()) { await db.update(feishuQrSessions).set({ status: 'expired', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.id, row.botId));
     const key = requireSecretKey();
     if (!row.deviceCodeEncrypted) throw new BadRequestException('璁惧鎺堟潈浼氳瘽鏃犳晥');
-    let deviceCode: string;
-    try { deviceCode = decryptModelSecret(row.deviceCodeEncrypted, key); } catch { throw new ServiceUnavailableException('Feishu device code cannot be decrypted'); }
+    const { deviceCode } = decryptDeviceAuthorization(row.deviceCodeEncrypted, key);
     const accounts = bot?.domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';
     let result: Record<string, unknown>;
     try {
@@ -202,7 +228,7 @@ export class FeishuService {
     } catch { throw new ServiceUnavailableException('椋炰功璁惧鎺堟潈杞澶辫触'); }
     const error = String(result.error ?? '');
     if (error === 'authorization_pending') return this.getQrSession(id);
-    if (error === 'slow_down') { await db.update(feishuQrSessions).set({ pollIntervalSeconds: Math.min(60, row.pollIntervalSeconds + 5), updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
+    if (error === 'slow_down') { await db.update(feishuQrSessions).set({ pollIntervalSeconds: row.pollIntervalSeconds + 5, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
     if (error === 'access_denied') { await db.update(feishuQrSessions).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
     if (error === 'expired_token') { await db.update(feishuQrSessions).set({ status: 'expired', updatedAt: new Date() }).where(eq(feishuQrSessions.id, id)); return this.getQrSession(id); }
     const userInfo = (result.user_info && typeof result.user_info === 'object' ? result.user_info : {}) as Record<string, unknown>;

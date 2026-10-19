@@ -26,7 +26,7 @@ import {
   type Database,
   withTransaction,
 } from '@qitu/database';
-import type { CurrentUser, PblPhase, TutorTeamAgentMessage, TutorTeamAgentToolCall, TutorTeamAgentStatus, RolePhaseMap } from '@qitu/contracts';
+import type { CurrentUser, PblPhase, TutorTeamAgentMessage, TutorTeamAgentToolCall, TutorTeamAgentStatus, RolePhaseMap, PblCurriculumProfile } from '@qitu/contracts';
 import { getPhaseAndRoleForSession } from '@qitu/contracts';
 import { IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client.js';
 import {
@@ -551,17 +551,10 @@ export class TeamRuntimeService {
 
   private readonly logger = new Logger(TeamRuntimeService.name);
 
-  /**
-   * 根据课时序号（1-16）解析当前课时所属阶段、接管智能体与责任使命。
-   * 对应架构图：
-   * - 课时 1-2：主导导师 Agent (Inspire Curiosity & Plan Framing)
-   * - 课时 3-8：概念教练 Agent (Socratic Ladder & Misconception Remediation)，门禁 TheoryMastered
-   * - 课时 9-14：实验向导 Agent (Generative Canvas Control & CER Analysis)，门禁 experiment_report_validated
-   * - 课时 15-16：评审导师 Agent (Rubric Evaluation & Growth Archiving)，门禁 review_completed_and_archived
-   */
+  /** Resolve an actual frozen profile, never global session-number ranges. */
   resolveSessionAgent(
     sessionIndex: number,
-    roleMap?: Partial<RolePhaseMap>,
+    context: { profile: PblCurriculumProfile; roleMap: RolePhaseMap; memberAssistantIds: readonly string[] },
   ): {
     sessionIndex: number;
     phase: PblPhase;
@@ -571,11 +564,11 @@ export class TeamRuntimeService {
     isGateSession: boolean;
     gateCondition?: string;
   } {
-    const info = getPhaseAndRoleForSession(sessionIndex);
-    const agentId =
-      (roleMap && (roleMap as Record<string, string | undefined>)[info.phase]) ??
-      (PBL_ASSISTANT_BY_PHASE as Record<string, string>)[info.phase] ??
-      'qitu-intake-assistant';
+    const info = getPhaseAndRoleForSession(sessionIndex, context.profile);
+    const agentId = context.roleMap[info.phase];
+    if (!agentId || !context.memberAssistantIds.includes(agentId)) {
+      throw new BadRequestException({ code: 'PROJECT_SESSION_ROUTE_INVALID', message: 'Session role must reference a frozen team member' });
+    }
     return {
       sessionIndex,
       phase: info.phase,

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   createQituSDK,
   createTutorAgentRuntime,
@@ -17,6 +17,7 @@ import { GrowthService } from '../growth/growth.service';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import { hashRequest } from '../../common/idempotency';
 
 const USAGE_BY_CAPABILITY: Readonly<Record<TutorAgentCapability, string>> = {
   explore: 'tutor.chat',
@@ -51,11 +52,12 @@ export class QituSDKFactory {
     runner: (input: Input, purpose: TutorAgentModelPurpose) => Promise<Result>,
     modelUsageOverride?: string,
     modelSelectionOverride?: { providerId: string; modelId: string } | null,
+    assistantExecution?: { assistantId: string; configurationHash: string },
   ) {
     const runtimeScope: TutorAgentScope = {
       actorId: actor.id,
       studentId: scope.studentId,
-      partnerId: 'qitu-learning-partner',
+      partnerId: assistantExecution?.assistantId ?? 'qitu-learning-partner',
       projectId: scope.projectId,
       sessionId: null,
       schoolId: null,
@@ -67,8 +69,25 @@ export class QituSDKFactory {
       const requestId = readString(shape.requestId) ?? `sdk-request-${Date.now()}`;
       const idempotencyKey = readString(shape.idempotencyKey) ?? `sdk:${requestId}`;
       const query = readString(shape.query) ?? readString(shape.content) ?? '当前学习任务';
-      const agentRuntime = await this.platformRegistry.getAgentRuntime(runtimeScope.partnerId);
+      const agentRuntime = assistantExecution === undefined
+        ? await this.platformRegistry.getAgentRuntime(runtimeScope.partnerId)
+        : await this.platformRegistry.getAssistantRuntime(runtimeScope.partnerId);
       if (!agentRuntime.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
+      if (assistantExecution !== undefined) {
+        if (agentRuntime.agent.id !== runtimeScope.partnerId || !agentRuntime.agent.capabilities.includes('teach')) {
+          throw new ConflictException({ code: 'ASSISTANT_RUNTIME_IDENTITY_MISMATCH', message: 'Teaching runtime identity is unavailable' });
+        }
+        // This is only a single-turn consistency token. Re-read current denies
+        // on every action; do not mix an old prompt with a newly selected model.
+        if (hashRequest(agentRuntime) !== assistantExecution.configurationHash) {
+          throw new ConflictException({ code: 'ASSISTANT_RUNTIME_CHANGED', message: 'Teaching configuration changed; retry this turn' });
+        }
+        if (modelSelectionOverride === undefined || modelSelectionOverride === null
+          || modelSelectionOverride.providerId !== agentRuntime.agent.modelProviderId
+          || modelSelectionOverride.modelId !== agentRuntime.agent.modelId) {
+          throw new ConflictException({ code: 'ASSISTANT_MODEL_IDENTITY_MISMATCH', message: 'Teaching model selection does not match its assistant' });
+        }
+      }
       const usageOverride = modelUsageOverride ?? 'tutor.chat';
       const runtime = createTutorAgentRuntime<Record<string, never>, { data: Result }>(runtimeScope, {
         modelPurpose: {
@@ -112,7 +131,7 @@ export class QituSDKFactory {
               requestId: request.requestId,
               kind: 'reply' as const,
               agentId: runtimeScope.partnerId,
-              agentVersion: 'partner.v1',
+              agentVersion: agentRuntime.agent.promptVersion ?? 'unversioned',
               runtimeVersion: 'qitu.agent-runtime.v1' as const,
               generatedAt: new Date().toISOString(),
               sourceRefs: [],

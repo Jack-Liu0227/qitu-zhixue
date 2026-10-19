@@ -1,111 +1,64 @@
-# 项目式学习动态交互深度调研报告
+# PBL 能力链研究与来源筛选
 
-> 复核：2026-10-19；源码基线 `f88bb7354ef1bbaef7339f2b6163487c855386d5`。
-> 本报告是工程源码/交互研究，不是系统综述或教学效果实验。
-> 入口：[差距审计](./gap-audit-20261019.md) · [一体化架构](./theme-session-team-ima-design.md) · [实施计划](./implementation-plan.md) · [验证记录](./validation-20261019.md)。
-> 本次更新仅同步产品架构决策，没有重新执行外部检索。上游 commit 和 Grok 记录保持原证据边界；最新本地方案见 [实时生成总架构](./architecture.md)。
+> 状态：复用 2026-10-19 固定来源，M1 源码已实现、本地全量离线复核已通过；当前实施轮次未重新联网抓取。来源锁基线 `43a0307`。
+> 本报告是工程方案依据，不是系统综述、学习效果实验或法律结论。目标设计见 [总架构](./architecture.md)。
 
-## 1. 执行结论
+## 1. 结论与证据强度
 
-接纳 Theme Core + Session Schedule + Deep Team Binding + IMA Knowledge Integration，但应完善现有模块化单体，不整体移植 OpenMAIC/DeepTutor。
+采用小型共享教学 Skill 目录、现有 binding 内的编译制品、项目确认原子冻结和运行时最小权限。这个取舍来自启途的历史项目、Admin 控制和领域 owner 约束，不是外部仓库已证明的教育收益。
 
-最新需求明确要求真实 AI 实时生成。确定性代码负责冻结课程骨架、校验和计算；绑定团队实际生成个性化大纲、课时教学、逐轮追问及评审候选。此项是启途产品决策，不是由上游 README 或效果研究证明的结论。
+Skill 是可复用教学方法，Tool 是服务端可执行能力，MCP 是连接协议。扩大目录前先解决真实助手身份、配置真源、不可变版本和 IMA 项目范围。开发角色/开发 Skills 不自动成为学生团队或工具授权。
 
-启途已具备模板/团队版本、绑定快照、光学 8/16 节计划、DAG、服务端答题/mastery/gates、SSE 与可视化。还需补三个关键闭环：冻结版本对应的真实内容/角色/授权；当前任务/待答问题到下一动作；实验预测/操作/观察/CER 到可审计证据。Admin/IMA 桥已有范围控制，不等于 Tutor 已有项目级授权。
+原有研究临时材料包括 `qitu-pbl-capability-grounding.md`、两个架构候选、交叉审阅以及 `qitu-pbl-research-20261019` 的抓取记录。当前仓库保留可审阅的结论和 [来源锁](./source-lock.json)，不提交第三方全文、抓取临时正文或学生数据。
 
-应借 OpenMAIC 的结构化规划、当前任务锚点、提交与评价分离，借 DeepTutor 的题目卡、服务端答案、跨轮待答恢复；正式事实继续由启途 owners 写入。增加 Agent 数量、动画或提示词不替代这些接线。
+## 2. 固定来源和借鉴范围
 
-## 2. 范围与证据方法
+以下 URL、固定 commit 和抓取 hash 来自来源锁对应轮次。未在当前实施轮次宣称 URL 仍可访问或源码仍是最新。
 
-问题：如何围绕高中光学驱动问题，生成可执行计划，跟随学生回答选择下一教学动作，并保证物理正确、未成年人权限、证据和版本不漂移？
-
-核查官方仓库固定快照、启途 PBL 主链路/测试、产品规则与匿名网站。未对 Monorepo 每行作形式化审计，未读取线上学生原始对话，未运行完整共享线上教学周期。区分源码存在、配置存在、部署启用、真实请求成功；方法名、typecheck、mock E2E 和 readiness 各自不能跨层证明功能完成。
-
-## 3. Grok Search MCP 检索记录
-
-按要求多轮使用 Grok，并建立查询计划。代表查询：
-
-| 主题 | 查询 | 采用原则 |
+| 来源 | 固定版本/路径 | 用途与限制 |
 | --- | --- | --- |
-| OpenMAIC | `OpenMAIC GitHub THU-MAIC README features official`；官方 planner/instructor/evaluator | 固定 commit 核验，不采无链接摘要 |
-| DeepTutor | `DeepTutor adaptive question answer options official repository`；mastery/loop/question card | 搜索存在矛盾，改源码核验 |
-| 光学/支架 | `high school PBL single slit diffraction misconceptions adaptive scaffolding` | 不采用未核实效果数字 |
-| 治理 | UNESCO/PBLWorks/UNICEF 官方资料 | 仅设计/风险参考，不作法律结论 |
-| 未核实名称 | `SimPBL multi-agent project-based learning ACL 2026` | 无可核验书目，不作为事实 |
+| [Agent Skills 规范](https://agentskills.io/specification) | 规范及仓库 `69ef37e9424c0a7ea9dd2293b559e43ec8176379` | 包格式、元数据、按需加载；格式兼容不授予工具权限 |
+| [Anthropic Skills](https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44) | `skills/skill-creator`、`skills/mcp-builder` | 开发/审核方法，不进入学生 prompt |
+| [OpenAI Skills](https://github.com/openai/skills/tree/49f948faa9258a0c61caceaf225e179651397431) | `.curated/jupyter-notebook`、`.curated/pdf` | 教师/开发离线方法，不开放学生 REPL/shell |
+| [K-Dense Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills/tree/a1043ef544e3a100c28e70a736b6cf32554d0677) | `scientific-brainstorming`、`hypothesis-generation`、`experimental-design`、`uncertainty-and-units`、`scientific-critical-thinking` | 提炼问题、预测、变量和证据方法，重新适配年龄与合同 |
+| [MCP 规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) | 固定 2025-11-25 authorization/security/tools | 输入输出校验、受众、最小授权；不声称当前实现已符合全部条款 |
+| [MCP Registry](https://github.com/modelcontextprotocol/registry/tree/11b7b0e274d518b6f449c5ee3518a6151d9848b9) | README 与 FAQ | 发现工具，不是安全认证或官方背书 |
+| [PBLWorks](https://www.pblworks.org/gold-standard/pbl-project-design) | 设计要素页面 | 驱动问题、探究、反思、反馈与产物设计，不提供本项目效果数字 |
+| [OpenStax](https://openstax.org/books/university-physics-volume-3/pages/4-1-single-slit-diffraction) | 单缝衍射页面 | 物理模型参考，不证明 PBL 教学效果 |
+| [OpenAlex](https://help.openalex.org/) / [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/) | 元数据 API 文档 | 后续只读适配候选，不冒称已接官方 MCP |
 
-已有代表会话：`fb629d00ee36`、`bbaa3df0c5ec`、`c1b2aeb4e261`、`97cbe08e161b`、`12358e7a1435`；光学轮：`520d804cfa5e`、`443ec4d0194c`、`9a1959ff33ea`、`52acde66d064`、`62d0c27f183c`、`4f36e40ab49b`、`7b5a8feb44f8`、`8ff760629201`。已有记录均为 sources_count=0，get_sources 为空，提取失败/超时不计成功来源。
+`openai/plugins@0722921d5542fc593105c27bd52630babd8b8c2a` 的 notebook 工作流只作开发侧比较，不增加第二套教学编排。
 
-本轮规划会话 `59f3928dbbc2`，检索会话 `5e06e6a1df28`。精确限定两个官方仓库的六个实现文件，要求可核实 URL、区分课堂多角色/PBL Instructor、不返回成效数字。仍返回 sources_count=0、get_sources=[]，文本自述无法核查，并给出层级错误的示例路径。
+### 许可不能按仓库名称推断
 
-故 MCP 仅记为失败的证据发现/线索，不作为引用、不保留推理文本、不包装成论文结论。独立访问官方固定 commit 的 planner/question_card raw URL 均 HTTP 200，本地相同快照可读取。不能把替代核验说成 Grok 返回了成功来源。
+来源锁中的仓库 `licenseMetadata: null` 表示未由仓库元数据得到结论，不代表没有许可。已有逐文件抓取记录显示 Anthropic `skill-creator` 和 `mcp-builder` 为 Apache-2.0；其 PDF/PPTX 文件有不同限制，不可按同仓库默认开源复制。OpenAI 所核验 notebook/PDF 文件为 Apache-2.0，K-Dense 固定根许可为 MIT。
 
-## 4. OpenMAIC：规划、当前任务、提交评估
+这些是抓取时文件内容的记录，不是当前完整权利审查。脚本、资源、数据集、依赖和 NOTICE 仍须逐包复核。学生教学只采审核的方法与年龄适配内容，不搬安装命令、临床框架、任意代码执行或终稿代写。完整准入流程见 [技能目录](./skills-catalog.md)。
 
-快照 `ecb940c136cc5b4ea56dc81b2505e64eff1dea29`（本地 OpenMAIC/）。
+## 3. OpenMAIC 与 DeepTutor 的取舍
 
-- `lib/pbl/v2/agents/planner.ts` 以结构化工具建立项目信息、角色、milestone、microtask，最后申请 design complete，检查缺角色、空里程碑/任务等。不只是一次生成长 JSON，而是步骤/schema/依赖/完成条件校验。
-- `instructor.ts` 将 active milestone/microtask、最近提交和评价作为教学锚点；普通聊天不直接完成任务，要求进入规定提交/评价入口。
-- `evaluator.ts` 承担任务/里程碑评价，与日常指导分工。迁入启途时仍只产候选，Works/Mastery/Projects owner 决定正式事实。
-- 普通 PBL planner 明确只接受一个 Instructor role；课堂多角色、Planner/Instructor/Evaluator 职责分工、角色扮演不是“每节课多个 Agent 必须轮流发言”的证据。
+[OpenMAIC planner](https://github.com/THU-MAIC/OpenMAIC/blob/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/planner.ts) 和 [DeepTutor question card](https://github.com/HKUDS/DeepTutor/blob/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/learning/question_card.py) 的固定原文件有来源锁记录。相应许可记录分别为 MIT、Apache-2.0，不能由此省略资源/依赖审核。
 
-迁移：Theme/Session 定义骨架；LLM 生成允许的文案/活动/题目候选，服务端检验目标 DAG、时长、必需证据、门禁、角色与工具。正式模板发布仍走 Admin。保留一个主要发言者和按阶段的责任角色，减少多人同时给答案的噪声。
+借鉴结构化规划、当前任务锚点、提交与评价分离，以及稳定题卡/pending 的模式。继续使用启途已有 Projects、Learning Plan、Mastery、Tutor、Works 和 Team Runtime，不移植第二个状态库或后台。上游已答卡可展示答案的做法不照搬，启途继续执行不泄活动题答案和分级提示。
 
-## 5. DeepTutor：题目卡、待答与掌握循环
+历史归档含更广的源码阅读结论，但当前来源锁不覆盖的文件不能冒称本轮逐文件独立抓取。课堂多角色或 planner/instructor/evaluator 分工，也不是每节必须并发多个 Agent 的依据。
 
-快照 `a053fecf6eeca51ded680de8b8fc41ef63857b11`（本地 DeepTutor/）。
+## 4. Grok 的零来源记录
 
-- `deeptutor/agents/question/pipeline.py` 的一组题生成与 `capabilities/mastery/` 的持续路径不同；后者维护知识点、题目登记、pending question、答案处理与尝试状态。
-- `deeptutor/learning/question_card.py` 区分 graded mastery question 和普通澄清 UI；公开投影不带 expected answer/explanation，学生有稳定可回答对象，而非只在聊天中列 ABC。
-- `mastery/loop.py` 检查选定 quiz 是否真正发出题卡，避免“说要出题但没有可作答卡”；跨轮保持当前目标与题目，不随便覆盖待答。
-- 上游已答卡可展示 expected answer；启途仍须遵守本项目 hint/答案隔离策略，不能照搬错答一次即给完整答案。
-
-迁移：复用现有 pending_questions/answer owner/mastery，不复制新问答库。刷新恢复同一题；求助先给支架，不自动判错。开放观察、变量设计、CER/答辩不能全部单选化：被数据推翻的假设也是有效探究证据，不等同项目失败。
-
-## 6. 模式映射
-
-| 机制 | 可借鉴模式 | 启途基础 | 需补齐 |
+| session ID | sources_count | sources 列表数 | 处理 |
 | --- | --- | --- | --- |
-| 大纲/计划 | OpenMAIC 结构化规划 | template + deterministic plan + PlanOutline | 冻结内容输入/大纲落库/标题 |
-| 团队责任 | 规划/指导/评估分离 | 团队版本/绑定/快照优先解析 | roleMap/grant 持久化/hash/覆盖校验 |
-| 课时 | milestone/microtask 可执行性 | 8/16 节与 12 目标 | 单一合同、新版本、真实当前任务 |
-| 持续问答 | DeepTutor pending/card/answer | 服务端 quiz/attempt/mastery | 当前题投影、稳定动作、澄清与作答区分 |
-| 动态展示 | 场景/题卡表达 | Board/Mermaid/KaTeX/SSE/实验 | 安全、恢复、按需展示，不改导航 |
-| 动态实验 | 可操作而非静态解释 | 光学滑块/曲线原型 | owner action/event/观测/CER |
-| 教材 | 有出处的解释 | Knowledge Center/IMA 桥 | 项目授权交集、文档 provenance |
-| 宏观适应 | 持续任务轨迹 | stall/plan adjustment | 证据 + revision + 确认，不自动跨门禁 |
+| `31c80cb2cbb4` | 0 | 0 | 发现线索，不作引用 |
+| `273fcc94d77a` | 0 | 0 | 发现线索，不作引用 |
+| `bd101ce178fb` | 0 | 0 | 发现线索，不作引用 |
 
-工程分层应区分静态文案、动态可视化、持久证据交互、有依据的教学调整。当前光学主要是动态可视化，正式 quiz 已有证据基础；有动画不等于完整自适应。这些是设计层次，不是学习效果评级。
+规划会话 `29fe8679925a` 未暴露完整 complexity_assessment 阶段，不能声称完成全部搜索计划协议。更早的会话保留在 [更新前研究快照](../../archive/codex-before-capability-20261019/snapshot/research-report.md)，同样零来源，不把摘要包装成论文、软件事实、法律结论或学习效果。
 
-## 7. 高中光学 PBL 的落点
+本轮不再用无链接摘要补证据。后续检索须保存 query、session ID、sources_count 和实际来源，对重要事实再访问原始官方内容并固定版本。未脱敏学生原话、身份、学校或私有教材不能发给公开搜索。
 
-驱动问题：怎样用可重复的探究区分传播方向改变、狭缝后条纹展开、介质使侧向光束可见，并交付带数据/边界的报告？
+## 5. 研究如何进入实施
 
-先观察/预测/变量，后操作/读数/解释/质疑/CER；理论期沿用四理论目标和 TheoryMastered owner。第 8 节只诊断，不自动过门。实践用注册单缝模型作单变量对照；散射先用封闭细雾室作定性比较，域外不乱套 Rayleigh/Mie 结论。每次回答驱动追问、提示、例子、检查、补救或教师支持，不能直接完成项目。
+技能目录保持 1 个现有基础、8 个首批候选、6 个后续候选。候选不是已安装、更不是已发布。先实现统一模板/纯编译器/身份，再持久化绑定和项目冻结，再完成 IMA 与实验闭环，最后教师评测、隔离试点和灰度。
 
-16 节/角色/授权见一体化架构；公式/分支见光学方案。教师看最小证据摘要，不复制学生原始对话。
+M1 当前已有唯一模板 strict parser、独立新 16 节 identity/profile 与显式 bootstrap、实际正文草稿生成，以及无 I/O 的能力编译器。Tutor/SDK 按 Admin assistant 当前字段统一身份/模型/skills/tools/trace，未完成 `agent_configs` 全局迁移。profile/content digest/Skill 尚未冻结，课时标题与活动回读已有源码但 0036 迁移未部署，Worker closures 与 IMA 项目 provenance 未接。focused 离线测试通过不等于真实教学请求；最终全量数字以 [验证记录](./validation-20261019.md) 为准。没有因研究结论直接安装或发布 8+6 候选。
 
-## 8. 验证与评估边界
-
-本轮 API/Admin typecheck 通过，API 全量测试仍有失败，学生端缺可解析 mermaid 安装；数字见验证记录。公网 readiness 数据库/Redis 为 ok，匿名项目 API 401；未核验部署 commit 或完整学生周期。
-
-先完成一个可重放衍射任务，再进行 16 节隔离试点。记录证据完整、错误复现、提示淡出/独立作答、作品 rubric、引用、延迟/恢复与教师可操作性。没有受控设计和足够样本，不宣称提高成绩/留存或因果效果，也不用隐式情绪给未成年人自动分层。
-
-## 9. 可复核来源
-
-源码/README 是软件功能证据，不是 K-12 成效证据；引入第三方代码仍需相应许可/声明审查。
-
-- OpenMAIC 官方（MIT）：<https://github.com/THU-MAIC/OpenMAIC>
-- Planner：<https://github.com/THU-MAIC/OpenMAIC/blob/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/planner.ts>
-- Instructor：<https://github.com/THU-MAIC/OpenMAIC/blob/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/instructor.ts>
-- Evaluator：<https://github.com/THU-MAIC/OpenMAIC/blob/ecb940c136cc5b4ea56dc81b2505e64eff1dea29/lib/pbl/v2/agents/evaluator.ts>
-- DeepTutor 官方（Apache-2.0）：<https://github.com/HKUDS/DeepTutor>
-- Question generation：<https://github.com/HKUDS/DeepTutor/blob/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/agents/question/pipeline.py>
-- Mastery tools：<https://github.com/HKUDS/DeepTutor/blob/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/capabilities/mastery/tools.py>
-- Mastery loop：<https://github.com/HKUDS/DeepTutor/blob/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/capabilities/mastery/loop.py>
-- Question card：<https://github.com/HKUDS/DeepTutor/blob/a053fecf6eeca51ded680de8b8fc41ef63857b11/deeptutor/learning/question_card.py>
-- OpenStax 单缝衍射（模型参考）：<https://openstax.org/books/university-physics-volume-3/pages/4-1-single-slit-diffraction>
-- PBLWorks（设计参考）：<https://www.pblworks.org/what-is-pbl/gold-standard-project-design>
-- UNESCO（治理参考，非法律意见）：<https://unesdoc.unesco.org/ark:/48223/pf0000386693>
-- UNICEF（风险参考，非产品合规批准）：<https://www.unicef.org/globalinsight/reports/policy-guidance-ai-children>
-
-DeepTutor README 引用的 arXiv 2604.26962 本轮未核验全文，不据此引用效果。SimPBL/ACL 2026 与未核实百分比不作为事实。未来引入论文需另行明确纳排标准、检索/全文深度和可复核结果。
+首个试点只验证单缝“问题、预测、单变量比较、模拟观察、数据、CER、反思”的教学链。记录真实费用、耗时、恢复和教师分歧；未经受控研究不报告学习提升百分比。来源抓取 HTTP 200/hash 只证明抓取字节，不证明内容安全、许可完备、运行可用或教育有效。

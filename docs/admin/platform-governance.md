@@ -44,6 +44,8 @@ Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不�
 ### Feishu/Lark 管理汇报助手
 
 Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、二维码会话、凭证轮换和发送状态均由服务端持久化并审计；`open_id` 必须映射到启途管理员后才能生成报告。报告助手只读聚合学生、家长授权投影和教师运营摘要，默认最小化可见范围，禁止发送原始未成年人对话或语音。手机扫码绑定、状态机、错误码和真实租户验收的当前台账见 [`../plan/20261018-issue-digest-feishu-assistant.md`](../plan/20261018-issue-digest-feishu-assistant.md)；[2026-10-17 早期方案](../archive/pre-20261018/plan/20261017-feishu-reporting-assistant.md) 仅作历史参考，不代表真实租户验收通过。
+QR session recovery, provider-controlled expiry, permissions, audit events and regression coverage: [Feishu QR binding](./feishu-qr-binding.md).
+
 <!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
 
 The settings UI now uses the sidebar as its single source of navigation. Provider credentials and model records are edited together in the provider workspace, while the legacy `/settings/models` route only redirects for bookmark compatibility.

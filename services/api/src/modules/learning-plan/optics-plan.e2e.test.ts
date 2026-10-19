@@ -32,11 +32,52 @@ import {
 import { InMemoryLearningPlanStore } from './learning-plan.store';
 import { LearningPlanService } from './learning-plan.service';
 import { DeterministicPlanGenerator } from './plan-generator';
+import { OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
 
 const ADMIN = actor('admin', 'admin-1');
 const STUDENT = actor('student', 'student-1');
 const TEAM_VERSION_ID = 'tv-optics-1';
 const NOW = new Date('2025-01-01T00:00:00Z');
+
+it('new 16-session API path consumes the resolved version content and does not open practice from checkpoints', async () => {
+  const h = makeHarness();
+  h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
+  const report = await runOpticsTemplateBootstrap(h, {
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2',
+  });
+  const generated = await h.plans.generatePlan(STUDENT, {
+    interest: '光学证据链', weeks: 8, sessionCount: 16, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+  });
+  assert.equal(generated.plan.templateVersion, report.versionId);
+  assert.equal(generated.plan.sessions.length, 16);
+  assert.equal(generated.plan.projectId, null);
+  assert.equal(generated.plan.sessions[0]?.title, '光的宏观现象与观察指标');
+  assert.equal(generated.plan.sessions[9]?.title, '折射角与物像距数据采集');
+  assert.equal(generated.plan.sessions[10]?.title, '单缝衍射现象与条纹特征探究');
+  assert.equal(generated.plan.sessions[11]?.title, '封闭细雾室介质散射探究');
+  assert.deepEqual(generated.plan.sessions[0]?.blocks.map((block) => block.kind), ['review', 'theory', 'check', 'reflect']);
+  assert.equal(generated.plan.sessions[0]?.blocks.find((block) => block.kind === 'reflect')?.minutes, 5);
+  const confirmed = await h.plans.confirmPlan(STUDENT, generated.plan.id, 'confirm-new-16s', {});
+  assert.equal((await h.bindingStore.findSnapshot(confirmed.project.id))?.templateVersionId, report.versionId);
+  const sessions = await h.plans.listSessions(STUDENT, generated.plan.id);
+  assert.equal(sessions[12]?.title, '数据线性化拟合与实验求参');
+  assert.match(sessions[12]?.blocks.find((block) => block.kind === 'theory')?.guidance ?? '', /1\/v = -1\/u \+ 1\/f/);
+  assert.deepEqual(sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements,
+    ['包含装置图、数据表、拟合和 CER 的报告版本引用', 'rubric 对照、误差分析与结论边界']);
+  const reread = await h.plans.generatePlan(STUDENT, {
+    interest: '光学证据链', weeks: 8, sessionCount: 16, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+  });
+  assert.equal(reread.deduplicated, true);
+  assert.equal(reread.plan.id, generated.plan.id);
+  assert.deepEqual(reread.plan.sessions.map((session) => session.title), generated.plan.sessions.map((session) => session.title));
+  for (const session of sessions.slice(8, 14)) assert.equal(session.practiceUnlocked, false);
+  assert.equal(sessions[7]?.theoryMastered, false);
+  const leaked = sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements;
+  if (Array.isArray(leaked)) leaked.push('client-local mutation');
+  assert.equal((await h.plans.listSessions(STUDENT, generated.plan.id))[13]?.blocks
+    .find((block) => block.kind === 'reflect')?.evidenceRequirements?.length, 2);
+  await assert.rejects(() => h.plans.listSessions(actor('student', 'unrelated-student'), generated.plan.id));
+});
 
 /** 每个门禁承载目标对应的「规范概念键」题库条目（非旧别名）。 */
 const GATED_QUIZ_BY_OBJECTIVE: Readonly<Record<string, string>> = {

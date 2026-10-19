@@ -6,6 +6,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { ImaMcpClient, IMA_MCP_SERVER_ID, IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client';
+import { runtimeIdsForAssistant } from './assistant-runtime-identity';
 
 export function parseImaPatch(body: unknown): AdminImaSettingsPatch {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('ima 配置须为对象');
@@ -120,6 +121,18 @@ export class ImaSettingsService {
         this.db.select().from(agentMcpBindings), this.db.select().from(adminAssistants),
       ]);
       const server = servers.find((row) => row.id === IMA_MCP_SERVER_ID);
+      // Tutor uses one real assistant identity. An Admin-only assistant needs
+      // no unrelated global partner; existing exact/legacy runtime denies hold.
+      if (assistantId === agentId) {
+        const assistant = assistants.find((row) => row.id === assistantId);
+        const runtimeIds = runtimeIdsForAssistant(assistantId);
+        const configuredAgents = agents.filter((row) => runtimeIds.includes(row.id));
+        return !!(server?.enabled && server.toolIds.includes(toolId) && assistant?.enabled
+          && assistant.mcpServerIds.includes(IMA_MCP_SERVER_ID)
+          && configuredAgents.every((row) => row.enabled && bindings.some((binding) =>
+            binding.agentId === row.id && binding.mcpServerId === IMA_MCP_SERVER_ID
+            && binding.enabled && binding.allowedToolIds.includes(toolId))));
+      }
       const agent = agents.find((row) => row.id === agentId);
       const binding = bindings.find((row) => row.agentId === agentId && row.mcpServerId === IMA_MCP_SERVER_ID);
       const assistant = assistantId ? assistants.find((row) => row.id === assistantId) : undefined;

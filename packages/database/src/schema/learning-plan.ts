@@ -145,6 +145,8 @@ export const learningSessions = pgTable(
       .notNull()
       .references(() => learningModules.id, { onDelete: 'cascade' }),
     index: integer('index').notNull(),
+    /** Frozen at generation; historical rows keep their legacy display title. */
+    title: text('title'),
     /** `{ kind, minutes }[]`；服务端校验合计 = 每节时长。 */
     blocks: jsonb('blocks').notNull().default(sql`'[]'::jsonb`),
     theoryObjectiveIds: jsonb('theory_objective_ids')
