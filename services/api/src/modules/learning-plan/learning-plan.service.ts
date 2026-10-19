@@ -1853,7 +1853,13 @@ function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
 }
 
 function lessonPlanSignatureKey(studentId: string, generated: GeneratedPlan): string {
-  return `learning-plan:${studentId}:lesson:${generated.templateVersion}:${generated.lessonCount}:${generated.lessonMinutes}:${generated.interest}`;
+  const signature = hashIdempotentInput(`learning-plan:${studentId}:lesson`, {}, {
+    templateVersion: generated.templateVersion,
+    interest: generated.interest,
+    lessonCount: generated.lessonCount,
+    lessonMinutes: generated.lessonMinutes,
+  });
+  return `learning-plan:${studentId}:lesson:${signature}`;
 }
 
 /**

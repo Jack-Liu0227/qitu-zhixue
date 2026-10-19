@@ -2,16 +2,15 @@
 
 > 文档基线：`2026-10-19`，版本标识：`v2026.10.19`。
 > 核心定位：**项目式学习（PBL）驱动的 AI 育人共成长**。驱动探究双循环与分步解锁机制。
-> 「兴趣 → 4/8 周学习计划 → 先理论后实践 → 完成作品」的服务端能力。
+> 「兴趣 → 按课时生成学习计划 → 先理论后实践 → 完成作品」的服务端能力。
 > 不新增导航、不新增页面概念，落在既有「项目实例」之上。
 > 实现入口：`packages/ai-client/src/curriculum.ts`、
 > `packages/ai-client/src/{mastery,questions,grading}/**`、
 > `services/api/src/modules/learning-plan`。
 
-> **???????lesson-first?**????????? `lessonCount` + `lessonMinutes`
-> ?????? `sessionIndex`?`weeks`?`weekIndex`?`day` ?????????????
-> ????????????????? 16 ???????? 1 ?? 16 ?????
-> ???????????????????
+> **新课时模板合同（lesson-first）**：模板用 `lessonCount` + `lessonMinutes` 定义排程；
+> `optics-physical-inquiry-16s` 按 `sessionIndex` 逐节冻结内容，投影后只用 `lessonIndex`，不写周字段。
+> 当前无模板通用生成器与 `optics-physical-inquiry:v1` 仍保留旧周排程，属于待迁移兼容路径，不是新模板合同。
 
 ## 1. 模型
 
@@ -141,9 +140,3 @@ POST /api/v1/learning-plans/:id/sessions/:sessionId/evidence     提交实践证
 - [`projects.md`](./projects.md)
 - [`growth.md`](./growth.md) §3
 - [`../sdk/domain-facade.md`](../sdk/domain-facade.md)
-
-## 8. 课时模板迁移说明（当前合同）
-
-当前发布的模板以课时为唯一教学排程单位。模板作者应在 `curriculum.profiles` 中声明 `schedule: { lessonCount, lessonMinutes }`，并为每个 `session` 填写连续的 `sessionIndex`、内容、目标、活动分块和 checkpoint。`phase` 只用于门禁与治理标签，不是计划的分组键。
-
-新 API 请求使用 `lessonCount` + `lessonMinutes`；不得再传 `weeks`、`schedule` 或依赖 `week/day`。服务端会从冻结的模板版本生成一课时一个 module/session，并在数据库中保存 `lesson_index`。旧 weekly 计划仍由显式兼容适配器读取，不能在读时把新课时计划转换成周数。

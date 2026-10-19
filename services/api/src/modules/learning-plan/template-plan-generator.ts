@@ -87,12 +87,11 @@ export function generatePlanFromTemplate(
   const byId = new Map(spec.objectives.map((objective) => [objective.id, objective]));
   const gated = spec.phases.find((phase) => phase.phase === 'concept_mastery')?.objectiveIds;
   if (gated === undefined || gated.length === 0) reject('phases', 'The template must declare theory gate objectives');
-
   const moduleId = (index: number): string => `${profile.id}-${lessonOnly ? 'lesson' : 'week'}-${index}`;
   const modules = lessonOnly
     ? profile.sessions.map((session, index) => ({
       id: moduleId(index + 1),
-    name: `第 ${index + 1} 课时：${session.title}`,
+      name: `第 ${index + 1} 课时：${session.title}`,
       lessonIndex: index + 1,
       objective: session.title,
       ordinal: index + 1,

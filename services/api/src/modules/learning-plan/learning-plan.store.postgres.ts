@@ -943,7 +943,7 @@ function mapPlan(row: PlanRow): PlanRecord {
     projectId: row.projectId,
     interest: row.interest,
     goal: row.goal,
-    weeks: row.weeks === null ? undefined : row.weeks === 8 ? 8 : 4,
+    weeks: row.weeks === null || row.weeks === undefined ? undefined : row.weeks === 8 ? 8 : 4,
     lessonCount: row.lessonCount ?? undefined,
     lessonMinutes: row.lessonMinutes === 120 ? 120 : row.lessonMinutes === 60 ? 60 : undefined,
     minutesPerSession: row.minutesPerSession,

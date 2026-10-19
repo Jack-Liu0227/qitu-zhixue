@@ -54,6 +54,7 @@ it('new 16-session API path consumes the resolved version content and does not o
   assert.equal(generated.plan.lessonMinutes, 60);
   assert.equal(generated.plan.sessions.length, 16);
   assert.deepEqual(generated.plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
+  assert.deepEqual(generated.plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
   for (const module of generated.plan.modules) assert.equal(module.weekIndex, undefined);
   for (const session of generated.plan.sessions) {
     assert.equal(session.week, undefined);
@@ -69,6 +70,11 @@ it('new 16-session API path consumes the resolved version content and does not o
   const confirmed = await h.plans.confirmPlan(STUDENT, generated.plan.id, 'confirm-new-16s', {});
   assert.equal((await h.bindingStore.findSnapshot(confirmed.project.id))?.templateVersionId, report.versionId);
   const sessions = await h.plans.listSessions(STUDENT, generated.plan.id);
+  assert.deepEqual(sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
+  for (const session of sessions) {
+    assert.equal(session.week, undefined);
+    assert.equal(session.day, undefined);
+  }
   assert.equal(sessions[12]?.title, '数据线性化拟合与实验求参');
   assert.match(sessions[12]?.blocks.find((block) => block.kind === 'theory')?.guidance ?? '', /1\/v = -1\/u \+ 1\/f/);
   assert.deepEqual(sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements,
@@ -86,6 +92,10 @@ it('new 16-session API path consumes the resolved version content and does not o
   assert.equal((await h.plans.listSessions(STUDENT, generated.plan.id))[13]?.blocks
     .find((block) => block.kind === 'reflect')?.evidenceRequirements?.length, 2);
   await assert.rejects(() => h.plans.listSessions(actor('student', 'unrelated-student'), generated.plan.id));
+  await assert.rejects(() => h.plans.generatePlan(STUDENT, {
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, weeks: 8,
+    curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+  }));
 });
 
 /** 每个门禁承载目标对应的「规范概念键」题库条目（非旧别名）。 */
