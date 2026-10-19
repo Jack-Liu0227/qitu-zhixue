@@ -597,7 +597,7 @@ export default function AdminTemplatesPage() {
                       fontWeight: 600,
                     }}
                   >
-                    阶段为治理/门禁聚合 · 课时为教学编排主线
+                    治理策略解耦架构 · standard-stem-pbl:v1
                   </span>
                 </div>
                 <span style={{ fontSize: '12px', color: '#64748b' }}>
@@ -880,16 +880,33 @@ export default function AdminTemplatesPage() {
         ) : editorTab === 'workflow' ? (
           <div className="admin-template-workflow-container">
             <div className="admin-template-workflow-intro" style={{ borderLeft: editingTemplate.pblSpec ? '4px solid #165dff' : undefined }}>
-              <strong>
-                {editingTemplate.pblSpec ? '🛡️ PBL 宏观治理阶段（只读锁定）：' : 'PBL 教学全流程设计与门禁管控：'}
-              </strong>
-              <span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <strong>
+                  {editingTemplate.pblSpec ? '🛡️ 平台治理策略（Governance Policy 解耦模式）：' : 'PBL 教学全流程设计与门禁管控：'}
+                </strong>
+                {editingTemplate.pblSpec ? (
+                  <span
+                    style={{
+                      backgroundColor: '#e6fffa',
+                      color: '#0f766e',
+                      border: '1px solid #99f6e4',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    已绑定策略：standard-stem-pbl:v1（STEM 物理探究标准治理策略）
+                  </span>
+                ) : null}
+              </div>
+              <p style={{ margin: '8px 0 0', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
                 {editingTemplate.pblSpec
-                  ? `本项目模板已纳入 ProjectTemplateSpec 治理体系（随版本 ${editingTemplate.sourceVersion ?? '已冻结'} 冻结）。阶段仅用于治理权限、责任角色与阶段门禁（如 TheoryMastered），不可通过扁平编辑器直接覆写；具体教学执行由 16 课时轨道驱动。`
+                  ? `解耦架构优势：本模板采用「教学活动编排（16 课时轨道）」与「平台安全治理策略（Governance Policy）」解耦架构。阶段、门禁判定（如 TheoryMastered 强力阻断物理实践）与导师角色由底层策略集中把关，教研人员无需重复维护冗余阶段表单，直接由 16 课时时间轴驱动教学执行。`
                   : editingTemplate.sourceVersion !== null
                   ? `以下阶段设计读取自最新版本 ${editingTemplate.sourceVersion}；保存会生成新版本（历史版本冻结不可改）。`
                   : '该模板还没有已保存的版本；添加阶段并保存后会生成第一个版本。'}
-              </span>
+              </p>
             </div>
 
             {versionsLoading ? (
@@ -1325,15 +1342,27 @@ export default function AdminTemplatesPage() {
                     </span>
                   </div>
                   {is16Sessions ? (
-                    <div className="admin-template-info-row">
-                      <span className="admin-template-info-label">核心门禁:</span>
-                      <span
-                        className="admin-template-info-val"
-                        style={{ color: '#dc2626', fontWeight: 600 }}
-                      >
-                        TheoryMastered（第 8 课时）
-                      </span>
-                    </div>
+                    <>
+                      <div className="admin-template-info-row">
+                        <span className="admin-template-info-label">治理策略:</span>
+                        <span
+                          className="admin-template-info-val"
+                          style={{ color: '#0f766e', fontWeight: 600 }}
+                          title="解耦治理：STEM 物理项目式探究标准治理策略 (standard-stem-pbl:v1)"
+                        >
+                          🛡️ standard-stem-pbl:v1
+                        </span>
+                      </div>
+                      <div className="admin-template-info-row">
+                        <span className="admin-template-info-label">核心门禁:</span>
+                        <span
+                          className="admin-template-info-val"
+                          style={{ color: '#dc2626', fontWeight: 600 }}
+                        >
+                          TheoryMastered（第 8 课时）
+                        </span>
+                      </div>
+                    </>
                   ) : null}
                   <div className="admin-template-info-row">
                     <span className="admin-template-info-label">发布版本:</span>

@@ -6,6 +6,11 @@ export function runOpticsCurriculumAssertions(): void {
   const spec = OPTICS_16_SESSION_TEMPLATE_SPEC;
   const profile = spec.curriculum?.profiles[0];
   if (profile === undefined) throw new Error('16-session profile missing');
+  if (!('lessonCount' in profile.schedule) || profile.schedule.lessonCount !== 16
+    || profile.schedule.lessonMinutes !== 60) throw new Error('16-session profile must be lesson-first');
+  if (profile.sessions.some((session) => session.week !== undefined || session.session !== undefined)) {
+    throw new Error('lesson-first sessions must not carry calendar placement');
+  }
   if (parseProjectTemplateSpec(spec) !== spec) throw new Error('Parser must not rewrite template content');
   if (OPTICS_TEMPLATE_SPEC.version !== 'v1' || OPTICS_TEMPLATE_SPEC.curriculum !== undefined) throw new Error('Legacy template was changed');
   if (!validateProjectTemplateSpec(OPTICS_TEMPLATE_SPEC).valid) throw new Error('Legacy template no longer parses');
@@ -59,4 +64,19 @@ export function runOpticsCurriculumAssertions(): void {
   }
   const shortened = { ...profile, sessions: [{ ...first, phase: 'deliverable_review' as const }] };
   if (getPhaseAndRoleForSession(1, shortened).phase !== 'deliverable_review') throw new Error('Resolver guessed phase from numeric range');
+
+  // Governance Policy decoupling test: verify phases auto-derivation when omitted
+  const { phases: _omitted, ...specWithoutPhases } = spec;
+  const validatedWithoutPhases = validateProjectTemplateSpec(specWithoutPhases);
+  if (!validatedWithoutPhases.valid) throw new Error(`Auto-deriving phases from policy failed: ${JSON.stringify(validatedWithoutPhases.errors)}`);
+  const derived = specWithoutPhases as typeof specWithoutPhases & { phases: readonly unknown[] };
+  if (!Array.isArray(derived.phases) || derived.phases.length !== 4) {
+    throw new Error('Auto-derivation did not populate 4 phases');
+  }
+  const derivedConceptPhase = (derived.phases as { phase: string; gateCondition: string }[]).find(
+    (p) => p.phase === 'concept_mastery',
+  );
+  if (derivedConceptPhase?.gateCondition !== 'TheoryMastered') {
+    throw new Error('Derived concept_mastery phase missing TheoryMastered gate');
+  }
 }

@@ -88,6 +88,139 @@ export interface PblTemplatePhase {
   assignedAssistantId: string | null;
 }
 
+/**
+ * 平台级 PBL 治理策略阶段定义（Governance Policy Phase）
+ * 集中定义阶段宏观治理、门禁约束、阶段导师分工与实验工具放行规则。
+ */
+export interface PblGovernancePolicyPhase {
+  phase: PblPhase;
+  title: string;
+  requiredCheckpoint: GateConditionId;
+  leadAssistantRole: string;
+  allowedToolTypesBeforeGate?: readonly string[];
+  allowedToolTypesAfterGate: readonly string[];
+}
+
+/**
+ * 平台级 PBL 治理策略（Governance Policy）
+ * 策略独立于具体课程/课时，可被 8 课时、16 课时、24 课时等多排期模板复用。
+ */
+export interface PblGovernancePolicy {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  phases: readonly PblGovernancePolicyPhase[];
+}
+
+/**
+ * 平台标准 STEM 物理项目式探究治理策略（v1）
+ * 强制 TheoryMastered 门禁前阻断仿真操作。
+ */
+export const STANDARD_STEM_PBL_POLICY: PblGovernancePolicy = {
+  id: 'standard-stem-pbl:v1',
+  name: 'STEM 物理项目式探究标准治理策略',
+  version: 'v1',
+  description: '涵盖 4 阶段宏观治理、TheoryMastered 理论门禁与实验仿真权限受控放行',
+  phases: [
+    {
+      phase: 'exploration',
+      title: '探索破冰',
+      requiredCheckpoint: 'student_confirmed_intent',
+      leadAssistantRole: 'Lead Advisor',
+      allowedToolTypesBeforeGate: ['concept_probe', 'driving_question'],
+      allowedToolTypesAfterGate: ['concept_probe', 'driving_question', 'cer_coach'],
+    },
+    {
+      phase: 'concept_mastery',
+      title: '概念奠基',
+      requiredCheckpoint: 'TheoryMastered',
+      leadAssistantRole: 'Concept Coach',
+      allowedToolTypesBeforeGate: ['concept_probe', 'quiz_check', 'ray_tracing_preview'],
+      allowedToolTypesAfterGate: ['concept_probe', 'quiz_check', 'ray_tracing_preview'],
+    },
+    {
+      phase: 'guided_practice',
+      title: '探究实践',
+      requiredCheckpoint: 'experiment_report_validated',
+      leadAssistantRole: 'Lab Guide',
+      allowedToolTypesBeforeGate: ['safety_checklist', 'experiment_design'],
+      allowedToolTypesAfterGate: ['single_slit_diffraction', 'fog_chamber_scattering', 'data_linear_fit'],
+    },
+    {
+      phase: 'deliverable_review',
+      title: '成果答辩与归档',
+      requiredCheckpoint: 'review_completed_and_archived',
+      leadAssistantRole: 'Reviewer',
+      allowedToolTypesBeforeGate: ['defense_coach', 'peer_critique'],
+      allowedToolTypesAfterGate: ['defense_coach', 'peer_critique', 'growth_archive'],
+    },
+  ],
+};
+
+export function matchesPolicyGate(actualGate: string, policyGate: string): boolean {
+  if (actualGate === policyGate) return true;
+  if (
+    (actualGate === 'experiment_report_validated' && policyGate === 'practice_artifact_approved') ||
+    (actualGate === 'practice_artifact_approved' && policyGate === 'experiment_report_validated')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export const GLOBAL_GOVERNANCE_POLICIES: readonly PblGovernancePolicy[] = [
+  STANDARD_STEM_PBL_POLICY,
+];
+
+export function findGovernancePolicy(policyId: string): PblGovernancePolicy | undefined {
+  return GLOBAL_GOVERNANCE_POLICIES.find((policy) => policy.id === policyId);
+}
+
+/**
+ * 根据治理策略与课时列表，自动推导阶段配置（PblTemplatePhase[]）。
+ * 消除模板手动维护冗余 phases 数组以及阶段与课时目标双重维护的心智负担。
+ */
+export function derivePhasesFromPolicyAndSessions(
+  policy: PblGovernancePolicy,
+  sessions: readonly PblTemplateSession[],
+  options?: {
+    deliverableTypes?: Partial<Record<PblPhase, string>>;
+    assignedAssistants?: Partial<Record<PblPhase, string>>;
+  },
+): PblTemplatePhase[] {
+  return policy.phases.map((policyPhase) => {
+    // 自动聚合属于该阶段的所有课时的 objectiveIds
+    const phaseSessions = sessions.filter((s) => s.phase === policyPhase.phase);
+    const objectiveIdSet = new Set<string>();
+    for (const session of phaseSessions) {
+      for (const objId of session.objectiveIds) {
+        objectiveIdSet.add(objId);
+      }
+    }
+
+    const defaultDeliverable =
+      policyPhase.phase === 'guided_practice'
+        ? 'optics_experiment_report'
+        : policyPhase.phase === 'deliverable_review'
+          ? 'optics_project_showcase'
+          : null;
+
+    return {
+      phase: policyPhase.phase,
+      title: policyPhase.title,
+      objectiveIds: Array.from(objectiveIdSet),
+      gateCondition: policyPhase.requiredCheckpoint,
+      deliverableType: options?.deliverableTypes?.[policyPhase.phase] ?? defaultDeliverable,
+      evidenceProfile:
+        policyPhase.phase === 'guided_practice'
+          ? 'experiment_report'
+          : null,
+      assignedAssistantId: options?.assignedAssistants?.[policyPhase.phase] ?? null,
+    };
+  });
+}
+
 export type PblTemplateSchedule =
   | (PblSchedule & { moduleCount: number; sessionCount?: number })
   | (PblLessonSchedule);
@@ -110,6 +243,8 @@ export interface ProjectTemplateSpec {
   finalDeliverableType: string;
   rubricId: string;
   teamId: string;
+  /** 绑定的全局治理策略 ID（例如 'standard-stem-pbl:v1'），实现教学课时与安全门禁策略解耦 */
+  governancePolicyId?: string;
   /** All other theme metadata remains in the existing authoritative fields. */
   theme?: { drivingQuestion: string };
   curriculum?: { profiles: readonly PblCurriculumProfile[] };
@@ -368,7 +503,7 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
   if (!templateRecord(input)) return { valid: false, errors: [{ path: 'pbl', message: 'pbl must be an object' }] };
   templateKeys(input, ['contractVersion', 'id', 'version', 'status', 'title', 'description', 'targetDomain', 'ageRange',
     'prerequisites', 'materials', 'safetyRequirements', 'objectives', 'phases', 'schedules', 'finalDeliverableType',
-    'rubricId', 'teamId', 'theme', 'curriculum'], 'pbl', issue);
+    'rubricId', 'teamId', 'governancePolicyId', 'theme', 'curriculum'], 'pbl', issue);
   if (input.contractVersion !== PBL_LEARNING_CONTRACT_VERSION) issue('contractVersion', 'unsupported contractVersion');
   for (const key of ['id', 'version', 'title', 'description', 'targetDomain', 'finalDeliverableType', 'rubricId', 'teamId']) {
     if (!templateText(input[key])) issue(key, `${key} must be non-empty text`);
@@ -414,6 +549,33 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     visited.add(id);
   };
   for (const id of objectives.keys()) visit(id);
+
+  let activePolicy: PblGovernancePolicy | undefined;
+  if (input.governancePolicyId !== undefined) {
+    if (!templateText(input.governancePolicyId)) {
+      issue('governancePolicyId', 'governancePolicyId must be non-empty text');
+    } else {
+      activePolicy = findGovernancePolicy(input.governancePolicyId);
+      if (!activePolicy) {
+        issue('governancePolicyId', `unknown governance policy ${input.governancePolicyId}`);
+      } else {
+        const profiles = (input.curriculum as Record<string, unknown> | undefined)?.profiles;
+        const firstProfile = Array.isArray(profiles) ? profiles[0] : undefined;
+        if (
+          (!Array.isArray(input.phases) || input.phases.length === 0) &&
+          templateRecord(firstProfile) &&
+          Array.isArray(firstProfile.sessions)
+        ) {
+          // Auto-derive phases from policy and first profile's sessions
+          (input as { phases: PblTemplatePhase[] }).phases = derivePhasesFromPolicyAndSessions(
+            activePolicy,
+            firstProfile.sessions as readonly PblTemplateSession[],
+          );
+        }
+      }
+    }
+  }
+
   const phases = new Map<string, Record<string, unknown>>();
   if (!Array.isArray(input.phases) || input.phases.length !== 4) issue('phases', 'all four template phases are required');
   for (const [index, value] of (Array.isArray(input.phases) ? input.phases : []).entries()) {
@@ -428,6 +590,12 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     else for (const id of value.objectiveIds) if (!objectives.has(id)) issue(`${path}.objectiveIds`, `unknown objective ${id}`);
     if (!isGateConditionId(value.gateCondition)) issue(`${path}.gateCondition`, 'invalid gate condition');
     if (value.phase === 'concept_mastery' && value.gateCondition !== 'TheoryMastered') issue(`${path}.gateCondition`, 'concept phase must require TheoryMastered');
+    if (activePolicy) {
+      const policyPhase = activePolicy.phases.find((p) => p.phase === value.phase);
+      if (policyPhase && !matchesPolicyGate(String(value.gateCondition), policyPhase.requiredCheckpoint)) {
+        issue(`${path}.gateCondition`, `gate condition must match governance policy checkpoint ${policyPhase.requiredCheckpoint}`);
+      }
+    }
     if (value.deliverableType !== null && !templateText(value.deliverableType)) issue(`${path}.deliverableType`, 'deliverableType must be text or null');
     if (value.assignedAssistantId !== null && !templateText(value.assignedAssistantId)) issue(`${path}.assignedAssistantId`, 'assignedAssistantId must be text or null');
     if (value.evidenceProfile !== undefined && value.evidenceProfile !== null
@@ -460,6 +628,23 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
       const profileIds = new Set<string>();
       for (const [index, profile] of input.curriculum.profiles.entries()) {
         validateTemplateProfile(profile, `curriculum.profiles[${index}]`, profileIds, schedules, objectives, phases, issue);
+      }
+      if (activePolicy) {
+        for (const profile of input.curriculum.profiles) {
+          if (templateRecord(profile) && Array.isArray((profile as Record<string, unknown>).sessions)) {
+            for (const policyPhase of activePolicy.phases) {
+              const hasCheckpoint = ((profile as { sessions: Record<string, unknown>[] }).sessions).some(
+                (s) => {
+                  const gate = (s?.checkpoint as Record<string, unknown> | undefined)?.requiredGate;
+                  return typeof gate === 'string' && matchesPolicyGate(gate, policyPhase.requiredCheckpoint);
+                },
+              );
+              if (!hasCheckpoint && policyPhase.requiredCheckpoint !== 'student_confirmed_intent') {
+                issue('curriculum.profiles', `curriculum profile must include policy checkpoint ${policyPhase.requiredCheckpoint}`);
+              }
+            }
+          }
+        }
       }
     }
   }

@@ -225,6 +225,7 @@ export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProject
   version: 'v2-16s',
   title: '光学探究：从光路模型到衍射与散射证据',
   description: '以真实问题为起点，在概念检查后开展受限模拟、数据分析、CER 论证与反思；检查点不自动产生掌握或作品通过事实。',
+  governancePolicyId: 'standard-stem-pbl:v1',
   theme: { drivingQuestion: '我们如何用光路和波动模型解释观察到的现象，并用可追溯的证据说明模型的适用边界？' },
   safetyRequirements: [
     'TheoryMastered 前仅允许低风险模拟提示；实践操作仍由服务端校验。',
