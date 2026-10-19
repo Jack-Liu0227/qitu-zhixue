@@ -1,27 +1,35 @@
 # 作用域知识模块（knowledge）
 
+## 管理端文档阅读
+
+- 阅读视图默认「PDF 原文预览」，每次切换文件重置；「提取文本」按需加载现有解析正文。非 PDF 或无原文件的资料提示切换文本，不伪造 PDF。
+- 本地上传使用既有 `files/:memberId/original`；ima 和已关联目录使用 `remote-files/:documentId/original`，原始 PDF 字节通过管理员 API 返回，凭证及远端临时下载 URL 不下发浏览器。
+- 远端预览继续校验活动库、已启用引擎、当前目录分页内文件归属，响应 `private, no-store`。远端原文沿用上游 20 MiB 读取上限，本地上传大小上限不变。
+- 原文预览只读，不更改索引、助手绑定及 AI 检索使用的解析内容。新增原文接口没有授予学生或助手任何额外权限。
+- 回归：`knowledge-original-preview.test.ts` 与 `test_ima_runtime.py`；覆盖 PDF 原始字节、非 PDF 拒绝、跨库文件拒绝、引擎停用、分页输入及管理员权限。
+
 真源表：`knowledge_documents` / `knowledge_chunks`（迁移 `0008_domain_foundation.sql`）。
 本模块是这两张表的**唯一服务端读写入口**，并按作用域做强对象级授权。
 
 ## 路由
 
-| 方法 | 路径 | 说明 | 幂等 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/knowledge/search?q=&projectId=&limit=` | 作用域内检索，仅返回已校验知识的**有界证据** | — |
-| `GET` | `/api/v1/knowledge/documents/:id` | 读取单篇（可读者或可维护者） | — |
-| `POST` | `/api/v1/knowledge/documents` | 新建 / 修订文档 | 必需 `Idempotency-Key` |
-| `POST` | `/api/v1/knowledge/documents/:id/verify` | 校验文档 | 必需 `Idempotency-Key` |
+| 方法   | 路径                                            | 说明                                         | 幂等                   |
+| ------ | ----------------------------------------------- | -------------------------------------------- | ---------------------- |
+| `GET`  | `/api/v1/knowledge/search?q=&projectId=&limit=` | 作用域内检索，仅返回已校验知识的**有界证据** | —                      |
+| `GET`  | `/api/v1/knowledge/documents/:id`               | 读取单篇（可读者或可维护者）                 | —                      |
+| `POST` | `/api/v1/knowledge/documents`                   | 新建 / 修订文档                              | 必需 `Idempotency-Key` |
+| `POST` | `/api/v1/knowledge/documents/:id/verify`        | 校验文档                                     | 必需 `Idempotency-Key` |
 
 响应统一为 `{ data: ... }`。写接口省略 `Idempotency-Key` 返回 `400 IDEMPOTENCY_KEY_REQUIRED`。
 
 ## 作用域规则（服务端判定，前端隐藏不构成授权）
 
-| scope | 读 | 写 / 校验 | 绑定字段 |
-| --- | --- | --- | --- |
-| `system` | 任意已认证主体 | 仅平台管理员 | `schoolId`/`ownerUserId`/`projectId` 必须为空 |
-| `school` | 与主体同校 | 管理员，或**本校**教师 | `schoolId` 必填 |
-| `project` | 请求绑定该项目且主体对该项目有访问权 | 管理员，或可访问该项目的教师 / 学生 | `projectId` 必填 |
-| `student` | **仅本人**（监护 / 班主任 / 管理员默认不可见） | 仅学生本人 | `ownerUserId` 必填 |
+| scope     | 读                                             | 写 / 校验                           | 绑定字段                                      |
+| --------- | ---------------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| `system`  | 任意已认证主体                                 | 仅平台管理员                        | `schoolId`/`ownerUserId`/`projectId` 必须为空 |
+| `school`  | 与主体同校                                     | 管理员，或**本校**教师              | `schoolId` 必填                               |
+| `project` | 请求绑定该项目且主体对该项目有访问权           | 管理员，或可访问该项目的教师 / 学生 | `projectId` 必填                              |
+| `student` | **仅本人**（监护 / 班主任 / 管理员默认不可见） | 仅学生本人                          | `ownerUserId` 必填                            |
 
 - 项目可访问性：学生=项目归属本人；教师 / 家长=`AccessPolicy.canReadStudent(项目归属学生)`（active 班主任 / 监护）；管理员 / 客服=**默认拒绝**（个别学生访问模型落地前 fail closed）。
 - 只有 `status = 'verified'` 的文档可被检索；`draft` / `archived` 永不进入检索候选。
@@ -45,16 +53,16 @@
 
 ## 错误码（模块本地；待并入契约 `ApiErrorCode`）
 
-| code | HTTP | 场景 |
-| --- | --- | --- |
-| `KNOWLEDGE_INPUT_INVALID` | 400 | 字段缺失 / 超长 / 类型错误 |
-| `KNOWLEDGE_SCOPE_INVALID` | 400 | 作用域与绑定字段不一致，或修订时改作用域 |
-| `KNOWLEDGE_SOURCE_FORBIDDEN` | 400 | 保留来源（原始对话 / 语音） |
-| `KNOWLEDGE_FORBIDDEN` | 403 | 作用域写权限不足 |
-| `KNOWLEDGE_NOT_FOUND` | 404 | 不存在或无权访问 |
-| `KNOWLEDGE_UNAVAILABLE` | 503 | 依赖不可用（如审计 / 未来向量化） |
-| `IDEMPOTENCY_CONFLICT` | 409 | 同键异载荷 |
-| `IDEMPOTENCY_KEY_REQUIRED` | 400 | 缺少幂等键 |
+| code                         | HTTP | 场景                                     |
+| ---------------------------- | ---- | ---------------------------------------- |
+| `KNOWLEDGE_INPUT_INVALID`    | 400  | 字段缺失 / 超长 / 类型错误               |
+| `KNOWLEDGE_SCOPE_INVALID`    | 400  | 作用域与绑定字段不一致，或修订时改作用域 |
+| `KNOWLEDGE_SOURCE_FORBIDDEN` | 400  | 保留来源（原始对话 / 语音）              |
+| `KNOWLEDGE_FORBIDDEN`        | 403  | 作用域写权限不足                         |
+| `KNOWLEDGE_NOT_FOUND`        | 404  | 不存在或无权访问                         |
+| `KNOWLEDGE_UNAVAILABLE`      | 503  | 依赖不可用（如审计 / 未来向量化）        |
+| `IDEMPOTENCY_CONFLICT`       | 409  | 同键异载荷                               |
+| `IDEMPOTENCY_KEY_REQUIRED`   | 400  | 缺少幂等键                               |
 
 ## 日志与审计
 

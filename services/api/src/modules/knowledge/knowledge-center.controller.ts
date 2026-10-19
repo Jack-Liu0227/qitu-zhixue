@@ -156,6 +156,26 @@ export class KnowledgeCenterController {
     if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
     return { data: await this.library.document(id, documentId, folderId, cursor) };
   }
+  @Get('knowledge/bases/:id/remote-files/:documentId/original')
+  async remoteOriginal(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Param('documentId') documentId: string,
+    @Res() response: Response,
+    @Query('folderId') folderId?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    this.actor(cookie);
+    if (!this.library) throw new ServiceUnavailableException('知识库管理不可用');
+    const file = await this.library.originalDocument(id, documentId, folderId, cursor);
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="document.pdf"; filename*=UTF-8''${encodeURIComponent(file.file_name).replace(/'/g, '%27')}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    response.send(file.body);
+  }
   @Post('knowledge/bases/:id/sources/:sourceId/settings')
   async sourceSettings(
     @Headers('cookie') cookie: string | undefined,

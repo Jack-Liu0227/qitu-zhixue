@@ -4,6 +4,7 @@ Account credentials are independent from OpenAPI knowledge-base IDs. No upstream
 exceptions, credentials or whole responses are exposed to the admin API.
 """
 import httpx
+import base64
 from deeptutor.services.rag.pipelines.ima.client import ImaClient
 from deeptutor.services.rag.pipelines.ima.config import ImaConfig
 from deeptutor.services.rag.pipelines.ima.envelope import ImaAPIError, ImaAuthError, ImaRateLimitError
@@ -62,13 +63,20 @@ async def ima_request(data):
             manifest = {"items": [{"id": d.media_id, "title": d.title, "origin": {}} for d in page.documents],
                         "folders": [{"id": f.folder_id, "name": f.name} for f in page.folders],
                         "nextCursor": page.next_cursor, "isEnd": page.is_end}
-        elif op == "read_document":
+        elif op in {"read_document", "read_original"}:
             from deeptutor.services.rag.pipelines.ima.media import extract_text
             media = await client.get_media_content(str(data.get("documentId") or ""))
+            is_pdf = bool(media and media.data.startswith(b"%PDF-"))
+            if op == "read_original":
+                if not is_pdf:
+                    return failure("SOURCE_ORIGINAL_UNAVAILABLE")
+                manifest = {"body": base64.b64encode(media.data).decode("ascii"),
+                            "mimeType": "application/pdf"}
+                return {"ok": True, "status": "ready", "manifest": manifest}
             text = await extract_text(media, max_chars=100000) if media else ""
-            if not text:
+            if not text and not is_pdf:
                 return failure("SOURCE_DOCUMENT_UNAVAILABLE")
-            manifest = {"content": text}
+            manifest = {"content": text, "origin": {"mimeType": "application/pdf" if is_pdf else "text/plain"}}
         else:
             return failure("ENGINE_OPERATION_INVALID")
         return {"ok": True, "status": "ready", "manifest": manifest}

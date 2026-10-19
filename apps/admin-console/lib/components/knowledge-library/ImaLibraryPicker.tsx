@@ -96,17 +96,17 @@ export function ImaLibraryPicker({
           {manual ? '从列表选择' : '手动填写 ID'}
         </button>
       </div>
-      <p>验证 Client ID 和 API Key 后，读取此账户可访问的知识库。选择后自动使用官方 OpenAPI ID。</p>
+      <p>验证 Client ID 和 API Key 后，选择此账户可访问的知识库。</p>
       {!ready && <p>请先在上方填写完整的 Client ID 和 API Key。</p>}
       {!manual ? (
         <>
           <button
             type="button"
-            className={styles.secondary}
+            className={`${styles.secondary} ${styles.connectionButton}`}
             disabled={disabled || loading || !online || !ready}
             onClick={() => void load()}
           >
-            <Glyph name={loading ? 'refresh' : 'search'} />
+            <Glyph name={loading ? 'refresh' : 'search'} size={16} />
             {loading ? '正在读取…' : '验证凭证并读取知识库'}
           </button>
           {page && (
@@ -132,8 +132,6 @@ export function ImaLibraryPicker({
                 >
                   <span>
                     <strong>{item.name}</strong>
-                    {item.description && <small>{item.description}</small>}
-                    <code>{item.id}</code>
                   </span>
                   {selectedId === item.id && <Glyph name="check" />}
                 </button>

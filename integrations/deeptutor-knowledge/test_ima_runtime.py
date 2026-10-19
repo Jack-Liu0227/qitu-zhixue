@@ -6,6 +6,10 @@ from unittest.mock import patch
 import httpx
 import engine_runtime
 from deeptutor.services.rag.pipelines.ima.transport import ImaTransport
+from deeptutor.services.rag.pipelines.ima.client import ImaClient
+from deeptutor.services.rag.pipelines.ima.media import ImaMediaContent
+from unittest.mock import AsyncMock
+import base64
 
 
 class ImaDiscoveryTests(unittest.TestCase):
@@ -71,6 +75,28 @@ class ImaDiscoveryTests(unittest.TestCase):
             result = asyncio.run(engine_runtime.run(self.request("documents", externalRef={"remoteKnowledgeBaseId": "selected"})))
         self.assertTrue(result["ok"])
         self.assertEqual(result["manifest"]["items"][0]["id"], "doc-1")
+
+    def test_original_returns_exact_pdf_and_rejects_note_or_missing_media(self):
+        pdf = b'%PDF-1.7\nfixture\n%%EOF'
+        request = self.request('read_original', documentId='doc-1', externalRef={'remoteKnowledgeBaseId': 'selected'})
+        for media, expected in [(ImaMediaContent(data=pdf, filename='book.pdf'), True),
+                                (ImaMediaContent(text='note'), False), (None, False),
+                                (ImaMediaContent(data=b'<html>not pdf</html>'), False)]:
+            with patch.object(ImaClient, 'get_media_content', AsyncMock(return_value=media)) as fetch:
+                result = asyncio.run(engine_runtime.run(request))
+            self.assertEqual(result['ok'], expected)
+            fetch.assert_awaited_once_with('doc-1')
+            if expected:
+                self.assertEqual(base64.b64decode(result['manifest']['body']), pdf)
+                self.assertNotIn('fixture-secret', json.dumps(result))
+
+    def test_read_text_keeps_extraction_and_detects_pdf_even_when_title_has_no_extension(self):
+        pdf = ImaMediaContent(data=b'%PDF-1.7\nfixture', filename='download.pdf')
+        with patch.object(ImaClient, 'get_media_content', AsyncMock(return_value=pdf)), \
+             patch('deeptutor.services.rag.pipelines.ima.media.extract_text', AsyncMock(return_value='解析正文')):
+            result = asyncio.run(engine_runtime.run(self.request('read_document', documentId='doc-1')))
+        self.assertEqual(result['manifest']['content'], '解析正文')
+        self.assertEqual(result['manifest']['origin']['mimeType'], 'application/pdf')
 
 
 if __name__ == "__main__":

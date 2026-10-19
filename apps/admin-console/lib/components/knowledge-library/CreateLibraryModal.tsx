@@ -585,7 +585,7 @@ export function CreateLibraryModal({
                   : '凭证使用上方保存的引擎配置。这里只登记远端知识库连接，原文件继续由原服务管理。'}
               </p>
               <button
-                className={styles.secondary}
+                className={`${styles.secondary} ${styles.connectionButton}`}
                 disabled={
                   busy ||
                   imaLoading ||
@@ -597,7 +597,7 @@ export function CreateLibraryModal({
                 }
                 onClick={() => void probe()}
               >
-                <Glyph name="search" /> {checked ? '检查通过' : '检查连接'}
+                <Glyph name="search" size={16} /> {checked ? '检查通过' : '检查连接'}
               </button>
             </div>
           )}

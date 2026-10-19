@@ -67,7 +67,7 @@ async def remote(data):
     if provider == "obsidian":
         try:
             path = allowed_path(config.get("vaultPath"))
-            if op in {'documents', 'read_document'}:
+            if op in {'documents', 'read_document', 'read_original'}:
                 from linked_runtime import directory_request
                 return directory_request(path, data)
             # No recursive scan, write, or synthetic search success during preflight.
@@ -106,7 +106,7 @@ async def remote(data):
         if op == "search":
             found = await client.query_context(query, config.get("mode", "mix"))
             return result(True, manifest={**found, 'items': [{'title':'LightRAG 检索上下文','text':found['content'],'references':found['sources']}] if found.get('content') else []})
-        if op in {'documents', 'read_document'}:
+        if op in {'documents', 'read_document', 'read_original'}:
             return result(False, error='SOURCE_DOCUMENTS_UNAVAILABLE')
         return result(True, checks=[check("server", "LightRAG 服务与认证", True, "官方 auth-status / pipeline_status 检查通过")])
     if provider == "weknora":
@@ -122,7 +122,7 @@ async def remote(data):
             return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
         if op == "search":
             return result(True, manifest={"items": (await client.search(query))[:8]})
-        if op in {'documents', 'read_document'}:
+        if op in {'documents', 'read_document', 'read_original'}:
             return result(False, error='SOURCE_DOCUMENTS_UNAVAILABLE')
         return result(True, manifest={"accessibleBases": len(bases)}, checks=[check("server", "WeKnora 服务与认证", True, "官方知识库列表接口检查通过")])
     if provider == "kiwix":
@@ -386,7 +386,7 @@ async def run(data):
     provider = data.get("provider")
     if provider not in LOCAL | {"ima","lightrag-server","weknora","kiwix","obsidian","marginnote"}:
         return result(False,error="ENGINE_ADAPTER_NOT_READY")
-    if data.get("operation") not in {"check","connect","build","search","list_bases","documents","read_document"}:
+    if data.get("operation") not in {"check","connect","build","search","list_bases","documents","read_document","read_original"}:
         return result(False,error="ENGINE_OPERATION_INVALID")
     if data.get("operation") == "list_bases" and provider != "ima":
         return result(False,error="ENGINE_OPERATION_INVALID")

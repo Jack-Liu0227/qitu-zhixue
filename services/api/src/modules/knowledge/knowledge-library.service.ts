@@ -199,23 +199,45 @@ export class KnowledgeLibraryService {
     return result.manifest;
   }
 
-  async document(id: string, documentId: string, folderId = '', cursor = '') {
+  private async readDocument(
+    id: string,
+    documentId: string,
+    folderId: string,
+    cursor: string,
+    original: boolean,
+  ) {
     if (!documentId || documentId.length > 512) throw new BadRequestException('文件参数无效');
     const listing = await this.documents(id, folderId, cursor);
     const items = Array.isArray(listing?.items) ? (listing.items as Record<string, unknown>[]) : [];
     if (!items.some((i) => i.id === documentId)) throw new NotFoundException('文件不属于当前目录');
     const { connection, engine } = await this.linked(id);
     const receipt = await this.engine.execute(engine, {
-      operation: 'read_document',
+      operation: original ? 'read_original' : 'read_document',
       externalRef: connection.external_ref,
       documentId,
       folderId,
     });
     if (!receipt.ok) throw new BadRequestException('来源正文暂不可读，请到原服务查看');
+    return { receipt, title: String(items.find((i) => i.id === documentId)?.title ?? '文档') };
+  }
+
+  async originalDocument(id: string, documentId: string, folderId = '', cursor = '') {
+    const { receipt, title } = await this.readDocument(id, documentId, folderId, cursor, true);
+    const encoded = receipt.manifest?.body;
+    if (typeof encoded !== 'string' || encoded.length > 28 * 1024 * 1024)
+      throw new NotFoundException('此来源暂未提供 PDF 原文件');
+    const body = Buffer.from(encoded, 'base64');
+    if (body.length > 20 * 1024 * 1024 || body.subarray(0, 5).toString('ascii') !== '%PDF-')
+      throw new NotFoundException('此来源暂未提供 PDF 原文件');
+    return { body, mime_type: 'application/pdf', file_name: title };
+  }
+
+  async document(id: string, documentId: string, folderId = '', cursor = '') {
+    const { receipt, title } = await this.readDocument(id, documentId, folderId, cursor, false);
     return {
-      title: String(items.find((i) => i.id === documentId)?.title ?? '文档'),
+      title,
       content: String(receipt.manifest?.content ?? ''),
-      origin: { kind: 'linked-knowledge' },
+      origin: { ...record(receipt.manifest?.origin ?? {}), kind: 'linked-knowledge' },
     };
   }
 

@@ -16,6 +16,7 @@ import {
 } from '../../api/knowledge-center';
 import { createIdempotentRetryKey } from '../../api/types';
 import { KnowledgeFileUpload } from '../KnowledgeFileUpload';
+import { PdfDocumentPreview } from './PdfDocumentPreview';
 import { bytes, EngineIcon, Glyph, message, remoteProviders, statusLabels, time } from './shared';
 import styles from './KnowledgeLibrary.module.css';
 
@@ -151,13 +152,23 @@ export function LibraryDetail({
       .then((data) => setEvents(data.events))
       .catch(() => setEvents([]));
   }, [detail.jobs]);
-  async function showFile(id: string) {
+  async function showFile(id: string, mode: 'original' | 'text' = 'original') {
     const sequence = ++previewSequence.current;
     setSelected(id);
+    setPreviewMode(mode);
     setPreview(null);
     setPreviewBusy(true);
     setPreviewError('');
     try {
+      const listed = files.find((file) => file.id === id);
+      if (
+        mode === 'original' &&
+        listed &&
+        (listed.origin?.mimeType === 'application/pdf' || /\.pdf$/i.test(listed.title))
+      ) {
+        setPreview({ title: listed.title, content: '', origin: listed.origin });
+        return;
+      }
       const file = await centerRequest<typeof preview>(
         linkedFiles
           ? `knowledge/bases/${encodeURIComponent(detail.id)}/remote-files/${encodeURIComponent(id)}?${new URLSearchParams({ folderId: folder, cursor })}`
@@ -221,9 +232,12 @@ export function LibraryDetail({
     }
   }
   const selectedFile = files.find((f) => f.id === selected);
-  const original = `/api/v1/admin/knowledge/bases/${encodeURIComponent(detail.id)}/files/${encodeURIComponent(selected ?? '')}/original`;
+  const original = linkedFiles
+    ? `/api/v1/admin/knowledge/bases/${encodeURIComponent(detail.id)}/remote-files/${encodeURIComponent(selected ?? '')}/original?${new URLSearchParams({ folderId: folder, cursor, inline: '1' })}`
+    : `/api/v1/admin/knowledge/bases/${encodeURIComponent(detail.id)}/files/${encodeURIComponent(selected ?? '')}/original?inline=1`;
   const isPdf =
-    String(preview?.origin?.mimeType ?? selectedFile?.origin?.mimeType) === 'application/pdf';
+    String(preview?.origin?.mimeType ?? selectedFile?.origin?.mimeType) === 'application/pdf' ||
+    /\.pdf$/i.test(String(preview?.origin?.fileName ?? selectedFile?.title ?? ''));
   const selectedSources =
     detail.sources?.filter(
       (s) =>
@@ -508,15 +522,23 @@ export function LibraryDetail({
                         ))}
                       </select>
                     )}
-                    {isPdf && (
+                    <div className={styles.previewModes} role="group" aria-label="文档显示方式">
                       <button
-                        className={styles.textButton}
-                        onClick={() => setPreviewMode(previewMode === 'text' ? 'original' : 'text')}
+                        type="button"
+                        aria-pressed={previewMode === 'original'}
+                        onClick={() => setPreviewMode('original')}
                       >
-                        {previewMode === 'text' ? '原文件预览' : '提取正文'}
+                        PDF 原文预览
                       </button>
-                    )}
-                    {Boolean(selectedFile.origin?.fileName) && (
+                      <button
+                        type="button"
+                        aria-pressed={previewMode === 'text'}
+                        onClick={() => void showFile(selectedFile.id, 'text')}
+                      >
+                        提取文本
+                      </button>
+                    </div>
+                    {(isPdf || Boolean(selectedFile.origin?.fileName)) && (
                       <a className={styles.textButton} href={original} download>
                         <Glyph name="upload" size={14} />
                         下载原文件
@@ -546,14 +568,26 @@ export function LibraryDetail({
                     )}
                   </div>
                 </div>
-                {isPdf && previewMode === 'original' ? (
-                  <iframe
-                    className={styles.pdf}
-                    title={`${preview.title} 原文件预览`}
-                    src={original + '?inline=1'}
-                  />
+                {previewMode === 'original' ? (
+                  isPdf ? (
+                    <PdfDocumentPreview key={original} url={original} title={preview.title} />
+                  ) : (
+                    <div className={styles.empty}>
+                      <Glyph name="file" size={32} />
+                      <h3>此文档没有可用的 PDF 原文</h3>
+                      <p>可切换「提取文本」查看解析内容。</p>
+                      <button
+                        className={styles.secondary}
+                        onClick={() => void showFile(selectedFile.id, 'text')}
+                      >
+                        查看提取文本
+                      </button>
+                    </div>
+                  )
                 ) : (
-                  <pre className={styles.documentText}>{preview.content}</pre>
+                  <pre className={styles.documentText}>
+                    {preview.content || '此文档尚无可用的提取文本。'}
+                  </pre>
                 )}
               </>
             ) : (

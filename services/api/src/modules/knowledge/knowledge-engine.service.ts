@@ -93,7 +93,7 @@ export class KnowledgeEngineService {
   async execute(engine: EngineConfig, request: Record<string, unknown>): Promise<EngineReceipt> {
     if (!engine.enabled) return { ok: false, status: 'unavailable', errorCode: 'ENGINE_DISABLED' };
     if (
-      ['documents', 'read_document'].includes(String(request.operation)) &&
+      ['documents', 'read_document', 'read_original'].includes(String(request.operation)) &&
       engine.provider !== 'llamaindex'
     )
       return this.upstream(engine, request);
@@ -271,6 +271,7 @@ export class KnowledgeEngineService {
         },
       );
       let output = '';
+      let outputBytes = 0;
       let oversized = false;
       const timer = setTimeout(
         () => child.kill('SIGKILL'),
@@ -282,7 +283,10 @@ export class KnowledgeEngineService {
       );
       child.stdout.on('data', (part: Buffer) => {
         output += part.toString();
-        if (Buffer.byteLength(output) > 2 * 1024 * 1024) {
+        outputBytes += part.length;
+        // Binary originals are bounded to 20 MiB by the source adapter; base64 adds 1/3.
+        const limit = request.operation === 'read_original' ? 28 * 1024 * 1024 : 2 * 1024 * 1024;
+        if (outputBytes > limit) {
           oversized = true;
           child.kill('SIGKILL');
         }
