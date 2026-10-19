@@ -1,7 +1,7 @@
 import type { AdminAssistantConfig, AdminTeamConfig, AdminTeamMember } from '@qitu/contracts';
 
 type Assistant = Pick<AdminAssistantConfig, 'id' | 'name' | 'role' | 'avatar' | 'instructions' | 'enabled' | 'sortOrder'>;
-type Team = Pick<AdminTeamConfig, 'id' | 'name' | 'enabled'> & {
+type Team = Pick<AdminTeamConfig, 'id' | 'name' | 'enabled' | 'leaderAssistantId'> & {
   members: readonly Pick<AdminTeamMember, 'assistantId'>[];
 };
 
@@ -13,45 +13,54 @@ export interface CopilotAssistantOption {
   systemPrompt: string;
 }
 
-export interface CopilotAssistantGroup {
+export interface CopilotTeamOption {
   id: string;
-  label: string;
-  assistants: CopilotAssistantOption[];
+  name: string;
+  memberCount: number;
+  leaderAssistantId: string;
 }
 
-export function buildCopilotAssistantGroups(assistants: readonly Assistant[], teams: readonly Team[]): CopilotAssistantGroup[] {
+export interface CopilotCatalog {
+  assistants: CopilotAssistantOption[];
+  teams: CopilotTeamOption[];
+}
+
+/**
+ * Build two independent display registries. A team is not an assistant group:
+ * teams select a collaboration scope, while assistants select one enabled
+ * runtime identity. Team members are never copied into the team label list.
+ */
+export function buildCopilotCatalog(assistants: readonly Assistant[], teams: readonly Team[]): CopilotCatalog {
   const enabled = [...assistants].filter((assistant) => assistant.enabled)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  const byId = new Map(enabled.map((assistant) => [assistant.id, {
+  const options = enabled.map((assistant) => ({
     id: assistant.id, name: assistant.name, role: assistant.role,
     icon: assistant.avatar, systemPrompt: assistant.instructions,
-  }]));
-  const grouped = new Set<string>();
-  const groups: CopilotAssistantGroup[] = [];
-  for (const team of teams.filter((candidate) => candidate.enabled)) {
-    const members = [...new Set(team.members.map((member) => member.assistantId))]
-      .flatMap((id) => {
-        const assistant = byId.get(id);
-        return assistant ? [assistant] : [];
-      });
-    if (members.length === 0) continue;
-    members.forEach((member) => grouped.add(member.id));
-    groups.push({ id: team.id, label: team.name, assistants: members });
-  }
-  const standalone = [...byId.values()].filter((assistant) => !grouped.has(assistant.id));
-  if (standalone.length > 0) groups.unshift({ id: 'standalone', label: '未分组助手', assistants: standalone });
-  return groups;
+  }));
+  const enabledTeams = teams.filter((team) => team.enabled)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((team) => ({
+      id: team.id,
+      name: team.name,
+      memberCount: new Set(team.members.map((member) => member.assistantId)
+        .filter((assistantId) => enabled.some((assistant) => assistant.id === assistantId))).size,
+      leaderAssistantId: team.leaderAssistantId,
+    }));
+  return { assistants: options, teams: enabledTeams };
 }
 
-export function resolveCopilotSelection(groups: readonly CopilotAssistantGroup[], previousId: string): string {
-  const assistants = groups.flatMap((group) => group.assistants);
+export function resolveCopilotSelection(assistants: readonly CopilotAssistantOption[], previousId: string): string {
   if (assistants.some((assistant) => assistant.id === previousId)) return previousId;
   return assistants.find((assistant) => assistant.id === 'qitu-assistant')?.id ?? assistants[0]?.id ?? '';
 }
 
+export function resolveCopilotTeamSelection(teams: readonly CopilotTeamOption[], previousId: string): string {
+  return teams.some((team) => team.id === previousId) ? previousId : '';
+}
+
 export type CopilotCatalogState =
   | { kind: 'loading' }
-  | { kind: 'ready'; groups: CopilotAssistantGroup[] }
+  | { kind: 'ready'; catalog: CopilotCatalog }
   | { kind: 'unavailable'; error: unknown };
 
 export function createCopilotCatalogLoader(input: {
@@ -61,15 +70,15 @@ export function createCopilotCatalogLoader(input: {
 }) {
   let revision = 0;
   return {
-    async refresh(): Promise<CopilotAssistantGroup[] | null> {
+    async refresh(): Promise<CopilotCatalog | null> {
       const request = ++revision;
       input.onChange({ kind: 'loading' });
       try {
         const [assistants, teams] = await Promise.all([input.loadAssistants(), input.loadTeams()]);
         if (request !== revision) return null;
-        const groups = buildCopilotAssistantGroups(assistants, teams);
-        input.onChange({ kind: 'ready', groups });
-        return groups;
+        const catalog = buildCopilotCatalog(assistants, teams);
+        input.onChange({ kind: 'ready', catalog });
+        return catalog;
       } catch (error) {
         if (request === revision) input.onChange({ kind: 'unavailable', error });
         return null;

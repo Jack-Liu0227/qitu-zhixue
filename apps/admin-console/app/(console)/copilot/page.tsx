@@ -4,7 +4,7 @@ import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAssistantCatalog } from '../../../lib/copilot/use-assistant-catalog';
-import { resolveCopilotSelection } from '../../../lib/copilot/assistant-catalog';
+import { resolveCopilotSelection, resolveCopilotTeamSelection } from '../../../lib/copilot/assistant-catalog';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { fetchAvailableConfiguredModels, configuredModelKey, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
@@ -230,16 +230,19 @@ export default function CopilotPage() {
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const { state: assistantCatalog, error: catalogError, refresh: refreshAssistantCatalog } = useAssistantCatalog();
   const selectedModelItem = availableModels.find((model) => configuredModelKey(model) === selectedModel) ?? null;
-  const assistantGroups = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.groups : [], [assistantCatalog]);
-  const allTestableAssistants = useMemo(() => assistantGroups.flatMap((group) => group.assistants), [assistantGroups]);
-  const activeTestAssistant = allTestableAssistants.find((assistant) => assistant.id === selectedAssistantId);
+  const assistantOptions = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.catalog.assistants : [], [assistantCatalog]);
+  const teamOptions = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.catalog.teams : [], [assistantCatalog]);
+  const activeTestAssistant = assistantOptions.find((assistant) => assistant.id === selectedAssistantId);
+  const activeTeam = teamOptions.find((team) => team.id === selectedTeamId);
   const catalogReady = assistantCatalog.kind === 'ready' && activeTestAssistant !== undefined;
 
   useEffect(() => {
     if (assistantCatalog.kind === 'ready') {
-      setSelectedAssistantId((previous) => resolveCopilotSelection(assistantCatalog.groups, previous));
+      setSelectedAssistantId((previous) => resolveCopilotSelection(assistantCatalog.catalog.assistants, previous));
+      setSelectedTeamId((previous) => resolveCopilotTeamSelection(assistantCatalog.catalog.teams, previous));
     }
   }, [assistantCatalog]);
 
@@ -347,9 +350,12 @@ export default function CopilotPage() {
     setIsGenerating(true);
     // Revalidate before using a role that another Admin tab may have deleted.
     const groups = await refreshAssistantCatalog();
-    const confirmedAssistant = groups?.flatMap((group) => group.assistants)
+    const confirmedAssistant = groups?.assistants
       .find((assistant) => assistant.id === selectedAssistantId);
     if (!confirmedAssistant) { setIsGenerating(false); return; }
+    if (selectedTeamId && !groups?.teams.some((team) => team.id === selectedTeamId)) {
+      setSelectedTeamId('');
+    }
 
     setInputMessage('');
     const userMsg: Message = {
@@ -1105,14 +1111,29 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                 title="选择在当前控制台中测试的助手角色"
               >
                 {!catalogReady && <option value="">{assistantCatalog.kind === 'loading' ? '正在读取助手与团队…' : '暂无可选择的助手'}</option>}
-                {assistantGroups.map((group) => (
-                  <optgroup key={group.id} label={group.label}>
-                    {group.assistants.map((assistant) => (
-                      <option key={assistant.id} value={assistant.id}>
-                        {assistant.name}{assistant.role ? ` (${assistant.role})` : ''}
-                      </option>
-                    ))}
-                  </optgroup>
+                {assistantOptions.map((assistant) => (
+                  <option key={assistant.id} value={assistant.id}>
+                    {assistant.name}{assistant.role ? ` (${assistant.role})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
+              <span style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
+              <select
+                value={selectedTeamId}
+                aria-label="选择团队"
+                disabled={assistantCatalog.kind !== 'ready' || isGenerating}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#166534', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '260px' }}
+                title="选择在当前控制台中使用的协作团队"
+              >
+                <option value="">不使用团队</option>
+                {teamOptions.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name} ({team.memberCount} 名启用助手)
+                  </option>
                 ))}
               </select>
             </div>
@@ -1168,13 +1189,13 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
 
             <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: catalogReady ? '#16a34a' : '#64748b', marginLeft: '4px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: catalogReady ? '#22c55e' : '#94a3b8', display: 'inline-block' }} />
-              {catalogReady ? '助手目录已同步（非运行时探测）' : '助手目录未就绪'}
+              {catalogReady ? `助手目录已同步${activeTeam ? ` · 团队：${activeTeam.name}` : ''}` : '助手目录未就绪'}
             </span>
           </div>
         </div>
 
         {/* 助手切换提示横幅 */}
-        {(catalogError || (assistantCatalog.kind === 'ready' && allTestableAssistants.length === 0)) && (
+        {(catalogError || (assistantCatalog.kind === 'ready' && assistantOptions.length === 0)) && (
           <div role={catalogError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: '13px' }}>
             {catalogError ?? '当前没有已启用的助手，请到 AI 助手设置中配置。'}
             <button type="button" onClick={() => { void refreshAssistantCatalog(); }} style={{ marginLeft: '12px' }}>重新读取目录</button>
@@ -1190,7 +1211,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </div>
             <button
               type="button"
-              disabled={!allTestableAssistants.some((assistant) => assistant.id === 'qitu-assistant')}
+              disabled={!assistantOptions.some((assistant) => assistant.id === 'qitu-assistant')}
               onClick={() => setSelectedAssistantId('qitu-assistant')}
               style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
             >
