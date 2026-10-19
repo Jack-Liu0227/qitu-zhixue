@@ -466,6 +466,11 @@ export function kindForActivity(activity: LearningPlanBlockActivity): SessionBlo
 
 /** 把生成结构投影为 `@qitu/ai-client` 校验器认识的草稿形状。 */
 export function toLearningPlanDraft(plan: GeneratedPlan): LearningPlanDraft {
+  if (plan.weeks === undefined) {
+    throw new PlanGenerationError('lesson-only plans do not have a legacy draft shape', [
+      { path: 'weeks', message: 'legacy draft conversion requires weeks' },
+    ]);
+  }
   return {
     templateVersion: plan.templateVersion,
     weeks: plan.weeks,
@@ -499,7 +504,9 @@ export type { BlockShape };
  */
 export function assertGenerateInput(input: {
   interest: unknown;
-  weeks: unknown;
+  weeks?: unknown;
+  lessonCount?: unknown;
+  lessonMinutes?: unknown;
   goal?: unknown;
   schedule?: unknown;
   sessionCount?: unknown;
@@ -511,7 +518,29 @@ export function assertGenerateInput(input: {
       { path: 'interest', message: 'invalid length' },
     ]);
   }
-  if (input.weeks !== 4 && input.weeks !== 8) {
+  const lessonOnly = input.lessonCount !== undefined && input.lessonCount !== null;
+  let lessonCount: number | undefined;
+  let lessonMinutes: 60 | 120 | undefined;
+  if (lessonOnly) {
+    if (typeof input.lessonCount !== 'number' || !Number.isSafeInteger(input.lessonCount)
+      || input.lessonCount < 1 || input.lessonCount > 128) {
+      throw new PlanGenerationError('lessonCount 必须是 1..128 的整数', [
+        { path: 'lessonCount', message: 'invalid lessonCount' },
+      ]);
+    }
+    lessonCount = input.lessonCount;
+    if (input.lessonMinutes !== 60 && input.lessonMinutes !== 120) {
+      throw new PlanGenerationError('lessonMinutes 必须是 60 或 120', [
+        { path: 'lessonMinutes', message: 'invalid lessonMinutes' },
+      ]);
+    }
+    lessonMinutes = input.lessonMinutes;
+    if (input.weeks !== undefined && input.weeks !== null) {
+      throw new PlanGenerationError('lesson-only 请求不得包含 weeks', [
+        { path: 'weeks', message: 'weeks is not allowed for lesson-only plans' },
+      ]);
+    }
+  } else if (input.weeks !== 4 && input.weeks !== 8) {
     throw new PlanGenerationError('weeks 必须是 4 或 8', [{ path: 'weeks', message: 'invalid weeks' }]);
   }
   let goal: string | null = null;
@@ -552,7 +581,7 @@ export function assertGenerateInput(input: {
       sessionMinutes: candidate.sessionMinutes,
     } as PblSchedule;
     const result = validatePblSchedule(schedule);
-    if (!result.valid || schedule.durationWeeks !== input.weeks) {
+    if (!result.valid || lessonOnly || schedule.durationWeeks !== input.weeks) {
       throw new PlanGenerationError('schedule 必须与 weeks 一致且每周总时长为 120 分钟', [
         { path: 'schedule', message: result.errors.join('; ') || 'durationWeeks mismatch' },
       ]);
@@ -599,7 +628,7 @@ export function assertGenerateInput(input: {
   }
   return {
     interest,
-    weeks: input.weeks,
+    ...(lessonOnly ? { lessonCount, lessonMinutes } : { weeks: input.weeks as LearningPlanWeeks }),
     goal,
     schedule,
     ...(sessionCount === undefined ? {} : { sessionCount }),

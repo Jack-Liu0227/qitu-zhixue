@@ -11,7 +11,11 @@ import {
   updateAdminTemplate,
 } from '../../../../lib/api/content';
 import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
-import type { AdminTeamConfig } from '@qitu/contracts';
+import type {
+  AdminTeamConfig,
+  ProjectTemplateSpec,
+  PblTemplateSession,
+} from '@qitu/contracts';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
 /**
@@ -44,6 +48,8 @@ interface TemplateEditorState {
   phases: PblPhaseDesign[];
   /** 阶段设计取自哪个版本；null = 该模板还没有任何版本。 */
   sourceVersion: string | null;
+  /** 若最新版本包含治理版 ProjectTemplateSpec，保存在此以供课时轨道展示并启用防呆 */
+  pblSpec: ProjectTemplateSpec | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,6 +59,92 @@ const STATUS_LABELS: Record<string, string> = {
   archived: '已归档',
 };
 
+const PHASE_META: Record<
+  string,
+  { label: string; tag: string; color: string; bg: string; border: string; mentor: string; defaultGate: string }
+> = {
+  exploration: {
+    label: '探索破冰 (exploration)',
+    tag: '探索',
+    color: '#d97706',
+    bg: '#fffbeb',
+    border: '#fde68a',
+    mentor: '主导导师 (Lead Advisor)',
+    defaultGate: 'student_confirmed_intent (探究意向书确认)',
+  },
+  concept_mastery: {
+    label: '概念奠基 (concept_mastery)',
+    tag: '概念',
+    color: '#2563eb',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
+    mentor: '概念教练 (Concept Coach)',
+    defaultGate: 'TheoryMastered (四大物理定律通关)',
+  },
+  guided_practice: {
+    label: '探究实践 (guided_practice)',
+    tag: '实践',
+    color: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+    mentor: '实验向导 (Lab Guide)',
+    defaultGate: 'practice_artifact_approved (CER 实验报告通过)',
+  },
+  deliverable_review: {
+    label: '成果答辩与归档 (deliverable_review)',
+    tag: '答辩',
+    color: '#9333ea',
+    bg: '#faf5ff',
+    border: '#e9d5ff',
+    mentor: '评审导师 (Reviewer)',
+    defaultGate: 'review_completed_and_archived (素养成长归档)',
+  },
+};
+
+const GATE_DESCRIPTIONS: Record<
+  string,
+  { title: string; desc: string; badge: string; color: string; bg: string; border: string }
+> = {
+  TheoryMastered: {
+    title: '【TheoryMastered 核心门禁】',
+    desc: '四大物理定律（光的直线传播、反射定律、折射定律、全反射/透镜规律）评测全达标，解锁光具座搭建与实践操作权限',
+    badge: '🛡️ 核心理论门禁',
+    color: '#dc2626',
+    bg: '#fef2f2',
+    border: '#fecaca',
+  },
+  student_confirmed_intent: {
+    title: '【意图确认门禁】',
+    desc: '学生显式确认探究意向书草稿并立项，未确认前禁止创建正式项目',
+    badge: '🚩 意向立项门禁',
+    color: '#d97706',
+    bg: '#fffbeb',
+    border: '#fde68a',
+  },
+  practice_artifact_approved: {
+    title: '【实践成果门禁】',
+    desc: '实验探究报告与 CER（主张-证据-推理）科学论证提交，需经导师审核通过',
+    badge: '📝 成果评审门禁',
+    color: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+  },
+  review_completed_and_archived: {
+    title: '【结项归档门禁】',
+    desc: '学科素养成长反思与量规自评由服务端 owner 正式完成归档',
+    badge: '🎓 素养成长归档',
+    color: '#9333ea',
+    bg: '#faf5ff',
+    border: '#e9d5ff',
+  },
+};
+
+const SESSION_TYPE_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  theory: { label: '理论探究', icon: '📘', color: '#1d4ed8', bg: '#dbeafe' },
+  practice: { label: '实验操作', icon: '🔬', color: '#15803d', bg: '#dcfce7' },
+  review: { label: '答辩归档', icon: '📋', color: '#7e22ce', bg: '#f3e8ff' },
+};
+
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -60,6 +152,7 @@ function asText(value: unknown): string {
 /**
  * 从版本数据解析阶段设计。只认版本里真实存在的字段：
  * - `content.phases` 是本页保存时写入的结构，优先使用；
+ * - 治理版 `content.pbl` 的 `phases`；
  * - 否则退到版本冻结的 `stages`（id/label）生成骨架，其余字段留空由治理者补全；
  * - 两者都没有时返回空数组，页面展示诚实空态。
  */
@@ -76,6 +169,18 @@ function parsePhasesFromVersion(version: AdminTemplateVersionDetail): PblPhaseDe
         mentorRole: asText(item.mentorRole),
       }));
     if (parsed.length > 0) return parsed;
+  }
+  if (content.pbl && typeof content.pbl === 'object') {
+    const pbl = content.pbl as ProjectTemplateSpec;
+    if (Array.isArray(pbl.phases) && pbl.phases.length > 0) {
+      return pbl.phases.map((phase, index) => ({
+        id: phase.phase || `phase-${index + 1}`,
+        name: phase.title || phase.phase,
+        gateRule: phase.gateCondition || '',
+        stagePrompt: `【${phase.title || phase.phase}】阶段主导角色：${phase.assignedAssistantId ?? '系统分配'}；交付物：${phase.deliverableType ?? '无'}`,
+        mentorRole: phase.assignedAssistantId ?? '',
+      }));
+    }
   }
   return version.stages.map((stage, index) => ({
     id: stage.id || `phase-${index + 1}`,
