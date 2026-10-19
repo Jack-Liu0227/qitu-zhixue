@@ -538,12 +538,6 @@ export function LibraryDetail({
                         提取文本
                       </button>
                     </div>
-                    {(isPdf || Boolean(selectedFile.origin?.fileName)) && (
-                      <a className={styles.textButton} href={original} download>
-                        <Glyph name="upload" size={14} />
-                        下载原文件
-                      </a>
-                    )}
                     {!readonly && (
                       <button
                         className={styles.dangerText}

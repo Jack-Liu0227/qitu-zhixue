@@ -18,6 +18,10 @@
     "test": {
       "dependsOn": ["^test"],
       "outputs": []
+    },
+    "@qitu/admin-console#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "public/pdfjs/**"]
     }
   }
 }

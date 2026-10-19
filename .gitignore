@@ -86,3 +86,6 @@ worktrees/
 # Local knowledge runtime service (embedding venv/models/data, relocated from /root/team-services)
 services/knowledge/
 .playwright-mcp/
+
+# Generated local PDF reader worker, fonts and CMaps
+/apps/admin-console/public/pdfjs/
