@@ -3,6 +3,8 @@
 import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useAssistantCatalog } from '../../../lib/copilot/use-assistant-catalog';
+import { resolveCopilotSelection } from '../../../lib/copilot/assistant-catalog';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { fetchAvailableConfiguredModels, configuredModelKey, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
@@ -13,8 +15,6 @@ import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 // v2 intentionally avoids replaying pre-audit sessions that claimed persistence
 // without a server acknowledgement. They remain in the old key for diagnostics.
 const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v2';
-const COPILOT_ASSISTANTS_STORAGE_KEY = 'qitu.admin.custom_assistants.v2';
-const COPILOT_TEAMS_STORAGE_KEY = 'qitu.admin.custom_teams.v2';
 
 interface ToolExecutionStep {
   name: string;
@@ -230,120 +230,18 @@ export default function CopilotPage() {
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
-  const [customAssistantsList, setCustomAssistantsList] = useState<Array<{ id: string; name: string; role: string; icon?: string; systemPrompt?: string }>>([]);
+  const { state: assistantCatalog, error: catalogError, refresh: refreshAssistantCatalog } = useAssistantCatalog();
   const selectedModelItem = availableModels.find((model) => configuredModelKey(model) === selectedModel) ?? null;
+  const assistantGroups = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.groups : [], [assistantCatalog]);
+  const allTestableAssistants = useMemo(() => assistantGroups.flatMap((group) => group.assistants), [assistantGroups]);
+  const activeTestAssistant = allTestableAssistants.find((assistant) => assistant.id === selectedAssistantId);
+  const catalogReady = assistantCatalog.kind === 'ready' && activeTestAssistant !== undefined;
 
-  const BUILTIN_ASSISTANTS_REGISTRY = [
-    {
-      id: 'qitu-assistant',
-      name: '启途智学管家 (平台运维与开发中枢)',
-      role: '运维管理中枢',
-      icon: '🤖',
-      systemPrompt: '我是启途智学管家平台核心运维与开发智能中枢，负责多智能体协同调度、系统配置修改与安全审计。',
-    },
-    {
-      id: 'qitu-intake-assistant',
-      name: '启途智学助手 (学生端探索接引)',
-      role: '意图探索向导',
-      icon: '🧭',
-      systemPrompt: '你是启途智学助手，作为学生进入平台的第一站。遵循苏格拉底短轮次对话规范，探寻学生好奇心，澄清探究目标，推荐匹配课题并一键立项。',
-    },
-    {
-      id: 'fighter-leader',
-      name: '雷霆战机总导师',
-      role: '团队总负责人',
-      icon: '🚀',
-      systemPrompt: '你是雷霆战机 PBL 项目总导师，负责统筹关卡设计、协调概念教练与沙箱向导。',
-    },
-    {
-      id: 'fighter-concept-coach',
-      name: '战机概念教练',
-      role: '概念启发教练',
-      icon: '💡',
-      systemPrompt: '你是雷霆战机团队的概念启发教练。严格遵循苏格拉底教学法，绝不直接提供完整代码，引导学生理解游戏循环、面向对象精灵碰撞与帧率控制。',
-    },
-    {
-      id: 'fighter-code-guide',
-      name: '战机代码向导',
-      role: '沙箱实践向导',
-      icon: '🛠️',
-      systemPrompt: '你是雷霆战机代码向导，指导学生在 Python 沙箱中安全调试 Pygame 代码，提供分步梯级排错线索。',
-    },
-    {
-      id: 'fighter-review-assessor',
-      name: '战机评审导师',
-      role: '评价反思导师',
-      icon: '📋',
-      systemPrompt: '你是雷霆战机评审导师，依据项目标准对学生关卡设计、代码质量与学习反思进行形成性评价。',
-    },
-    {
-      id: 'kinetic-leader',
-      name: '动能定理总导师',
-      role: '团队总负责人',
-      icon: '⚡',
-      systemPrompt: '你是动手学动能定理导师团队总负责人，负责整个实验探究流程的统筹推进。',
-    },
-    {
-      id: 'kinetic-concept-coach',
-      name: '动能定理概念教练',
-      role: '概念启发教练',
-      icon: '🧠',
-      systemPrompt: '你是动能定理概念教练，负责引导学生从牛顿第二定律与做功推导动能定理，严密守卫 TheoryMastered 门禁。',
-    },
-    {
-      id: 'kinetic-experiment-guide',
-      name: '动能实验向导',
-      role: '实验仿真向导',
-      icon: '🔬',
-      systemPrompt: '你是动能实验向导，指导学生操作 Python 物理数值仿真与传感器数据拟合绘图。',
-    },
-    {
-      id: 'kinetic-review-assessor',
-      name: '动能评审导师',
-      role: '答辩评审导师',
-      icon: '📊',
-      systemPrompt: '你是动能定理评审导师，针对实验系统误差、摩擦阻力修正和机械能转换进行深度质询。',
-    },
-    {
-      id: 'profile-analyst-assistant',
-      name: '学情画像分析助手',
-      role: '画像分析师',
-      icon: '📈',
-      systemPrompt: '你是学情画像分析助手，负责计算五维素养雷达（逻辑、工程、探究、表达、反思）与诊断认知断层。',
-    },
-    {
-      id: 'growth-trajectory-assistant',
-      name: '轨迹故事生成助手',
-      role: '成长叙事官',
-      icon: '🌱',
-      systemPrompt: '你是成长轨迹故事生成助手，负责提炼探究历程重大里程碑并生成第一人称个性化研学成长报告。',
-    },
-    {
-      id: 'feishu-reporting-assistant',
-      name: '学生-家长-教师汇报与问题总结助手',
-      role: '管理汇报与问题总结助手',
-      icon: '🪽',
-      systemPrompt: '你是启途智学管理汇报与问题总结助手，是飞书机器人外发的唯一汇报助手：只读取经过权限过滤的学生、家长和教师摘要与三端问题反馈，输出脱敏摘要与问题分类总结并通过飞书机器人推送。严格执行数据脱敏与未成年人保护规范。',
-    },
-  ];
-
-  const allTestableAssistants = useMemo(() => {
-    const list = [...BUILTIN_ASSISTANTS_REGISTRY];
-    for (const ca of customAssistantsList) {
-      if (!list.some((a) => a.id === ca.id)) {
-        list.push({
-          id: ca.id,
-          name: ca.name,
-          role: ca.role || '自定义导师',
-          icon: ca.icon || '🤖',
-          systemPrompt: ca.systemPrompt || `你是遵循启途智学教学规范的${ca.name}。`,
-        });
-      }
+  useEffect(() => {
+    if (assistantCatalog.kind === 'ready') {
+      setSelectedAssistantId((previous) => resolveCopilotSelection(assistantCatalog.groups, previous));
     }
-    return list;
-  }, [customAssistantsList]);
-
-  const activeTestAssistant = allTestableAssistants.find((a) => a.id === selectedAssistantId) ?? allTestableAssistants[0]!;
+  }, [assistantCatalog]);
 
   useEffect(() => {
     fetchAvailableConfiguredModels()
@@ -358,18 +256,6 @@ export default function CopilotPage() {
         }
       })
       .catch(() => {});
-
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed)) {
-            setCustomAssistantsList(parsed);
-          }
-        }
-      } catch {}
-    }
   }, []);
 
   useEffect(() => {
@@ -455,10 +341,16 @@ export default function CopilotPage() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim() || isGenerating) return;
-
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isGenerating || !catalogReady) return;
     const userText = inputMessage.trim();
+    setIsGenerating(true);
+    // Revalidate before using a role that another Admin tab may have deleted.
+    const groups = await refreshAssistantCatalog();
+    const confirmedAssistant = groups?.flatMap((group) => group.assistants)
+      .find((assistant) => assistant.id === selectedAssistantId);
+    if (!confirmedAssistant) { setIsGenerating(false); return; }
+
     setInputMessage('');
     const userMsg: Message = {
       id: `usr-${Date.now()}`,
@@ -486,7 +378,7 @@ export default function CopilotPage() {
 
       // A. 若当前选择测试特定助手（非默认启途智学管家），则以该助手的真实人设与职责回答
       if (selectedAssistantId !== 'qitu-assistant') {
-        const asst = activeTestAssistant;
+        const asst = confirmedAssistant;
         if (asst.id === 'qitu-intake-assistant') {
           toolSteps = [
             { name: 'intent_recognition', status: 'done', label: '苏格拉底短轮次意图探索与好奇心探寻' },
@@ -554,15 +446,7 @@ export default function CopilotPage() {
             },
             newIdempotencyKey(),
           );
-          const persistedAsst = { ...customAsst, id: persisted.id };
-          try {
-            const cached = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
-            const list = cached ? JSON.parse(cached) : [];
-            localStorage.setItem(COPILOT_ASSISTANTS_STORAGE_KEY, JSON.stringify([persistedAsst, ...list]));
-          } catch {
-            // Cache failures must not turn a successful server write into a failure.
-          }
-          setCustomAssistantsList((prev) => [persistedAsst, ...prev]);
+          await refreshAssistantCatalog();
           toolSteps = [
             { name: 'agent_sdk_spec_parser', status: 'done', label: `Parsed assistant role: ${customAsst.name}` },
             { name: 'model_router_bind', status: 'done', label: `Model route selected: ${selectedModel || 'server default'} (thinking: ${thinkingStrength})` },
@@ -573,7 +457,7 @@ export default function CopilotPage() {
             type: 'assistant',
             title: `Generated assistant: ${customAsst.name}`,
             details: 'Server confirmed creation; the local cache is display-only',
-            jsonPreview: JSON.stringify(persistedAsst, null, 2),
+            jsonPreview: JSON.stringify(persisted, null, 2),
           };
         } catch (error) {
           const reason = error instanceof Error ? error.message : 'server response error';
@@ -709,33 +593,7 @@ export default function CopilotPage() {
               assistantId: persistedAssistants[index]!.id,
             })),
           };
-          const persistedAssistantItems = persistedAssistants.map((assistant, index) => ({
-            id: assistant.id,
-            name: newAssistants[index]!.name,
-            role: newAssistants[index]!.role,
-            icon: newAssistants[index]!.icon,
-            systemPrompt: newAssistants[index]!.systemPrompt,
-          }));
-          try {
-            const cachedAssistants = localStorage.getItem(COPILOT_ASSISTANTS_STORAGE_KEY);
-            const assistantList = cachedAssistants ? JSON.parse(cachedAssistants) : [];
-            localStorage.setItem(
-              COPILOT_ASSISTANTS_STORAGE_KEY,
-              JSON.stringify([
-                ...persistedAssistantItems,
-                ...assistantList,
-              ]),
-            );
-            const cachedTeams = localStorage.getItem(COPILOT_TEAMS_STORAGE_KEY);
-            const teamList = cachedTeams ? JSON.parse(cachedTeams) : [];
-            localStorage.setItem(COPILOT_TEAMS_STORAGE_KEY, JSON.stringify([persistedTeamPreview, ...teamList]));
-          } catch {
-            // Cache failures do not invalidate the server-confirmed team.
-          }
-          setCustomAssistantsList((prev) => [
-            ...persistedAssistantItems,
-            ...prev,
-          ]);
+          await refreshAssistantCatalog();
           toolSteps = [
             { name: 'create_team_assistants', status: 'done', label: `Created and registered 3 team assistants` },
             { name: 'team_orchestrator', status: 'done', label: `Built team: ${customTeam.name}` },
@@ -1239,40 +1097,23 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
               <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
               <select
-                value={selectedAssistantId}
+                value={activeTestAssistant?.id ?? ''}
+                aria-label="交互助手"
+                disabled={!catalogReady || isGenerating}
                 onChange={(e) => setSelectedAssistantId(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#1e3a8a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '200px' }}
                 title="选择在当前控制台中测试的助手角色"
               >
-                <optgroup label="平台系统助手">
-                  <option value="qitu-assistant">启途智学管家 (默认·管理中枢)</option>
-                  <option value="qitu-intake-assistant">启途智学助手 (学生端探索接引)</option>
-                </optgroup>
-                <optgroup label="雷霆战机团队">
-                  <option value="fighter-leader">雷霆战机总导师</option>
-                  <option value="fighter-concept-coach">战机概念教练 (苏格拉底启发)</option>
-                  <option value="fighter-code-guide">战机代码向导 (沙箱实践)</option>
-                  <option value="fighter-review-assessor">战机评审导师 (评价反思)</option>
-                </optgroup>
-                <optgroup label="动能定理团队">
-                  <option value="kinetic-leader">动能定理总导师</option>
-                  <option value="kinetic-concept-coach">动能概念教练 (公式推导门禁)</option>
-                  <option value="kinetic-experiment-guide">动能实验向导 (数值仿真)</option>
-                  <option value="kinetic-review-assessor">动能评审导师 (答辩评估)</option>
-                </optgroup>
-                <optgroup label="学情与画像">
-                  <option value="profile-analyst-assistant">学情画像分析助手</option>
-                  <option value="growth-trajectory-assistant">轨迹故事生成助手</option>
-                </optgroup>
-                {customAssistantsList.length > 0 && (
-                  <optgroup label="自定义与已启用助手">
-                    {customAssistantsList.map((ca) => (
-                      <option key={ca.id} value={ca.id}>
-                        {ca.name} ({ca.role || '导师'})
+                {!catalogReady && <option value="">{assistantCatalog.kind === 'loading' ? '正在读取助手与团队…' : '暂无可选择的助手'}</option>}
+                {assistantGroups.map((group) => (
+                  <optgroup key={group.id} label={group.label}>
+                    {group.assistants.map((assistant) => (
+                      <option key={assistant.id} value={assistant.id}>
+                        {assistant.name}{assistant.role ? ` (${assistant.role})` : ''}
                       </option>
                     ))}
                   </optgroup>
-                )}
+                ))}
               </select>
             </div>
 
@@ -1325,15 +1166,22 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               </select>
             </div>
 
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a', marginLeft: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              Agent SDK 在线
+            <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: catalogReady ? '#16a34a' : '#64748b', marginLeft: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: catalogReady ? '#22c55e' : '#94a3b8', display: 'inline-block' }} />
+              {catalogReady ? '助手目录已同步（非运行时探测）' : '助手目录未就绪'}
             </span>
           </div>
         </div>
 
         {/* 助手切换提示横幅 */}
-        {selectedAssistantId !== 'qitu-assistant' && (
+        {(catalogError || (assistantCatalog.kind === 'ready' && allTestableAssistants.length === 0)) && (
+          <div role={catalogError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: '13px' }}>
+            {catalogError ?? '当前没有已启用的助手，请到 AI 助手设置中配置。'}
+            <button type="button" onClick={() => { void refreshAssistantCatalog(); }} style={{ marginLeft: '12px' }}>重新读取目录</button>
+          </div>
+        )}
+
+        {activeTestAssistant && selectedAssistantId !== 'qitu-assistant' && (
           <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}><AssistantGlyph value={activeTestAssistant.icon} /></span>
@@ -1342,6 +1190,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </div>
             <button
               type="button"
+              disabled={!allTestableAssistants.some((assistant) => assistant.id === 'qitu-assistant')}
               onClick={() => setSelectedAssistantId('qitu-assistant')}
               style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
             >
@@ -1558,17 +1407,17 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </button>
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isGenerating}
+              disabled={!inputMessage.trim() || isGenerating || !catalogReady}
               style={{
                 height: '44px',
                 padding: '0 20px',
-                background: !inputMessage.trim() || isGenerating ? '#94a3b8' : '#2563eb',
+                background: !inputMessage.trim() || isGenerating || !catalogReady ? '#94a3b8' : '#2563eb',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
                 fontWeight: 600,
                 fontSize: '13.5px',
-                cursor: !inputMessage.trim() || isGenerating ? 'not-allowed' : 'pointer',
+                cursor: !inputMessage.trim() || isGenerating || !catalogReady ? 'not-allowed' : 'pointer',
               }}
             >
               发送指令
