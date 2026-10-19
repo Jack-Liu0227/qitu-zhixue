@@ -45,3 +45,18 @@ bash /root/qitu-releases/63e3be882f1b1d7ccfbc0122bc14bf0b354785e3/.release-audit
 ```
 
 脚本恢复本次保存的六个服务配置及旧产物，不改 Git 历史；0036 是兼容性加列，应用回滚时保留，不自动删列。脚本语法已检查，没有在成功发布后执行生产回滚演练。
+
+## Follow-up release: assistant/team display contract
+
+Commit `19fc1a7` separates the Admin Copilot toolbar into independent live
+Assistant and Team selectors. The Assistant selector renders only enabled
+assistant records; the Team selector renders only enabled teams and reports a
+member count derived from enabled assistants. Team members are no longer
+flattened into assistant groups, and stale local storage is not used as a
+fallback. Deleted or disabled records reset only their own selector.
+
+Focused regression coverage is in `tooling/copilot-catalog.test.mjs` (6/6
+passing). The Windows UNC Admin typecheck remains blocked by the pre-existing
+missing `pdfjs-dist` installation snapshot; no changed-file TypeScript error was
+reported. The release must be built from a clean Linux dependency graph before
+switching the Admin production unit.
