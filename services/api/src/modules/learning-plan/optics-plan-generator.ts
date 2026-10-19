@@ -226,8 +226,6 @@ export function generateOpticsPlan(
 
   return {
     templateVersion: context.templateVersion,
-    lessonCount: totalSessions,
-    lessonMinutes: minutesPerSession,
     weeks,
     sessionCount: totalSessions as PlanSessionCount,
     minutesPerSession,

@@ -8,6 +8,11 @@
 > `packages/ai-client/src/{mastery,questions,grading}/**`、
 > `services/api/src/modules/learning-plan`。
 
+> **???????lesson-first?**????????? `lessonCount` + `lessonMinutes`
+> ?????? `sessionIndex`?`weeks`?`weekIndex`?`day` ?????????????
+> ????????????????? 16 ???????? 1 ?? 16 ?????
+> ???????????????????
+
 ## 1. 模型
 
 ```text
@@ -136,3 +141,9 @@ POST /api/v1/learning-plans/:id/sessions/:sessionId/evidence     提交实践证
 - [`projects.md`](./projects.md)
 - [`growth.md`](./growth.md) §3
 - [`../sdk/domain-facade.md`](../sdk/domain-facade.md)
+
+## 8. 课时模板迁移说明（当前合同）
+
+当前发布的模板以课时为唯一教学排程单位。模板作者应在 `curriculum.profiles` 中声明 `schedule: { lessonCount, lessonMinutes }`，并为每个 `session` 填写连续的 `sessionIndex`、内容、目标、活动分块和 checkpoint。`phase` 只用于门禁与治理标签，不是计划的分组键。
+
+新 API 请求使用 `lessonCount` + `lessonMinutes`；不得再传 `weeks`、`schedule` 或依赖 `week/day`。服务端会从冻结的模板版本生成一课时一个 module/session，并在数据库中保存 `lesson_index`。旧 weekly 计划仍由显式兼容适配器读取，不能在读时把新课时计划转换成周数。

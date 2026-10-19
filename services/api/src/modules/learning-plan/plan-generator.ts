@@ -108,8 +108,8 @@ export interface GeneratedModule {
   name: string;
   /** One-based lesson order for lesson-first templates. */
   lessonIndex?: number;
-  /** Derived compatibility calendar projection; omitted at runtime by lesson-only plans. */
-  weekIndex: number;
+  /** Present only for legacy calendar plans. */
+  weekIndex?: number;
   objective: string;
   ordinal: number;
 }
@@ -137,9 +137,9 @@ export interface GeneratedSession {
   index: number;
   /** One-based lesson order. `index` remains the stable zero-based runtime key. */
   lessonIndex?: number;
-  /** Derived compatibility placement; omitted at runtime by lesson-only plans. */
-  week: number;
-  day: number;
+  /** Legacy calendar placement; omitted by lesson-first plans. */
+  week?: number;
+  day?: number;
   title: string;
   blocks: GeneratedBlock[];
   theoryObjectiveIds: string[];
@@ -147,18 +147,11 @@ export interface GeneratedSession {
   mode: SessionMode;
 }
 
-export interface GeneratedPlan {
+interface GeneratedPlanBase {
   templateVersion: string;
-  /** Canonical lesson-first schedule. */
-  lessonCount: number;
-  lessonMinutes: 60 | 120;
-  /** Derived compatibility calendar; omitted at runtime by lesson-only plans. */
-  weeks: LearningPlanWeeks;
   /** 显式课次数量。4 或 8；与 `weeks` 并存，不互相推导。 */
   sessionCount: PlanSessionCount;
   minutesPerSession: number;
-  /** Explicit PBL timing; omitted for legacy `weeks` requests. */
-  schedule?: PblSchedule;
   title: string;
   interest: string;
   goal: string;
@@ -168,6 +161,23 @@ export interface GeneratedPlan {
   objectives: GeneratedObjective[];
   sessions: GeneratedSession[];
 }
+
+export type GeneratedPlan = GeneratedPlanBase & (
+  | {
+    /** Canonical lesson-first schedule; calendar fields are absent. */
+    weeks?: undefined;
+    lessonCount: number;
+    lessonMinutes: 60 | 120;
+    schedule?: undefined;
+  }
+  | {
+    /** Historical weekly schedule; canonical lesson fields are not authoritative. */
+    weeks: LearningPlanWeeks;
+    lessonCount?: number;
+    lessonMinutes?: 60 | 120;
+    schedule?: PblSchedule;
+  }
+);
 
 export interface GeneratePlanInput {
   interest: string;
@@ -382,8 +392,6 @@ export class DeterministicPlanGenerator extends PlanGenerator {
 
     return {
       templateVersion: CURRICULUM_TEMPLATE_VERSION,
-      lessonCount: sessionCount,
-      lessonMinutes: minutesPerSession as 60 | 120,
       weeks,
       sessionCount: sessionCount as PlanSessionCount,
       minutesPerSession,
@@ -465,6 +473,17 @@ export function kindForActivity(activity: LearningPlanBlockActivity): SessionBlo
 
 /** 把生成结构投影为 `@qitu/ai-client` 校验器认识的草稿形状。 */
 export function toLearningPlanDraft(plan: GeneratedPlan): LearningPlanDraft {
+  if (plan.weeks === undefined) {
+    throw new PlanGenerationError('lesson-only plans do not have a legacy draft shape', [
+      { path: 'weeks', message: 'legacy draft conversion requires weeks' },
+    ]);
+  }
+  const sessionsPerWeek = plan.schedule?.sessionsPerWeek ?? plan.sessions.length / plan.weeks;
+  if (!Number.isInteger(sessionsPerWeek) || sessionsPerWeek <= 0) {
+    throw new PlanGenerationError('legacy draft has no valid weekly shape', [
+      { path: 'sessions', message: 'legacy draft conversion requires a valid sessions-per-week shape' },
+    ]);
+  }
   return {
     templateVersion: plan.templateVersion,
     weeks: plan.weeks,
@@ -472,8 +491,8 @@ export function toLearningPlanDraft(plan: GeneratedPlan): LearningPlanDraft {
     interest: plan.interest,
     sessions: plan.sessions.map((session) => ({
       id: session.id,
-      week: session.week,
-      day: session.day,
+      week: session.week ?? Math.floor(session.index / sessionsPerWeek) + 1,
+      day: session.day ?? (session.index % sessionsPerWeek) + 1,
       title: session.title,
       blocks: session.blocks.map((blockItem) => ({
         id: blockItem.id,

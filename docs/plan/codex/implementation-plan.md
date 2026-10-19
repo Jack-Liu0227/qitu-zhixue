@@ -61,7 +61,7 @@ Tutor 展示与执行身份不一致可先独立修复，但这不等于 M4 的�
 
 ## 3. 教学能力扩展
 
-先保留基础 `tutor-guided-learning`；首批 8 项和 6 项扩展的 Qitu-authored 源码包现已补齐，但仍须按 [目录](./skills-catalog.md) 分批评测。当前源码规划是 1+8+6，不是已发布 15 项。未完成不可变包与授权闭环前，不把外部文件直接加入学生 runtime。
+先保留基础 `tutor-guided-learning`；首批 8 项和 7 项扩展的 Qitu-authored 源码包现已补齐，但仍须按 [目录](./skills-catalog.md) 分批评测。当前源码规划是 1+8+7，不是已发布 16 项。未完成不可变包与授权闭环前，不把外部文件直接加入学生 runtime。
 
 首个行为试点选单缝衍射：学生问题与预测、单变量比较、模拟观察、数据解释、CER、反思。action、observations、rubric 引用由既有 owner 接受；`run`、摘要、滑块、课时数字不能写成掌握或作品通过。通过此闭环后再扩散射、协作、完整 16 课时。
 

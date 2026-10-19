@@ -74,7 +74,7 @@ export function TutorReplyBlockView({
       return (
         <div className="qitu-tutor-hint">
           <HintLevelIndicator level={block.level} />
-          <p className="qitu-tutor-text">{block.text}</p>
+          <MarkdownMathView content={block.text} />
         </div>
       );
     case 'evidence':

@@ -181,6 +181,22 @@ export class LearningPlanService {
       generated = this.generator.generate(input);
     }
     validateGeneratedPlan(generated);
+    if (generated.weeks === undefined) {
+      const key = lessonPlanSignatureKey(actor.id, generated);
+      const existing = await this.store.findPlanByLessonSignature(actor.id, generated.interest, generated.lessonCount, generated.lessonMinutes, generated.templateVersion, key);
+      if (existing !== null) return { plan: await this.toPlanView(existing), deduplicated: true };
+      const bundle = this.buildBundle(actor.id, generated, new Date());
+      try { await this.store.createPlan(bundle); }
+      catch (error) {
+        if (error instanceof LearningPlanStoreConflictError) {
+          const raced = await this.store.findPlanByLessonSignature(actor.id, generated.interest, generated.lessonCount, generated.lessonMinutes, generated.templateVersion, key);
+          if (raced !== null) return { plan: await this.toPlanView(raced), deduplicated: true };
+        }
+        throw error;
+      }
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'learning_plan.generate', targetType: 'learning_plan', targetId: bundle.plan.id, idempotencyKey: bundle.plan.idempotencyKey, detail: { interest: generated.interest, lessonCount: generated.lessonCount, templateVersion: generated.templateVersion, modules: generated.modules.length, sessions: generated.sessions.length, objectives: generated.objectives.length } });
+      return { plan: await this.toPlanView(bundle), deduplicated: false };
+    }
 
     // 去重签名必须**包含排课形状**：4 周 1×120 与 4 周 2×60 的周数、兴趣、
     // 模板版本完全相同，但计划形状（会话数 / 每节分钟）不同。签名与幂等键
@@ -320,7 +336,9 @@ export class LearningPlanService {
               stageTotal: progress.stageTotal,
               progressPercent: progress.progressPercent,
               title: bundle.plan.goal.length > 0 ? bundle.plan.goal : bundle.plan.interest,
-              subtitle: `${bundle.plan.interest} · ${bundle.plan.weeks} 周`,
+              subtitle: bundle.plan.lessonCount === undefined
+                ? `${bundle.plan.interest} · ${bundle.plan.weeks} 周`
+                : `${bundle.plan.interest} · ${bundle.plan.lessonCount} 课时`,
               tags: [bundle.plan.interest],
             },
             // F3: a formal project must carry an immutable binding snapshot. A
@@ -359,7 +377,9 @@ export class LearningPlanService {
               detail: {
                 planId,
                 templateVersion: bundle.plan.templateVersion,
-                weeks: bundle.plan.weeks,
+                ...(bundle.plan.lessonCount === undefined
+                  ? { weeks: bundle.plan.weeks }
+                  : { lessonCount: bundle.plan.lessonCount, lessonMinutes: bundle.plan.lessonMinutes }),
                 stage: FORMAL_PROJECT_START_STAGE,
               },
             });
@@ -868,11 +888,14 @@ export class LearningPlanService {
       interest: generated.interest,
       goal: generated.goal,
       weeks: generated.weeks,
+      ...(generated.weeks === undefined
+        ? { lessonCount: generated.lessonCount, lessonMinutes: generated.lessonMinutes }
+        : {}),
       minutesPerSession: generated.minutesPerSession,
       templateVersion: generated.templateVersion,
       status: 'draft',
       version: 1,
-      idempotencyKey: planIdempotencyKey(studentId, {
+      idempotencyKey: generated.weeks === undefined ? lessonPlanSignatureKey(studentId, generated) : planIdempotencyKey(studentId, {
         templateVersion: generated.templateVersion,
         weeks: generated.weeks,
         interest: generated.interest,
@@ -892,7 +915,8 @@ export class LearningPlanService {
         id: moduleIdMap.get(module.id) ?? module.id,
         planId,
         name: module.name,
-        weekIndex: module.weekIndex,
+        ...(module.weekIndex === undefined ? {} : { weekIndex: module.weekIndex }),
+        ...(module.lessonIndex === undefined ? {} : { lessonIndex: module.lessonIndex }),
         objective: module.objective,
         ordinal: module.ordinal,
       })),
@@ -912,6 +936,7 @@ export class LearningPlanService {
         planId,
         moduleId: moduleIdMap.get(session.moduleId) ?? session.moduleId,
         index: session.index,
+        lessonIndex: session.lessonIndex,
         title: session.title,
         blocks: session.blocks.map((block) => ({
           kind: block.kind,
@@ -940,7 +965,8 @@ export class LearningPlanService {
       .map((module) => ({
         id: module.id,
         name: module.name,
-        weekIndex: module.weekIndex,
+        ...(module.weekIndex === undefined ? {} : { weekIndex: module.weekIndex }),
+        ...(module.lessonIndex === undefined ? {} : { lessonIndex: module.lessonIndex }),
         objective: module.objective,
         ordinal: module.ordinal,
         objectives: (objectiveByModule.get(module.id) ?? [])
@@ -971,7 +997,9 @@ export class LearningPlanService {
       projectId: bundle.plan.projectId,
       interest: bundle.plan.interest,
       goal: bundle.plan.goal,
-      weeks: bundle.plan.weeks,
+      ...(bundle.plan.weeks === undefined ? {} : { weeks: bundle.plan.weeks }),
+      ...(bundle.plan.lessonCount === undefined ? {} : { lessonCount: bundle.plan.lessonCount }),
+      ...(bundle.plan.lessonMinutes === undefined ? {} : { lessonMinutes: bundle.plan.lessonMinutes }),
       minutesPerSession: bundle.plan.minutesPerSession,
       templateVersion: bundle.plan.templateVersion,
       status: bundle.plan.status,
@@ -1000,8 +1028,9 @@ export class LearningPlanService {
       id: session.id,
       moduleId: session.moduleId,
       index: session.index,
-      week: Math.floor(session.index / sessionsPerWeek) + 1,
-      day: (session.index % sessionsPerWeek) + 1,
+      ...(bundle.plan.weeks === undefined
+        ? { lessonIndex: session.lessonIndex ?? session.index + 1 }
+        : { week: Math.floor(session.index / sessionsPerWeek) + 1, day: (session.index % sessionsPerWeek) + 1 }),
       title: session.title ?? `${bundle.plan.interest} · 第 ${session.index + 1} 节`,
       blocks: session.blocks.map((block) => ({
         kind: block.kind,
@@ -1647,6 +1676,7 @@ interface SignatureQuery {
 }
 
 function inferSessionsPerWeek(bundle: PlanBundle): 1 | 2 | 5 {
+  if (bundle.plan.weeks === undefined) return 5;
   const count = bundle.sessions.length;
   if (count === bundle.plan.weeks) return 1;
   if (count === bundle.plan.weeks * 2) return 2;
@@ -1807,6 +1837,11 @@ function planIdempotencyKey(
 
 /** 由生成产物直接算出幂等键（生成路径的唯一入口）。 */
 function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
+  if (generated.weeks === undefined) {
+    throw new PlanGenerationError('lesson-first plans require lesson-based signatures', [
+      { path: 'weeks', message: 'weekly plan signature cannot be used without weeks' },
+    ]);
+  }
   return planIdempotencyKey(studentId, {
     templateVersion: generated.templateVersion,
     weeks: generated.weeks,
@@ -1815,6 +1850,10 @@ function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
     minutesPerSession: generated.minutesPerSession,
     curriculumSlug: generated.curriculumSlug,
   });
+}
+
+function lessonPlanSignatureKey(studentId: string, generated: GeneratedPlan): string {
+  return `learning-plan:${studentId}:lesson:${generated.templateVersion}:${generated.lessonCount}:${generated.lessonMinutes}:${generated.interest}`;
 }
 
 /**
@@ -1856,6 +1895,7 @@ const CONCEPT_MASTERY_GATE: GateConditionId =
     : 'TheoryMastered';
 
 function inferPlanSchedule(bundle: PlanBundle): PblSchedule | null {
+  if (bundle.plan.weeks === undefined) return null;
   const sessionsPerWeek = inferSessionsPerWeek(bundle);
   if (sessionsPerWeek === 5) return null;
   return {

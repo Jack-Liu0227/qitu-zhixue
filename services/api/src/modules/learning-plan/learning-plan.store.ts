@@ -32,7 +32,10 @@ export interface PlanRecord {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks: 4 | 8;
+  weeks?: 4 | 8;
+  /** Canonical lesson-first fields; historical weekly plans may omit them. */
+  lessonCount?: number;
+  lessonMinutes?: 60 | 120;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;
@@ -48,7 +51,8 @@ export interface ModuleRecord {
   id: string;
   planId: string;
   name: string;
-  weekIndex: number;
+  weekIndex?: number;
+  lessonIndex?: number;
   objective: string;
   ordinal: number;
 }
@@ -78,6 +82,7 @@ export interface SessionRecord {
   planId: string;
   moduleId: string;
   index: number;
+  lessonIndex?: number;
   title?: string | null;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
@@ -271,6 +276,15 @@ export abstract class LearningPlanStore {
     signatureKey?: string,
   ): Promise<PlanBundle | null>;
 
+  findPlanByLessonSignature(
+    studentUserId: string,
+    interest: string,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
+    templateVersion: string,
+    signatureKey?: string,
+  ): Promise<PlanBundle | null> { return Promise.resolve(null); }
+
   abstract createPlan(bundle: PlanBundle): Promise<void>;
 
   abstract findPlan(planId: string): Promise<PlanRecord | null>;
@@ -439,7 +453,40 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     return null;
   }
 
+  override async findPlanByLessonSignature(
+    studentUserId: string,
+    interest: string,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
+    templateVersion: string,
+    signatureKey?: string,
+  ): Promise<PlanBundle | null> {
+    for (const bundle of this.plans.values()) {
+      const plan = bundle.plan;
+      if (plan.studentUserId === studentUserId && plan.interest === interest
+        && plan.lessonCount === lessonCount && plan.lessonMinutes === lessonMinutes
+        && plan.templateVersion === templateVersion
+        && (signatureKey === undefined || plan.idempotencyKey === signatureKey)) return cloneBundle(bundle);
+    }
+    return null;
+  }
+
   async createPlan(bundle: PlanBundle): Promise<void> {
+    if (bundle.plan.weeks === undefined) {
+      const existingLesson = await this.findPlanByLessonSignature(
+        bundle.plan.studentUserId,
+        bundle.plan.interest,
+        bundle.plan.lessonCount ?? bundle.sessions.length,
+        bundle.plan.lessonMinutes ?? (bundle.plan.minutesPerSession === 120 ? 120 : 60),
+        bundle.plan.templateVersion,
+        bundle.plan.idempotencyKey,
+      );
+      if (existingLesson !== null) throw new LearningPlanStoreConflictError(`已存在同一签名的学习计划：${existingLesson.plan.id}`);
+      if (this.plans.has(bundle.plan.id)) throw new LearningPlanStoreConflictError(`学习计划 id 冲突：${bundle.plan.id}`);
+      this.plans.set(bundle.plan.id, cloneBundle(bundle));
+      for (const mapping of planObjectiveMappings(bundle, null)) await this.upsertObjectiveMapping(mapping);
+      return;
+    }
     const existing = await this.findPlanBySignature(
       bundle.plan.studentUserId,
       bundle.plan.interest,

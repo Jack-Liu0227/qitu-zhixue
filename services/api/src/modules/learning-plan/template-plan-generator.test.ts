@@ -4,7 +4,10 @@ import { OPTICS_16_SESSION_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import { generatePlanFromTemplate } from './template-plan-generator';
 import { validateGeneratedPlan } from './session-plan-validator';
 
-const INPUT = { interest: '光与证据', weeks: 8 as const, goal: null, curriculumSlug: 'optics-physical-inquiry-16s', sessionCount: 16 as const };
+const INPUT = {
+  interest: '光与证据', lessonCount: 16, lessonMinutes: 60 as const, goal: null,
+  curriculumSlug: 'optics-physical-inquiry-16s', sessionCount: 16 as const,
+};
 
 describe('Template-owned plan projection', () => {
   it('projects canonical lesson-only schedules without week/day fields', () => {
@@ -68,8 +71,11 @@ describe('Template-owned plan projection', () => {
       '光具座搭建、法线与光轴校准', '折射角与物像距数据采集', '单缝衍射现象与条纹特征探究', '封闭细雾室介质散射探究',
       '数据线性化拟合与实验求参', '实验报告撰写与 CER 科学论证', '实验探究成果答辩与同行质疑', '学习反思与学科素养成长归档',
     ]);
-    assert.deepEqual(plan.sessions.map((session) => [session.week, session.day]),
-      Array.from({ length: 16 }, (_, index) => [Math.floor(index / 2) + 1, index % 2 + 1]));
+    assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
+    for (const session of plan.sessions) {
+      assert.equal('week' in session, false);
+      assert.equal('day' in session, false);
+    }
     const covered = new Set(plan.sessions.flatMap((session) => session.blocks.flatMap((block) => block.objectiveIds)));
     assert.equal(covered.size, 12);
     for (const objective of plan.objectives) assert.ok(covered.has(objective.id));

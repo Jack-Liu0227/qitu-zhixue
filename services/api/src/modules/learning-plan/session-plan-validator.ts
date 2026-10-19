@@ -274,12 +274,18 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     if (plan.lessonMinutes !== 60 && plan.lessonMinutes !== 120) {
       errors.push({ path: 'lessonMinutes', message: 'lessonMinutes must be 60 or 120' });
     }
+    if (plan.sessionCount !== plan.lessonCount) {
+      errors.push({ path: 'sessionCount', message: 'sessionCount must equal lessonCount for lesson-only plans' });
+    }
   } else if (schedule !== undefined) {
     // 排期自洽性（字段间约束 + 与 weeks 一致）。旧路径只在生成器里做这件事，
     // 校验器侧此前完全没有这一轴。
     for (const violation of scheduleViolations(schedule, plan.weeks!)) {
       errors.push(violation);
     }
+  }
+  if (!lessonOnly && (plan.lessonCount !== undefined || plan.lessonMinutes !== undefined)) {
+    errors.push({ path: 'lessonCount', message: 'weekly plans must not contain lesson-only schedule fields' });
   }
   const expectedCount = expectedSessionCount(plan);
   /**
@@ -302,7 +308,7 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
   // 否则用计划的课次数除以周数（遗留 5 节/周也走这条）。这样 4 / 8 / 16 / 20 / 40
   // 都各自合法，而被硬编码成「只能是 4 或 8」会把 8 周 × 2 节 = 16 节误判为非法。
   const declaredCount = plan.sessionCount;
-  if (typeof declaredCount === 'number') {
+  if (!lessonOnly && typeof declaredCount === 'number') {
     const weekly = schedule?.sessionsPerWeek ?? (plan.weeks !== undefined && plan.weeks > 0 ? expectedCount / plan.weeks : 0);
     const implied = (plan.weeks ?? 0) * weekly;
     if (!Number.isInteger(declaredCount) || declaredCount <= 0 || declaredCount !== implied) {
@@ -362,6 +368,9 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     moduleIds.add(module.id);
     if (module.ordinal <= 0) {
       errors.push({ path: `modules.${module.id}.ordinal`, message: '模块序号必须为正' });
+    }
+    if (lessonOnly && module.weekIndex !== undefined) {
+      errors.push({ path: `modules.${module.id}.weekIndex`, message: 'lesson-only modules must not contain weekIndex' });
     }
     const order = lessonOnly ? module.lessonIndex : module.weekIndex;
     if (!Number.isInteger(order) || order! < 1 || order! > (lessonOnly ? plan.lessonCount! : plan.weeks!)) {

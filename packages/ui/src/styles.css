@@ -1288,12 +1288,23 @@ summary:focus-visible,
 
 /* 提示阶梯（1→5 档，只显示档位名，不显示答案） */
 .qitu-hint-indicator {
-  display: grid;
-  gap: var(--qitu-space-xs);
-  padding: var(--qitu-space-sm) var(--qitu-space-md);
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-md);
-  background: var(--qitu-page);
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--qitu-space-xs);
+  width: fit-content;
+}
+
+.qitu-hint-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--qitu-radius-pill);
+  background: var(--qitu-primary-soft, #f0f7ff);
+  color: var(--qitu-primary, #2563eb);
+  border: 1px solid var(--qitu-primary-border, #bfdbfe);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .qitu-hint-name {

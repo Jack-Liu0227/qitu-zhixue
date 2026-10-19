@@ -1,11 +1,11 @@
 'use client';
 
-import { AssistantGlyph } from '@qitu/ui';
+import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import type { TutorTeamGraph } from '@qitu/contracts';
+import { StudentLink } from '../../components/student-link';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
@@ -189,6 +189,23 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
               : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}
         </span>
+        {projectSummary ? (
+          <StudentLink
+            href={`/projects/${encodeURIComponent(projectSummary.id)}?mode=learn`}
+            className="qitu-button qitu-button-ghost"
+            style={{
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              border: '1px solid #93c5fd',
+              color: '#2563eb',
+              background: '#eff6ff',
+            }}
+          >
+            <span>🔬</span> 动态实验课件
+          </StudentLink>
+        ) : null}
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
         </button>

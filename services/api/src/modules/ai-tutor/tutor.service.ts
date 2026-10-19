@@ -56,7 +56,6 @@ import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { TeacherService } from '../teacher/teacher.service';
-import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
 import { buildProjectOpeningBlocks } from './tutor-opening';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
 import {
@@ -166,7 +165,14 @@ const PBL_PLAN_STAGES = new Set<ProjectStage>([
   'practice_ready',
   'practice_building',
   'artifact_review',
-  'reflection',
+]);
+
+/** 理论侧阶段：在 TheoryMastered 达成并进入实践前，理论门禁不可显示为已通过。 */
+const THEORY_SIDE_STAGES = new Set<ProjectStage>([
+  'exploration',
+  'intent_confirmed',
+  'theory_learning',
+  'theory_check',
 ]);
 
 function currentTaskFor(
@@ -566,7 +572,12 @@ export class TutorService {
         index < currentIndex ? 'completed' : index === currentIndex ? 'active' : 'locked';
       const gateRule = phase.gateCondition;
       const requiresGate = Boolean(gateRule);
-      const gatePassed = gateRule !== undefined && satisfiedGates.has(gateRule);
+      const gatePassed = Boolean(
+        gateRule &&
+        (index < currentIndex ||
+          (satisfiedGates.has(gateRule) && !THEORY_SIDE_STAGES.has(stage) && index <= currentIndex)) &&
+        (gateRule !== 'TheoryMastered' || !THEORY_SIDE_STAGES.has(stage))
+      );
       const assignedMember = teamConfig?.members.find((member) => member.assistantId === phase.assignedAssistantId);
       return {
         phaseId: phase.phase,
@@ -881,6 +892,53 @@ export class TutorService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * 动态物理微观仿真与课件块下发：当学生询问实验、课件、仿真、单缝衍射、介质散射或波动现象时，
+   * 服务端授权并下发经过校验的模型仿真卡片。
+   */
+  private async buildExperimentBlocks(
+    record: TutorSessionRecord,
+    studentInput?: string,
+  ): Promise<TutorTurn['blocks']> {
+    const text = (studentInput ?? '').toLowerCase();
+    const isExperimentTrigger =
+      /实验|课件|动态|仿真|衍射|狭缝|单缝|散射|微观|光强|波长|条纹/i.test(text);
+
+    if (!isExperimentTrigger) {
+      return [];
+    }
+
+    const immediatePriorHasExperiment = record.turns.slice(-2).some((turn) =>
+      turn.role === 'assistant' && turn.blocks.some((b) => b.kind === 'optics_experiment'),
+    );
+    if (immediatePriorHasExperiment) {
+      return [];
+    }
+
+    const isScattering = /散射|瑞利|米氏|气溶胶/i.test(text);
+    const initialMode: 'diffraction' | 'scattering' = isScattering ? 'scattering' : 'diffraction';
+
+    const experimentBlock: TutorReplyBlock = {
+      kind: 'optics_experiment',
+      experimentId: `optics-exp-${record.sessionId}-${Date.now().toString(36)}`,
+      title: isScattering ? '介质微粒散射微观动态课件' : '光的单缝衍射微观动态实验课件',
+      summary: isScattering
+        ? '调节微粒半径 r 与入射波长 λ，动态观察 Rayleigh (r ≪ λ) 到 Mie 散射的波长与角分布转变。'
+        : '实时调节狭缝宽度 a、光波长 λ 及光屏距离 D，观测中央明纹展宽与连续光强分布 I(θ) 变化。',
+      initialMode,
+      specVersion: '1.0.0',
+      objectiveId: 'optics.wave.diffraction-observation',
+      sessionIndex: 1,
+      allowedActions: ['submit_prediction', 'set_parameter', 'run', 'record_observation', 'submit_evidence'],
+      predictionGate: {
+        required: false,
+        submitted: false,
+      },
+    };
+
+    return [experimentBlock];
   }
 
   /**
@@ -1740,13 +1798,6 @@ export class TutorService {
       }
     }
 
-    // provider 契约保证至少有一个 `done` 事件；防御性兜底避免与助手回合撞号。
-    const interactionBlocks = buildProjectInteractionBlocks(projectContext);
-    for (const block of interactionBlocks) {
-      assistantBlocks = [...assistantBlocks, block];
-      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
-    }
-
     // 跨阶段双导师协诊旁白 (aside)
     const asideBlock = await this.buildCoPilotAsideBlock(
       record,
@@ -1767,6 +1818,16 @@ export class TutorService {
     // F1 判分路由的下发侧：在助手回合持久化前，按计划未掌握理论目标追加交互题。
     const quizBlocks = await this.buildQuizBlocks(record, request.actorId);
     for (const block of quizBlocks) {
+      assistantBlocks = [...assistantBlocks, block];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
+
+    // 动态物理微观仿真与实验课件下发
+    const experimentBlocks = await this.buildExperimentBlocks(
+      record,
+      request.content ?? request.optionLabel,
+    );
+    for (const block of experimentBlocks) {
       assistantBlocks = [...assistantBlocks, block];
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }

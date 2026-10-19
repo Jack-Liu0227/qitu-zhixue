@@ -46,17 +46,16 @@ export function generatePlanFromTemplate(
   const candidates = profiles.filter((profile) => {
     const schedule = profile.schedule;
     if ('lessonCount' in schedule) {
-      // Lesson-first profiles never derive a calendar duration. A caller must
-      // select the profile by its explicit lesson count and duration.
-      const legacyProjection = input.lessonCount === undefined && input.weeks !== undefined
-        && input.weeks === Math.ceil(schedule.lessonCount / 2);
-      return (input.weeks === undefined || legacyProjection)
+      // Select lesson-first profiles only by their actual lesson fields.
+      return input.weeks === undefined
         && input.schedule === undefined
-        && (input.lessonCount === undefined || input.lessonCount === schedule.lessonCount)
-        && (input.lessonMinutes === undefined || input.lessonMinutes === schedule.lessonMinutes)
+        && input.lessonCount === schedule.lessonCount
+        && input.lessonMinutes === schedule.lessonMinutes
         && (input.sessionCount === undefined || input.sessionCount === schedule.lessonCount);
     }
-    return input.weeks !== undefined
+    return input.lessonCount === undefined
+      && input.lessonMinutes === undefined
+      && input.weeks !== undefined
       && schedule.durationWeeks === input.weeks
       && (input.sessionCount === undefined || profile.sessions.length === input.sessionCount)
       && (input.schedule === undefined || (schedule.weeklyMinutes === input.schedule.weeklyMinutes
@@ -73,9 +72,9 @@ export function generatePlanFromTemplate(
   let sessionCount: PlanSessionCount;
   if (count === 4 || count === 8 || count === 16) sessionCount = count;
   else reject('sessions', 'Unsupported session count');
-  const lessonOnly = 'lessonCount' in profile.schedule && input.lessonCount !== undefined;
+  const lessonOnly = 'lessonCount' in profile.schedule;
   let minutesPerSession = 60;
-  let legacyWeeks: LearningPlanWeeks = (count === 16 ? 8 : 4) as LearningPlanWeeks;
+  let legacyWeeks: LearningPlanWeeks | undefined;
   let legacySchedule: PblSchedule | undefined;
   if ('lessonCount' in profile.schedule) {
     minutesPerSession = profile.schedule.lessonMinutes;
@@ -93,15 +92,15 @@ export function generatePlanFromTemplate(
   const modules = lessonOnly
     ? profile.sessions.map((session, index) => ({
       id: moduleId(index + 1),
-      name: `Lesson ${index + 1}: ${session.title}`,
+    name: `第 ${index + 1} 课时：${session.title}`,
       lessonIndex: index + 1,
-      weekIndex: Math.ceil((index + 1) / 2),
       objective: session.title,
       ordinal: index + 1,
     }))
     : Array.from({ length: legacyWeeks ?? 0 }, (_, index) => {
       const week = index + 1;
-      const sessions = profile.sessions.filter((session) => (session.week ?? Math.ceil(session.sessionIndex / 2)) === week);
+      const sessions = profile.sessions.filter((session, sessionIdx) =>
+        (session.week ?? Math.ceil((session.sessionIndex ?? sessionIdx + 1) / 2)) === week);
       return {
         id: moduleId(week),
         name: `Week ${week}: ${sessions[0]?.title ?? spec.title}`,
@@ -115,8 +114,8 @@ export function generatePlanFromTemplate(
     const sessionIdx = profile.sessions.findIndex((candidate) => candidate.objectiveIds.includes(objective.id));
     const session = profile.sessions[sessionIdx];
     if (sessionIdx === -1 || session === undefined) reject('objectives', `Objective ${objective.id} is not scheduled`);
-    const week = session.week ?? Math.ceil(session.sessionIndex / 2);
-    const placement = lessonOnly ? session.sessionIndex : week;
+    const lessonIndex = session.sessionIndex ?? sessionIdx + 1;
+    const placement = lessonOnly ? lessonIndex : (session.week ?? Math.ceil(lessonIndex / 2));
     if (placement === undefined) reject('objectives', `Objective ${objective.id} has no placement`);
     return {
       id: objective.id,
@@ -151,17 +150,15 @@ export function generatePlanFromTemplate(
         prerequisiteObjectiveIds: kind === 'practice' ? prerequisites : [],
       };
     });
-    const week = session.week ?? Math.ceil((index + 1) / 2);
-    const day = session.session ?? ((index % 2) + 1);
-    const placement = lessonOnly ? session.sessionIndex : week;
+    const lessonIndex = session.sessionIndex ?? index + 1;
+    const placement = lessonOnly ? lessonIndex : (session.week ?? Math.ceil(lessonIndex / 2));
     if (placement === undefined) reject('sessions', `Session ${session.id} has no placement`);
     return {
       id: session.id,
       moduleId: moduleId(placement),
       index,
-      lessonIndex: session.sessionIndex,
-      week,
-      day,
+      lessonIndex,
+      ...(lessonOnly ? {} : { week: session.week ?? Math.ceil(lessonIndex / 2), day: session.session ?? ((index % 2) + 1) }),
       title: session.title,
       blocks,
       theoryObjectiveIds: session.phase === 'concept_mastery' ? [...session.objectiveIds]
@@ -173,9 +170,8 @@ export function generatePlanFromTemplate(
 
   return {
     templateVersion: context.templateVersion,
-    lessonCount: count,
-    lessonMinutes: minutesPerSession as 60 | 120,
-    weeks: legacyWeeks,
+    ...(lessonOnly ? { lessonCount: count, lessonMinutes: minutesPerSession as 60 | 120 } : {}),
+    ...(lessonOnly ? {} : { weeks: legacyWeeks! }),
     sessionCount,
     minutesPerSession,
     ...(legacySchedule === undefined ? {} : { schedule: legacySchedule }),

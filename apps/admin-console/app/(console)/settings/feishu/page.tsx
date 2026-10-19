@@ -88,6 +88,7 @@ export default function FeishuSettingsPage() {
   const [online, setOnline] = useState(true);
   const cancelPolling = useRef<(() => void) | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restartQrRef = useRef<(() => void) | null>(null);
   const activeSessionId = useRef<string | null>(null);
   const qrRequestId = useRef(0);
   const saveRetry = useRef(createIdempotentRetryKey());
@@ -158,8 +159,13 @@ export default function FeishuSettingsPage() {
       setRemainingSeconds(seconds);
       if (seconds === 0) {
         stopPolling();
-        setConfig((current) => ({ ...current, status: 'error', qrCodeUrl: undefined, qrCodeDataUrl: undefined }));
-        setQrError('This authorization session expired. Start a new session to try again.');
+        // Feishu device codes cannot be extended server-side. Immediately ask
+        // for a fresh code so the QR stays available instead of disappearing
+        // at the expiry boundary (the previous code remains only as a visual
+        // placeholder until the replacement arrives).
+        setConfig((current) => ({ ...current, status: 'error' }));
+        setQrError('Refreshing the authorization code…');
+        void restartQrRef.current?.();
       }
     }, 1000);
     return () => {
@@ -255,6 +261,7 @@ export default function FeishuSettingsPage() {
       if (requestId === qrRequestId.current) setQrLoading(false);
     }
   };
+  restartQrRef.current = startQr;
 
   const sendTestReport = async () => {
     if (!config.reportAssistantId) {

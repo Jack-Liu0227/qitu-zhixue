@@ -46,10 +46,19 @@ it('new 16-session API path consumes the resolved version content and does not o
     teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2',
   });
   const generated = await h.plans.generatePlan(STUDENT, {
-    interest: '光学证据链', weeks: 8, sessionCount: 16, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
   });
   assert.equal(generated.plan.templateVersion, report.versionId);
+  assert.equal(generated.plan.weeks, undefined);
+  assert.equal(generated.plan.lessonCount, 16);
+  assert.equal(generated.plan.lessonMinutes, 60);
   assert.equal(generated.plan.sessions.length, 16);
+  assert.deepEqual(generated.plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
+  for (const module of generated.plan.modules) assert.equal(module.weekIndex, undefined);
+  for (const session of generated.plan.sessions) {
+    assert.equal(session.week, undefined);
+    assert.equal(session.day, undefined);
+  }
   assert.equal(generated.plan.projectId, null);
   assert.equal(generated.plan.sessions[0]?.title, '光的宏观现象与观察指标');
   assert.equal(generated.plan.sessions[9]?.title, '折射角与物像距数据采集');
@@ -65,7 +74,7 @@ it('new 16-session API path consumes the resolved version content and does not o
   assert.deepEqual(sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements,
     ['包含装置图、数据表、拟合和 CER 的报告版本引用', 'rubric 对照、误差分析与结论边界']);
   const reread = await h.plans.generatePlan(STUDENT, {
-    interest: '光学证据链', weeks: 8, sessionCount: 16, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
   });
   assert.equal(reread.deduplicated, true);
   assert.equal(reread.plan.id, generated.plan.id);

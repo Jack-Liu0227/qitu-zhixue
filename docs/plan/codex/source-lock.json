@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "checkedOn": "2026-10-20",
-  "codeBaseline": "43a0307eb776185d7561f213d75b3d7312616aa9",
+  "codeBaseline": "0b07929d06f88a947090e4cd080698bb43012776",
   "method": "Direct HTTPS and GitHub API tree/pinned raw-file verification; Grok used for discovery only and its zero-source summaries excluded as evidence; no scripts executed, no upstream packages installed.",
   "records": [
     {
@@ -498,6 +498,78 @@
       "bytes": 1071,
       "sha256": "abc17bdeb06efc67c4e19e961ead7c407936abf161a2a2fad25e0865d52c14f2",
       "fetchedAt": "2026-10-19T17:20:32.494+00:00"
+    },
+    {
+      "id": "gcmdnt90-Jack_Skills--ai-literacy-course-SKILL-md",
+      "url": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/skills/ai-literacy-course/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/skills/ai-literacy-course/SKILL.md",
+      "status": 200,
+      "bytes": 9479,
+      "sha256": "fb08139acac479a4a0d334fc472a86c6b7f281b360d949b4af81a97184e339b2",
+      "fetchedAt": "2026-10-19T18:29:37.9833617+00:00"
+    },
+    {
+      "id": "gcmdnt90-Jack_Skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/gcmdnt90/Jack_Skills/a0258db8c5b84df385f2a75a47990681658bfda1/LICENSE",
+      "status": 200,
+      "bytes": 1072,
+      "sha256": "c5509b9045492655679c049e71f2ced12efaa0bd04f77d2a8b311e7153c54f3b",
+      "fetchedAt": "2026-10-19T18:29:38.1895201+00:00"
+    },
+    {
+      "id": "Kirisame1969-dsh-project-based-learning--SKILL-md",
+      "url": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md",
+      "status": 200,
+      "bytes": 8503,
+      "sha256": "36902d35f13aa30363e7c675566b36cf6897bb38187fa5e79b5b88b3b0cb2787",
+      "fetchedAt": "2026-10-19T18:32:29.1593693+00:00"
+    },
+    {
+      "id": "Kirisame1969-dsh-project-based-learning--LICENSE",
+      "url": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/Kirisame1969/dsh-project-based-learning/2e0d8d1942e84221c514d455016c5ea402447cec/LICENSE",
+      "status": 200,
+      "bytes": 1069,
+      "sha256": "202f9ef29d5911bf86dedd57f9d12d99ca8a5de0353d259449e33a7cb5548372",
+      "fetchedAt": "2026-10-19T18:32:29.4699984+00:00"
+    },
+    {
+      "id": "full-stack-skills-teaching-skills--learning-assessor-SKILL-md",
+      "url": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/skills/learning-assessor/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/skills/learning-assessor/SKILL.md",
+      "status": 200,
+      "bytes": 2707,
+      "sha256": "297ccdb261db2677239536365eeb8461539ecb687484deb6c2c97bc3b5137ec7",
+      "fetchedAt": "2026-10-19T18:32:29.7362794+00:00"
+    },
+    {
+      "id": "full-stack-skills-teaching-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/full-stack-skills/teaching-skills/97d1da15c82b1131011f90011c19f91e323d39b3/LICENSE",
+      "status": 200,
+      "bytes": 11339,
+      "sha256": "9788c988b60209ecf085939b225ef19f4b0313b35df22c230469d4ced2061938",
+      "fetchedAt": "2026-10-19T18:32:30.0412810+00:00"
+    },
+    {
+      "id": "JcDizzy-teaching-programming--SKILL-md",
+      "url": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54c/SKILL.md",
+      "status": 200,
+      "bytes": 16073,
+      "sha256": "77990349be5286037767cd6a622ea283368687c0ac3989c3136fa882605f86f6",
+      "fetchedAt": "2026-10-19T18:32:30.4156368+00:00"
+    },
+    {
+      "id": "JcDizzy-teaching-programming--LICENSE",
+      "url": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/JcDizzy/teaching-programming/b4cd31cf427a1013db5bd88e8e3cce54c/LICENSE",
+      "status": 200,
+      "bytes": 1063,
+      "sha256": "41f3a939666c0e7d01a063dde76c81433cbb3ffa19a12df263c4f12570431eec",
+      "fetchedAt": "2026-10-19T18:32:30.7342380+00:00"
     }
   ],
   "repositories": [
@@ -602,6 +674,54 @@
         "node_id": "MDc6TGljZW5zZTEz"
       },
       "treeTruncated": false
+    },
+    {
+      "repository": "gcmdnt90/Jack_Skills",
+      "commit": "a0258db8c5b84df385f2a75a47990681658bfda1",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "Kirisame1969/dsh-project-based-learning",
+      "commit": "2e0d8d1942e84221c514d455016c5ea402447cec",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "full-stack-skills/teaching-skills",
+      "commit": "97d1da15c82b1131011f90011c19f91e323d39b3",
+      "licenseMetadata": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "JcDizzy/teaching-programming",
+      "commit": "b4cd31cf427a1013db5bd88e8e3cce54bde8a54c",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
     }
   ],
   "grokSearches": [
@@ -640,13 +760,43 @@
       "sourcesCount": 0,
       "sourceListCount": 0,
       "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "479a4fd721b2",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "5387ad0ce3d6",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "85be27f0143b",
+      "sourcesCount": 4,
+      "sourceListCount": 4,
+      "decision": "Excluded as evidence; returned citations were unrelated and the result described a hypothetical repository"
+    },
+    {
+      "sessionId": "37fbbe968e3f",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence; discovery lead only"
+    },
+    {
+      "sessionId": "5304b0750cb1",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence; discovery lead only"
     }
   ],
   "limitations": [
     "HTTP 200/hash proves fetched bytes, not content safety, permission to copy, server availability, reproducible model output or learning effectiveness.",
     "Skill bodies and cited licenses selectively read; resources/scripts/dependencies not exhaustively audited.",
     "No upstream full text is stored in this repository.",
-    "The 2026-10-20 Grok discovery searches returned sources_count: 0 and were excluded as evidence; candidate facts were checked against GitHub API and pinned raw files instead.",
+    "The 2026-10-20 Grok searches included one result with four unrelated citations and multiple sources_count: 0 responses; all were excluded as evidence. Candidate facts were checked against GitHub API and pinned raw files.",
     "Grok planning session 29fe8679925a lacked exposed complexity_assessment phase; searches ran and returned no sources."
   ],
   "initialGroundingBaseline": "8409043a76d44ff0bfef2d58af085e2e1d992071",

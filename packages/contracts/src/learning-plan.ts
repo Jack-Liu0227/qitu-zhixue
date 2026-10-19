@@ -117,7 +117,7 @@ export interface LearningObjectiveView {
 export interface LessonModuleView {
   id: string;
   name: string;
-  weekIndex: number;
+  weekIndex?: number;
   /** One-based lesson order for lesson-first plans. */
   lessonIndex?: number;
   objective: string;
@@ -132,8 +132,8 @@ export interface LessonSessionView {
   index: number;
   /** One-based lesson order. */
   lessonIndex?: number;
-  week: number;
-  day: number;
+  week?: number;
+  day?: number;
   title: string;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
@@ -150,7 +150,7 @@ export interface LearningPlanView {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks: LearningPlanWeeks;
+  weeks?: LearningPlanWeeks;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;

@@ -161,6 +161,25 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     return this.assembleBundle(this.db, plan);
   }
 
+  override async findPlanByLessonSignature(
+    studentUserId: string,
+    interest: string,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
+    templateVersion: string,
+    signatureKey?: string,
+  ): Promise<PlanBundle | null> {
+    const [plan] = await this.db.select().from(learningPlans).where(and(
+      eq(learningPlans.studentUserId, studentUserId),
+      eq(learningPlans.interest, interest),
+      eq(learningPlans.lessonCount, lessonCount),
+      eq(learningPlans.lessonMinutes, lessonMinutes),
+      eq(learningPlans.templateVersionId, templateVersion),
+      ...(signatureKey === undefined ? [] : [eq(learningPlans.idempotencyKey, signatureKey)]),
+    )).orderBy(asc(learningPlans.createdAt)).limit(1);
+    return plan === undefined ? null : this.assembleBundle(this.db, plan);
+  }
+
   async createPlan(bundle: PlanBundle): Promise<void> {
     try {
       await withTransaction(this.db, async (tx) => {
@@ -173,7 +192,9 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           projectId: null,
           interest: bundle.plan.interest,
           goal: bundle.plan.goal,
-          weeks: bundle.plan.weeks,
+          ...(bundle.plan.weeks === undefined ? {} : { weeks: bundle.plan.weeks }),
+          ...(bundle.plan.lessonCount === undefined ? {} : { lessonCount: bundle.plan.lessonCount }),
+          ...(bundle.plan.lessonMinutes === undefined ? {} : { lessonMinutes: bundle.plan.lessonMinutes }),
           minutesPerSession: bundle.plan.minutesPerSession,
           templateVersionId: bundle.plan.templateVersion,
           status: bundle.plan.status,
@@ -190,7 +211,8 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               id: module.id,
               planId: module.planId,
               name: module.name,
-              weekIndex: module.weekIndex,
+              ...(module.weekIndex === undefined ? {} : { weekIndex: module.weekIndex }),
+              ...(module.lessonIndex === undefined ? {} : { lessonIndex: module.lessonIndex }),
               objective: module.objective,
               ordinal: module.ordinal,
             })),
@@ -217,6 +239,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               planId: session.planId,
               moduleId: session.moduleId,
               index: session.index,
+              ...(session.lessonIndex === undefined ? {} : { lessonIndex: session.lessonIndex }),
               title: session.title ?? null,
               blocks: session.blocks,
               theoryObjectiveIds: [...session.theoryObjectiveIds],
@@ -230,8 +253,11 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
+        const scheduleIdentity = bundle.plan.weeks === undefined
+          ? `lesson-${bundle.plan.lessonCount}`
+          : `week-${bundle.plan.weeks}`;
         throw new LearningPlanStoreConflictError(
-          `计划签名冲突：${bundle.plan.studentUserId}/${bundle.plan.interest}/${bundle.plan.weeks}`,
+          `计划签名冲突：${bundle.plan.studentUserId}/${bundle.plan.interest}/${scheduleIdentity}`,
         );
       }
       throw error;
@@ -917,7 +943,9 @@ function mapPlan(row: PlanRow): PlanRecord {
     projectId: row.projectId,
     interest: row.interest,
     goal: row.goal,
-    weeks: row.weeks === 8 ? 8 : 4,
+    weeks: row.weeks === null ? undefined : row.weeks === 8 ? 8 : 4,
+    lessonCount: row.lessonCount ?? undefined,
+    lessonMinutes: row.lessonMinutes === 120 ? 120 : row.lessonMinutes === 60 ? 60 : undefined,
     minutesPerSession: row.minutesPerSession,
     templateVersion: row.templateVersionId ?? CURRICULUM_TEMPLATE_VERSION,
     status: row.status as LearningPlanStatus,
@@ -935,7 +963,8 @@ function mapModule(row: ModuleRow): ModuleRecord {
     id: row.id,
     planId: row.planId,
     name: row.name,
-    weekIndex: row.weekIndex,
+    weekIndex: row.weekIndex ?? undefined,
+    lessonIndex: row.lessonIndex ?? undefined,
     objective: row.objective,
     ordinal: row.ordinal,
   };
@@ -960,6 +989,7 @@ function mapSession(row: SessionRow): SessionRecord {
     planId: row.planId,
     moduleId: row.moduleId,
     index: row.index,
+    lessonIndex: row.lessonIndex ?? undefined,
     title: row.title,
     blocks: (row.blocks as SessionBlock[]) ?? [],
     theoryObjectiveIds: row.theoryObjectiveIds ?? [],

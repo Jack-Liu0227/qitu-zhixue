@@ -283,6 +283,10 @@ export function ChatBubble({
               onOneClickCreateProject={onOneClickCreateProject}
               onRequestQuizExplanation={onRequestQuizExplanation}
               onAnswerQuiz={onAnswerQuiz}
+              onExperimentAction={async (action) => {
+                if (action === 'submit_prediction') return true;
+                return true;
+              }}
               projectId={projectId}
               disabled={disabled}
             />

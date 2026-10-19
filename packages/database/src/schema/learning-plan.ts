@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -40,7 +41,9 @@ export const learningPlans = pgTable(
     interest: text('interest').notNull(),
     goal: text('goal').notNull(),
     /** 4 或 8；由服务端校验。 */
-    weeks: integer('weeks').notNull(),
+    weeks: integer('weeks'),
+    lessonCount: integer('lesson_count'),
+    lessonMinutes: integer('lesson_minutes'),
     minutesPerSession: integer('minutes_per_session').notNull().default(60),
     /** 冻结引用；确认意图后写入，之后不可漂移。 */
     templateVersionId: text('template_version_id'),
@@ -53,6 +56,20 @@ export const learningPlans = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    scheduleShapeCheck: check(
+      'learning_plans_schedule_shape_check',
+      sql`(
+        (${table.weeks} IS NOT NULL AND ${table.lessonCount} IS NULL AND ${table.lessonMinutes} IS NULL)
+        OR (
+          ${table.weeks} IS NULL
+          AND ${table.lessonCount} IS NOT NULL
+          AND ${table.lessonCount} BETWEEN 1 AND 128
+          AND ${table.lessonMinutes} IS NOT NULL
+          AND ${table.lessonMinutes} IN (60, 120)
+          AND ${table.minutesPerSession} = ${table.lessonMinutes}
+        )
+      )`,
+    ),
     idempotencyUniqueIdx: uniqueIndex('learning_plans_idempotency_unique_idx').on(
       table.idempotencyKey,
     ),
@@ -83,12 +100,20 @@ export const learningModules = pgTable(
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    weekIndex: integer('week_index').notNull(),
+    weekIndex: integer('week_index'),
+    lessonIndex: integer('lesson_index'),
     objective: text('objective').notNull().default(''),
     ordinal: integer('ordinal').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    placementCheck: check(
+      'learning_modules_placement_check',
+      sql`(
+        (${table.weekIndex} IS NOT NULL AND ${table.lessonIndex} IS NULL)
+        OR (${table.weekIndex} IS NULL AND ${table.lessonIndex} IS NOT NULL AND ${table.lessonIndex} > 0)
+      )`,
+    ),
     planOrdinalUniqueIdx: uniqueIndex('learning_modules_plan_ordinal_unique_idx').on(
       table.planId,
       table.ordinal,
@@ -145,6 +170,7 @@ export const learningSessions = pgTable(
       .notNull()
       .references(() => learningModules.id, { onDelete: 'cascade' }),
     index: integer('index').notNull(),
+    lessonIndex: integer('lesson_index'),
     /** Frozen at generation; historical rows keep their legacy display title. */
     title: text('title'),
     /** `{ kind, minutes }[]`；服务端校验合计 = 每节时长。 */
