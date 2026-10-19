@@ -106,7 +106,10 @@ export interface GeneratedObjective {
 export interface GeneratedModule {
   id: string;
   name: string;
-  weekIndex: number;
+  /** One-based lesson order for lesson-first templates. */
+  lessonIndex?: number;
+  /** Legacy calendar projection; never set by lesson-only templates. */
+  weekIndex?: number;
   objective: string;
   ordinal: number;
 }
@@ -132,8 +135,12 @@ export interface GeneratedSession {
   id: string;
   moduleId: string;
   index: number;
-  week: number;
-  day: number;
+  /** One-based lesson order. `index` remains the stable zero-based runtime key. */
+  lessonIndex?: number;
+  /** Legacy calendar placement; omitted by lesson-only templates. */
+  week?: number;
+  /** Legacy calendar placement; omitted by lesson-only templates. */
+  day?: number;
   title: string;
   blocks: GeneratedBlock[];
   theoryObjectiveIds: string[];
@@ -143,7 +150,11 @@ export interface GeneratedSession {
 
 export interface GeneratedPlan {
   templateVersion: string;
-  weeks: LearningPlanWeeks;
+  /** Canonical lesson-first schedule. */
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
+  /** Legacy calendar schedule, present only for old generators/adapters. */
+  weeks?: LearningPlanWeeks;
   /** 显式课次数量。4 或 8；与 `weeks` 并存，不互相推导。 */
   sessionCount: PlanSessionCount;
   minutesPerSession: number;
@@ -161,7 +172,11 @@ export interface GeneratedPlan {
 
 export interface GeneratePlanInput {
   interest: string;
-  weeks: LearningPlanWeeks;
+  /** Canonical lesson-first input. */
+  lessonCount?: number;
+  lessonMinutes?: 60 | 120;
+  /** Legacy calendar input retained for historical plans only. */
+  weeks?: LearningPlanWeeks;
   goal: string | null;
   /** New PBL schedule. Omitted requests retain legacy 5 x 60-minute semantics. */
   schedule?: PblSchedule;
@@ -253,6 +268,11 @@ export class DeterministicPlanGenerator extends PlanGenerator {
   generate(input: GeneratePlanInput): GeneratedPlan {
     const interest = input.interest.trim();
     const weeks = input.weeks;
+    if (weeks !== 4 && weeks !== 8) {
+      throw new PlanGenerationError('legacy generator requires weeks', [
+        { path: 'weeks', message: 'weeks is required for the legacy generator' },
+      ]);
+    }
     const schedule = input.schedule;
     const minutesPerSession = schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
     const explicitCount = input.sessionCount;
@@ -311,6 +331,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
           id: `sess-${index + 1}`,
           moduleId,
           index,
+          lessonIndex: index + 1,
           week,
           day,
           title: `理论 ${ordinal + 1}：${theory.name}`,
@@ -343,6 +364,7 @@ export class DeterministicPlanGenerator extends PlanGenerator {
         id: `sess-${index + 1}`,
         moduleId,
         index,
+        lessonIndex: index + 1,
         week,
         day,
         title: `实践 ${ordinal + 1}：${practice.name}`,
@@ -361,6 +383,8 @@ export class DeterministicPlanGenerator extends PlanGenerator {
 
     return {
       templateVersion: CURRICULUM_TEMPLATE_VERSION,
+      lessonCount: sessionCount,
+      lessonMinutes: minutesPerSession as 60 | 120,
       weeks,
       sessionCount: sessionCount as PlanSessionCount,
       minutesPerSession,

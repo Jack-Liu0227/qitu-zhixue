@@ -55,13 +55,21 @@ The current toolbar uses a live metadata catalog and is not evidence that a mode
 
 ## Skills conclusion
 
-There is currently **one installed teaching Skill**:
+The repository now contains **nine teaching Skill source packages**: the established baseline and eight new candidates. The current directory-based runtime discovers all nine non-empty packages. Default assistant seeds still bind only `tutor-guided-learning`; the new files are not automatically assigned to assistants, and discovery does not provide the still-planned immutable artifact review or project-level pinning contract.
 
 - `.agents/skills/tutor-guided-learning/SKILL.md` (`tutor-guided-learning@1.0.0`)
+- `.agents/skills/pbl-driving-question/SKILL.md`
+- `.agents/skills/pbl-hypothesis-coach/SKILL.md`
+- `.agents/skills/pbl-concept-probe/SKILL.md`
+- `.agents/skills/pbl-experiment-design/SKILL.md`
+- `.agents/skills/pbl-data-literacy/SKILL.md`
+- `.agents/skills/pbl-cer-coach/SKILL.md`
+- `.agents/skills/pbl-source-literacy/SKILL.md`
+- `.agents/skills/pbl-reflection-coach/SKILL.md`
 
-The IDs listed in `docs/plan/codex/skills-catalog.md` are reviewed candidates, not installed Skills. In particular, `pbl-driving-question`, `pbl-hypothesis-coach`, `pbl-concept-probe`, `pbl-experiment-design`, `pbl-data-literacy`, `pbl-cer-coach`, `pbl-source-literacy`, and `pbl-reflection-coach` do not currently have runtime files. They must not be selected or silently normalized by the client.
+The eight new directories are source packages only; their presence is not evidence of completed adversarial evaluation or immutable artifact approval. They are now visible to the directory-backed runtime catalog and can be explicitly bound by Admin; do not select them by fallback or silently normalize their IDs. Follow the review order below and require explicit Admin binding only after each skill's dependencies and readiness checks pass.
 
-Recommended order for adding Skills:
+Recommended review and publication order:
 
 1. `pbl-driving-question` and `pbl-hypothesis-coach` for exploration evidence.
 2. `pbl-concept-probe` for TheoryMastered preparation and remediation.
@@ -70,4 +78,4 @@ Recommended order for adding Skills:
 5. `pbl-source-literacy` only after project-scoped IMA provenance is live.
 6. `optics-wave-inquiry` only after registered diffraction/scattering actions and observations are persisted.
 
-Each new Skill needs a canonical directory, reviewed `SKILL.md`, version/digest, license/provenance, adversarial evaluation, publication state and explicit assistant binding. Adding a row to the candidate document or adding a database ID is not installation. The 13 historical unknown Skill bindings found in production remain unresolved by design; they need Admin review rather than a fallback alias.
+Before a candidate is publishable it needs a canonical directory, reviewed `SKILL.md`, version/package digest, license/provenance, adversarial evaluation, publication state and explicit assistant binding. A source directory alone is not a published runtime capability. The 13 historical unknown Skill bindings found in production remain unresolved by design; they need Admin review rather than a fallback alias.

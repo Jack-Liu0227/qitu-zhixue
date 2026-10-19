@@ -245,17 +245,17 @@ export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProject
     knowledgeType: objective.knowledgeType,
     conceptId: objective.conceptId,
   })),
-  schedules: [{ durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60, moduleCount: 8, sessionCount: 16 }],
+  // The current curriculum is lesson-first. Calendar weeks are deliberately
+  // absent from the governed template; lesson order is carried by sessionIndex.
+  schedules: [{ lessonCount: 16, lessonMinutes: 60 }],
   curriculum: {
     profiles: [{
       id: OPTICS_16_PROFILE_ID,
-      schedule: { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60 },
+      schedule: { lessonCount: 16, lessonMinutes: 60 },
       sessions: SESSIONS.map((session, index) => ({
         ...session,
         id: `optics-v2-session-${index + 1}`,
         sessionIndex: index + 1,
-        week: Math.floor(index / 2) + 1,
-        session: index % 2 + 1,
         durationMinutes: 60,
       })),
     }],

@@ -386,11 +386,12 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       assert.equal(s.practiceUnlocked, false, 'TheoryMastered 前实践课保持锁定');
     }
 
-    // 衍射与散射在实践期第 5 周与第 6 周模块中（modules[4], modules[5]）
+    // 实践期第 5 周覆盖光路搭建与数据采集，第 6 周覆盖衍射与散射仿真
     const week5Module = generated.plan.modules[4];
     const week6Module = generated.plan.modules[5];
-    assert.ok(week5Module?.objective.includes('衍射'), '第 5 周覆盖单缝衍射条纹仿真');
-    assert.ok(week6Module?.name.includes('散射') || week6Module?.objective.includes('散射'), '第 6 周覆盖微粒介质散射仿真');
+    assert.ok(week5Module?.name.includes('搭建') || week5Module?.objective.includes('校准') || week5Module?.objective.includes('采集'), '第 5 周覆盖搭建与数据采集');
+    assert.ok(week6Module?.name.includes('单缝衍射') || week6Module?.objective.includes('衍射'), '第 6 周覆盖单缝衍射条纹探究');
+    assert.ok(week6Module?.objective.includes('散射'), '第 6 周覆盖微粒介质散射探究');
   });
 
   it('解析不到生效绑定时响亮失败（CURRICULUM_TEMPLATE_UNAVAILABLE），不静默回退', async () => {

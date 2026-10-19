@@ -112,6 +112,10 @@ export type TutorReplyBlock =
       rationaleHint?: string;
       /** 已判分结果；未作答时缺省。由服务端写入，客户端不得自行推断。 */
       graded?: { correct: boolean; attempts: number; hintLevel: TutorHintLevel };
+      /** 标记本题是否为 L3 答错后派生的降维微步题 */
+      isDecomposed?: boolean;
+      /** 注入自学生实测或仿真的上下文参数 */
+      parameterContext?: Record<string, string | number>;
     }
   /**
    * 动态物理/算法参数探索实验卡片 (如动能定理控制变量法实验)。
@@ -143,7 +147,27 @@ export type TutorReplyBlock =
       specVersion: string;
       objectiveId: string;
       sessionIndex: number;
-      allowedActions: readonly ('set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
+      allowedActions: readonly ('submit_prediction' | 'set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
+      predictionGate?: {
+        required: boolean;
+        submitted: boolean;
+        hypothesis?: string;
+      };
+    }
+  /**
+   * 协诊导师旁白块：同一 Turn 内挂载非主讲导师的跨阶段诊断建议
+   */
+  | {
+      kind: 'aside';
+      copilot: {
+        id: string;
+        name: string;
+        role: string;
+        avatar?: string;
+      };
+      targetPhase: 'exploration' | 'concept_mastery' | 'guided_practice' | 'deliverable_review';
+      content: string;
+      evidenceRef?: string;
     }
   /**
    * 学生或导师发送的图片与文件附件。

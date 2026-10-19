@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import {
   createNoopTutorContextReader,
@@ -55,6 +55,7 @@ import { KnowledgeRetrievalService } from '../knowledge/knowledge-retrieval.serv
 import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
+import { TeacherService } from '../teacher/teacher.service';
 import { buildProjectInteractionBlocks } from './tutor-interactive-blocks';
 import { buildProjectOpeningBlocks } from './tutor-opening';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
@@ -124,8 +125,11 @@ export interface AuditEntry {
     | 'tutor.escalate'
     | 'tutor.idempotent_replay'
     | 'tutor.guard_block'
-    | 'tutor.recommendation';
+    | 'tutor.recommendation'
+    | 'tutor.teacher_intervention';
   detail: string;
+  actorRole?: 'student' | 'teacher' | 'admin' | 'system';
+  idempotencyKey?: string;
 }
 
 /** No-project sessions are exploration sessions; they never inherit a demo project. */
@@ -269,6 +273,7 @@ export class TutorService {
     @Optional() @Inject(DATABASE_TOKEN) database?: import('@qitu/database').Database | null,
     /** A1：模板绑定冻结快照解析；作为最后参数注入，保持既有位置化构造兼容。 */
     @Optional() private readonly templateBindings?: TemplateBindingService,
+    @Optional() private readonly teacherService?: TeacherService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -875,6 +880,167 @@ export class TutorService {
       return [];
     } catch {
       return [];
+    }
+  }
+
+  /**
+   * 跨阶段双导师协诊：在实践阶段检测到物理概念归因或操作困惑时，
+   * 动态从冻结团队快照解析 concept 导师，挂载 aside 旁白块。
+   */
+  private async buildCoPilotAsideBlock(
+    record: TutorSessionRecord,
+    projectContext: TutorProjectContext | null,
+    primaryAuthorId: string,
+    studentInput?: string,
+  ): Promise<TutorReplyBlock | null> {
+    if (!projectContext?.project || !record.projectId) return null;
+    const stage = projectContext.project.stage;
+    if (stage !== 'practice_ready' && stage !== 'practice_building') return null;
+
+    const teamContext = await this.resolveTeamContext(
+      record.projectId,
+      projectContext.project.templateVersionId ?? null,
+      stage,
+      record.ownerId,
+    );
+    if (!teamContext.teamConfig) return null;
+    const conceptPhase = teamContext.teamConfig.pblSpec?.phases?.find((p) => p.phase === 'concept_mastery');
+    const conceptAssistantId = conceptPhase?.assignedAssistantId;
+    if (!conceptAssistantId || conceptAssistantId === primaryAuthorId) return null;
+
+    const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
+    const assistant = assistants.find((candidate) => candidate.id === conceptAssistantId) ?? this.findBuiltinAssistant(conceptAssistantId);
+    if (!assistant || !assistant.enabled) return null;
+
+    const query = (studentInput ?? '').toLowerCase();
+    const isMisconception = query.includes('越来越窄') || query.includes('为什么变宽') || query.includes('反比') || query.includes('条纹') || query.includes('缝宽');
+    if (!isMisconception) return null;
+
+    return {
+      kind: 'aside',
+      copilot: {
+        id: assistant.id,
+        name: assistant.name,
+        role: '概念溯源导师',
+        ...(assistant.avatar ? { avatar: assistant.avatar } : {}),
+      },
+      targetPhase: 'concept_mastery',
+      content: '观察到当前缝宽与条纹变化反常？回顾在概念阶段推导的公式：$\\sin\\theta = \\frac{\\lambda}{a}$。当狭缝宽度 $a$ 减小时，第一极小值位置角 $\\theta$ 变大，中央明纹宽度将如何变化？',
+    };
+  }
+
+  /**
+   * 教师端线下介入回流：重置熔断与提示阶梯，插入协同鼓励回合。
+   */
+  async applyTeacherIntervention(
+    sessionId: string,
+    teacherId: string,
+    dto: {
+      actionType: '线下点拨' | '降低难度' | '定向放行';
+      teacherNotes?: string;
+    },
+    teacherRole: 'teacher' | 'admin' = 'teacher',
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; resumedAt: string }> {
+    const execute = async (): Promise<{ success: boolean; resumedAt: string }> =>
+      this.applyTeacherInterventionOnce(sessionId, teacherId, dto, teacherRole, idempotencyKey);
+    if (idempotencyKey === undefined) {
+      if (this.durable) throw new ForbiddenException('教师介入必须携带 Idempotency-Key');
+      return execute();
+    }
+    if (this.idempotencyStore === undefined) {
+      if (this.durable) throw new ServiceUnavailableException('幂等存储不可用');
+      return execute();
+    }
+    const result = await this.idempotencyStore.execute(
+      `tutor.teacher-intervention:${sessionId}`,
+      idempotencyKey,
+      hashRequest({ sessionId, teacherId, teacherRole, dto }),
+      async () => ({ body: await execute() }),
+    );
+    return result.body;
+  }
+
+  private async applyTeacherInterventionOnce(
+    sessionId: string,
+    teacherId: string,
+    dto: { actionType: '线下点拨' | '降低难度' | '定向放行'; teacherNotes?: string },
+    teacherRole: 'teacher' | 'admin',
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; resumedAt: string }> {
+    const releaseTurnLock = await this.acquireTurnLock(sessionId);
+    try {
+      const snapshot = this.durable ? await this.store.findById(sessionId) : this.sessions.get(sessionId);
+      if (!snapshot) throw new NotFoundException('会话不存在');
+      const session = 'lastHintLevel' in snapshot
+        ? snapshot as TutorSessionRecord
+        : this.hydrate(snapshot);
+      if (teacherRole === 'teacher') {
+        if (this.teacherService === undefined) throw new ForbiddenException('教师对象权限服务不可用');
+        await this.teacherService.assertTeacherCanAccessStudent(teacherId, session.ownerId);
+      }
+
+      const nextHintLevel: TutorHintLevel = dto.actionType === '降低难度' ? 4 : 1;
+      const resumeBlocks: TutorReplyBlock[] = [
+        {
+          kind: 'text',
+          text: `老师已完成**${dto.actionType}**。${dto.teacherNotes ? `寄语：“${dto.teacherNotes}”` : '理清思路后，我们继续推进！'}`,
+        },
+      ];
+
+      const seq = session.lastSeq + 1;
+      const resumeTurn: TutorTurnRecord = {
+        turnId: `${sessionId}:assistant:${seq}`,
+        role: 'assistant',
+        seq,
+        createdAt: new Date().toISOString(),
+        stageBefore: session.turns[session.turns.length - 1]?.stageAfter
+          ?? session.turns[session.turns.length - 1]?.stageBefore
+          ?? null,
+        stageAfter: session.turns[session.turns.length - 1]?.stageAfter
+          ?? session.turns[session.turns.length - 1]?.stageBefore
+          ?? null,
+        pedagogicMove: 'scaffold',
+        hintLevel: nextHintLevel,
+        expectedEvidence: dto.actionType === '定向放行' ? '进入下一阶段探究' : '完成降维引导或重新作答',
+        promptVersion: 'tutor.intervention.v1',
+        evidenceRef: `audit:teacher_intervention:${teacherId}`,
+        modality: 'text',
+        author: {
+          id: 'coach-intervention',
+          name: '班主任介入协同',
+          role: 'coach',
+        },
+        blocks: resumeBlocks,
+      };
+
+      if (this.durable) {
+        await this.store.appendTurns({
+          sessionId,
+          expectedLastSeq: session.lastSeq,
+          newLastSeq: seq,
+          turns: [resumeTurn],
+        });
+      }
+
+      session.lastSeq = seq;
+      session.lastHintLevel = nextHintLevel;
+      session.stallCount = 0;
+      session.escalated = false;
+
+      await this.commitAudit({
+        sessionId,
+        projectId: session.projectId,
+        actorId: teacherId,
+        action: 'tutor.teacher_intervention',
+        actorRole: teacherRole,
+        idempotencyKey,
+        detail: `教师介入：${dto.actionType}，重置提示阶梯为 ${nextHintLevel}`,
+      });
+
+      return { success: true, resumedAt: resumeTurn.createdAt };
+    } finally {
+      releaseTurnLock();
     }
   }
 
@@ -1581,6 +1747,18 @@ export class TutorService {
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
 
+    // 跨阶段双导师协诊旁白 (aside)
+    const asideBlock = await this.buildCoPilotAsideBlock(
+      record,
+      projectContext,
+      conversationAssistantId,
+      request.content ?? request.optionLabel,
+    );
+    if (asideBlock !== null) {
+      assistantBlocks = [...assistantBlocks, asideBlock];
+      events.push({ seq: ++nextSeq, event: { type: 'block', block: asideBlock } });
+    }
+
     // Extraction is part of this idempotent turn and must precede recommendation lookup.
     if (record.projectId === null) {
       await this.updateExplorationIntent(record, request.content ?? request.optionLabel, request.idempotencyKey);
@@ -1923,11 +2101,12 @@ export class TutorService {
     if (!this.durable || this.auditWriter === undefined) return;
     await this.auditWriter.write({
       actorId: entry.actorId === 'system' ? null : entry.actorId,
-      actorRole: entry.actorId === 'system' ? null : 'student',
+      actorRole: entry.actorId === 'system' ? null : (entry.actorRole ?? 'student'),
       action: entry.action,
       targetType: 'tutor_session',
       targetId: entry.sessionId,
       detail: { projectId: entry.projectId, summary: entry.detail },
+      ...(entry.idempotencyKey ? { idempotencyKey: entry.idempotencyKey } : {}),
     });
   }
 }

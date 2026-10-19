@@ -6,6 +6,13 @@ import { diffractionPreview, scatteringPreview } from '../lib/opticsPreviewModel
 export interface OpticsDiffractionScatteringCardProps {
   disabled?: boolean;
   initialMode?: 'diffraction' | 'scattering';
+  predictionGate?: {
+    required: boolean;
+    submitted: boolean;
+    hypothesis?: string;
+  };
+  /** Returns true only after the server accepts and persists the action. */
+  onAction?: (action: 'submit_prediction' | 'run' | 'record_observation', payload?: unknown) => void | Promise<boolean>;
 }
 
 function wavelengthToRgb(wavelength: number): string {
@@ -49,8 +56,33 @@ function wavelengthToRgb(wavelength: number): string {
 export function OpticsDiffractionScatteringCard({
   disabled = false,
   initialMode = 'diffraction',
+  predictionGate,
+  onAction,
 }: OpticsDiffractionScatteringCardProps) {
   const [mode, setMode] = useState<'diffraction' | 'scattering'>(initialMode);
+  const [selectedPrediction, setSelectedPrediction] = useState<string>('');
+  const [isSubmittedLocal, setIsSubmittedLocal] = useState<boolean>(predictionGate?.submitted ?? false);
+
+  const isPredictionLocked = (predictionGate?.required ?? false) && !isSubmittedLocal;
+
+  const handleSubmitPrediction = async () => {
+    if (!selectedPrediction) return;
+    const accepted = await onAction?.('submit_prediction', {
+      mode,
+      hypothesis: selectedPrediction,
+      parameters: mode === 'diffraction' ? { slitWidth, wavelength } : { particleRadius, scatteringWavelength },
+    });
+    // The server owns the prediction gate. Never unlock optimistically.
+    if (accepted === true) setIsSubmittedLocal(true);
+  };
+
+  const handleRunSimulation = () => {
+    if (isPredictionLocked || disabled) return;
+    onAction?.('run', {
+      mode,
+      parameters: mode === 'diffraction' ? { slitWidth, wavelength, screenDistance } : { particleRadius, scatteringWavelength },
+    });
+  };
 
   // 单缝衍射实验参数
   const [wavelength, setWavelength] = useState<number>(632.8); // nm (氦氖激光红光)
@@ -164,6 +196,79 @@ export function OpticsDiffractionScatteringCard({
         </div>
       </div>
 
+      {/* POE 前置预测锁卡片 */}
+      {predictionGate?.required && (
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: '8px',
+            backgroundColor: isSubmittedLocal ? '#f0fdf4' : '#fffbeb',
+            border: isSubmittedLocal ? '1px solid #bbf7d0' : '1px solid #fde68a',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: isSubmittedLocal ? '#166534' : '#92400e' }}>
+              {isSubmittedLocal ? '✓ POE 前置预测已锁定' : '🔒 POE 前置预测锁：请先提出物理假设'}
+            </span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>
+              {isSubmittedLocal ? '观察与预测比对中' : '运行仿真前必须提交'}
+            </span>
+          </div>
+
+          {!isSubmittedLocal ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ margin: 0, fontSize: '12.5px', color: '#475569' }}>
+                {mode === 'diffraction'
+                  ? '若保持激光波长不变，将狭缝宽度 a 缩小为原来的一半，中央明纹宽度将：'
+                  : '在瑞利散射有效区域内，波长由 650nm (红光) 切换为 450nm (蓝光)，微粒散射光强将：'}
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {(mode === 'diffraction'
+                  ? ['A. 宽度增大一倍 (反比)', 'B. 宽度缩小一半 (正比)', 'C. 宽度保持不变']
+                  : ['A. 显著增强 (与 λ⁴ 成反比)', 'B. 显著减弱', 'C. 强度保持不变']
+                ).map((opt) => (
+                  <label key={opt} style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="prediction-option"
+                      value={opt}
+                      checked={selectedPrediction === opt}
+                      onChange={(e) => setSelectedPrediction(e.target.value)}
+                    />
+                    {opt}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={!selectedPrediction || disabled}
+                onClick={handleSubmitPrediction}
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: '4px',
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  borderRadius: '6px',
+                  backgroundColor: selectedPrediction ? '#2563eb' : '#94a3b8',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: selectedPrediction ? 'pointer' : 'not-allowed',
+                }}
+              >
+                确认预测并解锁仿真
+              </button>
+            </div>
+          ) : (
+            <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>
+              已提交预测：“{predictionGate.hypothesis ?? selectedPrediction}”。请调节参数运行仿真，核验实测读数。
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 参数控制区与仿真操作区（受预测锁控制） */}
+      <div style={{ opacity: isPredictionLocked ? 0.45 : 1, pointerEvents: isPredictionLocked ? 'none' : 'auto' }}>
       {mode === 'diffraction' ? (
         <div>
           {/* 单缝衍射参数控制区 */}
@@ -391,6 +496,28 @@ export function OpticsDiffractionScatteringCard({
           </div>
         </div>
       )}
+
+      {/* 仿真运行与观测提交操作条 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px', marginBottom: '8px' }}>
+        <button
+          type="button"
+          disabled={isPredictionLocked || disabled}
+          onClick={handleRunSimulation}
+          style={{
+            padding: '6px 16px',
+            fontSize: '12px',
+            fontWeight: 600,
+            borderRadius: '6px',
+            backgroundColor: isPredictionLocked ? '#cbd5e1' : '#059669',
+            color: '#ffffff',
+            border: 'none',
+            cursor: isPredictionLocked ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {isPredictionLocked ? '请先提交预测以解锁运行' : '运行仿真并记录观测'}
+        </button>
+      </div>
+      </div>
 
       <p role="note">此预览不保存观测，不提交作品证据，也不改变掌握度。真实实验须由教师审核安全方案。</p>
     </div>

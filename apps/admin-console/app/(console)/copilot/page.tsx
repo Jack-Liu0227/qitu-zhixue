@@ -15,6 +15,9 @@ import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 // v2 intentionally avoids replaying pre-audit sessions that claimed persistence
 // without a server acknowledgement. They remain in the old key for diagnostics.
 const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v2';
+const COPILOT_SELECTED_MODEL_STORAGE_KEY = 'qitu.admin.copilot.selected_model.v1';
+const COPILOT_THINKING_STORAGE_KEY = 'qitu.admin.copilot.thinking.v1';
+const COPILOT_PERMISSION_STORAGE_KEY = 'qitu.admin.copilot.permission.v1';
 
 interface ToolExecutionStep {
   name: string;
@@ -224,10 +227,37 @@ export default function CopilotPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [collapsedHoverId, setCollapsedHoverId] = useState<string | null>(null);
 
-  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换
-  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
-  const [selectedModel, setSelectedModel] = useState<string>('');
-  const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
+  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换（持久化存储，刷新页面不丢失）
+  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(COPILOT_THINKING_STORAGE_KEY);
+        if (cached && ['off', 'normal', 'high', 'max'].includes(cached)) {
+          return cached as 'off' | 'normal' | 'high' | 'max';
+        }
+      } catch {}
+    }
+    return 'high';
+  });
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem(COPILOT_SELECTED_MODEL_STORAGE_KEY) || '';
+      } catch {}
+    }
+    return '';
+  });
+  const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(COPILOT_PERMISSION_STORAGE_KEY);
+        if (cached && ['read_only', 'workspace_write', 'full_access'].includes(cached)) {
+          return cached as 'read_only' | 'workspace_write' | 'full_access';
+        }
+      } catch {}
+    }
+    return 'full_access';
+  });
   const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
@@ -238,6 +268,33 @@ export default function CopilotPage() {
   const activeTestAssistant = assistantOptions.find((assistant) => assistant.id === selectedAssistantId);
   const activeTeam = teamOptions.find((team) => team.id === selectedTeamId);
   const catalogReady = assistantCatalog.kind === 'ready' && activeTestAssistant !== undefined;
+
+  const handleModelChange = (modelKey: string) => {
+    setSelectedModel(modelKey);
+    if (typeof window !== 'undefined' && modelKey) {
+      try {
+        localStorage.setItem(COPILOT_SELECTED_MODEL_STORAGE_KEY, modelKey);
+      } catch {}
+    }
+  };
+
+  const handleThinkingChange = (strength: 'off' | 'normal' | 'high' | 'max') => {
+    setThinkingStrength(strength);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(COPILOT_THINKING_STORAGE_KEY, strength);
+      } catch {}
+    }
+  };
+
+  const handlePermissionChange = (perm: 'read_only' | 'workspace_write' | 'full_access') => {
+    setRuntimePermission(perm);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(COPILOT_PERMISSION_STORAGE_KEY, perm);
+      } catch {}
+    }
+  };
 
   useEffect(() => {
     if (assistantCatalog.kind === 'ready') {
@@ -251,11 +308,22 @@ export default function CopilotPage() {
       .then((models) => {
         if (models && models.length > 0) {
           setAvailableModels(models);
-          setSelectedModel((prev) => (
-            models.some((m) => configuredModelKey(m) === prev)
-              ? prev
-              : configuredModelKey(models[0]!)
-          ));
+          setSelectedModel((prev) => {
+            const cached = typeof window !== 'undefined' ? localStorage.getItem(COPILOT_SELECTED_MODEL_STORAGE_KEY) : null;
+            if (cached && models.some((m) => configuredModelKey(m) === cached)) {
+              return cached;
+            }
+            if (prev && models.some((m) => configuredModelKey(m) === prev)) {
+              return prev;
+            }
+            const fallback = configuredModelKey(models[0]!);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(COPILOT_SELECTED_MODEL_STORAGE_KEY, fallback);
+              } catch {}
+            }
+            return fallback;
+          });
         }
       })
       .catch(() => {});
@@ -777,10 +845,60 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           jsonPreview: JSON.stringify(customDoc, null, 2),
         };
       } else {
+        const lowerText = userText.toLowerCase();
+        const activeModelLabel = selectedModelItem?.id ?? (selectedModel || '平台默认模型');
+
         toolSteps = [
-          { name: 'qitu_agent_sdk_scan', status: 'done', label: '全量扫描系统配置与微模块依赖' }
+          { name: 'intent_analysis', status: 'done', label: `意图识别与语义解析（思考强度: ${thinkingStrength}）` },
+          { name: 'qitu_agent_sdk_scan', status: 'done', label: `调取启途智学平台治理规范与知识系统（当前底座: ${activeModelLabel}）` },
         ];
-        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型。您可以输入“创建一个高中物理力学探究团队”、“新增一个 Python 绘图工具”或“为动能定理添加补充知识库”，我将为您精准命名并实时配置，立即可在对应设置页面查验。`;
+
+        if (lowerText.includes('模型') || lowerText.includes('默认') || lowerText.includes('model')) {
+          replyContent = `### 启途智学模型配置与默认模型记忆机制
+
+#### 1. 默认模型怎么配置？
+在启途智学中，模型采用**按用途统一收口**的架构：
+- **平台全局默认模型**：前往 **[设置 > 模型通道与用途路由](/settings/model-providers)**。在「**模型用途场景分发与链路绑定**」面板中，将核心用途 **\`tutor.chat\`（AI搭档 · 对话）** 绑定为您期望的供应商与模型。所有未单独配置专属模型的助手均会自动继承此默认模型。
+- **助手专属模型**：前往 **[设置 > AI 助手](/settings/assistants)**，编辑特定助手，可在其配置中单独覆盖底座模型；若未配置则跟随全局默认用途。
+
+#### 2. 上次使用的模型如何作为启动默认模型？
+- **实现原理**：在客户端通过 \`localStorage\` 针对用户选择的 \`[providerId, modelId]\` 唯一标识进行持久化存储（存储键：\`qitu.admin.copilot.selected_model.v1\`）。
+- **启动恢复机制**：
+  1. 页面加载或刷新时，初始化状态优先读取本地缓存的上次使用模型。
+  2. 运行时从服务端拉取可用模型目录后，核验该模型依然有效即保持选中状态，**刷新网页后选择的模型不会被重置**。
+  3. 用户在顶部切换模型时，实时同步写入缓存，实现“记住上次选择，下次启动即默认”。
+
+您目前已选中的底座模型为：**${activeModelLabel}**（思考强度：**${thinkingStrength}**）。`;
+        } else if (lowerText.includes('pbl') || lowerText.includes('项目') || lowerText.includes('流程') || lowerText.includes('教学')) {
+          replyContent = `### 启途智学 PBL 项目式学习核心架构
+
+我是**启途智学管家**，平台遵循“真实任务驱动 + 探究证据链 + 双循环教学策略”：
+
+1. **四阶段探究流**：
+   - **阶段一：意图确认与选题**（学生明确探索意图，未确认前不创建正式项目）
+   - **阶段二：核心理论推导**（必须通过 **\`TheoryMastered\`** 概念门禁，才允许进入实践）
+   - **阶段三：工程仿真与实验制作**（安全沙箱编程、物理微观仿真如单缝衍射/细雾室散射）
+   - **阶段四：结项答辩与成长建档**（基于 CER 证据模型与多维量规的形成性评价）
+
+2. **多智能体协作小队**：
+   - **概念教练（Coach）**：严格遵循苏格拉底发问，启发学生推导物理/科学规律，坚决不直接给答案。
+   - **实践向导（Guide）**：指导沙箱代码自检与实验参数调试，提供梯级提示脚手架。
+   - **评审导师（Reviewer）**：基于项目量规审核交付物，引导误差溯源与反思。
+
+您可以直接对我输入：
+- “**为高中物理力学创建一个探究团队**” -> 一键生成并持久化 3 位角色导师及关联团队；
+- “**创建一个化学平衡移动探究助手**” -> 自动生成并持久化遵循苏格拉底教学法的智能体。`;
+        } else {
+          replyContent = `你好！我是**启途智学管家**。我不仅能为您提供平台规则、PBL 教学设计、模型调配等专业咨询，还能直接执行平台资源的创建与调度：
+
+1. **创建助手**：例如输入“*创建一个高中物理力学启发导师*”或“*创建代码实践助手*”；
+2. **组建团队**：例如输入“*为雷霆战机小游戏组建导师团队*”；
+3. **配置 MCP 工具**：例如输入“*配置一个 Python 绘图 MCP 工具*”；
+4. **定制 Skills 技能包**：例如输入“*创建一个苏格拉底深度启发技能包*”；
+5. **设计 PBL 模板与知识库**：例如输入“*为动能定理设计项目模板*”。
+
+当前使用的底座模型为 **${activeModelLabel}**（思考强度: **${thinkingStrength}**），该选择已在本地自动记忆，刷新网页后不会丢失。请问您需要处理哪项任务？`;
+        }
       }
 
       const botMsg: Message = {
@@ -1143,7 +1261,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
               <select
                 value={thinkingStrength}
-                onChange={(e) => setThinkingStrength(e.target.value as 'off' | 'normal' | 'high' | 'max')}
+                onChange={(e) => handleThinkingChange(e.target.value as 'off' | 'normal' | 'high' | 'max')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
                 <option value="max">Max (极限深度思考)</option>
@@ -1158,7 +1276,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
               <select
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onChange={(e) => handleModelChange(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
                 {availableModels.length > 0 ? (
@@ -1178,7 +1296,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
               <select
                 value={runtimePermission}
-                onChange={(e) => setRuntimePermission(e.target.value as 'read_only' | 'workspace_write' | 'full_access')}
+                onChange={(e) => handlePermissionChange(e.target.value as 'read_only' | 'workspace_write' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
                 <option value="full_access">Full Access (完全访问 · 免确认写入)</option>

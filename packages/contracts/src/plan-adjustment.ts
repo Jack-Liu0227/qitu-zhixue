@@ -81,6 +81,8 @@ export type StudentStuckTriggerKey =
   | `misconception:${string}:${string}:${string}:3`
   | `guidance_cap:${string}:${string}`
   | `l3_cap:${string}:${string}`
+  | `l3_warning:${string}:${string}`
+  | `l5_critical:${string}:${string}`
   | `explicit_help:${string}:${string}`;
 
 /** 计划调整记录的幂等键格式：`plan.adjustment:${projectId}:${stemNodeId}:${trigger}`。 */
@@ -141,7 +143,12 @@ export interface StudentStuckSignal {
   /** 证据引用（`answer_attempts` id / `tutor_turn:<sessionId>:<seq>`）。 */
   evidenceRefs: string[];
   emittedAt: string;
+  /** warning: L3 错题预警（仅记录热力图）；critical: L5 降维失败或反复卡顿（大屏强弹窗） */
+  severity?: StuckSeverity;
 }
+
+/** 卡点熔断严重级别。 */
+export type StuckSeverity = 'warning' | 'critical';
 
 /** 脱敏摘要优先级。`high` 用于熔断降级与反复卡点。 */
 export type StuckSummaryPriority = 'normal' | 'high';

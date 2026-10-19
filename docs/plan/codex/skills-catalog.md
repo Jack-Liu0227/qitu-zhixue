@@ -1,6 +1,6 @@
 # 教学 Skills 目录与引入规范
 
-> 状态：capability-v1-m1 / 2026-10-19；新 ID 均为候选设计，尚未安装、发布或启用。当前仅有 `.agents/skills/tutor-guided-learning/SKILL.md` 的 `1.0.0`。本轮模板/编译/身份源码已实现，本地全量离线复核已通过，不直接导入上游包。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
+> 状态：capability-v1-m1 / 2026-10-20；`tutor-guided-learning` 与首批 8 项候选现均有 `.agents/skills/<canonical-id>/SKILL.md` 源码包，当前目录式 runtime 会发现这些非空教学包。新增包尚未完成对抗评测及不可变制品/项目冻结治理；本次未改 Admin seeds、助手绑定或项目快照。目录发现不等于已通过教学评审，也不等于已绑定到助手。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
 
 ## 1. 先补教学方法，不追求大而全
 

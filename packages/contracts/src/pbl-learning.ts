@@ -26,8 +26,9 @@ export type PblPlanStatus = 'draft' | 'active' | 'completed' | 'archived';
 export type PblTemplateStatus = 'draft' | 'piloting' | 'published' | 'archived';
 
 /**
- * A schedule is deliberately explicit because `weeks` alone cannot tell us
- * whether a learner has one 120-minute lesson or two 60-minute lessons.
+ * Legacy calendar schedule. New governed templates are lesson-based and must
+ * use `PblLessonSchedule` instead; this shape remains only for old plans and
+ * compatibility adapters.
  */
 export interface PblSchedule {
   durationWeeks: PblDurationWeeks;
@@ -35,6 +36,14 @@ export interface PblSchedule {
   sessionsPerWeek: 1 | 2;
   sessionMinutes: 60 | 120;
 }
+
+/** Canonical schedule for templates that are organized only by lesson. */
+export interface PblLessonSchedule {
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
+}
+
+export type PblCurriculumSchedule = PblSchedule | PblLessonSchedule;
 
 export interface PblAgeRange {
   min: number;
@@ -79,10 +88,9 @@ export interface PblTemplatePhase {
   assignedAssistantId: string | null;
 }
 
-export interface PblTemplateSchedule extends PblSchedule {
-  moduleCount: number;
-  sessionCount?: number;
-}
+export type PblTemplateSchedule =
+  | (PblSchedule & { moduleCount: number; sessionCount?: number })
+  | (PblLessonSchedule);
 
 export interface ProjectTemplateSpec {
   contractVersion: typeof PBL_LEARNING_CONTRACT_VERSION;
@@ -112,8 +120,9 @@ export type PblTemplateSessionType = 'theory' | 'practice' | 'review';
 export interface PblTemplateSession {
   id: string;
   sessionIndex: number;
-  week: number;
-  session: number;
+  /** Legacy calendar placement. Omit these fields for lesson-only templates. */
+  week?: number;
+  session?: number;
   title: string;
   phase: PblPhase;
   sessionType: PblTemplateSessionType;
@@ -135,7 +144,7 @@ export interface PblTemplateSession {
 
 export interface PblCurriculumProfile {
   id: string;
-  schedule: PblSchedule;
+  schedule: PblCurriculumSchedule;
   sessions: readonly PblTemplateSession[];
 }
 
@@ -258,6 +267,18 @@ export function validatePblSchedule(schedule: PblSchedule): PblScheduleValidatio
   return { valid: errors.length === 0, errors };
 }
 
+/** Validate the lesson-only schedule used by the current PBL templates. */
+export function validatePblLessonSchedule(schedule: PblLessonSchedule): PblScheduleValidationResult {
+  const errors: string[] = [];
+  if (!Number.isSafeInteger(schedule.lessonCount) || schedule.lessonCount < 1 || schedule.lessonCount > 128) {
+    errors.push('lessonCount must be an integer between 1 and 128');
+  }
+  if (schedule.lessonMinutes !== 60 && schedule.lessonMinutes !== 120) {
+    errors.push('lessonMinutes must be 60 or 120');
+  }
+  return { valid: errors.length === 0, errors };
+}
+
 export interface ProjectTemplateValidationIssue {
   path: string;
   message: string;
@@ -308,11 +329,36 @@ function templateKeys(
   for (const key of Object.keys(value)) if (!keys.includes(key)) issue(`${path}.${key}`, 'unknown contract field');
 }
 
-function templateSchedule(value: unknown): value is PblSchedule {
-  return templateRecord(value) && (value.durationWeeks === 4 || value.durationWeeks === 8)
-    && value.weeklyMinutes === 120 && (value.sessionsPerWeek === 1 || value.sessionsPerWeek === 2)
-    && (value.sessionMinutes === 60 || value.sessionMinutes === 120)
-    && value.sessionsPerWeek * value.sessionMinutes === value.weeklyMinutes;
+function isLessonSchedule(value: unknown): value is PblLessonSchedule {
+  return templateRecord(value) && 'lessonCount' in value;
+}
+
+function templateSchedule(value: unknown): value is PblCurriculumSchedule {
+  if (!templateRecord(value)) return false;
+  if ('lessonCount' in value || 'lessonMinutes' in value) {
+    const lessonCount = value.lessonCount;
+    const lessonMinutes = value.lessonMinutes;
+    return typeof lessonCount === 'number' && Number.isSafeInteger(lessonCount) && lessonCount >= 1 && lessonCount <= 128
+      && (lessonMinutes === 60 || lessonMinutes === 120);
+  }
+  const durationWeeks = value.durationWeeks;
+  const weeklyMinutes = value.weeklyMinutes;
+  const sessionsPerWeek = value.sessionsPerWeek;
+  const sessionMinutes = value.sessionMinutes;
+  return (durationWeeks === 4 || durationWeeks === 8)
+    && weeklyMinutes === 120 && (sessionsPerWeek === 1 || sessionsPerWeek === 2)
+    && (sessionMinutes === 60 || sessionMinutes === 120)
+    && (typeof sessionsPerWeek === 'number' && typeof sessionMinutes === 'number' && sessionsPerWeek * sessionMinutes === weeklyMinutes);
+}
+
+function sameSchedule(left: PblCurriculumSchedule, right: PblCurriculumSchedule): boolean {
+  if (isLessonSchedule(left) || isLessonSchedule(right)) {
+    return isLessonSchedule(left) && isLessonSchedule(right)
+      && left.lessonCount === right.lessonCount && left.lessonMinutes === right.lessonMinutes;
+  }
+  return left.durationWeeks === right.durationWeeks
+    && left.sessionsPerWeek === right.sessionsPerWeek
+    && left.sessionMinutes === right.sessionMinutes;
 }
 
 /** Validate untrusted JSON without changing or filling any teaching content. */
@@ -387,16 +433,22 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     if (value.evidenceProfile !== undefined && value.evidenceProfile !== null
       && !templateEnum(value.evidenceProfile, ['runnable_code', 'experiment_report'])) issue(`${path}.evidenceProfile`, 'invalid evidence profile');
   }
-  const schedules: PblSchedule[] = [];
+  const schedules: PblTemplateSchedule[] = [];
   if (!Array.isArray(input.schedules) || input.schedules.length === 0) issue('schedules', 'schedules are required');
   for (const [index, value] of (Array.isArray(input.schedules) ? input.schedules : []).entries()) {
     const path = `schedules[${index}]`;
     if (!templateSchedule(value)) { issue(path, 'invalid schedule'); continue; }
-    templateKeys(value, ['durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'sessionMinutes', 'moduleCount', 'sessionCount'], path, issue);
-    schedules.push(value);
-    if (!templateRecord(value) || !templateInteger(value.moduleCount, 1, 16)) issue(`${path}.moduleCount`, 'moduleCount must be a positive integer');
-    if (templateRecord(value) && value.sessionCount !== undefined
-      && value.sessionCount !== value.durationWeeks * value.sessionsPerWeek) issue(`${path}.sessionCount`, 'sessionCount must match schedule');
+    schedules.push(value as PblTemplateSchedule);
+    if (isLessonSchedule(value)) {
+      templateKeys(value, ['lessonCount', 'lessonMinutes'], path, issue);
+      if (!templateInteger(value.lessonCount, 1, 128)) issue(`${path}.lessonCount`, 'lessonCount must be a positive integer');
+    } else {
+      templateKeys(value, ['durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'sessionMinutes', 'moduleCount', 'sessionCount'], path, issue);
+      const weekSchedule = value as unknown as PblSchedule & { moduleCount?: unknown; sessionCount?: unknown };
+      if (!templateInteger(weekSchedule.moduleCount, 1, 16)) issue(`${path}.moduleCount`, 'moduleCount must be a positive integer');
+      if (weekSchedule.sessionCount !== undefined
+        && weekSchedule.sessionCount !== weekSchedule.durationWeeks * weekSchedule.sessionsPerWeek) issue(`${path}.sessionCount`, 'sessionCount must match schedule');
+    }
   }
   if (input.theme !== undefined && (!templateRecord(input.theme) || !templateText(input.theme.drivingQuestion))) issue('theme.drivingQuestion', 'driving question is required');
   if (templateRecord(input.theme)) templateKeys(input.theme, ['drivingQuestion'], 'theme', issue);
@@ -415,7 +467,7 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
 }
 
 function validateTemplateProfile(
-  profile: unknown, path: string, profileIds: Set<string>, schedules: readonly PblSchedule[],
+  profile: unknown, path: string, profileIds: Set<string>, schedules: readonly PblTemplateSchedule[],
   objectives: ReadonlyMap<string, Record<string, unknown>>, phases: ReadonlyMap<string, Record<string, unknown>>,
   issue: (path: string, message: string) => void,
 ): void {
@@ -425,12 +477,17 @@ function validateTemplateProfile(
   else profileIds.add(profile.id);
   if (!templateSchedule(profile.schedule)) { issue(`${path}.schedule`, 'invalid profile schedule'); return; }
   const schedule = profile.schedule;
-  templateKeys(schedule, ['durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'sessionMinutes'], `${path}.schedule`, issue);
-  if (!schedules.some((value) => value.durationWeeks === schedule.durationWeeks
-    && value.sessionsPerWeek === schedule.sessionsPerWeek && value.sessionMinutes === schedule.sessionMinutes)) {
+  if (isLessonSchedule(schedule)) {
+    templateKeys(schedule, ['lessonCount', 'lessonMinutes'], `${path}.schedule`, issue);
+  } else {
+    templateKeys(schedule, ['durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'sessionMinutes'], `${path}.schedule`, issue);
+  }
+  if (!schedules.some((value) => sameSchedule(value, schedule))) {
     issue(`${path}.schedule`, 'profile schedule must be approved by template');
   }
-  const count = schedule.durationWeeks * schedule.sessionsPerWeek;
+  const count = isLessonSchedule(schedule)
+    ? schedule.lessonCount
+    : schedule.durationWeeks * schedule.sessionsPerWeek;
   if (!Array.isArray(profile.sessions) || profile.sessions.length !== count) { issue(`${path}.sessions`, 'sessions must match schedule count'); return; }
   const ids = new Set<string>();
   const covered = new Set<string>();
@@ -443,8 +500,13 @@ function validateTemplateProfile(
     if (!templateText(session.id) || ids.has(session.id)) issue(`${sessionPath}.id`, 'session id must be unique');
     else ids.add(session.id);
     if (session.sessionIndex !== index + 1) issue(`${sessionPath}.sessionIndex`, 'sessionIndex must be a contiguous one-based integer');
-    if (session.week !== Math.floor(index / schedule.sessionsPerWeek) + 1) issue(`${sessionPath}.week`, 'week must match profile schedule');
-    if (session.session !== index % schedule.sessionsPerWeek + 1) issue(`${sessionPath}.session`, 'session must match profile schedule');
+    if (isLessonSchedule(schedule)) {
+      if (session.week !== undefined) issue(`${sessionPath}.week`, 'lesson-only profiles must not contain week');
+      if (session.session !== undefined) issue(`${sessionPath}.session`, 'lesson-only profiles must not contain session/day placement');
+    } else {
+      if (session.week !== Math.floor(index / schedule.sessionsPerWeek) + 1) issue(`${sessionPath}.week`, 'week must match profile schedule');
+      if (session.session !== index % schedule.sessionsPerWeek + 1) issue(`${sessionPath}.session`, 'session must match profile schedule');
+    }
     if (!templateText(session.title)) issue(`${sessionPath}.title`, 'session title is required');
     if (session.learningGoal !== undefined && !templateText(session.learningGoal)) issue(`${sessionPath}.learningGoal`, 'learningGoal must be non-empty text');
     if (session.evidenceRequirements !== undefined && (!templateStrings(session.evidenceRequirements)
@@ -469,7 +531,8 @@ function validateTemplateProfile(
     if (phase === undefined || phaseIndex < previousPhase) issue(`${sessionPath}.phase`, 'session phase must exist and not move backwards');
     previousPhase = Math.max(previousPhase, phaseIndex);
     if (session.sessionType === 'practice' && session.phase !== 'guided_practice') issue(`${sessionPath}.sessionType`, 'practice sessions require the guided_practice phase');
-    if (session.durationMinutes !== schedule.sessionMinutes) issue(`${sessionPath}.durationMinutes`, 'session duration must match schedule');
+    const lessonMinutes = isLessonSchedule(schedule) ? schedule.lessonMinutes : schedule.sessionMinutes;
+    if (session.durationMinutes !== lessonMinutes) issue(`${sessionPath}.durationMinutes`, 'session duration must match schedule');
     if (!templateStrings(session.objectiveIds) || session.objectiveIds.length === 0 || session.objectiveIds.length > 4 || new Set(session.objectiveIds).size !== session.objectiveIds.length) {
       issue(`${sessionPath}.objectiveIds`, 'session objectives must be non-empty and unique');
     } else for (const id of session.objectiveIds) {
@@ -477,14 +540,15 @@ function validateTemplateProfile(
       covered.add(id);
     }
     const blocks = session.blocks;
-    if (!templateRecord(blocks) || TEMPLATE_ACTIVITIES.some((key) => !templateInteger(blocks[key], 0, schedule.sessionMinutes))
+    const sessionDuration = isLessonSchedule(schedule) ? schedule.lessonMinutes : schedule.sessionMinutes;
+    if (!templateRecord(blocks) || TEMPLATE_ACTIVITIES.some((key) => !templateInteger(blocks[key], 0, sessionDuration))
       || Object.keys(blocks).some((key) => !TEMPLATE_ACTIVITIES.some((activity) => activity === key))) {
       issue(`${sessionPath}.blocks`, 'blocks must contain five non-negative integer minute values');
     } else {
       const total = Object.values(blocks).reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
-      if (total !== schedule.sessionMinutes) issue(`${sessionPath}.blocks`, 'block minutes must total session duration');
+      if (total !== sessionDuration) issue(`${sessionPath}.blocks`, 'block minutes must total session duration');
       for (const activity of ['review', 'theory', 'check', 'reflect']) {
-        if (!templateInteger(blocks[activity], 1, schedule.sessionMinutes)) issue(`${sessionPath}.blocks.${activity}`, 'required learning blocks must have positive integer minutes');
+        if (!templateInteger(blocks[activity], 1, sessionDuration)) issue(`${sessionPath}.blocks.${activity}`, 'required learning blocks must have positive integer minutes');
       }
       if (session.phase === 'guided_practice' ? blocks.practice === 0 : blocks.practice !== 0) {
         issue(`${sessionPath}.blocks.practice`, 'practice minutes must match the gated practice phase');

@@ -47,7 +47,7 @@ M0 基线审计部分完成，不能宣称所有 characterization tests 已完�
 
 ## 先修什么
 
-当前只有 `tutor-guided-learning@1.0.0` 一个教学 Skill；`.pi/agents` 的 31 个开发角色不是生产教学团队。扩展技能之前，以下基线缺口按状态逐项关闭：
+当前 `.agents/skills` 有 `tutor-guided-learning@1.0.0` 和首批 8 个教学候选源码包；默认助手 seeds 仍只绑定 `tutor-guided-learning`。新增目录不代表已评测、发布、绑定或冻结进项目快照；`.pi/agents` 的 31 个开发角色也不是生产教学团队。发布/绑定前仍须按状态关闭以下基线缺口：
 
 1. 教学链已改读 Admin assistant 的当前配置，runtime-only Agent 路径保留；全局单一写端迁移和 Worker 统一尚未完成。
 2. phase 导师身份已贯穿 Tutor/SDK 实际生成；本地全量离线回归通过，不等于历史配置冻结。

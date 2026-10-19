@@ -35,6 +35,11 @@ export function generatePlanFromTemplate(
   if (profiles === undefined) reject('curriculum.profiles', 'This template requires governed curriculum profiles');
   const candidates = profiles.filter((profile) => {
     const schedule = profile.schedule;
+    if ('lessonCount' in schedule) {
+      const derivedWeeks = Math.ceil(schedule.lessonCount / 2);
+      return (input.weeks === derivedWeeks)
+        && (input.sessionCount === undefined || schedule.lessonCount === input.sessionCount);
+    }
     return schedule.durationWeeks === input.weeks
       && (input.sessionCount === undefined || profile.sessions.length === input.sessionCount)
       && (input.schedule === undefined || (schedule.weeklyMinutes === input.schedule.weeklyMinutes
@@ -47,20 +52,31 @@ export function generatePlanFromTemplate(
   let sessionCount: PlanSessionCount;
   if (count === 4 || count === 8 || count === 16) sessionCount = count;
   else reject('sessions', 'Unsupported session count');
+
+  const durationWeeks: 4 | 8 = 'durationWeeks' in profile.schedule
+    ? profile.schedule.durationWeeks
+    : (input.weeks === 4 || input.weeks === 8 ? input.weeks : count === 8 ? 4 : 8);
+  const minutesPerSession = 'sessionMinutes' in profile.schedule
+    ? profile.schedule.sessionMinutes
+    : profile.schedule.lessonMinutes;
+  const legacySchedule = 'durationWeeks' in profile.schedule ? profile.schedule : undefined;
+
   const byId = new Map(spec.objectives.map((objective) => [objective.id, objective]));
   const gated = spec.phases.find((phase) => phase.phase === 'concept_mastery')?.objectiveIds;
   if (gated === undefined || gated.length === 0) reject('phases', 'The template must declare theory gate objectives');
   const moduleId = (week: number): string => `${profile.id}-week-${week}`;
-  const modules = Array.from({ length: profile.schedule.durationWeeks }, (_, index) => {
+  const modules = Array.from({ length: durationWeeks }, (_, index) => {
     const week = index + 1;
-    const sessions = profile.sessions.filter((session) => session.week === week);
+    const sessions = profile.sessions.filter((session, sIdx) => (session.week ?? Math.floor(sIdx / 2) + 1) === week);
     return { id: moduleId(week), name: `第${week}周 · ${sessions[0]?.title ?? spec.title}`, weekIndex: week,
       objective: sessions.map((session) => session.title).join('；'), ordinal: week };
   });
   const objectives = spec.objectives.map((objective, index) => {
-    const session = profile.sessions.find((candidate) => candidate.objectiveIds.includes(objective.id));
-    if (session === undefined) reject('objectives', `Objective ${objective.id} is not scheduled`);
-    return { id: objective.id, moduleId: moduleId(session.week), name: objective.title,
+    const sessionIdx = profile.sessions.findIndex((candidate) => candidate.objectiveIds.includes(objective.id));
+    const session = profile.sessions[sessionIdx];
+    if (sessionIdx === -1 || session === undefined) reject('objectives', `Objective ${objective.id} is not scheduled`);
+    const sessionWeek = session.week ?? Math.floor(sessionIdx / 2) + 1;
+    return { id: objective.id, moduleId: moduleId(sessionWeek), name: objective.title,
       type: knowledgeType(objective), objective: objective.description, prerequisiteIds: [...objective.prerequisiteIds],
       ordinal: index + 1, conceptId: objective.conceptId };
   });
@@ -85,12 +101,14 @@ export function generatePlanFromTemplate(
         prerequisiteObjectiveIds: kind === 'practice' ? prerequisites : [],
       };
     });
-    return { id: session.id, moduleId: moduleId(session.week), index, week: session.week, day: session.session,
+    const sessionWeek = session.week ?? Math.floor(index / 2) + 1;
+    const sessionDay = session.session ?? (index % 2 + 1);
+    return { id: session.id, moduleId: moduleId(sessionWeek), index, week: sessionWeek, day: sessionDay,
       title: session.title, blocks, theoryObjectiveIds: session.phase === 'concept_mastery' ? [...session.objectiveIds]
         : practice ? [...gated] : [], practiceObjectiveIds: practice ? [...session.objectiveIds] : [], mode: 'study' as const };
   });
-  return { templateVersion: context.templateVersion, weeks: profile.schedule.durationWeeks, sessionCount,
-    minutesPerSession: profile.schedule.sessionMinutes, schedule: profile.schedule,
+  return { templateVersion: context.templateVersion, weeks: durationWeeks, sessionCount,
+    minutesPerSession, schedule: legacySchedule,
     title: `${input.interest} · ${spec.title}`, interest: input.interest,
     goal: input.goal?.trim() || spec.description, curriculumSlug: input.curriculumSlug,
     modules, objectives, sessions };

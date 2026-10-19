@@ -11,6 +11,7 @@ import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 import { CircuitSimulationCard } from './CircuitSimulationCard';
 import { OpticsDiffractionScatteringCard } from './OpticsDiffractionScatteringCard';
+import { AsideAdvisorCard } from './AsideAdvisorCard';
 import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
@@ -42,6 +43,7 @@ export function TutorReplyBlockView({
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
+  onExperimentAction,
   projectId,
   disabled = false,
 }: {
@@ -50,6 +52,7 @@ export function TutorReplyBlockView({
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  onExperimentAction?: (action: 'submit_prediction' | 'run' | 'record_observation', payload?: unknown) => void | Promise<boolean>;
   projectId?: string | null;
   disabled?: boolean;
 }) {
@@ -139,11 +142,22 @@ export function TutorReplyBlockView({
           onExperimentComplete={(summary) => onSelectOption?.('电路探究结论', summary)}
         />
       );
+    case 'aside':
+      return (
+        <AsideAdvisorCard
+          copilot={block.copilot}
+          targetPhase={block.targetPhase}
+          content={block.content}
+          evidenceRef={block.evidenceRef}
+        />
+      );
     case 'optics_experiment':
       return (
         <OpticsDiffractionScatteringCard
-          disabled
+          disabled={disabled}
           initialMode={block.initialMode}
+          predictionGate={block.predictionGate}
+          onAction={onExperimentAction}
         />
       );
     case 'attachment':

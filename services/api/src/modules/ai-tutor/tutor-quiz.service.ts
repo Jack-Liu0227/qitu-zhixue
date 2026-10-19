@@ -41,7 +41,8 @@ import { TutorQuizStore, type AnswerAttemptRecord } from './tutor-quiz.store';
 import { TutorService, type TutorSessionRecord } from './tutor.service';
 
 const THRESHOLD_BASIS_POINTS = 9000;
-const MAX_HINT_LEVEL = 3;
+const MAX_HINT_LEVEL = 5;
+const MAX_DIRECT_HINT_LEVEL = 3;
 
 /**
  * F1 判分路由服务：交互题判分只发生在服务端，掌握度写回沿用学习计划的
@@ -312,28 +313,36 @@ export class TutorQuizService {
           };
         });
 
-        // 提交后：提示阶梯推进、卡点 / 迷思信号、TheoryMastered 门禁桥。
+        const prevHintLevel: TutorHintLevel = session.lastHintLevel ?? 1;
         const hintLevel = await this.advanceHintLadder(session, actor.id, grade.isCorrect);
         // 提交后门禁桥：与 `learning-plan.submitAnswer` 同构，best-effort 且幂等；
         // 事务内只写达标审计/outbox，团队链路故障不回滚已成立的理论达标。
         if (outcome.kind === 'mapped' && outcome.gate.theoryMasteredFlip) {
           await this.learningPlan.applyGradingGateBridge(actor.id, outcome.theorySessionId);
         }
-        if (!grade.isCorrect && hintLevel === MAX_HINT_LEVEL) {
-          if (outcome.kind === 'mapped') {
-            await this.emitStuckSignal({
-              actor,
-              session,
-              entry,
-              scope,
-              idempotencyKey,
-              planId: outcome.planId,
-              stemNodeId: outcome.stemNodeId,
-              attemptId: outcome.attemptId,
-              errorType: outcome.errorType ?? null,
-            });
-          } else {
-            await this.auditStuckSignal(actor, session, entry, scope, idempotencyKey);
+        if (!grade.isCorrect) {
+          if (hintLevel >= MAX_DIRECT_HINT_LEVEL) {
+            const isSubsequent = prevHintLevel >= MAX_DIRECT_HINT_LEVEL;
+            const severity: 'warning' | 'critical' = isSubsequent ? 'critical' : 'warning';
+            if (isSubsequent && !session.escalated) {
+              session.escalated = true;
+            }
+            if (outcome.kind === 'mapped') {
+              await this.emitStuckSignal({
+                actor,
+                session,
+                entry,
+                scope,
+                idempotencyKey,
+                planId: outcome.planId,
+                stemNodeId: outcome.stemNodeId,
+                attemptId: outcome.attemptId,
+                errorType: outcome.errorType ?? null,
+                severity,
+              });
+            } else {
+              await this.auditStuckSignal(actor, session, entry, scope, idempotencyKey, severity);
+            }
           }
         }
         if (outcome.kind === 'mapped' && !grade.isCorrect && outcome.errorType !== null) {
@@ -391,6 +400,7 @@ export class TutorQuizService {
     entry: QuizBankEntry,
     scope: string,
     idempotencyKey: string,
+    severity: 'warning' | 'critical' = 'critical',
   ): Promise<void> {
     await this.audit.write({
       actorId: actor.id,
@@ -398,18 +408,19 @@ export class TutorQuizService {
       action: 'tutor.stuck_signal',
       targetType: 'tutor_session',
       targetId: session.sessionId,
-      idempotencyKey: `${scope}:${idempotencyKey}`,
+      idempotencyKey: `${scope}:${idempotencyKey}:${severity}`,
       detail: {
-        trigger: 'l3_cap',
+        trigger: severity === 'warning' ? 'l3_cap' : 'l5_cap',
         quizId: entry.questionId,
         conceptId: entry.conceptId,
         sessionId: session.sessionId,
+        severity,
       },
     });
   }
 
   /**
-   * L3 封顶 + 答错 = 卡点信号（ pedagogy-spec §7 ）。
+   * L3 / L5 封顶 + 答错 = 卡点信号（ pedagogy-spec §7 升级 ）。
    *
    * 先写原有的 `tutor.stuck_signal` 审计（证据保底），再投递给 F4 的
    * `StuckSignalService.ingest`（节点级去重 / 深度熔断 / 追加补救节点）。
@@ -426,17 +437,23 @@ export class TutorQuizService {
     stemNodeId: string;
     attemptId: string;
     errorType: LearningErrorType | null;
+    severity?: 'warning' | 'critical';
   }): Promise<void> {
+    const severity = input.severity ?? 'critical';
     await this.auditStuckSignal(
       input.actor,
       input.session,
       input.entry,
       input.scope,
       input.idempotencyKey,
+      severity,
     );
     if (this.stuckSignals === undefined) return;
     const projectId = input.session.projectId;
     if (projectId === null) return;
+    const triggerKey = (severity === 'critical'
+      ? `l5_critical:${input.session.sessionId}:${input.entry.questionId}`
+      : `l3_cap:${input.session.sessionId}:${input.entry.questionId}`) as `l3_cap:${string}:${string}` | `l5_critical:${string}:${string}`;
     const signal: StudentStuckSignal = {
       studentId: input.actor.id,
       projectId,
@@ -445,23 +462,25 @@ export class TutorQuizService {
       stemNodeId: input.stemNodeId,
       conceptId: input.entry.conceptId,
       trigger: 'repeated_assessment_error',
-      // A9：L3 触发键改为 `l3_cap:${sessionId}:${quizId}`（原实现误用 actorId:conceptId）。
-      triggerKey: `l3_cap:${input.session.sessionId}:${input.entry.questionId}`,
+      // A9：L3 触发键为 `l3_cap:${sessionId}:${quizId}`；L5 触发键为 `l5_critical:${sessionId}:${quizId}`。
+      triggerKey,
       errorTypeCode: input.errorType ?? 'repeated_wrong',
       nodeRefs: [input.stemNodeId],
       evidenceRefs: [input.attemptId],
       emittedAt: new Date().toISOString(),
+      severity,
     };
     await this.ingestSignal(signal, {
       actorId: input.actor.id,
       actorRole: input.actor.role,
       targetId: input.session.sessionId,
-      idempotencyKey: `${input.scope}:${input.idempotencyKey}:ingest`,
+      idempotencyKey: `${input.scope}:${input.idempotencyKey}:ingest:${severity}`,
       detail: {
         quizId: input.entry.questionId,
         conceptId: input.entry.conceptId,
         stemNodeId: input.stemNodeId,
         triggerKey: signal.triggerKey,
+        severity,
       },
     });
   }

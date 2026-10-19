@@ -414,6 +414,33 @@ export class TutorController {
     return { data: this.tutorService.toSummary(record) };
   }
 
+  @Post('sessions/:id/teacher-intervention')
+  @HttpCode(200)
+  async teacherIntervention(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Body() body: { actionType?: unknown; teacherNotes?: unknown },
+  ): Promise<{ data: { success: boolean; resumedAt: string } }> {
+    const actor = this.requireTeacherOrAdmin(cookieHeader);
+    const idempotencyKey = typeof idempotencyKeyHeader === 'string' ? idempotencyKeyHeader.trim() : '';
+    if (idempotencyKey.length === 0 || idempotencyKey.length > 160) {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '教师介入必须携带 Idempotency-Key 请求头' });
+    }
+    const actionType = body.actionType;
+    if (actionType !== '线下点拨' && actionType !== '降低难度' && actionType !== '定向放行') {
+      throw new BadRequestException({
+        code: 'INVALID_INTERVENTION_TYPE',
+        message: 'actionType 必须为 线下点拨 | 降低难度 | 定向放行',
+      });
+    }
+    const data = await this.tutorService.applyTeacherIntervention(id, actor.id, {
+      actionType,
+      teacherNotes: typeof body.teacherNotes === 'string' ? body.teacherNotes : undefined,
+    }, actor.role, idempotencyKey);
+    return { data };
+  }
+
   /* ------------------------------ 内部 ------------------------------ */
 
   private requireStudent(cookieHeader: string | undefined): CurrentUser {
@@ -422,6 +449,16 @@ export class TutorController {
     const session = this.authService.getSession(token);
     if (session.user.role !== 'student') {
       throw new ForbiddenException('AI搭档仅向学生开放');
+    }
+    return session.user;
+  }
+
+  private requireTeacherOrAdmin(cookieHeader: string | undefined): CurrentUser {
+    const token = readCookie(cookieHeader, SESSION_COOKIE);
+    if (token === undefined) throw new UnauthorizedException('请先登录');
+    const session = this.authService.getSession(token);
+    if (session.user.role !== 'teacher' && session.user.role !== 'admin') {
+      throw new ForbiddenException('仅教师与管理员可执行干预');
     }
     return session.user;
   }
