@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
   archiveAdminTemplate,
@@ -202,9 +202,24 @@ export default function AdminTemplatesPage() {
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [versionsError, setVersionsError] = useState<Error | null>(null);
   const [editorTab, setEditorTab] = useState<'sessions' | 'workflow' | 'basic'>('workflow');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [saveNotice, setSaveNotice] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const activeTemplates = useMemo(
+    () => templates.filter((t) => t.status !== 'archived'),
+    [templates],
+  );
+  const archivedTemplates = useMemo(
+    () => templates.filter((t) => t.status === 'archived'),
+    [templates],
+  );
+  const displayedTemplates = useMemo(() => {
+    if (statusFilter === 'active') return activeTemplates;
+    if (statusFilter === 'archived') return archivedTemplates;
+    return templates;
+  }, [statusFilter, activeTemplates, archivedTemplates, templates]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1179,7 +1194,7 @@ export default function AdminTemplatesPage() {
         <div className="settings-titlebox">
           <h1>项目模板库</h1>
           <div className="settings-desc">
-            Admin 统一维护项目式学习（PBL）模板。阶段设计与导师提示词随模板版本冻结保存，修改即产生新版本。
+            Admin 统一维护项目式学习（PBL）模板。以 16 课时为主线（Session Track）与阶段门禁（Phase Gates）双轨治理。
           </div>
         </div>
         <div className="settings-page-actions">
@@ -1194,72 +1209,167 @@ export default function AdminTemplatesPage() {
         </div>
       </div>
 
+      {/* 状态过滤选项卡：默认只显示活跃模板，归档模板不干扰视线 */}
+      <div className="team-editor-top-tabs" style={{ marginBottom: '16px' }}>
+        <button
+          type="button"
+          className={`team-editor-tab-item${statusFilter === 'active' ? ' is-active' : ''}`}
+          onClick={() => setStatusFilter('active')}
+        >
+          🌟 活跃模板 ({activeTemplates.length})
+        </button>
+        {archivedTemplates.length > 0 ? (
+          <button
+            type="button"
+            className={`team-editor-tab-item${statusFilter === 'archived' ? ' is-active' : ''}`}
+            onClick={() => setStatusFilter('archived')}
+          >
+            📦 已归档 ({archivedTemplates.length})
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={`team-editor-tab-item${statusFilter === 'all' ? ' is-active' : ''}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          全部 ({templates.length})
+        </button>
+      </div>
+
       {saveError ? (
         <div className="admin-template-workflow-intro" style={{ color: '#ef4444' }}>
           <span>{saveError}</span>
         </div>
       ) : null}
 
-      {templates.length === 0 ? (
+      {displayedTemplates.length === 0 ? (
         <div className="settings-empty" style={{ padding: '32px', textAlign: 'center' }}>
-          <strong>模板库为空</strong>
+          <strong>{statusFilter === 'archived' ? '暂无已归档模板' : '暂无活跃模板'}</strong>
           <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
-            点击右上角「新建项目模板」创建第一个模板，然后在编辑器中补全阶段设计。
+            {statusFilter === 'archived'
+              ? '归档的历史模板将在此处留存记录。'
+              : '点击右上角「新建项目模板」创建新模板。'}
           </p>
         </div>
       ) : (
         <div className="admin-templates-cards-grid">
-          {templates.map((template) => (
-            <div key={template.id} className="admin-template-item-card">
-              <div className="admin-template-item-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>📦</span>
-                  <strong className="admin-template-item-title">{template.title}</strong>
-                </div>
-                <span className="admin-template-status-pill">
-                  {STATUS_LABELS[template.status] ?? template.status}
-                </span>
-              </div>
-
-              <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
-
-              <div className="admin-template-info-list">
-                <div className="admin-template-info-row">
-                  <span className="admin-template-info-label">适用领域:</span>
-                  <span className="admin-template-info-val">{template.domain || '未设置'}</span>
-                </div>
-                <div className="admin-template-info-row">
-                  <span className="admin-template-info-label">发布版本:</span>
-                  <span className="admin-template-info-val">
-                    {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+          {displayedTemplates.map((template) => {
+            const is16Sessions =
+              template.slug.includes('16s') || template.title.includes('16');
+            return (
+              <div key={template.id} className="admin-template-item-card">
+                <div className="admin-template-item-head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '24px' }}>📦</span>
+                    <strong className="admin-template-item-title">{template.title}</strong>
+                  </div>
+                  <span
+                    className="admin-template-status-pill"
+                    style={{
+                      backgroundColor:
+                        template.status === 'published'
+                          ? '#e6f8ea'
+                          : template.status === 'archived'
+                            ? '#f2f3f5'
+                            : '#e8f3ff',
+                      color:
+                        template.status === 'published'
+                          ? '#00b42a'
+                          : template.status === 'archived'
+                            ? '#86909c'
+                            : '#165dff',
+                    }}
+                  >
+                    {STATUS_LABELS[template.status] ?? template.status}
                   </span>
                 </div>
-              </div>
 
-              <div
-                className="admin-template-card-footer"
-                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
-              >
-                <button
-                  type="button"
-                  className="settings-action-btn is-primary"
-                  style={{ flex: 1 }}
-                  onClick={() => openEditor(template)}
+                {is16Sessions ? (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      marginTop: '6px',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <span>📅 16 课时教学主线 · 4 阶段门禁</span>
+                  </div>
+                ) : null}
+
+                <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
+
+                <div className="admin-template-info-list">
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">适用领域:</span>
+                    <span className="admin-template-info-val">{template.domain || '未设置'}</span>
+                  </div>
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">课时规划:</span>
+                    <span
+                      className="admin-template-info-val"
+                      style={{
+                        fontWeight: is16Sessions ? 600 : 'normal',
+                        color: is16Sessions ? '#165dff' : undefined,
+                      }}
+                    >
+                      {is16Sessions ? '16 课时（8周 · 每周2课时 · 60分/节）' : '按阶段粗粒度规划'}
+                    </span>
+                  </div>
+                  {is16Sessions ? (
+                    <div className="admin-template-info-row">
+                      <span className="admin-template-info-label">核心门禁:</span>
+                      <span
+                        className="admin-template-info-val"
+                        style={{ color: '#dc2626', fontWeight: 600 }}
+                      >
+                        TheoryMastered（第 8 课时）
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">发布版本:</span>
+                    <span className="admin-template-info-val">
+                      {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="admin-template-card-footer"
+                  style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
                 >
-                  配置团队与阶段设计 →
-                </button>
-                <button
-                  type="button"
-                  className="admin-skill-dot-btn"
-                  style={{ color: '#ef4444' }}
-                  onClick={() => handleDeleteTemplate(template.id, template.title)}
-                  title="归档模板"
-                >
-                  🗑️
-                </button>
+                  <button
+                    type="button"
+                    className="settings-action-btn is-primary"
+                    style={{ flex: 1 }}
+                    onClick={() => openEditor(template)}
+                  >
+                    {is16Sessions ? '查看 16 课时轨道与阶段设计 →' : '配置团队与阶段设计 →'}
+                  </button>
+                  {template.status !== 'archived' ? (
+                    <button
+                      type="button"
+                      className="admin-skill-dot-btn"
+                      style={{ color: '#ef4444' }}
+                      onClick={() => handleDeleteTemplate(template.id, template.title)}
+                      title="归档模板"
+                    >
+                      🗑️
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
