@@ -37,11 +37,11 @@
 - 数据库约束禁止同一条记录同时拥有 weekly 和 lesson-first 排期字段。
 - 幂等签名使用 `(student, templateVersion, interest, lessonCount, lessonMinutes)`，不包含伪造的 compatibility weeks。
 
-## 3. 明确隔离的 legacy 路径
+## 3. 遗留周排程边界（待统一迁移）
 
-旧的通用计划和 `optics-physical-inquiry:v1` 历史数据仍可以读取 `weeks`、`weekIndex`、`week/day`，但它们只能经过显式 legacy generator/adapter。旧数据不会在读取时被静默改写，新模板也不能用 `ceil(lessonCount / 2)` 伪造周数。
+当前无模板通用生成器与 `optics-physical-inquiry:v1` 路径仍按周生成或读取 `weeks`、`weekIndex`、`week/day`；它们尚未迁移到 lesson-first，不能作为新课时模板合同。历史数据不会在读取时被静默改写，新模板也不能用 `ceil(lessonCount / 2)` 伪造周数。
 
-`toLearningPlanDraft`、周排期校验和旧的 `PblSchedule` 仅服务 legacy 输入；新模板不接受 `weeks`、`schedule` 与 lesson-first 字段混用。
+`toLearningPlanDraft`、周排期校验和旧的 `PblSchedule` 服务现存周排期；新模板不接受 `weeks`、`schedule` 与 lesson-first 字段混用。
 
 ## 4. 每课时内容与复习
 
