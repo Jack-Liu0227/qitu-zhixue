@@ -12,6 +12,7 @@ const expectedSkillIds = [
   'pbl-driving-question',
   'pbl-experiment-design',
   'pbl-hypothesis-coach',
+  'pbl-independent-transfer',
   'pbl-peer-critique',
   'pbl-reflection-coach',
   'pbl-source-literacy',
