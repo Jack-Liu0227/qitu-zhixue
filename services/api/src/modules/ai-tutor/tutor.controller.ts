@@ -434,10 +434,11 @@ export class TutorController {
         message: 'actionType 必须为 线下点拨 | 降低难度 | 定向放行',
       });
     }
+    const teacherRole = actor.role === 'admin' ? 'admin' : 'teacher';
     const data = await this.tutorService.applyTeacherIntervention(id, actor.id, {
       actionType,
       teacherNotes: typeof body.teacherNotes === 'string' ? body.teacherNotes : undefined,
-    }, actor.role, idempotencyKey);
+    }, teacherRole, idempotencyKey);
     return { data };
   }
 

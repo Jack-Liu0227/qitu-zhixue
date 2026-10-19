@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "checkedOn": "2026-10-19",
+  "checkedOn": "2026-10-20",
   "codeBaseline": "43a0307eb776185d7561f213d75b3d7312616aa9",
-  "method": "Direct HTTPS and GitHub API tree/pinned raw-file verification; no scripts executed, no upstream packages installed.",
+  "method": "Direct HTTPS and GitHub API tree/pinned raw-file verification; Grok used for discovery only and its zero-source summaries excluded as evidence; no scripts executed, no upstream packages installed.",
   "records": [
     {
       "id": "skills-spec",
@@ -417,6 +417,87 @@
       "bytes": 7642,
       "sha256": "8303d33041a5d5ccbfbb5addbb60bd8b0559027f01a586f98b7728e58c4127ed",
       "fetchedAt": "2026-10-19T07:46:58.865096+00:00"
+    },
+    {
+      "id": "learning-commons-org-agent-skills--skills-k12-check-for-understanding-SKILL-md",
+      "url": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md",
+      "status": 200,
+      "bytes": 8286,
+      "sha256": "343a07f69c2b1f5007ad37d19831f27f9dffbbc08872348102785137005c44d3",
+      "fetchedAt": "2026-10-19T17:20:29.873+00:00"
+    },
+    {
+      "id": "learning-commons-org-agent-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/learning-commons-org/agent-skills/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/LICENSE",
+      "status": 200,
+      "bytes": 10173,
+      "sha256": "c4a2cd14eb3abe621891b235bbe2cfd65f1f71afcfcd5c9b691bb016387dfe88",
+      "fetchedAt": "2026-10-19T17:20:30.762+00:00"
+    },
+    {
+      "id": "savvides-idstack--skills-assessment-design-SKILL-md",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/assessment-design/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/assessment-design/SKILL.md",
+      "status": 200,
+      "bytes": 76326,
+      "sha256": "a60b9aff47b24dd8d54cd4dda19d5ed97f10a5ac63ca0a63f6f7e5c796e0ff7d",
+      "fetchedAt": "2026-10-19T17:20:30.981+00:00"
+    },
+    {
+      "id": "savvides-idstack--skills-accessibility-review-SKILL-md",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md",
+      "status": 200,
+      "bytes": 67384,
+      "sha256": "e63aea6739c659c87a2a8a87695f786ed91641fb8f6f21df630cd29c641f3773",
+      "fetchedAt": "2026-10-19T17:20:31.461+00:00"
+    },
+    {
+      "id": "savvides-idstack--LICENSE",
+      "url": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/savvides/idstack/1767027166aeeae1c64c21925b01a9c848abcf99/LICENSE",
+      "status": 200,
+      "bytes": 1077,
+      "sha256": "eb97ca0d7841016928dd0f81bec640814c292d1d9afca0995abd964524b87e58",
+      "fetchedAt": "2026-10-19T17:20:31.736+00:00"
+    },
+    {
+      "id": "bstellato-ai-teaching-skills--ai-socratic-tutor-SKILL-md",
+      "url": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md",
+      "status": 200,
+      "bytes": 4020,
+      "sha256": "90e62cff194687baea2392304a84a62bd835b4627d19393806b3053ecbb29d07",
+      "fetchedAt": "2026-10-19T17:20:31.931+00:00"
+    },
+    {
+      "id": "bstellato-ai-teaching-skills--LICENSE",
+      "url": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/LICENSE",
+      "resolvedUrl": "https://raw.githubusercontent.com/bstellato/ai-teaching-skills/6d3f85726e7b0fedacc8a078e174161293777044/LICENSE",
+      "status": 200,
+      "bytes": 1076,
+      "sha256": "b6f81aea546a126222fcc866caf8bb11c28938a0faacafe523987fce2c9cb88b",
+      "fetchedAt": "2026-10-19T17:20:32.120+00:00"
+    },
+    {
+      "id": "KreerC-ACCESSIBILITY-md--accessibility-SKILL-md",
+      "url": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md",
+      "status": 200,
+      "bytes": 9773,
+      "sha256": "a3f7d8bc4c91ee81f5a20b9fbab7d059d245815ce953d49ec5559ad5ec094976",
+      "fetchedAt": "2026-10-19T17:20:32.304+00:00"
+    },
+    {
+      "id": "KreerC-ACCESSIBILITY-md--LICENSE-md",
+      "url": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/LICENSE.md",
+      "resolvedUrl": "https://raw.githubusercontent.com/KreerC/ACCESSIBILITY.md/2bf8ddcf87e09dd0caac609abb979cc19aca2555/LICENSE.md",
+      "status": 200,
+      "bytes": 1071,
+      "sha256": "abc17bdeb06efc67c4e19e961ead7c407936abf161a2a2fad25e0865d52c14f2",
+      "fetchedAt": "2026-10-19T17:20:32.494+00:00"
     }
   ],
   "repositories": [
@@ -473,6 +554,54 @@
       "commit": "0722921d5542fc593105c27bd52630babd8b8c2a",
       "licenseMetadata": null,
       "treeTruncated": false
+    },
+    {
+      "repository": "learning-commons-org/agent-skills",
+      "commit": "5894a3c9dcda8d4499bb73fad85b2b11a2b78344",
+      "licenseMetadata": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "savvides/idstack",
+      "commit": "1767027166aeeae1c64c21925b01a9c848abcf99",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "bstellato/ai-teaching-skills",
+      "commit": "6d3f85726e7b0fedacc8a078e174161293777044",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
+    },
+    {
+      "repository": "KreerC/ACCESSIBILITY.md",
+      "commit": "2bf8ddcf87e09dd0caac609abb979cc19aca2555",
+      "licenseMetadata": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "treeTruncated": false
     }
   ],
   "grokSearches": [
@@ -493,12 +622,31 @@
       "sourcesCount": 0,
       "sourceListCount": 0,
       "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "2839b8829307",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "170b7711b624",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
+    },
+    {
+      "sessionId": "8ff2182fd113",
+      "sourcesCount": 0,
+      "sourceListCount": 0,
+      "decision": "Excluded as evidence"
     }
   ],
   "limitations": [
     "HTTP 200/hash proves fetched bytes, not content safety, permission to copy, server availability, reproducible model output or learning effectiveness.",
     "Skill bodies and cited licenses selectively read; resources/scripts/dependencies not exhaustively audited.",
     "No upstream full text is stored in this repository.",
+    "The 2026-10-20 Grok discovery searches returned sources_count: 0 and were excluded as evidence; candidate facts were checked against GitHub API and pinned raw files instead.",
     "Grok planning session 29fe8679925a lacked exposed complexity_assessment phase; searches ran and returned no sources."
   ],
   "initialGroundingBaseline": "8409043a76d44ff0bfef2d58af085e2e1d992071",

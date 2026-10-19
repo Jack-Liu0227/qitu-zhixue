@@ -16,7 +16,7 @@ M0 基线审计部分完成，不能宣称所有 characterization tests 已完�
 
 两个确认入口目前只冻结既有同版本 binding snapshot。profile/digest/Skill 尚未冻结，session 路由的真实 profile/member 检查也不能冒称冻结制品运行时完成。
 
-后续 M2–M6 的不可变制品、两个确认事务、完整运行时、IMA 项目权限、实验闭环和灰度部署仍未完成。现有教学源码保持 1 项，新增 8 项与后续 6 项均为候选，未发布。新增授权不扩大旧项目，当前禁用与撤权立即收紧。
+后续 M2–M6 的不可变制品、两个确认事务、完整运行时、IMA 项目权限、实验闭环和灰度部署仍未完成。`.agents/skills` 当前含 1 项基础技能、首批 8 项和 6 项扩展候选源码；新增候选未完成评测且未发布，默认助手仍只绑定基础技能。新增授权不扩大旧项目，当前禁用与撤权立即收紧。
 
 ## 推荐路线
 
@@ -47,7 +47,7 @@ M0 基线审计部分完成，不能宣称所有 characterization tests 已完�
 
 ## 先修什么
 
-当前 `.agents/skills` 有 `tutor-guided-learning@1.0.0` 和首批 8 个教学候选源码包；默认助手 seeds 仍只绑定 `tutor-guided-learning`。新增目录不代表已评测、发布、绑定或冻结进项目快照；`.pi/agents` 的 31 个开发角色也不是生产教学团队。发布/绑定前仍须按状态关闭以下基线缺口：
+当前 `.agents/skills` 有 `tutor-guided-learning@1.0.0`、首批 8 个教学候选和 6 个扩展候选源码包；默认助手 seeds 仍只绑定 `tutor-guided-learning`。新增目录不代表已评测、发布、绑定或冻结进项目快照；`.pi/agents` 的 31 个开发角色也不是生产教学团队。发布/绑定前仍须按状态关闭以下基线缺口：
 
 1. 教学链已改读 Admin assistant 的当前配置，runtime-only Agent 路径保留；全局单一写端迁移和 Worker 统一尚未完成。
 2. phase 导师身份已贯穿 Tutor/SDK 实际生成；本地全量离线回归通过，不等于历史配置冻结。

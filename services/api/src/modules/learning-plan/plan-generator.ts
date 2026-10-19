@@ -108,8 +108,8 @@ export interface GeneratedModule {
   name: string;
   /** One-based lesson order for lesson-first templates. */
   lessonIndex?: number;
-  /** Legacy calendar projection; never set by lesson-only templates. */
-  weekIndex?: number;
+  /** Derived compatibility calendar projection; omitted at runtime by lesson-only plans. */
+  weekIndex: number;
   objective: string;
   ordinal: number;
 }
@@ -137,10 +137,9 @@ export interface GeneratedSession {
   index: number;
   /** One-based lesson order. `index` remains the stable zero-based runtime key. */
   lessonIndex?: number;
-  /** Legacy calendar placement; omitted by lesson-only templates. */
-  week?: number;
-  /** Legacy calendar placement; omitted by lesson-only templates. */
-  day?: number;
+  /** Derived compatibility placement; omitted at runtime by lesson-only plans. */
+  week: number;
+  day: number;
   title: string;
   blocks: GeneratedBlock[];
   theoryObjectiveIds: string[];
@@ -153,8 +152,8 @@ export interface GeneratedPlan {
   /** Canonical lesson-first schedule. */
   lessonCount: number;
   lessonMinutes: 60 | 120;
-  /** Legacy calendar schedule, present only for old generators/adapters. */
-  weeks?: LearningPlanWeeks;
+  /** Derived compatibility calendar; omitted at runtime by lesson-only plans. */
+  weeks: LearningPlanWeeks;
   /** 显式课次数量。4 或 8；与 `weeks` 并存，不互相推导。 */
   sessionCount: PlanSessionCount;
   minutesPerSession: number;
@@ -466,11 +465,6 @@ export function kindForActivity(activity: LearningPlanBlockActivity): SessionBlo
 
 /** 把生成结构投影为 `@qitu/ai-client` 校验器认识的草稿形状。 */
 export function toLearningPlanDraft(plan: GeneratedPlan): LearningPlanDraft {
-  if (plan.weeks === undefined) {
-    throw new PlanGenerationError('lesson-only plans do not have a legacy draft shape', [
-      { path: 'weeks', message: 'legacy draft conversion requires weeks' },
-    ]);
-  }
   return {
     templateVersion: plan.templateVersion,
     weeks: plan.weeks,
@@ -582,12 +576,15 @@ export function assertGenerateInput(input: {
     } as PblSchedule;
     const result = validatePblSchedule(schedule);
     if (!result.valid || lessonOnly || schedule.durationWeeks !== input.weeks) {
-      throw new PlanGenerationError('schedule 必须与 weeks 一致且每周总时长为 120 分钟', [
+      throw new PlanGenerationError(lessonOnly
+        ? 'lesson-only 请求不得包含旧版 schedule'
+        : 'schedule 必须与 weeks 一致且每周总时长为 120 分钟', [
         { path: 'schedule', message: result.errors.join('; ') || 'durationWeeks mismatch' },
       ]);
     }
   }
   let sessionCount: PlanSessionCount | undefined;
+  const legacyWeeks = input.weeks as LearningPlanWeeks;
   if (input.sessionCount !== undefined && input.sessionCount !== null) {
     if (input.sessionCount !== 4 && input.sessionCount !== 8 && input.sessionCount !== 16) {
       throw new PlanGenerationError('sessionCount 只能是 4、8 或 16', [
@@ -598,14 +595,14 @@ export function assertGenerateInput(input: {
     // 课次是单元，周只是排期容器：给出 sessionCount 时它就是课次总数，
     // 每周几节由它除以 weeks 推出。只有**同时**给出 schedule 时才要求两者一致，
     // 否则同一个请求会有两个互相矛盾的课次数。
-    if (schedule !== undefined && sessionCount !== input.weeks * schedule.sessionsPerWeek) {
+    if (!lessonOnly && schedule !== undefined && sessionCount !== legacyWeeks * schedule.sessionsPerWeek) {
       throw new PlanGenerationError(
         `sessionCount=${sessionCount} 与 schedule 不一致：` +
-          `${input.weeks} 周 × 每周 ${schedule.sessionsPerWeek} 节应为 ${input.weeks * schedule.sessionsPerWeek} 节`,
+          `${legacyWeeks} 周 × 每周 ${schedule.sessionsPerWeek} 节应为 ${legacyWeeks * schedule.sessionsPerWeek} 节`,
         [
           {
             path: 'sessionCount',
-            message: `sessionCount must equal weeks * schedule.sessionsPerWeek (${input.weeks * schedule.sessionsPerWeek})`,
+            message: `sessionCount must equal weeks * schedule.sessionsPerWeek (${legacyWeeks * schedule.sessionsPerWeek})`,
           },
         ],
       );

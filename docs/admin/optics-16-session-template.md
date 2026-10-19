@@ -43,8 +43,8 @@
 ```json
 {
   "interest": "光学探究",
-  "weeks": 8,
-  "sessionCount": 16,
+  "lessonCount": 16,
+  "lessonMinutes": 60,
   "curriculumSlug": "optics-physical-inquiry-16s"
 }
 ```

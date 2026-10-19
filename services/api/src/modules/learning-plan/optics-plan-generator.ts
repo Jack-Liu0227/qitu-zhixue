@@ -89,8 +89,9 @@ function reject(path: string, message: string): never {
 function objectiveWeekMap(modules: readonly OpticsSessionModule[]): Map<string, number> {
   const byObjective = new Map<string, number>();
   for (const sessionModule of modules) {
+    const week = sessionModule.week ?? Math.ceil(sessionModule.lessonIndex / 2);
     for (const objectiveId of sessionModule.objectiveIds) {
-      if (!byObjective.has(objectiveId)) byObjective.set(objectiveId, sessionModule.week);
+      if (!byObjective.has(objectiveId)) byObjective.set(objectiveId, week);
     }
   }
   return byObjective;
@@ -102,7 +103,7 @@ export function generateOpticsPlan(
 ): GeneratedPlan {
   // 光学排课支持：4 周（8 节）或 8 周（16 节），每周 2 节 × 60 分钟。
   const allowedWeeks = [4, 8];
-  if (!allowedWeeks.includes(input.weeks)) {
+  if (input.weeks !== 4 && input.weeks !== 8) {
     reject('weeks', `光学课程模板支持 4 周（8 节）或 8 周（16 节），收到 ${input.weeks} 周`);
   }
   const weeks = input.weeks as 4 | 8;
@@ -128,7 +129,7 @@ export function generateOpticsPlan(
 
   const modules: GeneratedModule[] = [];
   for (let week = 1; week <= weeks; week += 1) {
-    const weekSessions = sessionModules.filter((item) => item.week === week);
+    const weekSessions = sessionModules.filter((item) => (item.week ?? Math.ceil(item.lessonIndex / 2)) === week);
     const first = weekSessions[0];
     modules.push({
       id: `opt-mod-w${week}`,
@@ -206,12 +207,15 @@ export function generateOpticsPlan(
       );
     }
 
+    const week = sessionModule.week ?? Math.ceil(sessionModule.lessonIndex / 2);
+    const day = sessionModule.session ?? (((sessionModule.lessonIndex - 1) % 2) + 1);
     return {
       id: `sess-${index + 1}`,
-      moduleId: moduleIdForWeek(sessionModule.week),
+      moduleId: moduleIdForWeek(week),
       index,
-      week: sessionModule.week,
-      day: sessionModule.session,
+      lessonIndex: sessionModule.lessonIndex,
+      week,
+      day,
       title: `第 ${index + 1} 节 · ${sessionModule.title}`,
       blocks,
       theoryObjectiveIds,
@@ -222,6 +226,8 @@ export function generateOpticsPlan(
 
   return {
     templateVersion: context.templateVersion,
+    lessonCount: totalSessions,
+    lessonMinutes: minutesPerSession,
     weeks,
     sessionCount: totalSessions as PlanSessionCount,
     minutesPerSession,

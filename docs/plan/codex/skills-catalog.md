@@ -1,10 +1,10 @@
 # 教学 Skills 目录与引入规范
 
-> 状态：capability-v1-m1 / 2026-10-20；`tutor-guided-learning` 与首批 8 项候选现均有 `.agents/skills/<canonical-id>/SKILL.md` 源码包，当前目录式 runtime 会发现这些非空教学包。新增包尚未完成对抗评测及不可变制品/项目冻结治理；本次未改 Admin seeds、助手绑定或项目快照。目录发现不等于已通过教学评审，也不等于已绑定到助手。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
+> 状态：capability-v1-m1 / 2026-10-20；`tutor-guided-learning`、首批 8 项技能和 6 项扩展候选现均有 `.agents/skills/<canonical-id>/SKILL.md` 源码包，当前目录式 runtime 会发现这些非空教学包。扩展包是 Qitu-authored 候选，尚未完成对抗评测及不可变制品/项目冻结治理；本次未改 Admin seeds、助手绑定或项目快照。目录发现不等于已通过教学评审，也不等于已绑定到助手。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
 
 ## 1. 先补教学方法，不追求大而全
 
-保留 1 个基础技能，首批新增 8 个通用 PBL 技能，形成 9 项可评测目录；单缝闭环通过后再评估后续 6 项。15 项是本轮规划的目录上限，不是当前库存或同轮加载数量。
+保留 1 个基础技能和首批 8 个通用 PBL 技能，并为后续 6 项补齐了 Qitu-authored 源码，形成最多 15 项可评测目录。补齐源码只为进入评审，不表示通过教学/安全验收；单缝闭环和对抗评测通过前，不得发布或绑定这些扩展候选。15 项是目录规划上限，不是同轮加载数量。
 
 全局安全、未成年人保护、工具授权、意图确认和门禁由服务端强制执行，不能因某 Skill 被关闭而失效。`tutor-guided-learning` 提供短轮引导和不代答方法，不拥有写事实的权力。
 
@@ -42,7 +42,7 @@
 
 固定版本、实际路径和许可见 [研究报告](./research-report.md) / [来源锁](./source-lock.json)。来源锁对应轮次未穷尽审查上游脚本、资源和依赖，当前实施未重新联网；MIT/Apache 不等于适合未成年人或可直接执行。
 
-## 3. 后续 6 项
+## 3. 后续 6 项（源码已新增，仍待审核）
 
 | 候选 ID | 角色/价值 | 启用条件与反向验收 |
 | --- | --- | --- |
@@ -52,6 +52,22 @@
 | `pbl-defense-coach` | reviewer：证据答辩与反例 | claim/evidence refs；不泄正式考核答案，不替教师评审 |
 | `pbl-visual-explainer` | concept/analyst：板书、KaTeX、Mermaid | 安全渲染、规模限制、移动端验证；不生成 HTML/JS/外链脚本 |
 | `optics-wave-inquiry` | lab/analyst：衍射/散射和模型边界 | 正式 action/observation/CER；域外拒绝定量，不新建 mastery 目标 |
+
+### 本批源码和开源参考
+
+下列上游仓库仅作方法参考，没有将整包复制进 `.agents/skills`；新增文件依据 Qitu 的项目权限、冻结版本、未成年人保护及 PBL owner 规则重新编写。引用均固定到检查时的 commit，许可仅表示上游授权，不代表技能通过 Qitu 的教学或安全评审。当前仓库没有项目级开源许可证，因此这 6 个 Qitu-authored 候选不写 `license` 字段；在权利人确认并补充适用许可前，不得对外发布或宣称它们是开源包。
+
+| Qitu 技能 | 参考来源与许可 | 处理方式 |
+| --- | --- | --- |
+| `pbl-team-facilitation` | Qitu `Theme-Session-Team-IMA` 规则 | 由项目团队版本、真实成员和授权约束原创，不引入通用组队脚本或写权限。 |
+| `pbl-peer-critique`、`pbl-artifact-revision` | [idstack `assessment-design`](https://github.com/savvides/idstack/blob/1767027166aeeae1c64c21925b01a9c848abcf99/skills/assessment-design/SKILL.md)（MIT）；[AI Socratic Tutor](https://github.com/bstellato/ai-teaching-skills/blob/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md)（MIT） | 仅参考 rubric 对齐、一次聚焦反馈、保留学习者推理的方法；不引入 idstack 的 Bash/Write/Edit/Agent 工具指令，也不复制其成品文本。 |
+| `pbl-defense-coach` | [AI Socratic Tutor](https://github.com/bstellato/ai-teaching-skills/blob/6d3f85726e7b0fedacc8a078e174161293777044/ai-socratic-tutor/SKILL.md)（MIT）；idstack `assessment-design`（MIT） | 仅参考逐步追问和围绕 rubric 检查证据；正式考核答案、评分及通过事实仍归服务端/教师 owner。 |
+| `pbl-visual-explainer` | idstack [`accessibility-review`](https://github.com/savvides/idstack/blob/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md)（MIT）；[ACCESSIBILITY accessibility skill](https://github.com/KreerC/ACCESSIBILITY.md/blob/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md)（MIT） | 只参考可访问替代文本和包容性检查；未移植上游 shell、文件写入、子 Agent 或网页审计工作流。 |
+| `optics-wave-inquiry` | 已锁定的 [K-Dense scientific-agent-skills](./source-lock.json)（MIT） | 只参考科学探究方法；运行范围仍由光学注册模型、服务端 gate 和参数域限定。 |
+
+额外筛选但不直接导入：[Learning Commons `k12-check-for-understanding`](https://github.com/learning-commons-org/agent-skills/blob/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md)（Apache-2.0）定位为教师侧数学形成性评估，与学生侧 `pbl-concept-probe` 不同；[learn-anything-with-AI](https://github.com/read2017/learn-anything-with-AI/blob/0b06235ed73890018a40d058c03308c97312b51c/skills/learn-anything-skill/SKILL.md)（MIT）包含规划/文件产物/掌握度流程，与 Qitu 的服务端 owner 边界不匹配。二者作为检索候选记录，不视为新运行技能。
+
+来源 URL、固定 commit、许可证文件、原始字节哈希和 Grok 搜索状态见 [source lock](./source-lock.json)。Grok 本轮 `sources_count: 0`，只作检索线索；上述许可与内容判断来自 GitHub API、固定 commit 的仓库树及原始文件，不来自 Grok 摘要。
 
 `scientific-visualization` 仅启发图示检查；`scientific-writing` 仅启发草稿反馈，不自动代写学生论文；`sympy` 仅启发已测试的服务端计算，不给学生 Python REPL。
 

@@ -35,7 +35,10 @@ import { validatePblSchedule } from '@qitu/contracts';
 /** 校验器认识的最小形状（结构化，不依赖生成器的具体实现）。 */
 export interface SessionPlanShape {
   templateVersion: string;
-  weeks: LearningPlanWeeks;
+  /** Legacy calendar duration; omitted by lesson-only templates. */
+  weeks?: LearningPlanWeeks;
+  lessonCount?: number;
+  lessonMinutes?: 60 | 120;
   sessionCount: number;
   minutesPerSession: number;
   schedule?: PblSchedule;
@@ -62,7 +65,8 @@ export interface PlanObjectiveShape {
 export interface PlanModuleShape {
   id: string;
   name: string;
-  weekIndex: number;
+  weekIndex?: number;
+  lessonIndex?: number;
   objective: string;
   ordinal: number;
 }
@@ -81,8 +85,9 @@ export interface PlanSessionShape {
   id: string;
   moduleId: string;
   index: number;
-  week: number;
-  day: number;
+  week?: number;
+  day?: number;
+  lessonIndex?: number;
   title: string;
   blocks: readonly PlanBlockShape[];
   theoryObjectiveIds: readonly string[];
@@ -170,13 +175,16 @@ const BLOCK_ORDER = PLAN_BLOCK_ORDER;
 
 /** 期望的课次数量：显式 `sessionCount`，否则回退旧语义 `weeks * sessionsPerWeek`。 */
 export function expectedSessionCount(plan: {
-  weeks: LearningPlanWeeks;
+  weeks?: LearningPlanWeeks;
+  lessonCount?: number;
   sessionCount?: number;
   schedule?: PblSchedule;
 }): number {
+  if (typeof plan.lessonCount === 'number') return plan.lessonCount;
   if (typeof plan.sessionCount === 'number' && Number.isInteger(plan.sessionCount)) {
     return plan.sessionCount;
   }
+  if (plan.weeks === undefined) return 0;
   return plan.weeks * (plan.schedule?.sessionsPerWeek ?? 5);
 }
 
@@ -257,10 +265,19 @@ export function findPrerequisiteCycle(
 export function validateGeneratedPlan(plan: SessionPlanShape): void {
   const errors: PlanViolation[] = [];
   const schedule = plan.schedule;
-  if (schedule !== undefined) {
+  const lessonOnly = plan.weeks === undefined && plan.lessonCount !== undefined;
+  if (lessonOnly) {
+    if (!Number.isSafeInteger(plan.lessonCount) || plan.lessonCount! < 1 || plan.lessonCount! > 128) {
+      errors.push({ path: 'lessonCount', message: 'lessonCount must be an integer between 1 and 128' });
+    }
+    if (schedule !== undefined) errors.push({ path: 'schedule', message: 'lesson-only plans must not contain calendar schedule' });
+    if (plan.lessonMinutes !== 60 && plan.lessonMinutes !== 120) {
+      errors.push({ path: 'lessonMinutes', message: 'lessonMinutes must be 60 or 120' });
+    }
+  } else if (schedule !== undefined) {
     // 排期自洽性（字段间约束 + 与 weeks 一致）。旧路径只在生成器里做这件事，
     // 校验器侧此前完全没有这一轴。
-    for (const violation of scheduleViolations(schedule, plan.weeks)) {
+    for (const violation of scheduleViolations(schedule, plan.weeks!)) {
       errors.push(violation);
     }
   }
@@ -272,12 +289,12 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
    * **不能**回退到 `plan.minutesPerSession`——那正是被校验的字段之一，用它当
    * 期望值会让 `minutesPerSession` 写错时反而检查不出任何问题（自证循环）。
    */
-  const expectedMinutes = schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
-  const sessionsPerWeek = schedule?.sessionsPerWeek ?? (plan.weeks > 0 ? expectedCount / plan.weeks : 5);
+  const expectedMinutes = lessonOnly ? plan.lessonMinutes! : schedule?.sessionMinutes ?? MINUTES_PER_SESSION;
+  const sessionsPerWeek = schedule?.sessionsPerWeek ?? (plan.weeks !== undefined && plan.weeks > 0 ? expectedCount / plan.weeks : 0);
 
   /* ---------- 信封 ---------- */
 
-  if (plan.weeks !== 4 && plan.weeks !== 8) {
+  if (!lessonOnly && plan.weeks !== 4 && plan.weeks !== 8) {
     errors.push({ path: 'weeks', message: 'weeks 必须是 4 或 8' });
   }
   // 排期自洽性已在上面经 `scheduleViolations` 收集，此处不再重复。
@@ -286,13 +303,13 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
   // 都各自合法，而被硬编码成「只能是 4 或 8」会把 8 周 × 2 节 = 16 节误判为非法。
   const declaredCount = plan.sessionCount;
   if (typeof declaredCount === 'number') {
-    const weekly = schedule?.sessionsPerWeek ?? (plan.weeks > 0 ? expectedCount / plan.weeks : 5);
-    const implied = plan.weeks * weekly;
+    const weekly = schedule?.sessionsPerWeek ?? (plan.weeks !== undefined && plan.weeks > 0 ? expectedCount / plan.weeks : 0);
+    const implied = (plan.weeks ?? 0) * weekly;
     if (!Number.isInteger(declaredCount) || declaredCount <= 0 || declaredCount !== implied) {
       errors.push({
         path: 'sessionCount',
         message:
-          `sessionCount 必须等于 weeks × 每周节数（${plan.weeks} × ${weekly} = ${implied}），` +
+          `sessionCount 必须等于 weeks × 每周节数（${plan.weeks ?? 0} × ${weekly} = ${implied}），` +
           `收到 ${declaredCount}`,
       });
     }
@@ -327,12 +344,14 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     errors.push({ path: 'goal', message: `goal 不能超过 ${MAX_GOAL_LENGTH} 字` });
   }
 
-  /* ---------- 周数与模块 ---------- */
+  /* ---------- Module order ---------- */
 
-  if (plan.modules.length !== plan.weeks) {
+  if ((!lessonOnly && plan.modules.length !== plan.weeks) || (lessonOnly && plan.modules.length !== plan.lessonCount)) {
     errors.push({
       path: 'modules',
-      message: `计划必须包含 ${plan.weeks} 个周模块，实际 ${plan.modules.length} 个`,
+      message: lessonOnly
+        ? `lesson-only plan must contain ${plan.lessonCount} lesson modules, got ${plan.modules.length}`
+        : `计划必须包含 ${plan.weeks} 个周模块，实际 ${plan.modules.length} 个`,
     });
   }
   const moduleIds = new Set<string>();
@@ -344,7 +363,8 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     if (module.ordinal <= 0) {
       errors.push({ path: `modules.${module.id}.ordinal`, message: '模块序号必须为正' });
     }
-    if (module.weekIndex < 1 || module.weekIndex > plan.weeks) {
+    const order = lessonOnly ? module.lessonIndex : module.weekIndex;
+    if (!Number.isInteger(order) || order! < 1 || order! > (lessonOnly ? plan.lessonCount! : plan.weeks!)) {
       errors.push({ path: `modules.${module.id}.weekIndex`, message: '模块周序号越界' });
     }
   }
@@ -413,15 +433,24 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     if (session.index !== plan.sessions.indexOf(session)) {
       errors.push({ path: `${sessionPath}.index`, message: '课次下标必须与其在计划中的位置一致' });
     }
-    if (session.week < 1 || session.week > plan.weeks) {
-      errors.push({ path: `${sessionPath}.week`, message: '课次周序号越界' });
-    }
-    if (Number.isInteger(sessionsPerWeek) && sessionsPerWeek > 0) {
-      if (session.day < 1 || session.day > sessionsPerWeek) {
-        errors.push({
-          path: `${sessionPath}.day`,
-          message: `课次日序号必须在 1..${sessionsPerWeek}`,
-        });
+    if (lessonOnly) {
+      if (session.week !== undefined || session.day !== undefined) {
+        errors.push({ path: sessionPath, message: 'lesson-only sessions must not contain week/day' });
+      }
+      if (session.lessonIndex !== session.index + 1) {
+        errors.push({ path: `${sessionPath}.lessonIndex`, message: 'lessonIndex must be contiguous one-based order' });
+      }
+    } else {
+      if (session.week === undefined || session.week < 1 || session.week > plan.weeks!) {
+        errors.push({ path: `${sessionPath}.week`, message: '课次周序号越界' });
+      }
+      if (Number.isInteger(sessionsPerWeek) && sessionsPerWeek > 0) {
+        if (session.day === undefined || session.day < 1 || session.day > sessionsPerWeek) {
+          errors.push({
+            path: `${sessionPath}.day`,
+            message: `课次日序号必须在 1..${sessionsPerWeek}`,
+          });
+        }
       }
     }
 
@@ -588,7 +617,8 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
   // 声明的正是「这不是 5 节/周网格」，拿旧网格去否决它属于误报——所以这里按
   // 形状决定是否调用，而不是无条件调用后把错误并进来。
   const legacyShaped =
-    schedule === undefined && plan.sessions.length === plan.weeks * 5 && plan.minutesPerSession === MINUTES_PER_SESSION;
+    !lessonOnly && schedule === undefined && plan.weeks !== undefined
+      && plan.sessions.length === plan.weeks * 5 && plan.minutesPerSession === MINUTES_PER_SESSION;
   if (legacyShaped) {
     const legacy = validateLearningPlanDraft(toLegacyDraft(plan));
     for (const error of legacy.errors) {
@@ -636,6 +666,7 @@ function sessionTaughtObjectiveIds(session: PlanSessionShape): string[] {
 }
 
 function toLegacyDraft(plan: SessionPlanShape): import('@qitu/ai-client').LearningPlanDraft {
+  if (plan.weeks === undefined) throw new Error('legacy draft requires weeks');
   return {
     templateVersion: plan.templateVersion,
     weeks: plan.weeks,
@@ -643,8 +674,8 @@ function toLegacyDraft(plan: SessionPlanShape): import('@qitu/ai-client').Learni
     interest: plan.interest,
     sessions: plan.sessions.map((session) => ({
       id: session.id,
-      week: session.week,
-      day: session.day,
+      week: session.week ?? 1,
+      day: session.day ?? 1,
       title: session.title,
       blocks: session.blocks.map((block) => ({
         id: block.id,

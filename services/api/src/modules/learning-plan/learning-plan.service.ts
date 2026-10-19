@@ -162,7 +162,7 @@ export class LearningPlanService {
 
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
+    rawInput: { interest: unknown; weeks?: unknown; lessonCount?: unknown; lessonMinutes?: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
@@ -1679,7 +1679,9 @@ function isPlanSessionCount(value: number): value is PlanSessionCount {
 
 export function assertGeneratePlanInput(raw: {
   interest: unknown;
-  weeks: unknown;
+  weeks?: unknown;
+  lessonCount?: unknown;
+  lessonMinutes?: unknown;
   goal?: unknown;
   schedule?: unknown;
   sessionCount?: unknown;
@@ -1690,8 +1692,21 @@ export function assertGeneratePlanInput(raw: {
     rejectInput(`interest 长度须为 ${MIN_INTEREST_LENGTH}–${MAX_INTEREST_LENGTH} 字符`, 'interest');
   }
 
-  if (raw.weeks !== 4 && raw.weeks !== 8) rejectInput('weeks 只能是 4 或 8', 'weeks');
-  const weeks: 4 | 8 = raw.weeks;
+  const lessonOnly = raw.lessonCount !== undefined && raw.lessonCount !== null;
+  let lessonCount: number | undefined;
+  let lessonMinutes: 60 | 120 | undefined;
+  let weeks: 4 | 8 | undefined;
+  if (lessonOnly) {
+    if (typeof raw.lessonCount !== 'number' || !Number.isSafeInteger(raw.lessonCount)
+      || raw.lessonCount < 1 || raw.lessonCount > 128) rejectInput('lessonCount must be an integer between 1 and 128', 'lessonCount');
+    lessonCount = raw.lessonCount;
+    if (raw.lessonMinutes !== 60 && raw.lessonMinutes !== 120) rejectInput('lessonMinutes must be 60 or 120', 'lessonMinutes');
+    lessonMinutes = raw.lessonMinutes;
+    if (raw.weeks !== undefined && raw.weeks !== null) rejectInput('lesson-only input must not contain weeks', 'weeks');
+  } else {
+    if (raw.weeks !== 4 && raw.weeks !== 8) rejectInput('weeks must be 4 or 8', 'weeks');
+    weeks = raw.weeks;
+  }
 
   let goal: string | null = null;
   if (raw.goal !== undefined && raw.goal !== null) {
@@ -1737,7 +1752,7 @@ export function assertGeneratePlanInput(raw: {
       sessionMinutes: candidate.sessionMinutes,
     } as PblSchedule;
     const scheduleCheck = validatePblSchedule(normalized);
-    if (!scheduleCheck.valid || normalized.durationWeeks !== weeks) {
+    if (!scheduleCheck.valid || lessonOnly || normalized.durationWeeks !== weeks) {
       rejectInput(
         `schedule 必须与 weeks(${weeks}) 一致且每周总时长为 120 分钟：${scheduleCheck.errors.join('; ') || 'durationWeeks mismatch'}`,
         'schedule',
@@ -1748,7 +1763,7 @@ export function assertGeneratePlanInput(raw: {
 
   return {
     interest,
-    weeks,
+    ...(lessonOnly ? { lessonCount, lessonMinutes } : { weeks: weeks! }),
     goal,
     ...(schedule === undefined ? {} : { schedule }),
     ...(sessionCount === undefined ? {} : { sessionCount }),

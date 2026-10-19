@@ -71,12 +71,14 @@ export class LearningPlanController {
     // `assertNoServerOwnedFields` 拒绝。
     const request = pickFields<{
       interest: unknown;
-      weeks: unknown;
+      weeks?: unknown;
+      lessonCount?: unknown;
+      lessonMinutes?: unknown;
       goal?: unknown;
       schedule?: PblSchedule;
       sessionCount?: unknown;
       curriculumSlug?: unknown;
-    }>(body, ['interest', 'weeks', 'goal', 'schedule', 'sessionCount', 'curriculumSlug']);
+    }>(body, ['interest', 'weeks', 'lessonCount', 'lessonMinutes', 'goal', 'schedule', 'sessionCount', 'curriculumSlug']);
     return { data: await this.guard(() => this.plans.generatePlan(user, request)) };
   }
 

@@ -94,8 +94,8 @@ export function buildPlanOutline(
     .sort((a, b) => a.index - b.index)
     .map((session) => ({
       sessionIndex: session.index,
-      week: session.week,
-      day: session.day,
+      week: session.week ?? Math.ceil((session.index + 1) / 2),
+      day: session.day ?? ((session.index % 2) + 1),
       title: session.title,
       objectiveIds: sessionObjectiveIds(session),
       blockKinds: PLAN_BLOCK_ORDER.filter((kind) =>
@@ -107,7 +107,7 @@ export function buildPlanOutline(
     id: `outline:${plan.id}`,
     planId: plan.id,
     templateVersion: plan.templateVersion,
-    weeks: plan.weeks,
+    weeks: plan.weeks ?? 4,
     sessionCount: plan.sessionCount,
     minutesPerSession: plan.minutesPerSession,
     ...(plan.schedule === undefined ? {} : { schedule: plan.schedule }),
@@ -186,8 +186,8 @@ export function generateSessionTeachingPlan(
     id: sessionPlanIdempotencyKey(outline.planId, sessionIndex),
     planId: outline.planId,
     sessionIndex,
-    week: session.week,
-    day: session.day,
+    week: session.week ?? outlineEntry.week,
+    day: session.day ?? outlineEntry.day,
     title: session.title,
     mode: 'study',
     minutes: session.blocks.reduce((sum, block) => sum + block.minutes, 0),

@@ -128,7 +128,7 @@ export interface AuditEntry {
     | 'tutor.recommendation'
     | 'tutor.teacher_intervention';
   detail: string;
-  actorRole?: 'student' | 'teacher' | 'admin' | 'system';
+  actorRole?: 'student' | 'teacher' | 'admin';
   idempotencyKey?: string;
 }
 

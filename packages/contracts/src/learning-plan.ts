@@ -118,6 +118,8 @@ export interface LessonModuleView {
   id: string;
   name: string;
   weekIndex: number;
+  /** One-based lesson order for lesson-first plans. */
+  lessonIndex?: number;
   objective: string;
   ordinal: number;
   objectives: LearningObjectiveView[];
@@ -128,6 +130,8 @@ export interface LessonSessionView {
   id: string;
   moduleId: string;
   index: number;
+  /** One-based lesson order. */
+  lessonIndex?: number;
   week: number;
   day: number;
   title: string;
@@ -153,6 +157,9 @@ export interface LearningPlanView {
   version: number;
   /** Explicit lesson count; legacy plans may omit it and derive it from sessions. */
   sessionCount?: PlanSessionCount;
+  /** Canonical lesson-first schedule; absent on historical weekly plans. */
+  lessonCount?: number;
+  lessonMinutes?: 60 | 120;
   modules: LessonModuleView[];
   sessions: LessonSessionView[];
   confirmedAt: string | null;
@@ -166,7 +173,9 @@ export interface LearningPlanView {
 /** 生成计划。模型输出不可信，服务端校验通过才会落库为草稿。 */
 export interface GenerateLearningPlanRequest {
   interest: string;
-  weeks: LearningPlanWeeks;
+  weeks?: LearningPlanWeeks;
+  lessonCount?: number;
+  lessonMinutes?: 60 | 120;
   sessionCount?: PlanSessionCount;
   goal?: string | null;
   schedule?: PblSchedule;

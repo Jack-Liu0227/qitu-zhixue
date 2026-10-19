@@ -65,8 +65,11 @@ export const OPTICS_RUBRIC: unknown[] = [
 /** 课次模块：4 周 × 每周 2 节 × 60 分钟，覆盖全部 12 个目标。 */
 export interface OpticsSessionModule {
   id: string;
-  week: number;
-  session: number;
+  /** Canonical lesson order. */
+  lessonIndex: number;
+  /** Legacy calendar placement; only present in the v1 adapter below. */
+  week?: number;
+  session?: number;
   title: string;
   phase: PblPhase;
   objectiveIds: readonly string[];
@@ -76,6 +79,7 @@ export interface OpticsSessionModule {
 export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   {
     id: 'm1',
+    lessonIndex: 1,
     week: 1,
     session: 1,
     title: '生活里的光：观察与提问',
@@ -85,6 +89,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm2',
+    lessonIndex: 2,
     week: 1,
     session: 2,
     title: '反射定律与平面镜成像',
@@ -94,6 +99,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm3',
+    lessonIndex: 3,
     week: 2,
     session: 1,
     title: '折射定律与折射率',
@@ -103,6 +109,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm4',
+    lessonIndex: 4,
     week: 2,
     session: 2,
     title: '全反射与临界角',
@@ -112,6 +119,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm5',
+    lessonIndex: 5,
     week: 3,
     session: 1,
     title: '透镜三条特殊光线作图',
@@ -121,6 +129,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm6',
+    lessonIndex: 6,
     week: 3,
     session: 2,
     title: '搭建光路并采集角度 / 像距数据',
@@ -130,6 +139,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm7',
+    lessonIndex: 7,
     week: 4,
     session: 1,
     title: '拟合数据与撰写探究报告',
@@ -139,6 +149,7 @@ export const OPTICS_8_SESSION_MODULES: readonly OpticsSessionModule[] = [
   },
   {
     id: 'm8',
+    lessonIndex: 8,
     week: 4,
     session: 2,
     title: '答辩与反思归档',
@@ -159,19 +170,37 @@ if (!optics16Profile) {
  */
 export const OPTICS_16_SESSION_MODULES: readonly OpticsSessionModule[] = optics16Profile.sessions.map((session) => ({
   id: `m${session.sessionIndex}`,
-  week: session.week ?? Math.floor((session.sessionIndex - 1) / 2) + 1,
-  session: session.session ?? ((session.sessionIndex - 1) % 2 + 1),
+  lessonIndex: session.sessionIndex,
   title: session.title,
   phase: session.phase,
   objectiveIds: session.objectiveIds,
   minutes: session.durationMinutes,
 }));
 
+/**
+ * Explicit legacy adapter for the old optics generator. The active 16-lesson
+ * template never consumes this projection; it stays isolated for historical
+ * `optics-physical-inquiry:v1` plans and is not a source of template content.
+ */
+export const OPTICS_LEGACY_SESSION_MODULES: readonly OpticsSessionModule[] = OPTICS_16_SESSION_MODULES.map((module) => ({
+  ...module,
+  week: Math.floor((module.lessonIndex - 1) / 2) + 1,
+  session: ((module.lessonIndex - 1) % 2) + 1,
+}));
 
-export const OPTICS_SESSION_MODULES: readonly OpticsSessionModule[] = OPTICS_16_SESSION_MODULES;
+export const OPTICS_SESSION_MODULES: readonly OpticsSessionModule[] = OPTICS_LEGACY_SESSION_MODULES;
 
+/** Canonical lesson-first accessor used by new template consumers. */
+export function getOpticsLessonModules(lessonCount = 16): readonly OpticsSessionModule[] {
+  if (lessonCount !== OPTICS_16_SESSION_MODULES.length) {
+    throw new Error(`optics lesson template supports ${OPTICS_16_SESSION_MODULES.length} lessons`);
+  }
+  return OPTICS_16_SESSION_MODULES;
+}
+
+/** Legacy accessor retained for historical weekly plans only. */
 export function getOpticsSessionModules(weeks: 4 | 8 = 8): readonly OpticsSessionModule[] {
-  return weeks === 4 ? OPTICS_8_SESSION_MODULES : OPTICS_16_SESSION_MODULES;
+  return weeks === 4 ? OPTICS_8_SESSION_MODULES : OPTICS_LEGACY_SESSION_MODULES;
 }
 
 /** 每个目标显式登记知识类型（learning-plan `KnowledgeType`；reflection 为 null）。 */

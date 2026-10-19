@@ -162,8 +162,8 @@ export interface PblLessonBlock {
 export interface PblLessonPlan {
   id: string;
   planId: string;
-  week: number;
-  session: number;
+  /** One-based lesson order; calendar placement is not part of the template contract. */
+  lessonIndex: number;
   title: string;
   phase: PblPhase;
   blocks: readonly PblLessonBlock[];
