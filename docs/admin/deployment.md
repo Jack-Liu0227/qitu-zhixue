@@ -309,6 +309,10 @@ bash /root/qitu-releases/rollback-before-8413ef811e19cf0e1c029fc05150325b3907611
 
 API Linux 测试日志、运行复核和受限审计脚本分别位于 release 的 `.release-api-test.log`、`.release-live-verification.json`、`.release-audit/`。完整结果和验证限制见 [接管修复与发布记录](../plan/codex/takeover-validation-20261019.md)。本轮没有真实模型/IMA 请求或登录后完整 16 课时验收，不能据此宣布全动态 PBL 完成；HTTP 冒烟也不是 TLS/生产隐私安全认证。
 
+### 3.6 主站 main 统一发布与管家目录修复（2026-10-19 晚间）
+
+生产代码为 `63e3be882f1b1d7ccfbc0122bc14bf0b354785e3`，21:39:47 +08:00 完成六个正式单元的统一切换。0036 迁移已应用，服务器两处 preferences 独立修改保留。完整构建、备份、健康、管家删除回归、未发布技能配置风险和回滚入口见 [本次发布记录](./release-20261019-main.md)。本节取代 §3.5 作为当前运行版本记录，不表示完整 PBL 能力验收。
+
 ## 4. Pi/Herdr 开发 Agent（非运行时）
 
 开发期角色定义位于 `.pi/agents/`（约 30 个 `.md`），通过 `pi-herdr-agents` 加载。

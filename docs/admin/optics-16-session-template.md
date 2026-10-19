@@ -1,5 +1,7 @@
 # 光学 16 课时项目模板
 
+> Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](./release-20261019-main.md).
+
 > 状态：2026-10-19，源码与隔离测试实现；未执行生产数据库迁移、模板初始化、绑定激活或部署。Admin 现有阶段编辑器尚不是逐课时编辑器。
 
 ## 模板制作方式

@@ -1,5 +1,7 @@
 # 当前实施与文档验证记录
 
+> Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](../../admin/release-20261019-main.md).
+
 > 状态：首批源码已实现，focused 通过，本地全量离线回归 1040 项通过；未进行本轮生产发布。2026-10-19。
 > 历史原始记录见 [更新前验证快照](../../archive/codex-before-capability-20261019/snapshot/validation-20261019.md)，历史发布见 [发布基线](./takeover-validation-20261019.md)。
 

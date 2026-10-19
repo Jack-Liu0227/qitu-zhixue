@@ -1,5 +1,7 @@
 # PBL 能力链架构与实施入口
 
+> Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](../../admin/release-20261019-main.md).
+
 > 状态：2026-10-19 / capability-v1-m1 首批源码已实现，本地全量离线验证已通过（1040 项 API 测试），生产未验收；源码基线 `43a0307eb776185d7561f213d75b3d7312616aa9` 加当前工作树。
 > 本轮复用已有联网研究，实现唯一模板合同、纯编译器与 Tutor 身份一致性，并收口全部当前方案文档。没有安装/发布新 Skill/MCP、迁移数据或部署新功能。目标设计不等于全部接线完成。
 
