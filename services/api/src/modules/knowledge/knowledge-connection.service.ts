@@ -17,6 +17,7 @@ import {
 } from './knowledge-center.config';
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
+import { imaConnectionMessage } from './knowledge-ima-errors';
 import {
   IdempotencyStore,
   hashIdempotentInput,
@@ -121,7 +122,10 @@ export class KnowledgeConnectionService {
       if (!receipt.ok)
         throw new BadRequestException({
           code: receipt.errorCode ?? 'REMOTE_CONNECTION_FAILED',
-          message: '远端知识库连接失败',
+          message:
+            engine.provider === 'ima'
+              ? imaConnectionMessage(receipt.errorCode)
+              : '远端知识库连接失败',
         });
     } else if (connection.flavour && connection.flavour !== 'linked') {
       throw new BadRequestException({

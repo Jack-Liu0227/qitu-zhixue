@@ -23,6 +23,7 @@ import {
   type ModelOption,
 } from './shared';
 import styles from './KnowledgeLibrary.module.css';
+import { ImaLibraryPicker } from './ImaLibraryPicker';
 
 export type LibraryCreation = { request: CreateBaseRequest; files: File[]; assistantIds: string[] };
 export function CreateLibraryModal({
@@ -59,6 +60,10 @@ export function CreateLibraryModal({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [checked, setChecked] = useState(false);
+  const [imaGeneration, setImaGeneration] = useState(0);
+  const [imaSelected, setImaSelected] = useState(false);
+  const [imaLoading, setImaLoading] = useState(false);
+  const lastImaName = useRef('');
   const retry = useRef(createIdempotentRetryKey());
   const dialog = useRef<HTMLDivElement>(null);
   const group = engines.find((e) => e.provider === provider);
@@ -95,6 +100,7 @@ export function CreateLibraryModal({
     setEditing(false);
     setFields({});
     setChecked(false);
+    setImaSelected(false);
     setError('');
     setNotice('');
     // Refreshing saved defaults must not reset unsaved form inputs.
@@ -109,6 +115,11 @@ export function CreateLibraryModal({
     setDraft({ ...draft, config: { ...draft.config, [key]: value } });
     setEditing(true);
     setChecked(false);
+    if (provider === 'ima') {
+      setImaGeneration((v) => v + 1);
+      setImaSelected(false);
+      setFields({});
+    }
   }
   async function saveEngine() {
     if (!draft || !online) return;
@@ -174,7 +185,7 @@ export function CreateLibraryModal({
   const connectionFields: [string, string, string][] = linked
     ? [['externalPath', '文件夹路径', '/服务端知识库目录/my-kb']]
     : provider === 'ima'
-      ? [['remoteKnowledgeBaseId', '远端知识库 ID', '输入 ima 知识库 ID']]
+      ? []
       : provider === 'weknora'
         ? [
             [
@@ -264,6 +275,10 @@ export function CreateLibraryModal({
                 onClick={() => {
                   setMode(id);
                   setChecked(false);
+                  if (provider === 'ima') {
+                    setImaSelected(false);
+                    setFields({});
+                  }
                   if (id === 'link_existing' && !linkableProviders.includes(provider))
                     selectProvider(engines.find((g) => g.provider === 'llamaindex')!);
                 }}
@@ -504,6 +519,29 @@ export function CreateLibraryModal({
               </div>
             )}
           </section>
+          {provider === 'ima' && draft && (
+            <ImaLibraryPicker
+              key={`${instanceId}:${mode}:${imaGeneration}`}
+              instanceId={instanceId}
+              engine={draft}
+              saved={!editing && !!instance}
+              online={online}
+              disabled={busy}
+              selectedId={fields.remoteKnowledgeBaseId ?? ''}
+              onLoading={setImaLoading}
+              onSelect={(id, remoteName, fromList) => {
+                setFields({ remoteKnowledgeBaseId: id });
+                setChecked(false);
+                setImaSelected(fromList);
+                setError('');
+                setNotice('');
+                if (remoteName && (!name.trim() || name === lastImaName.current)) {
+                  setName(remoteName);
+                  lastImaName.current = remoteName;
+                }
+              }}
+            />
+          )}
           {!isRemote &&
             mode === 'create_new' &&
             group?.definition?.modelKinds.includes('embedding') && (
@@ -548,7 +586,15 @@ export function CreateLibraryModal({
               </p>
               <button
                 className={styles.secondary}
-                disabled={busy || !online || !name.trim() || !credentialsReady || editing}
+                disabled={
+                  busy ||
+                  imaLoading ||
+                  !online ||
+                  !name.trim() ||
+                  !credentialsReady ||
+                  editing ||
+                  (provider === 'ima' && !fields.remoteKnowledgeBaseId)
+                }
                 onClick={() => void probe()}
               >
                 <Glyph name="search" /> {checked ? '检查通过' : '检查连接'}
@@ -647,10 +693,13 @@ export function CreateLibraryModal({
             className={styles.primary}
             disabled={
               busy ||
+              imaLoading ||
               !online ||
               !name.trim() ||
               !credentialsReady ||
               editing ||
+              (provider === 'ima' &&
+                (!fields.remoteKnowledgeBaseId || (!imaSelected && !checked))) ||
               (!isRemote &&
                 !linked &&
                 group?.definition?.modelKinds.includes('embedding') &&

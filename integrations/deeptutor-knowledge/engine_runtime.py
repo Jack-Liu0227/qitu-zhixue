@@ -62,40 +62,8 @@ async def remote(data):
     credentials = {k: config[k] for k in ("apiKey", "clientId") if k in config}
     credentials.update(data.get("credentials") or {})
     if provider == "ima":
-        if url and url.rstrip("/") != "https://ima.qq.com":
-            return result(False, error="ENGINE_CLOUD_URL_UNSUPPORTED")
-        from deeptutor.services.rag.pipelines.ima.config import ImaConfig
-        from deeptutor.services.rag.pipelines.ima.client import ImaClient
-        key, client_id = credentials.get("apiKey", ""), credentials.get("clientId", "")
-        if not key or not client_id:
-            return result(False, "needs_key", "ENGINE_NEEDS_KEY")
-        remote_id = config.get("remoteKnowledgeBaseId") or data.get("remoteKnowledgeBaseId", "")
-        client = ImaClient(ImaConfig(client_id, key, remote_id), timeout=12)
-        if op == "connect":
-            if not remote_id:
-                return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
-            if not await client.get_knowledge_base():
-                return result(False, error="REMOTE_RESOURCE_NOT_FOUND")
-        elif op == "search":
-            page = await client.search_knowledge(query, limit=8)
-            from deeptutor.services.rag.pipelines.ima.sources import documents_to_sources
-            from deeptutor.services.rag.pipelines.ima.pipeline import ImaPipeline
-            sources = documents_to_sources(page.documents)
-            await ImaPipeline()._hydrate(client, sources)
-            return result(True, manifest={"items": [s for s in sources if str(s.get('content') or '').strip()]})
-        elif op == 'documents':
-            page = await client.get_knowledge_list(folder_id=str(data.get('folderId') or ''), cursor=str(data.get('cursor') or ''), limit=50)
-            return result(True, manifest={'items': [{'id':d.media_id,'title':d.title,'origin':{}} for d in page.documents],
-                'folders':[{'id':f.folder_id,'name':f.name} for f in page.folders], 'nextCursor':page.next_cursor, 'isEnd':page.is_end})
-        elif op == 'read_document':
-            from deeptutor.services.rag.pipelines.ima.media import extract_text
-            media = await client.get_media_content(str(data.get('documentId') or ''))
-            text = await extract_text(media, max_chars=100000) if media else ''
-            return result(bool(text), error=None if text else 'SOURCE_DOCUMENT_UNAVAILABLE', manifest={'content':text})
-        else:
-            found = await client.search_knowledge_bases()
-            return result(True, manifest={"accessibleBases": len(found.get("knowledge_bases", []))}, checks=[check("account", "ima 账户与知识库访问", True, "官方 OpenAPI 认证检查通过")])
-        return result(True)
+        from ima_runtime import ima_request
+        return await ima_request(data)
     if provider == "obsidian":
         try:
             path = allowed_path(config.get("vaultPath"))
@@ -418,7 +386,9 @@ async def run(data):
     provider = data.get("provider")
     if provider not in LOCAL | {"ima","lightrag-server","weknora","kiwix","obsidian","marginnote"}:
         return result(False,error="ENGINE_ADAPTER_NOT_READY")
-    if data.get("operation") not in {"check","connect","build","search"}:
+    if data.get("operation") not in {"check","connect","build","search","list_bases","documents","read_document"}:
+        return result(False,error="ENGINE_OPERATION_INVALID")
+    if data.get("operation") == "list_bases" and provider != "ima":
         return result(False,error="ENGINE_OPERATION_INVALID")
     # Avoid writing caches, model selections or runtime settings under the API cwd.
     with tempfile.TemporaryDirectory(prefix="qitu-engine-") as home:

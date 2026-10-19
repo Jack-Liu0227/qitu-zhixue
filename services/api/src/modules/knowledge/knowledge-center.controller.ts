@@ -83,6 +83,15 @@ export class KnowledgeCenterController {
     this.actor(cookie);
     return { data: await this.center.bases() };
   }
+  @Post('knowledge/engines/:id/ima-bases')
+  async imaBases(
+    @Headers('cookie') cookie: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    this.actor(cookie);
+    return { data: await this.engine.listImaBases(id, body) };
+  }
   @Get('knowledge/bases/:id')
   async base(@Headers('cookie') cookie: string | undefined, @Param('id') id: string) {
     this.actor(cookie);

@@ -1,5 +1,11 @@
 import { adminEnvelopeRequest } from './types';
 
+export interface ImaKnowledgeBasePage {
+  knowledgeBases: { id: string; name: string; description: string | null }[];
+  nextCursor: string;
+  isEnd: boolean;
+}
+
 export type ReadinessStatus =
   | 'ready'
   | 'needs_key'

@@ -67,3 +67,18 @@ location ~ ^/api/v1/admin/knowledge/bases/[^/]+/uploads/?$ {
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
+
+## Tencent ima：验证凭证并选择已有知识库
+
+在「知识库 → 创建知识库 → 关联已有 → Tencent ima」中复用已保存的引擎实例，或在同一弹窗填写 Client ID、API Key 后验证。点击「验证凭证并读取知识库」，选择官方 OpenAPI 返回的库，可自动填写名称，再关联。编辑过的引擎配置须先保存，后续关联直接复用。
+
+实现参照 HKUDS/DeepTutor `6cf793bd` 的 `useImaConnection`、`ImaConnectionFields`、`ImaClient.search_knowledge_bases` 和 `probe_knowledge_base`；同时核对 GitHub main 的官方列表与详情请求。复用已安装并固定版本的 DeepTutor 客户端，不引入第二套 ima HTTP 签名逻辑。
+
+- 管理员接口：`POST /api/v1/admin/knowledge/engines/:id/ima-bases`；请求可传 `cursor`、`limit`（1–50）以及完整的草稿 `engine`。未传草稿则复用该实例的已存配置。
+- 只读列库不会保存凭证、建立知识库或增加助手权限。列表 ID 直接用于连接预检和关联；创建时服务端重新调用官方详情接口确认访问权限。仅关联成功后沿用现有授权/绑定流程。
+- Client ID 是账户身份；客户端地址里的 `knowledgeBaseId` 可能是内部 ID，均不可替代 OpenAPI 返回的知识库 ID。手动填写模式须先检查连接。
+- 列表支持分页、去重和明确的空状态；修改凭证、切换实例或来源时作废旧列表、选择和预检，忽略过期请求。读取失败可重试，未保存的凭证不能提交关联。
+- Python ima 适配集中于 `integrations/deeptutor-knowledge/ima_runtime.py`。所选库 ID 优先于引擎默认库，桥接入口允许目录/文档只读操作。
+- 稳定错误码区分 `IMA_CREDENTIALS_REJECTED`、`IMA_RATE_LIMITED`、`IMA_TIMEOUT`、`IMA_UNREACHABLE`、`IMA_UPSTREAM_INVALID_RESPONSE`、`IMA_KB_ID_IS_CLIENT_ID` 和 `REMOTE_RESOURCE_NOT_FOUND`。不向网页返回原始上游异常或凭证。
+
+验收：知识模块 89 项测试、适配运行时 14 项测试通过，API 与管理员端 lint/typecheck/build 通过；真实 ima 四库列举、连接预检、隔离数据库关联及目录读取通过，桌面/390px 移动端和请求状态竞态检查通过。正式环境仅进行只读列库与预检，不创建验收库或改动现有助手绑定。

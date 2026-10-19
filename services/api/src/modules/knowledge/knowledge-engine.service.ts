@@ -19,6 +19,7 @@ import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { record, validateKnowledgeConfig, type EngineConfig } from './knowledge-center.config';
 const REMOTE_CREDENTIAL_PROVIDERS = ['lightrag-server', 'pageindex', 'ima', 'weknora'];
 import { KnowledgeAdapterRegistry, type EngineReadiness } from './knowledge-engine.adapters';
+import { imaConnectionMessage } from './knowledge-ima-errors';
 
 export interface EngineHit {
   memberId: string;
@@ -54,9 +55,47 @@ export class KnowledgeEngineService {
   adapterFor(provider: string) {
     return this.adapters.get(provider);
   }
+  /** Admin-only discovery. Validates a complete draft or reuses one saved instance;
+   * listing never saves credentials or expands retrieval grants. */
+  async listImaBases(id: string, body: unknown) {
+    const input = record(body);
+    if (
+      Object.keys(input).some((key) => !['engine', 'cursor', 'limit'].includes(key)) ||
+      (input.cursor !== undefined &&
+        (typeof input.cursor !== 'string' || input.cursor.length > 2048)) ||
+      (input.limit !== undefined &&
+        (!Number.isInteger(input.limit) || Number(input.limit) < 1 || Number(input.limit) > 50))
+    )
+      throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'ima 列表请求参数无效' });
+    const { config } = await this.center.configuration();
+    const engine =
+      input.engine === undefined
+        ? config.knowledgeEngines[id]
+        : validateKnowledgeConfig({ knowledgeEngines: { [id]: input.engine } }, config)
+            .knowledgeEngines[id];
+    if (!engine || engine.provider !== 'ima')
+      throw new BadRequestException({
+        code: 'ENGINE_NOT_CONFIGURED',
+        message: '请选择 Tencent ima 引擎实例',
+      });
+    const receipt = await this.upstream(engine, {
+      operation: 'list_bases',
+      cursor: input.cursor ?? '',
+      limit: input.limit ?? 20,
+    });
+    if (!receipt.ok)
+      throw new BadRequestException({
+        code: receipt.errorCode ?? 'REMOTE_CONNECTION_FAILED',
+        message: imaConnectionMessage(receipt.errorCode),
+      });
+    return receipt.manifest;
+  }
   async execute(engine: EngineConfig, request: Record<string, unknown>): Promise<EngineReceipt> {
     if (!engine.enabled) return { ok: false, status: 'unavailable', errorCode: 'ENGINE_DISABLED' };
-    if (['documents', 'read_document'].includes(String(request.operation)) && engine.provider !== 'llamaindex')
+    if (
+      ['documents', 'read_document'].includes(String(request.operation)) &&
+      engine.provider !== 'llamaindex'
+    )
       return this.upstream(engine, request);
     const adapter = this.adapterFor(engine.provider);
     if (adapter) {
