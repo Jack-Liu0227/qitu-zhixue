@@ -24,7 +24,7 @@
 | ---------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
 | `aboutus/` | 产品定位、教育理念、公开主页信息                             | [`aboutus/README.md`](./aboutus/README.md)                       |
 | `admin/`   | 平台治理、认证、数据库、部署、公开站点、模型网关与权限       | [`admin/platform-governance.md`](./admin/platform-governance.md) |
-| `student/` | 灵感空间、AI搭档核心对话、项目、学习计划、作品和成长         | [`student/today.md`](./student/today.md) / [`student/tutor.md`](./student/tutor.md) |
+| `student/` | 灵感空间、AI搭档核心对话、项目、学习计划、作品和成长         | [`student/today.md`](./student/today.md) / [`student/tutor.md`](./student/tutor.md) / [`eyecare-rules.md`](./eyecare-rules.md) |
 | `teacher/` | 班主任工作台、学生、问题、统计和平台知识能力边界             | [`teacher/dashboard.md`](./teacher/dashboard.md)                 |
 | `parent/`  | 授权成长投影、进展、消息和导出                               | [`parent/home.md`](./parent/home.md)                             |
 | `sdk/`     | Agent Runtime、Team Runtime、领域 Facade、浏览器客户端和记忆 | [`sdk/overview.md`](./sdk/overview.md)                           |
