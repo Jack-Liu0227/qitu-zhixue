@@ -1,0 +1,15 @@
+{
+  "database": "qitu_ui_release_migrate_20261021_0526",
+  "businessRowsCopied": 0,
+  "baselineLedgerCount": 42,
+  "pending": [
+    "0041",
+    "0042",
+    "0043",
+    "0044"
+  ],
+  "forward": "passed",
+  "rollback": "passed",
+  "forwardAgain": "passed",
+  "finalLedgerCount": 46
+}

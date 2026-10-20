@@ -1,0 +1,11 @@
+{
+  "head": "913c4142661e5342d341b37ddb171258912721f6",
+  "dirty": false,
+  "node": "v22.22.1",
+  "pnpm": "10.10.0",
+  "migrationLedger": "46|1792454400003",
+  "administrators": "1|0",
+  "serviceStates": "Id=qitu-api.service\nActiveState=active\nMainPID=1100237\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-auth.service\nActiveState=active\nMainPID=1104654\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-student.service\nActiveState=active\nMainPID=1104774\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-parent.service\nActiveState=active\nMainPID=1114583\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-teacher.service\nActiveState=active\nMainPID=1104977\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-admin.service\nActiveState=active\nMainPID=1116971\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-eye-admin.service\nActiveState=active\nMainPID=975458\nWorkingDirectory=/root/qitu-worktrees/qitu-zhixue-eye\n\nId=qitu-eye-auth.service\nActiveState=active\nMainPID=516324\nWorkingDirectory=/root/qitu-worktrees/qitu-zhixue-eye\n\nId=qitu-eye-parent.service\nActiveState=active\nMainPID=876874\nWorkingDirectory=/root/qitu-worktrees/qitu-zhixue-eye\n\nId=qitu-eye-student.service\nActiveState=active\nMainPID=797853\nWorkingDirectory=/root/qitu-worktrees/qitu-zhixue-eye\n\nId=qitu-eye-teacher.service\nActiveState=active\nMainPID=914870\nWorkingDirectory=/root/qitu-worktrees/qitu-zhixue-eye\n\nId=qitu-ima-mcp.service\nActiveState=active\nMainPID=3191583\nWorkingDirectory=/opt/qitu-ima\n\nId=qitu-local-embedding.service\nActiveState=active\nMainPID=3266890\nWorkingDirectory=/root/qitu-zhixue/services/knowledge",
+  "snapshotDate": "2026-10-21 (Asia/Shanghai)",
+  "note": "Read-only snapshot; no user emails or credentials exported."
+}
