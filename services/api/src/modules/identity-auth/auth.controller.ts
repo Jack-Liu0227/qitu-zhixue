@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Headers, Ip, NotFoundException, Param, Post, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Header, Headers, Ip, NotFoundException, Param, Post, Res, UnauthorizedException } from '@nestjs/common';
 import type { Response } from 'express';
 import type { LoginResponse } from '@qitu/contracts';
 import { AuthService } from './auth.service';
@@ -34,6 +34,12 @@ interface LoginBody {
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('test-accounts')
+  @Header('Cache-Control', 'no-store')
+  async testAccounts() {
+    return { data: await this.authService.testLoginOptions() };
+  }
 
   @Post('login')
   async login(

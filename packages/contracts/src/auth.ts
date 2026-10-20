@@ -49,3 +49,12 @@ export type MeResponse = CurrentUser & LoginResponse;
 export interface LogoutResponse {
   ok: true;
 }
+
+/** Explicitly enabled test credentials; never part of a user/session projection. */
+export interface TestLoginAccount extends Pick<LoginRequest, 'email' | 'password'> {
+  role: Exclude<Role, 'support'>;
+}
+
+export interface TestLoginOptions {
+  accounts: TestLoginAccount[];
+}

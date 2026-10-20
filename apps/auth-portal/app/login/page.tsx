@@ -2,8 +2,9 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrandMark, OfflineBanner, VisualAsset } from '@qitu/ui';
-import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
+import type { CurrentUser, LoginRequest, LoginResponse, Role, TestLoginAccount } from '@qitu/contracts';
 import { getOrCreateDeviceId, readCachedSession, writeCachedSession, safeRoleDestination } from '@qitu/auth';
+import { parseTestLoginOptions } from './test-accounts';
 
 const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
 
@@ -79,6 +80,7 @@ async function requestLogin(body: LoginRequest, idempotencyKey: string): Promise
 
 type SubmitStatus = 'idle' | 'submitting' | 'error';
 type ErrorKind = 'invalid' | 'role' | 'network' | 'rate' | 'other' | null;
+type TestAccountState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; accounts: TestLoginAccount[] };
 
 const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
   invalid: '账号或密码错误，请检查后重试。',
@@ -104,8 +106,24 @@ export default function LoginPage() {
   const [offline, setOffline] = useState(false);
   const [cachedUser, setCachedUser] = useState<CurrentUser | null>(null);
   const [notice, setNotice] = useState('');
+  const [testAccounts, setTestAccounts] = useState<TestAccountState>({ status: 'loading' });
+  const [testAccountRetry, setTestAccountRetry] = useState(0);
 
   const [nextPath, setNextPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setTestAccounts({ status: 'loading' });
+    void fetch('/api/v1/auth/test-accounts', { cache: 'no-store', signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('Test login unavailable');
+        const payload: unknown = await response.json();
+        return parseTestLoginOptions(payload);
+      })
+      .then(options => { if (!controller.signal.aborted) setTestAccounts({ status: 'ready', accounts: options.accounts }); })
+      .catch(() => { if (!controller.signal.aborted) setTestAccounts({ status: 'error' }); });
+    return () => controller.abort();
+  }, [testAccountRetry]);
 
   // 挂载时：预填记住的邮箱 + 读取可能存在的有效会话。
   useEffect(() => {
@@ -369,6 +387,30 @@ export default function LoginPage() {
           忘记密码？请联系班主任或学校管理员重置。
         </p>
 
+        {testAccounts.status === 'loading' ? <p className="login-muted" role="status">正在检查测试账号入口…</p> : null}
+        {testAccounts.status === 'error' ? <p className="login-muted" role="status">
+          测试账号入口暂不可用。<button type="button" disabled={offline} onClick={() => setTestAccountRetry(value => value + 1)}>重试</button>
+        </p> : null}
+        {testAccounts.status === 'ready' && testAccounts.accounts.length > 0 ? (
+          <section className="login-demo" aria-labelledby="test-account-title">
+            <h3 id="test-account-title" className="login-demo-title">测试账号快捷填充</h3>
+            <div className="login-demo-buttons">
+              {testAccounts.accounts.map(account => (
+                <button key={account.role} type="button" disabled={offline || status === 'submitting'} onClick={() => {
+                  setRole(account.role);
+                  setEmail(account.email);
+                  setPassword(account.password);
+                  setShowPassword(false);
+                  setErrorKind(null);
+                  setStatus('idle');
+                  setNotice('测试账号与密码已填入，点击“进入系统”登录。');
+                  persistRememberedEmail(account.email, rememberAccount);
+                }}>{ROLE_OPTIONS.find(option => option.role === account.role)?.label}测试账号</button>
+              ))}
+            </div>
+            <p className="login-demo-note">点击按钮填入账号和密码，再点击“进入系统”。测试密码不会保存在本机。</p>
+          </section>
+        ) : null}
 
         <p className="login-account-note">
           使用学校或机构发放的账号登录。没有账号？请联系学校管理员，或<a href="/contact">联系启途团队</a>。
