@@ -28,7 +28,9 @@ SELECT
   s.module_id || ':lesson:' || (s.index + 1)::text AS new_module_id,
   m.name AS module_name,
   m.objective AS module_objective,
-  row_number() OVER (PARTITION BY s.module_id ORDER BY s.index, s.id) AS module_rank
+  row_number() OVER (PARTITION BY s.module_id ORDER BY s.index, s.id) AS module_rank,
+  max(m.ordinal) OVER (PARTITION BY p.id)
+    + row_number() OVER (PARTITION BY p.id ORDER BY s.index, s.id) AS temporary_ordinal
 FROM learning_sessions s
 JOIN learning_plans p ON p.id = s.plan_id AND p.weeks IS NOT NULL
 JOIN learning_modules m ON m.id = s.module_id;
@@ -60,7 +62,7 @@ SELECT
   module_name || ' · 第 ' || (session_index + 1)::text || ' 课时',
   session_index + 1,
   module_objective,
-  session_index + 1
+  temporary_ordinal
 FROM _lesson_module_map;
 
 UPDATE learning_objectives o
@@ -77,6 +79,11 @@ WHERE s.id = mapping.session_id;
 DELETE FROM learning_modules m
 USING learning_plans p
 WHERE p.id = m.plan_id AND p.weeks IS NOT NULL;
+
+UPDATE learning_modules m
+SET ordinal = mapping.session_index + 1
+FROM _lesson_module_map mapping
+WHERE m.id = mapping.new_module_id;
 
 UPDATE learning_plans p
 SET lesson_count = lessons.lesson_count,
