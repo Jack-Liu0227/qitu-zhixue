@@ -1583,6 +1583,61 @@
 /* ==========================================================================
    7. 顶部头部 (TutorHeader)
    ========================================================================== */
+
+/* AI搭档标题右侧导师团队 / 助手标识 Badge */
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge.is-team,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge.is-team {
+  background-color: #162638 !important;
+  background: #162638 !important;
+  border: 1px solid #23486F !important;
+  border-color: #23486F !important;
+  color: #93C5FD !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge.is-assistant,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge.is-assistant {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge span {
+  color: inherit !important;
+}
+
+/* 会话历史顶部“收起 ◀”按键及通用“收起”按键 */
+:root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost,
+.qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost,
+:root[data-qitu-eyecare="true"] button[aria-label*="收起"],
+.qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"] {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] button[aria-label*="收起"]:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"]:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
 :root[data-qitu-eyecare="true"] .qitu-tutor-header-tag,
 .qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-tag {
   font-size: 13px;
@@ -1681,6 +1736,126 @@
   color: #E2E8F0 !important;
 }
 
+
+/* 当前学生账号胶囊 (演示学生) */
 :root[data-qitu-eyecare="true"] .qitu-student-account {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  border-color: #282F3B !important;
   color: #E2E8F0 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
 }
+
+:root[data-qitu-eyecare="true"] .qitu-student-account:hover {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #384252 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account-name {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account .auth-logout {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account .auth-logout:hover {
+  background: #2D1A1C !important;
+  border-color: #5C2529 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-trigger {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-trigger:hover {
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-panel {
+  background: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mobile-menu-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mobile-menu-btn:hover {
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+/* 主侧边栏底部“收起”按键 (StudentShell / qitu-sidebar-toggle) */
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle,
+:root[data-qitu-eyecare="true"] .qitu-student-sidebar .qitu-sidebar-toggle {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover,
+:root[data-qitu-eyecare="true"] .qitu-student-sidebar .qitu-sidebar-toggle:hover {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-icon,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-icon svg {
+  color: #CBD5E1 !important;
+  stroke: currentColor !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover .qitu-sidebar-toggle-icon,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover .qitu-sidebar-toggle-icon svg {
+  color: #34D399 !important;
+  stroke: currentColor !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-label {
+  color: inherit !important;
+}
+
+/* 问候横幅 (在 /today / 首页等) */
+:root[data-qitu-eyecare="true"] .qitu-greeting-banner {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-greeting-hello {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-greeting-message {
+  color: #94A3B8 !important;
+}
+
