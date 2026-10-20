@@ -73,6 +73,7 @@ WHERE new_module_id <> old_module_id;
 -- references remain valid; later lessons receive the inserted module rows.
 UPDATE learning_modules m
 SET name = mapping.module_name || ' - Lesson ' || (mapping.session_index + 1)::text,
+    week_index = NULL,
     lesson_index = mapping.session_index + 1,
     objective = mapping.module_objective,
     ordinal = mapping.temporary_ordinal
