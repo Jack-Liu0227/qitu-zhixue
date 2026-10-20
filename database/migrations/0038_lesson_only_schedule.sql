@@ -19,6 +19,11 @@ BEGIN
   END IF;
 END $$;
 
+-- Lesson columns may already be populated by a staged rollout while the
+-- weekly check is still present; remove that transitional check before
+-- rewriting the row shape.
+ALTER TABLE learning_plans DROP CONSTRAINT IF EXISTS learning_plans_schedule_shape_check;
+
 CREATE TEMP TABLE _lesson_module_map AS
 SELECT
   s.id AS session_id,
