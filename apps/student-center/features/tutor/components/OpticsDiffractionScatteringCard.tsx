@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { diffractionPreview, scatteringPreview } from '../lib/opticsPreviewModel';
+import { createIdempotencyKey } from '../idempotency';
+import type { TutorExperimentActionResponse } from '@qitu/contracts';
 
 export interface OpticsDiffractionScatteringCardProps {
   disabled?: boolean;
@@ -12,7 +14,11 @@ export interface OpticsDiffractionScatteringCardProps {
     hypothesis?: string;
   };
   /** Returns true only after the server accepts and persists the action. */
-  onAction?: (action: 'submit_prediction' | 'run' | 'record_observation', payload?: unknown) => void | Promise<boolean>;
+  onAction?: (
+    action: 'submit_prediction' | 'run' | 'record_observation',
+    payload: unknown,
+    idempotencyKey: string,
+  ) => void | Promise<boolean | TutorExperimentActionResponse>;
 }
 
 function wavelengthToRgb(wavelength: number): { r: number; g: number; b: number; css: string } {
@@ -79,6 +85,29 @@ export function OpticsDiffractionScatteringCard({
   const [selectedPrediction, setSelectedPrediction] = useState<string>('');
   const [isSubmittedLocal, setIsSubmittedLocal] = useState<boolean>(predictionGate?.submitted ?? false);
   const [isAnimating, setIsAnimating] = useState<boolean>(true);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [runAccepted, setRunAccepted] = useState(false);
+  const [observationAccepted, setObservationAccepted] = useState(false);
+  const [serverSimulationSummary, setServerSimulationSummary] = useState<string | null>(null);
+  const actionKeysRef = useRef(new Map<string, string>());
+
+  const dispatchAction = useCallback(async (
+    action: 'submit_prediction' | 'run' | 'record_observation',
+    payload: unknown,
+  ) => {
+    if (!onAction) return false;
+    const fingerprint = `${action}:${JSON.stringify(payload)}`;
+    const idempotencyKey = actionKeysRef.current.get(fingerprint) ?? createIdempotencyKey();
+    actionKeysRef.current.set(fingerprint, idempotencyKey);
+    const result = await onAction(action, payload, idempotencyKey);
+    const accepted = typeof result === 'boolean' ? result : result?.accepted === true;
+    if (accepted) actionKeysRef.current.delete(fingerprint);
+    if (typeof result === 'object' && result?.simulationResult?.summary) {
+      setServerSimulationSummary(result.simulationResult.summary);
+    }
+    return accepted;
+  }, [onAction]);
 
   // 单缝衍射实验物理参数
   const [wavelength, setWavelength] = useState<number>(632.8); // nm (氦氖红光)
@@ -96,20 +125,55 @@ export function OpticsDiffractionScatteringCard({
 
   const handleSubmitPrediction = async () => {
     if (!selectedPrediction) return;
-    const accepted = await onAction?.('submit_prediction', {
-      mode,
-      hypothesis: selectedPrediction,
-      parameters: mode === 'diffraction' ? { slitWidth, wavelength } : { particleRadius, scatteringWavelength },
-    });
-    if (accepted === true) setIsSubmittedLocal(true);
+    setActionPending(true);
+    setActionError(null);
+    try {
+      const accepted = await dispatchAction('submit_prediction', {
+        mode,
+        hypothesis: selectedPrediction,
+        parameters: mode === 'diffraction' ? { slitWidth, wavelength } : { particleRadius, wavelength: scatteringWavelength },
+      });
+      if (accepted) setIsSubmittedLocal(true);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '预测提交失败，请重试');
+    } finally {
+      setActionPending(false);
+    }
   };
 
-  const handleRunSimulation = () => {
-    if (isPredictionLocked || disabled) return;
-    onAction?.('run', {
-      mode,
-      parameters: mode === 'diffraction' ? { slitWidth, wavelength, screenDistance } : { particleRadius, scatteringWavelength },
-    });
+  const currentParameters = () => mode === 'diffraction'
+    ? { slitWidth, wavelength, screenDistance }
+    : { particleRadius, wavelength: scatteringWavelength };
+
+  const handleRunSimulation = async () => {
+    if (isPredictionLocked || disabled || actionPending) return;
+    setActionPending(true);
+    setActionError(null);
+    setObservationAccepted(false);
+    try {
+      const accepted = await dispatchAction('run', { mode, parameters: currentParameters() });
+      if (accepted) setRunAccepted(true);
+      else setActionError('服务器未确认仿真操作，尚未记录');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '仿真操作失败，请重试');
+    } finally {
+      setActionPending(false);
+    }
+  };
+
+  const handleRecordObservation = async () => {
+    if (!runAccepted || disabled || actionPending) return;
+    setActionPending(true);
+    setActionError(null);
+    try {
+      const accepted = await dispatchAction('record_observation', { mode, parameters: currentParameters() });
+      if (accepted) setObservationAccepted(true);
+      else setActionError('服务器未确认观察记录，尚未保存');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '观察记录失败，请重试');
+    } finally {
+      setActionPending(false);
+    }
   };
 
   // 衍射物理计算
@@ -657,8 +721,8 @@ export function OpticsDiffractionScatteringCard({
               </div>
               <button
                 type="button"
-                disabled={!selectedPrediction || disabled}
-                onClick={handleSubmitPrediction}
+                disabled={!selectedPrediction || disabled || actionPending}
+                onClick={() => void handleSubmitPrediction()}
                 style={{
                   alignSelf: 'flex-start',
                   marginTop: '4px',
@@ -1009,8 +1073,8 @@ export function OpticsDiffractionScatteringCard({
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', marginBottom: '8px' }}>
           <button
             type="button"
-            disabled={isPredictionLocked || disabled}
-            onClick={handleRunSimulation}
+            disabled={isPredictionLocked || disabled || actionPending}
+            onClick={() => void handleRunSimulation()}
             style={{
               padding: '8px 20px',
               fontSize: '13px',
@@ -1024,10 +1088,21 @@ export function OpticsDiffractionScatteringCard({
               transition: 'all 0.15s ease',
             }}
           >
-            {isPredictionLocked ? '请先提交预测以解锁运行' : '运行仿真并记录观测'}
+            {isPredictionLocked ? '???????????' : actionPending ? '??????????' : runAccepted ? '??????' : '????'}
           </button>
         </div>
       </div>
+      <button
+        type="button"
+        disabled={!runAccepted || disabled || actionPending || observationAccepted}
+        onClick={() => void handleRecordObservation()}
+        style={{ margin: '0 0 8px auto', display: 'block', padding: '8px 16px', borderRadius: '8px', border: 'none', color: '#fff', background: observationAccepted ? '#86efac' : '#0ea5e9' }}
+      >
+        {observationAccepted ? '?????' : '????'}
+      </button>
+
+      {actionError ? <p role="alert" style={{ color: '#b91c1c', fontSize: '12px' }}>{actionError}</p> : null}
+      {serverSimulationSummary ? <p role="status" style={{ color: '#0369a1', fontSize: '12px' }}>{serverSimulationSummary}</p> : null}
 
       <p role="note" style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
         此预览不保存观测，不提交作品证据，也不改变掌握度。真实实验须由教师审核安全方案。

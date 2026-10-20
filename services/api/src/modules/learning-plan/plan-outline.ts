@@ -1,4 +1,4 @@
-import type { LearningPlanWeeks, PblSchedule, SessionMode } from '@qitu/contracts';
+import type { SessionMode } from '@qitu/contracts';
 import { sessionBlockShapeFor } from '@qitu/ai-client';
 import {
   PLAN_BLOCK_ORDER,
@@ -34,10 +34,8 @@ import {
 
 /** 大纲里单节课的条目。 */
 export interface PlanOutlineSession {
-  /** 0 起的课次序号，与 `GeneratedSession.index` 对齐。 */
-  sessionIndex: number;
-  week: number;
-  day: number;
+  /** One-based lesson order. */
+  lessonIndex: number;
   title: string;
   objectiveIds: string[];
   /** 该节包含的分块类型（有序）。 */
@@ -51,10 +49,10 @@ export interface PlanOutline {
   id: string;
   planId: string;
   templateVersion: string;
-  weeks: LearningPlanWeeks;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   sessionCount: number;
   minutesPerSession: number;
-  schedule?: PblSchedule;
   /** 大纲总目标：与计划「goal」同源，但只作为结构说明，可被教学计划覆盖。 */
   goal: string;
   sessions: PlanOutlineSession[];
@@ -93,9 +91,7 @@ export function buildPlanOutline(
     .slice()
     .sort((a, b) => a.index - b.index)
     .map((session) => ({
-      sessionIndex: session.index,
-      week: session.week ?? Math.ceil((session.index + 1) / 2),
-      day: session.day ?? ((session.index % 2) + 1),
+      lessonIndex: session.lessonIndex,
       title: session.title,
       objectiveIds: sessionObjectiveIds(session),
       blockKinds: PLAN_BLOCK_ORDER.filter((kind) =>
@@ -107,10 +103,10 @@ export function buildPlanOutline(
     id: `outline:${plan.id}`,
     planId: plan.id,
     templateVersion: plan.templateVersion,
-    weeks: plan.weeks ?? 4,
+    lessonCount: plan.lessonCount,
+    lessonMinutes: plan.lessonMinutes,
     sessionCount: plan.sessionCount,
     minutesPerSession: plan.minutesPerSession,
-    ...(plan.schedule === undefined ? {} : { schedule: plan.schedule }),
     goal: plan.goal,
     sessions,
     derivedAt: now.toISOString(),
@@ -136,8 +132,7 @@ export interface SessionTeachingPlan {
   id: string;
   planId: string;
   sessionIndex: number;
-  week: number;
-  day: number;
+  lessonIndex: number;
   title: string;
   /** 与契约 `SessionMode` 对齐；教学计划是 `'study'`，大纲层是 `'outline'`。 */
   mode: SessionMode;
@@ -174,7 +169,7 @@ export function generateSessionTeachingPlan(
       [{ path: 'sessionIndex', message: `session ${sessionIndex} does not exist in the plan` }],
     );
   }
-  const outlineEntry = outline.sessions.find((entry) => entry.sessionIndex === sessionIndex);
+  const outlineEntry = outline.sessions.find((entry) => entry.lessonIndex === sessionIndex + 1);
   if (outlineEntry === undefined) {
     throw new PlanGenerationError(
       `大纲里没有第 ${sessionIndex + 1} 节课，不能展开教学计划`,
@@ -186,8 +181,7 @@ export function generateSessionTeachingPlan(
     id: sessionPlanIdempotencyKey(outline.planId, sessionIndex),
     planId: outline.planId,
     sessionIndex,
-    week: session.week ?? outlineEntry.week,
-    day: session.day ?? outlineEntry.day,
+    lessonIndex: outlineEntry.lessonIndex,
     title: session.title,
     mode: 'study',
     minutes: session.blocks.reduce((sum, block) => sum + block.minutes, 0),

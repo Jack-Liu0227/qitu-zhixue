@@ -101,8 +101,12 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
         theoryMastered = response.data.theoryMastered;
       }
       return { passed, theoryMastered, nextStage: theoryMastered ? 'practice_ready' : undefined };
-    } catch {
-      return { passed: true, theoryMastered: true, nextStage: 'practice_ready' };
+    } catch (error) {
+      // Never turn a transport or grading failure into a mastered gate. The
+      // server remains the sole owner of TheoryMastered; callers render the
+      // error state and let the learner retry instead.
+      if (error instanceof ProjectsDataError) throw error;
+      throw new ProjectsDataError('Theory check could not be submitted', 0, 'THEORY_CHECK_UNAVAILABLE');
     }
   }
 

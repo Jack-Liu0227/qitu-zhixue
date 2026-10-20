@@ -2,13 +2,11 @@ import {
   parseProjectTemplateSpec,
   ProjectTemplateSpecError,
   type KnowledgeType,
-  type LearningPlanWeeks,
-  type PblSchedule,
   type PblTemplateObjective,
   type ProjectTemplateSpec,
   type SessionBlockKind,
 } from '@qitu/contracts';
-import type { GeneratedBlock, GeneratedPlan, GeneratePlanInput, PlanSessionCount } from './plan-generator';
+import type { GeneratedBlock, GeneratedPlan, GeneratePlanInput } from './plan-generator';
 import { PlanGenerationError } from './session-plan-validator';
 
 const BLOCK_ORDER: readonly SessionBlockKind[] = ['review', 'theory', 'check', 'practice', 'reflect'];
@@ -29,12 +27,14 @@ function knowledgeType(objective: PblTemplateObjective): KnowledgeType {
 function readTemplate(input: unknown): ProjectTemplateSpec {
   try { return parseProjectTemplateSpec(input); }
   catch (error) {
-    if (error instanceof ProjectTemplateSpecError) throw new PlanGenerationError('Invalid resolved teaching template', error.errors);
+    if (error instanceof ProjectTemplateSpecError) {
+      throw new PlanGenerationError('Invalid resolved teaching template', error.errors);
+    }
     throw error;
   }
 }
 
-/** Project the resolved immutable template, never a global optics constant. */
+/** Project one frozen template session into one learning-plan lesson. */
 export function generatePlanFromTemplate(
   input: GeneratePlanInput,
   context: { templateVersion: string; templateSpec: unknown },
@@ -43,87 +43,42 @@ export function generatePlanFromTemplate(
   const profiles = spec.curriculum?.profiles;
   if (profiles === undefined) reject('curriculum.profiles', 'This template requires governed curriculum profiles');
 
-  const candidates = profiles.filter((profile) => {
-    const schedule = profile.schedule;
-    if ('lessonCount' in schedule) {
-      // Select lesson-first profiles only by their actual lesson fields.
-      return input.weeks === undefined
-        && input.schedule === undefined
-        && input.lessonCount === schedule.lessonCount
-        && input.lessonMinutes === schedule.lessonMinutes
-        && (input.sessionCount === undefined || input.sessionCount === schedule.lessonCount);
-    }
-    return input.lessonCount === undefined
-      && input.lessonMinutes === undefined
-      && input.weeks !== undefined
-      && schedule.durationWeeks === input.weeks
-      && (input.sessionCount === undefined || profile.sessions.length === input.sessionCount)
-      && (input.schedule === undefined || (schedule.weeklyMinutes === input.schedule.weeklyMinutes
-        && schedule.durationWeeks === input.schedule.durationWeeks
-        && schedule.sessionsPerWeek === input.schedule.sessionsPerWeek
-        && schedule.sessionMinutes === input.schedule.sessionMinutes));
-  });
+  const candidates = profiles.filter((profile) =>
+    profile.schedule.lessonCount === input.lessonCount
+      && profile.schedule.lessonMinutes === input.lessonMinutes
+      && profile.sessions.length === input.lessonCount,
+  );
   const profile = candidates[0];
   if (profile === undefined || candidates.length !== 1) {
-    reject('schedule', 'Select exactly one approved template schedule profile');
+    reject('lessonCount', 'Select exactly one approved lesson profile from the template');
   }
-
-  const count = profile.sessions.length;
-  let sessionCount: PlanSessionCount;
-  if (count === 4 || count === 8 || count === 16) sessionCount = count;
-  else reject('sessions', 'Unsupported session count');
-  const lessonOnly = 'lessonCount' in profile.schedule;
-  let minutesPerSession = 60;
-  let legacyWeeks: LearningPlanWeeks | undefined;
-  let legacySchedule: PblSchedule | undefined;
-  if ('lessonCount' in profile.schedule) {
-    minutesPerSession = profile.schedule.lessonMinutes;
-  } else {
-    minutesPerSession = profile.schedule.sessionMinutes;
-    legacyWeeks = profile.schedule.durationWeeks;
-    legacySchedule = profile.schedule;
+  if (input.sessionCount !== undefined && input.sessionCount !== profile.schedule.lessonCount) {
+    reject('sessionCount', 'sessionCount must equal the selected profile lessonCount');
   }
 
   const byId = new Map(spec.objectives.map((objective) => [objective.id, objective]));
   const gated = spec.phases.find((phase) => phase.phase === 'concept_mastery')?.objectiveIds;
   if (gated === undefined || gated.length === 0) reject('phases', 'The template must declare theory gate objectives');
-  const moduleId = (index: number): string => `${profile.id}-${lessonOnly ? 'lesson' : 'week'}-${index}`;
-  const modules = lessonOnly
-    ? profile.sessions.map((session, index) => ({
-      id: moduleId(index + 1),
-      name: `第 ${index + 1} 课时：${session.title}`,
-      lessonIndex: index + 1,
-      objective: session.title,
-      ordinal: index + 1,
-    }))
-    : Array.from({ length: legacyWeeks ?? 0 }, (_, index) => {
-      const week = index + 1;
-      const sessions = profile.sessions.filter((session, sessionIdx) =>
-        (session.week ?? Math.ceil((session.sessionIndex ?? sessionIdx + 1) / 2)) === week);
-      return {
-        id: moduleId(week),
-        name: `Week ${week}: ${sessions[0]?.title ?? spec.title}`,
-        weekIndex: week,
-        objective: sessions.map((session) => session.title).join('; '),
-        ordinal: week,
-      };
-    });
 
-  const objectives = spec.objectives.map((objective, index) => {
+  const modules = profile.sessions.map((session, index) => ({
+    id: `${profile.id}-lesson-${index + 1}`,
+    name: `第 ${index + 1} 课时 · ${session.title}`,
+    lessonIndex: index + 1,
+    objective: session.title,
+    ordinal: index + 1,
+  }));
+  const objectives = spec.objectives.map((objective, objectiveIndex) => {
     const sessionIdx = profile.sessions.findIndex((candidate) => candidate.objectiveIds.includes(objective.id));
     const session = profile.sessions[sessionIdx];
-    if (sessionIdx === -1 || session === undefined) reject('objectives', `Objective ${objective.id} is not scheduled`);
-    const lessonIndex = session.sessionIndex ?? sessionIdx + 1;
-    const placement = lessonOnly ? lessonIndex : (session.week ?? Math.ceil(lessonIndex / 2));
-    if (placement === undefined) reject('objectives', `Objective ${objective.id} has no placement`);
+    if (sessionIdx < 0 || session === undefined) reject('objectives', `Objective ${objective.id} is not scheduled`);
     return {
       id: objective.id,
-      moduleId: moduleId(placement),
+      moduleId: modules[sessionIdx]!.id,
       name: objective.title,
       type: knowledgeType(objective),
       objective: objective.description,
       prerequisiteIds: [...objective.prerequisiteIds],
-      ordinal: index + 1,
+      ordinal: objectiveIndex + 1,
       conceptId: objective.conceptId,
     };
   });
@@ -149,15 +104,11 @@ export function generatePlanFromTemplate(
         prerequisiteObjectiveIds: kind === 'practice' ? prerequisites : [],
       };
     });
-    const lessonIndex = session.sessionIndex ?? index + 1;
-    const placement = lessonOnly ? lessonIndex : (session.week ?? Math.ceil(lessonIndex / 2));
-    if (placement === undefined) reject('sessions', `Session ${session.id} has no placement`);
     return {
       id: session.id,
-      moduleId: moduleId(placement),
+      moduleId: modules[index]!.id,
       index,
-      lessonIndex,
-      ...(lessonOnly ? {} : { week: session.week ?? Math.ceil(lessonIndex / 2), day: session.session ?? ((index % 2) + 1) }),
+      lessonIndex: index + 1,
       title: session.title,
       blocks,
       theoryObjectiveIds: session.phase === 'concept_mastery' ? [...session.objectiveIds]
@@ -169,11 +120,10 @@ export function generatePlanFromTemplate(
 
   return {
     templateVersion: context.templateVersion,
-    ...(lessonOnly ? { lessonCount: count, lessonMinutes: minutesPerSession as 60 | 120 } : {}),
-    ...(lessonOnly ? {} : { weeks: legacyWeeks! }),
-    sessionCount,
-    minutesPerSession,
-    ...(legacySchedule === undefined ? {} : { schedule: legacySchedule }),
+    lessonCount: profile.schedule.lessonCount,
+    lessonMinutes: profile.schedule.lessonMinutes,
+    sessionCount: profile.schedule.lessonCount,
+    minutesPerSession: profile.schedule.lessonMinutes,
     title: `${input.interest} - ${spec.title}`,
     interest: input.interest,
     goal: input.goal?.trim() || spec.description,
@@ -181,5 +131,5 @@ export function generatePlanFromTemplate(
     modules,
     objectives,
     sessions,
-  } as GeneratedPlan;
+  };
 }

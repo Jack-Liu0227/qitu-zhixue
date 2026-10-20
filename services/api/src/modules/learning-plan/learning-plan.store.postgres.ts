@@ -134,33 +134,6 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       : withTransaction(this.db, work);
   }
 
-  async findPlanBySignature(
-    studentUserId: string,
-    interest: string,
-    weeks: 4 | 8,
-    templateVersion: string,
-    signatureKey?: string,
-  ): Promise<PlanBundle | null> {
-    // 签名键（含排课形状）优先；未传时退回旧签名，供升级前落库的草稿命中。
-    // 幂等键在 `learning_plans_idempotency_unique_idx` 上唯一，所以按它取最多一行。
-    const [plan] = await this.db
-      .select()
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.studentUserId, studentUserId),
-          eq(learningPlans.interest, interest),
-          eq(learningPlans.weeks, weeks),
-          eq(learningPlans.templateVersionId, templateVersion),
-          ...(signatureKey === undefined ? [] : [eq(learningPlans.idempotencyKey, signatureKey)]),
-        ),
-      )
-      .orderBy(asc(learningPlans.createdAt))
-      .limit(1);
-    if (plan === undefined) return null;
-    return this.assembleBundle(this.db, plan);
-  }
-
   override async findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
@@ -192,9 +165,8 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           projectId: null,
           interest: bundle.plan.interest,
           goal: bundle.plan.goal,
-          ...(bundle.plan.weeks === undefined ? {} : { weeks: bundle.plan.weeks }),
-          ...(bundle.plan.lessonCount === undefined ? {} : { lessonCount: bundle.plan.lessonCount }),
-          ...(bundle.plan.lessonMinutes === undefined ? {} : { lessonMinutes: bundle.plan.lessonMinutes }),
+          lessonCount: bundle.plan.lessonCount,
+          lessonMinutes: bundle.plan.lessonMinutes,
           minutesPerSession: bundle.plan.minutesPerSession,
           templateVersionId: bundle.plan.templateVersion,
           status: bundle.plan.status,
@@ -211,8 +183,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               id: module.id,
               planId: module.planId,
               name: module.name,
-              ...(module.weekIndex === undefined ? {} : { weekIndex: module.weekIndex }),
-              ...(module.lessonIndex === undefined ? {} : { lessonIndex: module.lessonIndex }),
+              lessonIndex: module.lessonIndex,
               objective: module.objective,
               ordinal: module.ordinal,
             })),
@@ -239,7 +210,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               planId: session.planId,
               moduleId: session.moduleId,
               index: session.index,
-              ...(session.lessonIndex === undefined ? {} : { lessonIndex: session.lessonIndex }),
+              lessonIndex: session.lessonIndex,
               title: session.title ?? null,
               blocks: session.blocks,
               theoryObjectiveIds: [...session.theoryObjectiveIds],
@@ -253,9 +224,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
-        const scheduleIdentity = bundle.plan.weeks === undefined
-          ? `lesson-${bundle.plan.lessonCount}`
-          : `week-${bundle.plan.weeks}`;
+        const scheduleIdentity = `lesson-${bundle.plan.lessonCount}`;
         throw new LearningPlanStoreConflictError(
           `计划签名冲突：${bundle.plan.studentUserId}/${bundle.plan.interest}/${scheduleIdentity}`,
         );
@@ -937,15 +906,18 @@ async function ensureCurriculumTemplate(
 }
 
 function mapPlan(row: PlanRow): PlanRecord {
+  if (row.lessonCount === null || row.lessonCount === undefined
+    || (row.lessonMinutes !== 60 && row.lessonMinutes !== 120)) {
+    throw new Error(`Learning plan ${row.id} does not contain a valid lesson schedule`);
+  }
   return {
     id: row.id,
     studentUserId: row.studentUserId,
     projectId: row.projectId,
     interest: row.interest,
     goal: row.goal,
-    weeks: row.weeks === null || row.weeks === undefined ? undefined : row.weeks === 8 ? 8 : 4,
-    lessonCount: row.lessonCount ?? undefined,
-    lessonMinutes: row.lessonMinutes === 120 ? 120 : row.lessonMinutes === 60 ? 60 : undefined,
+    lessonCount: row.lessonCount,
+    lessonMinutes: row.lessonMinutes,
     minutesPerSession: row.minutesPerSession,
     templateVersion: row.templateVersionId ?? CURRICULUM_TEMPLATE_VERSION,
     status: row.status as LearningPlanStatus,
@@ -959,12 +931,14 @@ function mapPlan(row: PlanRow): PlanRecord {
 }
 
 function mapModule(row: ModuleRow): ModuleRecord {
+  if (row.lessonIndex === null || row.lessonIndex === undefined || row.lessonIndex < 1) {
+    throw new Error(`Learning module ${row.id} does not contain a valid lessonIndex`);
+  }
   return {
     id: row.id,
     planId: row.planId,
     name: row.name,
-    weekIndex: row.weekIndex ?? undefined,
-    lessonIndex: row.lessonIndex ?? undefined,
+    lessonIndex: row.lessonIndex,
     objective: row.objective,
     ordinal: row.ordinal,
   };
@@ -984,12 +958,15 @@ function mapObjective(row: ObjectiveRow): ObjectiveRecord {
 }
 
 function mapSession(row: SessionRow): SessionRecord {
+  if (row.lessonIndex === null || row.lessonIndex === undefined || row.lessonIndex < 1) {
+    throw new Error(`Learning session ${row.id} does not contain a valid lessonIndex`);
+  }
   return {
     id: row.id,
     planId: row.planId,
     moduleId: row.moduleId,
     index: row.index,
-    lessonIndex: row.lessonIndex ?? undefined,
+    lessonIndex: row.lessonIndex,
     title: row.title,
     blocks: (row.blocks as SessionBlock[]) ?? [],
     theoryObjectiveIds: row.theoryObjectiveIds ?? [],

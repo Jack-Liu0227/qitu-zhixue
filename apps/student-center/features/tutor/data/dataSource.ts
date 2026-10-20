@@ -8,6 +8,8 @@ import type {
   CreateTutorTurnResponse,
   AnswerInteractiveQuizRequest,
   AnswerInteractiveQuizResponse,
+  TutorExperimentActionRequest,
+  TutorExperimentActionResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
@@ -49,6 +51,12 @@ export interface TutorDataSource {
   ): Promise<AnswerInteractiveQuizResponse>;
   /** Explicit explain action; the server decides whether to reveal an explanation. */
   requestQuizExplanation(sessionId: string, quizId: string): Promise<void>;
+  /** POST /tutor/sessions/:id/interactive/experiments/:experimentId/action. */
+  submitExperimentAction(
+    sessionId: string,
+    experimentId: string,
+    request: TutorExperimentActionRequest,
+  ): Promise<TutorExperimentActionResponse>;
   /** GET /tutor/sessions/:id/summary — display-only ladder/stall status. */
   getSummary(sessionId: string): Promise<TutorSessionSummary>;
   /** POST /tutor/sessions/:id/feedback — idempotent feedback. */

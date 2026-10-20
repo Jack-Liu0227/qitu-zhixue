@@ -40,6 +40,7 @@ export function SafeReplyFallback() {
 export function TutorReplyBlockView({
   block,
   onSelectOption,
+  onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
@@ -49,10 +50,11 @@ export function TutorReplyBlockView({
 }: {
   block: TutorReplyBlock;
   onSelectOption?: (label: string, text?: string) => void;
+  onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
-  onExperimentAction?: (action: 'submit_prediction' | 'run' | 'record_observation', payload?: unknown) => void | Promise<boolean>;
+  onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
   projectId?: string | null;
   disabled?: boolean;
 }) {
@@ -60,7 +62,13 @@ export function TutorReplyBlockView({
     case 'text':
       return <MarkdownMathView content={block.text} />;
     case 'questions':
-      return <NumberedQuestionList items={block.items} />;
+      return (
+        <NumberedQuestionList
+          items={block.items}
+          onSubmitAnswer={onSubmitQuestionAnswer}
+          disabled={disabled}
+        />
+      );
     case 'options':
       return (
         <OptionChips
@@ -157,7 +165,7 @@ export function TutorReplyBlockView({
           disabled={disabled}
           initialMode={block.initialMode}
           predictionGate={block.predictionGate}
-          onAction={onExperimentAction}
+          onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}
         />
       );
     case 'attachment':

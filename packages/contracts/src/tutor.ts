@@ -223,8 +223,9 @@ export interface TutorIdeaCard {
   ideaId: string;
   title: string;
   description: string;
-  /** 计划周期（周）。 */
-  weeks: 4 | 8;
+  /** Lesson-based schedule selected for the idea. */
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   /** 为什么适合这个学生（适配理由）。 */
   rationale: string;
   /** 关联的项目模板 id；服务端校验存在且 published。 */
@@ -338,6 +339,14 @@ export interface TutorProjectContext {
   team?: TutorTeamIdentity;
   /** 来自 `PblTemplate.phases` 的真实阶段投影；无模板时为空数组。 */
   phases?: TutorPhaseProjection[];
+  /** 当前冻结课时投影。阶段仅作为服务端策略元数据，不在学生端作为课程主轴展示。 */
+  lesson?: {
+    lessonIndex: number;
+    lessonCount: number;
+    title: string;
+    status: 'current' | 'completed' | 'locked';
+    checkpoint?: string | null;
+  } | null;
 }
 
 /**
@@ -553,6 +562,24 @@ export interface CreateTutorFeedbackRequest {
 
 export interface CreateTutorFeedbackResponse {
   accepted: true;
+}
+
+/** POST /tutor/sessions/:id/interactive/experiments/:experimentId/action */
+export type TutorExperimentAction = 'submit_prediction' | 'run' | 'record_observation';
+
+export interface TutorExperimentActionRequest {
+  action: TutorExperimentAction;
+  payload?: unknown;
+  idempotencyKey: string;
+}
+
+export interface TutorExperimentActionResponse {
+  accepted: true;
+  actionId: string;
+  experimentId: string;
+  action: TutorExperimentAction;
+  /** Optional server-computed model projection for a run action. */
+  simulationResult?: { mode: 'diffraction' | 'scattering'; summary: string };
 }
 
 /**

@@ -8,6 +8,8 @@ import type {
   CreateTutorTurnResponse,
   AnswerInteractiveQuizRequest,
   AnswerInteractiveQuizResponse,
+  TutorExperimentActionRequest,
+  TutorExperimentActionResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorProjectContext as SharedTutorProjectContext,
@@ -246,6 +248,27 @@ export class TutorApiDataSource implements TutorDataSource {
     });
   }
 
+  async submitExperimentAction(
+    sessionId: string,
+    experimentId: string,
+    request: TutorExperimentActionRequest,
+  ): Promise<TutorExperimentActionResponse> {
+    const payload = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/interactive/experiments/${encodeURIComponent(experimentId)}/action`,
+      'Experiment action submission failed',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': request.idempotencyKey },
+        body: JSON.stringify(request),
+      },
+    );
+    const data = unwrapData(payload);
+    if (!isTutorExperimentActionResponse(data, experimentId, request.action)) {
+      throw new TutorDataError('Invalid experiment action response', undefined, 'BAD_EXPERIMENT_ACTION_PAYLOAD');
+    }
+    return data;
+  }
+
   async getSummary(sessionId: string): Promise<TutorSessionSummary> {
     const response = await this.fetchJson(
       `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/summary`,
@@ -258,12 +281,23 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 
   async submitFeedback(
-    _sessionId: string,
-    _request: CreateTutorFeedbackRequest,
+    sessionId: string,
+    request: CreateTutorFeedbackRequest,
   ): Promise<CreateTutorFeedbackResponse> {
-    // No feedback write endpoint is exposed to the student app yet. Fail loud
-    // rather than pretending the feedback was recorded server-side.
-    throw new TutorDataError('反馈暂时无法提交，请稍后重试。', undefined, 'FEEDBACK_UNAVAILABLE');
+    const payload = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/feedback`,
+      'Feedback submission failed',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': request.idempotencyKey },
+        body: JSON.stringify(request),
+      },
+    );
+    const data = unwrapData(payload);
+    if (typeof data !== 'object' || data === null || (data as { accepted?: unknown }).accepted !== true) {
+      throw new TutorDataError('Invalid feedback response', undefined, 'BAD_FEEDBACK_PAYLOAD');
+    }
+    return data as CreateTutorFeedbackResponse;
   }
 
   createSocket(sessionId: string): TutorSocket {
@@ -372,6 +406,19 @@ function isTutorTeamIdentity(value: unknown): boolean {
     typeof candidate.assistantId === 'string' &&
     typeof candidate.assistantName === 'string'
   );
+}
+
+function isTutorExperimentActionResponse(
+  value: unknown,
+  experimentId: string,
+  action: TutorExperimentActionRequest['action'],
+): value is TutorExperimentActionResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<TutorExperimentActionResponse>;
+  return candidate.accepted === true
+    && candidate.experimentId === experimentId
+    && candidate.action === action
+    && typeof candidate.actionId === 'string';
 }
 
 function isTutorTeamGraph(value: unknown): value is TutorTeamGraph {

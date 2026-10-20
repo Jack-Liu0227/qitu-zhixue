@@ -12,6 +12,7 @@
     "incremental": false
   },
   "files": [
+    "types/mermaid.d.ts",
     "features/growth/data/projectStudentEntry.ts",
     "features/growth/data/projectStudentEntry.test.ts",
     "features/growth/components/ObservationNote.tsx",

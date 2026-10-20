@@ -21,9 +21,12 @@ export function ChatThread({
   onRetry,
   onReconnect,
   onSelectOption,
+  onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
+  onExperimentAction,
+  onFeedback,
   projectId,
   currentAssistantName,
   isConfirmingProject = false,
@@ -40,9 +43,12 @@ export function ChatThread({
   onRetry: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
+  onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
+  onFeedback?: (turnId: string, kind: import('@qitu/contracts').TutorFeedbackKind, idempotencyKey: string) => Promise<void>;
   projectId?: string | null;
   currentAssistantName?: string;
   isConfirmingProject?: boolean;
@@ -128,9 +134,12 @@ export function ChatThread({
             turn={turn}
             currentAssistantName={currentAssistantName}
             onSelectOption={onSelectOption}
+            onSubmitQuestionAnswer={onSubmitQuestionAnswer}
             onOneClickCreateProject={onOneClickCreateProject}
             onRequestQuizExplanation={onRequestQuizExplanation}
             onAnswerQuiz={onAnswerQuiz}
+            onExperimentAction={onExperimentAction}
+            onFeedback={onFeedback}
             projectId={projectId}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}

@@ -5,14 +5,13 @@ import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBl
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { TutorTeamGraph } from '@qitu/contracts';
-import { StudentLink } from '../../components/student-link';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
 import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
-import { TutorTeamRail } from './components/TutorTeamRail';
+import { CurrentLessonCard } from './components/CurrentLessonCard';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
@@ -101,7 +100,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     }
     setTeamGraphStatus('loading');
     setTeamGraphError(null);
-    void source.getTeamGraph(projectId).then((graph) => {
+    const refreshTimer = window.setTimeout(() => void source.getTeamGraph(projectId).then((graph) => {
       if (cancelled) return;
       setTeamGraph(graph);
       setTeamGraphStatus(graph === null ? 'empty' : 'ready');
@@ -111,9 +110,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       setTeamGraph(null);
       setTeamGraphError(error);
       setTeamGraphStatus('error');
-    });
-    return () => { cancelled = true; };
-  }, [projectId, source]);
+    }), session.turns.length > 0 ? 300 : 0);
+    return () => { cancelled = true; window.clearTimeout(refreshTimer); };
+  }, [projectId, source, session.turns.length]);
 
   const retryTeamGraph = () => {
     if (!projectId) return;
@@ -190,21 +189,19 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}
         </span>
         {projectSummary ? (
-          <StudentLink
-            href={`/projects/${encodeURIComponent(projectSummary.id)}?mode=learn`}
+          <button
+            type="button"
             className="qitu-button qitu-button-ghost"
-            style={{
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              border: '1px solid #93c5fd',
-              color: '#2563eb',
-              background: '#eff6ff',
+            disabled={!ready || busy || confirming || session.offline}
+            onClick={() => {
+              void composer.submit(
+                '请在当前 AI 搭档会话中打开动态物理课件，先让我提交预测，再运行单缝衍射或散射仿真。',
+                session.submitText,
+              );
             }}
           >
             <span>🔬</span> 动态实验课件
-          </StudentLink>
+          </button>
         ) : null}
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
@@ -246,9 +243,15 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             if (text) void composer.submit(text, session.submitText);
             else void session.selectOption(label).catch(() => undefined);
           }}
+          onSubmitQuestionAnswer={(answer) => {
+            if (!ready || busy || confirming || session.offline) return;
+            void composer.submit(answer, session.submitText);
+          }}
           onOneClickCreateProject={handleOneClickCreateProject}
           onAnswerQuiz={(quizId, selectedKeys, idempotencyKey) => session.answerQuiz(quizId, selectedKeys, idempotencyKey)}
           onRequestQuizExplanation={(quizId) => session.explainQuiz(quizId)}
+          onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
+          onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
           projectId={projectSummary?.id ?? null}
           isConfirmingProject={confirming}
           composer={
@@ -291,7 +294,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             <>
               <ProjectCard project={projectSummary} />
               <CurrentTask task={session.project.currentTask} />
-              <TutorTeamRail phases={session.project.phases ?? []} />
+              <CurrentLessonCard lesson={session.project.lesson ?? null} />
             </>
           ) : (
             <div className="qitu-tutor-state-panel" role="status"><strong>自由探索中</strong><p>尚未创建正式项目。项目进度会在你确认想法并创建后显示。</p></div>

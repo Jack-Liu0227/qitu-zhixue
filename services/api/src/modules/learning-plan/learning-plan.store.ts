@@ -32,10 +32,8 @@ export interface PlanRecord {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks?: 4 | 8;
-  /** Canonical lesson-first fields; historical weekly plans may omit them. */
-  lessonCount?: number;
-  lessonMinutes?: 60 | 120;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;
@@ -51,8 +49,7 @@ export interface ModuleRecord {
   id: string;
   planId: string;
   name: string;
-  weekIndex?: number;
-  lessonIndex?: number;
+  lessonIndex: number;
   objective: string;
   ordinal: number;
 }
@@ -82,7 +79,7 @@ export interface SessionRecord {
   planId: string;
   moduleId: string;
   index: number;
-  lessonIndex?: number;
+  lessonIndex: number;
   title?: string | null;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
@@ -234,7 +231,7 @@ export interface ConfirmPlanResult {
   created: boolean;
 }
 
-/** 同一 `(student, interest, weeks, templateVersion)` 已存在计划时抛出。 */
+/** Same `(student, interest, lessonCount, lessonMinutes, templateVersion)` already exists. */
 export class LearningPlanStoreConflictError extends Error {
   constructor(message: string) {
     super(message);
@@ -259,31 +256,14 @@ export abstract class LearningPlanStore {
     studentId: string,
     work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
   ): Promise<T>;
-  /**
-   * 按签名读取既有草稿。
-   *
-   * `signatureKey` 是**含排课形状**的完整幂等键（`learning-plan:<student>:
-   * <templateVersion>:<weeks>:<interest>:<sessionsPerWeek>x<sessionMinutes>`）；
-   * 传旧前缀（无排课后缀）即走兼容读，供升级前落库的草稿命中。
-   * 只按 (student, interest, weeks, templateVersion) 去重是缺陷：4 周 1×120 与
-   * 4 周 2×60 会撞进同一条签名，第二个请求被返回第一份计划的形状。
-   */
-  abstract findPlanBySignature(
-    studentUserId: string,
-    interest: string,
-    weeks: 4 | 8,
-    templateVersion: string,
-    signatureKey?: string,
-  ): Promise<PlanBundle | null>;
-
-  findPlanByLessonSignature(
+  abstract findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
     lessonCount: number,
     lessonMinutes: 60 | 120,
     templateVersion: string,
     signatureKey?: string,
-  ): Promise<PlanBundle | null> { return Promise.resolve(null); }
+  ): Promise<PlanBundle | null>;
 
   abstract createPlan(bundle: PlanBundle): Promise<void>;
 
@@ -429,30 +409,6 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     }
   }
 
-  async findPlanBySignature(
-    studentUserId: string,
-    interest: string,
-    weeks: 4 | 8,
-    templateVersion: string,
-    signatureKey?: string,
-  ): Promise<PlanBundle | null> {
-    for (const bundle of this.plans.values()) {
-      const plan = bundle.plan;
-      if (
-        plan.studentUserId === studentUserId &&
-        plan.interest === interest &&
-        plan.weeks === weeks &&
-        plan.templateVersion === templateVersion &&
-        // 排课是形状的一部分：只有键完全一致才算同一份计划。旧键（无排课
-        // 后缀）同样只是「键相等」的一个特例，因此两种读共用这一条判据。
-        (signatureKey === undefined || plan.idempotencyKey === signatureKey)
-      ) {
-        return cloneBundle(bundle);
-      }
-    }
-    return null;
-  }
-
   override async findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
@@ -472,34 +428,16 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   }
 
   async createPlan(bundle: PlanBundle): Promise<void> {
-    if (bundle.plan.weeks === undefined) {
-      const existingLesson = await this.findPlanByLessonSignature(
-        bundle.plan.studentUserId,
-        bundle.plan.interest,
-        bundle.plan.lessonCount ?? bundle.sessions.length,
-        bundle.plan.lessonMinutes ?? (bundle.plan.minutesPerSession === 120 ? 120 : 60),
-        bundle.plan.templateVersion,
-        bundle.plan.idempotencyKey,
-      );
-      if (existingLesson !== null) throw new LearningPlanStoreConflictError(`已存在同一签名的学习计划：${existingLesson.plan.id}`);
-      if (this.plans.has(bundle.plan.id)) throw new LearningPlanStoreConflictError(`学习计划 id 冲突：${bundle.plan.id}`);
-      this.plans.set(bundle.plan.id, cloneBundle(bundle));
-      for (const mapping of planObjectiveMappings(bundle, null)) await this.upsertObjectiveMapping(mapping);
-      return;
-    }
-    const existing = await this.findPlanBySignature(
+    const existing = await this.findPlanByLessonSignature(
       bundle.plan.studentUserId,
       bundle.plan.interest,
-      bundle.plan.weeks,
+      bundle.plan.lessonCount,
+      bundle.plan.lessonMinutes,
       bundle.plan.templateVersion,
       bundle.plan.idempotencyKey,
     );
-    if (existing !== null) {
-      throw new LearningPlanStoreConflictError(`已存在同一签名的学习计划：${existing.plan.id}`);
-    }
-    if (this.plans.has(bundle.plan.id)) {
-      throw new LearningPlanStoreConflictError(`学习计划 id 冲突：${bundle.plan.id}`);
-    }
+    if (existing !== null) throw new LearningPlanStoreConflictError(`Duplicate lesson-based plan signature: ${existing.plan.id}`);
+    if (this.plans.has(bundle.plan.id)) throw new LearningPlanStoreConflictError(`Learning plan id conflict: ${bundle.plan.id}`);
     this.plans.set(bundle.plan.id, cloneBundle(bundle));
     for (const mapping of planObjectiveMappings(bundle, null)) await this.upsertObjectiveMapping(mapping);
   }

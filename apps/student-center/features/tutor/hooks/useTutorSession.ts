@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { RealtimeServerEvent, TutorHintLevel, TutorTurn } from '@qitu/contracts';
+import type { CreateTutorFeedbackRequest, RealtimeServerEvent, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorHintLevel, TutorTurn } from '@qitu/contracts';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
 import { createIdempotencyKey } from '../idempotency';
 import { TutorRealtimeClient } from '../realtime/tutorRealtimeClient';
@@ -40,6 +40,8 @@ export interface TutorSessionApi {
   submitText: (content: string, idempotencyKey: string) => Promise<void>;
   answerQuiz: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
   explainQuiz: (quizId: string) => Promise<void>;
+  submitExperimentAction: (experimentId: string, request: TutorExperimentActionRequest) => Promise<TutorExperimentActionResponse>;
+  submitFeedback: (request: CreateTutorFeedbackRequest) => Promise<void>;
   selectOption: (label: string) => Promise<void>;
   retryProject: () => void;
   retrySession: () => void;
@@ -418,6 +420,24 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     [browserOffline, dataSource, sessionId, transportOffline],
   );
 
+  const submitExperimentAction = useCallback(
+    async (experimentId: string, request: TutorExperimentActionRequest) => {
+      if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
+      if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
+      return dataSource.submitExperimentAction(sessionId, experimentId, request);
+    },
+    [browserOffline, dataSource, sessionId, transportOffline],
+  );
+
+  const submitFeedback = useCallback(
+    async (request: CreateTutorFeedbackRequest) => {
+      if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
+      if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
+      await dataSource.submitFeedback(sessionId, request);
+    },
+    [browserOffline, dataSource, sessionId, transportOffline],
+  );
+
   const lastHintLevel = useMemo<TutorHintLevel | null>(() => {
     for (let index = turns.length - 1; index >= 0; index -= 1) {
       const turn = turns[index];
@@ -464,6 +484,8 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     submitText,
     answerQuiz,
     explainQuiz,
+    submitExperimentAction,
+    submitFeedback,
     selectOption,
     retryProject,
     retrySession,

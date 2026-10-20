@@ -27,6 +27,35 @@
 .qitu-tutor-col-center .qitu-chat-bubble code,
 .qitu-tutor-col-center .qitu-markdown-math-content code { overflow-wrap: anywhere; word-break: break-all; }
 
+.qitu-tutor-questions { padding-left: 1.5rem; }
+.qitu-tutor-questions li + li { margin-top: 0.45rem; }
+.qitu-tutor-question-answer { display: grid; gap: 8px; margin-top: 12px; }
+.qitu-tutor-question-answer label { color: var(--qitu-heading); font-size: 0.88rem; font-weight: 650; }
+.qitu-tutor-question-answer textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--qitu-border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--qitu-surface, #fff);
+  color: var(--qitu-heading);
+  font: inherit;
+  resize: vertical;
+}
+.qitu-tutor-question-answer button {
+  justify-self: end;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--qitu-primary, #2563eb);
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.qitu-tutor-question-answer button:disabled { cursor: not-allowed; opacity: 0.55; }
+
 .qitu-tutor-header {
   flex: 0 0 auto;
   display: flex;
@@ -1755,7 +1784,7 @@
 .qitu-idea-card-heading { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
 .qitu-idea-card-heading h3 { margin: 0; color: #0f172a; font-size: 13px; overflow-wrap: anywhere; }
 .qitu-idea-card-heading p { margin: 4px 0 0; color: #475569; font-size: 11px; line-height: 1.45; }
-.qitu-idea-weeks { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
+.qitu-idea-lessons { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
 .qitu-idea-card dl { display: grid; gap: 5px; margin: 0; }
 .qitu-idea-card dl > div { display: grid; gap: 2px; }
 .qitu-idea-card dt { color: #64748b; font-size: 10px; font-weight: 700; }

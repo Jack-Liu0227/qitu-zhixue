@@ -25,6 +25,8 @@ import type {
   TutorProjectContext,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorExperimentAction,
+  TutorFeedbackKind,
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
@@ -113,7 +115,7 @@ export class TutorController {
           subject: document.tags[0] ?? '综合创作',
           tags: document.tags,
           difficulty: '入门',
-          durationWeeks: durationWeeksOf(document.content),
+          ...lessonScheduleOf(document.content),
           stages: [{ id: document.stage, label: stageLabelOf(document.stage) }],
           outcome: document.summary,
           score,
@@ -404,6 +406,53 @@ export class TutorController {
     return { data };
   }
 
+  @Post('sessions/:id/feedback')
+  @HttpCode(201)
+  async submitFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Body() body: { turnId?: unknown; kind?: unknown; note?: unknown; idempotencyKey?: unknown },
+  ): Promise<{ data: { accepted: true } }> {
+    const actor = this.requireStudent(cookieHeader);
+    const key = readRequiredIdempotencyKey(body.idempotencyKey, idempotencyKeyHeader);
+    if (typeof body.turnId !== 'string' || body.turnId.length > 200
+      || !isTutorFeedbackKind(body.kind)
+      || (body.note !== undefined && (typeof body.note !== 'string' || body.note.length > 500))) {
+      throw new BadRequestException({ code: 'TUTOR_FEEDBACK_INVALID', message: '反馈内容格式无效' });
+    }
+    const record = await this.tutorService.loadSession(id, actor.id);
+    const data = await this.tutorService.submitFeedback(actor.id, record, {
+      turnId: body.turnId,
+      kind: body.kind,
+      ...(typeof body.note === 'string' ? { note: body.note } : {}),
+    }, key);
+    return { data };
+  }
+
+  @Post('sessions/:id/interactive/experiments/:experimentId/action')
+  @HttpCode(201)
+  async submitExperimentAction(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Param('experimentId') experimentId: string,
+    @Body() body: { action?: unknown; payload?: unknown; idempotencyKey?: unknown },
+  ): Promise<{ data: import('@qitu/contracts').TutorExperimentActionResponse }> {
+    const actor = this.requireStudent(cookieHeader);
+    const key = readRequiredIdempotencyKey(body.idempotencyKey, idempotencyKeyHeader);
+    if (!isTutorExperimentAction(body.action) || experimentId.length === 0 || experimentId.length > 200) {
+      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: '实验操作格式无效' });
+    }
+    const record = await this.tutorService.loadSession(id, actor.id);
+    const data = await this.tutorService.submitExperimentAction(actor.id, record, experimentId, {
+      action: body.action,
+      ...(body.payload === undefined ? {} : { payload: body.payload }),
+      idempotencyKey: key,
+    });
+    return { data };
+  }
+
   @Get('sessions/:id/summary')
   async getSummary(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -483,6 +532,24 @@ function stageLabelOf(stage: string): string {
     completed: '已完成',
   };
   return labels[stage] ?? '探索与发现';
+}
+
+function readRequiredIdempotencyKey(bodyKey: unknown, headerKey: string | undefined): string {
+  const body = typeof bodyKey === 'string' ? bodyKey.trim() : '';
+  const header = typeof headerKey === 'string' ? headerKey.trim() : '';
+  if (!body && !header) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少幂等键' });
+  if (body && header && body !== header) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_MISMATCH', message: '幂等键不一致' });
+  const value = body || header;
+  if (value.length > 160) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_INVALID', message: '幂等键过长' });
+  return value;
+}
+
+function isTutorFeedbackKind(value: unknown): value is TutorFeedbackKind {
+  return value === 'helpful' || value === 'confusing' || value === 'stuck';
+}
+
+function isTutorExperimentAction(value: unknown): value is TutorExperimentAction {
+  return value === 'submit_prediction' || value === 'run' || value === 'record_observation';
 }
 
 function isMove(value: unknown): value is PedagogicMove {

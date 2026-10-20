@@ -39,9 +39,7 @@
 
 ## 3. 遗留周排程边界（待统一迁移）
 
-当前无模板通用生成器与 `optics-physical-inquiry:v1` 路径仍按周生成或读取 `weeks`、`weekIndex`、`week/day`；它们尚未迁移到 lesson-first，不能作为新课时模板合同。历史数据不会在读取时被静默改写，新模板也不能用 `ceil(lessonCount / 2)` 伪造周数。
-
-`toLearningPlanDraft`、周排期校验和旧的 `PblSchedule` 服务现存周排期；新模板不接受 `weeks`、`schedule` 与 lesson-first 字段混用。
+新模板只接受 lesson-first 合同。旧周字段不再参与模板解析、生成或校验；历史数据如需读取，必须由明确的离线迁移处理，不能在读路径中推导或伪造课时。
 
 ## 4. 每课时内容与复习
 

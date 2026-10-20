@@ -15,7 +15,6 @@ import type {
   LearningPlanView,
   LessonSessionView,
   NextStepView,
-  PblSchedule,
   StartSessionResponse,
   SubmitAnswerRequest,
   SubmitAnswerResponse,
@@ -71,14 +70,12 @@ export class LearningPlanController {
     // `assertNoServerOwnedFields` 拒绝。
     const request = pickFields<{
       interest: unknown;
-      weeks?: unknown;
       lessonCount?: unknown;
       lessonMinutes?: unknown;
       goal?: unknown;
-      schedule?: PblSchedule;
       sessionCount?: unknown;
       curriculumSlug?: unknown;
-    }>(body, ['interest', 'weeks', 'lessonCount', 'lessonMinutes', 'goal', 'schedule', 'sessionCount', 'curriculumSlug']);
+    }>(body, ['interest', 'lessonCount', 'lessonMinutes', 'goal', 'sessionCount', 'curriculumSlug']);
     return { data: await this.guard(() => this.plans.generatePlan(user, request)) };
   }
 

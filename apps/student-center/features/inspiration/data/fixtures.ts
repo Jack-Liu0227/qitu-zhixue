@@ -12,7 +12,8 @@ export const INSPIRATION_TEMPLATES: InspirationTemplate[] = [
     subject: '信息科技 / 编程',
     tags: ['游戏开发', 'Pygame', '碰撞检测', '事件循环'],
     difficulty: '进阶',
-    durationWeeks: 4,
+    lessonCount: 16,
+    lessonMinutes: 60,
     templateVersionId: 'thunder-fighter:v1',
     stages: [
       { id: 'thunder-explore', label: '阶段一：意图确认与开题 · 明确游戏操控与关卡设想' },
@@ -30,7 +31,8 @@ export const INSPIRATION_TEMPLATES: InspirationTemplate[] = [
     subject: '物理 / 数学',
     tags: ['物理实验', '动能定理', '功与能量', 'Python 仿真'],
     difficulty: '进阶',
-    durationWeeks: 3,
+    lessonCount: 12,
+    lessonMinutes: 60,
     templateVersionId: 'kinetic-energy:v1',
     stages: [
       { id: 'kinetic-explore', label: '阶段一：现象观察与假设 · 观察小车受力与加速度变化，确认实验假设' },

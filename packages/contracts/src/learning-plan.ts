@@ -1,5 +1,4 @@
 import type { ProjectSummary } from './project.js';
-import type { PblSchedule } from './pbl-learning.js';
 import type { PlanSessionCount } from './curriculum.js';
 
 /**
@@ -19,7 +18,6 @@ import type { PlanSessionCount } from './curriculum.js';
 export type LearningPlanStatus = 'draft' | 'active' | 'completed' | 'archived';
 
 /** 计划周数，只允许 4 或 8。 */
-export type LearningPlanWeeks = 4 | 8;
 
 /** 四类目标，决定用哪种掌握门槛。 */
 export type KnowledgeType = 'memory' | 'concept' | 'procedure' | 'design';
@@ -117,9 +115,8 @@ export interface LearningObjectiveView {
 export interface LessonModuleView {
   id: string;
   name: string;
-  weekIndex?: number;
-  /** One-based lesson order for lesson-first plans. */
-  lessonIndex?: number;
+  /** One-based lesson order. */
+  lessonIndex: number;
   objective: string;
   ordinal: number;
   objectives: LearningObjectiveView[];
@@ -131,9 +128,7 @@ export interface LessonSessionView {
   moduleId: string;
   index: number;
   /** One-based lesson order. */
-  lessonIndex?: number;
-  week?: number;
-  day?: number;
+  lessonIndex: number;
   title: string;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
@@ -150,35 +145,28 @@ export interface LearningPlanView {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks?: LearningPlanWeeks;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;
   version: number;
-  /** Explicit lesson count; legacy plans may omit it and derive it from sessions. */
-  sessionCount?: PlanSessionCount;
-  /** Canonical lesson-first schedule; absent on historical weekly plans. */
-  lessonCount?: number;
-  lessonMinutes?: 60 | 120;
+  sessionCount: PlanSessionCount;
   modules: LessonModuleView[];
   sessions: LessonSessionView[];
   confirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Optional during the v1 migration; old plans keep their `weeks` semantics. */
-  schedule?: PblSchedule;
   templateId?: string | null;
 }
 
 /** 生成计划。模型输出不可信，服务端校验通过才会落库为草稿。 */
 export interface GenerateLearningPlanRequest {
   interest: string;
-  weeks?: LearningPlanWeeks;
-  lessonCount?: number;
-  lessonMinutes?: 60 | 120;
-  sessionCount?: PlanSessionCount;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
+  sessionCount: PlanSessionCount;
   goal?: string | null;
-  schedule?: PblSchedule;
   /**
    * 课程模板 slug（可选）。提供时按模板治理 / 生效绑定解析模板版本，从模板
    * 内容生成计划（课程驱动路径）；省略时走确定性通用生成器（现状不变）。
@@ -188,7 +176,7 @@ export interface GenerateLearningPlanRequest {
 
 export interface GenerateLearningPlanResponse {
   plan: LearningPlanView;
-  /** 同一 `(studentId, interest, weeks, templateVersion)` 命中既有草稿时为 true。 */
+  /** Same `(studentId, interest, lessonCount, lessonMinutes, templateVersion)` draft hit. */
   deduplicated: boolean;
 }
 

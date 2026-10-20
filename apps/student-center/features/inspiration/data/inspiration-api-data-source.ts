@@ -193,7 +193,8 @@ export class InspirationApiDataSource implements InspirationDataSource {
             ? item.learningObjectives.filter((tag): tag is string => typeof tag === 'string')
             : [],
           difficulty,
-          durationWeeks: minutes !== null && minutes > 0 ? Math.max(1, Math.ceil(minutes / 300)) : null,
+          lessonCount: minutes !== null && minutes > 0 ? Math.max(1, Math.ceil(minutes / 60)) : null,
+          lessonMinutes: minutes !== null && minutes > 0 && minutes % 120 === 0 ? 120 : minutes !== null && minutes > 0 ? 60 : null,
           stages: stagesById.get(id) ?? [],
           outcome: typeof item.outcomeForm === 'string' ? item.outcomeForm : '',
         };

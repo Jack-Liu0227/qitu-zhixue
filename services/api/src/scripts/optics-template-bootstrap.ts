@@ -13,10 +13,6 @@ import { TemplateStore } from '../modules/templates/templates.store';
 import { TemplatesModule } from '../modules/templates/templates.module';
 import {
   assertOpticsTemplateStructure,
-  OPTICS_BOOTSTRAP_KEY,
-  OPTICS_TEMPLATE_INPUT,
-  OPTICS_TEMPLATE_SLUG,
-  OPTICS_VERSION_INPUT,
   OPTICS_16_BOOTSTRAP_KEY,
   OPTICS_16_TEMPLATE_SLUG,
   OPTICS_16_TEMPLATE_INPUT,
@@ -65,7 +61,6 @@ export interface OpticsBootstrapArgs {
   teamVersionId: string;
   actor: CurrentUser;
   pilotReason: string;
-  curriculum?: 'legacy-v1' | '16s-v2';
 }
 
 export interface OpticsBootstrapStep {
@@ -87,14 +82,13 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const use16 = args.curriculum === '16s-v2';
-  const slug = use16 ? OPTICS_16_TEMPLATE_SLUG : OPTICS_TEMPLATE_SLUG;
-  const templateInput = use16 ? OPTICS_16_TEMPLATE_INPUT : OPTICS_TEMPLATE_INPUT;
-  const versionInput = use16 ? OPTICS_16_VERSION_INPUT : OPTICS_VERSION_INPUT;
-  const bootstrapKey = use16 ? OPTICS_16_BOOTSTRAP_KEY : OPTICS_BOOTSTRAP_KEY;
-  const keyPrefix = use16 ? 'optics16-bootstrap' : 'optics-bootstrap';
-  if (use16) assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
-  else assertOpticsTemplateStructure();
+  const slug = OPTICS_16_TEMPLATE_SLUG;
+  const templateInput = OPTICS_16_TEMPLATE_INPUT;
+  const versionInput = OPTICS_16_VERSION_INPUT;
+  const bootstrapKey = OPTICS_16_BOOTSTRAP_KEY;
+  const keyPrefix = 'optics16-bootstrap';
+  assertOpticsTemplateStructure();
+  assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
   const steps: OpticsBootstrapStep[] = [];
 
@@ -156,7 +150,7 @@ export async function runOpticsTemplateBootstrap(
   }
 
   // 3. pilot：draft → piloting；已是 piloting/published 视为幂等 no-op；其余 fail loudly。
-  if (use16 && hashRequest({ stages: version.stages, content: version.content, rubric: version.rubric })
+  if (hashRequest({ stages: version.stages, content: version.content, rubric: version.rubric })
     !== hashRequest({ stages: versionInput.stages, content: versionInput.content ?? {}, rubric: versionInput.rubric ?? [] })) {
     throw new OpticsBootstrapError('16-session bootstrap identity has different content; create a new reviewed template version instead of overwriting or reusing it.');
   }
@@ -228,7 +222,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = args.curriculum === '16s-v2' ? 'optics16-bootstrap' : 'optics-bootstrap';
+  const keyPrefix = 'optics16-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -320,7 +314,6 @@ interface CliArgs {
   adminUserId: string | null;
   pilotReason: string;
   refused: string[];
-  curriculum: 'legacy-v1' | '16s-v2';
 }
 
 function parseCliArgs(argv: string[]): CliArgs {
@@ -329,7 +322,6 @@ function parseCliArgs(argv: string[]): CliArgs {
     adminUserId: null,
     pilotReason: '光学 PBL 模板进入试点（bootstrap）',
     refused: [],
-    curriculum: 'legacy-v1',
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -338,7 +330,6 @@ function parseCliArgs(argv: string[]): CliArgs {
     if (arg === '--pilot-reason') out.pilotReason = argv[index + 1] ?? out.pilotReason;
     if (arg === '--publish') out.refused.push('publish');
     if (arg === '--verify') out.refused.push('verify');
-    if (arg === '--curriculum-16s') out.curriculum = '16s-v2';
   }
   return out;
 }
@@ -386,7 +377,7 @@ async function main(): Promise<void> {
 
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
-      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason, curriculum: cli.curriculum },
+      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason },
     );
 
     console.log('[optics-bootstrap] 完成。');

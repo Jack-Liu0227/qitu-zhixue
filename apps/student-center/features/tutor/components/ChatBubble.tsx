@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Avatar } from '@qitu/ui';
 import type { TutorReplyBlock, TutorToolCall, TutorTurn } from '@qitu/contracts';
 
@@ -9,6 +9,7 @@ import { SafeReplyFallback, TutorReplyBlockView } from './TutorReplyBlockView';
 import { StreamCaret, ToolCallTimeline } from './ToolCallTimeline';
 import { AttachmentView } from './AttachmentView';
 import { serializeTutorTurnForClipboard } from '../lib/serializeTutorTurnForClipboard';
+import { createIdempotencyKey } from '../idempotency';
 
 /**
  * A render segment: either a RUN of consecutive tool calls (collapsed into one
@@ -35,9 +36,12 @@ export function ChatBubble({
   turn,
   currentAssistantName,
   onSelectOption,
+  onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
+  onExperimentAction,
+  onFeedback,
   projectId,
   disabled = false,
   streaming = false,
@@ -45,9 +49,12 @@ export function ChatBubble({
   turn: TutorTurn;
   currentAssistantName?: string;
   onSelectOption?: (label: string, text?: string) => void;
+  onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
+  onFeedback?: (turnId: string, kind: import('@qitu/contracts').TutorFeedbackKind, idempotencyKey: string) => Promise<void>;
   projectId?: string | null;
   disabled?: boolean;
   streaming?: boolean;
@@ -58,6 +65,10 @@ export function ChatBubble({
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<import('@qitu/contracts').TutorFeedbackKind | null>(null);
+  const [feedbackPending, setFeedbackPending] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const feedbackKeysRef = useRef(new Map<import('@qitu/contracts').TutorFeedbackKind, string>());
   const [speechRate, setSpeechRate] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -280,13 +291,11 @@ export function ChatBubble({
               key={`${turn.turnId}-${index}`}
               block={segment.raw}
               onSelectOption={onSelectOption}
+              onSubmitQuestionAnswer={onSubmitQuestionAnswer}
               onOneClickCreateProject={onOneClickCreateProject}
               onRequestQuizExplanation={onRequestQuizExplanation}
               onAnswerQuiz={onAnswerQuiz}
-              onExperimentAction={async (action) => {
-                if (action === 'submit_prediction') return true;
-                return true;
-              }}
+              onExperimentAction={onExperimentAction}
               projectId={projectId}
               disabled={disabled}
             />
@@ -295,6 +304,31 @@ export function ChatBubble({
           ),
         )}
         {showCaret ? <StreamCaret /> : null}
+        {!isStudent && onFeedback && !streaming ? (
+          <div className="qitu-tutor-feedback-actions" role="group" aria-label="回复反馈">
+            <span>这条回复对你有帮助吗？</span>
+            {(['helpful', 'confusing', 'stuck'] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                disabled={feedbackPending || feedbackSent !== null || disabled}
+                onClick={() => {
+                  const idempotencyKey = feedbackKeysRef.current.get(kind) ?? createIdempotencyKey();
+                  feedbackKeysRef.current.set(kind, idempotencyKey);
+                  setFeedbackPending(true);
+                  setFeedbackError(null);
+                  void onFeedback(turn.turnId, kind, idempotencyKey)
+                    .then(() => { setFeedbackSent(kind); feedbackKeysRef.current.delete(kind); })
+                    .catch((error: unknown) => setFeedbackError(error instanceof Error ? error.message : '反馈暂未送达，请重试'))
+                    .finally(() => setFeedbackPending(false));
+                }}
+              >
+                {feedbackSent === kind ? '已记录' : kind === 'helpful' ? '有帮助' : kind === 'confusing' ? '没看懂' : '我卡住了'}
+              </button>
+            ))}
+            {feedbackError ? <span role="alert">{feedbackError}</span> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

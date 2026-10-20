@@ -8,9 +8,6 @@ export function runOpticsCurriculumAssertions(): void {
   if (profile === undefined) throw new Error('16-session profile missing');
   if (!('lessonCount' in profile.schedule) || profile.schedule.lessonCount !== 16
     || profile.schedule.lessonMinutes !== 60) throw new Error('16-session profile must be lesson-first');
-  if (profile.sessions.some((session) => session.week !== undefined || session.session !== undefined)) {
-    throw new Error('lesson-first sessions must not carry calendar placement');
-  }
   if (parseProjectTemplateSpec(spec) !== spec) throw new Error('Parser must not rewrite template content');
   if (OPTICS_TEMPLATE_SPEC.version !== 'v1' || OPTICS_TEMPLATE_SPEC.curriculum !== undefined) throw new Error('Legacy template was changed');
   if (!validateProjectTemplateSpec(OPTICS_TEMPLATE_SPEC).valid) throw new Error('Legacy template no longer parses');
