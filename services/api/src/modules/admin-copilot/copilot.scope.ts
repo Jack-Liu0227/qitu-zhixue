@@ -37,7 +37,7 @@ export function assertOperationScope(request: AdminCopilotRequest, kind: AdminCo
   if (operation.targetResource === 'team' && owns('team', input.id, resources.teamIds)) return;
   if (operation.targetResource === 'assistant' && input.id !== 'qitu-assistant' && owns('assistant', input.id, resources.assistantIds)) return;
   // Existing shared skill publication and KB grants require the explicit global scope.
-  if (kind === 'skill.publish' && owns('skill', input.id)) return;
+  if ((kind === 'skill.publish' || kind === 'skill.test') && owns('skill', input.id)) return;
   if (kind === 'knowledge.bind' && owns('knowledge', input.id)) {
     const bindings = input.bindings;
     if (Array.isArray(bindings) && bindings.every(binding => binding && typeof binding === 'object' &&

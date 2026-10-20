@@ -51,27 +51,27 @@ export async function resolveTutorTeachingContext(
     if (targets.some((target) => !target || target.planId !== plan.id)) unavailable('PROJECT_TEACHING_OBJECTIVE_INVALID');
     return { session, frozen, objectives: targets as ObjectiveRecord[] };
   });
+  const completions = await store.listSessionCompletions(plan.id, plan.version);
+  const completed = new Set(completions.map((entry) => entry.learningSessionId));
+  const selected = mapped.find((entry) => !completed.has(entry.session.id)) ?? mapped[mapped.length - 1];
+  if (!selected) unavailable('PROJECT_TEACHING_SESSION_INVALID');
   const awaiting = await store.findAwaitingQuestion(project.studentId, plan.id);
-  let selected = awaiting ? mapped.find((entry) => entry.session.id === awaiting.sessionId) : undefined;
   let objective = awaiting ? objectives.get(awaiting.objectiveId) : undefined;
-  if (awaiting && (!selected || !objective || awaiting.studentUserId !== project.studentId
-    || awaiting.planId !== plan.id || ![...selected.session.theoryObjectiveIds, ...selected.session.practiceObjectiveIds,
-      ...selected.objectives.map((entry) => entry.id)].includes(awaiting.objectiveId))) {
+  if (awaiting && (!objective || awaiting.studentUserId !== project.studentId
+    || awaiting.planId !== plan.id || awaiting.sessionId !== selected.session.id
+    || completed.has(selected.session.id) || !selected.objectives.some((entry) => entry.id === awaiting.objectiveId))) {
     unavailable('PROJECT_TEACHING_PENDING_SCOPE_INVALID');
   }
-  if (!selected) {
-    for (const entry of mapped) {
-      for (const candidate of entry.objectives) {
-        const mastery = await store.findMastery(project.studentId, candidate.id);
-        if (!mastery || !isObjectiveMastered(candidate.type, {
-          score: mastery.masteryBasisPoints / 10_000, qualitativeMastered: mastery.qualitativeMastered,
-        })) { selected = entry; objective = candidate; break; }
-      }
-      if (selected) break;
+  if (!objective && !completed.has(selected.session.id)) {
+    for (const candidate of selected.objectives) {
+      const mastery = await store.findMastery(project.studentId, candidate.id);
+      if (!mastery || !isObjectiveMastered(candidate.type, {
+        score: mastery.masteryBasisPoints / 10_000, qualitativeMastered: mastery.qualitativeMastered,
+      })) { objective = candidate; break; }
     }
+    // A mastered objective does not skip its lesson's distinct participation/observation task.
+    objective ??= selected.objectives[0];
   }
-  selected ??= mapped[mapped.length - 1];
-  if (!selected) unavailable('PROJECT_TEACHING_SESSION_INVALID');
   const selectedIndex = selected.session.lessonIndex;
   const routes = teaching.sessionRoutes.filter((route) => route.sessionIndex === selectedIndex);
   const role = routes.length === 1 ? teaching.roles.find((entry) => entry.roleSlotId === routes[0]!.roleSlotId) : undefined;
@@ -79,7 +79,7 @@ export async function resolveTutorTeachingContext(
     member.memberId === role.memberId && member.assistantId === role.assistantId)) unavailable('PROJECT_TEACHING_ROUTE_INVALID');
   const lesson = {
     lessonIndex: selected.session.lessonIndex, lessonCount: profile.sessions.length, title: selected.frozen.title,
-    status: plan.status === 'completed' ? 'completed' as const : 'current' as const,
+    status: completed.has(selected.session.id) ? 'completed' as const : 'current' as const,
     checkpoint: selected.frozen.checkpoint?.requiredGate ?? null,
     planId: plan.id, planRevision: plan.version, learningSessionId: selected.session.id,
     roleSlotId: role.roleSlotId, assistantId: role.assistantId, objectiveId: objective?.id ?? null,

@@ -1,5 +1,5 @@
 /** One executable catalog supplies API discovery, plan validation and the model operation guide. */
-export const ADMIN_COPILOT_CONTRACT_VERSION = '1.1.0';
+export const ADMIN_COPILOT_CONTRACT_VERSION = '1.2.0';
 export const ADMIN_COPILOT_SCOPES = ['global', 'selected_template'] as const;
 export type AdminCopilotScope = typeof ADMIN_COPILOT_SCOPES[number];
 export const ADMIN_COPILOT_OPERATIONS = [
@@ -151,7 +151,7 @@ export const ADMIN_COPILOT_OPERATIONS = [
     ],
     "targetResource": "platform",
     "createsResource": false,
-    "inputGuide": "{enabled?:boolean,assistantBindings?:[{id,enabled}],agentBindings?:[{id,enabled}]}. Existing governed IMA adapter only."
+    "inputGuide": "{expectedRevision:<current platform revision>,enabled:boolean}. Uses the unified knowledge configuration owner for ima-main, preserving other config. Assistant/Agent grants use their existing governed bindings; no legacy settings.update or credentials."
   },
   {
     "kind": "knowledge.create",
@@ -290,6 +290,183 @@ export const ADMIN_COPILOT_OPERATIONS = [
     "targetResource": "team",
     "createsResource": true,
     "inputGuide": "{id:<real team ID>,expectedUpdatedAt:<current team revision>}. Publishes an immutable server-generated team/role/assistant/model/skill/tool snapshot. No client runtimeSnapshot is accepted. Receipt id is the teamVersionId for binding.create. Skills must be published teaching canonical IDs; disabled/incomplete sources fail. Publication does not activate any template binding. Use the published model pair and skill pins in the teaching bundle draft."
+  },
+  {
+    "kind": "assistant.test",
+    "label": "测试助手",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "assistant",
+    "createsResource": false,
+    "inputGuide": "{id,mode:\"configuration\"|\"model_connection\"}. Configuration resolves actual runtime and published skill/tool bindings; model_connection additionally calls the selected provider/model test owner. Neither executes student tools."
+  },
+  {
+    "kind": "assistant.delete",
+    "label": "删除助手",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "assistant",
+    "createsResource": false,
+    "inputGuide": "{id,expectedUpdatedAt}. Delete only an unreferenced user-created assistant. Never auto-reassign leaders or delete another team. Builtins use enabled:false; referenced sources must be unbound or disabled, not erased."
+  },
+  {
+    "kind": "team.test",
+    "label": "测试团队配置",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "team",
+    "createsResource": false,
+    "inputGuide": "{id}. Validate actual members, runtime snapshots and PBL workflow; configuration check only, not a real Team Run or student learning evidence."
+  },
+  {
+    "kind": "team.delete",
+    "label": "删除团队",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "team",
+    "createsResource": false,
+    "inputGuide": "{id,expectedUpdatedAt}. Delete only a team without immutable versions or template references. Historical teams must be disabled, not erased."
+  },
+  {
+    "kind": "template.test",
+    "label": "测试课时模板",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "template",
+    "createsResource": false,
+    "inputGuide": "{templateId,versionId}. Validate actual content.pbl, curriculum profile/session structure and phase alignment; does not create mastery or publication evidence."
+  },
+  {
+    "kind": "template.verify",
+    "label": "验证模板发布证据",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "template",
+    "createsResource": false,
+    "inputGuide": "{templateId,versionId}. Call existing evidence verification owner; no client evidence is accepted. A failing report is a failed check, never a publish grant."
+  },
+  {
+    "kind": "template.publish",
+    "label": "发布模板版本",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "template",
+    "createsResource": false,
+    "inputGuide": "{templateId,versionId,reason?}. Existing publish owner must re-evaluate real evidence and approval gates. Never manufacture student records to pass."
+  },
+  {
+    "kind": "template.archive",
+    "label": "归档模板",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "template",
+    "createsResource": false,
+    "inputGuide": "{templateId,reason}. Archive via owner; retain versions and historical frozen projects."
+  },
+  {
+    "kind": "template.delete",
+    "label": "删除未使用模板",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "template",
+    "createsResource": false,
+    "inputGuide": "{templateId}. Only unpublished draft templates/versions without references may be physically deleted. Published or historically referenced content must be archived."
+  },
+  {
+    "kind": "skill.test",
+    "label": "测试技能加载",
+    "scopes": [
+      "global",
+      "selected_template"
+    ],
+    "targetResource": "skill",
+    "createsResource": false,
+    "inputGuide": "{id}. Check the exact canonical source, digest, publication and teaching runtime admission. Unpublished/revoked/deprecated sources fail runtime readiness; no model request is executed."
+  },
+  {
+    "kind": "skill.delete",
+    "label": "移除技能",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "skill",
+    "createsResource": false,
+    "inputGuide": "{id,digest}. Governed soft deletion to deprecated with exact digest, lock, audit and readback. Retain source and canonical ID for history; never delete runtime:admin skills. Shared bindings lose execution immediately."
+  },
+  {
+    "kind": "mcp.test",
+    "label": "测试 MCP",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "mcp",
+    "createsResource": false,
+    "inputGuide": "{id,mode:\"configuration\"|\"connection\"}. Custom metadata can only be inspected; missing transport driver fails connection test. ima-knowledge uses existing real probe owner. Discovery is not student authorization."
+  },
+  {
+    "kind": "mcp.delete",
+    "label": "删除 MCP 登记",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "mcp",
+    "createsResource": false,
+    "inputGuide": "{id}. Only disabled custom registrations without assistant/Agent/frozen-team references or driver credentials can be deleted. Builtin ima-knowledge is disabled via ima.configure, never erased."
+  },
+  {
+    "kind": "knowledge.test",
+    "label": "测试知识库",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "knowledge",
+    "createsResource": false,
+    "inputGuide": "{id,mode:\"configuration\"|\"engine_connection\"}. Inspect active platform base and configured engine. Optional engine check calls its existing owner; report index readiness separately, never pretend an empty base is searchable."
+  },
+  {
+    "kind": "knowledge.update",
+    "label": "修改知识库",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "knowledge",
+    "createsResource": false,
+    "inputGuide": "{id,expectedRevision,patch:{name?,isDefault?,engineInstanceId?}}. Delegate to library settings owner; do not change unrelated grants or upload content."
+  },
+  {
+    "kind": "knowledge.delete",
+    "label": "删除知识库",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "knowledge",
+    "createsResource": false,
+    "inputGuide": "{id,expectedRevision}. Existing library owner soft-deletes the platform base, revokes connections/sources and cancels jobs; remote provider content is retained."
+  },
+  {
+    "kind": "model.test",
+    "label": "测试模型连接",
+    "scopes": [
+      "global"
+    ],
+    "targetResource": "model",
+    "createsResource": false,
+    "inputGuide": "{providerId,modelId}. Call existing real model probe owner. Failure is a failed diagnostic, not a successful write; no credentials or arbitrary prompt accepted."
   }
 ] as const;
 export const ADMIN_COPILOT_ACTIONS = ADMIN_COPILOT_OPERATIONS.map(operation => operation.kind);

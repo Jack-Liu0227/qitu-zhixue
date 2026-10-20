@@ -6,6 +6,7 @@ import {
   learningObjectives,
   learningPlans,
   learningSessions,
+  learningSessionProgress,
   masteryAttempts,
   masteryEvents,
   masteryObjectiveMappings,
@@ -31,6 +32,7 @@ import type {
 import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 import {
   LearningPlanStore,
+  assertConfirmedProjectPlan,
   assertPendingAssessmentBoundary,
   planObjectiveMappings,
   LearningPlanStoreConflictError,
@@ -50,6 +52,7 @@ import {
   type PlanBundle,
   type PlanRecord,
   type SessionRecord,
+  type SessionCompletionRecord,
 } from './learning-plan.store';
 import { CURRICULUM_TEMPLATE_VERSION } from './plan-generator';
 
@@ -87,9 +90,57 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     super();
   }
 
+  async withConfirmationTransaction<T>(tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    if (tx) return work(new PostgresLearningPlanStore(tx as unknown as Database, true));
+    return this.commitAssessment((transaction) => work(new PostgresLearningPlanStore(transaction as unknown as Database, true)));
+  }
+  async attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void> {
+    assertConfirmedProjectPlan(project, bundle);
+    await this.commitAssessment(async (tx) => {
+      const [existing] = await tx.select().from(projectsTable).where(eq(projectsTable.id, project.id)).for('update');
+      if (!existing || existing.studentUserId !== project.studentId || existing.templateVersionId !== project.templateVersionId) {
+        throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_SCOPE_INVALID');
+      }
+      const active = await tx.select({ id: learningPlans.id }).from(learningPlans).where(and(
+        eq(learningPlans.projectId, project.id), eq(learningPlans.status, 'active'),
+      )).limit(1);
+      if (active.length) throw new LearningPlanStoreConflictError('PROJECT_ALREADY_HAS_ACTIVE_PLAN');
+      await new PostgresLearningPlanStore(tx as unknown as Database, true).createPlan(bundle);
+    });
+  }
+
+  async listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]> {
+    return this.db.select().from(learningSessionProgress).where(and(eq(learningSessionProgress.planId, planId), eq(learningSessionProgress.planRevision, planRevision)));
+  }
+  async findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null> {
+    const [row] = await this.db.select().from(learningSessionProgress).where(eq(learningSessionProgress.idempotencyKey, key)).limit(1);
+    return row ?? null;
+  }
+  async saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    await this.commitAssessment(async (tx) => { await tx.insert(learningSessionProgress).values(record); await commit(tx); });
+  }
+  async withSessionProgressTransaction<T>(studentId: string, planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T> {
+    return this.commitAssessment(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['mastery', studentId])}, 0))`);
+      await tx.select({ id: learningPlans.id }).from(learningPlans).where(eq(learningPlans.id, planId)).for('update');
+      return work(new PostgresLearningPlanStore(tx as unknown as Database, true), tx);
+    });
+  }
+  async finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    return this.commitAssessment(async (tx) => {
+      const rows = await tx.update(learningPlans).set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() }).where(and(
+        eq(learningPlans.id, planId), eq(learningPlans.studentUserId, studentId), eq(learningPlans.projectId, projectId),
+        eq(learningPlans.version, expectedVersion), eq(learningPlans.status, 'active'),
+      )).returning({ id: learningPlans.id });
+      if (!rows.length) return false;
+      await commit?.(tx);
+      return true;
+    });
+  }
+
   async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
     return this.commitAssessment(async (tx) => {
-      const rows = await tx.update(projectsTable).set({ status: next, ...computeStageProgress(next) }).where(and(
+      const rows = await tx.update(projectsTable).set({ status: next, ...computeStageProgress(next), ...(next === 'completed' ? { completedAt: new Date() } : {}) }).where(and(
         eq(projectsTable.id, projectId), eq(projectsTable.studentUserId, studentId), eq(projectsTable.status, expected),
       )).returning({ id: projectsTable.id });
       if (!rows.length) return false;
@@ -156,14 +207,14 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
 
   async createPlan(bundle: PlanBundle): Promise<void> {
     try {
-      await withTransaction(this.db, async (tx) => {
+      await this.commitAssessment(async (tx) => {
         const schoolId = await this.studentSchoolId(bundle.plan.studentUserId);
         await ensureCurriculumTemplate(tx, bundle.plan.templateVersion);
         await tx.insert(learningPlans).values({
           id: bundle.plan.id,
           studentUserId: bundle.plan.studentUserId,
           schoolId,
-          projectId: null,
+          projectId: bundle.plan.projectId,
           interest: bundle.plan.interest,
           goal: bundle.plan.goal,
           lessonCount: bundle.plan.lessonCount,
@@ -173,8 +224,8 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           status: bundle.plan.status,
           version: bundle.plan.version,
           idempotencyKey: bundle.plan.idempotencyKey,
-          confirmedAt: null,
-          completedAt: null,
+          confirmedAt: bundle.plan.confirmedAt,
+          completedAt: bundle.plan.completedAt,
           createdAt: bundle.plan.createdAt,
           updatedAt: bundle.plan.updatedAt,
         });

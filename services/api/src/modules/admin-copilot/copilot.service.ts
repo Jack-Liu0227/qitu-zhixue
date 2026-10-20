@@ -119,7 +119,7 @@ export class CopilotService {
     const succeeded = receipts.filter(r => r.status === 'succeeded').length;
     const reply = !receipts.length ? `${plan.reply}\n\n本轮未执行配置写入。`
       : `已回读确认 ${succeeded}/${receipts.length} 项操作。${succeeded === receipts.length ? '' : '请查看失败原因；重试会复用本轮计划与已完成操作。'}\n\n` +
-        receipts.map(r => `- ${r.status === 'succeeded' ? '已保存' : r.status === 'failed' ? '失败' : '未执行'}：${r.label}${r.message ? ` — ${r.message}` : ''}`).join('\n') +
+        receipts.map(r => `- ${r.status === 'succeeded' ? operationReceiptLabel(r.kind) : r.status === 'failed' ? '失败' : '未执行'}：${r.label}${r.message ? ` — ${r.message}` : ''}`).join('\n') +
         '\n\n资源保存不等于模板发布或学生运行成功。新模板版本仍需按模板治理流程验证和发布。';
     return { reply, receipts, skill: cached.body.skill, contractVersion: ADMIN_COPILOT_CONTRACT_VERSION, scope: requestScope(input),
       status: !receipts.length ? 'answered' : succeeded === receipts.length ? 'completed' : 'partial' };
@@ -172,6 +172,13 @@ export class CopilotService {
     if (JSON.stringify(data).length > 240000) invalid('资源目录过大，请缩小当前配置范围后重试');
     return redactSensitive(data);
   }
+}
+
+function operationReceiptLabel(kind: AdminCopilotReceipt['kind']) {
+  if (kind.endsWith('.test') || kind === 'template.verify') return '检查通过';
+  if (kind.endsWith('.delete')) return '已移除';
+  if (kind === 'template.archive') return '已归档';
+  return '已保存';
 }
 
 function hasTextCapability(value: unknown): boolean {

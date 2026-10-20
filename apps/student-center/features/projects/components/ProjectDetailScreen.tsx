@@ -8,19 +8,13 @@ import { MentorNote } from './MentorNote';
 import { NextStepCard } from './NextStepCard';
 import { PracticeChecklist } from './PracticeChecklist';
 import { ProjectHeader } from './ProjectHeader';
-import { ReflectionForm } from './ReflectionForm';
 import { ScreenState } from './StateViews';
 import { LessonScheduleCard } from './LessonScheduleCard';
-import { SubmissionPanel } from './SubmissionPanel';
 import { TaskList } from './TaskList';
-import { TheoryCheck } from './TheoryCheck';
-import { TheoryModule } from './TheoryModule';
 import {
   useMentorNote,
   useProjectOverview,
-  useTheoryContent,
 } from '../hooks/useProjectsData';
-import { useTaskCompleteList } from '../hooks/useProjectsMutations';
 import { projectDetailHref } from '../lib/links';
 import { isPracticeLocked } from '../lib/stage';
 import type { ScreenScenario } from '../lib/loadable';
@@ -48,46 +42,17 @@ function defaultModeForStage(stage: ProjectStage): ProjectViewMode {
   return 'overview';
 }
 
-function ProjectLearnPanel({
-  projectId,
-  scenario,
-  parentOffline,
-  mastered,
-}: {
-  projectId: string;
-  scenario?: ScreenScenario;
-  parentOffline: boolean;
-  mastered: boolean;
-}) {
-  const theory = useTheoryContent(projectId, { scenario });
+function ProjectLearnPanel({ projectId, parentOffline }: { projectId: string; parentOffline: boolean }) {
   return (
-    <ScreenState
-      state={theory.state}
-      onRetry={theory.retry}
-      retrying={theory.retrying}
-      loading={<SkeletonBlock lines={4} />}
-      emptyTitle="当前无需校验"
-      emptyDescription="这个阶段没有需要完成的校验，先回到项目概览。"
-      render={(content, offline) => (
-        <>
-          {content.material ? <TheoryModule material={content.material} /> : null}
-          {content.questions.length > 0 ? (
-            <TheoryCheck
-              projectId={projectId}
-              questions={content.questions}
-              mastered={mastered}
-              offline={parentOffline || offline}
-                onMastered={(isMastered) => {
-                  // The server issues one pending question at a time.  A
-                  // non-mastered response therefore refreshes the next bounded
-                  // question instead of pretending the static card is complete.
-                  if (!isMastered) theory.retry();
-                }}
-            />
-          ) : null}
-        </>
+    <SectionCard title="与项目团队一起学习">
+      <p>课件、板书、检查题和实验会在当前项目的 AI 搭档对话中生成，按课时任务逐步展开。</p>
+      <p>回答与操作保存后，由服务端核验学习证据和下一步安排。</p>
+      {parentOffline ? <p role="status">当前网络不可用，请恢复网络后继续学习。</p> : (
+        <StudentLink className="qitu-button" href={`/student/tutor/${encodeURIComponent(projectId)}`}>
+          进入此项目的 AI 搭档
+        </StudentLink>
       )}
-    />
+    </SectionCard>
   );
 }
 
@@ -102,8 +67,6 @@ function ProjectPracticePanel({
   locked: boolean;
   offline: boolean;
 }) {
-  const { complete, pendingTaskId } = useTaskCompleteList();
-  const activeTask = tasks.find((task) => task.status === 'doing' || task.status === 'todo');
   return (
     <>
       <PracticeChecklist
@@ -111,26 +74,14 @@ function ProjectPracticePanel({
         locked={locked}
         theoryHref={projectDetailHref(projectId, { mode: 'learn' })}
         offline={offline}
-        completingTaskId={pendingTaskId}
-        onCompleteTask={locked || offline ? undefined : (id) => void complete(id)}
       />
-      {!locked && activeTask ? (
-        <SubmissionPanel taskId={activeTask.id} stageId={activeTask.stageId} disabled={offline} />
-      ) : null}
+      <ProjectLearnPanel projectId={projectId} parentOffline={offline} />
     </>
   );
 }
 
-function ProjectShowcasePanel({
-  projectId,
-  stageId,
-  offline,
-}: {
-  projectId: string;
-  stageId: string;
-  offline: boolean;
-}) {
-  return <ReflectionForm projectId={projectId} stageId={stageId} offline={offline} />;
+function ProjectShowcasePanel({ projectId, offline }: { projectId: string; offline: boolean }) {
+  return <ProjectLearnPanel projectId={projectId} parentOffline={offline} />;
 }
 
 /**
@@ -163,8 +114,6 @@ export function ProjectDetailScreen({
         if (!project) return null;
         const practiceLocked = isPracticeLocked(project);
         const selectedMode = mode ?? defaultModeForStage(project.status);
-        const activeStage =
-          data.stages.find((stage) => stage.status === 'active') ?? data.stages[0];
         const focusedTask = taskId
           ? data.tasks.find((task) => task.id === taskId)
           : undefined;
@@ -273,9 +222,7 @@ export function ProjectDetailScreen({
             {selectedMode === 'learn' ? (
               <ProjectLearnPanel
                 projectId={project.id}
-                scenario={scenario}
                 parentOffline={offline}
-                mastered={project.theoryMastered}
               />
             ) : null}
             {selectedMode === 'practice' ? (
@@ -289,7 +236,6 @@ export function ProjectDetailScreen({
             {selectedMode === 'showcase' ? (
               <ProjectShowcasePanel
                 projectId={project.id}
-                stageId={activeStage?.id ?? ''}
                 offline={offline}
               />
             ) : null}

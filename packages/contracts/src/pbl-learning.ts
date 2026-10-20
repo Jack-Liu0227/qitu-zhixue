@@ -234,6 +234,16 @@ export interface ProjectTemplateSpec {
 
 export type PblTemplateSessionType = 'theory' | 'practice' | 'review';
 
+export interface LearningSessionCompletionSpec {
+  version: 'learning-session-completion.v1';
+  requiredEvidence: readonly {
+    kind: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'approved_artifact';
+    scope: 'session' | 'project';
+    minimumCount: number;
+  }[];
+  requiredMasteryObjectiveIds: readonly string[];
+}
+
 export interface PblTemplateSession {
   id: string;
   sessionIndex: number;
@@ -247,6 +257,7 @@ export interface PblTemplateSession {
   activityGuidance?: Readonly<Partial<Record<LessonActivity, string>>>;
   /** Requested evidence only; owner receipts determine acceptance. */
   evidenceRequirements?: readonly string[];
+  completionSpec?: LearningSessionCompletionSpec;
   /** A checkpoint requests owner validation; it is never a completion fact. */
   checkpoint?: { requiredGate: GateConditionId };
   interactiveSpec?: {
@@ -607,7 +618,7 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'checkpoint', 'interactiveSpec'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec'], sessionPath, issue);
     if (!templateText(session.id) || ids.has(session.id)) issue(`${sessionPath}.id`, 'session id must be unique');
     else ids.add(session.id);
     if (session.sessionIndex !== index + 1) issue(`${sessionPath}.sessionIndex`, 'sessionIndex must be a contiguous one-based integer');
@@ -616,6 +627,39 @@ function validateTemplateProfile(
     if (session.evidenceRequirements !== undefined && (!templateStrings(session.evidenceRequirements)
       || session.evidenceRequirements.length === 0 || session.evidenceRequirements.length > 16)) {
       issue(`${sessionPath}.evidenceRequirements`, 'evidenceRequirements must contain 1 to 16 non-empty descriptions');
+    }
+    if (session.completionSpec !== undefined) {
+      const spec = session.completionSpec;
+      const specPath = `${sessionPath}.completionSpec`;
+      if (!templateRecord(spec)) issue(specPath, 'completion specification must be an object');
+      else {
+        templateKeys(spec, ['version', 'requiredEvidence', 'requiredMasteryObjectiveIds'], specPath, issue);
+        if (spec.version !== 'learning-session-completion.v1') issue(`${specPath}.version`, 'unsupported completion specification');
+        if (!Array.isArray(spec.requiredEvidence) || spec.requiredEvidence.length < 1 || spec.requiredEvidence.length > 4) {
+          issue(`${specPath}.requiredEvidence`, 'one to four server-owned evidence requirements are required');
+        } else {
+          const seen = new Set<string>();
+          for (const requirement of spec.requiredEvidence) {
+            if (!templateRecord(requirement)) { issue(specPath, 'invalid evidence requirement'); continue; }
+            templateKeys(requirement, ['kind', 'scope', 'minimumCount'], specPath, issue);
+            const key = `${requirement.kind}:${requirement.scope}`;
+            if (!templateEnum(requirement.kind, ['session_response', 'experiment_observation', 'submitted_artifact', 'approved_artifact'])
+              || !templateEnum(requirement.scope, ['session', 'project']) || !templateInteger(requirement.minimumCount, 1, 10)
+              || seen.has(key) || (requirement.scope === 'project' && requirement.kind !== 'approved_artifact')) {
+              issue(`${specPath}.requiredEvidence`, 'invalid or duplicate scoped evidence requirement');
+            }
+            seen.add(key);
+          }
+        }
+        if (!templateStrings(spec.requiredMasteryObjectiveIds)
+          || new Set(spec.requiredMasteryObjectiveIds).size !== spec.requiredMasteryObjectiveIds.length) {
+          issue(`${specPath}.requiredMasteryObjectiveIds`, 'mastery objectives must be unique');
+        } else for (const id of spec.requiredMasteryObjectiveIds) {
+          if (!objectives.has(id) || !templateStrings(phases.get('concept_mastery')?.objectiveIds) || !(phases.get('concept_mastery')!.objectiveIds as string[]).includes(id) || !templateStrings(session.objectiveIds) || !session.objectiveIds.includes(id)) {
+            issue(`${specPath}.requiredMasteryObjectiveIds`, 'mastery requirements must reference theory objectives in this session');
+          }
+        }
+      }
     }
     if (session.activityGuidance !== undefined) {
       if (!templateRecord(session.activityGuidance) || Object.keys(session.activityGuidance).length === 0) {

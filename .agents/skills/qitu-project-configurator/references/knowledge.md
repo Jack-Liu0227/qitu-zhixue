@@ -43,3 +43,12 @@ knowledgeEngines 每个实例是 `{name,description,provider,enabled,config}`。
 | GET /api/v1/admin/knowledge/jobs/:id | 后台查看索引/同步任务状态 |
 
 上传、链接探测、索引、远端文件管理不是现有管家 action。只能说明下一步或转到后台原入口，不能生成 knowledge.upload/rebuild 等未知操作。回读创建库的 unindexed 状态应明确资料尚不能检索；只有实际任务/检索回执才能报告对应成功。
+
+## 测试、更新与删除
+
+- `knowledge.test {id,mode:"configuration"}` 检查活动平台库和启用引擎，单独报告 buildState/indexReady。空库可以配置有效，但 indexReady=false 不能说可检索。
+- `knowledge.test {id,mode:"engine_connection"}` 调用原知识引擎 check owner，验证引擎连接及依赖，不假称已针对每个教材问题检索成功。
+- `knowledge.update {id,expectedRevision,patch:{name?,isDefault?,engineInstanceId?}}` 使用原 library settings owner；revision 冲突后必须回读。
+- `knowledge.delete {id,expectedRevision}` 使用同一 owner 软删除，取消未结束任务并撤销来源/连接。保留历史本地记录及上游服务的文档，不发出远端删除命令。回读 lifecycle=deleted，而非把任何 404 都当删除成功。
+
+知识库更新/删除对应 `POST /api/v1/admin/knowledge/bases/:id/settings`，直接请求体分别是 `{expectedRevision,...patch}` 和 `{expectedRevision,deleted:true}`；带 Idempotency-Key。引擎 check 对应 `POST /api/v1/admin/knowledge/engines/:id/check`。

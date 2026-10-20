@@ -28,13 +28,15 @@ export function teachingContextFixture(assistantId = 'session-mentor') {
   } as unknown as TeachingBundlePayload;
   let awaiting: PendingQuestionRecord | null = null;
   const mastered = new Set<string>();
+  const completed = new Set<string>();
   const store = {
     findProject: async () => project, listPlansByStudent: async () => [plan], findBundle: async () => bundle,
     findAwaitingQuestion: async () => awaiting,
+    listSessionCompletions: async () => [...completed].map((learningSessionId) => ({ learningSessionId })),
     findMastery: async (_student: string, objective: string) => mastered.has(objective)
       ? { masteryBasisPoints: 10000, qualitativeMastered: true } : null,
   } as unknown as LearningPlanStore;
-  return { project, plan, bundle, teaching, store, mastered,
+  return { project, plan, bundle, teaching, store, mastered, completed,
     setPending: (sessionIndex: number, objectiveIndex = sessionIndex) => { awaiting = {
       studentUserId: project.studentId, planId: plan.id, sessionId: `${plan.id}:lesson-${sessionIndex}`,
       objectiveId: `${plan.id}:objective-${objectiveIndex}`, status: 'awaiting',

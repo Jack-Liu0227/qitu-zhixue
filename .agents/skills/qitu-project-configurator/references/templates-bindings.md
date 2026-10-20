@@ -56,4 +56,18 @@ roleMap.memberId 是团队版本的 slotId，roleSlotId 是模板课程角色槽
 | POST .../:id/versions/:v/bindings/:b/activate | 激活 |
 | POST .../:id/versions/:v/bindings/:b/retire | `{reason}` |
 
-表格中的 `...` 都指 `/api/v1/admin/project-templates`；写操作均带 Idempotency-Key。回读 binding 的实际 status、validation、bundleDigest/hash。模板版本 verify/publish 是后台现有审核 API，当前不在管家 action 目录；不能生成 template.publish 或注入验证成功证据。未审核的版本可以保存配置，激活应明确失败并交由原治理流程处理。
+表格中的 `...` 都指 `/api/v1/admin/project-templates`；写操作均带 Idempotency-Key。回读 binding 的实际 status、validation、bundleDigest/hash。未审核的版本可以保存配置，激活仍由原治理流程校验，不注入验证成功证据。
+
+## 课时测试、发布与删除
+
+| action | input / 检查 |
+| --- | --- |
+| template.test | `{templateId,versionId}`。读取真实 content.pbl，验证 curriculum/profiles/sessions 和四阶段顺序，返回各 profile 的课时数量；无课时合同不能假称为课时模板 |
+| template.verify | 同上。原 owner 从已有学习/作品/导师事实评测；证据未满足时检查失败 |
+| template.publish | 同上，可加 reason。原 owner 再评测真实发布证据；不能凭配置测试通过发布 |
+| template.archive | `{templateId,reason}`。退出可选范围，保留版本和历史项目 |
+| template.delete | `{templateId}`，仅 global。只允许未发布草稿；项目、计划、验证、绑定等引用由存储外键继续阻止物理删除 |
+
+对应 HTTP 为 `POST /api/v1/admin/project-templates/:id/versions/:v/verify`、`.../publish`、`POST /api/v1/admin/project-templates/:id/archive` 和 `DELETE /api/v1/admin/project-templates/:id`。管家 verify/publish 不接受 mastery、作品审核或 completedProjectIds 等客户端证据。
+
+同一生命周期建议分轮创建、校验/发布、归档/删除。资源删除后，旧创建回执的“当前资源回读”可能不再可用，这不会重新创建已完成资源。历史内容保留使用归档，不能为了清理配置而级联抹除学习记录。

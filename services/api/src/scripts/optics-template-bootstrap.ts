@@ -15,10 +15,10 @@ import { TemplateStore } from '../modules/templates/templates.store';
 import { TemplatesModule } from '../modules/templates/templates.module';
 import {
   assertOpticsTemplateStructure,
-  OPTICS_16_BOOTSTRAP_KEY,
-  OPTICS_16_TEMPLATE_SLUG,
-  OPTICS_16_TEMPLATE_INPUT,
-  OPTICS_16_VERSION_INPUT,
+  OPTICS_16_COMPLETION_BOOTSTRAP_KEY,
+  OPTICS_16_COMPLETION_TEMPLATE_SLUG,
+  OPTICS_16_COMPLETION_TEMPLATE_INPUT,
+  OPTICS_16_COMPLETION_VERSION_INPUT,
 } from '../modules/templates/content/optics';
 import { assertTemplateTeachingContent } from '../modules/templates/templates.content-validator';
 import type {
@@ -85,11 +85,11 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const slug = OPTICS_16_TEMPLATE_SLUG;
-  const templateInput = OPTICS_16_TEMPLATE_INPUT;
-  const versionInput = OPTICS_16_VERSION_INPUT;
-  const bootstrapKey = OPTICS_16_BOOTSTRAP_KEY;
-  const keyPrefix = 'optics16-bootstrap';
+  const slug = OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
@@ -225,7 +225,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = 'optics16-bootstrap';
+  const keyPrefix = 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {

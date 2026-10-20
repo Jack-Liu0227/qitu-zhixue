@@ -44,8 +44,5 @@ export function createMockInspirationDataSource(
     async createRecommendedExploration(): Promise<never> {
       throw failure ?? new ApiError('模拟数据源不支持创建探索', 501, 'MOCK_MUTATION_UNAVAILABLE');
     },
-    async startRecommendedProject(): Promise<never> {
-      throw failure ?? new ApiError('模拟数据源不支持创建项目', 501, 'MOCK_MUTATION_UNAVAILABLE');
-    },
   };
 }

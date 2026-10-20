@@ -31,6 +31,7 @@ export function ChatThread({
   currentAssistantName,
   isConfirmingProject = false,
   composer,
+  learningActivity,
 }: {
   sessionId: string | null;
   turns: TutorTurn[];
@@ -53,6 +54,7 @@ export function ChatThread({
   currentAssistantName?: string;
   isConfirmingProject?: boolean;
   composer: ReactNode;
+  learningActivity?: ReactNode;
 }) {
   const hasTurns = turns.length > 0;
   const newestAssistant = lastAssistantTurn(turns);
@@ -146,6 +148,7 @@ export function ChatThread({
           />
         ))}
 
+        {learningActivity}
         {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
 
         {status === 'error' && hasTurns ? (

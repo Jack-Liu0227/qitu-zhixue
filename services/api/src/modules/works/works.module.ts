@@ -14,7 +14,7 @@ import {
 } from './works.access';
 import { InMemoryWorksStore, WorksStore } from './works.store';
 import { PostgresWorksStore } from './works.store.postgres';
-import { InMemoryWorksProjectReader, PostgresWorksProjectReader, WorksProjectReader } from './works.project-reader';
+import { PostgresWorksProjectReader, WorksProjectReader } from './works.project-reader';
 import {
   EmptyProjectEvidenceSource,
   InMemoryProjectEvidenceStore,
@@ -50,6 +50,12 @@ import {
 } from './project-assessment.store';
 import { PostgresProjectAssessmentStore } from './project-assessment.store.postgres';
 import { ProjectAssessmentService } from './project-assessment.service';
+import { WorksLearningEvidenceService } from './works-learning-evidence.service';
+import { WorksLearningController } from './works-learning.controller';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { TemplatesModule } from '../templates/templates.module';
+import { MasteryModule } from '../mastery/mastery.module';
 
 /**
  * 作品 / 证据模块（Works）。
@@ -65,10 +71,11 @@ import { ProjectAssessmentService } from './project-assessment.service';
 @Module({
   // T17：TeamRuntimeModule 提供服务端内部的门禁证据写入（review_completed_and_archived）。
   // 它不反向依赖 WorksModule，因此无循环导入。
-  imports: [AuthModule, DirectoryModule, TeamRuntimeModule],
-  controllers: [ArtifactsController, FilesController, ProjectEvidenceController],
+  imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule],
+  controllers: [ArtifactsController, FilesController, ProjectEvidenceController, WorksLearningController],
   providers: [
     WorksService,
+    WorksLearningEvidenceService,
     ProjectEvidenceMaterializer,
     {
       provide: WorksStore,
@@ -81,11 +88,11 @@ import { ProjectAssessmentService } from './project-assessment.service';
     },
     {
       provide: WorksProjectReader,
-      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
-      useFactory: (db: Database | null, mode: DataMode): WorksProjectReader => {
+      inject: [DATABASE_TOKEN, DATA_MODE_TOKEN, LearningPlanStore],
+      useFactory: (db: Database | null, mode: DataMode, plans: LearningPlanStore): WorksProjectReader => {
         if (db !== null) return new PostgresWorksProjectReader(db);
         if (mode === 'live') throw new Error('live 模式缺少 DATABASE_URL：项目只读端口不可用');
-        return new InMemoryWorksProjectReader();
+        return { findProject: (projectId) => plans.findProject(projectId) };
       },
     },
     {
@@ -160,6 +167,6 @@ import { ProjectAssessmentService } from './project-assessment.service';
       useFactory: (store: WorksStore): CodeArtifactResolver => new StoreBackedCodeArtifactResolver(store),
     },
   ],
-  exports: [WorksService, ProjectEvidenceMaterializer, ProjectAssessmentService],
+  exports: [WorksService, WorksStore, ProjectEvidenceMaterializer, ProjectAssessmentService, WorksLearningEvidenceService],
 })
 export class WorksModule {}

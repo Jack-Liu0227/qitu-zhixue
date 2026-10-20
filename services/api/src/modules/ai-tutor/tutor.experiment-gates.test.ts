@@ -13,7 +13,7 @@ import type { AuditWriter } from '../../common/audit';
 import type { IdempotencyStore } from '../../common/idempotency';
 
 const scope = {
-  planId: 'plan-gates', planRevision: 1, learningSessionId: 'lesson-gates',
+  planId: 'plan-gates', planRevision: 1, learningSessionId: 'plan-gates:lesson-gates',
   rubricRef: 'rubric:optics-v1:optics-rubric', cerRef: 'cer:claim-evidence-reasoning:v1',
 };
 
@@ -51,14 +51,14 @@ test('server experiment flow keeps confirmation/theory gate ahead of prediction,
         title: 'Optics', subtitle: null, tags: ['optics'], createdAt: new Date(), completedAt: null,
       }),
       listPlansByStudent: async () => [{ id: 'plan-gates', projectId: 'project-gates', version: 1 }],
-      findBundle: async () => ({ sessions: [{ id: 'lesson-gates', lessonIndex: 1 }] }),
+      findBundle: async () => ({ sessions: [{ id: 'plan-gates:lesson-gates', lessonIndex: 1 }] }),
     },
   });
   const evidenceStore = new InMemoryProjectEvidenceStore();
   const plans = (service as unknown as { learningStore: LearningPlanStore }).learningStore;
   const bindings = { getFrozenTeachingBundle: async () => ({
     scheduleProfileId: 'profile', template: { rubricId: 'optics-rubric', curriculum: {
-      profiles: [{ id: 'profile', sessions: [{ sessionIndex: 1 }] }],
+      profiles: [{ id: 'profile', sessions: [{ id: 'lesson-gates', sessionIndex: 1, objectiveIds: ['measure'] }] }],
     } },
   }) } as unknown as TemplateBindingService;
   Object.assign(service, { experiments: new TutorExperimentService(
@@ -117,6 +117,7 @@ test('server experiment flow keeps confirmation/theory gate ahead of prediction,
   assert.equal(observation.action, 'record_observation');
   assert.equal(observation.observationReceipt?.provenance, 'simulated_observation');
   assert.equal(observation.observationReceipt?.planRevision, 1);
+  assert.equal(observation.observationReceipt?.objectiveId, 'plan-gates:measure');
   assert.equal((await evidenceStore.listByProject('project-gates')).length, 1);
   const replay = await service.submitExperimentAction('student-gates', record, 'optics-exp-gate-test', {
     action: 'record_observation', payload: { mode: 'diffraction', runActionId: run.actionId, observation: 'The central band is wider.', parameters: { wavelength: 532, slitWidth: 80, screenDistance: 1 } }, idempotencyKey: 'observation-after-run',

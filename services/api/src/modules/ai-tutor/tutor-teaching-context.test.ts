@@ -5,6 +5,7 @@ import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import { resolveTutorTeachingContext } from './tutor-teaching-context';
 test('awaiting question selects its persisted session and task instead of stage, title or first missing mastery', async () => {
   const h = teachingContextFixture();
+  h.completed.add('plan-frozen:lesson-1');
   h.setPending(2);
   const context = await resolveTutorTeachingContext(h.store, h.project, h.teaching);
   assert.equal(context.lesson.lessonIndex, 2);
@@ -16,14 +17,18 @@ test('awaiting question selects its persisted session and task instead of stage,
   assert.equal(context.role.assistantId, 'session-mentor');
 });
 
-test('owner mastery selects remaining objective but does not declare session or checkpoint completion', async () => {
+test('mastery never skips a lesson; explicit completion selects the next lesson', async () => {
   const h = teachingContextFixture();
   h.mastered.add('plan-frozen:objective-1');
-  assert.equal((await resolveTutorTeachingContext(h.store, h.project, h.teaching)).lesson.lessonIndex, 2);
   h.mastered.add('plan-frozen:objective-2');
+  assert.equal((await resolveTutorTeachingContext(h.store, h.project, h.teaching)).lesson.lessonIndex, 1);
+  h.completed.add('plan-frozen:lesson-1');
   const result = await resolveTutorTeachingContext(h.store, h.project, h.teaching);
+  assert.equal(result.lesson.lessonIndex, 2);
   assert.equal(result.lesson.status, 'current');
-  assert.equal(result.objective, null);
+  assert.equal(result.objective?.id, 'plan-frozen:objective-2');
+  h.completed.add('plan-frozen:lesson-2');
+  assert.equal((await resolveTutorTeachingContext(h.store, h.project, h.teaching)).lesson.status, 'completed');
 });
 
 test('invalid sessions, route membership, revision and cross-session pending facts are rejected', async () => {

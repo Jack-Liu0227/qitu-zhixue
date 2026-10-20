@@ -17,11 +17,16 @@ import type {
   TutorTeamGraph,
   TutorTeamHistoryPage,
   TutorTeamAgent,
+  CompleteLearningSessionRequest,
+  LearningTextSubmission,
+  ReconcileProjectLearningRequest,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
 import { LiveTutorSocket } from './liveTutorSocket';
 import type { TutorProjectContext } from '../types';
+import { completeLesson, getLessonProgress, reconcileLearning } from './lessonProgressApi';
+import { getLessonEvidence, submitLessonEvidence, getLearningArtifact, publishLearningArtifact, type LessonScope, type LessonSubmissionKind } from './lessonEvidenceApi';
 
 /**
  * The tutor data source the app actually runs on.
@@ -38,6 +43,34 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
+  reconcileLearning(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string) {
+    return reconcileLearning(this.fetchJson.bind(this), projectId, request, idempotencyKey);
+  }
+
+  getLessonEvidence(scope: LessonScope) {
+    return getLessonEvidence(this.fetchJson.bind(this), scope);
+  }
+
+  submitLessonEvidence(scope: LessonScope, kind: LessonSubmissionKind, request: LearningTextSubmission, idempotencyKey: string) {
+    return submitLessonEvidence(this.fetchJson.bind(this), scope, kind, request, idempotencyKey);
+  }
+
+  getLearningArtifact(projectId: string, artifactId: string) {
+    return getLearningArtifact(this.fetchJson.bind(this), projectId, artifactId);
+  }
+
+  publishLearningArtifact(projectId: string, artifactId: string, idempotencyKey: string) {
+    return publishLearningArtifact(this.fetchJson.bind(this), projectId, artifactId, idempotencyKey);
+  }
+
+  getLessonProgress(planId: string, projectId: string) {
+    return getLessonProgress(this.fetchJson.bind(this), planId, projectId);
+  }
+
+  completeLesson(planId: string, sessionId: string, request: CompleteLearningSessionRequest, idempotencyKey: string) {
+    return completeLesson(this.fetchJson.bind(this), planId, sessionId, request, idempotencyKey);
+  }
+
   async getTeamHistory(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage> {
     const query = new URLSearchParams({ projectId, assistantId });
     if (cursor) query.set('cursor', cursor);

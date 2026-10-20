@@ -1,7 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import type { TutorExperimentActionResponse } from '@qitu/contracts';
 import { randomUUID } from 'node:crypto';
-import type { ArtifactRecord } from './works.store';
+import type { ArtifactRecord, ArtifactVersionRecord, MentorReviewRecord } from './works.store';
 import {
   ProjectEvidenceSource,
   ProjectEvidenceStore,
@@ -75,6 +75,38 @@ export class ProjectEvidenceMaterializer {
       if (row.sourceKind !== 'experiment_observation' || row.studentUserId !== studentId || !row.detail) return [];
       const stored = JSON.parse(row.detail) as { receipt?: TutorExperimentActionResponse['observationReceipt'] };
       return stored.receipt?.sessionId === sessionId ? [stored.receipt] : [];
+    });
+  }
+
+  /** Freeze the exact immutable version presented to the assigned reviewer. */
+  async recordArtifactReviewRequest(artifact: ArtifactRecord, version: ArtifactVersionRecord, review: MentorReviewRecord): Promise<void> {
+    if (!artifact.projectId) return;
+    const sourceId = `review:${review.id}`;
+    const detail = JSON.stringify({ schema: 'qitu.artifact-review-request.v1', reviewId: review.id,
+      artifactVersionId: version.id, versionOrdinal: version.ordinal });
+    await this.ingestServerFacts([{
+      projectId: artifact.projectId, studentUserId: artifact.studentId, schoolId: artifact.schoolId,
+      artifactId: artifact.id, columnKind: 'independent', sourceKind: 'task_submission', sourceId,
+      label: '作品版本已送审', detail, occurredAt: review.requestedAt,
+    }]);
+    const saved = (await this.store.listByProject(artifact.projectId)).find((row) =>
+      row.sourceKind === 'task_submission' && row.sourceId === sourceId && row.studentUserId === artifact.studentId
+      && row.artifactId === artifact.id);
+    if (saved?.detail !== detail) throw new ServiceUnavailableException({
+      code: 'ARTIFACT_REVIEW_VERSION_MISMATCH', message: '送审版本回读不一致，请刷新后重试',
+    });
+  }
+
+  async hasArtifactReviewRequest(artifact: ArtifactRecord, version: ArtifactVersionRecord, review: MentorReviewRecord): Promise<boolean> {
+    if (!artifact.projectId) return false;
+    return (await this.store.listByProject(artifact.projectId)).some((row) => {
+      if (row.sourceKind !== 'task_submission' || row.sourceId !== `review:${review.id}`
+        || row.studentUserId !== artifact.studentId || row.artifactId !== artifact.id || !row.detail) return false;
+      try {
+        const data = JSON.parse(row.detail) as Record<string, unknown>;
+        return data.schema === 'qitu.artifact-review-request.v1' && data.reviewId === review.id
+          && data.artifactVersionId === version.id && data.versionOrdinal === version.ordinal;
+      } catch { return false; }
     });
   }
 

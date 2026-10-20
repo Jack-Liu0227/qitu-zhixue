@@ -11,7 +11,7 @@
 5. team.create/update + workflow.update 保留四阶段与 TheoryMastered 门禁，随后 team.version 冻结真实成员配置。
 6. template.version 从选定版本克隆，保留课程 objectives、themes、sessions、排期 profile 与 rubric，只修改目标字段。新增 16 课时是新版本。
 7. binding.create 引用模板版本 ID 与团队版本 ID，binding.draft 写 roleMap、skillPins、toolIds、知识 grant 和各用途模型，binding.validate 校验。
-8. 模板既有审核通过后，使用 binding.activate。未发布模板不能靠管家生成证据绕过原审核 owner。
+8. 用 template.test 检查课时合同，template.verify 检查既有真实发布证据；只有原 owner 的 template.publish 通过后再 binding.activate。未发布模板不能靠管家生成证据绕过原审核 owner。
 
 关键引用：
 

@@ -53,3 +53,13 @@ test('new resource authorization requires a successful readback and does not gra
   assertOperationScope(request, 'knowledge.bind', { id: 'new-kb', bindings: [{ agentId: 'optics-coach' }] }, resources, created);
   assert.throws(() => assertOperationScope(request, 'knowledge.bind', { id: 'new-kb', bindings: [{ agentId: 'foreign-coach' }] }, resources, created), mismatch);
 });
+
+test('destructive lifecycle actions require global scope while owned template/assistant tests keep their object boundary', () => {
+  for (const kind of ['assistant.delete', 'team.delete', 'template.delete', 'skill.delete', 'mcp.delete', 'knowledge.delete'] as const) {
+    assert.throws(() => assertOperationScope(request, kind, { id: 'optics-coach', templateId: 'optics' }, resources, new Map()), mismatch);
+  }
+  assertOperationScope(request, 'assistant.test', { id: 'optics-coach', mode: 'configuration' }, resources, new Map());
+  assert.throws(() => assertOperationScope(request, 'assistant.test', { id: 'foreign', mode: 'configuration' }, resources, new Map()), mismatch);
+  assertOperationScope(request, 'template.test', { templateId: 'optics', versionId: 'optics-v1' }, resources, new Map());
+  assert.throws(() => assertOperationScope(request, 'template.test', { templateId: 'other', versionId: 'optics-v1' }, resources, new Map()), mismatch);
+});

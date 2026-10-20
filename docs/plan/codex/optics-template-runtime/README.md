@@ -4,6 +4,8 @@
 
 ## 最新实施
 
+- [光学 16 课时全流程实施](./06-fullflow-implementation-20261021.md)：确认与计划同事务、真实理论判分、逐课证据、实验、报告审核和反思归档；区分隔离验证与线上验收。
+- [光学全流程验证结果](./07-fullflow-verification-20261021.json)：本轮构建、owner 行为、PostgreSQL 与浏览器检查的实际范围。
 - [管家项目配置实施说明](./09-copilot-implementation-20261021.md)：真实模型、已有项目选择、19 类管理操作、Skill 草稿/发布、逐项回读与重试。
 - [模板—团队—助手—知识库—AI 搭档架构报告](./10-template-team-assistant-knowledge-architecture.md)：当前数据流、字段映射及优化顺序。
 - [实施验证记录](./11-copilot-verification-20261021.md)：定向结果、全仓失败及并行修改边界。

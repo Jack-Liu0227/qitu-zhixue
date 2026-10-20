@@ -1,5 +1,5 @@
 import { ApiError } from '@qitu/api-client';
-import type { ConfirmIntentResponse, CreateExplorationRequest, ExplorationView, TemplateStage } from '@qitu/contracts';
+import type { CreateExplorationRequest, ExplorationView, TemplateStage } from '@qitu/contracts';
 import type { InspirationDataSource } from './inspiration-data-source';
 import type { InspirationDifficulty, InspirationTemplate } from '../types';
 
@@ -100,78 +100,6 @@ export class InspirationApiDataSource implements InspirationDataSource {
     return data as unknown as ExplorationView;
   }
 
-  /**
-   * 从推荐模板直接启动正式项目：探索、意图草稿和确认立项保持同一幂等动作。
-   * 项目创建时服务端会冻结该模板版本对应的团队绑定。
-   */
-  async startRecommendedProject(
-    template: InspirationTemplate,
-    idempotencyKey: string,
-  ): Promise<ConfirmIntentResponse> {
-    const templateVersionId = template.templateVersionId?.trim() ?? '';
-    if (templateVersionId.length === 0) {
-      throw new ApiError('该推荐项目尚无已发布模板版本', 400, 'TEMPLATE_VERSION_UNAVAILABLE');
-    }
-    const baseKey = idempotencyKey.trim();
-    if (baseKey.length === 0) {
-      throw new ApiError('缺少幂等键', 400, 'IDEMPOTENCY_KEY_REQUIRED');
-    }
-    const exploration = await this.createRecommendedExploration(
-      { source: 'recommended', templateVersionId },
-      baseKey + ':exploration',
-    );
-    const goalUser = normalizeRecommendedGoal(template.title);
-    const interest = normalizeRecommendedInterest(template);
-    let draftResponse: Response;
-    try {
-      draftResponse = await fetch('/api/v1/explorations/' + encodeURIComponent(exploration.id), {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { accept: 'application/json', 'content-type': 'application/json' },
-        body: JSON.stringify({ goalUser, coreInterests: [interest] }),
-      });
-    } catch {
-      throw new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
-    }
-    if (!draftResponse.ok) {
-      throw await apiErrorFromResponse(draftResponse, '推荐项目意图写入失败');
-    }
-
-    let confirmResponse: Response;
-    try {
-      confirmResponse = await fetch(
-        '/api/v1/explorations/' + encodeURIComponent(exploration.id) + '/confirm-intent',
-        {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            'idempotency-key': baseKey + ':confirm',
-          },
-          body: JSON.stringify({ templateVersionId }),
-        },
-      );
-    } catch {
-      throw new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
-    }
-    const payload: unknown = await confirmResponse.json().catch(() => null);
-    if (!confirmResponse.ok) {
-      const detail = isRecord(payload) && typeof payload.message === 'string'
-        ? payload.message
-        : '推荐项目创建失败';
-      const code = isRecord(payload) && typeof payload.code === 'string'
-        ? payload.code
-        : 'PROJECT_CREATION_FAILED';
-      throw new ApiError(detail, confirmResponse.status, code);
-    }
-    const data: unknown = isRecord(payload) && 'data' in payload ? payload.data : payload;
-    if (!isConfirmIntentResponse(data)) {
-      throw new ApiError('项目创建响应格式异常', confirmResponse.status, 'BAD_PROJECT_PAYLOAD');
-    }
-    return data;
-  }
-
   /** 把服务端模板投影为展示模型；缺失字段留空，绝不编造内容。 */
   private async toTemplates(list: unknown[], endpoint: string): Promise<InspirationTemplate[]> {
     const items = list.filter(isRecord);
@@ -241,29 +169,6 @@ export class InspirationApiDataSource implements InspirationDataSource {
     );
     return result;
   }
-}
-
-async function apiErrorFromResponse(response: Response, fallback: string): Promise<ApiError> {
-  const payload: unknown = await response.json().catch(() => null);
-  const detail = isRecord(payload) && typeof payload.message === 'string' ? payload.message : fallback;
-  const code = isRecord(payload) && typeof payload.code === 'string' ? payload.code : 'HTTP_' + response.status;
-  return new ApiError(detail, response.status, code);
-}
-
-function normalizeRecommendedGoal(title: string): string {
-  const value = title.trim().slice(0, 120);
-  return value.length > 0 ? value : '推荐项目';
-}
-
-function normalizeRecommendedInterest(template: InspirationTemplate): string {
-  const candidate = template.tags.find((tag) => tag.trim().length > 0) ?? template.subject ?? template.title;
-  const value = candidate.trim().slice(0, 24);
-  return value.length > 0 ? value : '推荐项目';
-}
-
-function isConfirmIntentResponse(value: unknown): value is ConfirmIntentResponse {
-  if (!isRecord(value) || !isRecord(value.project) || !isRecord(value.exploration)) return false;
-  return typeof value.project.id === 'string' && typeof value.exploration.id === 'string' && typeof value.replayed === 'boolean';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

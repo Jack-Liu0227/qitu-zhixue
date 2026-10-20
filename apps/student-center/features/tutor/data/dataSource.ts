@@ -15,6 +15,16 @@ import type {
   TutorSessionSummary,
   TutorTeamGraph,
   TutorTeamHistoryPage,
+  LearningSessionProgressView,
+  CompleteLearningSessionRequest,
+  CompleteLearningSessionResponse,
+  LearningEvidenceScope,
+  LearningTextSubmission,
+  LearningSubmissionResponse,
+  LearningSubmissionArtifactView,
+  LessonEvidenceView,
+  ReconcileProjectLearningRequest,
+  ReconcileProjectLearningResponse,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import type { TutorProjectContext } from '../types';
@@ -27,6 +37,13 @@ import type { TutorProjectContext } from '../types';
  * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
+  reconcileLearning?(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string): Promise<ReconcileProjectLearningResponse>;
+  getLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>): Promise<LessonEvidenceView>;
+  submitLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>, kind: 'responses' | 'artifacts' | 'reflections', request: LearningTextSubmission, idempotencyKey: string): Promise<LearningSubmissionResponse>;
+  getLearningArtifact?(projectId: string, artifactId: string): Promise<LearningSubmissionArtifactView>;
+  publishLearningArtifact?(projectId: string, artifactId: string, idempotencyKey: string): Promise<LearningSubmissionArtifactView>;
+  getLessonProgress?(planId: string, projectId: string): Promise<LearningSessionProgressView>;
+  completeLesson?(planId: string, sessionId: string, request: CompleteLearningSessionRequest, idempotencyKey: string): Promise<CompleteLearningSessionResponse>;
   confirmExploration?(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse>;
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;

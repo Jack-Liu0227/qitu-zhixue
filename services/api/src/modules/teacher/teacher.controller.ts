@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   Headers,
   HttpCode,
   BadRequestException,
@@ -108,6 +109,14 @@ export class TeacherController {
     private readonly feedbackService: FeedbackService,
     private readonly idempotency: IdempotencyStore,
   ) {}
+
+  @Get('students/:studentId/reviews')
+  async studentReviews(@Headers('cookie') cookie: string | undefined, @Param('studentId') studentId: string,
+    @Query('offset') offset?: string, @Query('limit') limit?: string) {
+    const actor = requireRole(this.authService, cookie, 'teacher', '复核列表仅限当前班主任');
+    return { data: await this.teacherService.listStudentReviews(actor, studentId,
+      offset === undefined ? 0 : Number(offset), limit === undefined ? 20 : Number(limit)) };
+  }
 
   @Get('roster')
   async getRoster(

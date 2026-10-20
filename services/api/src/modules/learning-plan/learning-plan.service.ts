@@ -61,6 +61,7 @@ import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { MasteryReadService } from '../mastery/mastery.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
+import { WorksLearningEvidenceService } from '../works/works-learning-evidence.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -77,6 +78,7 @@ import {
   type PendingQuestionRecord,
   type PlanBundle,
   type PlanRecord,
+  type LearningProjectRecord,
   type SessionRecord,
 } from './learning-plan.store';
 import {
@@ -87,7 +89,7 @@ import {
   type GeneratedPlan,
 } from './plan-generator';
 import { generatePlanFromTemplate } from './template-plan-generator';
-import { OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
+import { OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG } from '../templates/content/optics';
 import { validateGeneratedPlan } from './session-plan-validator';
 import { assertQuestionScope, dynamicQuestionBlock, dynamicQuestionEnvelope, parseChoiceQuestionCandidate, type QuestionCandidateScope, type DynamicQuestionEnvelope } from './question-candidate';
 import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-candidate.sources';
@@ -95,7 +97,6 @@ import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-c
 const PLAN_FORBIDDEN_MESSAGE = '无权访问该学习计划';
 const THRESHOLD_BASIS_POINTS = 9000;
 const MAX_EVIDENCE_REF_LENGTH = 200;
-const MAX_EVIDENCE_SUMMARY_LENGTH = 500;
 
 /** 服务端推进 / 门禁的稳定错误码（契约 `LearningPlanErrorCode` 子集）。 */
 type ServiceErrorCode =
@@ -151,11 +152,38 @@ export class LearningPlanService {
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() private readonly templateBindings?: TemplateBindingService,
+    @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
 
   /* ==================== 生成（draft，无项目） ==================== */
+
+  /** Attach the exact frozen curriculum while the confirmation transaction is still open. */
+  async attachConfirmedProjectPlan(project: LearningProjectRecord, tx?: AuditTransaction): Promise<string> {
+    if (!this.templateBindings || !project.templateVersionId) {
+      throw new ConflictException({ code: 'PROJECT_TEACHING_PLAN_UNAVAILABLE', message: '项目缺少冻结教学合同' });
+    }
+    const teaching = await this.templateBindings.getFrozenTeachingBundle(project.id, project.templateVersionId, tx);
+    const profile = teaching.template.curriculum?.profiles.find(item => item.id === teaching.scheduleProfileId);
+    if (!profile) throw new ConflictException({ code: 'PROJECT_TEACHING_PLAN_UNAVAILABLE', message: '冻结模板缺少已审核的课时安排' });
+    const generated = generatePlanFromTemplate({
+      interest: project.title.slice(0, 60), goal: project.subtitle, lessonCount: profile.schedule.lessonCount,
+      lessonMinutes: profile.schedule.lessonMinutes,
+    }, { templateVersion: project.templateVersionId, templateSpec: teaching.template });
+    validateGeneratedPlan(generated);
+    const bundle = this.buildBundle(project.studentId, generated, project.createdAt);
+    bundle.plan = { ...bundle.plan, projectId: project.id, status: 'active', confirmedAt: project.createdAt,
+      idempotencyKey: `confirmed-project-plan:${project.id}` };
+    return this.store.withConfirmationTransaction(tx, async store => {
+      await store.attachConfirmedProject(project, bundle);
+      await this.audit.write({ actorId: project.studentId, actorRole: 'student', action: 'learning_plan.attach_confirmed_project',
+        targetType: 'learning_plan', targetId: bundle.plan.id, idempotencyKey: bundle.plan.idempotencyKey,
+        detail: { projectId: project.id, templateVersionId: project.templateVersionId, scheduleProfileId: profile.id,
+          lessonCount: bundle.sessions.length } }, tx);
+      return bundle.plan.id;
+    });
+  }
 
   async generatePlan(
     actor: CurrentUser,
@@ -164,7 +192,7 @@ export class LearningPlanService {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
-      if (input.curriculumSlug !== OPTICS_16_TEMPLATE_SLUG) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `???? ${input.curriculumSlug} ?????????`,
@@ -755,7 +783,7 @@ export class LearningPlanService {
     actor: CurrentUser,
     planId: string,
     sessionId: string,
-    body: { objectiveId: unknown; evidenceRef: unknown; summary?: unknown },
+    body: { objectiveId: unknown; evidenceRef: unknown; planRevision?: unknown; summary?: unknown },
     idempotencyKey: string,
   ): Promise<SubmitEvidenceResponse> {
     const bundle = await this.requireBundle(planId);
@@ -764,130 +792,35 @@ export class LearningPlanService {
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
     await this.assertPracticeGate(session, states, actor, bundle);
-
     const objectiveId = typeof body.objectiveId === 'string' ? body.objectiveId.trim() : '';
-    if (!session.practiceObjectiveIds.includes(objectiveId)) {
-      throw this.badRequest('EVIDENCE_INVALID', '证据只能提交给本会话的实践目标');
-    }
-    const objective = this.objectiveIndex(bundle).get(objectiveId);
-    if (objective === undefined) {
-      throw this.badRequest('EVIDENCE_INVALID', '目标不存在');
-    }
     const evidenceRef = typeof body.evidenceRef === 'string' ? body.evidenceRef.trim() : '';
-    if (evidenceRef.length === 0 || evidenceRef.length > MAX_EVIDENCE_REF_LENGTH) {
-      throw this.badRequest('EVIDENCE_INVALID', 'evidenceRef 长度非法');
+    if (!session.practiceObjectiveIds.includes(objectiveId) || !evidenceRef || evidenceRef.length > MAX_EVIDENCE_REF_LENGTH) {
+      throw this.badRequest('EVIDENCE_INVALID', '需要本课时的实践目标与已保存证据引用');
     }
-    const summary =
-      typeof body.summary === 'string' ? body.summary.trim().slice(0, MAX_EVIDENCE_SUMMARY_LENGTH) : null;
-
+    if (!Number.isSafeInteger(body.planRevision) || body.planRevision !== bundle.plan.version || !bundle.plan.projectId) {
+      throw new ConflictException({ code: 'LEARNING_EVIDENCE_SCOPE_MISMATCH', message: '计划版本已变化，请刷新后重试' });
+    }
+    if (!this.learningEvidence) throw new ConflictException({ code: 'EVIDENCE_ASSESSMENT_REQUIRED', message: '证据 owner 尚不可用，不能确认提交或掌握' });
+    const owner = this.learningEvidence;
     const scope = `student.learning-plan.evidence:${actor.id}:${planId}:${sessionId}:${objectiveId}`;
-    const requestHash = hashIdempotentInput(
-      scope,
-      { planId, sessionId, objectiveId },
-      { evidenceRef, summary },
-    );
-    let theoryMasteredFlip = false;
+    const evidenceScope = (await owner.getLessonProofs(actor, planId, sessionId, bundle.plan.version)).scope;
     try {
-      const result = await this.idempotency.execute(
-        scope,
-        idempotencyKey,
-        requestHash,
-        async () => this.withAssessmentStore(actor.id, async (scoped) => {
-          const fresh = await scoped.requireBundle(planId);
-          const freshSession = await scoped.requireSession(fresh, sessionId);
-          const existing = await scoped.store.listAttempts(fresh.plan.studentUserId, objectiveId);
-          const freshStates = await scoped.loadStates(actor, fresh);
-          await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
-          const wasMastered = computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates);
-          const attempt: AttemptRecord = {
-            id: newId('attempt'),
-            studentUserId: fresh.plan.studentUserId,
-            planId,
-            objectiveId,
-            questionId: null,
-            result: 'correct',
-            isCorrect: true,
-            assessmentType: 'qualitative',
-            errorType: null,
-            hintsUsed: 0,
-            attemptCount: existing.length + 1,
-            qualityBasisPoints: qualityBasisPoints(1),
-            userAnswer: evidenceRef,
-            createdAt: new Date(),
-          };
-          const nextMastery = await scoped.recomputeMastery(
-            fresh.plan.studentUserId,
-            fresh,
-            objective,
-            { correctAnswer: true },
-            false,
-            attempt,
-          );
-          const masteryEvent = await scoped.buildMasteryEvent({
-            bundle: fresh,
-            objective,
-            attempt,
-            mastery: nextMastery,
-            answeredAt: attempt.createdAt,
-            idempotencyKey,
-            evidenceRefs: [`evidence:${evidenceRef}`],
-            sourceType: 'practice',
-          });
-          const masteryToPersist = masteryEvent === null
-            ? nextMastery
-            : {
-                ...nextMastery,
-                knowledgePointId: masteryEvent.knowledgePointId,
-                courseVersion: masteryEvent.courseVersion,
-                sourceEventId: masteryEvent.id,
-                sourceSequence: masteryEvent.sequence,
-                assessmentVersion: masteryEvent.assessmentVersion,
-                validFrom: masteryEvent.validFrom,
-              };
-          const isMastered = scoped.theoryMasteredWithCandidate(freshSession, freshStates, masteryToPersist);
-          const shouldEmitTheoryMastered = !wasMastered && isMastered;
-          await scoped.store.completeAssessment({
-            attempt,
-            mastery: masteryToPersist,
-            masteryEvent,
-            commit: async (tx) => {
-              await scoped.emitMasteryAssessed(masteryEvent, tx as AuditTransaction);
-              if (shouldEmitTheoryMastered) {
-                await scoped.emitTheoryMastered(actor, fresh, freshSession, tx as AuditTransaction);
-              }
-              await scoped.audit.write({
-                actorId: actor.id,
-                actorRole: actor.role,
-                action: 'learning_plan.evidence',
-                targetType: 'learning_objective',
-                targetId: objectiveId,
-                idempotencyKey: `${scope}:${idempotencyKey}`,
-                detail: { planId, sessionId, knowledgeType: objective.type },
-              }, tx as AuditTransaction);
-            },
-          });
-          theoryMasteredFlip = shouldEmitTheoryMastered;
-          const updatedStates = await scoped.loadStates(actor, fresh);
-          return {
-            status: 201,
-            body: {
-              objectiveId,
-              accepted: true,
-              theoryMastered: isMastered,
-              practiceUnlocked: scoped.isPracticeUnlocked(freshSession, updatedStates),
-              replayed: false,
-            } satisfies SubmitEvidenceResponse,
-          };
-        }),
-      );
-      const resp = result.body;
-      if (theoryMasteredFlip && !result.replayed) {
-        await this.recordTheoryMasteredGate(actor.id, sessionId);
-      }
-      return result.replayed ? { ...resp, replayed: true } : resp;
-    } catch (error) {
-      throwHttpForIdempotencyError(error);
-    }
+      // The evidence owner validates again on every replay. No correct attempt or mastery event is manufactured.
+      await owner.readLessonProofs(actor, evidenceScope, [evidenceRef]);
+      const result = await this.idempotency.execute(scope, idempotencyKey,
+        hashIdempotentInput(scope, { planId, sessionId, objectiveId }, { evidenceRef, planRevision: body.planRevision }), async () => {
+          const receipt = await owner.recordEvidenceSubmission(actor, evidenceScope, objectiveId, evidenceRef, idempotencyKey);
+          const fresh = await this.requireBundle(planId);
+          const freshSession = await this.requireSession(fresh, sessionId);
+          const freshStates = await this.loadStates(actor, fresh);
+          await this.assertPracticeGate(freshSession, freshStates, actor, fresh);
+          return { status: 201, body: { objectiveId, accepted: true, ...receipt,
+            theoryMastered: computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates),
+            practiceUnlocked: this.isPracticeUnlocked(freshSession, freshStates), replayed: false } satisfies SubmitEvidenceResponse };
+        });
+      await owner.readLessonProofs(actor, evidenceScope, [evidenceRef]);
+      return { ...result.body, replayed: result.replayed };
+    } catch (error) { throwHttpForIdempotencyError(error); throw error; }
   }
 
   /**
@@ -1003,6 +936,8 @@ export class LearningPlanService {
         this.access,
         this.masteryDomain,
         this.teamRuntime,
+        this.templateBindings,
+        this.learningEvidence,
       );
       return work(scoped);
     });

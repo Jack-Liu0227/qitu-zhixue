@@ -166,6 +166,7 @@ export class LearningPlanController {
     const user = this.requireStudent(cookieHeader);
     assertNoServerOwnedFields(body);
     const request = pickFields<SubmitEvidenceRequest>(body, [
+      'planRevision',
       'objectiveId',
       'evidenceRef',
       'summary',

@@ -87,6 +87,19 @@ export interface SessionRecord {
   mode: SessionMode;
 }
 
+export interface SessionCompletionRecord {
+  id: string;
+  studentUserId: string;
+  projectId: string;
+  planId: string;
+  planRevision: number;
+  learningSessionId: string;
+  evidenceRefs: string[];
+  idempotencyKey: string;
+  requestHash: string;
+  completedAt: Date;
+}
+
 export interface MasteryRecord {
   id: string;
   studentUserId: string;
@@ -247,7 +260,23 @@ export class PendingQuestionConflictError extends Error {
   }
 }
 
+export function assertConfirmedProjectPlan(project: LearningProjectRecord, bundle: PlanBundle): void {
+  if (bundle.plan.projectId !== project.id || bundle.plan.studentUserId !== project.studentId
+    || !project.templateVersionId || bundle.plan.templateVersion !== project.templateVersionId
+    || bundle.plan.status !== 'active' || !(bundle.plan.confirmedAt instanceof Date)
+    || !Number.isFinite(bundle.plan.confirmedAt.getTime()) || bundle.plan.version < 1 || !Number.isSafeInteger(bundle.plan.version)) {
+    throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_PLAN_SCOPE_INVALID');
+  }
+}
+
 export abstract class LearningPlanStore {
+  abstract withConfirmationTransaction<T>(tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
+  abstract attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void>;
+  abstract listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]>;
+  abstract findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null>;
+  abstract saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
+  abstract withSessionProgressTransaction<T>(studentId: string, planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T>;
+  abstract finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean>;
   abstract transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean>;
   abstract studentSchoolId(studentId: string): Promise<string | null>;
   abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
@@ -346,6 +375,7 @@ function attemptKey(studentUserId: string, objectiveId: string): string {
 }
 
 export class InMemoryLearningPlanStore extends LearningPlanStore {
+  private readonly sessionCompletions = new Map<string, SessionCompletionRecord>();
   private readonly assessmentLocks = new Map<string, Promise<void>>();
   private readonly plans = new Map<string, PlanBundle>();
   private readonly projects = new Map<string, LearningProjectRecord>();
@@ -355,12 +385,73 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   private readonly masteryEvents = new Map<string, MasteryEventRecord>();
   private readonly objectiveMappings = new Map<string, MasteryObjectiveMappingRecord>();
 
+  async withConfirmationTransaction<T>(_tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    // Isolate confirmation writes so a failed callback cannot roll back another student's concurrent work.
+    const scoped = new InMemoryLearningPlanStore();
+    for (const [key, value] of this.plans) scoped.plans.set(key, cloneBundle(value));
+    for (const [key, value] of this.projects) scoped.projects.set(key, { ...value, tags: [...value.tags] });
+    for (const [key, value] of this.objectiveMappings) scoped.objectiveMappings.set(key, { ...value });
+    const planIds = new Set(this.plans.keys()), projectIds = new Set(this.projects.keys()), mappingIds = new Set(this.objectiveMappings.keys());
+    const result = await work(scoped);
+    const plans = [...scoped.plans].filter(([key]) => !planIds.has(key));
+    const projects = [...scoped.projects].filter(([key]) => !projectIds.has(key));
+    const mappings = [...scoped.objectiveMappings].filter(([key]) => !mappingIds.has(key));
+    if (plans.some(([key, candidate]) => this.plans.has(key) || [...this.plans.values()].some((entry) =>
+      entry.plan.projectId === candidate.plan.projectId && entry.plan.status === 'active'))
+      || projects.some(([key]) => this.projects.has(key)) || mappings.some(([key]) => this.objectiveMappings.has(key))) {
+      throw new LearningPlanStoreConflictError('CONFIRMATION_TRANSACTION_CONFLICT');
+    }
+    for (const [key, value] of plans) this.plans.set(key, value);
+    for (const [key, value] of projects) this.projects.set(key, value);
+    for (const [key, value] of mappings) this.objectiveMappings.set(key, value);
+    return result;
+  }
+  async attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void> {
+    assertConfirmedProjectPlan(project, bundle);
+    const existing = this.projects.get(project.id);
+    if (existing && (existing.studentId !== project.studentId || existing.templateVersionId !== project.templateVersionId)) {
+      throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_SCOPE_INVALID');
+    }
+    const active = [...this.plans.values()].find((entry) => entry.plan.projectId === project.id && entry.plan.status === 'active');
+    if (active) throw new LearningPlanStoreConflictError('PROJECT_ALREADY_HAS_ACTIVE_PLAN');
+    await this.createPlan(bundle);
+    this.projects.set(project.id, existing ?? { ...project, tags: [...project.tags] });
+  }
+
+  async listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]> {
+    return [...this.sessionCompletions.values()].filter((row) => row.planId === planId && row.planRevision === planRevision)
+      .map((row) => ({ ...row, evidenceRefs: [...row.evidenceRefs] }));
+  }
+  async findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null> {
+    const row = [...this.sessionCompletions.values()].find((entry) => entry.idempotencyKey === key);
+    return row ? { ...row, evidenceRefs: [...row.evidenceRefs] } : null;
+  }
+  async saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    if ([...this.sessionCompletions.values()].some((row) => row.idempotencyKey === record.idempotencyKey
+      || (row.planId === record.planId && row.planRevision === record.planRevision && row.learningSessionId === record.learningSessionId))) {
+      throw new LearningPlanStoreConflictError('SESSION_COMPLETION_CONFLICT');
+    }
+    this.sessionCompletions.set(record.id, { ...record, evidenceRefs: [...record.evidenceRefs] });
+    try { await commit(); } catch (error) { this.sessionCompletions.delete(record.id); throw error; }
+  }
+  async withSessionProgressTransaction<T>(studentId: string, _planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T> {
+    return this.withAssessmentTransaction(studentId, work);
+  }
+  async finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    const bundle = this.plans.get(planId);
+    if (!bundle || bundle.plan.studentUserId !== studentId || bundle.plan.projectId !== projectId
+      || bundle.plan.version !== expectedVersion || bundle.plan.status !== 'active') return false;
+    const before = { ...bundle.plan };
+    bundle.plan = { ...bundle.plan, status: 'completed', completedAt: new Date(), updatedAt: new Date() };
+    try { await commit?.(); return true; } catch (error) { bundle.plan = before; throw error; }
+  }
+
   async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
     const project = this.projects.get(projectId);
     if (!project || project.studentId !== studentId || project.status !== expected) return false;
     const previous = { ...project };
     try {
-      this.projects.set(projectId, { ...project, status: next, ...computeStageProgress(next) });
+      this.projects.set(projectId, { ...project, status: next, ...computeStageProgress(next), completedAt: next === 'completed' ? new Date() : project.completedAt });
       await commit();
       return true;
     } catch (error) {

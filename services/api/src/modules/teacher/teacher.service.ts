@@ -1,9 +1,11 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { and, desc, eq } from 'drizzle-orm';
 import { mentorReviews, withTransaction, type Database } from '@qitu/database';
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { WorksService } from '../works/works.service';
+import { InMemoryWorksStore, type MentorReviewRecord } from '../works/works.store';
 import { currentStudentProject } from '../projects/current-project';
 import { TeamRuntimeService, type TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 import type { AuditEntry } from '../../common/audit/audit-entry';
@@ -118,6 +120,7 @@ export type ApplyReviewDecisionResult = 'applied' | 'stale';
  */
 export abstract class TeacherReviewRepository {
   abstract findReviewById(reviewId: string): Promise<TeacherReviewRecord | null>;
+  abstract listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]>;
   abstract applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult>;
 }
 
@@ -166,6 +169,13 @@ export class PostgresTeacherReviewRepository extends TeacherReviewRepository {
     return rows[0] === undefined ? null : mapReviewRow(rows[0]);
   }
 
+  async listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]> {
+    const rows = await this.db.select().from(mentorReviews)
+      .where(and(eq(mentorReviews.studentUserId, studentId), eq(mentorReviews.mentorUserId, mentorId), eq(mentorReviews.kind, 'artifact')))
+      .orderBy(desc(mentorReviews.requestedAt), desc(mentorReviews.id)).offset(offset).limit(limit);
+    return rows.map(mapReviewRow);
+  }
+
   async applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult> {
     return withTransaction(this.db, async (tx) => {
       const updated = await tx
@@ -194,7 +204,7 @@ export class PostgresTeacherReviewRepository extends TeacherReviewRepository {
 export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   private readonly rows = new Map<string, TeacherReviewRecord>();
 
-  constructor(private readonly audit?: AuditWriter) {
+  constructor(private readonly audit?: AuditWriter, private readonly shared?: InMemoryWorksStore) {
     super();
   }
 
@@ -204,11 +214,23 @@ export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   }
 
   async findReviewById(reviewId: string): Promise<TeacherReviewRecord | null> {
+    if (this.shared) {
+      const row = await this.shared.findReviewById(reviewId);
+      return row ? this.projectShared(row) : null;
+    }
     const row = this.rows.get(reviewId);
     return row === undefined ? null : { ...row };
   }
 
+  async listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]> {
+    if (this.shared) return (await this.shared.listReviewsForStudent(studentId, mentorId, offset, limit)).map((row) => this.projectShared(row));
+    return [...this.rows.values()].filter((row) => row.studentUserId === studentId && row.mentorUserId === mentorId && row.kind === 'artifact')
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime() || right.id.localeCompare(left.id))
+      .slice(offset, offset + limit).map((row) => ({ ...row }));
+  }
+
   async applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult> {
+    if (this.shared) return this.shared.applyReviewDecision(input, async () => { await this.audit?.write(input.audit); });
     const current = this.rows.get(input.reviewId);
     if (current === undefined || current.status !== input.expectedStatus) return 'stale';
     const next: TeacherReviewRecord = {
@@ -228,6 +250,10 @@ export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   reset(): void {
     this.rows.clear();
   }
+
+  private projectShared(row: MentorReviewRecord): TeacherReviewRecord {
+    return { ...row, studentUserId: row.studentId, artifactRef: row.artifactId };
+  }
 }
 
 /**
@@ -244,7 +270,32 @@ export class TeacherService {
     // 绝不“内存里批成功”。
     @Optional() @Inject(TeacherReviewRepository) private readonly reviews?: TeacherReviewRepository,
     @Optional() private readonly learningStore?: LearningPlanStore,
+    @Optional() private readonly works?: WorksService,
   ) {}
+
+  async listStudentReviews(actor: CurrentUser, studentId: string, offset = 0, limit = 20) {
+    if (actor.role !== 'teacher') throw new ForbiddenException('复核列表仅限当前班主任');
+    await this.assertTeacherCanAccessStudent(actor.id, studentId);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10_000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      throw new BadRequestException({ code: 'TEACHER_REVIEW_REQUEST_INVALID', message: '分页范围无效' });
+    }
+    if (!this.reviews || !this.works) throw new ServiceUnavailableException({ code: 'TEACHER_REVIEW_UNAVAILABLE', message: '复核读取服务尚不可用' });
+    const rows = await this.reviews.listForStudent(studentId, actor.id, offset, limit + 1);
+    const items = [];
+    for (const row of rows.slice(0, limit)) {
+      if (!row.artifactRef || row.kind !== 'artifact' || row.studentUserId !== studentId || row.mentorUserId !== actor.id) continue;
+      try {
+        const version = await this.works.getAssignedReviewVersion(actor, row.id, row.artifactRef);
+        if (version.projectId !== row.projectId) continue;
+        items.push({ reviewId: row.id, ...version, status: row.status, requestedAt: row.requestedAt.toISOString() });
+      } catch (error) {
+        if (error instanceof ForbiddenException || error instanceof NotFoundException) continue;
+        throw error;
+      }
+    }
+    await this.assertTeacherCanAccessStudent(actor.id, studentId);
+    return { items, nextOffset: rows.length > limit ? offset + limit : null };
+  }
 
   /**
    * Assert that teacherUserId currently mentors studentUserId (active assignment).

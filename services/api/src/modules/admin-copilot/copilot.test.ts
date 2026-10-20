@@ -317,3 +317,21 @@ test('create/publish/revoke replay keeps immutable dependency digests while ever
   assert.equal(writes, 3);
   assert.equal(h.calls(), 1);
 });
+
+test('a negative diagnostic is a failed receipt, blocks dependents and never re-probes on the same request key', async () => {
+  const h = harness({ reply: 'Probe before assignment', actions: [
+    { id: 'probe', kind: 'model.test', label: 'Probe model', input: { providerId: 'provider-fixture', modelId: 'chat-fixture' } },
+    { id: 'assistant', kind: 'assistant.create', label: 'Create dependent', input: { modelId: { $ref: 'probe.modelId' } } },
+  ] });
+  let probes = 0;
+  h.operations.execute = async () => { probes++; return { id: 'probe', test: { passed: false, mode: 'model_connection' } }; };
+  h.operations.readback = async () => { throw new BadRequestException({ code: 'COPILOT_TEST_FAILED', message: 'Connection failed' }); };
+  const input = { ...request, scope: 'global' as const, templateId: null, templateVersionId: null };
+  for (let index = 0; index < 2; index++) {
+    const result = await h.service.run(actor, input, 'negative-probe');
+    assert.deepEqual(result.receipts.map(receipt => receipt.status), ['failed', 'blocked']);
+    assert.equal(result.receipts[0]?.code, 'COPILOT_TEST_FAILED');
+    assert.equal(result.reply.includes('已保存：Probe'), false);
+  }
+  assert.equal(probes, 1);
+});

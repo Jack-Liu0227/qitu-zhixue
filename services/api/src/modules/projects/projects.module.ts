@@ -12,6 +12,10 @@ import { TemplatesModule } from '../templates/templates.module';
 import { ProjectLifecycleController } from './project-lifecycle.controller';
 import { ProjectLifecycleService } from './project-lifecycle.service';
 import { ProjectsService } from './projects.service';
+import { LearningPlanModule } from '../learning-plan/learning-plan.module';
+import { WorksModule } from '../works/works.module';
+import { ProjectLearningLifecycleService } from './project-learning-lifecycle.service';
+import { ProjectLearningLifecycleController } from './project-learning-lifecycle.controller';
 
 /**
  * 探索 / 意图确认模块（T6）。
@@ -29,11 +33,12 @@ import { ProjectsService } from './projects.service';
  * 该模块不反向依赖 ProjectsModule，因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
-  controllers: [ExplorationsController, ProjectLifecycleController],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule, LearningPlanModule, WorksModule],
+  controllers: [ExplorationsController, ProjectLifecycleController, ProjectLearningLifecycleController],
   providers: [
     ProjectsService,
     ProjectLifecycleService,
+    ProjectLearningLifecycleService,
     {
       provide: ExplorationStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

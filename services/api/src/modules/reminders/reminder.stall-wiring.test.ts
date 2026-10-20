@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TutorService, type StreamedTutorEvent } from '../ai-tutor/tutor.service';
-import type { TutorModelGateway } from '../ai-tutor/gateway-tutor.provider';
 import { withTutorProviderContext } from '../ai-tutor/tutor-provider.test-fixture';
+import type { TutorModelGateway } from '../ai-tutor/gateway-tutor.provider';
 import {
   LEARNING_PROGRESS_STALL_SOURCE,
   LEARNING_STALL_ESCALATION_THRESHOLD,

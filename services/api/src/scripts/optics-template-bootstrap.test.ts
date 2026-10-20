@@ -1,3 +1,4 @@
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import { opticsTeachingFixture } from '../modules/templates/teaching-bundle.test-fixture';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
@@ -26,10 +27,10 @@ import {
 } from '../modules/templates/templates.test-support';
 import {
   assertOpticsTemplateStructure,
-  OPTICS_16_BOOTSTRAP_KEY,
-  OPTICS_16_TEMPLATE_SLUG,
-  OPTICS_16_TEMPLATE_INPUT,
-  OPTICS_16_VERSION_INPUT,
+  OPTICS_16_COMPLETION_BOOTSTRAP_KEY,
+  OPTICS_16_COMPLETION_TEMPLATE_SLUG,
+  OPTICS_16_COMPLETION_TEMPLATE_INPUT,
+  OPTICS_16_COMPLETION_VERSION_INPUT,
 } from '../modules/templates/content/optics';
 import {
   OpticsBootstrapError,
@@ -47,14 +48,14 @@ function validTeamVersion(
 ): TeamVersionRecord {
   return {
     id,
-    teamId: opticsTeachingFixture().teamId,
+    teamId: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).teamId,
     version: 1,
     name: '光学探究团队',
     description: 'A 组',
     workspaceMode: 'shared',
     sessionMode: 'auto',
-    leaderAssistantId: opticsTeachingFixture().leaderAssistantId,
-    members: opticsTeachingFixture().members,
+    leaderAssistantId: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).leaderAssistantId,
+    members: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).members,
     pblSpec: {
       phases: ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'],
     },
@@ -95,7 +96,7 @@ function makeBootstrapHarness(): BootstrapHarness {
     bindingStore,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
-    opticsTeachingFixture().catalog,
+    opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).catalog,
   );
   return { governance, bindings, templates, bindingStore, audit };
 }
@@ -108,32 +109,32 @@ function run(h: BootstrapHarness, teamVersionId = TEAM_VERSION_ID): Promise<Opti
       templates: h.templates,
       bindingStore: h.bindingStore,
     },
-    { teamVersionId, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture().draft },
+    { teamVersionId, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).draft },
   );
 }
 
 it('16-lesson bootstrap has one governed identity and is idempotent', async () => {
   const h = makeBootstrapHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
-  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft };
+  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).draft };
   const fresh = await runOpticsTemplateBootstrap(h, args);
   const replay = await runOpticsTemplateBootstrap(h, args);
   assert.equal(replay.versionId, fresh.versionId);
   assert.equal(replay.bindingId, fresh.bindingId);
-  assert.equal((await h.templates.findTemplate(fresh.templateId))?.slug, OPTICS_16_TEMPLATE_SLUG);
-  assert.equal((await h.templates.findVersion(fresh.versionId))?.content.bootstrapKey, OPTICS_16_BOOTSTRAP_KEY);
+  assert.equal((await h.templates.findTemplate(fresh.templateId))?.slug, OPTICS_16_COMPLETION_TEMPLATE_SLUG);
+  assert.equal((await h.templates.findVersion(fresh.versionId))?.content.bootstrapKey, OPTICS_16_COMPLETION_BOOTSTRAP_KEY);
   assert.equal((await h.templates.listVersions(fresh.templateId)).length, 1);
 });
 
 it('refuses a stale 16-session bootstrap payload without modifying or activating it', async () => {
   const h = makeBootstrapHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
-  const created = await h.governance.createTemplate(ADMIN, OPTICS_16_TEMPLATE_INPUT, 'stale-template');
+  const created = await h.governance.createTemplate(ADMIN, OPTICS_16_COMPLETION_TEMPLATE_INPUT, 'stale-template');
   const stale = await h.governance.createVersion(ADMIN, created.template.id, {
-    ...OPTICS_16_VERSION_INPUT, rubric: [{ id: 'old-rubric', weight: 100 }],
+    ...OPTICS_16_COMPLETION_VERSION_INPUT, rubric: [{ id: 'old-rubric', weight: 100 }],
   }, 'stale-version');
   await assert.rejects(() => runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft,
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).draft,
   }), /identity has different content/);
   assert.equal((await h.templates.findVersion(stale.version.id))?.status, 'draft');
   assert.deepEqual((await h.templates.listVersions(created.template.id)).map((version) => version.id), [stale.version.id]);
@@ -150,9 +151,9 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
 
   it('结构校验通过，且版本正文携带幂等解析标记', () => {
     assert.doesNotThrow(() => assertOpticsTemplateStructure());
-    const content = OPTICS_16_VERSION_INPUT.content;
+    const content = OPTICS_16_COMPLETION_VERSION_INPUT.content;
     assert.ok(content !== undefined, '版本正文存在');
-    assert.equal(content.bootstrapKey, OPTICS_16_BOOTSTRAP_KEY);
+    assert.equal(content.bootstrapKey, OPTICS_16_COMPLETION_BOOTSTRAP_KEY);
   });
 
   it('完整链路：create → pilot → binding create → validate → activate，且永不 verify/publish', async () => {
@@ -206,13 +207,13 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
     // 手动构造「模板 + 版本 + pilot + 一个 draft 绑定」的中断现场。
     const createdTemplate = await h.governance.createTemplate(
       ADMIN,
-      OPTICS_16_TEMPLATE_INPUT,
+      OPTICS_16_COMPLETION_TEMPLATE_INPUT,
       'seed-template',
     );
     const createdVersion = await h.governance.createVersion(
       ADMIN,
       createdTemplate.template.id,
-      OPTICS_16_VERSION_INPUT,
+      OPTICS_16_COMPLETION_VERSION_INPUT,
       'seed-version',
     );
     await h.governance.pilotVersion(
@@ -270,7 +271,7 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
     });
 
     // 版本已试点、模板已建，但不该有 active 绑定。
-    const template = await h.templates.findTemplateBySlug(null, OPTICS_16_TEMPLATE_SLUG);
+    const template = await h.templates.findTemplateBySlug(null, OPTICS_16_COMPLETION_TEMPLATE_SLUG);
     assert.ok(template !== null);
     const version = (await h.templates.listVersions(template.id))[0];
     assert.ok(version !== undefined);

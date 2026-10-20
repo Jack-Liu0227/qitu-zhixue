@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
-import type { CurrentUser } from '@qitu/contracts';
+import { ADMIN_COPILOT_CONTRACT_VERSION, type CurrentUser } from '@qitu/contracts';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { CopilotResources, managementSkill, MANAGEMENT_SKILL_ID, MANAGEMENT_OPERATIONS_DIGEST } from './copilot.resources';
@@ -17,6 +17,29 @@ import type { ModelRegistryService } from '../model-registry/model-registry.serv
 import type { ImaSettingsService } from '../platform-registry/ima-settings.service';
 
 const actor: CurrentUser = { id: 'admin-fixture', role: 'admin', displayName: 'Fixture', email: 'fixture@example.invalid' };
+
+test('IMA toggle uses the unified revisioned owner and preserves other engine configuration', async () => {
+  const current = { knowledgeEngines: {
+    'ima-main': { provider: 'ima', enabled: true, config: { allowedKnowledgeBaseIds: ['textbook'] } },
+    native: { provider: 'llamaindex', enabled: true, config: { chunk_size: 800 } },
+  }, mcpServers: {}, platformTools: { 'project-knowledge': { enabled: true, boundAssistants: ['coach'] } } };
+  let saves = 0;
+  const center = { configuration: async () => ({ revision: 12, config: current }),
+    save: async (_actor: CurrentUser, input: { expectedRevision: number; config: typeof current }) => {
+      assert.equal(input.expectedRevision, 12); assert.equal(input.config.knowledgeEngines['ima-main'].enabled, false);
+      assert.deepEqual(input.config.knowledgeEngines['ima-main'].config.allowedKnowledgeBaseIds, ['textbook']);
+      assert.deepEqual(input.config.knowledgeEngines.native, current.knowledgeEngines.native);
+      assert.deepEqual(input.config.platformTools, current.platformTools); saves++;
+      return { revision: 13, config: input.config };
+    } };
+  const operations = new CopilotOperations({} as never, {} as never, center as never, {} as never, {} as never,
+    { update: () => { throw new Error('Legacy IMA owner must not be used'); } } as never);
+  await operations.execute(actor, 'ima.configure', { expectedRevision: 12, enabled: false }, 'toggle');
+  await assert.rejects(operations.execute(actor, 'ima.configure', { enabled: false }, 'missing-revision'));
+  await assert.rejects(operations.execute(actor, 'ima.configure', { expectedRevision: 12, enabled: false, assistantBindings: [] }, 'legacy-shape'));
+  assert.equal(saves, 1);
+  assert.equal(current.knowledgeEngines['ima-main'].enabled, true);
+});
 test('management loader fails closed for missing, unpublished, revoked, empty or incorrectly scoped skills', async () => {
   const root = mkdtempSync(join(tmpdir(), 'qitu-management-scope-'));
   const previous = process.env.QITU_PROJECT_ROOT;
@@ -33,7 +56,7 @@ test('management loader fails closed for missing, unpublished, revoked, empty or
       writeFileSync(join(directory, 'SKILL.md'), `---\nruntime: ${runtime}\nstatus: ${status}\n---\n${body}`);
       await assert.rejects(managementSkill(), unavailable);
     }
-    writeFileSync(join(directory, 'SKILL.md'), `---\nruntime: admin\nstatus: published\nversion: 1.1.0\n---\nSYNTHETIC_ADMIN\n<!-- qitu-copilot-contract: {\"version\":\"1.1.0\",\"operationsDigest\":\"${MANAGEMENT_OPERATIONS_DIGEST}\"} -->`);
+    writeFileSync(join(directory, 'SKILL.md'), `---\nruntime: admin\nstatus: published\nversion: ${ADMIN_COPILOT_CONTRACT_VERSION}\n---\nSYNTHETIC_ADMIN\n<!-- qitu-copilot-contract: {\"version\":\"${ADMIN_COPILOT_CONTRACT_VERSION}\",\"operationsDigest\":\"${MANAGEMENT_OPERATIONS_DIGEST}\"} -->`);
     assert.match((await managementSkill()).content, /SYNTHETIC_ADMIN/);
   } finally {
     if (previous === undefined) delete process.env.QITU_PROJECT_ROOT; else process.env.QITU_PROJECT_ROOT = previous;

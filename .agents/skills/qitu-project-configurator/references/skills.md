@@ -31,3 +31,9 @@ id 使用小写字母开头的小写字母、数字、连字符，最多 64 字�
 管家管理技能的 references 属于部署的 Admin 资源包，skill.create 当前不能创建额外 references/scripts 文件。该限制不能用 content 中写文件路径绕过。
 
 HTTP：`GET /api/v1/admin/ai-runtime` 查看已发布目录；`POST /api/v1/admin/copilot/turns` 提交上述 actions。当前没有通用 `/admin/skills` 创建/发布 API，也没有任意文件编辑工具。助手绑定使用 assistant.update。binding.draft 的 packageDigest 使用发布后的真实摘要，草稿 digest 与发布内容 digest 不能混用。
+
+## 加载测试与移除
+
+`skill.test {id}` 测试该 canonical source 的运行准入。草稿、撤销或 deprecated 状态返回失败；已发布且 ready 的教学来源通过。该测试不执行教学对话或 Skill 声明的外部工具。
+
+`skill.delete {id,digest}` 仅 global，要求当前准确摘要。服务端加锁、审计并原子写入 deprecated，回读 unavailable；这是软删除，保留正文、canonical ID 和历史引用。当前绑定立即失去执行权，不能通过重建同名技能恢复。管理技能禁止删除。反复提交旧删除摘要只回读同一次移除，不重复改写正文。

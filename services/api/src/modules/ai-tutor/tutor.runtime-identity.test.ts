@@ -141,6 +141,7 @@ test('current assistant revocation blocks new turns rather than choosing intake 
 
 test('bundle route shares actual pending lesson with shell and pins instructions/model after Admin edits', async () => {
   const h = fixture(true);
+  h.teaching.completed.add('plan-frozen:lesson-1');
   h.teaching.setPending(2);
   h.phases[0]!.assignedAssistantId = 'obsolete-stage-mentor';
   h.assistant.instructions = 'CHANGED_ADMIN_PROMPT_MUST_NOT_REPLACE_FROZEN';

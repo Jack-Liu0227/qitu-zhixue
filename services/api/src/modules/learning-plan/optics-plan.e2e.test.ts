@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
 
-import { findQuizBankEntry, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, findQuizBankEntry, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import type { CurrentUser, LearningPlanView } from '@qitu/contracts';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import type { IdempotencyStore } from '../../common/idempotency/idempotency.service';
@@ -33,7 +33,7 @@ import {
 import { InMemoryLearningPlanStore } from './learning-plan.store';
 import { LearningPlanService } from './learning-plan.service';
 import { DeterministicPlanGenerator } from './plan-generator';
-import { OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
+import { OPTICS_16_COMPLETION_TEMPLATE_SLUG } from '../templates/content/optics';
 
 const ADMIN = actor('admin', 'admin-1');
 const STUDENT = actor('student', 'student-1');
@@ -44,10 +44,10 @@ it('new 16-session API path consumes the resolved version content and does not o
   const h = makeHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
   const report = await runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft,
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).draft,
   });
   const generated = await h.plans.generatePlan(STUDENT, {
-    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
   });
   assert.equal(generated.plan.templateVersion, report.versionId);
   assert.equal(generated.plan.lessonCount, 16);
@@ -71,7 +71,7 @@ it('new 16-session API path consumes the resolved version content and does not o
   assert.deepEqual(sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements,
     ['包含装置图、数据表、拟合和 CER 的报告版本引用', 'rubric 对照、误差分析与结论边界']);
   const reread = await h.plans.generatePlan(STUDENT, {
-    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
   });
   assert.equal(reread.deduplicated, true);
   assert.equal(reread.plan.id, generated.plan.id);
@@ -86,7 +86,7 @@ it('new 16-session API path consumes the resolved version content and does not o
   await assert.rejects(() => h.plans.generatePlan(STUDENT, {
     interest: '光学证据链', lessonCount: 16, lessonMinutes: 60,
     sessionCount: 8,
-    curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+    curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
   }));
 });
 
@@ -145,14 +145,14 @@ function validTeamVersion(
 ): TeamVersionRecord {
   return {
     id,
-    teamId: opticsTeachingFixture().teamId,
+    teamId: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).teamId,
     version: 1,
     name: '光学探究团队',
     description: 'A 组',
     workspaceMode: 'shared',
     sessionMode: 'auto',
-    leaderAssistantId: opticsTeachingFixture().leaderAssistantId,
-    members: opticsTeachingFixture().members,
+    leaderAssistantId: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).leaderAssistantId,
+    members: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).members,
     pblSpec: {
       phases: ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'],
     },
@@ -191,7 +191,7 @@ async function seedOpticsBinding(
       templates,
       bindingStore,
     },
-    { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture().draft },
+    { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).draft },
   );
 }
 
@@ -222,7 +222,7 @@ function makeHarness(): Harness {
     bindingStore,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
-    opticsTeachingFixture().catalog,
+    opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC).catalog,
   );
 
   const mastery = new MasteryDomainService(
@@ -319,7 +319,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       interest: '光学',
       lessonCount: 16,
       lessonMinutes: 60,
-      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+      curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
     });
 
     assert.equal(generated.deduplicated, false);
@@ -374,7 +374,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       lessonCount: 16,
       lessonMinutes: 60,
       sessionCount: 16,
-      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+      curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
     });
 
     assert.equal(generated.deduplicated, false);
@@ -414,7 +414,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
         interest: '光学',
         lessonCount: 16,
         lessonMinutes: 60,
-        curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+        curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
       }),
       (error: unknown) => {
         const http = error as { getStatus?: () => number; getResponse?: () => unknown };
@@ -481,7 +481,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       interest: '光学',
       lessonCount: 16,
       lessonMinutes: 60,
-      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
+      curriculumSlug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
     });
     assert.equal(generated.plan.templateVersion, report.versionId);
 

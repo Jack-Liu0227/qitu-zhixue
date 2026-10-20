@@ -75,7 +75,7 @@ export class ProjectLifecycleService {
 
   async listProjects(actor: CurrentUser): Promise<LearningProjectRecord[]> {
     if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可读取项目列表');
-    // Intent-confirmed projects exist before a learning plan has been generated.
+    // Include confirmed projects independently of the plan list, including historical projects.
     return orderStudentProjects(await this.store.listProjectsByStudent(actor.id));
   }
 
@@ -83,24 +83,33 @@ export class ProjectLifecycleService {
     const project = await this.store.findProject(projectId);
     if (project === null) throw new NotFoundException({ code: 'PROJECT_NOT_FOUND', message: '项目不存在' });
     if (!(await this.access.canReadStudent(actor, project.studentId))) throw new ForbiddenException({ code: 'PROJECT_FORBIDDEN', message: '无权访问项目' });
-    // F3：存量项目在读取路径上惰性回填绑定快照（miss 时回填 `backfilled=true`）。
-    await this.templateBindings?.resolveSnapshotForProject(
-      projectId,
-      project.templateVersionId,
-      actor,
-    );
+    const frozenSnapshot = await this.templateBindings?.findFrozenSnapshotForProject(projectId, project.templateVersionId);
+    const teaching = frozenSnapshot && project.templateVersionId
+      ? await this.templateBindings!.getFrozenTeachingBundle(projectId, project.templateVersionId) : null;
+    const profile = teaching?.template.curriculum?.profiles.find((entry) => entry.id === teaching.scheduleProfileId);
     const plan = (await this.store.listPlansByStudent(project.studentId)).find((item) => item.projectId === projectId);
     const bundle = plan ? await this.store.findBundle(plan.id) : null;
     const stages = buildStages(project);
-    const tasks = bundle?.sessions.map((session, index) => ({
+    const completions = plan ? await this.store.listSessionCompletions(plan.id, plan.version) : [];
+    const completedSessionIds = new Set(completions.map((entry) => entry.learningSessionId));
+    const orderedSessions = [...(bundle?.sessions ?? [])].sort((a, b) => a.index - b.index);
+    const currentSessionId = orderedSessions.find((session) => !completedSessionIds.has(session.id))?.id;
+    const tasks = orderedSessions.map((session) => {
+      const frozen = profile?.sessions.find((entry) => session.id === `${plan?.id}:${entry.id}` && session.lessonIndex === entry.sessionIndex);
+      const stageId = frozen?.phase === 'guided_practice' ? 'practice_building'
+        : frozen?.phase === 'deliverable_review' ? (frozen.checkpoint?.requiredGate === 'review_completed_and_archived' ? 'reflection' : 'artifact_review')
+          : frozen?.phase === 'concept_mastery' ? (frozen.checkpoint?.requiredGate === 'TheoryMastered' ? 'theory_check' : 'theory_learning')
+            : frozen?.phase === 'exploration' ? 'exploration' : 'theory_learning';
+      return ({
       id: session.id,
-      stageId: session.mode === 'review' ? 'theory_check' : session.mode === 'study' ? 'theory_learning' : 'exploration',
-      title: `第 ${session.index + 1} 次学习`,
-      description: session.blocks.map((block) => block.kind).join('、') || '完成本次学习活动并留下证据。',
-      status: index < Math.max(0, project.currentStageIndex) ? 'done' as const : index === project.currentStageIndex ? 'doing' as const : 'locked' as const,
-      isTodayFocus: index === project.currentStageIndex,
+      stageId,
+      title: frozen?.title ?? session.title ?? `第 ${session.lessonIndex} 课`,
+      description: session.blocks.map((block) => block.kind).join('、') || '完成本课学习活动并留下证据',
+      status: completedSessionIds.has(session.id) ? 'done' as const : session.id === currentSessionId ? 'doing' as const : 'locked' as const,
+      isTodayFocus: session.id === currentSessionId,
       order: session.index,
-    })) ?? [];
+    });
+    });
     const nextStage = PROJECT_STAGE_ORDER[PROJECT_STAGE_ORDER.indexOf(project.status) + 1] ?? null;
     const projectProjection = toProjectProjection(project);
     projectProjection.learningPlanId = plan?.id ?? null;
@@ -128,6 +137,11 @@ export class ProjectLifecycleService {
     if (!plan || plan.status !== 'active' || !plan.confirmedAt) return reject('项目需要已确认且有效的学习计划');
     const bundle = await store.findBundle(plan.id);
     if (!bundle) return reject('学习计划不可用');
+    if (project.templateVersionId && this.templateBindings) {
+      const teaching = await this.templateBindings.getFrozenTeachingBundle(projectId, project.templateVersionId);
+      const profile = teaching.template.curriculum?.profiles.find(item => item.id === teaching.scheduleProfileId);
+      if (profile?.sessions.some(session => session.completionSpec)) return reject('LEARNING_PROGRESS_OWNER_REQUIRED');
+    }
     if (['practice_ready', 'practice_building'].includes(nextStage)) {
       const required = [...new Set(bundle.sessions.flatMap((session) => session.theoryObjectiveIds))];
       if (!await this.mastery.checkRequiredObjectives(actor, studentId, plan.id, required, store)) return reject('THEORY_MASTERED_REQUIRED');

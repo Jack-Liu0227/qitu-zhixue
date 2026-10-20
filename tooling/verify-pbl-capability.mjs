@@ -12,8 +12,9 @@ const runDirectory = join(temporary, runId);
 const loader = new URL('./verify-workspace-source.mjs', import.meta.url).href;
 const tsc = require.resolve('typescript/bin/tsc');
 const focused = process.argv.includes('--focused');
-if (process.argv.slice(2).some((argument) => argument !== '--focused')) {
-  throw new Error('Usage: node tooling/verify-pbl-capability.mjs [--focused]');
+const optics = process.argv.includes('--optics');
+if (focused && optics || process.argv.slice(2).some((argument) => !['--focused', '--optics'].includes(argument))) {
+  throw new Error('Usage: node tooling/verify-pbl-capability.mjs [--focused | --optics]');
 }
 mkdirSync(temporary, { recursive: true });
 mkdirSync(runDirectory, { recursive: true });
@@ -35,7 +36,7 @@ const steps = [];
 const startedAt = new Date().toISOString();
 function saveReport(success) {
   writeFileSync(join(temporary, 'verification.json'), JSON.stringify({
-    schemaVersion: 1, mode: focused ? 'focused' : 'full', startedAt, finishedAt: new Date().toISOString(), success,
+    schemaVersion: 1, mode: optics ? 'optics-fullflow' : focused ? 'focused' : 'full', startedAt, finishedAt: new Date().toISOString(), success,
     resolution: 'isolated per-run package outputs via test-only registerHooks and declaration paths; installed snapshots and ordinary dist unchanged',
     runDirectory: relative(root, runDirectory),
     steps,
@@ -84,8 +85,9 @@ function findTests(directory) {
     return entry.isDirectory() ? findTests(path) : entry.name.endsWith('.test.js') ? [path] : [];
   });
 }
-const focusDirectories = ['templates', 'learning-plan', 'ai-tutor', 'platform-registry', 'qitu-sdk'];
-const testFiles = findTests(join(runDirectory, 'dist')).filter((file) => !focused ||
+const focusDirectories = ['templates', 'learning-plan', 'ai-tutor', 'platform-registry', 'qitu-sdk',
+  ...(optics ? ['projects', 'works', 'teacher', 'mastery'] : [])];
+const testFiles = findTests(join(runDirectory, 'dist')).filter((file) => !focused && !optics ||
   focusDirectories.some((name) => file.includes(join('modules', name) + sep)));
 if (testFiles.length === 0) throw new Error('No compiled API tests found');
 const apiRoot = join(root, 'services/api');
@@ -104,7 +106,13 @@ run('ai-client-assertions', ['--import', loader, '--input-type=module', '-e', as
 const clientTests = findTests(packageOutput('ai-client')).filter((file) =>
   /template|curriculum/.test(file) && !file.endsWith('curriculum.test.js'));
 if (clientTests.length) run('ai-client-template-tests', ['--import', loader, '--test', ...clientTests.map((file) => relative(root, file))]);
-run('documentation', [join(root, 'tooling/check-codex-plan.mjs')]);
+if (optics) {
+  for (const app of ['student-center', 'teacher-workspace']) {
+    compile(`${app}-types`, join(root, 'apps', app, 'tsconfig.json'), {
+      noEmit: true, paths: { '@qitu/ui': [join(root, 'packages/ui/src/index.tsx')], ...paths },
+    });
+  }
+} else run('documentation', [join(root, 'tooling/check-codex-plan.mjs')]);
 saveReport(true);
-console.log(`\nPASS: ${steps.length} source-build, behavior and documentation steps.`);
+console.log(`\nPASS: ${steps.length} ${optics ? 'optics source-build, owner behavior and app typecheck' : 'source-build, behavior and documentation'} steps.`);
 console.log('Report: services/api/.tmp/pbl-capability/verification.json');

@@ -40,6 +40,7 @@ import {
 } from './works.store';
 import { WorksProjectReader } from './works.project-reader';
 import { ProjectEvidenceMaterializer } from './project-evidence.service';
+import { decodeInlineVersion, encodeInlineVersion } from './works-inline-content';
 import type { ProjectEvidenceView } from './project-evidence.store';
 import {
   ObjectStoragePresigner,
@@ -82,6 +83,7 @@ const PRESIGN_PURPOSES: readonly PresignPurpose[] = ['artifact', 'evidence', 'th
 
 export interface ArtifactVersionInput {
   note?: string;
+  inlineText?: string;
   objectKey?: string | null;
   thumbnailRef?: string | null;
   capturedAt?: string | null;
@@ -107,6 +109,7 @@ export interface ArtifactVersionView {
   ordinal: number;
   title: string;
   note: string;
+  inlineText: string | null;
   objectKey: string | null;
   thumbnailRef: string | null;
   capturedAt: string | null;
@@ -178,7 +181,8 @@ export class WorksService {
     const artifact = await this.requireArtifact(artifactId);
     const relationship = await this.resolveRelationship(actor, artifact);
     if (!canReadArtifact(actor, toRef(artifact), relationship)) {
-      throw this.forbidden();
+      const allowed = await this.assignedReviewVersions(actor, artifact);
+      if (!allowed.some((version) => version.ordinal === artifact.currentVersionIndex)) throw this.forbidden();
     }
     return this.toView(artifact);
   }
@@ -193,7 +197,9 @@ export class WorksService {
     const artifact = await this.requireArtifact(artifactId);
     const relationship = await this.resolveRelationship(actor, artifact);
     if (!canReadArtifact(actor, toRef(artifact), relationship)) {
-      throw this.forbidden();
+      const versions = await this.assignedReviewVersions(actor, artifact);
+      if (!versions.length) throw this.forbidden();
+      return versions.map(toVersionView);
     }
     const versions = await this.store.listVersions(artifactId);
     return versions.map(toVersionView);
@@ -363,8 +369,23 @@ export class WorksService {
     try {
       const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () => {
         const now = new Date();
-        const approved = await this.store.findApprovedReviewForArtifact(artifactId);
+        const artifact = await this.requireArtifact(artifactId);
+        const latest = (await this.store.listVersions(artifactId)).find((version) => version.ordinal === artifact.currentVersionIndex);
+        if (!latest) throw new ConflictException({ code: 'ARTIFACT_VERSION_REQUIRED', message: '作品缺少可审核的版本' });
+        const mentorUserId = await this.directory.mentorOfStudent(studentId);
+        if (!mentorUserId) throw new ConflictException({ code: 'ARTIFACT_MENTOR_REQUIRED', message: '当前没有在任班主任，无法提交作品复核' });
+        const reviews = await this.store.listReviewsForArtifact(artifactId);
+        let approved: MentorReviewRecord | null = null;
+        for (const review of reviews) {
+          if (review.status !== 'approved' || review.mentorUserId !== mentorUserId || review.studentId !== studentId
+            || review.projectId !== artifact.projectId || !review.reviewedAt) continue;
+          const bound = await this.evidence.hasArtifactReviewRequest(artifact, latest, review);
+          // Legacy external-file artifacts retain their existing timestamp-bound approval path.
+          const legacy = decodeInlineVersion(latest.note).inlineText === null && review.requestedAt >= latest.createdAt;
+          if (bound || legacy) { approved = review; break; }
+        }
         if (approved !== null) {
+          if (artifact.status === 'published') return { status: 200, body: await this.toView(artifact) };
           const published = await this.transitionOrConflict(
             artifactId,
             ['draft', 'changes_requested', 'submitted', 'in_review', 'archived'],
@@ -400,16 +421,10 @@ export class WorksService {
             undefined,
           );
         }
-        const mentorUserId = await this.directory.mentorOfStudent(studentId);
-        if (mentorUserId === null) {
-          throw new ConflictException({
-            code: 'ARTIFACT_MENTOR_REQUIRED',
-            message: '当前没有在任班主任，无法提交作品复核',
-          });
-        }
-        const active = await this.store.findActiveReviewForArtifact(artifactId);
+        let active = reviews.find((review) => review.mentorUserId === mentorUserId
+          && (review.status === 'requested' || review.status === 'in_review')) ?? null;
         if (active === null) {
-          await this.store.createMentorReview({
+          active = await this.store.createMentorReview({
             id: `mr-${randomUUID()}`,
             schoolId: artifact.schoolId,
             studentId,
@@ -421,6 +436,7 @@ export class WorksService {
             now,
           });
         }
+        await this.evidence.recordArtifactReviewRequest(artifact, latest, active);
         const submitted = (await this.store.findArtifact(artifactId)) ?? artifact;
         await this.audit.write({
           actorId: studentId,
@@ -442,6 +458,22 @@ export class WorksService {
       // 且门禁写入失败绝不能回滚已成立的发布。
       // 撑回（archived）**不算**复核完成——该路径不经过这里。
       if (result.body.status === 'published') {
+        const current = await this.requireArtifact(artifactId);
+        const latest = (await this.store.listVersions(artifactId)).find((version) => version.ordinal === current.currentVersionIndex);
+        const mentorId = await this.directory.mentorOfStudent(studentId);
+        let validApproval = false;
+        if (current.status === 'published' && latest && mentorId) {
+          for (const review of await this.store.listReviewsForArtifact(artifactId)) {
+            if (review.status !== 'approved' || review.mentorUserId !== mentorId || review.studentId !== studentId
+              || review.projectId !== current.projectId || !review.reviewedAt) continue;
+            if (await this.evidence.hasArtifactReviewRequest(current, latest, review)
+              || decodeInlineVersion(latest.note).inlineText === null && review.requestedAt >= latest.createdAt) {
+              validApproval = true;
+              break;
+            }
+          }
+        }
+        if (!validApproval) throw new ConflictException({ code: 'ARTIFACT_CURRENT_REVIEW_REQUIRED', message: '当前版本需要在任班主任复核，不能重放旧发布结果' });
         await this.recordReviewCompletedGate(studentId, artifactId);
       }
       return result.body;
@@ -475,6 +507,45 @@ export class WorksService {
         `门禁证据写入失败（不影响已发布的作品） artifact=${artifactId} err=${(error as Error)?.message ?? error}`,
       );
     }
+  }
+
+  private async canReadAssignedReview(actor: CurrentUser, artifact: ArtifactRecord): Promise<boolean> {
+    if (actor.role !== 'teacher' || artifact.status === 'draft' || !await this.directory.isMentorOf(actor.id, artifact.studentId)) return false;
+    return (await this.store.listReviewsForArtifact(artifact.id)).some((review) =>
+      review.mentorUserId === actor.id && review.studentId === artifact.studentId
+      && review.projectId === artifact.projectId && ['requested', 'in_review', 'changes_requested', 'approved'].includes(review.status));
+  }
+
+  private async assignedReviewVersions(actor: CurrentUser, artifact: ArtifactRecord): Promise<ArtifactVersionRecord[]> {
+    if (!await this.canReadAssignedReview(actor, artifact)) return [];
+    const reviews = (await this.store.listReviewsForArtifact(artifact.id)).filter((review) => review.mentorUserId === actor.id
+      && review.studentId === artifact.studentId && review.projectId === artifact.projectId
+      && ['requested', 'in_review', 'changes_requested', 'approved'].includes(review.status));
+    const allowed: ArtifactVersionRecord[] = [];
+    for (const version of await this.store.listVersions(artifact.id)) {
+      for (const review of reviews) {
+        if (await this.evidence.hasArtifactReviewRequest(artifact, version, review)) { allowed.push(version); break; }
+      }
+    }
+    return allowed;
+  }
+
+  /** Review queues identify the submitted immutable version, never the current-version guess. */
+  async getAssignedReviewVersion(actor: CurrentUser, reviewId: string, artifactId: string) {
+    const artifact = await this.requireArtifact(artifactId);
+    if (!await this.canReadAssignedReview(actor, artifact)) throw this.forbidden();
+    const review = (await this.store.listReviewsForArtifact(artifactId)).find((entry) => entry.id === reviewId
+      && entry.mentorUserId === actor.id && entry.studentId === artifact.studentId && entry.projectId === artifact.projectId);
+    if (!review) throw this.forbidden();
+    const versions = await this.store.listVersions(artifactId);
+    for (const version of versions) {
+      if (await this.evidence.hasArtifactReviewRequest(artifact, version, review)) {
+        return { artifactId, projectId: artifact.projectId, artifactTitle: version.title,
+          artifactVersionId: version.id, artifactVersionOrdinal: version.ordinal, versionAvailable: true };
+      }
+    }
+    return { artifactId, projectId: artifact.projectId, artifactTitle: artifact.title,
+      artifactVersionId: null, artifactVersionOrdinal: null, versionAvailable: false };
   }
 
   /** 撤回：进入 `archived`，保留版本与历史 `publishedAt`，可再次申请发布。 */
@@ -848,7 +919,7 @@ function normalizeVersion(raw: ArtifactVersionInput | undefined, fallbackTitle: 
     '版本说明',
   );
   return {
-    note: note ?? '',
+    note: encodeInlineVersion(note ?? '', raw?.inlineText),
     objectKey: normalizeOptionalRef(raw?.objectKey),
     thumbnailRef: normalizeOptionalRef(raw?.thumbnailRef),
     capturedAt: normalizeOptionalDate(raw?.capturedAt),
@@ -952,7 +1023,7 @@ function toVersionView(version: ArtifactVersionRecord): ArtifactVersionView {
     id: version.id,
     ordinal: version.ordinal,
     title: version.title,
-    note: version.note,
+    ...decodeInlineVersion(version.note),
     objectKey: version.objectKey,
     thumbnailRef: version.thumbnailRef,
     capturedAt: version.capturedAt?.toISOString() ?? null,

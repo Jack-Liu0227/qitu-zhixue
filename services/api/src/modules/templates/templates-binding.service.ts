@@ -607,12 +607,13 @@ export class TemplateBindingService {
   async findFrozenSnapshotForProject(
     projectId: string,
     templateVersionId: string | null,
+    tx?: AuditTransaction,
   ): Promise<ProjectBindingSnapshot | null> {
     if (templateVersionId === null) return null;
-    const snapshot = await this.bindings.findSnapshot(projectId);
+    const snapshot = await this.bindings.findSnapshot(projectId, tx);
     if (snapshot === null || snapshot.backfilled || snapshot.projectId !== projectId
       || snapshot.templateVersionId !== templateVersionId) return null;
-    const binding = await this.bindings.findBinding(snapshot.bindingId);
+    const binding = await this.bindings.findBinding(snapshot.bindingId, tx);
     if (binding === null || binding.templateVersionId !== templateVersionId
       || binding.teamVersionId !== snapshot.teamVersionId
       || binding.bindingHash !== snapshot.bindingHash
@@ -622,9 +623,9 @@ export class TemplateBindingService {
     return toSnapshotView(snapshot);
   }
 
-  async getFrozenTeachingBundle(projectId: string, templateVersionId: string) {
-    const snapshot = await this.findFrozenSnapshotForProject(projectId, templateVersionId);
-    const binding = snapshot ? await this.bindings.findBinding(snapshot.bindingId) : null;
+  async getFrozenTeachingBundle(projectId: string, templateVersionId: string, tx?: AuditTransaction) {
+    const snapshot = await this.findFrozenSnapshotForProject(projectId, templateVersionId, tx);
+    const binding = snapshot ? await this.bindings.findBinding(snapshot.bindingId, tx) : null;
     if (!binding?.bundlePayload || teachingValueDigest(binding.bundlePayload) !== snapshot?.bundleDigest) {
       throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '项目缺少可核验的冻结教学配置' });
     }

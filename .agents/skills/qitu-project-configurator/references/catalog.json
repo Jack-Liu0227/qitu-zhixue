@@ -1,6 +1,6 @@
 {
-  "contractVersion": "1.1.0",
-  "operationsDigest": "883d009994974fa7a4766fca569c51c5c202a4eb4ae828f0fd9bec4e7de9e8d6",
+  "contractVersion": "1.2.0",
+  "operationsDigest": "c096dff4df2d6c02be4f6fe89968c4fb6aaf196cff1f87399bc05edda4d061af",
   "resources": [
     {
       "resource": "references/protocol.md",
@@ -12,7 +12,9 @@
       "description": "助手字段、模型和能力绑定",
       "operations": [
         "assistant.create",
-        "assistant.update"
+        "assistant.update",
+        "assistant.test",
+        "assistant.delete"
       ]
     },
     {
@@ -22,7 +24,9 @@
         "team.create",
         "team.update",
         "workflow.update",
-        "team.version"
+        "team.version",
+        "team.test",
+        "team.delete"
       ]
     },
     {
@@ -36,7 +40,12 @@
         "binding.draft",
         "binding.validate",
         "binding.activate",
-        "binding.retire"
+        "binding.retire",
+        "template.test",
+        "template.verify",
+        "template.publish",
+        "template.archive",
+        "template.delete"
       ]
     },
     {
@@ -45,7 +54,9 @@
       "operations": [
         "skill.create",
         "skill.publish",
-        "skill.revoke"
+        "skill.revoke",
+        "skill.test",
+        "skill.delete"
       ]
     },
     {
@@ -54,7 +65,9 @@
       "operations": [
         "mcp.register",
         "mcp.update",
-        "ima.configure"
+        "ima.configure",
+        "mcp.test",
+        "mcp.delete"
       ]
     },
     {
@@ -63,7 +76,10 @@
       "operations": [
         "knowledge.create",
         "knowledge.bind",
-        "knowledge.configure"
+        "knowledge.configure",
+        "knowledge.test",
+        "knowledge.update",
+        "knowledge.delete"
       ]
     },
     {
@@ -72,7 +88,8 @@
       "operations": [
         "model.provider",
         "model.create",
-        "model.update"
+        "model.update",
+        "model.test"
       ]
     },
     {

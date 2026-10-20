@@ -1,5 +1,5 @@
 import { OPTICS_16_SESSION_TEMPLATE_SPEC, OPTICS_PHASES } from '@qitu/ai-client/quiz-bank';
-import type { TeachingBundleDraft } from '@qitu/contracts';
+import type { ProjectTemplateSpec, TeachingBundleDraft } from '@qitu/contracts';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { TeachingBundleCatalog } from './teaching-bundle.catalog';
 import type { PlatformRegistryService } from '../platform-registry/platform-registry.service';
@@ -8,8 +8,7 @@ import type { KnowledgeCenterService } from '../knowledge/knowledge-center.servi
 import type { KnowledgeToolCatalogService } from '../knowledge/knowledge-tool-catalog.service';
 
 /** Synthetic catalogs only; no provider calls, credentials or learner facts. */
-export function opticsTeachingFixture() {
-  const template = OPTICS_16_SESSION_TEMPLATE_SPEC;
+export function opticsTeachingFixture(template: ProjectTemplateSpec = OPTICS_16_SESSION_TEMPLATE_SPEC) {
   const assistantIds = [...new Set(OPTICS_PHASES.map((phase) => phase.assignedAssistantId)
     .filter((id): id is string => id !== null))];
   const members = assistantIds.map((assistantId, index) => ({ slotId: `member-${index}`, assistantId }));

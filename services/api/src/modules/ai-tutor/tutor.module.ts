@@ -27,6 +27,8 @@ import { TutorQuizService } from './tutor-quiz.service';
 import { TutorExperimentService } from './tutor-experiment.service';
 import { WorksModule } from '../works/works.module';
 import { TutorTeamHistoryService } from './tutor-team-history.service';
+import { TutorLessonAssessmentService } from './tutor-lesson-assessment.service';
+import { TutorLessonAssessmentController } from './tutor-lesson-assessment.controller';
 
 /**
  * AI 搭档模块。
@@ -45,7 +47,7 @@ import { TutorTeamHistoryService } from './tutor-team-history.service';
  */
 @Module({
   imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule, TeacherModule, WorksModule],
-  controllers: [TutorController],
+  controllers: [TutorController, TutorLessonAssessmentController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
     TutorService,
@@ -53,6 +55,7 @@ import { TutorTeamHistoryService } from './tutor-team-history.service';
     TutorQuizService,
     TutorExperimentService,
     TutorTeamHistoryService,
+    TutorLessonAssessmentService,
     {
       provide: TutorQuizStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

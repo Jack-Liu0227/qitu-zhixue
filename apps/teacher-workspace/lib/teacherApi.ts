@@ -7,6 +7,10 @@ import type {
   TeacherInterventionActionRequest,
   TeacherInterventionActionResponse,
   TeacherStatisticsPageData,
+  TeacherArtifactReviewPage,
+  TeacherArtifactVersionView,
+  TeacherReviewDecisionRequest,
+  TeacherReviewDecisionResponse,
 } from '@qitu/contracts';
 import type { TeamActivityItem, TeamRunNode } from '@qitu/ui';
 
@@ -54,11 +58,12 @@ async function post<T>(path: string, body: unknown, idempotencyKey: string): Pro
     if (response.status === 0) throw new TeacherOfflineError();
     const errorBody = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string };
+      detail?: string; message?: string; code?: string;
     } | null;
     const error = new ApiError(
-      errorBody?.error?.message ?? '请求失败',
+      errorBody?.detail ?? errorBody?.message ?? errorBody?.error?.message ?? '请求失败',
       response.status,
-      errorBody?.error?.code,
+      errorBody?.code ?? errorBody?.error?.code,
     );
     throw error;
   }
@@ -72,6 +77,12 @@ function readErrorStatus(error: unknown): number | undefined {
 }
 
 export const teacherApi = {
+  artifactReviews: (studentId: string, offset = 0) =>
+    get<{ data: TeacherArtifactReviewPage }>(`/api/v1/teacher/students/${encodeURIComponent(studentId)}/reviews?offset=${offset}&limit=20`),
+  artifactVersions: (artifactId: string) =>
+    get<{ data: TeacherArtifactVersionView[] }>(`/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions`),
+  decideArtifactReview: (reviewId: string, request: TeacherReviewDecisionRequest, idempotencyKey: string) =>
+    post<{ data: TeacherReviewDecisionResponse }>(`/api/v1/teacher/reviews/${encodeURIComponent(reviewId)}/decision`, request, idempotencyKey),
   roster: () => get<{ data: TeacherRosterPageData }>('/api/v1/teacher/roster'),
   studentDetail: (studentId: string) =>
     get<{ data: TeacherStudentDetail }>(

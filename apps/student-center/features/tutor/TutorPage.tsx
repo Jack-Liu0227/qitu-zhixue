@@ -11,13 +11,14 @@ import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
-import { CurrentLessonCard } from './components/CurrentLessonCard';
+import { CurrentLessonCard, LessonLearningWorkspace } from './components/CurrentLessonCard';
 import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
 import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
+import { LessonAssessmentCard } from './components/LessonAssessmentCard';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
@@ -232,6 +233,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         }}
       />
       <div className="qitu-tutor-center-column">
+        {session.projectRefreshError ? <div role="alert" className="qitu-tutor-inline-alert">
+          {session.projectRefreshError.message}<button type="button" onClick={() => { void session.refreshProjectContext(); }}>重新读取课时</button>
+        </div> : null}
         {error ? <div role="alert" className="qitu-tutor-inline-alert">{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
         <ChatThread
           sessionId={session.sessionId}
@@ -260,6 +264,13 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
           onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
           projectId={projectSummary?.id ?? null}
+          learningActivity={projectSummary && session.project?.lesson ? <><LessonAssessmentCard
+            key={`${projectSummary.id}:${session.project.lesson.planId}:${session.project.lesson.planRevision}:${session.project.lesson.learningSessionId}`}
+            projectId={projectSummary.id} lesson={session.project.lesson} disabled={!ready || busy || confirming || session.offline}
+            onChanged={session.refreshProjectContext}
+          /><LessonLearningWorkspace projectId={projectSummary.id} lesson={session.project.lesson}
+            refreshKey={session.project} disabled={!ready || busy || confirming || session.offline}
+            onProgressChanged={session.refreshProjectContext} /></> : null}
           isConfirmingProject={confirming}
           composer={
             <Composer
@@ -304,7 +315,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               <ProjectCard project={projectSummary} />
               <TutorTeamRail phases={session.project.phases ?? []} />
               <CurrentTask task={session.project.currentTask} />
-              <CurrentLessonCard lesson={session.project.lesson ?? null} />
+              <CurrentLessonCard projectId={projectSummary.id} lesson={session.project.lesson ?? null}
+                refreshKey={session.project} onProgressChanged={session.refreshProjectContext}
+                disabled={!ready || busy || confirming || session.offline} />
             </>
           ) : (
             <div className="qitu-tutor-state-panel" role="status"><strong>自由探索中</strong><p>尚未创建正式项目。项目进度会在你确认想法并创建后显示。</p></div>

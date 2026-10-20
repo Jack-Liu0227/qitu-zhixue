@@ -127,7 +127,7 @@ export function generatePlanFromTemplate(
     title: `${input.interest} - ${spec.title}`,
     interest: input.interest,
     goal: input.goal?.trim() || spec.description,
-    curriculumSlug: input.curriculumSlug,
+    curriculumSlug: input.curriculumSlug ?? spec.id,
     modules,
     objectives,
     sessions,

@@ -1,5 +1,7 @@
 # 配置管家的模块参考与读取工具
 
+> 本文保留 1.1.0、27 项动作阶段的实现与验证记录。后续 1.2.0、44 项动作的生命周期扩展及当前边界见 [生命周期测试报告](./copilot-lifecycle-verification-20261021.md)。
+
 ## 配置手册
 
 入口为 [qitu-project-configurator/SKILL.md](../../../.agents/skills/qitu-project-configurator/SKILL.md)。参考 research-steward 的模块手册与只读资源读取方式，并按启途真实 API、动作目录、权限和领域 owner 编写内容。

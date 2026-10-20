@@ -3,6 +3,7 @@ import {
   assertOpticsObjectiveTypePolicy,
   OPTICS_GATED_OBJECTIVE_IDS,
   OPTICS_16_SESSION_TEMPLATE_SPEC,
+  OPTICS_16_COMPLETION_TEMPLATE_SPEC,
   OPTICS_OBJECTIVES,
   OPTICS_PHASES,
   OPTICS_WAVE_MODULES,
@@ -123,3 +124,19 @@ export function assertOpticsTemplateStructure(): void {
     throw new Error('Optics template is missing its rubric or bootstrap identity');
   }
 }
+
+export const OPTICS_16_COMPLETION_TEMPLATE_SLUG = 'optics-physical-inquiry-16s-completion';
+export const OPTICS_16_COMPLETION_BOOTSTRAP_KEY = 'optics-physical-inquiry:16s-v3-completion';
+const completionSessions = OPTICS_16_COMPLETION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions;
+export const OPTICS_16_COMPLETION_VERSION_INPUT: CreateTemplateVersionInput = {
+  ...OPTICS_16_VERSION_INPUT,
+  content: { ...opticsVersionContent, bootstrapKey: OPTICS_16_COMPLETION_BOOTSTRAP_KEY,
+    pbl: OPTICS_16_COMPLETION_TEMPLATE_SPEC,
+    modules: completionSessions.map((session) => ({ id: `m${session.sessionIndex}`, lessonIndex: session.sessionIndex,
+      title: session.title, phase: session.phase, objectiveIds: session.objectiveIds, minutes: session.durationMinutes })),
+  },
+};
+export const OPTICS_16_COMPLETION_TEMPLATE_INPUT: CreateTemplateInput = {
+  ...OPTICS_16_TEMPLATE_INPUT,
+  slug: OPTICS_16_COMPLETION_TEMPLATE_SLUG,
+};

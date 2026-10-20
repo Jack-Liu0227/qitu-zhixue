@@ -373,3 +373,21 @@ export const masteryAttempts = pgTable(
     ),
   }),
 );
+
+/** Immutable completion receipts. A plan revision never inherits another revision's completion. */
+export const learningSessionProgress = pgTable('learning_session_progress', {
+  id: text('id').primaryKey(),
+  studentUserId: text('student_user_id').notNull().references(() => users.id),
+  projectId: text('project_id').notNull().references(() => projects.id),
+  planId: text('plan_id').notNull().references(() => learningPlans.id, { onDelete: 'cascade' }),
+  planRevision: integer('plan_revision').notNull(),
+  learningSessionId: text('learning_session_id').notNull().references(() => learningSessions.id, { onDelete: 'cascade' }),
+  evidenceRefs: jsonb('evidence_refs').$type<string[]>().notNull(),
+  idempotencyKey: text('idempotency_key').notNull(),
+  requestHash: text('request_hash').notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }).notNull(),
+}, (table) => ({
+  sessionRevisionUnique: uniqueIndex('learning_session_progress_session_revision_unique').on(table.planId, table.planRevision, table.learningSessionId),
+  keyUnique: uniqueIndex('learning_session_progress_key_unique').on(table.idempotencyKey),
+  revisionPositive: check('learning_session_progress_revision_positive', sql`${table.planRevision} > 0`),
+}));

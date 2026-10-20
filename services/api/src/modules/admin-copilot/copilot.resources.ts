@@ -2,8 +2,9 @@ import { ForbiddenException, ConflictException, Inject, Injectable, NotFoundExce
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, realpath, writeFile, rename, unlink, stat } from 'node:fs/promises';
 import { join, relative, isAbsolute } from 'node:path';
-import { eq } from 'drizzle-orm';
-import { runtimeMcpServers, adminTeamVersions, type Database } from '@qitu/database';
+import { eq, sql } from 'drizzle-orm';
+import { runtimeMcpServers, adminTeamVersions, adminAssistants, agentMcpBindings, type Database } from '@qitu/database';
+import { archiveTeachingSkill } from './copilot.skill-archive';
 import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, type CurrentUser } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -38,6 +39,37 @@ export class CopilotResources {
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     private readonly audit: AuditWriter,
   ) {}
+
+  async deleteSkill(actor: CurrentUser, input: Record<string, unknown>, key: string) {
+    const id = await archiveTeachingSkill(actor, input, key, this.audit);
+    return { ...await this.readSkill(actor, id), deleted: true, deletionMode: 'soft' };
+  }
+
+  async deleteMcp(actor: CurrentUser, id: string, key: string) {
+    if (actor.role !== 'admin') throw new ForbiddenException('Admin required');
+    if (!/^[a-z][a-z0-9-]*$/.test(id) || id === 'ima-knowledge') invalid('内置 IMA 请使用停用，不允许删除');
+    if (!this.db) throw new ServiceUnavailableException('MCP 存储不可用');
+    await this.db.transaction(async tx => {
+      const [current] = await tx.select().from(runtimeMcpServers).where(eq(runtimeMcpServers.id, id)).for('update');
+      if (!current) throw new NotFoundException('MCP 不存在');
+      if (current.enabled || current.secretRef) throw new ConflictException('已启用或带驱动凭据的 MCP 须由其 owner 管理');
+      const assistants = await tx.select({ id: adminAssistants.id }).from(adminAssistants).where(sql`${adminAssistants.mcpServerIds} @> ${JSON.stringify([id])}::jsonb`).limit(1);
+      const agents = await tx.select({ id: agentMcpBindings.agentId }).from(agentMcpBindings).where(eq(agentMcpBindings.mcpServerId, id)).limit(1);
+      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(sql`${adminTeamVersions.members} @> ${JSON.stringify([{ runtimeSnapshot: { mcpPermissions: [{ serverId: id }] } }])}::jsonb`).limit(1);
+      if (assistants.length || agents.length || versions.length) throw new ConflictException({ code: 'MCP_IN_USE', message: 'MCP 仍被助手、Agent 或冻结团队引用，请先解除关联' });
+      await tx.delete(runtimeMcpServers).where(eq(runtimeMcpServers.id, id));
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.copilot.mcp.delete',
+        targetType: 'runtime_mcp_server', targetId: id, idempotencyKey: key, detail: { deletionMode: 'registration_only' } }, tx);
+    });
+    return { id, deleted: true, deletionMode: 'registration_only' };
+  }
+
+  async assertMcpDeleted(id: string) {
+    if (!this.db) throw new ServiceUnavailableException('MCP 存储不可用');
+    const [current] = await this.db.select().from(runtimeMcpServers).where(eq(runtimeMcpServers.id, id));
+    if (current) throw new ConflictException('MCP 删除尚未确认');
+    return { id, deleted: true, deletionMode: 'registration_only' };
+  }
 
   /** Current catalog facts only; prior mutation receipts are never evidence of current publication. */
   async readSkill(actor: CurrentUser, id: string) {

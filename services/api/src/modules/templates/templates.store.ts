@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { AuditTransaction } from '../../common/audit/audit.service';
 import type {
   CreateTemplateInput,
   CreateTemplateVersionInput,
@@ -22,6 +23,9 @@ export interface TemplateListFilter {
   /** 可见性集合：`null` = 仅平台；否则 = 平台 ∪ 该校。 */
   visibleToSchoolId?: string | null;
 }
+
+/** Server-owned audit callback runs before the deletion transaction commits. */
+export type TemplateDeleteCommit = (tx?: AuditTransaction) => Promise<void>;
 
 export interface CreateTemplateRecordInput extends CreateTemplateInput {
   id: string;
@@ -67,7 +71,7 @@ export abstract class TemplateStore {
   ): Promise<ProjectTemplateRecord>;
 
   abstract listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]>;
-  abstract deleteTemplate(id: string): Promise<boolean>;
+  abstract deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean>;
   abstract findVersion(versionId: string): Promise<ProjectTemplateVersionRecord | null>;
   abstract nextVersionLabel(templateId: string): Promise<string>;
   abstract createVersion(input: CreateVersionRecordInput): Promise<ProjectTemplateVersionRecord>;
@@ -198,7 +202,8 @@ export class InMemoryTemplateStore extends TemplateStore {
     return cloneTemplate(record);
   }
 
-  async deleteTemplate(id: string): Promise<boolean> {
+  async deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean> {
+    await beforeCommit?.();
     this.templates.delete(id);
     for (const [vId, v] of this.versions.entries()) {
       if (v.templateId === id) this.versions.delete(vId);

@@ -3,7 +3,7 @@ import type { AdminCopilotActionKind, CurrentUser, UpsertProviderRequest } from 
 import { MODEL_APIS } from '../model-registry/manual-model.validation';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { parseAssistantCreate, parseAssistantUpdate, parseTeamCreate, parseTeamUpdate } from '../platform-registry/admin-ai-config.validation';
-import { ImaSettingsService, parseImaPatch } from '../platform-registry/ima-settings.service';
+import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { TeamVersionService } from '../platform-registry/team-version.service';
 import { GrowthProjectionSettingsService } from '../growth/growth-projection-settings.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
@@ -16,6 +16,7 @@ import { ModelRegistryService, type CreateManualModelInput, type UpdateManualMod
 import { CopilotResources } from './copilot.resources';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { exact, invalid, object, text } from './copilot.protocol';
+import { CopilotLifecycle, isLifecycleKind } from './copilot.lifecycle';
 
 /** Each adapter delegates validation, persistence, audit and authorization to its domain owner. */
 @Injectable()
@@ -30,10 +31,15 @@ export class CopilotOperations {
     @Optional() readonly bindings?: TemplateBindingService,
     @Optional() readonly growthSettings?: GrowthProjectionSettingsService,
     @Optional() readonly teamVersions?: TeamVersionService,
+    @Optional() readonly lifecycle?: CopilotLifecycle,
   ) {}
 
   async execute(actor: CurrentUser, kind: AdminCopilotActionKind, input: Record<string, unknown>, key: string): Promise<unknown> {
     if (actor.role !== 'admin') throw new ForbiddenException('管家配置仅管理员可用');
+    if (isLifecycleKind(kind)) {
+      if (!this.lifecycle) throw new ServiceUnavailableException('生命周期管理 owner 不可用');
+      return this.lifecycle.execute(actor, kind, input, key);
+    }
     if (kind.startsWith('binding.')) return executeBinding(this.bindings, actor, kind, input, key);
     const id = () => text(input.id, 'id');
     const patch = () => object(input.patch);
@@ -92,7 +98,16 @@ export class CopilotOperations {
       case 'skill.revoke': return this.resources.revokeSkill(actor, input, key);
       case 'mcp.register': return this.resources.saveMcp(actor, input, true);
       case 'mcp.update': return this.resources.saveMcp(actor, input, false);
-      case 'ima.configure': return this.ima.update(actor, parseImaPatch(input));
+      case 'ima.configure': {
+        exact(input, ['expectedRevision', 'enabled']);
+        if (!Number.isInteger(input.expectedRevision) || typeof input.enabled !== 'boolean') invalid('IMA 需要当前平台 revision 与 enabled');
+        const current = await this.knowledge.configuration();
+        const engine = current.config.knowledgeEngines['ima-main'];
+        if (!engine || engine.provider !== 'ima') invalid('IMA 引擎未配置，请先通过知识中心配置');
+        return this.knowledge.save(actor, { expectedRevision: input.expectedRevision,
+          config: { ...current.config, knowledgeEngines: { ...current.config.knowledgeEngines,
+            'ima-main': { ...engine, enabled: input.enabled } } } }, key);
+      }
       case 'knowledge.create': return this.knowledge.createBase(actor, input, key);
       case 'knowledge.bind':
         exact(input, ['id', 'expectedRevision', 'bindings']);
@@ -151,6 +166,10 @@ export class CopilotOperations {
 
   /** Readback is deliberately outside the mutation idempotency record. A failed read can be retried without recreating. */
   async readback(actor: CurrentUser, kind: AdminCopilotActionKind, raw: unknown): Promise<unknown> {
+    if (isLifecycleKind(kind)) {
+      if (!this.lifecycle) throw new ServiceUnavailableException('生命周期管理 owner 不可用');
+      return this.lifecycle.readback(actor, kind, raw);
+    }
     const result = object(raw);
     const find = <T extends { id: string }>(rows: T[]) => {
       const item = rows.find(r => r.id === result.id);

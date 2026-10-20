@@ -50,7 +50,7 @@ export class TutorExperimentService {
     const actor = { id: actorId, role: 'student' as const, email: '', displayName: '' };
     if (!this.mastery || !await this.mastery.checkRequiredObjectives(actor, actorId, plan.plan.id, session.theoryObjectiveIds, this.plans)) this.reject('GATE_REQUIRED', '尚无有效的理论掌握证据');
     const validated = validateTutorExperimentAction(candidate.mode, 'run', { mode: candidate.mode, parameters: candidate.parameters });
-    const frozenScope = await this.scope(project.id, actorId, session.lessonIndex);
+    const frozenScope = await this.scope(project.id, actorId, session.lessonIndex, scope.objectiveId);
     if (!frozenScope || frozenScope.planRevision !== scope.planRevision || frozenScope.learningSessionId !== scope.learningSessionId) this.reject('REVISION_CHANGED', '课时状态已变化');
     return {
       kind: 'optics_experiment', experimentId: `optics-${hashRequest({ scope, key }).slice(0, 32)}`,
@@ -62,7 +62,7 @@ export class TutorExperimentService {
     };
   }
 
-  async scope(projectId: string, studentId: string, lessonIndex: number): Promise<ExperimentBlock['scope']> {
+  async scope(projectId: string, studentId: string, lessonIndex: number, requestedObjectiveId?: string): Promise<ExperimentBlock['scope']> {
     const project = await this.plans.findProject(projectId);
     if (!project || project.studentId !== studentId || !project.templateVersionId) return undefined;
     const plan = (await this.plans.listPlansByStudent(studentId)).find((entry) => entry.projectId === projectId);
@@ -72,9 +72,18 @@ export class TutorExperimentService {
     if (!session) return undefined;
     const teaching = await this.bindings.getFrozenTeachingBundle(projectId, project.templateVersionId);
     const profile = teaching.template.curriculum?.profiles.find((entry) => entry.id === teaching.scheduleProfileId);
-    if (!profile?.sessions.some((entry) => entry.sessionIndex === lessonIndex)) return undefined;
+    const lesson = profile?.sessions.find((entry) => entry.sessionIndex === lessonIndex);
+    if (!profile || !lesson || session.id !== `${plan.id}:${lesson.id}`) return undefined;
+    const objectiveIds = lesson.objectiveIds.map((id) => `${plan.id}:${id}`);
+    const objectiveId = requestedObjectiveId ?? (objectiveIds.length === 1 ? objectiveIds[0] : undefined);
+    if (!objectiveId || !objectiveIds.includes(objectiveId)) return undefined;
+    if (profile.sessions.every((entry) => entry.completionSpec?.version === 'learning-session-completion.v1')) {
+      const completed = new Set((await this.plans.listSessionCompletions(plan.id, plan.version)).map((entry) => entry.learningSessionId));
+      const current = [...bundle!.sessions].sort((left, right) => left.index - right.index).find((entry) => !completed.has(entry.id));
+      if (current?.id !== session.id) return undefined;
+    }
     return {
-      planId: plan.id, planRevision: plan.version, learningSessionId: session.id,
+      planId: plan.id, planRevision: plan.version, learningSessionId: session.id, objectiveId,
       rubricRef: `rubric:${project.templateVersionId}:${teaching.template.rubricId}`,
       cerRef: 'cer:claim-evidence-reasoning:v1',
     };
@@ -96,10 +105,13 @@ export class TutorExperimentService {
       || block.sessionIndex < 1 || !['optics.wave.diffraction', 'optics.wave.scattering'].includes(block.objectiveId)) {
       this.reject('PROTOCOL_REQUIRED', '实验协议需要更新，请重新打开课件');
     }
-    const currentScope = await this.scope(project.id, actorId, block.sessionIndex);
-    if (!block.scope || !currentScope || hashRequest(currentScope) !== hashRequest(block.scope)) {
+    const currentScope = await this.scope(project.id, actorId, block.sessionIndex, block.scope?.objectiveId);
+    // Older cards may omit the target only when the actual frozen lesson has exactly one objective.
+    const submittedScope = block.scope && { ...block.scope, objectiveId: block.scope.objectiveId ?? currentScope?.objectiveId };
+    if (!submittedScope || !currentScope?.objectiveId || hashRequest(currentScope) !== hashRequest(submittedScope)) {
       this.reject('REVISION_CHANGED', '学习计划已变化，请重新打开课件');
     }
+    const learningObjectiveId = currentScope.objectiveId;
     await this.assertDynamicAccess(actorId, record.projectId, block);
     const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload);
     if (block.allowedModels && !block.allowedModels.includes(validated.auditPayload.mode as 'diffraction' | 'scattering')) {
@@ -138,7 +150,7 @@ export class TutorExperimentService {
       if (run && parameters && parameterDigest) {
         const observationId = `obs-${actionId}`;
         observationReceipt = await this.evidence.saveExperimentObservation({
-          studentId: actorId, objectiveId: `optics.wave.${validated.auditPayload.mode}`, parameters, observation: (payload.observation as string).trim(),
+          studentId: actorId, objectiveId: learningObjectiveId, parameters, observation: (payload.observation as string).trim(),
           receipt: {
             observationId, experimentId, evidenceRef: `experiment_observation:${observationId}`,
             projectId: project.id, sessionId: record.sessionId, ...currentScope,

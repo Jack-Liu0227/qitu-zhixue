@@ -19,6 +19,8 @@ export interface TutorSessionApi {
   project: TutorProjectContext | null;
   projectStatus: TutorLoadStatus;
   projectError: TutorViewError | null;
+  projectRefreshError: TutorViewError | null;
+  refreshProjectContext: () => Promise<void>;
   sessionId: string | null;
   explorationId: string | null;
   turns: TutorTurn[];
@@ -75,9 +77,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
    * `project` 为 `null`。所以「是否有项目」一律看本值，不能看 `project === null`。
    */
   const activeProject = project?.project ?? null;
+  const activeProjectId = activeProject?.id ?? null;
   const [projectStatus, setProjectStatus] = useState<TutorLoadStatus>('loading');
   const [projectError, setProjectError] = useState<TutorViewError | null>(null);
   const [projectReloadKey, setProjectReloadKey] = useState(0);
+  const [projectRefreshError, setProjectRefreshError] = useState<TutorViewError | null>(null);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [explorationId, setExplorationId] = useState<string | null>(null);
@@ -101,6 +105,10 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
   const lastSeqRef = useRef(0);
   const sessionKeyRef = useRef<string | null>(null);
   const projectLoadGenerationRef = useRef(0);
+  const projectLoadPendingRef = useRef(true);
+  const projectRefreshGenerationRef = useRef(0);
+  const activeProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
   const sessionLoadGenerationRef = useRef(0);
   const inFlightRef = useRef(false);
   /** Local echo turns awaiting the server's own copy on the next session load. */
@@ -117,13 +125,42 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     return ids.reduce<TutorTurn[]>((accumulator, id) => dropTurn(accumulator, id), [...loaded]);
   }, []);
 
+  // Refresh only the server projection. The session identity and turn history
+  // remain intact; stale responses cannot overwrite a newer project or refresh.
+  const refreshProjectContext = useCallback(async () => {
+    if (activeProjectId === null || activeProjectIdRef.current !== activeProjectId) return;
+    const scope = projectLoadGenerationRef.current;
+    const generation = ++projectRefreshGenerationRef.current;
+    const current = () => scope === projectLoadGenerationRef.current
+      && generation === projectRefreshGenerationRef.current
+      && activeProjectIdRef.current === activeProjectId;
+    try {
+      const context = await dataSource.getProjectContext(activeProjectId);
+      if (!current()) return;
+      if (context?.project?.id !== activeProjectId) {
+        throw new TutorDataError('当前项目进度暂不可用，请重试刷新。', 409, 'PROJECT_CONTEXT_UNAVAILABLE');
+      }
+      setProject(context);
+      setProjectRefreshError(null);
+      setTransportOffline(false);
+    } catch (error) {
+      if (!current()) return;
+      const viewError = toViewError(error);
+      if (viewError.status === 403) setPermissionDenied(true);
+      if (viewError.code === 'NETWORK_OFFLINE') setTransportOffline(true);
+      setProjectRefreshError(viewError);
+    }
+  }, [activeProjectId, dataSource]);
+
   // Load the active project (or the routed project) context.
   useEffect(() => {
     let cancelled = false;
     const generation = ++projectLoadGenerationRef.current;
+    projectLoadPendingRef.current = true;
     setPermissionDenied(false);
     setProjectStatus('loading');
     setProjectError(null);
+    setProjectRefreshError(null);
     // A new project needs a fresh, idempotent session-creation key.
     sessionKeyRef.current = null;
 
@@ -134,6 +171,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
           new URLSearchParams(window.location.search).has('new');
 
         if (projectId === undefined && hasExplicitExploration) {
+          projectLoadPendingRef.current = false;
           setProject(null);
           setProjectStatus('empty');
           return;
@@ -141,6 +179,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         if (projectId !== undefined) {
           const context = await dataSource.getProjectContext(projectId);
           if (cancelled || generation !== projectLoadGenerationRef.current) return;
+          projectLoadPendingRef.current = false;
           setProject(context);
           setProjectStatus(context === null ? 'empty' : 'ready');
           return;
@@ -150,15 +189,18 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         if (active !== null) {
           const context = await dataSource.getProjectContext(active.id);
           if (cancelled || generation !== projectLoadGenerationRef.current) return;
+          projectLoadPendingRef.current = false;
           setProject(context);
           setProjectStatus(context === null ? 'empty' : 'ready');
           return;
         }
+        projectLoadPendingRef.current = false;
         setProject(null);
         setProjectStatus('empty');
       } catch (error) {
         if (cancelled || generation !== projectLoadGenerationRef.current) return;
         const viewError = toViewError(error);
+        projectLoadPendingRef.current = false;
         if (viewError.status === 403) setPermissionDenied(true);
         if (viewError.code === 'NETWORK_OFFLINE') setTransportOffline(true);
         setProjectError(viewError);
@@ -169,6 +211,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     void load();
     return () => {
       cancelled = true;
+      projectLoadGenerationRef.current += 1;
     };
   }, [dataSource, projectId, projectReloadKey, explorationKey]);
 
@@ -176,16 +219,16 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
   useEffect(() => {
     const generation = ++sessionLoadGenerationRef.current;
     if (
-      projectStatus === 'loading' ||
+      projectLoadPendingRef.current || projectStatus === 'loading' ||
       projectStatus === 'error' ||
-      (activeProject === null && projectId !== undefined)
+      (activeProjectId === null && projectId !== undefined)
     ) {
       // No session without a ready project. The left context panel owns the
       // project's loading/empty/error surface; mirror that state into the
       // conversation area so it never lies: a failed project load is an error
       // (retryable), not an empty thread inviting the student to chat.
       const sessionState: TutorLoadStatus =
-        projectStatus === 'loading' ? 'loading' : projectStatus === 'error' ? 'error' : 'empty';
+        projectLoadPendingRef.current || projectStatus === 'loading' ? 'loading' : projectStatus === 'error' ? 'error' : 'empty';
       setSessionStatus(sessionState);
       setSessionError(projectStatus === 'error' ? projectError : null);
       setTurns([]);
@@ -216,11 +259,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
       try {
         sessionKeyRef.current ??= createIdempotencyKey();
         const created = await dataSource.createSession({
-          ...(activeProject === null ? {} : { projectId: activeProject.id }),
-          ...(activeProject === null && new URLSearchParams(window.location.search).get('explorationId')
+          ...(activeProjectId === null ? {} : { projectId: activeProjectId }),
+          ...(activeProjectId === null && new URLSearchParams(window.location.search).get('explorationId')
             ? { explorationId: new URLSearchParams(window.location.search).get('explorationId')! }
             : {}),
-          source: activeProject === null ? 'exploration' : 'project',
+          source: activeProjectId === null ? 'exploration' : 'project',
           idempotencyKey: sessionKeyRef.current,
         });
         const session = await dataSource.getSession(created.sessionId);
@@ -229,7 +272,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         setTransportOffline(false);
         setSessionId(session.sessionId);
         setExplorationId(session.explorationId);
-        if (session.explorationId !== null && activeProject === null) {
+        if (session.explorationId !== null && activeProjectId === null) {
           const url = new URL(window.location.href);
           url.searchParams.set('explorationId', session.explorationId);
           window.history.replaceState(null, '', url);
@@ -252,7 +295,8 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     };
   }, [
     dataSource,
-    project,
+    activeProjectId,
+    projectId,
     projectStatus,
     projectError,
     sessionReloadKey,
@@ -272,7 +316,10 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
         if (!active) return;
         lastSeqRef.current = Math.max(lastSeqRef.current, event.seq);
         setTurns((previous) => applyServerEventToTurns(previous, event));
-        if (event.type === 'turn.done') setStreaming(false);
+        if (event.type === 'turn.done') {
+          setStreaming(false);
+          void refreshProjectContext();
+        }
         if (event.type === 'escalation.notice') setEscalated(true);
         if (event.type === 'safety.block') {
           // The turn ended without a `turn.done`; waiting would spin forever.
@@ -296,7 +343,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
       client.disconnect();
       if (realtimeRef.current === client) realtimeRef.current = null;
     };
-  }, [dataSource, sessionId]);
+  }, [dataSource, sessionId, refreshProjectContext]);
 
   // Browser connectivity (offline state is distinct from a server error).
   useEffect(() => {
@@ -406,9 +453,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     async (quizId: string, selectedKeys: string[], idempotencyKey: string) => {
       if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
       if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
-      return dataSource.answerInteractiveQuiz(sessionId, quizId, { selectedKeys, idempotencyKey });
+      const result = await dataSource.answerInteractiveQuiz(sessionId, quizId, { selectedKeys, idempotencyKey });
+      await refreshProjectContext();
+      return result;
     },
-    [browserOffline, dataSource, sessionId, transportOffline],
+    [browserOffline, dataSource, sessionId, transportOffline, refreshProjectContext],
   );
 
   const explainQuiz = useCallback(
@@ -424,9 +473,11 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     async (experimentId: string, request: TutorExperimentActionRequest) => {
       if (sessionId === null) throw new TutorDataError('教学会话尚未连接', undefined, 'SESSION_NOT_READY');
       if (browserOffline || transportOffline) throw new TutorDataError('网络已断开，请恢复连接后重试', undefined, 'NETWORK_OFFLINE');
-      return dataSource.submitExperimentAction(sessionId, experimentId, request);
+      const result = await dataSource.submitExperimentAction(sessionId, experimentId, request);
+      await refreshProjectContext();
+      return result;
     },
-    [browserOffline, dataSource, sessionId, transportOffline],
+    [browserOffline, dataSource, sessionId, transportOffline, refreshProjectContext],
   );
 
   const submitFeedback = useCallback(
@@ -464,6 +515,8 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
     project,
     projectStatus,
     projectError,
+    projectRefreshError,
+    refreshProjectContext,
     sessionId,
     explorationId,
     turns,

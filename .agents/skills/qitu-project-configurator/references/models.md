@@ -32,3 +32,5 @@
 | PATCH /api/v1/admin/model-usages/:usageId | 后台专用用途配置，当前未进入管家 action |
 
 回读目录中真实 provider/model 对、enabled、available、模态；保存目录不等于请求测试成功。新模型未出现在可用目录时不引用它发布团队。模型更换后，既有冻结团队与学生项目继续依各自版本合同运行。
+
+`model.test {providerId,modelId}` 已接入原模型探测 owner，使用固定安全请求。失败返回失败检查，不返回“已保存”。同一请求的探测回执可复用；配置变动后要求新请求重测。提供商或模型删除仍由模型工作区原 owner 管理，当前不提供 model.delete/provider.delete 管家动作。

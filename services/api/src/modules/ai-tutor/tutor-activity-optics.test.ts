@@ -37,6 +37,7 @@ test('optics candidate is owned by actual frozen lesson/model and bounded parame
   assert.deepEqual(block.allowedModels, ['diffraction']);
   assert.equal(block.scope?.learningSessionId, 'plan:session-11');
   assert.equal(block.scope?.planRevision, 3);
+  assert.equal(block.scope?.objectiveId, 'plan:measure');
   assert.equal(block.experimentId, (await h.owner.propose('student', h.scope, h.candidate, 'key')).experimentId);
   await assert.rejects(h.owner.propose('other-student', h.scope, h.candidate, 'key'));
   await assert.rejects(h.owner.propose('student', { ...h.scope, planRevision: 2 }, h.candidate, 'key'));
@@ -44,6 +45,14 @@ test('optics candidate is owned by actual frozen lesson/model and bounded parame
   await assert.rejects(h.owner.propose('student', h.scope, { ...h.candidate, parameters: { ...h.candidate.parameters, slitWidth: 1 } }, 'key'));
   h.lesson.interactiveSpec.enabled = false;
   await assert.rejects(h.owner.propose('student', h.scope, h.candidate, 'key'));
+});
+
+test('multi-objective lessons require the explicit frozen target and never infer it from model domain', async () => {
+  const h = fixture();
+  h.lesson.objectiveIds.push('compare');
+  assert.equal(await h.owner.scope('project', 'student', 11), undefined);
+  assert.equal((await h.owner.propose('student', { ...h.scope, objectiveId: 'plan:compare' }, h.candidate, 'selected')).scope?.objectiveId, 'plan:compare');
+  await assert.rejects(h.owner.propose('student', { ...h.scope, objectiveId: 'optics.wave.diffraction' }, h.candidate, 'domain-is-not-target'));
 });
 
 test('practice stage labels cannot substitute for current mastery owner evidence', async () => {

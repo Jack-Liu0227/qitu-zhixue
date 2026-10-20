@@ -258,6 +258,7 @@ export interface SubmitAnswerResponse {
 
 /** 实践证据请求：引用 + 可选摘要，服务端校验目标类型与理论门槛。 */
 export interface SubmitEvidenceRequest {
+  planRevision: number;
   objectiveId: string;
   evidenceRef: string;
   summary?: string | null;
@@ -269,4 +270,7 @@ export interface SubmitEvidenceResponse {
   theoryMastered: boolean;
   practiceUnlocked: boolean;
   replayed: boolean;
+  assessmentStatus?: 'assessment_required';
+  masteryUpdated?: false;
+  evidenceRef?: string;
 }

@@ -41,3 +41,11 @@ members 为 `{assistantId,role,slotId?,roleLabel?,pblPhase?}`。role 为 leader/
 | POST /api/v1/admin/teams/:id/versions | `{expectedUpdatedAt}`，带 Idempotency-Key |
 
 团队配置保存、团队版本发布、模板绑定激活和实际 Team Run 是独立状态。管家当前目录没有“执行团队任务”action，不把保存或发布回执写成团队已运行。
+
+## 测试与删除
+
+`team.test {id}` 检查真实成员运行时、负责人、PBL 工作流和阶段分配。它是配置测试，不创建学生项目或 Team Run。真实协作测试仍须使用已有项目冻结范围及原 team-runtime owner。
+
+`team.delete {id,expectedUpdatedAt}` 仅 global 可用。已有不可变团队版本或模板 linkedTeamId 引用时返回 TEAM_IN_USE，使用 team.update enabled:false 保留历史语义。删除无引用团队后回读目录确认消失；不会级联删除成员助手。
+
+直接 HTTP 为 `DELETE /api/v1/admin/ai-runtime/teams/:id`，带 Admin 会话和 Idempotency-Key；管家增加 revision 检查。

@@ -15,6 +15,8 @@ import { FeedbackModule } from '../feedback/feedback.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { WorksModule } from '../works/works.module';
+import { InMemoryWorksStore, WorksStore } from '../works/works.store';
 
 /**
  * 班主任工作台模块。
@@ -31,20 +33,21 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
  * `AuditWriter` / `IdempotencyStore` 由 `@Global()` 横切模块提供，这里不再 import。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule, LearningPlanStorageModule],
+  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule, LearningPlanStorageModule, WorksModule],
   controllers: [TeacherController],
   providers: [
     TeacherService,
     {
       provide: TeacherReviewRepository,
-      inject: [DATABASE_TOKEN, AuditWriter, DATA_MODE_TOKEN],
-      useFactory: (db: Database | null, audit: AuditWriter, mode: DataMode): TeacherReviewRepository => {
+      inject: [DATABASE_TOKEN, AuditWriter, DATA_MODE_TOKEN, WorksStore],
+      useFactory: (db: Database | null, audit: AuditWriter, mode: DataMode, works: WorksStore): TeacherReviewRepository => {
         if (db !== null) return new PostgresTeacherReviewRepository(db, audit);
         if (mode === 'live') {
           // DatabaseModule 理论上已 fail-fast；这里再挡一层，避免误配后批复不落库。
           throw new Error('live 模式缺少 DATABASE_URL：复核审批存储不可用');
         }
-        return new InMemoryTeacherReviewRepository(audit);
+        if (!(works instanceof InMemoryWorksStore)) throw new Error('Non-live reviews require the shared Works store');
+        return new InMemoryTeacherReviewRepository(audit, works);
       },
     },
   ],

@@ -258,19 +258,24 @@ export class TemplateGovernanceService {
     idempotencyKey: string,
   ): Promise<{ success: boolean; id: string }> {
     const { template } = await this.requireGovernableTemplate(actor, templateId);
+    const versions = await this.store.listVersions(templateId);
+    if (template.status !== 'draft' || versions.some(version => version.status !== 'draft')) {
+      throw new ConflictException({ code: 'TEMPLATE_DELETE_PROTECTED', message: '仅可删除未发布草稿；已有发布或历史语义的模板请使用归档' });
+    }
     const scope = `template.delete:${actor.id}:${templateId}`;
     const requestHash = hashIdempotentInput(scope, { templateId }, {});
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
-      await this.store.deleteTemplate(templateId);
-      await this.audit.write({
-        actorId: actor.id,
-        actorRole: actor.role,
-        action: 'template.delete',
-        targetType: 'project_template',
-        targetId: templateId,
-        idempotencyKey: `${scope}:${idempotencyKey}`,
-        reason: '管理员直接删除模板',
-        detail: { slug: template.slug, title: template.title },
+      await this.store.deleteTemplate(templateId, async tx => {
+        await this.audit.write({
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: 'template.delete',
+          targetType: 'project_template',
+          targetId: templateId,
+          idempotencyKey: `${scope}:${idempotencyKey}`,
+          reason: '管理员直接删除模板',
+          detail: { slug: template.slug, title: template.title },
+        }, tx);
       });
       return { status: 200, body: { success: true, id: templateId } };
     });

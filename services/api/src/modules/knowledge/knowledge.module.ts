@@ -90,6 +90,8 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     { provide: KnowledgeScopeAuthorizer, useClass: DefaultKnowledgeScopeAuthorizer },
   ],
   exports: [
+    KnowledgeLibraryService,
+    KnowledgeEngineService,
     KnowledgeToolCatalogService,
     KnowledgeService,
     RetrievalPort,

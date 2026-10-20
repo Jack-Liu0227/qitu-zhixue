@@ -11,6 +11,7 @@ import { InMemoryExplorationStore } from './exploration.store';
 import { ProjectsService } from './projects.service';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
 import type { TeamRuntimeService } from '../team-runtime/team-runtime.service.js';
+import type { LearningPlanService } from '../learning-plan/learning-plan.service';
 
 /* ------------------------------------------------------------------ *
  * 测试替身
@@ -95,6 +96,7 @@ function makeHarness(bindingOutcome: 'frozen' | 'omitted' | 'missing' = 'frozen'
     bindingOutcome === 'missing' ? undefined : {
       freezeProjectBinding: async () => bindingOutcome,
     } as unknown as TemplateBindingService,
+    { attachConfirmedProjectPlan: async () => 'plan-fixture' } as unknown as LearningPlanService,
   );
   return { service, store, idempotency, audit, gates };
 }

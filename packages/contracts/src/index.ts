@@ -86,3 +86,8 @@ export interface ReadinessResponse {
   };
 }
 export * from './tutor-history.js';
+export * from './tutor-learning.js';
+export * from './project-learning.js';
+
+export * from './learning-session-progress.js';
+export * from './learning-session-evidence.js';

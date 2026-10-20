@@ -19,6 +19,7 @@ import {
   type CreateTemplateRecordInput,
   type CreateVersionRecordInput,
   type TemplateListFilter,
+  type TemplateDeleteCommit,
 } from './templates.store';
 
 const PG_UNIQUE_VIOLATION = '23505';
@@ -181,14 +182,23 @@ export class PostgresTemplateStore extends TemplateStore {
     return mapTemplate(row);
   }
 
-  async deleteTemplate(id: string): Promise<boolean> {
+  async deleteTemplate(id: string, beforeCommit?: TemplateDeleteCommit): Promise<boolean> {
     try {
       return await withTransaction(this.db, async (tx) => {
         // Frozen references are restrictive; never rewrite historical project facts.
+        const [template] = await tx.select({ status: projectTemplates.status }).from(projectTemplates)
+          .where(eq(projectTemplates.id, id)).for('update');
+        if (!template) return false;
+        const versions = await tx.select({ status: projectTemplateVersions.status }).from(projectTemplateVersions)
+          .where(eq(projectTemplateVersions.templateId, id)).for('update');
+        if (template.status !== 'draft' || versions.some(version => version.status !== 'draft')) {
+          throw new TemplateStoreConflictError('模板已发布或状态已变化，请使用归档');
+        }
         await tx
           .delete(projectTemplateVersions)
           .where(eq(projectTemplateVersions.templateId, id));
         await tx.delete(projectTemplates).where(eq(projectTemplates.id, id));
+        await beforeCommit?.(tx);
         return true;
       });
     } catch (error) {

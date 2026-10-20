@@ -264,3 +264,30 @@ export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProject
     }],
   },
 });
+
+/** Completion rules have a new immutable identity; v2 remains unchanged. */
+export const OPTICS_16_COMPLETION_PROFILE_ID = 'optics-16x60-v3';
+export const OPTICS_16_COMPLETION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProjectTemplateSpec({
+  ...OPTICS_16_SESSION_TEMPLATE_SPEC,
+  id: 'pbl-optics-inquiry-16s-completion',
+  version: 'v3-16s-completion',
+  curriculum: { profiles: [{
+    id: OPTICS_16_COMPLETION_PROFILE_ID,
+    schedule: { lessonCount: 16, lessonMinutes: 60 },
+    sessions: OPTICS_16_SESSION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.map((session) => ({
+      ...session,
+      id: `optics-v3-session-${session.sessionIndex}`,
+      completionSpec: {
+        version: 'learning-session-completion.v1',
+        requiredMasteryObjectiveIds: session.phase === 'concept_mastery' ? [...session.objectiveIds] : [],
+        requiredEvidence: session.sessionIndex === 11 || session.sessionIndex === 12
+          ? [{ kind: 'experiment_observation', scope: 'session', minimumCount: 1 }]
+          : session.sessionIndex === 14
+            ? [{ kind: 'submitted_artifact', scope: 'session', minimumCount: 1 }, { kind: 'approved_artifact', scope: 'project', minimumCount: 1 }]
+            : session.sessionIndex === 16
+              ? [{ kind: 'session_response', scope: 'session', minimumCount: 1 }, { kind: 'approved_artifact', scope: 'project', minimumCount: 1 }]
+              : [{ kind: 'session_response', scope: 'session', minimumCount: 1 }],
+      },
+    })),
+  }] },
+});

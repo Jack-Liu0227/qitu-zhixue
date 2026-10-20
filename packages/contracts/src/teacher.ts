@@ -261,6 +261,28 @@ export interface ReplyTeacherFeedbackRequest {
  */
 export type TeacherReviewDecision = 'approved' | 'changes_requested' | 'rejected';
 
+export interface TeacherArtifactReviewItem {
+  reviewId: string;
+  artifactId: string;
+  projectId: string | null;
+  status: 'requested' | 'in_review' | 'approved' | 'changes_requested' | 'rejected';
+  artifactTitle: string;
+  artifactVersionId: string | null;
+  artifactVersionOrdinal: number | null;
+  versionAvailable: boolean;
+  requestedAt: string;
+}
+export interface TeacherArtifactReviewPage {
+  items: TeacherArtifactReviewItem[];
+  nextOffset: number | null;
+}
+export interface TeacherArtifactVersionView {
+  id: string;
+  ordinal: number;
+  title: string;
+  inlineText: string | null;
+}
+
 /**
  * `POST /api/v1/teacher/reviews/:reviewId/decision` 的请求体。
  *

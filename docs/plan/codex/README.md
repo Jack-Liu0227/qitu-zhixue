@@ -71,6 +71,7 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 
 ## New implementation slices (2026-10-20)
 
+- [光学全流程实施与验收（2026-10-21）](./optics-template-runtime/06-fullflow-implementation-20261021.md)：冻结课时完成规则、真实学习证据与归档路径。
 - [Optics template runtime](./optics-template-runtime/README.md): Admin teaching bundle, student Tutor takeover, lesson/team projection and optics experiment protocol.
 - [Profile and growth projection](./profile-growth-projection/README.md): evidence contract, domain-owner acceptance, student/parent read models and verification.
 
@@ -92,6 +93,7 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 
 - [Skills、MCP 与工具加载优化及验证（2026-10-21）](./runtime-governance-optimization-20261021.md)
 - [配置管家的模块参考与读取工具（2026-10-21）](./copilot-module-references-20261021.md)
+- [配置管家生命周期测试与能力边界（2026-10-21）](./copilot-lifecycle-verification-20261021.md)
 
 ## Image 2 全站素材库计划（2026-10-21）
 

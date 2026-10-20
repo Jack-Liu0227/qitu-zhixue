@@ -34,3 +34,10 @@
 | GET /api/v1/admin/ai-runtime | 查看技能、工具、MCP 和运行时状态 |
 
 管家 adapter 的 expectedUpdatedAt 比直接 PATCH 多一层并发约束。回读助手的实际字段、enabled、updatedAt，后续同一助手的修改引用上一步 updatedAt。助手配置保存不代表已被团队版本冻结，也不代表真实模型请求成功。
+
+## 测试与删除
+
+- `assistant.test`：`{id,mode:"configuration"}` 检查实际运行时、已发布技能、工具/MCP 和可用模型；`mode:"model_connection"` 另调用该 provider/model 的真实探测 owner。探测不会执行学生工具，也不代表整套教学流程已通过。
+- `assistant.delete`：global 下提交 `{id,expectedUpdatedAt}`。只删除未被引用的用户创建助手；内置及管家助手用 assistant.update 的 enabled:false。团队成员、工作流分配或历史团队版本引用均返回 ASSISTANT_IN_USE，先处理关联或保留来源并停用。
+- 删除不会自动指定新负责人、清理其他团队。成功后服务端检查助手确已不在目录；同一删除请求可重试且不重新执行已完成写入。
+- 直接 HTTP 删除为 `DELETE /api/v1/admin/ai-runtime/assistants/:id`，仍需 Admin 身份和 Idempotency-Key；管家另外校验 expectedUpdatedAt。测试走管家 action，连接部分复用原模型探测服务。

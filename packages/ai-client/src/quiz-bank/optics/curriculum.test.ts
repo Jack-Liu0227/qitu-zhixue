@@ -1,8 +1,29 @@
 import { getPhaseAndRoleForSession, parseProjectTemplateSpec, validateProjectTemplateSpec } from '@qitu/contracts';
 import { OPTICS_TEMPLATE_SPEC } from './content.js';
-import { OPTICS_16_SESSION_TEMPLATE_SPEC } from './curriculum.js';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_SESSION_TEMPLATE_SPEC } from './curriculum.js';
 
 export function runOpticsCurriculumAssertions(): void {
+  const completion = OPTICS_16_COMPLETION_TEMPLATE_SPEC;
+  if (!validateProjectTemplateSpec(completion).valid) throw new Error('Completion curriculum does not validate');
+  if (completion.version === OPTICS_16_SESSION_TEMPLATE_SPEC.version || completion.id === OPTICS_16_SESSION_TEMPLATE_SPEC.id) throw new Error('Completion rules must have a new identity');
+  const completionProfile = completion.curriculum!.profiles[0]!;
+  if (OPTICS_16_SESSION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.some((session) => session.completionSpec)) throw new Error('Frozen v2 completion semantics changed');
+  for (const session of completionProfile.sessions) {
+    if (session.completionSpec?.version !== 'learning-session-completion.v1') throw new Error('Missing completion rule');
+    if (session.phase === 'concept_mastery' && session.completionSpec.requiredMasteryObjectiveIds.join() !== session.objectiveIds.join()) throw new Error('Theory completion skipped assessment');
+  }
+  const firstCompletion = completionProfile.sessions[0]!;
+  for (const spec of [
+    { ...firstCompletion.completionSpec, version: 'unknown' },
+    { ...firstCompletion.completionSpec, requiredEvidence: [] },
+    { ...firstCompletion.completionSpec, requiredEvidence: [{ kind: 'session_response', scope: 'project', minimumCount: 1 }] },
+    { ...firstCompletion.completionSpec, requiredEvidence: [{ kind: 'experiment_observation', scope: 'session', minimumCount: 0 }] },
+    { ...firstCompletion.completionSpec, requiredMasteryObjectiveIds: ['opt-intent-observe'] },
+    { ...firstCompletion.completionSpec, completed: true },
+  ]) {
+    const invalid = { ...completion, curriculum: { profiles: [{ ...completionProfile, sessions: [{ ...firstCompletion, completionSpec: spec }, ...completionProfile.sessions.slice(1)] }] } };
+    if (validateProjectTemplateSpec(invalid).valid) throw new Error('Invalid completion policy accepted');
+  }
   const spec = OPTICS_16_SESSION_TEMPLATE_SPEC;
   const profile = spec.curriculum?.profiles[0];
   if (profile === undefined) throw new Error('16-session profile missing');

@@ -2,7 +2,7 @@ import { assertRuntimeSkillBudget } from '@qitu/contracts';
 import { resolveAgentModelSelection } from './agent-model-selection';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { randomUUID } from 'node:crypto';
 import type { AdminRuntimeAgent, AdminRuntimeSkill, AdminRuntimeSnapshot, AdminRuntimeAgentUpdateRequest, CurrentUser, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
@@ -26,8 +26,8 @@ import type {
   TeammateStatus,
   WorkspaceMode,
 } from '@qitu/contracts';
-import { asc, desc, eq, sql } from 'drizzle-orm';
-import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { adminAssistants, adminTeamMembers, adminTeams, adminTeamVersions, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { isTeachingRuntimeSkill, loadRuntimeSkillCatalog, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { pblPhaseForProjectStage } from '../../common/pbl-phase';
@@ -1158,81 +1158,52 @@ export class PlatformRegistryService {
     });
   }
 
-  async deleteAssistant(actor: CurrentUser, assistantId: string): Promise<{ success: true; deletedAssistantId: string }> {
+  async deleteAssistant(actor: CurrentUser, assistantId: string, expectedUpdatedAt?: string): Promise<{ success: true; deletedAssistantId: string }> {
+    if (actor.role !== 'admin') throw new ForbiddenException('助手删除仅管理员可用');
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
-    return withTransaction(this.db, async (tx) => {
-      const existing = (await tx.select().from(adminAssistants)).find((a) => a.id === assistantId);
+    return withTransaction(this.db, async tx => {
+      const [existing] = await tx.select().from(adminAssistants).where(eq(adminAssistants.id, assistantId)).for('update');
       if (!existing) throw new NotFoundException('助手不存在');
-      // 解除内置助手不可删除硬限制，支持管理员完全控制
-      // 若该助手为团队成员，先级联清理成员记录
-      await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.assistantId, assistantId));
-
-      // 若该助手为某团队的 Leader，自动将其移交至该团队其他成员或可用助手，确保外键完整性
-      const teams = await tx.select().from(adminTeams);
-      const leadingTeams = teams.filter((t) => t.leaderAssistantId === assistantId);
-      for (const t of leadingTeams) {
-        const remainingMembers = await tx
-          .select()
-          .from(adminTeamMembers)
-          .where(eq(adminTeamMembers.teamId, t.id));
-        const fallbackMember = remainingMembers[0];
-        if (fallbackMember) {
-          await tx
-            .update(adminTeams)
-            .set({ leaderAssistantId: fallbackMember.assistantId })
-            .where(eq(adminTeams.id, t.id));
-        } else {
-          const otherAssistant = (await tx.select().from(adminAssistants)).find(
-            (a) => a.id !== assistantId
-          );
-          if (otherAssistant) {
-            await tx
-              .update(adminTeams)
-              .set({ leaderAssistantId: otherAssistant.id })
-              .where(eq(adminTeams.id, t.id));
-          } else {
-            // 没有其他可用助手时，级联清理该孤立团队
-            await tx.delete(adminTeams).where(eq(adminTeams.id, t.id));
-          }
-        }
-      }
-
+      if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictException({ code: 'ADMIN_AI_CONFIG_CONFLICT', message: '助手已变化，请回读后重新删除' });
+      const members = await tx.select({ id: adminTeamMembers.slotId }).from(adminTeamMembers).where(eq(adminTeamMembers.assistantId, assistantId)).limit(1);
+      const teams = await tx.select({ id: adminTeams.id }).from(adminTeams).where(sql`${adminTeams.leaderAssistantId}=${assistantId} OR ${adminTeams.pblSpec}::jsonb->'phases' @> ${JSON.stringify([{ assignedAssistantId: assistantId }])}::jsonb`).limit(1);
+      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(sql`${adminTeamVersions.leaderAssistantId}=${assistantId} OR ${adminTeamVersions.members} @> ${JSON.stringify([{ assistantId }])}::jsonb`).limit(1);
+      if (members.length || teams.length || versions.length) throw new ConflictException({ code: 'ASSISTANT_IN_USE', message: '助手仍被团队或历史版本引用，请先解除当前关联；历史来源可停用，不能删除' });
+      const purposes = await tx.execute<{ used: boolean }>(sql`SELECT (
+        EXISTS(SELECT 1 FROM platform_configuration_revisions p WHERE p.revision=(SELECT max(revision) FROM platform_configuration_revisions)
+          AND (p.config->'growthProjection'->>'profileAssistantId'=${assistantId} OR p.config->'growthProjection'->>'growthAssistantId'=${assistantId}
+            OR p.config->'platformTools'->'project-knowledge'->'boundAssistants' @> ${JSON.stringify([assistantId])}::jsonb))
+        OR EXISTS(SELECT 1 FROM knowledge_base_agent_bindings b JOIN knowledge_bases k ON k.id=b.kb_id
+          WHERE b.agent_id=${assistantId} AND b.enabled=true AND k.lifecycle='active')
+        OR EXISTS(SELECT 1 FROM agent_configs WHERE parent_agent_id=${assistantId})
+      ) AS used`);
+      if (purposes.rows[0]?.used !== false) throw new ConflictException({ code: 'ASSISTANT_IN_USE', message: '助手仍有画像、成长、知识库授权或子 Agent 引用，请先解除用途关联' });
+      const runtimeIds = [...runtimeIdsForAssistant(assistantId)];
+      await tx.delete(agentSkillBindings).where(inArray(agentSkillBindings.agentId, runtimeIds));
+      await tx.delete(agentToolBindings).where(inArray(agentToolBindings.agentId, runtimeIds));
+      await tx.delete(agentMcpBindings).where(inArray(agentMcpBindings.agentId, runtimeIds));
+      await tx.delete(agentConfigs).where(inArray(agentConfigs.id, runtimeIds));
       await tx.delete(adminAssistants).where(eq(adminAssistants.id, assistantId));
-      await this.audit.write({
-        actorId: actor.id,
-        actorRole: actor.role,
-        action: 'admin.assistant.delete',
-        targetType: 'admin_assistant',
-        targetId: assistantId,
-        detail: {
-          name: existing.name,
-          source: existing.source,
-          role: existing.role,
-        },
-      }, tx);
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.assistant.delete',
+        targetType: 'admin_assistant', targetId: assistantId, detail: { name: existing.name, source: existing.source, role: existing.role } }, tx);
       return { success: true, deletedAssistantId: assistantId };
     });
   }
 
-  async deleteTeam(actor: CurrentUser, teamId: string): Promise<{ success: true; deletedTeamId: string }> {
+  async deleteTeam(actor: CurrentUser, teamId: string, expectedUpdatedAt?: string): Promise<{ success: true; deletedTeamId: string }> {
+    if (actor.role !== 'admin') throw new ForbiddenException('团队删除仅管理员可用');
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
-    return withTransaction(this.db, async (tx) => {
-      const teams = await tx.select().from(adminTeams);
-      const existing = teams.find((t) => t.id === teamId);
+    return withTransaction(this.db, async tx => {
+      const [existing] = await tx.select().from(adminTeams).where(eq(adminTeams.id, teamId)).for('update');
       if (!existing) throw new NotFoundException('团队不存在');
+      if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictException({ code: 'ADMIN_AI_CONFIG_CONFLICT', message: '团队已变化，请回读后重新删除' });
+      const versions = await tx.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(eq(adminTeamVersions.teamId, teamId)).limit(1);
+      const templates = await tx.select({ id: projectTemplateVersions.id }).from(projectTemplateVersions).where(sql`${projectTemplateVersions.content}->>'linkedTeamId'=${teamId}`).limit(1);
+      if (versions.length || templates.length) throw new ConflictException({ code: 'TEAM_IN_USE', message: '团队已有不可变版本或模板引用，请停用团队并保留历史来源' });
       await tx.delete(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId));
       await tx.delete(adminTeams).where(eq(adminTeams.id, teamId));
-      await this.audit.write({
-        actorId: actor.id,
-        actorRole: actor.role,
-        action: 'admin.team.delete',
-        targetType: 'admin_team',
-        targetId: teamId,
-        detail: {
-          name: existing.name,
-          leaderAssistantId: existing.leaderAssistantId,
-        },
-      }, tx);
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.team.delete',
+        targetType: 'admin_team', targetId: teamId, detail: { name: existing.name, leaderAssistantId: existing.leaderAssistantId } }, tx);
       return { success: true, deletedTeamId: teamId };
     });
   }

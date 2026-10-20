@@ -9,10 +9,11 @@ import { CopilotController } from './copilot.controller';
 import { CopilotService } from './copilot.service';
 import { CopilotOperations } from './copilot.operations';
 import { CopilotResources } from './copilot.resources';
+import { CopilotLifecycle } from './copilot.lifecycle';
 
 @Module({
   imports: [GrowthModule, AuthModule, PlatformRegistryModule, TemplatesModule, KnowledgeModule, ModelRegistryModule],
   controllers: [CopilotController],
-  providers: [CopilotService, CopilotOperations, CopilotResources],
+  providers: [CopilotService, CopilotOperations, CopilotResources, CopilotLifecycle],
 })
 export class CopilotModule {}

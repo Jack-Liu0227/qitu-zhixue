@@ -160,6 +160,8 @@ export type TutorReplyBlock =
         planId: string;
         planRevision: number;
         learningSessionId: string;
+        /** Actual frozen plan objective; block.objectiveId identifies the registered model domain. */
+        objectiveId?: string;
         rubricRef: string;
         cerRef: string;
       };
@@ -613,6 +615,7 @@ export interface TutorExperimentActionResponse {
     planRevision: number;
     learningSessionId: string;
     runActionId: string;
+    objectiveId?: string;
     parameterDigest: string;
     provenance: 'simulated_observation';
     rubricRef: string;
