@@ -205,7 +205,10 @@ export class FeishuService {
     const deviceCode = String(begin.device_code ?? '');
     const verificationUriComplete = String(begin.verification_uri_complete ?? begin.verification_uri ?? '');
     if (!deviceCode || !verificationUriComplete) throw new ServiceUnavailableException('Feishu returned invalid device authorization data');
-    const lifetime = Number(begin.expire_in ?? 600);
+    // The provider owns the device-code lifetime. Do not fabricate a fallback
+    // expiry when the response omits it: the UI must not advertise a QR beyond
+    // the lifetime Feishu actually granted.
+    const lifetime = Number(begin.expire_in);
     const pollIntervalSeconds = Number(begin.interval ?? 5);
     const expiresAt = new Date(Date.now() + lifetime * 1000);
     if (!Number.isSafeInteger(lifetime) || lifetime <= 0 || !Number.isFinite(expiresAt.getTime())

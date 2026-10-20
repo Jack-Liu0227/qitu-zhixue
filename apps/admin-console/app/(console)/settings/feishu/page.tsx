@@ -15,7 +15,7 @@ import {
   type FeishuQrStatusResponse,
 } from '../../../../lib/api/feishu';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
-import { applyFeishuQrStatus, pollFeishuQrSession } from '../../../../lib/api/feishu-qr';
+import { applyFeishuQrStatus, pollFeishuQrSession, shouldRefreshFeishuQr } from '../../../../lib/api/feishu-qr';
 import { AdminOfflineError, AdminPermissionError, createIdempotentRetryKey } from '../../../../lib/api/types';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 import './feishu.css';
@@ -90,7 +90,6 @@ export default function FeishuSettingsPage() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const restartQrRef = useRef<(() => void) | null>(null);
   const activeSessionId = useRef<string | null>(null);
-  const qrStartedAt = useRef<number>(0);
   const qrRequestId = useRef(0);
   const saveRetry = useRef(createIdempotentRetryKey());
   const qrRetry = useRef(createIdempotentRetryKey());
@@ -158,17 +157,16 @@ export default function FeishuSettingsPage() {
     timer.current = setInterval(() => {
       const seconds = secondsUntil(config.expiresAt);
       setRemainingSeconds(seconds);
-      // Rotate before expiry for normal-lived provider codes. Very short test
-      // codes are rotated only at expiry to avoid an immediate refresh loop.
-      const elapsed = Date.now() - qrStartedAt.current;
-      if (seconds === 0 || (seconds !== null && seconds <= 30 && elapsed >= 30_000)) {
+      // The provider expiry is the source of truth. Keep the current QR visible
+      // until it actually expires, then replace it with a fresh provider code.
+      if (shouldRefreshFeishuQr(seconds)) {
         stopPolling();
         // Feishu device codes cannot be extended server-side. Immediately ask
         // for a fresh code so the QR stays available instead of disappearing
         // at the expiry boundary (the previous code remains only as a visual
         // placeholder until the replacement arrives).
         setConfig((current) => ({ ...current, status: 'error' }));
-        setQrError('Refreshing the authorization code…');
+        setQrError('Refreshing authorization; generating a new QR code.');
         void restartQrRef.current?.();
       }
     }, 1000);
@@ -245,7 +243,6 @@ export default function FeishuSettingsPage() {
       qrRetry.current.acknowledge();
       setConfig((current) => ({ ...current, status: 'pending', qrSessionId: qr.sessionId, qrCodeUrl: qr.authorizationUrl, qrCodeDataUrl: qr.qrCodeDataUrl ?? encodeAuthorizationQr(qr.authorizationUrl), expiresAt: qr.expiresAt }));
       setRemainingSeconds(secondsUntil(qr.expiresAt));
-      qrStartedAt.current = Date.now();
       activeSessionId.current = qr.sessionId;
       cancelPolling.current = pollFeishuQrSession({
         sessionId: qr.sessionId,

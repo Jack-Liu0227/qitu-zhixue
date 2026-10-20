@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyFeishuQrStatus, pollFeishuQrSession } from '../apps/admin-console/lib/api/feishu-qr.ts';
+import { applyFeishuQrStatus, pollFeishuQrSession, shouldRefreshFeishuQr } from '../apps/admin-console/lib/api/feishu-qr.ts';
 
 const url = 'https://accounts.feishu.cn/fixture?user_code=fixture';
 const current = { status: 'pending', qrSessionId: 'qr-1', qrCodeUrl: url, qrCodeDataUrl: 'data:image/gif;base64,fixture' };
 const status = { id: 'qr-1', status: 'pending', authorizationUrl: '', expiresAt: '2026-10-19T12:00:00Z', credentialConfigured: false };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+test('QR refresh waits until the provider expiry and does not invent one when unknown', () => {
+  assert.equal(shouldRefreshFeishuQr(null), false);
+  assert.equal(shouldRefreshFeishuQr(30), false);
+  assert.equal(shouldRefreshFeishuQr(1), false);
+  assert.equal(shouldRefreshFeishuQr(0), true);
+});
 
 test('pending polls cannot erase or replace the original device QR with a legacy OAuth URL', () => {
   for (const authorizationUrl of ['', 'https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=old']) {

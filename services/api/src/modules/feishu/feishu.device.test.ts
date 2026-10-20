@@ -38,13 +38,13 @@ function fixture(t: TestContext, session?: Partial<Session>) {
   return { service, sessions, audits, bot, writes };
 }
 
-function provider(t: TestContext, options: { poll?: string; expire_in?: unknown; interval?: unknown } = {}) {
+function provider(t: TestContext, options: { poll?: string; expire_in?: unknown; includeExpiry?: boolean; interval?: unknown } = {}) {
   const requests: string[] = [];
   t.mock.method(globalThis, 'fetch', async (_input: unknown, init?: RequestInit) => {
     const body = String(init?.body ?? '');
     requests.push(body);
     const data = body === 'action=init' ? { supported_auth_methods: ['client_secret'] }
-      : body.startsWith('action=begin') ? { device_code: 'device-fixture', verification_uri_complete: url, expire_in: options.expire_in ?? 600, interval: options.interval ?? 5 }
+      : body.startsWith('action=begin') ? { device_code: 'device-fixture', verification_uri_complete: url, ...(options.includeExpiry === false ? {} : { expire_in: options.expire_in ?? 600 }), interval: options.interval ?? 5 }
         : { error: options.poll ?? 'authorization_pending' };
     return new Response(JSON.stringify(data), { status: 200 });
   });
@@ -132,6 +132,13 @@ test('short provider expiry is not extended to a fabricated minimum', async (t) 
   const session = await service.beginDeviceAuthorization(admin, 'assistant-fixture');
   assert.ok(Date.parse(session.expiresAt) >= before + 20_000);
   assert.ok(Date.parse(session.expiresAt) <= Date.now() + 20_000);
+});
+
+test('missing provider expiry fails closed instead of advertising a fabricated countdown', async (t) => {
+  const { service, sessions } = fixture(t);
+  provider(t, { includeExpiry: false });
+  await assert.rejects(() => service.beginDeviceAuthorization(admin, 'assistant-fixture'), ServiceUnavailableException);
+  assert.equal(sessions.length, 0);
 });
 
 test('invalid provider timing fails closed without creating a session', async (t) => {
