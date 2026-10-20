@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "checkedOn": "2026-10-19",
-  "codeBaseline": "43a0307eb776185d7561f213d75b3d7312616aa9",
+  "codeBaseline": "0b07929d06f88a947090e4cd080698bb43012776",
   "scope": "M1 source slices deployed; full frozen teaching capability chain and live teaching acceptance remain incomplete",
   "skillInventory": {
     "existingSourceCount": 1,
@@ -235,5 +235,7 @@
     "remoteUserChanges": "Two existing preferences edits are preserved byte-for-byte and remain uncommitted. Only six main services restarted; independent test sites and shared IMA/embedding not changed.",
     "artifactCommit": "63e3be882f1b1d7ccfbc0122bc14bf0b354785e3",
     "activatedAt": "2026-10-19T21:39:47+08:00"
-  }
+  },
+  "historicalDeliveryBaseline": "43a0307eb776185d7561f213d75b3d7312616aa9",
+  "baselineNote": "Document source baseline aligned with source-lock.json. Historical milestone, publication and deployment evidence retain their original artifactCommit and dates; this metadata alignment does not certify a new deployment."
 }

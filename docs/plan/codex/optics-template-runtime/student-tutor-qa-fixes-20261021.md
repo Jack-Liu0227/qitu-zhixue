@@ -1,5 +1,7 @@
 # Student Tutor QA 修复与验证（2026-10-21）
 
+> 状态：历史源码修复及隔离验证记录，不代表当前生产验收。（2026-10-21）
+
 对应 [05-student-tutor-flow-qa.md](./05-student-tutor-flow-qa.md) 的六项问题。以下结果来自源码构建、隔离 PostgreSQL 和可见 Chromium；不是生产验收，也不是学习效果评估。
 
 ## 修复结果

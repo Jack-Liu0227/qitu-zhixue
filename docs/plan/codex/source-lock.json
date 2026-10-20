@@ -825,13 +825,15 @@
       "sessionId": "479a4fd721b2",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "5387ad0ce3d6",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "85be27f0143b",
@@ -843,49 +845,57 @@
       "sessionId": "37fbbe968e3f",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "5304b0750cb1",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "55216a0e45bf",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "ee5da45dfecc",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; generated inventory text without source verification"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; generated inventory text without source verification"
     },
     {
       "sessionId": "97458841ef42",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; discovery lead only"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; discovery lead only"
     },
     {
       "sessionId": "106b14751608",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; generated hypothetical inventory without repository verification"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; generated hypothetical inventory without repository verification"
     },
     {
       "sessionId": "cd2f7a8b9c81",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; search returned no source-backed repository facts"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; search returned no source-backed repository facts"
     },
     {
       "sessionId": "27d7ecc49afe",
       "sourcesCount": 0,
       "sourceListCount": 0,
-      "decision": "Excluded as evidence; search returned no source-backed repository facts"
+      "decision": "Excluded as evidence",
+      "reason": "Excluded as evidence; search returned no source-backed repository facts"
     }
   ],
   "limitations": [
