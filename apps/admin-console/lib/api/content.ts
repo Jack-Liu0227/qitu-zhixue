@@ -148,6 +148,14 @@ export function createAdminTemplateVersion(
   });
 }
 
+export function deleteAdminTemplate(id: string): Promise<{ success: boolean; id: string }> {
+  return adminEnvelopeRequest<{ success: boolean; id: string }>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}`,
+    method: 'DELETE',
+    idempotencyKey: newIdempotencyKey(),
+  });
+}
+
 export function archiveAdminTemplate(id: string): Promise<AdminTemplateMutation> {
   return adminEnvelopeRequest<AdminTemplateMutation>({
     path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/archive`,

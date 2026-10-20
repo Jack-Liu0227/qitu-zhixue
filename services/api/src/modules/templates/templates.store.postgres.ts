@@ -1,5 +1,10 @@
-import { and, asc, eq, isNull, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import {
+  learningPlans,
+  pblTemplateTeamBindings,
+  projects,
+  templateVerificationEvidence,
+  templateVerificationRuns,
   projectTemplates,
   projectTemplateVersions,
   withTransaction,
@@ -179,6 +184,54 @@ export class PostgresTemplateStore extends TemplateStore {
       .returning();
     if (row === undefined) throw new Error(`template not found: ${id}`);
     return mapTemplate(row);
+  }
+
+  async deleteTemplate(id: string): Promise<boolean> {
+    return await withTransaction(this.db, async (tx) => {
+      const versionRows = await tx
+        .select({ id: projectTemplateVersions.id })
+        .from(projectTemplateVersions)
+        .where(eq(projectTemplateVersions.templateId, id));
+      const versionIds = versionRows.map((r) => r.id);
+
+      if (versionIds.length > 0) {
+        await tx
+          .update(projects)
+          .set({ templateVersionId: null })
+          .where(inArray(projects.templateVersionId, versionIds));
+
+        await tx
+          .update(learningPlans)
+          .set({ templateVersionId: null })
+          .where(inArray(learningPlans.templateVersionId, versionIds));
+
+        await tx
+          .delete(pblTemplateTeamBindings)
+          .where(inArray(pblTemplateTeamBindings.templateVersionId, versionIds));
+
+        const runRows = await tx
+          .select({ id: templateVerificationRuns.id })
+          .from(templateVerificationRuns)
+          .where(inArray(templateVerificationRuns.templateVersionId, versionIds));
+        const runIds = runRows.map((r) => r.id);
+
+        if (runIds.length > 0) {
+          await tx
+            .delete(templateVerificationEvidence)
+            .where(inArray(templateVerificationEvidence.runId, runIds));
+          await tx
+            .delete(templateVerificationRuns)
+            .where(inArray(templateVerificationRuns.id, runIds));
+        }
+
+        await tx
+          .delete(projectTemplateVersions)
+          .where(eq(projectTemplateVersions.templateId, id));
+      }
+
+      await tx.delete(projectTemplates).where(eq(projectTemplates.id, id));
+      return true;
+    });
   }
 
   async listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]> {

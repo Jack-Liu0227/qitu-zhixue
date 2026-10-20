@@ -218,9 +218,11 @@ const SESSIONS: readonly Pick<PblTemplateSession,
   },
 ];
 
+const { phases: _opticsPhases, ...baseOpticsSpec } = OPTICS_TEMPLATE_SPEC;
+
 /** New immutable source identity; never amend the v1 template in place. */
 export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProjectTemplateSpec({
-  ...OPTICS_TEMPLATE_SPEC,
+  ...baseOpticsSpec,
   id: 'pbl-optics-inquiry-16s',
   version: 'v2-16s',
   title: '光学探究：从光路模型到衍射与散射证据',

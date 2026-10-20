@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
-  archiveAdminTemplate,
+  deleteAdminTemplate,
   createAdminTemplate,
   createAdminTemplateVersion,
   fetchAdminTemplateVersions,
@@ -202,24 +202,12 @@ export default function AdminTemplatesPage() {
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [versionsError, setVersionsError] = useState<Error | null>(null);
   const [editorTab, setEditorTab] = useState<'sessions' | 'workflow' | 'basic'>('workflow');
-  const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
+
   const [saveNotice, setSaveNotice] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const activeTemplates = useMemo(
-    () => templates.filter((t) => t.status !== 'archived'),
-    [templates],
-  );
-  const archivedTemplates = useMemo(
-    () => templates.filter((t) => t.status === 'archived'),
-    [templates],
-  );
-  const displayedTemplates = useMemo(() => {
-    if (statusFilter === 'active') return activeTemplates;
-    if (statusFilter === 'archived') return archivedTemplates;
-    return templates;
-  }, [statusFilter, activeTemplates, archivedTemplates, templates]);
+  const displayedTemplates = templates;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -298,19 +286,19 @@ export default function AdminTemplatesPage() {
   };
 
   const handleDeleteTemplate = async (id: string, title: string) => {
-    if (!window.confirm(`确定要归档项目模板「${title}」吗？`)) return;
+    if (!window.confirm(`确定要彻底删除项目模板「${title}」吗？
+此操作将直接从数据库中物理删除该模板及其全部版本，无法恢复。`)) return;
     setSaving(true);
+    setSaveError('');
     try {
-      const result = await archiveAdminTemplate(id);
-      setTemplates((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...result.template } : item)),
-      );
+      await deleteAdminTemplate(id);
+      setTemplates((prev) => prev.filter((item) => item.id !== id));
+      if (editingTemplate?.id === id) setEditingTemplate(null);
     } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : '模板归档失败');
+      setSaveError(cause instanceof Error ? cause.message : '模板删除失败');
     } finally {
       setSaving(false);
     }
-    if (editingTemplate?.id === id) setEditingTemplate(null);
   };
 
   const handleCreateTemplate = async () => {
@@ -530,7 +518,7 @@ export default function AdminTemplatesPage() {
               className="settings-action-btn is-danger"
               onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
             >
-              🗑️ 归档
+              🗑️ 删除模板
             </button>
             <button
               type="button"
@@ -542,7 +530,7 @@ export default function AdminTemplatesPage() {
           </div>
         </div>
 
-        {/* 选项卡：课时轨道 (16课时) vs PBL 阶段治理 vs 基础配置 */}
+        {/* 选项卡：课时教学主线 vs 基础配置 */}
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
             <button
@@ -550,16 +538,17 @@ export default function AdminTemplatesPage() {
               className={`team-editor-tab-item${editorTab === 'sessions' ? ' is-active' : ''}`}
               onClick={() => setEditorTab('sessions')}
             >
-              📅 课时轨道（Session Track · 16 课时）
+              📅 课时教学主线（16 课时）
             </button>
-          ) : null}
-          <button
-            type="button"
-            className={`team-editor-tab-item${editorTab === 'workflow' ? ' is-active' : ''}`}
-            onClick={() => setEditorTab('workflow')}
-          >
-            {editingTemplate.pblSpec ? '🛡️ PBL 阶段治理（Phases · 4 阶段）' : 'PBL 阶段设计与专属 Prompt'}
-          </button>
+          ) : (
+            <button
+              type="button"
+              className={`team-editor-tab-item${editorTab === 'workflow' ? ' is-active' : ''}`}
+              onClick={() => setEditorTab('workflow')}
+            >
+              PBL 教学编排与专属 Prompt
+            </button>
+          )}
           <button
             type="button"
             className={`team-editor-tab-item${editorTab === 'basic' ? ' is-active' : ''}`}
@@ -614,34 +603,6 @@ export default function AdminTemplatesPage() {
               ) : null}
             </div>
 
-            {/* 4 阶段宏观架构路线图 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px' }}>
-                <div style={{ fontSize: '11px', color: '#b45309', fontWeight: 700 }}>PHASE 1 · 课时 1~2</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', margin: '2px 0 4px' }}>探索破冰 (exploration)</div>
-                <div style={{ fontSize: '12px', color: '#78350f' }}>导师：主导导师 · 交付物：探究意向书</div>
-                <div style={{ fontSize: '11px', color: '#b45309', marginTop: '6px', fontWeight: 600 }}>🚩 门禁：学生显式确认意图</div>
-              </div>
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px' }}>
-                <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 700 }}>PHASE 2 · 课时 3~8</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e40af', margin: '2px 0 4px' }}>概念奠基 (concept_mastery)</div>
-                <div style={{ fontSize: '12px', color: '#1e3a8a' }}>导师：概念教练 · 交付物：理论评测通关</div>
-                <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '6px', fontWeight: 700 }}>🛡️ 核心门禁：TheoryMastered</div>
-              </div>
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px' }}>
-                <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 700 }}>PHASE 3 · 课时 9~14</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#166534', margin: '2px 0 4px' }}>探究实践 (guided_practice)</div>
-                <div style={{ fontSize: '12px', color: '#14532d' }}>导师：实验向导 · 交付物：CER 实验报告</div>
-                <div style={{ fontSize: '11px', color: '#15803d', marginTop: '6px', fontWeight: 600 }}>📝 门禁：实践报告与论证通过</div>
-              </div>
-              <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '12px' }}>
-                <div style={{ fontSize: '11px', color: '#7e22ce', fontWeight: 700 }}>PHASE 4 · 课时 15~16</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#6b21a8', margin: '2px 0 4px' }}>成果答辩与归档 (deliverable_review)</div>
-                <div style={{ fontSize: '12px', color: '#581c87' }}>导师：评审导师 · 交付物：素养成长档案</div>
-                <div style={{ fontSize: '11px', color: '#7e22ce', marginTop: '6px', fontWeight: 600 }}>🎓 门禁：素养自评正式归档</div>
-              </div>
-            </div>
-
             {/* 16 课时卡片列表 */}
             <div className="admin-template-phases-list">
               {(editingTemplate.pblSpec.curriculum?.profiles?.[0]?.sessions ?? []).map((session: PblTemplateSession) => {
@@ -691,19 +652,6 @@ export default function AdminTemplatesPage() {
                         <strong style={{ fontSize: '16px', color: '#1d2129' }}>
                           第 {session.sessionIndex} 课时：{session.title}
                         </strong>
-                        <span
-                          style={{
-                            fontSize: '12px',
-                            color: phaseMeta.color,
-                            background: phaseMeta.bg,
-                            border: `1px solid ${phaseMeta.border}`,
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {phaseMeta.label}
-                        </span>
                         <span
                           style={{
                             fontSize: '12px',
@@ -1211,7 +1159,7 @@ export default function AdminTemplatesPage() {
         <div className="settings-titlebox">
           <h1>项目模板库</h1>
           <div className="settings-desc">
-            Admin 统一维护项目式学习（PBL）模板。以 16 课时为主线（Session Track）与阶段门禁（Phase Gates）双轨治理。
+            Admin 统一维护项目式学习（PBL）模板。全面以课时为基本教学单元进行编排与交付收口。
           </div>
         </div>
         <div className="settings-page-actions">
@@ -1226,33 +1174,6 @@ export default function AdminTemplatesPage() {
         </div>
       </div>
 
-      {/* 状态过滤选项卡：默认只显示活跃模板，归档模板不干扰视线 */}
-      <div className="team-editor-top-tabs" style={{ marginBottom: '16px' }}>
-        <button
-          type="button"
-          className={`team-editor-tab-item${statusFilter === 'active' ? ' is-active' : ''}`}
-          onClick={() => setStatusFilter('active')}
-        >
-          🌟 活跃模板 ({activeTemplates.length})
-        </button>
-        {archivedTemplates.length > 0 ? (
-          <button
-            type="button"
-            className={`team-editor-tab-item${statusFilter === 'archived' ? ' is-active' : ''}`}
-            onClick={() => setStatusFilter('archived')}
-          >
-            📦 已归档 ({archivedTemplates.length})
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className={`team-editor-tab-item${statusFilter === 'all' ? ' is-active' : ''}`}
-          onClick={() => setStatusFilter('all')}
-        >
-          全部 ({templates.length})
-        </button>
-      </div>
-
       {saveError ? (
         <div className="admin-template-workflow-intro" style={{ color: '#ef4444' }}>
           <span>{saveError}</span>
@@ -1261,11 +1182,9 @@ export default function AdminTemplatesPage() {
 
       {displayedTemplates.length === 0 ? (
         <div className="settings-empty" style={{ padding: '32px', textAlign: 'center' }}>
-          <strong>{statusFilter === 'archived' ? '暂无已归档模板' : '暂无活跃模板'}</strong>
+          <strong>暂无项目模板</strong>
           <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
-            {statusFilter === 'archived'
-              ? '归档的历史模板将在此处留存记录。'
-              : '点击右上角「新建项目模板」创建新模板。'}
+            点击右上角「新建项目模板」创建新模板。
           </p>
         </div>
       ) : (
@@ -1318,7 +1237,7 @@ export default function AdminTemplatesPage() {
                       marginBottom: '8px',
                     }}
                   >
-                    <span>📅 16 课时教学主线 · 4 阶段门禁</span>
+                    <span>📅 16 课时项目教学编排</span>
                   </div>
                 ) : null}
 
@@ -1382,19 +1301,16 @@ export default function AdminTemplatesPage() {
                     style={{ flex: 1 }}
                     onClick={() => openEditor(template)}
                   >
-                    {is16Sessions ? '查看 16 课时轨道与阶段设计 →' : '配置团队与阶段设计 →'}
+                    {is16Sessions ? '查看 16 课时教学编排 →' : '配置项目与团队绑定 →'}
                   </button>
-                  {template.status !== 'archived' ? (
-                    <button
-                      type="button"
-                      className="admin-skill-dot-btn"
-                      style={{ color: '#ef4444' }}
-                      onClick={() => handleDeleteTemplate(template.id, template.title)}
-                      title="归档模板"
-                    >
-                      🗑️
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="settings-action-btn is-danger"
+                    onClick={() => handleDeleteTemplate(template.id, template.title)}
+                    title="删除项目模板"
+                  >
+                    🗑️ 删除
+                  </button>
                 </div>
               </div>
             );

@@ -67,6 +67,7 @@ export abstract class TemplateStore {
   ): Promise<ProjectTemplateRecord>;
 
   abstract listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]>;
+  abstract deleteTemplate(id: string): Promise<boolean>;
   abstract findVersion(versionId: string): Promise<ProjectTemplateVersionRecord | null>;
   abstract nextVersionLabel(templateId: string): Promise<string>;
   abstract createVersion(input: CreateVersionRecordInput): Promise<ProjectTemplateVersionRecord>;
@@ -195,6 +196,14 @@ export class InMemoryTemplateStore extends TemplateStore {
     }
     record.updatedAt = now;
     return cloneTemplate(record);
+  }
+
+  async deleteTemplate(id: string): Promise<boolean> {
+    this.templates.delete(id);
+    for (const [vId, v] of this.versions.entries()) {
+      if (v.templateId === id) this.versions.delete(vId);
+    }
+    return true;
   }
 
   async listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]> {

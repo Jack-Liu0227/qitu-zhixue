@@ -23,7 +23,7 @@ export function runOpticsCurriculumAssertions(): void {
     { ...spec, objectives: [...spec.objectives, spec.objectives[0]] },
     { ...spec, objectives: spec.objectives.map((objective, index) => index === 0 ? { ...objective, prerequisiteIds: ['missing'] } : objective) },
     { ...spec, objectives: spec.objectives.map((objective, index) => index === 0 ? { ...objective, prerequisiteIds: ['opt-intent-question'] } : objective) },
-    { ...spec, phases: [...spec.phases].reverse() },
+    { ...spec, phases: ['deliverable_review', 'guided_practice', 'concept_mastery', 'exploration'].map((phase) => ({ phase, title: phase, deliverableType: 'report', durationWeeks: 2, gateCondition: 'none', defaultMentorRole: 'advisor' })) },
     { ...spec, curriculum: { profiles: [{ ...profile, sessions: profile.sessions.slice(1) }] } },
     replaceFirst({ ...first, sessionIndex: 1.5 }),
     replaceFirst({ ...first, week: 2 }),

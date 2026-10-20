@@ -248,6 +248,26 @@ export class TemplateGovernanceService {
 
   /* ============================ 版本 ============================ */
 
+  async deleteTemplate(
+    actor: CurrentUser,
+    templateId: string,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; id: string }> {
+    const { template } = await this.requireGovernableTemplate(actor, templateId);
+    await this.store.deleteTemplate(templateId);
+    await this.audit.write({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'template.delete',
+      targetType: 'project_template',
+      targetId: templateId,
+      idempotencyKey: idempotencyKey ? `template.delete:${actor.id}:${templateId}:${idempotencyKey}` : undefined,
+      reason: '管理员直接删除模板',
+      detail: { slug: template.slug, title: template.title },
+    });
+    return { success: true, id: templateId };
+  }
+
   async createVersion(
     actor: CurrentUser,
     templateId: string,
