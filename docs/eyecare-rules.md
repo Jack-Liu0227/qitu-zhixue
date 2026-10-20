@@ -87,6 +87,19 @@
 8. **家长端与教师端业务卡片深度消白**：
    - **家长端 KPI 卡与孩子选择芯片**：`.kpi-card`、`.child-chip`、`.question-box`、`.summary-box`、`.artifact-tile`、`.work-card` 统一使用 `#1E2228` 底色与 `#2E3540` 边框。
    - **教师端数据统计与重点关注学生**：`.qtx-metric`、`.qtx-panel`、`.qtx-attention-student`、`.qtx-table` 彻底消除白色与浅蓝底色。
+9. **家长端与教师端业务子卡片、插画与弹窗面板彻底消白 (Accurate Selector & Visual Base Elimination)**：
+   - **以真实 JSX DOM 节点类名为唯一事实源，严禁凭空猜测类名**：
+     - 家长端消息页（`/parent/messages`）：顶部 4 张消息状态卡片的真实类名是 `.summary-card`（而非 `.message-card`）；左侧消息容器是 `.message-list`，消息单项是 `.message-row`（而非 `.message-item`）；
+     - 统一反馈组件：右下角弹窗浮层的真实类名是 `.parent-feedback-panel`（而非 `.parent-feedback-dialog`），其表头是 `.parent-feedback-head`，表单控件是 `.parent-feedback-form select, textarea, input`；若选择器类名与真实 DOM 不匹配，会导致暗色模式下仍渲染纯白底色（`background: #ffffff`）。
+   - **插画视觉容器消白 (Project Visual & Mascot Container)**：
+     - 家长端当前学习项目插画与吉祥物展示区（`<ProjectVisual />`）在 `globals.css` 中硬编码了 `.project-visual { background: #edf5ff; border: 1px solid #d7e5fa; }`、`.project-visual-desk { background: #bfd3ed; }` 与 `.floating-stage-tag { background: rgba(255, 255, 255, 0.92); }`。护眼模式必须显式重设为极深暗色 `#15181D`、暗线边框 `#2E3540` 与翡翠状态徽章 `#112F24` / `#34D399`，杜绝机器人在暗色卡片上留下刺眼浅蓝/白色方框。
+   - **当前项目内三项任务指标卡片 (Fact Items)**：
+     - “当前学习项目”中展示的“今日任务”、“最近完成”、“下一步计划”为 `.project-facts-grid .fact-item`。必须显式赋予卡片底色 `#181B20` 或 `#1E2228`、边框 `1px solid #2E3540`，标签 `small` 设为 `#94A3B8`，数值 `span` 设为 `#FFFFFF`，杜绝继承 muddy 颜色或缺失边框。
+   - **教师端隐蔽白底全面消除**：
+     - 欢迎横幅头像小方框：`.qtx-banner-avatar > div` 硬编码了 `background: #fff; color: #2563eb;`，必须覆盖为 `background: #112F24 !important; color: #34D399 !important; border: 1px solid #195A3B !important;`。
+     - 重点关注学生条目：`.qtx-attention-student` 在 `globals.css` 硬编码了渐变白底 `background: linear-gradient(100deg, #fffcf5, #fff 30%);`，头像硬编码了 `background: #e8effc; color: #1d4ed8;`。必须全量覆盖为 `#181B20` 暗色卡片与 `#112F24` 翡翠深绿头像底色。
+     - 介入详情子卡片：`.qtx-card-soft` 硬编码了半透明白底 `rgba(255, 255, 255, 0.88);`，`.qtx-note` 硬编码了 `#f8fafc`。必须覆盖为 `#15181D`。
+     - 输入框与下拉选择框聚焦态：`.qtx-input:focus`、`.qtx-select:focus` 在聚焦时曾出现 `background: #fff;`，必须保持为护眼暗色 `#15181D`。
 
 ---
 
@@ -123,6 +136,14 @@
   4. **卡片标题操作区链接高对比度保证 (SectionCard Action Links)**：
      - `SectionCard` 顶部的动作区域（`.qitu-section-card-action a`，例如“从一个想法开始”中的“进入灵感空间”、“当前项目”中的“查看详情”与“成长轨迹”）在默认无独立样式时会继承全局深色链接，导致在暗色卡片上字色发暗不可读。
      - 必须显式为 `.qitu-section-card-action a` 与 `.qitu-section-card-header a` 设定翡翠浅绿 `#34D399`，并在 hover 时切换至 `#10B981` 带下划线，确保操作指引高对比可见。
+  5. **幽灵按钮与次级按钮防白化规范 (Ghost & Secondary Button Standards)**：
+     - **底层样式白色泄露教训**：底层基础库 `@qitu/ui` 的 `.qitu-button-ghost` 在 `styles.css` 中写死了 `background: white; border-color: var(--qitu-border); color: var(--qitu-muted);`。因此页面中的幽灵按钮（如家长端首页的“我有疑问”、顶栏的“联系班主任”、各类“就此问题反馈”及“暂不提醒”按键）在暗色模式下若未被显式重写，就会变成极其刺眼的白底按钮！
+     - **按键护眼模式标准配置**：
+       - **幽灵按钮 (`.qitu-button-ghost`)**：`background: #1E2228 !important; border: 1px solid #2E3540 !important; color: #E2E8F0 !important;`；hover 态为 `background: #28303C !important; color: #FFFFFF !important;`。
+       - **次级按钮 (`.qitu-button-secondary`，如“查看详情”)**：`background: #112F24 !important; border: 1px solid #195A3B !important; color: #34D399 !important;`；hover 态为 `background: #164332 !important; border-color: #10B981 !important; color: #6EE7B7 !important;`。
+       - **教师端幽灵按钮 (`.qtx-btn-ghost-blue` / `.qtx-btn`)**：分别配置为翡翠深绿 `#112F24` 与暗色 `#1E2228`，消除浅蓝与白底。
+  6. **标题与深色背景上重要文字转纯白规范**：
+     - 底层系统变量 `--qitu-heading` 默认值为 `#132646`（深藏青蓝）。在暗色卡片上，所有标题、阶段名、指标数值（如 `.project-title-row h2`、`.fact-item span`、`.summary-card strong`、`.timeline-section-title`、`.ticket-table strong`、`h1`~`h3` 等）必须强制重置为高对比度纯白 `#FFFFFF !important;`，严禁深蓝文字悬浮在暗色之上。
 
 ---
 
