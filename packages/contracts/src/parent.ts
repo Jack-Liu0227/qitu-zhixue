@@ -225,6 +225,7 @@ export interface ParentMessagesSummary {
 }
 
 export interface ParentMessagesPageData {
+  messagesAvailable?: boolean;
   childId: string;
   summary: ParentMessagesSummary;
   messages: ParentMessage[];

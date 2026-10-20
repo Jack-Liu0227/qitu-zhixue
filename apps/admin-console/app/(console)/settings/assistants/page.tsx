@@ -1,6 +1,8 @@
 'use client';
 
 import { AssistantGlyph } from '@qitu/ui';
+import { visualToken } from '@qitu/contracts';
+import { VisualAssetPicker, VisualSelector } from '../../../../lib/components/VisualAssetPicker';
 import Link from 'next/link';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -73,6 +75,14 @@ export default function AdminAssistantsPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [draftAvatarPicker, setDraftAvatarPicker] = useState(false);
+
+  async function reloadVisuals() {
+    const configs = await fetchAdminAssistantConfigs();
+    const items = configs.map(mapConfigToItem);
+    setAssistants(items);
+    setEditingAssistant((current) => current ? { ...current, icon: items.find((item) => item.id === current.id)?.icon ?? current.icon } : null);
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -151,7 +161,7 @@ export default function AdminAssistantsPage() {
       name: '',
       description: '',
       role: '',
-      icon: '💡',
+      icon: '',
       enabled: true,
       model: '',
       permission: '未设置（创建后由服务端兜底）',
@@ -183,7 +193,7 @@ export default function AdminAssistantsPage() {
             instructions: editingAssistant.systemPrompt,
             ...configuredModelPatch(editingAssistant.model, configuredModels),
             enabled: editingAssistant.enabled,
-            avatar: editingAssistant.icon,
+            ...(editingAssistant.icon ? { avatar: editingAssistant.icon } : {}),
           },
           newIdempotencyKey()
         );
@@ -199,7 +209,6 @@ export default function AdminAssistantsPage() {
             instructions: editingAssistant.systemPrompt,
             ...configuredModelPatch(editingAssistant.model, configuredModels),
             enabled: editingAssistant.enabled,
-            avatar: editingAssistant.icon,
           },
           newIdempotencyKey()
         );
@@ -298,6 +307,7 @@ export default function AdminAssistantsPage() {
             ← 返回助手列表
           </button>
           <div className="admin-assistant-topbar-actions">
+            {!isCreating && <Link href={`/settings/feishu?assistantId=${encodeURIComponent(editingAssistant.id)}`} className="settings-action-btn">绑定飞书机器人</Link>}
             {saveNotice ? <span className="admin-save-notice">{saveNotice}</span> : null}
             {!isCreating ? (
               <button
@@ -341,17 +351,7 @@ export default function AdminAssistantsPage() {
               <div className="admin-identity-avatar-box">
                 <span className="admin-identity-avatar-icon"><AssistantGlyph value={editingAssistant.icon} size={64} /></span>
               </div>
-              <button
-                type="button"
-                className="admin-avatar-upload-btn"
-                onClick={() => {
-                  const icons = ['🤖', '🧭', '🔬', '💻', '🎨', '🎯', '💡', '🚀', '🐱', '🧠'];
-                  const nextIcon = icons[(icons.indexOf(editingAssistant.icon) + 1) % icons.length] || '🤖';
-                  setEditingAssistant({ ...editingAssistant, icon: nextIcon });
-                }}
-              >
-                上传图片
-              </button>
+              {isCreating ? <><button type="button" className="admin-avatar-upload-btn" onClick={() => setDraftAvatarPicker(true)}>从素材库选择</button>{draftAvatarPicker && <VisualAssetPicker usage="avatar" onClose={() => setDraftAvatarPicker(false)} onSelect={(selection) => setEditingAssistant({ ...editingAssistant, icon: selection.kind === 'asset' ? visualToken(selection.assetId) : '' })} />}</> : <VisualSelector owner={{ kind: 'assistant', id: editingAssistant.id }} usage="avatar" label="从素材库选择" onSaved={() => void reloadVisuals().catch((failure: unknown) => setSaveNotice(failure instanceof Error ? failure.message : '头像回读失败'))} />}
             </div>
 
             <div className="admin-identity-fields">
@@ -615,6 +615,7 @@ export default function AdminAssistantsPage() {
           </div>
           {selected.size > 0 && (
             <div style={{ display: 'flex', gap: '8px' }}>
+              <VisualSelector owners={[...selected].map((id) => ({ kind: 'assistant', id }))} usage="avatar" label="批量设置头像" onSaved={() => void reloadVisuals().catch((failure: unknown) => setSaveNotice(failure instanceof Error ? failure.message : '头像回读失败'))} />
               <button
                 type="button"
                 className="settings-action-btn"

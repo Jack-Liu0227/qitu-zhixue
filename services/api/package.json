@@ -12,6 +12,7 @@
     "test": "pnpm --filter @qitu/database build && pnpm --filter @qitu/infra build && pnpm --filter @qitu/agent-memory build && tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/**/*.test.js\""
   },
   "dependencies": {
+    "@larksuiteoapi/node-sdk": "1.76.0",
     "@qitu/agent-memory": "workspace:*",
     "@qitu/contracts": "workspace:*",
     "@qitu/database": "workspace:*",
@@ -31,6 +32,7 @@
     "@nestjs/cli": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
     "typescript": "^5.8.3"
   }
 }

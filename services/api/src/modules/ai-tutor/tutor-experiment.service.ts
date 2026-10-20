@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { auditLogs, type Database } from '@qitu/database';
 import type { GetTutorSessionResponse, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock } from '@qitu/contracts';
@@ -10,6 +10,10 @@ import { TemplateBindingService } from '../templates/templates-binding.service';
 import { ProjectEvidenceMaterializer } from '../works/project-evidence.service';
 import { validateTutorExperimentAction } from './tutor-experiment.validation';
 import type { TutorSessionRecord } from './tutor.service';
+import { isLessonActivityAuthorized, type LessonActivityScope, type OpticsCandidate } from './tutor-lesson-activity';
+import { MasteryDomainService } from '../mastery/mastery-domain.service';
+import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import { freezeTutorRuntime } from './tutor-frozen-runtime';
 
 type ExperimentBlock = Extract<TutorReplyBlock, { kind: 'optics_experiment' }>;
 type ActionRecord = { id: string; detail: Record<string, unknown> };
@@ -25,7 +29,38 @@ export class TutorExperimentService {
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
+    @Optional() private readonly mastery?: MasteryDomainService,
+    @Optional() private readonly registry?: PlatformRegistryService,
   ) {}
+
+  async propose(actorId: string, scope: LessonActivityScope, candidate: OpticsCandidate, key: string): Promise<ExperimentBlock> {
+    const project = await this.plans.findProject(scope.projectId);
+    if (!project || project.studentId !== actorId || !project.templateVersionId) this.reject('PROJECT_REQUIRED', '需要有效的项目授权');
+    if (!['practice_ready', 'practice_building'].includes(project.status)) this.reject('GATE_REQUIRED', '理论门禁通过后才能生成实践活动');
+    const plan = await this.plans.findBundle(scope.planId);
+    const session = plan?.sessions.find((entry) => entry.id === scope.learningSessionId);
+    if (!plan || plan.plan.projectId !== project.id || plan.plan.studentUserId !== actorId || plan.plan.version !== scope.planRevision || !session) this.reject('REVISION_CHANGED', '当前课时已变化');
+    const teaching = await this.bindings.getFrozenTeachingBundle(project.id, project.templateVersionId);
+    const lesson = teaching.template.curriculum?.profiles.find((profile) => profile.id === teaching.scheduleProfileId)
+      ?.sessions.find((entry) => entry.sessionIndex === session.lessonIndex);
+    const expectedTopic = candidate.mode === 'diffraction' ? 'diffraction_slit' : 'particle_scattering';
+    if (!lesson?.interactiveSpec?.enabled || lesson.interactiveSpec.domainTopic !== expectedTopic
+      || session.id !== `${plan.plan.id}:${lesson.id}` || plan.plan.templateVersion !== teaching.templateVersionId
+      || !lesson.objectiveIds.some((id) => `${plan.plan.id}:${id}` === scope.objectiveId)) this.reject('MODEL_NOT_SCHEDULED', '本课时未授权该实验模型');
+    const actor = { id: actorId, role: 'student' as const, email: '', displayName: '' };
+    if (!this.mastery || !await this.mastery.checkRequiredObjectives(actor, actorId, plan.plan.id, session.theoryObjectiveIds, this.plans)) this.reject('GATE_REQUIRED', '尚无有效的理论掌握证据');
+    const validated = validateTutorExperimentAction(candidate.mode, 'run', { mode: candidate.mode, parameters: candidate.parameters });
+    const frozenScope = await this.scope(project.id, actorId, session.lessonIndex);
+    if (!frozenScope || frozenScope.planRevision !== scope.planRevision || frozenScope.learningSessionId !== scope.learningSessionId) this.reject('REVISION_CHANGED', '课时状态已变化');
+    return {
+      kind: 'optics_experiment', experimentId: `optics-${hashRequest({ scope, key }).slice(0, 32)}`,
+      title: candidate.title, summary: candidate.summary, initialMode: candidate.mode,
+      initialParameters: validated.auditPayload.parameters as Record<string, number>, allowedModels: [candidate.mode],
+      specVersion: '1.0.0', objectiveId: `optics.wave.${candidate.mode}`, sessionIndex: session.lessonIndex,
+      allowedActions: ['submit_prediction', 'run', 'record_observation'], scope: frozenScope,
+      predictionGate: { required: true, submitted: false },
+    };
+  }
 
   async scope(projectId: string, studentId: string, lessonIndex: number): Promise<ExperimentBlock['scope']> {
     const project = await this.plans.findProject(projectId);
@@ -65,7 +100,11 @@ export class TutorExperimentService {
     if (!block.scope || !currentScope || hashRequest(currentScope) !== hashRequest(block.scope)) {
       this.reject('REVISION_CHANGED', '学习计划已变化，请重新打开课件');
     }
+    await this.assertDynamicAccess(actorId, record.projectId, block);
     const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload);
+    if (block.allowedModels && !block.allowedModels.includes(validated.auditPayload.mode as 'diffraction' | 'scattering')) {
+      this.reject('MODEL_NOT_SCHEDULED', '本活动未授权该实验模型');
+    }
     const payload = input.payload as Record<string, unknown>;
     if (input.action === 'record_observation' &&
       (typeof payload.observation !== 'string' || !payload.observation.trim() || payload.observation.length > 500)) {
@@ -93,6 +132,7 @@ export class TutorExperimentService {
           && action.detail.parameterDigest === parameterDigest);
         if (!run) this.reject('RUN_REQUIRED', '请先运行与当前参数一致的仿真');
       }
+      await this.assertDynamicAccess(actorId, record.projectId, block);
       const savedAt = new Date().toISOString();
       let observationReceipt: TutorExperimentActionResponse['observationReceipt'];
       if (run && parameters && parameterDigest) {
@@ -125,6 +165,37 @@ export class TutorExperimentService {
       return { status: 201, body: response };
     });
     return result.body;
+  }
+
+  /** Existing legacy cards retain their original gate; new dynamic cards also honor immediate tool revocation. */
+  private async assertDynamicAccess(actorId: string, projectId: string | null, block: ExperimentBlock): Promise<void> {
+    if (!block.allowedModels) return;
+    if (!this.registry || !this.mastery || !block.scope || !projectId) this.reject('AUTHORIZATION_REQUIRED', '动态实验授权暂不可用');
+    const project = await this.plans.findProject(projectId);
+    if (!project || project.studentId !== actorId || !project.templateVersionId
+      || !['practice_ready', 'practice_building'].includes(project.status)) this.reject('GATE_REQUIRED', '当前项目未获得实践授权');
+    const plan = await this.plans.findBundle(block.scope.planId);
+    const session = plan?.sessions.find((entry) => entry.id === block.scope!.learningSessionId);
+    if (!plan || plan.plan.projectId !== projectId || plan.plan.studentUserId !== actorId
+      || plan.plan.version !== block.scope.planRevision || !session) this.reject('REVISION_CHANGED', '课时状态已变化');
+    const bundle = await this.bindings.getFrozenTeachingBundle(projectId, project.templateVersionId);
+    const lesson = bundle.template.curriculum?.profiles.find((entry) => entry.id === bundle.scheduleProfileId)
+      ?.sessions.find((entry) => entry.sessionIndex === session.lessonIndex);
+    const mode = block.allowedModels[0];
+    const topic = mode === 'diffraction' ? 'diffraction_slit' : mode === 'scattering' ? 'particle_scattering' : null;
+    if (!lesson?.interactiveSpec?.enabled || lesson.interactiveSpec.domainTopic !== topic || block.allowedModels.length !== 1
+      || session.lessonIndex !== block.sessionIndex || session.id !== `${plan.plan.id}:${lesson.id}`
+      || plan.plan.templateVersion !== bundle.templateVersionId) this.reject('MODEL_NOT_SCHEDULED', '当前课时未授权该模型');
+    const routes = bundle.sessionRoutes.filter((route) => route.sessionIndex === session.lessonIndex);
+    const role = routes.length === 1 ? bundle.roles.find((entry) => entry.roleSlotId === routes[0]!.roleSlotId) : undefined;
+    if (!role?.modelByPurpose.dialogue) this.reject('AUTHORIZATION_REQUIRED', '课时导师授权缺失');
+    const runtime = freezeTutorRuntime(await this.registry.getAssistantRuntime(role.assistantId), role,
+      this.registry.isModelAvailable(role.modelByPurpose.dialogue));
+    if (!isLessonActivityAuthorized(runtime)) this.reject('AUTHORIZATION_REVOKED', '本实验的教学工具授权已撤销');
+    const actor = { id: actorId, role: 'student' as const, email: '', displayName: '' };
+    if (!await this.mastery.checkRequiredObjectives(actor, actorId, plan.plan.id, session.theoryObjectiveIds, this.plans)) {
+      this.reject('GATE_REQUIRED', '当前理论掌握证据未满足实践门禁');
+    }
   }
 
   private async read(actorId: string, sessionId: string, experimentId: string): Promise<ActionRecord[]> {

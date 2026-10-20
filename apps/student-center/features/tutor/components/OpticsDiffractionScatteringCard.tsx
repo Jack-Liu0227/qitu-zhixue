@@ -9,6 +9,8 @@ export interface OpticsDiffractionScatteringCardProps {
   savedObservation?: TutorExperimentActionResponse['observationReceipt'];
   disabled?: boolean;
   initialMode?: 'diffraction' | 'scattering';
+  initialParameters?: Record<string, number>;
+  allowedModels?: readonly ('diffraction' | 'scattering')[];
   predictionGate?: {
     required: boolean;
     submitted: boolean;
@@ -79,10 +81,16 @@ interface Particle {
 export function OpticsDiffractionScatteringCard({
   disabled = false,
   initialMode = 'diffraction',
+  initialParameters,
+  allowedModels = ['diffraction', 'scattering'],
   predictionGate,
   onAction,
   savedObservation,
 }: OpticsDiffractionScatteringCardProps) {
+  const parameter = (name: string, fallback: number, min: number, max: number) => {
+    const value = initialParameters?.[name];
+    return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : fallback;
+  };
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<'diffraction' | 'scattering'>(initialMode);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -127,13 +135,13 @@ export function OpticsDiffractionScatteringCard({
   }, [onAction]);
 
   // 单缝衍射实验物理参数
-  const [wavelength, setWavelength] = useState<number>(632.8); // nm (氦氖红光)
-  const [slitWidth, setSlitWidth] = useState<number>(50); // um (狭缝宽度 a)
-  const [screenDistance, setScreenDistance] = useState<number>(1.0); // m (狭缝到光屏 D)
+  const [wavelength, setWavelength] = useState<number>(() => initialMode === 'diffraction' ? parameter('wavelength', 632.8, 400, 750) : 632.8); // nm (氦氖红光)
+  const [slitWidth, setSlitWidth] = useState<number>(() => parameter('slitWidth', 50, 10, 200)); // um (狭缝宽度 a)
+  const [screenDistance, setScreenDistance] = useState<number>(() => parameter('screenDistance', 1, 0.5, 2)); // m (狭缝到光屏 D)
 
   // 介质散射实验物理参数
-  const [particleRadius, setParticleRadius] = useState<number>(25); // nm (微粒半径 r)
-  const [scatteringWavelength, setScatteringWavelength] = useState<number>(450); // nm (蓝光)
+  const [particleRadius, setParticleRadius] = useState<number>(() => parameter('particleRadius', 5, 5, 300)); // nm (微粒半径 r)
+  const [scatteringWavelength, setScatteringWavelength] = useState<number>(() => initialMode === 'scattering' ? parameter('wavelength', 450, 400, 750) : 450); // nm (蓝光)
 
   useEffect(() => {
     runActionIdRef.current = null;
@@ -692,7 +700,7 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled || actionPending}
+            disabled={disabled || actionPending || !allowedModels.includes('diffraction')}
             onClick={() => { setMode('diffraction'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
@@ -710,7 +718,7 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled || actionPending}
+            disabled={disabled || actionPending || !allowedModels.includes('scattering')}
             onClick={() => { setMode('scattering'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
@@ -1031,17 +1039,17 @@ export function OpticsDiffractionScatteringCard({
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>快速预设实验：</span>
               <button
                 type="button"
-                onClick={() => { setScatteringWavelength(450); setParticleRadius(25); }}
+                onClick={() => { setScatteringWavelength(450); setParticleRadius(5); }}
                 style={{ padding: '3px 9px', fontSize: '11.5px', borderRadius: '6px', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer' }}
               >
-                ☁️ 瑞利蓝天散射 (450nm, r=25nm)
+                短波单色散射预览 (450nm, r=5nm)
               </button>
               <button
                 type="button"
-                onClick={() => { setScatteringWavelength(680); setParticleRadius(25); }}
+                onClick={() => { setScatteringWavelength(680); setParticleRadius(5); }}
                 style={{ padding: '3px 9px', fontSize: '11.5px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#b91c1c', cursor: 'pointer' }}
               >
-                🌅 夕阳长波穿透 (680nm, r=25nm)
+                长波单色散射预览 (680nm, r=5nm)
               </button>
               <button
                 type="button"

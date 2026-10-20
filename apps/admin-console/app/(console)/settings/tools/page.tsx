@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding, hasMcpBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
@@ -23,7 +23,7 @@ const MCP_STATUS_TEXT: Record<AdminRuntimeMcpServer['status'], string> = {
 };
 
 const BUILTIN_STATUS_TEXT: Record<AdminRuntimeBuiltinTool['status'], string> = {
-  enabled: '已启用',
+  enabled: '已登记',
   disabled: '已停用',
   ready: '可用',
   unavailable: '不可用',
@@ -49,39 +49,51 @@ export default function ToolsSettingsPage() {
   const [assistantsPending, setAssistantsPending] = useState(true);
   const [assistantsError, setAssistantsError] = useState('');
 
+  const writing = useRef(new Set<string>());
+  const registryRequest = useRef(0);
+  const assistantRequest = useRef(0);
   const [notice, setNotice] = useState('');
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeFailed = /失败|未确认|暂不能|不一致/.test(notice);
   const [activeMode, setActiveMode] = useState<'matrix' | 'edit' | 'preview'>('matrix');
 
   const notify = useCallback((text: string) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
     setNotice(text);
-    setTimeout(() => setNotice(''), 3000);
+    if (!/失败|未确认|暂不能|不一致/.test(text)) noticeTimer.current = setTimeout(() => setNotice(''), 3000);
   }, []);
 
   const loadRegistry = useCallback(async () => {
+    const request = ++registryRequest.current;
     setRegistryPending(true);
     try {
       const state = await fetchRuntimeSnapshot();
+      if (request !== registryRequest.current) return;
       setSnapshot(state);
       setRegistryError('');
     } catch (error) {
+      if (request !== registryRequest.current) return;
       setSnapshot(null);
       setRegistryError(error instanceof Error ? error.message : 'MCP 状态读取失败');
     } finally {
-      setRegistryPending(false);
+      if (request === registryRequest.current) setRegistryPending(false);
     }
   }, []);
 
   const loadAssistants = useCallback(async () => {
+    const request = ++assistantRequest.current;
     setAssistantsPending(true);
     try {
       const list = await fetchAdminAssistantConfigs();
+      if (request !== assistantRequest.current) return;
       setAssistants(list ?? []);
       setAssistantsError('');
     } catch (error) {
+      if (request !== assistantRequest.current) return;
       setAssistants([]);
       setAssistantsError(error instanceof Error ? error.message : '助手列表读取失败');
     } finally {
-      setAssistantsPending(false);
+      if (request === assistantRequest.current) setAssistantsPending(false);
     }
   }, []);
 
@@ -104,6 +116,8 @@ export default function ToolsSettingsPage() {
     [snapshot],
   );
   const builtinTools = useMemo(() => snapshot?.builtInTools ?? [], [snapshot]);
+  const unresolvedTools = useMemo(() => [...new Set(assistants.flatMap(assistant => assistant.toolIds))]
+    .filter(id => !builtinTools.some(tool => tool.id === id)), [assistants, builtinTools]);
 
   /** 服务端持久化助手绑定；失败时回滚本地状态并给出提示。 */
   const applyAssistantPatch = useCallback(async (
@@ -111,17 +125,28 @@ export default function ToolsSettingsPage() {
     field: 'mcpServerIds' | 'toolIds',
     next: string[],
   ): Promise<boolean> => {
-    const previous = assistants;
-    setAssistants((prev) => prev.map((a) => (a.id === assistantId ? { ...a, [field]: next } : a)));
-    try {
-      await persistAssistantBinding(assistantId, field, next);
-      return true;
-    } catch (error) {
-      setAssistants(previous);
-      notify(`绑定同步失败：${error instanceof Error ? error.message : '未知错误'}（已回滚）`);
+    if (!snapshot || registryPending || registryError || assistantsPending || assistantsError) {
+      notify('目录或助手状态未完成读取，暂不能修改授权');
       return false;
     }
-  }, [assistants, notify]);
+    if (writing.current.has(assistantId)) { notify('该助手的上一项授权仍在保存和回读'); return false; }
+    writing.current.add(assistantId);
+    ++assistantRequest.current;
+    try {
+      await persistAssistantBinding(assistantId, field, next);
+      const fresh = (await fetchAdminAssistantConfigs()).find(item => item.id === assistantId);
+      const expected = [...new Set(next)].sort();
+      if (!fresh || JSON.stringify([...new Set(fresh[field])].sort()) !== JSON.stringify(expected)) {
+        throw new Error('服务端回读与请求不一致，请刷新后核对');
+      }
+      setAssistants(prev => prev.map(item => item.id === assistantId ? fresh : item));
+      return true;
+    } catch (error) {
+      const label = assistants.find((assistant) => assistant.id === assistantId)?.name ?? assistantId;
+      notify(`【${label} · ${field === 'toolIds' ? '内置工具' : 'MCP'}】写入或回读失败：${error instanceof Error ? error.message : '未知错误'}。本项状态未确认；前面已回读的变更保留，后续批量操作未执行。`);
+      return false;
+    } finally { writing.current.delete(assistantId); }
+  }, [snapshot, registryPending, registryError, assistantsPending, assistantsError, assistants, notify]);
 
   const isMcpBound = useCallback((assistant: AdminAssistantConfig, server: AdminRuntimeMcpServer) => {
     return hasMcpBinding(assistant, { id: server.id, name: server.label });
@@ -184,18 +209,19 @@ export default function ToolsSettingsPage() {
       ? Array.from(new Set([...assistant.mcpServerIds, ...mcpServers.map((s) => s.id)]))
       : assistant.mcpServerIds.filter((value) => !mcpServers.some((s) => s.id === value || s.label === value));
     const okMcp = await applyAssistantPatch(assistant.id, 'mcpServerIds', nextMcp);
-    if (!okMcp) return;
+    if (!okMcp) return false;
     const nextTools = enabled
       ? Array.from(new Set([...assistant.toolIds, ...builtinTools.map((t) => t.id)]))
       : assistant.toolIds.filter((value) => !builtinTools.some((t) => t.id === value));
     const okTools = await applyAssistantPatch(assistant.id, 'toolIds', nextTools);
-    if (!okTools) return;
+    if (!okTools) return false;
     notify(enabled ? `已为【${assistant.name}】开启当前可见工具授权` : `已清空【${assistant.name}】的当前可见工具授权`);
+    return true;
   }, [mcpServers, builtinTools, applyAssistantPatch, notify]);
 
   const setEntireMatrix = useCallback(async (enabled: boolean) => {
     for (const assistant of assistants) {
-      await setAssistantRow(assistant, enabled);
+      if (!await setAssistantRow(assistant, enabled)) return;
     }
   }, [assistants, setAssistantRow]);
 
@@ -308,8 +334,13 @@ export default function ToolsSettingsPage() {
         </div>
       </div>
 
+      {!registryPending && !registryError && unresolvedTools.length > 0 && (
+        <div role="status" style={{ marginBottom: 16, padding: 12, background: '#fffbeb', color: '#92400e', borderRadius: 8 }}>
+          以下历史工具 ID 未在当前目录登记，绑定已保留，需逐项迁移后才能确认可用：{unresolvedTools.join('、')}
+        </div>
+      )}
       {notice ? (
-        <div role="status" style={{ marginBottom: '16px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+        <div role="status" style={{ marginBottom: '16px', padding: '10px 14px', background: noticeFailed ? '#fef2f2' : '#f0fdf4', border: '1px solid #cbd5e1', borderRadius: '8px', color: noticeFailed ? '#b91c1c' : '#16a34a', fontSize: '13px', fontWeight: 600 }}>
           {notice}
         </div>
       ) : null}
@@ -358,7 +389,7 @@ export default function ToolsSettingsPage() {
                 {registryError ? '运行时目录读取失败，请重试。' : 'AI 运行时未上报任何 MCP 服务器或内置工具。可通过「JSON 配置编辑」添加 MCP 服务器。'}
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '10px' }}>
+              <div className="settings-permission-matrix" role="region" aria-label="授权矩阵，可横向滚动查看全部列" tabIndex={0} style={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: '10px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
@@ -392,7 +423,7 @@ export default function ToolsSettingsPage() {
                           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                             {server.toolCount === null ? '工具数未知' : `${server.toolCount} 个工具`} · {MCP_STATUS_TEXT[server.status]}
                           </div>
-                          <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 400 }}>{server.transport} {server.enabled ? '' : '· 已停用'}</div>
+                          <div style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 400 }}>{server.transport} {server.enabled ? '' : '· 已停用'} · {server.lastCheckedAt ? `最近探测：${new Date(server.lastCheckedAt).toLocaleString()}` : '尚无连接探测记录'}</div>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
                             <button
                               type="button"
@@ -417,7 +448,7 @@ export default function ToolsSettingsPage() {
                         <th key={tool.id} style={{ padding: '12px 14px', fontWeight: 700, color: '#4338ca', textAlign: 'center', minWidth: '130px' }}>
                           <div>{tool.label}</div>
                           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                            内置工具 · {BUILTIN_STATUS_TEXT[tool.status]}
+                            {tool.invocation === 'domain_service' ? '领域服务执行' : tool.invocation === 'sdk_read' ? 'SDK 只读接口' : '受控模型工具'} · {BUILTIN_STATUS_TEXT[tool.status]}
                           </div>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '6px' }}>
                             <button
@@ -550,7 +581,7 @@ export default function ToolsSettingsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
                       <strong style={{ fontSize: '13px', color: '#0f172a' }}>{tool.label}</strong>
                       <span style={{ fontSize: '11px', color: tool.status === 'error' || tool.status === 'unavailable' ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>
-                        ● {BUILTIN_STATUS_TEXT[tool.status]}
+                        ● {BUILTIN_STATUS_TEXT[tool.status]} · {tool.invocation === 'domain_service' ? '由领域服务执行' : tool.invocation === 'sdk_read' ? 'SDK 只读接口' : '按授权调用'}
                       </span>
                     </div>
                     {tool.description ? (

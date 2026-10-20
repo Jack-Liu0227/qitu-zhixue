@@ -1,6 +1,10 @@
-# 学情画像与成长轨迹 Projection
+# 问题二：个人画像与成长轨迹自动生成
 
-本目录解决“根据学生输出、项目、对话和助手调用生成个人画像与成长轨迹”的第二个问题。
+> 状态：2026-10-21 / 已完成本轮代码审计；业务尚未全部完成，未作生产验收。
+
+> 2026-10-21 复核；基线 `61d28fd` 加已有工作树。结论：**尚未全部完成**。
+
+本目录交付审计和实施任务，未生成真实学生画像。先读 [完成情况报告](./00-completion-audit.md)、[统一接线设计](./05-evidence-routing-design.md)、[剩余任务](./06-remaining-tasks.md)、[本轮验证](./07-validation-20261021.md)。
 
 ## 现有代码分析
 
@@ -8,11 +12,11 @@
   `apps/student-center/features/profile/**`。
 - API 已提供 `GET /api/v1/students/me/profile`，只读取 `agent_projection_candidates.status = accepted`：
   `services/api/src/modules/growth/growth.controller.ts`、`growth.service.ts`。
-- Team Runtime 已把 `tutor.turn.completed` 路由到 `learner-profile`，把项目/作品/反思/mastery 事件路由到
-  `growth-analyst`，并把模型输出暂存为 `proposed`：
+- Team Runtime 声明 `tutor.turn.completed` 到 `learner-profile`、项目/作品/反思/mastery 到
+  `growth-analyst` 的消费映射，并把输出暂存为 `proposed`；消费映射不证明生产事件和执行路由接通：
   `services/workers/src/team-runtime-projection-source.ts`、`team-runtime-mailbox-source.ts`。
-- 当前最大缺口是：没有明确的 domain-owner acceptance/revision 流程，候选会长期停在 `proposed`；因此页面诚实地显示“画像正在形成”，但不会自动得到新的已确认结果。
-- 另一个合同风险是前端 `StudentProfileProjection.trajectory` 需要 `evidenceRefs`，API 组合投影目前没有稳定返回该字段；必须在同一 PR 修复，不允许让 UI 猜证据。
+- Growth owner 的校验、接受、拒绝、替换和审计源码已存在，trajectory 的 evidenceRefs 已返回；旧的“没有 owner”说明不再准确。
+- 尚缺：Admin/Worker 身份统一、event/delegate 路由一致、领域事件桥接、有界证据内容装配、自动审核/候选列表入口，以及独立成长轨迹页消费。
 
 ## 设计原则
 
@@ -29,8 +33,9 @@
 - `04-verification.md`：Worker、API、权限和数据最小化验收。
 - `TODO.csv`：任务拆分。
 
-## Implementation status (2026-10-21)
+## 本轮复核状态
 
-- Closed contracts, opaque evidence filtering, worker minimization, and the Growth owner validate/accept/reject/supersede path are implemented.
-- The student read model only composes accepted `learner_profile` and `growth_trajectory` rows.
-- Parent-specific profile projection and the full event-to-page E2E regression remain before production acceptance; see `TODO.csv`.
+- 闭合 schema、最小化输入、候选 owner 和 accepted-only 画像读取已实现。
+- “只剩家长投影和 E2E”的旧总结不完整；本轮按实际调用链修正了 [TODO.csv](./TODO.csv)。
+- Worker 15 项定向单测通过，但不覆盖事件生成到双页面的真实闭环；API 在本轮新依赖构建下因 TS2542 失败。
+- 实施顺序：身份/路由 → 事件/证据 → 版本/审核接入 → 双页面 → 隔离验收。不另建画像事实库。

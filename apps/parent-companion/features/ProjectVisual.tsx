@@ -1,4 +1,4 @@
-import { RobotMascot } from '@qitu/ui';
+import { VisualAsset } from '@qitu/ui';
 
 export function ProjectVisual({ compact = false }: { compact?: boolean }) {
   return (
@@ -7,7 +7,7 @@ export function ProjectVisual({ compact = false }: { compact?: boolean }) {
     >
       <span className="project-visual-glow" />
       <span className="project-visual-desk" />
-      <RobotMascot size={compact ? 60 : 96} />
+      <VisualAsset assetId="support-review-v1" size={compact ? 60 : 96} />
     </div>
   );
 }

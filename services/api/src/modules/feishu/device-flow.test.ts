@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { encryptModelSecret } from '../../common/secrets/model-secret';
-import { feishuBots, feishuQrSessions } from '@qitu/database';
+import { adminAssistants, feishuBots, feishuQrSessions } from '@qitu/database';
 import { FeishuService } from './feishu.service';
 
 const SECRET_KEY = 'b'.repeat(64);
@@ -20,7 +20,7 @@ function fakeDatabase(domain: 'feishu' | 'lark' = 'feishu') {
   };
   const sessions: Array<Record<string, any>> = [];
   const updates: Array<Record<string, unknown>> = [];
-  const rowsFor = (table: unknown): unknown[] => table === feishuBots ? [bot] : sessions;
+  const rowsFor = (table: unknown): unknown[] => table === adminAssistants ? [{ id: 'assistant-a', enabled: true }] : table === feishuBots ? [bot] : sessions;
   const db = {
     select: () => ({
       from: (table: unknown) => ({

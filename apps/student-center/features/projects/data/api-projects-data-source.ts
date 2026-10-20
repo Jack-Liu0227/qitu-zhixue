@@ -206,9 +206,9 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
 }
 
 function matchesTab(project: ProjectListItem, tab: ProjectTab): boolean {
-  if (tab === 'done') return project.status === 'completed';
-  if (tab === 'draft') return project.status === 'exploration' || project.status === 'intent_confirmed';
-  return project.status !== 'completed' && project.status !== 'exploration' && project.status !== 'intent_confirmed';
+  if (tab === 'done') return project.status === 'completed' || project.status === 'published';
+  if (tab === 'draft') return project.status === 'exploration';
+  return !['completed', 'published', 'exploration'].includes(project.status);
 }
 
 function unsupported(message: string): ProjectsDataError { return new ProjectsDataError(message, 501, 'SERVER_CONTRACT_REQUIRED'); }

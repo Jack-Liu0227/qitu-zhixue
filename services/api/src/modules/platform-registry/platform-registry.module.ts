@@ -1,4 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { TeamVersionService } from './team-version.service';
+import { TeamVersionController } from './team-version.controller';
 import { AuthModule } from '../identity-auth/auth.module';
 import { PlatformRegistryController } from './platform-registry.controller';
 import { PlatformRegistryService } from './platform-registry.service';
@@ -9,8 +11,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 @Module({
   imports: [AuthModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
-  controllers: [PlatformRegistryController, ImaSettingsController],
-  providers: [PlatformRegistryService, ImaSettingsService],
-  exports: [PlatformRegistryService, ImaSettingsService],
+  controllers: [TeamVersionController, PlatformRegistryController, ImaSettingsController],
+  providers: [TeamVersionService, PlatformRegistryService, ImaSettingsService],
+  exports: [TeamVersionService, PlatformRegistryService, ImaSettingsService],
 })
 export class PlatformRegistryModule {}

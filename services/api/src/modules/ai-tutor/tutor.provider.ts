@@ -14,10 +14,13 @@ import type { TutorContextPacket } from '@qitu/ai-client';
  * 任何改动。契约与流式事件是与前端共享的，换实现不会改变线上协议。
  */
 export interface TutorTurnInput {
+  imaKnowledgeScope?: import('./ima-tool-scope').ImaKnowledgeScope;
   knowledgeTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
   knowledgeState?: string;
   /** Server-only fresh authorization closure; never serialized or supplied by browsers. */
   authorizeKnowledgeTool?: (toolId: string) => Promise<boolean>;
+  knowledgeScope?: import('./ima-project-scope').ImaProjectScope;
+  lessonActivities?: import('./tutor-lesson-activity').LessonActivityChannel;
   projectId: string;
   sessionId: string;
   projectTitle: string;

@@ -16,7 +16,9 @@ import { createCipheriv, randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { agentConfigs, agentRoutes, agentSkillBindings, modelModels, modelProviders, modelUsageBindings } from '@qitu/database';
+import { adminAssistants, agentConfigs, agentProjectionCandidates, agentRoutes, agentSkillBindings, agentTeamEvents, agentTeamRuns,
+  modelModels, modelProviders, modelUsageBindings, tutorSessions, tutorTurns } from '@qitu/database';
+import { expressionQuestion } from '@qitu/contracts';
 
 function routingDb(rows: unknown[][]): Database {
   return { select: () => ({ from: () => ({ where: () => ({ limit: async () => rows.shift() ?? [] }) }) }) } as unknown as Database;
@@ -31,19 +33,33 @@ function skillDb(skillIds: string[]): Database {
 }
 
 test('default skill roots use only the runtime root unless explicitly configured', () => {
-  assert.deepEqual(defaultSkillRoots({}), [join(process.cwd(), '.agents', 'skills')]);
-  assert.equal(defaultSkillRoots({}).some((root) => root.includes(join('.pi', 'skills'))), false);
-  const configured = `/tmp/skills-a${delimiter}/tmp/skills-b`;
-  assert.deepEqual(defaultSkillRoots({ QITU_AGENT_SKILL_ROOTS: configured }), configured.split(delimiter));
+  const root = mkdtempSync(join(tmpdir(), 'qitu-skill-root-'));
+  const originalDirectory = process.cwd();
+  try {
+    writeFileSync(join(root, 'AGENTS.md'), '# Synthetic project');
+    const nested = join(root, 'services', 'workers');
+    mkdirSync(nested, { recursive: true });
+    for (const directory of [root, nested]) {
+      process.chdir(directory);
+      assert.deepEqual(defaultSkillRoots({}), [join(root, '.agents', 'skills')]);
+      assert.equal(defaultSkillRoots({}).some(path => path.includes(join('.pi', 'skills'))), false);
+    }
+    assert.deepEqual(defaultSkillRoots({ QITU_PROJECT_ROOT: nested }), [join(nested, '.agents', 'skills')]);
+    const configured = `/tmp/skills-a${delimiter}/tmp/skills-b`;
+    assert.deepEqual(defaultSkillRoots({ QITU_AGENT_SKILL_ROOTS: configured }), configured.split(delimiter));
+  } finally {
+    process.chdir(originalDirectory);
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
-test('dev-only skills are excluded and legacy skills have frontmatter removed before prompt injection', async () => {
+test('dev-only skills are excluded and published skills have frontmatter removed', async () => {
   const root = mkdtempSync(join(tmpdir(), 'qitu-team-skills-'));
   try {
     mkdirSync(join(root, 'dev-only'));
     writeFileSync(join(root, 'dev-only', 'SKILL.md'), '---\nruntime: dev-only\nname: 开发工具\n---\n不应进入 prompt');
     mkdirSync(join(root, 'legacy'));
-    writeFileSync(join(root, 'legacy', 'SKILL.md'), '---\nname: 教学技能\ndescription: legacy\n---\n保留的教学正文');
+    writeFileSync(join(root, 'legacy', 'SKILL.md'), '---\nname: 教学技能\nruntime: teaching\nstatus: published\ndescription: fixture\n---\n保留的教学正文');
 
     const skills = await loadAgentSkills(skillDb(['dev-only', 'legacy']), 'agent', [root], {});
     assert.deepEqual(skills.map((skill) => skill.id), ['legacy']);
@@ -74,6 +90,17 @@ test('missing skill files are ignored without throwing', async () => {
   const root = mkdtempSync(join(tmpdir(), 'qitu-team-skills-missing-'));
   try {
     assert.deepEqual(await loadAgentSkills(skillDb(['missing']), 'agent', [root], {}), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('global Admin configurator skills never enter teaching or projection worker prompts', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qitu-team-admin-skills-'));
+  try {
+    mkdirSync(join(root, 'qitu-project-configurator'));
+    writeFileSync(join(root, 'qitu-project-configurator', 'SKILL.md'), '---\nname: qitu-project-configurator\nruntime: admin\nstatus: published\n---\nAdmin operations');
+    assert.deepEqual(await loadAgentSkills(skillDb(['qitu-project-configurator']), 'profile', [root], {}), []);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -113,10 +140,10 @@ test('正文预算不被 frontmatter 占用', async () => {
     mkdirSync(join(root, 'big'));
     writeFileSync(
       join(root, 'big', 'SKILL.md'),
-      `---\nname: big\ndescription: ${'d'.repeat(3_000)}\n---\n${'正'.repeat(5_000)}`,
+      `---\nname: big\nruntime: teaching\nstatus: published\ndescription: ${'d'.repeat(3_000)}\n---\n${'正'.repeat(5_000)}`,
     );
     const skills = await loadAgentSkills(skillDb(['big']), 'agent', [root], {});
-    assert.equal(skills[0]?.content.length, 4_000, '正文应恰好拿到 MAX_SKILL_CHARS 预算');
+    assert.equal(skills[0]?.content.length, 5_000, '完整正文与 API 相同，不再按 4000 字符截断');
     assert.equal(skills[0]?.content.startsWith('正'), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -125,12 +152,15 @@ test('正文预算不被 frontmatter 占用', async () => {
 
 test('real Team executor sends scenario-selected model and rereads binding on next job', async () => {
   const requestedModels: string[] = [];
+  const requestedBodies: string[] = [];
+  let modelOutput = '{"confirmed":true}';
   const server = createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk.toString();
     requestedModels.push(JSON.parse(body).model);
+    requestedBodies.push(body);
     res.writeHead(200, { 'content-type': 'text/event-stream' });
-    res.end('data: '+JSON.stringify({ id: 'test', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: '{"confirmed":true}' }, finish_reason: null }] })+'\n\ndata: '+JSON.stringify({ id: 'test', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })+'\n\ndata: [DONE]\n\n');
+    res.end('data: '+JSON.stringify({ id: 'test', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: modelOutput }, finish_reason: null }] })+'\n\ndata: '+JSON.stringify({ id: 'test', object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })+'\n\ndata: [DONE]\n\n');
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
@@ -141,22 +171,76 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
   const encrypted = Buffer.concat([cipher.update('synthetic-test-only'), cipher.final()]);
   const secret = ['v1', iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), encrypted.toString('base64url')].join(':');
   let selectedModel = 'model-a';
-  const db = { select: () => ({ from: (table: unknown) => ({ where: () => {
+  let routeTrigger = 'delegate';
+  let routeTaskType = 'interest.confirm';
+  let boundAssistant = 'worker';
+  let routeOutputSchema: Record<string, unknown> = { type: 'object', required: ['confirmed'] };
+  let turnReads = 0;
+  let runStudentId = 'student';
+  const studentText = '我喜欢光学。缝宽变化有什么影响？';
+  const db = {
+    execute: async () => ({ rows: [{ revision: 3, config: { growthProjection: { profileAssistantId: boundAssistant, growthAssistantId: null } } }] }),
+    select: () => ({ from: (table: unknown) => ({ where: () => {
     const rows = table === agentConfigs ? [{ id: 'worker', enabled: true, modelProviderId: null, modelId: null, modelUsage: 'curriculum.plan', capabilities: [] }]
+      : table === adminAssistants ? [{ enabled: true }]
       : table === modelUsageBindings ? [{ providerId: 'provider', modelId: selectedModel }]
       : table === modelModels ? [{ enabled: true, modelId: selectedModel, inputModalities: ['text'], outputModalities: ['text'] }]
       : table === modelProviders ? [{ id: 'provider', name: 'Synthetic', enabled: true, baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', encryptedApiKey: secret }]
-      : table === agentRoutes ? [{ outputSchema: { type: 'object', required: ['confirmed'] } }]
+      : table === agentRoutes ? [{ id: 'route', fromAgentId: 'tutor', toAgentId: 'worker', trigger: routeTrigger, taskType: routeTaskType, enabled: true, outputSchema: routeOutputSchema }]
+      : table === agentTeamRuns ? [{ id: 'synthetic', leaderAgentId: 'tutor', studentUserId: runStudentId, projectId: null }]
+      : table === agentTeamEvents ? [{ id: 'event', runId: 'synthetic', topic: 'tutor.turn.completed', payload: { sourceAgentId: 'tutor', studentUserId: 'student', projectId: null,
+        sessionId: 'session', studentTurnId: 'student-turn', assistantTurnId: 'assistant-turn', studentSeq: 1, assistantSeq: 2, evidenceRef: 'learning_interaction:student-turn' } }]
+      : table === tutorSessions ? [{ id: 'session', studentId: 'student', projectId: null, archivedAt: null }]
+      : table === tutorTurns ? [turnReads++ % 2 === 0
+        ? { id: 'student-turn', role: 'student', seq: 1, blocks: [{ kind: 'text', text: studentText }], createdAt: new Date('2026-10-21T00:00:00Z') }
+        : { id: 'assistant-turn', role: 'assistant', seq: 2 }]
+      : table === agentProjectionCandidates ? []
       : table === agentSkillBindings ? [] : [];
-    return { limit: async () => rows, then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(rows).then(resolve) };
+    return { limit: async () => rows, orderBy: () => ({ limit: async () => rows }), then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(rows).then(resolve) };
   } }) }) } as unknown as Database;
   try {
     const execute = createTeamAgentExecutor(db, { env: { QITU_MODEL_SECRET_KEY: key.toString('hex') }, policyPath: 'unused' });
-    const job = { message: { senderAgentId: 'tutor', recipientAgentId: 'worker', payload: {}, runId: 'synthetic', attempts: 1 }, task: { id: 'synthetic', taskType: 'interest.confirm', input: {} } } as unknown as TeamMailboxJob;
+    const job = { message: { senderAgentId: 'tutor', recipientAgentId: 'worker', mailboxAgentId: 'worker', taskId: 'synthetic', messageType: 'task.request', payload: {}, runId: 'synthetic', attempts: 1 }, task: { id: 'synthetic', runId: 'synthetic', agentId: 'worker', taskType: 'interest.confirm', input: {} } } as unknown as TeamMailboxJob;
     assert.deepEqual(await execute(job), { confirmed: true });
     selectedModel = 'model-b';
     assert.deepEqual(await execute(job), { confirmed: true });
     assert.deepEqual(requestedModels, ['model-a', 'model-b']);
+    routeTrigger = 'event';
+    routeTaskType = 'profile.project';
+    job.message.messageType = 'projection.request';
+    job.task!.taskType = routeTaskType;
+    job.task!.input = {
+      projectionType: 'learner_profile',
+      authorization: { routeId: 'route', trigger: 'event', fromAgentId: 'tutor', toAgentId: 'worker', taskType: routeTaskType },
+    };
+    assert.deepEqual(await execute(job), { confirmed: true });
+    assert.equal(requestedModels.length, 3);
+    boundAssistant = 'replacement';
+    await assert.rejects(execute(job), /PROJECTION_PURPOSE_CHANGED/);
+    assert.equal(requestedModels.length, 3, 'revoked binding must not invoke the model');
+    boundAssistant = 'worker';
+    routeOutputSchema = { type: 'object', required: ['version'] };
+    job.task!.input = { ...job.task!.input, sourceTopic: 'tutor.turn.completed', sourceEventId: 'event', studentUserId: 'student', projectId: null };
+    const profileOutput = { version: 1, priorKnowledge: null, targetLevel: null, timeBudgetMinutesPerWeek: null,
+      interests: ['光学'], preferences: [], strengths: [], nextQuestions: [expressionQuestion('缝宽变化')] };
+    modelOutput = JSON.stringify(profileOutput);
+    const valid = await execute(job);
+    assert.deepEqual(valid.result, profileOutput);
+    assert.equal((valid.analysisManifest as Record<string, unknown>).sourceEventId, 'event');
+    assert.ok(requestedBodies.at(-1)!.includes(studentText), 'authorized model request consumes real private student content');
+    assert.equal(JSON.stringify(valid).includes(studentText), false);
+    assert.equal(JSON.stringify(job.task!.input).includes(studentText), false);
+    modelOutput = JSON.stringify({ ...profileOutput, rawConversation: studentText });
+    const invalid = await execute(job);
+    assert.equal(invalid.result, null);
+    assert.equal(invalid.analysisErrorCode, 'PROJECTION_UNKNOWN_FIELD');
+    assert.equal(JSON.stringify(invalid).includes(studentText), false, 'arbitrary model echoes are not persisted even as proposed results');
+    const callCount = requestedModels.length;
+    const readCount = turnReads;
+    runStudentId = 'foreign-student';
+    await assert.rejects(execute(job), /PROJECTION_OWNER_INVALID/);
+    assert.equal(requestedModels.length, callCount, 'foreign run cannot cause private content to be sent to the model');
+    assert.equal(turnReads, readCount, 'run ownership is checked before reading raw turn content');
   } finally { await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())); }
 });
 
@@ -249,15 +333,46 @@ test('Team Agent execution rejects tasks without an enabled route', async () => 
     message: {
       senderAgentId: 'ai-tutor',
       recipientAgentId: 'interest-confirmation',
+      mailboxAgentId: 'interest-confirmation',
+      taskId: 'task-1',
+      messageType: 'task.request',
       payload: {},
       runId: 'run-1',
       attempts: 1,
     },
-    task: { id: 'task-1', taskType: 'interest.confirm', input: {} },
+    task: { id: 'task-1', runId: 'run-1', agentId: 'interest-confirmation', taskType: 'interest.confirm', input: {} },
   } as unknown as TeamMailboxJob;
 
   await assert.rejects(
     execute(job),
     (error: unknown) => error instanceof TeamAgentExecutionError && error.code === 'TEAM_AGENT_ROUTE_NOT_FOUND',
   );
+});
+
+test('worker rejects admin, revoked, unknown and unreviewed sources using shared admission', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qitu-team-scope-'));
+  try {
+    const sources = [
+      ['admin', 'runtime: admin\nstatus: published'],
+      ['revoked', 'runtime: teaching\nstatus: revoked'],
+      ['unknown', 'runtime: typo\nstatus: published'],
+      ['draft', 'runtime: teaching'],
+      ['published', 'runtime: teaching\nstatus: published'],
+    ];
+    for (const [id, header] of sources) {
+      mkdirSync(join(root, id!));
+      writeFileSync(join(root, id!, 'SKILL.md'), `---\n${header}\n---\nBody`);
+    }
+    const loaded = await loadAgentSkills(skillDb(sources.map(item => item[0]!)), 'agent', [root], {});
+    assert.deepEqual(loaded.map(skill => skill.id), ['published']);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a published skill cannot invent a required worker executor', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qitu-team-required-'));
+  try {
+    mkdirSync(join(root, 'needs-tools'));
+    writeFileSync(join(root, 'needs-tools', 'SKILL.md'), '---\nruntime: teaching\nstatus: published\nrequiredToolIds: knowledge_search\n---\nRead evidence');
+    await assert.rejects(loadAgentSkills(skillDb(['needs-tools']), 'agent', [root], {}), /TEAM_AGENT_TOOL_NOT_CONFIGURED/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -81,3 +81,30 @@
   .settings-shell .admin-prompt-editor-box { min-height: 180px; }
   .team-detail-view .guide-editor, .team-detail-view .guide-preview { min-height: 220px; }
 }
+.settings-mobile-nav-toggle { display: none; }
+.settings-nav-search { display: grid; gap: 6px; padding: 10px; color: #475569; font-size: 12px; }
+.settings-nav-search input { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font: inherit; }
+.settings-permission-matrix { max-width: 100%; max-height: 65dvh; overflow: auto; scrollbar-width: auto; scrollbar-color: #64748b #e2e8f0; }
+.settings-permission-matrix table { border-collapse: separate !important; border-spacing: 0; }
+.settings-permission-matrix thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; }
+.settings-permission-matrix tr > :first-child { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 1px 0 #cbd5e1; }
+.settings-permission-matrix thead tr > :first-child { z-index: 3; background: #f8fafc; }
+.settings-permission-matrix [role="checkbox"] { min-width: 44px; min-height: 44px; }
+@media (max-width: 640px) {
+  .settings-permission-matrix tr > :first-child { min-width: 148px !important; max-width: 148px; white-space: normal; overflow-wrap: anywhere; }
+}
+.settings-permission-matrix::after { content: '可横向滚动查看全部授权列'; display: block; position: sticky; left: 0; padding: 8px; font-size: 12px; color: #475569; background: #f8fafc; width: fit-content; }
+
+
+@media (max-width: 860px) {
+  .settings-shell { flex-direction: column; }
+  .settings-mobile-nav-toggle { display: flex; width: 100%; justify-content: space-between; }
+  .settings-shell .settings-sider { display: none; }
+  .settings-shell.is-navigation-open .settings-sider { display: block; width: 100% !important; min-width: 0 !important; max-width: none !important; max-height: 55dvh; overflow-y: auto; }
+  .settings-shell.is-navigation-open .settings-sider-head { display: none; }
+  .settings-shell.is-navigation-open .settings-sider-scroll { display: block; overflow-x: visible; }
+  .settings-shell.is-navigation-open .settings-sider-section { display: block; }
+  .settings-shell.is-navigation-open .settings-sider-group { display: block; }
+  .settings-shell.is-navigation-open .settings-sider-label { display: inline !important; }
+  .settings-shell.is-navigation-open .settings-sider-item { width: 100% !important; min-height: 44px; }
+}

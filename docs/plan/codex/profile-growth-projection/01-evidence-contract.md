@@ -1,5 +1,7 @@
 # 01 · Evidence Contract
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 允许的证据引用
 
 只允许 `packages/contracts/src/growth.ts` 中的来源种类：

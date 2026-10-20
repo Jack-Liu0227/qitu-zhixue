@@ -40,8 +40,8 @@ export function TodayTaskCard({
       <SectionCard title="今日任务">
         <EmptyState
           title="今天暂时没有任务"
-          description="当前阶段的任务已经完成，明天再来看看吧。"
-          action={<StudentLink href={exploreHref}>去灵感空间逛逛</StudentLink>}
+          description="今天暂未安排任务。可以继续当前项目，或与 AI搭档讨论下一步。"
+          action={<StudentLink href="/student/tutor">与 AI搭档继续探究</StudentLink>}
         />
       </SectionCard>
     );

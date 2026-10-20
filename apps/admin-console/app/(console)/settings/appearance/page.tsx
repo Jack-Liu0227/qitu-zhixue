@@ -1,6 +1,7 @@
 'use client';
 
 import { AionSettingsParadigm, RowCard } from '../AionSettingsParadigm';
+import { VisualDefaultsPanel } from '../../../../lib/components/VisualDefaultsPanel';
 
 export default function AppearanceSettingsPage() {
   return (
@@ -30,6 +31,7 @@ export default function AppearanceSettingsPage() {
         editLabel="自定义"
         onEdit={() => alert('调色板已开启')}
       />
+      <VisualDefaultsPanel />
     </AionSettingsParadigm>
   );
 }

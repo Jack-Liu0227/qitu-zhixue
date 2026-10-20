@@ -1,6 +1,7 @@
 'use client';
 
-import { TagChips } from '@qitu/ui';
+import { TagChips, VisualAsset } from '@qitu/ui';
+import { subjectLabel, studentTemplateSummary } from '@qitu/contracts';
 
 import { StudentLink } from '../../../components/student-link';
 import { RecommendedExplorationButton } from './RecommendedExplorationButton';
@@ -15,7 +16,7 @@ export function templateExploreHref(templateId: string): string {
 /** 元信息行：只拼接服务端真实提供的字段，缺失项直接不显示。 */
 export function templateMetaLine(template: InspirationTemplate): string {
   const lesson = template.lessonCount !== null ? `约 ${template.lessonCount} 课时` : null;
-  return [template.subject || null, template.difficulty, lesson].filter(Boolean).join(' · ');
+  return [template.subject ? subjectLabel(template.subject) : null, template.difficulty, lesson].filter(Boolean).join(' · ');
 }
 
 export interface TemplateCardProps {
@@ -37,7 +38,7 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
     <article className="qitu-inspiration-template-card">
       <header className="qitu-inspiration-template-header">
         <span className="qitu-inspiration-template-cover" aria-hidden="true">
-          {template.coverEmoji ?? template.title.charAt(0)}
+          {template.iconAssetId ? <VisualAsset assetId={template.iconAssetId} size={48} /> : template.coverEmoji ?? template.title.charAt(0)}
         </span>
         <div className="qitu-inspiration-template-heading">
           <h3 className="qitu-inspiration-template-title">{template.title}</h3>
@@ -45,9 +46,9 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
         </div>
       </header>
 
-      <p className="qitu-inspiration-template-summary">{template.summary}</p>
+      <p className="qitu-inspiration-template-summary">{studentTemplateSummary(template.summary)}</p>
 
-      <TagChips tags={template.tags} />
+      <TagChips tags={template.tags.map(subjectLabel)} />
 
       {template.outcome ? (
         <p className="qitu-inspiration-template-outcome">

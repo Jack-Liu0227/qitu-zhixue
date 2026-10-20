@@ -30,6 +30,7 @@ export type ProjectTab = 'active' | 'draft' | 'done';
 
 /** C1/C3 列表与详情共用的项目摘要字段。 */
 export interface ProjectListItem extends StageProgressDisplay {
+  isCurrent?: boolean;
   id: string;
   title: string;
   subtitle: string;

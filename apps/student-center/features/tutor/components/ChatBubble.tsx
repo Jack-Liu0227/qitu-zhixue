@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Avatar } from '@qitu/ui';
+import { Avatar, AssistantGlyph } from '@qitu/ui';
 import type { TutorReplyBlock, TutorToolCall, TutorTurn } from '@qitu/contracts';
 
 import { isTutorReplyBlock, isTutorToolCall } from '../state';
@@ -172,10 +172,10 @@ export function ChatBubble({
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
       <div className="qitu-chat-role">
-        <Avatar
+        {!isStudent && turn.author?.avatar ? <AssistantGlyph value={turn.author.avatar} size={30} /> : <Avatar
           name={avatarName}
           size="sm"
-        />
+        />}
         <div className="qitu-chat-role-details">
           <span className="qitu-chat-author" style={{ fontWeight: 600 }}>{displayName}</span>
           {!isStudent && turn.author?.role && (
@@ -311,6 +311,7 @@ export function ChatBubble({
               <button
                 key={kind}
                 type="button"
+                className="qitu-button qitu-button-ghost qitu-button-sm"
                 disabled={feedbackPending || feedbackSent !== null || disabled}
                 onClick={() => {
                   const idempotencyKey = feedbackKeysRef.current.get(kind) ?? createIdempotencyKey();

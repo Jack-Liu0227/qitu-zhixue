@@ -1,4 +1,5 @@
 import type { StudentGrowthEntry } from '../types';
+import { VisualAsset } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import { EntryFooter } from './EntryFooter';
 import { ObjectiveChip } from './ObjectiveChip';
@@ -19,7 +20,7 @@ export function ArtifactEntry({
   return (
     <article className="qitu-artifact-entry">
       <div className="qitu-artifact-cover" aria-hidden="true">
-        <span className="qitu-artifact-cover-mark">作品</span>
+        <VisualAsset assetId="artifact-integrated-v1" size={88} />
       </div>
       <div className="qitu-artifact-body">
         {entry.projectTitle ? <p className="qitu-entry-context">{entry.projectTitle}</p> : null}

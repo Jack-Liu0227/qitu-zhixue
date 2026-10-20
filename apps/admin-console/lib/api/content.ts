@@ -27,6 +27,8 @@ export interface AdminKnowledgeDocument {
 }
 
 export interface AdminProjectTemplate {
+  iconAssetId?: string | null;
+  coverAssetId?: string | null;
   id: string;
   schoolId: string | null;
   scope: string;

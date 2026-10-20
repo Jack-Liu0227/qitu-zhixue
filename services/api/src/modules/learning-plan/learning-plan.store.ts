@@ -133,7 +133,7 @@ export interface AttemptRecord {
   questionId: string | null;
   result: GradeValue;
   isCorrect: boolean;
-  assessmentType: 'quiz' | 'qualitative' | 'review';
+  assessmentType: 'quiz' | 'qualitative' | 'review' | 'formative';
   errorType: LearningErrorType | null;
   hintsUsed: number;
   attemptCount: number;
@@ -161,7 +161,7 @@ export interface PendingQuestionRecord {
   expectedAnswer: string;
   explanation: string;
   difficulty: QuestionDifficulty | null;
-  assessmentType: 'quiz' | 'qualitative' | 'review';
+  assessmentType: 'quiz' | 'qualitative' | 'review' | 'formative';
   status: 'awaiting' | 'answered' | 'expired' | 'cancelled';
   attempt: number;
   hintsUsed: number;
@@ -191,7 +191,7 @@ export interface CompletePendingQuestionInput {
   questionId: string;
   answeredAt: Date;
   attempt: AttemptRecord;
-  mastery: MasteryRecord;
+  mastery: MasteryRecord | null;
   /** null keeps the legacy objective path when no explicit canonical mapping exists. */
   masteryEvent: MasteryEventRecord | null;
   /** Runs inside the Postgres transaction after all learning rows are staged. */
@@ -289,7 +289,8 @@ export abstract class LearningPlanStore {
 
   abstract upsertMastery(record: MasteryRecord): Promise<void>;
 
-  abstract listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]>;
+  /** Mastery consumers exclude formative attempts by default; opt in only for evidence history. */
+  abstract listAttempts(studentUserId: string, objectiveId: string, options?: { includeFormative?: boolean }): Promise<AttemptRecord[]>;
 
   abstract appendAttempt(attempt: AttemptRecord): Promise<void>;
 
@@ -323,7 +324,7 @@ export abstract class LearningPlanStore {
 
   abstract findPendingQuestion(questionId: string): Promise<PendingQuestionRecord | null>;
 
-  abstract createPendingQuestion(record: PendingQuestionRecord): Promise<void>;
+  abstract createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
 
   /** Atomically claim the awaiting question and persist its attempt + mastery result. */
   abstract completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean>;
@@ -530,9 +531,9 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     this.mastery.set(masteryKey(record.studentUserId, record.objectiveId), { ...record });
   }
 
-  async listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]> {
+  async listAttempts(studentUserId: string, objectiveId: string, options: { includeFormative?: boolean } = {}): Promise<AttemptRecord[]> {
     const list = this.attempts.get(attemptKey(studentUserId, objectiveId)) ?? [];
-    return list.map((attempt) => ({ ...attempt }));
+    return list.filter(attempt => options.includeFormative || attempt.assessmentType !== 'formative').map((attempt) => ({ ...attempt }));
   }
 
   async appendAttempt(attempt: AttemptRecord): Promise<void> {
@@ -591,6 +592,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   }
 
   async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    if (input.attempt.assessmentType === 'formative') throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
     const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
     const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
     const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
@@ -635,7 +637,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     return record === undefined ? null : clonePendingQuestion(record);
   }
 
-  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+  async createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
     if (this.pending.has(record.id)) {
       throw new PendingQuestionConflictError(`待答题 id 冲突：${record.id}`);
     }
@@ -651,18 +653,21 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       }
     }
     this.pending.set(record.id, clonePendingQuestion(record));
+    try { await commit?.(); } catch (error) { this.pending.delete(record.id); throw error; }
   }
 
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    assertPendingAssessmentBoundary(input);
     const record = this.pending.get(input.questionId);
     if (record === undefined || record.status !== 'awaiting') return false;
+    if ((record.assessmentType === 'formative') !== (input.attempt.assessmentType === 'formative')) throw new Error('QUESTION_ASSESSMENT_PROTOCOL_MISMATCH');
 
     // Keep the in-memory adapter's all-or-nothing behavior aligned with Postgres.
     const previousPending = clonePendingQuestion(record);
     const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
     const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
-    const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
-    const previousMastery = this.mastery.get(masteryKeyValue);
+    const masteryKeyValue = input.mastery === null ? null : masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
+    const previousMastery = masteryKeyValue === null ? undefined : this.mastery.get(masteryKeyValue);
     const previousEvent = input.masteryEvent === null ? undefined : this.masteryEvents.get(input.masteryEvent.id);
     try {
       this.pending.set(input.questionId, {
@@ -672,7 +677,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
         updatedAt: input.answeredAt,
       });
       await this.appendAttempt(input.attempt);
-      await this.upsertMastery(input.mastery);
+      if (input.mastery !== null) await this.upsertMastery(input.mastery);
       if (input.masteryEvent !== null) await this.appendMasteryEvent(input.masteryEvent);
       if (input.commit !== undefined) await input.commit(undefined);
       return true;
@@ -680,8 +685,10 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       this.pending.set(input.questionId, previousPending);
       if (previousAttempts.length === 0) this.attempts.delete(attemptKeyValue);
       else this.attempts.set(attemptKeyValue, previousAttempts);
-      if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
-      else this.mastery.set(masteryKeyValue, previousMastery);
+      if (masteryKeyValue !== null) {
+        if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
+        else this.mastery.set(masteryKeyValue, previousMastery);
+      }
       if (input.masteryEvent !== null) {
         if (previousEvent === undefined) this.masteryEvents.delete(input.masteryEvent.id);
         else this.masteryEvents.set(input.masteryEvent.id, previousEvent);
@@ -752,4 +759,12 @@ export function planObjectiveMappings(bundle: PlanBundle, schoolId: string | nul
 /** 供服务层构造稳定 id；测试可注入固定值。 */
 export function newId(prefix: string): string {
   return `${prefix}-${randomUUID()}`;
+}
+
+/** A generated answer key is never sufficient authority for mastery writes. */
+export function assertPendingAssessmentBoundary(input: CompletePendingQuestionInput): void {
+  const formative = input.attempt.assessmentType === 'formative';
+  if (formative !== (input.mastery === null) || (formative && input.masteryEvent !== null)) {
+    throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
+  }
 }

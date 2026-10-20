@@ -6,6 +6,7 @@ import type {
   Role,
   StudentStuckSignal,
   TutorHintLevel,
+  TutorReplyBlock,
 } from '@qitu/contracts';
 import {
   computeMasteryScore,
@@ -27,6 +28,7 @@ import { throwHttpForIdempotencyError } from '../../common/idempotency/idempoten
 import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
+import { dynamicQuestionEnvelope } from '../learning-plan/question-candidate';
 import {
   LearningPlanStore,
   newId,
@@ -68,6 +70,34 @@ export class TutorQuizService {
     @Optional() private readonly stuckSignals?: StuckSignalService,
   ) {}
 
+  private async answerGenerated(
+    actor: CurrentUser, session: TutorSessionRecord, block: Extract<TutorReplyBlock, { kind: 'quiz' }>,
+    selectedKeys: unknown, idempotencyKey: string,
+  ): Promise<AnswerInteractiveQuizResponse> {
+    const scope = block.sourceScope;
+    const pending = await this.store.findPendingQuestion(block.questionId);
+    if (!scope || block.assessmentMode !== 'formative' || scope.projectId !== session.projectId ||
+        scope.tutorSessionId !== session.sessionId || pending === null || pending.studentUserId !== actor.id || pending.assessmentType !== 'formative') {
+      throw new NotFoundException({ code: 'TUTOR_QUIZ_NOT_EMITTED', message: '该动态题不属于本会话已下发的题目。' });
+    }
+    const persisted = dynamicQuestionEnvelope(pending).sourceScope;
+    if (Object.keys(persisted).some(key => persisted[key as keyof typeof persisted] !== scope[key as keyof typeof scope])) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '题目课时或计划版本已变化。' });
+    }
+    if (!Array.isArray(selectedKeys) || selectedKeys.length !== 1 || typeof selectedKeys[0] !== 'string' ||
+        !pending.options.some(option => option.id === selectedKeys[0])) {
+      throw new BadRequestException({ code: 'QUESTION_OPTION_INVALID', message: '请选择本题下发的一个选项。' });
+    }
+    const result = await this.learningPlan.submitAnswer(actor, scope.planId, scope.learningSessionId,
+      { questionId: pending.id, answer: selectedKeys[0] }, idempotencyKey);
+    if (result.assessmentMode !== 'formative' || !result.correctOptionIds) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '题目评分协议不一致。' });
+    }
+    const restored = await this.learningPlan.readQuestionCandidateResult(actor, scope, pending.id);
+    if (restored === null) throw new ConflictException({ code: 'QUESTION_RESULT_UNAVAILABLE', message: '已提交结果暂时无法读取。' });
+    return { ...restored, replayed: result.replayed };
+  }
+
   async answer(
     actor: CurrentUser,
     session: TutorSessionRecord,
@@ -83,6 +113,10 @@ export class TutorQuizService {
       });
     }
     const projectId = session.projectId;
+    const generated = session.turns.flatMap(turn => turn.blocks).find(block => block.kind === 'quiz' && block.questionId === quizId);
+    if (generated?.kind === 'quiz' && (generated.sourceScope !== undefined || generated.assessmentMode === 'formative')) {
+      return this.answerGenerated(actor, session, generated, body.selectedKeys, idempotencyKey);
+    }
     const entry = findQuizBankEntry(quizId);
     if (entry === null) {
       throw new NotFoundException({

@@ -13,6 +13,8 @@ export type InspirationDifficulty = '入门' | '进阶' | '挑战';
 
 /** 一条推荐项目模板（只读展示；点击开始后创建对应项目并进入团队）。 */
 export interface InspirationTemplate {
+  iconAssetId?: string | null;
+  coverAssetId?: string | null;
   id: string;
   title: string;
   summary: string;

@@ -1,5 +1,7 @@
 # 02 · Domain-owner Acceptance
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 状态流
 
 ```text

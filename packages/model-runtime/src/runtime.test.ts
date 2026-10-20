@@ -49,7 +49,7 @@ test('complete and stream distinguish caller cancellation from deadline expiry',
   } finally { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('native tool loop returns actual tool output to the model and denies unregistered tools', async () => {
+for (const mode of ['complete', 'stream'] as const) test(mode + ' tool loop returns actual results and denies unknown tools', async () => {
   let requests = 0;
   let executions = 0;
   const events: string[] = [];
@@ -82,14 +82,18 @@ test('native tool loop returns actual tool output to the model and denies unregi
   try {
     const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test', modelId: 'test-model',
       baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', credential: 'test-key' }) });
-    const result = await runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: '查教材' }], tools: [{
+    const request: import('./runtime.js').ModelRuntimeRequest = { usageId: 'tutor.chat', messages: [{ role: 'user', content: '查教材' }], tools: [{
       name: 'ima_read_document', description: 'read authorized document', inputSchema: { type: 'object', properties: { start_page: { type: 'integer' } } },
       execute: async (args) => { assert.equal(args.start_page, 10); executions++; return { text: '教材第10页：集合的含义' }; },
-    }], onToolEvent: (event) => events.push(event.type) });
+    }], onToolEvent: (event) => events.push(event.type) };
+    let result: import('./runtime.js').ModelRuntimeResult | undefined;
+    if (mode === 'complete') result = await runtime.complete(request);
+    else for await (const event of runtime.stream(request)) { if (event.type === 'done') result = event.result; }
+    assert.ok(result);
     assert.match(result.text, /教材第10页/);
     assert.equal(executions, 1);
     assert.equal(requests, 2);
-    assert.deepEqual(events, ['call', 'result']);
+    assert.deepEqual(events, ['call', 'result', 'call', 'result']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
@@ -109,7 +113,7 @@ async function withMockOpenAI(handler: (headers: Record<string, string | string[
   }
 }
 
-test('native tool loop stops repeated requests after eight executions', async () => {
+test('native tool loop stops at eight calls and replays identical call IDs without re-execution', async () => {
   let executions = 0;
   const chunk = { id: 'x', object: 'chat.completion.chunk', choices: [{ index: 0, delta: { tool_calls: [
     { index: 0, id: 'repeat', type: 'function', function: { name: 'read', arguments: '{}' } },
@@ -124,7 +128,7 @@ test('native tool loop stops repeated requests after eight executions', async ()
     await assert.rejects(runtime.complete({ usageId: 'test', messages: [{ role: 'user', content: 'read' }], tools: [{ name: 'read', description: 'read',
       inputSchema: { type: 'object' }, execute: async () => { executions++; return { text: 'result' }; } }] }),
     (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_INVALID');
-    assert.equal(executions, 8);
+    assert.equal(executions, 1);
   });
 });
 
@@ -302,4 +306,43 @@ test('Qitu runtime rejects credential-bearing model gateway URLs', async () => {
     runtime.complete({ usageId: 'tutor.chat', messages: [{ role: 'user', content: 'hi' }] }),
     (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_INVALID',
   );
+});
+
+for (const mode of ['complete', 'stream'] as const) test(mode + ' rejects malformed tool arguments before owner execution', async () => {
+  let requests = 0; let executions = 0;
+  await withMockOpenAI(() => {
+    const first = ++requests === 1;
+    const delta = first ? { tool_calls: [{ index: 0, id: 'invalid', type: 'function',
+      function: { name: 'bounded_read', arguments: '{"count":1.5,"scope":"foreign"}' } }] } : { content: 'Parameters rejected' };
+    return [
+      'data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta, finish_reason: null }] }),
+      'data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta: {}, finish_reason: first ? 'tool_calls' : 'stop' }] }),
+      'data: [DONE]', '',
+    ].join('\n\n');
+  }, async baseUrl => {
+    const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test',
+      modelId: 'test', baseUrl, api: 'openai-completions', credential: 'fixture' }) });
+    const request: import('./runtime.js').ModelRuntimeRequest = { usageId: 'test', messages: [{ role: 'user', content: 'read' }],
+      tools: [{ name: 'bounded_read', description: '', inputSchema: { type: 'object', required: ['count'],
+        properties: { count: { type: 'integer', minimum: 1, maximum: 8 } }, additionalProperties: false },
+        execute: async () => { executions++; return { text: 'must not execute' }; } }] };
+    if (mode === 'complete') await runtime.complete(request);
+    else for await (const event of runtime.stream(request)) assert.notEqual(event.type, 'error');
+    assert.equal(executions, 0); assert.equal(requests, 2);
+  });
+});
+
+test('a tool ignoring abort cannot hold the runtime past the request deadline', async () => {
+  await withMockOpenAI(() => [
+    'data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: 'hang', type: 'function',
+      function: { name: 'hang', arguments: '{}' } }] }, finish_reason: null }] }),
+    'data: ' + JSON.stringify({ id: 'x', choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] }),
+    'data: [DONE]', '',
+  ].join('\n\n'), async baseUrl => {
+    const runtime = createModelRuntime({ resolveRuntimeTarget: () => ({ providerId: 'test', providerName: 'Test',
+      modelId: 'test', baseUrl, api: 'openai-completions', credential: 'fixture' }) });
+    await assert.rejects(runtime.complete({ usageId: 'test', messages: [{ role: 'user', content: 'read' }], timeoutMs: 200,
+      tools: [{ name: 'hang', description: '', inputSchema: { type: 'object' }, execute: () => new Promise(() => {}) }] }),
+      (error: unknown) => error instanceof ModelRuntimeError && error.code === 'MODEL_REQUEST_TIMEOUT');
+  });
 });

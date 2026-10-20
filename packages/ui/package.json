@@ -16,6 +16,7 @@
     "test": "node ../../tooling/validate-reduced-motion.mjs && node --test ../../tooling/brand-story.test.mjs"
   },
   "dependencies": {
+    "@qitu/contracts": "workspace:*",
     "@qitu/design-tokens": "workspace:*",
     "react": "^19.1.0"
   },

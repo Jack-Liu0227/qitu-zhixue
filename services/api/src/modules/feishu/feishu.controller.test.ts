@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
 import { FeishuController } from './feishu.controller';
+import { FeishuBridgeController } from './feishu-bridge.controller';
 import type { AuthService } from '../identity-auth/auth.service';
 
 const admin: CurrentUser = { id: 'admin-1', email: 'admin@example.test', displayName: 'Admin', role: 'admin' };
@@ -78,5 +79,21 @@ test('assistantId is part of the server-side idempotency scope and is forwarded 
   await instance.createQr('qitu_session=test', 'key-b', { assistantId: 'assistant-b' });
   assert.deepEqual(calls, ['update:assistant-a', 'qr:assistant-b']);
   await assert.rejects(() => instance.update('qitu_session=test', 'key-c', { enabled: true }, '../other'), BadRequestException);
+});
+
+test('bridge diagnostics require an administrator and validate the canonical assistant scope', async () => {
+  const ids: string[] = [];
+  const bridge = { status: async (id: string) => { ids.push(id); return { assistantId: id, state: 'stopped' }; } };
+  await assert.rejects(() => new FeishuBridgeController(authFor(teacher), bridge as never).get('qitu_session=fixture'), ForbiddenException);
+  const adminBridge = new FeishuBridgeController(authFor(admin), bridge as never);
+  await adminBridge.get('qitu_session=fixture', 'assistant-other');
+  await assert.rejects(() => adminBridge.get('qitu_session=fixture', '../other'), BadRequestException);
+  assert.deepEqual(ids, ['assistant-other']);
+});
+
+test('a malformed explicit assistant ID never silently routes to the reporting assistant', async () => {
+  const instance = controller(admin);
+  await assert.rejects(() => instance.createQr('qitu_session=fixture', 'fixture-key', { assistantId: 7 }), BadRequestException);
+  await assert.rejects(() => instance.createQr('qitu_session=fixture', 'fixture-key', { assistantId: '' }), BadRequestException);
 });
 

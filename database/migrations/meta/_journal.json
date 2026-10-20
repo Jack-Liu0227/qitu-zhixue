@@ -302,6 +302,20 @@
       "when": 1792454400001,
       "tag": "0042_teaching_bundle_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792454400002,
+      "tag": "0043_visual_asset_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792454400003,
+      "tag": "0044_feishu_message_bridge",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,5 @@
+@import './visual-assets.css';
+
 :root {
   color-scheme: light;
   --qitu-page: #f4f7fb;
@@ -1933,3 +1935,12 @@ summary:focus-visible,
   animation: qitu-shimmer 3s infinite;
 }
 
+/* Shared keyboard and touch affordances across the existing four clients. */
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+.qitu-button, .auth-logout { min-height: 44px; }
+@media (pointer: coarse) {
+  :where(button, select, summary, input:not([type='checkbox']):not([type='radio'])) { min-height: 44px; }
+}

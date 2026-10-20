@@ -3,6 +3,8 @@ import { and, eq } from 'drizzle-orm';
 import { mentorReviews, withTransaction, type Database } from '@qitu/database';
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { currentStudentProject } from '../projects/current-project';
 import { TeamRuntimeService, type TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 import type { AuditEntry } from '../../common/audit/audit-entry';
 import type { AuditWriter } from '../../common/audit/audit.service';
@@ -241,6 +243,7 @@ export class TeacherService {
     // 存储由 `TeacherModule` 按数据模式提供；缺位时 `decideReview` 诚实 503，
     // 绝不“内存里批成功”。
     @Optional() @Inject(TeacherReviewRepository) private readonly reviews?: TeacherReviewRepository,
+    @Optional() private readonly learningStore?: LearningPlanStore,
   ) {}
 
   /**
@@ -292,40 +295,22 @@ export class TeacherService {
       guardianCounts.set(studentId, (guardianCounts.get(studentId) ?? 0) + 1);
     }
 
-    return students.map((s) => {
-      const demo = this.platformData.getStudent(s.userId);
-      const projects = this.platformData.getProjectsByStudent(s.userId);
-      const activeProjects = projects.filter(
-        (project) => project.stage !== 'completed' && project.stage !== 'published',
-      );
-      const current = activeProjects[0] ?? projects[0] ?? null;
-      const activeDays = demo?.lastActivityAt
-        ? isWithinDays(demo.lastActivityAt, 7)
-          ? 1
-          : 0
-        : 0;
+    if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
+    return Promise.all(students.map(async (s) => {
+      const projects = await this.learningStore!.listProjectsByStudent(s.userId);
+      const current = currentStudentProject(projects);
       return {
-        studentId: s.userId,
-        displayName: s.displayName,
-        email: s.email,
-        gradeLabel: demo?.gradeLabel ?? null,
-        classLabel: demo?.classLabel ?? null,
-        avatarInitial: s.displayName.charAt(0),
-        activeProjectCount: demo?.activeProjectCount ?? activeProjects.length,
-        projectsCompleted:
-          demo?.projectsCompleted ?? projects.filter((project) => project.stage === 'completed' || project.stage === 'published').length,
-        currentProjectId: current?.projectId ?? demo?.currentProjectId ?? null,
-        currentProjectTitle: current?.title ?? demo?.currentProjectTitle ?? null,
-        currentStage: current?.stage ?? demo?.currentStage ?? null,
-        progressPercent: current?.progressPercent ?? demo?.progressPercent ?? 0,
-        lastActivityAt: demo?.lastActivityAt ?? null,
-        stuck: demo?.stuck ?? false,
-        attentionCount: demo?.attentionCount ?? 0,
-        guardianCount: guardianCounts.get(s.userId) ?? 0,
-        activeDays,
-        weeklyTasks: 0,
+        studentId: s.userId, displayName: s.displayName, email: s.email,
+        gradeLabel: null, classLabel: null, avatarInitial: s.displayName.charAt(0),
+        activeProjectCount: projects.filter((project) => !['completed', 'published', 'exploration'].includes(project.status)).length,
+        projectsCompleted: projects.filter((project) => ['completed', 'published'].includes(project.status)).length,
+        currentProjectId: current?.id ?? null, currentProjectTitle: current?.title ?? null,
+        currentStage: current?.status ?? null, progressPercent: current?.progressPercent ?? 0,
+        lastActivityAt: null, stuck: false, attentionCount: 0,
+        guardianCount: guardianCounts.get(s.userId) ?? 0, activeDays: 0, weeklyTasks: 0,
+        signalsAvailable: false,
       };
-    });
+    }));
   }
 
   /**
@@ -341,30 +326,13 @@ export class TeacherService {
 
     const guardians = await this.directory.guardiansOfStudent(studentUserId);
 
-    const studentRow: TeacherStudentRow = {
-      studentId: student.userId,
-      displayName: student.displayName,
-      email: student.email,
-      gradeLabel: null,
-      classLabel: null,
-      avatarInitial: student.displayName.charAt(0),
-      activeProjectCount: 0,
-      projectsCompleted: 0,
-      currentProjectId: null,
-      currentProjectTitle: null,
-      currentStage: null,
-      progressPercent: 0,
-      lastActivityAt: null,
-      stuck: false,
-      attentionCount: 0,
-      guardianCount: guardians.length,
-      activeDays: 0,
-      weeklyTasks: 0,
-    };
+    const studentRow = (await this.getRoster(teacherUserId)).find((row) => row.studentId === studentUserId);
+    if (!studentRow || !this.learningStore) throw new NotFoundException('学生数据不可用');
+    const projects = await this.learningStore.listProjectsByStudent(studentUserId);
 
     return {
       student: studentRow,
-      projects: [],
+      projects: projects.map((project) => ({ projectId: project.id, title: project.title, stage: project.status, progressPercent: project.progressPercent, updatedAt: project.createdAt.toISOString() })),
       interventions: [],
       recentGrowth: [],
       guardians: guardians.map((g) => ({
@@ -555,15 +523,10 @@ export class TeacherService {
   async getStatistics(teacherUserId: string): Promise<TeacherStatisticsPageData> {
     const teacher = await this.getTeacherIdentity(teacherUserId);
     const students = await this.getRoster(teacherUserId);
-    const assignedIds = new Set(students.map((student) => student.studentId));
-    const projects = [...assignedIds].flatMap((studentId) =>
-      this.platformData.getProjectsByStudent(studentId),
-    );
-    const stageDistribution = countStages(projects.map((project) => project.stage));
-    const interventions = this.platformData
-      .getInterventionsByTeacher(teacherUserId)
-      .filter((intervention) => intervention.status !== 'resolved');
-    const weeklyActivity = buildWeeklyActivity(students);
+    if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
+    const projects = (await Promise.all(students.map((student) => this.learningStore!.listProjectsByStudent(student.studentId)))).flat();
+    const stageDistribution = countStages(projects.map((project) => project.status));
+    const interventions = await this.listInterventions(teacherUserId);
 
     return {
       teacher,
@@ -575,10 +538,11 @@ export class TeacherService {
         tasksCompletedThisWeek: students.reduce((sum, student) => sum + student.weeklyTasks, 0),
         openInterventions: interventions.length,
       },
-      weeklyActivity,
+      weeklyActivity: [],
       stageDistribution,
       needsAttention: students.filter((student) => student.stuck || student.attentionCount > 0),
-      dataSource: 'demo',
+      dataSource: 'live',
+      signalsAvailable: false,
     };
   }
 }

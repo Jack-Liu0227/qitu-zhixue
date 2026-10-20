@@ -90,7 +90,7 @@ async function imaInput(): Promise<TutorTurnInput> {
   packet.runtime = { policyVersion: 'test', agentDefinition: '', skills: [], tools: [], mcpServers: [
     { serverId: 'ima-knowledge', label: 'ima', transport: 'streamable_http', toolIds: ['ima_read_document'] },
   ] };
-  return { ...BASE_INPUT, projectId: '', contextPacket: packet };
+  return { ...BASE_INPUT, projectId: '', contextPacket: packet, imaKnowledgeScope: { knowledgeBaseIds: async () => ['fixture-kb'] } };
 }
 
 test('Tutor passes bound tools to the gateway, preserves truthful events and answer guard', async () => {
@@ -293,4 +293,17 @@ test('脱敏：错误事件与工具结果都不携带密钥或上游正文', as
   const serialized = JSON.stringify(events);
   assert.doesNotMatch(serialized, /sk-live-DEADBEEF/);
   assert.doesNotMatch(serialized, /body contains/);
+});
+
+test('a bound MCP without a server-owned knowledge scope cannot enter the model tool list', async () => {
+  const input = await imaInput(); delete input.imaKnowledgeScope;
+  let discovered = false;
+  const ima = new ImaMcpClient();
+  ima.toolsFor = async () => { discovered = true; return []; };
+  const gateway = new StubGateway((_usage, request) => {
+    assert.equal(request.tools, undefined);
+    return result('先说说你观察到了什么？');
+  });
+  await collect(new GatewayTutorProvider(gateway, [], ima), input);
+  assert.equal(discovered, false);
 });

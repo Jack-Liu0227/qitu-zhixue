@@ -106,7 +106,8 @@ export class AuthService {
     const expectedHash = credential?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const passwordMatches = safePasswordEqual(providedHash, expectedHash);
 
-    if (credential === null || !passwordMatches) {
+    const demoAccount = credential && (credential.user.userId.endsWith('-demo') || /@qtzx\.local$/i.test(credential.user.email));
+    if (credential === null || !passwordMatches || (demoAccount && !this.directory.allowsDemoLogin())) {
       this.recordFailure(email, clientKey);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
@@ -195,6 +196,10 @@ export class AuthService {
         code: 'UNAUTHENTICATED',
         message: '登录已失效',
       });
+    }
+    if ((record.user.id.endsWith('-demo') || /@qtzx\.local$/i.test(record.user.email)) && !this.directory.allowsDemoLogin()) {
+      this.sessions.delete(token as string);
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: '登录已失效' });
     }
     record.lastSeenAt = Date.now();
     return {

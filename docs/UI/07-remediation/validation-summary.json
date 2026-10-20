@@ -1,0 +1,62 @@
+{
+  "collectedAt": "2026-10-20T21:13:30.221908+00:00",
+  "source": "isolated local source snapshot, not a production release",
+  "environment": {
+    "node": "24.19.0",
+    "pnpm": "10.10.0",
+    "os": "Windows",
+    "dependencyInstall": "frozen lockfile"
+  },
+  "apiBuild": "passed",
+  "apiTests": {
+    "tests": 1158,
+    "pass": 1158,
+    "fail": 0,
+    "skipped": 0
+  },
+  "uiRegressionTests": {
+    "tests": 5,
+    "pass": 5,
+    "fail": 0
+  },
+  "frontends": [
+    {
+      "app": "auth-portal",
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    {
+      "app": "student-center",
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    {
+      "app": "teacher-workspace",
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    {
+      "app": "parent-companion",
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    {
+      "app": "admin-console",
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    }
+  ],
+  "browserCases": {
+    "browser-verification": 6,
+    "parent-race-verification": 6,
+    "admin-matrix-verification": 3
+  },
+  "browserRuntimeErrors": 0,
+  "screenshotCount": 52,
+  "deployment": {
+    "status": "not_deployed",
+    "reason": "Formal administrator must be provisioned and verified before disabling reserved demo accounts",
+    "observedAdminCount": 1,
+    "observedNonDemoAdminCount": 0
+  }
+}

@@ -1,5 +1,6 @@
 import { engineDefinition, ENGINE_FIELD_ALIASES } from './knowledge-engine.catalog';
 import { BadRequestException } from '@nestjs/common';
+import { parseGrowthProjectionSettings, type GrowthProjectionSettings } from '@qitu/contracts';
 
 export const ENGINE_CATALOG = [
   ['llamaindex', 'LlamaIndex', '本地引擎'],
@@ -146,6 +147,7 @@ export type ProjectToolConfig = {
   boundAssistants: string[];
 };
 export interface PlatformKnowledgeConfig {
+  growthProjection?: GrowthProjectionSettings;
   mcpServers: Record<string, Record<string, unknown>>;
   knowledgeEngines: Record<string, EngineConfig>;
   platformTools: { 'project-knowledge': ProjectToolConfig };
@@ -216,10 +218,17 @@ export function validateKnowledgeConfig(
 ): PlatformKnowledgeConfig {
   const root = record(input);
   if (
-    Object.keys(root).some((k) => !['mcpServers', 'knowledgeEngines', 'platformTools'].includes(k))
+    Object.keys(root).some((k) => !['mcpServers', 'knowledgeEngines', 'platformTools', 'growthProjection'].includes(k))
   )
     invalid('存在未知配置分区');
   const result = structuredClone(current);
+  // This editor preserves the global purpose bindings; only their owner may change them.
+  if (root.growthProjection !== undefined) {
+    const incoming = parseGrowthProjectionSettings(root.growthProjection);
+    const existing = parseGrowthProjectionSettings(current.growthProjection);
+    if (!incoming || !existing || incoming.profileAssistantId !== existing.profileAssistantId
+      || incoming.growthAssistantId !== existing.growthAssistantId) invalid('GROWTH_PROJECTION_OWNER_REQUIRED');
+  }
   if (root.mcpServers !== undefined) {
     const servers = record(root.mcpServers);
     if (Object.keys(current.mcpServers).some((id) => !(id in servers)))

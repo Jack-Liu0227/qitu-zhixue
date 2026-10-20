@@ -13,6 +13,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
@@ -30,6 +31,7 @@ import type {
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { TutorTeamHistoryService } from './tutor-team-history.service';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TeamRuntimeService, teamFrameName, type TeamStreamFrame } from '../team-runtime/team-runtime.service.js';
@@ -90,6 +92,7 @@ export class TutorController {
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() private readonly quiz?: TutorQuizService,
+    @Optional() private readonly teamHistory?: TutorTeamHistoryService,
   ) {}
 
   @Get('templates')
@@ -166,6 +169,18 @@ export class TutorController {
     });
     return { data: await this.tutorService.getTeamGraph(projectId, actor.id) };
   }
+  @Get('team-history')
+  async getTeamHistory(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('projectId') projectId: string,
+    @Query('assistantId') assistantId: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const actor = this.requireStudent(cookieHeader);
+    if (!this.teamHistory) throw new ServiceUnavailableException({ code: 'TUTOR_HISTORY_UNAVAILABLE', message: '历史记录暂不可用。' });
+    return { data: await this.teamHistory.read(actor.id, projectId, assistantId, cursor) };
+  }
+
   @Get('session-counts')
   async getSessionCounts(
     @Headers('cookie') cookieHeader: string | undefined,

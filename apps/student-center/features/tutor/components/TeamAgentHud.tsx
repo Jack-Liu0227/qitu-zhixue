@@ -7,6 +7,7 @@ import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qit
 import type { TutorTeamAgent, TutorTeamGraph } from '@qitu/contracts';
 import type { TutorLoadStatus, TutorViewError } from '../types';
 import { ToolCallTimeline } from './ToolCallTimeline';
+import { AgentHistory, type LoadTeamHistory } from './AgentHistory';
 
 const STATUS_LABELS: Record<TutorTeamAgent['status'], string> = {
   ready: '就绪',
@@ -31,6 +32,7 @@ export interface TeamAgentHudProps {
   offline: boolean;
   permissionDenied: boolean;
   onRetry: () => void;
+  loadHistory?: LoadTeamHistory;
 }
 
 /** Right-sidebar team tab. It renders only the server-filtered team graph. */
@@ -41,6 +43,7 @@ export function TeamAgentHud({
   offline,
   permissionDenied,
   onRetry,
+  loadHistory,
 }: TeamAgentHudProps) {
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
 
@@ -100,7 +103,7 @@ export function TeamAgentHud({
                 onClick={() => setExpandedAgentId(expanded ? null : agent.slotId)}
               >
                 <span className="qitu-tutor-agent-avatar" style={{ borderColor: agent.color ?? '#cbd5e1' }}>
-                  {agent.avatar ?? (typeof agent.name === 'string' && agent.name.length > 0 ? agent.name.slice(0, 1) : '导')}
+                  <AssistantGlyph value={agent.avatar} size={32} />
                 </span>
                 <span className="qitu-tutor-agent-copy">
                   <strong>{agent.name}</strong>
@@ -115,7 +118,7 @@ export function TeamAgentHud({
               {agent.currentTaskSummary ? (
                 <p className="qitu-tutor-agent-task">{agent.currentTaskSummary}</p>
               ) : null}
-              {expanded ? <AgentDetails agent={agent} /> : null}
+              {expanded ? <AgentDetails agent={agent} loadHistory={loadHistory} /> : null}
             </article>
           );
         })}
@@ -124,7 +127,7 @@ export function TeamAgentHud({
   );
 }
 
-function AgentDetails({ agent }: { agent: TutorTeamAgent }) {
+function AgentDetails({ agent, loadHistory }: { agent: TutorTeamAgent; loadHistory?: LoadTeamHistory }) {
   const toolCalls = (Array.isArray(agent.toolCalls) ? agent.toolCalls : []).map((call) => ({
     callId: call.callId,
     name: call.name,
@@ -159,6 +162,7 @@ function AgentDetails({ agent }: { agent: TutorTeamAgent }) {
           <ToolCallTimeline calls={toolCalls} />
         )}
       </section>
+      {loadHistory ? <AgentHistory assistantId={agent.assistantId} load={loadHistory} /> : null}
     </div>
   );
 }

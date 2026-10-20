@@ -1,6 +1,10 @@
 'use client';
 
 import type { AdminTeamConfig } from '@qitu/contracts';
+import { VisualAsset } from '@qitu/ui';
+import { useState } from 'react';
+import { fetchVisualBinding } from '../../../../../lib/api/visual-assets';
+import { VisualSelector } from '../../../../../lib/components/VisualAssetPicker';
 
 interface TeamCardProps {
   team: AdminTeamConfig;
@@ -13,6 +17,8 @@ interface TeamCardProps {
 }
 
 export function TeamCard({ team, isActive, isSelected, onToggleSelect, onToggleEnabled, onClick, onDelete }: TeamCardProps) {
+  const [icon, setIcon] = useState<string | null>(null);
+  const [iconError, setIconError] = useState('');
   const memberCount = team.members.length;
   const leader = team.members.find((m) => m.assistantId === team.leaderAssistantId);
   const isEnabled = team.enabled !== false;
@@ -43,7 +49,7 @@ export function TeamCard({ team, isActive, isSelected, onToggleSelect, onToggleE
             style={{ width: '16px', height: '16px', cursor: 'pointer' }}
           />
           <div className="team-card-icon">
-            <span>👥</span>
+            <VisualAsset assetId={icon ?? team.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
           </div>
         </div>
         <div className="team-card-info">
@@ -66,6 +72,8 @@ export function TeamCard({ team, isActive, isSelected, onToggleSelect, onToggleE
       </div>
       
       <div className="team-card-actions" onClick={(e) => e.stopPropagation()}>
+        <VisualSelector owner={{ kind: 'team', id: team.id }} label="团队图标" onSaved={() => { setIconError(''); void fetchVisualBinding({ kind: 'team', id: team.id }, 'icon').then((binding) => setIcon(binding.effectiveAssetId)).catch(() => setIconError('图标回读失败，请刷新核对')); }} />
+        {iconError && <small role="status">{iconError}</small>}
         <button
           type="button"
           className="team-card-action-btn"

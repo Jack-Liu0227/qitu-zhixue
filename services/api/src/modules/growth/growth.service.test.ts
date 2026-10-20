@@ -41,7 +41,7 @@ function makeProfileService(rows: Array<Record<string, unknown>>): Promise<Await
     select: () => ({
       from: () => ({
         where: () => ({
-          orderBy: async () => rows,
+          orderBy: async () => rows.map((row) => ({ status: 'accepted', ...row })),
         }),
       }),
     }),
@@ -73,14 +73,14 @@ test('student profile composition does not invent expert conclusions without acc
   assert.equal(profile.freshness, 'unavailable');
   assert.deepEqual(profile.strengths, []);
   assert.equal(profile.trajectory, null);
-  assert.equal(profile.provenance.profileAssistantId, 'learner-profile');
-  assert.equal(profile.provenance.growthAssistantId, 'growth-analyst');
+  assert.equal(profile.provenance.profileAssistantId, null);
+  assert.equal(profile.provenance.growthAssistantId, null);
 });
 
 test('student profile composition parses only the latest accepted expert projections', async () => {
   const profile = await makeProfileService([
     {
-      agentId: 'learner-profile',
+      agentId: 'configured-profile',
       projectionType: 'learner_profile',
       payload: {
         result: {
@@ -94,7 +94,7 @@ test('student profile composition parses only the latest accepted expert project
       createdAt: new Date('2026-10-20T10:00:00.000Z'),
     },
     {
-      agentId: 'growth-analyst',
+      agentId: 'configured-growth',
       projectionType: 'growth_trajectory',
       payload: {
         result: {
@@ -109,6 +109,8 @@ test('student profile composition parses only the latest accepted expert project
     },
   ]);
   assert.equal(profile.freshness, 'fresh');
+  assert.equal(profile.provenance.profileAssistantId, 'configured-profile');
+  assert.equal(profile.provenance.growthAssistantId, 'configured-growth');
   assert.deepEqual(profile.interests, ['光学']);
   assert.deepEqual(profile.strengths, ['证据推理']);
   assert.equal(profile.trajectory?.studentSummary, '你开始用证据解释现象。');

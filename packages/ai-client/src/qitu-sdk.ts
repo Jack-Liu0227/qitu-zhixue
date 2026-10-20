@@ -1,17 +1,5 @@
 import type { EvaluateMasteryInput, MasteryTimelinePort, ProjectStage, AdminAssistantConfig, AdminTeamConfig, AdminTeamMember, PblPhaseSpec, PblTeamWorkflowSpec } from '@qitu/contracts';
-import { BUILTIN_ASSISTANTS } from './assistant-registry.js';
-import {
-  THUNDER_FIGHTER_PHASES,
-  THUNDER_FIGHTER_PBL_SPEC,
-  THUNDER_FIGHTER_TEAM_MEMBERS,
-  THUNDER_FIGHTER_TEAM_CONFIG,
-  KINETIC_ENERGY_PHASES,
-  KINETIC_ENERGY_PBL_SPEC,
-  KINETIC_ENERGY_TEAM_MEMBERS,
-  KINETIC_ENERGY_TEAM_CONFIG,
-  nextPblPhase,
-  pblGatesRequiredToEnter,
-} from './pbl-team.js';
+import { nextPblPhase, pblGatesRequiredToEnter } from './pbl-team.js';
 
 export interface QituSDKScope {
   studentId: string;
@@ -30,6 +18,7 @@ export interface QituToolDefinition {
   name: string;
   description: string;
   parametersSchema?: Record<string, unknown>;
+  authorize?: (scope: Readonly<QituSDKScope>) => Promise<boolean>;
   execute?: (args: Record<string, unknown>, scope: Readonly<QituSDKScope>) => Promise<unknown>;
 }
 
@@ -57,7 +46,15 @@ export interface QituSDKPorts<Input, Result, Profile> {
   profile: { get(scope: Readonly<QituSDKScope>): Promise<Profile> };
   tools?: Record<string, QituToolDefinition>;
   skills?: Record<string, QituSkillDefinition>;
-  mcpExecutor?: (call: QituMCPToolCall) => Promise<unknown>;
+  /** Read fresh authorized projections, not global bootstrap defaults. */
+  catalog?: {
+    tools?(): Promise<QituToolDefinition[]>;
+    skills?(): Promise<QituSkillDefinition[]>;
+    assistants?(): Promise<readonly AdminAssistantConfig[]>;
+    teams?(): Promise<readonly AdminTeamConfig[]>;
+  };
+  authorizeMcp?: (call: QituMCPToolCall, scope: Readonly<QituSDKScope>) => Promise<boolean>;
+  mcpExecutor?: (call: QituMCPToolCall, scope: Readonly<QituSDKScope>) => Promise<unknown>;
 }
 
 export interface QituSDK<Input, Result, Profile> {
@@ -79,15 +76,15 @@ export interface QituSDK<Input, Result, Profile> {
 
   /** 统一工具生态 (Tools) */
   readonly tools: {
-    list(): QituToolDefinition[];
-    get(toolId: string): QituToolDefinition | undefined;
+    list(): Promise<QituToolDefinition[]>;
+    get(toolId: string): Promise<QituToolDefinition | undefined>;
     call(toolId: string, args: Record<string, unknown>): Promise<unknown>;
   };
 
   /** 统一技能生态 (Skills) */
   readonly skills: {
-    list(): QituSkillDefinition[];
-    get(skillId: string): QituSkillDefinition | undefined;
+    list(): Promise<QituSkillDefinition[]>;
+    get(skillId: string): Promise<QituSkillDefinition | undefined>;
   };
 
   /** 统一 MCP 网关桥接 */
@@ -97,72 +94,21 @@ export interface QituSDK<Input, Result, Profile> {
 
   /** 助手统一注册与管理 (Assistants) */
   readonly assistants: {
-    list(): readonly AdminAssistantConfig[];
-    get(assistantId: string): AdminAssistantConfig | undefined;
+    list(): Promise<readonly AdminAssistantConfig[]>;
+    get(assistantId: string): Promise<AdminAssistantConfig | undefined>;
   };
 
   /** 团队与多智能体编排 (Teams & Multi-Agent Collaboration) */
   readonly teams: {
-    list(): readonly AdminTeamConfig[];
-    get(teamId: string): AdminTeamConfig | undefined;
-    getMembers(teamId?: string): readonly AdminTeamMember[];
-    getPblPhases(teamId?: string): readonly PblPhaseSpec[];
-    getWorkflowSpec(teamId?: string): PblTeamWorkflowSpec;
+    list(): Promise<readonly AdminTeamConfig[]>;
+    get(teamId: string): Promise<AdminTeamConfig | undefined>;
+    getMembers(teamId: string): Promise<readonly AdminTeamMember[]>;
+    getPblPhases(teamId: string): Promise<readonly PblPhaseSpec[]>;
+    getWorkflowSpec(teamId: string): Promise<PblTeamWorkflowSpec>;
     getNextPhase: typeof nextPblPhase;
     getRequiredGates: typeof pblGatesRequiredToEnter;
   };
 }
-
-const BUILTIN_TOOLS: Record<string, QituToolDefinition> = {
-  mastery_query: {
-    id: 'mastery_query',
-    name: '知识掌握度查询',
-    description: '查询当前学生在各个知识点和概念上的最新掌握度分值与掌握状态',
-  },
-  learning_plan_advance: {
-    id: 'learning_plan_advance',
-    name: '学习计划门禁流转',
-    description: '校验阶段前置条件并在满足时推进项目到下一阶段',
-  },
-  student_profile_get: {
-    id: 'student_profile_get',
-    name: '学生能力画像获取',
-    description: '获取学生的六维能力雷达（概念理解、工程实践、自主排错、创新拓展、反思复盘、协作表达）',
-  },
-  knowledge_search: {
-    id: 'knowledge_search',
-    name: '学科与项目知识检索',
-    description: '在已授权知识库中检索概念、算法公式及参考示例',
-  },
-};
-
-const BUILTIN_SKILLS: Record<string, QituSkillDefinition> = {
-  guided: {
-    id: 'guided',
-    name: '苏格拉底式启发引导',
-    description: '不直接给出终态答案或完整代码，通过阶梯式提问激发自主探究',
-    tools: ['knowledge_search'],
-    systemPromptModifier: '坚持苏格拉底式提问，引导学生主动思考。',
-  },
-  planning: {
-    id: 'planning',
-    name: '项目阶段与任务拆解',
-    description: '拆解大型项目至可执行微步，跟踪各里程碑交付物',
-    tools: ['learning_plan_advance'],
-  },
-  escalation: {
-    id: 'escalation',
-    name: '困难升级与真人介入',
-    description: '检测到学生多次困惑或挫败时，自动升格并提醒班主任老师',
-    tools: [],
-  },
-  'qitu-interactive-concept': {
-    id: 'qitu-interactive-concept',
-    name: '启途概念互动演示',
-    description: '通过生动比喻、帧循环演示和即时选择题检验学生对核心机制的掌握',
-    tools: ['mastery_query'],
-  },
-};
 
 /** Server composition only. All permissions and writes remain in the supplied domain ports. */
 export function createQituSDK<Input, Result, Profile>(
@@ -179,8 +125,17 @@ export function createQituSDK<Input, Result, Profile>(
     return { ...input, studentId: bound.studentId };
   }
 
-  const toolRegistry = { ...BUILTIN_TOOLS, ...(ports.tools || {}) };
-  const skillRegistry = { ...BUILTIN_SKILLS, ...(ports.skills || {}) };
+  const tools = async () => ports.catalog?.tools ? ports.catalog.tools() : Object.values(ports.tools ?? {});
+  const skills = async () => ports.catalog?.skills ? ports.catalog.skills() : Object.values(ports.skills ?? {});
+  const assistants = async () => ports.catalog?.assistants?.() ?? [];
+  const teams = async () => ports.catalog?.teams?.() ?? [];
+  const team = async (id: string) => {
+    const found = (await teams()).find(item => item.id === id);
+    if (!found) throw new Error('SDK_TEAM_NOT_AVAILABLE');
+    return found;
+  };
+  // Never hand callers an execute closure that could bypass call-time authorization.
+  const describe = ({ execute: _execute, authorize: _authorize, ...definition }: QituToolDefinition) => structuredClone(definition);
 
   return {
     scope: bound,
@@ -209,49 +164,45 @@ export function createQituSDK<Input, Result, Profile>(
     profile: { get: () => ports.profile.get(bound) },
 
     tools: {
-      list: () => Object.values(toolRegistry),
-      get: (id: string) => toolRegistry[id],
-      call: async (id: string, args: Record<string, unknown>) => {
-        const t = toolRegistry[id];
-        if (!t) throw new Error(`TOOL_NOT_FOUND: ${id}`);
-        if (t.execute) return t.execute(args, bound);
-        return { ok: true, tool: id, echoed: args };
+      list: async () => (await tools()).map(describe),
+      get: async (id) => { const tool = (await tools()).find(item => item.id === id); return tool && describe(tool); },
+      call: async (id, args) => {
+        if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('SDK_TOOL_ARGUMENT_INVALID');
+        const tool = (await tools()).find(item => item.id === id);
+        if (!tool) throw new Error('SDK_TOOL_NOT_FOUND');
+        if (!tool.execute) throw new Error('SDK_TOOL_NOT_CONFIGURED');
+        if (!tool.authorize || !await tool.authorize(bound)) throw new Error('SDK_TOOL_DENIED');
+        query(args);
+        return tool.execute(args, bound);
       },
     },
-
     skills: {
-      list: () => Object.values(skillRegistry),
-      get: (id: string) => skillRegistry[id],
+      list: async () => structuredClone(await skills()),
+      get: async (id) => structuredClone((await skills()).find(item => item.id === id)),
     },
-
     mcp: {
-      callTool: async (serverName: string, toolName: string, args: Record<string, unknown>) => {
-        if (ports.mcpExecutor) {
-          return ports.mcpExecutor({ serverName, toolName, arguments: args });
-        }
-        return { ok: true, server: serverName, tool: toolName, arguments: args };
+      callTool: async (serverName, toolName, args) => {
+        if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('SDK_TOOL_ARGUMENT_INVALID');
+        if (!ports.mcpExecutor) throw new Error('SDK_MCP_NOT_CONFIGURED');
+        const call = { serverName, toolName, arguments: args };
+        if (!ports.authorizeMcp || !await ports.authorizeMcp(call, bound)) throw new Error('SDK_MCP_DENIED');
+        query(args);
+        return ports.mcpExecutor(call, bound);
       },
     },
-
     assistants: {
-      list: () => BUILTIN_ASSISTANTS,
-      get: (id: string) => BUILTIN_ASSISTANTS.find((a) => a.id === id),
+      list: async () => structuredClone(await assistants()),
+      get: async (id) => structuredClone((await assistants()).find(item => item.id === id)),
     },
-
     teams: {
-      list: () => [THUNDER_FIGHTER_TEAM_CONFIG, KINETIC_ENERGY_TEAM_CONFIG],
-      get: (teamId: string) => [THUNDER_FIGHTER_TEAM_CONFIG, KINETIC_ENERGY_TEAM_CONFIG].find((t) => t.id === teamId),
-      getMembers: (teamId?: string) => {
-        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_TEAM_MEMBERS;
-        return THUNDER_FIGHTER_TEAM_MEMBERS;
-      },
-      getPblPhases: (teamId?: string) => {
-        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_PHASES;
-        return THUNDER_FIGHTER_PHASES;
-      },
-      getWorkflowSpec: (teamId?: string) => {
-        if (teamId === 'team-kinetic-energy-pbl') return KINETIC_ENERGY_PBL_SPEC;
-        return THUNDER_FIGHTER_PBL_SPEC;
+      list: async () => structuredClone(await teams()),
+      get: async (id) => structuredClone((await teams()).find(item => item.id === id)),
+      getMembers: async (id) => structuredClone((await team(id)).members),
+      getPblPhases: async (id) => structuredClone((await team(id)).pblSpec?.phases ?? []),
+      getWorkflowSpec: async (id) => {
+        const spec = (await team(id)).pblSpec;
+        if (!spec) throw new Error('SDK_TEAM_WORKFLOW_NOT_CONFIGURED');
+        return structuredClone(spec);
       },
       getNextPhase: nextPblPhase,
       getRequiredGates: pblGatesRequiredToEnter,

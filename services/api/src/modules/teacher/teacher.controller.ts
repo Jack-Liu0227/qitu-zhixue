@@ -132,7 +132,8 @@ export class TeacherController {
           attentionCount,
           withoutGuardianCount,
         },
-        dataSource: 'demo',
+        dataSource: 'live',
+        signalsAvailable: false,
       },
     };
   }
@@ -175,7 +176,8 @@ export class TeacherController {
           acknowledged: 0,
           resolved: 0,
         },
-        dataSource: 'demo',
+        dataSource: 'live',
+        signalsAvailable: false,
       },
     };
   }
@@ -309,7 +311,8 @@ export class TeacherController {
           replied: items.filter((i) => i.status === 'replied').length,
           resolved: items.filter((i) => i.status === 'resolved').length,
         },
-        dataSource: 'demo',
+        dataSource: 'live',
+        signalsAvailable: false,
       },
     };
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { AssistantGlyph } from '@qitu/ui';
 import { MarkdownMathView } from './MarkdownMathView';
 import { EvidenceChip } from './EvidenceChip';
 
@@ -53,30 +54,7 @@ export function AsideAdvisorCard({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {copilot.avatar ? (
-            <img
-              src={copilot.avatar}
-              alt={copilot.name}
-              style={{ width: '22px', height: '22px', borderRadius: '50%' }}
-            />
-          ) : (
-            <span
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                backgroundColor: '#6366f1',
-                color: '#ffffff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '11px',
-                fontWeight: 700,
-              }}
-            >
-              协
-            </span>
-          )}
+          <AssistantGlyph value={copilot.avatar} size={22} />
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
             {copilot.name}
           </span>

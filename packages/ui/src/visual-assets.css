@@ -1,0 +1,21 @@
+.qitu-artwork { border-radius: inherit; }
+.qitu-artwork-fallback { display: inline-grid; place-items: center; color: #0038b2; background: #e8effc; border-radius: 12px; vertical-align: middle; flex-shrink: 0; }
+.qitu-asset-picker-backdrop { position: fixed; inset: 0; background: rgb(19 38 70 / 38%); z-index: 1500; display: grid; place-items: center; padding: 16px; }
+.qitu-asset-picker { width: min(820px, 100%); max-height: min(86dvh, 920px); overflow: auto; background: #fff; color: #132646; border-radius: 20px; padding: 24px; box-shadow: 0 24px 90px rgb(19 38 70 / 24%); }
+.qitu-asset-picker-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.qitu-asset-picker-head h2 { margin: 0; font-size: 20px; }
+.qitu-asset-picker-filters { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.qitu-asset-picker-filters input { flex: 1; min-width: 150px; }
+.qitu-asset-picker input, .qitu-asset-picker select { border: 1px solid #dde5f0; border-radius: 8px; padding: 10px; }
+.qitu-asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.qitu-asset-option { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; border: 2px solid #edf2f8; background: #f7f9fd; border-radius: 14px; padding: 12px 6px; min-height: 112px; color: #30435f; cursor: pointer; }
+.qitu-asset-option[aria-pressed=true] { border-color: #0038b2; background: #e8effc; }
+.qitu-asset-picker-foot { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: 18px; position: sticky; bottom: 0; background: white; padding: 12px 0 2px; }
+.qitu-asset-picker button { min-height: 40px; }
+dialog.qitu-asset-picker { border: 0; }
+dialog.qitu-asset-picker::backdrop { background: rgb(19 38 70 / 38%); }
+.qitu-asset-picker-status { padding: 14px; background: #f4f7fb; border-radius: 10px; }
+.qitu-visual-control { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qitu-visual-settings { margin-top: 20px; padding: 20px; border: 1px solid #dde5f0; border-radius: 16px; background: #fff; }
+.qitu-visual-settings-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+@media(max-width: 600px) { .qitu-asset-picker { padding: 16px; } .qitu-asset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } }

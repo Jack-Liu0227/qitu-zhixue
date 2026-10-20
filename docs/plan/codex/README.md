@@ -73,3 +73,31 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 
 - [Optics template runtime](./optics-template-runtime/README.md): Admin teaching bundle, student Tutor takeover, lesson/team projection and optics experiment protocol.
 - [Profile and growth projection](./profile-growth-projection/README.md): evidence contract, domain-owner acceptance, student/parent read models and verification.
+
+## 两项用户需求复核（2026-10-21）
+
+后续实施：[管家项目配置](./optics-template-runtime/09-copilot-implementation-20261021.md) 已接入项目选择和真实管理编排；[协作架构报告](./optics-template-runtime/10-template-team-assistant-knowledge-architecture.md) 列出当前字段关系与剩余接线问题；最新结果见 [管家实施验证](./optics-template-runtime/11-copilot-verification-20261021.md)。以下列表保留实施前审计记录。
+
+- [问题一完成情况报告](./optics-template-runtime/00-completion-audit.md)：管家选择项目、管理 Skill、光学配置与学生 PBL 闭环。尚未全部完成，拆分 15 项任务。
+- [问题二完成情况报告](./profile-growth-projection/00-completion-audit.md)：个人画像与成长轨迹生成。尚未全部完成，拆分 12 项任务。
+- [本轮验证](./optics-template-runtime/08-validation-20261021.md)：学生/Worker 定向测试通过；隔离依赖构建复现 API TS2542，API 行为测试未执行。生产配置、真实模型和端到端未核验。
+
+以上为 `61d28fd` 加已有工作树的当前审计，不覆盖历史发布记录，也不将目录、类型或草稿存在视为完整功能。
+
+## Agent 驱动教学与成长需求（2026-10-21）
+
+[Skills、MCP、工具与 SDK 审计](./skills-mcp-tools-sdk-audit-20261021.md) 核对 Pi 接入范围、实际工具目录与执行器，记录 SDK 假成功、教学技能撤销和 Worker 范围隔离的复现，以及修复优先级。
+
+[需求评审稿](./agent-driven-pbl-requirements-20261021.md) 统一梳理 Admin 可修改并持久绑定的教学配置、自由探索与确认接管、Agent 动态课件和知识库出题、团队与课时预览、个人画像与成长轨迹。包含新光学版本的 16 课时建议、版本生效范围和 24 个验收场景；这是需求方案，不代表功能已完成或已发布。
+
+- [Skills、MCP 与工具加载优化及验证（2026-10-21）](./runtime-governance-optimization-20261021.md)
+- [配置管家的模块参考与读取工具（2026-10-21）](./copilot-module-references-20261021.md)
+
+## Image 2 全站素材库计划（2026-10-21）
+
+[全站素材库](./visual-assets/README.md) 已交付 55 个素材母版、110 个运行时派生图及选择/默认继承/批量设置源码，覆盖 10 款可复用助手头像、团队/模板、作品/成长、知识/技能、家校支持、空态与登录。实际验证与待发布事项见 [实施记录](./visual-assets/04-implementation.md)。
+
+
+## Feishu assistant messages (2026-10-21)
+
+[Assistant-scoped binding and bidirectional messages](../../admin/feishu-assistant-messages.md): implementation, migration 0044, identity checks, durable delivery and verification boundaries.

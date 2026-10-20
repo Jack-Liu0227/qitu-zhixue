@@ -77,6 +77,12 @@ export type LearningPlanErrorCode =
   | 'LEARNING_SESSION_NOT_FOUND'
   | 'THEORY_MASTERED_REQUIRED'
   | 'QUESTION_NOT_AWAITING'
+  | 'QUESTION_CANDIDATE_INVALID'
+  | 'QUESTION_SOURCE_UNVERIFIED'
+  | 'QUESTION_SCOPE_MISMATCH'
+  | 'QUESTION_ALREADY_AWAITING'
+  | 'QUESTION_OPTION_INVALID'
+  | 'QUESTION_RESULT_UNAVAILABLE'
   | 'EVIDENCE_INVALID'
   | 'LEARNING_PLAN_UNAVAILABLE';
 
@@ -234,6 +240,9 @@ export interface SubmitAnswerRequest {
 
 export interface SubmitAnswerResponse {
   questionId: string;
+  assessmentMode?: 'formative';
+  /** Only returned after the question owner has accepted an answer. */
+  correctOptionIds?: string[];
   result: GradeValue;
   isCorrect: boolean;
   score: number;

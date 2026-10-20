@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { DemoModal } from './demo-modal';
 import { Icon } from './icons';
 
 const NAV_ITEMS = [
@@ -65,17 +64,11 @@ export function SiteNav() {
         </nav>
 
         <div className="home-header-actions">
-          <DemoModal
-            label="体验 AI 探索"
-            variant="ghost"
-            icon="sparkle"
-            destination="/login?next=%2Fstudent%2Ftutor"
-          />
           <Link
             className="home-btn home-btn--primary home-btn--compact"
             href="/login?next=%2Fstudent%2Ftutor"
           >
-            登录 / 免费体验
+            进入学习空间
           </Link>
           <span className="home-avatar-chip" aria-hidden="true">
             <Icon name="user" size={18} />
@@ -115,7 +108,7 @@ export function SiteNav() {
             href="/login?next=%2Fstudent%2Ftutor"
             onClick={() => setMenuOpen(false)}
           >
-            登录 / 免费体验
+            进入学习空间
           </Link>
         </nav>
       ) : null}

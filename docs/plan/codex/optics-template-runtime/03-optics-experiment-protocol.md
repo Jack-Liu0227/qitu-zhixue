@@ -1,5 +1,7 @@
 # 03 · Optics Experiment Protocol
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 当前缺口
 
 `optics_experiment` 已经是可视化卡片，但它不能把滑块摘要直接当成实验事实。正式协议需要 action 实例、参数校验、幂等事件、持久化 observations 和 CER/rubric 引用。

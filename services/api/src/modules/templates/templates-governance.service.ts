@@ -4,7 +4,10 @@ import {
   Injectable,
   Inject,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { VisualAssetsService } from '../visual-assets/visual-assets.service';
+import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import type { CurrentUser } from '@qitu/contracts';
 import { assertTemplateTeachingContent } from './templates.content-validator';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -110,6 +113,7 @@ export class TemplateGovernanceService {
     private readonly directory: TemplateViewerDirectory,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    @Optional() private readonly visuals?: VisualAssetsService,
   ) {}
 
   /* ============================ 列表与详情 ============================ */
@@ -665,7 +669,13 @@ export class TemplateGovernanceService {
 
   private async project(record: ProjectTemplateRecord): Promise<TemplateView> {
     const versions = await this.store.listVersions(record.id);
-    return toTemplateView(record, latestPublishedVersionId(versions));
+    const view = toTemplateView(record, latestPublishedVersionId(versions));
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      view.iconAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'icon', bindings).effectiveAssetId;
+      view.coverAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'cover', bindings).effectiveAssetId;
+    }
+    return view;
   }
 
   private async executeIdempotent<T>(

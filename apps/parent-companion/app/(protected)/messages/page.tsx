@@ -89,21 +89,23 @@ export default function MessagesPage() {
   const act = async (action: 'read' | 'mute') => {
     if (!childId || !selected || acting) return;
     const actionChildId = childId;
+    const actionGeneration = latestLoad.current;
     setActing(true);
     const resource = `${actionChildId}:${selected}`;
     if (pendingAction.current?.resource !== resource || pendingAction.current.action !== action) {
       pendingAction.current = { key: crypto.randomUUID(), resource, action };
     }
+    const actionKey = pendingAction.current.key;
     try {
       await parentApi.post(
         `/api/v1/parent/children/${encodeURIComponent(actionChildId)}/messages/${encodeURIComponent(selected)}/ack`,
         { action },
-        { idempotencyKey: pendingAction.current.key },
+        { idempotencyKey: actionKey },
       );
-      pendingAction.current = null;
-      if (activeChildId.current === actionChildId) load(actionChildId);
+      if (pendingAction.current?.key === actionKey) pendingAction.current = null;
+      if (activeChildId.current === actionChildId && latestLoad.current === actionGeneration) { setActing(false); load(actionChildId); }
     } catch (e) {
-      if (activeChildId.current === actionChildId) {
+      if (activeChildId.current === actionChildId && latestLoad.current === actionGeneration) {
         setState(
           e instanceof Error &&
             'code' in e &&
@@ -113,7 +115,7 @@ export default function MessagesPage() {
         );
       }
     } finally {
-      if (activeChildId.current === actionChildId) setActing(false);
+      if (activeChildId.current === actionChildId && latestLoad.current === actionGeneration) setActing(false);
     }
   };
 
@@ -135,12 +137,13 @@ export default function MessagesPage() {
       <DataState state={{ status: state }} reload={() => childId && load(childId)} emptyTitle="还没有绑定孩子">
         {data ? (
           <>
+            {data.messagesAvailable === false && <p role="status">学习消息通道暂未接入，反馈工单仍可正常查看和提交。</p>}
             <div className="message-summary">
               {[
-                { label: '全部消息', value: data.summary.total, icon: '📬', tone: 'neutral' },
-                { label: '待您确认', value: data.summary.pendingConfirm, icon: '⚠️', tone: 'amber' },
-                { label: '处理中', value: data.summary.processing, icon: '⏳', tone: 'blue' },
-                { label: '已解决', value: data.summary.resolved, icon: '✅', tone: 'green' },
+                { label: '全部消息', value: data.messagesAvailable === false ? '—' : data.summary.total, icon: '📬', tone: 'neutral' },
+                { label: '待您确认', value: data.messagesAvailable === false ? '—' : data.summary.pendingConfirm, icon: '⚠️', tone: 'amber' },
+                { label: '处理中', value: data.messagesAvailable === false ? '—' : data.summary.processing, icon: '⏳', tone: 'blue' },
+                { label: '已解决', value: data.messagesAvailable === false ? '—' : data.summary.resolved, icon: '✅', tone: 'green' },
               ].map(({ label, value, icon, tone }) => (
                 <div className={`summary-card tone-${tone}`} key={label}>
                   <div className="summary-card-head">
@@ -250,7 +253,7 @@ export default function MessagesPage() {
                     ) : null}
                   </>
                 ) : (
-                  <p>请选择左侧消息查看详情。</p>
+                  <p>请选择一条消息查看详情。</p>
                 )}
               </SectionCard>
             </div>

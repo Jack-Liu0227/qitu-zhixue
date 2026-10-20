@@ -1,4 +1,5 @@
 'use client';
+import { projectStageLabel } from '@qitu/contracts';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -149,7 +150,7 @@ export function TutorSessionHistory({
           : project.id === currentProjectId
             ? currentTurnCount
             : 0,
-        stageLabel: project.stage,
+        stageLabel: projectStageLabel(project.stage),
       })));
       setHistoryStatus('ready');
     }).catch((cause: unknown) => {

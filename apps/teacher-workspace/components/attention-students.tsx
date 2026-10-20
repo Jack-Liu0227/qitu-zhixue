@@ -3,7 +3,8 @@ import type { TeacherStudentRow } from '@qitu/contracts';
 import { ArrowRightIcon, CheckCircleIcon } from './icons';
 
 /** Only the already-authorized teacher projection is rendered here. */
-export function AttentionStudents({ students }: { students: TeacherStudentRow[] }) {
+export function AttentionStudents({ students, available = true }: { students: TeacherStudentRow[]; available?: boolean }) {
+  if (!available) return <div className="qtx-attention-empty"><strong>关注提醒暂未接入</strong><p>可进入学生列表查看已有项目与授权证据。</p></div>;
   return <div className="qtx-attention-list">
     {students.length === 0 ? <div className="qtx-attention-empty"><CheckCircleIcon size={26} /><strong>当前没有需要关注的学生</strong><p>有新的学习停滞或待处理问题时，会显示在这里。</p></div> : students.map((student) => <article className="qtx-attention-student" key={student.studentId}>
       <div className="qtx-attention-identity"><span className="qtx-avatar" aria-hidden="true">{student.avatarInitial}</span><div><strong>{student.displayName}</strong><span>{student.gradeLabel ?? '年级未填写'}</span></div></div>

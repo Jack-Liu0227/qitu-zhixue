@@ -76,6 +76,8 @@ export interface AppendTurnsInput {
   expectedLastSeq: number;
   newLastSeq: number;
   turns: readonly TutorTurnRecord[];
+  /** Server-only descriptor; persisted turn IDs and owner are derived inside the append transaction. */
+  projectionEvent?: { sourceAgentId: string; runId: string | null };
 }
 
 /**

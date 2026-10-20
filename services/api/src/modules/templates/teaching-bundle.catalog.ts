@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { parseProjectTemplateSpec, type TeachingBundleDraft } from '@qitu/contracts';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
+import { readPublishedAssistant, publishedRuntimeSource } from '../platform-registry/team-version.snapshot';
+import { teamVersionView } from '../platform-registry/team-version.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
@@ -55,13 +57,16 @@ export class TeachingBundleCatalog {
     const profile = template.curriculum?.profiles.find((entry) => entry.id === draft.scheduleProfileId);
     if (!profile) return reject('SCHEDULE_PROFILE_UNRESOLVED', 'scheduleProfileId');
     if (!team.enabled) reject('TEAM_VERSION_DISABLED', 'teamVersion');
+    const published = team.pblSpec.teamVersionPublication !== undefined;
+    if (published) teamVersionView(team);
     const members = team.members.map((raw) => {
       if (!raw || typeof raw !== 'object') return reject('ROLE_MEMBER_UNRESOLVED', 'teamVersion.members');
       const value = raw as Record<string, unknown>;
       if (typeof value.slotId !== 'string' || typeof value.assistantId !== 'string') {
         return reject('ROLE_MEMBER_UNRESOLVED', 'teamVersion.members');
       }
-      return { memberId: value.slotId, assistantId: value.assistantId };
+      return { memberId: value.slotId, assistantId: value.assistantId,
+        frozen: published ? readPublishedAssistant(value.runtimeSnapshot, value.assistantId) : null };
     });
     const slots = new Set(draft.roleMap.map((role) => role.roleSlotId));
     for (const slot of [...draft.skillPins, ...draft.toolIds].map((entry) => entry.roleSlotId).concat(Object.keys(draft.modelByPurpose))) {
@@ -81,14 +86,25 @@ export class TeachingBundleCatalog {
         if (teachingValueDigest(selections[purpose as keyof typeof selections]) !==
           teachingValueDigest({ ...selection, policyVersion: runtime.policy.version })) reject('ROLE_MODEL_CONFLICT', role.roleSlotId);
       }
-      assistants.push({
-        assistantId: member.assistantId, enabled: effective.agent.enabled,
-        roleDefinition: effective.agent.roleDefinition, agentDefinition: effective.agent.agentDefinition,
-        skillIds: effective.skills.map((skill) => skill.id),
-        toolIds: [...effective.tools.map((tool) => tool.id), ...effective.mcpServers.flatMap((server) => server.toolIds)],
-        mcpServerIds: effective.mcpServers.map((server) => server.serverId),
-        modelByPurpose: selections,
-      });
+      if (member.frozen) {
+        for (const selection of Object.values(selections)) {
+          if (selection.modelProviderId !== member.frozen.model.modelProviderId || selection.modelId !== member.frozen.model.modelId) {
+            reject('TEAM_VERSION_MODEL_MISMATCH', member.memberId);
+          }
+        }
+        for (const role of roles) for (const pin of draft.skillPins.filter(pin => pin.roleSlotId === role.roleSlotId)) {
+          if (!member.frozen.skills.some(skill => skill.canonicalId === pin.canonicalId && skill.version === pin.version && skill.packageDigest === pin.packageDigest)) {
+            reject('TEAM_VERSION_SKILL_MISMATCH', role.roleSlotId);
+          }
+        }
+      }
+      const source = member.frozen ? publishedRuntimeSource(member.frozen, effective) : {
+        enabled: effective.agent.enabled, roleDefinition: effective.agent.roleDefinition, agentDefinition: effective.agent.agentDefinition,
+        skillIds: effective.skills.map(skill => skill.id),
+        toolIds: [...effective.tools.map(tool => tool.id), ...effective.mcpServers.flatMap(server => server.toolIds)],
+        mcpServerIds: effective.mcpServers.map(server => server.serverId),
+      };
+      assistants.push({ assistantId: member.assistantId, ...source, modelByPurpose: selections });
     }
     const sessionRoutes = draft.sessionRoutes ?? profile.sessions.map((session) => {
       const assistantId = template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
@@ -123,7 +139,7 @@ export class TeachingBundleCatalog {
     const imaTools = artifacts.filter((tool) => tool.mcpServerId === 'ima-knowledge').map((tool) => tool.toolId);
     return {
       templateVersionId: version.id, template, scheduleProfileId: draft.scheduleProfileId,
-      teamVersion: { teamVersionId: team.id, teamId: team.teamId, leaderAssistantId: team.leaderAssistantId, members },
+      teamVersion: { teamVersionId: team.id, teamId: team.teamId, leaderAssistantId: team.leaderAssistantId, members: members.map(({ memberId, assistantId }) => ({ memberId, assistantId })) },
       roles: draft.roleMap.map((role) => ({
         ...role,
         skills: draft.skillPins.filter((pin) => pin.roleSlotId === role.roleSlotId).map(({ roleSlotId: _, ...pin }) => pin),

@@ -1,3 +1,4 @@
+import { withTutorProviderContext } from './tutor-provider.test-fixture';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ForbiddenException } from '@nestjs/common';
@@ -115,7 +116,7 @@ function newService(
   audit?: RecordingAuditWriter,
   gateway: TutorModelGateway = new StubGateway('你观察到哪一片叶子最不一样？'),
 ): TutorService {
-  return new TutorService(
+  return withTutorProviderContext(new TutorService(
     'live',
     gateway,
     undefined,
@@ -124,7 +125,7 @@ function newService(
     store,
     idempotency,
     audit,
-  );
+  ));
 }
 
 async function drain(
@@ -330,7 +331,7 @@ test('持久化：审计只在真正创建会话时写一次，重放不重复�
 
 test('demo 回退：无持久化存储时仍用内存种子会话，且不触发模型网关', async () => {
   const gateway = new StubGateway('不该被用到');
-  const service = new TutorService('demo', gateway);
+  const service = withTutorProviderContext(new TutorService('demo', gateway));
 
   const session = await service.resolveSession('project-demo-001', OWNER);
   assert.equal(session.sessionId, 'session-demo-001');

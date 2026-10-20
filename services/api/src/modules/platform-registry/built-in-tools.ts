@@ -1,3 +1,6 @@
+import { RUNTIME_TOOL_CATALOG, type RuntimeToolCatalogEntry } from '@qitu/contracts';
+import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
+import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 import type {
   AdminRuntimeBuiltinTool,
   TutorAgentCapability,
@@ -6,119 +9,30 @@ import type {
 } from '@qitu/contracts';
 
 
-/**
- * Server-owned metadata for built-in tutor tools.
- *
- * The registry contains descriptors only. Tool execution, credentials and
- * student data remain behind the owning domain services.
- */
-const BUILTIN_TOOL_DESCRIPTORS: readonly TutorAgentToolDescriptor[] = [
+/** Shared canonical tools plus the server-owned dynamic lesson candidate protocol.
+ * Presence does not grant access; actual assistant bindings are projected by PlatformRegistryService. */
+const BUILTIN_TOOL_CATALOG: readonly RuntimeToolCatalogEntry[] = [
+  ...RUNTIME_TOOL_CATALOG,
   {
-    id: 'tutor.context_packet',
-    version: 'tutor.context_packet.v1',
-    capabilities: ['explore', 'plan', 'teach', 'review', 'reflect', 'summarize'],
-    execution: 'server_owned',
-    riskLevel: 'medium',
-    requiresTheoryMastered: false,
-  },
-  {
-    id: 'tutor.pedagogy_move',
-    version: 'tutor.pedagogy_move.v1',
-    capabilities: ['explore', 'plan', 'teach', 'review', 'reflect'],
-    execution: 'server_owned',
-    riskLevel: 'medium',
-    requiresTheoryMastered: false,
-  },
-  {
-    id: 'tutor.mastery_gate',
-    version: 'tutor.mastery_gate.v1',
-    capabilities: ['plan', 'teach', 'review'],
-    execution: 'server_owned',
-    riskLevel: 'high',
-    requiresTheoryMastered: false,
-  },
-  {
-    id: 'tutor.escalation',
-    version: 'tutor.escalation.v1',
-    capabilities: ['teach', 'review', 'reflect'],
-    execution: 'server_owned',
-    riskLevel: 'high',
-    requiresTheoryMastered: false,
-  },
-  {
-    id: 'agent-memory.index',
-    version: 'agent-memory.index.v1',
-    capabilities: ['reflect', 'summarize'],
-    execution: 'server_owned',
-    riskLevel: 'high',
-    requiresTheoryMastered: false,
-  },
-  {
-    id: 'project.next_step',
-    version: 'project.next_step.v1',
-    capabilities: ['plan', 'teach', 'review'],
-    execution: 'server_owned',
-    riskLevel: 'high',
-    requiresTheoryMastered: true,
+    id: 'tutor.propose_lesson_activity', version: 'tutor.propose_lesson_activity.v1',
+    label: '生成本课时教学活动候选', invocation: 'model_tool',
+    description: 'Propose a bounded board, gated optics activity, or source-grounded formative question for owner acceptance.',
+    inputSchema: LESSON_ACTIVITY_SCHEMA,
+    inputSchemaDigest: teachingValueDigest(LESSON_ACTIVITY_SCHEMA),
+    capabilities: ['teach'], execution: 'server_owned', riskLevel: 'medium', requiresTheoryMastered: false,
   },
 ];
 
-const BUILTIN_TOOL_REGISTRY: readonly AdminRuntimeBuiltinTool[] = [
-  {
-    id: 'tutor.context_packet',
-    label: 'Tutor context packet',
-    description: 'Assemble bounded, permission-filtered context for one tutor turn.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: false,
-    riskLevel: 'medium',
-  },
-  {
-    id: 'tutor.pedagogy_move',
-    label: 'Socratic pedagogy move',
-    description: 'Select a hint-ladder move without releasing the expected answer.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: false,
-    riskLevel: 'medium',
-  },
-  {
-    id: 'tutor.mastery_gate',
-    label: 'Theory mastery gate',
-    description: 'Check the server-owned TheoryMastered prerequisite before practice.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: false,
-    riskLevel: 'high',
-  },
-  {
-    id: 'tutor.escalation',
-    label: 'Teacher escalation',
-    description: 'Create one idempotent teacher follow-up after a deterministic stall.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: false,
-    riskLevel: 'high',
-  },
-  {
-    id: 'agent-memory.index',
-    label: 'Agent memory index outbox',
-    description: 'Process approved memory index events without exposing raw conversations.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: false,
-    riskLevel: 'high',
-  },
-  {
-    id: 'project.next_step',
-    label: 'Project next-step selector',
-    description: 'Select the next theory or practice objective from server-owned progress.',
-    status: 'enabled',
-    agentIds: ['qitu-learning-partner'],
-    requiresTheoryMastered: true,
-    riskLevel: 'high',
-  },
-];
+const BUILTIN_TOOL_DESCRIPTORS: readonly RuntimeToolCatalogEntry[] = BUILTIN_TOOL_CATALOG.map(tool => ({
+  ...tool,
+  ...(tool.inputSchema ? { inputSchemaDigest: teachingValueDigest(tool.inputSchema) } : {}),
+}));
+
+const BUILTIN_TOOL_REGISTRY: readonly AdminRuntimeBuiltinTool[] = BUILTIN_TOOL_DESCRIPTORS.map(tool => ({
+  id: tool.id, label: tool.label, description: tool.description, status: 'enabled',
+  invocation: tool.invocation, agentIds: [], riskLevel: tool.riskLevel,
+  requiresTheoryMastered: tool.requiresTheoryMastered,
+}));
 
 function createToolRegistry(
   descriptors: readonly TutorAgentToolDescriptor[],

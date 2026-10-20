@@ -1,4 +1,4 @@
-import type { AdminFeishuSettings, FeishuDeviceAuthorization, FeishuQrSession } from '@qitu/contracts';
+import type { AdminFeishuSettings, FeishuBridgeStatus, FeishuDeviceAuthorization, FeishuQrSession } from '@qitu/contracts';
 import { AdminOfflineError, AdminPermissionError, newIdempotencyKey } from './types';
 
 export type FeishuConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error';
@@ -6,6 +6,7 @@ export type FeishuConnectionStatus = 'disconnected' | 'pending' | 'connected' | 
 /** UI-friendly projection of the server contract. Secrets are never included. */
 export interface FeishuIntegrationConfig {
   enabled: boolean;
+  inboundEnabled: boolean;
   appId: string;
   domain: 'feishu' | 'lark';
   botName: string;
@@ -49,10 +50,11 @@ export interface FeishuQrStatusResponse {
 function mapSettings(value: AdminFeishuSettings): FeishuIntegrationConfig {
   return {
     enabled: value.enabled,
+    inboundEnabled: value.inboundEnabled,
     appId: value.appId ?? '',
     domain: value.domain,
     botName: value.domain === 'lark' ? 'Lark 汇报助手' : '飞书汇报助手',
-    reportAssistantId: value.reportAssistantId ?? '',
+    reportAssistantId: value.assistantId,
     reportScope: ['student', 'parent', 'teacher'],
     status: value.connected ? 'connected' : 'disconnected',
     credentialConfigured: value.credentialConfigured,
@@ -92,15 +94,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload.data;
 }
 
-export function fetchFeishuIntegration(assistantId?: string): Promise<FeishuIntegrationConfig> {
+export function fetchFeishuIntegration(assistantId?: string, signal?: AbortSignal): Promise<FeishuIntegrationConfig> {
   const query = assistantId ? `?assistantId=${encodeURIComponent(assistantId)}` : '';
-  return request<AdminFeishuSettings>(`/api/v1/admin/integrations/feishu${query}`).then(mapSettings);
+  return request<AdminFeishuSettings>(`/api/v1/admin/integrations/feishu${query}`, { signal }).then(mapSettings);
 }
 
 export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>, idempotencyKey = newIdempotencyKey()): Promise<FeishuIntegrationConfig> {
   const body = {
     enabled: input.enabled,
-    appId: input.appId?.trim() || null,
+    inboundEnabled: input.inboundEnabled,
+    appId: input.appId === undefined ? undefined : input.appId.trim() || null,
     domain: input.domain,
     reportAssistantId: input.reportAssistantId || null,
     // Report categories are assistant policy, not Feishu recipient identities.
@@ -115,6 +118,10 @@ export function updateFeishuIntegration(input: Partial<FeishuIntegrationConfig>,
     headers: { 'content-type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(body),
   }).then(mapSettings);
+}
+
+export function fetchFeishuBridgeStatus(assistantId: string, signal?: AbortSignal): Promise<FeishuBridgeStatus> {
+  return request<FeishuBridgeStatus>(`/api/v1/admin/integrations/feishu/bridge?assistantId=${encodeURIComponent(assistantId)}`, { signal });
 }
 
 export function startFeishuQrLogin(assistantId?: string, idempotencyKey = newIdempotencyKey()): Promise<FeishuQrResponse> {
@@ -150,6 +157,7 @@ export interface FeishuDeliverResult {
   recipientCount: number;
   recipientHashes: readonly string[];
   requestId?: string;
+  errorCode?: string;
 }
 
 export function deliverFeishuReport(assistantId?: string, idempotencyKey = newIdempotencyKey()): Promise<FeishuDeliverResult> {

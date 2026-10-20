@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { AdminFeishuSettings, AdminFeishuSettingsPatch, CurrentUser, FeishuDeviceAuthorization, FeishuQrSession, FeishuReportDocument } from '@qitu/contracts';
-import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, type Database, withTransaction } from '@qitu/database';
-import { and, eq, gt } from 'drizzle-orm';
+import { adminAssistants, feishuAdminBindings, feishuBots, feishuQrSessions, users, type Database, withTransaction } from '@qitu/database';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { decryptModelSecret, encryptModelSecret, readModelSecretKey } from '../../common/secrets/model-secret';
 import { decryptDeviceAuthorization, encryptDeviceAuthorization } from './device-authorization';
+import { formatFeishuReport, messageUuid, recipientHash, sendFeishuText } from './feishu-api';
 
 export const FEISHU_BOT_ID = 'admin-reporting' as const;
 export const DEFAULT_FEISHU_ASSISTANT_ID = 'feishu-reporting-assistant' as const;
@@ -31,10 +32,11 @@ function string(value: unknown, max: number): string | null {
 
 export function parseFeishuPatch(body: unknown): AdminFeishuSettingsPatch {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new BadRequestException('椋炰功閰嶇疆椤讳负瀵硅薄');
-  const value = body as Record<string, unknown>;
-  const allowed = ['enabled', 'appId', 'appSecret', 'verificationToken', 'encryptKey', 'domain', 'reportAssistantId', 'reportRecipients'];
+  const value = Object.fromEntries(Object.entries(body));
+  const allowed = ['enabled', 'inboundEnabled', 'appId', 'appSecret', 'verificationToken', 'encryptKey', 'domain', 'reportAssistantId', 'reportRecipients'];
   if (Object.keys(value).some((key) => !allowed.includes(key)) || !Object.keys(value).length) throw new BadRequestException('椋炰功閰嶇疆瀛楁涓嶅彈鏀寔');
   if ('enabled' in value && typeof value.enabled !== 'boolean') throw new BadRequestException('enabled must be boolean');
+  if ('inboundEnabled' in value && typeof value.inboundEnabled !== 'boolean') throw new BadRequestException('inboundEnabled must be boolean');
   if ('domain' in value && value.domain !== 'feishu' && value.domain !== 'lark') throw new BadRequestException('domain must be feishu or lark');
   for (const key of ['appId', 'appSecret', 'verificationToken', 'encryptKey', 'reportAssistantId']) if (key in value) string(value[key], 512);
   if ('reportRecipients' in value) {
@@ -58,17 +60,25 @@ export class FeishuService {
     return this.db;
   }
 
+  private async requireAssistant(assistantId: string): Promise<void> {
+    const [assistant] = await this.database().select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, assistantId));
+    if (!assistant) throw new NotFoundException({ code: 'FEISHU_ASSISTANT_NOT_FOUND', message: 'Assistant not found' });
+    if (!assistant.enabled) throw new BadRequestException({ code: 'FEISHU_ASSISTANT_DISABLED', message: 'Assistant is disabled' });
+  }
+
   async getSettings(assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<AdminFeishuSettings> {
     const db = this.database();
     const rows = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     const row = rows[0] ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? (await db.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)))[0] : undefined);
     return {
-      id: (row?.id as 'admin-reporting' | undefined) ?? FEISHU_BOT_ID,
+      id: row?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`),
+      assistantId,
       enabled: row?.enabled ?? false,
+      inboundEnabled: row?.inboundEnabled ?? false,
       connected: !!(row?.enabled && row?.appId && row?.appSecretEncrypted && (row.reportRecipients?.length ?? 0) > 0),
       appId: row?.appId ?? null,
       domain: row?.domain === 'lark' ? 'lark' : 'feishu',
-      reportAssistantId: row?.reportAssistantId ?? null,
+      reportAssistantId: assistantId,
       reportRecipients: row?.reportRecipients ?? [],
       credentialConfigured: !!row?.appSecretEncrypted,
       qrBinding: { supported: true, callbackPath: '/api/v1/integrations/feishu/oauth/callback' },
@@ -86,37 +96,46 @@ export class FeishuService {
       return encryptModelSecret(value, key);
     };
     await withTransaction(db, async (tx) => {
-      if (patch.reportAssistantId) {
-        const [assistant] = await tx.select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, patch.reportAssistantId));
+      if (patch.reportAssistantId && patch.reportAssistantId !== assistantId) throw new BadRequestException({ code: 'FEISHU_ASSISTANT_MISMATCH', message: '助手与飞书配置归属不一致' });
+      {
+        const [assistant] = await tx.select({ id: adminAssistants.id, enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, assistantId));
         if (!assistant) throw new NotFoundException('reporting assistant not found');
         if (!assistant.enabled) throw new BadRequestException('reporting assistant is disabled');
       }
       const existingRows = await tx.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId)).for('update');
       const existing = existingRows[0] ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? (await tx.select().from(feishuBots).where(eq(feishuBots.id, FEISHU_BOT_ID)).for('update'))[0] : undefined);
+      const identityChanged = !!existing && ((patch.appId !== undefined && patch.appId !== existing.appId) || (patch.domain !== undefined && patch.domain !== existing.domain));
       const now = new Date();
       const values = {
         id: existing?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`),
         assistantId,
         enabled: patch.enabled ?? existing?.enabled ?? false,
+        inboundEnabled: patch.inboundEnabled ?? existing?.inboundEnabled ?? assistantId === DEFAULT_FEISHU_ASSISTANT_ID,
         appId: patch.appId !== undefined ? patch.appId : existing?.appId ?? null,
         appSecretEncrypted: patch.appSecret === undefined ? existing?.appSecretEncrypted ?? null : encrypt(patch.appSecret) ?? null,
         verificationTokenEncrypted: patch.verificationToken === undefined ? existing?.verificationTokenEncrypted ?? null : encrypt(patch.verificationToken) ?? null,
         encryptKeyEncrypted: patch.encryptKey === undefined ? existing?.encryptKeyEncrypted ?? null : encrypt(patch.encryptKey) ?? null,
         domain: patch.domain ?? existing?.domain ?? 'feishu',
-        reportAssistantId: patch.reportAssistantId !== undefined ? patch.reportAssistantId : existing?.reportAssistantId ?? null,
-        reportRecipients: patch.reportRecipients ? [...patch.reportRecipients] : existing?.reportRecipients ?? [],
+        reportAssistantId: assistantId,
+        reportRecipients: identityChanged ? [] : patch.reportRecipients ? [...patch.reportRecipients] : existing?.reportRecipients ?? [],
         updatedBy: actor.id,
         updatedAt: now,
       };
       if (existing) await tx.update(feishuBots).set(values).where(eq(feishuBots.id, existing.id));
       else await tx.insert(feishuBots).values(values);
+      if (identityChanged) {
+        await tx.delete(feishuAdminBindings).where(eq(feishuAdminBindings.assistantId, assistantId));
+        await tx.update(feishuQrSessions).set({ status: 'cancelled', deviceCodeEncrypted: null, updatedAt: now })
+          .where(and(eq(feishuQrSessions.botId, values.id), eq(feishuQrSessions.status, 'pending')));
+      }
       await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.update', targetType: 'feishu_bot', targetId: values.id,
-        detail: { enabled: values.enabled, appId: values.appId, domain: values.domain, reportAssistantId: values.reportAssistantId, recipientCount: values.reportRecipients.length } }, tx);
+        detail: { enabled: values.enabled, inboundEnabled: values.inboundEnabled, appId: values.appId, domain: values.domain, reportAssistantId: values.reportAssistantId, recipientCount: values.reportRecipients.length } }, tx);
     });
     return this.getSettings(assistantId);
   }
 
   async createQrSession(actor: CurrentUser, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<FeishuQrSession> {
+    await this.requireAssistant(assistantId);
     const db = this.database();
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
     if (!bot?.appId) throw new BadRequestException('璇峰厛閰嶇疆椋炰功 App ID');
@@ -154,6 +173,7 @@ export class FeishuService {
   /** Start Feishu/Lark's server-side device registration flow (no pre-created App ID required). */
   async beginDeviceAuthorization(actor: CurrentUser, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<FeishuDeviceAuthorization> {
     if (actor.role !== 'admin') throw new ForbiddenException('Feishu binding requires an administrator');
+    await this.requireAssistant(assistantId);
     const db = this.database();
     let domain: 'feishu' | 'lark' = 'feishu';
     const [configured] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
@@ -205,10 +225,16 @@ export class FeishuService {
     const deviceCode = String(begin.device_code ?? '');
     const verificationUriComplete = String(begin.verification_uri_complete ?? begin.verification_uri ?? '');
     if (!deviceCode || !verificationUriComplete) throw new ServiceUnavailableException('Feishu returned invalid device authorization data');
+    let verificationUrl: URL;
+    try { verificationUrl = new URL(verificationUriComplete); } catch { throw new ServiceUnavailableException('Feishu authorization URL is invalid'); }
+    const trustedHosts = domain === 'lark' ? ['accounts.larksuite.com', 'open.larksuite.com'] : ['accounts.feishu.cn', 'open.feishu.cn'];
+    if (verificationUrl.protocol !== 'https:' || !trustedHosts.includes(verificationUrl.hostname) || verificationUrl.username || verificationUrl.password) {
+      throw new ServiceUnavailableException('Feishu authorization URL is not trusted');
+    }
     // The provider owns the device-code lifetime. Do not fabricate a fallback
     // expiry when the response omits it: the UI must not advertise a QR beyond
     // the lifetime Feishu actually granted.
-    const lifetime = Number(begin.expire_in);
+    const lifetime = Number(begin.expire_in ?? begin.expires_in);
     const pollIntervalSeconds = Number(begin.interval ?? 5);
     const expiresAt = new Date(Date.now() + lifetime * 1000);
     if (!Number.isSafeInteger(lifetime) || lifetime <= 0 || !Number.isFinite(expiresAt.getTime())
@@ -217,7 +243,7 @@ export class FeishuService {
     }
     const key = requireSecretKey();
     const botId = configured?.id ?? (assistantId === DEFAULT_FEISHU_ASSISTANT_ID ? FEISHU_BOT_ID : `feishu-${assistantId}`);
-    if (!configured) await db.insert(feishuBots).values({ id: botId, assistantId, domain, enabled: false, reportRecipients: [], updatedAt: new Date() });
+    if (!configured) await db.insert(feishuBots).values({ id: botId, assistantId, domain, enabled: false, inboundEnabled: assistantId === DEFAULT_FEISHU_ASSISTANT_ID, reportAssistantId: assistantId, reportRecipients: [], updatedAt: new Date() });
     const id = randomUUID();
     const state = randomBytes(24).toString('base64url');
     await db.insert(feishuQrSessions).values({ id, botId, state, status: 'pending', expiresAt, createdBy: actor.id, deviceCodeEncrypted: encryptDeviceAuthorization({ deviceCode, verificationUriComplete }, key), pollIntervalSeconds, updatedAt: new Date() });
@@ -256,15 +282,29 @@ export class FeishuService {
     const openId = String(userInfo.open_id ?? '');
     if (!appId || !appSecret || !openId) throw new BadRequestException('椋炰功鎺堟潈鍝嶅簲缂哄皯蹇呰瀛楁');
     if (!row.createdBy) throw new ForbiddenException('Device session is not bound to an authenticated admin');
+    const ownerId = row.createdBy;
     const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
     await withTransaction(db, async (tx) => {
+      const [currentSession] = await tx.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, id)).for('update');
+      if (!currentSession || currentSession.status !== 'pending' || currentSession.expiresAt.getTime() <= Date.now()) {
+        throw new ConflictException({ code: 'FEISHU_QR_SESSION_CHANGED', message: 'Authorization changed; refresh before continuing' });
+      }
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
+      if (!currentBot) throw new NotFoundException('Feishu bot not found');
       const secretKey = requireSecretKey();
-      const recipients = currentBot?.reportRecipients ?? [];
-      const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      const bindingInsert = (tx.insert(feishuAdminBindings) as any).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
-      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
-      await tx.update(feishuBots).set({ enabled: true, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: userInfo.tenant_brand === 'lark' ? 'lark' : currentBot?.domain ?? 'feishu', reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
+      const assistantId = currentBot.assistantId;
+      await this.requireAssistant(assistantId);
+      const [owner] = await tx.select({ role: users.role }).from(users).where(and(eq(users.id, ownerId), eq(users.role, 'admin'), isNull(users.disabledAt)));
+      if (!owner) throw new ForbiddenException('Platform administrator is unavailable');
+      const nextDomain = userInfo.tenant_brand === 'lark' ? 'lark' : userInfo.tenant_brand === 'feishu' ? 'feishu' : currentBot.domain;
+      const identityChanged = currentBot.appId !== appId || currentBot.domain !== nextDomain;
+      const [previousBinding] = await tx.select().from(feishuAdminBindings).where(and(eq(feishuAdminBindings.assistantId, assistantId), eq(feishuAdminBindings.adminUserId, ownerId)));
+      const recipients = identityChanged ? [] : currentBot.reportRecipients.filter((recipient) => !previousBinding || recipientHash(recipient) !== previousBinding.openIdHash || recipient === openId);
+      if (identityChanged) await tx.delete(feishuAdminBindings).where(eq(feishuAdminBindings.assistantId, assistantId));
+      await tx.delete(feishuAdminBindings).where(and(eq(feishuAdminBindings.assistantId, assistantId), eq(feishuAdminBindings.adminUserId, ownerId)));
+      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: ownerId })
+        .onConflictDoUpdate({ target: [feishuAdminBindings.assistantId, feishuAdminBindings.openIdHash], set: { adminUserId: ownerId } });
+      await tx.update(feishuBots).set({ enabled: true, reportAssistantId: assistantId, appId, appSecretEncrypted: encryptModelSecret(appSecret, secretKey), domain: nextDomain, reportRecipients: recipients.includes(openId) ? recipients : [...recipients, openId], updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
       await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: row.createdBy, deviceCodeEncrypted: null, updatedAt: new Date() }).where(eq(feishuQrSessions.id, id));
       await this.audit.write({ actorId: row.createdBy ?? null, actorRole: 'admin', action: 'admin.feishu.device.bound', targetType: 'feishu_qr_session', targetId: id, detail: { recipientHash: openIdHash, assistantId: currentBot?.assistantId } }, tx);
     });
@@ -277,25 +317,56 @@ export class FeishuService {
     return bot?.reportRecipients ?? [];
   }
 
-  /** Minimal Feishu message sender; report text is generated from already-redacted facts. */
-  async sendReport(report: FeishuReportDocument, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID): Promise<{ requestId?: string }> {
+  async resolveRecipientAdmin(assistantId: string, openId: string): Promise<CurrentUser> {
     const db = this.database();
     const [bot] = await db.select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
-    if (!bot?.enabled || !bot.appId || !bot.appSecretEncrypted) throw new BadRequestException('飞书机器人未连接，请先配置或通过二维码扫码绑定');
-    const key = requireSecretKey();
-    const secret = decryptModelSecret(bot.appSecretEncrypted, key);
-    const host = bot.domain === 'lark' ? 'open.larksuite.com' : 'open.feishu.cn';
-    const tokenResponse = await fetch(`https://${host}/open-apis/auth/v3/app_access_token/internal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ app_id: bot.appId, app_secret: secret }), signal: AbortSignal.timeout(10_000) });
-    const tokenPayload = await tokenResponse.json().catch(() => ({})) as Record<string, unknown>;
-    const token = String(tokenPayload.app_access_token ?? tokenPayload.tenant_access_token ?? '');
-    if (!tokenResponse.ok || !token) throw new ServiceUnavailableException('飞书令牌服务暂不可用');
-    const text = report.issueSummary?.formattedText ?? JSON.stringify({ summary: report.summary, range: report.range, redacted: true });
+    const [assistant] = await db.select({ enabled: adminAssistants.enabled }).from(adminAssistants).where(eq(adminAssistants.id, assistantId));
+    if (!bot?.enabled || !assistant?.enabled || !bot.reportRecipients.includes(openId)) {
+      throw new ForbiddenException({ code: 'FEISHU_RECIPIENT_FORBIDDEN', message: 'Feishu recipient is not authorized' });
+    }
+    const [binding] = await db.select().from(feishuAdminBindings).where(and(
+      eq(feishuAdminBindings.assistantId, assistantId), eq(feishuAdminBindings.openIdHash, recipientHash(openId)),
+    ));
+    if (!binding) throw new ForbiddenException({ code: 'FEISHU_IDENTITY_UNBOUND', message: 'Feishu identity has no platform binding' });
+    const [user] = await db.select({ id: users.id, role: users.role, email: users.email, displayName: users.displayName }).from(users)
+      .where(and(eq(users.id, binding.adminUserId), eq(users.role, 'admin'), isNull(users.disabledAt)));
+    if (!user || user.role !== 'admin') throw new ForbiddenException({ code: 'FEISHU_ADMIN_REVOKED', message: 'Platform administrator is unavailable' });
+    return { ...user, role: 'admin' };
+  }
+
+  async sendText(assistantId: string, recipient: string, text: string, idempotencyKey: string, expectedAppId?: string) {
+    await this.resolveRecipientAdmin(assistantId, recipient);
+    const [bot] = await this.database().select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    if (!bot?.enabled || !bot.appId || !bot.appSecretEncrypted || (expectedAppId && expectedAppId !== bot.appId)) {
+      throw new BadRequestException({ code: 'FEISHU_BOT_UNAVAILABLE', message: 'Feishu bot credentials are unavailable or changed' });
+    }
+    return sendFeishuText({
+      appId: bot.appId, appSecret: decryptModelSecret(bot.appSecretEncrypted, requireSecretKey()),
+      domain: bot.domain === 'lark' ? 'lark' : 'feishu', recipient, text,
+      uuid: messageUuid(`${assistantId}:${bot.appId}:${idempotencyKey}:${recipientHash(recipient)}`),
+    });
+  }
+
+  async sendReport(report: FeishuReportDocument, assistantId: string = DEFAULT_FEISHU_ASSISTANT_ID, options: {
+    idempotencyKey?: string; completedRecipientHashes?: readonly string[];
+    recipientHashes?: readonly string[];
+    onRecipientSent?: (hash: string) => Promise<void>;
+  } = {}): Promise<{ requestId?: string }> {
+    const [bot] = await this.database().select().from(feishuBots).where(eq(feishuBots.assistantId, assistantId));
+    const recipients = bot?.reportRecipients ?? [];
+    if (!recipients.length) throw new BadRequestException({ code: 'FEISHU_NO_RECIPIENTS', message: 'No authorized recipients configured' });
+    if (options.recipientHashes?.some((allowed) => !recipients.some((recipient) => recipientHash(recipient).startsWith(allowed)))) {
+      throw new BadRequestException({ code: 'FEISHU_RECIPIENTS_CHANGED', message: 'Recipient binding changed during delivery' });
+    }
     let requestId: string | undefined;
-    for (const recipient of bot.reportRecipients ?? []) {
-      const response = await fetch(`https://${host}/open-apis/im/v1/messages?receive_id_type=open_id`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ receive_id: recipient, msg_type: 'text', content: JSON.stringify({ text }) }), signal: AbortSignal.timeout(10_000) });
-      const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-      if (!response.ok) throw new ServiceUnavailableException('Feishu message delivery failed');
-      requestId = String(response.headers.get('x-request-id') ?? payload.request_id ?? requestId ?? '') || undefined;
+    const deliveryKey = options.idempotencyKey ?? randomUUID();
+    for (const recipient of recipients) {
+      const hash = recipientHash(recipient);
+      if (options.recipientHashes && !options.recipientHashes.some((allowed) => hash.startsWith(allowed))) continue;
+      if (options.completedRecipientHashes?.includes(hash)) continue;
+      const receipt = await this.sendText(assistantId, recipient, formatFeishuReport(report), deliveryKey, bot?.appId ?? undefined);
+      requestId = receipt.requestId ?? receipt.messageId;
+      await options.onRecipientSent?.(hash);
     }
     return { requestId };
   }
@@ -332,15 +403,24 @@ export class FeishuService {
     const openId = payload.data?.open_id ?? payload.open_id;
     if (!openId || typeof openId !== 'string' || openId.length > 256) throw new BadRequestException('Feishu returned an invalid user identifier');
     if (!row.createdBy) throw new ForbiddenException('Device session is not bound to an authenticated admin');
+    const ownerId = row.createdBy;
     const openIdHash = createHash('sha256').update(openId).digest('hex').slice(0, 24);
     await withTransaction(db, async (tx) => {
+      const [currentSession] = await tx.select().from(feishuQrSessions).where(eq(feishuQrSessions.id, row.id)).for('update');
+      if (!currentSession || currentSession.status !== 'pending' || currentSession.expiresAt.getTime() <= Date.now()) throw new ConflictException('Authorization session changed');
       const [currentBot] = await tx.select().from(feishuBots).where(eq(feishuBots.id, row.botId)).for('update');
-      const recipients = currentBot?.reportRecipients ?? [];
-      const assistantId = currentBot?.assistantId ?? DEFAULT_FEISHU_ASSISTANT_ID;
-      const bindingInsert = (tx.insert(feishuAdminBindings) as any).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: row.createdBy }) as any;
-      await (bindingInsert && typeof bindingInsert.onConflictDoNothing === 'function' ? bindingInsert.onConflictDoNothing() : bindingInsert);
+      if (!currentBot || currentBot.appId !== bot.appId || currentBot.appSecretEncrypted !== bot.appSecretEncrypted) throw new ConflictException('Feishu credentials changed during authorization');
+      const assistantId = currentBot.assistantId;
+      await this.requireAssistant(assistantId);
+      const [owner] = await tx.select({ role: users.role }).from(users).where(and(eq(users.id, ownerId), eq(users.role, 'admin'), isNull(users.disabledAt)));
+      if (!owner) throw new ForbiddenException('Platform administrator is unavailable');
+      const [previousBinding] = await tx.select().from(feishuAdminBindings).where(and(eq(feishuAdminBindings.assistantId, assistantId), eq(feishuAdminBindings.adminUserId, ownerId)));
+      const recipients = currentBot.reportRecipients.filter((recipient) => !previousBinding || recipientHash(recipient) !== previousBinding.openIdHash || recipient === openId);
+      await tx.delete(feishuAdminBindings).where(and(eq(feishuAdminBindings.assistantId, assistantId), eq(feishuAdminBindings.adminUserId, ownerId)));
+      await tx.insert(feishuAdminBindings).values({ id: randomUUID(), assistantId, openIdHash, adminUserId: ownerId })
+        .onConflictDoUpdate({ target: [feishuAdminBindings.assistantId, feishuAdminBindings.openIdHash], set: { adminUserId: ownerId } });
       const nextRecipients = recipients.includes(openId) ? recipients : [...recipients, openId];
-      await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
+      await tx.update(feishuQrSessions).set({ status: 'bound', boundOpenId: openIdHash, boundAdminId: ownerId, updatedAt: new Date() }).where(eq(feishuQrSessions.id, row.id));
       await tx.update(feishuBots).set({ reportRecipients: nextRecipients, updatedAt: new Date() }).where(eq(feishuBots.id, row.botId));
       await this.audit.write({ actorId: null, actorRole: null, action: 'admin.feishu.qr.bound', targetType: 'feishu_qr_session', targetId: row.id,
         detail: { recipientAdded: !recipients.includes(openId), recipientHash: openIdHash } }, tx);

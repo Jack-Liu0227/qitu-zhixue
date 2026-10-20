@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { BadRequestException, ConflictException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
-import { feishuBots, feishuQrSessions } from '@qitu/database';
+import { adminAssistants, feishuBots, feishuQrSessions } from '@qitu/database';
 import { encryptModelSecret } from '../../common/secrets/model-secret';
 import { decryptDeviceAuthorization, encryptDeviceAuthorization } from './device-authorization';
 import { FeishuService } from './feishu.service';
@@ -26,7 +26,7 @@ function fixture(t: TestContext, session?: Partial<Session>) {
   const audits: Record<string, unknown>[] = [];
   const writes = { allowRetirement: true };
   const db = {
-    select: () => ({ from: (table: unknown) => ({ where: async () => table === feishuBots ? [bot] : sessions }) }),
+    select: () => ({ from: (table: unknown) => ({ where: async () => table === adminAssistants ? [{ id: bot.assistantId, enabled: true }] : table === feishuBots ? [bot] : sessions }) }),
     insert: () => ({ values: async (value: Session) => { sessions.push(value); } }),
     update: () => ({ set: (patch: Partial<Session>) => ({ where: () => {
       if (patch.status !== 'cancelled' || writes.allowRetirement) Object.assign(sessions[0]!, patch);

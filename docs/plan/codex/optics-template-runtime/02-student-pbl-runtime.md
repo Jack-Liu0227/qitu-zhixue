@@ -1,5 +1,7 @@
 # 02 · Student PBL Runtime
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 端到端流程
 
 ```text

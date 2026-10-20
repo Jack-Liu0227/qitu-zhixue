@@ -74,6 +74,12 @@ export class GrowthController {
     };
   }
 
+  @Get('growth/analysis')
+  async getAnalysis(@Headers('cookie') cookieHeader: string | undefined) {
+    const user = this.requireStudent(cookieHeader);
+    return { data: await this.growthService.getGrowthAnalysis(user.id) };
+  }
+
   @Get('projects/summaries')
   getProjectOptions(
     @Headers('cookie') cookieHeader: string | undefined,

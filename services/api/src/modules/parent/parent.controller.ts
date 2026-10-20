@@ -51,6 +51,10 @@ import { FeedbackService } from '../feedback/feedback.service';
 import { ParentGrowthExportService } from './growth-export.service';
 import { ParentAcceptedProfileService } from './accepted-profile.service';
 import { Optional, ServiceUnavailableException } from '@nestjs/common';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { currentStudentProject } from '../projects/current-project';
+import { WorksService } from '../works/works.service';
+import { projectStageLabel } from '@qitu/contracts';
 
 /**
  * 家长陪伴中心接口。
@@ -74,6 +78,8 @@ export class ParentController {
     private readonly feedbackService: FeedbackService,
     private readonly growthExportService: ParentGrowthExportService,
     @Optional() private readonly acceptedProfile?: ParentAcceptedProfileService,
+    @Optional() private readonly learningStore?: LearningPlanStore,
+    @Optional() private readonly worksService?: WorksService,
   ) {}
 
   /* ==================== 读接口 ==================== */
@@ -99,119 +105,32 @@ export class ParentController {
     const user = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
     await this.assertParentCanReadChild(user.id, childId);
 
-    // 身份（含展示名）取自目录这个唯一真源；项目进度、卡片内容等只有演示数据才有的字段仍来自 platform-data。
     const student = await this.directory.findUser(childId);
-    const demo = this.platformData.getStudent(childId);
-    if (student === null || demo === null) throw new ForbiddenException('无权查看该孩子的数据');
-
+    if (!student) throw new ForbiddenException('无权查看该孩子的数据');
+    if (!this.learningStore || !this.worksService) throw new ServiceUnavailableException('学习数据暂不可用');
+    const projects = await this.learningStore.listProjectsByStudent(childId);
+    const current = currentStudentProject(projects);
     const summary = this.growthService.getSummary(childId);
-    const projects = this.platformData.getProjectsByStudent(childId);
-    const interventions = this.platformData.getInterventionsByStudent(childId);
-
-    // KPI 四张卡
-    const kpis: ParentKpi[] = [
-      {
-        id: 'weekly_sessions',
-        label: '本周学习次数',
-        value: '4 次',
-        hint: '比上周多 1 次',
-        trend: 'up',
-      },
-      {
-        id: 'weekly_minutes',
-        label: '本周学习时长',
-        value: '3 小时 20 分',
-        hint: null,
-        trend: 'flat',
-      },
-      {
-        id: 'current_progress',
-        label: '当前项目进度',
-        value: `${demo.progressPercent}%`,
-        hint: demo.currentProjectTitle ?? null,
-        trend: 'up',
-      },
-      {
-        id: 'streak',
-        label: '连续学习天数',
-        value: `${summary.streakDays} 天`,
-        hint: summary.streakDays >= 7 ? '坚持得很好' : null,
-        trend: summary.streakDays > 0 ? 'up' : 'flat',
-      },
-    ];
-
-    // 当前项目
-    const currentProject: ParentCurrentProject | null = demo.currentProjectId
-      ? {
-          projectId: demo.currentProjectId,
-          title: demo.currentProjectTitle ?? '未命名项目',
-          summary: '通过观察校园植物，学习记录方法和科学思维。',
-          stage: demo.currentStage ?? 'intent_confirmed',
-          stageLabel: this.getStageLabel(demo.currentStage),
-          progressPercent: demo.progressPercent,
-          todayTask: demo.stuck ? null : '继续观察记录，完成第 7 种植物',
-          lastCompleted: '写下第一次观察反思',
-          nextStep: '邀请同学一起扩充植物库',
-        }
-      : null;
-
-    // 需要关注
-    const attention: ParentAttentionItem[] = [];
-    if (demo.stuck) {
-      attention.push({
-        id: 'attention-stuck',
-        level: 'attention',
-        title: '需要您关注',
-        detail: `${student.displayName}已 7 天未继续学习，可能需要您的鼓励。`,
-      });
-    }
-    if (interventions.some((i) => i.status === 'open')) {
-      attention.push({
-        id: 'attention-intervention',
-        level: 'info',
-        title: '班主任正在关注',
-        detail: '班主任已注意到孩子的学习状态，会主动联系您。',
-      });
-    }
-
-    // 建议提问
-    const suggestedQuestion: ParentSuggestedQuestion | null = demo.currentProjectTitle
-      ? {
-          text: `${student.displayName}在做${demo.currentProjectTitle}时，你觉得最有趣的是什么？`,
-          projectTitle: demo.currentProjectTitle,
-        }
-      : null;
-
-    // 本周成长摘要
-    const weeklySummary: ParentWeeklySummary = {
-      completed: ['完成了 6 种植物的观察记录', '学会了用表格整理信息'],
-      praised: ['主动提出好问题', '观察很细致'],
-      growing: ['可以尝试加入季节对比', '邀请同学一起参与'],
-    };
-
-    // 最近成果
-    const recentArtifacts: ParentRecentArtifact[] = [
-      {
-        artifactRef: 'artifact-demo-001',
-        title: '校园植物观察手册',
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
-
-    return {
-      data: {
-        childId,
-        childDisplayName: student.displayName,
-        kpis,
-        currentProject,
-        attention,
-        suggestedQuestion,
-        weeklySummary,
-        recentArtifacts,
-        hasAnyProject: projects.length > 0,
-        dataSource: 'demo',
-      },
-    };
+    // Works owner limits parent visibility; only its authorized projection is composed here.
+    const artifacts = (await this.worksService.listArtifacts(user, {})).filter((item) => item.studentId === childId);
+    return { data: {
+      childId, childDisplayName: student.displayName,
+      kpis: [
+        { id: 'weekly_sessions', label: '本周学习次数', value: '暂未接入', hint: '学习次数统计尚不可用', trend: 'flat' },
+        { id: 'weekly_minutes', label: '本周学习时长', value: '暂未接入', hint: '学习时长统计尚不可用', trend: 'flat' },
+        { id: 'current_progress', label: '当前项目进度', value: current ? `${current.progressPercent}%` : '未开始', hint: '服务端项目阶段进度，不代表知识掌握比例', trend: 'flat' },
+        { id: 'streak', label: '连续成长记录天数', value: `${summary.streakDays} 天`, hint: '来自已确认的成长档案', trend: 'flat' },
+      ],
+      currentProject: current ? {
+        projectId: current.id, title: current.title, summary: '',
+        stage: current.status, stageLabel: projectStageLabel(current.status), progressPercent: current.progressPercent,
+        todayTask: null, lastCompleted: null, nextStep: null,
+      } : null,
+      attention: [], suggestedQuestion: current ? { text: '今天的探究中，你发现了什么有趣的问题？', projectTitle: current.title } : null,
+      weeklySummary: { completed: [], praised: [], growing: [] },
+      recentArtifacts: artifacts.slice(0, 3).map((item) => ({ artifactRef: item.id, title: item.title, createdAt: item.createdAt })),
+      hasAnyProject: projects.length > 0, dataSource: 'live',
+    } };
   }
 
   /**
@@ -229,60 +148,19 @@ export class ParentController {
     const student = await this.directory.findUser(childId);
     if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
 
-    const projects = this.platformData.getProjectsByStudent(childId);
-
-    // 作品列表
-    const works: ParentWorkItem[] = projects.map((p) => ({
-      artifactRef: `artifact-${p.projectId}`,
-      title: p.title,
-      summary: '通过观察和记录，学习科学方法。',
-      status: this.getWorkStatus(p.stage),
-      versionLabel: p.stage === 'published' ? 'V3 完整版' : null,
-      progressPercent: p.progressPercent,
-      tags: ['观察记录', '科学思维'],
-      updatedAt: p.updatedAt,
+    if (!this.worksService || !this.learningStore) throw new ServiceUnavailableException('作品数据暂不可用');
+    const artifacts = (await this.worksService.listArtifacts(user, {})).filter((item) => item.studentId === childId);
+    const projects = await this.learningStore.listProjectsByStudent(childId);
+    const works: ParentWorkItem[] = artifacts.map((artifact) => ({
+      artifactRef: artifact.id, title: artifact.title, summary: artifact.summary,
+      status: artifact.status === 'published' ? 'completed' : artifact.status === 'draft' ? 'draft' : 'in_progress',
+      versionLabel: artifact.versionCount ? `V${artifact.currentVersionIndex}` : null,
+      progressPercent: projects.find((project) => project.id === artifact.projectId)?.progressPercent ?? 0,
+      tags: artifact.tags, updatedAt: artifact.updatedAt,
     }));
-
-    // 焦点作品（当前项目）
-    const focusWork = works.find((w) => w.status === 'in_progress') ?? null;
-
-    // 焦点作品的成长标注
-    const focusGrowth: ParentWorkGrowth | null = focusWork
-      ? {
-          independently: [
-            '选择了 6 种校园植物',
-            '拍摄并整理了观察照片',
-            '记录了每周的生长变化',
-          ],
-          withAiHelp: [
-            '学习了观察记录的要素',
-            '理解了光合作用的条件',
-            '优化了记录表格的结构',
-          ],
-          nextPlan: ['加入季节变化的对比', '邀请同学一起扩充植物库'],
-        }
-      : null;
-
-    // 版本时间线
-    const focusVersions: ParentVersionStep[] = focusWork
-      ? this.platformData.getVersions(focusWork.artifactRef).map((v) => ({
-          id: v.id,
-          at: v.at,
-          title: v.title,
-          note: v.note,
-        }))
-      : [];
-
-    return {
-      data: {
-        childId,
-        works,
-        focusWork,
-        focusGrowth,
-        focusVersions,
-        dataSource: 'demo',
-      },
-    };
+    const focusWork = works.find((work) => work.status === 'in_progress') ?? works[0] ?? null;
+    // Version notes and source files are not part of the minimal parent projection.
+    return { data: { childId, works, focusWork, focusGrowth: null, focusVersions: [], dataSource: 'live' } };
   }
 
   /**
@@ -300,7 +178,8 @@ export class ParentController {
     const student = await this.directory.findUser(childId);
     if (student === null) throw new ForbiddenException('无权查看该孩子的数据');
 
-    const demoMessages = this.platformData.getMessagesByChild(childId);
+    const messagesAvailable = this.directory.allowsDemoLogin();
+    const demoMessages = messagesAvailable ? this.platformData.getMessagesByChild(childId) : [];
     // 服务工单来自统一反馈服务，不再直读 platform-data（那里已经不再维护工单）。
     const feedbackTickets = await this.feedbackService.listForParent(user.id, childId);
 
@@ -361,7 +240,8 @@ export class ParentController {
         summary,
         messages,
         tickets,
-        dataSource: 'demo',
+        dataSource: messagesAvailable ? 'demo' : 'live',
+        messagesAvailable,
       },
     };
   }

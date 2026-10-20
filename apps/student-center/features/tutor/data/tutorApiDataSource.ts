@@ -15,6 +15,7 @@ import type {
   TutorProjectContext as SharedTutorProjectContext,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorTeamHistoryPage,
   TutorTeamAgent,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
@@ -37,6 +38,17 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
+  async getTeamHistory(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage> {
+    const query = new URLSearchParams({ projectId, assistantId });
+    if (cursor) query.set('cursor', cursor);
+    const data = unwrapData(await this.fetchJson(`/api/v1/tutor/team-history?${query}`, '团队历史读取失败')) as TutorTeamHistoryPage;
+    if (!data || data.projectId !== projectId || data.assistantId !== assistantId || !Array.isArray(data.items)
+      || (data.nextCursor !== null && typeof data.nextCursor !== 'string')) {
+      throw new TutorDataError('团队历史响应与当前项目不一致', 502, 'TUTOR_HISTORY_INVALID');
+    }
+    return data;
+  }
+
   async confirmExploration(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse> {
     const goal = draft.goal.trim();
     const interest = draft.interest.trim();
@@ -81,7 +93,7 @@ export class TutorApiDataSource implements TutorDataSource {
       const candidate = item as Record<string, unknown>;
       if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string' ||
           typeof candidate.status !== 'string' || typeof candidate.progressPercent !== 'number') return [];
-      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent }];
+      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent, isCurrent: candidate.isCurrent === true }];
     });
     const countsBody = unwrapData(await this.fetchJson(`/api/v1/tutor/session-counts?projectIds=${projects.map((project) => encodeURIComponent(project.id)).join(',')}`, '会话消息数加载失败'));
     const counts = countsBody !== null && typeof countsBody === 'object' ? countsBody as Record<string, unknown> : {};

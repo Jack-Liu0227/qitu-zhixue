@@ -1,5 +1,7 @@
 # Student AI Partner Optics Flow QA
 
+> 状态：先前边界测试记录；本轮编译与完成情况以 00 报告及 08 验证记录为准。
+
 Date: 2026-10-21
 Status: boundary-verified; live E2E pending
 Scope: `/student/tutor`, the Tutor API data source, and the frozen optics PBL runtime contract.

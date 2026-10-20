@@ -1,3 +1,4 @@
+import { withTutorProviderContext } from './tutor-provider.test-fixture';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -253,7 +254,7 @@ async function seedOpticsProject(store: InMemoryLearningPlanStore, status: Proje
 }
 
 function newTutorService(learningStore?: InMemoryLearningPlanStore): TutorService {
-  return new TutorService(
+  return withTutorProviderContext(new TutorService(
     'demo',
     unusedGateway,
     undefined, // platformData
@@ -267,7 +268,7 @@ function newTutorService(learningStore?: InMemoryLearningPlanStore): TutorServic
     undefined, // platformRegistry
     undefined, // teamRuntime
     learningStore, // learningStore
-  );
+  ), learningStore ? id => learningStore.findProject(id) : undefined);
 }
 
 function newLearningPlanService(

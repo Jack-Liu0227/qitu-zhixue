@@ -10,6 +10,7 @@ const expectedSkillIds = [
   'pbl-data-literacy',
   'pbl-defense-coach',
   'pbl-driving-question',
+  'pbl-dynamic-lesson',
   'pbl-experiment-design',
   'pbl-hypothesis-coach',
   'pbl-independent-transfer',
@@ -27,6 +28,9 @@ test('project teaching Skill catalog discovers every named source package', () =
   const source = loadTutorRuntimeSource();
 
   assert.deepEqual(source.skills.map((skill) => skill.id).sort(), [...expectedSkillIds].sort());
+  const dynamic = source.skills.find(skill => skill.id === 'pbl-dynamic-lesson');
+  assert.equal(dynamic?.publicationStatus, 'published');
+  assert.deepEqual(dynamic?.requiredToolIds, ['tutor.propose_lesson_activity']);
   for (const skill of source.skills) {
     assert.equal(skill.status, 'ready', `${skill.id} should have a non-empty teaching body`);
     assert.equal(skill.label, skill.id, `${skill.id} should keep its canonical ID as its declared name`);

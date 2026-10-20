@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { VisualAsset } from './visual-assets';
 
 export function EmptyState({
   title,
@@ -13,7 +14,7 @@ export function EmptyState({
 }) {
   return (
     <div className="qitu-state qitu-empty-state">
-      {illustration ? <div className="qitu-state-illustration">{illustration}</div> : null}
+      <div className="qitu-state-illustration">{illustration ?? <VisualAsset assetId="empty-explore-v1" size={104} />}</div>
       <h3 className="qitu-state-title">{title}</h3>
       {description ? <p className="qitu-state-description">{description}</p> : null}
       {action ? <div className="qitu-state-action">{action}</div> : null}
@@ -48,18 +49,17 @@ export function ErrorState({
   );
 }
 
-/**
- * 离线横幅：明确告知用户当前编辑不会被保存到服务端，
- * 而是暂存在本机，待网络恢复后再自动同步。
- */
+/** Only an explicit buffered queue may promise synchronization. */
 export function OfflineBanner({
   readOnly,
   bufferedCount,
   onRetry,
+  message,
 }: {
   readOnly: boolean;
   bufferedCount?: number;
   onRetry?: () => void;
+  message?: string;
 }) {
   const countText =
     bufferedCount !== undefined && bufferedCount > 0 ? `（${bufferedCount} 项待同步）` : '';
@@ -67,10 +67,10 @@ export function OfflineBanner({
     <div className="qitu-offline-banner" role="status">
       <span className="qitu-offline-dot" aria-hidden="true" />
       <span className="qitu-offline-text">
-        {readOnly
-          ? `当前处于离线状态，编辑不会被保存，已暂存在本机${countText}。`
-          : `当前处于离线状态，部分操作已暂存在本机${countText}。`}
-        网络恢复后将自动同步。
+        {message ?? (bufferedCount !== undefined && bufferedCount > 0
+          ? `当前处于离线状态，本机队列${countText}将在网络恢复后尝试同步。`
+          : readOnly ? '当前处于离线状态，展示的内容可能不是最新数据。恢复网络后请重新加载。'
+            : '当前处于离线状态，操作尚未提交到服务器。请恢复网络后重试。')}
       </span>
       {onRetry ? (
         <button type="button" className="qitu-button qitu-button-ghost" onClick={onRetry}>

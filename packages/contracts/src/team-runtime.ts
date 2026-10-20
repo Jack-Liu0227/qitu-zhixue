@@ -773,6 +773,7 @@ export interface PblTeamWorkflowSpec {
  * Team Configuration migrated from AionUi & structured referencing Multica.
  */
 export interface AdminTeamConfig {
+  iconAssetId?: string | null;
   id: string;
   name: string;
   description: string;

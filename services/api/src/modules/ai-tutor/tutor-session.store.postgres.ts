@@ -2,9 +2,13 @@ import { and, asc, eq } from 'drizzle-orm';
 import {
   tutorSessions,
   tutorTurns,
+  agentTeamEvents,
+  agentTeamRuns,
+  outbox,
   withTransaction,
   type Database,
 } from '@qitu/database';
+import { createHash } from 'node:crypto';
 import type {
   PedagogicMove,
   ProjectStage,
@@ -125,7 +129,7 @@ export class PostgresTutorSessionStore extends TutorSessionStore {
       }
 
       const [session] = await tx
-        .select({ studentId: tutorSessions.studentId })
+        .select({ studentId: tutorSessions.studentId, projectId: tutorSessions.projectId })
         .from(tutorSessions)
         .where(eq(tutorSessions.id, input.sessionId))
         .limit(1);
@@ -139,6 +143,33 @@ export class PostgresTutorSessionStore extends TutorSessionStore {
           .values(toRow(turn, input.sessionId, session.studentId))
           // 唯一索引 `(session_id, seq)` 兜底：已存在的序号不重复写入。
           .onConflictDoNothing({ target: [tutorTurns.sessionId, tutorTurns.seq] });
+      }
+      if (input.projectionEvent) {
+        const descriptor = input.projectionEvent;
+        const students = input.turns.filter((turn) => turn.role === 'student');
+        const assistants = input.turns.filter((turn) => turn.role === 'assistant');
+        const student = students[0];
+        const assistant = assistants[0];
+        if (!student || !assistant || students.length !== 1 || assistants.length !== 1 || student.seq >= assistant.seq
+          || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/u.test(descriptor.sourceAgentId)) throw new Error('PROJECTION_TURN_EVENT_INVALID');
+        if (descriptor.runId !== null) {
+          const [run] = await tx.select().from(agentTeamRuns).where(eq(agentTeamRuns.id, descriptor.runId)).limit(1);
+          if (!run || run.studentUserId !== session.studentId || run.projectId !== session.projectId
+            || run.leaderAgentId !== descriptor.sourceAgentId) throw new Error('PROJECTION_OWNER_INVALID');
+        }
+        const key = `tutor-projection:${input.sessionId}:${student.seq}`;
+        const eventId = `tutor-expression-${createHash('sha256').update(key).digest('hex').slice(0, 32)}`;
+        const payload = {
+          studentUserId: session.studentId, projectId: session.projectId, sessionId: input.sessionId,
+          sourceAgentId: descriptor.sourceAgentId, studentTurnId: student.turnId, assistantTurnId: assistant.turnId,
+          studentSeq: student.seq, assistantSeq: assistant.seq, evidenceRef: `learning_interaction:${student.turnId}`,
+        };
+        await tx.insert(agentTeamEvents).values({ id: eventId, runId: descriptor.runId, topic: 'tutor.turn.completed',
+          payload, sequence: 0, idempotencyKey: key, occurredAt: new Date(student.createdAt) })
+          .onConflictDoNothing({ target: agentTeamEvents.idempotencyKey });
+        await tx.insert(outbox).values({ id: `agent-team-event:${eventId}`, topic: 'agent.team.event',
+          payload: { eventId, runId: descriptor.runId, topic: 'tutor.turn.completed', payload }, status: 'pending' })
+          .onConflictDoNothing({ target: outbox.id });
       }
     });
   }

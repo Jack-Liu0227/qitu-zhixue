@@ -1,5 +1,7 @@
 # 04 · 验收与测试
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 依赖顺序
 
 1. `pnpm --filter @qitu/contracts build`

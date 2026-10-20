@@ -26,6 +26,7 @@ import { PostgresTutorQuizStore } from './tutor-quiz.store.postgres';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorExperimentService } from './tutor-experiment.service';
 import { WorksModule } from '../works/works.module';
+import { TutorTeamHistoryService } from './tutor-team-history.service';
 
 /**
  * AI 搭档模块。
@@ -51,6 +52,7 @@ import { WorksModule } from '../works/works.module';
     TutorWorkspaceService,
     TutorQuizService,
     TutorExperimentService,
+    TutorTeamHistoryService,
     {
       provide: TutorQuizStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

@@ -1,5 +1,5 @@
 import { computeStageProgress } from '../projects/intent-confirmation.state-machine';
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import type { AuditTransaction } from '../../common/audit/audit.service';
 import {
   learningModules,
@@ -31,6 +31,7 @@ import type {
 import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 import {
   LearningPlanStore,
+  assertPendingAssessmentBoundary,
   planObjectiveMappings,
   LearningPlanStoreConflictError,
   PendingQuestionConflictError,
@@ -431,7 +432,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       });
   }
 
-  async listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]> {
+  async listAttempts(studentUserId: string, objectiveId: string, options: { includeFormative?: boolean } = {}): Promise<AttemptRecord[]> {
     const rows = await this.db
       .select()
       .from(masteryAttempts)
@@ -439,6 +440,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         and(
           eq(masteryAttempts.studentUserId, studentUserId),
           eq(masteryAttempts.objectiveId, objectiveId),
+          options.includeFormative ? undefined : ne(masteryAttempts.assessmentType, 'formative'),
         ),
       )
       .orderBy(asc(masteryAttempts.createdAt));
@@ -465,6 +467,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   }
 
   async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    if (input.attempt.assessmentType === 'formative') throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
     await this.commitAssessment(async (tx) => {
       await tx.insert(masteryAttempts).values({
         id: input.attempt.id,
@@ -688,30 +691,33 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     return row === undefined ? null : mapPendingQuestion(row);
   }
 
-  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+  async createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
     try {
-      await this.db.insert(pendingQuestions).values({
-        id: record.id,
-        schoolId: record.schoolId,
-        studentUserId: record.studentUserId,
-        planId: record.planId,
-        sessionId: record.sessionId,
-        objectiveId: record.objectiveId,
-        questionType: record.questionType,
-        prompt: record.prompt,
-        options: record.options.map((option) => ({ ...option })),
-        expectedAnswer: record.expectedAnswer,
-        explanation: record.explanation,
-        difficulty: record.difficulty,
-        assessmentType: record.assessmentType,
-        status: record.status,
-        attempt: record.attempt,
-        hintsUsed: record.hintsUsed,
-        idempotencyKey: record.idempotencyKey,
-        askedAt: record.askedAt,
-        answeredAt: record.answeredAt,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
+      await this.commitAssessment(async (tx) => {
+        await tx.insert(pendingQuestions).values({
+          id: record.id,
+          schoolId: record.schoolId,
+          studentUserId: record.studentUserId,
+          planId: record.planId,
+          sessionId: record.sessionId,
+          objectiveId: record.objectiveId,
+          questionType: record.questionType,
+          prompt: record.prompt,
+          options: record.options.map((option) => ({ ...option })),
+          expectedAnswer: record.expectedAnswer,
+          explanation: record.explanation,
+          difficulty: record.difficulty,
+          assessmentType: record.assessmentType,
+          status: record.status,
+          attempt: record.attempt,
+          hintsUsed: record.hintsUsed,
+          idempotencyKey: record.idempotencyKey,
+          askedAt: record.askedAt,
+          answeredAt: record.answeredAt,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        });
+        await commit?.(tx);
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -724,6 +730,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   }
 
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    assertPendingAssessmentBoundary(input);
     return this.commitAssessment(async (tx) => {
       const claimed = await tx
         .update(pendingQuestions)
@@ -732,6 +739,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           and(
             eq(pendingQuestions.id, input.questionId),
             eq(pendingQuestions.status, 'awaiting'),
+            input.attempt.assessmentType === 'formative' ? eq(pendingQuestions.assessmentType, 'formative') : ne(pendingQuestions.assessmentType, 'formative'),
           ),
         )
         .returning({ id: pendingQuestions.id });
@@ -753,36 +761,14 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         userAnswer: input.attempt.userAnswer,
         createdAt: input.attempt.createdAt,
       });
-      await tx
-        .insert(masteryRecords)
-        .values({
-          id: input.mastery.id,
-          studentUserId: input.mastery.studentUserId,
-          planId: input.mastery.planId,
-          objectiveId: input.mastery.objectiveId,
-          knowledgePointId: input.mastery.knowledgePointId ?? null,
-          courseVersion: input.mastery.courseVersion ?? null,
-          knowledgeType: input.mastery.knowledgeType,
-          status: input.mastery.status,
-          masteryBasisPoints: input.mastery.masteryBasisPoints,
-          thresholdBasisPoints: input.mastery.thresholdBasisPoints,
-          qualitativeMastered: input.mastery.qualitativeMastered,
-          consecutiveCorrect: input.mastery.consecutiveCorrect,
-          consecutiveWrong: input.mastery.consecutiveWrong,
-          intervalIndex: input.mastery.intervalIndex,
-          nextReviewAt: input.mastery.nextReviewAt,
-          reviewCount: input.mastery.reviewCount,
-          lapseCount: input.mastery.lapseCount,
-          sourceEventId: input.mastery.sourceEventId ?? null,
-          sourceSequence: input.mastery.sourceSequence ?? null,
-          assessmentVersion: input.mastery.assessmentVersion ?? null,
-          validFrom: input.mastery.validFrom ?? null,
-          updatedAt: input.mastery.updatedAt,
-        })
-        .onConflictDoUpdate({
-          target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
-          set: {
+      if (input.mastery !== null) {
+        await tx
+          .insert(masteryRecords)
+          .values({
+            id: input.mastery.id,
+            studentUserId: input.mastery.studentUserId,
             planId: input.mastery.planId,
+            objectiveId: input.mastery.objectiveId,
             knowledgePointId: input.mastery.knowledgePointId ?? null,
             courseVersion: input.mastery.courseVersion ?? null,
             knowledgeType: input.mastery.knowledgeType,
@@ -801,8 +787,32 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
             assessmentVersion: input.mastery.assessmentVersion ?? null,
             validFrom: input.mastery.validFrom ?? null,
             updatedAt: input.mastery.updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
+            set: {
+              planId: input.mastery.planId,
+              knowledgePointId: input.mastery.knowledgePointId ?? null,
+              courseVersion: input.mastery.courseVersion ?? null,
+              knowledgeType: input.mastery.knowledgeType,
+              status: input.mastery.status,
+              masteryBasisPoints: input.mastery.masteryBasisPoints,
+              thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+              qualitativeMastered: input.mastery.qualitativeMastered,
+              consecutiveCorrect: input.mastery.consecutiveCorrect,
+              consecutiveWrong: input.mastery.consecutiveWrong,
+              intervalIndex: input.mastery.intervalIndex,
+              nextReviewAt: input.mastery.nextReviewAt,
+              reviewCount: input.mastery.reviewCount,
+              lapseCount: input.mastery.lapseCount,
+              sourceEventId: input.mastery.sourceEventId ?? null,
+              sourceSequence: input.mastery.sourceSequence ?? null,
+              assessmentVersion: input.mastery.assessmentVersion ?? null,
+              validFrom: input.mastery.validFrom ?? null,
+              updatedAt: input.mastery.updatedAt,
+            },
+          });
+      }
       if (input.masteryEvent !== null) {
         await tx.insert(masteryEvents).values({
           id: input.masteryEvent.id,

@@ -197,6 +197,8 @@ export class InspirationApiDataSource implements InspirationDataSource {
           lessonMinutes: minutes !== null && minutes > 0 && minutes % 120 === 0 ? 120 : minutes !== null && minutes > 0 ? 60 : null,
           stages: stagesById.get(id) ?? [],
           outcome: typeof item.outcomeForm === 'string' ? item.outcomeForm : '',
+          iconAssetId: typeof item.iconAssetId === 'string' ? item.iconAssetId : null,
+          coverAssetId: typeof item.coverAssetId === 'string' ? item.coverAssetId : null,
         };
       });
   }

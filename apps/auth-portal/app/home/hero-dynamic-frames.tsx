@@ -137,6 +137,7 @@ export function HeroDynamicFrames() {
         <h3>{current.title}</h3>
         <p>{current.description}</p>
       </figcaption>
+      <details className="story-film-chapter-picker"><summary>选择故事章节（共 9 幕）</summary>
       <nav className="story-film-chapters" aria-label="选择项目时刻">
         {story.scenes.map((scene, index) => (
           <button key={scene.id} type="button" aria-current={chapter === index ? 'step' : undefined}
@@ -145,6 +146,7 @@ export function HeroDynamicFrames() {
           </button>
         ))}
       </nav>
+      </details>
       <p className="story-film-note" role="status">
         {offline ? '当前离线，可继续阅读分镜。' : failed ? '视频暂时无法播放，可选择章节阅读分镜，或点播放重试。' : waiting && intent && enabled ? '正在缓冲短片，可随时选择章节。' : reduced ? '已遵循减弱动态效果偏好，可逐章阅读。' : '生成分镜合成 · 27 秒 · 无声故事示意，非真实学生记录'}
       </p>

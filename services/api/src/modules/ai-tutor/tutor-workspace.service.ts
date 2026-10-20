@@ -204,6 +204,8 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
         summary: signal.summary, evidenceRef: signal.evidenceRef, occurredAt: new Date(signal.occurredAt),
       }).onConflictDoNothing({ target: tutorGrowthSignals.idempotencyKey }).returning({ id: tutorGrowthSignals.id });
       if (inserted.length === 0) return;
+      // A completed turn is an activity receipt, not a generated personal question or conclusion.
+      if (signal.kind === 'question_asked') return;
       const rows = await tx.select().from(tutorLearnerProfiles).where(eq(tutorLearnerProfiles.studentId, signal.studentId)).limit(1);
       const row = rows[0];
       const profile: TutorLearnerProfile = row === undefined ? {
@@ -225,14 +227,11 @@ function applyGrowthSignalToProfile(profile: TutorLearnerProfile, signal: TutorG
   const strengths = signal.kind === 'artifact_created' || signal.kind === 'theory_mastered'
     ? unique([...profile.strengths, signal.summary]).slice(-12)
     : profile.strengths;
-  const nextQuestions = signal.kind === 'question_asked'
-    ? unique([...profile.nextQuestions, signal.summary]).slice(-12)
-    : profile.nextQuestions;
   return {
     ...profile,
     interests,
     strengths,
-    nextQuestions,
+    nextQuestions: profile.nextQuestions,
     version: profile.version + 1,
     updatedAt: signal.occurredAt,
   };

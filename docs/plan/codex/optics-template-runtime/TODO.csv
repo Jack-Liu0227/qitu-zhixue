@@ -1,8 +1,16 @@
 ﻿id,phase,task,owner,depends_on,acceptance,status,notes
-OPTICS-001,admin,把 TeachingBundleSource 接入模板版本绑定草稿,templates,none,草稿只存 canonical IDs,done,Added Teaching Bundle draft contract and GET/PATCH canonical-reference API with idempotent server-side persistence.
-OPTICS-002,admin,validate/activate 时编译 bundle 并把 digest 纳入 binding hash,templates,OPTICS-001,无效引用 fail closed 且幂等,partial,Digest/hash/snapshot fail-closed path is implemented; live catalog-to-TeachingBundle compiler still needs a server owner integration.
-OPTICS-003,student,确认意图事务冻结四个版本字段和 digest,projects,OPTICS-002,重复确认返回同一 project,done,Existing confirm/freeze path now persists bundleDigest with the immutable binding snapshot and remains idempotent.
-OPTICS-004,student,project-context/team-graph 只读 frozen bundle,ai-tutor,OPTICS-003,缺快照不回退猜测,done,Formal Tutor project context requires a complete frozen snapshot and never falls back to mutable team/template guesses.
-OPTICS-005,student,接线题库/课时/阶段右侧预览,student-center,OPTICS-004,与 curriculum profile 一致,partial,Team rail and experiment fullscreen are wired; complete lesson/stage preview and quiz evidence integration remains.
-OPTICS-006,experiment,实现 optics action/observation owner 合同,projects/works,OPTICS-003,收到 owner receipt 才显示保存,partial,Action identity and parameter gates exist; persistent observation owner receipt/ref still needs completion.
-OPTICS-007,qa,执行 API/UI/security 验收矩阵,qa,OPTICS-001|OPTICS-006,记录 digest 和失败路径,partial,Deterministic student Tutor boundary flow passes; live API/worker/browser matrix remains blocked by environment and is documented in 05-student-tutor-flow-qa.md.
+OPTICS-001,admin,接线教学包草稿编辑回读,admin-console/templates,OPTICS-013,canonical IDs且区分保存编译发布,partial,API存在但未发现Admin接线
+OPTICS-002,admin,真实目录编译发布教学包,templates,OPTICS-001,有效payload和digest进入激活绑定,partial,编译器与attach hook存在但无生产调用
+OPTICS-003,student,两个确认事务冻结完整合同,projects/learning-plan,OPTICS-002,幂等创建失败回滚,partial,快照字段存在但完整能力冻结待闭环
+OPTICS-004,runtime,冻结课时成员能力解析,Tutor/SDK/Worker,OPTICS-003,新增授权不扩张旧项目,partial,冻结团队已读取但bundle能力未贯通
+OPTICS-005,student,统一完整课表和阶段预览,learning-plan/student-center,OPTICS-004,模板API右栏导师逐课一致,partial,已有阶段树与当前课时卡
+OPTICS-006,experiment,观察证据及owner回执,projects/works,OPTICS-004,receipt前不得显示已保存,partial,当前为动作审计和accepted
+OPTICS-007,qa,真实隔离完整验收,qa,OPTICS-006|OPTICS-012|OPTICS-014|OPTICS-015,模型数据库完整闭环,partial,边界通过但API编译失败且live未验证
+OPTICS-008,admin,管家选择模板或项目诊断对象,admin-console/templates,OPTICS-013,对象权限和请求隔离,not_started,当前仅助手团队选择
+OPTICS-009,admin,管理Skill与真实助手调用,platform-registry/runtime,OPTICS-008,发布canonical Skill并真实调用,not_started,现有管家含固定回复
+OPTICS-010,admin,全资源创建修改编排恢复,admin-console/domain-owners,OPTICS-009,逐动作回读重试不重复,partial,助手团队可创建其余多为草稿
+OPTICS-011,knowledge,IMA项目权限交集和provenance,knowledge/ai-tutor,OPTICS-004,四工具越权过期均拒绝,not_started,当前授权未带冻结项目grant
+OPTICS-012,quiz,KB出题及团队解析,ai-tutor/mastery,OPTICS-004|OPTICS-011,来源实例评阅判分解析完整,not_started,当前静态题库判分
+OPTICS-013,build,修复教学包解析只读赋值,templates,none,隔离依赖API构建通过,not_started,本轮复现TS2542于controller第246行
+OPTICS-014,team,项目团队历史分页和工具事件,team-runtime/student-center,OPTICS-004,旧run与真实事件可追溯,partial,当前最新run最近20条
+OPTICS-015,courseware,全课时交互及全屏验收,student-center/templates,OPTICS-005|OPTICS-006,桌面触屏刷新均通过,partial,已有衍射散射全屏组件

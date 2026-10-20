@@ -2,7 +2,7 @@
 
 import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { TutorTeamGraph } from '@qitu/contracts';
 import { ChatThread } from './components/ChatThread';
@@ -14,6 +14,7 @@ import { TeamAgentHud } from './components/TeamAgentHud';
 import { CurrentLessonCard } from './components/CurrentLessonCard';
 import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
+import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
@@ -21,17 +22,22 @@ import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
 export function TutorPage({ projectId }: { projectId?: string }) {
+  useTutorViewport();
   const router = useRouter();
   const searchParams = useSearchParams();
   const source = useTutorDataSource();
+  const loadTeamHistory = useCallback((assistantId: string, cursor?: string) => {
+    if (!projectId || !source.getTeamHistory) return Promise.reject(new Error('团队历史暂不可用'));
+    return source.getTeamHistory(projectId, assistantId, cursor);
+  }, [source, projectId]);
   const [explorationKey, setExplorationKey] = useState(0);
   const routeContextKey = searchParams.toString();
   const session = useTutorSession(projectId, routeContextKey || explorationKey);
   const composer = useComposer();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1100px)');
+    const query = window.matchMedia('(max-width: 1600px)');
     const syncPanels = () => {
       setLeftOpen(!query.matches);
       setRightOpen(!query.matches);
@@ -73,7 +79,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       let cancelled = false;
       void source.listProjects().then((projects) => {
         if (cancelled) return;
-        const activeProject = projects.find((p) => p.stage !== 'completed') ?? projects[0];
+        const activeProject = projects.find((p) => p.isCurrent);
         if (activeProject) router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
       }).catch(() => {
         // The session surface will expose the server error; never insert demo data.
@@ -278,12 +284,14 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </div>
           {rightSidebarTab === 'agents' ? (
             <TeamAgentHud
+              key={projectId}
               graph={teamGraph}
               status={teamGraphStatus}
               error={teamGraphError}
               offline={session.offline}
               permissionDenied={teamGraphError?.status === 403}
               onRetry={retryTeamGraph}
+              loadHistory={source.getTeamHistory && projectId ? loadTeamHistory : undefined}
             />
           ) : session.projectStatus === 'loading' ? (
             <div className="qitu-tutor-state-panel" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>

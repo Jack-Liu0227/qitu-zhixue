@@ -1,0 +1,102 @@
+[
+  {
+    "file": "packages/auth/src/index.tsx",
+    "sha256": "7685d8e6042e3db6b27417ea85a310df89694239b5c9363dd5c79698198d04ca",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "packages/auth/src/login-routing.ts",
+    "sha256": "57d87e580d6aac6d5013fff67e15ec9cf62c5114cbe75264362a4eca7853d936",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "packages/contracts/src/display.ts",
+    "sha256": "9542320bb2636196d9702b73033f3b8becc5212bc358257f14d38b94f8feff36",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/projects/current-project.ts",
+    "sha256": "aab0671c6aa1886f1ed22aa9a04a6953c631b74e2d2f0cdebe4047aa55407ec6",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/projects/ui-read-model.test.ts",
+    "sha256": "519d615dc88b2776bc889e953f5d9005be6cf182405eb065b4fa2e0f76bbf71b",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/identity-auth/auth.service.ts",
+    "sha256": "a701a8d60f007e40a228f5d23af32973dd3378b52b5a5c479e9d52cc39172468",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/directory/directory.service.ts",
+    "sha256": "621696bbe9401f7382ff11ac201459b96135178877c25149a4a61bebddfa31d2",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/parent/parent.controller.ts",
+    "sha256": "284361f04cc8a9c96ee4c200a0a11919882c9a2e5f2abc15c2147b6b4b2be7b8",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/teacher/teacher.service.ts",
+    "sha256": "9c3093eab54795bd0f7a18904c43001e60d3596c647730a6d700d6014888aae0",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/ai-tutor/tutor.service.ts",
+    "sha256": "f118635a119f89d0b7c5744c8d1baa2e6a5e079e5a2a63699365f999b77cfa78",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "services/api/src/modules/admin-copilot/copilot.service.ts",
+    "sha256": "60dd9f30c65dac175361664683ae9b74852cfa51ec39ab9c1be25953cb42356a",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/auth-portal/app/login/page.tsx",
+    "sha256": "65d50fe783dfac47cd3ba0f054302c1e70defc541d8854989a1b268eb872459c",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/auth-portal/app/home/scroll-reveal.tsx",
+    "sha256": "d187c84457dedc8076804e4541cc434bd8dd523d26b203e29f5c8b083164cad7",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/student-center/features/tutor/TutorPage.tsx",
+    "sha256": "bf0cb99f89aed3a4239afd9f1cfe3ef933fe46353da03b2165dbc717a6f94017",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/student-center/features/tutor/components/TeamAgentHud.tsx",
+    "sha256": "e2978c6b461075c6a652da55c8b1e841cb3657bff6cb777236965753b8189335",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/student-center/features/tutor/components/OpticsDiffractionScatteringCard.tsx",
+    "sha256": "eae6a9c09204b2d9372cdac2669699207c22a1ed675a4d898064d45d3f929367",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/admin-console/app/(console)/copilot/page.tsx",
+    "sha256": "f4a61a94b6b023bacaf463a79b9d9e55044bee5faf7b9bac4d692620145f70b7",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/admin-console/app/(console)/settings/skills/page.tsx",
+    "sha256": "279d583e5240ef1fb2487d64ca5e4071e58e9586b1d88549104e08536f0c2396",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/admin-console/app/(console)/settings/tools/page.tsx",
+    "sha256": "c0b50ae21a21f873dc23f471dd357e5988cf29bbd2426dfb3f72174b6b89d565",
+    "matchesWorkspace": true
+  },
+  {
+    "file": "apps/admin-console/app/(console)/settings/settings-compact.css",
+    "sha256": "3fe05922ce22b0cf3c10edbb70aacec9652fe8ebf1299b4ebdc852454b830d09",
+    "matchesWorkspace": true
+  }
+]

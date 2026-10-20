@@ -1,0 +1,47 @@
+{
+  "results": [
+    {
+      "kind": "dashboard",
+      "stale": "success",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    },
+    {
+      "kind": "dashboard",
+      "stale": "error",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    },
+    {
+      "kind": "progress",
+      "stale": "success",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    },
+    {
+      "kind": "progress",
+      "stale": "error",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    },
+    {
+      "kind": "messages",
+      "stale": "success",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    },
+    {
+      "kind": "messages",
+      "stale": "error",
+      "sequence": "A -> B -> A, old responses released last",
+      "passed": true,
+      "writes": 0
+    }
+  ],
+  "errors": []
+}

@@ -1,5 +1,8 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+import { VisualSelector } from '../../../../lib/components/VisualAssetPicker';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
@@ -140,9 +143,9 @@ const GATE_DESCRIPTIONS: Record<
 };
 
 const SESSION_TYPE_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
-  theory: { label: '理论探究', icon: '📘', color: '#1d4ed8', bg: '#dbeafe' },
-  practice: { label: '实验操作', icon: '🔬', color: '#15803d', bg: '#dcfce7' },
-  review: { label: '答辩归档', icon: '📋', color: '#7e22ce', bg: '#f3e8ff' },
+  theory: { label: '理论探究', icon: 'activity-concept-v1', color: '#1d4ed8', bg: '#dbeafe' },
+  practice: { label: '实验操作', icon: 'activity-experiment-v1', color: '#15803d', bg: '#dcfce7' },
+  review: { label: '答辩归档', icon: 'activity-reflection-v1', color: '#7e22ce', bg: '#f3e8ff' },
 };
 
 function asText(value: unknown): string {
@@ -666,7 +669,7 @@ export default function AdminTemplatesPage() {
                             fontWeight: 500,
                           }}
                         >
-                          {typeMeta.icon} {typeMeta.label}
+                          <VisualAsset assetId={typeMeta.icon} size={20} /> {typeMeta.label}
                         </span>
                       </div>
                       <span style={{ fontSize: '12px', color: '#4e5969', fontWeight: 600 }}>
@@ -1200,7 +1203,7 @@ export default function AdminTemplatesPage() {
               <div key={template.id} className="admin-template-item-card">
                 <div className="admin-template-item-head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '24px' }}>📦</span>
+                    <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
                     <strong className="admin-template-item-title">{template.title}</strong>
                   </div>
                   <span
@@ -1246,6 +1249,11 @@ export default function AdminTemplatesPage() {
                 ) : null}
 
                 <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
+                <div style={{ display: 'flex', gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
+                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="选择主题图标" onSaved={() => void load()} />
+                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="选择主题封面" onSaved={() => void load()} />
+                  {template.latestPublishedVersionId && <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={() => void load()} />}
+                </div>
 
                 <div className="admin-template-info-list">
                   <div className="admin-template-info-row">

@@ -51,6 +51,24 @@ test('missing assistant, unavailable skill and unreadable authorization storage 
   await assert.rejects(h.service.getAssistantRuntime(h.assistant.id), /SYNTHETIC_STORAGE_UNAVAILABLE/);
 });
 
+test('Admin catalog visibility never grants management skills to ordinary assistants, including legacy persisted bindings', async () => {
+  const h = assistantRuntimeFixture();
+  const enabledSkills = ['qitu-project-configurator'];
+  const invalidScope = (error: unknown) => {
+    const response = (error as { getResponse(): { code: string } }).getResponse();
+    return response.code === 'ASSISTANT_SKILL_SCOPE_INVALID';
+  };
+  await assert.rejects(h.service.createAssistant(actor, {
+    name: 'Scope fixture', role: 'coach', instructions: 'Guide learning safely.', enabledSkills,
+  } as never), invalidScope);
+  await assert.rejects(h.service.updateAssistant(actor, h.assistant.id, { enabledSkills }), invalidScope);
+  h.assistant.enabledSkills = enabledSkills;
+  await assert.rejects(h.service.getAssistantRuntime(h.assistant.id), ConflictException);
+  await assert.rejects(h.service.updateAssistant(actor, h.assistant.id, { enabledSkills }), invalidScope);
+  await h.service.updateAssistant(actor, h.assistant.id, { enabledSkills: [] });
+  assert.deepEqual((await h.service.getAssistantRuntime(h.assistant.id)).skills, []);
+});
+
 test('explicit historical leader alias preserves runtime disable, capability and MCP tool restrictions', async () => {
   const h = assistantRuntimeFixture();
   h.assistant.id = 'tutor-leader';

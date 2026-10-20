@@ -1,7 +1,13 @@
 ﻿id,phase,task,owner,depends_on,acceptance,status
 GROWTH-001,contract,fixed profile/trajectory schema and evidenceRefs allow-list,growth,none,unknown fields and invalid evidence rejected,done
 GROWTH-002,worker,candidate input metadata and opaque refs only,workers,GROWTH-001,no raw conversation persisted,done
-GROWTH-003,owner,validate accept reject supersede transaction,growth,GROWTH-001,idempotent and audited,done
-GROWTH-004,api,student/parent read-only projection and permissions,growth,GROWTH-003,accepted rows only,partial
-GROWTH-005,ui,profile/trajectory state and request identity,student-center,GROWTH-004,loading empty offline error 403,done
-GROWTH-006,qa,end-to-end event to page regression,qa,GROWTH-002|GROWTH-005,version and evidence traceable,not_started
+GROWTH-003,owner,证据对象核验和接受替换并发测试,growth,GROWTH-001|GROWTH-010,真实对象归属及事务幂等,partial
+GROWTH-004,api,双页面accepted投影及家长读模型,growth,GROWTH-003,两页面版本一致家长越权拒绝,partial
+GROWTH-005,ui,画像轨迹分析状态与请求隔离,student-center,GROWTH-004,状态完整旧响应不覆盖,partial
+GROWTH-006,qa,真实事件到双页面全链路,qa,GROWTH-005|GROWTH-011,连续两版及失败恢复,not_started
+GROWTH-007,identity,统一Admin与Worker用途身份,platform-registry/workers,none,后台选择影响真实任务,not_started
+GROWTH-008,routing,event与执行器trigger一致,team-runtime/workers,GROWTH-007,合法event任务可执行,not_started
+GROWTH-009,events,领域owner事件接投影入口,domain-owners/workers,GROWTH-001,项目作品反思掌握可靠触发,partial
+GROWTH-010,evidence,证据装配历史水位与版本输入,growth/workers,GROWTH-002|GROWTH-009,真实内容及可追溯覆盖,not_started
+GROWTH-011,review,候选列表审核UI与自动策略,growth/admin-console,GROWTH-003|GROWTH-008,待审可操作自动接受经owner,not_started
+GROWTH-012,admin,持久化刷新维度策略,platform-registry/admin-console,GROWTH-007,保存回读Worker消费一致,partial

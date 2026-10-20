@@ -1,3 +1,4 @@
+import { Compile } from 'typebox/compile';
 import { anthropicMessagesApi } from './pi/api/anthropic-messages.lazy.js';
 import { googleGeminiApi } from './gemini-native.lazy.js';
 import { openAICompletionsApi } from './pi/api/openai-completions.lazy.js';
@@ -7,7 +8,6 @@ import { createModels, createProvider } from './pi/models.js';
 import type {
   Api,
   AssistantMessage,
-  AssistantMessageEvent,
   Context,
   Model,
   ProviderStreams,
@@ -141,85 +141,102 @@ export function createModelRuntime(resolver: ModelRuntimeResolver): ModelRuntime
   return Object.freeze(runtime);
 }
 
-async function completeWithPi(
-  resolver: ModelRuntimeResolver,
-  input: ModelRuntimeRequest,
-): Promise<ModelRuntimeResult> {
+async function completeWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeRequest): Promise<ModelRuntimeResult> {
+  for await (const event of runWithPi(resolver, input)) {
+    if (event.type === 'done') return event.result;
+  }
+  throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned no final response');
+}
+
+async function* streamWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeRequest): AsyncGenerator<ModelRuntimeEvent> {
+  try { yield* runWithPi(resolver, input); }
+  catch (error) {
+    const mapped = mapRuntimeError(error);
+    yield { type: 'error', code: mapped.code, message: mapped.message, retryable: mapped.retryable };
+  }
+}
+
+/** One bounded execution loop for complete and stream, with native tool receipts. */
+async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeRequest): AsyncGenerator<ModelRuntimeEvent> {
   assertRequest(input);
   const target = await resolveTarget(resolver, input);
   const { models, model } = createPiModels(target);
   const context = toPiContext(input, target);
-
-  // Keep the full native assistant/tool transcript so the final response is
-  // grounded in actual results. Bound both wall time and tool work per turn.
   const transport = requestTransport(input);
   const { signal } = transport;
-  const tools = input.tools ?? [];
-  context.tools = tools.map((tool) => ({ name: tool.name, description: tool.description, parameters: tool.inputSchema as Tool['parameters'] }));
+  const tools = new Map<string, { tool: ModelRuntimeTool; check: ReturnType<typeof Compile> }>();
+  for (const tool of input.tools ?? []) {
+    if (!tool.name || tools.has(tool.name)) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', 'Duplicate or empty tool ID');
+    try { tools.set(tool.name, { tool, check: Compile(tool.inputSchema) }); }
+    catch { throw new ModelRuntimeError('MODEL_REQUEST_INVALID', 'Invalid tool schema'); }
+  }
+  context.tools = [...tools.values()].map(({ tool }) => ({
+    name: tool.name, description: tool.description, parameters: tool.inputSchema as Tool['parameters'],
+  }));
+  const receipts = new Map<string, { fingerprint: string; output: { text: string; isError?: boolean } }>();
+  const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   let toolCount = 0;
   for (;;) {
-    let message: AssistantMessage;
+    let message: AssistantMessage | undefined;
     try {
-      message = await models.complete(model, context, transport.options);
-    } catch (error) {
-      throw transport.failure(error);
-    }
-
-    if (signal?.aborted || transport.error()) throw transport.failure();
-    if (message.stopReason === 'aborted') {
-      throw transport.failure();
-    }
-    if (message.stopReason === 'error') {
-      throw new ModelRuntimeError('MODEL_STREAM_ERROR', '模型调用失败', { retryable: true });
-    }
-
-    const calls = message.content.filter((part) => part.type === 'toolCall');
-    if (calls.length === 0) {
+      for await (const event of models.stream(model, context, transport.options)) {
+        if (signal.aborted || transport.error() || event.type === 'error') throw transport.failure();
+        if (event.type === 'text_delta') yield { type: 'text-delta', text: event.delta };
+        if (event.type === 'done') message = event.message;
+      }
+    } catch (error) { throw transport.failure(error); }
+    if (signal.aborted || transport.error()) throw transport.failure();
+    if (!message) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned no final response');
+    usage.inputTokens += finiteOrNull(message.usage.input) ?? 0;
+    usage.outputTokens += finiteOrNull(message.usage.output) ?? 0;
+    usage.totalTokens += finiteOrNull(message.usage.totalTokens) ?? 0;
+    const calls = message.content.filter(part => part.type === 'toolCall');
+    if (!calls.length) {
       const text = contentText(message.content).trim();
-      if (text.length === 0) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', '模型返回了空文本');
-      return toResult(target, message, text);
+      if (!text) throw new ModelRuntimeError('MODEL_EMPTY_RESPONSE', 'Model returned empty text');
+      yield { type: 'done', result: { ...toResult(target, message, text), usage } };
+      return;
     }
     context.messages.push(message);
     for (const call of calls) {
-      if (signal?.aborted) throw transport.failure();
-      if (++toolCount > 8) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', '模型工具调用次数超过上限');
-      const tool = tools.find((candidate) => candidate.name === call.name);
+      if (signal.aborted) throw transport.failure();
+      if (++toolCount > 8) throw new ModelRuntimeError('MODEL_REQUEST_INVALID', 'Tool call budget exceeded');
+      const configured = tools.get(call.name);
+      const fingerprint = JSON.stringify([call.name, call.arguments]);
       let output: { text: string; isError?: boolean } = { text: 'TOOL_NOT_ALLOWED', isError: true };
-      if (tool) {
-        input.onToolEvent?.({ type: 'call', callId: call.id, name: call.name });
-        try { output = await tool.execute(call.arguments as Record<string, unknown>, signal); }
-        catch { output = { text: 'TOOL_UNAVAILABLE', isError: true }; }
-        input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true });
+      input.onToolEvent?.({ type: 'call', callId: call.id, name: call.name });
+      yield { type: 'tool-call', callId: call.id, toolName: call.name, arguments: call.arguments as Record<string, unknown> };
+      const previous = receipts.get(call.id);
+      if (previous) output = previous.fingerprint === fingerprint ? previous.output : { text: 'TOOL_CALL_ID_CONFLICT', isError: true };
+      else if (configured) {
+        const args = call.arguments;
+        if (!args || typeof args !== 'object' || Array.isArray(args) || fingerprint.length > 64_000 || !configured.check.Check(args)) {
+          output = { text: 'TOOL_ARGUMENT_INVALID', isError: true };
+        } else {
+          try {
+            output = await withAbort(configured.tool.execute(args as Record<string, unknown>, signal), signal);
+            if (!output || typeof output.text !== 'string') output = { text: 'TOOL_RESPONSE_INVALID', isError: true };
+          } catch {
+            output = { text: signal.aborted ? 'TOOL_ABORTED' : 'TOOL_UNAVAILABLE', isError: true };
+          }
+        }
       }
+      receipts.set(call.id, { fingerprint, output });
+      input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true });
+      if (signal.aborted) throw transport.failure();
       context.messages.push({ role: 'toolResult', toolCallId: call.id, toolName: call.name,
         content: [{ type: 'text', text: output.text.slice(0, 48_000) }], isError: output.isError === true, timestamp: Date.now() });
     }
   }
 }
 
-async function* streamWithPi(
-  resolver: ModelRuntimeResolver,
-  input: ModelRuntimeRequest,
-): AsyncGenerator<ModelRuntimeEvent> {
-  assertRequest(input);
-  const target = await resolveTarget(resolver, input);
-  const { models, model } = createPiModels(target);
-  const transport = requestTransport(input);
-  const stream = models.stream(model, toPiContext(input, target), transport.options);
-
-  try {
-    for await (const event of stream) {
-      if (event.type === 'error' || transport.options.signal?.aborted || transport.error()) {
-        const mapped = transport.failure();
-        yield { type: 'error', code: mapped.code, message: mapped.message, retryable: mapped.retryable };
-        return;
-      }
-      yield* mapPiEvent(target, event);
-    }
-  } catch (error) {
-    const mapped = transport.failure(error);
-    yield { type: 'error', code: mapped.code, message: mapped.message, retryable: mapped.retryable };
-  }
+function withAbort<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new Error('TOOL_ABORTED'));
+    if (signal.aborted) { work.catch(() => {}); abort(); return; }
+    signal.addEventListener('abort', abort, { once: true });
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+  });
 }
 
 function createPiModels(target: ModelRuntimeTarget): {
@@ -362,31 +379,6 @@ function requestTransport(input: ModelRuntimeRequest) {
     },
   };
   return { options, signal, failure, error: () => transportError };
-}
-
-function mapPiEvent(target: ModelRuntimeTarget, event: AssistantMessageEvent): ModelRuntimeEvent[] {
-  switch (event.type) {
-    case 'text_delta':
-      return [{ type: 'text-delta', text: event.delta }];
-    case 'toolcall_end':
-      return [{
-        type: 'tool-call',
-        callId: event.toolCall.id,
-        toolName: event.toolCall.name,
-        arguments: event.toolCall.arguments as Record<string, unknown>,
-      }];
-    case 'done': {
-      const text = contentText(event.message.content).trim();
-      if (text.length === 0 && event.reason === 'stop') {
-        return [{ type: 'error', code: 'MODEL_EMPTY_RESPONSE', message: '模型返回了空文本', retryable: false }];
-      }
-      return [{ type: 'done', result: toResult(target, event.message, text) }];
-    }
-    case 'error':
-      return [{ type: 'error', code: event.reason === 'aborted' ? 'MODEL_REQUEST_ABORTED' : 'MODEL_STREAM_ERROR', message: '模型调用失败', retryable: event.reason !== 'aborted' }];
-    default:
-      return [];
-  }
 }
 
 function toResult(target: ModelRuntimeTarget, message: AssistantMessage, text: string): ModelRuntimeResult {

@@ -31,6 +31,14 @@ test('legacy MCP imports preserve engine and platform authorization', () => {
   const current = baseline();
   assert.deepEqual(validateKnowledgeConfig({ mcpServers: current.mcpServers }, current), current);
 });
+
+test('knowledge edits retain growth purpose bindings and cannot bypass their owner', () => {
+  const current = baseline();
+  current.growthProjection = { profileAssistantId: 'profile', growthAssistantId: 'growth' };
+  assert.deepEqual(validateKnowledgeConfig({ mcpServers: current.mcpServers }, current).growthProjection, current.growthProjection);
+  assert.deepEqual(validateKnowledgeConfig(current, current), current);
+  assert.throws(() => validateKnowledgeConfig({ growthProjection: { profileAssistantId: 'other', growthAssistantId: 'growth' } }, current), /GROWTH_PROJECTION_OWNER_REQUIRED/);
+});
 test('empty source whitelist remains empty and null does not silently become wildcard', () => {
   const current = baseline();
   assert.deepEqual(

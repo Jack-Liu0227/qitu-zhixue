@@ -650,7 +650,7 @@ export default function IssuesPage() {
             <div className="qtx-bubble">
               {data.dataSource === 'demo'
                 ? '🧪 演示数据'
-                : `${data.totals.open} 条待处理告警等待确认～`}
+                : data.signalsAvailable === false ? '学习告警暂未接入' : `${data.totals.open} 条待处理告警等待确认～`}
             </div>
             <RobotMascot size={40} decorative />
           </div>
@@ -661,21 +661,21 @@ export default function IssuesPage() {
       <section className="qtx-grid qtx-grid-4">
         <MetricCard
           label="待介入总数"
-          value={String(data.totals.open)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.open)}
           delta={null}
           icon={<AlertIcon size={22} />}
           tone="#e11d48"
         />
         <MetricCard
           label="处理中"
-          value={String(data.totals.acknowledged)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.acknowledged)}
           delta={null}
           icon={<TicketIcon size={22} />}
           tone="#d97706"
         />
         <MetricCard
           label="已解决"
-          value={String(data.totals.resolved)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.resolved)}
           delta={null}
           icon={<CheckCircleIcon size={22} />}
           tone="#059669"

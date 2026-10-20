@@ -1,5 +1,7 @@
 # 03 · Profile Read Model
 
+> 状态：待实施或部分实现的方案；当前完成情况以本目录 00-completion-audit.md 为准。
+
 ## 学生响应
 
 `GET /api/v1/students/me/profile` 返回：

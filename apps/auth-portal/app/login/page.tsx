@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { BrandMark, OfflineBanner, RobotMascot } from '@qitu/ui';
+import { useEffect, useState, type FormEvent } from 'react';
+import { BrandMark, OfflineBanner, VisualAsset } from '@qitu/ui';
 import type { CurrentUser, LoginRequest, LoginResponse, Role } from '@qitu/contracts';
-import { getOrCreateDeviceId, readCachedSession, writeCachedSession } from '@qitu/auth';
+import { getOrCreateDeviceId, readCachedSession, writeCachedSession, safeRoleDestination } from '@qitu/auth';
 
 const REMEMBERED_ACCOUNT_KEY = 'qitu.auth.rememberedAccount';
 
@@ -13,8 +13,6 @@ interface RoleOption {
   role: LoginRole;
   label: string;
   destination: string;
-  demoEmail: string;
-  demoPassword: string;
 }
 
 const ROLE_OPTIONS: RoleOption[] = [
@@ -22,49 +20,23 @@ const ROLE_OPTIONS: RoleOption[] = [
     role: 'student',
     label: '学生',
     destination: '/student',
-    demoEmail: 'student@qtzx.local',
-    demoPassword: 'student123',
   },
   {
     role: 'parent',
     label: '家长',
     destination: '/parent',
-    demoEmail: 'parent@qtzx.local',
-    demoPassword: 'parent123',
   },
   {
     role: 'teacher',
     label: '班主任',
     destination: '/teacher',
-    demoEmail: 'teacher@qtzx.local',
-    demoPassword: 'teacher123',
   },
   {
     role: 'admin',
     label: '管理员',
     destination: '/admin',
-    demoEmail: 'admin@qtzx.local',
-    demoPassword: 'admin123',
   },
 ];
-
-function destinationFor(role: Role): string {
-  const option = ROLE_OPTIONS.find((item) => item.role === role);
-  return option?.destination ?? '/';
-}
-
-function resolveNextPath(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null;
-  if (typeof window === 'undefined') return null;
-  try {
-    const url = new URL(raw, window.location.origin);
-    if (url.origin !== window.location.origin) return null;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return null;
-  }
-}
 
 function makeIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -117,9 +89,7 @@ const ERROR_MESSAGES: Record<Exclude<ErrorKind, null>, string> = {
 };
 
 function getErrorMessage(kind: Exclude<ErrorKind, null>): string {
-  if (kind === 'network' && typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return '当前服务只配置了 HTTP，请使用 http:// 地址访问登录页。';
-  }
+
   return ERROR_MESSAGES[kind];
 }
 
@@ -135,14 +105,15 @@ export default function LoginPage() {
   const [cachedUser, setCachedUser] = useState<CurrentUser | null>(null);
   const [notice, setNotice] = useState('');
 
-  const nextPath = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    const params = new URLSearchParams(window.location.search);
-    return resolveNextPath(params.get('next'));
-  }, []);
+  const [nextPath, setNextPath] = useState<string | null>(null);
 
   // 挂载时：预填记住的邮箱 + 读取可能存在的有效会话。
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(params.get('next'));
+    const requestedRole = params.get('role');
+    if (ROLE_OPTIONS.some((option) => option.role === requestedRole)) setRole(requestedRole as LoginRole);
+    if (params.get('reason') === 'forbidden') setNotice('请使用有权访问此页面的账号登录。');
     let rememberedEmail = '';
     try {
       rememberedEmail = window.localStorage.getItem(REMEMBERED_ACCOUNT_KEY) ?? '';
@@ -189,15 +160,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemoAccount(option: RoleOption): void {
-    setRole(option.role);
-    setEmail(option.demoEmail);
-    setPassword(option.demoPassword);
-    setStatus('idle');
-    setErrorKind(null);
-    setNotice(`已填入${option.label}测试账号，提交后会通过真实登录接口校验。`);
-    persistRememberedEmail(option.demoEmail, rememberAccount);
-  }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -250,8 +212,7 @@ export default function LoginPage() {
       writeCachedSession(data);
       persistRememberedEmail(email, rememberAccount);
       // 登录成功后跳转到对应的系统；仅当 next 属于该角色命名空间时才继承 next
-      const roleDest = destinationFor(data.user.role);
-      const targetPath = nextPath && nextPath.startsWith(roleDest) ? nextPath : roleDest;
+      const targetPath = safeRoleDestination(nextPath, data.user.role);
       window.location.assign(targetPath);
     } catch (cause) {
       if (
@@ -274,7 +235,7 @@ export default function LoginPage() {
             <BrandMark size={36} decorative />
             <span>启途智学</span>
           </div>
-          <RobotMascot size={56} mood="happy" />
+          <VisualAsset assetId="brand-collaboration-v1" size={72} />
         </div>
         <h2 id="login-title">登录你的工作空间</h2>
         <p className="login-muted">选择身份后，将进入对应的学习系统。</p>
@@ -285,7 +246,7 @@ export default function LoginPage() {
             <button
               type="button"
               className="login-continue"
-              onClick={() => window.location.assign(destinationFor(cachedUser.role))}
+              onClick={() => window.location.assign(safeRoleDestination(nextPath, cachedUser.role))}
             >
               继续进入上次的空间
             </button>
@@ -294,7 +255,7 @@ export default function LoginPage() {
 
         {offline ? (
           <div className="login-offline">
-            <OfflineBanner readOnly={false} />
+            <OfflineBanner readOnly message="当前处于离线状态，无法验证账号。登录请求不会缓存在本机，请恢复网络后重新提交。" />
           </div>
         ) : null}
 
@@ -405,23 +366,12 @@ export default function LoginPage() {
         </form>
 
         <p className="login-forgot">
-          忘记密码？本平台不提供自助重置，请联系班主任或管理员重置密码。
+          忘记密码？请联系班主任或学校管理员重置。
         </p>
 
-        <div className="login-demo">
-          <p className="login-demo-title">测试账号 <span>一键填入，仍通过真实接口登录</span></p>
-          <div className="login-demo-buttons">
-            {ROLE_OPTIONS.map((option) => (
-              <button key={option.role} type="button" onClick={() => fillDemoAccount(option)}>
-                {option.label}账号
-              </button>
-            ))}
-          </div>
-          <p className="login-demo-note">账号用于本地与共享演示环境联调，密码不会保存到浏览器。</p>
-        </div>
 
         <p className="login-account-note">
-          使用学校或机构发放的账号登录。没有账号或需要重置密码，请联系班主任、学校管理员或启途智学科技有限公司合作团队。
+          使用学校或机构发放的账号登录。没有账号？请联系学校管理员，或<a href="/contact">联系启途团队</a>。
         </p>
       </section>
     </main>

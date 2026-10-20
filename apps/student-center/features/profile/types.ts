@@ -1,4 +1,5 @@
 import type { StudentGrowthEntry, StudentGrowthSummary } from '../growth/types';
+import type { StudentLearningAnalysisStatus, StudentGrowthTrajectoryProjection } from '@qitu/contracts';
 
 export interface StudentProfileProjection {
   studentId: string;
@@ -15,16 +16,10 @@ export interface StudentProfileProjection {
   summary: StudentGrowthSummary;
   freshness: 'fresh' | 'unavailable';
   provenance: {
-    profileAssistantId: 'learner-profile';
-    growthAssistantId: 'growth-analyst';
+    profileAssistantId: string | null;
+    growthAssistantId: string | null;
   };
-  trajectory: {
-    version: number;
-    milestones: string[];
-    strengths: string[];
-    nextQuestions: string[];
-    studentSummary: string | null;
-    evidenceRefs: string[];
-    confidence: 'low' | 'medium' | 'high' | null;
-  } | null;
+  analysis?: StudentLearningAnalysisStatus;
+  growthAnalysis?: StudentLearningAnalysisStatus;
+  trajectory: StudentGrowthTrajectoryProjection | null;
 }

@@ -12,13 +12,14 @@ type MilestoneBlockProps = {
 
 /** Read-only milestone projection. Gate status is never inferred from deliverables. */
 export function MilestoneBlock({ phaseId, title, deliverables, gate, projectId }: MilestoneBlockProps) {
+  const phaseLabel = ({ exploration: '灵感探索', concept_mastery: '理论探究', practice: '实践制作', reflection: '反思完善' } as Record<string, string>)[phaseId] ?? '当前阶段';
   const isTheorySide = phaseId === 'exploration' || phaseId === 'concept_mastery';
   const theoryBlocked = gate.type === 'TheoryMastered' && gate.status !== 'passed';
   const workbenchHref = projectId ? `/student/projects/${encodeURIComponent(projectId)}/workbench` : null;
   const worksHref = projectId ? `/student/works` : null;
   return (
     <section className="qitu-milestone-card" aria-label="阶段检查">
-      <header className="qitu-milestone-header"><div><span className="qitu-quiz-badge">阶段检查</span><h4>{title}</h4><small>阶段 {phaseId}</small></div><GateStatus type={gate.type} status={gate.status} /></header>
+      <header className="qitu-milestone-header"><div><span className="qitu-quiz-badge">阶段检查</span><h4>{title}</h4><small>{phaseLabel}</small></div><GateStatus type={gate.type} status={gate.status} /></header>
       <ul className="qitu-milestone-deliverables">{deliverables.map((item) => <li key={item.id}><span aria-hidden="true">{item.submitted ? '✓' : '○'}</span><span>{item.title}</span><strong>{item.submitted ? '已提交' : '待提交'}</strong></li>)}</ul>
       {theoryBlocked || isTheorySide ? (
         <p className="qitu-milestone-lock" role="status">

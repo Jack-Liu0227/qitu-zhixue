@@ -1,4 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { LearningPlanService } from '../learning-plan/learning-plan.service';
+import { prepareTutorLessonActivities } from './tutor-activity-context';
+import { restoreQuestionResults } from './tutor-question-results';
 import { TutorExperimentService } from './tutor-experiment.service';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import {
@@ -49,6 +52,7 @@ import {
 import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
+import { currentStudentProject } from '../projects/current-project';
 import { LearningPlanStore, type ObjectiveRecord } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, TUTOR_CHAT_USAGE, type TutorModelGateway } from './gateway-tutor.provider';
 import { ImaMcpClient } from './ima-mcp.client';
@@ -64,6 +68,10 @@ import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { TeacherService } from '../teacher/teacher.service';
 import { buildProjectOpeningBlocks } from './tutor-opening';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
+import { resolveTutorTeachingContext, type TutorTeachingContext } from './tutor-teaching-context';
+import { freezeTutorRuntime } from './tutor-frozen-runtime';
+import { resolveTutorKnowledgeAccess } from './tutor-knowledge-access';
+import { resolveLegacyTutorLesson } from './tutor-legacy-lesson';
 import {
   buildRecommendationSignals,
   parseModelRecommendation,
@@ -216,7 +224,8 @@ function isUsableFrozenSnapshot(
     || typeof value.bindingId !== 'string' || value.bindingId.trim() === ''
     || typeof value.teamVersionId !== 'string' || value.teamVersionId.trim() === ''
     || typeof value.bindingHash !== 'string' || value.bindingHash.trim() === '') return false;
-  return typeof value.bundleDigest === 'string' && value.bundleDigest.trim().length > 0;
+  // The binding owner checks whether this template requires a teaching bundle.
+  return value.bundleDigest == null || (typeof value.bundleDigest === 'string' && value.bundleDigest.trim().length > 0);
 }
 
 
@@ -305,6 +314,7 @@ export class TutorService {
     @Optional() private readonly templateBindings?: TemplateBindingService,
     @Optional() private readonly teacherService?: TeacherService,
     @Optional() private readonly experiments?: TutorExperimentService,
+    @Optional() private readonly learningPlans?: LearningPlanService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -316,17 +326,19 @@ export class TutorService {
   }
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
-  async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false, explorationId?: string): Promise<TutorProjectContext | null> {
+  async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false, explorationId?: string, resolvedTeaching?: TutorTeachingContext | null): Promise<TutorProjectContext | null> {
     if (this.learningStore !== undefined) {
       const selected = projectId === undefined
-        ? (await this.learningStore.listProjectsByStudent(ownerId)).find((project) => !['completed', 'published'].includes(project.status))
+        ? currentStudentProject(await this.learningStore.listProjectsByStudent(ownerId))
         : await this.learningStore.findProject(projectId);
       if (!selected) return explicitExploration && projectId === undefined
         ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
         : null;
       if (selected.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
       const teamContext = await this.resolveTeamContext(selected.id, selected.templateVersionId, selected.status, ownerId, false, true);
-      const lesson = await this.resolveCurrentLesson(selected.id, ownerId);
+      const teaching = resolvedTeaching === undefined ? await this.resolveTeaching(selected.id, ownerId) : resolvedTeaching;
+      const lesson = teaching?.lesson ?? await this.resolveCurrentLesson(selected.id, ownerId);
+      const author = teaching ? await this.resolveTurnAuthor({ projectId: selected.id, ownerId } as TutorSessionRecord, selected.status, teaching) : null;
       return {
         project: {
           id: selected.id,
@@ -337,8 +349,8 @@ export class TutorService {
         },
         progress: { currentStageIndex: selected.currentStageIndex, stageTotal: selected.stageTotal, progressPercent: selected.progressPercent },
         stages: PROJECT_STAGES,
-        currentTask: currentTaskFor(selected.id, selected.title, selected.status),
-        team: teamContext.team,
+        currentTask: teaching?.currentTask ?? currentTaskFor(selected.id, selected.title, selected.status),
+        team: author ? { ...teamContext.team, assistantId: author.id, assistantName: author.name, assistantAvatar: author.avatar ?? null } : teamContext.team,
         phases: teamContext.phases,
         lesson,
       };
@@ -546,28 +558,6 @@ export class TutorService {
     };
   }
 
-  /** 旧项目无快照时的降级审计；不含学生文本，失败不影响读路径。 */
-  private async writeLegacyResolutionAudit(
-    projectId: string,
-    templateVersionId: string | null,
-    teamConfig: AdminTeamConfig,
-    ownerId: string,
-  ): Promise<void> {
-    if (this.auditWriter === undefined) return;
-    try {
-      await this.auditWriter.write({
-        actorId: ownerId,
-        actorRole: 'student',
-        action: 'tutor.team.legacy-resolution',
-        targetType: 'project',
-        targetId: projectId,
-        detail: { projectId, templateVersionId, teamId: teamConfig.id, teamName: teamConfig.name },
-      });
-    } catch {
-      // 审计失败不能把会话/项目上下文读接口打挂。
-    }
-  }
-
   private findBuiltinAssistant(id: string) {
     return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
   }
@@ -757,44 +747,24 @@ export class TutorService {
     return actions;
   }
 
-  private async resolveCurrentLesson(
-    projectId: string,
-    studentId: string,
-  ): Promise<NonNullable<TutorProjectContext['lesson']> | null> {
-    if (!this.learningStore) return null;
-    const plan = (await this.learningStore.listPlansByStudent(studentId)).find((candidate) => candidate.projectId === projectId);
-    if (!plan) return null;
-    const bundle = await this.learningStore.findBundle(plan.id);
-    if (!bundle || bundle.sessions.length === 0) return null;
-    const objectiveById = new Map(bundle.objectives.map((objective) => [objective.id, objective]));
-    const incomplete: boolean[] = [];
-    for (const session of bundle.sessions.slice().sort((left, right) => left.index - right.index)) {
-      let pending = session.theoryObjectiveIds.length === 0 && session.practiceObjectiveIds.length === 0;
-      for (const objectiveId of [...session.theoryObjectiveIds, ...session.practiceObjectiveIds]) {
-        const objective = objectiveById.get(objectiveId);
-        if (!objective) continue;
-        const mastery = await this.learningStore.findMastery(studentId, objectiveId);
-        if (!mastery || !isObjectiveMastered(objective.type, {
-          score: mastery.masteryBasisPoints / 10_000,
-          qualitativeMastered: mastery.qualitativeMastered,
-        })) pending = true;
-      }
-      incomplete.push(pending);
-    }
-    const currentIndex = incomplete.findIndex(Boolean);
-    const index = currentIndex === -1 ? incomplete.length - 1 : currentIndex;
-    const session = bundle.sessions.slice().sort((left, right) => left.index - right.index)[index];
-    if (!session) return null;
-    return {
-      lessonIndex: session.lessonIndex ?? session.index + 1,
-      lessonCount: plan.lessonCount ?? bundle.sessions.length,
-      title: session.title ?? `第 ${session.lessonIndex ?? session.index + 1} 课时`,
-      status: currentIndex === -1 ? 'completed' : 'current',
-      checkpoint: null,
-    };
+  private resolveCurrentLesson(projectId: string, studentId: string) {
+    return resolveLegacyTutorLesson(this.learningStore, projectId, studentId);
   }
 
-  private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage): Promise<NonNullable<TutorTurn['author']>> {
+  private async resolveTeaching(projectId: string, studentId: string): Promise<TutorTeachingContext | null> {
+    if (!this.learningStore || !this.templateBindings) return null;
+    const project = await this.learningStore.findProject(projectId);
+    if (!project || project.studentId !== studentId) throw new ForbiddenException('无权访问该项目');
+    const snapshot = await this.templateBindings.findFrozenSnapshotForProject(projectId, project.templateVersionId);
+    if (!snapshot?.bundleDigest) return null;
+    const bundle = await this.templateBindings.getFrozenTeachingBundle(projectId, project.templateVersionId!);
+    if (bundle.teamVersion.teamVersionId !== snapshot.teamVersionId) {
+      throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '项目教学包与冻结团队不一致。' });
+    }
+    return resolveTutorTeachingContext(this.learningStore, project, bundle);
+  }
+
+  private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage, teaching?: TutorTeachingContext | null): Promise<NonNullable<TutorTurn['author']>> {
     const intake = builtinAuthor('qitu-intake-assistant');
     if (record.projectId === null) return intake;
     const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
@@ -805,8 +775,9 @@ export class TutorService {
     }
     const phaseId = pblPhaseForProjectStage(stage);
     const phase = context.teamConfig.pblSpec?.phases?.find((candidate) => candidate.phase === phaseId);
-    const member = context.teamConfig.members.find((candidate) => candidate.assistantId === phase?.assignedAssistantId);
-    if (phase === undefined || member === undefined) {
+    const assignedId = teaching?.role.assistantId ?? phase?.assignedAssistantId;
+    const member = context.teamConfig.members.find((candidate) => candidate.assistantId === assignedId);
+    if ((!teaching && phase === undefined) || member === undefined) {
       throw new ConflictException({ code: 'PROJECT_PHASE_ASSISTANT_UNAVAILABLE', message: '当前阶段缺少有效的团队导师' });
     }
     const assistants = this.platformRegistry === undefined ? [] : await this.platformRegistry.listAssistants();
@@ -1488,7 +1459,11 @@ export class TutorService {
   }
 
   async toSessionResponseWithEvidence(record: TutorSessionRecord): Promise<GetTutorSessionResponse> {
-    const response = this.toSessionResponse(record);
+    let response = this.toSessionResponse(record);
+    if (response.turns.some(turn => turn.blocks.some(block => block.kind === 'quiz' && (block.sourceScope || block.assessmentMode === 'formative')))) {
+      if (!this.learningPlans) throw new ServiceUnavailableException({ code: 'TUTOR_QUIZ_OWNER_UNAVAILABLE', message: '题目记录暂时无法读取，请稍后重试。' });
+      response = await restoreQuestionResults({ id: record.ownerId, role: 'student', email: '', displayName: '' }, record, response, this.learningPlans);
+    }
     return this.experiments ? this.experiments.restore(record, response) : response;
   }
 
@@ -1705,25 +1680,34 @@ export class TutorService {
     const baseSeq = record.lastSeq;
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
     await this.domainWriter.initialize();
-    const projectContext = record.projectId === null ? null : await this.getProjectContext(record.projectId, request.actorId);
+    const teaching = record.projectId === null ? null : await this.resolveTeaching(record.projectId, request.actorId);
+    const projectContext = record.projectId === null ? null : await this.getProjectContext(record.projectId, request.actorId, false, undefined, teaching);
     const liveProject = projectContext?.project ?? null;
     if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
     const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
-    // Resolve once. The exact same phase assistant id drives display, knowledge access,
-    // and every authorization check below; never re-route from the project title.
-    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage);
+    // The same frozen lesson route drives the shell, prompt and execution identity.
+    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage, teaching);
     const conversationAssistantId = assistantAuthor.id;
-    const authorizeKnowledgeTool = this.imaSettings
-      ? (toolId: string) => this.imaSettings!.canCall(conversationAssistantId, toolId, conversationAssistantId)
-      : undefined;
-    const currentTask = currentTaskFor(record.projectId, projectTitle, projectStage);
+    const knowledgeAccess = await resolveTutorKnowledgeAccess({ teaching, studentId: request.actorId, assistantId: conversationAssistantId,
+      projectId: record.projectId, templateVersionId: liveProject?.templateVersionId, plans: this.learningStore, bindings: this.templateBindings, ima: this.imaSettings,
+      authorizeManagedTool: async id => {
+        const current = await this.platformRegistry?.getAssistantRuntime(conversationAssistantId);
+        const allowed = teaching && current && this.platformRegistry ? freezeTutorRuntime(current, teaching.role,
+          this.platformRegistry.isModelAvailable(teaching.role.modelByPurpose.dialogue!)) : current;
+        return allowed?.agent.enabled === true && allowed.tools.some(tool => tool.id === id);
+      } });
+    const authorizeKnowledgeTool = knowledgeAccess.authorize;
+    const currentTask = projectContext?.currentTask ?? currentTaskFor(record.projectId, projectTitle, projectStage);
     const currentTaskTitle = currentTask?.title ?? projectTitle;
     const basePartner = this.workspace === undefined
       ? this.contextReader.partner
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
     const partner = { ...basePartner, id: conversationAssistantId };
-    const effectiveRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAssistantRuntime(conversationAssistantId);
+    const currentRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAssistantRuntime(conversationAssistantId);
+    const effectiveRuntime = teaching && currentRuntime && this.platformRegistry
+      ? freezeTutorRuntime(currentRuntime, teaching.role, this.platformRegistry.isModelAvailable(teaching.role.modelByPurpose.dialogue!))
+      : currentRuntime;
     if (effectiveRuntime !== null) {
       if (effectiveRuntime.agent.id !== conversationAssistantId) {
         throw new ConflictException({ code: 'ASSISTANT_RUNTIME_IDENTITY_MISMATCH', message: '导师运行身份不一致，请联系管理员' });
@@ -1763,19 +1747,27 @@ export class TutorService {
 
     let knowledgeTools: TutorTurnInput['knowledgeTools'];
     let knowledgeState: string | undefined;
+    if (this.dataMode === 'live') contextPacket.knowledgeEvidence = [];
+    if (teaching) {
+      // Only explicitly mapped, frozen IMA resources can enter managed project retrieval.
+      contextPacket.knowledgeEvidence = [];
+      knowledgeState = knowledgeAccess.scope ? '仅检索本项目授权教材。资料未检索成功前不得声称已核验，也不得编造引用。'
+        : '本项目未具备可用的教材检索授权，资料未核验。请明确告知学生；可以继续一般引导，但不得声称已查证教材或编造引用。';
+    }
     if (this.managedKnowledge) {
       // Facts come from authorized manual bases, independent of project provisioning.
       contextPacket.knowledgeEvidence = [];
       knowledgeState = '仅引用实际检索或读取的资料；资料不足或未授权时明确说明，不得编造引用。';
       try {
         const result = await this.managedKnowledge.search(request.actorId, conversationAssistantId,
-          request.content ?? request.optionLabel ?? currentTaskTitle);
+          request.content ?? request.optionLabel ?? currentTaskTitle, 5, knowledgeAccess.managed);
         contextPacket.knowledgeEvidence = result.evidence.map(e => ({document: {
           id: e.citationId, version: e.indexVersionId, title: e.title, summary: e.text, content: e.text,
           source: `${e.knowledgeBase} · ${e.citationId}`, scope: 'system' as const, active: true, tags: [],
         }, score: e.score ?? 0, matchedTerms: []}));
-        if (result.state !== 'CAPABILITY_NOT_AUTHORIZED')
-          knowledgeTools = this.managedKnowledge.tools(request.actorId, conversationAssistantId);
+        if (result.state === 'PROJECT_KNOWLEDGE_SCOPE_UNAVAILABLE') knowledgeState = '\u672c\u9879\u76ee\u7f3a\u5c11\u51bb\u7ed3\u7684\u77e5\u8bc6\u5e93\u6388\u6743\u8303\u56f4\uff0c\u5f53\u524d\u4e0d\u80fd\u6838\u9a8c\u6559\u6750\u3002';
+        if (!['CAPABILITY_NOT_AUTHORIZED', 'PROJECT_KNOWLEDGE_SCOPE_UNAVAILABLE'].includes(result.state))
+          knowledgeTools = this.managedKnowledge.tools(request.actorId, conversationAssistantId, knowledgeAccess.managed);
       } catch {
         knowledgeState = '知识库本轮暂不可用，可以继续一般引导；不得声称已查证资料或编造引用。';
       }
@@ -1803,7 +1795,7 @@ export class TutorService {
     let teamRunId: string | null = null;
     const leaderAssistantId = record.projectId === null
       ? 'qitu-learning-partner'
-      : projectContext?.team?.assistantId ?? conversationAssistantId;
+      : teaching?.bundle.teamVersion.leaderAssistantId ?? projectContext?.team?.assistantId ?? conversationAssistantId;
     let teamRunLeaderId = runtimeAgentIdsFor(leaderAssistantId)[0] ?? leaderAssistantId;
     if (this.teamRuntime !== undefined) {
       try {
@@ -1830,6 +1822,11 @@ export class TutorService {
         // being rolled out independently from the conversation path.
       }
     }
+    const lessonActivities = await prepareTutorLessonActivities({ teaching, runtime: effectiveRuntime, projectId: record.projectId,
+      studentId: request.actorId, tutorSessionId: record.sessionId, idempotencyKey: request.idempotencyKey, knowledgeAccess,
+      registry: this.platformRegistry, questions: this.learningPlans, experiments: this.experiments,
+      hasQuestion: (id) => record.turns.some((turn) => turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === id)),
+      resolve: () => record.projectId ? this.resolveTeaching(record.projectId, request.actorId) : Promise.resolve(null) });
     const useUnifiedSDK = this.sdkFactory !== undefined
       && (this.dataMode !== 'live' || effectiveRuntime === null || effectiveRuntime.agent.modelAvailable);
     const unifiedSDK = useUnifiedSDK ? this.sdkFactory!.create(
@@ -1839,8 +1836,8 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
-          knowledgeTools, knowledgeState,
-          authorizeKnowledgeTool,
+          knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities,
+          authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
           modelId: effectiveRuntime?.agent.modelId ?? undefined,
@@ -1853,15 +1850,21 @@ export class TutorService {
         : effectiveRuntime.agent.modelProviderId !== null && effectiveRuntime.agent.modelId !== null
           ? { providerId: effectiveRuntime.agent.modelProviderId, modelId: effectiveRuntime.agent.modelId }
       : null,
-      effectiveRuntime === null ? undefined : { assistantId: conversationAssistantId, configurationHash: hashRequest(effectiveRuntime) },
+      effectiveRuntime === null ? undefined : {
+        assistantId: conversationAssistantId, configurationHash: hashRequest(effectiveRuntime),
+        ...(teaching && this.platformRegistry ? { resolveRuntime: async () => freezeTutorRuntime(
+          await this.platformRegistry!.getAssistantRuntime(conversationAssistantId), teaching.role,
+          this.platformRegistry!.isModelAvailable(teaching.role.modelByPurpose.dialogue!),
+        ) } : {}),
+      },
     ) : undefined;
     if (unifiedSDK) {
       contextPacket.masterySnapshot = await unifiedSDK.mastery.snapshot({ validAt: new Date().toISOString(), knownAt: null });
     }
 
     const input: TutorTurnInput = {
-      knowledgeTools, knowledgeState,
-      authorizeKnowledgeTool,
+      knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities,
+      authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
       modelId: effectiveRuntime?.agent.modelId ?? undefined,
@@ -1904,6 +1907,11 @@ export class TutorService {
     let assistantHintLevel: TutorHintLevel | null = null;
     let guardBlocked = false;
     const pending = new Map<string, TutorToolCall>();
+    if (teaching && !knowledgeAccess.scope) {
+      const block: TutorReplyBlock = { kind: 'text', text: '本项目的知识库检索暂不可用，本轮资料尚未核验。你可以继续讨论，教材依据需要恢复检索后确认。' };
+      assistantBlocks.push(block);
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
 
     if (unifiedSDK) {
       const runtimeProgress: StreamedTutorEvent = {
@@ -1977,14 +1985,14 @@ export class TutorService {
     }
 
     // F1 判分路由的下发侧：在助手回合持久化前，按计划未掌握理论目标追加交互题。
-    const quizBlocks = await this.buildQuizBlocks(record, request.actorId);
+    const quizBlocks = teaching ? [] : await this.buildQuizBlocks(record, request.actorId);
     for (const block of quizBlocks) {
       assistantBlocks = [...assistantBlocks, block];
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
 
     // 动态物理微观仿真与实验课件下发
-    const experimentBlocks = await this.buildExperimentBlocks(
+    const experimentBlocks = teaching ? [] : await this.buildExperimentBlocks(
       record,
       request.content ?? request.optionLabel,
     );
@@ -2032,6 +2040,7 @@ export class TutorService {
         expectedLastSeq: baseSeq,
         newLastSeq: assistantSeq,
         turns: [studentTurn, assistantTurn],
+        projectionEvent: { sourceAgentId: teamRunLeaderId, runId: teamRunId },
       };
       await this.store.appendTurns(append);
     }
@@ -2061,7 +2070,7 @@ export class TutorService {
       try {
         await this.teamRuntime.recordEvent({
           runId: teamRunId,
-          topic: 'tutor.turn.completed',
+          topic: 'tutor.turn.trace',
           payload: {
             studentUserId: request.actorId,
             projectId: record.projectId,
@@ -2071,15 +2080,16 @@ export class TutorService {
             modelId: effectiveRuntime?.agent.modelId ?? null,
             skillIds: effectiveRuntime?.skills.map((skill) => skill.id) ?? [],
             toolIds: effectiveRuntime?.tools.map((tool) => tool.id) ?? [],
+            ...(teaching ? { planId: teaching.planId, planRevision: teaching.planRevision,
+              learningSessionId: teaching.session.id, roleSlotId: teaching.role.roleSlotId,
+              objectiveId: teaching.objective?.id ?? null } : {}),
             assistantSeq,
             stage: projectStage,
-            // Growth projections may correlate this opaque marker, but never
-            // receive the persisted tutor text or the internal tutor_turn ID.
-            evidenceRef: `help_request:${record.sessionId}:${assistantSeq}`,
+            evidenceRef: `learning_interaction:${studentTurn.turnId}`,
           },
           idempotencyKey: `tutor-team-event:${record.sessionId}:${assistantSeq}`,
         });
-        const delegationInput = buildTeamDelegationInput(record, request, assistantSeq, projectStage);
+        const delegationInput = buildTeamDelegationInput(record, request, studentTurn.turnId, projectStage);
         const leaderActor = { id: request.actorId, email: '', displayName: '', role: 'student' as const };
         const tasks = record.projectId === null
           ? [
@@ -2341,14 +2351,14 @@ export class TutorService {
 function buildTeamDelegationInput(
   record: TutorSessionRecord,
   _request: { pedagogicMove?: TutorTurnInput['pedagogicMove'] },
-  assistantSeq: number,
+  studentTurnId: string,
   projectStage: ProjectStage,
 ): { summary: string; evidenceRefs: string[]; turnCount: number } {
   return {
     // The worker can correlate this marker with authorized evidence refs. It
     // intentionally contains no student or assistant utterance.
     summary: `服务端已记录一次 ${projectStage} 阶段回合；请仅依据证据引用处理。`,
-    evidenceRefs: [`help_request:${record.sessionId}:${assistantSeq}`],
+    evidenceRefs: [`learning_interaction:${studentTurnId}`],
     turnCount: record.turns.filter((turn) => turn.role === 'student').length,
   };
 }

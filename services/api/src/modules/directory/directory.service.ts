@@ -93,6 +93,10 @@ export class DirectoryService {
 
   /* ==================== User queries ==================== */
 
+  allowsDemoLogin(): boolean {
+    return this.dataMode !== 'live' && process.env.NODE_ENV !== 'production';
+  }
+
   async findUser(userId: string): Promise<DirectoryPersonRef | null> {
     if (this.db) {
       const rows = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);

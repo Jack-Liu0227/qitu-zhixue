@@ -1,4 +1,7 @@
+import { assertRuntimeSkillBudget } from '@qitu/contracts';
 import { resolveAgentModelSelection } from './agent-model-selection';
+import { VisualAssetsService } from '../visual-assets/visual-assets.service';
+import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException, Optional } from '@nestjs/common';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { randomUUID } from 'node:crypto';
@@ -26,7 +29,7 @@ import type {
 import { asc, desc, eq, sql } from 'drizzle-orm';
 import { adminAssistants, adminTeamMembers, adminTeams, agentConfigs, agentMcpBindings, agentSkillBindings, agentToolBindings, agentMemoryRecords, auditLogs, knowledgeDocuments, projectTemplates, projectTemplateVersions, runtimeMcpServers, tutorPartners, type Database, withTransaction } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
-import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
+import { isTeachingRuntimeSkill, loadRuntimeSkillCatalog, loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { pblPhaseForProjectStage } from '../../common/pbl-phase';
 import { builtinToolRegistry } from './built-in-tools';
 import { BUILTIN_ASSISTANTS, QITU_LEARNING_PARTNER, KINETIC_ENERGY_PBL_SPEC, THUNDER_FIGHTER_PBL_SPEC } from '@qitu/ai-client';
@@ -224,10 +227,11 @@ export class PlatformRegistryService {
     private readonly audit: AuditWriter,
     private readonly models: ModelRegistryService,
     @Optional() private readonly knowledgeCenter?: KnowledgeCenterService,
+    @Optional() private readonly visuals?: VisualAssetsService,
   ) {}
 
   async getSnapshot(): Promise<AdminRuntimeSnapshot> {
-    const runtime = loadTutorRuntimeSource();
+    const runtime = loadRuntimeSkillCatalog();
     let agents: AdminRuntimeAgent[] = [];
     let databaseAvailable = false;
 
@@ -242,7 +246,7 @@ export class PlatformRegistryService {
     }
 
     const checks = await this.readChecks(databaseAvailable, runtime);
-    const danglingBindings = await this.listDanglingAssistantBindings(runtime.skills);
+    const danglingBindings = await this.listDanglingAssistantBindings(runtime.skills.filter(isTeachingRuntimeSkill));
     const initialization = {
       overall: checks.some((check) => check.status === 'failed') ? 'degraded' as const
         : checks.some((check) => check.status === 'missing') ? 'not_ready' as const : 'unknown' as const,
@@ -260,6 +264,8 @@ export class PlatformRegistryService {
       source: 'runtime',
       status: skill.status === 'ready' ? 'ready' : 'unavailable',
       content: skill.content,
+      runtime: skill.runtime ?? 'teaching',
+      publicationStatus: skill.publicationStatus,
       agentIds: agents.filter((agent) => agent.skillIds.includes(skill.id)).map((agent) => agent.id),
     }));
 
@@ -278,7 +284,7 @@ export class PlatformRegistryService {
       mcpServers: await this.listMcpServers(),
       agents: agents.sort((a, b) => a.label.localeCompare(b.label)),
       modelOptions: this.models.listAgentModelOptions?.() ?? [],
-      builtInTools: builtinToolRegistry.list(),
+      builtInTools: builtinToolRegistry.list().map(tool => ({ ...tool, agentIds: agents.filter(agent => agent.toolIds.includes(tool.id)).map(agent => agent.id) })),
       danglingBindings,
       initialization,
     };
@@ -292,7 +298,11 @@ export class PlatformRegistryService {
     const effectiveAgent = adminEnabled === null
       ? agent
       : { ...agent, enabled: agent.enabled && adminEnabled, status: agent.enabled && adminEnabled ? 'enabled' as const : 'disabled' as const };
-    const selectedSkills = runtime.skills.filter((skill) => effectiveAgent.skillIds.includes(skill.id) && skill.status === 'ready');
+    const selectedSkills = runtime.skills.filter((skill) => effectiveAgent.skillIds.includes(skill.id) && skill.status === 'ready' && skill.publicationStatus === 'published');
+    if (effectiveAgent.skillIds.some(id => !selectedSkills.some(skill => skill.id === id))) {
+      throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
+    }
+    assertRuntimeSkillBudget(selectedSkills);
     const tools = builtinToolRegistry.listForAgentIds(effectiveAgent.toolIds);
     const mcpServers = (await this.listMcpServerRows())
       .filter((server) => effectiveAgent.mcpServerIds.includes(server.id) && server.enabled)
@@ -317,10 +327,11 @@ export class PlatformRegistryService {
     if (!assistant) throw new NotFoundException({ code: 'ASSISTANT_NOT_FOUND', message: 'Teaching assistant is unavailable' });
 
     const runtime = loadTutorRuntimeSource();
-    const selectedSkills = runtime.skills.filter((skill) => assistant.enabledSkills.includes(skill.id) && skill.status === 'ready');
+    const selectedSkills = runtime.skills.filter((skill) => assistant.enabledSkills.includes(skill.id) && skill.status === 'ready' && skill.publicationStatus === 'published');
     if (assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
       throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
     }
+    assertRuntimeSkillBudget(selectedSkills);
     // Only exact identity and the explicit historical leader alias may restrict
     // this assistant. Another role's configuration is never inherited.
     const runtimeIds = new Set(runtimeIdsForAssistant(assistantId));
@@ -360,6 +371,11 @@ export class PlatformRegistryService {
       policy: runtime.policy, skills: selectedSkills,
       tools: builtinToolRegistry.listForAgentIds(assistant.toolIds), mcpServers,
     };
+  }
+
+  isModelAvailable(selection: { modelProviderId: string; modelId: string }): boolean {
+    return (this.models.listAgentModelOptions?.() ?? []).some((option) => option.available
+      && option.providerId === selection.modelProviderId && option.modelId === selection.modelId);
   }
 
   /**
@@ -766,6 +782,10 @@ export class PlatformRegistryService {
         configs.push({ ...b });
       }
     }
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      for (const config of configs) config.avatar = this.visuals.avatar(config.id, config.avatar, bindings);
+    }
     return configs.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id.localeCompare(b.id));
   }
 
@@ -774,12 +794,14 @@ export class PlatformRegistryService {
    * 'unchecked'` / `createdAt` / `updatedAt` 全部由服务端补全；`sortOrder` 缺省
    * 追加到列表末尾。
    */
-  async createAssistant(actor: CurrentUser, input: AdminAssistantCreateInput): Promise<AdminAssistantConfig> {
+  async createAssistant(actor: CurrentUser, input: AdminAssistantCreateInput, creationId?: string): Promise<AdminAssistantConfig> {
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
     await this.assertAssistantReferences(input);
     const rows = await this.db.select().from(adminAssistants);
+    const replay = creationId ? rows.find(row => row.id === creationId) : undefined;
+    if (replay) return this.assistantVisualView(toAssistantConfig(replay));
     const now = new Date();
-    const id = `assistant-${randomUUID()}`;
+    const id = creationId ?? `assistant-${randomUUID()}`;
     const sortOrder = input.sortOrder ?? rows.reduce((max, row) => Math.max(max, row.sortOrder), 0) + 1;
     const record: AssistantRow = {
       id,
@@ -820,13 +842,15 @@ export class PlatformRegistryService {
         },
       }, tx);
     });
-    return toAssistantConfig(record);
+    return this.assistantVisualView(toAssistantConfig(record));
   }
 
-  async updateAssistant(actor: CurrentUser, assistantId: string, patch: AdminAssistantUpdateInput): Promise<AdminAssistantConfig> {
+  async updateAssistant(actor: CurrentUser, assistantId: string, patch: AdminAssistantUpdateInput, expectedUpdatedAt?: string): Promise<AdminAssistantConfig> {
     if (!this.db) throw new ServiceUnavailableException('助手配置存储不可用');
     return withTransaction(this.db, async (tx) => {
-      const rows = await tx.select().from(adminAssistants);
+      const rows = expectedUpdatedAt
+        ? await tx.select().from(adminAssistants).where(eq(adminAssistants.id, assistantId)).for('update')
+        : await tx.select().from(adminAssistants);
       let existing = rows.find((row) => row.id === assistantId);
       if (!existing) {
         const builtin = BUILTIN_ASSISTANTS.find((b) => b.id === assistantId);
@@ -861,6 +885,9 @@ export class PlatformRegistryService {
         } else {
           throw new NotFoundException('助手不存在');
         }
+      }
+      if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) {
+        throw new ConflictException({ code: 'COPILOT_RESOURCE_CHANGED', message: '助手已被修改，请重新读取后生成计划' });
       }
       const now = new Date();
       // 引用校验必须晚于 existing 解析：管理面矩阵提交的是「存量数组 ± 一项」
@@ -910,6 +937,12 @@ export class PlatformRegistryService {
 
   /* ==================== admin 团队 CRUD ==================== */
 
+  private async assistantVisualView(config: AdminAssistantConfig): Promise<AdminAssistantConfig> {
+    if (!this.visuals) return config;
+    const bindings = await this.visuals.presentationSnapshot();
+    return { ...config, avatar: this.visuals.avatar(config.id, config.avatar, bindings) };
+  }
+
   async listTeams(): Promise<AdminTeamConfig[]> {
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
     const [teams, members, assistants] = await Promise.all([
@@ -921,7 +954,15 @@ export class PlatformRegistryService {
       this.pblDriftReported = true;
       this.reportPblTemplateDrift(teams);
     }
-    return teams.map((team) => toTeamConfig(team, members.filter((member) => member.teamId === team.id), assistants));
+    const configs = teams.map((team) => toTeamConfig(team, members.filter((member) => member.teamId === team.id), assistants));
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      for (const config of configs) {
+        config.iconAssetId = resolveVisualBinding({ kind: 'team', id: config.id }, 'icon', bindings).effectiveAssetId;
+        for (const member of config.members) member.avatar = this.visuals.avatar(member.assistantId, member.avatar, bindings);
+      }
+    }
+    return configs;
   }
 
   /**
@@ -976,8 +1017,10 @@ export class PlatformRegistryService {
     }
   }
 
-  async createTeam(actor: CurrentUser, input: AdminTeamCreateInput): Promise<AdminTeamConfig> {
+  async createTeam(actor: CurrentUser, input: AdminTeamCreateInput, creationId?: string): Promise<AdminTeamConfig> {
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
+    const replay = creationId ? (await this.listTeams()).find(team => team.id === creationId) : undefined;
+    if (replay) return replay;
     const assistantRows = await this.db.select().from(adminAssistants);
     const existingMembers = await this.db.select().from(adminTeamMembers);
     this.assertTeamMembers(input.members, assistantRows);
@@ -989,7 +1032,7 @@ export class PlatformRegistryService {
       throw new BadRequestException('slotId 已被既有团队成员占用');
     }
     const now = new Date();
-    const id = `team-${randomUUID()}`;
+    const id = creationId ?? `team-${randomUUID()}`;
     const memberRows: MemberRow[] = input.members.map((member, index) => ({
       slotId: member.slotId ?? `slot-${randomUUID()}`,
       teamId: id,
@@ -1038,12 +1081,17 @@ export class PlatformRegistryService {
   }
 
   /** members 为整体替换语义（不是增量 diff）；slotId 回填可保持引用稳定。 */
-  async updateTeam(actor: CurrentUser, teamId: string, patch: AdminTeamUpdateInput): Promise<AdminTeamConfig> {
+  async updateTeam(actor: CurrentUser, teamId: string, patch: AdminTeamUpdateInput, expectedUpdatedAt?: string): Promise<AdminTeamConfig> {
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
     return withTransaction(this.db, async (tx) => {
-      const teams = await tx.select().from(adminTeams);
+      const teams = expectedUpdatedAt
+        ? await tx.select().from(adminTeams).where(eq(adminTeams.id, teamId)).for('update')
+        : await tx.select().from(adminTeams);
       const existing = teams.find((team) => team.id === teamId);
       if (!existing) throw new NotFoundException('团队不存在');
+      if (expectedUpdatedAt && existing.updatedAt.toISOString() !== expectedUpdatedAt) {
+        throw new ConflictException({ code: 'COPILOT_RESOURCE_CHANGED', message: '团队已被修改，请重新读取后生成计划' });
+      }
       const allMembers = await tx.select().from(adminTeamMembers);
       const currentMembers = allMembers.filter((member) => member.teamId === teamId);
       const assistantRows = await tx.select().from(adminAssistants);
@@ -1209,9 +1257,17 @@ export class PlatformRegistryService {
     input: Pick<AdminAssistantCreateInput, 'enabledSkills' | 'toolIds' | 'mcpServerIds'>,
     baseline?: { enabledSkills: readonly string[]; toolIds: readonly string[]; mcpServerIds: readonly string[] },
   ): Promise<void> {
-    const runtime = loadTutorRuntimeSource();
+    const runtime = loadRuntimeSkillCatalog();
     if (input.enabledSkills !== undefined) {
-      const knownSkills = new Set(runtime.skills.map((skill) => skill.id));
+      const deniedScopes = new Set(runtime.skills.filter(skill => !isTeachingRuntimeSkill(skill)).map(skill => skill.id));
+      const deniedSkill = input.enabledSkills.find(id => deniedScopes.has(id));
+      if (deniedSkill) throw new BadRequestException({
+        code: 'ASSISTANT_SKILL_SCOPE_INVALID',
+        message: `Skill ${deniedSkill} 不属于教学运行范围，不能绑定普通助手`,
+      });
+      const unavailable = input.enabledSkills.find(id => runtime.skills.some(skill => skill.id === id && skill.status !== 'ready') && !(baseline?.enabledSkills ?? []).includes(id));
+      if (unavailable) throw new BadRequestException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'Only published skills can be newly bound' });
+      const knownSkills = new Set(runtime.skills.filter(isTeachingRuntimeSkill).map((skill) => skill.id));
       const inherited = new Set(baseline?.enabledSkills ?? []);
       const unknownSkill = input.enabledSkills.find((skillId) => !knownSkills.has(skillId) && !inherited.has(skillId));
       if (unknownSkill !== undefined) throw new BadRequestException(`未知的 Skill: ${unknownSkill}`);

@@ -39,6 +39,7 @@ const VISIBLE_EVIDENCE_SOURCE_KINDS: ReadonlySet<string> = new Set([
   'artifact',
   'reflection',
   'help_request',
+  'learning_interaction',
 ]);
 
 /**

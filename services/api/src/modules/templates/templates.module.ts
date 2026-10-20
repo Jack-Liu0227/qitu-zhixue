@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
 import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
@@ -40,7 +40,7 @@ import { TemplatesService } from './templates.service';
  * PostgreSQL 实现，未配置数据库时 fail fast。
  */
 @Module({
-  imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, KnowledgeModule],
+  imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
   controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController],
   providers: [
     TeachingBundleCatalog,

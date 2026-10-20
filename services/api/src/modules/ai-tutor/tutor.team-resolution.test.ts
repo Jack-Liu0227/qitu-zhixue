@@ -111,6 +111,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
   const learningStore = {
     findProject: async () => ({ ...project }),
     listProjectsByStudent: async () => [],
+    listPlansByStudent: async () => [],
   } as unknown as LearningPlanStore;
 
   const templateBindings = {
@@ -120,7 +121,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
       bindingId: 'binding-frozen',
       teamVersionId: 'team-ver-frozen',
       bindingHash: 'hash-frozen',
-      bundleDigest: 'bundle-frozen',
+      bundleDigest: null,
       boundAt: '2026-01-01T00:00:00.000Z',
       backfilled: false,
     }),
@@ -194,20 +195,11 @@ test('missing binding service fails closed without consulting the mutable roster
   assert.equal(legacyReads, 0);
 });
 
-test('a project snapshot without bundleDigest fails closed even when teamVersionId is present', async () => {
+test('a required bundle rejected by the binding owner fails closed before mutable team lookup', async () => {
   const tutor = newTutor({
     learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
     templateBindings: {
-      findFrozenSnapshotForProject: async () => ({
-        projectId: project.id,
-        templateVersionId: project.templateVersionId,
-        bindingId: 'binding-without-bundle',
-        teamVersionId: 'team-ver-frozen',
-        bindingHash: 'hash-without-bundle',
-        bundleDigest: null,
-        boundAt: '2026-01-01T00:00:00.000Z',
-        backfilled: false,
-      }),
+      findFrozenSnapshotForProject: async () => null,
     } as unknown as TemplateBindingService,
     database: fakeDb({ frozenTeam: frozenTeamRow() }),
     platformRegistry: {

@@ -19,6 +19,7 @@ export const GROWTH_EVIDENCE_SOURCE_KINDS = [
   'artifact',
   'reflection',
   'help_request',
+  'learning_interaction',
 ] as const satisfies readonly GrowthEvidenceSourceKind[];
 
 const KIND_SET: ReadonlySet<string> = new Set(GROWTH_EVIDENCE_SOURCE_KINDS);

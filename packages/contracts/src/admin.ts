@@ -278,6 +278,9 @@ export interface AdminRuntimeSkill {
   source: AdminRuntimeSource;
   status: AdminRuntimeItemStatus;
   content: string;
+  /** 缺省为旧版教学技能；Admin 专用技能不可加入普通助手的 enabledSkills。 */
+  runtime?: 'teaching' | 'admin' | 'unknown';
+  publicationStatus?: 'quarantined' | 'reviewed' | 'published' | 'deprecated' | 'revoked';
   /** 声明使用该 skill 的 agent id；无来源时为空数组。 */
   agentIds: string[];
 }
@@ -372,6 +375,8 @@ export interface AdminRuntimeAgentUpdateRequest {
 export type AdminRuntimeToolRiskLevel = 'low' | 'medium' | 'high' | 'unknown';
 
 export interface AdminRuntimeBuiltinTool {
+  /** Describes the real entrypoint, independent of assistant bindings or provider health. */
+  invocation?: 'domain_service' | 'sdk_read' | 'model_tool';
   id: string;
   label: string;
   description: string | null;

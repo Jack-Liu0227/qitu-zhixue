@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/common';
 import type {
   ConfirmLearningPlanResponse,
+  AnswerInteractiveQuizResponse,
   CurrentUser,
   GenerateLearningPlanResponse,
   KnowledgeType,
@@ -26,6 +28,7 @@ import type {
   StartSessionResponse,
   SubmitAnswerResponse,
   SubmitEvidenceResponse,
+  TutorReplyBlock,
 } from '@qitu/contracts';
 // 门禁契约里的**值**导出（+ 对应的类型）：注册表是门禁 id 的真源。必须走值
 // 导入——`import type` 下 `GATE_CONDITION_REGISTRY` 只能当类型用，取不到 `gateId`。
@@ -86,6 +89,8 @@ import {
 import { generatePlanFromTemplate } from './template-plan-generator';
 import { OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
 import { validateGeneratedPlan } from './session-plan-validator';
+import { assertQuestionScope, dynamicQuestionBlock, dynamicQuestionEnvelope, parseChoiceQuestionCandidate, type QuestionCandidateScope, type DynamicQuestionEnvelope } from './question-candidate';
+import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-candidate.sources';
 
 const PLAN_FORBIDDEN_MESSAGE = '无权访问该学习计划';
 const THRESHOLD_BASIS_POINTS = 9000;
@@ -408,6 +413,170 @@ export class LearningPlanService {
 
   /* ==================== 作答（判分 + 掌握） ==================== */
 
+  /** Accept only a scoped server proposal; generated keys are formative evidence. */
+  async acceptQuestionCandidate(
+    actor: CurrentUser,
+    sourceScope: QuestionCandidateScope,
+    rawCandidate: unknown,
+    idempotencyKey: string,
+    verifyEvidence: VerifyQuestionEvidence,
+  ): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }>> {
+    const candidate = parseChoiceQuestionCandidate(rawCandidate);
+    await this.assertCandidateContext(actor, sourceScope);
+    await verifyQuestionSources(candidate.sourceRefs, verifyEvidence);
+    const scope = `student.learning-plan.dynamic-question:${actor.id}:${sourceScope.planId}`;
+    const requestHash = hashIdempotentInput(scope, { ...sourceScope }, { ...candidate });
+    const questionId = `question-${createHash('sha256').update(`${scope}:${idempotencyKey}`).digest('hex').slice(0, 40)}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () =>
+        this.withAssessmentStore(actor.id, async scoped => {
+          await scoped.assertCandidateContext(actor, sourceScope);
+          const sources = await verifyQuestionSources(candidate.sourceRefs, verifyEvidence);
+          const prior = await scoped.store.findPendingQuestion(questionId);
+          if (prior !== null) {
+            const envelope = dynamicQuestionEnvelope(prior);
+            if (prior.studentUserId !== actor.id || envelope.candidateDigest !== requestHash || prior.status !== 'awaiting') {
+              throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '该题已处理或候选内容已改变。' });
+            }
+            return { status: 200, body: { questionId } };
+          }
+          if (await scoped.store.findAwaitingQuestion(actor.id, sourceScope.planId)) {
+            throw new ConflictException({ code: 'QUESTION_ALREADY_AWAITING', message: '请先完成当前待答题；新题不会替换已下发题目。' });
+          }
+          const options = candidate.options.map((option, index) => ({
+            id: `option-${createHash('sha256').update(`${questionId}:${index}`).digest('hex').slice(0, 24)}`,
+            label: String.fromCharCode(65 + index), body: option.text,
+          }));
+          const envelope: DynamicQuestionEnvelope = {
+            schemaVersion: 'qitu.dynamic-choice.v1', kind: 'formative_choice', sourceScope: { ...sourceScope },
+            correctOptionId: options[candidate.correctOptionIndex]!.id, candidateDigest: requestHash, sources,
+          };
+          const now = new Date();
+          await scoped.store.createPendingQuestion({
+            id: questionId, schoolId: await scoped.store.studentSchoolId(actor.id), studentUserId: actor.id,
+            planId: sourceScope.planId, sessionId: sourceScope.learningSessionId, objectiveId: sourceScope.objectiveId,
+            questionType: 'choice', prompt: candidate.prompt, options, expectedAnswer: JSON.stringify(envelope),
+            explanation: candidate.explanation, difficulty: candidate.difficulty, assessmentType: 'formative',
+            status: 'awaiting', attempt: 1, hintsUsed: 0, idempotencyKey: `${scope}:${idempotencyKey}`,
+            askedAt: now, answeredAt: null, createdAt: now, updatedAt: now,
+          }, async tx => {
+            await scoped.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'learning.question.generated',
+              targetType: 'pending_question', targetId: questionId, idempotencyKey: `generated:${questionId}`,
+              detail: { sourceScope, assessmentMode: 'formative', sourceRefs: sources.map(source => source.sourceRef) },
+            }, tx);
+          });
+          return { status: 201, body: { questionId } };
+        }));
+      await this.assertCandidateContext(actor, sourceScope);
+      const pending = await this.store.findPendingQuestion(result.body.questionId);
+      if (pending === null || pending.studentUserId !== actor.id || pending.status !== 'awaiting' ||
+          dynamicQuestionEnvelope(pending).candidateDigest !== requestHash) {
+        throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '待答题已变化，请重新读取当前学习任务。' });
+      }
+      return dynamicQuestionBlock(pending);
+    } catch (error) {
+      if (error instanceof PendingQuestionConflictError) {
+        throw new ConflictException({ code: 'QUESTION_ALREADY_AWAITING', message: '当前已有待答题，新题未覆盖原题。' });
+      }
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /** Recover an accepted question after a turn persistence failure without generating another. */
+  async readPendingQuestionCandidate(actor: CurrentUser, sourceScope: QuestionCandidateScope): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }> | null> {
+    await this.assertCandidateContext(actor, sourceScope);
+    const pending = await this.store.findAwaitingQuestion(actor.id, sourceScope.planId);
+    if (pending === null || pending.assessmentType !== 'formative') return null;
+    const persisted = dynamicQuestionEnvelope(pending).sourceScope;
+    if (Object.keys(persisted).some(key => persisted[key as keyof QuestionCandidateScope] !== sourceScope[key as keyof QuestionCandidateScope])) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '已有待答题属于另一课时或对话，请先返回原任务。' });
+    }
+    return dynamicQuestionBlock(pending);
+  }
+
+  /** Historical readback uses persisted scope and attempt evidence, never a new grading decision. */
+  async readQuestionCandidateResult(
+    actor: CurrentUser, sourceScope: QuestionCandidateScope, questionId: string,
+  ): Promise<AnswerInteractiveQuizResponse | null> {
+    const bundle = await this.requireBundle(sourceScope.planId);
+    this.assertOwnedStudent(actor, bundle.plan);
+    const project = await this.store.findProject(sourceScope.projectId);
+    if (project === null || project.studentId !== actor.id || bundle.plan.projectId !== sourceScope.projectId) {
+      throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+    }
+    const pending = await this.store.findPendingQuestion(questionId);
+    if (pending === null || pending.studentUserId !== actor.id || pending.assessmentType !== 'formative') {
+      throw new NotFoundException({ code: 'QUESTION_RESULT_UNAVAILABLE', message: '动态题记录不可用。' });
+    }
+    const envelope = dynamicQuestionEnvelope(pending);
+    if (Object.keys(envelope.sourceScope).some(key => envelope.sourceScope[key as keyof QuestionCandidateScope] !== sourceScope[key as keyof QuestionCandidateScope])) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '题目不属于该项目课时或对话。' });
+    }
+    if (pending.status === 'awaiting') return null;
+    const attempts = (await this.store.listAttempts(actor.id, pending.objectiveId, { includeFormative: true }))
+      .filter(attempt => attempt.questionId === questionId && attempt.planId === pending.planId && attempt.assessmentType === 'formative');
+    const attempt = attempts[0];
+    if (pending.status !== 'answered' || attempts.length !== 1 || !attempt ||
+        !pending.options.some(option => option.id === attempt.userAnswer)) {
+      throw new ConflictException({ code: 'QUESTION_RESULT_UNAVAILABLE', message: '已提交结果暂时无法核验，请稍后重试。' });
+    }
+    return {
+      quizId: questionId, assessmentMode: 'formative', selectedKeys: [attempt.userAnswer!],
+      correct: attempt.isCorrect, attempts: attempt.attemptCount, hintLevel: 1,
+      explanation: pending.explanation, correctKeys: [envelope.correctOptionId], conceptDeltas: [],
+      nextGuidance: '结合解析说明你的推理，再通过目标考核检验掌握情况。', replayed: true,
+    };
+  }
+
+  private async assertCandidateContext(actor: CurrentUser, scope: QuestionCandidateScope): Promise<void> {
+    if (!scope || typeof scope.planId !== 'string') throw new BadRequestException({ code: 'QUESTION_SCOPE_MISMATCH' });
+    const bundle = await this.requireBundle(scope.planId);
+    this.assertOwnedStudent(actor, bundle.plan);
+    this.assertActive(bundle.plan);
+    const session = await this.requireSession(bundle, scope.learningSessionId);
+    assertQuestionScope(scope, bundle, session);
+    const project = await this.store.findProject(scope.projectId);
+    if (project === null || project.studentId !== actor.id) throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+    await this.assertPracticeGate(session, await this.loadStates(actor, bundle), actor, bundle);
+  }
+
+  private async submitFormativeAnswer(
+    actor: CurrentUser, bundle: PlanBundle, session: SessionRecord, states: Map<string, ObjectiveMasteryState>,
+    pending: PendingQuestionRecord, objective: ObjectiveRecord, answer: string, idempotencyKey: string,
+  ): Promise<{ status: number; body: SubmitAnswerResponse }> {
+    const envelope = dynamicQuestionEnvelope(pending);
+    assertQuestionScope(envelope.sourceScope, bundle, session);
+    if (!pending.options.some(option => option.id === answer)) {
+      throw new BadRequestException({ code: 'QUESTION_OPTION_INVALID', message: '请选择本题下发的一个选项。' });
+    }
+    const card = { ...this.pendingToCard(pending), expectedAnswer: pending.options.find(option => option.id === envelope.correctOptionId)!.body };
+    const grade = gradeAnswer(card, answer, 'awaiting');
+    const now = new Date();
+    const attempt: AttemptRecord = {
+      id: newId('attempt'), studentUserId: actor.id, planId: bundle.plan.id, objectiveId: objective.id,
+      questionId: pending.id, result: grade.result, isCorrect: grade.isCorrect, assessmentType: 'formative',
+      errorType: grade.errorType, hintsUsed: pending.hintsUsed, attemptCount: pending.attempt,
+      qualityBasisPoints: qualityBasisPoints(grade.score), userAnswer: answer, createdAt: now,
+    };
+    const completed = await this.store.completePendingQuestion({
+      questionId: pending.id, answeredAt: now, attempt, mastery: null, masteryEvent: null,
+      commit: async tx => {
+        await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'learning.question.formative-answered',
+          targetType: 'pending_question', targetId: pending.id, idempotencyKey: `formative:${pending.id}:${idempotencyKey}`,
+          detail: { planId: bundle.plan.id, objectiveId: objective.id, isCorrect: grade.isCorrect, assessmentMode: 'formative' },
+        }, tx);
+      },
+    });
+    if (!completed) throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '该题已作答。' });
+    return { status: 200, body: {
+      questionId: pending.id, assessmentMode: 'formative', correctOptionIds: [envelope.correctOptionId],
+      result: grade.result, isCorrect: grade.isCorrect, score: grade.score, explanation: pending.explanation,
+      errorType: grade.errorType, remediation: grade.remediation,
+      mastery: this.toMasterySummary(await this.store.findMastery(actor.id, objective.id), objective),
+      theoryMastered: computeTheoryMastered(session.theoryObjectiveIds, states), practiceUnlocked: this.isPracticeUnlocked(session, states), replayed: false,
+    } };
+  }
+
   async submitAnswer(
     actor: CurrentUser,
     planId: string,
@@ -430,6 +599,14 @@ export class LearningPlanService {
       throw this.badRequest('LEARNING_PLAN_INVALID', 'answer 必须是字符串');
     }
 
+    const storedQuestion = await this.store.findPendingQuestion(questionId);
+    if (storedQuestion?.assessmentType === 'formative') {
+      const envelope = dynamicQuestionEnvelope(storedQuestion);
+      if (storedQuestion.studentUserId !== actor.id) throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+      assertQuestionScope(envelope.sourceScope, bundle, session);
+      await this.assertCandidateContext(actor, envelope.sourceScope);
+    }
+
     const scope = `student.learning-plan.answer:${actor.id}:${planId}:${sessionId}:${questionId}`;
     const requestHash = hashIdempotentInput(
       scope,
@@ -444,6 +621,8 @@ export class LearningPlanService {
         requestHash,
         async () => this.withAssessmentStore(actor.id, async (scoped) => {
           const fresh = await scoped.requireBundle(planId);
+          scoped.assertOwnedStudent(actor, fresh.plan);
+          scoped.assertActive(fresh.plan);
           const freshSession = await scoped.requireSession(fresh, sessionId);
           const freshStates = await scoped.loadStates(actor, fresh);
           await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
@@ -468,6 +647,9 @@ export class LearningPlanService {
               code: 'QUESTION_NOT_AWAITING',
               message: '该题引用的目标不存在（数据不一致）',
             });
+          }
+          if (pending.assessmentType === 'formative') {
+            return scoped.submitFormativeAnswer(actor, fresh, freshSession, freshStates, pending, objective, body.answer as string, idempotencyKey);
           }
           const card = scoped.pendingToCard(pending);
           const grade = gradeAnswer(card, body.answer as string, 'awaiting');

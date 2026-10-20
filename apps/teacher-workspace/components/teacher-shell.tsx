@@ -52,7 +52,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
     teacherApi
       .interventions()
       .then((response) => {
-        if (!cancelled) setPendingCount(response.data.totals.open);
+        if (!cancelled) setPendingCount(response.data.signalsAvailable === false ? null : response.data.totals.open);
       })
       .catch(() => {
         if (!cancelled) setPendingCount(null);

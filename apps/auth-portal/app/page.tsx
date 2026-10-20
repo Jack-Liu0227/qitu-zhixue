@@ -58,7 +58,7 @@ export default async function HomePage() {
                 <span className="react-bits-badge-arrow">✨</span>
               </p>
               <h1 className="home-hero-title">
-                一个问题，<span className="react-bits-shiny-text">长成一件作品</span>
+                <span className="home-title-phrase">一个问题，</span><span className="react-bits-shiny-text home-title-phrase">长成一件作品</span>
               </h1>
               <p className="home-hero-sub">与 AI 共成长，启发真实世界新思维</p>
               <p className="home-hero-lead">
@@ -72,7 +72,7 @@ export default async function HomePage() {
                 >
                   <span className="react-bits-btn-glow" />
                   <span className="react-bits-btn-content">
-                    立即开启 AI 探索之旅 <Icon name="arrowRight" size={18} />
+                    进入学习空间 <Icon name="arrowRight" size={18} />
                   </span>
                 </Link>
                 <DemoModal
@@ -83,6 +83,7 @@ export default async function HomePage() {
                   destination="/learning"
                 />
               </div>
+              <p className="home-account-hint">使用学校或机构发放的账号登录 · <Link href="/contact">联系开通</Link></p>
               <p className="home-trust">
                 <span>
                   <Icon name="school" size={16} /> 校本课程与项目模板

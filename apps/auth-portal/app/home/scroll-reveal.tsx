@@ -12,8 +12,7 @@ interface ScrollRevealProps {
 /**
  * React Bits 灵感滚动渐入渐出组件 (BlurFade / ScrollReveal)：
  * 参考 https://www.reactbits.dev/
- * 视口进入与离开时动态平滑切换，实现「毛玻璃消解 + 平滑微浮 + 透明度渐入渐出」。
- * 离开视口时自动重置，使用户在滑动滚轮翻阅页面时每次都能触发灵动的动态过渡。
+ * 首次进入视口后保持可见；减少动态效果偏好下直接展示内容。
  */
 export function ScrollReveal({
   children,
@@ -27,14 +26,17 @@ export function ScrollReveal({
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionPreference.matches) {
+      setIsVisible(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
           setIsVisible(true);
-        } else {
-          // 离开视口时重置，滚轮翻阅时每次均触发渐入渐出动效
-          setIsVisible(false);
+          observer.unobserve(element);
         }
       },
       {

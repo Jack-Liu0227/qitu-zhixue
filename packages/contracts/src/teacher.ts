@@ -60,6 +60,8 @@ export interface TeacherStudentRow {
   activeDays: number;
   /** 本周完成任务数（过程性计数）。 */
   weeklyTasks: number;
+  /** Activity/intervention owner is unavailable; zero placeholders are not measured counts. */
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherRosterPageData {
@@ -73,6 +75,7 @@ export interface TeacherRosterPageData {
     withoutGuardianCount: number;
   };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherStudentProject {
@@ -133,6 +136,7 @@ export interface TeacherInterventionListPageData {
     resolved: number;
   };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 /**
@@ -185,6 +189,7 @@ export interface TeacherStatisticsPageData {
   /** 需要关注的名单，按停滞时长排序。 */
   needsAttention: TeacherStudentRow[];
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 /* ------------------------------------------------------------------ *
@@ -213,6 +218,7 @@ export interface TeacherFeedbackListPageData {
   items: TeacherFeedbackRow[];
   totals: { processing: number; replied: number; resolved: number };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherFeedbackDetail {

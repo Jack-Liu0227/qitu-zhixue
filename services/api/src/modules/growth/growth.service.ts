@@ -2,11 +2,15 @@ import {
   normalizeGrowthEvidenceRefs,
   validateGrowthProjectionResult,
   type CurrentUser,
+  type StudentLearningAnalysisStatus,
+  type StudentGrowthTrajectoryProjection,
+  type StudentGrowthAnalysis,
 } from '@qitu/contracts';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { agentProjectionCandidates } from '@qitu/database';
 import type { Database } from '@qitu/database';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type {
   ChildRef,
@@ -54,26 +58,31 @@ export interface StudentProfileProjection {
   recentGrowth: StudentGrowthEntry[];
   summary: StudentGrowthSummary;
   freshness: 'fresh' | 'unavailable';
+  analysis: StudentLearningAnalysisStatus;
+  growthAnalysis: StudentLearningAnalysisStatus;
   provenance: {
-    profileAssistantId: 'learner-profile';
-    growthAssistantId: 'growth-analyst';
+    profileAssistantId: string | null;
+    growthAssistantId: string | null;
   };
-  trajectory: {
-    version: number;
-    milestones: string[];
-    strengths: string[];
-    nextQuestions: string[];
-    studentSummary: string | null;
-    /** Opaque, server-allowlisted evidence references; never raw learner content. */
-    evidenceRefs: string[];
-    confidence: 'low' | 'medium' | 'high' | null;
-  } | null;
+  trajectory: StudentGrowthTrajectoryProjection | null;
 }
 
 function asObject(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function analysisStatus(rows: ReadonlyArray<Pick<typeof agentProjectionCandidates.$inferSelect, 'status' | 'payload' | 'reviewErrorCode'>>): StudentLearningAnalysisStatus {
+  const accepted = rows.find((row) => row.status === 'accepted');
+  const latest = rows[0];
+  const manifest = asObject(accepted?.payload.analysisManifest);
+  return {
+    status: latest && latest.status !== 'accepted' ? 'pending' : accepted ? 'accepted' : 'unavailable',
+    policyVersion: stringValue(manifest?.policyVersion), observedThrough: stringValue(manifest?.observedThrough),
+    sourceEventId: stringValue(accepted?.payload.sourceEventId),
+    pendingReason: latest && latest.status !== 'accepted' ? latest.reviewErrorCode ?? 'PROJECTION_REVIEW_PENDING' : null,
+  };
 }
 
 function stringValue(value: unknown): string | null {
@@ -151,6 +160,7 @@ export class GrowthService {
     private readonly dataMode: DataMode = 'test',
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
+    @Optional() private readonly learningStore?: LearningPlanStore,
   ) {
     // 演示 / 测试 fixture 只在**非持久化**存储上灌入；live 永远不会写演示数据。
     if (!this.store.persistent) {
@@ -196,17 +206,23 @@ export class GrowthService {
       targetLevel: null, timeBudgetMinutesPerWeek: null, preferences: [],
       interests: [], strengths: [], nextQuestions: [], recentGrowth, summary,
       freshness: 'unavailable',
-      provenance: { profileAssistantId: 'learner-profile', growthAssistantId: 'growth-analyst' },
+      analysis: analysisStatus([]), growthAnalysis: analysisStatus([]),
+      provenance: { profileAssistantId: null, growthAssistantId: null },
       trajectory,
     });
     if (this.db === null) return empty();
     const rows = await this.db.select().from(agentProjectionCandidates).where(and(
       eq(agentProjectionCandidates.studentUserId, studentId),
-      eq(agentProjectionCandidates.status, 'accepted'),
+      inArray(agentProjectionCandidates.status, ['accepted', 'proposed', 'validating']),
       inArray(agentProjectionCandidates.projectionType, ['learner_profile', 'growth_trajectory']),
     )).orderBy(desc(agentProjectionCandidates.createdAt));
-    const profileRow = rows.find((row) => row.projectionType === 'learner_profile' && row.agentId === 'learner-profile');
-    const growthRow = rows.find((row) => row.projectionType === 'growth_trajectory' && row.agentId === 'growth-analyst');
+    // Accepted history keeps its actual producer even after Admin changes a purpose binding.
+    const profileRows = rows.filter((row) => row.projectionType === 'learner_profile');
+    const growthRows = rows.filter((row) => row.projectionType === 'growth_trajectory');
+    const profileRow = profileRows.find((row) => row.status === 'accepted');
+    const growthRow = growthRows.find((row) => row.status === 'accepted');
+    const analysis = analysisStatus(profileRows);
+    const growthAnalysis = analysisStatus(growthRows);
     const profileCandidate = profileRow
       ? validateGrowthProjectionResult('learner_profile', {
         version: 0,
@@ -242,8 +258,11 @@ export class GrowthService {
       studentSummary: stringValue(growth.studentSummary),
       evidenceRefs: normalizeGrowthEvidenceRefs(growth.evidenceRefs),
       confidence: confidenceValue(growth.confidence),
+      observedThrough: stringValue(asObject(growthRow?.payload.analysisManifest)?.observedThrough),
+      policyVersion: stringValue(asObject(growthRow?.payload.analysisManifest)?.policyVersion),
     };
-    if (profile === null) return empty(trajectory);
+    const provenance = { profileAssistantId: profile ? profileRow?.agentId ?? null : null, growthAssistantId: growth ? growthRow?.agentId ?? null : null };
+    if (profile === null) return { ...empty(trajectory), provenance, analysis, growthAnalysis };
     return {
       studentId,
       version: numberValue(profile.version),
@@ -253,9 +272,15 @@ export class GrowthService {
       preferences: stringList(profile.preferences), interests: stringList(profile.interests),
       strengths: stringList(profile.strengths), nextQuestions: stringList(profile.nextQuestions),
       recentGrowth, summary, freshness: 'fresh',
-      provenance: { profileAssistantId: 'learner-profile', growthAssistantId: 'growth-analyst' },
+      analysis, growthAnalysis,
+      provenance,
       trajectory,
     };
+  }
+
+  async getGrowthAnalysis(studentId: string): Promise<StudentGrowthAnalysis> {
+    const profile = await this.getStudentProfile(studentId);
+    return { trajectory: profile.trajectory, analysis: profile.growthAnalysis };
   }
 
   /* --------------------------- 读：学生投影 --------------------------- */
@@ -333,11 +358,13 @@ export class GrowthService {
   /** 只返回**这个家长自己**的孩子。越权在服务端挡住，不靠前端隐藏。 */
   async getChildren(parentId: string): Promise<ChildRef[]> {
     const children = await this.directory.childrenOfParent(parentId);
-    return children.map((child) => ({
+    return Promise.all(children.map(async (child) => ({
       childId: child.userId,
       displayName: child.displayName,
-      activeProjectCount: this.getProjects(child.userId).length,
-    }));
+      activeProjectCount: this.learningStore
+        ? (await this.learningStore.listProjectsByStudent(child.userId)).filter((project) => !['completed', 'published', 'exploration'].includes(project.status)).length
+        : this.getProjects(child.userId).length,
+    })));
   }
 
   /** 家长是否能看到这个孩子。控制器必须先问这个方法。 */

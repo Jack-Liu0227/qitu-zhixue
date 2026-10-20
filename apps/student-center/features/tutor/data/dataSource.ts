@@ -14,6 +14,7 @@ import type {
   ProjectSummary,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorTeamHistoryPage,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import type { TutorProjectContext } from '../types';
@@ -34,6 +35,7 @@ export interface TutorDataSource {
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
   /** GET /tutor/team-graph?projectId=... — server-filtered agent projection. */
   getTeamGraph(projectId: string): Promise<TutorTeamGraph | null>;
+  getTeamHistory?(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage>;
   /** POST /tutor/sessions — idempotent session creation. */
   createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse>;
   /** GET /tutor/session — initial turns + `lastSeq` cursor seed. */

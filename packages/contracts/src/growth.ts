@@ -32,12 +32,63 @@ export type GrowthEvidenceSourceKind =
   | 'theory_check'
   | 'artifact'
   | 'reflection'
+  /** Opaque owned Tutor turn locator; never raw text or proof of mastery. */
+  | 'learning_interaction'
   | 'help_request';
 
 /** Versioned, closed contract exchanged between projection workers and Growth owners. */
 export const GROWTH_PROJECTION_CONTRACT_VERSION = 'qitu.growth-projection.v1' as const;
 export type GrowthProjectionType = 'learner_profile' | 'growth_trajectory';
 export type GrowthProjectionConfidence = 'low' | 'medium' | 'high';
+
+export interface StudentLearningAnalysisStatus {
+  status: 'accepted' | 'pending' | 'unavailable';
+  policyVersion: string | null;
+  observedThrough: string | null;
+  sourceEventId: string | null;
+  pendingReason: string | null;
+}
+
+export interface StudentGrowthTrajectoryProjection extends GrowthTrajectoryProjectionResult {
+  observedThrough: string | null;
+  policyVersion: string | null;
+}
+
+export interface StudentGrowthAnalysis {
+  trajectory: StudentGrowthTrajectoryProjection | null;
+  analysis: StudentLearningAnalysisStatus;
+}
+export type StudentGrowthAnalysisView = StudentGrowthAnalysis;
+
+/** Global Admin-owned purpose bindings. IDs are exact shared Admin/runtime identities. */
+export interface GrowthProjectionSettings {
+  profileAssistantId: string | null;
+  growthAssistantId: string | null;
+}
+
+export interface GrowthProjectionSettingsView {
+  revision: number;
+  settings: GrowthProjectionSettings;
+  assistants: Array<{ id: string; displayName: string }>;
+  /** Identity readiness only; this does not assert a successful model or event route. */
+  readiness: Record<'profile' | 'growth', 'ready' | 'unconfigured' | 'disabled_or_missing'>;
+  pendingPolicy: 'proposed';
+}
+
+export interface GrowthProjectionSettingsUpdate {
+  expectedRevision: number;
+  settings: GrowthProjectionSettings;
+}
+
+export function parseGrowthProjectionSettings(value: unknown): GrowthProjectionSettings | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const keys = ['profileAssistantId', 'growthAssistantId'] as const;
+  if (Object.keys(row).some((key) => !keys.includes(key as typeof keys[number]))) return null;
+  if (keys.some((key) => row[key] !== null && (typeof row[key] !== 'string'
+    || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/u.test(row[key])))) return null;
+  return { profileAssistantId: row.profileAssistantId as string | null, growthAssistantId: row.growthAssistantId as string | null };
+}
 
 export interface LearnerProfileProjectionResult {
   version: number;
@@ -86,7 +137,7 @@ export interface GrowthProjectionValidation {
   value?: GrowthProjectionResult;
 }
 
-const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|help_request):[A-Za-z0-9._:-]{1,180}$/u;
+const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|help_request|learning_interaction):[A-Za-z0-9._:-]{1,180}$/u;
 const PROFILE_KEYS = [
   'version', 'priorKnowledge', 'targetLevel', 'timeBudgetMinutesPerWeek',
   'preferences', 'interests', 'strengths', 'nextQuestions',

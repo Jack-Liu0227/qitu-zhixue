@@ -1,3 +1,5 @@
+import { RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
+import type { ManagedKnowledgeScope } from '../ai-tutor/tutor-knowledge-access';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
@@ -40,6 +42,7 @@ export class KnowledgeRetrievalService {
     base: KnowledgeBaseRow,
     query: string,
     topK: number,
+    scope?: ManagedKnowledgeScope,
   ) {
     const connection = await this.connection(base);
     if (!connection) return null;
@@ -51,7 +54,7 @@ export class KnowledgeRetrievalService {
       remoteKnowledgeBaseId: connection.external_ref.remoteKnowledgeBaseId,
     });
     if (!receipt.ok) return [];
-    const fresh = (await this.accessible(studentId, assistantId)).find((b) => b.id === base.id);
+    const fresh = (await this.accessible(studentId, assistantId, scope)).find((b) => b.id === base.id);
     if (!fresh || (await this.connection(fresh))?.fingerprint !== connection.fingerprint) return [];
     const manifest = receipt.manifest ?? {};
     const data =
@@ -80,9 +83,9 @@ export class KnowledgeRetrievalService {
         300,
       );
       const id = checksum(
-        `${base.id}:${assistantId}:${connection.fingerprint}:${sourceId}:${text}`,
+        `${scope?.key ?? studentId}:${base.id}:${assistantId}:${connection.fingerprint}:${sourceId}:${text}`,
       );
-      const origin = { kind: 'linked-knowledge', provider: connection.engine.provider, sourceId };
+      const origin = { scopeDigest: checksum(scope?.key ?? studentId), kind: 'linked-knowledge', provider: connection.engine.provider, sourceId };
       await this.center.query(
         sql`INSERT INTO knowledge_remote_evidence(id,kb_id,assistant_id,fingerprint,title,content,origin,expires_at) VALUES(${id},${base.id},${assistantId},${connection.fingerprint},${title},${text},${JSON.stringify(origin)}::jsonb,now()+interval '24 hours') ON CONFLICT(id) DO UPDATE SET expires_at=excluded.expires_at RETURNING id`,
       );
@@ -101,15 +104,26 @@ export class KnowledgeRetrievalService {
     return output;
   }
 
-  private async accessible(studentId: string, assistantId: string) {
-    if (!(await this.center.canRetrieve(assistantId))) return [];
-    return this.center.query<KnowledgeBaseRow>(sql`SELECT k.* FROM knowledge_bases k
+  private async accessible(studentId: string, assistantId: string, scope?: ManagedKnowledgeScope) {
+    if (!scope || scope.knowledgeBaseIds?.length === 0 || !(await this.center.canRetrieve(assistantId))) return [];
+    const ceiling = scope.knowledgeBaseIds === null ? sql`true` : sql`EXISTS (
+      SELECT 1 FROM knowledge_base_connections c WHERE c.kb_id=k.id AND c.status='ready'
+      AND c.external_ref->>'remoteKnowledgeBaseId' IN (${sql.join(scope.knowledgeBaseIds.map(id => sql`${id}`), sql`, `)}))`;
+    const bases = await this.center.query<KnowledgeBaseRow>(sql`SELECT k.* FROM knowledge_bases k
       JOIN users u ON u.id=${studentId}
       JOIN knowledge_base_agent_bindings b ON b.kb_id=k.id AND b.agent_kind='admin_assistant'
         AND b.agent_id=${assistantId} AND b.mode='retrieve' AND b.enabled=true
       WHERE k.lifecycle='active' AND (k.kind='platform' OR
         (k.kind='school' AND k.school_id=u.school_id) OR
-        (k.kind='student' AND k.owner_user_id=u.id)) ORDER BY (k.library_settings->>'isDefault'='true') DESC NULLS LAST,k.id`);
+        (k.kind='student' AND k.owner_user_id=u.id))
+        AND ${ceiling} ORDER BY (k.library_settings->>'isDefault'='true') DESC NULLS LAST,k.id`);
+    if (scope.knowledgeBaseIds === null) return bases;
+    const allowed = scope.knowledgeBaseIds;
+    const decisions = await Promise.all(bases.map(async base => {
+      const connection = await this.connection(base);
+      return connection?.engine.provider === 'ima' && allowed.includes(connection.external_ref.remoteKnowledgeBaseId ?? '') ? base : null;
+    }));
+    return decisions.filter((base): base is KnowledgeBaseRow => base !== null);
   }
 
   private async members(base: KnowledgeBaseRow) {
@@ -139,10 +153,11 @@ export class KnowledgeRetrievalService {
     return { engine, members };
   }
 
-  async search(studentId: string, assistantId: string, query: string, topK = 5) {
-    if (!(await this.center.canRetrieve(assistantId)))
+  async search(studentId: string, assistantId: string, query: string, topK = 5, scope?: ManagedKnowledgeScope) {
+    if (!await scope?.authorizeTool?.('knowledge_search') || !(await this.center.canRetrieve(assistantId)))
       return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [] };
-    const bases = await this.accessible(studentId, assistantId);
+    if (scope?.knowledgeBaseIds?.length === 0) return { state: 'PROJECT_KNOWLEDGE_SCOPE_UNAVAILABLE', evidence: [] };
+    const bases = await this.accessible(studentId, assistantId, scope);
     const evidence: {
       citationId: string;
       knowledgeBaseId: string;
@@ -162,6 +177,7 @@ export class KnowledgeRetrievalService {
         base,
         query.slice(0, 2000),
         topK,
+        scope,
       );
       if (linked) {
         evidence.push(...linked);
@@ -179,7 +195,7 @@ export class KnowledgeRetrievalService {
       });
       if (!receipt.ok) continue;
       // Revocation, scope, index replacement and source mutation take effect in this turn.
-      const fresh = (await this.accessible(studentId, assistantId)).find((k) => k.id === base.id);
+      const fresh = (await this.accessible(studentId, assistantId, scope)).find((k) => k.id === base.id);
       if (!fresh || fresh.active_index_version_id !== base.active_index_version_id) continue;
       const current = await this.snapshot(fresh);
       if (!current || JSON.stringify(current.engine) !== JSON.stringify(snapshot.engine)) continue;
@@ -203,6 +219,7 @@ export class KnowledgeRetrievalService {
         });
       }
     }
+    if (!await scope?.authorizeTool?.('knowledge_search')) return { state: 'CAPABILITY_NOT_AUTHORIZED', evidence: [] };
     evidence.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     return {
       state: evidence.length ? 'ready' : 'NO_KNOWLEDGE_EVIDENCE',
@@ -210,8 +227,8 @@ export class KnowledgeRetrievalService {
     };
   }
 
-  async read(studentId: string, assistantId: string, citationId: string) {
-    if (!(await this.center.canRetrieve(assistantId))) throw new NotFoundException('资料不可用');
+  async read(studentId: string, assistantId: string, citationId: string, scope?: ManagedKnowledgeScope) {
+    if (!await scope?.authorizeTool?.('knowledge_read') || !(await this.center.canRetrieve(assistantId))) throw new NotFoundException('资料不可用');
     if (citationId.startsWith('external~')) {
       const [record] = await this.center.query<{
         kb_id: string;
@@ -220,12 +237,12 @@ export class KnowledgeRetrievalService {
         content: string;
         origin: Record<string, unknown>;
       }>(
-        sql`SELECT kb_id,fingerprint,title,content,origin FROM knowledge_remote_evidence WHERE id=${citationId.slice(9)} AND assistant_id=${assistantId} AND expires_at>now()`,
+        sql`SELECT kb_id,fingerprint,title,content,origin FROM knowledge_remote_evidence WHERE id=${citationId.slice(9)} AND assistant_id=${assistantId} AND origin->>'scopeDigest'=${checksum(scope?.key ?? studentId)} AND expires_at>now()`,
       );
       const base =
         record &&
-        (await this.accessible(studentId, assistantId)).find((b) => b.id === record.kb_id);
-      if (!record || !base || (await this.connection(base))?.fingerprint !== record.fingerprint)
+        (await this.accessible(studentId, assistantId, scope)).find((b) => b.id === record.kb_id);
+      if (!await scope?.authorizeTool?.('knowledge_read') || !record || !base || (await this.connection(base))?.fingerprint !== record.fingerprint)
         throw new NotFoundException('资料不可用');
       return {
         citationId,
@@ -239,7 +256,7 @@ export class KnowledgeRetrievalService {
     const parts = citationId.split('~');
     if (parts.length !== 2 || !parts[0] || !parts[1]) throw new NotFoundException('资料不可用');
     const [versionId, memberId] = parts;
-    const base = (await this.accessible(studentId, assistantId)).find(
+    const base = (await this.accessible(studentId, assistantId, scope)).find(
       (k) => k.active_index_version_id === versionId,
     );
     if (!base) throw new NotFoundException('资料不可用');
@@ -247,8 +264,8 @@ export class KnowledgeRetrievalService {
     const member = snapshot?.members.find((m) => m.id === memberId);
     if (!member || !(await this.center.canRetrieve(assistantId, base.id)))
       throw new NotFoundException('资料不可用');
-    const fresh = (await this.accessible(studentId, assistantId)).find((k) => k.id === base.id);
-    if (!fresh || fresh.active_index_version_id !== versionId)
+    const fresh = (await this.accessible(studentId, assistantId, scope)).find((k) => k.id === base.id);
+    if (!await scope?.authorizeTool?.('knowledge_read') || !fresh || fresh.active_index_version_id !== versionId)
       throw new NotFoundException('资料不可用');
     return {
       citationId,
@@ -260,20 +277,13 @@ export class KnowledgeRetrievalService {
     };
   }
 
-  tools(studentId: string, assistantId: string): ModelRuntimeTool[] {
+  tools(studentId: string, assistantId: string, scope?: ManagedKnowledgeScope): ModelRuntimeTool[] {
+    if (!scope) return [];
     return [
       {
         name: 'knowledge_search',
-        description: '检索管理员授权的知识库，只返回真实资料证据',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', minLength: 1, maxLength: 2000 },
-            topK: { type: 'integer', minimum: 1, maximum: 8 },
-          },
-          required: ['query'],
-          additionalProperties: false,
-        },
+        description: RUNTIME_TOOL_CATALOG.find(tool => tool.id === 'knowledge_search')!.description,
+        inputSchema: RUNTIME_TOOL_CATALOG.find(tool => tool.id === 'knowledge_search')!.inputSchema!,
         execute: async (args) => {
           if (
             !args ||
@@ -292,19 +302,15 @@ export class KnowledgeRetrievalService {
             assistantId,
             args.query,
             args.topK as number | undefined,
+            scope,
           );
           return { isError: result.state !== 'ready', text: JSON.stringify(result) };
         },
       },
       {
         name: 'knowledge_read',
-        description: '读取已授权知识库中检索命中的来源正文',
-        inputSchema: {
-          type: 'object',
-          properties: { citationId: { type: 'string' } },
-          required: ['citationId'],
-          additionalProperties: false,
-        },
+        description: RUNTIME_TOOL_CATALOG.find(tool => tool.id === 'knowledge_read')!.description,
+        inputSchema: RUNTIME_TOOL_CATALOG.find(tool => tool.id === 'knowledge_read')!.inputSchema!,
         execute: async (args) => {
           if (
             !args ||
@@ -317,7 +323,7 @@ export class KnowledgeRetrievalService {
           try {
             return {
               isError: false,
-              text: JSON.stringify(await this.read(studentId, assistantId, args.citationId)),
+              text: JSON.stringify(await this.read(studentId, assistantId, args.citationId, scope)),
             };
           } catch {
             return { isError: true, text: 'RESOURCE_UNAVAILABLE' };

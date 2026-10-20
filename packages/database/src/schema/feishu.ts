@@ -4,9 +4,10 @@ import { sql } from 'drizzle-orm';
 /** Server-owned Feishu/Lark bot configuration. Secrets are AES-GCM ciphertext. */
 export const feishuBots = pgTable('feishu_bots', {
   id: text('id').primaryKey(),
-  /** One configuration per reporting assistant. */
+  /** One configuration per canonical assistant ID. */
   assistantId: text('assistant_id').notNull().default('feishu-reporting-assistant'),
   enabled: boolean('enabled').notNull().default(false),
+  inboundEnabled: boolean('inbound_enabled').notNull().default(false),
   appId: text('app_id'),
   appSecretEncrypted: text('app_secret_encrypted'),
   verificationTokenEncrypted: text('verification_token_encrypted'),
@@ -58,6 +59,8 @@ export const feishuReportDeliveries = pgTable('feishu_report_deliveries', {
   idempotencyKey: text('idempotency_key').notNull(),
   status: text('status').notNull().default('pending'),
   recipientHashes: jsonb('recipient_hashes').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  completedRecipientHashes: jsonb('completed_recipient_hashes').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  leaseId: text('lease_id'),
   requestId: text('request_id'),
   attempts: integer('attempts').notNull().default(0),
   lastError: text('last_error'),
@@ -68,3 +71,19 @@ export const feishuReportDeliveries = pgTable('feishu_report_deliveries', {
   assistantKeyUniqueIdx: uniqueIndex('feishu_report_deliveries_assistant_key_unique_idx').on(table.assistantId, table.idempotencyKey),
   statusIdx: index('feishu_report_deliveries_status_idx').on(table.status),
 }));
+
+/** Durable inbox contains classified commands and hashes, never raw message text. */
+export const feishuInbox = pgTable('feishu_inbox', {
+  id: text('id').primaryKey(),
+  assistantId: text('assistant_id').notNull(),
+  appId: text('app_id').notNull(),
+  senderHash: text('sender_hash').notNull(),
+  command: text('command').notNull(),
+  status: text('status').notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  leaseId: text('lease_id'),
+  lastError: text('last_error'),
+  replyMessageId: text('reply_message_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({ statusIdx: index('feishu_inbox_status_idx').on(table.status, table.updatedAt) }));

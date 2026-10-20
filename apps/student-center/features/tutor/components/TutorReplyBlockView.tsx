@@ -129,6 +129,7 @@ export function TutorReplyBlockView({
           onRequestExplanation={onRequestQuizExplanation ? () => onRequestQuizExplanation(block.questionId) : undefined}
           rationaleHint={block.rationaleHint}
           graded={block.graded}
+          persistedAnswer={block.answer}
           disabled={disabled}
         />
       );
@@ -166,6 +167,8 @@ export function TutorReplyBlockView({
           savedObservation={block.savedObservation}
           key={block.experimentId}
           initialMode={block.initialMode}
+          initialParameters={block.initialParameters}
+          allowedModels={block.allowedModels}
           predictionGate={block.predictionGate}
           onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}
         />

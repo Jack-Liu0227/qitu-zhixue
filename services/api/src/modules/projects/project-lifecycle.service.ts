@@ -13,6 +13,8 @@ import {
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { PROJECT_STAGE_ORDER } from './intent-confirmation.state-machine';
+import { orderStudentProjects } from './current-project';
+import { projectStageLabel } from '@qitu/contracts';
 
 export interface ProjectNextStepProjection {
   title: string;
@@ -52,7 +54,7 @@ function buildStages(project: LearningProjectRecord) {
   return PROJECT_STAGE_ORDER.map((stage, index) => ({
     id: stage,
     index,
-    name: stage,
+    name: projectStageLabel(stage),
     description: index <= project.currentStageIndex ? '已由服务端记录' : '等待前置阶段完成',
     status: index < project.currentStageIndex ? 'done' as const : index === project.currentStageIndex ? 'active' as const : 'pending' as const,
     stage,
@@ -74,7 +76,7 @@ export class ProjectLifecycleService {
   async listProjects(actor: CurrentUser): Promise<LearningProjectRecord[]> {
     if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可读取项目列表');
     // Intent-confirmed projects exist before a learning plan has been generated.
-    return this.store.listProjectsByStudent(actor.id);
+    return orderStudentProjects(await this.store.listProjectsByStudent(actor.id));
   }
 
   async getProjectOverview(actor: CurrentUser, projectId: string): Promise<ProjectOverviewProjection> {

@@ -28,7 +28,7 @@ const project = new KnowledgeRetrievalService(center, {} as KnowledgeEngineServi
 test('knowledge metadata shares runtime schemas, without any retrieval execution', async () => {
   const service = new KnowledgeToolCatalogService(center, project);
   const expected = project
-    .tools('', '')
+    .tools('', '', { key: 'catalog-fixture', knowledgeBaseIds: [] })
     .map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
   assert.deepEqual((await service.list('platformTools', 'project-knowledge')).tools, expected);
   assert.equal(expected[0]!.inputSchema.additionalProperties, false);

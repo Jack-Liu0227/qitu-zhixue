@@ -1,4 +1,4 @@
-import { TagChips } from '@qitu/ui';
+import { TagChips, EntityCover } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import { projectDetailHref } from '../lib/links';
 import type { ProjectListItem } from '../types';
@@ -15,18 +15,20 @@ export interface ProjectCardProps {
 export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
   const body = (
     <>
-      <div className="qitu-project-cover" aria-hidden={!project.coverUrl}>
+      <div className={project.coverUrl ? 'qitu-project-cover' : 'qitu-project-cover is-placeholder'} aria-hidden={!project.coverUrl}>
         {project.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={project.coverUrl} alt="" />
         ) : (
-          <span className="qitu-project-cover-fallback" />
+          <EntityCover assetId="brand-pbl-v1" height={120} />
         )}
       </div>
       <div className="qitu-project-card-body">
-        <h3 className="qitu-project-card-title">{project.title}</h3>
+        {project.isCurrent ? <span className="qitu-badge qitu-badge-primary">当前项目</span> : null}
+        <h3 className="qitu-project-card-title" title={project.title}>{project.title}</h3>
         <p className="qitu-project-card-subtitle">{project.subtitle}</p>
         <TagChips tags={project.tags} />
+        <span className="qitu-project-card-action">{readOnly ? '离线 · 只读' : '查看项目 →'}</span>
       </div>
     </>
   );

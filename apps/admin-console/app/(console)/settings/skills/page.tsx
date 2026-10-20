@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { AssistantGlyph } from '@qitu/ui';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,6 +26,8 @@ interface SkillItem {
   updatedAtText: string;
   boundAssistantIds: string[];
   files: SkillFile[];
+  runtime?: AdminRuntimeSkill['runtime'];
+  available?: boolean;
   /** 本地登记的草稿。运行时目录中的技能为只读来源（服务端暂不支持写入技能内容）。 */
   local?: boolean;
 }
@@ -36,6 +40,16 @@ const SKILL_SOURCE_LABELS: Record<AdminRuntimeSkill['source'], string> = {
   unknown: '未知来源',
 };
 
+function canBindSkill(skill: SkillItem): boolean {
+  return !skill.local && skill.available !== false && (skill.runtime ?? 'teaching') === 'teaching';
+}
+
+function bindingNotice(skill: SkillItem): string {
+  if (skill.runtime === 'admin') return 'Admin 专用技能由管家按需加载，不绑定普通助手。';
+  if (skill.local) return '本地草稿尚未注册到运行时，不能绑定到助手。';
+  return '技能不可用或运行范围未知，请检查服务端配置。';
+}
+
 /** 技能目录来自 AI 运行时快照（GET /api/v1/admin/ai-runtime），不再内置任何编造条目。 */
 function mapRuntimeSkill(skill: AdminRuntimeSkill): SkillItem {
   const content = skill.content ?? '';
@@ -43,7 +57,9 @@ function mapRuntimeSkill(skill: AdminRuntimeSkill): SkillItem {
     id: skill.id,
     name: skill.label,
     description: skill.description ?? '',
-    tags: [SKILL_SOURCE_LABELS[skill.source] ?? skill.source],
+    tags: [SKILL_SOURCE_LABELS[skill.source] ?? skill.source, skill.runtime === 'admin' ? 'Admin 专用' : '教学技能'],
+    runtime: skill.runtime ?? 'teaching',
+    available: skill.status === 'ready',
     filesCount: 1,
     addedBy: SKILL_SOURCE_LABELS[skill.source] ?? skill.source,
     updatedAtText: skill.version ? `v${skill.version}` : '—',
@@ -154,21 +170,28 @@ export default function SkillsSettingsPage() {
     successMessage: string,
   ) => {
     if (saveInFlightRef.current) {
-      setSaveNotice('Another binding save is still in progress; wait for it to finish.');
+      setSaveNotice('上一项绑定仍在保存，请稍候。');
       return false;
     }
     if (catalogPending || catalogError) {
-      setSaveNotice('Runtime skill catalog is unavailable; refresh before saving bindings.');
+      setSaveNotice('运行时技能目录不可用，请刷新后再保存。');
       return false;
     }
     if (!skills.some((skill) => !skill.local)) {
-      setSaveNotice('Runtime skill catalog is empty; refresh before saving bindings.');
+      setSaveNotice('运行时技能目录为空，请刷新后核对。');
       return false;
     }
     // Never drop an unknown value when the catalog may be partial or stale:
     // silently removing a binding would overwrite state the admin cannot see.
     if (updates.some(({ enabledSkills }) => hasUnmappedSkillValue(enabledSkills))) {
-      setSaveNotice('Some existing skill bindings are not in the complete catalog; refresh before saving.');
+      setSaveNotice('现有绑定包含目录未识别的技能，请刷新后核对，未覆盖原绑定。');
+      return false;
+    }
+    if (updates.some(({ enabledSkills }) => normalizeSkillIds(enabledSkills).some(id => {
+      const skill = skills.find(item => item.id === id);
+      return skill !== undefined && !canBindSkill(skill);
+    }))) {
+      setSaveNotice('绑定包含 Admin 专用或不可用技能，请先移除这些绑定。');
       return false;
     }
 
@@ -179,16 +202,23 @@ export default function SkillsSettingsPage() {
           persistAssistantBinding(assistantId, 'enabledSkills', normalizeSkillIds(enabledSkills)),
         ),
       );
+      let latest: AdminAssistantConfig[];
       try {
-        await reloadBindings();
+        latest = await reloadBindings();
       } catch {
-        setSaveNotice('Unable to confirm binding state; refresh and retry.');
+        setSaveNotice('回读失败，绑定是否生效尚未确认。请刷新后核对。');
         return false;
       }
-      const failed = results.some((result) => result.status === 'rejected');
-      setSaveNotice(failed ? 'Some bindings failed to save; review and retry.' : successMessage);
-      setTimeout(() => setSaveNotice(''), 2500);
-      return !failed;
+      const failures = updates.flatMap((update, index) => {
+        const result = results[index];
+        const actual = latest.find((assistant) => assistant.id === update.assistantId);
+        const equal = actual && JSON.stringify([...actual.enabledSkills].sort()) === JSON.stringify(normalizeSkillIds(update.enabledSkills).sort());
+        if (result?.status === 'fulfilled' && equal) return [];
+        const reason = result?.status === 'rejected' && result.reason instanceof Error ? result.reason.message : '回读与请求不一致';
+        return [`${actual?.name ?? update.assistantId}：${reason}`];
+      });
+      setSaveNotice(failures.length ? `已确认 ${updates.length - failures.length}/${updates.length} 位助手；失败：${failures.join('；')}` : `${successMessage} 已回读确认 ${updates.length} 位助手。`);
+      return failures.length === 0;
     } finally {
       saveInFlightRef.current = false;
     }
@@ -202,8 +232,8 @@ export default function SkillsSettingsPage() {
       setSaveNotice('未找到服务端助手配置，绑定未更改。');
       return;
     }
-    if (currentSkill.local) {
-      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+    if (!canBindSkill(currentSkill)) {
+      setSaveNotice(bindingNotice(currentSkill));
       return;
     }
 
@@ -222,7 +252,7 @@ export default function SkillsSettingsPage() {
   useEffect(() => {
     void reloadBindings().catch(() => {
       setAssistants([]);
-      setSaveNotice('Assistant binding state is unavailable; retry before editing bindings.');
+      setSaveNotice('助手绑定状态不可用，请重试后再编辑。');
     });
   }, [reloadBindings]);
 
@@ -250,7 +280,7 @@ export default function SkillsSettingsPage() {
   const grantAllSkillsForAssistant = async (asstIdentifier: string) => {
     const matchedAsst = assistants.find((a) => a.id === asstIdentifier || a.name === asstIdentifier);
     if (!matchedAsst) return;
-    const skillIds = matrixSkills.filter((skill) => !skill.local).map((skill) => skill.id);
+    const skillIds = matrixSkills.filter(canBindSkill).map((skill) => skill.id);
     const enabledSkills = [...new Set([...normalizeSkillIds(matchedAsst.enabledSkills), ...skillIds])];
     await persistBindings(
       [{ assistantId: matchedAsst.id, enabledSkills }],
@@ -274,8 +304,8 @@ export default function SkillsSettingsPage() {
   const grantAllAssistantsForSkill = async (skillId: string) => {
     const targetSkill = skills.find((skill) => skill.id === skillId);
     if (!targetSkill) return;
-    if (targetSkill.local) {
-      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+    if (!canBindSkill(targetSkill)) {
+      setSaveNotice(bindingNotice(targetSkill));
       return;
     }
     await persistBindings(
@@ -302,7 +332,7 @@ export default function SkillsSettingsPage() {
 
   // 全局全部全选
   const grantEntireSkillsMatrix = async () => {
-    const skillIds = matrixSkills.filter((skill) => !skill.local).map((skill) => skill.id);
+    const skillIds = matrixSkills.filter(canBindSkill).map((skill) => skill.id);
     await persistBindings(
       assistants.map((assistant) => ({
         assistantId: assistant.id,
@@ -445,8 +475,9 @@ export default function SkillsSettingsPage() {
     if (selectedSkills.size === 0) return;
     const targetIds = Array.from(selectedSkills);
     const targetSkills = skills.filter((skill) => targetIds.includes(skill.id));
-    if (targetSkills.some((skill) => skill.local)) {
-      setSaveNotice('本地草稿尚未注册到运行时，不能绑定到助手。');
+    const blockedSkill = targetSkills.find(skill => !canBindSkill(skill));
+    if (blockedSkill) {
+      setSaveNotice(bindingNotice(blockedSkill));
       return;
     }
     const skillIds = targetSkills.map((skill) => skill.id);
@@ -524,7 +555,7 @@ export default function SkillsSettingsPage() {
 
           <div className="admin-skill-top-actions">
             {saveNotice ? (
-              <span style={{ fontSize: '13px', color: '#16a34a', fontWeight: 600 }}>{saveNotice}</span>
+              <span role="status" style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{saveNotice}</span>
             ) : null}
             <button
               type="button"
@@ -554,13 +585,13 @@ export default function SkillsSettingsPage() {
         {/* 技能标题与元数据 */}
         <div className="admin-skill-title-block">
           <div className="admin-skill-title-row">
-            <span className="admin-skill-icon">📖</span>
+            <span className="admin-skill-icon"><VisualAsset assetId="capability-skills-v1" size={32} /></span>
             <h1 className="admin-skill-main-title">{editingSkill.name}</h1>
           </div>
           <div className="admin-skill-meta-tags">
             <span className="admin-skill-meta-pill">{editingSkill.local ? '✎ 本地草稿' : `📦 ${editingSkill.addedBy}`}</span>
             <span className="admin-skill-meta-pill">📄 {editingSkill.filesCount} 个文件</span>
-            <span className="admin-skill-meta-pill">👥 {editingSkill.boundAssistantIds.length} 个智能体在用</span>
+            <span className="admin-skill-meta-pill">{editingSkill.runtime === 'admin' ? 'Admin 管家专用' : `👥 ${editingSkill.boundAssistantIds.length} 个智能体在用`}</span>
             {!editingSkill.local && editingSkill.updatedAtText !== '—' ? (
               <span className="admin-skill-meta-pill">🕒 {editingSkill.updatedAtText}</span>
             ) : null}
@@ -569,7 +600,8 @@ export default function SkillsSettingsPage() {
 
         {!editingSkill.local ? (
           <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
-            此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器；与助手的绑定/解绑会通过助手接口真实持久化。
+            此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器。
+            {editingSkill.runtime === 'admin' ? ' Admin 管家按需加载已发布的专用技能，无需在助手矩阵中勾选。' : ' 与助手的绑定/解绑会通过助手接口真实持久化。'}
           </div>
         ) : null}
 
@@ -654,12 +686,13 @@ export default function SkillsSettingsPage() {
             <section className="admin-skill-card-section">
               <div className="admin-skill-agents-header">
                 <h2 className="admin-skill-section-title">
-                  被 {editingSkill.boundAssistantIds.length} 个智能体使用
+                  {editingSkill.runtime === 'admin' ? '使用范围：Admin 管家' : `被 ${editingSkill.boundAssistantIds.length} 个智能体使用`}
                 </h2>
                 <button
                   type="button"
                   className="settings-action-btn"
                   onClick={() => setShowAddAssistantModal(true)}
+                  disabled={!canBindSkill(editingSkill)}
                 >
                   + 添加到智能体
                 </button>
@@ -667,7 +700,9 @@ export default function SkillsSettingsPage() {
 
               {boundAssistants.length === 0 ? (
                 <div className="admin-skill-empty-agents">
-                  暂未绑定任何智能体，点击右上角“添加到智能体”进行挂载。
+                  {editingSkill.runtime === 'admin'
+                    ? '管家请求由服务端校验管理员权限后，加载此技能并执行受控操作；普通助手与学生 AI 搭档不加载管理技能。'
+                    : '暂未绑定任何智能体，点击右上角“添加到智能体”进行挂载。'}
                 </div>
               ) : (
                 <div className="admin-skill-agents-list">
@@ -934,10 +969,10 @@ export default function SkillsSettingsPage() {
       {/* 顶部标题与新建按钮 */}
       <div className="admin-skills-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div className="admin-skills-title-group">
-          <span className="admin-skills-top-icon">📖</span>
+          <span className="admin-skills-top-icon"><VisualAsset assetId="capability-skills-v1" size={36} /></span>
           <h1 className="admin-skills-title">Skills (技能中心)</h1>
           <span className="admin-skills-total-count">{skills.length}</span>
-          <span className="admin-skills-tagline">工作区里任何智能体都能使用的指令规范与能力包。</span>
+          <span className="admin-skills-tagline">统一管理教学与 Admin 专用技能，按使用范围加载。</span>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -983,11 +1018,12 @@ export default function SkillsSettingsPage() {
             className="settings-action-btn is-primary"
             onClick={handleCreateSkill}
           >
-            + 新建 skill
+            + 新建技能
           </button>
         </div>
       </div>
 
+      {saveNotice ? <div role="status" className="settings-binding-notice">{saveNotice}<button type="button" className="qitu-button qitu-button-ghost" onClick={() => setSaveNotice('')}>关闭提示</button></div> : null}
       {catalogError ? (
         <div role="alert" style={{ marginTop: '12px', padding: '10px 14px', background: '#fef2f2', color: '#b91c1c', borderRadius: '8px', fontSize: '13px' }}>
           技能目录：{catalogError}
@@ -1002,12 +1038,12 @@ export default function SkillsSettingsPage() {
             <div>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>技能分配矩阵 (Skills Matrix)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
-                行代表教学团队中的导师助手，列代表运行时目录中的技能。打上✔ 即为助手启用该技能（通过助手接口持久化），取消✔ 即刻关闭。
+                当前矩阵包含 {assistants.length} 位助手、{matrixSkills.length} 项技能。勾选后保存并回读，结果以页面回执为准。
               </p>
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+          <div className="settings-permission-matrix" role="region" aria-label="授权矩阵，可横向滚动查看全部列" tabIndex={0} style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -1057,6 +1093,7 @@ export default function SkillsSettingsPage() {
                     <th key={sk.id} style={{ padding: '12px 14px', color: '#0369a1', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                         <span>📖 {sk.name}</span>
+                        {sk.runtime === 'admin' ? <span>Admin 管家专用</span> : null}
                         <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>({sk.filesCount} 个规范文件)</span>
                       </div>
                       {/* 纵向全选 / 纵向取消 */}
@@ -1064,6 +1101,7 @@ export default function SkillsSettingsPage() {
                         <button
                           type="button"
                           onClick={() => void grantAllAssistantsForSkill(sk.id)}
+                          disabled={!canBindSkill(sk)}
                           style={{
                             fontSize: '10.5px',
                             padding: '2px 6px',
@@ -1081,6 +1119,7 @@ export default function SkillsSettingsPage() {
                         <button
                           type="button"
                           onClick={() => void revokeAllAssistantsForSkill(sk.id)}
+                          disabled={sk.runtime === 'admin'}
                           style={{
                             fontSize: '10.5px',
                             padding: '2px 6px',
@@ -1118,12 +1157,21 @@ export default function SkillsSettingsPage() {
                       </td>
 
                       {matrixSkills.map((sk) => {
+                        if (sk.runtime === 'admin') return (
+                          <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center', color: '#64748b' }}>
+                            Admin 专用
+                          </td>
+                        );
                         const isChecked = isSkillBoundToAssistant(sk, asst);
                         return (
                           <td key={sk.id} style={{ padding: '12px 14px', textAlign: 'center' }}>
-                            <div
-                              onClick={() => toggleSkillForAssistant(sk.id, asst.id)}
+                            <button
+                              type="button"
+                              onClick={() => canBindSkill(sk) && void toggleSkillForAssistant(sk.id, asst.id)}
                               role="checkbox"
+                              aria-label={`${asst.name} · ${sk.name}`}
+                              disabled={!canBindSkill(sk)}
+                              aria-disabled={!canBindSkill(sk)}
                               aria-checked={isChecked}
                               style={{
                                 display: 'inline-flex',
@@ -1145,12 +1193,12 @@ export default function SkillsSettingsPage() {
                               }}
                               title={
                                 isChecked
-                                  ? `${asst.name} 已启用 ${sk.name} (点击取消打勾即刻关闭)`
-                                  : `${asst.name} 未启用 ${sk.name} (点击打上✔ 立即生效)`
+                                  ? `${asst.name} 已绑定 ${sk.name}；点击提交取消绑定，回读后确认`
+                                    : !canBindSkill(sk) ? bindingNotice(sk) : `${asst.name} 未绑定 ${sk.name}；点击提交绑定，回读后确认`
                               }
                             >
                               {isChecked ? '✓' : ''}
-                            </div>
+                            </button>
                           </td>
                         );
                       })}
@@ -1279,7 +1327,7 @@ export default function SkillsSettingsPage() {
             ) : filteredSkills.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                  {searchQuery ? '没有找到符合条件的技能' : 'AI 运行时暂未提供技能目录；可点击右上角「+ 新建 skill」登记本地草稿。'}
+                  {searchQuery ? '没有找到符合条件的技能' : 'AI 运行时暂未提供技能目录；可点击右上角「+ 新建技能」登记本地草稿。'}
                 </td>
               </tr>
             ) : null}
@@ -1316,6 +1364,7 @@ export default function SkillsSettingsPage() {
                   </td>
                   <td>
                     <strong className="admin-skill-table-name">{skill.name}</strong>
+                    {skill.runtime === 'admin' ? <span className="admin-skill-meta-pill">Admin 专用</span> : null}
                   </td>
                   <td>
                     <div className="admin-skill-avatar-stack">
@@ -1327,7 +1376,8 @@ export default function SkillsSettingsPage() {
                       {bound.length > 3 ? (
                         <span className="admin-skill-avatar-more">+{bound.length - 3}</span>
                       ) : null}
-                      {bound.length === 0 ? (
+                      {skill.runtime === 'admin' ? <span>Admin 管家 · 按需加载</span> : null}
+                      {bound.length === 0 && skill.runtime !== 'admin' ? (
                         <span className="admin-skill-none-used">— 未使用</span>
                       ) : null}
                     </div>

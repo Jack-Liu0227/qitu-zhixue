@@ -7,7 +7,7 @@
 
 ```typescript
 interface QituSDK<Input, Result, Profile> {
-  scope: TutorAgentScope;
+  scope: QituSDKScope;
   mastery: {
     evaluate(input): Promise<MasteryAssessmentResult>;
     getCurrent(input): Promise<CurrentMasteryProjection[]>;
@@ -18,14 +18,14 @@ interface QituSDK<Input, Result, Profile> {
   };
   agent: { run(input: Input): Promise<Result> };
   project: {
-    canAdvance(input): Promise<boolean>;
+    canAdvance(): Promise<QituProjectGate>;
     advance(idempotencyKey: string): Promise<...>;
   };
   profile: { get(): Promise<Profile> };
 }
 ```
 
-- 所有 port **必须由调用方提供**；缺 port 不会退回 noop 或内存假成功——fail closed
+- mastery / agent / project / profile 领域 port **必须由调用方提供**；缺 port 不会退回 noop 或内存假成功——fail closed
   （`SDK_PORT_NOT_CONFIGURED`）。
 
 ## 2. 服务端调用形状
@@ -71,3 +71,13 @@ await sdk.profile.get();
 - [`overview.md`](./overview.md)
 - [`agent-runtime.md`](./agent-runtime.md)
 - [`../student/learning-plan.md`](../student/learning-plan.md)
+
+## 6. Skills、工具与团队目录（2026-10-21）
+
+目录通过服务端 catalog 端口异步投影，使用 `await sdk.skills.list()`、`await sdk.tools.list()`、`await sdk.assistants.get(id)` 等调用。没有注入目录时返回空列表；未知团队不会回退到默认团队。API factory 当前提供所选助手、真实已发布技能、工具描述和两个只读 owner；团队组合方仍须提供经授权的冻结版本。
+
+工具目录只返回描述与 schema，不暴露 execute closure。`sdk.tools.call()` 在每次调用时重新授权，绑定原 student/project scope。错误区分 `SDK_TOOL_NOT_FOUND`、`SDK_TOOL_NOT_CONFIGURED`、`SDK_TOOL_DENIED`；MCP 对应 `SDK_MCP_NOT_CONFIGURED` / `SDK_MCP_DENIED`，没有执行器不返回成功回显。
+
+`RUNTIME_TOOL_CATALOG` 是 canonical 定义来源；领域服务描述、SDK 只读接口与模型工具有不同调用入口。目录中有名称不表示已授予模型执行权限，领域服务绑定不能停用服务端门禁。API factory 的 `mastery_query` 与 `student_profile_get` 复用现有 owner；知识搜索/读取经 Tutor 的受控 closure 执行。
+
+完整边界与验证见 [本次优化报告](../plan/codex/runtime-governance-optimization-20261021.md)。

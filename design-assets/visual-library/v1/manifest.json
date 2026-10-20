@@ -1,0 +1,1656 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-20T20:55:29.333Z",
+  "assets": [
+    {
+      "id": "avatar-general-v1",
+      "name": "通用搭档",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "the original orbit crest, no extra accessories",
+      "source": "originals/avatar-general-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "b7d42422abd8c583fc128bab2c9ce6e7cbefa173ddf167b81ff4f91040ca5bbb",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-general-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3658,
+          "sha256": "cfe819de792fad9aef536bb2d6fbe012863ff7f61eb0e6770ee298934e981b9d"
+        },
+        {
+          "file": "avatar-general-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 24249,
+          "sha256": "64e585cbf44685412035835a0c88c03f78a2473544b9465d9b02deb2ae0d4cd5"
+        }
+      ]
+    },
+    {
+      "id": "avatar-explorer-v1",
+      "name": "探索发现",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large simple compass crest",
+      "source": "originals/avatar-explorer-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "22296c2112228ec0f8452059a28b995d85c4eb1b5d1cd00b8eb3e25ef37e87f6",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-explorer-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3521,
+          "sha256": "56c0bdc6e03d7c4ffabdc8a5c2935de9b48306c6bcf3fddf23b96a44a9a8c5f0"
+        },
+        {
+          "file": "avatar-explorer-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 23530,
+          "sha256": "051cdb7bf755556839333c12369621bdc4e2f21f02a6f279ff5aa60eee55aefa"
+        }
+      ]
+    },
+    {
+      "id": "avatar-concept-v1",
+      "name": "概念理解",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large open-book crest with a small light",
+      "source": "originals/avatar-concept-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "aff9583a015c656fb67d38bde24f61d8c2f53ff887a6ab4774396b22b0e7ddd2",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-concept-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3226,
+          "sha256": "330b6d606c110d481a91e8c1ea0a196954efabd61278ff28951901e0b44cafc9"
+        },
+        {
+          "file": "avatar-concept-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 20835,
+          "sha256": "36868db16d6062d344cdc951fd7c0bfe83df227593da4c624180d70a17089d29"
+        }
+      ]
+    },
+    {
+      "id": "avatar-experiment-v1",
+      "name": "实验探究",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large simplified microscope crest",
+      "source": "originals/avatar-experiment-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "47843f674261a1b541751d63a1773ba3d41a6db078bc498f8b4e3b677bc01b11",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-experiment-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3348,
+          "sha256": "f64d7b34c71eaceeab23358f4fbe166bca6c764c21ac04262084c067b754f804"
+        },
+        {
+          "file": "avatar-experiment-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 21647,
+          "sha256": "030157bfa542bc682fe973709474794e8bd6c456789ac1fc8be62abf09c3544d"
+        }
+      ]
+    },
+    {
+      "id": "avatar-coding-v1",
+      "name": "编程创造",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large modular coding-block crest",
+      "source": "originals/avatar-coding-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "11f2a6bd5116f22461403d5545a2f54be7ad2f955e1a463505f82773a64e9368",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-coding-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3387,
+          "sha256": "1f92be1699ddb01c23e0e737c9f79d34effe0330aa0cb7edca276185749ee2e3"
+        },
+        {
+          "file": "avatar-coding-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 21786,
+          "sha256": "272e40035eb3ecdba08d51c6803a188de25a015bea4094f66b3f7fda280e8398"
+        }
+      ]
+    },
+    {
+      "id": "avatar-data-v1",
+      "name": "数据分析",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large three-bar data-chart crest",
+      "source": "originals/avatar-data-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "a48c74ce8889f52ea9b0761fad47a2758e04933326dce335474251d816f4fd70",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-data-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3399,
+          "sha256": "4547889cc97426a7b652d90933843d93b247e6533a8eb24c9d01580d3271fb72"
+        },
+        {
+          "file": "avatar-data-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 21949,
+          "sha256": "eb6280730ef4fdce8770c54e1bc461a5fbcfed5d916c43028a42dc877d676aaf"
+        }
+      ]
+    },
+    {
+      "id": "avatar-review-v1",
+      "name": "表达评议",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large speech-bubble and evidence-card crest",
+      "source": "originals/avatar-review-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "7fda01442d78e02a366be2343a1a126621371b026661c6d12f63dc6ddcd115c7",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-review-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3450,
+          "sha256": "6030be434a8e912ff5fc0c0b3f0e10afb46cd9d4ed1bebf1936e98154f505fdd"
+        },
+        {
+          "file": "avatar-review-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 22686,
+          "sha256": "24b64a2ef9915c7b906dc634095fd829a50afa572ceeafd8743bdca5fb1dbac4"
+        }
+      ]
+    },
+    {
+      "id": "avatar-growth-v1",
+      "name": "成长陪伴",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large fresh sprout crest",
+      "source": "originals/avatar-growth-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "dca970ad6cd4b66260dda9ca3f07cf42f9736bc545b1f20dbad38a3e8fe93dd8",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-growth-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3315,
+          "sha256": "4f0cc6abc556b11f5541e3545994a58d487823a27bd67212ecef852baac06341"
+        },
+        {
+          "file": "avatar-growth-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 20279,
+          "sha256": "2c2f86e559b7d49eabec085c622db101cfc3ca66dc57699b29880baf09dadcb6"
+        }
+      ]
+    },
+    {
+      "id": "avatar-coordinator-v1",
+      "name": "协作组织",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large connected-three-nodes crest",
+      "source": "originals/avatar-coordinator-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "b97a965949a05ea9b1bcbd054683503d947e00fa6e77f11efe1cd93606259bc7",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-coordinator-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3468,
+          "sha256": "a429c1591ff0b383cdd668b7ebc470a9601d5e9ae2bffb2a6ddf767c84882bec"
+        },
+        {
+          "file": "avatar-coordinator-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 22545,
+          "sha256": "a62e2d8d7fdc9450ec60b31d0acaca6c9ab0b147432696c2bfe2219a76eb9cc0"
+        }
+      ]
+    },
+    {
+      "id": "avatar-creative-v1",
+      "name": "创意设计",
+      "category": "assistant",
+      "usage": "avatar",
+      "motif": "one large artist-palette crest",
+      "source": "originals/avatar-creative-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "bd7def766ebde6e50fa78e1f253f37430257fca15e13c79f12a6fe55cbcae7b5",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "avatar-creative-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3271,
+          "sha256": "209378a9e2fce092a4d4e0ec0cf29ee05d67a93d6613f7950fd0ad6965c6dc2f"
+        },
+        {
+          "file": "avatar-creative-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 21270,
+          "sha256": "b4b6420f4c94d68947b9cd40307b71cce5588829653cb459d00cfae5959cf692"
+        }
+      ]
+    },
+    {
+      "id": "team-optics-v1",
+      "name": "光学协作",
+      "category": "team",
+      "usage": "icon",
+      "motif": "three connected white and cobalt collaboration nodes surrounding a glass prism with one stylized cyan beam",
+      "source": "originals/team-optics-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "1b96faf959d20ec01a24aeebe25cf666f4dadbb996787d4004a31af95d500e25",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "team-optics-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2955,
+          "sha256": "c3f24f51840f745c2a0a7bba2cb6affb6ce14e0c18c861cc7576bf7e234ae7fa"
+        },
+        {
+          "file": "team-optics-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 20181,
+          "sha256": "f6624d7046ccc03c2915fcae164ad78ef805791828753db66891fe9da2bce963"
+        }
+      ]
+    },
+    {
+      "id": "team-kinetic-v1",
+      "name": "动能协作",
+      "category": "team",
+      "usage": "icon",
+      "motif": "three connected collaboration nodes surrounding a small cart and a curved track",
+      "source": "originals/team-kinetic-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "13901e2615ddcbd83fd13cfeb2d43b454cd92dbf46794128122cce0437c7d4c6",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "team-kinetic-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2999,
+          "sha256": "5c7a94adbe2094b9a26049561bf656c60c9a2f71afe85be17e031c422b9418b7"
+        },
+        {
+          "file": "team-kinetic-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 18051,
+          "sha256": "0c7c5f5e42834272244c8e48b1a6e8d73513e89c14c9560c75cd2d1eff56e384"
+        }
+      ]
+    },
+    {
+      "id": "team-coding-v1",
+      "name": "编程协作",
+      "category": "team",
+      "usage": "icon",
+      "motif": "three connected collaboration nodes surrounding modular coding blocks",
+      "source": "originals/team-coding-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "94a88a734cc20c827c48bdd359cf9bb24df344cccc05a9ebbee3380d8dbde6c7",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "team-coding-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3122,
+          "sha256": "7029f28fccc5e34809a0251d76ffba6a1cb0934438ad6036718a9d524b53eca0"
+        },
+        {
+          "file": "team-coding-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 20144,
+          "sha256": "c9875c7088f75913a857581ac0135c57aefc33c85222226840638bc5e8f7ab12"
+        }
+      ]
+    },
+    {
+      "id": "template-optics-v1",
+      "name": "光学探究",
+      "category": "template",
+      "usage": "icon",
+      "motif": "one glass prism with a clean stylized cyan light beam, thematic illustration not a measured diagram",
+      "source": "originals/template-optics-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "28fa3fea6a57065fad4cddac64e07c5eb27607b4bf0aae1453328a5b0e6a2e43",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "template-optics-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2785,
+          "sha256": "de4784f23e06a418e9f2c9a3e0000ccc0d6a40656c07b260347f7af9db4f5f2f"
+        },
+        {
+          "file": "template-optics-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 14206,
+          "sha256": "c5d00db56da87b12259db812cb4dbb2d1252b067ed9ab2ae2de8c57ac6005804"
+        }
+      ]
+    },
+    {
+      "id": "template-kinetic-v1",
+      "name": "动能探究",
+      "category": "template",
+      "usage": "icon",
+      "motif": "one small cobalt cart on a short tilted white laboratory track",
+      "source": "originals/template-kinetic-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "f328d4f4da3cc31d2e7e384d4efdf830147f13eb610389257460f14f9c626206",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "template-kinetic-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2904,
+          "sha256": "7fd05a51516ebce18fbc975b0ba454a79103298bfc238ecda3739cc6f5ef056c"
+        },
+        {
+          "file": "template-kinetic-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 16903,
+          "sha256": "120033130d9d0fc22a7006d6dc789d4a1776a7a38fd59dd01f2f1c18ebbfa302"
+        }
+      ]
+    },
+    {
+      "id": "template-coding-v1",
+      "name": "编程游戏",
+      "category": "template",
+      "usage": "icon",
+      "motif": "one original friendly toy-like game spacecraft with modular coding blocks, no weapons",
+      "source": "originals/template-coding-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "05ad15d98ee2f78103f6fb74dfed36645da04d1865d0c5e4d1b2063bbb35c61e",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "template-coding-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3109,
+          "sha256": "d86bf6cb94d0d8bc0e47cf911b4ca56ca8ae85cf05eaeda89b5bb69e8f7a0573"
+        },
+        {
+          "file": "template-coding-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 19450,
+          "sha256": "70e5a0c0ecfd547cee85998a8227b27747aeed2b821c4091bb816e16fdb70669"
+        }
+      ]
+    },
+    {
+      "id": "cover-optics-v1",
+      "name": "光学探究封面",
+      "category": "template",
+      "usage": "cover",
+      "motif": "a simple tabletop optical inquiry scene with a prism, screen and enclosed observation chamber, decorative thematic scene with no measured data",
+      "source": "originals/cover-optics-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "f1eb6eb34aa0c7d2e02376b532e704dd0e4cdcb5dfc716d0bdd63631fbdc0a5a",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "cover-optics-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2987,
+          "sha256": "abba8e2bb11fee849a152c76513dc5939ba88d893456b362123f5517ef02eca5"
+        },
+        {
+          "file": "cover-optics-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 85053,
+          "sha256": "3b6588cb8ec45d0139e4ee646bcb976fe174dc3d80ea8a9e09c90fa25928640f"
+        }
+      ]
+    },
+    {
+      "id": "cover-kinetic-v1",
+      "name": "动能探究封面",
+      "category": "template",
+      "usage": "cover",
+      "motif": "a simple tabletop inquiry scene with a small cart, tilted track and a blank notebook, no measured data",
+      "source": "originals/cover-kinetic-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "97fce8155509e2ce316e917848bfda31c40202432e30d35036067611468cd73c",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "cover-kinetic-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2983,
+          "sha256": "5bc163dbc0718c6d837fa08c0b451b144b226de4c9532c55510f1f0c93f918f7"
+        },
+        {
+          "file": "cover-kinetic-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 89180,
+          "sha256": "17586dab2e86a89968775865504deb0d688abc26dbceabdd544c1e2657eca353"
+        }
+      ]
+    },
+    {
+      "id": "cover-coding-v1",
+      "name": "编程创作封面",
+      "category": "template",
+      "usage": "cover",
+      "motif": "a creative programming workbench with a blank screen displaying an original simple spacecraft game and modular blocks, no code or text",
+      "source": "originals/cover-coding-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "42778a903691e2a47c0fb0dc7139617fa4a22ace645debddb19f0084a05864a1",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "cover-coding-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2947,
+          "sha256": "5194cd5989e9e53f42911a4fe050ef1a2fb676991f637384f618923c268d61c4"
+        },
+        {
+          "file": "cover-coding-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 87244,
+          "sha256": "d2425d24da8c14d63b718915e1c659266552bccb3c0eff5be539e022da5a55fc"
+        }
+      ]
+    },
+    {
+      "id": "subject-physics-v1",
+      "name": "物理",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "a simple pendulum and a small glass prism",
+      "source": "originals/subject-physics-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "acb58d08cce9c0b4dd6396b97a3b6964900d77c9607cef3acfdf0c18ed791955",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-physics-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2879,
+          "sha256": "248804f9f64353b2ec43223c0d01383e726c2d37ccad120ed39c331580a69065"
+        },
+        {
+          "file": "subject-physics-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17827,
+          "sha256": "b55d12387515aad61d48a424ffd0ca8d2d0ddc314197126c2c9b68bce2443e0b"
+        }
+      ]
+    },
+    {
+      "id": "subject-coding-v1",
+      "name": "编程",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "a simple blank cobalt computer screen with three modular blocks",
+      "source": "originals/subject-coding-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "e0b5187dc3662c0882ad17684b88f6a63b5220698199a3ac99e650deee8f27e0",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-coding-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2862,
+          "sha256": "6f7a4b552a5f18c0f9648417d1d1c9e03bd9d82c2b779640345451d8fbb97935"
+        },
+        {
+          "file": "subject-coding-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 15740,
+          "sha256": "f794f5201adf9fa36dd2cd8d5db965a83fe95b8a85e450a33e7f3cd551b0fc64"
+        }
+      ]
+    },
+    {
+      "id": "subject-engineering-v1",
+      "name": "工程",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "a simple interlocking gear and structural building block",
+      "source": "originals/subject-engineering-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "a3c38c4579bf1e308926cec26d60b542a0816d5203f4d518a12b04bc8e120e68",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-engineering-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3023,
+          "sha256": "2ce58070dfb334615158c188273bfd01fd2b105fa02ef89ebe840fd1c89d138e"
+        },
+        {
+          "file": "subject-engineering-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 19033,
+          "sha256": "c38342b778445b51dff417264602a5050ddce72a894d5070dd922e9f75d5e355"
+        }
+      ]
+    },
+    {
+      "id": "subject-math-v1",
+      "name": "数学",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "a sphere, cube and geometric measuring compass, no numbers or formulas",
+      "source": "originals/subject-math-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "9093f51b0e3b4fea0049cbbd830b7db404e72761c22fae2215760196189a1b5c",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-math-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2971,
+          "sha256": "c05bde1e914ff814c2281dd8fcf66b18714aa7b2ceb2f910c604e7893708d47c"
+        },
+        {
+          "file": "subject-math-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17845,
+          "sha256": "57a9b6efff71dfe7179d3687c242d0e376af74e2a8fd3536bfa9c6e622b52745"
+        }
+      ]
+    },
+    {
+      "id": "subject-art-v1",
+      "name": "艺术",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "a simple paint palette and brush",
+      "source": "originals/subject-art-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "bbcc29d368a335df48847097fc85f2852cb5b9225cd50c26f7c8e7f36c6a4de3",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-art-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3191,
+          "sha256": "c4c46ccd608cbabc25e2e77e45a410980af67b1ba1e700ef35ed9f19db3d6a98"
+        },
+        {
+          "file": "subject-art-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 19658,
+          "sha256": "0650693edc5375fca497f37e377163288763eda58f7f292dd9d916a9cce996c9"
+        }
+      ]
+    },
+    {
+      "id": "subject-interdisciplinary-v1",
+      "name": "跨学科",
+      "category": "subject",
+      "usage": "icon",
+      "motif": "three connected geometric shapes around a small light of discovery",
+      "source": "originals/subject-interdisciplinary-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "474cf591cef58cae9895aba87158f195841bb6bc77ddeec9e99ce74db44dfb51",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "subject-interdisciplinary-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2992,
+          "sha256": "ca0948331f30536856fb20af95a73188f2a472fe05fed180abbbd76f2762064f"
+        },
+        {
+          "file": "subject-interdisciplinary-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 18666,
+          "sha256": "af52891f76bf123454f245bdde736e58b5a91192eddaaf1840a4256e5db772e0"
+        }
+      ]
+    },
+    {
+      "id": "activity-inquiry-v1",
+      "name": "提问探究",
+      "category": "activity",
+      "usage": "icon",
+      "motif": "a magnifying glass examining a blank thought bubble",
+      "source": "originals/activity-inquiry-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "6651eec27a369f69626976630c9b9a507f9385305d2854d302f7430ad916681a",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "activity-inquiry-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3020,
+          "sha256": "dc5686179d112bc4de550dba3e9c1666e52b27515d3985b4d98cf60ba92768ca"
+        },
+        {
+          "file": "activity-inquiry-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 18956,
+          "sha256": "747d4a0c4faaa2aaf7f5bcce2dbe8161b7669df131cbbb395379f0bfa540c3a0"
+        }
+      ]
+    },
+    {
+      "id": "activity-concept-v1",
+      "name": "概念理解",
+      "category": "activity",
+      "usage": "icon",
+      "motif": "an open blank book and one glowing discovery light",
+      "source": "originals/activity-concept-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "b67162d028c2177a14606b4c86934300359176b5c58fb49c5bd078bf1243688b",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "activity-concept-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2949,
+          "sha256": "f611cbe7bdc75d7b313512277f7e88db0f4ea4a57837414b5470d89855b001cd"
+        },
+        {
+          "file": "activity-concept-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17248,
+          "sha256": "519080e194a555ca80ad289aa357d4c4a92abf27f5d302277560a9097189ccb3"
+        }
+      ]
+    },
+    {
+      "id": "activity-experiment-v1",
+      "name": "实验观察",
+      "category": "activity",
+      "usage": "icon",
+      "motif": "a simple microscope with one blank observation card",
+      "source": "originals/activity-experiment-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "b9d600b1ef12e002d25c4e5f7644dafd2d0f302448ee7e336839875defde14b3",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "activity-experiment-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2993,
+          "sha256": "8fe0957b8e086f9452f9a75ca6670d370f3e79ad6880fc6847de9b42d24ddd3c"
+        },
+        {
+          "file": "activity-experiment-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17731,
+          "sha256": "758b5789661e19c94881063c5493fe9dab87888897068e587b2885d90a2ffd1e"
+        }
+      ]
+    },
+    {
+      "id": "activity-reflection-v1",
+      "name": "表达反思",
+      "category": "activity",
+      "usage": "icon",
+      "motif": "a blank notebook and a simple speech bubble",
+      "source": "originals/activity-reflection-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "a434be7fa599fdcc8432e03f6fb13cb64798466b5c611510d72f5273c336263e",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "activity-reflection-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2917,
+          "sha256": "3dcaf1e383ee1048d0df75c2f96e8ec70182a6a38b1318e8272c15cca7320c19"
+        },
+        {
+          "file": "activity-reflection-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17577,
+          "sha256": "a615cd8e3b32f68181d3bbfb6962a5cc984fc10e94e18ca4e680cd7220190047"
+        }
+      ]
+    },
+    {
+      "id": "capability-knowledge-v1",
+      "name": "知识资料",
+      "category": "capability",
+      "usage": "icon",
+      "motif": "three neatly arranged blank books and a small magnifier",
+      "source": "originals/capability-knowledge-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "cf5e8c98197139c5cc7a5af76466bd7647f348729b894fd656083847b718e803",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "capability-knowledge-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3023,
+          "sha256": "99089dc14e29627ad954514653c8c18491e628941ecfea01120980e29c5dfc4b"
+        },
+        {
+          "file": "capability-knowledge-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 18667,
+          "sha256": "eb94787f5f50bec5f392419fb7f6f0088c54b3934c3ccced91290222f8de4b0d"
+        }
+      ]
+    },
+    {
+      "id": "capability-skills-v1",
+      "name": "教学技能",
+      "category": "capability",
+      "usage": "icon",
+      "motif": "a simple connected set of three learning blocks and an open book",
+      "source": "originals/capability-skills-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "6a18bb0a49299917fba2b79b5fdf5fac7147e1e2b70c3b9e21507cbd7cde165c",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "capability-skills-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3020,
+          "sha256": "d317b451549af907d03cc11838bfc80bab1cc69a8feefdf2a73b5eb502942aab"
+        },
+        {
+          "file": "capability-skills-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17840,
+          "sha256": "165997c67cf68b440670586b8b91af3b11454ce832167346b1ca738c449a9a19"
+        }
+      ]
+    },
+    {
+      "id": "capability-tools-v1",
+      "name": "工具协作",
+      "category": "capability",
+      "usage": "icon",
+      "motif": "a compact toolbox and two connected nodes",
+      "source": "originals/capability-tools-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "86a8a8b31e3587a84c1b96bfb1a9faca1ea540fa33cf282d74409c7a06ba2f73",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "capability-tools-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2832,
+          "sha256": "9f0f71f53f938a86d0ec15b23ddef0b543ccc9362526a8506b0bd3d408bf43c0"
+        },
+        {
+          "file": "capability-tools-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 16758,
+          "sha256": "d7fccaf425fa7875a4e242b16859a3aa919bdef003c12b3b5e8f638b56319dca"
+        }
+      ]
+    },
+    {
+      "id": "capability-growth-v1",
+      "name": "成长记录",
+      "category": "capability",
+      "usage": "icon",
+      "motif": "a blank journal with a growing sprout",
+      "source": "originals/capability-growth-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "d31ff2340e9525464d8cae70ea0099ffd55546379f70bbfa4f94bc9e3c289b8b",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "capability-growth-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3008,
+          "sha256": "d6520dfe412d300cddf653fc0d0b03fdbd423d776feb86eb29f92097e3c3ef1e"
+        },
+        {
+          "file": "capability-growth-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17007,
+          "sha256": "f24fb7f96e7947dc09868a0e2fddba019dd5f96ef067343090691421e9f35e27"
+        }
+      ]
+    },
+    {
+      "id": "artifact-program-v1",
+      "name": "程序作品",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "a simple blank computer screen with modular building blocks on a clean creative workbench",
+      "source": "originals/artifact-program-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "a9f5ee373d2d2a0f479e3b9f1275b6d3e24d8199bc4cb58b6a7f81a5f49bee34",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-program-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2938,
+          "sha256": "933532c685f306d490a274d6efc6b7aecfcc2fbe254e9e849244af99d156281a"
+        },
+        {
+          "file": "artifact-program-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 88772,
+          "sha256": "03c14b6d26c69de67a6259744aa4b72787a4bc1b141dfa90290d857a38d08cd4"
+        }
+      ]
+    },
+    {
+      "id": "artifact-report-v1",
+      "name": "实验报告",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "a blank scientific notebook, a small observation apparatus and tidy pencil, no charts or invented results",
+      "source": "originals/artifact-report-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "65999ad65b1fc5015414a1639a2ea1ef687fa57cf45dd6710a4460d253665c16",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-report-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2940,
+          "sha256": "35a88a2d19e6eb38ef530db190ae0c7fee785f07aa5aee8e4008bb07984f26b3"
+        },
+        {
+          "file": "artifact-report-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 79893,
+          "sha256": "1a3d262b254f795f3077494008d674d810c9d171ee8baedcdb1bc7169b8cb222"
+        }
+      ]
+    },
+    {
+      "id": "artifact-design-v1",
+      "name": "设计作品",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "a folded paper model, geometric shapes and simple design tools",
+      "source": "originals/artifact-design-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "61acc32b5ddd75ac80ed210486de7a4619aee915844fb37af9922dadb5da4659",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-design-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2919,
+          "sha256": "07014346b25a43181f875e58b45877534ed45ee1ef3573f999c3acc3812c7810"
+        },
+        {
+          "file": "artifact-design-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 92246,
+          "sha256": "322d289e3051b7fd78d2cef8ceaf0fbfe98c0bb47daedaef865a38c2c20cbc33"
+        }
+      ]
+    },
+    {
+      "id": "artifact-presentation-v1",
+      "name": "演示作品",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "a simple presentation easel with blank cards and a small speaker podium",
+      "source": "originals/artifact-presentation-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "cc2a2d06c3ceb391f6347c454e288679efea0a7c04de8cb02037c715c325806a",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-presentation-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2789,
+          "sha256": "e564db1e063a571650d3a2a228d5c6b6b97fda7e4dc834e4ff41905fb897f315"
+        },
+        {
+          "file": "artifact-presentation-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 92319,
+          "sha256": "a6c252cf7c834c0dc9ef5932c6f948db738e4a920ab1670dd0b4cb02184d0af3"
+        }
+      ]
+    },
+    {
+      "id": "artifact-video-v1",
+      "name": "视频作品",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "a simple cobalt camera and two blank storyboard frames",
+      "source": "originals/artifact-video-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "f8773c63232deb6fdf5d1c4c7f20dcaac8fd2c5757fb91726079a4c37135bdef",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-video-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2985,
+          "sha256": "f489561e23dc70fb93611b0705a772459c40b923345beb71a9fa69487c1c55dc"
+        },
+        {
+          "file": "artifact-video-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 99454,
+          "sha256": "c6dc0e4e79297cc12f8bd00eb9ec8b8f50311de3b59bf1c0be91071a28581bd7"
+        }
+      ]
+    },
+    {
+      "id": "artifact-integrated-v1",
+      "name": "综合作品",
+      "category": "artifact",
+      "usage": "cover",
+      "motif": "an open creative portfolio containing geometric models, blank pages and modular blocks",
+      "source": "originals/artifact-integrated-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "a0e276927559bae0b3dbde3e99cc1aa2cc3c9ade6b93d1275cc812b6f819dc2b",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": false,
+      "variants": [
+        {
+          "file": "artifact-integrated-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2907,
+          "sha256": "affe8e125263f5b6d0bd528c2ff16485fd021bf05ed678eafb390b19ad965c18"
+        },
+        {
+          "file": "artifact-integrated-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 88449,
+          "sha256": "29eeabe18a1645f6d272e4db08ddc76ccbaed94b981ebeeb048f2a2130a6a056"
+        }
+      ]
+    },
+    {
+      "id": "growth-milestone-v1",
+      "name": "项目里程碑",
+      "category": "growth",
+      "usage": "icon",
+      "motif": "a small flag at a waypoint on a gently rising path, no award or completion checkmark",
+      "source": "originals/growth-milestone-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "2a12814df19c25c2c271930b3e17f7d2270f863d032fc2e792a13359a78dddbe",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "growth-milestone-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2429,
+          "sha256": "f25c507304dbcbadbb884ef7b8ad0bd46868a3cb791d0e71b8a34803f723e2e2"
+        },
+        {
+          "file": "growth-milestone-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 12448,
+          "sha256": "b803f74815b083aa73aeb77f22efbcc8db00381dcc58cdbda2ff3db6b983fa08"
+        }
+      ]
+    },
+    {
+      "id": "growth-artifact-v1",
+      "name": "作品记录",
+      "category": "growth",
+      "usage": "icon",
+      "motif": "a small open display pedestal with an original geometric creation",
+      "source": "originals/growth-artifact-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "0c0c50d66272d6b36f536592dfde295b7325ea72e434e22dffee048271798dd5",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "growth-artifact-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2980,
+          "sha256": "e66dfba14884ff55a11025ad7c0c1bf281250d4088ddb5e9d75c8856af623b34"
+        },
+        {
+          "file": "growth-artifact-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17678,
+          "sha256": "ba36a46ecf604b5cf88b111842796e9d96a84838c8bc9ec436556a0548c88ca6"
+        }
+      ]
+    },
+    {
+      "id": "growth-reflection-v1",
+      "name": "反思记录",
+      "category": "growth",
+      "usage": "icon",
+      "motif": "a blank journal and a calm speech bubble",
+      "source": "originals/growth-reflection-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "dd08d6834a0080fb3983027e3603de5e2e169982145c1d7cf9150e9060bde3d0",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "growth-reflection-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3045,
+          "sha256": "bb9684212b9562f8909bf5473c9246a95789777879767f418100a1bea34b7671"
+        },
+        {
+          "file": "growth-reflection-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 17624,
+          "sha256": "668e5e84b533f772051139c1111fbf6b7251feba759a586fa03322ace6b2da92"
+        }
+      ]
+    },
+    {
+      "id": "growth-objective-v1",
+      "name": "目标记录",
+      "category": "growth",
+      "usage": "icon",
+      "motif": "a clear concentric target with a small light at its center, no checkmark or score",
+      "source": "originals/growth-objective-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "d5ef535ea7eb46254ec26764b39740d3b4b13aa93652fe62fba2abee58962f56",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "growth-objective-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3140,
+          "sha256": "dd47ce1e09dd60a7e7b1f3cf04441de909ae573252e3dcc31852efad14965452"
+        },
+        {
+          "file": "growth-objective-v1-256.png",
+          "width": 256,
+          "height": 256,
+          "bytes": 19597,
+          "sha256": "728a90839ebe67a5c6881a845b0f8e0efca6f23e40b8b6cb616c0abfa80d002c"
+        }
+      ]
+    },
+    {
+      "id": "support-teacher-v1",
+      "name": "教师支持",
+      "category": "support",
+      "usage": "illustration",
+      "motif": "a friendly abstract adult educator helping a learner examine a tabletop model, no identifiable real people",
+      "source": "originals/support-teacher-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "85e0c509933c8f895b04bd1aac24af2636dab101c97b2938744854a08d167456",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "support-teacher-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2563,
+          "sha256": "99f0494caa4c63c5d742b7e623e756cdc779d1919a8842a7db7b1c5a829e7a57"
+        },
+        {
+          "file": "support-teacher-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 63379,
+          "sha256": "30540eae40638316f827dc418792c30134bc61189bbf0790bfe6976e20e8c334"
+        }
+      ]
+    },
+    {
+      "id": "support-family-v1",
+      "name": "家校协作",
+      "category": "support",
+      "usage": "illustration",
+      "motif": "two abstract adults and a learner sharing a blank learning notebook with a small robot companion, no identifiable people",
+      "source": "originals/support-family-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "ecb7161dcafe52519fa764194567d2b4504f5db23e3d28195194ec4f06f536be",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "support-family-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2692,
+          "sha256": "83631471abd42a30c8a42f8e68cb658282a2416f95c8ce0216a85f720042e7d1"
+        },
+        {
+          "file": "support-family-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 64258,
+          "sha256": "f768492ac41fc89f17918c762fc8b4e73430da9035bbcf753ec332af978428c3"
+        }
+      ]
+    },
+    {
+      "id": "support-review-v1",
+      "name": "共同回顾",
+      "category": "support",
+      "usage": "illustration",
+      "motif": "a learner and friendly robot looking at blank project cards together, no scores or identifiable people",
+      "source": "originals/support-review-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "6ef47cfc3d548c3d875c97b35f9df848ac3c7ee7f25f330edb38c77e798f99a1",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "support-review-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2646,
+          "sha256": "fdf9d899cd2545e757948fd1466b8b04d16fafd9440fb6e87d9284dc51f72fc3"
+        },
+        {
+          "file": "support-review-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 64781,
+          "sha256": "cdfd65a3494b580c37d76a85d502d97f1c8499d1890151293b7f87e335c42c49"
+        }
+      ]
+    },
+    {
+      "id": "empty-explore-v1",
+      "name": "等待探索",
+      "category": "empty",
+      "usage": "illustration",
+      "motif": "a friendly white and cobalt robot holding a compass beside a small unexplored path",
+      "source": "originals/empty-explore-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "b0e7c2d31bfa721c7ffc2d59c30ae39256bfac9d23993037ef7cfb6bd47abdf7",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "empty-explore-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3189,
+          "sha256": "980cf62f7d9979b7f3361e7d654cad3961062626be5b8c3145f87de4fc57b878"
+        },
+        {
+          "file": "empty-explore-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 36627,
+          "sha256": "8d12bf46a46d7a533560d54b3130d1cfc5d5992b54c3f26cff0b142688203dfa"
+        }
+      ]
+    },
+    {
+      "id": "empty-project-v1",
+      "name": "暂无项目",
+      "category": "empty",
+      "usage": "illustration",
+      "motif": "a friendly robot beside an empty open project folder and a small discovery light",
+      "source": "originals/empty-project-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "478214aa9d675a7ebb098fed46a125f225e4fbcf2af1cdfa9964922ad31d6e0d",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "empty-project-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3067,
+          "sha256": "21cc473939a7a36ced3b0a22a421799a5fb927f0dcb599a7dccc7736c62d7c44"
+        },
+        {
+          "file": "empty-project-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 32623,
+          "sha256": "8a96568d19b6a647e8833235e0ddc243c3c54051d43d2eb37355ae8cbe598f19"
+        }
+      ]
+    },
+    {
+      "id": "empty-artifact-v1",
+      "name": "暂无作品",
+      "category": "empty",
+      "usage": "illustration",
+      "motif": "a friendly robot beside an empty creative display stand with a few clean building blocks",
+      "source": "originals/empty-artifact-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "0928fb4bccb119f5194e5ab245fd4c295bd09337ab126a4b4ad3c454671ace65",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "empty-artifact-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3097,
+          "sha256": "efee757308d2e42892403d664374324177e5729cd7f6fdd27d572521cfaf0697"
+        },
+        {
+          "file": "empty-artifact-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 33614,
+          "sha256": "8c1a605d42bf71a68cccb45d44d4c2c426298c4ba7a6bb41d22e99d49f286532"
+        }
+      ]
+    },
+    {
+      "id": "empty-search-v1",
+      "name": "无检索结果",
+      "category": "empty",
+      "usage": "illustration",
+      "motif": "a friendly robot gently examining an empty open folder with a magnifying glass",
+      "source": "originals/empty-search-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "ef9906423e6d8de7f7280d17860dff008a1a7c86a2bc831cf05359895382d848",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "empty-search-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3118,
+          "sha256": "110da615b726e07dcabc3c3be7a5169250f675283beaa7c632e873c6d6b368be"
+        },
+        {
+          "file": "empty-search-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 33690,
+          "sha256": "d848a73fbf8c7df5ea6f0804c7e8bb291338265f38ac7f612b3e84ad2cdaac8d"
+        }
+      ]
+    },
+    {
+      "id": "emotion-thinking-v1",
+      "name": "思考中的搭档",
+      "category": "emotion",
+      "usage": "illustration",
+      "motif": "the Qitu robot looking thoughtfully upward, with a single small thought bubble and no lettering",
+      "source": "originals/emotion-thinking-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "070f1b1a843d8ea0e9d34c96290a1cdfadf2f0c5e2e7f5afdfe8de46c812b59b",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "emotion-thinking-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3383,
+          "sha256": "2f383482e17ea9c52d53b887032483483654fbeb00c967a65a6c99989ab7c4a7"
+        },
+        {
+          "file": "emotion-thinking-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 37134,
+          "sha256": "4b10c26b7ec6964d18708827c3a866cd3ffd0674599f8b64c170a0301c0f5660"
+        }
+      ]
+    },
+    {
+      "id": "emotion-encourage-v1",
+      "name": "鼓励的搭档",
+      "category": "emotion",
+      "usage": "illustration",
+      "motif": "the Qitu robot making a friendly supportive gesture beside a small glowing discovery light",
+      "source": "originals/emotion-encourage-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "d56d12e00875cdff59a6c8d82abe24d3c2fc9f53d3d8f4612cfed2197d0b9470",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "emotion-encourage-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3171,
+          "sha256": "9498989b029cfedd9f7dba4d61558ff50c28062fa67c6789add5954d06826fbf"
+        },
+        {
+          "file": "emotion-encourage-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 35976,
+          "sha256": "ccd724ca765212e2af639df4be6635477cf4c0c5b3c300e7a2f26e5ef3bdaf8f"
+        }
+      ]
+    },
+    {
+      "id": "emotion-celebrate-v1",
+      "name": "庆祝的搭档",
+      "category": "emotion",
+      "usage": "illustration",
+      "motif": "the Qitu robot smiling with raised hands and three simple geometric confetti shapes, no trophy or achievement text",
+      "source": "originals/emotion-celebrate-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "fa7ae35cc5db53ea4473ff4e931f54d09e0e3c85e3bae60449fbb6c76a164471",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "emotion-celebrate-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 3430,
+          "sha256": "5eebdbed0c7eb8daf598634e79abdbd8af9a2d181250a8dcd1db453c8d832f24"
+        },
+        {
+          "file": "emotion-celebrate-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 37421,
+          "sha256": "42a7ee70dce8045b31ccec9c0e7d0adaef123918cf053516b0c78f21e18194bc"
+        }
+      ]
+    },
+    {
+      "id": "brand-pbl-v1",
+      "name": "项目式探究",
+      "category": "brand",
+      "usage": "illustration",
+      "motif": "learners and a friendly small robot exploring a tabletop model with blank evidence cards and simple creative materials, no identifiable people",
+      "source": "originals/brand-pbl-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "f90a3fb15438a575a3c2de3c5ad203f8c920d88f7b6a37e715724ab148e8a4ab",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "brand-pbl-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2843,
+          "sha256": "b907bca5ecaaf4cde3e699e2560f5b50858afd9393562b6cdf775d61d87fe11e"
+        },
+        {
+          "file": "brand-pbl-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 71496,
+          "sha256": "d6bca7d01aee756c63f929a16bbabbb691ac0e6f88df2ad3c5f3b736a7afb05d"
+        }
+      ]
+    },
+    {
+      "id": "brand-collaboration-v1",
+      "name": "人机共成长",
+      "category": "brand",
+      "usage": "illustration",
+      "motif": "a learner, an educator and a small friendly robot creating a geometric project together, no identifiable people",
+      "source": "originals/brand-collaboration-v1.png",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "sha256": "ac12f8c33a77dc73618dffdbf82156186d25b9dcbaebddae26db200d5259151b",
+      "width": 1672,
+      "height": 941,
+      "hasAlpha": true,
+      "variants": [
+        {
+          "file": "brand-collaboration-v1-64.png",
+          "width": 64,
+          "height": 64,
+          "bytes": 2827,
+          "sha256": "65640c63a5765816431568376b80b6ad9a7c8e89342929799d2196b3d01d403c"
+        },
+        {
+          "file": "brand-collaboration-v1-640.png",
+          "width": 640,
+          "height": 360,
+          "bytes": 67120,
+          "sha256": "ac54b0645ffd60dd78f0eaaabb4ccd78ada98aba16dc509401257c9f4db81933"
+        }
+      ]
+    }
+  ]
+}

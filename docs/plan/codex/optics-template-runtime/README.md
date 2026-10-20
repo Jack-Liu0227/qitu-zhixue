@@ -1,8 +1,22 @@
-# 光学模板 Runtime Bundle 与 AI 搭档
+# 问题一：管家配置与光学 PBL 学习闭环
 
-本目录把“管理员配置 → 学生探索 → 模板/团队接管 → 16 课时学习”收敛为一个可实施的任务包。
+> 状态：2026-10-21 / 管家配置入口已实施并完成定向行为验证；学生 PBL 全链路尚未全部完成，未作生产验收。
 
-## 现有代码分析
+## 最新实施
+
+- [管家项目配置实施说明](./09-copilot-implementation-20261021.md)：真实模型、已有项目选择、19 类管理操作、Skill 草稿/发布、逐项回读与重试。
+- [模板—团队—助手—知识库—AI 搭档架构报告](./10-template-team-assistant-knowledge-architecture.md)：当前数据流、字段映射及优化顺序。
+- [实施验证记录](./11-copilot-verification-20261021.md)：定向结果、全仓失败及并行修改边界。
+
+下方“复核”正文保留实施前的审计事实；当前管家和教学包接线结论以上述新报告为准。
+
+> 2026-10-21 复核；基线 `61d28fd` 加已有工作树。结论：**尚未全部完成**。
+
+本目录包含实施前审计、本轮源码修复和后续任务；未发布或配置生产真实资源。
+
+先读 [完成情况报告](./00-completion-audit.md)、[管家管理 Skill 设计](./06-copilot-skill-design.md)、[剩余任务](./07-remaining-tasks.md) 和 [本轮验证](./08-validation-20261021.md)。01–05 保留为既有设计与先前记录。
+
+## 实施前代码分析
 
 - 管理端已经有独立的模板、团队、助手、Skills、Knowledge/IMA、MCP 和模型页面：
   `apps/admin-console/app/(console)/settings/**`。
@@ -12,8 +26,9 @@
 - `TeachingBundleSource` 和 `compileTeachingBundle` 已经能校验 canonical skill ID、模型二元组、
   MCP 工具和 IMA 知识库范围：
   `services/api/src/modules/templates/teaching-bundle.*`。
-- 模板/团队绑定目前只把 `teamVersionId` 和 `pblSpec` 作为绑定哈希输入；编译后的 teaching bundle
-  尚未成为绑定快照的一部分。`resolveDeepTeamBinding` 还保留了硬编码角色和知识库兜底，不能作为正式运行时授权。
+- 绑定/快照已有 bundleDigest 持久化，但真实目录编译器及 attach hook 没有生产调用；
+  运行时尚未完整消费冻结能力。旧 `resolveDeepTeamBinding` 仍有角色/知识库硬编码，未发现生产调用，不得直接接成授权。
+- 管家目前只有助手/团队真实创建，其余多为草稿；项目选择、管理 Skill 和统一创建/修改编排未接入。
 
 ## 目标边界
 
@@ -32,11 +47,11 @@
 - `05-student-tutor-flow-qa.md`：学生端 AI 搭档全流程测试、问题复现、根因和解决方案。
 - `TODO.csv`：可直接导入任务系统的拆分清单。
 
-## Implementation status (2026-10-21)
+## 实施前复核状态
 
-- Teaching Bundle drafts, digest-bearing binding/snapshot persistence, and formal Tutor frozen-snapshot enforcement are implemented.
-- Admin draft writes remain canonical-reference-only; validation fails closed until a server-owned live catalog compiler attaches the payload and digest.
-- The team rail and experiment fullscreen are wired, while persistent observation receipts, complete lesson/stage preview, and the full security matrix remain in `TODO.csv`.
-- The deterministic student Tutor boundary flow is covered by `tooling/test-tutor-live-boundary.mjs`; the QA report records the remaining live-environment gaps.
+- 已有草稿 API、绑定快照、对话课件、阶段栏和团队安全投影。
+- 管家完整管理、真实教学包编译发布、冻结课时/权限消费、KB 出题与团队解析、观察证据和完整历史仍有缺口。
+- 最新依赖隔离构建复现 API `TS2542`，位置 `templates-binding.controller.ts:246`；不能沿用“仅旧依赖快照”解释。
+- 学生端 23 项特性测试和 6 项边界测试通过，Worker 15 项定向测试通过；不等于真实模型/数据库/浏览器闭环。
 
-实现顺序必须是 `01 → 02 → 03 → 04`。没有 active binding 时，所有正式项目创建和运行时授权都必须 fail closed。
+实施顺序以 [剩余任务](./07-remaining-tasks.md) 为准：编译基线 → 管家合同 → 配置发布 → 冻结运行 → 学习交互 → 隔离端到端验收。没有有效绑定时正式项目必须 fail closed。

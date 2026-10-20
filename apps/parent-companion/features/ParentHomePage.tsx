@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Badge, Button, ProgressBar, RobotMascot, SectionCard } from '@qitu/ui';
+import { Badge, Button, ProgressBar, VisualAsset, SectionCard } from '@qitu/ui';
 import {
   parentApi,
   ParentOfflineError,
@@ -77,7 +77,7 @@ export default function HomePage() {
   return (
     <PageFrame title="首页" subtitle="了解今天的学习状态，在需要时给予恰当支持" source={data?.dataSource}>
       <div className="home-welcome">
-        <RobotMascot size={38} decorative />
+        <VisualAsset assetId="support-family-v1" size={48} />
         <div className="home-child">
           <span className="home-child-label">当前关注孩子</span>
           <ChildPicker
@@ -119,7 +119,7 @@ export default function HomePage() {
               })}
             </div>
 
-            {!data.hasAnyProject ? (
+            {!data.currentProject ? (
               <section className="empty-project">
                 <h2>还没有正式学习项目</h2>
                 <p>孩子确认学习意图后，项目进度会显示在这里。</p>
@@ -194,8 +194,8 @@ export default function HomePage() {
                       <div className="attention-ok-card">
                         <span className="ok-icon">✨</span>
                         <div>
-                          <strong>状态良好</strong>
-                          <p>孩子目前探究节奏平稳，没有需要特别协助的问题。</p>
+                          <strong>暂无已确认的关注提醒</strong>
+                          <p>目前没有可展示的提醒。您仍可以主动和孩子聊聊，或联系班主任了解近况。</p>
                         </div>
                       </div>
                     )}
@@ -259,7 +259,7 @@ export default function HomePage() {
                             ))}
                           </ul>
                         ) : (
-                          <p className="summary-empty">保持节奏，蓄势待发</p>
+                          <p className="summary-empty">暂无已确认的本周摘要</p>
                         )}
                       </div>
                     ))}

@@ -1,4 +1,4 @@
-import { WorkbenchPage, workbenchDataSource } from '../../../../features/workbench';
+import { redirect } from 'next/navigation';
 
 /**
  * `/student/projects/:projectId/workbench` — 制作工作台.
@@ -13,17 +13,7 @@ export default async function ProjectWorkbenchRoute({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const [initialProject, initialDraft] = await Promise.all([
-    workbenchDataSource.getProject(projectId),
-    workbenchDataSource.getDraft(projectId, 'flow'),
-  ]);
-
-  return (
-    <WorkbenchPage
-      projectId={projectId}
-      initialProject={initialProject}
-      initialDraft={initialDraft}
-      finishHref="/student/works"
-    />
-  );
+  // The owned project surface provides practice gating; server-side relative
+  // fetches from the retired standalone workbench had no request origin/cookie.
+  redirect(`/student/projects/${encodeURIComponent(projectId)}?mode=practice`);
 }

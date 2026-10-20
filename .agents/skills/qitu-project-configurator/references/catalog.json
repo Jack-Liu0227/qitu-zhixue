@@ -1,0 +1,91 @@
+{
+  "contractVersion": "1.1.0",
+  "operationsDigest": "883d009994974fa7a4766fca569c51c5c202a4eb4ae828f0fd9bec4e7de9e8d6",
+  "resources": [
+    {
+      "resource": "references/protocol.md",
+      "description": "请求、权限、幂等、回执和错误",
+      "operations": []
+    },
+    {
+      "resource": "references/assistants.md",
+      "description": "助手字段、模型和能力绑定",
+      "operations": [
+        "assistant.create",
+        "assistant.update"
+      ]
+    },
+    {
+      "resource": "references/teams-workflows.md",
+      "description": "成员、工作流和不可变团队版本",
+      "operations": [
+        "team.create",
+        "team.update",
+        "workflow.update",
+        "team.version"
+      ]
+    },
+    {
+      "resource": "references/templates-bindings.md",
+      "description": "模板、课时、教学包及绑定生命周期",
+      "operations": [
+        "template.create",
+        "template.update",
+        "template.version",
+        "binding.create",
+        "binding.draft",
+        "binding.validate",
+        "binding.activate",
+        "binding.retire"
+      ]
+    },
+    {
+      "resource": "references/skills.md",
+      "description": "教学技能草稿、发布和撤销",
+      "operations": [
+        "skill.create",
+        "skill.publish",
+        "skill.revoke"
+      ]
+    },
+    {
+      "resource": "references/mcp.md",
+      "description": "MCP 登记、驱动边界与 IMA 授权",
+      "operations": [
+        "mcp.register",
+        "mcp.update",
+        "ima.configure"
+      ]
+    },
+    {
+      "resource": "references/knowledge.md",
+      "description": "知识引擎、空库、逐库授权和索引边界",
+      "operations": [
+        "knowledge.create",
+        "knowledge.bind",
+        "knowledge.configure"
+      ]
+    },
+    {
+      "resource": "references/models.md",
+      "description": "模型提供商、目录与助手选模",
+      "operations": [
+        "model.provider",
+        "model.create",
+        "model.update"
+      ]
+    },
+    {
+      "resource": "references/growth-projection.md",
+      "description": "画像及成长用途助手",
+      "operations": [
+        "growth.projection.configure"
+      ]
+    },
+    {
+      "resource": "references/project-recipe.md",
+      "description": "光学项目跨模块依赖与真实验收状态",
+      "operations": []
+    }
+  ]
+}

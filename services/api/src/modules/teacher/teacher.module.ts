@@ -14,6 +14,7 @@ import { AuthModule } from '../identity-auth/auth.module';
 import { FeedbackModule } from '../feedback/feedback.module';
 import { PlatformDataModule } from '../platform-data/platform-data.module';
 import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 
 /**
  * 班主任工作台模块。
@@ -30,7 +31,7 @@ import { TeamRuntimeModule } from '../team-runtime/team-runtime.module';
  * `AuditWriter` / `IdempotencyStore` 由 `@Global()` 横切模块提供，这里不再 import。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule],
+  imports: [DirectoryModule, AuthModule, FeedbackModule, PlatformDataModule, TeamRuntimeModule, LearningPlanStorageModule],
   controllers: [TeacherController],
   providers: [
     TeacherService,
