@@ -1,6 +1,6 @@
 'use client';
 
-import { NavigationArtwork, VisualAsset } from '@qitu/ui';
+import { Avatar, NavigationArtwork, VisualAsset } from '@qitu/ui';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -340,7 +340,7 @@ function DashboardContent({
                             className="qtx-avatar"
                             style={{ width: 32, height: 32, borderRadius: 10, fontSize: 13 }}
                           >
-                            {s.avatarInitial}
+                            <Avatar name={s.displayName} />
                           </span>
                           <div>
                             <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>

@@ -172,7 +172,7 @@ export function ChatBubble({
   return (
     <div className={isStudent ? 'qitu-chat-bubble is-student' : 'qitu-chat-bubble is-assistant'}>
       <div className="qitu-chat-role">
-        {!isStudent && turn.author?.avatar ? <AssistantGlyph value={turn.author.avatar} size={30} /> : <Avatar
+        {!isStudent ? <AssistantGlyph value={turn.author?.avatar} size={30} /> : <Avatar
           name={avatarName}
           size="sm"
         />}

@@ -1,7 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
-import { BrandMark, NavigationArtwork } from '@qitu/ui';
+import { Avatar, BrandMark, NavigationArtwork } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -66,7 +66,6 @@ export function TeacherShell({ children }: { children: ReactNode }) {
     href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 
   const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : null;
-  const avatarInitial = user?.displayName.trim().charAt(0) || '—';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
@@ -140,7 +139,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
             <div className="qtx-user" aria-busy={!user}>
             {user ? (
               <>
-                <span className="qtx-avatar">{avatarInitial}</span>
+                <span className="qtx-avatar" aria-hidden="true"><Avatar name={user.displayName} /></span>
                 <span>
                   <div className="qtx-user-name">{user.displayName}</div>
                   <div className="qtx-user-role">{roleLabel}</div>

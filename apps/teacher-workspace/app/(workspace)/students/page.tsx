@@ -1,6 +1,6 @@
 'use client';
 
-import { RobotMascot } from '@qitu/ui';
+import { Avatar, RobotMascot } from '@qitu/ui';
 
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -175,7 +175,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
             className="qtx-avatar"
             style={{ width: 44, height: 44, borderRadius: 14, fontSize: 17 }}
           >
-            {student.avatarInitial}
+            <Avatar name={student.displayName} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -646,7 +646,7 @@ export default function StudentsPage() {
                               className="qtx-avatar"
                               style={{ width: 34, height: 34, borderRadius: 10, fontSize: 13 }}
                             >
-                              {s.avatarInitial}
+                              <Avatar name={s.displayName} />
                             </span>
                             <div>
                               <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>
