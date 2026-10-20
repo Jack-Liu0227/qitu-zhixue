@@ -1,6 +1,7 @@
 # PBL 能力链研究与来源筛选
 
-> 状态：2026-10-20 追加 GitHub 候选核验；M1 源码已实现，本轮新增 `pbl-ai-output-audit` 本地候选，仍未发布或绑定。Grok 仅作发现线索，候选事实均由固定 commit 的 GitHub API/raw 文件复核。来源锁基线 `0b07929`。
+> 状态：2026-10-20 追加 GitHub 候选核验；M1 源码已实现，本轮新增 `pbl-ai-output-audit`、`pbl-independent-transfer` 与 `pbl-understanding-coach` 本地候选，仍未发布或绑定。Grok 仅作发现线索，候选事实均由固定 commit 的 GitHub API/tree/blob 文件复核。来源锁基线 `0b07929`。
+> Grok audit note: sessions `106b14751608`, `cd2f7a8b9c81`, and `27d7ecc49afe` returned `sources_count: 0`; repository facts were verified independently through GitHub API tree/blob endpoints and fixed raw files.
 > 本报告是工程方案依据，不是系统综述、学习效果实验或法律结论。目标设计见 [总架构](./architecture.md)。
 
 ## 1. 结论与证据强度
@@ -30,6 +31,8 @@ Skill 是可复用教学方法，Tool 是服务端可执行能力，MCP 是连�
 | [dsh-project-based-learning](https://github.com/Kirisame1969/dsh-project-based-learning/tree/2e0d8d1942e84221c514d455016c5ea402447cec) | `skills/dsh-project-based-learning/SKILL.md`、`LICENSE`；MIT | PBL 作品主线和支架调整作参考；要求本地 `.learning/state.json`，不直接导入 |
 | [full-stack-skills/teaching-skills](https://github.com/full-stack-skills/teaching-skills/tree/97d1da15c82b1131011f90011c19f91e323d39b3) | `skills/learning-assessor/SKILL.md`、`LICENSE`；Apache-2.0 | 通用评测/课程 authoring 参考，不作为学生 runtime 能力 |
 | [teaching-programming](https://github.com/JcDizzy/teaching-programming/tree/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c) | `SKILL.md`、`LICENSE`；MIT | TODO/苏格拉底调试参考；本地工作区、学生姓名和掌握度要求与 Qitu owner 边界不符 |
+| [GarethManning/education-agent-skills](https://github.com/GarethManning/education-agent-skills/tree/6bbbce418f82e11044009c9f3b7373a354de5bd0) | `skills/ai-learning-science/metacognitive-monitoring-ai-contexts/SKILL.md`、`LICENSE`；CC BY-SA 4.0 | `pbl-independent-transfer` 仅提炼回忆、解释和迁移检查；不复制教师 authoring schema、研究断言或 ShareAlike 文本，不原样导入 |
+| [eiainano/understanding-coach-SKILL](https://github.com/eiainano/understanding-coach-SKILL/tree/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5) | `SKILL.md`、`LICENSE`；MIT | `pbl-understanding-coach` 仅提炼“定位最早断点—等待独立判断—用近邻案例验证”；不复制其本地进度文件、HTML/文件写入或持久化流程，不原样导入 |
 
 `openai/plugins@0722921d5542fc593105c27bd52630babd8b8c2a` 的 notebook 工作流只作开发侧比较，不增加第二套教学编排。
 
@@ -54,6 +57,9 @@ Skill 是可复用教学方法，Tool 是服务端可执行能力，MCP 是连�
 | `31c80cb2cbb4` | 0 | 0 | 发现线索，不作引用 |
 | `273fcc94d77a` | 0 | 0 | 发现线索，不作引用 |
 | `bd101ce178fb` | 0 | 0 | 发现线索，不作引用 |
+| `106b14751608` | 0 | 0 | Hypothetical inventory; discovery only |
+| `cd2f7a8b9c81` | 0 | 0 | No source-backed repository facts |
+| `27d7ecc49afe` | 0 | 0 | No source-backed repository facts |
 
 规划会话 `29fe8679925a` 未暴露完整 complexity_assessment 阶段，不能声称完成全部搜索计划协议。更早的会话保留在 [更新前研究快照](../../archive/codex-before-capability-20261019/snapshot/research-report.md)，同样零来源，不把摘要包装成论文、软件事实、法律结论或学习效果。
 
@@ -63,8 +69,8 @@ Skill 是可复用教学方法，Tool 是服务端可执行能力，MCP 是连�
 
 ## 5. 研究如何进入实施
 
-技能目录保持 1 个现有基础、8 个首批候选、7 个后续候选。候选不是已安装、更不是已发布。先实现统一模板/纯编译器/身份，再持久化绑定和项目冻结，再完成 IMA 与实验闭环，最后教师评测、隔离试点和灰度。
+技能目录保持 1 个现有基础、8 个首批候选、9 个后续候选。候选不是已安装、更不是已发布。先实现统一模板/纯编译器/身份，再持久化绑定和项目冻结，再完成 IMA 与实验闭环，最后教师评测、隔离试点和灰度。
 
-M1 当前已有唯一模板 strict parser、独立新 16 节 identity/profile 与显式 bootstrap、实际正文草稿生成，以及无 I/O 的能力编译器。Tutor/SDK 按 Admin assistant 当前字段统一身份/模型/skills/tools/trace，未完成 `agent_configs` 全局迁移。profile/content digest/Skill 尚未冻结，课时标题与活动回读已有源码但 0036 迁移未部署，Worker closures 与 IMA 项目 provenance 未接。focused 离线测试通过不等于真实教学请求；最终全量数字以 [验证记录](./validation-20261019.md) 为准。没有因研究结论直接安装或发布 1+8+7 候选。
+M1 当前已有唯一模板 strict parser、独立新 16 节 identity/profile 与显式 bootstrap、实际正文草稿生成，以及无 I/O 的能力编译器。Tutor/SDK 按 Admin assistant 当前字段统一身份/模型/skills/tools/trace，未完成 `agent_configs` 全局迁移。profile/content digest/Skill 尚未冻结，课时标题与活动回读已有源码但 0036 迁移未部署，Worker closures 与 IMA 项目 provenance 未接。focused 离线测试通过不等于真实教学请求；最终全量数字以 [验证记录](./validation-20261019.md) 为准。没有因研究结论直接安装或发布 1+8+9 候选。
 
 首个试点只验证单缝“问题、预测、单变量比较、模拟观察、数据、CER、反思”的教学链。记录真实费用、耗时、恢复和教师分歧；未经受控研究不报告学习提升百分比。来源抓取 HTTP 200/hash 只证明抓取字节，不证明内容安全、许可完备、运行可用或教育有效。

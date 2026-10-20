@@ -1,10 +1,5 @@
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, eq, isNull, or } from 'drizzle-orm';
 import {
-  learningPlans,
-  pblTemplateTeamBindings,
-  projects,
-  templateVerificationEvidence,
-  templateVerificationRuns,
   projectTemplates,
   projectTemplateVersions,
   withTransaction,
@@ -187,51 +182,23 @@ export class PostgresTemplateStore extends TemplateStore {
   }
 
   async deleteTemplate(id: string): Promise<boolean> {
-    return await withTransaction(this.db, async (tx) => {
-      const versionRows = await tx
-        .select({ id: projectTemplateVersions.id })
-        .from(projectTemplateVersions)
-        .where(eq(projectTemplateVersions.templateId, id));
-      const versionIds = versionRows.map((r) => r.id);
-
-      if (versionIds.length > 0) {
-        await tx
-          .update(projects)
-          .set({ templateVersionId: null })
-          .where(inArray(projects.templateVersionId, versionIds));
-
-        await tx
-          .update(learningPlans)
-          .set({ templateVersionId: null })
-          .where(inArray(learningPlans.templateVersionId, versionIds));
-
-        await tx
-          .delete(pblTemplateTeamBindings)
-          .where(inArray(pblTemplateTeamBindings.templateVersionId, versionIds));
-
-        const runRows = await tx
-          .select({ id: templateVerificationRuns.id })
-          .from(templateVerificationRuns)
-          .where(inArray(templateVerificationRuns.templateVersionId, versionIds));
-        const runIds = runRows.map((r) => r.id);
-
-        if (runIds.length > 0) {
-          await tx
-            .delete(templateVerificationEvidence)
-            .where(inArray(templateVerificationEvidence.runId, runIds));
-          await tx
-            .delete(templateVerificationRuns)
-            .where(inArray(templateVerificationRuns.id, runIds));
-        }
-
+    try {
+      return await withTransaction(this.db, async (tx) => {
+        // Frozen references are restrictive; never rewrite historical project facts.
         await tx
           .delete(projectTemplateVersions)
           .where(eq(projectTemplateVersions.templateId, id));
+        await tx.delete(projectTemplates).where(eq(projectTemplates.id, id));
+        return true;
+      });
+    } catch (error) {
+      if (isForeignKeyViolation(error)) {
+        throw new TemplateStoreConflictError(
+          '模板已被项目、计划或验证记录引用，请使用归档而不是删除',
+        );
       }
-
-      await tx.delete(projectTemplates).where(eq(projectTemplates.id, id));
-      return true;
-    });
+      throw error;
+    }
   }
 
   async listVersions(templateId: string): Promise<ProjectTemplateVersionRecord[]> {
@@ -357,4 +324,9 @@ function mapVersion(row: VersionRow): ProjectTemplateVersionRecord {
 function isUniqueViolation(error: unknown): boolean {
   if (error === null || typeof error !== 'object') return false;
   return (error as { code?: unknown }).code === PG_UNIQUE_VIOLATION;
+}
+
+function isForeignKeyViolation(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false;
+  return (error as { code?: unknown }).code === '23503';
 }

@@ -17,6 +17,7 @@ const expectedSkillIds = [
   'pbl-reflection-coach',
   'pbl-source-literacy',
   'pbl-team-facilitation',
+  'pbl-understanding-coach',
   'pbl-visual-explainer',
   'optics-wave-inquiry',
   'tutor-guided-learning',

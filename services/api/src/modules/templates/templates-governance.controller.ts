@@ -258,7 +258,7 @@ export class TemplateGovernanceController {
     @Param('id') id: string,
   ): Promise<{ data: { success: boolean; id: string } }> {
     const actor = this.requireGovernanceActor(cookieHeader);
-    return { data: await this.governance.deleteTemplate(actor, id, idempotencyKey) };
+    return { data: await this.governance.deleteTemplate(actor, id, requireIdempotencyKey(idempotencyKey)) };
   }
 
   private requireGovernanceActor(cookieHeader: string | undefined): CurrentUser {

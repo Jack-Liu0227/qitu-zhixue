@@ -1,10 +1,10 @@
 # 教学 Skills 目录与引入规范
 
-> 状态：capability-v1-m1 / 2026-10-20；`tutor-guided-learning`、首批 8 项技能和 7 项扩展候选现均有 `.agents/skills/<canonical-id>/SKILL.md` 源码包，当前目录式 runtime 会发现这些非空教学包。扩展包是 Qitu-authored 候选，尚未完成对抗评测及不可变制品/项目冻结治理；本次未改 Admin seeds、助手绑定或项目快照。目录发现不等于已通过教学评审，也不等于已绑定到助手。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
+> 状态：capability-v1-m1 / 2026-10-20；`tutor-guided-learning`、首批 8 项技能和 9 项扩展候选现均有 `.agents/skills/<canonical-id>/SKILL.md` 源码包，当前目录式 runtime 会发现这些非空教学包。扩展包是 Qitu-authored 候选，尚未完成对抗评测及不可变制品/项目冻结治理；本次未改 Admin seeds、助手绑定或项目快照。目录发现不等于已通过教学评审，也不等于已绑定到助手。能力链见 [总架构](./architecture.md)，源码和行为状态见 [验证记录](./validation-20261019.md)。
 
 ## 1. 先补教学方法，不追求大而全
 
-保留 1 个基础技能、首批 8 个通用 PBL 技能和后续 7 个 Qitu-authored 候选，形成最多 16 项可评测目录。新加 `pbl-ai-output-audit` 补上“审查 AI 生成内容”这一学生能力；所有新增源码只为进入评审，不表示通过教学/安全验收。单缝闭环和对抗评测通过前，不得发布或绑定这些扩展候选。16 项是当前目录规划上限，不是同轮加载数量。
+保留 1 个基础技能、首批 8 个通用 PBL 技能和后续 9 个 Qitu-authored 候选，形成最多 18 项可评测目录。新增 `pbl-ai-output-audit`、`pbl-independent-transfer` 与 `pbl-understanding-coach`，分别补上 AI 输出核验、无脚手架迁移和最早断点定位；所有新增源码只为进入评审，不表示通过教学/安全验收。单缝闭环和对抗评测通过前，不得发布或绑定这些扩展候选。18 项是当前目录规划上限，不是同轮加载数量。
 
 全局安全、未成年人保护、工具授权、意图确认和门禁由服务端强制执行，不能因某 Skill 被关闭而失效。`tutor-guided-learning` 提供短轮引导和不代答方法，不拥有写事实的权力。
 
@@ -42,7 +42,7 @@
 
 固定版本、实际路径和许可见 [研究报告](./research-report.md) / [来源锁](./source-lock.json)。来源锁对应轮次未穷尽审查上游脚本、资源和依赖，当前实施未重新联网；MIT/Apache 不等于适合未成年人或可直接执行。
 
-## 3. 后续 7 项（源码已新增，仍待审核）
+## 3. 后续 9 项（源码已新增，仍待审核）
 
 | 候选 ID | 角色/价值 | 启用条件与反向验收 |
 | --- | --- | --- |
@@ -53,10 +53,12 @@
 | `pbl-visual-explainer` | concept/analyst：板书、KaTeX、Mermaid | 安全渲染、规模限制、移动端验证；不生成 HTML/JS/外链脚本 |
 | `optics-wave-inquiry` | lab/analyst：衍射/散射和模型边界 | 正式 action/observation/CER；域外拒绝定量，不新建 mastery 目标 |
 | `pbl-ai-output-audit` | concept/reviewer：审查一条 AI 生成主张或建议 | 当前目标和服务端范围；只比对授权证据，不打分、不写作品或学习状态 |
+| `pbl-independent-transfer` | concept/analyst：把一个已学关系迁移到近邻新案例 | 服务器提供的 bounded transfer task；不代答、不自动判定掌握或推进项目 |
+| `pbl-understanding-coach` | concept/coach：定位解释中的最早断点并做同目标检查 | 仅使用服务端题目/证据/提示等级；不写学习记录、不判定掌握或生成未注册题目 |
 
 ### 本批源码和开源参考
 
-下列上游仓库仅作方法参考，没有将整包复制进 `.agents/skills`；新增文件依据 Qitu 的项目权限、冻结版本、未成年人保护及 PBL owner 规则重新编写。引用均固定到检查时的 commit，许可仅表示上游授权，不代表技能通过 Qitu 的教学或安全评审。当前仓库没有项目级开源许可证，因此这 7 个 Qitu-authored 候选不写 `license` 字段；在权利人确认并补充适用许可前，不得对外发布或宣称它们是开源包。
+下列上游仓库仅作方法参考，没有将整包复制进 `.agents/skills`；新增文件依据 Qitu 的项目权限、冻结版本、未成年人保护及 PBL owner 规则重新编写。引用均固定到检查时的 commit，许可仅表示上游授权，不代表技能通过 Qitu 的教学或安全评审。当前仓库没有项目级开源许可证，因此这 9 个 Qitu-authored 候选不写 `license` 字段；在权利人确认并补充适用许可前，不得对外发布或宣称它们是开源包。
 
 | Qitu 技能 | 参考来源与许可 | 处理方式 |
 | --- | --- | --- |
@@ -66,6 +68,8 @@
 | `pbl-visual-explainer` | idstack [`accessibility-review`](https://github.com/savvides/idstack/blob/1767027166aeeae1c64c21925b01a9c848abcf99/skills/accessibility-review/SKILL.md)（MIT）；[ACCESSIBILITY accessibility skill](https://github.com/KreerC/ACCESSIBILITY.md/blob/2bf8ddcf87e09dd0caac609abb979cc19aca2555/accessibility/SKILL.md)（MIT） | 只参考可访问替代文本和包容性检查；未移植上游 shell、文件写入、子 Agent 或网页审计工作流。 |
 | `optics-wave-inquiry` | 已锁定的 [K-Dense scientific-agent-skills](./source-lock.json)（MIT） | 只参考科学探究方法；运行范围仍由光学注册模型、服务端 gate 和参数域限定。 |
 | `pbl-ai-output-audit` | [Jack Skills `ai-literacy-course`](https://github.com/gcmdnt90/Jack_Skills/blob/a0258db8c5b84df385f2a75a47990681658bfda1/skills/ai-literacy-course/SKILL.md)（MIT） | 仅参考批判性核验 AI 输出的方法；不复制课程流程，不创建学习者 tracker/画像/掌握记录，候选只处理当前单条输出及服务端授权证据。 |
+| `pbl-independent-transfer` | [dsh-project-based-learning](https://github.com/Kirisame1969/dsh-project-based-learning/blob/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md)（MIT） | 仅参考“真实作品—新情境迁移—证据化修订”的教学结构；不复制其本地 `.learning/state.json`、课程状态迁移或执行脚本。 |
+| `pbl-understanding-coach` | [understanding-coach-SKILL](https://github.com/eiainano/understanding-coach-SKILL/blob/a217857c4a6f0a9d9aeca9ee88e96c5df3b017f5/SKILL.md)（MIT） | 仅参考“定位最早断点—等待独立判断—用近邻案例验证”；不复制本地进度文件、HTML/文件写入或持久化流程。 |
 
 额外筛选但不直接导入：[Learning Commons `k12-check-for-understanding`](https://github.com/learning-commons-org/agent-skills/blob/5894a3c9dcda8d4499bb73fad85b2b11a2b78344/skills/k12-check-for-understanding/SKILL.md)（Apache-2.0）定位为教师侧数学形成性评估，与学生侧 `pbl-concept-probe` 不同；[Kirisame1969 `dsh-project-based-learning`](https://github.com/Kirisame1969/dsh-project-based-learning/blob/2e0d8d1942e84221c514d455016c5ea402447cec/skills/dsh-project-based-learning/SKILL.md)（MIT）面向 DeepSeek Harness，要求本地课程状态文件，不接入 Qitu 服务端状态 owner；[full-stack-skills `learning-assessor`](https://github.com/full-stack-skills/teaching-skills/blob/97d1da15c82b1131011f90011c19f91e323d39b3/skills/learning-assessor/SKILL.md)（Apache-2.0）是通用评测/authoring 方法；[JcDizzy `teaching-programming`](https://github.com/JcDizzy/teaching-programming/blob/b4cd31cf427a1013db5bd88e8e3cce54bde8a54c/SKILL.md)（MIT）专用于编程教学并要求本地掌握度记录。以上均未原样导入；[learn-anything-with-AI](https://github.com/read2017/learn-anything-with-AI/blob/0b06235ed73890018a40d058c03308c97312b51c/skills/learn-anything-skill/SKILL.md)（MIT）同样包含规划、文件产物和掌握度流程，与服务端 owner 边界不符。
 

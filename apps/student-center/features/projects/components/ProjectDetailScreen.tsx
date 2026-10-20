@@ -35,7 +35,7 @@ export interface ProjectDetailScreenProps {
 }
 
 function defaultModeForStage(stage: ProjectStage): ProjectViewMode {
-  if (stage === 'theory_learning' || stage === 'theory_check') return 'learn';
+  if (stage === 'theory_learning' || stage === 'theory_check' || stage === 'intent_confirmed') return 'learn';
   if (
     stage === 'practice_ready' ||
     stage === 'practice_building' ||
@@ -206,6 +206,69 @@ export function ProjectDetailScreen({
               stages={templateStages}
               activeIndex={stepperIndex}
             />
+            {/* 学习视图导航栏：支持学生在项目概览、理论学习与微观仿真课件、实践制作工作台之间自如切换 */}
+            <nav aria-label="项目视图模式" style={{ display: 'flex', gap: '8px', margin: '16px 0', padding: '6px', background: '#f1f5f9', borderRadius: '12px', width: 'fit-content' }}>
+              <StudentLink
+                href={projectDetailHref(project.id, { mode: 'overview' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  background: selectedMode === 'overview' ? '#ffffff' : 'transparent',
+                  color: selectedMode === 'overview' ? '#1e293b' : '#64748b',
+                  boxShadow: selectedMode === 'overview' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>📋</span>
+                <span>项目概览</span>
+              </StudentLink>
+              <StudentLink
+                href={projectDetailHref(project.id, { mode: 'learn' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  background: selectedMode === 'learn' ? '#2563eb' : 'transparent',
+                  color: selectedMode === 'learn' ? '#ffffff' : '#64748b',
+                  boxShadow: selectedMode === 'learn' ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>🔬</span>
+                <span>动态微观物理课件与理论</span>
+              </StudentLink>
+              <StudentLink
+                href={projectDetailHref(project.id, { mode: 'practice' })}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  background: selectedMode === 'practice' ? '#ffffff' : 'transparent',
+                  color: selectedMode === 'practice' ? '#1e293b' : '#64748b',
+                  boxShadow: selectedMode === 'practice' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>🛠️</span>
+                <span>实践制作工作台</span>
+              </StudentLink>
+            </nav>
             {data.nextStep ? <NextStepCard nextStep={data.nextStep} disabled={offline} /> : null}
             {taskId && !focusedTask ? (
               <p role="status" className="qitu-form-hint">
