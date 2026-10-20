@@ -4,7 +4,9 @@ import { Avatar, NavSidebar, useResponsiveSidebar, type NavLinkRenderer } from '
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { EyecareButton } from '../components/EyecareButton';
+import { getStoredEyecare } from '../lib/eyecare';
 import { ParentFeedbackWidget } from './ParentFeedbackWidget';
 const BASE_PATH = '/parent';
 const specs = [
@@ -42,6 +44,13 @@ export function ParentShell({ children }: { children: ReactNode }) {
   });
   const user = useCurrentUser();
   const { collapsed, toggle } = useResponsiveSidebar(pathname);
+
+  useEffect(() => {
+    const active = getStoredEyecare();
+    if (active) {
+      document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+    }
+  }, []);
 
   return (
     <AuthGuard expectedRole="parent" redirectTo="/parent/login">
@@ -88,6 +97,7 @@ export function ParentShell({ children }: { children: ReactNode }) {
               >
                 联系班主任
               </button>
+              <EyecareButton />
               <PreferencesMenu />
               <LogoutButton redirectTo="/" />
             </div>

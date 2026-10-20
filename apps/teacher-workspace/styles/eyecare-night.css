@@ -1,0 +1,455 @@
+/* ==========================================================================
+   启途智学 - 班主任工作台 (夜间暗色护眼模式)
+   参考规范：docs/eyecare-rules.md
+   ========================================================================== */
+
+:root[data-qitu-eyecare="true"] {
+  --bg-canvas: #121417;
+  --bg-surface: #181B20;
+  --bg-card: #1E2228;
+  --border-subtle: #2E3540;
+  --text-main: #E2E8F0;
+  --text-muted: #94A3B8;
+  --accent-emerald: #10B981;
+
+  --qtx-bg: #121417;
+  --qtx-surface: #1E2228;
+  --qtx-surface-soft: #181B20;
+  --qtx-border: #2E3540;
+  --qtx-border-soft: #282F3B;
+  --qtx-heading: #F1F5F9;
+  --qtx-text: #E2E8F0;
+  --qtx-muted: #94A3B8;
+  --qtx-blue: #10B981;
+  --qtx-blue-soft: #112F24;
+  --qtx-blue-border: #195A3B;
+  --qtx-emerald: #10B981;
+  --qtx-emerald-soft: #112F24;
+  --qtx-amber: #F59E0B;
+  --qtx-amber-soft: #2D2311;
+  --qtx-shadow-sm: 0 2px 4px rgba(0,0,0,0.4);
+  --qtx-shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --qtx-shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+:root[data-qitu-eyecare="true"] body {
+  background-color: #121417 !important;
+  background-image: none !important;
+  color: #E2E8F0 !important;
+}
+
+/* 柔和暗色滚动条 */
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+  border-radius: 9999px !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb:hover {
+  background: #3B4452 !important;
+}
+
+/* ---- 护眼模式开关按钮 ---- */
+.qitu-eyecare-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+.qitu-eyecare-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+.qitu-eyecare-toggle-btn.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25) !important;
+}
+.qitu-eyecare-pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  animation: qituPulse 2s infinite ease-in-out;
+}
+@keyframes qituPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* ==========================================================================
+   1. 外壳与顶栏 (Teacher Shell & Topbar)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-app {
+  background-color: #121417 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-main {
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-topbar {
+  background: rgba(24, 27, 32, 0.95) !important;
+  border-bottom: 1px solid #2E3540 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-user {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-user-name {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-user-role {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-avatar {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+/* ==========================================================================
+   2. 主侧边栏 (Teacher Sidebar)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-sidebar {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border-right: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-brand h1 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-brand p {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-brand-logo {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-nav-item {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-nav-item:hover {
+  background-color: #1E252F !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-nav-item.active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+  position: relative !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-nav-item.active::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3.5px !important;
+  height: 20px !important;
+  background: #10B981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8) !important;
+  border-radius: 4px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-sidebar-bottom {
+  background: #15181D !important;
+  border: 1px solid #252A33 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-sidebar-bottom strong {
+  color: #F59E0B !important;
+}
+
+/* ==========================================================================
+   3. 工作台首页 (Dashboard - /teacher/dashboard)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-banner {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-banner h2 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-banner p {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-banner-avatar {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-bubble {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-banner-slogan {
+  color: #94A3B8 !important;
+  border-left: 2px solid #2E3540 !important;
+}
+
+/* 指标卡 (MetricCard) */
+:root[data-qitu-eyecare="true"] .qtx-metric {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-metric-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-metric-value {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-metric-icon {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+/* 面板与卡片 (Panel & Card) */
+:root[data-qitu-eyecare="true"] .qtx-panel,
+:root[data-qitu-eyecare="true"] .qtx-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-panel-header {
+  border-bottom: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-panel-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-panel-hint {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-link {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-link:hover {
+  color: #10B981 !important;
+  text-decoration: underline !important;
+}
+
+/* 重点关注学生条目 */
+:root[data-qitu-eyecare="true"] .qtx-attention-student {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  border-left: 3px solid #D97706 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-attention-identity strong,
+:root[data-qitu-eyecare="true"] .qtx-attention-project strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-attention-identity span,
+:root[data-qitu-eyecare="true"] .qtx-attention-caption {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-attention-metrics dt {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-attention-metrics dd {
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   4. 表格组件 (Table - /teacher/students & dashboard)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-table {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table thead th {
+  background: #15181D !important;
+  color: #94A3B8 !important;
+  border-bottom: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr {
+  border-bottom: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr:hover {
+  background: #1E252F !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr.selected {
+  background: #142820 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table td {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-pagination {
+  color: #94A3B8 !important;
+  border-top: 1px solid #252A33 !important;
+}
+
+/* ==========================================================================
+   5. 表单、输入框与按键 (Inputs & Buttons)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-input,
+:root[data-qitu-eyecare="true"] .qtx-search input {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-input:focus,
+:root[data-qitu-eyecare="true"] .qtx-search input:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-btn:hover {
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  background: #112F24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-btn-primary {
+  background: #10B981 !important;
+  border-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-btn-primary:hover {
+  background: #059669 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-badge-emerald {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-badge-amber {
+  background: #2D2311 !important;
+  color: #F59E0B !important;
+  border: 1px solid #4A3B18 !important;
+}
+
+/* ==========================================================================
+   6. 详情抽屉与运行面板 (Details Drawer & Agent Run Panel)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qtx-student-detail {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-agent-run-panel {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+/* ==========================================================================
+   7. 统计图表 (Statistics SVG & Charts - /teacher/statistics)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] svg text {
+  fill: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] svg line[stroke="#f1f5f9"],
+:root[data-qitu-eyecare="true"] svg line[stroke="#e2e8f0"] {
+  stroke: #2E3540 !important;
+}
+
+/* ==========================================================================
+   8. 深蓝文字与硬编码浅色底防御拦截
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] [style*="color: #102a5c"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e40af"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e3a8a"],
+:root[data-qitu-eyecare="true"] [style*="color: #1d4ed8"],
+:root[data-qitu-eyecare="true"] [style*="color: #2563eb"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e293b"],
+:root[data-qitu-eyecare="true"] [style*="color: #0f172a"] {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] [style*="background: #fff"],
+:root[data-qitu-eyecare="true"] [style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] [style*="background-color: #fff"],
+:root[data-qitu-eyecare="true"] [style*="background-color: #ffffff"] {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] [style*="background: #f0f9ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #eef2f7"],
+:root[data-qitu-eyecare="true"] [style*="background: #e8effc"] {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+}

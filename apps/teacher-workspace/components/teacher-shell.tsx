@@ -13,6 +13,8 @@ import {
   UsersIcon,
 } from './icons';
 import { teacherApi } from '../lib/teacherApi';
+import { EyecareButton } from './eyecare-button';
+import { getStoredEyecare } from '../lib/eyecare';
 
 /**
  * 冻结的班主任端五项导航。`badgeKey` 只声明哪一个导航项需要显示真实计数，
@@ -46,6 +48,13 @@ export function TeacherShell({ children }: { children: ReactNode }) {
   // 「待处理问题」角标只反映服务端真实计数：加载中或请求失败时保持为 null，
   // 由界面隐藏角标，而不是显示一个编造的数字。
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const active = getStoredEyecare();
+    if (active) {
+      document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +171,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
             通知入口没有对应的后端数据源，这里不摆放一个点了没反应的铃铛；
             真正有数据时再补入口，避免制造假的未读红点。
           */}
+          <EyecareButton />
           <PreferencesMenu />
           <LogoutButton />
         </header>
