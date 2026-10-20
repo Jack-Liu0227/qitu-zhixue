@@ -170,6 +170,12 @@ test('student tutor optics flow keeps exploration, frozen project, lessons, team
     const explorationSession = await source.createSession({ source: 'exploration', idempotencyKey: 'create-exploration' });
     assert.equal(explorationSession.projectId, null);
     assert.equal(explorationSession.explorationId, 'exp-optics-1');
+    assert.equal(requests.some((item) => item.url.includes('/projects')), false);
+    const streamedQuestion = [];
+    source.sockets.set(explorationSession.sessionId, { startTurn: (input) => { streamedQuestion.push(input); return 1; } });
+    const acceptedQuestion = await source.submitTurn(explorationSession.sessionId, { content: 'Why does a narrower slit widen the pattern?', pedagogicMove: 'ask', idempotencyKey: 'question-1' });
+    assert.equal(acceptedQuestion.accepted, true);
+    assert.deepEqual(streamedQuestion, [{ content: 'Why does a narrower slit widen the pattern?', pedagogicMove: 'ask', optionLabel: undefined, idempotencyKey: 'question-1' }]);
 
     const firstConfirmation = await source.confirmExploration('exp-optics-1', { goal: 'Understand diffraction', interest: 'optics', templateVersionId: frozen.templateVersionId }, 'confirm-optics');
     const secondConfirmation = await source.confirmExploration('exp-optics-1', { goal: 'Understand diffraction', interest: 'optics', templateVersionId: frozen.templateVersionId }, 'confirm-optics');
