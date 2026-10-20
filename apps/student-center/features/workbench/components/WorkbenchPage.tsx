@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { PedagogicMove, ProjectStage, TemplateStage } from '@qitu/contracts';
+import type { PedagogicMove, ProjectStage } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, PermissionDenied, SectionCard, SkeletonBlock } from '@qitu/ui';
 import { workbenchDataSource, type WorkbenchDataSource } from '../data';
 import { useConnectivity } from '../hooks/useConnectivity';
@@ -23,7 +23,6 @@ import { ConflictDialog } from './ConflictDialog';
 import { FlowCanvas } from './FlowCanvas';
 import { NodePalette } from './NodePalette';
 import { SimulatorPanel } from './SimulatorPanel';
-import { StageRail } from './StageRail';
 import { TestEditor } from './TestEditor';
 import { TutorAdviceRail } from './TutorAdviceRail';
 import { WorkbenchActionBar } from './WorkbenchActionBar';
@@ -48,7 +47,6 @@ const FLOW_NODE_TYPES = ['start', 'ai_reply', 'intent_branch', 'action', 'end'] 
 export interface WorkbenchPageProps {
   projectId: string;
   initialProject: WorkbenchProject;
-  initialStages: TemplateStage[];
   initialDraft: WorkbenchDraft;
   dataSource?: WorkbenchDataSource;
   finishHref?: string;
@@ -57,7 +55,6 @@ export interface WorkbenchPageProps {
 export function WorkbenchPage({
   projectId,
   initialProject,
-  initialStages,
   initialDraft,
   dataSource = workbenchDataSource,
   finishHref,
@@ -262,7 +259,7 @@ export function WorkbenchPage({
     return (
       <div className="qitu-workbench">
         <WorkbenchBreadcrumb projectTitle={initialProject.title} />
-        <WorkbenchHeader project={initialProject} stages={initialStages} activeIndex={initialProject.currentStageIndex} />
+        <WorkbenchHeader project={initialProject} />
         <SectionCard title="还不能开始制作">
           <EmptyState
             title="先完成理论学习"
@@ -280,11 +277,9 @@ export function WorkbenchPage({
       ) : null}
 
       <WorkbenchBreadcrumb projectTitle={initialProject.title} />
-      <WorkbenchHeader project={initialProject} stages={initialStages} activeIndex={initialProject.currentStageIndex} />
+      <WorkbenchHeader project={initialProject} />
 
       <div className="qitu-workbench-grid">
-        <StageRail stages={initialStages} activeIndex={initialProject.currentStageIndex} />
-
         <div className="qitu-workbench-main">
           <div className="qitu-workbench-toolbar">
             <WorkbenchTabs activeKind={controller.activeKind} onChange={controller.setActiveKind} disabled={readOnly} />

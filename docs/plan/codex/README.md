@@ -68,3 +68,8 @@ M0 基线审计部分完成，不能宣称所有 characterization tests 已完�
 ## Optics 16-Session Template
 
 Implementation and rollout boundaries: [16-session template](../../admin/optics-16-session-template.md).
+
+## New implementation slices (2026-10-20)
+
+- [Optics template runtime](./optics-template-runtime/README.md): Admin teaching bundle, student Tutor takeover, lesson/team projection and optics experiment protocol.
+- [Profile and growth projection](./profile-growth-projection/README.md): evidence contract, domain-owner acceptance, student/parent read models and verification.

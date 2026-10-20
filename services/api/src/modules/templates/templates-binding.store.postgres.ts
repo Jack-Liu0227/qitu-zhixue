@@ -18,6 +18,7 @@ import type {
   InsertSnapshotRecordInput,
   SnapshotRecord,
   TeamVersionRecord,
+  UpdateTeachingBundleRecordInput,
 } from './templates-binding.types';
 
 const PG_UNIQUE_VIOLATION = '23505';
@@ -58,6 +59,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
           teamVersionId: input.teamVersionId,
           status: 'draft',
           bindingHash: input.bindingHash,
+          bundleDigest: input.bundleDigest,
           createdBy: input.createdBy,
           createdAt: input.now,
           updatedAt: input.now,
@@ -118,6 +120,28 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     const [row] = await this.db
       .update(pblTemplateTeamBindings)
       .set({ validation, updatedAt: now })
+      .where(eq(pblTemplateTeamBindings.id, id))
+      .returning();
+    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    return mapBinding(row);
+  }
+
+  async updateTeachingBundle(
+    id: string,
+    input: UpdateTeachingBundleRecordInput,
+  ): Promise<BindingRecord> {
+    const [row] = await this.db
+      .update(pblTemplateTeamBindings)
+      .set({
+        bundleDigest: input.digest,
+        bundleDraft: input.draft as unknown as Record<string, unknown>,
+        bundlePayload: input.payload as unknown as Record<string, unknown> | null,
+        ...(input.bindingHash === undefined ? {} : { bindingHash: input.bindingHash }),
+        // A bundle change invalidates a previous validation stamp.
+        validation: { valid: false, errors: [], warnings: [], checkedAt: null },
+        status: 'draft',
+        updatedAt: input.now,
+      })
       .where(eq(pblTemplateTeamBindings.id, id))
       .returning();
     if (row === undefined) throw new Error(`binding not found: ${id}`);
@@ -190,6 +214,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         bindingId: input.bindingId,
         teamVersionId: input.teamVersionId,
         bindingHash: input.bindingHash,
+        bundleDigest: input.bundleDigest,
         boundAt: input.boundAt,
         backfilled: input.backfilled,
       })
@@ -254,6 +279,9 @@ function mapBinding(row: BindingRow): BindingRecord {
     teamVersionId: row.teamVersionId,
     status: row.status as BindingRecord['status'],
     bindingHash: row.bindingHash,
+    bundleDigest: row.bundleDigest ?? null,
+    bundleDraft: row.bundleDraft as BindingRecord['bundleDraft'],
+    bundlePayload: row.bundlePayload as BindingRecord['bundlePayload'],
     validation: {
       valid: validation.valid,
       errors: [...(validation.errors ?? [])],
@@ -275,6 +303,7 @@ function mapSnapshot(row: SnapshotRow): SnapshotRecord {
     bindingId: row.bindingId,
     teamVersionId: row.teamVersionId,
     bindingHash: row.bindingHash,
+    bundleDigest: row.bundleDigest ?? null,
     boundAt: row.boundAt,
     backfilled: row.backfilled,
   };

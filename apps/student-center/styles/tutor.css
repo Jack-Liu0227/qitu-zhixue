@@ -1846,3 +1846,19 @@
   .qitu-tutor-col-center .qitu-composer { padding-inline: 12px !important; }
   .qitu-idea-card-list { grid-template-columns: 1fr; }
 }
+
+.qitu-optics-experiment-card.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: auto;
+  background: #fff;
+}
+
+.qitu-optics-experiment-card:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  overflow: auto;
+  border-radius: 0;
+}

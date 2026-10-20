@@ -70,6 +70,7 @@ function assertBindingViewShape(binding: PblTemplateTeamBinding): void {
     [
       'activatedAt',
       'bindingHash',
+      'bundleDigest',
       'createdAt',
       'createdBy',
       'id',
@@ -165,6 +166,20 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
     h = makeBindingHarness();
     published = await seedPublishedVersion(h);
     h.bindings.seedTeamVersion(validTeamVersion('tv-1'));
+  });
+
+  it('PBL template refuses validation until a compiled Teaching Bundle digest is attached', async () => {
+    await h.templates.createVersion({
+      id: 'ver-pbl', templateId: published.templateId, version: 'v2', stages: DEFAULT_STAGES,
+      content: { pbl: { contractVersion: 'qitu.pbl.v1' } }, rubric: [], createdBy: ADMIN.id, now: NOW,
+    });
+    await h.templates.setVersionStatus('ver-pbl', 'published', NOW, NOW);
+    const created = await h.service.createBinding(ADMIN, published.templateId, 'ver-pbl', { teamVersionId: 'tv-1' }, 'pbl-create');
+    await assertHttpError(
+      () => h.service.validateBinding(ADMIN, published.templateId, 'ver-pbl', created.binding.id, 'pbl-validate'),
+      400,
+      'BUNDLE_COMPILATION_UNAVAILABLE',
+    );
   });
 
   it('create → validate → activate → retire 全链路 + 审计动作', async () => {

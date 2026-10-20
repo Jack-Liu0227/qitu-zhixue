@@ -1,313 +1,135 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { SectionCard } from '@qitu/ui';
+import { OfflineBanner, SectionCard } from '@qitu/ui';
+import { useCallback, useEffect, useState } from 'react';
 import { DeviceManagement } from './DeviceManagement';
+import { loadStudentProfile, ProfileOfflineError, ProfilePermissionError } from './api';
+import type { StudentProfileProjection } from './types';
 
-interface CompetencyDimension {
-  id: string;
-  name: string;
-  score: number;
-  benchmark: number;
-  description: string;
-  evidenceCount: number;
-  level: string;
+type PageState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: StudentProfileProjection }
+  | { status: 'empty'; data: StudentProfileProjection }
+  | { status: 'offline'; data: StudentProfileProjection | null }
+  | { status: 'permission' }
+  | { status: 'error'; message: string };
+
+function formatDate(value: string | null): string {
+  if (!value) return '暂无更新时间';
+  return new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(value));
 }
 
-const COMPETENCY_DATA: CompetencyDimension[] = [
-  {
-    id: 'critical_thinking',
-    name: '批判性思维',
-    score: 88,
-    benchmark: 75,
-    description: '善于质疑直觉结论，通过控制变量法与反向论证严谨排查问题。',
-    evidenceCount: 14,
-    level: '高阶精通',
-  },
-  {
-    id: 'planning',
-    name: '项目规划力',
-    score: 82,
-    benchmark: 70,
-    description: '能将宏大课题自主拆解为可操作的小节点里程碑，时间把控严谨。',
-    evidenceCount: 9,
-    level: '熟练进阶',
-  },
-  {
-    id: 'practice',
-    name: '动手实践力',
-    score: 94,
-    benchmark: 72,
-    description: '原型搭建与代码调试能力出众，能迅速把理论假说做成可运行作品。',
-    evidenceCount: 22,
-    level: '卓越领航',
-  },
-  {
-    id: 'interdisciplinary',
-    name: '跨学科探究',
-    score: 79,
-    benchmark: 68,
-    description: '善于融合生态、物理与计算机知识，正处于深度融合进阶期。',
-    evidenceCount: 8,
-    level: '扎实发展',
-  },
-  {
-    id: 'communication',
-    name: '协同表达',
-    score: 85,
-    benchmark: 74,
-    description: '能用结构化语言向导师清晰阐述设计意图与答辩推演逻辑。',
-    evidenceCount: 11,
-    level: '熟练进阶',
-  },
-  {
-    id: 'reflection',
-    name: '元认知复盘',
-    score: 91,
-    benchmark: 71,
-    description: '对失败实验和异常数据有高度敏感性，善于从偏差中提炼核心规律。',
-    evidenceCount: 16,
-    level: '高阶精通',
-  },
-];
-
-const MILESTONE_BADGES = [
-  { id: 'b1', title: '独立创作者', desc: '独立完成全周期项目作品交付', icon: '🏆', date: '2026-10-04' },
-  { id: 'b2', title: '实证科学家', desc: '完成 20+ 次不可篡改实验证据沉淀', icon: '🔬', date: '2026-09-28' },
-  { id: 'b3', title: '代码架构初探', desc: '掌握游戏主循环与模块化解耦思想', icon: '💻', date: '2026-09-22' },
-  { id: 'b4', title: '生态观察家', desc: '完成雨水微滤系统全套水质对比分析', icon: '🌿', date: '2026-09-15' },
-];
+function ListBlock({ title, values, empty }: { title: string; values: string[]; empty: string }) {
+  return (
+    <div className="qitu-profile-list-block">
+      <h3>{title}</h3>
+      {values.length === 0 ? <p className="qitu-profile-muted">{empty}</p> : (
+        <div className="qitu-profile-chip-list">
+          {values.map((value) => <span className="qitu-profile-chip" key={value}>{value}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProfilePage() {
-  const [selectedDimension, setSelectedDimension] = useState<CompetencyDimension>(COMPETENCY_DATA[0]!);
+  const [state, setState] = useState<PageState>({ status: 'loading' });
+  const [reloadToken, setReloadToken] = useState(0);
 
-  // 计算六维雷达图多边形顶点坐标 (中心点 150, 150，半径 110)
-  const radarGeometry = useMemo(() => {
-    const cx = 150;
-    const cy = 150;
-    const r = 105;
-    const total = COMPETENCY_DATA.length;
+  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 
-    const getCoord = (score: number, index: number) => {
-      const angle = (Math.PI * 2 / total) * index - Math.PI / 2;
-      const dist = (score / 100) * r;
-      return {
-        x: cx + dist * Math.cos(angle),
-        y: cy + dist * Math.sin(angle),
-      };
-    };
-
-    // 背景参考网格刻度 (25%, 50%, 75%, 100%)
-    const gridLevels = [25, 50, 75, 100].map((level) => {
-      return COMPETENCY_DATA.map((_, i) => {
-        const pt = getCoord(level, i);
-        return `${pt.x},${pt.y}`;
-      }).join(' ');
+  useEffect(() => {
+    let cancelled = false;
+    void loadStudentProfile().then((data) => {
+      if (cancelled) return;
+      const hasContent = data.strengths.length + data.interests.length + data.preferences.length > 0
+        || Boolean(data.priorKnowledge || data.targetLevel || data.timeBudgetMinutesPerWeek !== null)
+        || data.recentGrowth.length > 0
+        || Boolean(data.trajectory?.studentSummary || data.trajectory?.milestones.length || data.trajectory?.strengths.length);
+      setState({ status: hasContent ? 'ready' : 'empty', data });
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      if (error instanceof ProfilePermissionError) setState({ status: 'permission' });
+      else if (error instanceof ProfileOfflineError) setState({ status: 'offline', data: null });
+      else setState({ status: 'error', message: error instanceof Error ? error.message : '个人画像暂时无法加载' });
     });
+    return () => { cancelled = true; };
+  }, [reloadToken]);
 
-    // 学生得分多边形
-    const studentPoints = COMPETENCY_DATA.map((d, i) => {
-      const pt = getCoord(d.score, i);
-      return `${pt.x},${pt.y}`;
-    }).join(' ');
+  useEffect(() => {
+    const offline = () => setState((current) => ({ status: 'offline', data: current.status === 'ready' || current.status === 'empty' ? current.data : null }));
+    const online = () => reload();
+    window.addEventListener('offline', offline);
+    window.addEventListener('online', online);
+    return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
+  }, [reload]);
 
-    // 年级基准线多边形
-    const benchmarkPoints = COMPETENCY_DATA.map((d, i) => {
-      const pt = getCoord(d.benchmark, i);
-      return `${pt.x},${pt.y}`;
-    }).join(' ');
+  if (state.status === 'loading') return <div className="qitu-profile-page"><SectionCard title="正在整理你的学习画像"><p className="qitu-profile-muted">正在读取两位专家已经确认的结果……</p></SectionCard></div>;
+  if (state.status === 'permission') return <div className="qitu-profile-page"><SectionCard title="无法查看个人画像"><p>当前账号没有查看个人画像的权限。</p></SectionCard></div>;
+  if (state.status === 'error') return <div className="qitu-profile-page"><SectionCard title="个人画像加载失败"><p>{state.message}</p><button type="button" className="qitu-button qitu-button-primary" onClick={reload}>重新加载</button></SectionCard></div>;
 
-    // 顶点坐标用于交互点和标注
-    const vertexPoints = COMPETENCY_DATA.map((d, i) => {
-      const pt = getCoord(d.score, i);
-      const labelPt = getCoord(122, i);
-      return { ...d, pt, labelPt, index: i };
-    });
+  if (state.status === 'offline') {
+    const data = state.data;
+    return <div className="qitu-profile-page"><OfflineBanner readOnly onRetry={reload} />{data ? <ProfileContent data={data} /> : <SectionCard title="暂时离线"><p className="qitu-profile-muted">恢复网络后再查看已确认的个人画像。</p></SectionCard>}</div>;
+  }
+  const data = state.data;
+  return <div className="qitu-profile-page"><ProfileContent data={data} />{state.status === 'empty' ? <SectionCard title="画像正在形成"><p className="qitu-profile-muted">目前还没有足够的已确认证据。完成项目、提交作品或反思后，画像专家会继续整理。</p></SectionCard> : null}</div>;
+}
 
-    return { gridLevels, studentPoints, benchmarkPoints, vertexPoints };
-  }, []);
-
+function ProfileContent({ data }: { data: StudentProfileProjection }) {
   return (
-    <div className="qitu-profile-page">
-      {/* 头部学生基本信息看板 */}
+    <>
+      {data.freshness === 'unavailable' ? (
+        <SectionCard title="专家画像尚未确认">
+          <p className="qitu-profile-muted">当前页面不会把待审核候选或 Tutor 对话记忆当作画像结论。下面的成长记录仍来自已确认的 Growth 档案。</p>
+        </SectionCard>
+      ) : null}
       <div className="qitu-profile-hero-card">
-        <div className="qitu-profile-hero-avatar-wrap">
-          <div className="qitu-profile-hero-avatar">学</div>
-          <span className="qitu-profile-level-badge">LV.3 探索先锋</span>
-        </div>
-
+        <div className="qitu-profile-hero-avatar-wrap"><div className="qitu-profile-hero-avatar">我</div><span className="qitu-profile-level-badge">学习画像</span></div>
         <div className="qitu-profile-hero-meta">
-          <div className="qitu-profile-hero-title-row">
-            <h1>李明（学生个人画像）</h1>
-            <span className="qitu-profile-school-tag">北京海淀科创实验中学 · 初一年级</span>
-          </div>
-          <p className="qitu-profile-hero-motto">
-            “从真实世界的好奇心出发，让每一个作品和实验数据成为证明能力的硬证据。”
-          </p>
-
+          <div className="qitu-profile-hero-title-row"><h1>我的当前画像</h1><span className="qitu-profile-school-tag">版本 {data.version || '待确认'}</span></div>
+          <p className="qitu-profile-hero-motto">这里展示画像专家根据已确认学习证据整理出的当前状态，不是固定标签，也不是成绩排名。</p>
           <div className="qitu-profile-stats-row">
-            <div className="qitu-profile-stat-item">
-              <span className="qitu-stat-label">综合能力指数</span>
-              <strong className="qitu-stat-value is-highlight">86.5</strong>
-            </div>
-            <div className="qitu-profile-stat-item">
-              <span className="qitu-stat-label">已交付项目</span>
-              <strong className="qitu-stat-value">3 个</strong>
-            </div>
-            <div className="qitu-profile-stat-item">
-              <span className="qitu-stat-label">探究证据沉淀</span>
-              <strong className="qitu-stat-value">36 项</strong>
-            </div>
-            <div className="qitu-profile-stat-item">
-              <span className="qitu-stat-label">AI搭档思维启发</span>
-              <strong className="qitu-stat-value">142 轮</strong>
-            </div>
+            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">兴趣线索</span><strong className="qitu-stat-value">{data.interests.length}</strong></div>
+            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">已识别优势</span><strong className="qitu-stat-value">{data.strengths.length}</strong></div>
+            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">成长记录</span><strong className="qitu-stat-value">{data.summary.artifactsPublished + data.summary.objectivesMastered}</strong></div>
+            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">最近更新</span><strong className="qitu-stat-value">{formatDate(data.updatedAt)}</strong></div>
           </div>
         </div>
       </div>
-
       <div className="qitu-profile-content-grid">
-        {/* 左侧：六维能力雷达可视化 */}
         <div className="qitu-profile-col">
-          <SectionCard title="核心素养雷达图">
-            <div className="qitu-radar-container">
-              <div className="qitu-radar-legend">
-                <span className="qitu-legend-item is-student">
-                  <span className="qitu-legend-color" /> 我的能力画像
-                </span>
-                <span className="qitu-legend-item is-benchmark">
-                  <span className="qitu-legend-color" /> 同学段常模基准
-                </span>
-              </div>
-
-              <div className="qitu-radar-svg-wrap">
-                <svg viewBox="0 0 300 300" className="qitu-radar-svg">
-                  {/* 背景参考层 */}
-                  {radarGeometry.gridLevels.map((poly, idx) => (
-                    <polygon key={idx} points={poly} className="qitu-radar-grid-polygon" />
-                  ))}
-
-                  {/* 轴线 */}
-                  {radarGeometry.vertexPoints.map((v) => (
-                    <line
-                      key={v.id}
-                      x1="150"
-                      y1="150"
-                      x2={v.pt.x}
-                      y2={v.pt.y}
-                      className="qitu-radar-axis"
-                    />
-                  ))}
-
-                  {/* 年级基准线 */}
-                  <polygon
-                    points={radarGeometry.benchmarkPoints}
-                    className="qitu-radar-benchmark-polygon"
-                  />
-
-                  {/* 学生能力多边形 */}
-                  <polygon
-                    points={radarGeometry.studentPoints}
-                    className="qitu-radar-student-polygon"
-                  />
-
-                  {/* 顶点交互圆形 */}
-                  {radarGeometry.vertexPoints.map((v) => (
-                    <g key={v.id} onClick={() => setSelectedDimension(v)} style={{ cursor: 'pointer' }}>
-                      <circle
-                        cx={v.pt.x}
-                        cy={v.pt.y}
-                        r={selectedDimension.id === v.id ? 7 : 5}
-                        className={`qitu-radar-node-circle${selectedDimension.id === v.id ? ' is-active' : ''}`}
-                      />
-                      <text
-                        x={v.labelPt.x}
-                        y={v.labelPt.y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        className={`qitu-radar-label${selectedDimension.id === v.id ? ' is-active' : ''}`}
-                      >
-                        {v.name} ({v.score})
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
-
-              {/* 选中维度的深度解析卡片 */}
-              <div className="qitu-dimension-detail-card">
-                <div className="qitu-dimension-detail-header">
-                  <div>
-                    <strong>{selectedDimension.name}</strong>
-                    <span className="qitu-dimension-level-tag">{selectedDimension.level}</span>
-                  </div>
-                  <span className="qitu-dimension-score">
-                    {selectedDimension.score} <span>/ 100</span>
-                  </span>
-                </div>
-                <p className="qitu-dimension-desc">{selectedDimension.description}</p>
-                <div className="qitu-dimension-footer">
-                  <span>已沉淀真实过程证据：<strong>{selectedDimension.evidenceCount} 条</strong></span>
-                  <span className="qitu-dimension-lead">超同学段平均 +{selectedDimension.score - selectedDimension.benchmark} 分</span>
-                </div>
-              </div>
-            </div>
+          <SectionCard title="专家整理出的学习特征">
+            <ListBlock title="我的优势" values={data.strengths} empty="暂未形成稳定结论" />
+            <ListBlock title="我感兴趣的方向" values={data.interests} empty="完成更多探索后会逐步出现" />
+            <ListBlock title="适合我的学习方式" values={data.preferences} empty="暂未记录学习偏好" />
+          </SectionCard>
+          <SectionCard title="接下来可以继续思考">
+            {data.nextQuestions.length === 0 ? <p className="qitu-profile-muted">暂无待探索问题。</p> : <ol className="qitu-profile-question-list">{data.nextQuestions.map((question) => <li key={question}>{question}</li>)}</ol>}
           </SectionCard>
         </div>
-
-        {/* 右侧：能力特质分析与进阶指南 */}
         <div className="qitu-profile-col">
-          <SectionCard title="能力特质与优势解读">
-            <div className="qitu-persona-traits-list">
-              <div className="qitu-trait-card is-primary">
-                <div className="qitu-trait-icon">🔬</div>
-                <div className="qitu-trait-info">
-                  <strong>实证与代码验证驱动</strong>
-                  <p>
-                    在《雷霆战机》与《雨水花园》项目中，多次在动手编码前先通过数学公式或物理模型推演，表现出卓越的实践动手力（94分）与逻辑复盘素养。
-                  </p>
-                </div>
-              </div>
-
-              <div className="qitu-trait-card">
-                <div className="qitu-trait-icon">💡</div>
-                <div className="qitu-trait-info">
-                  <strong>善于将问题转化为系统原型</strong>
-                  <p>
-                    擅长借助 AI搭档进行苏格拉底式反思，能从模糊的现象迅速定位到因果链核心，问题拆解能力处于同龄人前列。
-                  </p>
-                </div>
-              </div>
-
-              <div className="qitu-trait-card is-suggest">
-                <div className="qitu-trait-icon">📈</div>
-                <div className="qitu-trait-info">
-                  <strong>下一步推荐进阶方向</strong>
-                  <p>
-                    建议在下一个项目中强化<strong>跨学科文献研读</strong>与学术引用规范（当前79分），尝试通过跨界对比阅读提升理论论证深度。
-                  </p>
-                </div>
-              </div>
-            </div>
+          <SectionCard title="最近的成长证据">
+            {data.recentGrowth.length === 0 ? <p className="qitu-profile-muted">还没有可展示的成长记录。</p> : <div className="qitu-profile-recent-growth">{data.recentGrowth.map((entry) => <div className="qitu-profile-growth-item" key={entry.id}><span>{formatDate(entry.occurredAt)}</span><strong>{entry.title}</strong><p>{entry.summaryStudent}</p></div>)}</div>}
           </SectionCard>
-
-          <SectionCard title="能力里程碑与认证徽章">
-            <div className="qitu-profile-badges-grid">
-              {MILESTONE_BADGES.map((b) => (
-                <div key={b.id} className="qitu-profile-badge-item">
-                  <div className="qitu-badge-icon">{b.icon}</div>
-                  <div className="qitu-badge-meta">
-                    <strong>{b.title}</strong>
-                    <p>{b.desc}</p>
-                    <small>获得于 {b.date}</small>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <SectionCard title="成长轨迹专家的最新归纳">
+            {data.trajectory === null ? <p className="qitu-profile-muted">成长轨迹专家还没有返回已确认的阶段总结。</p> : (
+              <>
+                <p className="qitu-profile-trajectory-summary">{data.trajectory.studentSummary ?? '已形成阶段性成长记录。'}</p>
+                <ListBlock title="已识别的里程碑" values={data.trajectory.milestones} empty="暂无里程碑" />
+                <ListBlock title="成长中反复出现的优势" values={data.trajectory.strengths} empty="暂无稳定优势结论" />
+                <ListBlock title="下一阶段可探索的问题" values={data.trajectory.nextQuestions} empty="暂无后续问题" />
+                <small>置信度：{data.trajectory.confidence ?? '待确认'} · 版本 {data.trajectory.version || '待确认'}</small>
+              </>
+            )}
+          </SectionCard>
+          <SectionCard title="数据来源">
+            <p className="qitu-profile-muted">个人画像由画像分析专家整理，成长记录由成长轨迹专家整理。页面只展示已返回的服务端投影，不把待审核候选当成事实。</p>
+            <small>画像助手：{data.provenance.profileAssistantId} · 成长助手：{data.provenance.growthAssistantId}</small>
           </SectionCard>
         </div>
       </div>
       <DeviceManagement />
-    </div>
+    </>
   );
 }

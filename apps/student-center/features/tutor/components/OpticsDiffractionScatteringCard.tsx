@@ -81,7 +81,9 @@ export function OpticsDiffractionScatteringCard({
   predictionGate,
   onAction,
 }: OpticsDiffractionScatteringCardProps) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<'diffraction' | 'scattering'>(initialMode);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedPrediction, setSelectedPrediction] = useState<string>('');
   const [isSubmittedLocal, setIsSubmittedLocal] = useState<boolean>(predictionGate?.submitted ?? false);
   const [isAnimating, setIsAnimating] = useState<boolean>(true);
@@ -592,8 +594,34 @@ export function OpticsDiffractionScatteringCard({
     setProbeXMm(null);
   };
 
+  const toggleFullscreen = useCallback(async () => {
+    const card = cardRef.current;
+    if (!card || typeof document === 'undefined') return;
+    try {
+      if (document.fullscreenElement === card) {
+        await document.exitFullscreen?.();
+      } else if (card.requestFullscreen) {
+        await card.requestFullscreen();
+      } else {
+        // Older embedded browsers do not expose Fullscreen API; keep a
+        // viewport-sized fallback so the experiment remains usable.
+        setIsFullscreen((value) => !value);
+      }
+    } catch {
+      setIsFullscreen((value) => !value);
+    }
+  }, []);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === cardRef.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
   return (
     <div
+      ref={cardRef}
+      className={isFullscreen ? 'qitu-optics-experiment-card is-fullscreen' : 'qitu-optics-experiment-card'}
       style={{
         margin: '16px 0',
         padding: '20px',
@@ -601,6 +629,7 @@ export function OpticsDiffractionScatteringCard({
         border: '1.5px solid #93c5fd',
         borderRadius: '16px',
         boxShadow: '0 8px 24px rgba(37,99,235,0.08)',
+        ...(isFullscreen ? { overflow: 'auto', height: '100dvh', margin: 0, borderRadius: 0 } : {}),
       }}
     >
       {/* 顶部标题栏与模式切换 */}
@@ -619,6 +648,23 @@ export function OpticsDiffractionScatteringCard({
 
         {/* 模式选择按钮组 */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => void toggleFullscreen()}
+            aria-pressed={isFullscreen}
+            aria-label={isFullscreen ? '退出全屏实验' : '全屏查看实验'}
+            style={{
+              padding: '6px 10px',
+              fontSize: '12px',
+              borderRadius: '8px',
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              cursor: 'pointer',
+            }}
+          >
+            {isFullscreen ? '退出全屏' : '全屏查看'}
+          </button>
           <button
             type="button"
             disabled={disabled}

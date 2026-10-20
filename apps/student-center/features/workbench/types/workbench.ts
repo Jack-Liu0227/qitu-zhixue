@@ -1,7 +1,6 @@
 import type {
   PedagogicMove,
   ProjectStage,
-  TemplateStage,
   WorkbenchConflictDetails,
 } from '@qitu/contracts';
 
@@ -101,18 +100,6 @@ export interface WorkbenchProject {
   coverUrl: string | null;
   /** Server-owned state machine value. The only valid gate source. */
   stage: ProjectStage;
-  /** ILLUSTRATIVE ONLY — never read for a gate or permission decision. */
-  currentStageIndex: number;
-  stageTotal: number;
-  progressPercent: number;
-}
-
-export interface WorkbenchStageProgress {
-  stages: TemplateStage[];
-  /** ILLUSTRATIVE ONLY — display index, not a gate. */
-  currentStageIndex: number;
-  stageTotal: number;
-  progressPercent: number;
 }
 
 /**

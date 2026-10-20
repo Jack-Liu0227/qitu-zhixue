@@ -1,5 +1,10 @@
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import {
+  GROWTH_PROJECTION_CONTRACT_VERSION,
+  normalizeGrowthEvidenceRefs,
+  type GrowthProjectionWorkerInput,
+} from '@qitu/contracts';
+import {
   agentConfigs,
   agentMailboxes,
   agentProjectionCandidates,
@@ -74,6 +79,7 @@ export class PostgresTeamProjectionSource {
     const payload = job.event.payload;
     const studentUserId = asString(payload.studentUserId);
     const projectId = asString(payload.projectId);
+    if (studentUserId === null) return 0;
     const sourceAgentId = await this.resolveSourceAgent(job.event.runId);
     if (!sourceAgentId) return 0;
     const [agent, route] = await Promise.all([
@@ -89,6 +95,8 @@ export class PostgresTeamProjectionSource {
     if (!agent[0]?.enabled || !route[0]) return 0;
     const runId = job.event.runId ?? await this.ensureRun(job.event, sourceAgentId, studentUserId, projectId);
     const taskKey = `team-projection-task:${job.event.eventId}:${target.projectionType}`;
+    const workerInput = buildWorkerInput(job.event, studentUserId, projectId);
+    if (workerInput.evidenceRefs.length === 0) return 0;
     const taskId = randomUUID();
     const now = new Date();
     await this.db.transaction(async (tx) => {
@@ -98,7 +106,7 @@ export class PostgresTeamProjectionSource {
         agentId: target.agentId,
         taskType: target.taskType,
         status: 'queued',
-        input: { eventId: job.event.eventId, topic: job.event.topic, payload, projectionType: target.projectionType },
+        input: { ...workerInput, projectionType: target.projectionType },
         idempotencyKey: taskKey,
         maxAttempts: 3,
         createdAt: now,
@@ -114,7 +122,7 @@ export class PostgresTeamProjectionSource {
         senderAgentId: sourceAgentId,
         recipientAgentId: target.agentId,
         messageType: 'projection.request',
-        payload: { eventId: job.event.eventId, topic: job.event.topic, payload, projectionType: target.projectionType },
+        payload: { ...workerInput, projectionType: target.projectionType },
         status: 'queued',
         correlationId: task.id,
         idempotencyKey: `${taskKey}:message`,
@@ -132,7 +140,15 @@ export class PostgresTeamProjectionSource {
         projectionType: target.projectionType,
         studentUserId,
         projectId,
-        payload: { sourceEventId: job.event.eventId, sourceTopic: job.event.topic, evidence: payload },
+        payload: {
+          contractVersion: GROWTH_PROJECTION_CONTRACT_VERSION,
+          sourceEventId: workerInput.sourceEventId,
+          sourceTopic: workerInput.sourceTopic,
+          studentUserId: workerInput.studentUserId,
+          projectId: workerInput.projectId,
+          evidenceRefs: workerInput.evidenceRefs,
+          sourceMetadata: workerInput.sourceMetadata,
+        },
         status: 'proposed',
         idempotencyKey: `team-projection-candidate:${job.event.eventId}:${target.projectionType}`,
         createdAt: now,
@@ -187,4 +203,35 @@ function parsePayload(value: unknown): TeamEventPayload | null {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Build the only payload that projection agents may receive. No event body or transcript crosses this boundary. */
+export function buildWorkerInput(
+  event: TeamEventPayload,
+  studentUserId: string,
+  projectId: string | null,
+): GrowthProjectionWorkerInput {
+  const payload = event.payload;
+  const refs = normalizeGrowthEvidenceRefs([
+    ...(Array.isArray(payload.evidenceRefs) ? payload.evidenceRefs : []),
+    ...(typeof payload.evidenceRef === 'string' ? [payload.evidenceRef] : []),
+  ]);
+  const sourceMetadata: GrowthProjectionWorkerInput['sourceMetadata'] = {};
+  for (const key of ['sessionId', 'stage', 'assistantId', 'actionId'] as const) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.length > 0 && value.length <= 180) sourceMetadata[key] = value;
+  }
+  for (const key of ['assistantSeq', 'lessonIndex'] as const) {
+    const value = payload[key];
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 0) sourceMetadata[key] = value;
+  }
+  return {
+    contractVersion: GROWTH_PROJECTION_CONTRACT_VERSION,
+    studentUserId,
+    projectId,
+    sourceEventId: event.eventId,
+    sourceTopic: event.topic,
+    evidenceRefs: refs,
+    sourceMetadata,
+  };
 }

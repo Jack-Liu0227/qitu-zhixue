@@ -35,7 +35,16 @@ function fixture() {
   const store = {
     findProject: async () => project, listProjectsByStudent: async () => [project], listPlansByStudent: async () => [],
   } as unknown as LearningPlanStore;
-  const binding = { findFrozenSnapshotForProject: async () => ({ teamVersionId: team.id }) } as unknown as TemplateBindingService;
+  const binding = { findFrozenSnapshotForProject: async () => ({
+    projectId: project.id,
+    templateVersionId: project.templateVersionId,
+    bindingId: 'synthetic-binding',
+    teamVersionId: team.id,
+    bindingHash: 'synthetic-binding-hash',
+    bundleDigest: 'synthetic-bundle-digest',
+    boundAt: new Date().toISOString(),
+    backfilled: false,
+  }) } as unknown as TemplateBindingService;
   const traces: Array<Parameters<TeamRuntimeService['recordEvent']>[0]> = [];
   let starts = 0;
   const runtime = {

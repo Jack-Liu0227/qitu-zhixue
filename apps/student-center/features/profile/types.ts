@@ -1,0 +1,30 @@
+import type { StudentGrowthEntry, StudentGrowthSummary } from '../growth/types';
+
+export interface StudentProfileProjection {
+  studentId: string;
+  version: number;
+  updatedAt: string | null;
+  priorKnowledge: string | null;
+  targetLevel: string | null;
+  timeBudgetMinutesPerWeek: number | null;
+  preferences: string[];
+  interests: string[];
+  strengths: string[];
+  nextQuestions: string[];
+  recentGrowth: StudentGrowthEntry[];
+  summary: StudentGrowthSummary;
+  freshness: 'fresh' | 'unavailable';
+  provenance: {
+    profileAssistantId: 'learner-profile';
+    growthAssistantId: 'growth-analyst';
+  };
+  trajectory: {
+    version: number;
+    milestones: string[];
+    strengths: string[];
+    nextQuestions: string[];
+    studentSummary: string | null;
+    evidenceRefs: string[];
+    confidence: 'low' | 'medium' | 'high' | null;
+  } | null;
+}

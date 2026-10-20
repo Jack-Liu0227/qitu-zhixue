@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BreadcrumbBar, ProgressBar, SectionCard, TagChips } from '@qitu/ui';
+import { BreadcrumbBar, SectionCard, TagChips } from '@qitu/ui';
 import { renderBreadcrumbLink } from '../../../components/breadcrumb-link';
 import type { ProjectStage } from '../types';
 
@@ -12,7 +12,6 @@ export interface ProjectHeaderProps {
    * 不在此做权限判定；门判定见 `lib/stage.ts`。
    */
   status: ProjectStage;
-  progressPercent: number;
   tags?: string[];
   breadcrumbs?: { label: string; href?: string }[];
   action?: ReactNode;
@@ -28,7 +27,6 @@ export function ProjectHeader({
   title,
   subtitle,
   coverUrl,
-  progressPercent,
   tags,
   breadcrumbs,
   action,
@@ -48,7 +46,6 @@ export function ProjectHeader({
         <h1 className="qitu-project-header-title">{title}</h1>
         {subtitle ? <p className="qitu-project-header-subtitle">{subtitle}</p> : null}
         {tags && tags.length > 0 ? <TagChips tags={tags} /> : null}
-        <ProgressBar percent={progressPercent} label={`进度 ${progressPercent}%`} />
         {action ? <div className="qitu-project-header-action">{action}</div> : null}
       </SectionCard>
     </header>

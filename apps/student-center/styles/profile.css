@@ -10,6 +10,21 @@
   margin: 0 auto;
 }
 
+.qitu-profile-list-block + .qitu-profile-list-block { margin-top: 22px; }
+.qitu-profile-list-block h3 { margin: 0 0 10px; color: #183451; font-size: 0.96rem; }
+.qitu-profile-muted { color: #68798a; line-height: 1.6; }
+.qitu-profile-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.qitu-profile-chip { padding: 7px 11px; border: 1px solid #cfe0d7; border-radius: 999px; background: #f2f8f4; color: #245a42; font-size: 0.86rem; }
+.qitu-profile-question-list { display: grid; gap: 10px; padding-left: 22px; color: #34495c; line-height: 1.55; }
+.qitu-profile-recent-growth { display: grid; gap: 0; }
+.qitu-profile-growth-item { position: relative; display: grid; gap: 5px; padding: 0 0 18px 18px; border-left: 1px solid #b7d3c2; }
+.qitu-profile-growth-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+.qitu-profile-growth-item::before { position: absolute; top: 4px; left: -5px; width: 9px; height: 9px; border-radius: 50%; background: #398061; content: ''; }
+.qitu-profile-growth-item span { color: #73839b; font-size: 0.78rem; }
+.qitu-profile-growth-item strong { color: #183451; }
+.qitu-profile-growth-item p { margin: 0; color: #52677a; font-size: 0.86rem; line-height: 1.55; }
+.qitu-profile-trajectory-summary { margin: 0 0 16px; color: #34495c; line-height: 1.65; }
+
 /* 头部 Hero 卡片 */
 .qitu-profile-hero-card {
   display: flex;

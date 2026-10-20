@@ -12,6 +12,7 @@ import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
 import { CurrentLessonCard } from './components/CurrentLessonCard';
+import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
@@ -293,6 +294,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           ) : projectSummary && session.project ? (
             <>
               <ProjectCard project={projectSummary} />
+              <TutorTeamRail phases={session.project.phases ?? []} />
               <CurrentTask task={session.project.currentTask} />
               <CurrentLessonCard lesson={session.project.lesson ?? null} />
             </>

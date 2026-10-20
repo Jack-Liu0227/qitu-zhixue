@@ -1,0 +1,8 @@
+﻿id,phase,task,owner,depends_on,acceptance,status,notes
+OPTICS-001,admin,把 TeachingBundleSource 接入模板版本绑定草稿,templates,none,草稿只存 canonical IDs,done,Added Teaching Bundle draft contract and GET/PATCH canonical-reference API with idempotent server-side persistence.
+OPTICS-002,admin,validate/activate 时编译 bundle 并把 digest 纳入 binding hash,templates,OPTICS-001,无效引用 fail closed 且幂等,partial,Digest/hash/snapshot fail-closed path is implemented; live catalog-to-TeachingBundle compiler still needs a server owner integration.
+OPTICS-003,student,确认意图事务冻结四个版本字段和 digest,projects,OPTICS-002,重复确认返回同一 project,done,Existing confirm/freeze path now persists bundleDigest with the immutable binding snapshot and remains idempotent.
+OPTICS-004,student,project-context/team-graph 只读 frozen bundle,ai-tutor,OPTICS-003,缺快照不回退猜测,done,Formal Tutor project context requires a complete frozen snapshot and never falls back to mutable team/template guesses.
+OPTICS-005,student,接线题库/课时/阶段右侧预览,student-center,OPTICS-004,与 curriculum profile 一致,partial,Team rail and experiment fullscreen are wired; complete lesson/stage preview and quiz evidence integration remains.
+OPTICS-006,experiment,实现 optics action/observation owner 合同,projects/works,OPTICS-003,收到 owner receipt 才显示保存,partial,Action identity and parameter gates exist; persistent observation owner receipt/ref still needs completion.
+OPTICS-007,qa,执行 API/UI/security 验收矩阵,qa,OPTICS-001|OPTICS-006,记录 digest 和失败路径,partial,Deterministic student Tutor boundary flow passes; live API/worker/browser matrix remains blocked by environment and is documented in 05-student-tutor-flow-qa.md.

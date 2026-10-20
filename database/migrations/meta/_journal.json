@@ -288,6 +288,20 @@
       "when": 1792281600012,
       "tag": "0040_remove_calendar_session_timestamp",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792454400000,
+      "tag": "0041_growth_projection_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792454400001,
+      "tag": "0042_teaching_bundle_binding",
+      "breakpoints": true
     }
   ]
 }

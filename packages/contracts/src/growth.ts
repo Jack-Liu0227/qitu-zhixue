@@ -34,6 +34,132 @@ export type GrowthEvidenceSourceKind =
   | 'reflection'
   | 'help_request';
 
+/** Versioned, closed contract exchanged between projection workers and Growth owners. */
+export const GROWTH_PROJECTION_CONTRACT_VERSION = 'qitu.growth-projection.v1' as const;
+export type GrowthProjectionType = 'learner_profile' | 'growth_trajectory';
+export type GrowthProjectionConfidence = 'low' | 'medium' | 'high';
+
+export interface LearnerProfileProjectionResult {
+  version: number;
+  priorKnowledge: string | null;
+  targetLevel: string | null;
+  timeBudgetMinutesPerWeek: number | null;
+  preferences: string[];
+  interests: string[];
+  strengths: string[];
+  nextQuestions: string[];
+}
+
+export interface GrowthTrajectoryProjectionResult {
+  version: number;
+  milestones: string[];
+  strengths: string[];
+  nextQuestions: string[];
+  studentSummary: string | null;
+  evidenceRefs: string[];
+  confidence: GrowthProjectionConfidence | null;
+}
+
+export type GrowthProjectionResult =
+  | LearnerProfileProjectionResult
+  | GrowthTrajectoryProjectionResult;
+
+/** Opaque worker input. It deliberately has no conversation/body/content fields. */
+export interface GrowthProjectionWorkerInput {
+  contractVersion: typeof GROWTH_PROJECTION_CONTRACT_VERSION;
+  studentUserId: string;
+  projectId: string | null;
+  sourceEventId: string;
+  sourceTopic: string;
+  evidenceRefs: string[];
+  sourceMetadata: Record<string, string | number | boolean | null>;
+}
+
+export interface GrowthProjectionValidation {
+  ok: boolean;
+  code?:
+    | 'PROJECTION_TYPE_INVALID'
+    | 'PROJECTION_RESULT_INVALID'
+    | 'PROJECTION_UNKNOWN_FIELD'
+    | 'PROJECTION_EVIDENCE_INVALID';
+  errors: string[];
+  value?: GrowthProjectionResult;
+}
+
+const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|help_request):[A-Za-z0-9._:-]{1,180}$/u;
+const PROFILE_KEYS = [
+  'version', 'priorKnowledge', 'targetLevel', 'timeBudgetMinutesPerWeek',
+  'preferences', 'interests', 'strengths', 'nextQuestions',
+] as const;
+const TRAJECTORY_KEYS = [
+  'version', 'milestones', 'strengths', 'nextQuestions', 'studentSummary',
+  'evidenceRefs', 'confidence',
+] as const;
+
+export function isGrowthEvidenceRef(value: unknown): value is string {
+  return typeof value === 'string' && GROWTH_EVIDENCE_RE.test(value);
+}
+
+/** Filters evidence to the closed, opaque-ref allow-list without exposing input text. */
+export function normalizeGrowthEvidenceRefs(value: unknown, max = 20): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(isGrowthEvidenceRef).map((ref) => ref.trim()))].slice(0, max);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function boundedString(value: unknown, allowNull = false): value is string | null {
+  return (allowNull && value === null) || (typeof value === 'string' && value.trim().length <= 1000);
+}
+
+function boundedList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 20
+    && value.every((item) => typeof item === 'string' && item.trim().length > 0 && item.length <= 240);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+/** Strict runtime validation used by the domain owner before accepting model output. */
+export function validateGrowthProjectionResult(
+  projectionType: string,
+  candidate: unknown,
+): GrowthProjectionValidation {
+  if (projectionType !== 'learner_profile' && projectionType !== 'growth_trajectory') {
+    return { ok: false, code: 'PROJECTION_TYPE_INVALID', errors: ['projectionType'] };
+  }
+  if (!isPlainRecord(candidate)) {
+    return { ok: false, code: 'PROJECTION_RESULT_INVALID', errors: ['result'] };
+  }
+  const keys = projectionType === 'learner_profile' ? PROFILE_KEYS : TRAJECTORY_KEYS;
+  if (!hasOnlyKeys(candidate, keys)) {
+    return { ok: false, code: 'PROJECTION_UNKNOWN_FIELD', errors: ['unknown_field'] };
+  }
+  const errors: string[] = [];
+  if (!Number.isInteger(candidate.version) || (candidate.version as number) < 1) errors.push('version');
+  if (projectionType === 'learner_profile') {
+    if (!boundedString(candidate.priorKnowledge, true)) errors.push('priorKnowledge');
+    if (!boundedString(candidate.targetLevel, true)) errors.push('targetLevel');
+    if (candidate.timeBudgetMinutesPerWeek !== null
+      && (!Number.isInteger(candidate.timeBudgetMinutesPerWeek) || (candidate.timeBudgetMinutesPerWeek as number) < 0 || (candidate.timeBudgetMinutesPerWeek as number) > 10080)) errors.push('timeBudgetMinutesPerWeek');
+    for (const key of ['preferences', 'interests', 'strengths', 'nextQuestions'] as const) {
+      if (!boundedList(candidate[key])) errors.push(key);
+    }
+  } else {
+    for (const key of ['milestones', 'strengths', 'nextQuestions'] as const) {
+      if (!boundedList(candidate[key])) errors.push(key);
+    }
+    if (!boundedString(candidate.studentSummary, true)) errors.push('studentSummary');
+    if (!Array.isArray(candidate.evidenceRefs) || candidate.evidenceRefs.length === 0 || candidate.evidenceRefs.length > 20 || candidate.evidenceRefs.some((ref) => !isGrowthEvidenceRef(ref))) errors.push('evidenceRefs');
+    if (candidate.confidence !== null && candidate.confidence !== 'low' && candidate.confidence !== 'medium' && candidate.confidence !== 'high') errors.push('confidence');
+  }
+  if (errors.length > 0) return { ok: false, code: errors.includes('evidenceRefs') ? 'PROJECTION_EVIDENCE_INVALID' : 'PROJECTION_RESULT_INVALID', errors };
+  return { ok: true, errors, value: candidate as unknown as GrowthProjectionResult };
+}
+
 /**
  * 观察状态——**封闭两值**（growth-spec.md §4.7 验收标准）。
  *

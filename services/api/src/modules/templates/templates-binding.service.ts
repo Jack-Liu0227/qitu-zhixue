@@ -104,7 +104,7 @@ export class TemplateBindingService {
       });
     }
     const pblSpecHash = computePblSpecHash(teamVersion);
-    const bindingHash = computeBindingHash(versionId, input.teamVersionId, pblSpecHash);
+    const bindingHash = computeBindingHash(versionId, input.teamVersionId, pblSpecHash, null);
 
     const scope = `${ADMIN_TEMPLATE_BINDING_IDEMPOTENCY_SCOPES.create}:${actor.id}:${versionId}`;
     const requestHash = hashIdempotentInput(
@@ -120,6 +120,7 @@ export class TemplateBindingService {
         templateVersionId: versionId,
         teamVersionId: input.teamVersionId,
         bindingHash,
+        bundleDigest: null,
         createdBy: actor.id,
         now,
       });
@@ -144,6 +145,92 @@ export class TemplateBindingService {
     return result.replayed ? { ...result.body, replayed: true } : result.body;
   }
 
+  /** Read the server-owned bundle for an Admin binding editor. */
+  async getTeachingBundle(
+    actor: CurrentUser,
+    templateId: string,
+    versionId: string,
+    bindingId: string,
+  ): Promise<{ binding: PblTemplateTeamBinding; draft: import('@qitu/contracts').TeachingBundleDraft | null; bundleDigest: string | null }> {
+    await this.requireBindableVersion(actor, templateId, versionId);
+    const binding = await this.requireBindingForVersion(bindingId, versionId);
+    return { binding: toBindingView(binding), draft: binding.bundleDraft, bundleDigest: binding.bundleDigest ?? null };
+  }
+
+  /** Persist canonical draft references; resolution/compilation is attached by the server owner. */
+  async saveTeachingBundleDraft(
+    actor: CurrentUser,
+    templateId: string,
+    versionId: string,
+    bindingId: string,
+    draft: import('@qitu/contracts').TeachingBundleDraft,
+    idempotencyKey: string,
+  ): Promise<BindingMutationResult> {
+    await this.requireBindableVersion(actor, templateId, versionId);
+    const binding = await this.requireBindingForVersion(bindingId, versionId);
+    if (binding.status !== 'draft') {
+      throw new ConflictException({
+        code: 'BINDING_DRAFT_REQUIRED',
+        message: '只有 draft 绑定可以修改 Teaching Bundle 草稿',
+      });
+    }
+    if (draft.templateVersionId !== versionId || draft.teamVersionId !== binding.teamVersionId) {
+      throw new BadRequestException({
+        code: 'BUNDLE_DRAFT_SCOPE_MISMATCH',
+        message: 'Teaching Bundle 草稿必须引用当前模板版本和绑定团队版本',
+      });
+    }
+    const teamVersion = await this.bindings.findTeamVersion(binding.teamVersionId);
+    if (teamVersion === null) {
+      throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
+    }
+    const draftBindingHash = computeBindingHash(
+      versionId,
+      binding.teamVersionId,
+      computePblSpecHash(teamVersion),
+      null,
+    );
+    const scope = `admin.template-bundle.patch:${actor.id}:${bindingId}`;
+    const requestHash = hashIdempotentInput(scope, { templateId, versionId, bindingId }, draft);
+    const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      const updated = await this.bindings.updateTeachingBundle(bindingId, {
+        draft, payload: null, digest: null, bindingHash: draftBindingHash, now: new Date(),
+      });
+      return { status: 200, body: { binding: toBindingView(updated), replayed: false } };
+    });
+    return result.replayed ? { ...result.body, replayed: true } : result.body;
+  }
+
+  /** Server-owner hook used after compileTeachingBundle resolves live catalogs. */
+  async attachCompiledTeachingBundle(
+    bindingId: string,
+    versionId: string,
+    compiled: import('./teaching-bundle.types').CompiledTeachingBundle,
+  ): Promise<BindingMutationResult> {
+    const current = await this.requireBindingForVersion(bindingId, versionId);
+    const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId);
+    if (teamVersion === null) throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
+    const bindingHash = computeBindingHash(
+      versionId,
+      current.teamVersionId,
+      computePblSpecHash(teamVersion),
+      compiled.digest,
+    );
+    const updated = await this.bindings.updateTeachingBundle(bindingId, {
+      draft: current.bundleDraft ?? {
+        templateVersionId: versionId, teamVersionId: current.teamVersionId,
+        scheduleProfileId: compiled.payload.scheduleProfileId, roleMap: [], skillPins: [],
+        toolIds: [], mcpServerIds: [], knowledgeBaseIds: [], modelByPurpose: {},
+        approvalPolicyVersion: compiled.payload.approvalPolicyVersion,
+      },
+      payload: compiled.payload,
+      digest: compiled.digest,
+      bindingHash,
+      now: new Date(),
+    });
+    return { binding: toBindingView(updated), replayed: false };
+  }
+
   async validateBinding(
     actor: CurrentUser,
     templateId: string,
@@ -160,10 +247,29 @@ export class TemplateBindingService {
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
       const current = await this.requireBindingForVersion(bindingId, versionId);
       // 已是 validated：视为幂等成功（不同 key 重复校验也返回当前状态）。
+      const versionForBundle = await this.templates.findVersion(versionId);
+      const bundleRequired = requiresTeachingBundle(versionForBundle?.content);
       if (current.status === 'validated') {
+        if (bundleRequired && (!current.bundleDigest || current.bundlePayload === null)) {
+          throw new BadRequestException({
+            code: 'BUNDLE_COMPILATION_UNAVAILABLE',
+            message: 'Teaching Bundle 尚未完成服务端编译，不能进入 validated',
+          });
+        }
         return { status: 200, body: { binding: toBindingView(current), replayed: true } };
       }
       assertBindingStatusTransition(current.status, 'validated', PBL_BINDING_STATUS_TRANSITIONS);
+
+      // A draft is intentionally only a set of canonical references. Until a
+      // server-owned compiler has resolved the live catalogs and persisted both
+      // payload and digest, validation must fail closed rather than treating a
+      // team-only validation as a usable Teaching Bundle.
+      if (bundleRequired && (!current.bundleDigest || current.bundlePayload === null)) {
+        throw new BadRequestException({
+          code: 'BUNDLE_COMPILATION_UNAVAILABLE',
+          message: 'Teaching Bundle 尚未完成服务端编译，不能进入 validated',
+        });
+      }
 
       const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId);
       if (teamVersion === null) {
@@ -435,6 +541,13 @@ export class TemplateBindingService {
     if (input.templateVersionId === null) return 'omitted';
     const binding = await this.bindings.findActiveBinding(input.templateVersionId, input.tx);
     if (binding === null) return 'omitted';
+    const templateVersion = await this.templates.findVersion(input.templateVersionId);
+    if (requiresTeachingBundle(templateVersion?.content) && !binding.bundleDigest) {
+      throw new ConflictException({
+        code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE',
+        message: '该 PBL 模板的 active binding 缺少已校验的 Teaching Bundle',
+      });
+    }
     await this.bindings.insertSnapshot(
       {
         projectId: input.projectId,
@@ -442,6 +555,7 @@ export class TemplateBindingService {
         bindingId: binding.id,
         teamVersionId: binding.teamVersionId,
         bindingHash: binding.bindingHash,
+        bundleDigest: binding.bundleDigest ?? null,
         boundAt: input.boundAt,
         backfilled: false,
       },
@@ -465,7 +579,10 @@ export class TemplateBindingService {
     const binding = await this.bindings.findBinding(snapshot.bindingId);
     if (binding === null || binding.templateVersionId !== templateVersionId
       || binding.teamVersionId !== snapshot.teamVersionId
-      || binding.bindingHash !== snapshot.bindingHash) return null;
+      || binding.bindingHash !== snapshot.bindingHash
+      || (binding.bundleDigest ?? null) !== (snapshot.bundleDigest ?? null)) return null;
+    const templateVersion = await this.templates.findVersion(templateVersionId);
+    if (requiresTeachingBundle(templateVersion?.content) && !snapshot.bundleDigest) return null;
     return toSnapshotView(snapshot);
   }
 
@@ -491,6 +608,7 @@ export class TemplateBindingService {
       bindingId: active.id,
       teamVersionId: active.teamVersionId,
       bindingHash: active.bindingHash,
+      bundleDigest: active.bundleDigest ?? null,
       boundAt: new Date(),
       backfilled: true,
     });
@@ -646,6 +764,7 @@ export function toBindingView(record: BindingRecord): PblTemplateTeamBinding {
     teamVersionId: record.teamVersionId,
     status: record.status,
     bindingHash: record.bindingHash,
+    bundleDigest: record.bundleDigest ?? null,
     validation: {
       valid: record.validation.valid,
       errors: [...record.validation.errors],
@@ -667,9 +786,15 @@ export function toSnapshotView(record: SnapshotRecord): ProjectBindingSnapshot {
     bindingId: record.bindingId,
     teamVersionId: record.teamVersionId,
     bindingHash: record.bindingHash,
+    bundleDigest: record.bundleDigest ?? null,
     boundAt: record.boundAt.toISOString(),
     backfilled: record.backfilled,
   };
+}
+
+function requiresTeachingBundle(content: unknown): boolean {
+  return content !== null && typeof content === 'object' && !Array.isArray(content)
+    && 'pbl' in content;
 }
 
 function normalizeReason(raw: unknown): string | null {

@@ -8,7 +8,6 @@ import type {
   WorkbenchKind,
   WorkbenchProject,
   WorkbenchSnapshot,
-  WorkbenchStageProgress,
 } from '../types/workbench';
 
 /**
@@ -19,7 +18,6 @@ import type {
  */
 export interface WorkbenchDataSource {
   getProject(projectId: string): Promise<WorkbenchProject>;
-  getStageProgress(projectId: string): Promise<WorkbenchStageProgress>;
   getDraft<K extends WorkbenchKind>(projectId: string, kind: K): Promise<WorkbenchDraft<K>>;
   /**
    * `revision` is sent as `If-Match`. A stale revision MUST reject with

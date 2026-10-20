@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { TutorService } from './tutor.service';
 import { LearningPlanStore, type LearningProjectRecord } from '../learning-plan/learning-plan.store';
 import { ProjectLifecycleService } from '../projects/project-lifecycle.service';
@@ -19,16 +19,18 @@ function makeTutor(store?: LearningPlanStore) {
     undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, store);
 }
 
-test('new intent-confirmed project is immediately available to Tutor without a plan or demo roster', async () => {
+test('intent-confirmed project without a frozen binding fails closed', async () => {
   const store = {
     findProject: async () => ({ ...project }),
     listProjectsByStudent: async (owner: string) => owner === project.studentId ? [{ ...project }] : [],
   } as unknown as LearningPlanStore;
   const tutor = makeTutor(store);
-  assert.equal((await tutor.getProjectContext(project.id, 'owner'))?.project?.stage, 'intent_confirmed');
-  assert.equal((await tutor.getProjectContext(undefined, 'owner'))?.project?.id, project.id);
-  const session = await tutor.resolveSession(project.id, 'owner');
-  assert.equal(tutor.toSessionResponse(session).projectId, project.id);
+  await assert.rejects(tutor.getProjectContext(project.id, 'owner'), (error: unknown) => {
+    assert.ok(error instanceof ConflictException);
+    assert.equal((error.getResponse() as { code?: string }).code, 'PROJECT_BINDING_RECONFIRM_REQUIRED');
+    return true;
+  });
+  await assert.rejects(tutor.resolveSession(project.id, 'owner'), ConflictException);
   await assert.rejects(tutor.getProjectContext(project.id, 'other'), ForbiddenException);
   await assert.rejects(tutor.resolveSession(project.id, 'other'), ForbiddenException);
   assert.equal(await tutor.getProjectContext(undefined, 'other'), null);

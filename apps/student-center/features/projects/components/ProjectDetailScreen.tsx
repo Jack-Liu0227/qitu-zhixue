@@ -155,8 +155,8 @@ export function ProjectDetailScreen({
       onRetry={overview.retry}
       retrying={overview.retrying}
       loading={<SkeletonBlock lines={6} />}
-      emptyTitle="项目暂时没有阶段"
-      emptyDescription="去灵感空间确认一个想做的方向。"
+      emptyTitle="项目暂时没有可用课时"
+      emptyDescription="去灵感空间确认一个想做的方向，系统会生成课时安排。"
       emptyAction={<CreateProjectEntry />}
       render={(data, offline) => {
         const project = data.project;
@@ -190,7 +190,6 @@ export function ProjectDetailScreen({
               subtitle={project.subtitle}
               coverUrl={project.coverUrl}
               status={project.status}
-              progressPercent={project.progressPercent}
               tags={project.tags}
             />
             <LessonScheduleCard schedule={data.lessonSchedule} />

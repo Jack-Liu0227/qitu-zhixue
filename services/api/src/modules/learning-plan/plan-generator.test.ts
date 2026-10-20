@@ -49,7 +49,9 @@ describe('lesson-first plan generator', () => {
   it('does not derive counts from calendar fields', () => {
     assert.equal(expectedSessionCount({ lessonCount: 4 }), 4);
     assert.equal(expectedSessionCount({ lessonCount: 8, sessionCount: 8 }), 8);
-    assert.throws(() => assertGenerateInput({ interest: 'optics', lessonCount: 4, calendarSlot: 4 } as never), PlanGenerationError);
+    for (const field of ['weeks', 'weekIndex', 'durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'schedule', 'calendarSlot']) {
+      assert.throws(() => assertGenerateInput({ interest: 'optics', lessonCount: 4, [field]: 4 } as never), PlanGenerationError);
+    }
   });
 
   it('reports prerequisite cycles', () => {

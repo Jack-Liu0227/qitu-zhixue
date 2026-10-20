@@ -2,7 +2,6 @@ export { WorkbenchPage, type WorkbenchPageProps } from './components/WorkbenchPa
 export { WorkbenchScreen, type WorkbenchScreenProps } from './components/WorkbenchScreen';
 export { WorkbenchBreadcrumb, type WorkbenchBreadcrumbProps } from './components/WorkbenchBreadcrumb';
 export { WorkbenchHeader, type WorkbenchHeaderProps } from './components/WorkbenchHeader';
-export { StageRail, type StageRailProps } from './components/StageRail';
 export { WorkbenchTabs, WORKBENCH_TABS, type WorkbenchTab, type WorkbenchTabsProps } from './components/WorkbenchTabs';
 export { FlowCanvas, type FlowCanvasProps } from './components/FlowCanvas';
 export { NodePalette, type NodePaletteProps } from './components/NodePalette';

@@ -12,6 +12,7 @@
 - 排程：8 周，每周 2 课时，每课 60 分钟，总计 960 分钟。
 - 内容真源：[curriculum.ts](../../packages/ai-client/src/quiz-bank/optics/curriculum.ts)。旧 `optics-physical-inquiry:v1` 的正文和 bootstrap identity 不变。
 - 每课包含稳定 ID、课次、阶段、目标引用、时长分配、学习目标、分活动指导和待提交证据要求。证据要求不是已保存、已掌握或已通过的事实。
+- 学生侧以这份冻结课时安排作为唯一课程导航；`stage` 仍是服务端门禁与 Tutor 策略字段，不在学生页面渲染成固定四阶段进度条。
 - `learningGoal`、`activityGuidance` 和 `evidenceRequirements` 是学生可见的教学说明，不得填写内部系统 Prompt、凭证、标准答案或未脱敏的学生原始对话。
 - 课内活动沿用 `review/theory/check/practice/reflect`；只有 `guided_practice` 安排实践分钟。探索与理论阶段只能提供低风险模拟提示。
 

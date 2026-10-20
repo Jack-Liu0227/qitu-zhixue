@@ -1,0 +1,7 @@
+﻿id,phase,task,owner,depends_on,acceptance,status
+GROWTH-001,contract,fixed profile/trajectory schema and evidenceRefs allow-list,growth,none,unknown fields and invalid evidence rejected,done
+GROWTH-002,worker,candidate input metadata and opaque refs only,workers,GROWTH-001,no raw conversation persisted,done
+GROWTH-003,owner,validate accept reject supersede transaction,growth,GROWTH-001,idempotent and audited,done
+GROWTH-004,api,student/parent read-only projection and permissions,growth,GROWTH-003,accepted rows only,partial
+GROWTH-005,ui,profile/trajectory state and request identity,student-center,GROWTH-004,loading empty offline error 403,done
+GROWTH-006,qa,end-to-end event to page regression,qa,GROWTH-002|GROWTH-005,version and evidence traceable,not_started

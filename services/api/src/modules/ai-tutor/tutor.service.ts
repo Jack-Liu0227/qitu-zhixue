@@ -31,10 +31,11 @@ import type {
   TutorToolCall,
   TutorTurn,
   ExplorationView,
+  ProjectBindingSnapshot,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { and, eq } from 'drizzle-orm';
-import { adminTeamVersions, auditLogs, projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { adminTeamVersions, auditLogs, pblGateEvidence } from '@qitu/database';
 import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
 import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -199,6 +200,22 @@ function runtimeAgentIdsFor(assistantId: string): readonly string[] {
   // identifier alias, not a display-name guess; all state still comes from the
   // project-scoped Team Runtime query.
   return assistantId === 'tutor-leader' ? ['qitu-learning-partner', 'tutor-leader'] : [assistantId];
+}
+
+type FrozenBindingSnapshot = ProjectBindingSnapshot & { bundleDigest?: string | null };
+
+function isUsableFrozenSnapshot(
+  value: (ProjectBindingSnapshot & { bundleDigest?: string | null }) | null,
+  projectId: string,
+  templateVersionId: string | null,
+): value is FrozenBindingSnapshot {
+  if (value === null || typeof value !== 'object') return false;
+  if (value.projectId !== projectId || templateVersionId === null
+    || value.templateVersionId !== templateVersionId
+    || typeof value.bindingId !== 'string' || value.bindingId.trim() === ''
+    || typeof value.teamVersionId !== 'string' || value.teamVersionId.trim() === ''
+    || typeof value.bindingHash !== 'string' || value.bindingHash.trim() === '') return false;
+  return typeof value.bundleDigest === 'string' && value.bundleDigest.trim().length > 0;
 }
 
 
@@ -419,15 +436,27 @@ export class TutorService {
       assistantName: intake?.name ?? '启途智学助手',
       assistantAvatar: intake?.avatar ?? null,
     };
-    if (this.platformRegistry === undefined) return { team: fallback, phases: [], teamConfig: null };
+    if (exploration) return { team: fallback, phases: [], teamConfig: null };
+    if (this.platformRegistry === undefined) {
+      throw new ConflictException({
+        code: 'PROJECT_BINDING_RECONFIRM_REQUIRED',
+        message: 'Project is missing frozen binding service.',
+      });
+    }
     try {
       // A1：正式项目优先按项目创建时冻结的绑定快照解析团队，退役/重新激活
       // 绑定不会改变既有项目。快照指向不可变的 teamVersionId，后写不会覆盖。
-      const governedProject = projectId !== null && !exploration && this.templateBindings !== undefined;
+      const governedProject = projectId !== null && !exploration;
+      if (governedProject && this.templateBindings === undefined) {
+        throw new ConflictException({
+          code: 'PROJECT_BINDING_RECONFIRM_REQUIRED',
+          message: 'Project is missing frozen binding service.',
+        });
+      }
       const snapshot = governedProject
         ? await this.templateBindings!.findFrozenSnapshotForProject(projectId, templateVersionId)
         : null;
-      if (governedProject && snapshot === null) {
+      if (governedProject && !isUsableFrozenSnapshot(snapshot, projectId, templateVersionId)) {
         throw new ConflictException({ code: 'PROJECT_BINDING_RECONFIRM_REQUIRED', message: '项目缺少有效的冻结团队绑定，请联系老师或管理员重新确认。' });
       }
       if (projectId !== null && snapshot !== null) {
@@ -451,7 +480,8 @@ export class TutorService {
         throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目冻结的导师团队不可用，请联系老师或管理员。' });
       }
 
-      // Compatibility for exploration and isolated fixtures without the governed binding service.
+      // Exploration previews may resolve a template team. Formal projects never
+      // reach this mutable lookup branch.
       const [assistants, directTeam] = await Promise.all([
         this.platformRegistry.listAssistants(),
         templateVersionId === null || typeof this.platformRegistry.getTeamForTemplateVersion !== 'function'
@@ -459,18 +489,6 @@ export class TutorService {
           : this.platformRegistry.getTeamForTemplateVersion(templateVersionId),
       ]);
       let teamConfig = directTeam;
-      if (teamConfig === null && templateVersionId !== null) {
-        const [teams, binding] = await Promise.all([
-          this.platformRegistry.listTeams(),
-          this.findTemplateBinding(templateVersionId),
-        ]);
-        teamConfig = binding === null
-          ? null
-          : teams.find((team) => team.enabled && this.teamBindsTemplate(team, binding)) ?? null;
-      }
-      if (projectId !== null && teamConfig !== null && snapshot === null) {
-        await this.writeLegacyResolutionAudit(projectId, templateVersionId, teamConfig, ownerId);
-      }
       const leaderId = teamConfig?.leaderAssistantId ?? fallback.assistantId;
       const leader = assistants.find((candidate) => candidate.id === leaderId && candidate.enabled)
         ?? this.findBuiltinAssistant(leaderId);
@@ -550,22 +568,6 @@ export class TutorService {
 
   private findBuiltinAssistant(id: string) {
     return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
-  }
-
-  private async findTemplateBinding(templateVersionId: string): Promise<{ id: string; title: string; slug: string } | null> {
-    if (this.database === null) return null;
-    const rows = await this.database
-      .select({ id: projectTemplates.id, title: projectTemplates.title, slug: projectTemplates.slug })
-      .from(projectTemplateVersions)
-      .innerJoin(projectTemplates, eq(projectTemplateVersions.templateId, projectTemplates.id))
-      .where(eq(projectTemplateVersions.id, templateVersionId))
-      .limit(1);
-    return rows[0] ?? null;
-  }
-
-  private teamBindsTemplate(team: AdminTeamConfig, binding: { id: string; title: string; slug: string }): boolean {
-    const spec = team.pblSpec as (AdminTeamConfig['pblSpec'] & { projectName?: unknown; projectId?: unknown }) | undefined;
-    return spec?.projectName === binding.title || spec?.projectId === binding.id;
   }
 
   private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string): Promise<TutorPhaseProjection[]> {
@@ -2153,7 +2155,9 @@ export class TutorService {
             toolIds: effectiveRuntime?.tools.map((tool) => tool.id) ?? [],
             assistantSeq,
             stage: projectStage,
-            evidenceRef: `tutor_turn:${record.sessionId}:${assistantSeq}`,
+            // Growth projections may correlate this opaque marker, but never
+            // receive the persisted tutor text or the internal tutor_turn ID.
+            evidenceRef: `help_request:${record.sessionId}:${assistantSeq}`,
           },
           idempotencyKey: `tutor-team-event:${record.sessionId}:${assistantSeq}`,
         });
@@ -2426,7 +2430,7 @@ function buildTeamDelegationInput(
     // The worker can correlate this marker with authorized evidence refs. It
     // intentionally contains no student or assistant utterance.
     summary: `服务端已记录一次 ${projectStage} 阶段回合；请仅依据证据引用处理。`,
-    evidenceRefs: [`tutor_turn:${record.sessionId}:${assistantSeq}`],
+    evidenceRefs: [`help_request:${record.sessionId}:${assistantSeq}`],
     turnCount: record.turns.filter((turn) => turn.role === 'student').length,
   };
 }

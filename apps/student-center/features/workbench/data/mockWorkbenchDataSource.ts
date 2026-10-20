@@ -1,4 +1,3 @@
-import type { TemplateStage } from '@qitu/contracts';
 import {
   WorkbenchConflictError,
   type PreviewResult,
@@ -13,7 +12,6 @@ import {
   type WorkbenchKind,
   type WorkbenchProject,
   type WorkbenchSnapshot,
-  type WorkbenchStageProgress,
 } from '../types/workbench';
 import type { WorkbenchDataSource } from './workbenchDataSource';
 
@@ -24,16 +22,7 @@ export interface MockWorkbenchOptions {
   failNextLoad?: boolean;
   /** Simulate a 403 on load (permission-denied state). */
   denyAccess?: boolean;
-  /** Simulate the project having no stages yet (empty rail). */
-  emptyStages?: boolean;
 }
-
-const SEED_STAGES: TemplateStage[] = [
-  { id: 'concept', label: '创意构思' },
-  { id: 'design', label: '流程设计' },
-  { id: 'build', label: '动手制作' },
-  { id: 'show', label: '展示分享' },
-];
 
 function seedContent(): WorkbenchContentMap {
   return {
@@ -113,19 +102,6 @@ export function createMockWorkbenchDataSource(
         title: '桌面AI陪伴机器人',
         coverUrl: null,
         stage: 'practice_building',
-        currentStageIndex: 2,
-        stageTotal: options.emptyStages ? 0 : SEED_STAGES.length,
-        progressPercent: 45,
-      };
-    },
-
-    async getStageProgress(): Promise<WorkbenchStageProgress> {
-      if (options.denyAccess) throw new Error('FORBIDDEN');
-      return {
-        stages: options.emptyStages ? [] : SEED_STAGES,
-        currentStageIndex: 2,
-        stageTotal: options.emptyStages ? 0 : SEED_STAGES.length,
-        progressPercent: 45,
       };
     },
 

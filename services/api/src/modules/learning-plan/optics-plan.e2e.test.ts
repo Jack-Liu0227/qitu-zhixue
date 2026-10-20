@@ -422,6 +422,22 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
         return true;
       },
     );
+
+    await assert.rejects(
+      h.plans.generatePlan(STUDENT, {
+        interest: '光学',
+        lessonCount: 16,
+        lessonMinutes: 60,
+        curriculumSlug: 'optics-physical-inquiry',
+      }),
+      (error: unknown) => {
+        const http = error as { getStatus?: () => number; getResponse?: () => unknown };
+        assert.equal(http.getStatus?.(), 400);
+        const response = http.getResponse?.() as { code?: string } | undefined;
+        assert.equal(response?.code, 'CURRICULUM_TEMPLATE_UNAVAILABLE');
+        return true;
+      },
+    );
   });
 
   it('通用计划保持 obj-t-* / local: 映射与视图省略 conceptId', async () => {

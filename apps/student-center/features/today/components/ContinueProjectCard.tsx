@@ -1,12 +1,12 @@
 import { colors } from '@qitu/design-tokens';
-import { ProgressBar, SectionCard } from '@qitu/ui';
+import { SectionCard } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 import type { ActiveProjectSummary } from '../types';
 
 /**
- * "Current project" links into the lesson-first detail page. Progress is
- * display-only; this card never writes project state.
+ * "Current project" links into the lesson-first detail page. This card never
+ * writes project state.
  */
 export function ContinueProjectCard({ project }: { project: ActiveProjectSummary | null }) {
   if (!project) return null;
@@ -52,9 +52,6 @@ export function ContinueProjectCard({ project }: { project: ActiveProjectSummary
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ margin: 0, color: colors.heading }}>{project.title}</h3>
           <p style={{ margin: '2px 0 10px', color: colors.muted, fontSize: 13 }}>{project.subtitle}</p>
-          <div style={{ marginTop: 10 }}>
-            <ProgressBar percent={project.progressPercent} label={`完成 ${project.progressPercent}%`} />
-          </div>
         </div>
       </div>
     </SectionCard>

@@ -254,7 +254,7 @@ export function blockShapeFor(lessonMinutes: number, lessonIndex: number, firstL
 export function themeIndexFor(lessonCount: LessonCount, lessonIndex: number): number { return Math.max(0, Math.min(lessonCount - 1, lessonIndex - 1)); }
 
 function objectiveFor(interest: string, lessonIndex: number, practice: boolean): string {
-  return practice ? `Complete and document lesson ${lessonIndex} practice for ${interest}.` : `Explain the key idea of ${interest} in lesson ${lessonIndex}.`;
+  return practice ? `Measure and document lesson ${lessonIndex} practice for ${interest}.` : `Explain the key idea of ${interest} in lesson ${lessonIndex}.`;
 }
 function block(id: string, kind: SessionBlockKind, minutes: number, objectiveIds: string[], prerequisiteObjectiveIds: string[] = []): CurriculumSessionBlock { return { id, kind, minutes, objectiveIds, prerequisiteObjectiveIds }; }
 
@@ -369,6 +369,21 @@ export function validateLearningPlanDraft(draft: LearningPlanDraft): LearningPla
   if (!Number.isSafeInteger(draft.lessonCount) || draft.lessonCount < MIN_LESSON_COUNT || draft.lessonCount > MAX_LESSON_COUNT) errors.push({ path: 'lessonCount', message: 'invalid lessonCount' });
   if (draft.lessonMinutes !== 60 && draft.lessonMinutes !== 120) errors.push({ path: 'lessonMinutes', message: 'invalid lessonMinutes' });
   if (draft.sessions.length !== draft.lessonCount) errors.push({ path: 'sessions', message: 'session count must equal lessonCount' });
-  for (const [index, session] of draft.sessions.entries()) { if (session.lessonIndex !== index + 1) errors.push({ path: `sessions[${index}].lessonIndex`, message: 'lessonIndex must be contiguous' }); if (session.blocks.reduce((sum, item) => sum + item.minutes, 0) !== draft.lessonMinutes) errors.push({ path: `sessions[${index}].blocks`, message: 'blocks must total lessonMinutes' }); }
+  for (const [index, session] of draft.sessions.entries()) {
+    if (session.lessonIndex !== index + 1) {
+      errors.push({ path: `sessions[${index}].lessonIndex`, message: 'lessonIndex must be contiguous' });
+    }
+    if (session.blocks.reduce((sum, item) => sum + item.minutes, 0) !== draft.lessonMinutes) {
+      errors.push({ path: `sessions[${index}].blocks`, message: 'blocks must total lessonMinutes' });
+    }
+    for (const [blockIndex, block] of session.blocks.entries()) {
+      if (block.activity === 'practice' && block.prerequisiteObjectiveIds.length === 0) {
+        errors.push({
+          path: `sessions[${index}].blocks[${blockIndex}].prerequisiteObjectiveIds`,
+          message: 'practice blocks require a theory prerequisite',
+        });
+      }
+    }
+  }
   return { ok: errors.length === 0, errors };
 }

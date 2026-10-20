@@ -9,6 +9,8 @@ import { DirectoryModule } from '../directory/directory.module';
 import { DirectoryService } from '../directory/directory.service';
 import { GROWTH_RECORD_STORE, InMemoryGrowthRecordStore } from './growth.persistence';
 import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
+import { GrowthProjectionOwnerService } from './growth-projection-owner.service';
+import { GrowthProjectionAdminController } from './growth-projection-admin.controller';
 
 /**
  * 成长轨迹模块。
@@ -28,9 +30,10 @@ import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
  */
 @Module({
   imports: [DirectoryModule, AuthModule, MasteryModule],
-  controllers: [GrowthController, ParentGrowthController],
+  controllers: [GrowthProjectionAdminController, GrowthController, ParentGrowthController],
   providers: [
     GrowthService,
+    GrowthProjectionOwnerService,
     {
       provide: 'DirectoryService',
       useExisting: DirectoryService,
