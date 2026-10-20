@@ -286,6 +286,17 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      const eyecare = window.localStorage.getItem('qitu.student.eyecare');
+      if (eyecare === '1' || eyecare === 'true') {
+        document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const toggleNav = useCallback(() => {
     // Mobile drawers never inherit or overwrite the desktop sidebar preference.
     if (mobile) { setMobileNavOpen((open) => !open); return; }
