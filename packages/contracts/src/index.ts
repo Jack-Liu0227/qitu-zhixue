@@ -5,6 +5,7 @@ export * from './display.js';
 export * from './admin-copilot.js';
 export * from './runtime-skills.js';
 export * from './runtime-tool-catalog.js';
+export * from './tool-binding-migration.js';
 
 export * from './project.js';
 export * from './exploration.js';

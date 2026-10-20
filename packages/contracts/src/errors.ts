@@ -5,6 +5,8 @@ import type { TutorModalityMode } from './tutor.js';
  * APIs. Additive only.
  */
 export type ApiErrorCode =
+  | 'TOOL_BINDINGS_CHANGED'
+  | 'TOOL_BINDING_READBACK_FAILED'
   /** Practice stage gate: `TheoryMastered` must be reached first. */
   | 'THEORY_MASTERED_REQUIRED'
   /** Workbench optimistic-lock conflict; see `WorkbenchConflictDetails`. */

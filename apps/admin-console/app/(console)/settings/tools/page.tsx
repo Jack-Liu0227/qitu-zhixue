@@ -5,6 +5,8 @@ import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding, hasMcpBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
 import { KnowledgeConfiguration } from '../../../../lib/components/KnowledgeConfiguration';
+import { ToolBindingMigrationPanel } from '../../../../lib/components/ToolBindingMigrationPanel';
+import { LEGACY_TOOL_BINDING_RESOLUTIONS, type ToolBindingMigrationResult } from '@qitu/contracts';
 import type {
   AdminAssistantConfig,
   AdminRuntimeBuiltinTool,
@@ -118,6 +120,31 @@ export default function ToolsSettingsPage() {
   const builtinTools = useMemo(() => snapshot?.builtInTools ?? [], [snapshot]);
   const unresolvedTools = useMemo(() => [...new Set(assistants.flatMap(assistant => assistant.toolIds))]
     .filter(id => !builtinTools.some(tool => tool.id === id)), [assistants, builtinTools]);
+
+  const onToolBindingsMigrated = useCallback(async (result: ToolBindingMigrationResult) => {
+    const registryIdentity = ++registryRequest.current;
+    const assistantIdentity = ++assistantRequest.current;
+    setRegistryPending(true);
+    setAssistantsPending(true);
+    try {
+      const [freshSnapshot, freshAssistants] = await Promise.all([fetchRuntimeSnapshot(), fetchAdminAssistantConfigs()]);
+      if (registryIdentity !== registryRequest.current || assistantIdentity !== assistantRequest.current) throw new Error('列表已刷新，请重新核对迁移结果');
+      const known = new Set(freshSnapshot.builtInTools.map(tool => tool.id));
+      const legacy = new Set(LEGACY_TOOL_BINDING_RESOLUTIONS.map(tool => tool.id));
+      if (freshAssistants.some(assistant => assistant.toolIds.some(id => legacy.has(id) && !known.has(id)))) throw new Error('服务端仍返回已识别的历史绑定');
+      setSnapshot(freshSnapshot);
+      setAssistants(freshAssistants);
+      setRegistryError('');
+      setAssistantsError('');
+      notify(`已迁移 ${result.migratedAssistantIds.length} 个助手的 ${result.retiredBindingCount} 项历史绑定，已记录审计并回读确认`);
+    } catch (cause) {
+      notify(`迁移已提交，但回读未确认，请刷新核对：${cause instanceof Error ? cause.message : '读取失败'}`);
+      throw cause;
+    } finally {
+      if (registryIdentity === registryRequest.current) setRegistryPending(false);
+      if (assistantIdentity === assistantRequest.current) setAssistantsPending(false);
+    }
+  }, [notify]);
 
   /** 服务端持久化助手绑定；失败时回滚本地状态并给出提示。 */
   const applyAssistantPatch = useCallback(async (
@@ -334,10 +361,8 @@ export default function ToolsSettingsPage() {
         </div>
       </div>
 
-      {!registryPending && !registryError && unresolvedTools.length > 0 && (
-        <div role="status" style={{ marginBottom: 16, padding: 12, background: '#fffbeb', color: '#92400e', borderRadius: 8 }}>
-          以下历史工具 ID 未在当前目录登记，绑定已保留，需逐项迁移后才能确认可用：{unresolvedTools.join('、')}
-        </div>
+      {!registryPending && !registryError && !assistantsPending && !assistantsError && unresolvedTools.length > 0 && (
+        <ToolBindingMigrationPanel onMigrated={onToolBindingsMigrated} />
       )}
       {notice ? (
         <div role="status" style={{ marginBottom: '16px', padding: '10px 14px', background: noticeFailed ? '#fef2f2' : '#f0fdf4', border: '1px solid #cbd5e1', borderRadius: '8px', color: noticeFailed ? '#b91c1c' : '#16a34a', fontSize: '13px', fontWeight: 600 }}>

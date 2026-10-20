@@ -8,11 +8,13 @@ import { ModelRegistryModule } from '../model-registry/model-registry.module';
 import { ImaSettingsService } from './ima-settings.service';
 import { ImaSettingsController } from './ima-settings.controller';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { ToolBindingMigrationController } from './tool-binding-migration.controller';
+import { ToolBindingMigrationService } from './tool-binding-migration.service';
 
 @Module({
   imports: [AuthModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
-  controllers: [TeamVersionController, PlatformRegistryController, ImaSettingsController],
-  providers: [TeamVersionService, PlatformRegistryService, ImaSettingsService],
+  controllers: [ToolBindingMigrationController, TeamVersionController, PlatformRegistryController, ImaSettingsController],
+  providers: [ToolBindingMigrationService, TeamVersionService, PlatformRegistryService, ImaSettingsService],
   exports: [TeamVersionService, PlatformRegistryService, ImaSettingsService],
 })
 export class PlatformRegistryModule {}
