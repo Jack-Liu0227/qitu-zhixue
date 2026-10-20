@@ -41,6 +41,11 @@ export class TemplateBindingController {
     private readonly auth: AuthService,
   ) {}
 
+  @Get(':id/versions/:versionId/bindings')
+  async list(@Headers('cookie') cookie: string | undefined, @Param('id') id: string, @Param('versionId') versionId: string) {
+    return { data: await this.bindings.listGovernedBindings(this.requireGovernanceActor(cookie), id, versionId) };
+  }
+
   @Get(':id/versions/:versionId/bindings/preview')
   async preview(
     @Headers('cookie') cookieHeader: string | undefined,

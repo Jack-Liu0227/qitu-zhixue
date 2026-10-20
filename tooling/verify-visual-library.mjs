@@ -18,6 +18,14 @@ const tsc = require.resolve('typescript/bin/tsc');
 const names = ['contracts', 'database', 'infra', 'agent-memory', 'ai-client', 'model-runtime'];
 const output = (name) => join(root, 'packages', name, '.tmp/pbl-capability', runId, 'dist');
 const paths = Object.fromEntries(names.map((name) => [`@qitu/${name}`, [join(output(name), 'index.d.ts')]]));
+for (const name of names) {
+  const manifest = JSON.parse(readFileSync(join(root, 'packages', name, 'package.json'), 'utf8'));
+  for (const [key, value] of Object.entries(manifest.exports ?? {})) {
+    if (typeof value?.types === 'string' && value.types.startsWith('./dist/')) {
+      paths[key === '.' ? manifest.name : `${manifest.name}/${key.slice(2)}`] = [join(output(name), value.types.slice(7))];
+    }
+  }
+}
 const externalPaths = {};
 if (process.env.QITU_VISUAL_VALIDATION_DEPS) {
   const modules = join(process.env.QITU_VISUAL_VALIDATION_DEPS, 'node_modules');
@@ -60,11 +68,11 @@ const files = ['visual-assets', 'templates', 'platform-registry'].flatMap((modul
 });
 
 const appSources = {
-  'admin-console': ['app/(console)/settings/assistants/**/*.tsx', 'app/(console)/settings/teams/**/*.tsx', 'app/(console)/settings/templates/**/*.tsx', 'app/(console)/settings/appearance/**/*.tsx', 'lib/components/Visual*.tsx', 'lib/components/knowledge-library/**/*.tsx'],
+  'admin-console': ['app/(console)/copilot/**/*.tsx', 'app/(console)/settings/**/*.tsx', 'lib/components/Visual*.tsx', 'lib/components/TemplateTeamBindingPanel.tsx', 'lib/components/knowledge-library/**/*.tsx'],
   'student-center': ['features/inspiration/**/*.tsx', 'features/today/**/*.tsx', 'features/tutor/**/*.tsx', 'features/growth/**/*.tsx', 'features/projects/**/*.tsx'],
   'parent-companion': ['features/**/*.tsx'],
-  'teacher-workspace': ['app/(workspace)/dashboard/**/*.tsx'],
-  'auth-portal': ['app/login/**/*.tsx'],
+  'teacher-workspace': ['app/(workspace)/dashboard/**/*.tsx', 'components/teacher-shell.tsx'],
+  'auth-portal': ['app/login/**/*.tsx', 'app/page.tsx', 'app/public-shell.tsx'],
 };
 for (const [app, sources] of Object.entries(appSources)) {
   const appRoot = join(root, 'apps', app);

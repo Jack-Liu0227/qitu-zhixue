@@ -1,7 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
-import { BrandMark } from '@qitu/ui';
+import { BrandMark, NavigationArtwork } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -92,7 +92,6 @@ export function TeacherShell({ children }: { children: ReactNode }) {
 
           <nav className="qtx-nav">
             {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
               const showBadge =
                 item.badgeKey === 'openInterventions' &&
                 pendingCount !== null &&
@@ -104,7 +103,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
                   className={`qtx-nav-item${isActive(item.href) ? ' active' : ''}`}
                   onClick={() => setIsMobileOpen(false)}
                 >
-                  <Icon size={19} />
+                  <NavigationArtwork href={item.href} size={24} />
                   <span>{item.label}</span>
                   {showBadge ? <em className="qtx-nav-badge">{pendingCount}</em> : null}
                 </Link>

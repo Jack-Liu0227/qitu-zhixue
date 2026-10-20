@@ -424,7 +424,7 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
     assert.equal(activated.binding.status, 'active');
   });
 
-  it('绑定只允许指向 published 或 piloting 版本；draft 版本 404', async () => {
+  it('draft bindings persist across service reloads; activation and unauthorized reads remain denied', async () => {
     const draftTemplate = await h.templates.createTemplate({
       id: 'tpl-2',
       schoolId: null,
@@ -442,18 +442,20 @@ describe('TemplateBindingService（F2 绑定生命周期 + F3 冻结/回填）',
       createdBy: 'admin-1',
       now: NOW,
     });
-    await assertHttpError(
-      () =>
-        h.service.createBinding(
-          ADMIN,
-          draftTemplate.id,
-          'ver-draft',
-          { teamVersionId: 'tv-1' },
-          'k-draft-version',
-        ),
-      404,
-      'BINDING_TEMPLATE_VERSION_NOT_FOUND',
-    );
+    const created = await h.service.createBinding(ADMIN, draftTemplate.id, 'ver-draft', { teamVersionId: 'tv-1' }, 'k-draft-version');
+    const reopened = new TemplateBindingService(h.templates, h.directory, h.bindings,
+      h.idempotency as unknown as IdempotencyStore, h.audit as unknown as AuditWriter);
+    const readback = await reopened.listGovernedBindings(ADMIN, draftTemplate.id, 'ver-draft');
+    assert.equal(readback[0]?.binding.id, created.binding.id);
+    assert.equal(readback[0]?.team?.id, 'team-1');
+    assert.equal(readback[0]?.binding.status, 'draft');
+    await assertHttpError(() => reopened.validateBinding(ADMIN, draftTemplate.id, 'ver-draft', created.binding.id, 'draft-validate'),
+      404, 'BINDING_TEMPLATE_VERSION_NOT_FOUND');
+    await assertHttpError(() => reopened.activateBinding(ADMIN, draftTemplate.id, 'ver-draft', created.binding.id, 'draft-activate'),
+      404, 'BINDING_TEMPLATE_VERSION_NOT_FOUND');
+    await assertHttpError(() => reopened.listGovernedBindings(actor('student', 'student-1'), draftTemplate.id, 'ver-draft'), 403);
+    await assertHttpError(() => reopened.listGovernedBindings(ADMIN, draftTemplate.id, published.versionId), 404);
+
   });
 
   it('校验未通过：disabled 团队 → 400 BINDING_INVALID 且状态保持 draft', async () => {

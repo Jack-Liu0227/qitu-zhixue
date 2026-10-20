@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { diffractionPreview, scatteringPreview } from '../lib/opticsPreviewModel';
 import { createIdempotencyKey } from '../idempotency';
@@ -668,7 +670,7 @@ export function OpticsDiffractionScatteringCard({
       {/* 顶部标题栏与模式切换 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '24px' }}>🌈</span>
+          <VisualAsset assetId="subject-physics-v1" size={28} />
           <div>
             <h4 style={{ margin: 0, fontSize: '16px', color: '#102a5c', fontWeight: 700 }}>
               光的散射与衍射模型预览

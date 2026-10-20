@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import React, { useState } from 'react';
 import katex from 'katex';
 
@@ -79,7 +81,7 @@ export function CircuitSimulationCard({
       {/* 标题栏 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '20px' }}>🔌</span>
+          <VisualAsset assetId="subject-engineering-v1" size={28} />
           <div>
             <h4 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700 }}>
               动态电路与欧姆定律探究工作台 (PBL 实践模块)

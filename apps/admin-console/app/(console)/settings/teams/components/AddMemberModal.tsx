@@ -1,5 +1,7 @@
 'use client';
 
+import { AssistantGlyph } from '@qitu/ui';
+
 import { useState } from 'react';
 import type { AdminAssistantConfig } from '@qitu/contracts';
 
@@ -74,10 +76,14 @@ export function AddMemberModal({
               <option value="">-- 请选择助手 --</option>
               {availableAssistants.map((assistant) => (
                 <option key={assistant.id} value={assistant.id}>
-                  {assistant.avatar?.startsWith('🤖') ? 'AI' : assistant.avatar} {assistant.name} ({assistant.role})
+                  {assistant.name} ({assistant.role})
                 </option>
               ))}
             </select>
+            {selectedAssistantId && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <AssistantGlyph value={availableAssistants.find((row) => row.id === selectedAssistantId)?.avatar} size={32} />
+              <span>{availableAssistants.find((row) => row.id === selectedAssistantId)?.name}</span>
+            </div>}
           </div>
 
           <div className="form-group">

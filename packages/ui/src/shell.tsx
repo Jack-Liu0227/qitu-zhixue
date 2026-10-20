@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { PRODUCT_NAME, colors } from '@qitu/design-tokens';
 import { BrandMark } from './brand';
+import { NavigationArtwork } from './navigation-artwork';
 import { RobotMascot } from './assistant';
 export { RobotMascot } from './assistant';
 
@@ -148,7 +149,7 @@ export function NavSidebar({
               ariaLabel: collapsed ? item.label : undefined,
               children: (
                 <>
-                  {item.icon ? <span className="qitu-nav-icon">{item.icon}</span> : null}
+                  <span className="qitu-nav-icon"><NavigationArtwork href={item.href} /></span>
                   <span className="qitu-nav-label">{item.label}</span>
                 </>
               ),

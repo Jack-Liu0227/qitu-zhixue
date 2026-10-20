@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { AssistantGlyph } from '@qitu/ui';
 import { visualToken } from '@qitu/contracts';
 import { VisualAssetPicker, VisualSelector } from '../../../../lib/components/VisualAssetPicker';
@@ -200,7 +202,7 @@ export default function AdminAssistantsPage() {
         const mappedItem = mapConfigToItem(created);
         setAssistants((prev) => [...prev, mappedItem]);
       } else {
-        await updatePersistedAssistant(
+        const saved = await updatePersistedAssistant(
           editingAssistant.id,
           {
             name: editingAssistant.name,
@@ -213,7 +215,7 @@ export default function AdminAssistantsPage() {
           newIdempotencyKey()
         );
         setAssistants((prev) =>
-          prev.map((item) => (item.id === editingAssistant.id ? { ...editingAssistant } : item))
+          prev.map((item) => (item.id === saved.id ? mapConfigToItem(saved) : item))
         );
       }
       setSaveNotice('配置已保存到服务端 ✔');
@@ -246,38 +248,25 @@ export default function AdminAssistantsPage() {
   };
 
   const handleBulkSetEnabled = async (enabled: boolean) => {
-    if (selected.size === 0) return;
-    const targetIds = Array.from(selected);
-    setAssistants((prev) =>
-      prev.map((item) => (targetIds.includes(item.id) ? { ...item, enabled } : item))
-    );
+    const ids = [...selected];
+    const results = await Promise.allSettled(ids.map((id) => updatePersistedAssistant(id, { enabled }, newIdempotencyKey())));
+    const failed = ids.filter((_, index) => results[index]?.status === 'rejected');
     try {
-      await Promise.all(
-        targetIds.map((id) =>
-          updatePersistedAssistant(id, { enabled }, newIdempotencyKey()).catch(() => null)
-        )
-      );
-      setSelected(new Set());
-    } catch {
-      // guard
-    }
+      setAssistants((await fetchAdminAssistantConfigs()).map(mapConfigToItem)); setSelected(new Set(failed));
+      setSaveNotice(`${ids.length - failed.length} 项已回读确认${failed.length ? `，${failed.length} 项失败，可重试选中项` : ''}。`);
+    } catch (cause) { setSaveNotice(cause instanceof Error ? cause.message : '批量结果回读未确认'); }
   };
 
   const handleBulkDelete = async () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(`确定要彻底删除选中的 ${selected.size} 位导师助手吗？此操作不可逆。`)) return;
-    const targetIds = Array.from(selected);
+    const ids = [...selected];
+    if (!ids.length || !window.confirm(`确认删除选中的 ${ids.length} 个未使用助手？`)) return;
+    const results = await Promise.allSettled(ids.map((id) => deletePersistedAssistant(id, newIdempotencyKey())));
     try {
-      await Promise.all(
-        targetIds.map((id) =>
-          deletePersistedAssistant(id, newIdempotencyKey()).catch(() => null)
-        )
-      );
-      setAssistants((prev) => prev.filter((a) => !targetIds.includes(a.id)));
-      setSelected(new Set());
-    } catch (err: any) {
-      alert(`批量删除失败：${err?.message || '未知错误'}`);
-    }
+      const current = await fetchAdminAssistantConfigs();
+      const failed = ids.filter((id, index) => results[index]?.status === 'rejected' || current.some((item) => item.id === id));
+      setAssistants(current.map(mapConfigToItem)); setSelected(new Set(failed));
+      setSaveNotice(`${ids.length - failed.length} 项已确认删除${failed.length ? `，${failed.length} 项保留。历史引用的助手请停用` : ''}。`);
+    } catch (cause) { setSaveNotice(cause instanceof Error ? cause.message : '删除结果回读未确认'); }
   };
 
   const filteredAssistants = useMemo(() => {
@@ -460,7 +449,7 @@ export default function AdminAssistantsPage() {
             {/* 思考强度（服务端默认配置，只读展示） */}
             <div className="admin-config-row">
               <div className="admin-config-label-col">
-                <span className="admin-config-icon">🧠</span>
+                <span className="admin-config-icon"><VisualAsset assetId="emotion-thinking-v1" size={24} /></span>
                 <span className="admin-config-name">思考强度</span>
               </div>
               <div className="admin-config-field-col">

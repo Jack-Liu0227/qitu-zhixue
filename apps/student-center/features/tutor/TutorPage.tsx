@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -208,7 +210,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               );
             }}
           >
-            <span>🔬</span> 动态实验课件
+            <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span> 动态实验课件
           </button>
         ) : null}
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>

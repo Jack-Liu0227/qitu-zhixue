@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { VisualAsset } from '@qitu/ui';
 import styles from './TutorStream.module.css';
 
 interface ModelThinkingCardProps {
@@ -47,7 +48,7 @@ export function ModelThinkingCard({ content, closed }: ModelThinkingCardProps) {
           ▶
         </span>
         <span className={styles.thinkingBrainIcon} aria-hidden="true">
-          🧠
+          <VisualAsset assetId="emotion-thinking-v1" size={28} />
         </span>
         <span className={styles.thinkingTitle}>模型深度思考过程</span>
         {!closed && (

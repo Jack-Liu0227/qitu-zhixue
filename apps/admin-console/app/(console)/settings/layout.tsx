@@ -1,6 +1,6 @@
 'use client';
 
-import { AssistantGlyph } from '@qitu/ui';
+import { NavigationArtwork } from '@qitu/ui';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -162,7 +162,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 const active = isItemActive(item.href);
                 return (
                   <Link key={item.href} href={item.href} className={`settings-sider-item ${active ? 'is-active' : ''}`} title={`${grp.group} · ${item.label}`} aria-current={active ? 'page' : undefined}>
-                    <span className="settings-sider-icon" aria-hidden="true"><AssistantGlyph value={item.icon} size={20} /></span>
+                    <span className="settings-sider-icon" aria-hidden="true"><NavigationArtwork href={item.href} size={24} /></span>
                     {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
                   </Link>
                 );

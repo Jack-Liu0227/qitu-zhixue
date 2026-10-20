@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { adminAssistants, adminTeams, projectTemplates, projectTemplateVersions, visualBindings, withTransaction, type Database } from '@qitu/database';
 import { eq, sql } from 'drizzle-orm';
-import { VISUAL_ASSETS, visualToken, type CurrentUser, type VisualBinding, type VisualBindingPatch, type VisualOwner, type VisualUsage } from '@qitu/contracts';
+import { VISUAL_ASSETS, getVisualAsset, visualToken, type CurrentUser, type VisualBinding, type VisualBindingPatch, type VisualOwner, type VisualUsage } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -28,13 +28,14 @@ export class VisualAssetsService {
   /** Public artwork is safe to fall back; a failed configuration read never becomes a successful write. */
   async presentationSnapshot(): Promise<VisualBinding[]> {
     try { return await this.snapshot(); }
-    catch { this.logger.warn('Visual selections unavailable; retaining legacy artwork'); return []; }
+    catch { this.logger.warn('Visual selections unavailable; using library defaults'); return []; }
   }
 
   avatar(ownerId: string, legacy: string | null | undefined, bindings: readonly VisualBinding[]): string {
     const binding = resolveVisualBinding({ kind: 'assistant', id: ownerId }, 'avatar', bindings);
-    if (binding.revision === 0 && legacy && legacy.replace(/\uFE0F/g, '').trim() !== '🤖') return legacy;
-    return binding.effectiveAssetId ? visualToken(binding.effectiveAssetId) : legacy ?? '';
+    const selected = getVisualAsset(legacy);
+    if (binding.revision === 0 && selected?.usages.includes('avatar')) return visualToken(selected.id);
+    return visualToken(binding.effectiveAssetId ?? 'avatar-general-v1');
   }
 
   async save(actor: CurrentUser, input: VisualBindingPatch, operationKey: string): Promise<VisualBinding> {

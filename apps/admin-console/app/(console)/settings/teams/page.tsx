@@ -49,9 +49,9 @@ export default function AdminTeamsPage() {
     setError(null);
     try {
       const [teamsData, assistantsData, modelsData] = await Promise.all([
-        fetchAdminTeamConfigs().catch(() => []),
-        fetchAdminAssistantConfigs().catch(() => []),
-        fetchAvailableConfiguredModels().catch(() => []),
+        fetchAdminTeamConfigs(),
+        fetchAdminAssistantConfigs(),
+        fetchAvailableConfiguredModels(),
       ]);
 
       // The server registry is the only source of truth. Do not merge
@@ -62,15 +62,13 @@ export default function AdminTeamsPage() {
       setConfiguredModels(modelsData);
 
       const firstTeam = teamsData[0];
-      if (firstTeam !== undefined && !activeTeamId) {
-        setActiveTeamId(firstTeam.id);
-      }
+      setActiveTeamId((current) => teamsData.some((team) => team.id === current) ? current : firstTeam?.id ?? '');
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error('团队数据加载失败'));
     } finally {
       setLoading(false);
     }
-  }, [activeTeamId]);
+  }, []);
 
   useEffect(() => {
     void loadData();
@@ -164,49 +162,25 @@ export default function AdminTeamsPage() {
 
   // 批量启用/停用团队
   const handleBulkSetEnabled = async (enabled: boolean) => {
-    if (selected.size === 0) return;
-    const targetIds = Array.from(selected);
-    setTeams((prev) =>
-      prev.map((t) => (targetIds.includes(t.id) ? { ...t, enabled } : t))
-    );
+    const ids = [...selected];
+    const results = await Promise.allSettled(ids.map((id) => updatePersistedTeam(id, { enabled }, newIdempotencyKey())));
+    const failed = ids.filter((_, index) => results[index]?.status === 'rejected');
     try {
-      await Promise.all(
-        targetIds.map((id) =>
-          updatePersistedTeam(id, { enabled }, newIdempotencyKey()).catch(() => null)
-        )
-      );
-      setSelected(new Set());
-    } catch {
-      // guard
-    }
+      setTeams(await fetchAdminTeamConfigs()); setSelected(new Set(failed));
+      if (failed.length) setError(new Error(`${ids.length - failed.length} 项已回读确认，${failed.length} 项失败，请重试选中项。`));
+    } catch (cause) { setError(cause instanceof Error ? cause : new Error('批量结果回读失败')); }
   };
 
-  // 批量删除团队
   const handleBulkDelete = async () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(`确定要批量删除选中的 ${selected.size} 个团队吗？此操作不可逆。`)) return;
-    const targetIds = Array.from(selected);
+    const ids = [...selected];
+    if (!ids.length || !window.confirm(`确认删除选中的 ${ids.length} 个未使用团队？`)) return;
+    const results = await Promise.allSettled(ids.map((id) => deletePersistedTeam(id, newIdempotencyKey())));
     try {
-      await Promise.all(
-        targetIds.map((id) =>
-          deletePersistedTeam(id, newIdempotencyKey()).catch(() => null)
-        )
-      );
-      setTeams((prev) => prev.filter((t) => !targetIds.includes(t.id)));
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_teams');
-          if (cached) {
-            const list = JSON.parse(cached);
-            const next = list.filter((t: any) => !targetIds.includes(t.id));
-            localStorage.setItem('qitu.admin.custom_teams', JSON.stringify(next));
-          }
-        } catch {}
-      }
-      setSelected(new Set());
-    } catch (err: any) {
-      alert(`批量删除团队失败：${err?.message || '异常'}`);
-    }
+      const current = await fetchAdminTeamConfigs();
+      const failed = ids.filter((id, index) => results[index]?.status === 'rejected' || current.some((team) => team.id === id));
+      setTeams(current); setSelected(new Set(failed));
+      if (failed.length) setError(new Error(`${failed.length} 项未删除，已保留选中状态。历史引用的团队请停用。`));
+    } catch (cause) { setError(cause instanceof Error ? cause : new Error('删除结果回读失败')); }
   };
 
   // 打开团队详情

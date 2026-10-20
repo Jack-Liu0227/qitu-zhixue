@@ -99,7 +99,7 @@ export class TemplateBindingService {
     input: { teamVersionId: string },
     idempotencyKey: string,
   ): Promise<BindingMutationResult> {
-    await this.requireBindableVersion(actor, templateId, versionId);
+    await this.requireConfigurationVersion(actor, templateId, versionId);
     const teamVersion = await this.bindings.findTeamVersion(input.teamVersionId);
     if (teamVersion === null) {
       throw new BadRequestException({
@@ -150,13 +150,22 @@ export class TemplateBindingService {
   }
 
   /** Read the server-owned bundle for an Admin binding editor. */
+  async listGovernedBindings(actor: CurrentUser, templateId: string, versionId: string) {
+    await this.requireConfigurationVersion(actor, templateId, versionId, false);
+    const records = await this.bindings.listBindings(versionId);
+    return Promise.all(records.map(async (record) => {
+      const team = await this.bindings.findTeamVersion(record.teamVersionId);
+      return { binding: toBindingView(record), team: team ? { id: team.teamId, name: team.name } : null };
+    }));
+  }
+
   async getTeachingBundle(
     actor: CurrentUser,
     templateId: string,
     versionId: string,
     bindingId: string,
   ): Promise<{ binding: PblTemplateTeamBinding; draft: import('@qitu/contracts').TeachingBundleDraft | null; bundleDigest: string | null }> {
-    await this.requireBindableVersion(actor, templateId, versionId);
+    await this.requireConfigurationVersion(actor, templateId, versionId, false);
     const binding = await this.requireBindingForVersion(bindingId, versionId);
     return { binding: toBindingView(binding), draft: binding.bundleDraft, bundleDigest: binding.bundleDigest ?? null };
   }
@@ -170,7 +179,7 @@ export class TemplateBindingService {
     draft: import('@qitu/contracts').TeachingBundleDraft,
     idempotencyKey: string,
   ): Promise<BindingMutationResult> {
-    await this.requireBindableVersion(actor, templateId, versionId);
+    await this.requireConfigurationVersion(actor, templateId, versionId);
     const binding = await this.requireBindingForVersion(bindingId, versionId);
     if (binding.status !== 'draft') {
       throw new ConflictException({
@@ -200,6 +209,9 @@ export class TemplateBindingService {
       const updated = await this.bindings.updateTeachingBundle(bindingId, {
         draft, payload: null, digest: null, bindingHash: draftBindingHash, now: new Date(),
       });
+      await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'template.binding.bundle.save',
+        targetType: 'project_template_version', targetId: versionId, idempotencyKey: `${scope}:${idempotencyKey}`,
+        detail: { bindingId, teamVersionId: updated.teamVersionId, status: updated.status } });
       return { status: 200, body: { binding: toBindingView(updated), replayed: false } };
     });
     return result.replayed ? { ...result.body, replayed: true } : result.body;
@@ -725,6 +737,16 @@ export class TemplateBindingService {
   }
 
   /* ============================ 内部 ============================ */
+
+  private async requireConfigurationVersion(actor: CurrentUser, templateId: string, versionId: string, write = true) {
+    const template = await this.templates.findTemplate(templateId);
+    if (!template) throw templateNotFound();
+    assertCanGovernTemplate(actor, template, await this.directory.findSchoolId(actor.id));
+    const version = await this.templates.findVersion(versionId);
+    if (!version || version.templateId !== templateId) throw versionNotFound();
+    if (write && (template.status === 'archived' || version.status === 'archived')) throw new ConflictException({ code: 'BINDING_ARCHIVED', message: '已归档版本不能修改团队配置' });
+    return { templateId, versionId };
+  }
 
   private async requireBindableVersion(
     actor: CurrentUser,

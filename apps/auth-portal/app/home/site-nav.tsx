@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandMark } from '@qitu/ui';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -40,7 +41,7 @@ export function SiteNav() {
     <header className="home-header">
       <div className="home-shell home-header-inner">
         <Link className="home-brand" href="/">
-          <img className="home-brand-mark-image" src="/brand-mark.png" alt="" aria-hidden="true" />
+          <BrandMark className="home-brand-mark-image" size={40} decorative />
           <span className="home-brand-copy">
             <span className="home-brand-name">启途智学</span>
             <span className="home-brand-sub">QITU ZHIXUE</span>

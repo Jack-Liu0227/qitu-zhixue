@@ -1,6 +1,6 @@
 'use client';
 
-import { VisualAsset } from '@qitu/ui';
+import { NavigationArtwork, VisualAsset } from '@qitu/ui';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -381,7 +381,7 @@ function DashboardContent({
               ['📋', '查看问题', '处理介入请求', '/issues'],
               ['👨‍🎓', '学生名册', '查看学生详情', '/students'],
               ['📊', '数据统计', '班级学习概览', '/statistics'],
-            ] as const).map(([emoji, title, desc, href]) => (
+            ] as const).map(([, title, desc, href]) => (
               <Link
                 key={title}
                 href={href}
@@ -401,7 +401,7 @@ function DashboardContent({
                   textDecoration: 'none',
                 }}
               >
-                <span style={{ fontSize: 22 }}>{emoji}</span>
+                <NavigationArtwork href={href} size={30} />
                 <strong style={{ fontSize: 13, color: '#1e293b' }}>{title}</strong>
                 <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{desc}</span>
               </Link>

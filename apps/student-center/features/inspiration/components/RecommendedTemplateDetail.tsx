@@ -51,7 +51,7 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
         {template.coverAssetId && <EntityCover assetId={template.coverAssetId} height={180} />}
         <header className="qitu-inspiration-template-header">
           <span className="qitu-inspiration-template-cover" aria-hidden="true">
-            {template.iconAssetId ? <VisualAsset assetId={template.iconAssetId} size={56} /> : template.coverEmoji ?? template.title.charAt(0)}
+            <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={56} />
           </span>
           <div className="qitu-inspiration-template-heading">
             <p className="qitu-inspiration-eyebrow">推荐项目</p>

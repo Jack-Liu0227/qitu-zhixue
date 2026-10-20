@@ -38,7 +38,7 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
     <article className="qitu-inspiration-template-card">
       <header className="qitu-inspiration-template-header">
         <span className="qitu-inspiration-template-cover" aria-hidden="true">
-          {template.iconAssetId ? <VisualAsset assetId={template.iconAssetId} size={48} /> : template.coverEmoji ?? template.title.charAt(0)}
+          <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={48} />
         </span>
         <div className="qitu-inspiration-template-heading">
           <h3 className="qitu-inspiration-template-title">{template.title}</h3>

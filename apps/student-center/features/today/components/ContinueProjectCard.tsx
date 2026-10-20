@@ -1,5 +1,5 @@
 import { colors } from '@qitu/design-tokens';
-import { SectionCard } from '@qitu/ui';
+import { SectionCard, VisualAsset } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 import type { ActiveProjectSummary } from '../types';
@@ -46,7 +46,7 @@ export function ContinueProjectCard({ project }: { project: ActiveProjectSummary
               fontWeight: 600,
             }}
           >
-            {project.title.charAt(0)}
+            <VisualAsset assetId="subject-interdisciplinary-v1" size={64} />
           </span>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>

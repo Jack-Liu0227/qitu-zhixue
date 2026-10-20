@@ -32,7 +32,7 @@ const render = (Component, props) => renderToStaticMarkup(React.createElement(Co
 
 test('companion uses the bundled basePath-aware asset at the requested size', () => {
   const html = render(RobotMascot, { size: 40 });
-  assert.match(html, /src="\/student\/_next\/static\/media\/qitu-companion.test.png"/);
+  assert.match(html, /src="\/student\/_next\/static\/media\/avatar-general-v1-64.png"/);
   assert.match(html, /width="40" height="40"/);
   assert.match(html, /alt="启途 AI 智学搭档"/);
 });
@@ -50,16 +50,20 @@ test('legacy robot avatars and missing avatars use the same artwork', () => {
   }
 });
 
-test('Admin-selected custom avatars stay unchanged', () => {
-  assert.match(render(AssistantGlyph, { value: '🔬' }), /🔬/);
-  assert.doesNotMatch(render(AssistantGlyph, { value: '🔬' }), /<img/);
+test('library selections survive; old emoji and URLs use the shared default', () => {
+  assert.match(render(AssistantGlyph, { value: 'asset:avatar-data-v1' }), /avatar-data-v1/);
+  for (const value of ['🔬', 'https://example.test/old.png']) {
+    const html = render(AssistantGlyph, { value });
+    assert.match(html, /avatar-general-v1/);
+    assert.doesNotMatch(html, /example\.test|🔬/);
+  }
 });
 
 test('runtime artwork is a small RGBA PNG, not a remote image', () => {
-  const image = readFileSync(fileURLToPath(new URL('../packages/ui/assets/assistant/qitu-companion.png', import.meta.url)));
+  const image = readFileSync(fileURLToPath(new URL('../packages/ui/assets/brand/qitu-sidebar-companion-v2.png', import.meta.url)));
   assert.equal(image.subarray(1, 4).toString(), 'PNG');
   assert.equal(image.readUInt32BE(16), 256);
   assert.equal(image.readUInt32BE(20), 256);
-  assert.equal(image[25], 6);
+  assert.ok(image[25] === 6 || (image[25] === 3 && image.includes(Buffer.from('tRNS'))));
   assert.ok(image.length < 120_000);
 });

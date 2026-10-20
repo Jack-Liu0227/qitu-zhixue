@@ -1,0 +1,23 @@
+{
+  "tool": "image_gen",
+  "model": "not_exposed",
+  "purpose": "Fixed interface artwork; not selectable library entries",
+  "assets": [
+    {
+      "source": "sidebar-brand-original.png",
+      "output": "packages/ui/assets/brand/qitu-sidebar-companion-v2.png",
+      "description": "Friendly white/cobalt/cyan robot face, transparent background, readable as a compact sidebar brand mark.",
+      "sourceSha256": "725820dbaa3a7379545952b7acb1e7c7c7df3d251c83e5ebfe05eae72f57b59c",
+      "bytes": 25708,
+      "outputSha256": "803f21bc2c2e7b3beef6ef2ae917131cfbbed345c40e9c88c0baf543b3f7b328"
+    },
+    {
+      "source": "user-avatar-original.png",
+      "output": "packages/ui/assets/brand/qitu-user-avatar-v2.png",
+      "description": "Friendly stylized learner portrait, blue shirt, pale blue background; neutral default user avatar.",
+      "sourceSha256": "f13b2b4cc2a6fd4e8e5532edaf7a9299883ed06986a2371cd6f486648bd425bc",
+      "bytes": 10828,
+      "outputSha256": "8f98a81b3149250cd831b095296b7eb308716ce7740cdbed3b21d71e6702bcd2"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { projectStageLabel } from '@qitu/contracts';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
+import { VisualAsset, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
 
 export interface HistorySessionItem {
@@ -422,7 +422,7 @@ export function TutorSessionHistory({
                   }}
                 >
                   <span style={{ fontSize: '15px', lineHeight: 1 }} aria-hidden="true">
-                    {item.kind === 'project' ? '🚀' : '💡'}
+                    <VisualAsset assetId={item.kind === 'project' ? 'template-optics-v1' : 'subject-interdisciplinary-v1'} size={20} />
                   </span>
                   <span
                     aria-hidden="true"
@@ -471,7 +471,7 @@ export function TutorSessionHistory({
       {/* 顶部工具栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '16px' }}>💬</span>
+                        <VisualAsset assetId="activity-reflection-v1" size={22} />
           <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史</h2>
         </div>
         <button
@@ -573,7 +573,7 @@ export function TutorSessionHistory({
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                   <span style={{ fontSize: '15px', lineHeight: 1.2 }}>
-                    {item.kind === 'project' ? '🚀' : '💡'}
+                        <VisualAsset assetId={item.kind === 'project' ? 'template-optics-v1' : 'subject-interdisciplinary-v1'} size={20} />
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div

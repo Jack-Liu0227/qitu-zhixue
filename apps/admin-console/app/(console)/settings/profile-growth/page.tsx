@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { useState } from 'react';
 import { configuredModelKey, configuredModelPatch } from '../../../../lib/api/configuredModels';
 import { useGrowthProjectionSettings } from '../../../../lib/use-growth-projection-settings';
@@ -131,7 +133,7 @@ export default function ProfileGrowthSettingsPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '20px' }}>📊</span>
+            <span style={{ fontSize: '20px' }}><VisualAsset assetId="avatar-data-v1" size={24} /></span>
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#102a5c' }}>
               学情画像与成长轨迹控制
             </h1>

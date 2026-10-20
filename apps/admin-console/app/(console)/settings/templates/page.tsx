@@ -1,9 +1,10 @@
 'use client';
 
 import { VisualAsset } from '@qitu/ui';
+import { TemplateTeamBindingPanel } from '../../../../lib/components/TemplateTeamBindingPanel';
 import { VisualSelector } from '../../../../lib/components/VisualAssetPicker';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
   deleteAdminTemplate,
@@ -51,6 +52,10 @@ interface TemplateEditorState {
   phases: PblPhaseDesign[];
   /** 阶段设计取自哪个版本；null = 该模板还没有任何版本。 */
   sourceVersion: string | null;
+  sourceVersionId: string | null;
+  sourceContent: Record<string, unknown>;
+  sourceStages: AdminTemplateVersionDetail['stages'];
+  sourceRubric: unknown[];
   /** 若最新版本包含治理版 ProjectTemplateSpec，保存在此以供课时轨道展示并启用防呆 */
   pblSpec: ProjectTemplateSpec | null;
 }
@@ -234,11 +239,14 @@ export default function AdminTemplatesPage() {
   }, [load]);
 
   /** 按需拉取某模板的版本数据，把最新版本的阶段设计读进编辑器。 */
+  const versionRequest = useRef(0);
   const loadVersions = useCallback(async (templateId: string) => {
+    const request = ++versionRequest.current;
     setVersionsLoading(true);
     setVersionsError(null);
     try {
       const versions = await fetchAdminTemplateVersions(templateId);
+      if (request !== versionRequest.current) return;
       const latest = versions.length > 0 ? versions[versions.length - 1] ?? null : null;
       setEditingTemplate((prev) => {
         if (prev === null || prev.id !== templateId) return prev;
@@ -256,13 +264,15 @@ export default function AdminTemplatesPage() {
           phases: parsePhasesFromVersion(latest),
           linkedTeamId: asText(content.linkedTeamId),
           sourceVersion: latest.version,
+          sourceVersionId: latest.id, sourceContent: latest.content, sourceStages: latest.stages, sourceRubric: latest.rubric,
           pblSpec,
         };
       });
     } catch (cause) {
+      if (request !== versionRequest.current) return;
       setVersionsError(cause instanceof Error ? cause : new Error('版本数据加载失败'));
     } finally {
-      setVersionsLoading(false);
+      if (request === versionRequest.current) setVersionsLoading(false);
     }
   }, []);
 
@@ -283,6 +293,7 @@ export default function AdminTemplatesPage() {
       linkedTeamId: '',
       phases: [],
       sourceVersion: null,
+      sourceVersionId: null, sourceContent: {}, sourceStages: [], sourceRubric: [],
       pblSpec: null,
     });
     void loadVersions(template.id);
@@ -367,11 +378,6 @@ export default function AdminTemplatesPage() {
     setSaveError('');
     setSaveNotice('');
 
-    if (editingTemplate.pblSpec) {
-      setSaveError('该模板采用 ProjectTemplateSpec 治理（16 课时体系），需通过版本发布流程更新，禁止直接覆写阶段配置');
-      return;
-    }
-
     const phases = editingTemplate.phases.map((p) => ({
       ...p,
       name: p.name.trim(),
@@ -393,11 +399,14 @@ export default function AdminTemplatesPage() {
     // 后端约束：published 模板不可改元数据（只能加新版本）；archived 模板两者都不行。
     const canUpdateMeta = editingTemplate.status !== 'published' && editingTemplate.status !== 'archived';
     const canCreateVersion = editingTemplate.status !== 'archived';
-    if (!canUpdateMeta && !(canCreateVersion && phases.length > 0)) {
+    if (!canUpdateMeta && !(canCreateVersion && (editingTemplate.pblSpec || phases.length > 0))) {
       setSaveError('已归档模板不能编辑，也不能生成新版本');
       return;
     }
 
+    if (editingTemplate.linkedTeamId && !editingTemplate.pblSpec && !phases.length) {
+      setSaveError('请先添加至少一个阶段，再保存团队草稿关联。'); return;
+    }
     setSaving(true);
     try {
       let notice: string;
@@ -414,16 +423,22 @@ export default function AdminTemplatesPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === result.template.id ? { ...t, ...result.template } : t)),
         );
-        notice = '基础信息已保存 ✔';
+        const readback = (await fetchAdminTemplates()).find((row) => row.id === result.template.id);
+        if (!readback || readback.updatedAt !== result.template.updatedAt) throw new Error('基础信息回读未确认，请重新加载核对');
+        notice = '基础信息已保存并回读确认';
       } else {
         notice = '';
       }
 
-      if (canCreateVersion && phases.length > 0) {
+      if (canCreateVersion && (editingTemplate.pblSpec || phases.length > 0)) {
+        const content = { ...editingTemplate.sourceContent };
+        delete content.bootstrapKey;
         const result = await createAdminTemplateVersion(editingTemplate.id, {
-          stages: phases.map((phase) => ({ id: phase.id, label: phase.name })),
+          stages: editingTemplate.pblSpec ? editingTemplate.sourceStages : phases.map((phase) => ({ id: phase.id, label: phase.name })),
+          rubric: editingTemplate.sourceRubric,
           content: {
-            phases,
+            ...content,
+            ...(!editingTemplate.pblSpec ? { phases } : {}),
             linkedTeamId: editingTemplate.linkedTeamId || null,
           },
         });
@@ -434,10 +449,12 @@ export default function AdminTemplatesPage() {
               : t,
           ),
         );
+        const readback = (await fetchAdminTemplateVersions(editingTemplate.id)).find((version) => version.id === result.version.id);
+        if (!readback || asText(readback.content.linkedTeamId) !== editingTemplate.linkedTeamId) throw new Error('版本保存后的团队关联回读不一致，请重新加载核对。');
         setEditingTemplate((prev) =>
           prev === null || prev.id !== editingTemplate.id
             ? prev
-            : { ...prev, phases, title, summary, sourceVersion: result.version.version },
+            : { ...prev, phases, title, summary, sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
         );
         notice = `阶段设计已保存为新版本 ${result.version.version} ✔`;
       } else if (phases.length === 0) {
@@ -445,10 +462,7 @@ export default function AdminTemplatesPage() {
       }
 
       setSaveNotice(notice);
-      window.setTimeout(() => {
-        setSaveNotice('');
-        setEditingTemplate(null);
-      }, 900);
+
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : '模板保存失败');
     } finally {
@@ -508,14 +522,14 @@ export default function AdminTemplatesPage() {
                 }}
                 title="该模板由 ProjectTemplateSpec 治理，需通过版本发布流程更新"
               >
-                🛡️ 16 课时治理版 (只读锁定)
+                课程合同受保护 · 团队配置可编辑
               </span>
             ) : null}
             <button
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving || versionsLoading || Boolean(editingTemplate.pblSpec)}
+              disabled={saving || versionsLoading || !!versionsError}
               title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，需通过版本发布流程更新' : undefined}
             >
               {editingTemplate.pblSpec ? '已锁定（通过版本流更新）' : '保存模板与阶段设计'}
@@ -538,6 +552,7 @@ export default function AdminTemplatesPage() {
         </div>
 
         {/* 选项卡：课时教学主线 vs 基础配置 */}
+        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={editingTemplate.sourceVersionId} teams={teams} />
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
             <button
@@ -720,7 +735,7 @@ export default function AdminTemplatesPage() {
                           color: '#166534',
                         }}
                       >
-                        <span>🔬</span>
+                        <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span>
                         <span>
                           <strong>挂载微观仿真原型：</strong>
                           <code style={{ background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', margin: '0 4px', fontFamily: 'monospace' }}>
@@ -1104,7 +1119,7 @@ export default function AdminTemplatesPage() {
                   />
                 </div>
                 <div className="admin-form-row">
-                  <label className="admin-form-label">绑定导师团队</label>
+                  <label className="admin-form-label">团队草稿关联</label>
                   {teams.length === 0 && !linkedTeamMissing ? (
                     <span style={{ fontSize: '12px', color: '#86909c' }}>
                       暂无可选导师团队（团队数据为空）
@@ -1132,7 +1147,7 @@ export default function AdminTemplatesPage() {
                   )}
                   {boundTeam ? (
                     <span style={{ fontSize: '12px', color: '#86909c', marginLeft: '8px' }}>
-                      当前绑定：{boundTeam.name}
+                      草稿关联：{boundTeam.name}
                     </span>
                   ) : null}
                 </div>

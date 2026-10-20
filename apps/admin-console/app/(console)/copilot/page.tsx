@@ -3,11 +3,12 @@
 import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useCopilotModel } from '../../../lib/copilot/use-copilot-model';
 import { useAssistantCatalog } from '../../../lib/copilot/use-assistant-catalog';
 import { resolveCopilotSelection, resolveCopilotTeamSelection } from '../../../lib/copilot/assistant-catalog';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { fetchAvailableConfiguredModels, configuredModelKey, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
+import { configuredModelKey } from '../../../lib/api/configuredModels';
 import type { AdminCopilotRequest } from '@qitu/contracts';
 import { runCopilotTurn } from '../../../lib/api/copilot';
 import { useProjectCatalog } from '../../../lib/copilot/use-project-catalog';
@@ -21,7 +22,6 @@ import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 // Runtime entities are server-owned; old browser history must not resurrect a
 // deleted team or disabled assistant in the copilot surface.
 const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v4';
-const COPILOT_SELECTED_MODEL_STORAGE_KEY = 'qitu.admin.copilot.selected_model.v1';
 const COPILOT_PERMISSION_STORAGE_KEY = 'qitu.admin.copilot.permission.v1';
 
 interface ToolExecutionStep {
@@ -167,14 +167,7 @@ export default function CopilotPage() {
   const [collapsedHoverId, setCollapsedHoverId] = useState<string | null>(null);
 
   // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换（持久化存储，刷新页面不丢失）
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem(COPILOT_SELECTED_MODEL_STORAGE_KEY) || '';
-      } catch {}
-    }
-    return '';
-  });
+  const { availableModels, selectedModel, modelError, modelSaving, modelNotice, handleModelChange, reloadModels } = useCopilotModel();
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'full_access'>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -186,8 +179,6 @@ export default function CopilotPage() {
     }
     return 'read_only';
   });
-  const [modelError, setModelError] = useState<string | null>(null);
-  const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const { state: assistantCatalog, error: catalogError, refresh: refreshAssistantCatalog } = useAssistantCatalog();
@@ -198,15 +189,6 @@ export default function CopilotPage() {
   const activeTestAssistant = assistantOptions.find((assistant) => assistant.id === selectedAssistantId);
   const activeTeam = teamOptions.find((team) => team.id === selectedTeamId);
   const catalogReady = assistantCatalog.kind === 'ready' && activeTestAssistant !== undefined;
-
-  const handleModelChange = (modelKey: string) => {
-    setSelectedModel(modelKey);
-    if (typeof window !== 'undefined' && modelKey) {
-      try {
-        localStorage.setItem(COPILOT_SELECTED_MODEL_STORAGE_KEY, modelKey);
-      } catch {}
-    }
-  };
 
   const handlePermissionChange = (perm: 'read_only' | 'full_access') => {
     setRuntimePermission(perm);
@@ -224,31 +206,6 @@ export default function CopilotPage() {
     }
   }, [assistantCatalog]);
 
-  useEffect(() => {
-    fetchAvailableConfiguredModels()
-      .then((models) => {
-        if (models && models.length > 0) {
-          setAvailableModels(models);
-          setSelectedModel((prev) => {
-            const cached = typeof window !== 'undefined' ? localStorage.getItem(COPILOT_SELECTED_MODEL_STORAGE_KEY) : null;
-            if (cached && models.some((m) => configuredModelKey(m) === cached)) {
-              return cached;
-            }
-            if (prev && models.some((m) => configuredModelKey(m) === prev)) {
-              return prev;
-            }
-            const fallback = configuredModelKey(models[0]!);
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.setItem(COPILOT_SELECTED_MODEL_STORAGE_KEY, fallback);
-              } catch {}
-            }
-            return fallback;
-          });
-        }
-      })
-      .catch((error) => { setAvailableModels([]); setModelError(error instanceof Error ? error.message : '模型目录读取失败'); });
-  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -335,7 +292,7 @@ export default function CopilotPage() {
       await refreshAssistantCatalog();
       projectCatalog.refresh();
       capabilities.refresh();
-      fetchAvailableConfiguredModels().then(setAvailableModels).catch(error => { setAvailableModels([]); setModelError(error instanceof Error ? error.message : '模型目录刷新失败'); });
+      await reloadModels();
     } catch (error) {
       update({ content: `请求未完成：${error instanceof Error ? error.message : '服务器不可用'}。可使用下方按钮重试同一操作。`, retry });
     } finally {
@@ -345,7 +302,7 @@ export default function CopilotPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
+    if (!inputMessage.trim() || isGenerating || modelSaving || modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
     const content = inputMessage.trim();
     const sessionId = activeSession.id;
     const messageId = newIdempotencyKey();
@@ -720,11 +677,12 @@ export default function CopilotPage() {
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
               <select
                 value={selectedModel}
-                aria-label="选择对话模型"
-                disabled={!availableModels.length || isGenerating}
-                onChange={(e) => handleModelChange(e.target.value)}
+                aria-label="管家默认模型"
+                disabled={!availableModels.length || isGenerating || modelSaving}
+                onChange={(e) => void handleModelChange(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
+                <option value="" disabled>请选择默认模型</option>
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
                     <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
@@ -758,6 +716,7 @@ export default function CopilotPage() {
         </div>
 
         <CopilotCapabilities data={capabilities.data} loading={capabilities.loading} error={capabilities.error} scope={scope} refresh={capabilities.refresh} />
+        <div role="status" style={{ padding: '4px 24px', fontSize: 12 }}>{modelSaving ? '正在保存默认模型…' : modelNotice || '模型选择后自动保存为管家默认模型。'} {modelError && <button type="button" onClick={() => void reloadModels()}>重新加载模型</button>}</div>
         {(projectCatalog.loading || projectCatalog.error || modelError || (!selectedModelItem && !isGenerating)) && <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
           {projectCatalog.error ?? modelError ?? (projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}
           {projectCatalog.error && <button onClick={projectCatalog.refresh}>重读项目目录</button>}
@@ -999,7 +958,7 @@ export default function CopilotPage() {
             </button>
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
+              disabled={!inputMessage.trim() || isGenerating || modelSaving || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
               style={{
                 height: '44px',
                 padding: '0 20px',

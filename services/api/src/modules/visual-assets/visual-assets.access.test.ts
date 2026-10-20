@@ -47,12 +47,13 @@ test('admin catalog is available; unauthenticated reads and invalid writes are r
   assert.equal(persistence.calls, 0);
 });
 
-test('unconfigured visual storage fails closed, while legacy custom avatars survive presentation fallback', async () => {
+test('unconfigured visual storage fails closed; legacy pictures use library defaults', async () => {
   const service = new VisualAssetsService(null, new NoWriteAudit());
   await assert.rejects(service.read({ kind: 'assistant', id: 'fixture' }, 'avatar'), /素材配置存储不可用/);
   await assert.rejects(service.save({ id: 'fixture', role: 'admin', email: 'fixture@example.test', displayName: 'Fixture' },
     { owner: { kind: 'assistant', id: 'fixture' }, usage: 'avatar', selection: { kind: 'inherit' }, expectedRevision: 0 }, 'key'), /素材配置存储不可用/);
-  assert.equal(service.avatar('fixture', '🌱', []), '🌱');
+  assert.equal(service.avatar('fixture', '🌱', []), 'asset:avatar-general-v1');
+  assert.equal(service.avatar('fixture', 'https://example.test/old-avatar.png', []), 'asset:avatar-general-v1');
   assert.equal(service.avatar('fixture', null, []), 'asset:avatar-general-v1');
   assert.equal(service.avatar('fixture', 'asset:avatar-data-v1', []), 'asset:avatar-data-v1');
 });

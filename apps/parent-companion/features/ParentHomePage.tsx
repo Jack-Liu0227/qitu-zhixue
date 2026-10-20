@@ -150,21 +150,21 @@ export default function HomePage() {
                       </div>
                       <div className="project-facts-grid">
                         <div className="fact-item">
-                          <span className="fact-icon">📅</span>
+                <span className="fact-icon"><VisualAsset assetId="growth-milestone-v1" size={22} /></span>
                           <div>
                             <small>今日任务</small>
                             <span>{data.currentProject?.todayTask ?? '暂无记录'}</span>
                           </div>
                         </div>
                         <div className="fact-item">
-                          <span className="fact-icon">🏆</span>
+                          <span className="fact-icon"><VisualAsset assetId="growth-artifact-v1" size={24} /></span>
                           <div>
                             <small>最近完成</small>
                             <span>{data.currentProject?.lastCompleted ?? '暂无记录'}</span>
                           </div>
                         </div>
                         <div className="fact-item">
-                          <span className="fact-icon">🧭</span>
+                <span className="fact-icon"><VisualAsset assetId="activity-reflection-v1" size={22} /></span>
                           <div>
                             <small>下一步计划</small>
                             <span>{data.currentProject?.nextStep ?? '暂无记录'}</span>
@@ -202,7 +202,7 @@ export default function HomePage() {
                     {data.suggestedQuestion ? (
                       <div className="question-box">
                         <div className="question-box-head">
-                          <span className="question-icon">💡</span>
+                          <span className="question-icon"><VisualAsset assetId="subject-interdisciplinary-v1" size={24} /></span>
                           <strong>餐桌探究对话 · 您可以这样问孩子</strong>
                         </div>
                         <blockquote className="question-content">
@@ -273,7 +273,7 @@ export default function HomePage() {
                     <div className="artifact-grid">
                       {data.recentArtifacts.map((a) => (
                         <Link href="/progress" className="artifact-tile" key={a.artifactRef}>
-                          <div className="artifact-icon-wrap">🎨</div>
+                      <div className="artifact-icon-wrap"><VisualAsset assetId="growth-artifact-v1" size={40} /></div>
                           <span className="artifact-title">{a.title}</span>
                           <small className="artifact-date">{formatShortDate(a.createdAt)}</small>
                         </Link>

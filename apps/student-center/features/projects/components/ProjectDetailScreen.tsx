@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { BreadcrumbBar, SectionCard, SkeletonBlock } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import { renderBreadcrumbLink } from '../../../components/breadcrumb-link';
@@ -181,7 +183,7 @@ export function ProjectDetailScreen({
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>🔬</span>
+                <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span>
                 <span>动态微观物理课件与理论</span>
               </StudentLink>
               <StudentLink
@@ -201,7 +203,7 @@ export function ProjectDetailScreen({
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>🛠️</span>
+                <span><VisualAsset assetId="capability-tools-v1" size={24} /></span>
                 <span>实践制作工作台</span>
               </StudentLink>
             </nav>

@@ -1,4 +1,5 @@
 'use client';
+import { VisualBoundIcon } from '../VisualAssetPicker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   centerRequest,
@@ -302,7 +303,7 @@ export function KnowledgeLibrary() {
                       {selectedId === base.id ? '✓' : ''}
                     </span>
                     <div className={styles.split}>
-                      <EngineIcon group={group} size={36} />
+                      <VisualBoundIcon owner={{ kind: 'knowledge', id: base.id }} size={36} />
                       <span
                         className={`${styles.badge} ${base.build_state === 'failed' ? styles.bad : ''}`}
                       >
