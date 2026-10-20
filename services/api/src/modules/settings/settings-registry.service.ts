@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { AdminSettingsRegistry, AdminSettingsRegistryItem } from '@qitu/contracts';
 
 /**
- * 设置页路由清单。总览自身也是一个设置路由，完整清单应有 18 项：
- * 17 个设置目录 + `/settings` 总览。模型配置已完全收拢至 model-providers（模型接入）。
+ * 设置页路由清单。总览自身也是一个设置路由，完整清单应有 17 项：
+ * 16 个设置目录 + `/settings` 总览。模型配置已完全收拢至 model-providers（模型接入）。
  */
 export const ADMIN_SETTINGS_ROUTE_MANIFEST = [
   'about',
@@ -11,7 +11,6 @@ export const ADMIN_SETTINGS_ROUTE_MANIFEST = [
   'appearance',
   'assistants',
   'database',
-  'dialogs',
   'feishu',
   'knowledge',
   'model-providers',
@@ -78,10 +77,6 @@ const REGISTRY: AdminSettingsRegistry = [
   {
     id: 'database', href: '/settings/database', group: '内容与数据', icon: '◫', title: '数据库管理', label: '数据库',
     description: '查看 PostgreSQL 关系模型、数据表记录数与审计日志。', accent: 'gray', badgeKind: 'static', order: 40,
-  },
-  {
-    id: 'dialogs', href: '/settings/dialogs', group: '应用与会话', icon: '💬', title: '已安装的对话', label: '已安装的对话',
-    description: '管理标准化引导剧本，接通底座 Agent SDK 并支持实测演练。', accent: 'cyan', badgeKind: 'static', order: 10,
   },
   {
     id: 'appearance', href: '/settings/appearance', group: '应用与会话', icon: '◐', title: '外观偏好', label: '外观偏好',

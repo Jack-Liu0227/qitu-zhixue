@@ -52,7 +52,6 @@ const FALLBACK_SETTINGS_NAV: NavGroup[] = [
   {
     group: '应用与会话',
     items: [
-      { href: '/settings/dialogs', label: '已安装的对话', icon: '💬' },
       { href: '/settings/appearance', label: '外观偏好', icon: '◐' },
       { href: '/settings/ops', label: '沉浸运维', icon: '🌐' },
       { href: '/settings/system', label: '系统设置', icon: '⚙️' },
