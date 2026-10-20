@@ -1306,3 +1306,427 @@
   border-color: #2E3540 !important;
   color: #E2E8F0 !important;
 }
+
+/* ==========================================================================
+   11. 管理员端深度夜间护眼治理规则 (Admin Deep Eyecare Night Rules)
+   专项治理：
+   1) 启途智学管家对话框上方控制胶囊黑底白字与翠绿标签
+   2) 快速转至设置库消除浅白底，黑底墨绿标签
+   3) 模型与设置深色字体全面转为纯白高对比度文字
+   4) AI 助手卡片全部深色底色 + 纯白文字 + 黑底绿边图标
+   5) 设置总览“全栈协同”横幅纯黑底 + emoji 黑底绿边框
+   6) 工作区下全部文字容器底框强制黑底白字排查
+   ========================================================================== */
+
+/* 11.1 启途智学管家 (Copilot) 顶部控制药丸与快捷跳转 */
+:root[data-qitu-eyecare="true"] .copilot-control-pill,
+:root[data-qitu-eyecare="true"] .copilot-toolbar .copilot-control-pill,
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #eff6ff"],
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f0fdf4"],
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f8fafc"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-control-pill .copilot-control-label,
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #eff6ff"] span,
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f0fdf4"] span,
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f8fafc"] span {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-control-pill .copilot-control-select,
+:root[data-qitu-eyecare="true"] .copilot-toolbar select {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-control-pill .copilot-control-select option,
+:root[data-qitu-eyecare="true"] .copilot-toolbar select option {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-box,
+:root[data-qitu-eyecare="true"] .copilot-sidebar div[style*="background: #fafafa"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-top: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-title,
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-box div[style*="color: #64748b"] {
+  color: #A7B1BC !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-link,
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-box a {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-link:hover,
+:root[data-qitu-eyecare="true"] .copilot-settings-jump-box a:hover {
+  background: #232830 !important;
+  background-color: #232830 !important;
+  border-color: #10B981 !important;
+  color: #6EE7B7 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-team-banner {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-bottom: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-team-banner-btn {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-expand-btn {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+/* 11.2 模型与设置 (Settings & Model Providers) 全局深色字体转纯白 */
+:root[data-qitu-eyecare="true"] .settings-shell,
+:root[data-qitu-eyecare="true"] .settings-main {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell h1,
+:root[data-qitu-eyecare="true"] .settings-shell h2,
+:root[data-qitu-eyecare="true"] .settings-shell h3,
+:root[data-qitu-eyecare="true"] .settings-shell h4,
+:root[data-qitu-eyecare="true"] .settings-shell h5,
+:root[data-qitu-eyecare="true"] .settings-shell h6,
+:root[data-qitu-eyecare="true"] .settings-shell strong,
+:root[data-qitu-eyecare="true"] .settings-shell b,
+:root[data-qitu-eyecare="true"] .settings-shell label,
+:root[data-qitu-eyecare="true"] .settings-shell th,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-titlebox h1,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-overview-intro h2,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-overview-card strong,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-card-title,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-form-label,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-skill-main-title,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-skill-field-label,
+:root[data-qitu-eyecare="true"] .settings-shell .team-card-name,
+:root[data-qitu-eyecare="true"] .settings-shell .multica-member-name,
+:root[data-qitu-eyecare="true"] .settings-shell .multica-profile-title,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-row-name,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-card-header h3,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-sider-title,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-sider-label,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-sider-group,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-editor-section-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell p,
+:root[data-qitu-eyecare="true"] .settings-shell span,
+:root[data-qitu-eyecare="true"] .settings-shell td,
+:root[data-qitu-eyecare="true"] .settings-shell div,
+:root[data-qitu-eyecare="true"] .settings-shell li,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-desc,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-hint,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-row-sub,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-card-desc,
+:root[data-qitu-eyecare="true"] .settings-shell .team-card-meta,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-overview-intro p,
+:root[data-qitu-eyecare="true"] .settings-shell .settings-overview-copy span,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-agent-meta,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-agent-tag,
+:root[data-qitu-eyecare="true"] .settings-shell .admin-skills-tagline {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #102a5c"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #243b5a"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #0f172a"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #1e293b"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #1d2129"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #334155"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #475569"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #64748b"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #4e5969"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #86909c"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #166534"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #1e3a8a"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #1d4ed8"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="color: #1e40af"] {
+  color: #FFFFFF !important;
+}
+
+/* 11.3 AI 助手卡片深底 + 纯白文字 */
+:root[data-qitu-eyecare="true"] .admin-assistant-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card:hover {
+  border-color: #10B981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-title,
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-desc,
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-agent-meta,
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-agent-tag {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-role-pill {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-action-btn {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-action-btn:hover {
+  background: #164332 !important;
+  color: #6EE7B7 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-card .admin-card-delete-icon-btn {
+  background: #2D1418 !important;
+  border: 1px solid #5C1D24 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-card .admin-editor-section-title,
+:root[data-qitu-eyecare="true"] .admin-editor-card .admin-form-label,
+:root[data-qitu-eyecare="true"] .admin-editor-card p,
+:root[data-qitu-eyecare="true"] .admin-editor-card span,
+:root[data-qitu-eyecare="true"] .admin-editor-card label {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-card input,
+:root[data-qitu-eyecare="true"] .admin-editor-card select,
+:root[data-qitu-eyecare="true"] .admin-editor-card textarea {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+/* 11.4 设置总览“全栈协同”与 Emoji 统一规范 */
+:root[data-qitu-eyecare="true"] .settings-overview-intro {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  background-image: none !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-overview-kicker {
+  background: #000000 !important;
+  color: #34D399 !important;
+  border: 1px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-overview-intro h2,
+:root[data-qitu-eyecare="true"] .settings-overview-intro p {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card.is-blue .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card.is-violet .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card.is-amber .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card.is-emerald .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .settings-overview-card.is-slate .settings-overview-icon,
+:root[data-qitu-eyecare="true"] .admin-card-icon-box,
+:root[data-qitu-eyecare="true"] .admin-card-icon-box.is-cli,
+:root[data-qitu-eyecare="true"] .settings-row-avatar,
+:root[data-qitu-eyecare="true"] .team-card-icon,
+:root[data-qitu-eyecare="true"] .member-card-avatar,
+:root[data-qitu-eyecare="true"] .multica-profile-avatar,
+:root[data-qitu-eyecare="true"] .admin-identity-avatar-box,
+:root[data-qitu-eyecare="true"] .settings-avatar-stack-item {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* 11.5 工作区 (Workspace / Settings) 全页面文字容器底框黑底白字排查 */
+:root[data-qitu-eyecare="true"] .settings-overview-card,
+:root[data-qitu-eyecare="true"] .settings-row-card,
+:root[data-qitu-eyecare="true"] .team-card,
+:root[data-qitu-eyecare="true"] .team-detail-view,
+:root[data-qitu-eyecare="true"] .member-card,
+:root[data-qitu-eyecare="true"] .role-card,
+:root[data-qitu-eyecare="true"] .multica-profile-card,
+:root[data-qitu-eyecare="true"] .multica-member-row,
+:root[data-qitu-eyecare="true"] .admin-skill-files-workbench,
+:root[data-qitu-eyecare="true"] .admin-skill-card-section,
+:root[data-qitu-eyecare="true"] .admin-skill-file-item,
+:root[data-qitu-eyecare="true"] .admin-prompt-editor-box,
+:root[data-qitu-eyecare="true"] .admin-phase-card,
+:root[data-qitu-eyecare="true"] .admin-modal-card,
+:root[data-qitu-eyecare="true"] .modal-content,
+:root[data-qitu-eyecare="true"] .member-editor-container,
+:root[data-qitu-eyecare="true"] .member-editor-header,
+:root[data-qitu-eyecare="true"] .feishu-card,
+:root[data-qitu-eyecare="true"] .feishu-hero-card,
+:root[data-qitu-eyecare="true"] .feishu-notice,
+:root[data-qitu-eyecare="true"] .feishu-offline,
+:root[data-qitu-eyecare="true"] .feishu-security-note,
+:root[data-qitu-eyecare="true"] .feishu-binding,
+:root[data-qitu-eyecare="true"] .settings-collapsible-card,
+:root[data-qitu-eyecare="true"] .settings-card-header,
+:root[data-qitu-eyecare="true"] .settings-card-body,
+:root[data-qitu-eyecare="true"] .knowledge-upload-panel,
+:root[data-qitu-eyecare="true"] .admin-knowledge-item-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-overview-card *,
+:root[data-qitu-eyecare="true"] .settings-row-card *,
+:root[data-qitu-eyecare="true"] .team-card *,
+:root[data-qitu-eyecare="true"] .team-detail-view *,
+:root[data-qitu-eyecare="true"] .member-card *,
+:root[data-qitu-eyecare="true"] .role-card *,
+:root[data-qitu-eyecare="true"] .multica-profile-card *,
+:root[data-qitu-eyecare="true"] .multica-member-row *,
+:root[data-qitu-eyecare="true"] .admin-skill-files-workbench *,
+:root[data-qitu-eyecare="true"] .admin-skill-card-section *,
+:root[data-qitu-eyecare="true"] .admin-prompt-editor-box *,
+:root[data-qitu-eyecare="true"] .admin-phase-card *,
+:root[data-qitu-eyecare="true"] .admin-modal-card *,
+:root[data-qitu-eyecare="true"] .modal-content *,
+:root[data-qitu-eyecare="true"] .member-editor-container *,
+:root[data-qitu-eyecare="true"] .feishu-card *,
+:root[data-qitu-eyecare="true"] .feishu-hero-card *,
+:root[data-qitu-eyecare="true"] .knowledge-upload-panel *,
+:root[data-qitu-eyecare="true"] .admin-knowledge-item-card * {
+  color: #FFFFFF !important;
+}
+
+/* 工作区内嵌表格与表单彻底黑底白字 */
+:root[data-qitu-eyecare="true"] .settings-shell table,
+:root[data-qitu-eyecare="true"] .settings-shell thead,
+:root[data-qitu-eyecare="true"] .settings-shell tbody,
+:root[data-qitu-eyecare="true"] .settings-shell tr,
+:root[data-qitu-eyecare="true"] .settings-shell th,
+:root[data-qitu-eyecare="true"] .settings-shell td,
+:root[data-qitu-eyecare="true"] .settings-main table,
+:root[data-qitu-eyecare="true"] .settings-main thead,
+:root[data-qitu-eyecare="true"] .settings-main tbody,
+:root[data-qitu-eyecare="true"] .settings-main tr,
+:root[data-qitu-eyecare="true"] .settings-main th,
+:root[data-qitu-eyecare="true"] .settings-main td {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell input,
+:root[data-qitu-eyecare="true"] .settings-shell select,
+:root[data-qitu-eyecare="true"] .settings-shell textarea,
+:root[data-qitu-eyecare="true"] .settings-main input,
+:root[data-qitu-eyecare="true"] .settings-main select,
+:root[data-qitu-eyecare="true"] .settings-main textarea {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell select option,
+:root[data-qitu-eyecare="true"] .settings-main select option {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+/* 拦截工作区任何内联浅白底背景并强制转纯黑与纯白 */
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fff"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: white"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background-color: #fff"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background-color: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background-color: white"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fafafa"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f8fafc"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f1f5f9"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f7f8fa"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #eff6ff"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f0fdf4"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fffbeb"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fef2f2"],
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f0f5ff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: white"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background-color: #fff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background-color: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background-color: white"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fafafa"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f8fafc"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f1f5f9"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f7f8fa"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #eff6ff"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f0fdf4"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fffbeb"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fef2f2"],
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f0f5ff"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fff"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #ffffff"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: white"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #fafafa"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f8fafc"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f1f5f9"] *,
+:root[data-qitu-eyecare="true"] .settings-shell [style*="background: #f7f8fa"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fff"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #ffffff"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: white"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #fafafa"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f8fafc"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f1f5f9"] *,
+:root[data-qitu-eyecare="true"] .settings-main [style*="background: #f7f8fa"] * {
+  color: #FFFFFF !important;
+}

@@ -1059,13 +1059,13 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           </div>
 
           {/* 快捷配置跳转 */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fafafa', fontSize: '12px' }}>
-            <div style={{ color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>快速转至设置库</div>
+          <div className="copilot-settings-jump-box" style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fafafa', fontSize: '12px' }}>
+            <div className="copilot-settings-jump-title" style={{ color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>快速转至设置库</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <Link href="/settings/assistants" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>AI 助手</Link>
-              <Link href="/settings/teams" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>导师团队</Link>
-              <Link href="/settings/tools" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>工具与MCP</Link>
-              <Link href="/settings/templates" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>PBL模板</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/assistants" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>AI 助手</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/teams" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>导师团队</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/tools" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>工具与MCP</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/templates" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>PBL模板</Link>
             </div>
           </div>
         </div>
@@ -1079,6 +1079,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             {isSidebarCollapsed && (
               <button
                 type="button"
+                className="copilot-expand-btn"
                 onClick={() => setIsSidebarCollapsed(false)}
                 title="展开侧边栏"
                 style={{
@@ -1103,9 +1104,10 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           {/* 快捷设置区 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
+            <div className="copilot-control-pill copilot-control-assistant" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
               <select
+                className="copilot-control-select"
                 value={activeTestAssistant?.id ?? ''}
                 aria-label="交互助手"
                 disabled={!catalogReady || isGenerating}
@@ -1122,9 +1124,10 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               </select>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
+            <div className="copilot-control-pill copilot-control-team" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
               <select
+                className="copilot-control-select"
                 value={selectedTeamId}
                 aria-label="选择团队"
                 disabled={assistantCatalog.kind !== 'ready' || isGenerating}
@@ -1142,9 +1145,10 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </div>
 
             {/* Thinking 强度 (参考 Pi Agent: Off / Normal / High / Max) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
+            <div className="copilot-control-pill copilot-control-thinking" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
               <select
+                className="copilot-control-select"
                 value={thinkingStrength}
                 onChange={(e) => setThinkingStrength(e.target.value as 'off' | 'normal' | 'high' | 'max')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
@@ -1157,9 +1161,10 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </div>
 
             {/* 模型选择 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
+            <div className="copilot-control-pill copilot-control-model" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
               <select
+                className="copilot-control-select"
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
@@ -1177,9 +1182,10 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             </div>
 
             {/* 权限设置 (参考 Codex 3 个权限: Read Only / Workspace Write / Full Access) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
+            <div className="copilot-control-pill copilot-control-permission" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
               <select
+                className="copilot-control-select"
                 value={runtimePermission}
                 onChange={(e) => setRuntimePermission(e.target.value as 'read_only' | 'workspace_write' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}

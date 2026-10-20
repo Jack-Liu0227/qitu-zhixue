@@ -146,6 +146,19 @@
        2. 设置侧栏 `.settings-sider` 覆写为 `#181B20`，激活项 `.settings-sider-item.is-active` 为 `#112F24` 翡翠深绿；
        3. 设置概览卡片 `.settings-overview-card`、折叠卡片 `.settings-collapsible-card`、团队卡片 `.team-card`、团队详情 `.team-detail-view`、技能卡片 `.admin-skill-card-section`、弹窗 `.admin-modal-card` 与 `.modal-content` 全面消白，重置为 `#1E2228` 卡片底色与 `#2E3540` 边框；
        4. 输入框 `.settings-input`、文本域 `.settings-textarea`、选择框 `.settings-select`、代码预览 `.instruction-editor` 与 `.instruction-preview` 统一覆写为 `#15181D`，光标为 `#10B981`。
+   - **场景 E：管理员端 Copilot 药丸控制器、设置总览全栈协同、AI 助手卡片与工作区全页面底框黑底白字排查 (Admin Copilot Controls, AI Assistants & Workspace Strict Eyecare)**：
+     - **问题现象**：
+       1. 启途智学管家（Copilot）顶栏控制药丸（“交互助手”、“团队”、“思考强度”、“模型”、“权限”）及侧栏底部的“快速转至设置库”包含硬编码的浅色背景（`#eff6ff`、`#f0fdf4`、`#f8fafc`、`#fafafa`、`#fff`），在护眼模式下呈现白色底框；
+       2. “模型与设置”各子页面中大量文字继承深色字体（`#102a5c`、`#1e293b`、`#1d2129`、`#334155` 等），在暗色背景下对比度不足；
+       3. “AI助手”中的卡片（`.admin-assistant-card`）及编辑器卡片此前背景仍为白色，文字对比度低；
+       4. “设置总览”横幅“全栈协同”（`.settings-overview-intro`）底色为浅蓝渐变，且卡片上的 Emoji 图标容器存在多种浅色背景；
+       5. “工作区”下各页面（设置总览、账号设置、团队工作区、技能工作区等）存在部分文字容器底框漏白。
+     - **治理策略**：
+       1. **Copilot 工具栏与快捷跳转黑化**：在 `copilot/page.tsx` 中注入结构化类名（`.copilot-control-pill`、`.copilot-control-label`、`.copilot-control-select`、`.copilot-settings-jump-box`、`.copilot-settings-jump-title`、`.copilot-settings-jump-link`），并在 `eyecare-night.css` 中将胶囊框与跳转区底色强制重设为纯黑 `#000000 !important`，标签与链接设为薄荷绿 `#34D399 !important`，消除一切浅色底；
+       2. **模型与设置深色字体转纯白**：在 `.settings-shell` 与 `.settings-main` 作用域内，将全部标题、标签、加粗字、说明文字、正文以及硬编码深色子串（`#102a5c`、`#1e293b`、`#1d2129` 等）强制重写为高对比度纯白 `#FFFFFF !important`；
+       3. **AI 助手卡片深底白字**：卡片 `.admin-assistant-card` 与编辑器卡片 `.admin-editor-card` 统一重写为纯黑背景 `#000000 !important`，卡片标题与正文纯白 `#FFFFFF !important`，角色胶囊与操作按钮为深森林绿 `#112F24` 搭配薄荷绿文字 `#34D399`，头像框为黑底配翡翠绿边框；
+       4. **设置总览“全栈协同”与 Emoji 规范**：`.settings-overview-intro` 横幅统一为纯黑 `#000000 !important` 配翠绿边框 `#10B981`，“全栈协同”徽标设为黑底绿字；全部卡片 Emoji 图标容器（`.settings-overview-icon`、`.admin-card-icon-box`、`.settings-row-avatar`、`.team-card-icon` 等）统一重写为纯黑底色配翠绿发光边框（`background: #000000 !important; border: 1px solid #10B981 !important; color: #FFFFFF !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;`）；
+       5. **工作区全页面文字底框排查拦截**：全面排查“工作区”下所有页面（设置总览、账号设置、团队卡片、详情视图、技能面板、模态弹窗、飞书配置卡片等），所有存在文字的卡片、输入框、表格、单元格全部强制为纯黑底色 `#000000 !important`，文字为纯白 `#FFFFFF !important`；并在 `.settings-shell` 与 `.settings-main` 作用域内对一切浅白底内联属性（`[style*="background: #fff"]`、`#fafafa`、`#f8fafc`、`#f1f5f9`、`#eff6ff`、`#f0fdf4` 等）施加黑底白字强制拦截。
 
 ---
 
@@ -263,6 +276,11 @@
   - [ ] 管理员端：“关系绑定”主面板、统计小卡、选项卡、表单以及行内操作按键（“换班主任”、“结束关系”、“结束分配”）与二次确认弹窗无白底漏光。
   - [ ] 管理员端：“启途智学管家”窗口全量对齐学生端 AI 搭档护眼规范，画布底色、侧栏、顶栏、消息气泡、工具步骤、产物卡片与输入区无白底。
   - [ ] 管理员端：“模型与设置”各子页面卡片、折叠密集表单、Multica 团队工作台与模态弹窗全部消除白底框。
+  - [ ] 管理员端：“启途智学管家”对话框上方控制药丸（“交互助手”、“团队”、“思考强度”、“模型”、“权限”）及快捷跳转“快速转至设置库”消除浅白底，采用纯黑底色与翠绿标签。
+  - [ ] 管理员端：“模型与设置”所有页面中的深色字体（`#102a5c`、`#1e293b`、`#1d2129` 等）全部转为高对比度纯白（`#FFFFFF`）。
+  - [ ] 管理员端：“AI 助手”卡片全部转为纯黑深色底色 + 纯白高对比文字，角色药丸与编辑按键为深森林绿，头像框为黑底翠绿边框。
+  - [ ] 管理员端：“设置总览”中的“全栈协同”横幅底色转为纯黑（`#000000`）；所有卡片 Emoji 图标容器统一为纯黑底色配翠绿发光边框（`#10B981`）。
+  - [ ] 管理员端：“工作区”下各页面（设置总览、账号设置、团队工作区、知识库、技能中心等）任何存在文字的卡片、输入框、表格与面板底框全面消除白底，统一为黑色背景 + 纯白文字。
 - [ ] **3. 对比度与可读性巡检**：
   - [ ] 学生端、家长端、教师端、管理员端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
   - [ ] 无任何深蓝色字体（`#102a5c`、`#1e293b` 等）叠在暗色背景上导致不可见的情况。
