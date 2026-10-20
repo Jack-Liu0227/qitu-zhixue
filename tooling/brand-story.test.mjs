@@ -40,7 +40,12 @@ test('all five app roots import the shared brand layer after their base styles',
   for (const app of ['auth-portal', 'student-center', 'parent-companion', 'teacher-workspace', 'admin-console']) {
     const layout = read(`apps/${app}/app/layout.tsx`);
     const cssImports = [...layout.matchAll(/import\s+['"]([^'"]+\.css)['"]/g)].map((match) => match[1]);
-    assert.equal(cssImports.at(-1), '@qitu/ui/brand.css', app);
+    const brandIndex = cssImports.indexOf('@qitu/ui/brand.css');
+    assert.equal(cssImports.filter((path) => path === '@qitu/ui/brand.css').length, 1, app);
+    for (const [index, path] of cssImports.entries()) {
+      if (path === '@qitu/ui/brand.css' || path.endsWith('/ui-remediation.css')) continue;
+      assert.ok(index < brandIndex, `${app}: ${path} must precede the shared brand layer`);
+    }
   }
 });
 
