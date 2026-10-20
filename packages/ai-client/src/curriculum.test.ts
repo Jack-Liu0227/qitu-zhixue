@@ -17,6 +17,9 @@ export function runCurriculumAssertions(): void {
   const generated = generateCurriculumPlan({ interest: 'optics', lessonCount: 16, lessonMinutes: 60, seed: 7 });
   assert(generated.plan.sessions.length === 16, 'one session must exist for each lesson');
   assert(generated.plan.sessions.every((session, index) => session.lessonIndex === index + 1), 'lesson indexes must be contiguous');
+  assert(!('weeks' in generated.plan), 'generated plan must not contain calendar scheduling fields');
+  assert(!('weekIndex' in generated.plan.modules[0]!), 'module must be ordered by lessonIndex');
+  assert(!('week' in generated.plan.sessions[0]!) && !('day' in generated.plan.sessions[0]!), 'session must not contain calendar placement');
   assert(validateCurriculumPlan(generated.plan).ok, 'generated plan must validate');
   assertValidCurriculumPlan(generated.plan);
   const draft = toLearningPlanDraft(generated.plan);

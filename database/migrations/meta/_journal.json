@@ -267,6 +267,20 @@
       "when": 1792281600009,
       "tag": "0037_learning_lesson_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792281600010,
+      "tag": "0038_lesson_only_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792281600011,
+      "tag": "0039_lesson_time_budget",
+      "breakpoints": true
     }
   ]
 }
