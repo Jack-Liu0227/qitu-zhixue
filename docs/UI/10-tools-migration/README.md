@@ -23,7 +23,7 @@
 - [源码核验](source-verification.json)：冻结副本 2,333 个 Git blob 与提交一致，没有包含同时进行的其他工作区修改。
 - [并行修改清单与验证边界](concurrent-workspace.md)：保留其他工作流的修改，后续版本只在本任务依赖范围内单独复测。
 - API/Worker 依赖图构建、管理端生产构建、全量已配置测试通过。API 1,221 项通过、10 项跳过；其中新增 PostgreSQL 集成测试在普通测试命令中按要求跳过，随后在隔离库实际执行。
-- [真实 PostgreSQL 记录](postgres-tests.log)：8 项通过，覆盖匿名/非管理员拒绝、旧预览冲突、字段保留、审计失败回滚、回读不符回滚、并发串行化和幂等重放。只复制 schema，业务记录复制数 0，fixture 数据库已删除。
+- [真实 PostgreSQL 记录](postgres-tests.txt)：8 项通过，覆盖匿名/非管理员拒绝、旧预览冲突、字段保留、审计失败回滚、回读不符回滚、并发串行化和幂等重放。只复制 schema，业务记录复制数 0，fixture 数据库已删除。
 - [浏览器结果](browser-results.json)：真实页面没有历史绑定提示，服务器读取的未知工具数为 0。请求拦截 fixture 验证预览失败/重试、409 冲突不报成功、保存后重新读取、提交成功但回读失败不报成功。fixture 没有向生产提交配置。
 - 浏览器实际验证匿名 GET 为 401、学生 GET/PATCH 为 403，pageerror 为 0。`/admin/settings/tools`、`/admin/settings/skills`、`/login` 引用的全部 CSS/JS 通过检查。
 - 并行 `829f1cc` 发布结束后再次执行上述工具页交互与鉴权检查，均通过；[最终服务状态](server-audit.json) 显示六个正式服务 active、readiness 为 live、数据库/Redis 为 ok。四角色测试账号入口仍保留。
