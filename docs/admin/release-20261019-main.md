@@ -1,12 +1,16 @@
 # 主站统一发布与管家目录修复
 
+> 历史发布记录。2026-10-20 起六个正式服务全部改为主工作树 `/root/qitu-zhixue` 运行；
+> 本文提到的 `/root/qitu-releases/*`、release launcher 和 release drop-in 已全部删除。
+> 当前部署与回滚流程见 [部署文档 §3.7](./deployment.md#37-主工作树统一运行2026-10-20)。
+
 ## 发布事实
 
 - 生产代码提交：`63e3be882f1b1d7ccfbc0122bc14bf0b354785e3`；包含 `02be3a8` 的飞书二维码、16 课时模板和运行身份变更，以及管家目录修复。
-- 切换完成：2026-10-19 21:39:47 +08:00。产物目录：`/root/qitu-releases/63e3be882f1b1d7ccfbc0122bc14bf0b354785e3`。
+- 切换完成：2026-10-19 21:39:47 +08:00。当时产物目录为 `/root/qitu-releases/63e3be882f1b1d7ccfbc0122bc14bf0b354785e3`，现已删除。
 - GitHub `main` 与服务器 `/root/qitu-zhixue` 的 `main` 均已快进至该提交；后续发布记录提交只同步文档，不改变生产代码产物 SHA。
-- 正式服务 `qitu-api/auth/student/parent/teacher/admin.service` 全部重启并 active，统一指向新 release；实际 Node/Next 进程 cwd 已复核。Nginx 配置检查及 reload 成功。
-- 服务器两处独立 preferences 修改的 SHA-256 在同步前后保持一致，仍为未提交修改，没有混入发布。旧 release、单元配置和受限备份保留。
+- 正式服务 `qitu-api/auth/student/parent/teacher/admin.service` 当时全部重启并 active，统一指向该 release；实际 Node/Next 进程 cwd 已复核。Nginx 配置检查及 reload 成功。
+- 服务器两处独立 preferences 修改的 SHA-256 在同步前后保持一致，仍为未提交修改，没有混入发布。旧 release、单元配置和受限备份此后已在主工作树迁移中清理。
 
 本次不启动原本停用的独立 worker，不重启其他分支的 eyeprotect 测试站或共享 IMA/embedding 服务，也不重启 PostgreSQL/Redis。相关测试站原有 auto-restart 状态不是本次主站发布成功的证据。
 
@@ -38,13 +42,9 @@ Node 22.22.1、pnpm 10.10.0，依赖使用冻结锁文件，以 postgres 执行�
 
 只读配置预检发现 17 个已启用助手中 13 个仍绑定未发布的历史技能 ID；4 个光学助手的 canonical ID 可解析。新运行身份解析对此 fail closed，会影响这些旧助手的真实调用，包括探索接引助手。未删除未知绑定或绕过治理；需要 Admin 按真实运行目录审查修正，目录可见不代表助手可执行。
 
-本次受限证据在 release 的 `.release-audit/`：`build.sh`、`source-verification.json`、`activation.json`、`migration-production.log`、`verify.py`、`live-verification.json` 和单元备份；基础全量构建/API 日志在 `02be3a8` 的独立 release。应用回滚入口：
+本次受限证据曾位于 release 的 `.release-audit/`：`build.sh`、`source-verification.json`、`activation.json`、`migration-production.log`、`verify.py`、`live-verification.json` 和单元备份；基础全量构建/API 日志在 `02be3a8` 的独立 release。上述目录现已删除，不能再执行当时的回滚脚本。
 
-```bash
-bash /root/qitu-releases/63e3be882f1b1d7ccfbc0122bc14bf0b354785e3/.release-audit/rollback.sh
-```
-
-脚本恢复本次保存的六个服务配置及旧产物，不改 Git 历史；0036 是兼容性加列，应用回滚时保留，不自动删列。脚本语法已检查，没有在成功发布后执行生产回滚演练。
+当前回滚只能在 `/root/qitu-zhixue` 检出已验证的 Git 提交后重新安装、构建并逐服务重启；0036 是兼容性加列，应用代码回滚时保留，不自动删列。迁移后没有执行过回滚演练。
 
 ## Follow-up release: assistant/team display contract
 
@@ -58,10 +58,11 @@ fallback. Deleted or disabled records reset only their own selector.
 Focused regression coverage is in `tooling/copilot-catalog.test.mjs` (6/6
 passing). The Windows UNC Admin typecheck remains blocked by the pre-existing
 missing `pdfjs-dist` installation snapshot; no changed-file TypeScript error was
-reported. Linux release `/root/qitu-releases/c899f498d9abb2cfad79763aebd3dfbd5fc416a7`
-was built from the frozen lockfile: Admin typecheck, all five frontend
+reported. The historical Linux release directory
+`/root/qitu-releases/c899f498d9abb2cfad79763aebd3dfbd5fc416a7` was built from the
+frozen lockfile and has since been deleted: Admin typecheck, all five frontend
 production builds, API/worker dependency builds, and the 10 focused catalog/
 Feishu QR tests passed. All six formal `qitu-{api,auth,student,parent,teacher,admin}.service`
-units now point to this release and are active; readiness and the five frontend
-probes return HTTP 200. Existing preferences edits remain uncommitted on the
-server. Independent eye/IMA/embedding services were intentionally not restarted.
+units now run from `/root/qitu-zhixue`; readiness and the five frontend probes
+return HTTP 200. Existing preferences edits remain uncommitted on the server.
+Independent eye/IMA/embedding services were intentionally not restarted.
