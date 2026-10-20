@@ -49,7 +49,7 @@ POST /api/v1/learning-plans/:id/sessions/:sessionId/evidence
 ```
 
 生成请求白名单：`interest`、`lessonCount`、`lessonMinutes`、`goal`、`sessionCount`、`curriculumSlug`。
-任何旧日历字段或服务端状态字段都会被拒绝；服务端不做旧周排期兼容投影。
+任何旧日历字段或服务端状态字段都会被拒绝；服务端不做旧排程兼容投影。
 
 ## 4. 掌握度与门禁
 

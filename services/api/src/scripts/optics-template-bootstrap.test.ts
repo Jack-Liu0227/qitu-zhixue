@@ -25,9 +25,6 @@ import {
 } from '../modules/templates/templates.test-support';
 import {
   assertOpticsTemplateStructure,
-  OPTICS_BOOTSTRAP_KEY,
-  OPTICS_TEMPLATE_INPUT,
-  OPTICS_VERSION_INPUT,
   OPTICS_16_BOOTSTRAP_KEY,
   OPTICS_16_TEMPLATE_SLUG,
   OPTICS_16_TEMPLATE_INPUT,
@@ -113,21 +110,17 @@ function run(h: BootstrapHarness, teamVersionId = TEAM_VERSION_ID): Promise<Opti
   );
 }
 
-it('16-session bootstrap has a distinct opt-in identity and does not rewrite legacy v1', async () => {
+it('16-lesson bootstrap has one governed identity and is idempotent', async () => {
   const h = makeBootstrapHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
-  const legacy = await run(h);
-  const legacyBefore = await h.templates.findVersion(legacy.versionId);
-  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2' as const };
+  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test' };
   const fresh = await runOpticsTemplateBootstrap(h, args);
   const replay = await runOpticsTemplateBootstrap(h, args);
-  assert.notEqual(fresh.templateId, legacy.templateId);
-  assert.notEqual(fresh.versionId, legacy.versionId);
   assert.equal(replay.versionId, fresh.versionId);
   assert.equal(replay.bindingId, fresh.bindingId);
   assert.equal((await h.templates.findTemplate(fresh.templateId))?.slug, OPTICS_16_TEMPLATE_SLUG);
   assert.equal((await h.templates.findVersion(fresh.versionId))?.content.bootstrapKey, OPTICS_16_BOOTSTRAP_KEY);
-  assert.deepEqual(await h.templates.findVersion(legacy.versionId), legacyBefore);
+  assert.equal((await h.templates.listVersions(fresh.templateId)).length, 1);
 });
 
 it('refuses a stale 16-session bootstrap payload without modifying or activating it', async () => {
@@ -138,7 +131,7 @@ it('refuses a stale 16-session bootstrap payload without modifying or activating
     ...OPTICS_16_VERSION_INPUT, rubric: [{ id: 'old-rubric', weight: 100 }],
   }, 'stale-version');
   await assert.rejects(() => runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2',
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test',
   }), /identity has different content/);
   assert.equal((await h.templates.findVersion(stale.version.id))?.status, 'draft');
   assert.deepEqual((await h.templates.listVersions(created.template.id)).map((version) => version.id), [stale.version.id]);
@@ -155,9 +148,9 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
 
   it('结构校验通过，且版本正文携带幂等解析标记', () => {
     assert.doesNotThrow(() => assertOpticsTemplateStructure());
-    const content = OPTICS_VERSION_INPUT.content;
+    const content = OPTICS_16_VERSION_INPUT.content;
     assert.ok(content !== undefined, '版本正文存在');
-    assert.equal(content.bootstrapKey, OPTICS_BOOTSTRAP_KEY);
+    assert.equal(content.bootstrapKey, OPTICS_16_BOOTSTRAP_KEY);
   });
 
   it('完整链路：create → pilot → binding create → validate → activate，且永不 verify/publish', async () => {
@@ -211,13 +204,13 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
     // 手动构造「模板 + 版本 + pilot + 一个 draft 绑定」的中断现场。
     const createdTemplate = await h.governance.createTemplate(
       ADMIN,
-      OPTICS_TEMPLATE_INPUT,
+      OPTICS_16_TEMPLATE_INPUT,
       'seed-template',
     );
     const createdVersion = await h.governance.createVersion(
       ADMIN,
       createdTemplate.template.id,
-      OPTICS_VERSION_INPUT,
+      OPTICS_16_VERSION_INPUT,
       'seed-version',
     );
     await h.governance.pilotVersion(
@@ -275,7 +268,7 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
     });
 
     // 版本已试点、模板已建，但不该有 active 绑定。
-    const template = await h.templates.findTemplateBySlug(null, 'optics-physical-inquiry');
+    const template = await h.templates.findTemplateBySlug(null, OPTICS_16_TEMPLATE_SLUG);
     assert.ok(template !== null);
     const version = (await h.templates.listVersions(template.id))[0];
     assert.ok(version !== undefined);

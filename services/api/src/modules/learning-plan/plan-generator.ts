@@ -312,6 +312,7 @@ export function assertGenerateInput(input: {
   sessionCount?: unknown;
   curriculumSlug?: unknown;
 }): GeneratePlanInput {
+  assertGenerateInputFields(input);
   const interest = typeof input.interest === 'string' ? input.interest.trim() : '';
   if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
     throw new PlanGenerationError(`interest length must be ${MIN_INTEREST_LENGTH}..${MAX_INTEREST_LENGTH}`, [

@@ -10,7 +10,7 @@ const INPUT = {
 };
 
 describe('Template-owned plan projection', () => {
-  it('projects canonical lesson-only schedules without week/day fields', () => {
+  it('projects canonical lesson-only schedules', () => {
     const plan = generatePlanFromTemplate({
       interest: '光与证据',
       lessonCount: 16,
@@ -22,15 +22,9 @@ describe('Template-owned plan projection', () => {
     validateGeneratedPlan(plan);
     assert.equal(plan.lessonCount, 16);
     assert.equal(plan.lessonMinutes, 60);
-    assert.equal('lessonCount' in plan, false);
     assert.equal(plan.modules.length, 16);
     assert.deepEqual(plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
     assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
-    for (const module of plan.modules) assert.equal('lessonIndex' in module, false);
-    for (const session of plan.sessions) {
-      assert.equal('week' in session, false);
-      assert.equal('day' in session, false);
-    }
   });
 
   it('uses resolved session content, objective text and block minutes, not global constants', () => {
@@ -62,7 +56,7 @@ describe('Template-owned plan projection', () => {
     }
   });
 
-  it('projects the requested 16 lessons with all objectives covered and no wave theory gates', () => {
+  it('projects the requested 16 lessons with all objectives covered', () => {
     const plan = generatePlanFromTemplate(INPUT, { templateVersion: 'version-16s', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC });
     validateGeneratedPlan(plan);
     assert.deepEqual(plan.sessions.map((session) => session.title), [
@@ -72,10 +66,6 @@ describe('Template-owned plan projection', () => {
       '数据线性化拟合与实验求参', '实验报告撰写与 CER 科学论证', '实验探究成果答辩与同行质疑', '学习反思与学科素养成长归档',
     ]);
     assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
-    for (const session of plan.sessions) {
-      assert.equal('week' in session, false);
-      assert.equal('day' in session, false);
-    }
     const covered = new Set(plan.sessions.flatMap((session) => session.blocks.flatMap((block) => block.objectiveIds)));
     assert.equal(covered.size, 12);
     for (const objective of plan.objectives) assert.ok(covered.has(objective.id));

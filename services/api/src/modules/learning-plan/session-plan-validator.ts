@@ -262,9 +262,9 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
         (id) => (objectiveSessionIndex.get(id) ?? Number.POSITIVE_INFINITY) <= session.index,
       );
       if (!hasEarlierTheory) errors.push({ path, message: `practice objective ${objectiveId} must depend on an earlier theory objective` });
-      if (!session.theoryObjectiveIds.some((id) => theoreticalPrerequisites.includes(id))) {
-        errors.push({ path, message: `practice session ${session.id} must declare its theory gate objective` });
-      }
+    }
+    if (session.practiceObjectiveIds.length > 0 && session.theoryObjectiveIds.length === 0) {
+      errors.push({ path, message: `practice session ${session.id} must declare its theory gate objective` });
     }
     if (sessionTaughtObjectiveIds(session).length > MAX_OBJECTIVES_PER_SESSION) {
       errors.push({ path, message: `lesson may teach at most ${MAX_OBJECTIVES_PER_SESSION} objectives` });

@@ -286,7 +286,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
         // 破坏一节课的时长（合计 != 60），模拟模型幻觉。
         const first = plan.sessions[0];
         if (first !== undefined && first.blocks[0] !== undefined) {
-          first.blocks[0].minutes = 5;
+          first.blocks[0].minutes += 1;
         }
         return plan;
       }

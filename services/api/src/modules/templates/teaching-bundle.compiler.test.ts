@@ -17,9 +17,9 @@ function fixture(): TeachingBundleSource {
     { phase: 'guided_practice', title: 'Practice', objectiveIds: ['measure'], gateCondition: 'experiment_report_validated', deliverableType: 'experiment_report', assignedAssistantId: null },
     { phase: 'deliverable_review', title: 'Review', objectiveIds: ['reflect'], gateCondition: 'review_completed_and_archived', deliverableType: null, assignedAssistantId: null },
   ];
-  const schedule = { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 } as const;
+  const schedule = { lessonCount: 4, lessonMinutes: 120 } as const;
   return {
-    templateVersionId: 'template-version-2', scheduleProfileId: 'four-weeks',
+    templateVersionId: 'template-version-2', scheduleProfileId: 'four-lessons',
     template: {
       contractVersion: PBL_LEARNING_CONTRACT_VERSION, id: 'synthetic-inquiry', version: 'v2', status: 'piloting',
       title: 'Synthetic inquiry', description: 'A synthetic test without learner data.', targetDomain: 'physics',
@@ -30,14 +30,14 @@ function fixture(): TeachingBundleSource {
         { id: 'measure', title: 'Measure', description: 'Record a simulation.', kind: 'procedure', prerequisiteIds: ['concept'] },
         { id: 'reflect', title: 'Reflect', description: 'Reflect on evidence.', kind: 'reflection', prerequisiteIds: ['measure'] },
       ],
-      phases, schedules: [{ ...schedule, moduleCount: 4, sessionCount: 4 }],
+      phases, schedules: [schedule],
       finalDeliverableType: 'experiment_report', rubricId: 'rubric-synthetic-v2', teamId: 'synthetic-team',
       theme: { drivingQuestion: 'What changes the observed pattern?' },
       curriculum: {
         profiles: [{
-          id: 'four-weeks', schedule,
+          id: 'four-lessons', schedule,
           sessions: phases.map((phase, index) => ({
-            id: `session-${index + 1}`, sessionIndex: index + 1, week: index + 1, session: 1,
+            id: `session-${index + 1}`, sessionIndex: index + 1,
             title: phase.title, phase: phase.phase, sessionType: phase.phase === 'guided_practice' ? 'practice' : 'theory',
             objectiveIds: phase.objectiveIds, durationMinutes: 120,
             blocks: phase.phase === 'guided_practice'

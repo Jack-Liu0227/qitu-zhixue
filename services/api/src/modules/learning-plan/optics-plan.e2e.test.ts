@@ -43,23 +43,17 @@ it('new 16-session API path consumes the resolved version content and does not o
   const h = makeHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
   const report = await runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', curriculum: '16s-v2',
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test',
   });
   const generated = await h.plans.generatePlan(STUDENT, {
     interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
   });
   assert.equal(generated.plan.templateVersion, report.versionId);
-  assert.equal(generated.plan.lessonCount, undefined);
   assert.equal(generated.plan.lessonCount, 16);
   assert.equal(generated.plan.lessonMinutes, 60);
   assert.equal(generated.plan.sessions.length, 16);
   assert.deepEqual(generated.plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
   assert.deepEqual(generated.plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
-  for (const module of generated.plan.modules) assert.equal(module.lessonIndex, undefined);
-  for (const session of generated.plan.sessions) {
-    assert.equal(session.week, undefined);
-    assert.equal(session.day, undefined);
-  }
   assert.equal(generated.plan.projectId, null);
   assert.equal(generated.plan.sessions[0]?.title, '光的宏观现象与观察指标');
   assert.equal(generated.plan.sessions[9]?.title, '折射角与物像距数据采集');
@@ -71,10 +65,6 @@ it('new 16-session API path consumes the resolved version content and does not o
   assert.equal((await h.bindingStore.findSnapshot(confirmed.project.id))?.templateVersionId, report.versionId);
   const sessions = await h.plans.listSessions(STUDENT, generated.plan.id);
   assert.deepEqual(sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
-  for (const session of sessions) {
-    assert.equal(session.week, undefined);
-    assert.equal(session.day, undefined);
-  }
   assert.equal(sessions[12]?.title, '数据线性化拟合与实验求参');
   assert.match(sessions[12]?.blocks.find((block) => block.kind === 'theory')?.guidance ?? '', /1\/v = -1\/u \+ 1\/f/);
   assert.deepEqual(sessions[13]?.blocks.find((block) => block.kind === 'reflect')?.evidenceRequirements,
@@ -93,7 +83,8 @@ it('new 16-session API path consumes the resolved version content and does not o
     .find((block) => block.kind === 'reflect')?.evidenceRequirements?.length, 2);
   await assert.rejects(() => h.plans.listSessions(actor('student', 'unrelated-student'), generated.plan.id));
   await assert.rejects(() => h.plans.generatePlan(STUDENT, {
-    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, lessonCount: 8,
+    interest: '光学证据链', lessonCount: 16, lessonMinutes: 60,
+    sessionCount: 8,
     curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
   }));
 });
@@ -314,7 +305,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     h = makeHarness();
   });
 
-  it('生成光学课程计划：模板版本来自生效绑定，12 个目标带概念键，4 周 8 节', async () => {
+  it('生成 16 课时光学课程计划：模板版本来自生效绑定，12 个目标带概念键', async () => {
     const report = await seedOpticsBinding(
       h.templates,
       h.bindings,
@@ -324,8 +315,9 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
 
     const generated = await h.plans.generatePlan(STUDENT, {
       interest: '光学',
-      lessonCount: 4,
-      curriculumSlug: 'optics-physical-inquiry',
+      lessonCount: 16,
+      lessonMinutes: 60,
+      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
     });
 
     assert.equal(generated.deduplicated, false);
@@ -333,7 +325,8 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
 
     const objectives = flattenObjectives(generated.plan);
     assert.equal(objectives.length, 12, '12 个真实光学目标');
-    assert.equal(generated.plan.modules.length, 4, '4 个周模块');
+    assert.equal(generated.plan.modules.length, 16, '16 个课时模块');
+    assert.deepEqual(generated.plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
 
     const expectedOrder = [
       'opt-intent-observe',
@@ -366,7 +359,7 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
     }
   });
 
-  it('生成 16 课时光学课程计划：8 周 16 节，覆盖衍射与散射，TheoryMastered 门禁在第 8 节', async () => {
+  it('生成 16 课时光学课程计划，覆盖衍射与散射，TheoryMastered 门禁在第 8 课时', async () => {
     const report = await seedOpticsBinding(
       h.templates,
       h.bindings,
@@ -376,16 +369,17 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
 
     const generated = await h.plans.generatePlan(STUDENT, {
       interest: '光学16课时探究',
-      lessonCount: 8,
+      lessonCount: 16,
+      lessonMinutes: 60,
       sessionCount: 16,
-      curriculumSlug: 'optics-physical-inquiry',
+      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
     });
 
     assert.equal(generated.deduplicated, false);
     assert.equal(generated.plan.templateVersion, report.versionId);
-    assert.equal(generated.plan.lessonCount, 8);
+    assert.equal(generated.plan.lessonCount, 16);
     assert.equal(generated.plan.sessions.length, 16);
-    assert.equal(generated.plan.modules.length, 8, '8 个周模块');
+    assert.equal(generated.plan.modules.length, 16, '16 个课时模块');
 
     const confirmed = await h.plans.confirmPlan(STUDENT, generated.plan.id, 'confirm-optics-16s', {});
     assert.ok(confirmed.project.id.startsWith('proj-'));
@@ -405,20 +399,20 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
       assert.equal(s.practiceUnlocked, false, 'TheoryMastered 前实践课保持锁定');
     }
 
-    // 实践期第 5 周覆盖光路搭建与数据采集，第 6 周覆盖衍射与散射仿真
-    const week5Module = generated.plan.modules[4];
-    const week6Module = generated.plan.modules[5];
-    assert.ok(week5Module?.name.includes('搭建') || week5Module?.objective.includes('校准') || week5Module?.objective.includes('采集'), '第 5 周覆盖搭建与数据采集');
-    assert.ok(week6Module?.name.includes('单缝衍射') || week6Module?.objective.includes('衍射'), '第 6 周覆盖单缝衍射条纹探究');
-    assert.ok(week6Module?.objective.includes('散射'), '第 6 周覆盖微粒介质散射探究');
+    // 第 9-14 课时覆盖装置、数据、衍射、散射、拟合与报告
+    assert.match(generated.plan.modules[8]?.objective ?? '', /光具座搭建/);
+    assert.match(generated.plan.modules[9]?.objective ?? '', /数据采集/);
+    assert.match(generated.plan.modules[10]?.objective ?? '', /衍射/);
+    assert.match(generated.plan.modules[11]?.objective ?? '', /散射/);
   });
 
   it('解析不到生效绑定时响亮失败（CURRICULUM_TEMPLATE_UNAVAILABLE），不静默回退', async () => {
     await assert.rejects(
       h.plans.generatePlan(STUDENT, {
         interest: '光学',
-        lessonCount: 4,
-        curriculumSlug: 'optics-physical-inquiry',
+        lessonCount: 16,
+        lessonMinutes: 60,
+        curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
       }),
       (error: unknown) => {
         const http = error as { getStatus?: () => number; getResponse?: () => unknown };
@@ -467,8 +461,9 @@ describe('光学课程驱动计划 E2E（生成 → 确认 → 概念键掌握 �
 
     const generated = await h.plans.generatePlan(STUDENT, {
       interest: '光学',
-      lessonCount: 4,
-      curriculumSlug: 'optics-physical-inquiry',
+      lessonCount: 16,
+      lessonMinutes: 60,
+      curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
     });
     assert.equal(generated.plan.templateVersion, report.versionId);
 
