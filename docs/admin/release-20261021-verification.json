@@ -1,0 +1,355 @@
+{
+  "codeCommit": "913c4142661e5342d341b37ddb171258912721f6",
+  "recordedAtUtc": "2026-10-20T21:50:56.240110+00:00",
+  "ci": {
+    "conclusion": "success",
+    "headSha": "913c4142661e5342d341b37ddb171258912721f6",
+    "status": "completed",
+    "url": "https://github.com/Jack-Liu0227/qitu-zhixue/actions/runs/39502904345"
+  },
+  "verification": {
+    "fullBuildTasks": 23,
+    "typecheckTasks": 33,
+    "workspaceTestTasks": 10,
+    "apiPassed": 1185,
+    "apiInitiallySkipped": 9,
+    "isolatedFeishuIntegrationPassed": 9,
+    "workersPassed": 34,
+    "toolingPassed": 30,
+    "visualPostgresChecksPassed": 11,
+    "frontendRoutesPerOrigin": 11,
+    "frontendOrigins": [
+      "local nginx",
+      "public"
+    ],
+    "visualVariantHTTPHashMatches": 330,
+    "browserWidths": [
+      1440,
+      390
+    ],
+    "browserPageErrors": 0
+  },
+  "production": {
+    "sha": "913c4142661e5342d341b37ddb171258912721f6",
+    "readiness": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-20T21:48:20.001Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    },
+    "anonymousVisualStatus": 401,
+    "units": {
+      "api": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:33:07 CST",
+        "MainPID": "1100237",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      "auth": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:50 CST",
+        "MainPID": "1104654",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      "student": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:53 CST",
+        "MainPID": "1104774",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      "parent": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:46:14 CST",
+        "MainPID": "1114583",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      "teacher": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:57 CST",
+        "MainPID": "1104977",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      "admin": {
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:47:01 CST",
+        "MainPID": "1116971",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      }
+    },
+    "visualVariantsHTTPHashMatches": {
+      "admin-console": 110,
+      "student-center": 110,
+      "auth-portal": 110
+    }
+  },
+  "runtime": {
+    "units": [
+      {
+        "name": "api",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:33:07 CST",
+        "MainPID": "1100237",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "auth",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:50 CST",
+        "MainPID": "1104654",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "student",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:53 CST",
+        "MainPID": "1104774",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "parent",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:46:14 CST",
+        "MainPID": "1114583",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "teacher",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:37:57 CST",
+        "MainPID": "1104977",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "admin",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:47:01 CST",
+        "MainPID": "1116971",
+        "WorkingDirectory": "/root/qitu-zhixue"
+      },
+      {
+        "name": "eye-admin",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 22:32:02 CST",
+        "MainPID": "975458",
+        "WorkingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye"
+      },
+      {
+        "name": "eye-auth",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Mon 2026-10-19 23:45:50 CST",
+        "MainPID": "516324",
+        "WorkingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye"
+      },
+      {
+        "name": "eye-parent",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 18:39:04 CST",
+        "MainPID": "876874",
+        "WorkingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye"
+      },
+      {
+        "name": "eye-student",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 14:04:34 CST",
+        "MainPID": "797853",
+        "WorkingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye"
+      },
+      {
+        "name": "eye-teacher",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 20:09:45 CST",
+        "MainPID": "914870",
+        "WorkingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye"
+      },
+      {
+        "name": "ima-mcp",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Sat 2026-10-17 18:13:57 CST",
+        "MainPID": "3191583",
+        "WorkingDirectory": "/opt/qitu-ima"
+      },
+      {
+        "name": "local-embedding",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Sat 2026-10-17 21:32:20 CST",
+        "MainPID": "3266890",
+        "WorkingDirectory": "/root/qitu-zhixue/services/knowledge"
+      }
+    ],
+    "apiProcesses": [
+      {
+        "pid": 1100241,
+        "user": "postgres",
+        "cwd": "/root/qitu-zhixue",
+        "nodePath": "/root/qitu-zhixue/node_modules/.pnpm/node_modules"
+      }
+    ]
+  },
+  "limitations": [
+    "No real production account credentials were supplied; authenticated production admin selection/save/readback and cross-account object access remain unverified.",
+    "No live model/IMA request, real Feishu send, project creation or teaching fact injection was performed."
+  ],
+  "preservedUnpublishedPaths": [
+    ".agents/skills/qitu-project-configurator/SKILL.md",
+    ".agents/skills/qitu-project-configurator/references/assistants.md",
+    ".agents/skills/qitu-project-configurator/references/catalog.json",
+    ".agents/skills/qitu-project-configurator/references/knowledge.md",
+    ".agents/skills/qitu-project-configurator/references/mcp.md",
+    ".agents/skills/qitu-project-configurator/references/models.md",
+    ".agents/skills/qitu-project-configurator/references/project-recipe.md",
+    ".agents/skills/qitu-project-configurator/references/skills.md",
+    ".agents/skills/qitu-project-configurator/references/teams-workflows.md",
+    ".agents/skills/qitu-project-configurator/references/templates-bindings.md",
+    "apps/student-center/features/inspiration/components/RecommendedExplorationButton.tsx",
+    "apps/student-center/features/inspiration/data/inspiration-api-data-source.test.ts",
+    "apps/student-center/features/inspiration/data/inspiration-api-data-source.ts",
+    "apps/student-center/features/inspiration/data/inspiration-data-source.ts",
+    "apps/student-center/features/inspiration/data/mock-inspiration-data-source.ts",
+    "apps/student-center/features/projects/components/ProjectDetailScreen.tsx",
+    "apps/student-center/features/projects/components/TheoryModule.tsx",
+    "apps/student-center/features/projects/data/api-projects-data-source.test.ts",
+    "apps/student-center/features/projects/data/api-projects-data-source.ts",
+    "apps/student-center/features/tutor/TutorPage.tsx",
+    "apps/student-center/features/tutor/components/ChatThread.tsx",
+    "apps/student-center/features/tutor/components/CurrentLessonCard.tsx",
+    "apps/student-center/features/tutor/components/LessonAssessmentCard.tsx",
+    "apps/student-center/features/tutor/components/LessonWorkPanel.tsx",
+    "apps/student-center/features/tutor/components/lessonBlockers.ts",
+    "apps/student-center/features/tutor/data/dataSource.ts",
+    "apps/student-center/features/tutor/data/lessonEvidenceApi.ts",
+    "apps/student-center/features/tutor/data/lessonProgressApi.ts",
+    "apps/student-center/features/tutor/data/lessonWorkspaceApi.test.ts",
+    "apps/student-center/features/tutor/data/tutor-confirmation.test.ts",
+    "apps/student-center/features/tutor/data/tutorApiDataSource.ts",
+    "apps/student-center/features/tutor/hooks/useTutorSession.ts",
+    "apps/student-center/styles/tutor.css",
+    "apps/student-center/tsconfig.test.json",
+    "apps/teacher-workspace/app/(workspace)/students/page.tsx",
+    "apps/teacher-workspace/components/student-artifact-reviews.tsx",
+    "apps/teacher-workspace/lib/review-version.test.ts",
+    "apps/teacher-workspace/lib/review-version.ts",
+    "apps/teacher-workspace/lib/teacherApi.ts",
+    "database/migrations/0045_learning_session_progress.down.sql",
+    "database/migrations/0045_learning_session_progress.sql",
+    "database/migrations/meta/_journal.json",
+    "docs/UI/08-release-smoke/README.md",
+    "docs/UI/08-release-smoke/home-desktop.png",
+    "docs/UI/08-release-smoke/home-mobile.png",
+    "docs/UI/08-release-smoke/login-desktop.png",
+    "docs/UI/08-release-smoke/login-mobile.png",
+    "docs/UI/08-release-smoke/migration-verification.json",
+    "docs/UI/08-release-smoke/server-audit.json",
+    "docs/UI/08-release-smoke/smoke-results.json",
+    "docs/UI/08-release-smoke/source-verification.json",
+    "docs/UI/README.md",
+    "docs/admin/release-20261021-ui-runtime.md",
+    "docs/plan/codex/README.md",
+    "docs/plan/codex/copilot-lifecycle-verification-20261021.md",
+    "docs/plan/codex/copilot-module-references-20261021.md",
+    "docs/plan/codex/optics-template-runtime/06-fullflow-implementation-20261021.md",
+    "docs/plan/codex/optics-template-runtime/07-fullflow-verification-20261021.json",
+    "docs/plan/codex/optics-template-runtime/README.md",
+    "packages/ai-client/src/quiz-bank/index.ts",
+    "packages/ai-client/src/quiz-bank/optics/curriculum.test.ts",
+    "packages/ai-client/src/quiz-bank/optics/curriculum.ts",
+    "packages/contracts/src/admin-copilot.ts",
+    "packages/contracts/src/index.ts",
+    "packages/contracts/src/learning-plan.ts",
+    "packages/contracts/src/learning-session-evidence.ts",
+    "packages/contracts/src/learning-session-progress.ts",
+    "packages/contracts/src/pbl-learning.ts",
+    "packages/contracts/src/project-learning.ts",
+    "packages/contracts/src/teacher.ts",
+    "packages/contracts/src/tutor-learning.ts",
+    "packages/contracts/src/tutor.ts",
+    "packages/database/src/schema/learning-plan.ts",
+    "services/api/src/modules/admin-copilot/copilot.lifecycle.test.ts",
+    "services/api/src/modules/admin-copilot/copilot.lifecycle.ts",
+    "services/api/src/modules/admin-copilot/copilot.module.ts",
+    "services/api/src/modules/admin-copilot/copilot.operations.ts",
+    "services/api/src/modules/admin-copilot/copilot.resources.test.ts",
+    "services/api/src/modules/admin-copilot/copilot.resources.ts",
+    "services/api/src/modules/admin-copilot/copilot.scope.test.ts",
+    "services/api/src/modules/admin-copilot/copilot.scope.ts",
+    "services/api/src/modules/admin-copilot/copilot.service.ts",
+    "services/api/src/modules/admin-copilot/copilot.skill-archive.ts",
+    "services/api/src/modules/admin-copilot/copilot.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-activity-optics.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-experiment.service.ts",
+    "services/api/src/modules/ai-tutor/tutor-lesson-assessment.controller.ts",
+    "services/api/src/modules/ai-tutor/tutor-lesson-assessment.service.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-lesson-assessment.service.ts",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.test-fixture.ts",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.test.ts",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.ts",
+    "services/api/src/modules/ai-tutor/tutor.experiment-gates.test.ts",
+    "services/api/src/modules/ai-tutor/tutor.module.ts",
+    "services/api/src/modules/ai-tutor/tutor.runtime-identity.test.ts",
+    "services/api/src/modules/knowledge/knowledge.module.ts",
+    "services/api/src/modules/learning-plan/learning-plan.controller.ts",
+    "services/api/src/modules/learning-plan/learning-plan.module.ts",
+    "services/api/src/modules/learning-plan/learning-plan.service.ts",
+    "services/api/src/modules/learning-plan/learning-plan.store.postgres.ts",
+    "services/api/src/modules/learning-plan/learning-plan.store.ts",
+    "services/api/src/modules/learning-plan/learning-session-progress.controller.ts",
+    "services/api/src/modules/learning-plan/learning-session-progress.service.ts",
+    "services/api/src/modules/learning-plan/learning-session-progress.test.ts",
+    "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts",
+    "services/api/src/modules/learning-plan/optics-fullflow.test.ts",
+    "services/api/src/modules/learning-plan/optics-plan.e2e.test.ts",
+    "services/api/src/modules/learning-plan/template-plan-generator.ts",
+    "services/api/src/modules/platform-registry/platform-registry.service.ts",
+    "services/api/src/modules/projects/exploration.store.ts",
+    "services/api/src/modules/projects/project-learning-lifecycle.controller.ts",
+    "services/api/src/modules/projects/project-learning-lifecycle.service.ts",
+    "services/api/src/modules/projects/project-lifecycle.service.ts",
+    "services/api/src/modules/projects/projects-confirmed-plan.test.ts",
+    "services/api/src/modules/projects/projects.module.ts",
+    "services/api/src/modules/projects/projects.service.test.ts",
+    "services/api/src/modules/projects/projects.service.ts",
+    "services/api/src/modules/reminders/reminder.stall-wiring.test.ts",
+    "services/api/src/modules/teacher/teacher.controller.ts",
+    "services/api/src/modules/teacher/teacher.module.ts",
+    "services/api/src/modules/teacher/teacher.service.ts",
+    "services/api/src/modules/templates/content/optics.ts",
+    "services/api/src/modules/templates/teaching-bundle.test-fixture.ts",
+    "services/api/src/modules/templates/templates-binding.service.ts",
+    "services/api/src/modules/templates/templates-governance.service.ts",
+    "services/api/src/modules/templates/templates.store.postgres.test.ts",
+    "services/api/src/modules/templates/templates.store.postgres.ts",
+    "services/api/src/modules/templates/templates.store.ts",
+    "services/api/src/modules/works/project-evidence.service.ts",
+    "services/api/src/modules/works/works-inline-content.ts",
+    "services/api/src/modules/works/works-learning-context.ts",
+    "services/api/src/modules/works/works-learning-evidence.service.ts",
+    "services/api/src/modules/works/works-learning-evidence.test.ts",
+    "services/api/src/modules/works/works-learning-evidence.types.ts",
+    "services/api/src/modules/works/works-learning.controller.ts",
+    "services/api/src/modules/works/works.controller.ts",
+    "services/api/src/modules/works/works.module.ts",
+    "services/api/src/modules/works/works.service.ts",
+    "services/api/src/modules/works/works.store.ts",
+    "services/api/src/scripts/optics-template-bootstrap.test.ts",
+    "services/api/src/scripts/optics-template-bootstrap.ts",
+    "tooling/test-optics-confirmation-postgres.cjs",
+    "tooling/verify-copilot-lifecycle.mjs",
+    "tooling/verify-pbl-capability.mjs"
+  ],
+  "preservedPathsValidation": "Continuing edits after the release snapshot; excluded from the deployed commit and not declared validated by this release.",
+  "localOnlyUtilityPaths": [
+    "snap.bat",
+    "test_courseware.bat",
+    "test_tutor_chat.bat",
+    "trigger_tutor_experiment.bat",
+    "view_theory.bat"
+  ]
+}
