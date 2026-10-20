@@ -1,7 +1,7 @@
 # 启途智学夜间暗色护眼模式改造守则
 
 > 文档定位：记录学生端 AI 搭档、家长陪伴中心、教师工作台及全站主外壳在实现“夜间暗色护眼模式”过程中的核心设计标准、技术踩坑经验与不可破坏的修改守则。
-> 适用范围：`apps/student-center`（学生端）、`apps/parent-companion`（家长端）、`apps/teacher-workspace`（教师端）、`packages/ui`（外壳与基础组件）。
+> 适用范围：`apps/student-center`（学生端）、`apps/parent-companion`（家长端）、`apps/teacher-workspace`（教师端）、`apps/admin-console`（平台管理后台）、`packages/ui`（外壳与基础组件）。
 
 ---
 
@@ -43,6 +43,7 @@
      - 学生端：置于顶部账号胶囊（`.qitu-student-account`）内，位于学生姓名与偏好设置之间。
      - 家长端：置于顶栏身份操作区（`.parent-identity`）内，位于“联系班主任”与偏好设置之间。
      - 教师端：置于顶栏右侧（`.qtx-topbar`）操作区内，位于偏好设置与退出登录按键旁。
+     - 管理员端：置于顶栏身份操作区（`.admin-console-identity`）内，位于管理员姓名与偏好设置之间。
 
 ---
 
@@ -152,9 +153,10 @@
 - **守则规范**：
   1. **以实际 JSX/DOM 结构为唯一事实源**：修改样式前务必核对组件真实输出，严禁臆造选择器。
   2. **激活指示光标条（Indicator Bar / `::before`）**：
-     - 学生端与家长端（使用 `@qitu/ui` 的 `NavSidebar`）：
+     - 学生端、家长端与管理端（使用 `@qitu/ui` 的 `NavSidebar`）：
        ```css
-       :root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active::before {
+       :root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active::before,
+       :root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item.is-active::before {
          display: block !important;
          background: #10B981 !important;
          box-shadow: 0 0 10px rgba(16, 185, 129, 0.8) !important;
@@ -190,7 +192,7 @@
 
 - **规范要求**：
   1. **状态事实源存储**：护眼状态统一持久化至 `localStorage`，同时支持全局聚合键 `qitu.eyecare` 及各端独立命名空间（`qitu.student.eyecare`、`qitu.parent.eyecare`、`qitu.teacher.eyecare`），取值为 `'1'` 或 `'0'`。
-  2. **外壳挂载即生效**：在各端外壳宿主组件（`StudentShellHost`、`ParentShell`、`TeacherShell`）的 `useEffect` 中，挂载阶段立即检查存储并向 `document.documentElement` 设置 `data-qitu-eyecare="true"`。
+  2. **外壳挂载即生效**：在各端外壳宿主组件（`StudentShellHost`、`ParentShell`、`TeacherShell`、`ConsoleLayout`）的 `useEffect` 中，挂载阶段立即检查存储并向 `document.documentElement` 设置 `data-qitu-eyecare="true"`。
   3. **跨端与多页面无缝同步**：各端均派发并监听自定义事件 `qitu-eyecare-change` 与原生 `storage` 事件，实现同浏览器下多标签页与多端一致同步响应。
   4. **防止路由切换与刷新闪烁**：无论用户在哪个页面刷新浏览器，整个外壳（侧边栏、顶栏、底栏）必须首屏即保持护眼暗色，杜绝浅色闪烁。
 
@@ -209,8 +211,9 @@
   - [ ] 学生端：“成长轨迹”中“从今天开始记录”内的所有三元统计小卡片（`StatTriple`）无白底。
   - [ ] 家长端：首页欢迎横幅、孩子芯片、KPI 指标卡、当前项目、关注卡片、成长摘要、作品成果无白底。
   - [ ] 教师端：工作台横幅、4项指标卡、关注学生条目、学生名册表格、问题处理时间线无白底。
+  - [ ] 管理员端：顶栏、横幅 `.admin-hero-banner`、6项指标卡 `.admin-stat-card`、治理列表 `.admin-data-table`、模型与设置面板无白底。
 - [ ] **3. 对比度与可读性巡检**：
-  - [ ] 学生端、家长端、教师端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
+  - [ ] 学生端、家长端、教师端、管理员端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
   - [ ] 无任何深蓝色字体（`#102a5c`、`#1e293b` 等）叠在暗色背景上导致不可见的情况。
   - [ ] 各端操作链接（如“进入灵感空间”、“查看详情”、“成长轨迹”、“查看全部作品”）高对比可见（浅薄荷绿 `#34D399`）。
 - [ ] **4. 导航光标与状态巡检**：
@@ -223,5 +226,5 @@
   - [ ] 运行自动化测试：`pnpm --filter @qitu/student-center test`（28 项全部 PASS）。
   - [ ] 运行教师端链接守护测试：`pnpm --filter @qitu/teacher-workspace test`（4 项全部 PASS）。
   - [ ] 运行 UI 包动效与品牌规范测试：`pnpm --filter @qitu/ui test`（全部 PASS）。
-  - [ ] 运行全量构建：`pnpm --filter @qitu/parent-companion build`、`pnpm --filter @qitu/teacher-workspace build`（Code 0）。
+  - [ ] 运行全量构建：`pnpm --filter @qitu/parent-companion build`、`pnpm --filter @qitu/teacher-workspace build`、`pnpm --filter @qitu/admin-console build`（Code 0）。
   - [ ] 运行文档校验：`python3 tooling/validate-docs.py`（PASS）。

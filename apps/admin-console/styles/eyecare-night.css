@@ -1,0 +1,648 @@
+/* ==========================================================================
+   启途智学 - 平台管理后台 (夜间暗色护眼模式)
+   参考规范：docs/eyecare-rules.md
+   ========================================================================== */
+
+:root[data-qitu-eyecare="true"] {
+  --bg-canvas: #121417;
+  --bg-surface: #181B20;
+  --bg-card: #1E2228;
+  --border-subtle: #2E3540;
+  --text-main: #E2E8F0;
+  --text-muted: #94A3B8;
+  --accent-emerald: #10B981;
+
+  --qitu-page: #121417;
+  --qitu-surface: #1E2228;
+  --qitu-surface-soft: #181B20;
+  --qitu-border: #2E3540;
+  --qitu-border-subtle: #282F3B;
+  --qitu-primary-border: #195A3B;
+  --qitu-text: #E2E8F0;
+  --qitu-heading: #FFFFFF;
+  --qitu-muted: #94A3B8;
+  --qitu-primary: #10B981;
+  --qitu-primary-soft: #112F24;
+  --qitu-primary-hover: #059669;
+  --qitu-completed: #10B981;
+  --qitu-completed-soft: #112F24;
+  --qitu-attention: #F59E0B;
+  --qitu-attention-soft: #2D2311;
+  --qitu-shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+  --qitu-shadow-sm: 0 2px 4px rgba(0,0,0,0.4);
+  --qitu-shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --qitu-shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+
+  --admin-stat-tint: #1E2228;
+  --admin-stat-border: #2E3540;
+}
+
+:root[data-qitu-eyecare="true"] body {
+  background-color: #121417 !important;
+  background-image: none !important;
+  color: #E2E8F0 !important;
+}
+
+/* 柔和暗色滚动条 */
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+  border-radius: 9999px !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb:hover {
+  background: #3B4452 !important;
+}
+
+/* ---- 护眼模式开关按钮 ---- */
+.qitu-eyecare-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.qitu-eyecare-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+.qitu-eyecare-toggle-btn.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25) !important;
+}
+.qitu-eyecare-pulse-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  animation: qituPulse 2s infinite ease-in-out;
+}
+@keyframes qituPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* ==========================================================================
+   1. 外壳与顶栏 (Admin Shell & Topbar)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-console-shell {
+  background-color: #121417 !important;
+  background-image: none !important;
+  background: #121417 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-main {
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-topbar {
+  background: rgba(24, 27, 32, 0.95) !important;
+  background-color: rgba(24, 27, 32, 0.95) !important;
+  border-bottom: 1px solid #2E3540 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-page-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-heading .eyebrow {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-identity-name {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-topbar .auth-logout {
+  color: #94A3B8 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-topbar .auth-logout:hover {
+  color: #F87171 !important;
+  background: #2D1418 !important;
+  border-color: #5C1D24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-content {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-content::-webkit-scrollbar-track {
+  background: #181B20 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-content::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-console-content::-webkit-scrollbar-thumb:hover {
+  background: #3B4452 !important;
+}
+
+/* ==========================================================================
+   2. 主侧边栏 (NavSidebar from @qitu/ui)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] aside.qitu-sidebar,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-sidebar {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border-right: 1px solid #252A33 !important;
+  box-shadow: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-brand strong,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-name {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-brand span,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-tagline {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item:hover {
+  background-color: #1E252F !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item.is-active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+  position: relative !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active::before,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item.is-active::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3.5px !important;
+  height: 20px !important;
+  background: #10B981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8) !important;
+  border-radius: 4px !important;
+}
+
+:root[data-qitu-eyecare="true"] .is-sidebar-collapsed .qitu-sidebar-nav a.qitu-nav-item.is-active::before {
+  left: 2px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover {
+  background-color: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* ==========================================================================
+   3. 欢迎横幅 (Hero Banner)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-hero-banner,
+:root[data-qitu-eyecare="true"] .admin-hero-banner.admin-card {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hero-banner::before,
+:root[data-qitu-eyecare="true"] .admin-hero-banner::after {
+  display: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hero-copy h1 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hero-copy p {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-live-badge {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hero-note {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hero-bubble {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #34D399 !important;
+}
+
+/* ==========================================================================
+   4. 指标统计卡 (Admin Stat Cards)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-stat-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-card:hover {
+  border-color: #3E4856 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-card-blue,
+:root[data-qitu-eyecare="true"] .admin-stat-card-teal,
+:root[data-qitu-eyecare="true"] .admin-stat-card-orange,
+:root[data-qitu-eyecare="true"] .admin-stat-card-violet,
+:root[data-qitu-eyecare="true"] .admin-stat-card-rose,
+:root[data-qitu-eyecare="true"] .admin-stat-card-green {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-icon {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-kicker {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-value {
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   5. 通用卡片与面板 (Cards & Panels)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-card,
+:root[data-qitu-eyecare="true"] .admin-settings-panel,
+:root[data-qitu-eyecare="true"] .admin-settings-quick-card,
+:root[data-qitu-eyecare="true"] .admin-runtime-governance-card,
+:root[data-qitu-eyecare="true"] .admin-form-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-overview-interventions,
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-relationship-panel {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-heading {
+  border-bottom: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-heading h2,
+:root[data-qitu-eyecare="true"] .admin-card-title,
+:root[data-qitu-eyecare="true"] .admin-panel-title,
+:root[data-qitu-eyecare="true"] .admin-page-header-title h1,
+:root[data-qitu-eyecare="true"] .admin-page-header-title h2 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-status {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-info,
+:root[data-qitu-eyecare="true"] .admin-governance-info.admin-card {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-link {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-governance-link:hover {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stat-item {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-alert-card {
+  background: #2D2311 !important;
+  border: 1px solid #4A3B18 !important;
+  color: #F59E0B !important;
+}
+
+/* ==========================================================================
+   6. 数据图表与表格 (Data Sections & Tables)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-data-section,
+:root[data-qitu-eyecare="true"] .admin-chart-section {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-data-table {
+  background: #1E2228 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-data-table th {
+  background: #15181D !important;
+  color: #94A3B8 !important;
+  border-bottom: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-data-table td {
+  border-bottom: 1px solid #252A33 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-data-table tr:hover td {
+  background: #1E252F !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-filter-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-filter-btn:hover {
+  background: #252D37 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-filter-btn.active {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-search-input {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   7. 智学管家 (Admin Copilot - /admin/copilot)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .copilot-page {
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-sidebar,
+:root[data-qitu-eyecare="true"] .copilot-session-list {
+  background: #181B20 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-session-item {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-session-item:hover {
+  background: #1E252F !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-session-item.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-composer {
+  background: #181B20 !important;
+  border-top: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-input-box textarea {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-bubble-assistant {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-bubble-user {
+  background: #142820 !important;
+  border: 1px solid #195A3B !important;
+  color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   8. 设置与模型配置 (Settings & Model Providers)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .settings-overview-card,
+:root[data-qitu-eyecare="true"] .provider-stats > div,
+:root[data-qitu-eyecare="true"] .provider-model-list,
+:root[data-qitu-eyecare="true"] .provider-preset {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table,
+:root[data-qitu-eyecare="true"] .admin-runtime-table {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-editor,
+:root[data-qitu-eyecare="true"] .provider-editor {
+  background: #1E2228 !important;
+  border-left: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .field input,
+:root[data-qitu-eyecare="true"] .field select,
+:root[data-qitu-eyecare="true"] .runtime-form-grid input,
+:root[data-qitu-eyecare="true"] .runtime-form-grid select,
+:root[data-qitu-eyecare="true"] .runtime-form-grid textarea,
+:root[data-qitu-eyecare="true"] .provider-toolbar select,
+:root[data-qitu-eyecare="true"] .provider-model-add input {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .multiSelectTrigger,
+:root[data-qitu-eyecare="true"] .multiSelectOptions {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .editor,
+:root[data-qitu-eyecare="true"] .preview {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-card {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-models-note {
+  background: #2D2311 !important;
+  border-left: 3px solid #F59E0B !important;
+  color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   9. 按键护眼模式标准配置 (Button Standard Configuration)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-button-ghost {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-ghost:hover:not(:disabled) {
+  background: #28303C !important;
+  background-color: #28303C !important;
+  border-color: #3E4856 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-secondary {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-secondary:hover:not(:disabled) {
+  background: #164332 !important;
+  background-color: #164332 !important;
+  border-color: #10B981 !important;
+  color: #6EE7B7 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-primary {
+  background: #10B981 !important;
+  background-color: #10B981 !important;
+  border: 1px solid #059669 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-primary:hover:not(:disabled) {
+  background: #059669 !important;
+  background-color: #059669 !important;
+  border-color: #047857 !important;
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   10. 深蓝文字与硬编码浅色底全局拦截防御
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] [style*="color: #102a5c"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e40af"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e3a8a"],
+:root[data-qitu-eyecare="true"] [style*="color: #1d4ed8"],
+:root[data-qitu-eyecare="true"] [style*="color: #243b5a"],
+:root[data-qitu-eyecare="true"] [style*="color: #0f172a"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e293b"],
+:root[data-qitu-eyecare="true"] [style*="color: #17243b"],
+:root[data-qitu-eyecare="true"] [style*="color: #214b7d"],
+:root[data-qitu-eyecare="true"] [style*="color: #132646"],
+:root[data-qitu-eyecare="true"] [style*="color: #0038b2"],
+:root[data-qitu-eyecare="true"] [style*="color: #2563eb"],
+:root[data-qitu-eyecare="true"] [style*="color: #1b68f8"] {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] [style*="background: #fff"],
+:root[data-qitu-eyecare="true"] [style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] [style*="background: white"],
+:root[data-qitu-eyecare="true"] [style*="background-color: #fff"],
+:root[data-qitu-eyecare="true"] [style*="background-color: #ffffff"],
+:root[data-qitu-eyecare="true"] [style*="background-color: white"] {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] [style*="background: #f0f7ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #eaf5ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #edf7ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #f2f9ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #f1f8ff"],
+:root[data-qitu-eyecare="true"] [style*="background: #e8effc"] {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+}
