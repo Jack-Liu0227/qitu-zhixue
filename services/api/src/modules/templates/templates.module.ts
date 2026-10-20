@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
+import { ModelRegistryModule } from '../model-registry/model-registry.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { TeachingBundleCatalog } from './teaching-bundle.catalog';
 import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { AuthModule } from '../identity-auth/auth.module';
@@ -36,9 +40,10 @@ import { TemplatesService } from './templates.service';
  * PostgreSQL 实现，未配置数据库时 fail fast。
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, KnowledgeModule],
   controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController],
   providers: [
+    TeachingBundleCatalog,
     TemplatesService,
     TemplateGovernanceService,
     TemplateBindingService,

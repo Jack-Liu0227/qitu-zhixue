@@ -4,7 +4,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { TeachingBundleCatalog } from './teaching-bundle.catalog';
+import { teachingValueDigest } from './teaching-bundle.canonical';
 import type {
   AdminBindingPreview,
   AdminBindingRetireInput,
@@ -84,6 +87,7 @@ export class TemplateBindingService {
     private readonly bindings: TemplateBindingStore,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    @Optional() private readonly bundleCatalog?: TeachingBundleCatalog,
   ) {}
 
   /* ============================ 生命周期写 ============================ */
@@ -208,6 +212,11 @@ export class TemplateBindingService {
     compiled: import('./teaching-bundle.types').CompiledTeachingBundle,
   ): Promise<BindingMutationResult> {
     const current = await this.requireBindingForVersion(bindingId, versionId);
+    if (current.status !== 'draft' || compiled.payload.templateVersionId !== versionId
+      || compiled.payload.teamVersion.teamVersionId !== current.teamVersionId
+      || teachingValueDigest(compiled.payload) !== compiled.digest) {
+      throw new ConflictException({ code: 'BUNDLE_SCOPE_OR_DIGEST_INVALID', message: '教学配置版本或摘要不匹配' });
+    }
     const teamVersion = await this.bindings.findTeamVersion(current.teamVersionId);
     if (teamVersion === null) throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
     const bindingHash = computeBindingHash(
@@ -227,6 +236,7 @@ export class TemplateBindingService {
       digest: compiled.digest,
       bindingHash,
       now: new Date(),
+      expectedUpdatedAt: current.updatedAt,
     });
     return { binding: toBindingView(updated), replayed: false };
   }
@@ -245,10 +255,23 @@ export class TemplateBindingService {
     const requestHash = hashIdempotentInput(scope, { templateId, versionId, bindingId }, {});
 
     const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
-      const current = await this.requireBindingForVersion(bindingId, versionId);
+      let current = await this.requireBindingForVersion(bindingId, versionId);
       // 已是 validated：视为幂等成功（不同 key 重复校验也返回当前状态）。
       const versionForBundle = await this.templates.findVersion(versionId);
       const bundleRequired = requiresTeachingBundle(versionForBundle?.content);
+      if (bundleRequired && current.status === 'draft' && current.bundleDraft && this.bundleCatalog && versionForBundle) {
+        const team = await this.bindings.findTeamVersion(current.teamVersionId);
+        if (!team) throw new BadRequestException({ code: 'BINDING_INVALID', message: TEAM_VERSION_MISSING_MESSAGE });
+        const compiled = await this.bundleCatalog.compile(versionForBundle, team, current.bundleDraft);
+        current = await this.bindings.updateTeachingBundle(bindingId, {
+          draft: current.bundleDraft, payload: compiled.payload, digest: compiled.digest,
+          bindingHash: computeBindingHash(versionId, team.id, computePblSpecHash(team), compiled.digest),
+          expectedUpdatedAt: current.updatedAt, now: new Date(),
+        });
+      }
+      if (bundleRequired && current.bundlePayload && teachingValueDigest(current.bundlePayload) !== current.bundleDigest) {
+        throw new ConflictException({ code: 'BUNDLE_DIGEST_MISMATCH', message: '教学配置摘要校验失败' });
+      }
       if (current.status === 'validated') {
         if (bundleRequired && (!current.bundleDigest || current.bundlePayload === null)) {
           throw new BadRequestException({
@@ -280,7 +303,7 @@ export class TemplateBindingService {
       }
       const validation = computeBindingValidation(teamVersion);
       const now = new Date();
-      const stamped = await this.bindings.updateValidation(bindingId, validation, now);
+      const stamped = await this.bindings.updateValidation(bindingId, validation, now, current.updatedAt);
 
       if (!validation.valid) {
         // 未通过：写回校验结果（留痕），状态保持 draft，不迁移到 validated。
@@ -306,7 +329,7 @@ export class TemplateBindingService {
         });
       }
 
-      const validated = await this.bindings.setStatus(bindingId, 'validated', now);
+      const validated = await this.bindings.setStatus(bindingId, 'validated', now, stamped.updatedAt);
       await this.audit.write({
         actorId: actor.id,
         actorRole: actor.role,
@@ -348,8 +371,20 @@ export class TemplateBindingService {
       }
       assertBindingStatusTransition(current.status, 'active', PBL_BINDING_STATUS_TRANSITIONS);
 
+      const version = await this.templates.findVersion(versionId);
+      if (requiresTeachingBundle(version?.content)) {
+        const team = await this.bindings.findTeamVersion(current.teamVersionId);
+        if (!version || !team || !current.bundleDraft || !current.bundlePayload || !this.bundleCatalog) {
+          throw new BadRequestException({ code: 'BUNDLE_COMPILATION_UNAVAILABLE', message: '教学配置尚未完成编译' });
+        }
+        const compiled = await this.bundleCatalog.compile(version, team, current.bundleDraft);
+        if (compiled.digest !== current.bundleDigest || teachingValueDigest(current.bundlePayload) !== current.bundleDigest) {
+          throw new ConflictException({ code: 'BUNDLE_CATALOG_CHANGED', message: '教学目录已变化，请创建新绑定并重新校验' });
+        }
+      }
+
       const now = new Date();
-      const activated = await this.bindings.activateBinding(versionId, bindingId, now);
+      const activated = await this.bindings.activateBinding(versionId, bindingId, now, current.updatedAt);
       await this.audit.write({
         actorId: actor.id,
         actorRole: actor.role,
@@ -542,7 +577,8 @@ export class TemplateBindingService {
     const binding = await this.bindings.findActiveBinding(input.templateVersionId, input.tx);
     if (binding === null) return 'omitted';
     const templateVersion = await this.templates.findVersion(input.templateVersionId);
-    if (requiresTeachingBundle(templateVersion?.content) && !binding.bundleDigest) {
+    if (requiresTeachingBundle(templateVersion?.content) && (!binding.bundleDigest || !binding.bundlePayload
+      || teachingValueDigest(binding.bundlePayload) !== binding.bundleDigest)) {
       throw new ConflictException({
         code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE',
         message: '该 PBL 模板的 active binding 缺少已校验的 Teaching Bundle',
@@ -584,6 +620,15 @@ export class TemplateBindingService {
     const templateVersion = await this.templates.findVersion(templateVersionId);
     if (requiresTeachingBundle(templateVersion?.content) && !snapshot.bundleDigest) return null;
     return toSnapshotView(snapshot);
+  }
+
+  async getFrozenTeachingBundle(projectId: string, templateVersionId: string) {
+    const snapshot = await this.findFrozenSnapshotForProject(projectId, templateVersionId);
+    const binding = snapshot ? await this.bindings.findBinding(snapshot.bindingId) : null;
+    if (!binding?.bundlePayload || teachingValueDigest(binding.bundlePayload) !== snapshot?.bundleDigest) {
+      throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '项目缺少可核验的冻结教学配置' });
+    }
+    return binding.bundlePayload;
   }
 
   /**

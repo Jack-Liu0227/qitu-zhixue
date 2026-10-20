@@ -91,3 +91,7 @@ The current run passed 23 feature tests and 6 live-boundary tests.
 ## Release decision
 
 The student Tutor contract is safe to merge for deterministic boundary coverage. Do not mark the optics runtime fully released until the live Teaching Bundle compiler, observation owner receipt, parent projection, and live browser E2E gaps above are closed.
+
+## 2026-10-21 implementation follow-up
+
+See [Student Tutor QA fixes and verification](./student-tutor-qa-fixes-20261021.md) for the compiler wiring, persisted simulation observation receipts, parent accepted-only read contract, clean-worktree builds and real API/database/browser checks. Relevant API tests pass 320/320; the full API run still has 17 reproduced baseline fixture failures. Synthetic catalogs and practice-gate fixtures are explicitly identified; this is not production acceptance.

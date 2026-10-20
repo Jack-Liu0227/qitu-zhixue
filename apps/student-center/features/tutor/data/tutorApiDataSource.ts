@@ -263,7 +263,9 @@ export class TutorApiDataSource implements TutorDataSource {
       },
     );
     const data = unwrapData(payload);
-    if (!isTutorExperimentActionResponse(data, experimentId, request.action)) {
+    if (!isTutorExperimentActionResponse(data, experimentId, request.action)
+      || (request.action === 'record_observation' && (data.observationReceipt?.sessionId !== sessionId
+        || data.observationReceipt?.runActionId !== (request.payload as { runActionId?: unknown })?.runActionId))) {
       throw new TutorDataError('Invalid experiment action response', undefined, 'BAD_EXPERIMENT_ACTION_PAYLOAD');
     }
     return data;
@@ -415,10 +417,19 @@ function isTutorExperimentActionResponse(
 ): value is TutorExperimentActionResponse {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Partial<TutorExperimentActionResponse>;
+  if (action === 'record_observation') {
+    const receipt = candidate.observationReceipt;
+    if (!receipt || receipt.experimentId !== experimentId || receipt.provenance !== 'simulated_observation'
+      || typeof receipt.observationId !== 'string' || !receipt.observationId
+      || receipt.evidenceRef !== `experiment_observation:${receipt.observationId}`
+      || typeof receipt.runActionId !== 'string' || !receipt.runActionId
+      || typeof receipt.planId !== 'string' || !receipt.planId || !Number.isSafeInteger(receipt.planRevision)
+      || typeof receipt.savedAt !== 'string' || !Number.isFinite(Date.parse(receipt.savedAt))) return false;
+  }
   return candidate.accepted === true
     && candidate.experimentId === experimentId
     && candidate.action === action
-    && typeof candidate.actionId === 'string';
+    && typeof candidate.actionId === 'string' && candidate.actionId.length > 0;
 }
 
 function isTutorTeamGraph(value: unknown): value is TutorTeamGraph {

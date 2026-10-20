@@ -116,13 +116,15 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     id: string,
     validation: BindingRecord['validation'],
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     const [row] = await this.db
       .update(pblTemplateTeamBindings)
       .set({ validation, updatedAt: now })
-      .where(eq(pblTemplateTeamBindings.id, id))
+      .where(and(eq(pblTemplateTeamBindings.id, id),
+        ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'draft')] : [])))
       .returning();
-    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     return mapBinding(row);
   }
 
@@ -142,19 +144,24 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         status: 'draft',
         updatedAt: input.now,
       })
-      .where(eq(pblTemplateTeamBindings.id, id))
+      .where(and(
+        eq(pblTemplateTeamBindings.id, id),
+        eq(pblTemplateTeamBindings.status, 'draft'),
+        ...(input.expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, input.expectedUpdatedAt)] : []),
+      ))
       .returning();
-    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Teaching Bundle changed during compilation');
     return mapBinding(row);
   }
 
-  async setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord> {
+  async setStatus(id: string, status: PblBindingStatus, now: Date, expectedUpdatedAt?: Date): Promise<BindingRecord> {
     const [row] = await this.db
       .update(pblTemplateTeamBindings)
       .set({ status, updatedAt: now })
-      .where(eq(pblTemplateTeamBindings.id, id))
+      .where(and(eq(pblTemplateTeamBindings.id, id),
+        ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'draft')] : [])))
       .returning();
-    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     return mapBinding(row);
   }
 
@@ -162,6 +169,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     templateVersionId: string,
     bindingId: string,
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     try {
       return await withTransaction(this.db, async (tx) => {
@@ -179,9 +187,10 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         const [row] = await tx
           .update(pblTemplateTeamBindings)
           .set({ status: 'active', activatedAt: now, updatedAt: now })
-          .where(eq(pblTemplateTeamBindings.id, bindingId))
+          .where(and(eq(pblTemplateTeamBindings.id, bindingId),
+            ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'validated')] : [])))
           .returning();
-        if (row === undefined) throw new Error(`binding not found: ${bindingId}`);
+        if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during activation');
         return mapBinding(row);
       });
     } catch (error) {

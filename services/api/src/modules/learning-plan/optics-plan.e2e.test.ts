@@ -1,3 +1,4 @@
+import { opticsTeachingFixture } from '../templates/teaching-bundle.test-fixture';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
@@ -43,7 +44,7 @@ it('new 16-session API path consumes the resolved version content and does not o
   const h = makeHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
   const report = await runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test',
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft,
   });
   const generated = await h.plans.generatePlan(STUDENT, {
     interest: '光学证据链', lessonCount: 16, lessonMinutes: 60, curriculumSlug: OPTICS_16_TEMPLATE_SLUG,
@@ -144,14 +145,14 @@ function validTeamVersion(
 ): TeamVersionRecord {
   return {
     id,
-    teamId: 'team-optics',
+    teamId: opticsTeachingFixture().teamId,
     version: 1,
     name: '光学探究团队',
     description: 'A 组',
     workspaceMode: 'shared',
     sessionMode: 'auto',
-    leaderAssistantId: 'optics-concept-coach',
-    members: [{ userId: STUDENT.id }],
+    leaderAssistantId: opticsTeachingFixture().leaderAssistantId,
+    members: opticsTeachingFixture().members,
     pblSpec: {
       phases: ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'],
     },
@@ -190,7 +191,7 @@ async function seedOpticsBinding(
       templates,
       bindingStore,
     },
-    { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'test pilot' },
+    { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture().draft },
   );
 }
 
@@ -221,6 +222,7 @@ function makeHarness(): Harness {
     bindingStore,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
+    opticsTeachingFixture().catalog,
   );
 
   const mastery = new MasteryDomainService(

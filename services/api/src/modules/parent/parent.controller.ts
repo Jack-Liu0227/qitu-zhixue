@@ -49,6 +49,8 @@ import { GrowthService } from '../growth/growth.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { FeedbackService } from '../feedback/feedback.service';
 import { ParentGrowthExportService } from './growth-export.service';
+import { ParentAcceptedProfileService } from './accepted-profile.service';
+import { Optional, ServiceUnavailableException } from '@nestjs/common';
 
 /**
  * 家长陪伴中心接口。
@@ -71,9 +73,20 @@ export class ParentController {
     private readonly platformData: PlatformDataService,
     private readonly feedbackService: FeedbackService,
     private readonly growthExportService: ParentGrowthExportService,
+    @Optional() private readonly acceptedProfile?: ParentAcceptedProfileService,
   ) {}
 
   /* ==================== 读接口 ==================== */
+
+  @Get('children/:childId/profile')
+  async getAcceptedProfile(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Param('childId') childId: string,
+  ) {
+    const actor = requireRole(this.authService, cookieHeader, 'parent', '该视图仅向家长开放');
+    if (!this.acceptedProfile) throw new ServiceUnavailableException('成长摘要暂不可用');
+    return { data: await this.acceptedProfile.read(actor, childId) };
+  }
 
   /**
    * 首页：KPI、当前项目、需要关注、成长摘要、最近成果。

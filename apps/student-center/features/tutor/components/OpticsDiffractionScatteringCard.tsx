@@ -6,6 +6,7 @@ import { createIdempotencyKey } from '../idempotency';
 import type { TutorExperimentActionResponse } from '@qitu/contracts';
 
 export interface OpticsDiffractionScatteringCardProps {
+  savedObservation?: TutorExperimentActionResponse['observationReceipt'];
   disabled?: boolean;
   initialMode?: 'diffraction' | 'scattering';
   predictionGate?: {
@@ -80,6 +81,7 @@ export function OpticsDiffractionScatteringCard({
   initialMode = 'diffraction',
   predictionGate,
   onAction,
+  savedObservation,
 }: OpticsDiffractionScatteringCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<'diffraction' | 'scattering'>(initialMode);
@@ -90,7 +92,9 @@ export function OpticsDiffractionScatteringCard({
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [runAccepted, setRunAccepted] = useState(false);
+  const runActionIdRef = useRef<string | null>(null);
   const [observationAccepted, setObservationAccepted] = useState(false);
+  const [observation, setObservation] = useState('');
   const [serverSimulationSummary, setServerSimulationSummary] = useState<string | null>(null);
   const actionKeysRef = useRef(new Map<string, string>());
 
@@ -103,7 +107,18 @@ export function OpticsDiffractionScatteringCard({
     const idempotencyKey = actionKeysRef.current.get(fingerprint) ?? createIdempotencyKey();
     actionKeysRef.current.set(fingerprint, idempotencyKey);
     const result = await onAction(action, payload, idempotencyKey);
-    const accepted = typeof result === 'boolean' ? result : result?.accepted === true;
+    let accepted = typeof result === 'boolean' ? result : result?.accepted === true;
+    if (action === 'run') {
+      accepted = typeof result === 'object' && result.accepted && result.action === 'run' && !!result.actionId;
+      if (accepted && typeof result === 'object') runActionIdRef.current = result.actionId;
+    }
+    if (action === 'record_observation') {
+      const receipt = typeof result === 'object' ? result.observationReceipt : undefined;
+      accepted = !!(receipt && receipt.observationId && receipt.evidenceRef
+        && receipt.runActionId === runActionIdRef.current
+        && receipt.provenance === 'simulated_observation'
+        && receipt.planId && Number.isSafeInteger(receipt.planRevision) && receipt.savedAt);
+    }
     if (accepted) actionKeysRef.current.delete(fingerprint);
     if (typeof result === 'object' && result?.simulationResult?.summary) {
       setServerSimulationSummary(result.simulationResult.summary);
@@ -119,6 +134,14 @@ export function OpticsDiffractionScatteringCard({
   // 介质散射实验物理参数
   const [particleRadius, setParticleRadius] = useState<number>(25); // nm (微粒半径 r)
   const [scatteringWavelength, setScatteringWavelength] = useState<number>(450); // nm (蓝光)
+
+  useEffect(() => {
+    runActionIdRef.current = null;
+    setRunAccepted(false);
+    setObservationAccepted(false);
+    setObservation('');
+    setServerSimulationSummary(null);
+  }, [mode, wavelength, slitWidth, screenDistance, particleRadius, scatteringWavelength]);
 
   // 交互式探测标尺位置 (mm) 与探测值
   const [probeXMm, setProbeXMm] = useState<number | null>(null);
@@ -168,7 +191,9 @@ export function OpticsDiffractionScatteringCard({
     setActionPending(true);
     setActionError(null);
     try {
-      const accepted = await dispatchAction('record_observation', { mode, parameters: currentParameters() });
+      const accepted = await dispatchAction('record_observation', {
+        mode, parameters: currentParameters(), runActionId: runActionIdRef.current, observation,
+      });
       if (accepted) setObservationAccepted(true);
       else setActionError('服务器未确认观察记录，尚未保存');
     } catch (error) {
@@ -641,7 +666,7 @@ export function OpticsDiffractionScatteringCard({
               光的散射与衍射模型预览
             </h4>
             <span style={{ fontSize: '12px', color: '#64748b' }}>
-              仅为计算示意，不是真实测量；正式实验运行与观测保存尚未接入
+              {disabled ? '仅为计算示意，不是真实测量；当前仅可预览' : '受限模型仿真；模拟观察保存须取得服务端回执，不代表真实测量'}
             </span>
           </div>
         </div>
@@ -667,8 +692,8 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled}
-            onClick={() => setMode('diffraction')}
+            disabled={disabled || actionPending}
+            onClick={() => { setMode('diffraction'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
               fontSize: '12.5px',
@@ -685,8 +710,8 @@ export function OpticsDiffractionScatteringCard({
           </button>
           <button
             type="button"
-            disabled={disabled}
-            onClick={() => setMode('scattering')}
+            disabled={disabled || actionPending}
+            onClick={() => { setMode('scattering'); setIsSubmittedLocal(false); setSelectedPrediction(''); }}
             style={{
               padding: '6px 14px',
               fontSize: '12.5px',
@@ -787,7 +812,7 @@ export function OpticsDiffractionScatteringCard({
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: '12.5px', color: '#15803d' }}>
-              已提交预测：“{predictionGate.hypothesis ?? selectedPrediction}”。请调节参数运行仿真，核验实测读数。
+              已提交预测：“{predictionGate.hypothesis ?? selectedPrediction}”。请调节参数运行仿真，比较模拟读数。
             </p>
           )}
         </div>
@@ -847,7 +872,7 @@ export function OpticsDiffractionScatteringCard({
                   max="750"
                   step="5"
                   value={wavelength}
-                  disabled={disabled}
+                  disabled={disabled || actionPending}
                   onChange={(e) => setWavelength(Number(e.target.value))}
                   style={{ width: '100%', accentColor: beamColor.css }}
                 />
@@ -864,7 +889,7 @@ export function OpticsDiffractionScatteringCard({
                   max="200"
                   step="5"
                   value={slitWidth}
-                  disabled={disabled}
+                  disabled={disabled || actionPending}
                   onChange={(e) => setSlitWidth(Number(e.target.value))}
                   style={{ width: '100%', accentColor: '#0284c7' }}
                 />
@@ -881,7 +906,7 @@ export function OpticsDiffractionScatteringCard({
                   max="2.0"
                   step="0.1"
                   value={screenDistance}
-                  disabled={disabled}
+                  disabled={disabled || actionPending}
                   onChange={(e) => setScreenDistance(Number(e.target.value))}
                   style={{ width: '100%', accentColor: '#475569' }}
                 />
@@ -1051,7 +1076,7 @@ export function OpticsDiffractionScatteringCard({
                   max="750"
                   step="5"
                   value={scatteringWavelength}
-                  disabled={disabled}
+                  disabled={disabled || actionPending}
                   onChange={(e) => setScatteringWavelength(Number(e.target.value))}
                   style={{ width: '100%', accentColor: scatterColor.css }}
                 />
@@ -1070,7 +1095,7 @@ export function OpticsDiffractionScatteringCard({
                   max="300"
                   step="5"
                   value={particleRadius}
-                  disabled={disabled}
+                  disabled={disabled || actionPending}
                   onChange={(e) => setParticleRadius(Number(e.target.value))}
                   style={{ width: '100%', accentColor: isRayleigh ? '#2563eb' : '#d97706' }}
                 />
@@ -1138,20 +1163,29 @@ export function OpticsDiffractionScatteringCard({
           </button>
         </div>
       </div>
+      <label style={{ display: 'block', fontSize: '13px', marginBottom: '8px' }}>
+        我的观察（模拟）
+        <textarea aria-label="我的观察（模拟）" maxLength={500} value={observation}
+          disabled={disabled || actionPending || !runAccepted}
+          onChange={(event) => { setObservation(event.target.value); setObservationAccepted(false); }}
+          placeholder="描述你从仿真图形中观察到的变化。"
+          style={{ display: 'block', width: '100%', minHeight: '60px', marginTop: '6px' }} />
+      </label>
       <button
         type="button"
-        disabled={!runAccepted || disabled || actionPending || observationAccepted}
+        disabled={!runAccepted || !observation.trim() || disabled || actionPending || observationAccepted}
         onClick={() => void handleRecordObservation()}
         style={{ margin: '0 0 8px auto', display: 'block', padding: '8px 16px', borderRadius: '8px', border: 'none', color: '#fff', background: observationAccepted ? '#86efac' : '#0ea5e9' }}
       >
-        {observationAccepted ? '\u5df2\u8bb0\u5f55' : '\u8bb0\u5f55\u89c2\u5bdf'}
+        {observationAccepted ? '已保存模拟观察' : '\u8bb0\u5f55\u89c2\u5bdf'}
       </button>
+      {savedObservation ? <p role="status">此前的模拟观察已保存，可在项目证据中查看。</p> : null}
 
       {actionError ? <p role="alert" style={{ color: '#b91c1c', fontSize: '12px' }}>{actionError}</p> : null}
       {serverSimulationSummary ? <p role="status" style={{ color: '#0369a1', fontSize: '12px' }}>{serverSimulationSummary}</p> : null}
 
       <p role="note" style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-        此预览不保存观测，不提交作品证据，也不改变掌握度。真实实验须由教师审核安全方案。
+        {disabled ? '当前为低风险模型预览，不保存观测，不是真实测量。' : '拖动参数仅作模型预览；提交观察并收到回执后才保存为模拟证据，不代表真实测量或掌握。'}真实实验须由教师审核安全方案。
       </p>
     </div>
   );

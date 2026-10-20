@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { TutorExperimentService } from './tutor-experiment.service';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import {
   createNoopTutorContextReader,
@@ -303,6 +304,7 @@ export class TutorService {
     /** A1：模板绑定冻结快照解析；作为最后参数注入，保持既有位置化构造兼容。 */
     @Optional() private readonly templateBindings?: TemplateBindingService,
     @Optional() private readonly teacherService?: TeacherService,
+    @Optional() private readonly experiments?: TutorExperimentService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -721,90 +723,8 @@ export class TutorService {
     experimentId: string,
     input: TutorExperimentActionRequest,
   ): Promise<TutorExperimentActionResponse> {
-    assertOwnedBy(record, actorId);
-    const block = record.turns.flatMap((turn) => turn.blocks).find(
-      (candidate): candidate is Extract<TutorReplyBlock, { kind: 'optics_experiment' }> =>
-        candidate.kind === 'optics_experiment' && candidate.experimentId === experimentId,
-    );
-    if (!block || !block.allowedActions.includes(input.action)) {
-      throw new NotFoundException({ code: 'TUTOR_EXPERIMENT_NOT_EMITTED', message: '该实验操作不属于本会话已下发的实验' });
-    }
-    const project = record.projectId === null || this.learningStore === undefined
-      ? null
-      : await this.learningStore.findProject(record.projectId);
-    if (!project || project.studentId !== actorId) {
-      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_PROJECT_REQUIRED', message: '实验操作只能在本人已确认的项目中进行' });
-    }
-    if (project.status !== 'practice_ready' && project.status !== 'practice_building') {
-      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_GATE_REQUIRED', message: 'TheoryMastered 门禁通过后才能进入实验操作' });
-    }
-    const actionState = await this.readExperimentActionState(record.sessionId, experimentId, actorId);
-    if (input.action === 'run' && block.predictionGate?.required && !actionState.has('submit_prediction')) {
-      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_PREDICTION_REQUIRED', message: '请先提交预测，再运行仿真' });
-    }
-    if (input.action === 'record_observation' && !actionState.has('run')) {
-      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_RUN_REQUIRED', message: '请先运行仿真，再记录观察' });
-    }
-    const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload);
-    const scope = `student.tutor.experiment:${record.sessionId}:${experimentId}:${input.action}`;
-    const requestHash = hashRequest({
-      actorId,
-      sessionId: record.sessionId,
-      projectId: project.id,
-      experimentId,
-      action: input.action,
-      specVersion: block.specVersion,
-      objectiveId: block.objectiveId,
-      sessionIndex: block.sessionIndex,
-      payload: validated.auditPayload,
-    });
-    const persist = async (): Promise<TutorExperimentActionResponse> => {
-      const detail = {
-        projectId: project.id,
-        sessionId: record.sessionId,
-        experimentId,
-        action: input.action,
-        specVersion: block.specVersion,
-        objectiveId: block.objectiveId,
-        sessionIndex: block.sessionIndex,
-        ...validated.auditPayload,
-      };
-      const actionId = this.durable
-        ? await this.requireAuditWriter().write({
-            actorId,
-            actorRole: 'student',
-            action: 'tutor.experiment.action',
-            targetType: 'tutor_experiment',
-            targetId: experimentId,
-            idempotencyKey: `${scope}:${input.idempotencyKey}`,
-            detail,
-          })
-        : hashRequest({ scope, key: input.idempotencyKey }).slice(0, 24);
-      const current = this.experimentActions.get(`${record.sessionId}:${experimentId}`) ?? new Set<TutorExperimentAction>();
-      current.add(input.action);
-      this.experimentActions.set(`${record.sessionId}:${experimentId}`, current);
-      return {
-        accepted: true,
-        actionId,
-        experimentId,
-        action: input.action,
-        ...(validated.simulationResult ? { simulationResult: validated.simulationResult } : {}),
-      };
-    };
-    if (!this.durable) return persist();
-    if (!this.idempotencyStore) throw new ServiceUnavailableException('实验操作存储暂不可用，请稍后重试');
-    const result = await this.idempotencyStore.execute(
-      scope,
-      input.idempotencyKey,
-      requestHash,
-      async () => ({ status: 201, body: await persist() }),
-    );
-    return result.body;
-  }
-
-  private requireAuditWriter(): AuditWriter {
-    if (!this.auditWriter) throw new ServiceUnavailableException('审计存储暂不可用，请稍后重试');
-    return this.auditWriter;
+    if (!this.experiments) throw new ServiceUnavailableException({ code: 'TUTOR_EXPERIMENT_OWNER_UNAVAILABLE', message: 'Experiment evidence owner is unavailable' });
+    return this.experiments.submit(actorId, record, experimentId, input);
   }
 
   /** Read the server-owned experiment action sequence without trusting the UI. */
@@ -876,19 +796,9 @@ export class TutorService {
 
   private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage): Promise<NonNullable<TutorTurn['author']>> {
     const intake = builtinAuthor('qitu-intake-assistant');
-    let teamProjectId: string | null = record.projectId;
-    let templateVersionId: string | null = null;
-    if (record.projectId === null) {
-      if (this.projects === undefined || record.explorationId == null) return intake;
-      const exploration = await this.projects.getExploration(record.ownerId, record.explorationId);
-      templateVersionId = exploration.templateVersionId;
-      if (templateVersionId === null) return intake;
-      teamProjectId = `exploration:${record.explorationId}`;
-    } else {
-      const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
-      templateVersionId = project?.templateVersionId ?? null;
-    }
-    const context = await this.resolveTeamContext(teamProjectId, templateVersionId, stage, record.ownerId, record.projectId === null, true);
+    if (record.projectId === null) return intake;
+    const project = this.learningStore === undefined ? null : await this.learningStore.findProject(record.projectId);
+    const context = await this.resolveTeamContext(record.projectId, project?.templateVersionId ?? null, stage, record.ownerId, false, true);
     if (context.team.teamId === null || context.teamConfig === null) {
       if (this.platformRegistry === undefined) return intake; // Isolated fixtures without runtime governance.
       throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目导师团队当前不可用' });
@@ -1148,6 +1058,8 @@ export class TutorService {
     const experimentId = `optics-exp-${record.sessionId}-${initialMode}-lesson-${lessonIndex}`;
     const actionState = await this.readExperimentActionState(record.sessionId, experimentId, record.ownerId);
 
+    const experimentScope = record.projectId && this.experiments
+      ? await this.experiments.scope(record.projectId, record.ownerId, lessonIndex) : undefined;
     const experimentBlock: TutorReplyBlock = {
       kind: 'optics_experiment',
       // Stable within a frozen tutor session: retries/reconnects must not
@@ -1164,7 +1076,8 @@ export class TutorService {
       sessionIndex: lessonIndex,
       // The current student surface persists only these three actions. Do not
       // advertise parameter/evidence actions until their owner contracts exist.
-      allowedActions: ['submit_prediction', 'run', 'record_observation'],
+      allowedActions: experimentScope ? ['submit_prediction', 'run', 'record_observation'] : [],
+      ...(experimentScope ? { scope: experimentScope } : {}),
       predictionGate: {
         required: true,
         submitted: actionState.has('submit_prediction'),
@@ -1572,6 +1485,11 @@ export class TutorService {
       turns: record.turns.map((turn) => toContractTurn(turn)),
       lastSeq: record.lastSeq,
     };
+  }
+
+  async toSessionResponseWithEvidence(record: TutorSessionRecord): Promise<GetTutorSessionResponse> {
+    const response = this.toSessionResponse(record);
+    return this.experiments ? this.experiments.restore(record, response) : response;
   }
 
   getSummary(sessionId: string, ownerId: string): TutorSessionSummary {
@@ -2474,73 +2392,6 @@ function safeIdeaText(value: string, maxLength: number): string | null {
 const FORBIDDEN_MESSAGE = '无权访问该会话';
 
 /** 断言会话归属；不一致统一 403，且不泄露任何会话字段。 */
-function validateTutorExperimentAction(
-  initialMode: 'diffraction' | 'scattering' | undefined,
-  action: TutorExperimentAction,
-  rawPayload: unknown,
-): {
-  auditPayload: Record<string, unknown>;
-  simulationResult?: TutorExperimentActionResponse['simulationResult'];
-} {
-  if (typeof rawPayload !== 'object' || rawPayload === null || Array.isArray(rawPayload)) {
-    throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Invalid experiment payload' });
-  }
-  const payload = rawPayload as Record<string, unknown>;
-  const mode = payload.mode;
-  if (mode !== 'diffraction' && mode !== 'scattering') {
-    throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Invalid experiment model' });
-  }
-  // `initialMode` is presentation state, not an authorization grant. The
-  // governed optics card may switch between its two registered models; each
-  // model is still validated against its own bounded parameter domain below.
-  void initialMode;
-  if (action === 'submit_prediction') {
-    const hypothesis = payload.hypothesis;
-    if (typeof hypothesis !== 'string' || hypothesis.trim().length < 1 || hypothesis.length > 200) {
-      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'A prediction option is required' });
-    }
-    return { auditPayload: { mode, predictionProvided: true } };
-  }
-
-  if (typeof payload.parameters !== 'object' || payload.parameters === null || Array.isArray(payload.parameters)) {
-    throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Experiment parameters are required' });
-  }
-  const parameters = payload.parameters as Record<string, unknown>;
-  const finiteInRange = (value: unknown, minimum: number, maximum: number): value is number =>
-    typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum;
-  let simulationResult: TutorExperimentActionResponse['simulationResult'];
-  let safeParameters: Record<string, number>;
-  if (mode === 'diffraction') {
-    const wavelength = parameters.wavelength;
-    const slitWidth = parameters.slitWidth;
-    const screenDistance = parameters.screenDistance;
-    if (!finiteInRange(wavelength, 400, 750) || !finiteInRange(slitWidth, 10, 200)
-      || !finiteInRange(screenDistance, 0.5, 2)) {
-      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Diffraction parameters are outside the approved range' });
-    }
-    const firstMinimumRad = Math.asin(wavelength / (slitWidth * 1000));
-    const centralBandWidthMm = 2 * screenDistance * Math.tan(firstMinimumRad) * 1000;
-    safeParameters = { wavelength, slitWidth, screenDistance };
-    simulationResult = {
-      mode,
-      summary: `Model estimate: central bright-band width is about ${centralBandWidthMm.toFixed(2)} mm; this is not a measurement.`,
-    };
-  } else {
-    const wavelength = parameters.wavelength;
-    const particleRadius = parameters.particleRadius;
-    if (!finiteInRange(wavelength, 400, 750) || !finiteInRange(particleRadius, 5, 300)) {
-      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Scattering parameters are outside the approved range' });
-    }
-    const sizeParameter = (2 * Math.PI * particleRadius) / wavelength;
-    const regime = sizeParameter < 0.1 ? 'within the Rayleigh approximation' : 'outside this card’s Rayleigh approximation';
-    safeParameters = { wavelength, particleRadius };
-    simulationResult = {
-      mode,
-      summary: `Model size parameter x is about ${sizeParameter.toFixed(3)}, ${regime}; no measured intensity or color is implied.`,
-    };
-  }
-  return { auditPayload: { mode, parameters: safeParameters }, simulationResult };
-}
 
 function assertOwnedBy(record: { ownerId: string }, ownerId: string): void {
   if (record.ownerId !== ownerId) throw new ForbiddenException(FORBIDDEN_MESSAGE);

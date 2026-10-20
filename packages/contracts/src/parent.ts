@@ -2,6 +2,16 @@ import type { StudentGrowthEntryType } from './growth.js';
 import type { ProjectStage } from './project.js';
 import type { DataSource } from './platform.js';
 
+/** Minimal parent projection. Free-form student profile text and evidence identifiers stay private. */
+export interface ParentAcceptedProfile {
+  childId: string;
+  version: number;
+  updatedAt: string | null;
+  freshness: 'fresh' | 'unavailable';
+  milestonesRecorded: number;
+  conversationPrompt: string | null;
+}
+
 /**
  * 家长陪伴中心契约 —— 对照已批准的参考稿 `UI图片/家长仪表盘/` 三个页面：
  * `首页.png` / `学习进展.png` / `消息与反馈.png`。

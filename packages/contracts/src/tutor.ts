@@ -148,6 +148,14 @@ export type TutorReplyBlock =
       objectiveId: string;
       sessionIndex: number;
       allowedActions: readonly ('submit_prediction' | 'set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
+      scope?: {
+        planId: string;
+        planRevision: number;
+        learningSessionId: string;
+        rubricRef: string;
+        cerRef: string;
+      };
+      savedObservation?: TutorExperimentActionResponse['observationReceipt'];
       predictionGate?: {
         required: boolean;
         submitted: boolean;
@@ -580,6 +588,23 @@ export interface TutorExperimentActionResponse {
   action: TutorExperimentAction;
   /** Optional server-computed model projection for a run action. */
   simulationResult?: { mode: 'diffraction' | 'scattering'; summary: string };
+  /** Returned only after the works evidence owner has persisted and read back the observation. */
+  observationReceipt?: {
+    observationId: string;
+    experimentId: string;
+    evidenceRef: string;
+    projectId: string;
+    sessionId: string;
+    planId: string;
+    planRevision: number;
+    learningSessionId: string;
+    runActionId: string;
+    parameterDigest: string;
+    provenance: 'simulated_observation';
+    rubricRef: string;
+    cerRef: string;
+    savedAt: string;
+  };
 }
 
 /**

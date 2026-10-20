@@ -1,3 +1,4 @@
+import { opticsTeachingFixture } from '../modules/templates/teaching-bundle.test-fixture';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { describe, it, beforeEach } from 'node:test';
@@ -46,14 +47,14 @@ function validTeamVersion(
 ): TeamVersionRecord {
   return {
     id,
-    teamId: 'team-optics',
+    teamId: opticsTeachingFixture().teamId,
     version: 1,
     name: '光学探究团队',
     description: 'A 组',
     workspaceMode: 'shared',
     sessionMode: 'auto',
-    leaderAssistantId: 'optics-concept-coach',
-    members: [{ userId: 'student-1' }],
+    leaderAssistantId: opticsTeachingFixture().leaderAssistantId,
+    members: opticsTeachingFixture().members,
     pblSpec: {
       phases: ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'],
     },
@@ -94,6 +95,7 @@ function makeBootstrapHarness(): BootstrapHarness {
     bindingStore,
     idempotency as unknown as IdempotencyStore,
     audit as unknown as AuditWriter,
+    opticsTeachingFixture().catalog,
   );
   return { governance, bindings, templates, bindingStore, audit };
 }
@@ -106,14 +108,14 @@ function run(h: BootstrapHarness, teamVersionId = TEAM_VERSION_ID): Promise<Opti
       templates: h.templates,
       bindingStore: h.bindingStore,
     },
-    { teamVersionId, actor: ADMIN, pilotReason: 'test pilot' },
+    { teamVersionId, actor: ADMIN, pilotReason: 'test pilot', teachingBundle: opticsTeachingFixture().draft },
   );
 }
 
 it('16-lesson bootstrap has one governed identity and is idempotent', async () => {
   const h = makeBootstrapHarness();
   h.bindingStore.seedTeamVersion(validTeamVersion(TEAM_VERSION_ID));
-  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test' };
+  const args = { teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft };
   const fresh = await runOpticsTemplateBootstrap(h, args);
   const replay = await runOpticsTemplateBootstrap(h, args);
   assert.equal(replay.versionId, fresh.versionId);
@@ -131,7 +133,7 @@ it('refuses a stale 16-session bootstrap payload without modifying or activating
     ...OPTICS_16_VERSION_INPUT, rubric: [{ id: 'old-rubric', weight: 100 }],
   }, 'stale-version');
   await assert.rejects(() => runOpticsTemplateBootstrap(h, {
-    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test',
+    teamVersionId: TEAM_VERSION_ID, actor: ADMIN, pilotReason: 'isolated test', teachingBundle: opticsTeachingFixture().draft,
   }), /identity has different content/);
   assert.equal((await h.templates.findVersion(stale.version.id))?.status, 'draft');
   assert.deepEqual((await h.templates.listVersions(created.template.id)).map((version) => version.id), [stale.version.id]);
@@ -263,7 +265,7 @@ describe('optics-template-bootstrap（光学模板引导）', () => {
       const http = error as { getStatus?: () => number; getResponse?: () => unknown };
       assert.equal(http.getStatus?.(), 400, '绑定校验失败应为 400');
       const response = http.getResponse?.() as { code?: string } | undefined;
-      assert.equal(response?.code, 'BINDING_INVALID', '错误码应为 BINDING_INVALID');
+      assert.equal(response?.code, 'TEACHING_BUNDLE_INVALID', '编译必须拒绝禁用的团队');
       return true;
     });
 

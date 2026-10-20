@@ -82,6 +82,7 @@ export interface InsertSnapshotRecordInput {
 }
 
 export interface UpdateTeachingBundleRecordInput {
+  expectedUpdatedAt?: Date;
   draft: TeachingBundleDraft;
   payload: CompiledTeachingBundle['payload'] | null;
   digest: string | null;

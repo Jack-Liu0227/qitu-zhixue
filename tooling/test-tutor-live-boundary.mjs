@@ -6,6 +6,32 @@ import ts from 'typescript';
 
 const root = resolve(import.meta.dirname, '..');
 const cache = new Map();
+test('observation success requires a persisted receipt for the submitted session and run', async () => {
+  const { TutorApiDataSource } = loadModule('apps/student-center/features/tutor/data/tutorApiDataSource.ts');
+  const original = globalThis.fetch;
+  const receipt = {
+    experimentId: 'experiment', observationId: 'observation', evidenceRef: 'experiment_observation:observation',
+    sessionId: 'session', runActionId: 'run', planId: 'plan', planRevision: 1,
+    provenance: 'simulated_observation', savedAt: new Date().toISOString(),
+  };
+  let returned = receipt;
+  globalThis.fetch = async () => Response.json({ data: {
+    accepted: true, actionId: 'save', experimentId: 'experiment', action: 'record_observation',
+    observationReceipt: returned,
+  } });
+  try {
+    const source = new TutorApiDataSource();
+    const save = () => source.submitExperimentAction('session', 'experiment', {
+      action: 'record_observation', payload: { runActionId: 'run' }, idempotencyKey: 'save-key',
+    });
+    assert.deepEqual((await save()).observationReceipt, receipt);
+    for (const invalid of [undefined, { ...receipt, sessionId: 'other' }, { ...receipt, runActionId: 'other' },
+      { ...receipt, provenance: 'measured' }, { ...receipt, evidenceRef: 'invented' }]) {
+      returned = invalid;
+      await assert.rejects(save());
+    }
+  } finally { globalThis.fetch = original; }
+});
 // Compile this small browser-data boundary in memory; no server or credential required.
 function loadModule(relative) {
   const path = resolve(root, relative);

@@ -162,7 +162,9 @@ export function TutorReplyBlockView({
     case 'optics_experiment':
       return (
         <OpticsDiffractionScatteringCard
-          disabled={disabled}
+          disabled={disabled || block.allowedActions.length === 0}
+          savedObservation={block.savedObservation}
+          key={block.experimentId}
           initialMode={block.initialMode}
           predictionGate={block.predictionGate}
           onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}

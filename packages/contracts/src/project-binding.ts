@@ -26,6 +26,8 @@ export type TeachingPurpose = 'outline' | 'session' | 'dialogue';
 
 /** Canonical references an Admin may edit before the server resolves artifacts. */
 export interface TeachingBundleDraft {
+  /** Explicit route required when the frozen template has no assigned assistant for a phase. */
+  sessionRoutes?: readonly { sessionIndex: number; roleSlotId: string }[];
   templateVersionId: string;
   teamVersionId: string;
   scheduleProfileId: string;

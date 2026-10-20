@@ -30,17 +30,19 @@ export abstract class TemplateBindingStore {
     id: string,
     validation: BindingRecord['validation'],
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord>;
   abstract updateTeachingBundle(
     id: string,
     input: UpdateTeachingBundleRecordInput,
   ): Promise<BindingRecord>;
-  abstract setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord>;
+  abstract setStatus(id: string, status: PblBindingStatus, now: Date, expectedUpdatedAt?: Date): Promise<BindingRecord>;
   /** 原子激活：先退役旧 active 行再置目标 active；并发双激活由局部唯一索引兜底。 */
   abstract activateBinding(
     templateVersionId: string,
     bindingId: string,
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord>;
   abstract retireBinding(id: string, now: Date): Promise<BindingRecord>;
   /** `ON CONFLICT (project_id) DO NOTHING`——回填 / 冻结都幂等。 */
@@ -155,9 +157,11 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
     id: string,
     validation: BindingRecord['validation'],
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     const record = this.bindings.get(id);
     if (record === undefined) throw new Error(`binding not found: ${id}`);
+    if (expectedUpdatedAt && (record.updatedAt.getTime() !== expectedUpdatedAt.getTime() || record.status !== 'draft')) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     record.validation = {
       ...validation,
       errors: [...validation.errors],
@@ -173,20 +177,22 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
   ): Promise<BindingRecord> {
     const record = this.bindings.get(id);
     if (record === undefined) throw new Error(`binding not found: ${id}`);
-    if (record.status !== 'draft') {
+    if (record.status !== 'draft' || (input.expectedUpdatedAt && record.updatedAt.getTime() !== input.expectedUpdatedAt.getTime())) {
       throw new TemplateBindingStoreConflictError('只有 draft 绑定可以修改 Teaching Bundle');
     }
     record.bundleDraft = structuredClone(input.draft);
     record.bundlePayload = input.payload === null ? null : structuredClone(input.payload);
     record.bundleDigest = input.digest;
+    record.validation = { valid: false, errors: [], warnings: [], checkedAt: null };
     if (input.bindingHash !== undefined) record.bindingHash = input.bindingHash;
     record.updatedAt = input.now;
     return cloneBinding(record);
   }
 
-  async setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord> {
+  async setStatus(id: string, status: PblBindingStatus, now: Date, expectedUpdatedAt?: Date): Promise<BindingRecord> {
     const record = this.bindings.get(id);
     if (record === undefined) throw new Error(`binding not found: ${id}`);
+    if (expectedUpdatedAt && (record.updatedAt.getTime() !== expectedUpdatedAt.getTime() || record.status !== 'draft')) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     record.status = status;
     record.updatedAt = now;
     return cloneBinding(record);
@@ -196,8 +202,11 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
     templateVersionId: string,
     bindingId: string,
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     // 模拟数据库事务：先退役旧 active 行，再置目标 active。
+    const checked = this.bindings.get(bindingId);
+    if (expectedUpdatedAt && (!checked || checked.status !== 'validated' || checked.updatedAt.getTime() !== expectedUpdatedAt.getTime())) throw new TemplateBindingStoreConflictError('Binding changed during activation');
     for (const record of this.bindings.values()) {
       if (
         record.templateVersionId === templateVersionId &&

@@ -17,6 +17,9 @@ export interface TutorRuntimeSkill {
   contentHash: string;
   status: TutorRuntimeSkillStatus;
   content: string;
+  /** Explicit reviewed publication metadata; readable source alone is not publication. */
+  publicationStatus?: 'quarantined' | 'reviewed' | 'published' | 'deprecated' | 'revoked';
+  requiredToolIds?: readonly string[];
 }
 
 export interface TutorRuntimePolicy {
@@ -98,7 +101,7 @@ function discoverRuntimeSkills(skillsRoot: string): {
     const entries = readdirSync(skillsRoot, { withFileTypes: true });
     const skills = entries
       .filter((entry) => entry.isDirectory())
-      .flatMap((entry) => {
+      .flatMap((entry): TutorRuntimeSkill[] => {
         const id = entry.name;
         let raw: string;
         try {
@@ -133,6 +136,8 @@ function discoverRuntimeSkills(skillsRoot: string): {
           contentHash: hash(raw),
           status: body.length > 0 ? 'ready' as const : 'unavailable' as const,
           content: trimForPrompt(body, MAX_SKILL_CHARS),
+          publicationStatus: publicationStatus(metadata.status),
+          requiredToolIds: (metadata.requiredToolIds ?? '').split(',').map((id) => id.trim()).filter(Boolean),
         }];
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -166,6 +171,11 @@ function getFsErrorCode(error: unknown): string | undefined {
     return error.code;
   }
   return undefined;
+}
+
+function publicationStatus(value: string | undefined): NonNullable<TutorRuntimeSkill['publicationStatus']> {
+  return value === 'published' || value === 'reviewed' || value === 'deprecated' || value === 'revoked'
+    ? value : 'quarantined';
 }
 
 function formatFsError(error: unknown): string {

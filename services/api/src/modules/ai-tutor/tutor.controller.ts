@@ -140,7 +140,7 @@ export class TutorController {
       actor.id,
       explorationId,
     );
-    return { data: this.tutorService.toSessionResponse(record) };
+    return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
   }
 
   @Get('project-context')
@@ -347,7 +347,7 @@ export class TutorController {
   ): Promise<{ data: GetTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
     const record = await this.tutorService.loadSession(id, actor.id);
-    return { data: this.tutorService.toSessionResponse(record) };
+    return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
   }
 
   /**

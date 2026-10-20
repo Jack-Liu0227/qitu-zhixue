@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { CurrentUser } from '@qitu/contracts';
+import type { CurrentUser, TeachingBundleDraft } from '@qitu/contracts';
+import { readFileSync } from 'node:fs';
+import { parseTeachingBundleDraft } from '../modules/templates/templates-binding.controller';
 import { AuditModule } from '../common/audit/audit.module';
 import { IdempotencyModule } from '../common/idempotency/idempotency.module';
 import { hashRequest } from '../common/idempotency/idempotency.hash';
@@ -61,6 +63,7 @@ export interface OpticsBootstrapArgs {
   teamVersionId: string;
   actor: CurrentUser;
   pilotReason: string;
+  teachingBundle?: Omit<TeachingBundleDraft, 'templateVersionId' | 'teamVersionId'>;
 }
 
 export interface OpticsBootstrapStep {
@@ -269,6 +272,14 @@ async function ensureActiveBinding(
   if (current === null) throw new OpticsBootstrapError(`绑定不存在：${bindingId}`);
 
   if (current.status === 'draft') {
+    if (!current.bundleDraft && args.teachingBundle) {
+      const draft = parseTeachingBundleDraft({
+        ...args.teachingBundle, templateVersionId: version.id, teamVersionId: args.teamVersionId,
+      });
+      await deps.bindings.saveTeachingBundleDraft(
+        args.actor, template.id, version.id, bindingId, draft, `${keyPrefix}:bundle:${bindingId}`,
+      );
+    }
     await deps.bindings.validateBinding(
       args.actor,
       template.id,
@@ -314,6 +325,7 @@ interface CliArgs {
   adminUserId: string | null;
   pilotReason: string;
   refused: string[];
+  teachingBundleFile: string | null;
 }
 
 function parseCliArgs(argv: string[]): CliArgs {
@@ -322,10 +334,12 @@ function parseCliArgs(argv: string[]): CliArgs {
     adminUserId: null,
     pilotReason: '光学 PBL 模板进入试点（bootstrap）',
     refused: [],
+    teachingBundleFile: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
+    if (arg === '--teaching-bundle-file') out.teachingBundleFile = argv[index + 1] ?? null;
     if (arg === '--admin-user-id') out.adminUserId = argv[index + 1] ?? null;
     if (arg === '--pilot-reason') out.pilotReason = argv[index + 1] ?? out.pilotReason;
     if (arg === '--publish') out.refused.push('publish');
@@ -377,7 +391,8 @@ async function main(): Promise<void> {
 
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
-      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason },
+      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
+        ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },
     );
 
     console.log('[optics-bootstrap] 完成。');

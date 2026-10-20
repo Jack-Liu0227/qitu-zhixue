@@ -51,7 +51,7 @@ test('explicit exploration context returns the real intake identity without a pr
   assert.deepEqual(context?.phases, []);
 });
 
-test('recommended exploration resolves its bound template team without creating a project', async () => {
+test('recommended exploration keeps intake identity until the student confirms a project', async () => {
   const tutor = makeTutor();
   const team = {
     id: 'team-thunder', name: '雷霆战机团队', enabled: true, leaderAssistantId: 'thunder-leader',
@@ -71,9 +71,16 @@ test('recommended exploration resolves its bound template team without creating 
   });
   const context = await tutor.getProjectContext(undefined, 'owner', true, 'exp-bound');
   assert.equal(context?.project, null);
-  assert.equal(context?.team?.teamId, 'team-thunder');
-  assert.equal(context?.team?.teamName, '雷霆战机团队');
-  assert.equal(context?.team?.assistantName, '雷霆领航员');
+  assert.equal(context?.team?.teamId, null);
+  assert.equal(context?.team?.teamName, null);
+  assert.equal(context?.team?.assistantId, 'qitu-intake-assistant');
+  const record = tutor.getOrCreateSession('temporary-fixture', 'owner');
+  record.projectId = null;
+  record.explorationId = 'exp-bound';
+  const author = await (tutor as unknown as {
+    resolveTurnAuthor(session: typeof record, stage: string): Promise<{ id: string }>;
+  }).resolveTurnAuthor(record, 'exploring');
+  assert.equal(author.id, 'qitu-intake-assistant');
 });
 
 test('team graph rejects a cross-student project before returning any graph data', async () => {

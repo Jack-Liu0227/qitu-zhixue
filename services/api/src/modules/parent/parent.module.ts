@@ -10,6 +10,7 @@ import { ParentController } from './parent.controller';
 import { ParentGrowthExportService } from './growth-export.service';
 import { PostgresGrowthExportStore } from './growth-export.store';
 import { GrowthExportStore } from './growth-export.types';
+import { ParentAcceptedProfileService } from './accepted-profile.service';
 
 /**
  * 家长陪伴中心模块。
@@ -28,6 +29,7 @@ import { GrowthExportStore } from './growth-export.types';
   imports: [AuthModule, DirectoryModule, GrowthModule, PlatformDataModule, FeedbackModule],
   controllers: [ParentController],
   providers: [
+    ParentAcceptedProfileService,
     ParentGrowthExportService,
     {
       provide: GrowthExportStore,

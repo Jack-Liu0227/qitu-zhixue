@@ -176,7 +176,7 @@ function requireIdempotencyKey(raw: string | undefined): string {
   return key;
 }
 
-function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
+export function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: 'Teaching Bundle 草稿必须为对象' });
   }
@@ -195,7 +195,7 @@ function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: 'modelByPurpose 必须为对象' });
   }
   // Do not accept instructions, URLs, credentials or resolved tool payloads.
-  const allowed = new Set([...requiredStrings, ...arrays, 'modelByPurpose']);
+  const allowed = new Set([...requiredStrings, ...arrays, 'modelByPurpose', 'sessionRoutes']);
   if (Object.keys(value).some((key) => !allowed.has(key))) {
     throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: '草稿包含非 canonical 引用字段' });
   }
@@ -229,7 +229,19 @@ function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
   });
   const mcpServerIds = draftIds(value.mcpServerIds, 'mcpServerIds');
   const knowledgeBaseIds = draftIds(value.knowledgeBaseIds, 'knowledgeBaseIds');
-  const modelByPurpose: TeachingBundleDraft['modelByPurpose'] = {};
+  let sessionRoutes: TeachingBundleDraft['sessionRoutes'];
+  if (value.sessionRoutes !== undefined) {
+    if (!Array.isArray(value.sessionRoutes)) throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: 'sessionRoutes 必须为数组' });
+    sessionRoutes = value.sessionRoutes.map((item, index) => {
+      const row = draftRecord(item, `sessionRoutes[${index}]`);
+      exactKeys(row, ['sessionIndex', 'roleSlotId'], `sessionRoutes[${index}]`);
+      if (typeof row.sessionIndex !== 'number' || !Number.isSafeInteger(row.sessionIndex) || row.sessionIndex < 1) {
+        throw new BadRequestException({ code: 'BUNDLE_DRAFT_INVALID', message: 'sessionIndex 必须为正整数' });
+      }
+      return { sessionIndex: row.sessionIndex, roleSlotId: draftId(row.roleSlotId, `sessionRoutes[${index}].roleSlotId`) };
+    });
+  }
+  const modelByPurpose: Record<string, TeachingBundleDraft['modelByPurpose'][string]> = {};
   for (const [roleSlotId, rawPurposes] of Object.entries(value.modelByPurpose as Record<string, unknown>)) {
     draftId(roleSlotId, `modelByPurpose.${roleSlotId}`);
     const purposes = draftRecord(rawPurposes, `modelByPurpose.${roleSlotId}`);
@@ -255,6 +267,7 @@ function parseTeachingBundleDraft(body: unknown): TeachingBundleDraft {
     mcpServerIds,
     knowledgeBaseIds,
     modelByPurpose,
+    ...(sessionRoutes ? { sessionRoutes } : {}),
     approvalPolicyVersion: draftId(value.approvalPolicyVersion, 'approvalPolicyVersion'),
   };
 }
