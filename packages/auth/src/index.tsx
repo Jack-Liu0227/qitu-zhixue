@@ -189,6 +189,16 @@ export function useCurrentUser(): CurrentUser | null {
 
 type LeaveReason = 'anonymous' | 'expired' | 'forbidden';
 
+export function UnifiedLoginRedirect({ role, target }: { role: Role; target: string }) {
+  const href = loginHref(role, target);
+
+  useEffect(() => {
+    window.location.replace(href);
+  }, [href]);
+
+  return <p role="status">正在前往统一登录页面… <a href={href}>前往登录</a></p>;
+}
+
 export function AuthGuard({
   expectedRole,
   redirectTo,

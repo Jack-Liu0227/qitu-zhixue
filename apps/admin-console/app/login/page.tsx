@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
+import { UnifiedLoginRedirect } from '@qitu/auth';
 
 export default async function LegacyLogin({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const query = await searchParams;
-  const params = new URLSearchParams({ role: 'admin', next: query.next ?? '/admin' });
-  redirect('/login?' + params.toString());
+  return <UnifiedLoginRedirect role="admin" target={query.next ?? '/admin'} />;
 }
