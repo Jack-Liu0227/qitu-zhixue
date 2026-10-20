@@ -1,0 +1,41 @@
+{
+  "origin": "http://122.51.130.204",
+  "checkedAt": "2026-10-20T22:18:21.436Z",
+  "credentialsExported": false,
+  "businessDataSubmitted": false,
+  "accounts": [
+    {
+      "role": "student",
+      "destination": "/student/today",
+      "originalCredentialsFilled": true,
+      "loginStatus": 201,
+      "sessionRoleVerified": true
+    },
+    {
+      "role": "parent",
+      "destination": "/parent",
+      "originalCredentialsFilled": true,
+      "loginStatus": 201,
+      "sessionRoleVerified": true
+    },
+    {
+      "role": "teacher",
+      "destination": "/teacher/dashboard",
+      "originalCredentialsFilled": true,
+      "loginStatus": 201,
+      "sessionRoleVerified": true
+    },
+    {
+      "role": "admin",
+      "destination": "/admin",
+      "originalCredentialsFilled": true,
+      "loginStatus": 201,
+      "sessionRoleVerified": true
+    }
+  ],
+  "retry": "passed",
+  "offline": "passed",
+  "disabled": "passed",
+  "cacheControl": "no-store",
+  "pageErrorCount": 0
+}
