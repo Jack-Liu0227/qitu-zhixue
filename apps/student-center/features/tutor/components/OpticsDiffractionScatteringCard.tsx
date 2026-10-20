@@ -1088,7 +1088,7 @@ export function OpticsDiffractionScatteringCard({
               transition: 'all 0.15s ease',
             }}
           >
-            {isPredictionLocked ? '???????????' : actionPending ? '??????????' : runAccepted ? '??????' : '????'}
+            {isPredictionLocked ? '\u8bf7\u5148\u63d0\u4ea4\u9884\u6d4b\u4ee5\u89e3\u9501\u8fd0\u884c' : actionPending ? '\u670d\u52a1\u5668\u5904\u7406\u4e2d...' : runAccepted ? '\u4eff\u771f\u5df2\u8fd0\u884c' : '\u8fd0\u884c\u4eff\u771f'}
           </button>
         </div>
       </div>
@@ -1098,7 +1098,7 @@ export function OpticsDiffractionScatteringCard({
         onClick={() => void handleRecordObservation()}
         style={{ margin: '0 0 8px auto', display: 'block', padding: '8px 16px', borderRadius: '8px', border: 'none', color: '#fff', background: observationAccepted ? '#86efac' : '#0ea5e9' }}
       >
-        {observationAccepted ? '?????' : '????'}
+        {observationAccepted ? '\u5df2\u8bb0\u5f55' : '\u8bb0\u5f55\u89c2\u5bdf'}
       </button>
 
       {actionError ? <p role="alert" style={{ color: '#b91c1c', fontSize: '12px' }}>{actionError}</p> : null}

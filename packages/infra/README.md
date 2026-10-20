@@ -52,8 +52,8 @@ keys.forScope({ schoolId: 'school-a', studentId: 'stu-1' }).cache('profile');
 
 ```ts
 const cache = new JsonCache(adapter, { defaultTtlMs: 60_000 });
-await cache.set('qitu:school:school-a:cache:plan', { weeks: 4 }, { ttlMs: 300_000 });
-const plan = await cache.get<{ weeks: number }>('qitu:school:school-a:cache:plan');
+await cache.set('qitu:school:school-a:cache:plan', { lessonCount: 16, lessonMinutes: 60 }, { ttlMs: 300_000 });
+const plan = await cache.get<{ lessonCount: number; lessonMinutes: 60 | 120 }>('qitu:school:school-a:cache:plan');
 const fresh = await cache.remember('qitu:...', () => loadPlan(), { ttlMs: 60_000 });
 ```
 

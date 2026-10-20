@@ -514,8 +514,8 @@ export class TutorController {
   }
 }
 
-function durationWeeksOf(content: string): number {
-  return /8\s*周计划/.test(content) ? 8 : 4;
+function lessonScheduleOf(content: string): { lessonCount: number; lessonMinutes: 60 | 120 } {
+  return { lessonCount: /16\s*课时/.test(content) ? 16 : 8, lessonMinutes: 60 };
 }
 
 function stageLabelOf(stage: string): string {

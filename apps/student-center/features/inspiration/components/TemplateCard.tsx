@@ -14,13 +14,8 @@ export function templateExploreHref(templateId: string): string {
 
 /** 元信息行：只拼接服务端真实提供的字段，缺失项直接不显示。 */
 export function templateMetaLine(template: InspirationTemplate): string {
-  return [
-    template.subject || null,
-    template.difficulty,
-    template.durationWeeks !== null ? `约 ${template.durationWeeks} 周` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const lesson = template.lessonCount !== null ? `约 ${template.lessonCount} 课时` : null;
+  return [template.subject || null, template.difficulty, lesson].filter(Boolean).join(' · ');
 }
 
 export interface TemplateCardProps {
@@ -53,17 +48,6 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
       <p className="qitu-inspiration-template-summary">{template.summary}</p>
 
       <TagChips tags={template.tags} />
-
-      <ol className="qitu-inspiration-stages">
-        {template.stages.map((stage, index) => (
-          <li key={stage.id} className="qitu-inspiration-stage">
-            <span className="qitu-inspiration-stage-index" aria-hidden="true">
-              {index + 1}
-            </span>
-            <span className="qitu-inspiration-stage-label">{stage.label}</span>
-          </li>
-        ))}
-      </ol>
 
       {template.outcome ? (
         <p className="qitu-inspiration-template-outcome">

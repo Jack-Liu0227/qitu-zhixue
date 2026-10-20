@@ -5,7 +5,7 @@ import type { InspirationTemplate } from '../types';
 
 const template: InspirationTemplate = {
   id: 'template-fixture', templateVersionId: 'tplv-fixture', title: 'Synthetic inquiry', summary: '',
-  subject: 'physics', tags: ['observation'], difficulty: null, durationWeeks: null, stages: [], outcome: '',
+  subject: 'physics', tags: ['observation'], difficulty: null, lessonCount: null, lessonMinutes: null, stages: [], outcome: '',
 };
 const reply = (data: unknown, status = 200) => new Response(JSON.stringify({ data }), { status });
 

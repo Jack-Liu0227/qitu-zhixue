@@ -81,7 +81,7 @@ export interface TutorLearnerProfile {
   studentId: string;
   priorKnowledge: string | null;
   targetLevel: string | null;
-  timeBudgetMinutesPerWeek: number | null;
+  timeBudgetMinutes: number | null;
   preferences: readonly string[];
   interests: readonly string[];
   strengths: readonly string[];
@@ -128,7 +128,7 @@ export interface TutorContextPacket {
   currentGoal: string | null;
   learnerProfile: Pick<
     TutorLearnerProfile,
-    'priorKnowledge' | 'targetLevel' | 'timeBudgetMinutesPerWeek' | 'preferences' | 'interests' | 'strengths'
+    'priorKnowledge' | 'targetLevel' | 'timeBudgetMinutes' | 'preferences' | 'interests' | 'strengths'
   > | null;
   memories: readonly Pick<TutorMemory, 'kind' | 'content' | 'confidence' | 'source'>[];
   agentStrategies: readonly { content: string; source: string }[];
@@ -223,7 +223,7 @@ export function createTutorContextReader(ports: TutorContextReadPorts, partner =
         learnerProfile: learnerProfile === null ? null : {
           priorKnowledge: learnerProfile.priorKnowledge,
           targetLevel: learnerProfile.targetLevel,
-          timeBudgetMinutesPerWeek: learnerProfile.timeBudgetMinutesPerWeek,
+          timeBudgetMinutes: learnerProfile.timeBudgetMinutes,
           preferences: learnerProfile.preferences,
           interests: learnerProfile.interests,
           strengths: learnerProfile.strengths,

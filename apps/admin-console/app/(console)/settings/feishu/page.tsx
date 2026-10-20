@@ -90,6 +90,7 @@ export default function FeishuSettingsPage() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const restartQrRef = useRef<(() => void) | null>(null);
   const activeSessionId = useRef<string | null>(null);
+  const qrStartedAt = useRef<number>(0);
   const qrRequestId = useRef(0);
   const saveRetry = useRef(createIdempotentRetryKey());
   const qrRetry = useRef(createIdempotentRetryKey());
@@ -157,7 +158,10 @@ export default function FeishuSettingsPage() {
     timer.current = setInterval(() => {
       const seconds = secondsUntil(config.expiresAt);
       setRemainingSeconds(seconds);
-      if (seconds === 0) {
+      // Rotate before expiry for normal-lived provider codes. Very short test
+      // codes are rotated only at expiry to avoid an immediate refresh loop.
+      const elapsed = Date.now() - qrStartedAt.current;
+      if (seconds === 0 || (seconds !== null && seconds <= 30 && elapsed >= 30_000)) {
         stopPolling();
         // Feishu device codes cannot be extended server-side. Immediately ask
         // for a fresh code so the QR stays available instead of disappearing
@@ -241,6 +245,7 @@ export default function FeishuSettingsPage() {
       qrRetry.current.acknowledge();
       setConfig((current) => ({ ...current, status: 'pending', qrSessionId: qr.sessionId, qrCodeUrl: qr.authorizationUrl, qrCodeDataUrl: qr.qrCodeDataUrl ?? encodeAuthorizationQr(qr.authorizationUrl), expiresAt: qr.expiresAt }));
       setRemainingSeconds(secondsUntil(qr.expiresAt));
+      qrStartedAt.current = Date.now();
       activeSessionId.current = qr.sessionId;
       cancelPolling.current = pollFeishuQrSession({
         sessionId: qr.sessionId,

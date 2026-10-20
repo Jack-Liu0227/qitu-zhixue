@@ -54,43 +54,14 @@ export default function AdminTeamsPage() {
         fetchAvailableConfiguredModels().catch(() => []),
       ]);
 
-      let customTeams: AdminTeamConfig[] = [];
-      let customAssts: AdminAssistantConfig[] = [];
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('qitu.admin.custom_teams');
-          if (cached) {
-            customTeams = JSON.parse(cached);
-          }
-          const cachedAssts = localStorage.getItem('qitu.admin.custom_assistants');
-          if (cachedAssts) {
-            const list = JSON.parse(cachedAssts);
-            customAssts = list.map((a: any) => ({
-              id: a.id,
-              name: a.name,
-              description: a.description,
-              role: a.role,
-              avatar: a.icon || '🤖',
-              enabled: a.enabled ?? true,
-              modelId: a.model,
-              source: a.source || 'user',
-              sortOrder: a.sortOrder ?? 99,
-            }));
-          }
-        } catch {}
-      }
-
-      const existingIds = new Set(teamsData.map((t) => t.id));
-      const combined = [...customTeams.filter((t) => !existingIds.has(t.id)), ...teamsData];
-
-      const existingAsstIds = new Set(assistantsData.map((a) => a.id));
-      const combinedAssts = [...customAssts.filter((a) => !existingAsstIds.has(a.id)), ...assistantsData];
-
-      setTeams(combined);
-      setAllAssistants(combinedAssts);
+      // The server registry is the only source of truth. Do not merge
+      // browser-local drafts here: deleted teams/assistants would reappear
+      // after a refresh and could be shown as selectable runtime objects.
+      setTeams(teamsData);
+      setAllAssistants(assistantsData);
       setConfiguredModels(modelsData);
 
-      const firstTeam = combined[0];
+      const firstTeam = teamsData[0];
       if (firstTeam !== undefined && !activeTeamId) {
         setActiveTeamId(firstTeam.id);
       }
@@ -119,7 +90,7 @@ export default function AdminTeamsPage() {
       alert('请输入团队名称');
       return;
     }
-    const defaultLeader = allAssistants[0]?.id || 'assistant-default';
+    const defaultLeader = allAssistants.find((assistant) => assistant.enabled && assistant.teamSelectable)?.id || 'assistant-default';
     try {
       const created = await createPersistedTeam(
         {

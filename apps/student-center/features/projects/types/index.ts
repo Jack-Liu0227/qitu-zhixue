@@ -10,6 +10,7 @@ import type {
   ProjectStage,
   ProjectViewMode,
   StageProgressDisplay,
+  SessionBlock,
 } from '@qitu/contracts';
 
 export type {
@@ -50,6 +51,10 @@ export interface ProjectDetail extends ProjectListItem {
   theoryMastered: boolean;
   /** Read-only correlation to the server-owned learning plan. */
   learningPlanId?: string | null;
+  /** Lesson-first schedule projection; stages remain server policy metadata. */
+  lessonCount?: number | null;
+  lessonMinutes?: 60 | 120 | null;
+  currentLessonIndex?: number | null;
 }
 
 /** C4 阶段视图。`name` 逐字来自模板，代码中不设阶段名常量。 */
@@ -152,4 +157,11 @@ export interface ProjectOverview {
   stages: ProjectStageView[];
   tasks: TaskView[];
   nextStep: NextStep | null;
+  lessonSchedule: LessonScheduleView | null;
+}
+
+export interface LessonScheduleView {
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
+  lessons: Array<{ lessonIndex: number; title: string; blocks: SessionBlock[] }>;
 }

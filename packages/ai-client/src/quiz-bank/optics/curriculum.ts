@@ -248,7 +248,7 @@ export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProject
     knowledgeType: objective.knowledgeType,
     conceptId: objective.conceptId,
   })),
-  // The current curriculum is lesson-first. Calendar weeks are deliberately
+  // The current curriculum is lesson-first. Calendar placement is deliberately
   // absent from the governed template; lesson order is carried by sessionIndex.
   schedules: [{ lessonCount: 16, lessonMinutes: 60 }],
   curriculum: {

@@ -1,9 +1,9 @@
-import type { TemplateStage } from '@qitu/contracts';
+import type { LearningPlanView, TemplateStage } from '@qitu/contracts';
 import type { ProjectsDataSource } from './data-source';
 import type {
   MentorNoteView, NextStep, PresignRequest, PresignResponse, ProjectDetail, ProjectListItem,
   ProjectStageView, ProjectTab, ReflectionInput, TaskSubmission, TaskView,
-  TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
+  LessonScheduleView, TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
 } from '../types';
 import { ProjectsDataError } from './data-source';
 
@@ -46,6 +46,20 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
     const versionId = parts[1] || templateVersionId;
     const payload = await this.request<{ data: { stages?: TemplateStage[] } }>(`/api/v1/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}`);
     return payload.data.stages ?? [];
+  }
+
+  async getLessonSchedule(projectId: string): Promise<LessonScheduleView | null> {
+    const project = await this.getProject(projectId);
+    if (!project?.learningPlanId) return null;
+    const plan = (await this.request<{ data: LearningPlanView }>(`/api/v1/learning-plans/${encodeURIComponent(project.learningPlanId)}`)).data;
+    return {
+      lessonCount: plan.lessonCount,
+      lessonMinutes: plan.lessonMinutes,
+      lessons: plan.sessions
+        .slice()
+        .sort((left, right) => left.lessonIndex - right.lessonIndex)
+        .map(({ lessonIndex, title, blocks }) => ({ lessonIndex, title, blocks })),
+    };
   }
 
   async getTheoryMaterial(projectId: string): Promise<TheoryMaterial | null> {

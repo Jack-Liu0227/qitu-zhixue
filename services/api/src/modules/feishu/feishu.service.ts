@@ -10,6 +10,8 @@ import { decryptDeviceAuthorization, encryptDeviceAuthorization } from './device
 
 export const FEISHU_BOT_ID = 'admin-reporting' as const;
 export const DEFAULT_FEISHU_ASSISTANT_ID = 'feishu-reporting-assistant' as const;
+/** Refresh device QR sessions before the provider's short-lived code expires. */
+const DEVICE_QR_REFRESH_LEAD_MS = 45_000;
 
 function requireSecretKey(): Buffer {
   try {
@@ -159,21 +161,35 @@ export class FeishuService {
     if (configured) {
       const [active] = await db.select().from(feishuQrSessions).where(and(eq(feishuQrSessions.botId, configured.id), eq(feishuQrSessions.status, 'pending'), gt(feishuQrSessions.expiresAt, new Date())));
       if (active) {
-        if (active.createdBy !== actor.id || !active.deviceCodeEncrypted) {
+        const remainingMs = active.expiresAt.getTime() - Date.now();
+        // A device code cannot be extended. Retire an almost-expired session
+        // created by this admin so the UI can rotate the QR without waiting
+        // for a stale provider code to time out.
+        if (active.createdBy === actor.id && active.deviceCodeEncrypted && remainingMs <= DEVICE_QR_REFRESH_LEAD_MS) {
+          await withTransaction(db, async (tx) => {
+            const retired = await tx.update(feishuQrSessions).set({ status: 'expired', deviceCodeEncrypted: null, updatedAt: new Date() })
+              .where(and(eq(feishuQrSessions.id, active.id), eq(feishuQrSessions.status, 'pending')))
+              .returning({ id: feishuQrSessions.id });
+            if (retired.length) {
+              await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.cancel', targetType: 'feishu_qr_session', targetId: active.id, detail: { reason: 'refresh_before_expiry', assistantId } }, tx);
+            }
+          });
+        } else if (active.createdBy !== actor.id || !active.deviceCodeEncrypted) {
           throw new BadRequestException({ code: 'FEISHU_QR_ALREADY_ACTIVE', message: 'An authorization is already active. Return to the administrator session that started it, or wait for it to expire.' });
+        } else {
+          const session = decryptDeviceAuthorization(active.deviceCodeEncrypted, requireSecretKey());
+          if (session.verificationUriComplete) {
+            return { id: active.id, status: 'pending', verificationUriComplete: session.verificationUriComplete, expiresAt: active.expiresAt.toISOString(), pollIntervalSeconds: active.pollIntervalSeconds };
+          }
+          // Pre-fix sessions did not retain the QR URL. Retire only this admin's unrecoverable session.
+          await withTransaction(db, async (tx) => {
+            const retired = await tx.update(feishuQrSessions).set({ status: 'cancelled', deviceCodeEncrypted: null, updatedAt: new Date() })
+              .where(and(eq(feishuQrSessions.id, active.id), eq(feishuQrSessions.status, 'pending'), eq(feishuQrSessions.createdBy, actor.id)))
+              .returning({ id: feishuQrSessions.id });
+            if (!retired.length) throw new ConflictException({ code: 'FEISHU_QR_SESSION_CHANGED', message: 'Authorization changed while restarting. Refresh its status before trying again.' });
+            await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.cancel', targetType: 'feishu_qr_session', targetId: active.id, detail: { reason: 'verification_url_unavailable', assistantId } }, tx);
+          });
         }
-        const session = decryptDeviceAuthorization(active.deviceCodeEncrypted, requireSecretKey());
-        if (session.verificationUriComplete) {
-          return { id: active.id, status: 'pending', verificationUriComplete: session.verificationUriComplete, expiresAt: active.expiresAt.toISOString(), pollIntervalSeconds: active.pollIntervalSeconds };
-        }
-        // Pre-fix sessions did not retain the QR URL. Retire only this admin's unrecoverable session.
-        await withTransaction(db, async (tx) => {
-          const retired = await tx.update(feishuQrSessions).set({ status: 'cancelled', deviceCodeEncrypted: null, updatedAt: new Date() })
-            .where(and(eq(feishuQrSessions.id, active.id), eq(feishuQrSessions.status, 'pending'), eq(feishuQrSessions.createdBy, actor.id)))
-            .returning({ id: feishuQrSessions.id });
-          if (!retired.length) throw new ConflictException({ code: 'FEISHU_QR_SESSION_CHANGED', message: 'Authorization changed while restarting. Refresh its status before trying again.' });
-          await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.feishu.device.cancel', targetType: 'feishu_qr_session', targetId: active.id, detail: { reason: 'verification_url_unavailable', assistantId } }, tx);
-        });
       }
     }
     const accounts = domain === 'lark' ? 'https://accounts.larksuite.com' : 'https://accounts.feishu.cn';

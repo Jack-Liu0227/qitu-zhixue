@@ -20,7 +20,7 @@ export const tutorLearnerProfiles = pgTable('tutor_learner_profiles', {
   studentId: text('student_id').primaryKey().references(() => users.id),
   priorKnowledge: text('prior_knowledge'),
   targetLevel: text('target_level'),
-  timeBudgetMinutesPerWeek: integer('time_budget_minutes_per_week'),
+  timeBudgetMinutes: integer('time_budget_minutes'),
   preferences: jsonb('preferences').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   interests: jsonb('interests').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   strengths: jsonb('strengths').$type<string[]>().notNull().default(sql`'[]'::jsonb`),

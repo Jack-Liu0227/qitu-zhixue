@@ -10,7 +10,7 @@ import { PracticeChecklist } from './PracticeChecklist';
 import { ProjectHeader } from './ProjectHeader';
 import { ReflectionForm } from './ReflectionForm';
 import { ScreenState } from './StateViews';
-import { StageTimeline } from './StageTimeline';
+import { LessonScheduleCard } from './LessonScheduleCard';
 import { SubmissionPanel } from './SubmissionPanel';
 import { TaskList } from './TaskList';
 import { TheoryCheck } from './TheoryCheck';
@@ -18,7 +18,6 @@ import { TheoryModule } from './TheoryModule';
 import {
   useMentorNote,
   useProjectOverview,
-  useTemplateStages,
   useTheoryContent,
 } from '../hooks/useProjectsData';
 import { useTaskCompleteList } from '../hooks/useProjectsMutations';
@@ -148,11 +147,6 @@ export function ProjectDetailScreen({
   scenario,
 }: ProjectDetailScreenProps) {
   const overview = useProjectOverview(projectId, { scenario });
-  const templateVersionId =
-    overview.state.status === 'ready' || overview.state.status === 'offline'
-      ? overview.state.data.project?.templateVersionId
-      : undefined;
-  const templates = useTemplateStages(templateVersionId ?? '', { scenario });
   const mentor = useMentorNote(projectId, { scenario });
 
   return (
@@ -168,9 +162,6 @@ export function ProjectDetailScreen({
         const project = data.project;
         if (!project) return null;
         const practiceLocked = isPracticeLocked(project);
-        const templateStages = templates.state.status === 'ready' ? templates.state.data : [];
-        const activeIndex = data.stages.findIndex((stage) => stage.status === 'active');
-        const stepperIndex = activeIndex >= 0 ? activeIndex : data.stages.length;
         const selectedMode = mode ?? defaultModeForStage(project.status);
         const activeStage =
           data.stages.find((stage) => stage.status === 'active') ?? data.stages[0];
@@ -199,13 +190,10 @@ export function ProjectDetailScreen({
               subtitle={project.subtitle}
               coverUrl={project.coverUrl}
               status={project.status}
-              currentStageIndex={project.currentStageIndex}
-              stageTotal={project.stageTotal}
               progressPercent={project.progressPercent}
               tags={project.tags}
-              stages={templateStages}
-              activeIndex={stepperIndex}
             />
+            <LessonScheduleCard schedule={data.lessonSchedule} />
             {/* 学习视图导航栏：支持学生在项目概览、理论学习与微观仿真课件、实践制作工作台之间自如切换 */}
             <nav aria-label="项目视图模式" style={{ display: 'flex', gap: '8px', margin: '16px 0', padding: '6px', background: '#f1f5f9', borderRadius: '12px', width: 'fit-content' }}>
               <StudentLink
@@ -306,12 +294,6 @@ export function ProjectDetailScreen({
                 offline={offline}
               />
             ) : null}
-            <StageTimeline
-              projectId={project.id}
-              stages={data.stages}
-              practiceLocked={practiceLocked}
-              offline={offline}
-            />
             <TaskList tasks={data.tasks} readOnly focusedTaskId={taskId} />
             {mentor.state.status === 'ready' && mentor.state.data ? (
               <MentorNote note={mentor.state.data} />

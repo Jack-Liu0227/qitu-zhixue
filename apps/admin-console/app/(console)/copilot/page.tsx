@@ -14,7 +14,10 @@ import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 
 // v2 intentionally avoids replaying pre-audit sessions that claimed persistence
 // without a server acknowledgement. They remain in the old key for diagnostics.
-const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v2';
+// v3 intentionally drops pre-registry examples and stale local artifacts.
+// Runtime entities are server-owned; old browser history must not resurrect a
+// deleted team or disabled assistant in the copilot surface.
+const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v3';
 const COPILOT_SELECTED_MODEL_STORAGE_KEY = 'qitu.admin.copilot.selected_model.v1';
 const COPILOT_THINKING_STORAGE_KEY = 'qitu.admin.copilot.thinking.v1';
 const COPILOT_PERMISSION_STORAGE_KEY = 'qitu.admin.copilot.permission.v1';
@@ -50,83 +53,14 @@ interface Session {
 const INITIAL_SESSIONS: Session[] = [
   {
     id: 'sess-default',
-    title: 'Copilot example (runtime unverified)',
+    title: '新对话',
     updatedAt: 'just now',
     messages: [
       {
         id: 'msg-1',
         role: 'system',
-        content: 'This is an example Copilot session. Assistant, team, tool, and gate metadata below was not probed against the current server and does not indicate published or persisted runtime state.',
-        timestamp: '10:00',
-      },
-      {
-        id: 'msg-2',
-        role: 'user',
-        content: 'Check whether the kinetic-energy PBL team and its skill/tool bindings are complete.',
-        timestamp: '10:01',
-      },
-      {
-        id: 'msg-3',
-        role: 'assistant',
-        content: 'Example response only. Run a new request to perform a real server-backed check; this seeded message is not evidence of a database or runtime probe.',
-        timestamp: '10:02',
-        toolSteps: [
-          { name: 'query_db_teams', status: 'error', label: 'Example step: current database query was not executed' },
-          { name: 'check_capability_matrix', status: 'error', label: 'Example step: runtime binding check was not executed' },
-          { name: 'verify_theory_gate', status: 'error', label: 'Example step: server-side TheoryMastered check was not executed' },
-        ],
-        artifact: {
-          type: 'team',
-          title: 'Kinetic-energy team example (unverified)',
-          details: 'Example metadata only; current database, runtime tools, and team binding were not verified',
-          jsonPreview: JSON.stringify({
-            id: 'team-kinetic-energy',
-            name: 'Kinetic-energy PBL mentor team',
-            gate: 'TheoryMastered',
-            assistants: ['asst-coach-socrates', 'asst-guide-seeker', 'asst-reviewer-rigor'],
-            status: 'unverified',
-          }, null, 2),
-        },
-      },
-    ],
-  },
-  {
-    id: 'sess-create-agent',
-    title: '新建化学反应平衡导师',
-    updatedAt: '10分钟前',
-    messages: [
-      {
-        id: 'ca-1',
-        role: 'system',
-        content: '启途智学管家就绪。',
-        timestamp: '09:40',
-      },
-      {
-        id: 'ca-2',
-        role: 'user',
-        content: '我想创建一个化学平衡移动探究助手，支持勒夏特列原理的苏格拉底式发问。',
-        timestamp: '09:41',
-      },
-      {
-        id: 'ca-3',
-        role: 'assistant',
-        content: '已基于平台规范为您自动生成新助手草案：\n- **角色**：化学探究导师（勒夏特列引导者）\n- **发问风格**：苏格拉底提问式，单次回复不超过 150 字\n- **推荐工具**：化学方程式平衡计算工具 + 图像生成',
-        timestamp: '09:42',
-        toolSteps: [
-          { name: 'agent_sdk_spec_generate', status: 'done', label: '根据 Agent SDK 标准协议生成智能体模型参数' }
-        ],
-        artifact: {
-          type: 'assistant',
-          title: 'AI 助手：化学平衡探究引导者 (Le Chatelier Guide)',
-          details: '底座模型：qwen-max | 约束：禁止直接公布答案，从浓度/压强/温度三个变量引导学生观察',
-          jsonPreview: JSON.stringify({
-            name: '化学平衡探究导师',
-            role: 'Coach',
-            model: 'qwen-max',
-            maxTurns: 12,
-            systemPrompt: '你是化学平衡引导导师，遵循勒夏特列原理逐步引导学生理解平衡移动规律。'
-          }, null, 2),
-        },
+        content: '启途智学管家就绪。助手目录与团队目录已分开加载；只有服务端确认启用的助手才会出现在选择器中。',
+        timestamp: '刚刚',
       },
     ],
   },

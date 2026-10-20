@@ -28,9 +28,6 @@ export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
         <h3 className="qitu-project-card-title">{project.title}</h3>
         <p className="qitu-project-card-subtitle">{project.subtitle}</p>
         <TagChips tags={project.tags} />
-        <p className="qitu-project-card-stage">
-          第 {project.currentStageIndex} 阶段 / 共 {project.stageTotal} 阶段
-        </p>
         <ProgressBar percent={project.progressPercent} label={`进度 ${project.progressPercent}%`} />
       </div>
     </>

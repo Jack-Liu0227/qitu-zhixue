@@ -33,8 +33,8 @@ import type {
   ExplorationView,
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
-import { eq } from 'drizzle-orm';
-import { adminTeamVersions, projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
+import { and, eq } from 'drizzle-orm';
+import { adminTeamVersions, auditLogs, projectTemplates, projectTemplateVersions, pblGateEvidence } from '@qitu/database';
 import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
 import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -232,6 +232,8 @@ export class TutorService {
    */
   private readonly turnLocks = new Map<string, Promise<void>>();
   private readonly auditLog: AuditEntry[] = [];
+  /** Process-local fallback for demo/test mode; live mode reads the audit ledger. */
+  private readonly experimentActions = new Map<string, Set<TutorExperimentAction>>();
   private readonly store: TutorSessionStore;
   private readonly database: import('@qitu/database').Database | null;
 
@@ -674,7 +676,15 @@ export class TutorService {
       throw new NotFoundException({ code: 'TUTOR_FEEDBACK_TURN_NOT_FOUND', message: '找不到可反馈的助手回复' });
     }
     const scope = `student.tutor.feedback:${record.sessionId}:${input.turnId}`;
-    const requestHash = hashRequest({ actorId, sessionId: record.sessionId, turnId: input.turnId, kind: input.kind, noteProvided: Boolean(input.note?.trim()) });
+    const requestHash = hashRequest({
+      actorId,
+      sessionId: record.sessionId,
+      turnId: input.turnId,
+      kind: input.kind,
+      // A note is part of the request identity even though its raw text is
+      // intentionally excluded from the audit detail for minor privacy.
+      note: input.note?.trim() ?? '',
+    });
     const persist = async () => {
       if (this.durable) {
         if (!this.auditWriter || !this.idempotencyStore) {
@@ -726,6 +736,13 @@ export class TutorService {
     if (project.status !== 'practice_ready' && project.status !== 'practice_building') {
       throw new ConflictException({ code: 'TUTOR_EXPERIMENT_GATE_REQUIRED', message: 'TheoryMastered 门禁通过后才能进入实验操作' });
     }
+    const actionState = await this.readExperimentActionState(record.sessionId, experimentId, actorId);
+    if (input.action === 'run' && block.predictionGate?.required && !actionState.has('submit_prediction')) {
+      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_PREDICTION_REQUIRED', message: '请先提交预测，再运行仿真' });
+    }
+    if (input.action === 'record_observation' && !actionState.has('run')) {
+      throw new ConflictException({ code: 'TUTOR_EXPERIMENT_RUN_REQUIRED', message: '请先运行仿真，再记录观察' });
+    }
     const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload);
     const scope = `student.tutor.experiment:${record.sessionId}:${experimentId}:${input.action}`;
     const requestHash = hashRequest({
@@ -761,6 +778,9 @@ export class TutorService {
             detail,
           })
         : hashRequest({ scope, key: input.idempotencyKey }).slice(0, 24);
+      const current = this.experimentActions.get(`${record.sessionId}:${experimentId}`) ?? new Set<TutorExperimentAction>();
+      current.add(input.action);
+      this.experimentActions.set(`${record.sessionId}:${experimentId}`, current);
       return {
         accepted: true,
         actionId,
@@ -783,6 +803,36 @@ export class TutorService {
   private requireAuditWriter(): AuditWriter {
     if (!this.auditWriter) throw new ServiceUnavailableException('审计存储暂不可用，请稍后重试');
     return this.auditWriter;
+  }
+
+  /** Read the server-owned experiment action sequence without trusting the UI. */
+  private async readExperimentActionState(
+    sessionId: string,
+    experimentId: string,
+    actorId: string,
+  ): Promise<Set<TutorExperimentAction>> {
+    const key = `${sessionId}:${experimentId}`;
+    const cached = this.experimentActions.get(key);
+    if (!this.durable || !this.database) return new Set(cached ?? []);
+    const rows = await this.database
+      .select({ detail: auditLogs.detail })
+      .from(auditLogs)
+      .where(and(
+        eq(auditLogs.actorId, actorId),
+        eq(auditLogs.action, 'tutor.experiment.action'),
+        eq(auditLogs.targetType, 'tutor_experiment'),
+        eq(auditLogs.targetId, experimentId),
+      ));
+    const actions = new Set<TutorExperimentAction>(cached ?? []);
+    for (const row of rows) {
+      const detail = row.detail;
+      if (detail && typeof detail === 'object' && 'action' in detail) {
+        const action = (detail as { action?: unknown }).action;
+        if (action === 'submit_prediction' || action === 'run' || action === 'record_observation') actions.add(action);
+      }
+    }
+    this.experimentActions.set(key, actions);
+    return actions;
   }
 
   private async resolveCurrentLesson(
@@ -1091,13 +1141,17 @@ export class TutorService {
 
     const isScattering = /散射|瑞利|米氏|气溶胶/i.test(text);
     const initialMode: 'diffraction' | 'scattering' = isScattering ? 'scattering' : 'diffraction';
+    const currentLesson = record.projectId === null ? null : await this.resolveCurrentLesson(record.projectId, record.ownerId);
+    const lessonIndex = currentLesson?.lessonIndex ?? 1;
+    const experimentId = `optics-exp-${record.sessionId}-${initialMode}-lesson-${lessonIndex}`;
+    const actionState = await this.readExperimentActionState(record.sessionId, experimentId, record.ownerId);
 
     const experimentBlock: TutorReplyBlock = {
       kind: 'optics_experiment',
       // Stable within a frozen tutor session: retries/reconnects must not
       // create a second experiment identity that the action endpoint cannot
       // authorize.
-      experimentId: `optics-exp-${record.sessionId}-${initialMode}`,
+      experimentId,
       title: isScattering ? '介质微粒散射微观动态课件' : '光的单缝衍射微观动态实验课件',
       summary: isScattering
         ? '调节微粒半径 r 与入射波长 λ，动态观察 Rayleigh (r ≪ λ) 到 Mie 散射的波长与角分布转变。'
@@ -1105,13 +1159,13 @@ export class TutorService {
       initialMode,
       specVersion: '1.0.0',
       objectiveId: isScattering ? 'optics.wave.scattering' : 'optics.wave.diffraction',
-      sessionIndex: 1,
+      sessionIndex: lessonIndex,
       // The current student surface persists only these three actions. Do not
       // advertise parameter/evidence actions until their owner contracts exist.
       allowedActions: ['submit_prediction', 'run', 'record_observation'],
       predictionGate: {
-        required: false,
-        submitted: false,
+        required: true,
+        submitted: actionState.has('submit_prediction'),
       },
     };
 

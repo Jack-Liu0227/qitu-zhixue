@@ -44,7 +44,7 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
       studentId: row.studentId,
       priorKnowledge: row.priorKnowledge,
       targetLevel: row.targetLevel,
-      timeBudgetMinutesPerWeek: row.timeBudgetMinutesPerWeek,
+      timeBudgetMinutes: row.timeBudgetMinutes,
       preferences: row.preferences,
       interests: row.interests,
       strengths: row.strengths,
@@ -207,7 +207,7 @@ export class TutorWorkspaceService implements TutorContextReadPorts, TutorDomain
       const rows = await tx.select().from(tutorLearnerProfiles).where(eq(tutorLearnerProfiles.studentId, signal.studentId)).limit(1);
       const row = rows[0];
       const profile: TutorLearnerProfile = row === undefined ? {
-        studentId: signal.studentId, priorKnowledge: null, targetLevel: null, timeBudgetMinutesPerWeek: null,
+        studentId: signal.studentId, priorKnowledge: null, targetLevel: null, timeBudgetMinutes: null,
         preferences: [], interests: [], strengths: [], nextQuestions: [], version: 0, updatedAt: signal.occurredAt,
       } : { ...row, updatedAt: row.updatedAt.toISOString() };
       const next = applyGrowthSignalToProfile(profile, signal);

@@ -59,21 +59,12 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
         </header>
         <p className="qitu-inspiration-detail-summary">{template.summary}</p>
         <TagChips tags={template.tags} />
-        <section aria-labelledby="recommended-stages-title">
-          <h2 id="recommended-stages-title">项目路径</h2>
-          {template.stages.length > 0 ? (
-            <ol className="qitu-inspiration-stages">
-              {template.stages.map((stage, index) => (
-                <li key={stage.id} className="qitu-inspiration-stage">
-                  <span className="qitu-inspiration-stage-index" aria-hidden="true">{index + 1}</span>
-                  <span className="qitu-inspiration-stage-label">{stage.label}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p>该模板还没有发布阶段明细。</p>
-          )}
-        </section>
+        {template.lessonCount !== null ? (
+          <section aria-labelledby="recommended-lessons-title">
+            <h2 id="recommended-lessons-title">课时安排</h2>
+            <p>共 {template.lessonCount} 课时{template.lessonMinutes ? ` · 每课时 ${template.lessonMinutes} 分钟` : ''}。</p>
+          </section>
+        ) : null}
         {template.outcome ? (
           <section aria-labelledby="recommended-outcome-title">
             <h2 id="recommended-outcome-title">预期成果</h2>

@@ -27,7 +27,7 @@ export function AddMemberModal({
   if (!isOpen) return null;
 
   const availableAssistants = allAssistants.filter(
-    (a) => !existingMemberIds.includes(a.id)
+    (a) => a.enabled && a.teamSelectable && !existingMemberIds.includes(a.id)
   );
 
   const handleAdd = async () => {
