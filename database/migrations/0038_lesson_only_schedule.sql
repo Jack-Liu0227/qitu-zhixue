@@ -25,7 +25,10 @@ SELECT
   s.plan_id,
   s.module_id AS old_module_id,
   s.index AS session_index,
-  s.module_id || ':lesson:' || (s.index + 1)::text AS new_module_id,
+  CASE WHEN row_number() OVER (PARTITION BY s.module_id ORDER BY s.index, s.id) = 1
+       THEN s.module_id
+       ELSE s.module_id || ':lesson:' || (s.index + 1)::text
+  END AS new_module_id,
   m.name AS module_name,
   m.objective AS module_objective,
   row_number() OVER (PARTITION BY s.module_id ORDER BY s.index, s.id) AS module_rank,
@@ -59,11 +62,23 @@ INSERT INTO learning_modules (id, plan_id, name, lesson_index, objective, ordina
 SELECT
   new_module_id,
   plan_id,
-  module_name || ' · 第 ' || (session_index + 1)::text || ' 课时',
+  module_name || ' - Lesson ' || (session_index + 1)::text,
   session_index + 1,
   module_objective,
   temporary_ordinal
-FROM _lesson_module_map;
+FROM _lesson_module_map
+WHERE new_module_id <> old_module_id;
+
+-- Reuse the original module for its first lesson so historical objective/answer
+-- references remain valid; later lessons receive the inserted module rows.
+UPDATE learning_modules m
+SET name = mapping.module_name || ' - Lesson ' || (mapping.session_index + 1)::text,
+    lesson_index = mapping.session_index + 1,
+    objective = mapping.module_objective,
+    ordinal = mapping.temporary_ordinal
+FROM _lesson_module_map mapping
+WHERE m.id = mapping.old_module_id
+  AND mapping.new_module_id = mapping.old_module_id;
 
 UPDATE learning_objectives o
 SET module_id = mapping.new_module_id
@@ -76,9 +91,14 @@ SET module_id = mapping.new_module_id,
 FROM _lesson_module_map mapping
 WHERE s.id = mapping.session_id;
 
+-- Remove only legacy modules that no longer carry objectives. Modules with
+-- historical answer references remain valid because their objectives are kept.
 DELETE FROM learning_modules m
 USING learning_plans p
-WHERE p.id = m.plan_id AND p.weeks IS NOT NULL;
+WHERE p.id = m.plan_id
+  AND p.weeks IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM _lesson_module_map mapping WHERE mapping.old_module_id = m.id)
+  AND NOT EXISTS (SELECT 1 FROM learning_objectives o WHERE o.module_id = m.id);
 
 UPDATE learning_modules m
 SET ordinal = mapping.session_index + 1
