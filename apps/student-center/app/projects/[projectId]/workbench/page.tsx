@@ -15,5 +15,5 @@ export default async function ProjectWorkbenchRoute({
   const { projectId } = await params;
   // The owned project surface provides practice gating; server-side relative
   // fetches from the retired standalone workbench had no request origin/cookie.
-  redirect(`/student/projects/${encodeURIComponent(projectId)}?mode=practice`);
+  redirect(`/projects/${encodeURIComponent(projectId)}?mode=practice`);
 }
