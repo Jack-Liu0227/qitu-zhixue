@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { DirectoryPersonRef, TestLoginAccount, TestLoginOptions } from '@qitu/contracts';
+import type { CurrentUser, DirectoryPersonRef, TestLoginAccount, TestLoginOptions } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
 
 const TEST_IDENTITIES = [
@@ -14,7 +14,7 @@ function configuredPassword(identity: { passwordVariable: string }): string | un
   return process.env.QITU_TEST_LOGIN_ENABLED === 'true' && password && password.length <= 256 ? password : undefined;
 }
 
-export function allowsConfiguredTestLogin(user: Pick<DirectoryPersonRef, 'userId' | 'role'>): boolean {
+export function allowsConfiguredTestLogin(user: Pick<DirectoryPersonRef, 'userId'> & Pick<CurrentUser, 'role'>): boolean {
   return TEST_IDENTITIES.some(identity => identity.userId === user.userId && identity.role === user.role && configuredPassword(identity) !== undefined);
 }
 

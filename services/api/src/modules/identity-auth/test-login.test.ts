@@ -96,6 +96,6 @@ test('shortcuts omit missing accounts, changed roles and credentials that do not
   assert.deepEqual(await auth.testLoginOptions(), { accounts: [] });
   for (const key of passwordVariables) process.env[key] = password;
   users.splice(0, 1);
-  users.find(user => user.role === 'parent')!.role = 'support';
+  users.find(user => user.role === 'parent')!.role = 'student';
   assert.deepEqual((await auth.testLoginOptions()).accounts.map(account => account.role), ['teacher', 'admin']);
 });
