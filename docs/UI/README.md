@@ -10,6 +10,7 @@
 - [U01–U20 修复记录与新截图](07-remediation/README.md)：源码改动、本地验收与生产发布条件。
 - [公网发布验收与截图](08-release-smoke/README.md)：服务状态、12 个匿名登录场景与正式身份验收限制。
 - [恢复测试账号与快捷填充](09-test-login/README.md)：四个原账号公网登录、脱敏截图与验证结果。
+- [工具与 MCP 历史绑定修复](10-tools-migration/README.md)：5 个助手、9 项旧绑定的审计迁移及真实 IMA 探测。
 - [覆盖与验证说明](06-evidence/verification.md)：方法、限制、验证结果与既有工作区修改。
 
 ## 分类目录

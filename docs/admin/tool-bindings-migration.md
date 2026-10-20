@@ -27,3 +27,5 @@
 纯规则测试覆盖最小权限、未知 ID 保留、未来 canonical 同名实现、revision 与 seed/default 一致性。隔离 PostgreSQL 测试只允许 `qitu_tool_migration_fixture_*` 本地数据库，验证角色隔离、并发冲突、事务与审计回滚、真实回读不符和幂等重放。fixture 只复制 schema，不复制业务数据，不连接生产库运行这些测试。
 
 发布后通过 Admin owner API 读取真实预览并应用，对比工具之外的全部助手字段和冻结版本未变化，回读运行时目录，再做浏览器和 MCP 状态验收。不能以迁移成功代替任意 MCP 工具真实调用成功。
+
+2026-10-21 已部署 `b912456` 并通过 owner API 迁移远程 5 个助手的 9 项占位绑定，未登记工具回读为 0；审计、幂等重放和原有权限保留均已核验。IMA 实际连接/列库探测成功，发现四个只读工具。截图与机器回执见 [docs/UI/10-tools-migration](../UI/10-tools-migration/README.md)。

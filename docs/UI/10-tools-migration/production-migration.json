@@ -1,0 +1,111 @@
+{
+  "checkedAt": "2026-10-20T22:56:54.731522+00:00",
+  "codeCommit": "b912456048f810a90fa78e8fed28af379bc5a76c",
+  "migratedAssistantIds": [
+    "feishu-reporting-assistant",
+    "optics-concept-coach",
+    "optics-experiment-guide",
+    "optics-leader",
+    "optics-review-assessor"
+  ],
+  "retiredBindingCount": 9,
+  "before": [
+    {
+      "assistantId": "feishu-reporting-assistant",
+      "beforeToolIds": [
+        "student_status_summary",
+        "parent_status_summary",
+        "teacher_status_summary"
+      ],
+      "afterToolIds": []
+    },
+    {
+      "assistantId": "optics-concept-coach",
+      "beforeToolIds": [
+        "knowledge_search",
+        "mastery_assess"
+      ],
+      "afterToolIds": [
+        "knowledge_search"
+      ]
+    },
+    {
+      "assistantId": "optics-experiment-guide",
+      "beforeToolIds": [
+        "simulation_runner",
+        "data_analyzer"
+      ],
+      "afterToolIds": []
+    },
+    {
+      "assistantId": "optics-leader",
+      "beforeToolIds": [
+        "mastery_query",
+        "learning_plan_advance",
+        "student_profile_get"
+      ],
+      "afterToolIds": [
+        "mastery_query",
+        "student_profile_get"
+      ]
+    },
+    {
+      "assistantId": "optics-review-assessor",
+      "beforeToolIds": [
+        "artifact_review",
+        "growth_record_append"
+      ],
+      "afterToolIds": []
+    }
+  ],
+  "remainingUnknownToolIds": [],
+  "auditIds": [
+    "d892345e-fda4-481b-bba3-0ef78b47a8a0",
+    "00420077-6408-4181-8a43-de71614a6a56",
+    "33ca8c92-0229-4d80-9cbd-69c922757dea",
+    "27fbd85f-4373-41e4-b553-302c6b14119a",
+    "caa45cf0-e4e4-4b81-8045-dcb43291704e"
+  ],
+  "auditVerified": {
+    "count": 5,
+    "hasOriginalBindings": true,
+    "migrationAction": true
+  },
+  "idempotentReplay": "passed",
+  "unrelatedAssistantConfigurationUnchanged": true,
+  "historicalTeamVersionsUnchanged": true,
+  "mcpConfigurationUnchanged": true,
+  "mcpServers": [
+    {
+      "id": "mcp-fetch",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-grok-search",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-aionui-browser",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-chrome-devtools",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "ima-knowledge",
+      "enabled": true,
+      "status": "connected",
+      "toolCount": 4
+    }
+  ],
+  "learnerDataWritten": false
+}

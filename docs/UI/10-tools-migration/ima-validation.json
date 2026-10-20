@@ -1,0 +1,15 @@
+{
+  "registered": true,
+  "enabled": true,
+  "status": "connected",
+  "toolCount": 4,
+  "lastCheckedAt": "2026-10-20T22:58:01.752Z",
+  "tools": [
+    "ima_list_knowledge_bases",
+    "ima_search_knowledge",
+    "ima_list_documents",
+    "ima_read_document"
+  ],
+  "checkedAt": "2026-10-20T22:58:01.761834+00:00",
+  "scope": "Admin read-only connection probe; no project authorization was expanded"
+}
