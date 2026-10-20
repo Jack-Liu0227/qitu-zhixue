@@ -1214,6 +1214,19 @@
   color: #F1F5F9 !important;
 }
 
+:root[data-qitu-eyecare="true"] .qitu-section-card-action a,
+:root[data-qitu-eyecare="true"] .qitu-section-card-header a {
+  color: #34D399 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-action a:hover,
+:root[data-qitu-eyecare="true"] .qitu-section-card-header a:hover {
+  color: #10B981 !important;
+  text-decoration: underline !important;
+}
+
 :root[data-qitu-eyecare="true"] .qitu-section-card-body,
 .qitu-tutor-page[data-eyecare="active"] .qitu-section-card-body {
   background: #181B20 !important;
@@ -2032,6 +2045,15 @@
   color: #94A3B8 !important;
 }
 
+/* 覆盖 DirectionCard 中的单字图标占位符 ("光") */
+:root[data-qitu-eyecare="true"] .qitu-direction-card span[aria-hidden="true"],
+:root[data-qitu-eyecare="true"] .qitu-direction-avatar {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+  color: #34D399 !important;
+}
+
 /* 阶段推进条 (StageStepper4) */
 :root[data-qitu-eyecare="true"] .qitu-stage-stepper {
   background: transparent !important;
@@ -2076,6 +2098,26 @@
 :root[data-qitu-eyecare="true"] .qitu-suggestion-card p,
 :root[data-qitu-eyecare="true"] .qitu-ai-suggestion-card p {
   color: #CBD5E1 !important;
+}
+
+/* 覆盖 ContinueProjectCard 中的单字图标占位符 ("光") 与文字 */
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body span[aria-hidden="true"],
+:root[data-qitu-eyecare="true"] .qitu-project-avatar,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card span[aria-hidden="true"] {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body h3,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body p,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card p {
+  color: #94A3B8 !important;
 }
 
 :root[data-qitu-eyecare="true"] .qitu-continue-project-card .progress-bar,
@@ -2370,46 +2412,179 @@
 }
 
 :root[data-qitu-eyecare="true"] .qitu-growth-header h1,
-:root[data-qitu-eyecare="true"] .growth-header h1 {
+:root[data-qitu-eyecare="true"] .qitu-growth-title {
   color: #FFFFFF !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-growth-card,
-:root[data-qitu-eyecare="true"] .growth-card,
-:root[data-qitu-eyecare="true"] .growth-timeline-item {
+:root[data-qitu-eyecare="true"] .qitu-growth-subtitle {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-back {
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-growth-back:hover {
+  color: #10B981 !important;
+}
+
+/* 成长小计与统计三元组卡片 (.qitu-stat-triple-item) - 彻底消除白底 */
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-item,
+:root[data-qitu-eyecare="true"] .qitu-stat-card {
   background-color: #1E2228 !important;
   background: #1E2228 !important;
   border: 1px solid #2E3540 !important;
   color: #E2E8F0 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
-:root[data-qitu-eyecare="true"] .growth-stat-card {
-  background: #1E2228 !important;
-  border: 1px solid #2E3540 !important;
-}
-
-:root[data-qitu-eyecare="true"] .growth-stat-value {
-  color: #34D399 !important;
-}
-
-:root[data-qitu-eyecare="true"] .growth-stat-label {
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-label {
   color: #94A3B8 !important;
 }
 
-:root[data-qitu-eyecare="true"] .growth-timeline-line {
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-value {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-completed .qitu-stat-triple-value {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-attention .qitu-stat-triple-value {
+  color: #F59E0B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-summary-note {
+  color: #94A3B8 !important;
+}
+
+/* 筛选栏 Chips 与下拉框 */
+:root[data-qitu-eyecare="true"] .qitu-filter-chip {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-filter-chip:hover:not(:disabled) {
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  background: #112F24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-filter-chip.is-active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-filter-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-filter-project select {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+/* 时间线节点与轨道 */
+:root[data-qitu-eyecare="true"] .qitu-version-step-dot {
+  background-color: #1E2228 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-done .qitu-version-step-dot {
+  background-color: #10B981 !important;
+  border-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-line {
   background: #2E3540 !important;
+  background-color: #2E3540 !important;
 }
 
-:root[data-qitu-eyecare="true"] .growth-timeline-dot {
-  background: #10B981 !important;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6) !important;
+:root[data-qitu-eyecare="true"] .qitu-version-step-label {
+  color: #F1F5F9 !important;
 }
 
-:root[data-qitu-eyecare="true"] .growth-evidence-box {
-  background: #15181D !important;
-  border: 1px solid #252A33 !important;
+:root[data-qitu-eyecare="true"] .qitu-version-step-meta {
+  color: #94A3B8 !important;
+}
+
+/* 里程碑、作品、反思、目标条目 */
+:root[data-qitu-eyecare="true"] .qitu-milestone-entry,
+:root[data-qitu-eyecare="true"] .qitu-artifact-entry,
+:root[data-qitu-eyecare="true"] .qitu-reflection-entry,
+:root[data-qitu-eyecare="true"] .qitu-objective-entry {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-context {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-summary {
   color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-quote {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  border-left: 3px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-mark {
+  color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-text {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-note {
+  background: #231C10 !important;
+  border: 1px solid #4A3B18 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-badge {
+  background: #2D2311 !important;
+  color: #F59E0B !important;
+  border: 1px solid #4A3B18 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-note-text {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-cover-mark {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-header {
+  border-bottom: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-encouragement {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #E2E8F0 !important;
 }
 
 /* ==========================================================================

@@ -36,6 +36,7 @@ export function DirectionCard({ direction }: { direction: IdeaDirection }) {
         />
       ) : (
         <span
+          className="qitu-direction-avatar"
           aria-hidden="true"
           style={{
             width: 48,

@@ -27,7 +27,7 @@
 
 ---
 
-## 二、五大核心修改守则
+## 二、核心修改守则
 
 ### 守则 1：零布局抖动原则 (Zero Layout Shift)
 
@@ -47,7 +47,7 @@
 > [!WARNING]
 > **在夜间暗色模式下，任何未被覆盖的纯白背景（`#FFF` / `#FFFFFF` / `rgb(255,255,255)`）都会造成刺眼光斑，彻底摧毁护眼体验。全局变量覆盖不足以解决局部硬编码白底问题。**
 
-开发与维护时必须依序巡检并覆盖以下 6 大类区域：
+开发与维护时必须依序巡检并覆盖以下 7 大类区域：
 
 1. **输入区域 (Composer)**：
    - 文本录入框、外围边框、阴影重置。
@@ -75,6 +75,9 @@
    - 历史会话顶部收起键（`.qitu-live-session-sidebar .qitu-button-ghost`）。
    - 主侧边栏底部收起控制器（`.qitu-sidebar-toggle`）。
    - 页面内所有 `button[aria-label*="收起"]` 通用按键。
+7. **学生端各业务页子卡片与组件深度消白 (Sub-cards & Shared Kits)**：
+   - **基础统计卡与三元组 (StatTriple)**：`@qitu/ui` 基础样式中写死了 `.qitu-stat-triple-item { background: white; border: 1px solid var(--qitu-border); }`。在“成长轨迹”（`/student/growth`）页的“从今天开始记录”（`GrowthSummaryCard`）等卡片中，内部统计小卡片（如“连续学习天数”、“完成项目”、“掌握目标”、“发布作品”）必须全量覆盖为 `#1E2228` 底色与 `#2E3540` 边框，消除大面积刺眼白底。
+   - **内联单字封面占位符 (Avatar Fallbacks)**：`DirectionCard`（“从一个想法开始”方向卡）与 `ContinueProjectCard`（“当前项目”卡）在无封面图时会渲染项目/方向首字的单字占位方块（如“光”）。由于其 JSX 内联硬编码了 `background: colors.page`（`#f2f3ff` 浅白底）与 `color: colors.primary`（`#1e4fd9` 深蓝字），在夜间模式下必须使用精准选择器（如 `.qitu-direction-card span[aria-hidden="true"]`、`.qitu-direction-avatar`、`.qitu-project-avatar`）与 `!important` 强制将其重设为 `#15181D` 极深底色、`#2E3540` 边框以及 `#34D399` 薄荷绿字符。
 
 ---
 
@@ -105,6 +108,9 @@
        color: #E2E8F0 !important;
      }
      ```
+  4. **卡片标题操作区链接高对比度保证 (SectionCard Action Links)**：
+     - `SectionCard` 顶部的动作区域（`.qitu-section-card-action a`，例如“从一个想法开始”中的“进入灵感空间”、“当前项目”中的“查看详情”与“成长轨迹”）在默认无独立样式时会继承全局深色链接，导致在暗色卡片上字色发暗不可读。
+     - 必须显式为 `.qitu-section-card-action a` 与 `.qitu-section-card-header a` 设定翡翠浅绿 `#34D399`，并在 hover 时切换至 `#10B981` 带下划线，确保操作指引高对比可见。
 
 ---
 
@@ -147,9 +153,13 @@
   - [ ] 对话中生成的白板、数学公式 KaTeX、Mermaid 流程图无白底。
   - [ ] 交互仿真卡片（电路/动能/光学）无白底。
   - [ ] 导师团队徽标、学生账号胶囊、所有“收起”按键无白底。
+  - [ ] “从一个想法开始”与“当前项目”中的单字封面占位符（如“光”）底色为暗色 `#15181D`、文字为翡翠绿 `#34D399`，无白底。
+  - [ ] “成长轨迹”中“从今天开始记录”内的所有三元统计小卡片（`StatTriple`）无白底。
 - [ ] **3. 对比度与可读性巡检**：
   - [ ] 左上角“启途智学”为高对比度纯白（`#FFFFFF`）。
   - [ ] 无任何深蓝色字体（`#102a5c` 等）叠在暗色背景上导致不可见的情况。
+  - [ ] “从一个想法开始”右侧“进入灵感空间”操作链接高对比可见（浅薄荷绿 `#34D399`）。
+  - [ ] “当前项目”右侧“查看详情”与“成长轨迹”操作链接高对比可见（浅薄荷绿 `#34D399`）。
 - [ ] **4. 导航光标与状态巡检**：
   - [ ] 左侧导航栏当前激活项左侧展示翡翠绿发光指示光标（`#10B981`）。
   - [ ] 激活项底色为深森林绿（`#112F24`），文字与图标为薄荷绿（`#34D399`）。
@@ -159,3 +169,4 @@
   - [ ] 跳转至 `/student/today` 或 `/student/projects` 并刷新，暗色外壳依然保持。
   - [ ] 运行自动化测试：`pnpm --filter @qitu/student-center test`（28 项全部 PASS）。
   - [ ] 运行全量构建：`pnpm --filter @qitu/student-center build`（Build Code 0）。
+  - [ ] 运行文档校验：`python3 tooling/validate-docs.py`（PASS）。
