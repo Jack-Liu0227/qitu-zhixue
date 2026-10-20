@@ -17,7 +17,7 @@ import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
-import { getStoredEyecare, setStoredEyecare } from './lib/eyecareStorage';
+import { getStoredEyecare, setStoredEyecare, subscribeEyecare } from './lib/eyecareStorage';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
@@ -45,21 +45,16 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [eyecareActive, setEyecareActive] = useState(false);
 
   useEffect(() => {
-    if (getStoredEyecare()) {
-      setEyecareActive(true);
-      document.documentElement.setAttribute('data-qitu-eyecare', 'true');
-    }
+    setEyecareActive(getStoredEyecare());
+    return subscribeEyecare((active) => {
+      setEyecareActive(active);
+    });
   }, []);
 
   const toggleEyecare = () => {
     setEyecareActive((prev) => {
       const next = !prev;
       setStoredEyecare(next);
-      if (next) {
-        document.documentElement.setAttribute('data-qitu-eyecare', 'true');
-      } else {
-        document.documentElement.removeAttribute('data-qitu-eyecare');
-      }
       return next;
     });
   };

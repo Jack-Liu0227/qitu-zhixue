@@ -3,6 +3,7 @@
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
 import { Avatar, GreetingBanner, RobotMascot, StudentShell, type NavItem, type NavLinkRenderer } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
+import { getStoredEyecare, setStoredEyecare, subscribeEyecare } from '../features/tutor/lib/eyecareStorage';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -203,6 +204,39 @@ function toInternalPath(pathname: string): string {
  * shell's own header, next to the student's name, so the current student is
  * always identifiable and the control never overlaps the banner.
  */
+function GlobalEyecareButton() {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    setActive(getStoredEyecare());
+    return subscribeEyecare((next) => {
+      setActive(next);
+    });
+  }, []);
+
+  const toggle = () => {
+    const next = !active;
+    setActive(next);
+    setStoredEyecare(next);
+  };
+
+  return (
+    <button
+      type="button"
+      className={`qitu-eyecare-toggle-btn ${active ? "is-active" : ""}`}
+      onClick={toggle}
+      aria-pressed={active}
+      title={active ? "点击退出夜间暗色护眼模式" : "点击开启夜间暗色护眼模式 (2700K~3200K 柔光低眩光)"}
+    >
+      <span className="qitu-eyecare-btn-icon">🌙</span>
+      <span className="qitu-eyecare-btn-text">
+        {active ? "护眼模式 (已开启)" : "护眼模式"}
+      </span>
+      {active && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
+    </button>
+  );
+}
+
 function StudentIdentityHeader({ onToggleNav, navExpanded, showGreeting }: { onToggleNav?: () => void; navExpanded: boolean; showGreeting: boolean }) {
   const user = useCurrentUser();
   const name = user?.displayName?.trim() ?? '';
@@ -232,6 +266,7 @@ function StudentIdentityHeader({ onToggleNav, navExpanded, showGreeting }: { onT
           <span className="qitu-student-account-label">当前学生</span>
           <span className="qitu-student-account-name">{displayName}</span>
         </span>
+        <GlobalEyecareButton />
         <PreferencesMenu />
         <LogoutButton />
       </div>
