@@ -807,7 +807,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
   };
 
   return (
-    <div style={{
+    <div className="copilot-page" style={{
       display: 'flex',
       height: 'calc(100vh - 65px)',
       margin: '-20px -24px -40px',
@@ -817,6 +817,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
       {/* 1. 左侧会话列表与管理（支持折叠） */}
       {isSidebarCollapsed ? (
         <aside
+          className="copilot-sidebar is-collapsed"
           title="启途智学管家会话（已折叠）"
           style={{
             width: '60px',
@@ -943,6 +944,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
         </aside>
       ) : (
         <div
+          className="copilot-sidebar"
           style={{
             width: '280px',
             background: 'rgba(255, 255, 255, 0.92)',
@@ -1011,6 +1013,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               return (
                 <div
                   key={sess.id}
+                  className={`copilot-session-item ${isActive ? 'is-active' : ''}`}
                   onClick={() => setCurrentSessionId(sess.id)}
                   style={{
                     display: 'flex',
@@ -1071,7 +1074,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
       {/* 2. 中间 Agent 交互流 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
         {/* 顶部状态与快捷控制栏 (Thinking 强度 / 模型选择 / 运行权限) */}
-        <div style={{ minHeight: '56px', background: 'rgba(255, 255, 255, 0.95)', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
+        <div className="copilot-toolbar" style={{ minHeight: '56px', background: 'rgba(255, 255, 255, 0.95)', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {isSidebarCollapsed && (
               <button
@@ -1221,7 +1224,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
         )}
 
         {/* 消息历史流 */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="copilot-messages-container" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {activeSession.messages.map((msg) => {
             const isUser = msg.role === 'user';
             const isSystem = msg.role === 'system';
@@ -1251,6 +1254,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                 )}
                 <div>
                   <div
+                    className={`copilot-bubble ${isUser ? 'copilot-bubble-user' : 'copilot-bubble-assistant'}`}
                     style={{
                       background: isUser ? '#2563eb' : '#ffffff',
                       color: isUser ? '#ffffff' : '#1e293b',
@@ -1271,7 +1275,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
 
                   {/* 工具调用情况详细展示 */}
                   {msg.toolSteps && msg.toolSteps.length > 0 && (
-                    <div style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
+                    <div className="copilot-tool-steps-container" style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
                       <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>⚡</span> 工具调用与执行过程 ({msg.toolSteps.length} 步)
                       </div>
@@ -1289,7 +1293,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
 
                   {/* 结构化产物卡片展示 */}
                   {msg.artifact && (
-                    <div style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                    <div className="copilot-artifact-card" style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <span style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span>📦</span> {msg.artifact.title}
@@ -1361,7 +1365,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
                 <RobotMascot size={28} decorative />
               </div>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
+              <div className="copilot-thinking-bubble" style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
                 启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
               </div>
             </div>
@@ -1370,7 +1374,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
         </div>
 
         {/* 底部输入框 */}
-        <div style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+        <div className="copilot-composer-container" style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
           {isListening && (
             <div style={{ marginBottom: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }} />
@@ -1380,6 +1384,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           )}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
             <textarea
+              className="copilot-textarea"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -1404,6 +1409,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             />
             <button
               type="button"
+              className={`copilot-voice-btn ${isListening ? 'is-listening' : ''}`}
               onClick={toggleVoiceInput}
               title={isListening ? '点击停止语音输入' : '开启语音输入'}
               style={{
@@ -1427,6 +1433,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <span>{isListening ? '停止' : '语音'}</span>
             </button>
             <button
+              className="copilot-send-btn"
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isGenerating || !catalogReady}
               style={{

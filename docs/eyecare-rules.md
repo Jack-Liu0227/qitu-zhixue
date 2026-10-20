@@ -117,6 +117,35 @@
        1. 为刷新按钮与幽灵按钮覆写 `.qtx-agent-refresh-btn, .qitu-button-ghost { background: #1E252F !important; border: 1px solid #2E3540 !important; color: #CBD5E1 !important; }`，hover 态转为翡翠深绿高亮；
        2. 对 `.qitu-team-run-graph`、`.qitu-team-activity` 设为 `#15181D !important`，节点 `.qitu-team-node` 设为 `#1E2228 !important`，标记点 `.qitu-team-run-marker` 设为翡翠亮线，代码标签与状态徽标全部暗化；
        3. 同步覆盖骨架屏微光 `.qitu-skeleton-line` 与空状态/错误态容器 `.qitu-state`，确保所有加载和交互阶段视觉一致。
+11. **管理员端学生数据统计光标、关系绑定卡片操作按键、启途管家对齐与模型设置排查消白专项治理 (Admin Console Governance Primitives)**：
+   - **场景 A：学生数据统计指示光标与周期选择器 (Statistics Indicator & Range Selector)**：
+     - **问题现象**：学生数据统计页中，部分光标指示条呈亮白色或不可读，统计周期选择器按键激活时继承浅色高亮。
+     - **治理策略**：
+       1. 侧栏与页面指示光标统一为翡翠绿 `#10B981`（发光阴影 `rgba(16, 185, 129, 0.8)`），hover 态展示浅薄荷绿 `#34D399`；
+       2. 标题前置竖线指示光标（`.admin-data-section h3::before`、`h4::before`、`.admin-chart-section h3::before`）统一重写为 `#10B981`；
+       3. 周期选择栏容器（`.admin-range-selector`）设为 `#15181D` 与 `#2E3540` 边框，周期按键（`.admin-range-btn.active`）激活态配置为翡翠深绿 `#112F24`、微绿边框 `#195A3B` 与薄荷绿文字 `#34D399`；
+       4. 全局表单与插入光标（`caret-color`）强制设为 `#10B981 !important;`。
+   - **场景 B：关系绑定面板、统计卡片、操作按钮与二次确认弹窗消白 (Relationship Binding Panels & Action Buttons)**：
+     - **问题现象**：关系绑定主面板（`.admin-relationship-panel`）与面板头部（`.admin-panel-header`）硬编码 `background: rgb(255 255 255 / 80%)` 与 `white`；统计指标小卡（`.admin-stat-item`）硬编码浅色渐变 `linear-gradient(135deg, #f5f9ff, #ffffff)`；表单卡（`.admin-form-card`）内部下拉框 `select` 为白底；表格内的“换班主任”、“结束关系”、“结束分配”按键（`.admin-action-btn`）在 `globals.css` 中硬编码了 `background: white`；二次确认弹窗（`.admin-dialog`）同样写死 `background: white`。
+     - **治理策略**：
+       1. 关系主面板与面板头全量覆盖为表面底色 `#181B20`，边框 `#2E3540`，取消白色模糊滤镜；
+       2. 统计指标卡覆盖为 `#1E2228` 暗色底，指标数值重置为薄荷绿 `#34D399`；
+       3. 选项卡卡片（`.admin-tabs-card`, `.admin-tabs`）覆写为 `#15181D`，激活选项卡（`.admin-tab.active`）覆写为 `#112F24` 翡翠深绿底色；表单下拉框 `select` 覆写为 `#15181D`；
+       4. 表格行内操作按钮 `.admin-action-btn` 统一重置为 `#1E2228` 暗色底色与 `#2E3540` 边框，hover 态切换为翡翠深绿 `#112F24` 与薄荷绿文字 `#34D399`，危险按钮 `.admin-action-btn-danger` hover 态转为暗红 `#3B1B1B` 与 `#FCA5A5`；
+       5. 二次确认弹窗遮罩 `.admin-dialog-backdrop` 设为 `rgba(0, 0, 0, 0.75)`，弹窗本体 `.admin-dialog` 设为 `#1E2228`，标题设为高对比纯白 `#FFFFFF`。
+   - **场景 C：启途智学管家对齐学生端 AI 搭档护眼规范 (Admin Copilot Tutor Parity)**：
+     - **问题现象**：启途智学管家（`/admin/copilot`）此前包含大量写死在内联 style 的浅色渐变背景、浅白底工具栏、白色气泡与白色输入框，未能复用学生端 AI 搭档已验证成熟的护眼样式。
+     - **治理策略**：
+       1. 在 JSX 中赋予结构化语义类名（`.copilot-page`、`.copilot-sidebar`、`.copilot-session-item`、`.copilot-toolbar`、`.copilot-messages-container`、`.copilot-bubble-assistant`、`.copilot-bubble-user`、`.copilot-tool-steps-container`、`.copilot-artifact-card`、`.copilot-thinking-bubble`、`.copilot-composer-container`、`.copilot-textarea`、`.copilot-voice-btn`、`.copilot-send-btn`）；
+       2. 样式深度对齐学生端规范：页面画布底色 `#121417`，会话管理侧栏 `#181B20`（激活项 `#112F24` / `#34D399`），控制顶栏 `#181B20`（内部下拉配置为 `#15181D` 暗色胶囊），助手消息气泡 `#1E2228`，用户消息气泡 `#142820` 带翡翠微绿边框 `#195A3B`，工具步骤与产物卡片 `#15181D` / `#1E2228`；
+       3. 底部输入区 `#181B20`，输入框 `#15181D` 搭配绿色光标 `caret-color: #10B981`，语音按键与发送按键（`#10B981` 翡翠主绿）全面暗色护眼化。
+   - **场景 D：模型与设置 AION 变量覆盖与白底框深度消白 (Settings & Model Providers)**：
+     - **问题现象**：`apps/admin-console` 的 `(console)/settings` 采用 AION 框架，引入了 `settings-aion.css`、`teams.css`、`modals.css` 等，定义了大量的 `--aion-bg-card: #ffffff;` 以及写死的 `.settings-sider`、`.settings-collapsible-card`、`.settings-overview-card`、`.multica-profile-card`、`.team-card`、`.admin-skill-*`、`.admin-modal-card` 等白底类名。
+     - **治理策略**：
+       1. 在 `:root[data-qitu-eyecare="true"]` 中全面重定义 AION CSS 变量：`--aion-bg-card: #1E2228`、`--aion-fill-1: #181B20`、`--aion-fill-2: #15181D`、`--aion-border: #2E3540`、`--aion-t-primary: #FFFFFF`、`--aion-t-secondary: #E2E8F0` 等；
+       2. 设置侧栏 `.settings-sider` 覆写为 `#181B20`，激活项 `.settings-sider-item.is-active` 为 `#112F24` 翡翠深绿；
+       3. 设置概览卡片 `.settings-overview-card`、折叠卡片 `.settings-collapsible-card`、团队卡片 `.team-card`、团队详情 `.team-detail-view`、技能卡片 `.admin-skill-card-section`、弹窗 `.admin-modal-card` 与 `.modal-content` 全面消白，重置为 `#1E2228` 卡片底色与 `#2E3540` 边框；
+       4. 输入框 `.settings-input`、文本域 `.settings-textarea`、选择框 `.settings-select`、代码预览 `.instruction-editor` 与 `.instruction-preview` 统一覆写为 `#15181D`，光标为 `#10B981`。
 
 ---
 
@@ -230,6 +259,10 @@
   - [ ] 教师端：学生名册表格选中行（`tr.selected`）、演示学生详情头部（`.qtx-student-detail-header`）、子项目/介入/成长卡片无白底。
   - [ ] 教师端：Agent 协作记录标题旁“刷新”按钮（`.qtx-agent-refresh-btn` / `.qitu-button-ghost`）及协作图/活动流卡片（`.qitu-team-run-graph`、`.qitu-team-activity`、`.qitu-team-node`）无白底。
   - [ ] 管理员端：顶栏、横幅 `.admin-hero-banner`、6项指标卡 `.admin-stat-card`、治理列表 `.admin-data-table`、模型与设置面板无白底。
+  - [ ] 管理员端：“学生数据统计”导航激活条与页面标题光标指示条为翡翠绿（`#10B981`），周期切换按钮激活态为深绿底薄荷绿字，全局输入光标为翡翠绿。
+  - [ ] 管理员端：“关系绑定”主面板、统计小卡、选项卡、表单以及行内操作按键（“换班主任”、“结束关系”、“结束分配”）与二次确认弹窗无白底漏光。
+  - [ ] 管理员端：“启途智学管家”窗口全量对齐学生端 AI 搭档护眼规范，画布底色、侧栏、顶栏、消息气泡、工具步骤、产物卡片与输入区无白底。
+  - [ ] 管理员端：“模型与设置”各子页面卡片、折叠密集表单、Multica 团队工作台与模态弹窗全部消除白底框。
 - [ ] **3. 对比度与可读性巡检**：
   - [ ] 学生端、家长端、教师端、管理员端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
   - [ ] 无任何深蓝色字体（`#102a5c`、`#1e293b` 等）叠在暗色背景上导致不可见的情况。

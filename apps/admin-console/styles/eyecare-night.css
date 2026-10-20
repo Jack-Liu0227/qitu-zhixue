@@ -35,6 +35,18 @@
 
   --admin-stat-tint: #1E2228;
   --admin-stat-border: #2E3540;
+
+  /* AION UI 变量深度覆盖 */
+  --aion-primary: #10B981;
+  --aion-primary-soft: #112F24;
+  --aion-t-primary: #FFFFFF;
+  --aion-t-secondary: #E2E8F0;
+  --aion-t-tertiary: #94A3B8;
+  --aion-t-quaternary: #64748B;
+  --aion-border: #2E3540;
+  --aion-fill-1: #181B20;
+  --aion-fill-2: #15181D;
+  --aion-bg-card: #1E2228;
 }
 
 :root[data-qitu-eyecare="true"] body {
@@ -187,9 +199,38 @@
   color: #94A3B8 !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item:hover {
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item {
+  color: #94A3B8 !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item:hover,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item:hover {
   background-color: #1E252F !important;
   color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item:hover::before,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item:hover::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3.5px !important;
+  height: 12px !important;
+  background: #34D399 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item:hover .qitu-nav-icon,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item:hover svg {
+  color: #34D399 !important;
 }
 
 :root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active,
@@ -216,8 +257,16 @@
   border-radius: 4px !important;
 }
 
-:root[data-qitu-eyecare="true"] .is-sidebar-collapsed .qitu-sidebar-nav a.qitu-nav-item.is-active::before {
+:root[data-qitu-eyecare="true"] .is-sidebar-collapsed .qitu-sidebar-nav a.qitu-nav-item.is-active::before,
+:root[data-qitu-eyecare="true"] .admin-console-shell.is-sidebar-collapsed .qitu-nav-item.is-active::before {
   left: 2px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active .qitu-nav-icon,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav a.qitu-nav-item.is-active .qitu-nav-label,
+:root[data-qitu-eyecare="true"] .admin-console-shell .qitu-nav-item.is-active svg {
+  color: #34D399 !important;
+  stroke: #34D399 !important;
 }
 
 :root[data-qitu-eyecare="true"] .qitu-sidebar-toggle {
@@ -390,8 +439,13 @@
 }
 
 /* ==========================================================================
-   6. 数据图表与表格 (Data Sections & Tables)
+   6. 数据统计与关系绑定 (Statistics & Relationships)
    ========================================================================== */
+/* --- 6.1 学生数据统计 (Statistics Page & Cursor Indicator) --- */
+:root[data-qitu-eyecare="true"] .admin-statistics-page {
+  background: transparent !important;
+}
+
 :root[data-qitu-eyecare="true"] .admin-data-section,
 :root[data-qitu-eyecare="true"] .admin-chart-section {
   background: #181B20 !important;
@@ -400,6 +454,73 @@
   backdrop-filter: none !important;
 }
 
+/* 标题指示光标（绿色条） */
+:root[data-qitu-eyecare="true"] .admin-data-section h3::before,
+:root[data-qitu-eyecare="true"] .admin-data-section h4::before,
+:root[data-qitu-eyecare="true"] .admin-chart-section h3::before,
+:root[data-qitu-eyecare="true"] .admin-statistics-page h3::before {
+  background: #10B981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6) !important;
+}
+
+/* 统计周期选择器与光标按钮 */
+:root[data-qitu-eyecare="true"] .admin-range-selector {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-range-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-range-label svg {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-range-btn {
+  background: transparent !important;
+  color: #94A3B8 !important;
+  border: 1px solid transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-range-btn:hover {
+  background: #1E252F !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-range-btn.active {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
+  font-weight: 600 !important;
+}
+
+/* 图表轨道与柱条 */
+:root[data-qitu-eyecare="true"] .admin-stage-bar-track,
+:root[data-qitu-eyecare="true"] .admin-activity-bar-track {
+  background: #15181D !important;
+  border: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stage-bar-fill,
+:root[data-qitu-eyecare="true"] .admin-activity-bar-fill {
+  background: linear-gradient(90deg, #10B981, #34D399) !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-activity-bar:hover .admin-activity-bar-fill {
+  background: #34D399 !important;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.6) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-stage-count,
+:root[data-qitu-eyecare="true"] .admin-activity-date {
+  color: #94A3B8 !important;
+}
+
+/* 数据表格 */
 :root[data-qitu-eyecare="true"] .admin-data-table {
   background: #1E2228 !important;
   color: #E2E8F0 !important;
@@ -443,21 +564,196 @@
   color: #E2E8F0 !important;
 }
 
-/* ==========================================================================
-   7. 智学管家 (Admin Copilot - /admin/copilot)
-   ========================================================================== */
-:root[data-qitu-eyecare="true"] .copilot-page {
+/* --- 6.2 关系绑定消白 (Relationships Page) --- */
+:root[data-qitu-eyecare="true"] .admin-relationships-page {
   background: transparent !important;
 }
 
-:root[data-qitu-eyecare="true"] .copilot-sidebar,
-:root[data-qitu-eyecare="true"] .copilot-session-list {
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-relationship-panel,
+:root[data-qitu-eyecare="true"] .admin-relationship-panel {
   background: #181B20 !important;
-  border-color: #2E3540 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: none !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-panel-header,
+:root[data-qitu-eyecare="true"] .admin-panel-header,
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-panel-stats,
+:root[data-qitu-eyecare="true"] .admin-panel-stats {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  border-bottom: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-panel-header h3,
+:root[data-qitu-eyecare="true"] .admin-panel-header h3 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-panel-description,
+:root[data-qitu-eyecare="true"] .admin-panel-description {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-stat-item,
+:root[data-qitu-eyecare="true"] .admin-stat-item {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-stat-item .admin-stat-value,
+:root[data-qitu-eyecare="true"] .admin-stat-item .admin-stat-value {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-stat-sub,
+:root[data-qitu-eyecare="true"] .admin-stat-sub {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-tabs-card,
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-tabs,
+:root[data-qitu-eyecare="true"] .admin-tabs {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-tab,
+:root[data-qitu-eyecare="true"] .admin-tab {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-tab:hover,
+:root[data-qitu-eyecare="true"] .admin-tab:hover {
+  background: #1E252F !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-tab.active,
+:root[data-qitu-eyecare="true"] .admin-tab.active {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-relationships-page .admin-form-card,
+:root[data-qitu-eyecare="true"] .admin-form-card {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 2px dashed #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-form-row select,
+:root[data-qitu-eyecare="true"] .admin-form-row input {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-form-row select option {
+  background: #1E2228 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-unassigned-list li {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+/* 关系绑定表格行内操作按钮（换班主任 / 结束关系 / 结束分配） */
+:root[data-qitu-eyecare="true"] .admin-action-btn {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-action-btn:hover:not(:disabled) {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-action-btn-danger:hover:not(:disabled) {
+  background: #3B1B1B !important;
+  background-color: #3B1B1B !important;
+  border-color: #EF4444 !important;
+  color: #FCA5A5 !important;
+}
+
+/* 关系绑定二次确认弹窗 */
+:root[data-qitu-eyecare="true"] .admin-dialog-backdrop {
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dialog {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dialog h3 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dialog p {
+  color: #94A3B8 !important;
+}
+
+/* ==========================================================================
+   7. 启途智学管家 (Admin Copilot - 对齐学生端 AI 搭档护眼规范)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .copilot-page {
+  background: #121417 !important;
+  color: #E2E8F0 !important;
+}
+
+/* 7.1 左侧管家会话侧栏 */
+:root[data-qitu-eyecare="true"] .copilot-sidebar {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border-right: 1px solid #2E3540 !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-sidebar.is-collapsed {
+  background: #181B20 !important;
+  border-right: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-sidebar.is-collapsed button {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-sidebar.is-collapsed button:hover {
+  background: #28303C !important;
+  border-color: #3E4856 !important;
+  color: #FFFFFF !important;
 }
 
 :root[data-qitu-eyecare="true"] .copilot-session-item {
   color: #94A3B8 !important;
+  border: 1px solid transparent !important;
 }
 
 :root[data-qitu-eyecare="true"] .copilot-session-item:hover {
@@ -467,38 +763,396 @@
 
 :root[data-qitu-eyecare="true"] .copilot-session-item.is-active {
   background: #112F24 !important;
-  border-color: #195A3B !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
   color: #34D399 !important;
 }
 
-:root[data-qitu-eyecare="true"] .copilot-composer {
+:root[data-qitu-eyecare="true"] .copilot-session-item.is-active div {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-session-item div[style*="color: #94a3b8"] {
+  color: #94A3B8 !important;
+}
+
+/* 7.2 顶部控制工具栏 */
+:root[data-qitu-eyecare="true"] .copilot-toolbar {
   background: #181B20 !important;
+  background-color: #181B20 !important;
+  border-bottom: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-toolbar select {
+  background: #15181D !important;
+  color: #E2E8F0 !important;
+  border: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-toolbar select option {
+  background: #1E2228 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #eff6ff"],
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f0fdf4"],
+:root[data-qitu-eyecare="true"] .copilot-toolbar div[style*="background: #f8fafc"] {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+/* 7.3 消息历史与气泡 */
+:root[data-qitu-eyecare="true"] .copilot-messages-container {
+  background: #121417 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-bubble-assistant {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-bubble-user {
+  background: #142820 !important;
+  background-color: #142820 !important;
+  border: 1px solid #195A3B !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-tool-steps-container {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-artifact-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-thinking-bubble {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+/* 7.4 底部输入区域 */
+:root[data-qitu-eyecare="true"] .copilot-composer-container {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
   border-top: 1px solid #2E3540 !important;
 }
 
-:root[data-qitu-eyecare="true"] .copilot-input-box textarea {
+:root[data-qitu-eyecare="true"] .copilot-textarea {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-textarea:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-voice-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-voice-btn:hover {
+  background: #28303C !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-voice-btn.is-listening {
+  background: #3B1B1B !important;
+  border-color: #EF4444 !important;
+  color: #FCA5A5 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-send-btn {
+  background: #10B981 !important;
+  background-color: #10B981 !important;
+  border: 1px solid #059669 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-send-btn:hover:not(:disabled) {
+  background: #059669 !important;
+  background-color: #059669 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-send-btn:disabled {
+  background: #252A33 !important;
+  border-color: #2E3540 !important;
+  color: #64748B !important;
+  opacity: 0.6 !important;
+}
+
+/* ==========================================================================
+   8. 设置与模型配置 (Settings & Model Providers & AION Framework)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .settings-shell {
+  background: #121417 !important;
+  background-color: #121417 !important;
+  border-top-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border-right: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider-group {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider-item {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider-item:hover {
+  background: #1E252F !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider-item.is-active {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-sider-item.is-active .settings-sider-icon {
+  color: #34D399 !important;
+}
+
+/* 设置概览卡片 */
+:root[data-qitu-eyecare="true"] .settings-overview-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-overview-card:hover {
+  border-color: #10B981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-search-box {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-search-box input {
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-action-btn,
+:root[data-qitu-eyecare="true"] .settings-pill-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-action-btn:hover,
+:root[data-qitu-eyecare="true"] .settings-pill-btn:hover {
+  background: #28303C !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-action-btn.is-primary {
+  background: #10B981 !important;
+  border-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+/* 折叠卡片与密集表单 */
+:root[data-qitu-eyecare="true"] .settings-collapsible-card,
+:root[data-qitu-eyecare="true"] .settings-card-header,
+:root[data-qitu-eyecare="true"] .settings-card-body {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-input,
+:root[data-qitu-eyecare="true"] .settings-textarea,
+:root[data-qitu-eyecare="true"] .settings-select {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .settings-input:focus,
+:root[data-qitu-eyecare="true"] .settings-textarea:focus,
+:root[data-qitu-eyecare="true"] .settings-select:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 团队与多智能体 Multica 卡片 */
+:root[data-qitu-eyecare="true"] .multica-profile-card,
+:root[data-qitu-eyecare="true"] .multica-member-row,
+:root[data-qitu-eyecare="true"] .team-card,
+:root[data-qitu-eyecare="true"] .team-detail-view,
+:root[data-qitu-eyecare="true"] .member-card,
+:root[data-qitu-eyecare="true"] .role-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-card.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-back-btn,
+:root[data-qitu-eyecare="true"] .member-action-btn,
+:root[data-qitu-eyecare="true"] .edit-guide-btn,
+:root[data-qitu-eyecare="true"] .cancel-guide-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .save-guide-btn {
+  background: #10B981 !important;
+  border-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .guide-preview,
+:root[data-qitu-eyecare="true"] .instruction-editor,
+:root[data-qitu-eyecare="true"] .instruction-preview {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .guide-tab.is-active,
+:root[data-qitu-eyecare="true"] .instruction-tab.is-active,
+:root[data-qitu-eyecare="true"] .editor-tab.is-active,
+:root[data-qitu-eyecare="true"] .sidebar-btn.is-active {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* 技能与 Prompt 节点 */
+:root[data-qitu-eyecare="true"] .admin-skill-card-section,
+:root[data-qitu-eyecare="true"] .admin-skill-file-item,
+:root[data-qitu-eyecare="true"] .admin-skill-files-workbench,
+:root[data-qitu-eyecare="true"] .admin-editor-card,
+:root[data-qitu-eyecare="true"] .admin-prompt-editor-box,
+:root[data-qitu-eyecare="true"] .admin-phase-card {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-input-text,
+:root[data-qitu-eyecare="true"] .admin-skill-textarea {
   background: #15181D !important;
   border: 1px solid #2E3540 !important;
   color: #E2E8F0 !important;
   caret-color: #10B981 !important;
 }
 
-:root[data-qitu-eyecare="true"] .copilot-bubble-assistant {
+:root[data-qitu-eyecare="true"] .admin-skill-tab-item.is-active {
+  color: #34D399 !important;
+  border-bottom-color: #10B981 !important;
+}
+
+/* 模态弹窗 */
+:root[data-qitu-eyecare="true"] .admin-modal-card,
+:root[data-qitu-eyecare="true"] .modal-content,
+:root[data-qitu-eyecare="true"] .member-editor-container,
+:root[data-qitu-eyecare="true"] .member-editor-header {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-modal-footer,
+:root[data-qitu-eyecare="true"] .modal-footer,
+:root[data-qitu-eyecare="true"] .member-editor-sidebar {
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .modal-action-btn,
+:root[data-qitu-eyecare="true"] .member-editor-back,
+:root[data-qitu-eyecare="true"] .cancel-member-btn {
   background: #1E2228 !important;
   border: 1px solid #2E3540 !important;
   color: #E2E8F0 !important;
 }
 
-:root[data-qitu-eyecare="true"] .copilot-bubble-user {
-  background: #142820 !important;
+:root[data-qitu-eyecare="true"] .modal-action-btn.is-primary,
+:root[data-qitu-eyecare="true"] .save-member-btn {
+  background: #10B981 !important;
+  border-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .form-group select,
+:root[data-qitu-eyecare="true"] .form-group input {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .role-hint,
+:root[data-qitu-eyecare="true"] .empty-state-hint,
+:root[data-qitu-eyecare="true"] .info-item {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .create-assistant-btn {
+  background: #112F24 !important;
   border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* 知识库配置与卡片 */
+:root[data-qitu-eyecare="true"] .knowledge-upload-panel,
+:root[data-qitu-eyecare="true"] .admin-knowledge-item-card {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
   color: #E2E8F0 !important;
 }
 
-/* ==========================================================================
-   8. 设置与模型配置 (Settings & Model Providers)
-   ========================================================================== */
-:root[data-qitu-eyecare="true"] .settings-overview-card,
+:root[data-qitu-eyecare="true"] .knowledge-upload-list li {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+/* 模型服务商表格与运行治理 */
 :root[data-qitu-eyecare="true"] .provider-stats > div,
 :root[data-qitu-eyecare="true"] .provider-model-list,
 :root[data-qitu-eyecare="true"] .provider-preset {
@@ -606,8 +1260,14 @@
 }
 
 /* ==========================================================================
-   10. 深蓝文字与硬编码浅色底全局拦截防御
+   10. 全局插入光标、深蓝文字与硬编码浅色底全局拦截防御
    ========================================================================== */
+:root[data-qitu-eyecare="true"] input,
+:root[data-qitu-eyecare="true"] textarea,
+:root[data-qitu-eyecare="true"] select {
+  caret-color: #10B981 !important;
+}
+
 :root[data-qitu-eyecare="true"] [style*="color: #102a5c"],
 :root[data-qitu-eyecare="true"] [style*="color: #1e40af"],
 :root[data-qitu-eyecare="true"] [style*="color: #1e3a8a"],
