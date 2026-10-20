@@ -34,14 +34,14 @@ import {
  * ------------------------------------------------------------------ */
 
 function generate(input: {
-  weeks: 4 | 8;
+  lessonCount: 4 | 8;
   schedule?: PblSchedule;
   sessionCount?: 4 | 8;
   interest?: string;
 }): GeneratedPlan {
   const parsed = assertGenerateInput({
     interest: input.interest ?? 'Python 小游戏',
-    weeks: input.weeks,
+    lessonCount: input.lessonCount,
     ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
     ...(input.sessionCount === undefined ? {} : { sessionCount: input.sessionCount }),
   });
@@ -101,26 +101,26 @@ class FakeOutlineStore implements PlanOutlineStore {
 
 describe('WS4 会话制课程生成器', () => {
   it('显式 sessionCount=4 与 8 都生成恰好 4 节 / 8 节', () => {
-    for (const [sessionCount, weeks] of [
+    for (const [sessionCount, lessonCount] of [
       [4, 4],
       [8, 4],
       [8, 8],
     ] as const) {
-      const plan = generate({ weeks, sessionCount });
+      const plan = generate({ lessonCount, sessionCount });
       assert.equal(plan.sessionCount, sessionCount, `sessionCount=${sessionCount} 应原样保留`);
       assert.equal(plan.sessions.length, sessionCount, `必须恰好 ${sessionCount} 节课`);
       assert.doesNotThrow(() => validateGeneratedPlan(plan));
     }
   });
 
-  it('sessionCount 与 weeks × 每周节数不自洽时拒绝', () => {
-    // weeks=8 + 1 节/周 = 8 节，传 4 节不自洽。
+  it('sessionCount 与 lessonCount × 每周节数不自洽时拒绝', () => {
+    // lessonCount=8 + 1 节/周 = 8 节，传 4 节不自洽。
     // 8 周 × 1 节/周 = 8 节，却声明 4 节。
     assert.throws(
       () =>
         assertGenerateInput({
           interest: '机器人',
-          weeks: 8,
+          lessonCount: 8,
           sessionCount: 4,
           schedule: SCHEDULE_8x120,
         }),
@@ -131,14 +131,14 @@ describe('WS4 会话制课程生成器', () => {
       () =>
         assertGenerateInput({
           interest: '机器人',
-          weeks: 4,
+          lessonCount: 4,
           sessionCount: 4,
           schedule: SCHEDULE_4w2x60,
         }),
       PlanGenerationError,
     );
     assert.throws(
-      () => assertGenerateInput({ interest: '机器人', weeks: 4, sessionCount: 6 }),
+      () => assertGenerateInput({ interest: '机器人', lessonCount: 4, sessionCount: 6 }),
       PlanGenerationError,
     );
   });
@@ -163,7 +163,7 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('生成的四节课计划里每节都包含 reflect 段，且与 check 可区分', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
+    const plan = generate({ lessonCount: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
     for (const session of plan.sessions) {
       const kinds = session.blocks.map((block) => block.kind);
       assert.ok(kinds.includes('reflect'), `${session.id} 缺少 reflect 段`);
@@ -182,9 +182,9 @@ describe('WS4 会话制课程生成器', () => {
     assert.equal(kindForActivity('reflect'), 'check');
   });
 
-  it('校验消息使用真实期望值，而不是写死的 weeks*5 / 60', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
-    // 少一节课：消息必须报 4 节，而不是 weeks*5 = 20。
+  it('校验消息使用真实期望值，而不是写死的 lessonCount*5 / 60', () => {
+    const plan = generate({ lessonCount: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
+    // 少一节课：消息必须报 4 节，而不是 lessonCount*5 = 20。
     const missing = { ...plan, sessions: plan.sessions.slice(0, 3) };
     const countError = errorFrom(() => validateGeneratedPlan(missing));
     assert.ok(
@@ -193,7 +193,7 @@ describe('WS4 会话制课程生成器', () => {
     );
     assert.ok(
       !countError.errors.some((error) => error.message.includes('20')),
-      '不得再出现写死的 weeks*5',
+      '不得再出现写死的 lessonCount*5',
     );
 
     // 每节分钟数被改：消息必须报真实的 120 分钟，而不是写死的 60。
@@ -206,7 +206,7 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('未被任何课次引用的目标是错误（覆盖率轴）', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4 });
+    const plan = generate({ lessonCount: 4, sessionCount: 4 });
     const orphan = {
       ...plan,
       objectives: [
@@ -230,7 +230,7 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('有环的前置图被拒，且错误里带上环上的顶点路径', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4 });
+    const plan = generate({ lessonCount: 4, sessionCount: 4 });
     const theoryIds = plan.objectives
       .filter((objective) => objective.type === 'memory' || objective.type === 'concept')
       .map((objective) => objective.id);
@@ -272,12 +272,12 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('理论先于实践：每个实践目标的前置恒为同节/更早的理论目标', () => {
-    for (const [weeks, sessionCount, schedule] of [
+    for (const [lessonCount, sessionCount, schedule] of [
       [4, 4, SCHEDULE_1x120],
       [4, 8, undefined],
       [8, 8, SCHEDULE_8x120],
     ] as const) {
-      const plan = generate({ weeks, sessionCount, ...(schedule === undefined ? {} : { schedule }) });
+      const plan = generate({ lessonCount, sessionCount, ...(schedule === undefined ? {} : { schedule }) });
       const byId = new Map(plan.objectives.map((objective) => [objective.id, objective]));
       for (const session of plan.sessions) {
         for (const objectiveId of session.practiceObjectiveIds) {
@@ -306,7 +306,7 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('实践会话缺少 theoryObjectiveIds 时被拒', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4 });
+    const plan = generate({ lessonCount: 4, sessionCount: 4 });
     const broken = {
       ...plan,
       sessions: plan.sessions.map((session) =>
@@ -323,7 +323,7 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('单节目标数超过上限被拒', () => {
-    const plan = generate({ weeks: 4, sessionCount: 4 });
+    const plan = generate({ lessonCount: 4, sessionCount: 4 });
     const bloated = {
       ...plan,
       sessions: plan.sessions.map((session, index) =>
@@ -365,7 +365,7 @@ describe('WS4 会话制课程生成器', () => {
       { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 3, sessionMinutes: 40 },
     ]) {
       assert.throws(
-        () => assertGenerateInput({ interest: '机器人', weeks: 4, schedule: bad }),
+        () => assertGenerateInput({ interest: '机器人', lessonCount: 4, schedule: bad }),
         (error: unknown) => {
           assert.ok(error instanceof PlanGenerationError);
           assert.equal(error.code, 'LEARNING_PLAN_INVALID');
@@ -376,26 +376,26 @@ describe('WS4 会话制课程生成器', () => {
   });
 
   it('expectedSessionCount 优先用显式 sessionCount，否则回退旧语义', () => {
-    assert.equal(expectedSessionCount({ weeks: 4, sessionCount: 4 }), 4);
-    assert.equal(expectedSessionCount({ weeks: 4, sessionCount: 8 }), 8);
-    // 旧语义：weeks * sessionsPerWeek，默认 5 节/周。
-    assert.equal(expectedSessionCount({ weeks: 4 }), 20);
-    assert.equal(expectedSessionCount({ weeks: 8, schedule: SCHEDULE_4w2x60 }), 16);
+    assert.equal(expectedSessionCount({ lessonCount: 4, sessionCount: 4 }), 4);
+    assert.equal(expectedSessionCount({ lessonCount: 4, sessionCount: 8 }), 8);
+    // 旧语义：lessonCount * sessionsPerWeek，默认 5 节/周。
+    assert.equal(expectedSessionCount({ lessonCount: 4 }), 20);
+    assert.equal(expectedSessionCount({ lessonCount: 8, schedule: SCHEDULE_4w2x60 }), 16);
   });
 
   it('4 节与 8 节计划在 60/120 分钟下都通过完整校验', () => {
-    const shapes: Array<{ weeks: 4 | 8; sessionCount: 4 | 8; schedule?: PblSchedule }> = [
-      { weeks: 4, sessionCount: 4, schedule: SCHEDULE_1x120 },
-      { weeks: 4, sessionCount: 8 },
-      { weeks: 8, sessionCount: 8, schedule: SCHEDULE_8x120 },
-      { weeks: 4, sessionCount: 4 },
-      { weeks: 4, sessionCount: 8, schedule: { ...SCHEDULE_1x120, sessionsPerWeek: 2, durationWeeks: 4, sessionMinutes: 60, weeklyMinutes: 120 } },
+    const shapes: Array<{ lessonCount: 4 | 8; sessionCount: 4 | 8; schedule?: PblSchedule }> = [
+      { lessonCount: 4, sessionCount: 4, schedule: SCHEDULE_1x120 },
+      { lessonCount: 4, sessionCount: 8 },
+      { lessonCount: 8, sessionCount: 8, schedule: SCHEDULE_8x120 },
+      { lessonCount: 4, sessionCount: 4 },
+      { lessonCount: 4, sessionCount: 8, schedule: { ...SCHEDULE_1x120, sessionsPerWeek: 2, durationWeeks: 4, sessionMinutes: 60, weeklyMinutes: 120 } },
     ];
     for (const shape of shapes) {
-      const plan = generate(shape.weeks === 8 ? { ...shape, weeks: 8 } : shape);
+      const plan = generate(shape.lessonCount === 8 ? { ...shape, lessonCount: 8 } : shape);
       assert.doesNotThrow(
         () => validateGeneratedPlan(plan),
-        `${shape.weeks} 周 ${shape.sessionCount} 节 ${shape.schedule?.sessionMinutes ?? 60} 分钟必须合法`,
+        `${shape.lessonCount} 周 ${shape.sessionCount} 节 ${shape.schedule?.sessionMinutes ?? 60} 分钟必须合法`,
       );
     }
   });
@@ -409,7 +409,7 @@ describe('WS4 会话制课程生成器', () => {
 
 describe('WS4 大纲阶段（outline）', () => {
   it('大纲由计划结构推导，逐节列出目标与分块类型', () => {
-    const generated = generate({ weeks: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
+    const generated = generate({ lessonCount: 4, sessionCount: 4, schedule: SCHEDULE_1x120 });
     const plan = withPlanId(generated);
     const outline = buildPlanOutline(plan, new Date('2026-10-15T00:00:00.000Z'));
     assert.equal(outline.planId, 'plan-1');
@@ -432,7 +432,7 @@ describe('WS4 大纲阶段（outline）', () => {
   });
 
   it('大纲本身不含任何学生作答或对话内容（最小化）', () => {
-    const plan = withPlanId(generate({ weeks: 4, sessionCount: 4 }));
+    const plan = withPlanId(generate({ lessonCount: 4, sessionCount: 4 }));
     const outline = buildPlanOutline(plan, new Date());
     const serialized = JSON.stringify(outline);
     for (const forbidden of ['answer', 'expectedAnswer', 'transcript', 'utterance', 'content']) {
@@ -442,7 +442,7 @@ describe('WS4 大纲阶段（outline）', () => {
 
   it('落库幂等：同一计划重复写入返回既有大纲，不产生第二份', async () => {
     const store = new FakeOutlineStore();
-    const plan = withPlanId(generate({ weeks: 4, sessionCount: 4 }));
+    const plan = withPlanId(generate({ lessonCount: 4, sessionCount: 4 }));
     const outline = buildPlanOutline(plan, new Date());
     const first = await persistPlanOutline(store, outline);
     const second = await persistPlanOutline(store, buildPlanOutline(plan, new Date()));
@@ -462,7 +462,7 @@ describe('WS4 大纲阶段（outline）', () => {
 
   it('教学计划按课次展开：8 节计划不会一次物化 8 份', async () => {
     const store = new FakeOutlineStore();
-    const plan = withPlanId(generate({ weeks: 8, sessionCount: 8 }));
+    const plan = withPlanId(generate({ lessonCount: 8, sessionCount: 8 }));
     const outline = buildPlanOutline(plan, new Date());
     assert.equal(outline.sessions.length, 8);
 
@@ -489,7 +489,7 @@ describe('WS4 大纲阶段（outline）', () => {
   });
 
   it('教学计划保留先理论后实践结构：实践节声明理论门禁与证据引用', () => {
-    const plan = withPlanId(generate({ weeks: 4, sessionCount: 4 }));
+    const plan = withPlanId(generate({ lessonCount: 4, sessionCount: 4 }));
     const outline = buildPlanOutline(plan, new Date());
     const practiceSession = plan.sessions.find((session) => session.practiceObjectiveIds.length > 0);
     assert.ok(practiceSession, '4 节计划里必须有实践节');
@@ -507,7 +507,7 @@ describe('WS4 大纲阶段（outline）', () => {
   });
 
   it('越界课次被拒，而不是静默返回空计划', () => {
-    const plan = withPlanId(generate({ weeks: 4, sessionCount: 4 }));
+    const plan = withPlanId(generate({ lessonCount: 4, sessionCount: 4 }));
     const outline = buildPlanOutline(plan, new Date());
     assert.throws(
       () => generateSessionTeachingPlan(outline, plan, 9, new Date()),

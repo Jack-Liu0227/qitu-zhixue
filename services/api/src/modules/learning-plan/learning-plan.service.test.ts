@@ -234,13 +234,13 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('生成计划只产生 draft，绝不创建项目', async () => {
     const { service, store, audit } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '钢琴', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '钢琴', lessonCount: 4 });
 
     assert.equal(generated.deduplicated, false);
     assert.equal(generated.plan.status, 'draft');
     assert.equal(generated.plan.projectId, null);
     assert.equal(generated.plan.templateVersion, 'curriculum-plan-v1');
-    assert.equal(generated.plan.sessions.length, 20);
+    assert.equal(generated.plan.sessions.length, 4);
     assert.equal(generated.plan.modules.length, 4);
 
     const persisted = await store.findBundle(generated.plan.id);
@@ -256,8 +256,8 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('同一签名重复生成被去重，审计只写一次', async () => {
     const { service, audit } = harness;
     const user = student('student-1');
-    const first = await service.generatePlan(user, { interest: '钢琴', weeks: 8 });
-    const second = await service.generatePlan(user, { interest: '钢琴', weeks: 8 });
+    const first = await service.generatePlan(user, { interest: '钢琴', lessonCount: 8 });
+    const second = await service.generatePlan(user, { interest: '钢琴', lessonCount: 8 });
     assert.equal(second.deduplicated, true);
     assert.equal(second.plan.id, first.plan.id);
     assert.equal(audit.count('learning_plan.generate'), 1);
@@ -265,17 +265,18 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
 
   it('客户端传入 stage / mastery / theoryMastered / projectId 一律被拒绝', () => {
     for (const body of [
-      { interest: '钢琴', weeks: 4, stage: 'practice_building' },
-      { interest: '钢琴', weeks: 4, mastery: 0.99 },
-      { interest: '钢琴', weeks: 4, theoryMastered: true },
-      { interest: '钢琴', weeks: 4, projectId: 'proj-x' },
+      { interest: '钢琴', lessonCount: 4, stage: 'practice_building' },
+      { interest: '钢琴', lessonCount: 4, mastery: 0.99 },
+      { interest: '钢琴', lessonCount: 4, theoryMastered: true },
+      { interest: '钢琴', lessonCount: 4, projectId: 'proj-x' },
       { answer: 'x', masteryBasisPoints: 10000 },
     ]) {
       assert.throws(() => assertNoServerOwnedFields(body), PlanGenerationError);
     }
-    assert.doesNotThrow(() => assertNoServerOwnedFields({ interest: '钢琴', weeks: 4 }));
+    assert.doesNotThrow(() => assertNoServerOwnedFields({ interest: '钢琴', lessonCount: 4 }));
     // 周数只允许 4 / 8。
-    assert.throws(() => assertGeneratePlanInput({ interest: '钢琴', weeks: 6 }), PlanGenerationError);
+    assert.doesNotThrow(() => assertGeneratePlanInput({ interest: '钢琴', lessonCount: 6 }));
+    assert.throws(() => assertGeneratePlanInput({ interest: '钢琴', lessonCount: 0 }), PlanGenerationError);
   });
 
   it('不可信的模型输出（结构非法）被拒绝，而不是被修复', async () => {
@@ -292,79 +293,33 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     }
     const bad = makeHarness(new MalformedGenerator());
     await assert.rejects(
-      () => bad.service.generatePlan(student('student-1'), { interest: '钢琴', weeks: 4 }),
+      () => bad.service.generatePlan(student('student-1'), { interest: '钢琴', lessonCount: 4 }),
       (error: unknown) => error instanceof PlanGenerationError,
     );
     assert.equal((await bad.store.listPlansByStudent('student-1')).length, 0);
     assert.equal(validateGeneratedPlan.length > 0, true);
   });
 
-  it('显式 PblSchedule 生成 1×120 分钟计划，并保留 TheoryMastered 结构校验', () => {
-    const input = assertGeneratePlanInput({
-      interest: '桌面互动机器人',
-      weeks: 4,
-      schedule: {
-        durationWeeks: 4,
-        weeklyMinutes: 120,
-        sessionsPerWeek: 1,
-        sessionMinutes: 120,
-      },
-    });
-    const plan = new DeterministicPlanGenerator().generate(input);
-
-    assert.equal(plan.schedule?.sessionsPerWeek, 1);
-    assert.equal(plan.minutesPerSession, 120);
+  it('generates every lesson with the selected duration', () => {
+    const plan = new DeterministicPlanGenerator().generate(assertGeneratePlanInput({
+      interest: 'optics inquiry', lessonCount: 4, lessonMinutes: 120,
+    }));
+    assert.equal(plan.lessonCount, 4);
+    assert.equal(plan.lessonMinutes, 120);
     assert.equal(plan.sessions.length, 4);
-    assert.equal(plan.sessions[0]?.blocks.reduce((sum, block) => sum + block.minutes, 0), 120);
+    assert.ok(plan.sessions.every((session) => session.blocks.reduce((sum, block) => sum + block.minutes, 0) === 120));
     assert.doesNotThrow(() => validateGeneratedPlan(plan));
   });
 
-  it('显式 PblSchedule 生成 2×60 分钟计划；无 schedule 仍保持旧 5×60 语义', () => {
-    const input = assertGeneratePlanInput({
-      interest: 'Python',
-      weeks: 8,
-      schedule: {
-        durationWeeks: 8,
-        weeklyMinutes: 120,
-        sessionsPerWeek: 2,
-        sessionMinutes: 60,
-      },
-    });
-    const scheduled = new DeterministicPlanGenerator().generate(input);
-    assert.equal(scheduled.sessions.length, 16);
-    assert.doesNotThrow(() => validateGeneratedPlan(scheduled));
-
-    const legacy = new DeterministicPlanGenerator().generate(
-      assertGeneratePlanInput({ interest: 'Python', weeks: 8 }),
-    );
-    assert.equal(legacy.schedule, undefined);
-    assert.equal(legacy.sessions.length, 40);
-    assert.doesNotThrow(() => validateGeneratedPlan(legacy));
-  });
-
-  it('拒绝无效或与 weeks 不一致的 PblSchedule', () => {
-    assert.throws(
-      () => assertGeneratePlanInput({
-        interest: '机器人',
-        weeks: 4,
-        schedule: { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
-      }),
-      PlanGenerationError,
-    );
-    assert.throws(
-      () => assertGeneratePlanInput({
-        interest: '机器人',
-        weeks: 4,
-        schedule: { durationWeeks: 4, weeklyMinutes: 90, sessionsPerWeek: 1, sessionMinutes: 90 },
-      }),
-      PlanGenerationError,
-    );
+  it('rejects inconsistent session count and invalid lesson duration', () => {
+    assert.throws(() => assertGeneratePlanInput({ interest: 'robotics', lessonCount: 4, sessionCount: 3 }), PlanGenerationError);
+    assert.throws(() => assertGeneratePlanInput({ interest: 'robotics', lessonCount: 4, lessonMinutes: 90 }), PlanGenerationError);
   });
 
   it('确认计划恰好创建一个项目；同幂等键重复确认不重复建项目、不重复审计', async () => {
     const { service, store, audit } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '绘画', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '绘画', lessonCount: 4 });
     const planId = generated.plan.id;
 
     const first = await service.confirmPlan(user, planId, 'confirm-key-1');
@@ -388,7 +343,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('TheoryMastered 之前实践接口一律 403，达标后解锁', async () => {
     const { service } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '机器人', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '机器人', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -435,7 +390,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('TheoryMastered 只在状态翻转时审计 + 发事件一次', async () => {
     const { service, audit, outbox } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '园艺', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '园艺', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -456,7 +411,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('理论达标翻转时只递交一次门禁证据，evidenceRef 稳定为 mastery:theory:<sessionId>', async () => {
     const { service, teamRuntime, audit } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '天文', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '天文', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-gate');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -487,7 +442,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('同键重放不再递交门禁证据（重放不执行回调，也不重复写门禁）', async () => {
     const { service, teamRuntime } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '昆虫', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '昆虫', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-replay');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -532,7 +487,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const { service, teamRuntime, audit, store, outbox } = harness;
     teamRuntime.failWith = new Error('gate writer unavailable');
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '气象', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '气象', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-fail');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -553,7 +508,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('实践证据翻转同样桥接门禁，且实践 403 保持权威分层', async () => {
     const { service, teamRuntime } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '桥梁', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '桥梁', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm-practice');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -576,39 +531,22 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     assert.equal(teamRuntime.calls[0]?.evidenceRef, `mastery:theory:${theorySession.id}`);
   });
 
-  it('排课是去重签名的一部分：4 周 1×120 与 4 周 2×60 各得一份草稿', async () => {
+  it('lesson count and lesson duration form the idempotency signature', async () => {
     const { service, store } = harness;
     const user = student('student-1');
-    const onePerWeek = await service.generatePlan(user, {
-      interest: '机器人',
-      weeks: 4,
-      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
-    });
-    const one = onePerWeek.plan;
-    const twoPerWeek = await service.generatePlan(user, {
-      interest: '机器人',
-      weeks: 4,
-      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60 },
-    });
-    const two = twoPerWeek.plan;
-
-    assert.equal(onePerWeek.deduplicated, false);
-    assert.equal(twoPerWeek.deduplicated, false, '不同排课不得被当成重复计划');
-    assert.notEqual(one.id, two.id);
-    assert.equal(one.sessions.length, 4);
-    assert.equal(two.sessions.length, 8);
-    assert.equal(one.minutesPerSession, 120);
-    assert.equal(two.minutesPerSession, 60);
+    const one = await service.generatePlan(user, { interest: 'robotics', lessonCount: 4, lessonMinutes: 120 });
+    const two = await service.generatePlan(user, { interest: 'robotics', lessonCount: 4, lessonMinutes: 60 });
+    assert.equal(one.deduplicated, false);
+    assert.equal(two.deduplicated, false);
+    assert.notEqual(one.plan.id, two.plan.id);
+    assert.equal(one.plan.sessions.length, 4);
+    assert.equal(two.plan.sessions.length, 4);
+    assert.equal(one.plan.minutesPerSession, 120);
+    assert.equal(two.plan.minutesPerSession, 60);
     assert.equal((await store.listPlansByStudent('student-1')).length, 2);
-
-    // 同一排课重复请求 → 命中自己那份，不产生第三份。
-    const again = await service.generatePlan(user, {
-      interest: '机器人',
-      weeks: 4,
-      schedule: { durationWeeks: 4, weeklyMinutes: 120, sessionsPerWeek: 1, sessionMinutes: 120 },
-    });
-    assert.equal(again.deduplicated, true);
-    assert.equal(again.plan.id, one.id);
+    const replay = await service.generatePlan(user, { interest: 'robotics', lessonCount: 4, lessonMinutes: 120 });
+    assert.equal(replay.deduplicated, true);
+    assert.equal(replay.plan.id, one.plan.id);
     assert.equal((await store.listPlansByStudent('student-1')).length, 2);
   });
 
@@ -618,7 +556,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const plan = (
       await service.confirmPlan(
         user,
-        (await service.generatePlan(user, { interest: '编程', weeks: 4 })).plan.id,
+        (await service.generatePlan(user, { interest: '编程', lessonCount: 4 })).plan.id,
         'k-confirm',
       )
     ).plan;
@@ -685,7 +623,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const plan = (
       await failing.service.confirmPlan(
         user,
-        (await failing.service.generatePlan(user, { interest: '数学', weeks: 4 })).plan.id,
+        (await failing.service.generatePlan(user, { interest: '数学', lessonCount: 4 })).plan.id,
         'k-confirm',
       )
     ).plan;
@@ -732,7 +670,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('重试作答只产生一次 attempt，重放返回原判分', async () => {
     const { service, store } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '烹饪', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '烹饪', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
     const plan = confirmed.plan;
     const theorySession = plan.sessions[0];
@@ -795,7 +733,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const { service, access } = harness;
     const owner = student('student-1');
     const stranger = student('student-2');
-    const generated = await service.generatePlan(owner, { interest: '摄影', weeks: 4 });
+    const generated = await service.generatePlan(owner, { interest: '摄影', lessonCount: 4 });
 
     await assertHttpError(() => service.getPlan(stranger, generated.plan.id), 403, 'LEARNING_PLAN_FORBIDDEN');
     await assertHttpError(
@@ -828,7 +766,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('计划确认后不可变：模板版本与目标顺序冻结', async () => {
     const { service, store } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '书法', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '书法', lessonCount: 4 });
     const before = await store.findBundle(generated.plan.id);
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
     const after = await store.findBundle(generated.plan.id);
@@ -843,7 +781,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
   it('未答题落库：重复 next-step 复用同一题，题面投影不含答案 / 解析', async () => {
     const { service, store } = harness;
     const user = student('student-1');
-    const generated = await service.generatePlan(user, { interest: '围棋', weeks: 4 });
+    const generated = await service.generatePlan(user, { interest: '围棋', lessonCount: 4 });
     const confirmed = await service.confirmPlan(user, generated.plan.id, 'k-confirm');
     const plan = confirmed.plan;
     const session = plan.sessions[0];
@@ -885,14 +823,14 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const ownerPlan = (
       await service.confirmPlan(
         owner,
-        (await service.generatePlan(owner, { interest: '象棋', weeks: 4 })).plan.id,
+        (await service.generatePlan(owner, { interest: '象棋', lessonCount: 4 })).plan.id,
         'k-owner',
       )
     ).plan;
     const strangerPlan = (
       await service.confirmPlan(
         stranger,
-        (await service.generatePlan(stranger, { interest: '象棋', weeks: 4 })).plan.id,
+        (await service.generatePlan(stranger, { interest: '象棋', lessonCount: 4 })).plan.id,
         'k-stranger',
       )
     ).plan;
@@ -923,7 +861,7 @@ describe('LearningPlanService（4/8 周计划 + 掌握度门禁）', () => {
     const plan = (
       await service.confirmPlan(
         user,
-        (await service.generatePlan(user, { interest: '陶艺', weeks: 4 })).plan.id,
+        (await service.generatePlan(user, { interest: '陶艺', lessonCount: 4 })).plan.id,
         'k-confirm',
       )
     ).plan;

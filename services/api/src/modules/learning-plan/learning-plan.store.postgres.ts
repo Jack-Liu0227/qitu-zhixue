@@ -886,8 +886,8 @@ async function ensureCurriculumTemplate(
       id: CURRICULUM_TEMPLATE_ID,
       schoolId: null,
       slug: 'curriculum-plan',
-      title: '4/8 周学习计划课程模板',
-      summary: '兴趣 → 4/8 周计划的平台共享课程模板（理论学习 + 实践交替）。',
+      title: '按课时学习计划课程模板',
+      summary: '兴趣 → 按课时生成学习计划（理论学习 + 实践交替）。',
       status: 'published',
     })
     .onConflictDoNothing({ target: projectTemplates.id });

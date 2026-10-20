@@ -104,7 +104,7 @@ type ServiceErrorCode =
   | 'EVIDENCE_INVALID';
 
 /**
- * 学习计划服务（T？）——「兴趣 → 4/8 周计划 → 逐节掌握」的服务端真源。
+ * 学习计划服务——「兴趣 → 按课时生成计划 → 逐课时掌握」的服务端真源。
  *
  * 硬约束（全部在此强制，客户端无法绕过）：
  *
@@ -117,7 +117,7 @@ type ServiceErrorCode =
  *    `toPublicQuestion` 结构化投影；作答请求只有 `questionId` + `answer`。
  * 4. **对象级授权**：学生只能碰自己的计划；班主任只能读当前在带的学生；越权 403。
  * 5. **幂等**：生成按 `(studentId, interest, lessonCount, lessonMinutes, templateVersion)`
- *    去重（排课也是计划形状的一部分：4 周 1×120 与 4 周 2×60 是两份不同的草稿）；
+ *    去重（课时数量和单课时分钟数共同构成计划形状）；
  *    confirm / answers / evidence 走 `IdempotencyStore`，重试不追加第二次尝试。
  * 6. **审计**：生成、确认、`TheoryMastered`、证据提交各写一次（`TheoryMastered`
  *    用「非达标 → 达标」的状态翻转保证 exactly-once）。
@@ -1573,10 +1573,7 @@ export class LearningPlanService {
 /**
  * 去重签名查询（服务层唯一入口）。
  *
- * 两步：先按**完整键**（含排课后缀）精确命中；未命中再按旧键前缀回退，并且
- * 只在计划形状（周数 / 每节分钟 / 会话数）与本次请求一致时才认这份规划。
- * 形状比对是必需的：只按前缀认领会让「4 周 1×120」与「4 周 2×60」重新撞车，
- * 而那正是本次要修的缺陷。
+ * 只按完整课时签名命中，计划形状不再由日历周期推导。
  */
 export function assertGeneratePlanInput(raw: {
   interest: unknown;

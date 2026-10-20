@@ -22,11 +22,11 @@ describe('Template-owned plan projection', () => {
     validateGeneratedPlan(plan);
     assert.equal(plan.lessonCount, 16);
     assert.equal(plan.lessonMinutes, 60);
-    assert.equal('weeks' in plan, false);
+    assert.equal('lessonCount' in plan, false);
     assert.equal(plan.modules.length, 16);
     assert.deepEqual(plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
     assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
-    for (const module of plan.modules) assert.equal('weekIndex' in module, false);
+    for (const module of plan.modules) assert.equal('lessonIndex' in module, false);
     for (const session of plan.sessions) {
       assert.equal('week' in session, false);
       assert.equal('day' in session, false);
@@ -93,7 +93,7 @@ describe('Template-owned plan projection', () => {
   });
 
   it('rejects unavailable or ambiguous profiles and malformed template content instead of fallback', () => {
-    assert.throws(() => generatePlanFromTemplate({ ...INPUT, weeks: 4 }, { templateVersion: 'v2', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC }));
+    assert.throws(() => generatePlanFromTemplate({ ...INPUT, lessonCount: 4 }, { templateVersion: 'v2', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC }));
     assert.throws(() => generatePlanFromTemplate(INPUT, { templateVersion: 'v2', templateSpec: undefined }));
     const spec = OPTICS_16_SESSION_TEMPLATE_SPEC;
     const profile = spec.curriculum?.profiles[0];

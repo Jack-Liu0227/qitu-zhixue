@@ -277,7 +277,7 @@ export const MODEL_USAGE_SLOTS: readonly ModelUsageSlot[] = [
     id: 'curriculum.plan',
     agent: 'curriculum',
     label: '学习计划 · 拆解',
-    description: '把模板拆成 4 周 / 8 周路线与每阶段的理论、实践任务。',
+    description: '把模板拆成逐课时路线与每阶段的理论、实践任务。',
     requiresOutput: ['text'],
     fallbackTo: 'tutor.chat',
   },

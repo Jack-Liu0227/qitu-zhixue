@@ -24,6 +24,7 @@ import type {
 import { AuthService } from '../identity-auth/auth.service';
 import { pickFields, requireAnyRole, requireRole } from '../../common/access/request-auth';
 import {
+  assertGenerateInputFields,
   assertNoServerOwnedFields,
   PlanGenerationError,
 } from './plan-generator';
@@ -63,9 +64,10 @@ export class LearningPlanController {
   ): Promise<{ data: GenerateLearningPlanResponse }> {
     const user = this.requireStudent(cookieHeader);
     assertNoServerOwnedFields(body);
-    // 白名单只保留学生能表达的输入：兴趣、周数、目标、排期、课程模板 slug，
-    // 外加显式的课次数量（4 或 8）。`sessionCount` 决定「这节课还是那节课」这类
-    // 结构，`curriculumSlug` 决定走通用生成器还是课程驱动生成器；两者都**不是**
+    assertGenerateInputFields(body);
+    // 白名单只保留学生能表达的输入：兴趣、课时总数、单课时分钟数、目标与模板 slug。
+    // `sessionCount` 只用于校验它与 `lessonCount` 一致；`curriculumSlug` 决定
+    // 走通用生成器还是课程驱动生成器；这些都**不是**
     // 服务端状态（掌握度 / 阶段 / 项目归属），不会因为出现在请求体而被
     // `assertNoServerOwnedFields` 拒绝。
     const request = pickFields<{

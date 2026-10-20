@@ -2,12 +2,12 @@ import type { ProjectSummary } from './project.js';
 import type { PlanSessionCount } from './curriculum.js';
 
 /**
- * 4/8 周学习计划与掌握度契约。
+ * 按课时排程的学习计划与掌握度契约。
  *
  * 服务端 owns 全部状态：计划结构、`templateVersion` 冻结、掌握度、`TheoryMastered`
- * 与阶段推进。本文件里的请求体刻意只保留学生真正能表达的内容（兴趣、周数、作答、
+ * 与阶段推进。本文件里的请求体刻意只保留学生真正能表达的内容（兴趣、课时数、作答、
  * 证据引用），**没有任何** `stage` / `mastery` / `theoryMastered` / `projectId` 字段；
- * 客户端塞入这些字段不会生效，服务端按白名单拒绝。
+ * 客户端塞入这些字段不会生效，服务端按字段白名单拒绝。
  *
  * 形状对齐 `docs/student/learning-plan.md` §3，并与迁移 0008 的
  * `learning_plans` / `learning_modules` / `learning_objectives` / `learning_sessions`
@@ -16,8 +16,6 @@ import type { PlanSessionCount } from './curriculum.js';
 
 /** 计划生命周期。只由服务端状态迁移，客户端不可写。 */
 export type LearningPlanStatus = 'draft' | 'active' | 'completed' | 'archived';
-
-/** 计划周数，只允许 4 或 8。 */
 
 /** 四类目标，决定用哪种掌握门槛。 */
 export type KnowledgeType = 'memory' | 'concept' | 'procedure' | 'design';
@@ -111,7 +109,7 @@ export interface LearningObjectiveView {
   conceptId?: string | null;
 }
 
-/** 模块（周）投影。 */
+/** 单课时模块投影。 */
 export interface LessonModuleView {
   id: string;
   name: string;

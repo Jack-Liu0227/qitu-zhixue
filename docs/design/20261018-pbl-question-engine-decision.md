@@ -47,7 +47,7 @@
 | A（计划先行） | `learning-plan.confirmPlan` | `learning-plan.store.postgres.ts:284-302` 事务内 `insert(projectsTable)`，并把 `learning_plans.project_id` 回写、`status='active'` | `null` | **是** |
 | B（探索先行） | `tutor.confirmExploration`（需求 4 的一键立项走这条） | `projects` 模块 | 有值 | **否** |
 
-`learning_plans.project_id` 有外键与索引（`database/migrations/0008_domain_foundation.sql:319,463`），但 **`generatePlan` 的入参只有 `{ interest, weeks, goal?, schedule?, sessionCount? }`，不接受 projectId**（`:157-159`）；计划与项目的关联只在 `confirmPlan` 时由管线 A 建立。
+`learning_plans.project_id` 有外键与索引（`database/migrations/0008_domain_foundation.sql:319,463`），但 **`generatePlan` 的入参只有 `{ interest, lessonCount, lessonMinutes, goal?, sessionCount? }`，不接受 projectId**；计划与项目的关联只在 `confirmPlan` 时由管线 A 建立。
 
 因此：**走管线 B 立项的项目没有学习计划，也就拿不到需求 3 的选题引擎。**
 
@@ -59,7 +59,7 @@
 | --- | --- |
 | `suggestedInterest` | `interest` |
 | `suggestedGoal` | `goal` |
-| `weeks`（4/8） | `weeks` |
+| `lessonCount`（课时总数） | `lessonCount` |
 | `templateId` | 计划生成时冻结的 `templateVersion` |
 
 即：想法卡片已经携带了生成学习计划所需的全部输入。
@@ -68,7 +68,7 @@
 
 **让对话内一键立项走「生成计划 → 确认计划」，由 learning-plan 在事务内创建项目。**
 
-1. `idea_cards` 的「一键创建」在服务端等价于：`generatePlan(actor, { interest, weeks, goal })` → `confirmPlan(...)`，复用其既有幂等签名 `(studentId, interest, weeks, templateVersion, schedule)` 与 `IdempotencyStore`。
+1. `idea_cards` 的「一键创建」在服务端等价于：`generatePlan(actor, { interest, lessonCount, lessonMinutes, goal })` → `confirmPlan(...)`，复用其既有幂等签名 `(studentId, interest, lessonCount, lessonMinutes, templateVersion)` 与 `IdempotencyStore`。
 2. 立项成功后项目**天然带有学习计划**，Tutor 的 `quiz` 块由 `getNextStep` 投影而来，作答端点作为 `submitAnswer` 的**薄门面**（保持已冻结的 `AnswerInteractiveQuizRequest/Response` 合同不变，前端无需改动）。
 3. 无计划时（历史项目、或计划生成失败）**不下发 quiz 块**，给明确的空状态；**绝不编造题目**。
 4. 不在 `ai-tutor` 内新建第二个掌握度写入者；掌握度事实仍只由 learning-plan/mastery 领域 owner 写。

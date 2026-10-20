@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "prebuild": "pnpm --filter @qitu/database build && pnpm --filter @qitu/agent-memory build",
-    "build": "nest build",
+    "build": "nest build --path tsconfig.build.json",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "pretypecheck": "pnpm --filter @qitu/database build && pnpm --filter @qitu/agent-memory build",
     "typecheck": "tsc --noEmit",

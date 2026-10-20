@@ -38,18 +38,18 @@ it('Postgres adapter writes and reloads frozen lesson titles and guidance; legac
   const bundle: PlanBundle = {
     plan: {
       id: 'fixture-plan', studentUserId: 'fixture-student', projectId: null, interest: 'Optics', goal: 'Evidence',
-      weeks: 8, minutesPerSession: 60, templateVersion: 'fixture-16s-version', status: 'draft', version: 1,
+      lessonCount: 8, lessonMinutes: 60, minutesPerSession: 60, templateVersion: 'fixture-16s-version', status: 'draft', version: 1,
       idempotencyKey: 'fixture-plan-key', confirmedAt: null, completedAt: null, createdAt: now, updatedAt: now,
     },
-    modules: [{ id: 'fixture-module', planId: 'fixture-plan', name: 'Week 1', weekIndex: 1, objective: 'Observe', ordinal: 1 }],
+    modules: [{ id: 'fixture-module', planId: 'fixture-plan', name: 'Lesson 1', lessonIndex: 1, objective: 'Observe', ordinal: 1 }],
     objectives: [],
     sessions: [{
-      id: 'fixture-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 0,
+      id: 'fixture-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 0, lessonIndex: 1,
       title: 'Frozen optics observation lesson',
       blocks: [{ kind: 'reflect', minutes: 5, title: 'Reflection', guidance: 'Compare prediction and evidence', evidenceRequirements: ['Observation table'] }],
       theoryObjectiveIds: [], practiceObjectiveIds: [], mode: 'study',
     }, {
-      id: 'fixture-legacy-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 1,
+      id: 'fixture-legacy-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 1, lessonIndex: 2,
       blocks: [{ kind: 'theory', minutes: 60 }], theoryObjectiveIds: [], practiceObjectiveIds: [], mode: 'study',
     }],
   };
@@ -88,10 +88,8 @@ it('Postgres adapter round-trips lesson-only schedule fields without weekly plac
 
   await store.createPlan(bundle);
   const read = await store.findPlan('fixture-lesson-plan');
-  assert.equal(read?.weeks, undefined);
   assert.equal(read?.lessonCount, 16);
   assert.equal(read?.lessonMinutes, 60);
-  assert.equal((await store.findBundle('fixture-lesson-plan'))?.modules[0]?.weekIndex, undefined);
   assert.equal((await store.findBundle('fixture-lesson-plan'))?.modules[0]?.lessonIndex, 1);
   assert.equal((await store.findSession('fixture-lesson-plan', 'fixture-lesson-session'))?.lessonIndex, 1);
   assert.ok(await store.findPlanByLessonSignature(

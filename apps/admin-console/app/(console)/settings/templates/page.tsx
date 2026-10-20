@@ -461,6 +461,10 @@ export default function AdminTemplatesPage() {
     const boundTeam = teams.find((t) => t.id === editingTemplate.linkedTeamId);
     const linkedTeamMissing =
       editingTemplate.linkedTeamId.length > 0 && boundTeam === undefined;
+    const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
+    const lessonSessions = lessonProfile?.sessions ?? [];
+    const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
+    const lessonMinutes = lessonProfile?.schedule.lessonMinutes ?? lessonSessions[0]?.durationMinutes ?? 60;
 
     return (
       <div className="admin-template-editor-view">
@@ -574,7 +578,7 @@ export default function AdminTemplatesPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <strong style={{ fontSize: '15px', color: '#0f172a' }}>
-                    🛡️ 16 课时教学主线（ProjectTemplateSpec 治理版 · {editingTemplate.pblSpec.version || editingTemplate.sourceVersion || 'v2'}）
+                    🛡️ {lessonCount} 课时教学主线（ProjectTemplateSpec 治理版 · {editingTemplate.pblSpec.version || editingTemplate.sourceVersion || 'v2'}）
                   </strong>
                   <span
                     style={{
@@ -590,7 +594,7 @@ export default function AdminTemplatesPage() {
                   </span>
                 </div>
                 <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  共 16 课时（8 周 × 2 课时/周 · 60分钟/课时）
+                  共 {lessonCount} 课时（每课时 {lessonMinutes} 分钟）
                 </span>
               </div>
               <p style={{ margin: '8px 0 4px', color: '#334155', fontSize: '13px', lineHeight: 1.6 }}>
@@ -603,9 +607,9 @@ export default function AdminTemplatesPage() {
               ) : null}
             </div>
 
-            {/* 16 课时卡片列表 */}
+            {/* A lesson card is the schedule unit; phase is shown only as governance metadata. */}
             <div className="admin-template-phases-list">
-              {(editingTemplate.pblSpec.curriculum?.profiles?.[0]?.sessions ?? []).map((session: PblTemplateSession) => {
+              {lessonSessions.map((session: PblTemplateSession) => {
                 const phaseMeta = PHASE_META[session.phase] ?? {
                   label: session.phase,
                   tag: session.phase,
@@ -1257,7 +1261,7 @@ export default function AdminTemplatesPage() {
                         color: is16Sessions ? '#165dff' : undefined,
                       }}
                     >
-                      {is16Sessions ? '16 课时（8周 · 每周2课时 · 60分/节）' : '按阶段粗粒度规划'}
+                      {is16Sessions ? '16 课时（60 分钟/课时）' : '课时轨道尚未配置'}
                     </span>
                   </div>
                   {is16Sessions ? (

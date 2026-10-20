@@ -113,20 +113,33 @@ export const SERVER_OWNED_FIELDS: readonly string[] = [
   'objectiveStatus',
 ];
 
-const REMOVED_CALENDAR_FIELDS = [
-  'weeks', 'week', 'day', 'weekIndex', 'durationWeeks', 'weeklyMinutes', 'sessionsPerWeek', 'schedule',
-] as const;
+export const GENERATE_INPUT_FIELDS: readonly string[] = [
+  'interest', 'lessonCount', 'lessonMinutes', 'goal', 'sessionCount', 'curriculumSlug',
+];
 
-/** Reject server-owned state and retired calendar scheduling fields explicitly. */
+/** Reject fields whose values belong exclusively to server-owned state. */
 export function assertNoServerOwnedFields(body: unknown): void {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return;
   const source = body as Record<string, unknown>;
-  const offending = [...SERVER_OWNED_FIELDS, ...REMOVED_CALENDAR_FIELDS]
+  const offending = SERVER_OWNED_FIELDS
     .filter((field) => Object.prototype.hasOwnProperty.call(source, field));
   if (offending.length > 0) {
     throw new PlanGenerationError(
       `Request contains unsupported fields: ${offending.join(', ')}`,
       offending.map((field) => ({ path: field, message: 'field is not part of the lesson-based contract' })),
+    );
+  }
+}
+
+/** Reject unknown generate-request keys instead of silently projecting retired contracts. */
+export function assertGenerateInputFields(body: unknown): void {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return;
+  const allowed = new Set(GENERATE_INPUT_FIELDS);
+  const unknown = Object.keys(body as Record<string, unknown>).filter((field) => !allowed.has(field));
+  if (unknown.length > 0) {
+    throw new PlanGenerationError(
+      `Request contains unsupported fields: ${unknown.join(', ')}`,
+      unknown.map((field) => ({ path: field, message: 'field is not part of the lesson-based contract' })),
     );
   }
 }
@@ -311,7 +324,8 @@ export function assertGenerateInput(input: {
       { path: 'lessonCount', message: 'invalid lessonCount' },
     ]);
   }
-  if (input.lessonMinutes !== 60 && input.lessonMinutes !== 120) {
+  const lessonMinutes = input.lessonMinutes === undefined ? 60 : input.lessonMinutes;
+  if (lessonMinutes !== 60 && lessonMinutes !== 120) {
     throw new PlanGenerationError('lessonMinutes must be 60 or 120', [
       { path: 'lessonMinutes', message: 'invalid lessonMinutes' },
     ]);
@@ -350,7 +364,7 @@ export function assertGenerateInput(input: {
   return {
     interest,
     lessonCount: input.lessonCount,
-    lessonMinutes: input.lessonMinutes,
+    lessonMinutes,
     goal,
     sessionCount: input.sessionCount as number | undefined,
     curriculumSlug,

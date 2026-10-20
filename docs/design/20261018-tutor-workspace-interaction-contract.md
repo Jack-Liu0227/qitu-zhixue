@@ -81,14 +81,14 @@ GET /api/v1/tutor/team-graph            # StaticAgentGraph + DynamicAgentGraph�
 
 ### 4.1 流程
 
-1. 学生在探索会话自由表达兴趣 →「启途智学助手」接管对话，梳理方向后输出**想法卡片**（idea cards）：每张含课题名、一句话描述、周期（4/8 周）、适配理由、关联模板 `templateId`。卡片由模型经结构化合同输出，候选先经 `project.recommendation` typed task 校验。
+1. 学生在探索会话自由表达兴趣 →「启途智学助手」接管对话，梳理方向后输出**想法卡片**（idea cards）：每张含课题名、一句话描述、课时总数与单课时分钟数、适配理由、关联模板 `templateId`。卡片由模型经结构化合同输出，候选先经 `project.recommendation` typed task 校验。
 2. 学生点击卡片上的「一键创建」→ 前端调用既有 `confirmExploration` 幂等确认接口（目标/兴趣由卡片携带，学生可在卡片内微调后确认）。
 3. 成功后跳转 `/tutor/:projectId`，唤醒导师团队；失败展示可重试错误与安全错误码。
 4. 学生不点击即不创建（跨域硬规则 4：未确认意图不得创建正式项目）。助手不能代替学生触发确认。
 
 ### 4.2 合同变更
 
-- Tutor 回复结构化合同新增 `ideaCards` 块：`{ title, description, weeks, rationale, templateId, suggestedGoal, suggestedInterest }[]`；服务端校验 `templateId` 存在且启用。
+- Tutor 回复结构化合同新增 `ideaCards` 块：`{ title, description, lessonCount, lessonMinutes, rationale, templateId, suggestedGoal, suggestedInterest }[]`；服务端校验 `templateId` 存在且启用。
 - 移除对话外「立项准备」手动表单入口（探索页目标/兴趣表单组件退场）；确认动作收敛到卡片内。
 - `Idempotency-Key` 沿用 `TutorPage` 现有 `createIdempotencyKey()` 机制；重复点击幂等。
 

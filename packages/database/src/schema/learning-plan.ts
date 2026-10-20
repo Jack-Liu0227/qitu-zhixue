@@ -17,7 +17,7 @@ import { projects } from './projects';
 import { projectTemplateVersions } from './project-templates';
 
 /**
- * Learning plans: 「兴趣 → 4/8 周学习计划」的服务端真源
+ * Learning plans: 「兴趣 → 按课时排程的学习计划」服务端真源
  * (docs/student/learning-plan.md §3 / §9).
  *
  * 硬规则衔接：
@@ -76,9 +76,9 @@ export const learningPlans = pgTable(
 );
 
 /**
- * Plan modules: 一周一个（或 4 周计划里一周两个）。
+ * Plan modules: 每个课时一个。
  *
- * `ordinal` 在计划内唯一，保证「第几周 / 第几个模块」稳定。
+ * `ordinal` 在计划内唯一，保证课时模块顺序稳定。
  */
 export const learningModules = pgTable(
   'learning_modules',
@@ -169,7 +169,6 @@ export const learningSessions = pgTable(
       .default(sql`'[]'::jsonb`),
     /** `'outline' | 'study' | 'review'`。 */
     mode: text('mode').notNull().default('study'),
-    scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

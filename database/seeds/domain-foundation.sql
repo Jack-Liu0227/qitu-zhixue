@@ -269,14 +269,21 @@ ON CONFLICT (id) DO UPDATE SET
   embedding = EXCLUDED.embedding,
   embedding_model = EXCLUDED.embedding_model;
 
--- 4. 学习计划（已确认意图的演示计划）+ 模块 / 目标 / 课次
+-- 4. 按课时排程的演示学习计划 + 模块 / 目标 / 课时
+-- Reset only this seeded plan's learning data so reruns do not retain pre-lesson modules.
+DELETE FROM mastery_attempts WHERE plan_id = 'plan-demo-python';
+DELETE FROM mastery_records WHERE plan_id = 'plan-demo-python';
+DELETE FROM learning_sessions WHERE plan_id = 'plan-demo-python';
+DELETE FROM learning_objectives WHERE plan_id = 'plan-demo-python';
+DELETE FROM learning_modules WHERE plan_id = 'plan-demo-python';
+
 INSERT INTO learning_plans
-  (id, school_id, student_user_id, project_id, interest, goal, weeks, minutes_per_session,
+  (id, school_id, student_user_id, project_id, interest, goal, lesson_count, lesson_minutes, minutes_per_session,
    template_version_id, status, version, idempotency_key, confirmed_at, created_at, updated_at)
 VALUES
   (
     'plan-demo-python', 'school-demo', 'student-demo', NULL,
-    '用 Python 做一个猜数字小游戏', '8 周内独立完成并讲解一个可运行的小游戏', 8, 60,
+    '用 Python 做一个猜数字小游戏', '用 2 个课时独立完成并讲解一个可运行的小游戏', 2, 60, 60,
     'ptv-python-mini-v1', 'active', 1, 'seed:plan:student-demo:python-mini', NOW(), NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
@@ -284,48 +291,50 @@ ON CONFLICT (id) DO UPDATE SET
   student_user_id = EXCLUDED.student_user_id,
   interest = EXCLUDED.interest,
   goal = EXCLUDED.goal,
-  weeks = EXCLUDED.weeks,
+  lesson_count = EXCLUDED.lesson_count,
+  lesson_minutes = EXCLUDED.lesson_minutes,
   minutes_per_session = EXCLUDED.minutes_per_session,
   template_version_id = EXCLUDED.template_version_id,
   status = EXCLUDED.status,
   idempotency_key = EXCLUDED.idempotency_key,
   updated_at = NOW();
 
-INSERT INTO learning_modules (id, plan_id, name, week_index, objective, ordinal, created_at)
+INSERT INTO learning_modules (id, plan_id, name, lesson_index, objective, ordinal, created_at)
 VALUES
-  ('lm-demo-w1', 'plan-demo-python', '第 1 周：认识变量与输入', 1, '写出能读取输入并回显的程序', 1, NOW()),
-  ('lm-demo-w2', 'plan-demo-python', '第 2 周：条件与猜测循环', 2, '实现猜大猜小的判断循环', 2, NOW())
+  ('lm-demo-l1', 'plan-demo-python', '第 1 课时：认识变量与输入', 1, '写出能读取输入并回显的程序', 1, NOW()),
+  ('lm-demo-l2', 'plan-demo-python', '第 2 课时：条件与猜测循环', 2, '实现猜大猜小的判断循环', 2, NOW())
 ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name, week_index = EXCLUDED.week_index,
+  name = EXCLUDED.name, lesson_index = EXCLUDED.lesson_index,
   objective = EXCLUDED.objective, ordinal = EXCLUDED.ordinal;
 
 INSERT INTO learning_objectives
   (id, plan_id, module_id, name, type, objective, prerequisite_ids, ordinal, created_at)
 VALUES
-  ('lo-demo-var', 'plan-demo-python', 'lm-demo-w1', '变量与类型', 'memory', '能说明变量保存了什么', '[]'::jsonb, 1, NOW()),
-  ('lo-demo-io', 'plan-demo-python', 'lm-demo-w1', '输入与输出', 'procedure', '能用 input/print 完成交互', '["lo-demo-var"]'::jsonb, 2, NOW()),
-  ('lo-demo-loop', 'plan-demo-python', 'lm-demo-w2', '条件与循环', 'concept', '能用循环和条件实现猜测判断', '["lo-demo-io"]'::jsonb, 1, NOW())
+  ('lo-demo-var', 'plan-demo-python', 'lm-demo-l1', '变量与类型', 'memory', '能说明变量保存了什么', '[]'::jsonb, 1, NOW()),
+  ('lo-demo-io', 'plan-demo-python', 'lm-demo-l1', '输入与输出', 'procedure', '能用 input/print 完成交互', '["lo-demo-var"]'::jsonb, 2, NOW()),
+  ('lo-demo-loop', 'plan-demo-python', 'lm-demo-l2', '条件与循环', 'concept', '能用循环和条件实现猜测判断', '["lo-demo-io"]'::jsonb, 1, NOW())
 ON CONFLICT (id) DO UPDATE SET
   plan_id = EXCLUDED.plan_id, module_id = EXCLUDED.module_id, name = EXCLUDED.name,
   type = EXCLUDED.type, objective = EXCLUDED.objective,
   prerequisite_ids = EXCLUDED.prerequisite_ids, ordinal = EXCLUDED.ordinal;
 
 INSERT INTO learning_sessions
-  (id, plan_id, module_id, "index", blocks, theory_objective_ids, practice_objective_ids, mode, scheduled_for, created_at)
+  (id, plan_id, module_id, "index", lesson_index, title, blocks, theory_objective_ids, practice_objective_ids, mode, created_at)
 VALUES
-  ('ls-demo-1', 'plan-demo-python', 'lm-demo-w1', 1,
-   '["warmup","concept","quiz","reflect"]'::jsonb,
+  ('ls-demo-1', 'plan-demo-python', 'lm-demo-l1', 0, 1, '第 1 课时：认识变量与输入',
+   '[{"kind":"review","minutes":5},{"kind":"theory","minutes":35},{"kind":"check","minutes":10},{"kind":"reflect","minutes":10}]'::jsonb,
    '["lo-demo-var","lo-demo-io"]'::jsonb, '[]'::jsonb,
-   'study', NOW() + interval '0 day', NOW()),
-  ('ls-demo-2', 'plan-demo-python', 'lm-demo-w2', 2,
-   '["warmup","concept","quiz","reflect"]'::jsonb,
+   'study', NOW()),
+  ('ls-demo-2', 'plan-demo-python', 'lm-demo-l2', 1, 2, '第 2 课时：条件与猜测循环',
+   '[{"kind":"review","minutes":5},{"kind":"theory","minutes":15},{"kind":"check","minutes":10},{"kind":"practice","minutes":20},{"kind":"reflect","minutes":10}]'::jsonb,
    '["lo-demo-loop"]'::jsonb, '["lo-demo-loop"]'::jsonb,
-   'study', NOW() + interval '7 day', NOW())
+   'study', NOW())
 ON CONFLICT (id) DO UPDATE SET
-  module_id = EXCLUDED.module_id, "index" = EXCLUDED."index", blocks = EXCLUDED.blocks,
+  module_id = EXCLUDED.module_id, "index" = EXCLUDED."index", lesson_index = EXCLUDED.lesson_index,
+  title = EXCLUDED.title, blocks = EXCLUDED.blocks,
   theory_objective_ids = EXCLUDED.theory_objective_ids,
   practice_objective_ids = EXCLUDED.practice_objective_ids,
-  mode = EXCLUDED.mode, scheduled_for = EXCLUDED.scheduled_for;
+  mode = EXCLUDED.mode;
 
 -- 5. 掌握度（理论门槛演示：一个已掌握、一个学习中）
 INSERT INTO mastery_records
@@ -372,9 +381,9 @@ INSERT INTO growth_records
 VALUES
   (
     'gr-demo-plan-confirmed', 'school-demo', 'student-demo', NULL, 'plan_confirmed', NOW() - interval '3 day',
-    '确认了 8 周 Python 小游戏计划',
-    '我把想做的游戏写清楚，并确认了每周要完成什么。',
-    '学生确认了 8 周学习计划，目标是自己完成并讲解一个小游戏。',
+    '确认了 2 课时 Python 小游戏计划',
+    '我把想做的游戏写清楚，并确认了每个课时要完成什么。',
+    '学生确认了 2 课时学习计划，目标是自己完成并讲解一个小游戏。',
     'exploration', NULL, '["变量与类型","输入与输出"]'::jsonb, '["learningPlan:plan-demo-python"]'::jsonb,
     'server', 'student_private', 'seed:growth:plan-confirmed', NOW()
   ),
