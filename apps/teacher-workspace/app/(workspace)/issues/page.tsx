@@ -763,6 +763,7 @@ export default function IssuesPage() {
                   <button
                     key={issue.id}
                     type="button"
+                    className={`qtx-issue-item ${issue.id === selected?.id ? 'selected' : ''}`}
                     onClick={() => setSelectedId(issue.id)}
                     style={{
                       display: 'flex',

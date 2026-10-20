@@ -491,17 +491,232 @@
 }
 
 /* ==========================================================================
-   6. 详情抽屉与运行面板 (Details Drawer & Agent Run Panel)
+   6. 详情抽屉、运行面板与快捷操作 (Details Drawer, Agent Run & Quick Actions)
    ========================================================================== */
+/* ---- 快捷操作卡片与提示框 (/teacher/dashboard) ---- */
+:root[data-qitu-eyecare="true"] .qtx-quick-action-link {
+  background: #181B20 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-quick-action-link:hover {
+  background: #1E252F !important;
+  border-color: #384252 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-quick-action-link strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-quick-action-link span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-quick-action-tip {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-quick-action-tip svg {
+  color: #34D399 !important;
+}
+
+/* ---- 学生列表选中行与高亮 (/teacher/students) ---- */
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr.selected,
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr.selected td {
+  background: #142820 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr.selected td:first-child {
+  border-left: 3px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-table tbody tr.selected strong {
+  color: #FFFFFF !important;
+}
+
+/* ---- 学生详情抽屉与演示学生头部 (/teacher/students) ---- */
 :root[data-qitu-eyecare="true"] .qtx-student-detail {
   background: #1E2228 !important;
   border: 1px solid #2E3540 !important;
   color: #E2E8F0 !important;
 }
 
+:root[data-qitu-eyecare="true"] .qtx-student-detail-header {
+  background: linear-gradient(135deg, #142820, #1A3328) !important;
+  border-bottom: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-detail-header strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-subcard,
+:root[data-qitu-eyecare="true"] .qtx-student-project-card {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-project-card div {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-project-card div:first-child {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-intervention-card {
+  background: #2D1418 !important;
+  border: 1px solid #5C1D24 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-growth-card {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-growth-card div:first-child {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-student-growth-card div {
+  color: #A7F3D0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-progress-bar-track {
+  background: #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-note {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+/* ---- 问题列表项目高亮 (/teacher/issues) ---- */
+:root[data-qitu-eyecare="true"] .qtx-issue-item {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-issue-item:hover {
+  background: #1E252F !important;
+  border-color: #384252 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-issue-item.selected {
+  background: #142820 !important;
+  border: 1px solid #195A3B !important;
+}
+
+/* ---- Agent 协作记录、刷新按钮与运行卡片 ---- */
 :root[data-qitu-eyecare="true"] .qtx-agent-run-panel {
   background: #181B20 !important;
   border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-agent-refresh-btn,
+:root[data-qitu-eyecare="true"] .qitu-button-ghost {
+  background: #1E252F !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-agent-refresh-btn:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] .qitu-button-ghost:hover:not(:disabled) {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qtx-agent-run-content {
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-graph,
+:root[data-qitu-eyecare="true"] .qitu-team-run-graph,
+:root[data-qitu-eyecare="true"] .qitu-team-activity {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-graph-header h3 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-graph-header p,
+:root[data-qitu-eyecare="true"] .qitu-team-empty,
+:root[data-qitu-eyecare="true"] .qitu-team-muted {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-node {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-node-leader {
+  border-color: #195A3B !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-node-head strong,
+:root[data-qitu-eyecare="true"] .qitu-team-run-head strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-run-marker {
+  background: #15181D !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-run-item:not(:last-child)::before {
+  background: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-edge code {
+  background: #121417 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-node-capabilities span {
+  background: #121417 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-activity-item strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-activity-item time {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-team-activity-item p {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-state,
+:root[data-qitu-eyecare="true"] .qitu-error-state,
+:root[data-qitu-eyecare="true"] .qitu-permission-denied {
+  background: #15181D !important;
+  border-radius: 12px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-state-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-state-description {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-skeleton-line {
+  background: linear-gradient(90deg, #181B20 25%, #252A33 50%, #181B20 75%) !important;
+  background-size: 200% 100% !important;
 }
 
 /* ==========================================================================

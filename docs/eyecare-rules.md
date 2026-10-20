@@ -101,6 +101,22 @@
      - 重点关注学生条目：`.qtx-attention-student` 在 `globals.css` 硬编码了渐变白底 `background: linear-gradient(100deg, #fffcf5, #fff 30%);`，头像硬编码了 `background: #e8effc; color: #1d4ed8;`。必须全量覆盖为 `#181B20` 暗色卡片与 `#112F24` 翡翠深绿头像底色。
      - 介入详情子卡片：`.qtx-card-soft` 硬编码了半透明白底 `rgba(255, 255, 255, 0.88);`，`.qtx-note` 硬编码了 `#f8fafc`。必须覆盖为 `#15181D`。
      - 输入框与下拉选择框聚焦态：`.qtx-input:focus`、`.qtx-select:focus` 在聚焦时曾出现 `background: #fff;`，必须保持为护眼暗色 `#15181D`。
+10. **教师端工作台快捷操作、学生名册选中条目与 Agent 协作面板专项治理 (Teacher Workspace & Agent Run Primitives)**：
+   - **场景 A：工作台“快捷操作”卡片与提示框 (Quick Actions & Inline Styles)**：
+     - **根本原因**：工作台首页中的快捷操作卡片采用 `<Link style={{ background: '#fff' }}>` 与 `<div style={{ background: '#f0f9ff' }}>` 内联硬编码。依赖 CSS 属性选择器 `[style*="background: #fff"]` 在浏览器 CSSOM 解析时极易失效（浏览器将内联属性规范化为 `rgb(255, 255, 255)` 或对简写属性重构分解），导致子串匹配规则无法捕获内联白底；且 `#f0f9ff` 浅蓝底提示条缺乏专用类名。
+     - **治理策略**：严禁单靠 CSS 属性选择器模糊匹配内联样式。必须在 JSX 中赋予结构化语义类名（`.qtx-quick-action-link`、`.qtx-quick-action-tip`），并在护眼样式中显式配置暗色底 `#181B20`、边框 `#2E3540`、hover 态 `#1E252F`、标题高对比纯白 `#FFFFFF`，提示框配置为翡翠深绿 `#112F24` / `#34D399`。
+   - **场景 B：学生管理“演示学生”整条浅色背景与详情抽屉 (Selected Student & Detail Drawer Header)**：
+     - **根本原因**：学生管理页（`/teacher/students`）默认选中的“演示学生”在右侧详情面板头部采用了复合浅色渐变 `background: linear-gradient(135deg,#eff6ff,#eef2ff)`。它既非纯白又无类名，单色属性选择器无法捕获，在暗色背景上形成极其扎眼的浅蓝白宽横幅；同时左侧表格选中行（`tr.selected`）若仅设置 `tr` 背景，某些浏览器下的单元格 `td` 背景可能发生层叠遮挡。
+     - **治理策略**：
+       1. 为详情抽屉头部赋予类名 `.qtx-student-detail-header`，在护眼模式下覆写为深翡翠微渐变 `background: linear-gradient(135deg, #142820, #1A3328) !important; border-bottom: 1px solid #195A3B !important;`，标题设为纯白 `#FFFFFF`；
+       2. 表格选中行必须联合覆盖 `.qtx-table tbody tr.selected, .qtx-table tbody tr.selected td { background: #142820 !important; }`，且第一列添加发光指示边框 `border-left: 3px solid #10B981 !important;`；
+       3. 详情抽屉内部的项目列表、介入记录、近期成长等子卡片均赋予专用语义类名（如 `.qtx-student-project-card`、`.qtx-student-intervention-card`、`.qtx-student-growth-card`）并配置暗色底与彩色边框，杜绝任何 `#f8fafc`、`#fef2f2`、`#f0fdf4` 浅底漏光。
+   - **场景 C：Agent 协作记录刷新按钮与运行卡片 (Agent Run Panel & Ghost Button)**：
+     - **根本原因**：Agent 协作记录标题旁的“刷新”按钮采用了 `@qitu/ui` 的 `<Button variant="ghost">`。在 `@qitu/ui` 中，幽灵按钮硬编码了 `background: white`；且下方的协作执行图（`.qitu-team-run-graph`）与协作活动流（`.qitu-team-activity`）及其子节点（`.qitu-team-node`）均依赖组件库默认的浅色背景变量或 `background: white`。由于子应用中仅对 `.qtx-agent-run-panel` 容器外壳写了暗色，未覆盖内部跨包组件，导致刷新按钮和子卡片全为白底。
+     - **治理策略**：子应用护眼样式必须对跨包基础组件建立完备的暗色兜底基线：
+       1. 为刷新按钮与幽灵按钮覆写 `.qtx-agent-refresh-btn, .qitu-button-ghost { background: #1E252F !important; border: 1px solid #2E3540 !important; color: #CBD5E1 !important; }`，hover 态转为翡翠深绿高亮；
+       2. 对 `.qitu-team-run-graph`、`.qitu-team-activity` 设为 `#15181D !important`，节点 `.qitu-team-node` 设为 `#1E2228 !important`，标记点 `.qitu-team-run-marker` 设为翡翠亮线，代码标签与状态徽标全部暗化；
+       3. 同步覆盖骨架屏微光 `.qitu-skeleton-line` 与空状态/错误态容器 `.qitu-state`，确保所有加载和交互阶段视觉一致。
 
 ---
 
@@ -210,7 +226,9 @@
   - [ ] 学生端：“从一个想法开始”与“当前项目”中的单字封面占位符（如“光”）底色为暗色 `#15181D`、文字为翡翠绿 `#34D399`，无白底。
   - [ ] 学生端：“成长轨迹”中“从今天开始记录”内的所有三元统计小卡片（`StatTriple`）无白底。
   - [ ] 家长端：首页欢迎横幅、孩子芯片、KPI 指标卡、当前项目、关注卡片、成长摘要、作品成果无白底。
-  - [ ] 教师端：工作台横幅、4项指标卡、关注学生条目、学生名册表格、问题处理时间线无白底。
+  - [ ] 教师端：工作台横幅、4项指标卡、关注学生条目、工作台快捷操作（`.qtx-quick-action-link`、`.qtx-quick-action-tip`）无白底。
+  - [ ] 教师端：学生名册表格选中行（`tr.selected`）、演示学生详情头部（`.qtx-student-detail-header`）、子项目/介入/成长卡片无白底。
+  - [ ] 教师端：Agent 协作记录标题旁“刷新”按钮（`.qtx-agent-refresh-btn` / `.qitu-button-ghost`）及协作图/活动流卡片（`.qitu-team-run-graph`、`.qitu-team-activity`、`.qitu-team-node`）无白底。
   - [ ] 管理员端：顶栏、横幅 `.admin-hero-banner`、6项指标卡 `.admin-stat-card`、治理列表 `.admin-data-table`、模型与设置面板无白底。
 - [ ] **3. 对比度与可读性巡检**：
   - [ ] 学生端、家长端、教师端、管理员端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
