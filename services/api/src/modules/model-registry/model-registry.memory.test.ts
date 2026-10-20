@@ -112,6 +112,7 @@ test('copilot default keeps its provider/model pair independently from tutor usa
   assert.deepEqual(service.getUsages().bindings.find(row => row.usageId === 'admin.copilot')?.resolved,
     { providerId: 'qwen-dashscope', modelId: 'qwen-max' });
   assert.equal(service.getUsages().bindings.find(row => row.usageId === 'tutor.chat')?.modelId, 'qwen-plus');
-  await assert.rejects(() => service.bindUsage('admin.copilot', { providerId: 'qwen-dashscope', modelId: 'text-embedding-v3' }, 'admin-1'),
+  await service.createManualModel('qwen-dashscope', { modelId: 'fixture-embedding', displayName: 'Fixture embedding', input: ['text'], output: ['embedding'] }, 'admin-1', 'fixture-embedding-create');
+  await assert.rejects(() => service.bindUsage('admin.copilot', { providerId: 'qwen-dashscope', modelId: 'fixture-embedding' }, 'admin-1'),
     (error: unknown) => error instanceof BadRequestException);
 });
