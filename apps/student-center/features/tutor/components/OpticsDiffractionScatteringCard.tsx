@@ -104,6 +104,7 @@ export function OpticsDiffractionScatteringCard({
 
   return (
     <div
+      className="qitu-optics-card"
       style={{
         margin: '16px 0',
         padding: '18px',

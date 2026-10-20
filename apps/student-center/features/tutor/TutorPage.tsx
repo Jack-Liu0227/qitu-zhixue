@@ -17,6 +17,7 @@ import { useComposer } from './hooks/useComposer';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
+import { getStoredEyecare, setStoredEyecare } from './lib/eyecareStorage';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
@@ -44,25 +45,16 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   const [eyecareActive, setEyecareActive] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('qitu.student.eyecare');
-      if (saved === '1' || saved === 'true') {
-        setEyecareActive(true);
-        document.documentElement.setAttribute('data-qitu-eyecare', 'true');
-      }
-    } catch {
-      // Storage can be disabled
+    if (getStoredEyecare()) {
+      setEyecareActive(true);
+      document.documentElement.setAttribute('data-qitu-eyecare', 'true');
     }
   }, []);
 
   const toggleEyecare = () => {
     setEyecareActive((prev) => {
       const next = !prev;
-      try {
-        localStorage.setItem('qitu.student.eyecare', next ? '1' : '0');
-      } catch {
-        // Ignore
-      }
+      setStoredEyecare(next);
       if (next) {
         document.documentElement.setAttribute('data-qitu-eyecare', 'true');
       } else {
@@ -195,35 +187,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
   if (session.permissionDenied) return <PermissionDenied title="无法进入 AI搭档" description="你没有访问这个会话的权限，请返回上一页。" />;
 
   return <div className="qitu-tutor-page" data-eyecare={eyecareActive ? 'active' : 'inactive'}>
-    {eyecareActive ? (
-      <aside className="qitu-eyecare-top-banner" data-purpose="eye-care-banner">
-        <div className="qitu-eyecare-banner-info">
-          <span className="qitu-eyecare-banner-pulse" aria-hidden="true" />
-          <span className="qitu-eyecare-banner-text">
-            🌙 夜间暗色护眼模式已开启 · 柔光低眩光暗色显示 · 减缓视觉疲劳
-          </span>
-          <span className="qitu-eyecare-banner-subtext">
-            · 2700K~3200K 暖光低眩光 · 有效滤除高能蓝光
-          </span>
-        </div>
-        <div className="qitu-eyecare-banner-actions">
-          <span className="qitu-eyecare-banner-tag">
-            <svg className="qitu-eyecare-banner-svg" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-            🌙 暗色柔光 2700K~3200K
-          </span>
-          <button
-            type="button"
-            className="qitu-eyecare-banner-close"
-            onClick={toggleEyecare}
-            title="关闭护眼模式"
-          >
-            关闭护眼
-          </button>
-        </div>
-      </aside>
-    ) : null}
     <header className="qitu-tutor-header">
       <div className="qitu-tutor-header-copy">
         <p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p>

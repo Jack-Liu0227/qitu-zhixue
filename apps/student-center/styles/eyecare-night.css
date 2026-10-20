@@ -61,48 +61,6 @@
   background: #3B4452 !important;
 }
 
-/* ---- 顶部暗色护眼提示横幅 ---- */
-.qitu-eyecare-top-banner {
-  width: 100%;
-  background: #15181D;
-  border-bottom: 1px solid #252B35;
-  padding: 6px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #94A3B8;
-  box-sizing: border-box;
-}
-
-.qitu-eyecare-top-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.qitu-eyecare-top-banner-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #10B981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-}
-
-.qitu-eyecare-top-banner-close {
-  background: transparent;
-  border: none;
-  color: #64748B;
-  cursor: pointer;
-  padding: 2px 6px;
-  font-size: 14px;
-  border-radius: 4px;
-}
-.qitu-eyecare-top-banner-close:hover {
-  color: #E2E8F0;
-  background: #252B35;
-}
-
 /* ---- 护眼模式开关按钮 (头部) ---- */
 .qitu-eyecare-toggle-btn {
   display: inline-flex;
@@ -288,48 +246,151 @@
 }
 
 /* 输入框坞 Composer */
+:root[data-qitu-eyecare="true"] .qitu-composer-shell,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell,
 :root[data-qitu-eyecare="true"] .qitu-composer,
 .qitu-tutor-page[data-eyecare="active"] .qitu-composer,
 :root[data-qitu-eyecare="true"] .qitu-tutor-col-center .qitu-composer,
 .qitu-tutor-page[data-eyecare="active"] .qitu-tutor-col-center .qitu-composer,
 :root[data-qitu-eyecare="true"] .qitu-tutor-grid-full-chat .qitu-composer,
 .qitu-tutor-page[data-eyecare="active"] .qitu-tutor-grid-full-chat .qitu-composer {
-  background-color: #181C22 !important;
-  background: #181C22 !important;
-  border: 1px solid #2C3442 !important;
-  border-top: 1px solid #2C3442 !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45) !important;
+  background-color: #14171C !important;
+  background: #14171C !important;
+  border: 1.5px solid #282F3B !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
+:root[data-qitu-eyecare="true"] .qitu-composer-shell:hover:not(.is-disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell:hover:not(.is-disabled) {
+  background-color: #181C23 !important;
+  background: #181C23 !important;
+  border-color: #384252 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell:focus-within:not(.is-disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell:focus-within:not(.is-disabled),
 :root[data-qitu-eyecare="true"] .qitu-composer:focus-within,
 .qitu-tutor-page[data-eyecare="active"] .qitu-composer:focus-within {
+  background-color: #181C23 !important;
+  background: #181C23 !important;
   border-color: #10B981 !important;
-  box-shadow: 0 0 0 1px #10B981, 0 -4px 20px rgba(0,0,0,0.45) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 6px 20px rgba(0, 0, 0, 0.4) !important;
 }
 
+:root[data-qitu-eyecare="true"] .qitu-composer-shell.is-disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell.is-disabled {
+  background: #131519 !important;
+  border-color: #22262E !important;
+  opacity: 0.6 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell.is-offline,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell.is-offline {
+  background: #181714 !important;
+  border-color: #5C3D1E !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-input,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-input,
 :root[data-qitu-eyecare="true"] .qitu-composer textarea,
 .qitu-tutor-page[data-eyecare="active"] .qitu-composer textarea {
-  color: #E2E8F0 !important;
+  color: #F1F5F9 !important;
   background: transparent !important;
 }
 
+:root[data-qitu-eyecare="true"] .qitu-composer-input::placeholder,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-input::placeholder,
 :root[data-qitu-eyecare="true"] .qitu-composer textarea::placeholder,
 .qitu-tutor-page[data-eyecare="active"] .qitu-composer textarea::placeholder {
   color: #64748B !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-composer-toolbar,
-.qitu-tutor-page[data-eyecare="active"] .qitu-composer-toolbar {
-  border-top: 1px solid #242A35 !important;
+:root[data-qitu-eyecare="true"] .qitu-composer-actions,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border-top: 1px solid #232832 !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit),
-.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit) {
+/* 语音输入、图片、文件上传键 */
+:root[data-qitu-eyecare="true"] .qitu-composer-mode,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode.is-active,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button.is-listening,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button.is-listening {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode:disabled,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button:disabled {
+  opacity: 0.45 !important;
+  background: #14171C !important;
+  border-color: #232832 !important;
+  color: #64748B !important;
+}
+
+/* “思考灵感”右侧的四个卡片 */
+:root[data-qitu-eyecare="true"] .qitu-composer-quick-label,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-quick-label {
   color: #94A3B8 !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit):hover,
-.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit):hover {
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2B3340 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip:hover:not(:disabled) {
+  background-color: #222832 !important;
+  background: #222832 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip:disabled {
+  opacity: 0.45 !important;
+  background: #14171C !important;
+  border-color: #232832 !important;
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button) {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button):hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button):hover {
   background-color: #222832 !important;
   color: #E2E8F0 !important;
 }
@@ -348,10 +409,22 @@
 }
 
 :root[data-qitu-eyecare="true"] .qitu-composer kbd,
-.qitu-tutor-page[data-eyecare="active"] .qitu-composer kbd {
-  background-color: #232934 !important;
-  border: 1px solid #343D4D !important;
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer kbd,
+:root[data-qitu-eyecare="true"] .qitu-composer-shortcut-hint kbd,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shortcut-hint kbd {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
   color: #94A3B8 !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 输入框内附件预览小卡片 */
+:root[data-qitu-eyecare="true"] .qitu-composer-shell div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell div[style*="background"] {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
 }
 
 /* 空状态卡片 */
@@ -800,6 +873,214 @@
   color: #34D399 !important;
 }
 
+
+/* ---- 对话内白板与生成的图示、图表框 ---- */
+:root[data-qitu-eyecare="true"] .qitu-board-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-header h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-header h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-header > span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-header > span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-caption,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-caption {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-canvas,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-canvas {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1px solid #282F3B !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg-skeleton,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg-skeleton {
+  background: #14171C !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg text {
+  fill: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg line,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg line,
+:root[data-qitu-eyecare="true"] .qitu-board-svg path,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg path {
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-mermaid-fallback,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-mermaid-fallback {
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+/* Mermaid 图示卡片与内部 SVG 元素 */
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1.5px solid #282F3B !important;
+  border-color: #282F3B !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg text {
+  fill: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .label,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .label {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg rect,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg polygon,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg circle,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg path.label-container,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg rect,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg polygon,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg circle,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg path.label-container {
+  fill: #1E2228 !important;
+  stroke: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .node rect,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .node rect {
+  fill: #1E2228 !important;
+  stroke: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .flowchart-link,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .flowchart-link {
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .marker,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .marker {
+  fill: #64748B !important;
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-fallback-container,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-fallback-container {
+  background: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-fallback-container pre,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-fallback-container pre {
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-loading,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-loading {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+  color: #94A3B8 !important;
+}
+
+/* 阶段检查里程碑卡片 MilestoneBlock */
+:root[data-qitu-eyecare="true"] .qitu-milestone-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-card {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-header h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-header h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-header small,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-header small {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-deliverables li,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-deliverables li {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-deliverables li strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-deliverables li strong {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-lock,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-lock {
+  background: #251B12 !important;
+  border-color: #4A331E !important;
+  color: #FBBF24 !important;
+}
+
+/* 动态仿真工作台卡片 (电路、动能、光学) */
+:root[data-qitu-eyecare="true"] .qitu-circuit-card,
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card,
+:root[data-qitu-eyecare="true"] .qitu-optics-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-circuit-card h4,
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card h4,
+:root[data-qitu-eyecare="true"] .qitu-optics-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-circuit-card div[style*="background"],
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card div[style*="background"],
+:root[data-qitu-eyecare="true"] .qitu-optics-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card div[style*="background"] {
+  background-color: #14171C !important;
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .katex,
+.qitu-tutor-page[data-eyecare="active"] .katex {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .katex .frac-line,
+.qitu-tutor-page[data-eyecare="active"] .katex .frac-line {
+  border-bottom-color: #E2E8F0 !important;
+}
+
 /* ==========================================================================
    4. 对话历史卡片中的 interest_confirmed 等文字底部
    ========================================================================== */
@@ -1141,6 +1422,162 @@
   background: #1C2027 !important;
   border: 1px dashed #2E3643 !important;
   color: #CBD5E1 !important;
+}
+
+
+/* ---- “项目与进度” 按键及通用幽灵按钮 ---- */
+:root[data-qitu-eyecare="true"] .qitu-button-ghost,
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-ghost:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-ghost[aria-expanded="true"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost[aria-expanded="true"] {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* ---- 右侧阶段进度树 (TutorTeamRail / PhaseTree) ---- */
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading span {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading > span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading > span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading h3,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1px solid #252B35 !important;
+  border-color: #252B35 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-active {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-completed,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-completed {
+  border-color: #164E35 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-order {
+  background: #252D3A !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-active .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-active .qitu-tutor-phase-order {
+  background: #10B981 !important;
+  color: #0A261A !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-completed .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-completed .qitu-tutor-phase-order {
+  background: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-copy strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-copy span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-details,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-details {
+  border-top: 1px solid #232832 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-details p,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-details p {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables strong {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables span.is-submitted,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables span.is-submitted {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-mark,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-mark {
+  background: #14171C !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-card {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-stage-rail,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-stage-rail {
+  background: transparent !important;
 }
 
 /* ==========================================================================
