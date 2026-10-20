@@ -1,3 +1,5 @@
+'use client';
+
 import { useId, useState, type FormEvent } from 'react';
 
 /** Renders structured prompts with a response field that submits through the tutor session. */
