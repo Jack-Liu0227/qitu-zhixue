@@ -1,0 +1,334 @@
+{
+  "url": "http://122.51.130.204",
+  "generatedAt": "2026-10-21T07:31:20.227Z",
+  "platforms": [
+    {
+      "id": "student",
+      "images": [
+        {
+          "href": "/student/today",
+          "src": "/student/_next/static/media/growth-milestone-v1-64.bcc197b3.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/inspiration",
+          "src": "/student/_next/static/media/subject-interdisciplinary-v1-64.de3695f5.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/tutor",
+          "src": "/student/_next/static/media/avatar-general-v1-64.9f1d09f8.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/projects",
+          "src": "/student/_next/static/media/template-optics-v1-64.1e73397d.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/works",
+          "src": "/student/_next/static/media/growth-artifact-v1-64.cdcc4cd4.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/growth",
+          "src": "/student/_next/static/media/capability-growth-v1-64.c04f901d.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/student/profile",
+          "src": "/student/_next/static/media/profile-v1-64.ae6319bf.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        }
+      ],
+      "brand": {
+        "src": "/student/_next/static/media/mark.b12fb244.png",
+        "loaded": true,
+        "width": 40,
+        "height": 35
+      },
+      "collapsedVerified": true,
+      "mobile": {
+        "viewport": 390,
+        "document": 382
+      },
+      "runtimeExceptions": 0
+    },
+    {
+      "id": "parent",
+      "images": [
+        {
+          "href": "/parent",
+          "src": "/parent/_next/static/media/home-v1-64.bb97cc73.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/parent/progress",
+          "src": "/parent/_next/static/media/growth-objective-v1-64.a22785d3.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/parent/messages",
+          "src": "/parent/_next/static/media/messages-v1-64.fbb8a070.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        }
+      ],
+      "brand": {
+        "src": "/parent/_next/static/media/mark.b12fb244.png",
+        "loaded": true,
+        "width": 40,
+        "height": 35
+      },
+      "collapsedVerified": true,
+      "mobile": {
+        "viewport": 390,
+        "document": 382
+      },
+      "runtimeExceptions": 0
+    },
+    {
+      "id": "teacher",
+      "images": [
+        {
+          "href": "/teacher/dashboard",
+          "src": "/teacher/_next/static/media/workbench-v1-64.863862fb.png",
+          "loaded": true,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "href": "/teacher/students",
+          "src": "/teacher/_next/static/media/students-v1-64.ed951cf6.png",
+          "loaded": true,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "href": "/teacher/issues",
+          "src": "/teacher/_next/static/media/activity-inquiry-v1-64.759ddf28.png",
+          "loaded": true,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "href": "/teacher/statistics",
+          "src": "/teacher/_next/static/media/teacher-statistics-v1-64.22010e8f.png",
+          "loaded": true,
+          "width": 24,
+          "height": 24
+        }
+      ],
+      "brand": {
+        "src": "/teacher/_next/static/media/mark.b12fb244.png",
+        "loaded": true,
+        "width": 40,
+        "height": 35
+      },
+      "collapsedVerified": false,
+      "mobile": {
+        "viewport": 390,
+        "document": 375
+      },
+      "runtimeExceptions": 0
+    },
+    {
+      "id": "admin",
+      "images": [
+        {
+          "href": "/admin",
+          "src": "/admin/_next/static/media/governance-v1-64.4ffc5d23.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/admin/students/statistics",
+          "src": "/admin/_next/static/media/statistics-v1-64.388e00f6.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/admin/relationships",
+          "src": "/admin/_next/static/media/relationships-v1-64.6f6e14e7.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/admin/copilot",
+          "src": "/admin/_next/static/media/avatar-coordinator-v1-64.8378bae4.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings",
+          "src": "/admin/_next/static/media/settings-v1-64.1c0b32c0.png",
+          "loaded": true,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings",
+          "src": "/admin/_next/static/media/capability-tools-v1-64.b161aec6.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/account",
+          "src": "/admin/_next/static/media/qitu-user-avatar-v2.0b50eb34.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/assistants",
+          "src": "/admin/_next/static/media/assistants-v1-64.94c4ad17.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/feishu",
+          "src": "/admin/_next/static/media/feishu-v1-64.b3549f37.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/teams",
+          "src": "/admin/_next/static/media/team-coding-v1-64.cd50234b.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/model-providers",
+          "src": "/admin/_next/static/media/gateway-v1-64.fe637098.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/skills",
+          "src": "/admin/_next/static/media/capability-skills-v1-64.58e79202.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/tools",
+          "src": "/admin/_next/static/media/subject-coding-v1-64.930df8ce.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/plugins",
+          "src": "/admin/_next/static/media/plugins-v1-64.f80a873b.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/knowledge",
+          "src": "/admin/_next/static/media/capability-knowledge-v1-64.a4c7db1b.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/templates",
+          "src": "/admin/_next/static/media/template-kinetic-v1-64.398524df.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/profile-growth",
+          "src": "/admin/_next/static/media/growth-reflection-v1-64.c4dbac27.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/database",
+          "src": "/admin/_next/static/media/database-v1-64.7bb07b2f.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/appearance",
+          "src": "/admin/_next/static/media/subject-art-v1-64.f6068de9.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/ops",
+          "src": "/admin/_next/static/media/ops-v1-64.47f7054c.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/system",
+          "src": "/admin/_next/static/media/system-v1-64.25a28a23.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        },
+        {
+          "href": "/admin/settings/about",
+          "src": "/admin/_next/static/media/about-v1-64.4f245082.png",
+          "loaded": true,
+          "width": 20,
+          "height": 24
+        }
+      ],
+      "brand": {
+        "src": "/admin/_next/static/media/mark.b12fb244.png",
+        "loaded": true,
+        "width": 40,
+        "height": 35
+      },
+      "collapsedVerified": true,
+      "mobile": {
+        "viewport": 390,
+        "document": 390
+      },
+      "runtimeExceptions": 0
+    }
+  ],
+  "uniqueImages": 36,
+  "fullLogo": {
+    "src": "/_next/static/media/full.8dfb8492.png",
+    "loaded": true,
+    "naturalWidth": 600,
+    "width": 164,
+    "height": 164
+  }
+}
