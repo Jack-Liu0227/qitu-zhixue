@@ -603,7 +603,6 @@ export default function SkillsSettingsPage() {
             此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器。
             {editingSkill.runtime === 'admin' ? ' Admin 管家按需加载已发布的专用技能，无需在助手矩阵中勾选。' : ' 与助手的绑定/解绑会通过助手接口真实持久化。'}
           </div>
-          </div>
         ) : null}
 
         {/* 概览 / 文件 选项卡 */}
