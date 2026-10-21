@@ -9,7 +9,9 @@ import type { KnowledgeToolCatalogService } from '../knowledge/knowledge-tool-ca
 
 /** Synthetic catalogs only; no provider calls, credentials or learner facts. */
 export function opticsTeachingFixture(template: ProjectTemplateSpec = OPTICS_16_SESSION_TEMPLATE_SPEC) {
-  const assistantIds = [...new Set(OPTICS_PHASES.map((phase) => phase.assignedAssistantId)
+  const assignment = (phase: ProjectTemplateSpec['phases'][number]) => phase.assignedAssistantId
+    ?? OPTICS_PHASES.find(entry => entry.phase === phase.phase)?.assignedAssistantId ?? null;
+  const assistantIds = [...new Set(template.phases.map(assignment)
     .filter((id): id is string => id !== null))];
   const members = assistantIds.map((assistantId, index) => ({ slotId: `member-${index}`, assistantId }));
   const policyVersion = loadTutorRuntimeSource().policy.version;
@@ -18,7 +20,7 @@ export function opticsTeachingFixture(template: ProjectTemplateSpec = OPTICS_16_
     roleMap: members.map((member, index) => ({ roleSlotId: `role-${index}`, memberId: member.slotId, purposes: ['dialogue'] })),
     sessionRoutes: template.curriculum!.profiles[0]!.sessions.map((session) => ({
       sessionIndex: session.sessionIndex,
-      roleSlotId: `role-${assistantIds.indexOf(OPTICS_PHASES.find((phase) => phase.phase === session.phase)!.assignedAssistantId!)}`,
+      roleSlotId: `role-${assistantIds.indexOf(assignment(template.phases.find((phase) => phase.phase === session.phase)!)!)}`,
     })),
     skillPins: [], toolIds: [], mcpServerIds: [], knowledgeBaseIds: [], approvalPolicyVersion: policyVersion,
     modelByPurpose: Object.fromEntries(members.map((_, index) => [`role-${index}`, {

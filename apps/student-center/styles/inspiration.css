@@ -24,6 +24,12 @@
   background: var(--qitu-surface);
 }
 
+.qitu-inspiration-detail-cover {
+  display: block;
+  border-radius: var(--qitu-radius-md);
+  background: var(--qitu-page);
+}
+
 .qitu-inspiration-detail-panel h2 {
   margin: 0 0 10px;
   color: var(--qitu-heading);

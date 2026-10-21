@@ -94,6 +94,7 @@ export class TutorSessionConflictError extends Error {
 }
 
 export abstract class TutorSessionStore {
+  async projectSessionId(projectId: string): Promise<string> { return `session-${projectId}`; }
   /**
    * 是否为真实持久化实现。
    *

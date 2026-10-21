@@ -2,16 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { TutorSessionRecord } from '../ai-tutor/tutor.service';
 import { fullflowHarness, STUDENT, TEACHER } from './optics-fullflow.test-fixture';
+import { projectTutorLessonProgram } from '../ai-tutor/tutor-lesson-program';
 
 async function rejectsCode(work: Promise<unknown>, code: string) {
   await assert.rejects(work, (error: unknown) => (error as { getResponse(): { code: string } }).getResponse().code === code);
 }
 
-test('frozen optics v3 completes all sixteen lessons through formal grading, real observations, version-bound teacher approval and final reflection', async () => {
-  const h = await fullflowHarness();
+for (const qualityReview of [false, true]) test(`frozen optics ${qualityReview ? 'v4 quality' : 'v3'} completes sixteen lessons through existing learning owners`, async () => {
+  const h = await fullflowHarness(qualityReview);
   const revision = h.plan.plan.version;
   const profile = h.teaching.template.curriculum!.profiles.find((item) => item.id === h.teaching.scheduleProfileId)!;
-  assert.equal(profile.id, 'optics-16x60-v3');
+  assert.equal(profile.id, qualityReview ? 'optics-16x60-v4-quality' : 'optics-16x60-v3');
   assert.equal(h.plan.sessions.length, 16);
   assert.equal((await h.store.findProject(h.projectId))!.status, 'intent_confirmed');
   assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, 0);
@@ -26,6 +27,11 @@ test('frozen optics v3 completes all sixteen lessons through formal grading, rea
     const scope = { planId: h.planId, planRevision: revision, learningSessionId: session.id };
     const current = await h.current();
     assert.equal(current.lesson.learningSessionId, session.id, `actual frozen current lesson ${n}`);
+    const program = projectTutorLessonProgram(current);
+    assert.equal(program.learningGoal,frozen.learningGoal);
+    assert.deepEqual(program.evidenceRequirements,frozen.evidenceRequirements);
+    assert.equal(program.activities.reduce((total,activity)=>total+activity.minutes,0),60);
+    assert.ok(program.activities.some(activity=>activity.guidance === frozen.activityGuidance?.[activity.kind]));
     assert.equal(current.role.roleSlotId, h.teaching.sessionRoutes.find((route) => route.sessionIndex === n)!.roleSlotId);
     const required = frozen.completionSpec!.requiredMasteryObjectiveIds.map((id) => `${h.planId}:${id}`);
     for (let rounds = 0; required.length && !await h.mastery.checkRequiredObjectives(STUDENT, STUDENT.id, h.planId, required, h.store); rounds++) {
@@ -107,6 +113,18 @@ test('frozen optics v3 completes all sixteen lessons through formal grading, rea
       const proof = await h.learningEvidence.getLessonProofs(STUDENT, h.planId, session.id, revision);
       assert.equal(proof.approvedArtifacts[0]?.artifactId, approvedArtifactId);
       assert.equal(proof.approvedArtifacts[0]?.artifactVersionId, approvedVersionId);
+    }
+    if (qualityReview) {
+      await rejectsCode(h.progress.complete(STUDENT, h.planId, session.id,
+        { projectId: h.projectId, planRevision: revision, evidenceRefs: [] }, `quality-pending-${n}`), 'LEARNING_SESSION_REQUIREMENTS_UNMET');
+      const queue = await h.learningEvidence.listStudentLessonQuality(TEACHER, STUDENT.id);
+      for (const item of queue.items) {
+        assert.equal(item.learningSessionId, session.id);
+        await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, session.id, {
+          planRevision: revision, evidenceRef: item.proof.ref, subjectDigest: item.proof.quality!.subjectDigest,
+          criteria: item.criteria.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Reviewed synthetic work against the frozen criterion.' })),
+        }, `teacher-quality-${n}-${item.proof.ref}`);
+      }
     }
     const completion = await h.progress.complete(STUDENT, h.planId, session.id,
       { projectId: h.projectId, planRevision: revision, evidenceRefs: [] }, `complete-${n}`);

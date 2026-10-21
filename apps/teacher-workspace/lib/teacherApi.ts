@@ -1,5 +1,6 @@
 import { ApiError, createApiClient } from '@qitu/api-client';
 import type {
+  LessonQualityQueueItem, LessonQualityDecision, LessonQualityStatus,
   TeacherRosterPageData,
   TeacherStudentDetail,
   TeacherInterventionListPageData,
@@ -77,6 +78,11 @@ function readErrorStatus(error: unknown): number | undefined {
 }
 
 export const teacherApi = {
+  lessonQuality: (studentId: string,cursor?:string) => get<{ data: { items: LessonQualityQueueItem[]; hasMore: boolean; nextCursor:string|null; unavailablePlans: number } }>(
+    `/api/v1/teacher/students/${encodeURIComponent(studentId)}/lesson-quality${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
+  reviewLessonQuality: (planId: string, sessionId: string, body: LessonQualityDecision, key: string) =>
+    post<{ data: { quality: LessonQualityStatus; replayed: boolean } }>(
+      `/api/v1/learning-plans/${encodeURIComponent(planId)}/sessions/${encodeURIComponent(sessionId)}/quality-reviews`, body, key),
   artifactReviews: (studentId: string, offset = 0) =>
     get<{ data: TeacherArtifactReviewPage }>(`/api/v1/teacher/students/${encodeURIComponent(studentId)}/reviews?offset=${offset}&limit=20`),
   artifactVersions: (artifactId: string) =>

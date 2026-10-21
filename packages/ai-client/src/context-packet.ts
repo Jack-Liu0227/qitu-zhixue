@@ -1,4 +1,14 @@
 import type { TutorContextPacket } from './tutor-context.js';
+import type { TutorLessonProgram } from '@qitu/contracts';
+
+export function serializeTutorLessonProgram(program: TutorLessonProgram): string {
+  return JSON.stringify({
+    ...program,
+    learningGoal: program.learningGoal.slice(0, 2000),
+    activities: program.activities.slice(0, 5).map(activity => ({ ...activity, guidance: activity.guidance.slice(0, 2400) })),
+    evidenceRequirements: program.evidenceRequirements.slice(0, 16).map(value => value.slice(0, 600)),
+  });
+}
 
 
 
@@ -17,6 +27,10 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
     `学习阶段：${packet.projectStage ?? 'exploration'}`,
     `当前目标：${packet.currentGoal ?? '尚未确认'}`,
   ];
+  if (packet.lessonProgram) {
+    lines.push('当前冻结课时教案（按活动指导开展教学；保存、质量评价、掌握度和完成分别由服务端确认）：');
+    lines.push(serializeTutorLessonProgram(packet.lessonProgram));
+  }
   if (packet.learnerProfile !== null) {
     lines.push(`学习偏好：${packet.learnerProfile.preferences.join('、') || '未记录'}`);
     lines.push(`已知兴趣：${packet.learnerProfile.interests.join('、') || '未记录'}`);

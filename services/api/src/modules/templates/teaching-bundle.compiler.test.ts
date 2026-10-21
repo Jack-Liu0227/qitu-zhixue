@@ -87,6 +87,22 @@ function imaFixture(): TeachingBundleSource {
 }
 
 describe('pure teaching bundle compiler', () => {
+  it('rejects a lesson requiring dynamic courseware unless the routed role pins both skill and candidate tool', () => {
+    const source = fixture();
+    source.template.curriculum!.profiles[0]!.sessions[0]!.teachingRequirements = ['dynamic_lesson'];
+    assert.throws(() => compileTeachingBundle(source), (error:unknown) =>
+      error instanceof TeachingBundleCompilationError && error.issue === 'LESSON_DYNAMIC_CAPABILITY_REQUIRED');
+  });
+
+  it('rejects a knowledge-required lesson without a frozen project grant; a scoped role can compile', () => {
+    const source = fixture();
+    source.template.curriculum!.profiles[0]!.sessions[0]!.teachingRequirements = ['project_knowledge'];
+    assert.throws(() => compileTeachingBundle(source), (error:unknown) =>
+      error instanceof TeachingBundleCompilationError && error.issue === 'LESSON_KNOWLEDGE_CAPABILITY_REQUIRED');
+    const scoped = imaFixture();
+    scoped.template.curriculum!.profiles[0]!.sessions[0]!.teachingRequirements = ['project_knowledge'];
+    assert.ok(compileTeachingBundle(scoped).digest);
+  });
   it('compiles actual content, exact identities and pins without writing learning facts', () => {
     const source = fixture();
     const result = compileTeachingBundle(source);

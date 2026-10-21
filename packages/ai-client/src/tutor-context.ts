@@ -1,4 +1,4 @@
-import type { ProjectStage, MasterySnapshot, TutorAgentMcpDescriptor, TutorAgentToolDescriptor } from '@qitu/contracts';
+import type { ProjectStage, MasterySnapshot, TutorAgentMcpDescriptor, TutorAgentToolDescriptor, TutorLessonProgram } from '@qitu/contracts';
 
 export type TutorPartnerId = string;
 export type TutorMemoryKind =
@@ -119,6 +119,7 @@ export interface TutorRuntimeContextMetadata {
 }
 
 export interface TutorContextPacket {
+  lessonProgram?: TutorLessonProgram;
   runtime?: TutorRuntimeContextMetadata;
   masterySnapshot?: MasterySnapshot;
   partner: TutorPartnerProfile;

@@ -1,142 +1,123 @@
 'use client';
 
 import { OfflineBanner, SectionCard } from '@qitu/ui';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCurrentUser } from '@qitu/auth';
+import { StudentLink } from '../../components/student-link';
 import { DeviceManagement } from './DeviceManagement';
+import { CompetencyRadar } from './CompetencyRadar';
 import { loadStudentProfile, ProfileOfflineError, ProfilePermissionError } from './api';
 import type { StudentProfileProjection } from './types';
 import { AnalysisStatus } from '../growth/components/AnalysisStatus';
 import { useAnalysisRefresh } from '../growth/useAnalysisRefresh';
-import { useCurrentUser } from '@qitu/auth';
+import styles from './Profile.module.css';
 
 type PageState =
   | { status: 'loading' }
   | { status: 'ready'; data: StudentProfileProjection }
-  | { status: 'empty'; data: StudentProfileProjection }
   | { status: 'offline'; data: StudentProfileProjection | null }
   | { status: 'permission' }
-  | { status: 'error'; message: string };
+  | { status: 'error'; data: StudentProfileProjection | null };
 
 function formatDate(value: string | null): string {
-  if (!value) return '暂无更新时间';
-  return new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(new Date(value));
+  const date = value ? new Date(value) : null;
+  return date && Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric' }).format(date) : '暂无更新时间';
 }
 
-function ListBlock({ title, values, empty }: { title: string; values: string[]; empty: string }) {
-  return (
-    <div className="qitu-profile-list-block">
-      <h3>{title}</h3>
-      {values.length === 0 ? <p className="qitu-profile-muted">{empty}</p> : (
-        <div className="qitu-profile-chip-list">
-          {values.map((value) => <span className="qitu-profile-chip" key={value}>{value}</span>)}
-        </div>
-      )}
-    </div>
-  );
+function ListBlock({ title, values }: { title: string; values: readonly string[] }) {
+  if (!values.length) return null;
+  return <div className={styles.listBlock}><h3>{title}</h3><div className={styles.chips}>
+    {values.map((value) => <span className={styles.chip} key={value}>{value}</span>)}
+  </div></div>;
 }
 
 export function ProfilePage() {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [reloadToken, setReloadToken] = useState(0);
-
+  const identity = useRef(0);
+  const lastData = useRef<StudentProfileProjection | null>(null);
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
   useAnalysisRefresh(reload);
 
   useEffect(() => {
-    let cancelled = false;
+    const requestId = ++identity.current;
     void loadStudentProfile().then((data) => {
-      if (cancelled) return;
-      const hasContent = data.strengths.length + data.interests.length + data.preferences.length > 0
-        || Boolean(data.priorKnowledge || data.targetLevel || data.timeBudgetMinutesPerWeek !== null)
-        || data.recentGrowth.length > 0
-        || Boolean(data.trajectory?.studentSummary || data.trajectory?.milestones.length || data.trajectory?.strengths.length);
-      setState({ status: hasContent ? 'ready' : 'empty', data });
+      if (requestId !== identity.current) return;
+      lastData.current = data;
+      setState({ status: 'ready', data });
     }).catch((error: unknown) => {
-      if (cancelled) return;
-      if (error instanceof ProfilePermissionError) setState({ status: 'permission' });
-      else if (error instanceof ProfileOfflineError) setState({ status: 'offline', data: null });
-      else setState({ status: 'error', message: error instanceof Error ? error.message : '个人画像暂时无法加载' });
+      if (requestId !== identity.current) return;
+      if (error instanceof ProfilePermissionError) {
+        lastData.current = null;
+        setState({ status: 'permission' });
+      } else if (error instanceof ProfileOfflineError) setState({ status: 'offline', data: lastData.current });
+      else setState({ status: 'error', data: lastData.current });
     });
-    return () => { cancelled = true; };
+    return () => { identity.current++; };
   }, [reloadToken]);
 
   useEffect(() => {
-    const offline = () => setState((current) => ({ status: 'offline', data: current.status === 'ready' || current.status === 'empty' ? current.data : null }));
-    const online = () => reload();
+    const offline = () => { identity.current++; setState({ status: 'offline', data: lastData.current }); };
     window.addEventListener('offline', offline);
-    window.addEventListener('online', online);
-    return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
+    window.addEventListener('online', reload);
+    return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', reload); };
   }, [reload]);
 
-  if (state.status === 'loading') return <div className="qitu-profile-page"><SectionCard title="正在读取你的学习画像"><p className="qitu-profile-muted">正在读取已确认的画像与成长结果……</p></SectionCard></div>;
-  if (state.status === 'permission') return <div className="qitu-profile-page"><SectionCard title="无法查看个人画像"><p>当前账号没有查看个人画像的权限。</p></SectionCard></div>;
-  if (state.status === 'error') return <div className="qitu-profile-page"><SectionCard title="个人画像加载失败"><p>{state.message}</p><button type="button" className="qitu-button qitu-button-primary" onClick={reload}>重新加载</button></SectionCard></div>;
-
-  if (state.status === 'offline') {
-    const data = state.data;
-    return <div className="qitu-profile-page"><OfflineBanner readOnly onRetry={reload} />{data ? <ProfileContent data={data} /> : <SectionCard title="暂时离线"><p className="qitu-profile-muted">恢复网络后再查看已确认的个人画像。</p></SectionCard>}</div>;
-  }
+  const pageClass = `qitu-profile-page ${styles.page}`;
+  if (state.status === 'loading') return <div className={pageClass}><div className={styles.loading} role="status" aria-live="polite"><h1>正在打开你的学习画像</h1><p>读取已确认的学习记录与六维观察状态。</p></div></div>;
+  if (state.status === 'permission') return <div className={pageClass}><SectionCard title="暂时无法查看学习画像"><p>请使用自己的学生账号登录后再查看。</p></SectionCard></div>;
+  if (state.status === 'error' && !state.data) return <div className={pageClass}><SectionCard title="学习画像暂时没有加载出来"><p>学习记录仍会保留，可以稍后重新读取。</p><button type="button" className="qitu-button qitu-button-primary" onClick={reload}>重新加载</button></SectionCard></div>;
+  if (state.status === 'offline' && !state.data) return <div className={pageClass}><OfflineBanner readOnly onRetry={reload} /><SectionCard title="网络暂时断开"><p>连接网络后，就可以查看已确认的画像与学习记录。</p></SectionCard></div>;
   const data = state.data;
-  return <div className="qitu-profile-page"><ProfileContent data={data} />{state.status === 'empty' ? <SectionCard title="画像正在形成"><p className="qitu-profile-muted">目前还没有足够的已确认证据。完成项目、提交作品或反思后，画像专家会继续整理。</p></SectionCard> : null}</div>;
+  return <div className={pageClass}>
+    {state.status === 'offline' && <OfflineBanner readOnly onRetry={reload} />}
+    {state.status === 'error' && <p className={styles.notice} role="alert">暂时无法更新，正在显示上次读取的学习画像。<button type="button" className={styles.retry} onClick={reload}>重新读取</button></p>}
+    {data && <ProfileContent data={data} />}
+  </div>;
 }
 
 function ProfileContent({ data }: { data: StudentProfileProjection }) {
   const user = useCurrentUser();
-  return (
-    <>
-      {data.freshness === 'unavailable' ? (
-        <SectionCard title="专家画像尚未确认">
-          <p className="qitu-profile-muted">聊聊你的兴趣、完成一次探究或分享反思，专任助手会依据学习记录继续整理。</p>
-        </SectionCard>
-      ) : null}
-      <div className="qitu-profile-hero-card">
-        <div className="qitu-profile-hero-avatar-wrap"><div className="qitu-profile-hero-avatar">我</div><span className="qitu-profile-level-badge">学习画像</span></div>
-        <div className="qitu-profile-hero-meta">
-          <div className="qitu-profile-hero-title-row"><h1>{user?.displayName ?? '我'}的学习画像</h1><span className="qitu-profile-school-tag">版本 {data.version || '待确认'}</span></div>
-          <p className="qitu-profile-hero-motto">这里展示画像专家根据已确认学习证据整理出的当前状态，不是固定标签，也不是成绩排名。</p>
-          <div className="qitu-profile-stats-row">
-            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">兴趣线索</span><strong className="qitu-stat-value">{data.interests.length}</strong></div>
-            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">已识别优势</span><strong className="qitu-stat-value">{data.strengths.length}</strong></div>
-            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">作品与掌握记录</span><strong className="qitu-stat-value">{data.summary.artifactsPublished + data.summary.objectivesMastered}</strong></div>
-            <div className="qitu-profile-stat-item"><span className="qitu-stat-label">最近更新</span><strong className="qitu-stat-value">{formatDate(data.updatedAt)}</strong></div>
-          </div>
+  const hasInterests = data.interests.length + data.preferences.length + data.strengths.length > 0;
+  return <>
+    <header className={styles.pageHeader}>
+      <div><h1>我的学习画像</h1><p>{user?.displayName ? `${user.displayName}，` : ''}每一点变化，都有学习证据。</p></div>
+      <details className={styles.help}><summary>了解六维画像</summary><p>六个维度帮助你回看探究过程。只有经过确认的评价才会显示在图中；待观察不代表零分。兴趣、学习记录和项目数量不会直接变成能力等级。</p></details>
+    </header>
+    <CompetencyRadar overview={data.competencyOverview ?? null} />
+    <div className={styles.supportGrid}>
+      <section className={styles.section} aria-labelledby="profile-interests-title">
+        <div className={styles.sectionHeader}><h2 id="profile-interests-title">我的兴趣与学习方式</h2><StudentLink className={styles.textLink} href="/student/inspiration">去探索 →</StudentLink></div>
+        <AnalysisStatus analysis={data.analysis} />
+        {hasInterests ? <>
+          <ListBlock title="我感兴趣的方向" values={data.interests} />
+          <ListBlock title="适合我的学习方式" values={data.preferences} />
+          <ListBlock title="学习中已确认的优势" values={data.strengths} />
+        </> : <div className={styles.emptyNote}><strong>从一个感兴趣的问题开始</strong><p>在探索中说出你的想法和偏好，已确认的兴趣与学习方式会出现在这里。</p><StudentLink href="/student/inspiration" className={styles.textLink}>寻找一个想探究的问题 →</StudentLink></div>}
+        {data.nextQuestions.length > 0 && <div className={styles.trajectory}><h3>继续探究的问题</h3><ol className={styles.questions}>{data.nextQuestions.map((question) => <li key={question}>{question}</li>)}</ol></div>}
+        {(data.priorKnowledge || data.targetLevel || data.timeBudgetMinutesPerWeek !== null) && <div className={styles.trajectory}><h3>我的学习安排</h3>
+          {data.priorKnowledge && <p>已有基础：{data.priorKnowledge}</p>}{data.targetLevel && <p>学习目标：{data.targetLevel}</p>}
+          {data.timeBudgetMinutesPerWeek !== null && <p>每周计划投入 {data.timeBudgetMinutesPerWeek} 分钟。</p>}</div>}
+        {data.updatedAt && <p className={styles.muted}>最近更新于 {formatDate(data.updatedAt)}</p>}
+      </section>
+      <section className={styles.section} aria-labelledby="profile-growth-title">
+        <div className={styles.sectionHeader}><h2 id="profile-growth-title">成长中的变化</h2><StudentLink className={styles.textLink} href="/student/growth">查看成长轨迹 →</StudentLink></div>
+        {data.recentGrowth.length > 0 ? <>
+          <ul className={styles.recentList}>{data.recentGrowth.map((entry) => <li key={entry.id}><span className={styles.recordDot} aria-hidden="true" /><div>
+            <time dateTime={entry.occurredAt}>{formatDate(entry.occurredAt)}</time><strong>{entry.title}</strong><p>{entry.summaryStudent}</p>
+          </div></li>)}</ul>
+          <p className={styles.muted}>这些记录是成长的线索，出现记录本身不代表维度已被评价。</p>
+        </> : <div className={styles.emptyNote}><strong>让一次探究成为可回看的经历</strong><p>已确认的项目进展、作品与反思会记录在这里。记录本身不会直接变成六维评价。</p><StudentLink href="/student/inspiration" className={styles.textLink}>开始一次探索 →</StudentLink></div>}
+        <div className={styles.trajectory}><h3>最近的成长归纳</h3><AnalysisStatus analysis={data.growthAnalysis} />
+          {data.trajectory ? <><p>{data.trajectory.studentSummary ?? '已有已确认的阶段记录。'}</p>
+            <ListBlock title="已记录的里程碑" values={data.trajectory.milestones} />
+            <ListBlock title="成长中发现的优势" values={data.trajectory.strengths} />
+            {data.trajectory.nextQuestions.length > 0 && <ol className={styles.questions}>{data.trajectory.nextQuestions.map((question) => <li key={question}>{question}</li>)}</ol>}
+          </> : <p className={styles.muted}>目前还没有已确认的成长归纳。已有记录可以在成长轨迹中继续查看。</p>}
         </div>
-      </div>
-      <div className="qitu-profile-content-grid">
-        <div className="qitu-profile-col">
-          <SectionCard title="专家整理出的学习特征">
-            <AnalysisStatus analysis={data.analysis} />
-            <ListBlock title="我的优势" values={data.strengths} empty="暂未形成稳定结论" />
-            <ListBlock title="我感兴趣的方向" values={data.interests} empty="完成更多探索后会逐步出现" />
-            <ListBlock title="适合我的学习方式" values={data.preferences} empty="暂未记录学习偏好" />
-          </SectionCard>
-          <SectionCard title="接下来可以继续思考">
-            {data.nextQuestions.length === 0 ? <p className="qitu-profile-muted">暂无待探索问题。</p> : <ol className="qitu-profile-question-list">{data.nextQuestions.map((question) => <li key={question}>{question}</li>)}</ol>}
-          </SectionCard>
-        </div>
-        <div className="qitu-profile-col">
-          <SectionCard title="最近的成长证据">
-            {data.recentGrowth.length === 0 ? <p className="qitu-profile-muted">还没有可展示的成长记录。</p> : <div className="qitu-profile-recent-growth">{data.recentGrowth.map((entry) => <div className="qitu-profile-growth-item" key={entry.id}><span>{formatDate(entry.occurredAt)}</span><strong>{entry.title}</strong><p>{entry.summaryStudent}</p></div>)}</div>}
-          </SectionCard>
-          <SectionCard title="成长轨迹专家的最新归纳">
-            <AnalysisStatus analysis={data.growthAnalysis} />
-            {data.trajectory === null ? <p className="qitu-profile-muted">成长轨迹专家还没有返回已确认的阶段总结。</p> : (
-              <>
-                <p className="qitu-profile-trajectory-summary">{data.trajectory.studentSummary ?? '已形成阶段性成长记录。'}</p>
-                <ListBlock title="已识别的里程碑" values={data.trajectory.milestones} empty="暂无里程碑" />
-                <ListBlock title="成长中反复出现的优势" values={data.trajectory.strengths} empty="暂无稳定优势结论" />
-                <ListBlock title="下一阶段可探索的问题" values={data.trajectory.nextQuestions} empty="暂无后续问题" />
-                <small>结论把握：{data.trajectory.confidence === 'high' ? '较充分' : data.trajectory.confidence === 'medium' ? '仍需观察' : data.trajectory.confidence === 'low' ? '初步线索' : '待确认'} · 版本 {data.trajectory.version || '待确认'}</small>
-              </>
-            )}
-          </SectionCard>
-          <SectionCard title="数据来源">
-            <p className="qitu-profile-muted">个人画像由画像分析专家整理，成长记录由成长轨迹专家整理。页面只展示已返回的服务端投影，不把待审核候选当成事实。</p>
-            <small>画像与成长由平台配置的专任助手整理，内容随新的学习证据更新。</small>
-          </SectionCard>
-        </div>
-      </div>
-      <DeviceManagement />
-    </>
-  );
+      </section>
+    </div>
+    <DeviceManagement />
+  </>;
 }

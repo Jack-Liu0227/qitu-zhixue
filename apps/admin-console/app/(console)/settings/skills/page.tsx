@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAdminAssistantConfigs } from '../../../../lib/api/assistants';
 import { persistAssistantBinding } from '../../../../lib/api/assistantBindings';
 import { fetchRuntimeSnapshot } from '../../../../lib/api/runtime';
+import { AdminApiError, AdminOfflineError, AdminPermissionError } from '../../../../lib/api/types';
 import type { AdminAssistantConfig, AdminRuntimeSkill } from '@qitu/contracts';
 
 interface SkillFile {
@@ -48,6 +49,18 @@ function bindingNotice(skill: SkillItem): string {
   if (skill.runtime === 'admin') return 'Admin 专用技能由管家按需加载，不绑定普通助手。';
   if (skill.local) return '本地草稿尚未注册到运行时，不能绑定到助手。';
   return '技能不可用或运行范围未知，请检查服务端配置。';
+}
+
+function assistantBindingLoadError(error: unknown): string {
+  if (error instanceof AdminOfflineError) return '助手绑定状态读取失败：网络不可用，请恢复连接后重试。';
+  if (error instanceof AdminPermissionError) {
+    return `助手绑定状态读取失败：${error.message}（HTTP ${error.status}）。当前会话不是未登录就是角色不是 admin，请重新登录管理员账号。`;
+  }
+  if (error instanceof AdminApiError) {
+    const trace = error.traceId ? `，请求 ID ${error.traceId}` : '';
+    return `助手绑定状态读取失败：${error.message}（HTTP ${error.status} / ${error.code}${trace}）。`;
+  }
+  return `助手绑定状态读取失败：${error instanceof Error ? error.message : '未知错误'}。`;
 }
 
 /** 技能目录来自 AI 运行时快照（GET /api/v1/admin/ai-runtime），不再内置任何编造条目。 */
@@ -250,9 +263,9 @@ export default function SkillsSettingsPage() {
 
   // 加载真实助手用于绑定与展示头像（后端为唯一真实来源）
   useEffect(() => {
-    void reloadBindings().catch(() => {
+    void reloadBindings().catch((failure: unknown) => {
       setAssistants([]);
-      setSaveNotice('助手绑定状态不可用，请重试后再编辑。');
+      setSaveNotice(assistantBindingLoadError(failure));
     });
   }, [reloadBindings]);
 
@@ -599,7 +612,7 @@ export default function SkillsSettingsPage() {
         </div>
 
         {!editingSkill.local ? (
-          <div className="admin-skill-readonly-alert" style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
+          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
             此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器。
             {editingSkill.runtime === 'admin' ? ' Admin 管家按需加载已发布的专用技能，无需在助手矩阵中勾选。' : ' 与助手的绑定/解绑会通过助手接口真实持久化。'}
           </div>
@@ -976,10 +989,9 @@ export default function SkillsSettingsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div className="admin-skills-view-switcher" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+          <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
             <button
               type="button"
-              className={`admin-skills-switch-btn ${skillsViewMode === 'list' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',
@@ -997,7 +1009,6 @@ export default function SkillsSettingsPage() {
             </button>
             <button
               type="button"
-              className={`admin-skills-switch-btn ${skillsViewMode === 'matrix' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',
@@ -1371,7 +1382,9 @@ export default function SkillsSettingsPage() {
                   <td>
                     <div className="admin-skill-avatar-stack">
                       {bound.slice(0, 3).map((a) => (
-                        <div key={a.id} className="admin-skill-avatar-circle" title={a.name}><AssistantGlyph value={a.avatar} /></div>
+                        <div key={a.id} className="admin-skill-avatar-circle" title={a.name}>
+                          <AssistantGlyph value={a.avatar} />
+                        </div>
                       ))}
                       {bound.length > 3 ? (
                         <span className="admin-skill-avatar-more">+{bound.length - 3}</span>

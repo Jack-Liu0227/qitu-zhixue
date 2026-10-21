@@ -51,8 +51,18 @@
 
 /* 项目卡网格：按可用宽度自动排 2~4 列，避免固定列数在窄屏挤成一条。 */
 .qitu-project-grid {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+.qitu-projects-main { min-width: 0; }
+.qitu-projects-list-screen { gap: 12px; max-width: 1680px; width: 100%; margin-inline: auto; }
+.qitu-projects-list-screen > p { margin: 4px 0; }
+.qitu-project-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 0; }
+.qitu-project-actions > button { min-height: 30px; padding: 4px 8px; font-size: 12px; }
+.qitu-project-history-hint, .qitu-project-created { color: var(--qitu-muted); }
+.qitu-project-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 20px 0; }
+@media (max-width: 1500px) { .qitu-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .qitu-project-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- 分组标签 ---------- */
 
@@ -186,11 +196,17 @@
 
 /* 没有封面时的占位：用极浅的品牌渐变，不假装是一张图片。 */
 .qitu-project-cover-fallback {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   width: 100%;
   height: 100%;
   background: var(--qitu-gradient-banner);
 }
+
+.qitu-project-cover.is-placeholder { height: 88px; aspect-ratio: auto; color: var(--qitu-primary); }
+.qitu-project-cover-fallback > span:first-child { font-size: 32px; }
 
 .qitu-project-card-body {
   display: flex;

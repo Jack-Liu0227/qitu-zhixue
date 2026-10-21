@@ -52,6 +52,7 @@ import { PostgresProjectAssessmentStore } from './project-assessment.store.postg
 import { ProjectAssessmentService } from './project-assessment.service';
 import { WorksLearningEvidenceService } from './works-learning-evidence.service';
 import { WorksLearningController } from './works-learning.controller';
+import { WorksLessonQualityController } from './works-lesson-quality.controller';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 import { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import { TemplatesModule } from '../templates/templates.module';
@@ -72,7 +73,7 @@ import { MasteryModule } from '../mastery/mastery.module';
   // T17：TeamRuntimeModule 提供服务端内部的门禁证据写入（review_completed_and_archived）。
   // 它不反向依赖 WorksModule，因此无循环导入。
   imports: [AuthModule, DirectoryModule, TeamRuntimeModule, LearningPlanStorageModule, TemplatesModule, MasteryModule],
-  controllers: [ArtifactsController, FilesController, ProjectEvidenceController, WorksLearningController],
+  controllers: [ArtifactsController, FilesController, ProjectEvidenceController, WorksLearningController, WorksLessonQualityController],
   providers: [
     WorksService,
     WorksLearningEvidenceService,

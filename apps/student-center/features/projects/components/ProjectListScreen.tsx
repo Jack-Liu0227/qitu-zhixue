@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { ProjectHistoryPage, ProjectDisplayChange } from '@qitu/contracts';
+import { projectsDataSource } from '../data';
 import { SkeletonBlock } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 import { CreateProjectEntry } from './CreateProjectEntry';
@@ -9,9 +11,10 @@ import { ProjectList } from './ProjectList';
 import { ProjectSearch } from './ProjectSearch';
 import { ProjectTabs } from './ProjectTabs';
 import { ScreenState } from './StateViews';
-import { useProjectList, useProjectNextStep } from '../hooks/useProjectsData';
+import { useProjectsResource, useProjectNextStep } from '../hooks/useProjectsData';
 import type { ScreenScenario } from '../lib/loadable';
-import type { ProjectTab } from '../types';
+import { createIdempotencyKey } from '../lib/idempotency';
+import type { ProjectTab, ProjectListItem } from '../types';
 
 export interface ProjectListScreenProps {
   initialTab?: ProjectTab;
@@ -28,13 +31,60 @@ export function ProjectListScreen({
 }: ProjectListScreenProps) {
   const [tab, setTab] = useState<ProjectTab>(initialTab);
   const [query, setQuery] = useState(initialQuery);
-  const list = useProjectList(tab, query, { scenario });
-  const listData =
-    list.state.status === 'ready' || list.state.status === 'offline' ? list.state.data : [];
-  const primary = listData.find(
-    (item) => item.status !== 'completed' && item.status !== 'exploration',
-  );
-  const nextStep = useProjectNextStep(primary?.id, { scenario });
+  const [includeCollected, setIncludeCollected] = useState(false);
+  const [cursors, setCursors] = useState<Array<string | undefined>>([undefined]);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [reload, setReload] = useState(0);
+  const [selected, setSelected] = useState<string[]>([]);
+  const inFlight = useRef(false);
+  const writeKeys = useRef(new Map<string,string>());
+  const cursor = cursors.at(-1);
+  const list = useProjectsResource<ProjectHistoryPage>(async () => {
+    if (projectsDataSource.queryProjects) return projectsDataSource.queryProjects({ tab,q:query,includeCollected,cursor });
+    const items = await projectsDataSource.listProjects({ tab,q:query });
+    return { items:items.map(item => ({ ...item,kind:'project' as const,createdAt:item.createdAt ?? '',lastLearningActivityAt:null,collectedAt:null,isCurrent:item.isCurrent === true })),
+      nextCursor:null,counts:{ active:items.length,draft:0,done:0 },revision:'fixture',preferenceVersion:0,currentProjectId:items.find(item => item.isCurrent)?.id ?? null,selectionSource:'none' };
+  },[tab,query,includeCollected,cursor,reload],{ scenario,isEmpty:() => false });
+  const page = list.state.status === 'ready' || list.state.status === 'offline' ? list.state.data : null;
+  const nextStep = useProjectNextStep(page?.currentProjectId ?? undefined,{ scenario });
+  const entryKey = (item: Pick<ProjectListItem, 'kind' | 'id'>) => `${item.kind ?? 'project'}:${item.id}`;
+  const removeEntries = async (items: Array<Pick<ProjectListItem, 'kind' | 'id' | 'title'>>) => {
+    if (!items.length || !projectsDataSource.deleteHistory || inFlight.current) return;
+    const includesProject = items.some(item => !item.kind || item.kind === 'project');
+    if (!window.confirm(`永久删除所选 ${items.length} 条记录？${includesProject ? '正式项目的计划、对话、作品和相关学习记录将一起删除。' : '草稿及相关对话将一起删除。'}此操作无法恢复。\n${items.slice(0, 3).map(item => item.title).join('\n')}`)) return;
+    inFlight.current = true; setSaving(true); setNotice('');
+    let deleted = 0;
+    let failure = '';
+    try {
+      for (const item of items) {
+        const fingerprint = `delete:${entryKey(item)}`;
+        try {
+          const key = writeKeys.current.get(fingerprint) ?? createIdempotencyKey();
+          writeKeys.current.set(fingerprint, key);
+          await projectsDataSource.deleteHistory(item.kind ?? 'project', item.id, key);
+          writeKeys.current.delete(fingerprint); deleted += 1;
+        } catch (error) { failure = error instanceof Error ? error.message : '删除失败'; break; }
+      }
+      setNotice(failure ? `已永久删除 ${deleted} 条，其他记录未确认删除：${failure}` : `已永久删除 ${deleted} 条记录。`);
+      setSelected([]); setCursors([undefined]); setReload(value => value + 1);
+    } finally { inFlight.current = false; setSaving(false); }
+  };
+  const change = async (projectId:string | null, input:Omit<ProjectDisplayChange,'expectedVersion'>) => {
+    if (!page || !projectsDataSource.changeProjectDisplay || inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true); setNotice('');
+    const fingerprint = JSON.stringify([projectId,input,page.preferenceVersion]);
+    try {
+      const key = writeKeys.current.get(fingerprint) ?? createIdempotencyKey();
+      writeKeys.current.set(fingerprint,key);
+      const receipt = await projectsDataSource.changeProjectDisplay(projectId,{ ...input,expectedVersion:page.preferenceVersion },key);
+      writeKeys.current.delete(fingerprint);
+      setNotice(receipt.superseded ? '其他设备已修改显示偏好，已重新读取。' : '显示偏好已保存。');
+      setCursors([undefined]); setReload(value => value + 1);
+    } catch (error) { setNotice(error instanceof Error ? error.message : '保存失败，请重试'); }
+    finally { inFlight.current = false; setSaving(false); }
+  };
 
   return (
     <div className="qitu-projects-list-screen">
@@ -45,21 +95,47 @@ export function ProjectListScreen({
           <CreateProjectEntry />
         </div>
       </div>
-      <ProjectTabs active={tab} onChange={setTab} />
-      <ProjectSearch value={query} onChange={setQuery} />
+      <ProjectTabs active={tab} onChange={value => { setTab(value); setSelected([]); setCursors([undefined]); }} />
+      <ProjectSearch value={query} onChange={value => { setQuery(value); setSelected([]); setCursors([undefined]); }} />
+      <label><input type="checkbox" checked={includeCollected} onChange={event => { setIncludeCollected(event.target.checked); setCursors([undefined]); }} />包含已收纳</label>
+      <p className="qitu-project-history-hint">{tab === 'draft' ? '草稿是尚未确认的探索或计划。明确确认后，才会创建正式项目。' : '这里保留你已确认的项目。同主题的不同探索会分别保存；收纳可保留记录，永久删除会清除项目及相关学习记录。'}</p>
+      {page ? <p>进行中 {page.counts.active} · 草稿 {page.counts.draft} · 已完成 {page.counts.done}{page.selectionSource === 'creation_fallback' ? '，尚未选择继续学习项目，暂按创建时间推荐。' : ''}</p> : null}
+      {notice ? <p role="status">{notice}</p> : null}
       <ScreenState
         state={list.state}
-        onRetry={list.retry}
+        onRetry={() => { setCursors([undefined]); list.retry(); }}
         retrying={list.retrying}
         loading={<SkeletonBlock lines={6} />}
         emptyTitle="还没有项目"
         emptyDescription="去灵感空间找一找，想做的事会变成正式项目。"
         emptyAction={<CreateProjectEntry />}
-        render={(projects, offline) => (
+        render={(result, offline) => (
           <div className="qitu-projects-layout" style={{ display: 'grid', gap: 16 }}>
-            <ProjectList projects={projects} readOnly={offline} />
+            <div className="qitu-projects-main">
+            {projectsDataSource.deleteHistory && result.items.length ? <div className="qitu-project-actions" style={{ marginBottom: 12 }}>
+              <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => setSelected(result.items.map(entryKey))}>全选本页</button>
+              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !selected.length} onClick={() => setSelected([])}>取消选择</button>
+              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !selected.length}
+                onClick={() => void removeEntries(result.items.filter(item => selected.includes(entryKey(item))))}>永久删除所选（{selected.length}）</button>
+            </div> : null}
+            <ProjectList projects={result.items} readOnly={offline} renderActions={item => <div className="qitu-project-actions">
+              {projectsDataSource.deleteHistory ? <label><input type="checkbox" aria-label={`选择清理：${item.title}`} checked={selected.includes(entryKey(item))} disabled={offline || saving}
+                onChange={event => setSelected(values => event.target.checked ? [...values, entryKey(item)] : values.filter(value => value !== entryKey(item)))} />选择</label> : null}
+              {item.kind === 'project' && projectsDataSource.changeProjectDisplay ? <>
+                {!item.collectedAt && !['completed','published','exploration'].includes(item.status) ? <button className="qitu-button qitu-button-ghost" disabled={offline || saving || item.isCurrent} onClick={() => void change(null,{ currentProjectId:item.id })}>{item.isCurrent ? '当前继续学习项目' : '设为继续学习项目'}</button> : null}
+                <button className="qitu-button qitu-button-ghost" disabled={offline || saving} onClick={() => void change(item.id,{ collected:!item.collectedAt,...(item.isCurrent && !item.collectedAt ? { currentProjectId:null } : {}) })}>{item.collectedAt ? '恢复显示' : item.isCurrent ? '收纳并清空当前选择' : '收纳'}</button>
+              </> : null}
+              {projectsDataSource.deleteHistory ? <button className="qitu-button qitu-button-ghost" disabled={offline || saving} aria-label={`永久删除：${item.title}`} onClick={() => void removeEntries([item])}>永久删除</button> : null}
+            </div>} />
+            {result.items.length === 0 ? <p>暂无匹配记录</p> : null}
+            <nav className="qitu-project-pagination" aria-label="项目分页">
+              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || cursors.length < 2} onClick={() => { setSelected([]); setCursors(values => values.slice(0,-1)); }}>上一页</button>
+              <span>第 {cursors.length} 页</span>
+              <button className="qitu-button qitu-button-ghost" disabled={offline || saving || !result.nextCursor} onClick={() => { setSelected([]); setCursors(values => [...values,result.nextCursor ?? undefined]); }}>下一页</button>
+            </nav>
+            </div>
             {(nextStep.state.status === 'ready' || nextStep.state.status === 'offline') && nextStep.state.data ? (
-              <NextStepCard nextStep={nextStep.state.data} disabled={offline} />
+              <aside><NextStepCard nextStep={nextStep.state.data} disabled={offline} /></aside>
             ) : null}
           </div>
         )}

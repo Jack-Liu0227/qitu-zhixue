@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
-import { agentConfigs, agentTeamEvents, agentTeamRuns, agentTeamTasks, pblGateEvidence, projects, tutorSessions, type Database } from '@qitu/database';
+import { agentConfigs, agentTeamEvents, agentTeamMessages, agentTeamRuns, agentTeamTasks, pblGateEvidence, projects, tutorSessions, type Database } from '@qitu/database';
 import {
   PBL_ASSISTANT_BY_PHASE,
   PBL_AUTONOMOUS_ADVANCE_ALLOWED,
@@ -377,6 +377,111 @@ test('startRun replays the existing active run for the same mentor + session + p
     idempotencyKey: 'key-replay-1',
   });
   assert.equal(view.id, 'run-a');
+});
+
+test('startRun expires a stale zero-work tutor run before enforcing mentor uniqueness', async () => {
+  const old = new Date('2026-10-01T00:00:00.000Z');
+  const stale = fullRunRow({
+    id: 'run-stale',
+    status: 'queued',
+    trigger: 'tutor.turn',
+    createdAt: old,
+    updatedAt: old,
+    leaseExpiresAt: null,
+  });
+  const created = fullRunRow({
+    id: 'run-new',
+    status: 'queued',
+    context: { phase: 'exploration' },
+  });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-new', studentId: 'stu-1', projectId: null }]]],
+    [agentTeamRuns, [[], [stale], [created]]],
+    [agentTeamTasks, [[]]],
+    [agentTeamMessages, [[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-new',
+    idempotencyKey: 'stale-empty-run',
+  });
+
+  assert.equal(view.id, 'run-new');
+  assert.ok(probe.updates.some((patch) => patch.status === 'cancelled'),
+    'stale empty run must be cancelled so the uniqueness slot is released');
+});
+
+test('startRun expires a stale zero-work manual verification run before enforcing mentor uniqueness', async () => {
+  const stale = fullRunRow({
+    id: 'run-manual-stale',
+    status: 'queued',
+    trigger: 'manual.verification',
+    createdAt: new Date('2026-10-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-10-01T00:00:00.000Z'),
+    leaseExpiresAt: null,
+  });
+  const created = fullRunRow({ id: 'run-manual-new', status: 'queued', context: { phase: 'exploration' } });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-new', studentId: 'stu-1', projectId: null }]]],
+    [agentTeamRuns, [[], [stale], [created]]],
+    [agentTeamTasks, [[]]],
+    [agentTeamMessages, [[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-new',
+    idempotencyKey: 'stale-manual-run',
+  });
+
+  assert.equal(view.id, 'run-manual-new');
+  assert.ok(probe.updates.some((patch) => patch.status === 'cancelled'));
+});
+
+test('startRun reconciles a task-bearing run whose tasks already succeeded before enforcing mentor uniqueness', async () => {
+  const stale = fullRunRow({
+    id: 'run-finished-work',
+    status: 'queued',
+    trigger: 'tutor.turn',
+    updatedAt: new Date('2026-10-01T00:00:00.000Z'),
+  });
+  const created = fullRunRow({
+    id: 'run-new',
+    status: 'queued',
+    context: { phase: 'exploration' },
+  });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-new', studentId: 'stu-1', projectId: null }]]],
+    [agentTeamRuns, [[], [stale], [created]]],
+    [agentTeamTasks, [
+      [{ runId: 'run-finished-work', status: 'succeeded' }],
+      [{ runId: 'run-finished-work', status: 'succeeded' }],
+    ]],
+    [agentTeamMessages, [[], []]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-new',
+    idempotencyKey: 'finished-task-run',
+  });
+
+  assert.equal(view.id, 'run-new');
+  assert.ok(probe.updates.some((patch) => patch.status === 'completed'),
+    'a queued run with only succeeded tasks must be reconciled to completed');
 });
 
 /* ------------------------------------------------------------------ */

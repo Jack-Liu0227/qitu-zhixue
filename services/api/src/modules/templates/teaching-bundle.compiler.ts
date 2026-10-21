@@ -215,6 +215,15 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
       reject('SESSION_ROLE_UNRESOLVED', 'sessionRoutes.roleSlotId');
     }
     const session = profile.sessions.find((entry) => entry.sessionIndex === route.sessionIndex);
+    if (session?.teachingRequirements?.includes('dynamic_lesson') && (!role.skills.some(skill => skill.canonicalId === 'pbl-dynamic-lesson')
+      || !role.tools.some(tool => tool.toolId === 'tutor.propose_lesson_activity'))) {
+      reject('LESSON_DYNAMIC_CAPABILITY_REQUIRED', `sessionRoutes.${route.sessionIndex}`);
+    }
+    if (session?.teachingRequirements?.includes('project_knowledge') && (!source.knowledgeGrant?.knowledgeBaseIds.length
+      || !['ima_search_knowledge', 'ima_read_document'].every(id => source.knowledgeGrant?.allowedTools.includes(id)
+        && role.tools.some(tool => tool.toolId === id && tool.mcpServerId === 'ima-knowledge')))) {
+      reject('LESSON_KNOWLEDGE_CAPABILITY_REQUIRED', `sessionRoutes.${route.sessionIndex}`);
+    }
     const phase = template.phases.find((entry) => entry.phase === session?.phase);
     if (phase?.assignedAssistantId !== null && phase?.assignedAssistantId !== role.assistantId) {
       reject('TEMPLATE_ROLE_MISMATCH', 'sessionRoutes.roleSlotId');

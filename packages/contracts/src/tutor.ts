@@ -335,6 +335,13 @@ export interface TutorProjectCurrentTask {
 
 /** Server-owned project context projection used by the AI搭档 page. */
 export interface TutorProjectContext {
+  exploration?: {
+    id: string | null;
+    templateVersionId: string | null;
+    title: string;
+    drivingQuestion: string | null;
+    handoff: 'free' | 'ready' | 'pending';
+  };
   /**
    * 正式项目的摘要；**自由探索会话为 `null`**。
    *

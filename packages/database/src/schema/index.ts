@@ -23,6 +23,7 @@ export * from './preferences';
 export * from './project-binding';
 export * from './project-templates';
 export * from './projects';
+export * from './project-display';
 export * from './tenancy';
 export * from './tutor-workspace';
 export * from './verification';

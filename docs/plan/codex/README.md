@@ -69,6 +69,11 @@ M0 基线审计部分完成，不能宣称所有 characterization tests 已完�
 
 Implementation and rollout boundaries: [16-session template](../../admin/optics-16-session-template.md).
 
+## Teaching arrangement and profile UI (2026-10-22)
+
+- [Design and scope](./teaching-profile-ui-20261022.md).
+- [Verification and integration limits](./teaching-profile-ui-verification-20261022.md).
+
 ## New implementation slices (2026-10-20)
 
 - [光学全流程实施与验收（2026-10-21）](./optics-template-runtime/06-fullflow-implementation-20261021.md)：冻结课时完成规则、真实学习证据与归档路径。

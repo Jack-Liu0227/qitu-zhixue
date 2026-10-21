@@ -5,6 +5,7 @@ import {
   type StudentLearningAnalysisStatus,
   type StudentGrowthTrajectoryProjection,
   type StudentGrowthAnalysis,
+  type GrowthCompetencyOverview,
 } from '@qitu/contracts';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { agentProjectionCandidates } from '@qitu/database';
@@ -31,6 +32,7 @@ import type { DataMode } from '../../database';
 import { DATA_MODE_TOKEN } from '../../database';
 import { DATABASE_TOKEN } from '../../database';
 import { observationStateFor } from './growth.evidence';
+import { buildGrowthCompetencyOverview } from './growth-competency.read-model';
 import {
   buildGrowthStoredRecord,
   type GrowthRecordInput,
@@ -65,6 +67,7 @@ export interface StudentProfileProjection {
     growthAssistantId: string | null;
   };
   trajectory: StudentGrowthTrajectoryProjection | null;
+  competencyOverview: GrowthCompetencyOverview;
 }
 
 function asObject(value: unknown): Record<string, unknown> | null {
@@ -203,10 +206,11 @@ export class GrowthService {
     const recentGrowth = this.getTimeline(studentId, {
       type: 'all', projectId: null, from: null, to: null, cursor: null, limit: 6,
     }).items;
+    const competencyOverview = buildGrowthCompetencyOverview(recentGrowth);
     const empty = (trajectory: StudentProfileProjection['trajectory'] = null): StudentProfileProjection => ({
       studentId, version: 0, updatedAt: null, priorKnowledge: null,
       targetLevel: null, timeBudgetMinutesPerWeek: null, preferences: [],
-      interests: [], strengths: [], nextQuestions: [], recentGrowth, summary,
+      interests: [], strengths: [], nextQuestions: [], recentGrowth, summary, competencyOverview,
       freshness: 'unavailable',
       analysis: analysisStatus([]), growthAnalysis: analysisStatus([]),
       provenance: { profileAssistantId: null, growthAssistantId: null },
@@ -273,7 +277,7 @@ export class GrowthService {
       timeBudgetMinutesPerWeek: numberOrNull(profile.timeBudgetMinutesPerWeek),
       preferences: stringList(profile.preferences), interests: stringList(profile.interests),
       strengths: stringList(profile.strengths), nextQuestions: stringList(profile.nextQuestions),
-      recentGrowth, summary, freshness: 'fresh',
+      recentGrowth, summary, competencyOverview, freshness: 'fresh',
       analysis, growthAnalysis,
       provenance,
       trajectory,

@@ -18,4 +18,12 @@ export class TeamVersionController {
     try { return { data: await this.versions.publish(actor, teamId, body, key ?? '') }; }
     catch (error) { throwHttpForIdempotencyError(error); }
   }
+  @Post(':versionId/runtime-projection')
+  async projectRuntime(@Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('teamId') teamId: string, @Param('versionId') versionId: string) {
+    const actor = requireRole(this.auth, cookie, 'admin', '团队版本仅管理员可用');
+    try { return { data: await this.versions.projectRuntime(actor, teamId, versionId, key ?? '') }; }
+    catch (error) { throwHttpForIdempotencyError(error); }
+  }
 }

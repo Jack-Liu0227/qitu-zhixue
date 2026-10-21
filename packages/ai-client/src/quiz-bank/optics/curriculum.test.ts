@@ -1,8 +1,22 @@
 import { getPhaseAndRoleForSession, parseProjectTemplateSpec, validateProjectTemplateSpec } from '@qitu/contracts';
 import { OPTICS_TEMPLATE_SPEC } from './content.js';
-import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_SESSION_TEMPLATE_SPEC } from './curriculum.js';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_SESSION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC } from './curriculum.js';
 
 export function runOpticsCurriculumAssertions(): void {
+  const quality = OPTICS_16_QUALITY_TEMPLATE_SPEC;
+  if (!validateProjectTemplateSpec(quality).valid || quality.version === OPTICS_16_COMPLETION_TEMPLATE_SPEC.version) throw new Error('Quality course requires an independently valid identity');
+  const profileV4 = quality.curriculum!.profiles[0]!;
+  for (const session of profileV4.sessions) {
+    if (session.completionSpec?.version !== 'learning-session-completion.v2' || session.completionSpec.qualityReview.reviewer !== 'current_teacher'
+      || !session.teachingRequirements?.includes('dynamic_lesson') || !session.teachingRequirements.includes('project_knowledge')) throw new Error('Quality or required teaching capabilities missing');
+  }
+  for (const qualityReview of [null,{version:'lesson-quality.v1',reviewer:'model',criteria:[{id:'one',description:'Check'}]},
+    {version:'lesson-quality.v1',reviewer:'current_teacher',criteria:[]},
+    {version:'lesson-quality.v1',reviewer:'current_teacher',criteria:[{id:'one',description:'Check'},{id:'one',description:'Duplicate'}]}]) {
+    const first = profileV4.sessions[0]!;
+    const invalid = {...quality,curriculum:{profiles:[{...profileV4,sessions:[{...first,completionSpec:{...first.completionSpec,qualityReview}},...profileV4.sessions.slice(1)]}]}};
+    if (validateProjectTemplateSpec(invalid).valid) throw new Error('Invalid quality contract accepted');
+  }
   const completion = OPTICS_16_COMPLETION_TEMPLATE_SPEC;
   if (!validateProjectTemplateSpec(completion).valid) throw new Error('Completion curriculum does not validate');
   if (completion.version === OPTICS_16_SESSION_TEMPLATE_SPEC.version || completion.id === OPTICS_16_SESSION_TEMPLATE_SPEC.id) throw new Error('Completion rules must have a new identity');

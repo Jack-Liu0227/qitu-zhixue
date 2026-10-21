@@ -1,5 +1,5 @@
 import type { StudentGrowthEntry, StudentGrowthSummary } from '../growth/types';
-import type { StudentLearningAnalysisStatus, StudentGrowthTrajectoryProjection } from '@qitu/contracts';
+import type { GrowthCompetencyOverview, StudentLearningAnalysisStatus, StudentGrowthTrajectoryProjection } from '@qitu/contracts';
 
 export interface StudentProfileProjection {
   studentId: string;
@@ -22,4 +22,5 @@ export interface StudentProfileProjection {
   analysis?: StudentLearningAnalysisStatus;
   growthAnalysis?: StudentLearningAnalysisStatus;
   trajectory: StudentGrowthTrajectoryProjection | null;
+  competencyOverview?: GrowthCompetencyOverview | null;
 }

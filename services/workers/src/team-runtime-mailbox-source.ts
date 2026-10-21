@@ -207,7 +207,7 @@ export class PostgresTeamMailboxSource {
           createdAt: now,
         }).onConflictDoNothing({ target: agentTeamMessages.idempotencyKey });
         await this.enqueueInterestRecommendation(tx, job, output, now);
-        await this.updateRunStatus(tx, job.task?.runId ?? job.message.runId, now, job.message.messageType === 'projection.request');
+        await this.updateRunStatus(tx, job.task?.runId ?? job.message.runId, now);
       }
       await this.clearMailboxLease(tx, job.message.recipientAgentId, job.leaseOwner, now);
       await this.writeCompletionEvent(tx, job, 'succeeded', now, undefined, output);
@@ -273,7 +273,7 @@ export class PostgresTeamMailboxSource {
             createdAt: now,
           }).onConflictDoNothing({ target: agentTeamMessages.idempotencyKey });
         }
-        if (terminal) await this.updateRunStatus(tx, job.task.runId, now, job.message.messageType === 'projection.request');
+        if (terminal) await this.updateRunStatus(tx, job.task.runId, now);
       }
       if (!terminal) {
         await tx.update(agentMailboxes).set({ pendingCount: sql`${agentMailboxes.pendingCount} + 1`, updatedAt: now })
@@ -380,12 +380,7 @@ export class PostgresTeamMailboxSource {
       .where(and(eq(agentMailboxes.agentId, agentId), eq(agentMailboxes.leaseOwner, leaseOwner)));
   }
 
-  private async updateRunStatus(tx: Transaction, runId: string, now: Date, projection = false): Promise<void> {
-    if (projection) {
-      const [run] = await tx.select({ context: agentTeamRuns.context }).from(agentTeamRuns).where(eq(agentTeamRuns.id, runId)).limit(1);
-      // Auxiliary analysis never owns the active Tutor run or its mentor slot.
-      if (run?.context.projectionOnly !== true) return;
-    }
+  private async updateRunStatus(tx: Transaction, runId: string, now: Date): Promise<void> {
     const tasks = await tx.select({ status: agentTeamTasks.status }).from(agentTeamTasks)
       .where(eq(agentTeamTasks.runId, runId));
     if (tasks.length === 0) return;
@@ -393,7 +388,7 @@ export class PostgresTeamMailboxSource {
       ? 'failed'
       : tasks.every((task) => task.status === 'succeeded')
         ? 'completed'
-        : projection ? 'waiting' : 'running';
+        : 'running';
     await tx.update(agentTeamRuns).set({
       status,
       completedAt: status === 'completed' || status === 'failed' ? now : null,

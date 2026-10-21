@@ -1,10 +1,11 @@
 'use client';
 import { projectStageLabel } from '@qitu/contracts';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisualAsset, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import { useTutorDataSource } from '../TutorDataSourceProvider';
+import { createIdempotencyKey } from '../idempotency';
 
 export interface HistorySessionItem {
   id: string;
@@ -18,71 +19,12 @@ export interface HistorySessionItem {
 }
 
 
-const STORAGE_KEY = 'qitu.tutor.exploration_history';
-const DELETED_STORAGE_KEY = 'qitu.tutor.deleted_exploration_history';
-const HIDDEN_PROJECTS_STORAGE_KEY = 'qitu.tutor.hidden_project_history';
-function getHiddenProjectIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(HIDDEN_PROJECTS_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function getDeletedExplorationIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(DELETED_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export function getLocalExplorationHistory(): HistorySessionItem[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveLocalExplorationSession(item: HistorySessionItem) {
-  if (typeof window === 'undefined') return;
-  try {
-    if (getDeletedExplorationIds().has(item.id)) return;
-    const history = getLocalExplorationHistory();
-    const filtered = history.filter((h) => h.id !== item.id);
-    const updated = [item, ...filtered].slice(0, 30); // 保留最近30条
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
-}
-
-export function deleteLocalExplorationSession(id: string) {
-  if (typeof window === 'undefined') return;
-  try {
-    const history = getLocalExplorationHistory();
-    const updated = history.filter((h) => h.id !== id);
-    const deleted = getDeletedExplorationIds();
-    deleted.add(id);
-    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify([...deleted].slice(-100)));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
-}
-
 function formatRelativeTime(isoString: string): string {
   try {
     const date = new Date(isoString);
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (!Number.isFinite(date.getTime())) return '时间未知';
     if (diffSec < 60) return '刚刚';
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)} 分钟前`;
     if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} 小时前`;
@@ -123,23 +65,30 @@ export function TutorSessionHistory({
   const dataSource = useTutorDataSource();
   const [projectSessions, setProjectSessions] = useState<HistorySessionItem[]>([]);
   const [explorationHistory, setExplorationHistory] = useState<HistorySessionItem[]>([]);
-  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(() => getHiddenProjectIds());
   const [historyStatus, setHistoryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [historyError, setHistoryError] = useState<{ message: string; status?: number; code?: string } | null>(null);
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState('');
+  const deleteKeys = useRef(new Map<string, string>());
 
   useEffect(() => {
     let cancelled = false;
     setHistoryStatus('loading');
     setHistoryError(null);
-    void dataSource.listProjects().then((projects) => {
+    const load = dataSource.listConversationHistory ? dataSource.listConversationHistory().then(items => {
       if (cancelled) return;
-      setProjectSessions(projects.filter((project) => !hiddenProjectIds.has(project.id)).map((project) => ({
+      setProjectSessions(items.filter(item => item.kind === 'project'));
+      setExplorationHistory(items.filter(item => item.kind === 'exploration'));
+      setHistoryStatus('ready');
+    }) : Promise.all([dataSource.listProjects(), dataSource.listExplorationHistory?.() ?? Promise.resolve([])]).then(([projects, explorations]) => {
+      if (cancelled) return;
+      setProjectSessions(projects.map((project) => ({
         id: project.id,
         title: project.title,
         kind: 'project',
         projectId: project.id,
-        updatedAt: new Date().toISOString(),
+        updatedAt: project.lastLearningActivityAt ?? project.createdAt ?? '',
         // The project list is the persisted source of truth. During the first
         // render of a project route the session has not loaded yet, so
         // `currentTurnCount` is temporarily zero and must not erase the count
@@ -152,8 +101,10 @@ export function TutorSessionHistory({
             : 0,
         stageLabel: projectStageLabel(project.stage),
       })));
+      setExplorationHistory(explorations);
       setHistoryStatus('ready');
-    }).catch((cause: unknown) => {
+    });
+    void load.catch((cause: unknown) => {
       if (cancelled) return;
       const candidate = typeof cause === 'object' && cause !== null ? cause as { message?: unknown; status?: unknown; code?: unknown } : {};
       setHistoryError({
@@ -164,43 +115,26 @@ export function TutorSessionHistory({
       setHistoryStatus('error');
     });
     return () => { cancelled = true; };
-  }, [dataSource, currentProjectId, currentTurnCount, hiddenProjectIds, historyReloadKey]);
+  }, [dataSource, currentProjectId, currentExplorationId, currentTurnCount, historyReloadKey]);
 
-  // 初始化并监听本地探索会话
-  useEffect(() => {
-    setExplorationHistory(getLocalExplorationHistory());
-  }, []);
-
-  // 当当前自由探索有新发言时，同步更新本地记录
-  useEffect(() => {
-    if (!currentProjectId && currentTurnCount > 0) {
-      const activeExplorationId = currentExplorationId || 'exploration-active';
-      const item: HistorySessionItem = {
-        id: activeExplorationId,
-        title: currentTitle && currentTitle !== '自由探索' ? currentTitle : `探究会话 #${activeExplorationId.slice(-4)}`,
-        kind: 'exploration',
-        explorationId: activeExplorationId,
-        updatedAt: new Date().toISOString(),
-        turnCount: currentTurnCount,
-        stageLabel: '自由探索',
-      };
-      saveLocalExplorationSession(item);
-      setExplorationHistory(getLocalExplorationHistory());
-    }
-  }, [currentProjectId, currentExplorationId, currentTitle, currentTurnCount]);
-
-  const handleDelete = (e: React.MouseEvent, item: HistorySessionItem) => {
-    e.stopPropagation();
-    if (!window.confirm(`确认从会话历史中删除“${item.title}”吗？\n\n仅移除历史入口，不会删除项目数据。`)) return;
-    if (item.kind === 'project') {
-      const next = new Set(hiddenProjectIds);
-      next.add(item.id);
-      try { localStorage.setItem(HIDDEN_PROJECTS_STORAGE_KEY, JSON.stringify([...next].slice(-100))); } catch { /* Storage may be unavailable. */ }
-      setHiddenProjectIds(next);
-      return;
-    }
-    deleteLocalExplorationSession(item.id);
-    setExplorationHistory(getLocalExplorationHistory());
+  const removeSession = async (item: HistorySessionItem) => {
+    if (busy || deleting || !dataSource.deleteHistory) return;
+    const prompt = item.kind === 'project'
+      ? `永久删除“${item.title}”的全部聊天内容？项目、作品和已产生的判分记录会保留。聊天内容无法恢复。`
+      : `永久删除探索“${item.title}”及全部聊天内容？删除后无法恢复。`;
+    if (!window.confirm(prompt)) return;
+    setDeleting(true); setDeleteNotice('');
+    try {
+      const fingerprint = `${item.kind}:${item.id}`;
+      const key = deleteKeys.current.get(fingerprint) ?? createIdempotencyKey();
+      deleteKeys.current.set(fingerprint, key);
+      await dataSource.deleteHistory(item.kind === 'project' ? 'conversation' : 'exploration', item.id, key);
+      deleteKeys.current.delete(fingerprint);
+      setDeleteNotice('会话已永久删除。');
+      setHistoryReloadKey(value => value + 1);
+      if (isCurrentActive(item)) router.replace('/tutor?idle=1', { scroll: false });
+    } catch (error) { setDeleteNotice(error instanceof Error ? error.message : '删除失败，请重试'); }
+    finally { setDeleting(false); }
   };
 
   const allSessions = useMemo(() => {
@@ -214,7 +148,7 @@ export function TutorSessionHistory({
   }, [allSessions, searchTerm]);
 
   const handleSelectSession = (session: HistorySessionItem) => {
-    if (busy) return;
+    if (busy || deleting) return;
     if (session.kind === 'project' && session.projectId) {
       if (onSelectProject) {
         onSelectProject(session.projectId);
@@ -510,6 +444,7 @@ export function TutorSessionHistory({
 
 
       {/* 会话列表 */}
+      {deleteNotice ? <p role="status" style={{ fontSize: 12 }}>{deleteNotice}</p> : null}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {historyStatus === 'loading' ? (
           <div className="qitu-tutor-history-loading" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>
@@ -577,26 +512,12 @@ export function TutorSessionHistory({
                       <span>{formatRelativeTime(item.updatedAt)}</span>
                     </div>
                   </div>
+                  {dataSource.deleteHistory ? <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm"
+                    aria-label={`永久删除会话：${item.title}`} title="永久删除会话" disabled={busy || deleting}
+                    onClick={event => { event.stopPropagation(); void removeSession(item); }}
+                    style={{ flexShrink: 0, padding: '2px 4px', color: '#b91c1c', fontSize: 12 }}>删除</button> : null}
 
-                  <button
-                      type="button"
-                      onClick={(e) => handleDelete(e, item)}
-                      className="qitu-history-delete-btn"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '2px 4px',
-                        fontSize: '12px',
-                        opacity: 0.6,
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
-                      title="从会话历史中删除"
-                      aria-label={`从会话历史中删除${item.title}`}
-                    >
-                      🗑️
-                  </button>
+
                 </div>
               </div>
             );
@@ -615,7 +536,8 @@ export function TutorSessionHistory({
           lineHeight: 1.4,
         }}
       >
-        <p style={{ margin: 0 }}>🔒 会话受服务端安全门禁与审计保护，未成年人数据最小化可见。</p>
+        <p style={{ margin: 0 }}>显示最近 100 条会话，按最后对话时间排序。删除会话后聊天内容无法恢复。</p>
+        <a href="/student/projects">查看全部项目、搜索与恢复收纳</a>
       </div>
 
     </aside>

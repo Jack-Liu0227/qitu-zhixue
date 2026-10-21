@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "pbl-entry-20261021",
+  "status": "deployed-and-smoke-verified",
+  "checkedAt": "2026-10-21T23:19:20.632735+08:00",
+  "remote": "study-remote",
+  "root": "/root/qitu-zhixue",
+  "remoteBaseCommit": "95a848335346508ac74729a98650c0049f0d3e66",
+  "localBaseCommit": "df05d5b9fe10610512161f9315b1674e12453687",
+  "scopeFiles": 104,
+  "allServices": [
+    "qitu-api",
+    "qitu-auth",
+    "qitu-student",
+    "qitu-parent",
+    "qitu-teacher",
+    "qitu-admin",
+    "qitu-ima-mcp",
+    "qitu-local-embedding"
+  ],
+  "migration": {
+    "tag": "0046_project_display_preferences",
+    "createdAt": 1792540800002,
+    "user": "postgres"
+  },
+  "backups": {
+    "directory": "/root/qitu-backups/pbl-entry-20261021",
+    "bytes": {
+      "source-before.tar": 1044480,
+      "artifacts-before.tar": 1180661760,
+      "database-before.dump": 943279
+    },
+    "databaseLeftOnServer": true
+  },
+  "preservation": {
+    "nightFilesUnchanged": 50,
+    "overlappingNightFilesMerged": 5,
+    "existingBindingChangesPreserved": true,
+    "localUnrelatedCopilotAndMcpImplementationNotDeployed": true
+  },
+  "tests": {
+    "linuxPostMerge": {
+      "passed": 103,
+      "failed": 0,
+      "syntheticOnly": true
+    },
+    "followupApi": {
+      "passed": 21,
+      "failed": 0,
+      "overlapsPrior": true
+    },
+    "postgres": {
+      "groups": 10,
+      "productionConnections": 0,
+      "success": true
+    },
+    "browserChecks": [
+      "real login page and anonymous project permission boundary",
+      "deployed project pagination, desktop/mobile layout and retained night-mode toggle",
+      "real owner collection write/readback and restoration without learning-state edits",
+      "student cannot read Admin bindings or another project history",
+      "legacy binding remains blocked while real owned conversation is readable",
+      "real free-entry creation, persisted three-choice opening and refresh without duplicate welcome",
+      "real deployed Tutor SSE request completes through normal owner API",
+      "real template-specific welcome and truthful ready/pending handoff state",
+      "exploration and model dialogue create no formal projects",
+      "parent authenticated page and assets",
+      "teacher authenticated page and assets",
+      "deployed Admin setup guide and original template identity",
+      "admin authenticated page and assets",
+      "actual inspiration template button creates and opens its exact governed exploration"
+    ],
+    "modelStream": {
+      "httpStatus": 200,
+      "milliseconds": 6685,
+      "events": [
+        "tutor.tool_call",
+        "tutor.tool_result",
+        "tutor.delta",
+        "tutor.block",
+        "turn.done"
+      ],
+      "done": true,
+      "deltas": 44
+    },
+    "roleFollowupPassed": true,
+    "browserErrors": [],
+    "httpAssets": {
+      "pages": [
+        {
+          "path": "/login",
+          "status": 200,
+          "assets": 13
+        },
+        {
+          "path": "/student/projects",
+          "status": 200,
+          "assets": 18
+        },
+        {
+          "path": "/parent",
+          "status": 200,
+          "assets": 11
+        },
+        {
+          "path": "/teacher/dashboard",
+          "status": 200,
+          "assets": 11
+        },
+        {
+          "path": "/admin/settings/templates",
+          "status": 200,
+          "assets": 16
+        }
+      ],
+      "failures": [],
+      "protectedServices": {
+        "ima": 401,
+        "embedding": 401
+      },
+      "nginxConfigValid": true
+    },
+    "preferencesRestored": {
+      "success": true,
+      "restoredEffectiveContinueSelection": true,
+      "allProjectsVisible": true,
+      "projectCount": 18
+    }
+  },
+  "effects": {
+    "formalProjectsBefore": 18,
+    "formalProjectsAfter": 18,
+    "formalProjectsCreated": 0,
+    "temporaryExplorationsCreated": 3,
+    "temporaryExplorationsClosed": 3,
+    "courseActivation": false,
+    "legacyProjectRebinding": false,
+    "masteryOrApprovalInjection": false
+  },
+  "limitations": {
+    "templateHandoff": "pending",
+    "knowledgeRetrievalAccepted": false,
+    "fullClassroomAccepted": false
+  },
+  "followupFix": "Preserve the server fallback selection on the first unrelated collection; explicit clear remains explicit.",
+  "evidenceLocation": "/root/qitu-backups/pbl-entry-20261021/",
+  "deployedSourceManifest": {
+    "apps/admin-console/app/(console)/settings/templates/page.tsx": "9c6048a3103d4321ee1e064526fcf10c70181d0cd7c89a06899478162d10e3df",
+    "apps/admin-console/lib/api/content.ts": "7c5b062612836aa406098a718554758e49c6c9635e3ae638df0520ed6faa8bfe",
+    "apps/admin-console/lib/api/template-bindings.ts": "7de273f74235f2bf4891b722887181412e600ec2b1ab4e498dfe89564c19edd0",
+    "apps/admin-console/lib/components/ProjectBindingRecovery.tsx": "c7e4f1cdca269e23593c8d24ab30cc3822a0b24fe55583720b553e3fd9815334",
+    "apps/admin-console/lib/components/TeachingBindingGuide.tsx": "31a8edbece34236238a83146fc3f69eb04a6c7c969bbe48d9241bb5ae6a6a433",
+    "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx": "3e040135118d7531076930604ba6d4a2dfacffd6e882090a19e80303233c52bc",
+    "apps/student-center/features/inspiration/components/FreeExplorePanel.tsx": "8c9156d8e35a5db1d32b334f2271d2f9927101ae207ce850ce6ed1cc97127544",
+    "apps/student-center/features/projects/components/ProjectCard.tsx": "e4a7d0f3d6c29f18f4ec7df1df86869051a59466a80b2a7cbbf3cfc49a227ca0",
+    "apps/student-center/features/projects/components/ProjectList.tsx": "c5c78ca1aed6453fe275ce65c9e463c84285d240a651d7ae8b85dc8dfadd564f",
+    "apps/student-center/features/projects/components/ProjectListScreen.tsx": "f597a90cd680d9a1d8fef478b6938d22877b23fbba3c3224194d3365b2344712",
+    "apps/student-center/features/projects/data/api-projects-data-source.test.ts": "ddcaf12e4aa214f5505ad053eb51abeb2837971e8ff06d8b8f05879067835fbd",
+    "apps/student-center/features/projects/data/api-projects-data-source.ts": "e99c1e50847ac5b4ffa0289fb93b87cf340bc64eb237c5481c6efd8dcbf89d46",
+    "apps/student-center/features/projects/data/data-source.ts": "a2719b09fb272d53cf29c4cc588dd63f5ad0ffe262393afc6aa29bf715dbcb34",
+    "apps/student-center/features/projects/hooks/useProjectsData.ts": "69c451aced0819659ab359f84aec6ed185fe6d4c1d207469c60aea4239db51dd",
+    "apps/student-center/features/projects/types/index.ts": "2100705e859ed6042ff193ef22e17693e5021106058b5923009c83dd83fc4425",
+    "apps/student-center/features/tutor/TutorPage.tsx": "8cf6c948dfb7b981a0f3106377371e660c2a2f1d00398f994035a7b356e81239",
+    "apps/student-center/features/tutor/components/ChatThread.tsx": "7a1493d2f10fbc20341a5988e9f54ca3ea7b89332365241c99d3226cb1a9c96f",
+    "apps/student-center/features/tutor/components/CurrentLessonCard.tsx": "4019077e08282b0f73be65fd335d8e73211c67fcf531c70556691b0aada785f0",
+    "apps/student-center/features/tutor/components/LessonWorkPanel.tsx": "66de0c81eba2f9963ad0764f36b6c11d6d6893926f08756113458c3769da2045",
+    "apps/student-center/features/tutor/components/ProjectConversationHistory.tsx": "5a8deea1e7ba68406f3495fb552405df1f82bcf284b88778fa455e7ec5cf24bb",
+    "apps/student-center/features/tutor/components/TutorSessionHistory.tsx": "b12fc517be1e1b90d662e7dd9a4971cecd0a18d1406e4f693d2e682954927b44",
+    "apps/student-center/features/tutor/components/lessonBlockers.ts": "02e43850c9891cdeed7c21cd82cd54c8f1d6b28c80157776f523cbb873c18276",
+    "apps/student-center/features/tutor/data/dataSource.ts": "62fae209ccf705f7a452e4a4bd776420254e523c52b044bd48799df6f02adb26",
+    "apps/student-center/features/tutor/data/lessonEvidenceApi.ts": "94ba922cd9360eb40c1040cc0c5a83d81b476235175b7aa0aaa8f08147031f0b",
+    "apps/student-center/features/tutor/data/lessonWorkspaceApi.test.ts": "d4ba790e1e8a0a0ccb466f2ecbb027fc662154bf6086b68c5198edd2b151ac37",
+    "apps/student-center/features/tutor/data/tutor-exploration.test.ts": "f3b1277c05049b3f6b467c91a1f61e9f57a5122d433faa668b4c23f85b0c9f78",
+    "apps/student-center/features/tutor/data/tutorApiDataSource.ts": "f7c5f0256715fcadf501752ee556aebdc198418a7aafc05d386262712539811a",
+    "apps/student-center/features/tutor/hooks/useTutorSession.ts": "b442fea17e457080f977cb444a0941fdc6172afca1734cc85b97bf8f65b1ffa5",
+    "apps/student-center/styles/projects.css": "6167a0ee2bb35d45eb0bf156302039471dadb1457a53960f0cfea629c39954c6",
+    "apps/teacher-workspace/components/student-artifact-reviews.tsx": "f83711d176f2df808b69fbc00921768818a76576f8d19bb3213e4dc04a4d9042",
+    "apps/teacher-workspace/components/student-lesson-quality-reviews.tsx": "5f492f04be3deaaed9227ab38c46c133ecfd98b08b6473380799cefc56670a5f",
+    "apps/teacher-workspace/lib/teacherApi.ts": "a2bc77820821ce46681b8c040cf54b2fa3a567719c394f55a65e156e573ec85b",
+    "database/migrations/0046_project_display_preferences.down.sql": "debd9c8865a67fe99b64fef78a1a1315ac09c6363443a04250b8c2e0b6637791",
+    "database/migrations/0046_project_display_preferences.sql": "4f86191d3c1318a01b9113a5afca4831a1bb12f202da0c47b9f2e30715c4c613",
+    "database/migrations/meta/_journal.json": "b59d620ef35ded672fc54c23153723440b1111a49c5ea5a3c9e96355ed7140ee",
+    "packages/ai-client/src/context-packet.ts": "3d897b8a15f3f7ce5670793cafed20d060be815ec64ddc7d504e9a1c225e50b3",
+    "packages/ai-client/src/quiz-bank/optics/curriculum.test.ts": "80a29a2dae2840ce905fb38b93fbf55c7c55d45d449c3237137e734f18394287",
+    "packages/ai-client/src/quiz-bank/optics/curriculum.ts": "e97dadef3eae46689bc7362c6a2c3c7c6fd5dd921f6c266943d5259b7bfc1ce2",
+    "packages/ai-client/src/tutor-context.ts": "2fc143f6d064ae843a9d4f04fb86dd6b002913b873207438c67723c2bf25f03d",
+    "packages/contracts/src/index.ts": "9f277cd789eaca602a8397ae7ac87470bf62d9eaf8eaddd7527b914ad878bf09",
+    "packages/contracts/src/learning-session-evidence.ts": "49b9bb48b257291a46ca32b5ed4d795ef66a9a4c3cc02bda81c1fcfe3625dc1c",
+    "packages/contracts/src/pbl-learning.ts": "cd7a09bc0cf1864cf6caab1917c4541376971f371c89a67ef6be072adfd888f3",
+    "packages/contracts/src/project-binding.ts": "c81647edd37784b747aceafb952f7d47ed306538c6e68b58d207f5395e180daa",
+    "packages/contracts/src/project-history.ts": "ce559c650ead21da076a9391a216adefe3ea402cf5459c4d5f2582c3872d75f6",
+    "packages/contracts/src/project.ts": "75ad653b66373ef7b36999eba0bb14be50b7ef90601f49a97f14a0184f8c38ad",
+    "packages/contracts/src/tutor-lesson-program.ts": "5e8d8615a09f68f5c3c51f6c911fa98a42bcd87456bc3bef7189fcb24ad62836",
+    "packages/contracts/src/tutor.ts": "072d5fdf9e5891647f7808fa2d7472d7b203778e65a3cd26b6b4a8da080a4e80",
+    "packages/database/src/schema/index.ts": "34427e2c17b0b3004f7135da7f343cf39a1fdc3be14f8d2ae4b68472b4be06d2",
+    "packages/database/src/schema/project-binding.ts": "c05dfb490c28ab50ab037c4dd981fa3f6b32a996979062d73b3e209f48b9a53c",
+    "packages/database/src/schema/project-display.ts": "1037cce943f910d5692dec340efc6da6188d485a70d227a4707c8cbf4d61e1db",
+    "services/api/src/modules/ai-tutor/tutor-experiment.service.ts": "e655ce2796ef07a3a9edf048fdf0431c1631fd550bb2c38b41b5e401e010ddf5",
+    "services/api/src/modules/ai-tutor/tutor-exploration.test.ts": "bc2cb0aca849705ba986eef507b3c3bf986cfa59b2267d222cfdafa2f1fbcedb",
+    "services/api/src/modules/ai-tutor/tutor-exploration.ts": "b5a38192f744512f9723530346a993957156eb957b585ffe9d65ec86a8165f0a",
+    "services/api/src/modules/ai-tutor/tutor-knowledge-access.test.ts": "84178c303e26bb80aa46287f23da56b57eefd37f1dccd8e6b63bc4c55d77b958",
+    "services/api/src/modules/ai-tutor/tutor-knowledge-access.ts": "b4f9984d73dcb8c989bd35cb4a6a167c9d8701cb5fe31be0aed9bd53f5d7e36d",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.test.ts": "84d9bf563a895f42aa31768c36ebea08cb582ff01768ea07754a8309742255be",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts": "48bfc05c809644051e4f13856f125e12d1125f2accd6710e8356ca142a90aecf",
+    "services/api/src/modules/ai-tutor/tutor-lesson-program.ts": "ad79539e17a9b3f8db6b952137eae8f2fcc4923173a7104522914be6fa729509",
+    "services/api/src/modules/ai-tutor/tutor-opening.store.ts": "5b19fc769ebec76dbde8e3424590ccdf10fae64ef42da05c0e4f8683bd38c981",
+    "services/api/src/modules/ai-tutor/tutor-opening.ts": "39f614824299a419c0ff6ba0c9ee416b3342b828722af46c048c27973d77961d",
+    "services/api/src/modules/ai-tutor/tutor-teaching-context.test-fixture.ts": "16e2e7badcaa33936ad7d64275d9d4f09d98eefbb987831482cbb427e4bc4bc4",
+    "services/api/src/modules/ai-tutor/tutor.controller.ts": "1ca883b6900273a886ead835ebe79dfb232f578100ccabb122ee33a16d6d5023",
+    "services/api/src/modules/ai-tutor/tutor.runtime-identity.test.ts": "d745fb52f76e5b024335779b0ff5adf413b702f89bd0ad4c3b23be1cf64183c6",
+    "services/api/src/modules/ai-tutor/tutor.service.ts": "9a13cbf08acbfc6f0f6fcc3ffbe5cb32c66db36a8c4cda6e138a92a704c442b7",
+    "services/api/src/modules/learning-plan/learning-session-progress.service.ts": "82598e52301360bf5eafaca0a3720cd210a90d3aff63544e7799430223a521e1",
+    "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts": "f6988a452b3160d30d71c0a4c0d7955618c2cb0bfa875835cd0c9830ac5c0a7a",
+    "services/api/src/modules/learning-plan/optics-fullflow.test.ts": "cbd81a6200e405ca14a443a178361135c9759d8dfb1a7268221c26ea274acb8f",
+    "services/api/src/modules/projects/project-history.controller.ts": "bf9b836be5078b3895d8fcc5429fa407da501116104412f1c69f896f614c6231",
+    "services/api/src/modules/projects/project-history.service.ts": "5d23856674078261f8fb38ae13f4b155f45b3f5f591a5fcb443196bc927af4fa",
+    "services/api/src/modules/projects/project-history.store.postgres.ts": "50cbfb477624996f3d464c97045631afed41050b20458e52036d5873d793d44b",
+    "services/api/src/modules/projects/project-history.store.ts": "0a4a80c4831e613f00df11c7adf5768a0b99990c6a8bb956c6fdff92b51efe0d",
+    "services/api/src/modules/projects/projects.module.ts": "51f514de5d6ae252b0da65f248f836f2e9dcbbafbd471fceccc430df79f75595",
+    "services/api/src/modules/templates/configuration-binding.test-fixture.ts": "b7446046458e6a284ec7dbf63271e77f967825f7cd5a3b25b20ec4d4138875bc",
+    "services/api/src/modules/templates/content/optics.ts": "023a4622c3726976e94820ff0a5135a94bcf31a6131ea5f4834e9a2753566241",
+    "services/api/src/modules/templates/project-binding-recovery.controller.ts": "384be240110a342b14a3456e719758cdfb63c6cdfdc03247e7600a27ad370810",
+    "services/api/src/modules/templates/project-binding-recovery.service.ts": "aa00ddf46e2679efe2f17401be27e1b64ef141894675ed3e931b774fb566c622",
+    "services/api/src/modules/templates/project-binding-recovery.test.ts": "3878ddc130c8f6a3673265d4a3b1a93e8da4a1d27d8f8e1cf8123739715fe766",
+    "services/api/src/modules/templates/teaching-bundle.catalog.ts": "b7aab3be52116c936084905e23c50c9adb58da52b12c63a2afc464234f2e9e1e",
+    "services/api/src/modules/templates/teaching-bundle.compiler.test.ts": "0ea8ac1f37035436e5d2f9e611277c334f0d85b286c12fddc3ae20783373ef82",
+    "services/api/src/modules/templates/teaching-bundle.compiler.ts": "489c19e81e9433790143fc5c3ae614a4b1a637de446ff25cf9cdfad63a99dbac",
+    "services/api/src/modules/templates/teaching-bundle.draft.test.ts": "1f9734b5c54096421e4dd4c024d6b58bd7ca1c3c9b56f9a9a53700e0dd78b66c",
+    "services/api/src/modules/templates/teaching-bundle.draft.ts": "4c4c26fe819d7a5ef979d56bd58be6742a5758233980c0ce1f153a28fe2ce244",
+    "services/api/src/modules/templates/teaching-bundle.test-fixture.ts": "a0a581e4842cd00fe8c27f6598dc9b8677d2e0dc9f17566014b96cc4b79509cf",
+    "services/api/src/modules/templates/templates-binding.controller.ts": "3e80e80b9c554c8db94cf5c886f9a8bfb478a55c3b404f955d3caab24513bbb8",
+    "services/api/src/modules/templates/templates-binding.service.ts": "5a76369facb179062a1e720a8495de6b81a0bc1243a7854797243d294d18f6d8",
+    "services/api/src/modules/templates/templates-binding.store.postgres.ts": "6faffc112465aa048992040687ddd4b98cef0010aa6b9215f05240cd5b6bed8c",
+    "services/api/src/modules/templates/templates-binding.store.ts": "651c29020f7a093b21f4ccaf5c0f4e3b97b956b9e4904d19265291d1acda2598",
+    "services/api/src/modules/templates/templates.module.ts": "136cdb619e5652c5030ad27d112d8eed7d540308c2ee5be91fa2d83678776490",
+    "services/api/src/modules/templates/templates.test-support.ts": "5ef51bde491bab15e6f5660fb3f8ee8367d60f8fa9ec21731feabf7b28d9ba81",
+    "services/api/src/modules/works/works-learning-context.ts": "f3365b7f8e3d6c8dd9ec81d98982c0755f5630521ccec120859a110d9367ca17",
+    "services/api/src/modules/works/works-learning-evidence.service.ts": "c8f55ac9c00b8ca433c80123fa744635f97c295029e7e1d7097bdfa470f23950",
+    "services/api/src/modules/works/works-learning.controller.ts": "55038585d13e5e9036b2a80a882cc23eb0bb16be8b783f17a7ee68de07ecc3de",
+    "services/api/src/modules/works/works-lesson-quality.controller.ts": "00ab46a148696ab67e49ba49e830780f5e2103176978cd3fe69ff2f0821b7ddd",
+    "services/api/src/modules/works/works-lesson-quality.test.ts": "81dea06dab6801a5df63a54a7858fb150cc5fbe298febd22b8faf0d98208df61",
+    "services/api/src/modules/works/works-lesson-quality.ts": "8869adc62c7a977cf10929ac67876329be0f7ad581bc1e2e7ee8b52c9d85c493",
+    "services/api/src/modules/works/works.module.ts": "b13104535480f662c045edbf524f4436c05d7077cf967ca42c9bd04b2427db76",
+    "services/api/src/scripts/optics-template-bootstrap.ts": "0e7fea0b447f3a716c6491f42a54d26c64664b68ad0ad42980511c6074cffb2d",
+    "tooling/test-project-history-postgres.mjs": "f1590afad0212e11aba971d52741995e92a943d020612d88b7136d0cf49d869b",
+    "tooling/test-student-pbl-data.mjs": "ded290501a28033e3f80b51e7a5bf001fef254d5529ae560cec5a79e5689c1de",
+    "tooling/test-tutor-live-boundary.mjs": "233caf57c02861cc5980f34bb8c2f4170350a2460676864aba57f0aeabb0a269",
+    "tooling/verify-pbl-capability.mjs": "de8714aedfe86115ffcfee57d981097c2473e39289d30f29d57d23c3506bb043",
+    "tooling/verify-workspace-source.mjs": "1335f668d245ea1d110ee46268e06176d11b3148801d13475cd705263b450da0"
+  },
+  "priorAttempts": [
+    {
+      "failure": "migration invoked as root against peer PostgreSQL",
+      "resolution": "automatic source/artifact rollback, retry migration and final API build as postgres"
+    },
+    {
+      "failure": "browser probe used non-existent parent route and student directory under Admin",
+      "resolution": "correct actual parent route and role-specific directory; dedicated live-role checks passed"
+    }
+  ]
+}

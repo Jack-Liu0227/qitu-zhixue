@@ -431,6 +431,34 @@ export interface PblPlanOutput {
   requiresStudentConfirmation: boolean;
 }
 
+/**
+ * Runtime routes store this schema so every Team Agent receives the same
+ * bounded pbl.plan output contract before the worker validates it again.
+ */
+export const PBL_PLAN_OUTPUT_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['goal', 'stages', 'requiresStudentConfirmation'],
+  properties: {
+    goal: { type: 'string' },
+    stages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'title', 'objective', 'taskIds'],
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          objective: { type: 'string' },
+          taskIds: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+    requiresStudentConfirmation: { type: 'boolean' },
+  },
+};
+
 export interface PblAdvanceInput {
   studentId: string;
   projectId: string;

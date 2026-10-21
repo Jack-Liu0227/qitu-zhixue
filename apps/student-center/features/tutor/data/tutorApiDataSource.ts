@@ -1,3 +1,5 @@
+import type { StudentConversationHistoryItem } from '@qitu/contracts';
+import { deleteStudentHistory } from '../../projects/data/delete-history';
 import type {
   ConfirmIntentResponse,
   CreateTutorFeedbackRequest,
@@ -43,6 +45,23 @@ import { getLessonEvidence, submitLessonEvidence, getLearningArtifact, publishLe
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
+  async recoverTeachingPlan(projectId: string, key: string): Promise<void> {
+    const data = unwrapData(await this.fetchJson(`/api/v1/projects/${encodeURIComponent(projectId)}/teaching-plan/recovery`, '课时计划恢复失败', {
+      method: 'POST', headers: { 'idempotency-key': key },
+    }));
+    if (!data || typeof data !== 'object' || !('projectId' in data) || data.projectId !== projectId
+      || !('recovered' in data) || data.recovered !== true) throw new TutorDataError('恢复回执不完整，请刷新核实');
+  }
+  readonly deleteHistory = deleteStudentHistory;
+
+  async listConversationHistory(): Promise<StudentConversationHistoryItem[]> {
+    const data = unwrapData(await this.fetchJson('/api/v1/student-history/conversations', '会话历史加载失败'));
+    if (!Array.isArray(data) || data.some(item => !item || typeof item.id !== 'string' || typeof item.title !== 'string'
+      || !['project','exploration'].includes(item.kind) || typeof item.updatedAt !== 'string' || typeof item.turnCount !== 'number')) {
+      throw new TutorDataError('会话历史格式不正确', undefined, 'BAD_HISTORY_PAYLOAD');
+    }
+    return data;
+  }
   reconcileLearning(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string) {
     return reconcileLearning(this.fetchJson.bind(this), projectId, request, idempotencyKey);
   }
@@ -118,16 +137,21 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 
   async listProjects(): Promise<ProjectSummary[]> {
-    const response = await this.fetchJson('/api/v1/projects', '项目列表加载失败');
-    const data = unwrapData(response);
+    const response = await this.fetchJson('/api/v1/projects/query?tab=all&limit=20', '项目列表加载失败');
+    const page = unwrapData(response);
+    const data = page && typeof page === 'object' ? (page as { items?:unknown }).items : undefined;
     if (!Array.isArray(data)) throw new TutorDataError('项目列表格式不正确', undefined, 'BAD_PROJECT_LIST_PAYLOAD');
     const projects = data.flatMap((item): ProjectSummary[] => {
       if (typeof item !== 'object' || item === null) return [];
       const candidate = item as Record<string, unknown>;
+      if (candidate.kind !== 'project') return [];
       if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string' ||
           typeof candidate.status !== 'string' || typeof candidate.progressPercent !== 'number') return [];
-      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent, isCurrent: candidate.isCurrent === true }];
+      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent, isCurrent: candidate.isCurrent === true,
+        createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
+        lastLearningActivityAt: typeof candidate.lastLearningActivityAt === 'string' ? candidate.lastLearningActivityAt : null }];
     });
+    if (!projects.length) return [];
     const countsBody = unwrapData(await this.fetchJson(`/api/v1/tutor/session-counts?projectIds=${projects.map((project) => encodeURIComponent(project.id)).join(',')}`, '会话消息数加载失败'));
     const counts = countsBody !== null && typeof countsBody === 'object' ? countsBody as Record<string, unknown> : {};
     return projects.map((project) => ({ ...project, turnCount: typeof counts[project.id] === 'number' ? Number(counts[project.id]) : 0 }));
@@ -135,6 +159,29 @@ export class TutorApiDataSource implements TutorDataSource {
 
   async getProjectContext(projectId: string): Promise<TutorProjectContext | null> {
     return this.fetchProjectContext(projectId);
+  }
+
+  async getExplorationContext(explorationId: string): Promise<TutorProjectContext | null> {
+    const data = unwrapData(await this.fetchJson(`/api/v1/tutor/project-context?explorationId=${encodeURIComponent(explorationId)}`, '探索导师加载失败'));
+    if (!isTutorProjectContext(data) || data.project !== null || data.exploration?.id !== explorationId) throw new TutorDataError('探索上下文格式不正确', undefined, 'BAD_PROJECT_CONTEXT_PAYLOAD');
+    return data;
+  }
+
+  async getProjectConversationHistory(projectId: string): Promise<GetTutorSessionResponse | null> {
+    const data = unwrapData(await this.fetchJson(`/api/v1/tutor/project-history?projectId=${encodeURIComponent(projectId)}`, '历史对话加载失败'));
+    if (data === null) return null;
+    if (!isTutorSessionResponse(data) || data.projectId !== projectId) throw new TutorDataError('历史会话格式不正确', undefined, 'BAD_SESSION_PAYLOAD');
+    return data;
+  }
+
+  async listExplorationHistory() {
+    const response = unwrapData(await this.fetchJson('/api/v1/projects/query?tab=draft&limit=20','探索历史加载失败'));
+    const items = response && typeof response === 'object' ? (response as { items?:unknown }).items : null;
+    if (!Array.isArray(items)) throw new TutorDataError('探索历史格式不正确',undefined,'BAD_PROJECT_LIST_PAYLOAD');
+    return items.flatMap((item): Array<{ id:string;title:string;kind:'exploration';explorationId:string;updatedAt:string;turnCount:number }> => {
+      if (!item || item.kind !== 'exploration' || typeof item.id !== 'string' || typeof item.title !== 'string' || typeof item.createdAt !== 'string') return [];
+      return [{ id:item.id,title:item.title,kind:'exploration',explorationId:item.id,updatedAt:item.createdAt,turnCount:0 }];
+    });
   }
 
   private async fetchProjectContext(projectId?: string): Promise<TutorProjectContext | null> {

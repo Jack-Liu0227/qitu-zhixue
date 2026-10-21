@@ -81,6 +81,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
   const current = progress?.sessions.find((item) => item.sessionId === progress.currentSessionId) ?? null;
   return (
     <div className="qitu-tutor-phase-details">
+      {mode === 'work' ? <button type="button" disabled={disabled || status === 'loading'} onClick={() => { void reload(); }}>刷新课时与评价</button> : null}
       {status === 'loading' ? <p role="status" aria-busy="true">正在读取课时进度…</p> : null}
       {error ? <div role="alert"><p>{error}</p><button type="button" disabled={disabled} onClick={() => {
         if (syncPending) void synchronize(syncPending.planRevision, syncPending.key); else void reload();
@@ -99,7 +100,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
           key={`${current.sessionId}:${progress.planRevision}`}
           scope={{ projectId, planId, planRevision: progress.planRevision, learningSessionId: current.sessionId }}
           lesson={current}
-          refreshKey={refreshKey}
+          refreshKey={progress}
           disabled={disabled || status !== 'ready' || !progress.contractReady || syncPending !== null}
           onSaved={async (key, reconcile) => {
             if (reconcile) await synchronize(progress.planRevision, `${key}:reconcile`);

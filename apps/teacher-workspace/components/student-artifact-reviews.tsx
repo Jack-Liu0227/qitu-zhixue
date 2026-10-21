@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TeacherArtifactReviewItem, TeacherArtifactReviewPage, TeacherArtifactVersionView, TeacherReviewDecision } from '@qitu/contracts';
 import { teacherApi, TeacherOfflineError, TeacherPermissionError } from '../lib/teacherApi';
 import { reviewVersion } from '../lib/review-version';
+import { StudentLessonQualityReviews } from './student-lesson-quality-reviews';
 
 const statusLabels = { requested: '待审核', in_review: '审核中', approved: '已通过', changes_requested: '需要修改', rejected: '未通过' };
 function errorMessage(error: unknown) {
@@ -13,7 +14,8 @@ function errorMessage(error: unknown) {
 }
 
 export function StudentArtifactReviews({ studentId }: { studentId: string }) {
-  return <StudentReviewList key={studentId} studentId={studentId} />;
+  return <><StudentReviewList key={studentId} studentId={studentId} />
+    <StudentLessonQualityReviews key={`quality:${studentId}`} studentId={studentId} /></>;
 }
 
 function StudentReviewList({ studentId }: { studentId: string }) {

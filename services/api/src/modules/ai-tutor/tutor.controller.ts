@@ -14,6 +14,7 @@ import {
   NotFoundException,
   Optional,
   ServiceUnavailableException,
+  Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
@@ -31,6 +32,7 @@ import type {
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { tutorFailureMetadata } from './tutor-failure-metadata';
 import { TutorTeamHistoryService } from './tutor-team-history.service';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
@@ -82,6 +84,7 @@ const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
  */
 @Controller('tutor')
 export class TutorController {
+  private readonly logger = new Logger(TutorController.name);
   constructor(
     private readonly authService: AuthService,
     private readonly tutorService: TutorService,
@@ -144,6 +147,13 @@ export class TutorController {
       explorationId,
     );
     return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
+  }
+
+  @Get('project-history')
+  async getProjectHistory(@Headers('cookie') cookieHeader: string | undefined, @Query('projectId') projectId: string) {
+    const actor = this.requireStudent(cookieHeader);
+    if (!projectId || projectId.length > 160) throw new BadRequestException('需要有效的项目标识');
+    return { data: await this.tutorService.getProjectConversationHistory(projectId, actor.id) };
   }
 
   @Get('project-context')
@@ -275,6 +285,7 @@ export class TutorController {
       // Headers are already sent, so the only honest failure signal left is an
       // SSE `error` frame — the client maps it onto `safety.block` and offers a
       // retry instead of an infinite spinner.
+      this.logger.warn(`Tutor stream failed: ${JSON.stringify(tutorFailureMetadata(error))}`);
       if (!aborted && !response.writableEnded) {
         writeRawFrame(response, 'error', {
           sessionId: record.sessionId,

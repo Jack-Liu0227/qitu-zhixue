@@ -1,4 +1,4 @@
-import type { LearningPlanView, TemplateStage } from '@qitu/contracts';
+import type { LearningPlanView, ProjectDisplayChange, ProjectHistoryPage, TemplateStage } from '@qitu/contracts';
 import type { ProjectsDataSource } from './data-source';
 import type {
   MentorNoteView, NextStep, PresignRequest, PresignResponse, ProjectDetail, ProjectListItem,
@@ -6,16 +6,41 @@ import type {
   LessonScheduleView, TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
 } from '../types';
 import { ProjectsDataError } from './data-source';
+import { deleteStudentHistory } from './delete-history';
 
 type SessionIndex = { id: string; theoryObjectiveIds: string[]; practiceObjectiveIds: string[] };
 
 /** API adapter for the governed project and learning-plan contracts. */
 export class ApiProjectsDataSource implements ProjectsDataSource {
+  readonly deleteHistory = deleteStudentHistory;
   private readonly planCache = new Map<string, { planId: string; sessions: SessionIndex[] }>();
 
   async listProjects(query: { tab: ProjectTab; q?: string }): Promise<ProjectListItem[]> {
-    const payload = await this.request<{ data: ProjectListItem[] }>('/api/v1/projects');
-    return payload.data.filter((project) => matchesTab(project, query.tab) && (!query.q || `${project.title} ${project.subtitle}`.toLowerCase().includes(query.q.toLowerCase())));
+    return (await this.queryProjects(query)).items;
+  }
+
+  async queryProjects(query: { tab: ProjectTab; q?: string; cursor?: string; includeCollected?: boolean }): Promise<ProjectHistoryPage> {
+    const params = new URLSearchParams({ tab:query.tab, q:query.q ?? '',limit:'12',includeCollected:String(query.includeCollected === true) });
+    if (query.cursor) params.set('cursor',query.cursor);
+    return (await this.request<{ data:ProjectHistoryPage }>(`/api/v1/projects/query?${params}`)).data;
+  }
+
+  async changeProjectDisplay(projectId: string | null, input: ProjectDisplayChange, key: string): Promise<{ superseded:boolean }> {
+    const path = projectId ? `${encodeURIComponent(projectId)}/display-preference` : 'current-selection';
+    const raw = (await this.request<{ data:unknown }>(`/api/v1/projects/${path}`,{ method:'PATCH',
+      headers:{ 'content-type':'application/json','idempotency-key':key },body:JSON.stringify(input) })).data;
+    const receipt = raw && typeof raw === 'object' ? raw as Record<string,unknown> : {};
+    if (typeof receipt.superseded !== 'boolean' || typeof receipt.replayed !== 'boolean'
+      || receipt.version !== input.expectedVersion+1 || !Number.isSafeInteger(receipt.currentVersion)
+      || Number(receipt.currentVersion) < Number(receipt.version)
+      || receipt.superseded !== (receipt.currentVersion !== receipt.version)
+      || !(receipt.currentProjectId === null || typeof receipt.currentProjectId === 'string')
+      || input.currentProjectId !== undefined && receipt.currentProjectId !== input.currentProjectId
+      || projectId && input.collected === true && (typeof receipt.collectedAt !== 'string' || !Number.isFinite(Date.parse(receipt.collectedAt)))
+      || projectId && input.collected === false && receipt.collectedAt !== null) {
+      throw new ProjectsDataError('显示偏好回执不完整，请刷新核对',502,'PROJECT_PREFERENCE_RECEIPT_INVALID');
+    }
+    return { superseded:receipt.superseded };
   }
 
   async getProject(projectId: string): Promise<ProjectDetail | null> {
@@ -156,12 +181,6 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
     }
     return await response.json() as T;
   }
-}
-
-function matchesTab(project: ProjectListItem, tab: ProjectTab): boolean {
-  if (tab === 'done') return project.status === 'completed' || project.status === 'published';
-  if (tab === 'draft') return project.status === 'exploration';
-  return !['completed', 'published', 'exploration'].includes(project.status);
 }
 
 function unsupported(message: string): ProjectsDataError { return new ProjectsDataError(message, 501, 'SERVER_CONTRACT_REQUIRED'); }

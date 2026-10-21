@@ -48,8 +48,8 @@ interface TemplateEditorState {
   difficulty: string | null;
   estimatedDurationMinutes: number | null;
   learningObjectives: string[];
-  linkedTeamId: string;
   phases: PblPhaseDesign[];
+  sourcePhases: PblPhaseDesign[];
   /** 阶段设计取自哪个版本；null = 该模板还没有任何版本。 */
   sourceVersion: string | null;
   sourceVersionId: string | null;
@@ -209,6 +209,7 @@ export default function AdminTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<TemplateEditorState | null>(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [versionsError, setVersionsError] = useState<Error | null>(null);
+  const [templateVersions, setTemplateVersions] = useState<AdminTemplateVersionDetail[]>([]);
   const [editorTab, setEditorTab] = useState<'sessions' | 'workflow' | 'basic'>('workflow');
 
   const [saveNotice, setSaveNotice] = useState('');
@@ -240,14 +241,20 @@ export default function AdminTemplatesPage() {
 
   /** 按需拉取某模板的版本数据，把最新版本的阶段设计读进编辑器。 */
   const versionRequest = useRef(0);
-  const loadVersions = useCallback(async (templateId: string) => {
+  const loadVersions = useCallback(async (templateId: string, preferredVersionId?: string) => {
     const request = ++versionRequest.current;
     setVersionsLoading(true);
     setVersionsError(null);
     try {
       const versions = await fetchAdminTemplateVersions(templateId);
       if (request !== versionRequest.current) return;
-      const latest = versions.length > 0 ? versions[versions.length - 1] ?? null : null;
+      setTemplateVersions(versions);
+      const latest = versions.find((version) => version.id === preferredVersionId)
+        ?? versions.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+      const params = new URLSearchParams(window.location.search);
+      params.set('templateId', templateId);
+      if (latest) params.set('versionId', latest.id); else params.delete('versionId');
+      window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
       setEditingTemplate((prev) => {
         if (prev === null || prev.id !== templateId) return prev;
         if (latest === null) return prev;
@@ -262,7 +269,7 @@ export default function AdminTemplatesPage() {
         return {
           ...prev,
           phases: parsePhasesFromVersion(latest),
-          linkedTeamId: asText(content.linkedTeamId),
+          sourcePhases: parsePhasesFromVersion(latest),
           sourceVersion: latest.version,
           sourceVersionId: latest.id, sourceContent: latest.content, sourceStages: latest.stages, sourceRubric: latest.rubric,
           pblSpec,
@@ -276,7 +283,7 @@ export default function AdminTemplatesPage() {
     }
   }, []);
 
-  const openEditor = (template: AdminProjectTemplate) => {
+  const openEditor = useCallback((template: AdminProjectTemplate, versionId?: string) => {
     setSaveNotice('');
     setSaveError('');
     setEditorTab('workflow');
@@ -290,13 +297,28 @@ export default function AdminTemplatesPage() {
       difficulty: template.difficulty,
       estimatedDurationMinutes: template.estimatedDurationMinutes,
       learningObjectives: template.learningObjectives ?? [],
-      linkedTeamId: '',
       phases: [],
+      sourcePhases: [],
       sourceVersion: null,
       sourceVersionId: null, sourceContent: {}, sourceStages: [], sourceRubric: [],
       pblSpec: null,
     });
-    void loadVersions(template.id);
+    void loadVersions(template.id, versionId);
+  }, [loadVersions]);
+
+  useEffect(() => {
+    if (loading || error || editingTemplate) return;
+    const params = new URLSearchParams(window.location.search);
+    const template = templates.find((item) => item.id === params.get('templateId'));
+    if (template) openEditor(template, params.get('versionId') ?? undefined);
+  }, [loading, error, templates, editingTemplate, openEditor]);
+
+  const closeEditor = () => {
+    versionRequest.current++;
+    const params = new URLSearchParams(window.location.search);
+    params.delete('templateId'); params.delete('versionId');
+    window.history.replaceState(null, '', `${window.location.pathname}${params.size ? `?${params}` : ''}`);
+    setEditingTemplate(null);
   };
 
   const handleDeleteTemplate = async (id: string, title: string) => {
@@ -307,7 +329,7 @@ export default function AdminTemplatesPage() {
     try {
       await deleteAdminTemplate(id);
       setTemplates((prev) => prev.filter((item) => item.id !== id));
-      if (editingTemplate?.id === id) setEditingTemplate(null);
+      if (editingTemplate?.id === id) closeEditor();
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : '模板删除失败');
     } finally {
@@ -404,9 +426,8 @@ export default function AdminTemplatesPage() {
       return;
     }
 
-    if (editingTemplate.linkedTeamId && !editingTemplate.pblSpec && !phases.length) {
-      setSaveError('请先添加至少一个阶段，再保存团队草稿关联。'); return;
-    }
+    const versionChanged = !editingTemplate.pblSpec && phases.length > 0
+      && (!editingTemplate.sourceVersionId || JSON.stringify(phases) !== JSON.stringify(editingTemplate.sourcePhases));
     setSaving(true);
     try {
       let notice: string;
@@ -430,7 +451,7 @@ export default function AdminTemplatesPage() {
         notice = '';
       }
 
-      if (canCreateVersion && (editingTemplate.pblSpec || phases.length > 0)) {
+      if (canCreateVersion && versionChanged) {
         const content = { ...editingTemplate.sourceContent };
         delete content.bootstrapKey;
         const result = await createAdminTemplateVersion(editingTemplate.id, {
@@ -439,7 +460,6 @@ export default function AdminTemplatesPage() {
           content: {
             ...content,
             ...(!editingTemplate.pblSpec ? { phases } : {}),
-            linkedTeamId: editingTemplate.linkedTeamId || null,
           },
         });
         setTemplates((prev) =>
@@ -450,18 +470,22 @@ export default function AdminTemplatesPage() {
           ),
         );
         const readback = (await fetchAdminTemplateVersions(editingTemplate.id)).find((version) => version.id === result.version.id);
-        if (!readback || asText(readback.content.linkedTeamId) !== editingTemplate.linkedTeamId) throw new Error('版本保存后的团队关联回读不一致，请重新加载核对。');
+        if (!readback || JSON.stringify(parsePhasesFromVersion(readback)) !== JSON.stringify(phases)) throw new Error('版本保存后的阶段设计回读不一致，请重新加载核对。');
+        setTemplateVersions((previous) => [...previous.filter((item) => item.id !== readback.id), readback]);
+        const params = new URLSearchParams(window.location.search);
+        params.set('versionId', readback.id);
+        window.history.replaceState(null, '', `${window.location.pathname}?${params}`);
         setEditingTemplate((prev) =>
           prev === null || prev.id !== editingTemplate.id
             ? prev
-            : { ...prev, phases, title, summary, sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
+            : { ...prev, phases, sourcePhases: phases, title, summary, sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
         );
         notice = `阶段设计已保存为新版本 ${result.version.version} ✔`;
       } else if (phases.length === 0) {
         notice = `${notice ? `${notice}；` : ''}尚未添加任何阶段，未生成新版本`;
       }
 
-      setSaveNotice(notice);
+      setSaveNotice(notice || '课程内容未变更，保留当前版本和团队绑定。');
 
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : '模板保存失败');
@@ -475,9 +499,7 @@ export default function AdminTemplatesPage() {
 
   // 模板与 PBL 流程编辑器
   if (editingTemplate) {
-    const boundTeam = teams.find((t) => t.id === editingTemplate.linkedTeamId);
-    const linkedTeamMissing =
-      editingTemplate.linkedTeamId.length > 0 && boundTeam === undefined;
+    const selectedVersion = templateVersions.find((version) => version.id === editingTemplate.sourceVersionId);
     const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
     const lessonSessions = lessonProfile?.sessions ?? [];
     const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
@@ -490,7 +512,7 @@ export default function AdminTemplatesPage() {
             <button
               type="button"
               className="admin-assistant-back-btn"
-              onClick={() => setEditingTemplate(null)}
+              onClick={closeEditor}
             >
               ← 返回模板列表
             </button>
@@ -529,10 +551,10 @@ export default function AdminTemplatesPage() {
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving || versionsLoading || !!versionsError}
+              disabled={saving || versionsLoading || !!versionsError || (editingTemplate.pblSpec !== null && !canEditMeta(editingTemplate.status))}
               title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，需通过版本发布流程更新' : undefined}
             >
-              {editingTemplate.pblSpec ? '已锁定（通过版本流更新）' : '保存模板与阶段设计'}
+              {editingTemplate.pblSpec ? canEditMeta(editingTemplate.status) ? '保存基础信息' : '课程已发布' : '保存模板与阶段设计'}
             </button>
             <button
               type="button"
@@ -544,7 +566,7 @@ export default function AdminTemplatesPage() {
             <button
               type="button"
               className="settings-action-btn"
-              onClick={() => setEditingTemplate(null)}
+              onClick={closeEditor}
             >
               取消
             </button>
@@ -552,7 +574,13 @@ export default function AdminTemplatesPage() {
         </div>
 
         {/* 选项卡：课时教学主线 vs 基础配置 */}
-        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={editingTemplate.sourceVersionId} teams={teams} />
+        <label>课程版本 <select className="admin-select" aria-label="课程版本" value={editingTemplate.sourceVersionId ?? ''} disabled={versionsLoading || saving}
+          onChange={(event) => { setSaveNotice(''); setSaveError(''); void loadVersions(editingTemplate.id, event.target.value); }}>
+          {!selectedVersion && <option value="">尚无版本</option>}
+          {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
+        </select></label>
+        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
+          versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []} phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams} />
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
             <button
@@ -560,7 +588,7 @@ export default function AdminTemplatesPage() {
               className={`team-editor-tab-item${editorTab === 'sessions' ? ' is-active' : ''}`}
               onClick={() => setEditorTab('sessions')}
             >
-              📅 课时教学主线（16 课时）
+              📅 课时教学主线（{lessonCount} 课时）
             </button>
           ) : (
             <button
@@ -576,7 +604,7 @@ export default function AdminTemplatesPage() {
             className={`team-editor-tab-item${editorTab === 'basic' ? ' is-active' : ''}`}
             onClick={() => setEditorTab('basic')}
           >
-            基础信息与团队绑定
+            基础信息
           </button>
         </div>
 
@@ -872,7 +900,7 @@ export default function AdminTemplatesPage() {
               </div>
               <p style={{ margin: '8px 0 0', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
                 {editingTemplate.pblSpec
-                  ? `解耦架构优势：本模板采用「教学活动编排（16 课时轨道）」与「平台安全治理策略（Governance Policy）」解耦架构。阶段、门禁判定（如 TheoryMastered 强力阻断物理实践）与导师角色由底层策略集中把关，教研人员无需重复维护冗余阶段表单，直接由 16 课时时间轴驱动教学执行。`
+                  ? '在下方查看每节课的任务与学习证据，在教学编排中安排导师、教学方法和资料。课时完成不代表通过理论核验；实践仍须满足服务端门禁。'
                   : editingTemplate.sourceVersion !== null
                   ? `以下阶段设计读取自最新版本 ${editingTemplate.sourceVersion}；保存会生成新版本（历史版本冻结不可改）。`
                   : '该模板还没有已保存的版本；添加阶段并保存后会生成第一个版本。'}
@@ -1119,39 +1147,6 @@ export default function AdminTemplatesPage() {
                   />
                 </div>
                 <div className="admin-form-row">
-                  <label className="admin-form-label">团队草稿关联</label>
-                  {teams.length === 0 && !linkedTeamMissing ? (
-                    <span style={{ fontSize: '12px', color: '#86909c' }}>
-                      暂无可选导师团队（团队数据为空）
-                    </span>
-                  ) : (
-                    <select
-                      className="admin-select"
-                      value={editingTemplate.linkedTeamId}
-                      onChange={(e) =>
-                        setEditingTemplate({ ...editingTemplate, linkedTeamId: e.target.value })
-                      }
-                    >
-                      <option value="">（未绑定）</option>
-                      {linkedTeamMissing ? (
-                        <option value={editingTemplate.linkedTeamId}>
-                          {editingTemplate.linkedTeamId}（不在当前团队列表）
-                        </option>
-                      ) : null}
-                      {teams.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.id})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  {boundTeam ? (
-                    <span style={{ fontSize: '12px', color: '#86909c', marginLeft: '8px' }}>
-                      草稿关联：{boundTeam.name}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="admin-form-row">
                   <label className="admin-form-label">预计时长 (分钟)</label>
                   <input
                     type="number"
@@ -1306,7 +1301,7 @@ export default function AdminTemplatesPage() {
                           className="admin-template-info-val"
                           style={{ color: '#dc2626', fontWeight: 600 }}
                         >
-                          TheoryMastered（第 8 课时）
+                          理论核验通过后开放实践
                         </span>
                       </div>
                     </>

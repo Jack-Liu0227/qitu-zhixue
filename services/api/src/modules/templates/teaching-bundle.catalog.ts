@@ -18,6 +18,7 @@ import {
 } from './teaching-bundle.types';
 import type { TeamVersionRecord } from './templates-binding.types';
 import type { ProjectTemplateVersionRecord } from './templates.types';
+import { draftFromPublishedTeam } from './teaching-bundle.draft';
 
 /** Resolves references from the current server catalog; never accepts executable client payloads. */
 @Injectable()
@@ -39,6 +40,15 @@ export class TeachingBundleCatalog {
       }
       throw error;
     }
+  }
+
+  prepareDraft(version: ProjectTemplateVersionRecord, team: TeamVersionRecord, profileId?: string, phaseAssignments?: Readonly<Record<string, string>>) {
+    teamVersionView(team);
+    const runtime = loadTutorRuntimeSource();
+    if (runtime.policy.status !== 'ready' || runtime.skillsSource?.status !== 'ready') {
+      throw new ServiceUnavailableException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学策略或技能目录不可用' });
+    }
+    return draftFromPublishedTeam(version.id, parseProjectTemplateSpec(version.content.pbl), team, runtime.policy.version, profileId, phaseAssignments);
   }
 
   private async resolve(

@@ -31,8 +31,7 @@ export const answerAttempts = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
     tutorSessionId: text('tutor_session_id')
-      .notNull()
-      .references(() => tutorSessions.id, { onDelete: 'restrict' }),
+      .references(() => tutorSessions.id, { onDelete: 'set null' }),
     quizId: text('quiz_id').notNull(),
     objectiveId: text('objective_id').references(() => learningObjectives.id, { onDelete: 'restrict' }),
     planId: text('plan_id').references(() => learningPlans.id, { onDelete: 'restrict' }),

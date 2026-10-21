@@ -24,6 +24,8 @@ import { TemplateStore, InMemoryTemplateStore } from './templates.store';
 import { PostgresTemplateStore } from './templates.store.postgres';
 import { TemplatesController } from './templates.controller';
 import { TemplatesService } from './templates.service';
+import { ProjectBindingRecoveryService } from './project-binding-recovery.service';
+import { ProjectBindingRecoveryController } from './project-binding-recovery.controller';
 
 /**
  * 共享可验证项目模板库模块（产品文档 7.4 / ADR 0006）。
@@ -41,12 +43,13 @@ import { TemplatesService } from './templates.service';
  */
 @Module({
   imports: [AuthModule, PlatformRegistryModule, ModelRegistryModule, forwardRef(() => KnowledgeModule)],
-  controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController],
+  controllers: [TemplatesController, TemplateGovernanceController, TemplateBindingController, ProjectBindingRecoveryController],
   providers: [
     TeachingBundleCatalog,
     TemplatesService,
     TemplateGovernanceService,
     TemplateBindingService,
+    ProjectBindingRecoveryService,
     {
       provide: TemplateBindingStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

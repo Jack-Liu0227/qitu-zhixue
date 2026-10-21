@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { adminAssistants, adminTeamMembers, adminTeams, adminTeamVersions, type Database } from '@qitu/database';
+import { adminAssistants, adminTeamMembers, adminTeams, adminTeamVersions, agentConfigs, type Database } from '@qitu/database';
 import type { CurrentUser } from '@qitu/contracts';
 import type { AuditWriter } from '../../common/audit/audit.service';
 import { FakeIdempotencyStore } from '../templates/templates.test-support';
@@ -26,6 +26,7 @@ function fixture() {
   let insideTransaction = false;
   let writes = 0;
   const audits: unknown[] = [];
+  const runtimeInserts: Array<{ table: unknown; row: unknown }> = [];
   const now = new Date('2026-10-21T00:00:00.000Z');
   const team = { id: 'team', name: 'Team', description: 'Fixture', workspaceMode: 'shared', sessionMode: 'supervised',
     leaderAssistantId: 'coach', enabled: true, updatedAt: now, pblSpec: { theoryMasteredGate: true, allowAutonomousAdvance: false, phases: [] } };
@@ -55,7 +56,16 @@ function fixture() {
       };
       return builder;
     } }),
-    insert: () => ({ values: async (row: typeof adminTeamVersions.$inferSelect) => { writes++; versions.push(structuredClone(row)); } }),
+    insert: (table: unknown) => ({ values: async (row: unknown) => {
+      if (table === adminTeamVersions) {
+        writes++;
+        versions.push(structuredClone(row as typeof adminTeamVersions.$inferSelect));
+      } else {
+        runtimeInserts.push({ table, row: structuredClone(row) });
+      }
+    } }),
+    update: () => ({ set: () => ({ where: async () => undefined }) }),
+    delete: () => ({ where: async () => undefined }),
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       insideTransaction = true;
       const before = versions.length;
@@ -65,7 +75,7 @@ function fixture() {
   const registry = { getAssistantRuntime: async () => structuredClone(runtime) } as unknown as PlatformRegistryService;
   const service = new TeamVersionService(db, registry, new FakeIdempotencyStore(), { write: async entry => { audits.push(entry); return 'audit'; } } as AuditWriter);
   return { service, team, versions, audits, runtime: (value: EffectiveAgentRuntime) => { runtime = value; },
-    readFailure: (value: boolean) => { readsUnavailable = value; }, writes: () => writes };
+    readFailure: (value: boolean) => { readsUnavailable = value; }, writes: () => writes, runtimeInserts };
 }
 
 test('publication only accepts a team revision; clients cannot supply their own frozen runtime', () => {
@@ -84,6 +94,20 @@ test('published team versions preserve source prompts/models and publish later c
   const snapshot = (old.members[0] as { runtimeSnapshot: ReturnType<typeof freezeTeamAssistant> }).runtimeSnapshot;
   assert.equal(snapshot.agentDefinition, 'Original policy'); assert.equal(snapshot.model.modelId, 'model-a');
   assert.equal(old.runtimeSnapshotStatus, 'published'); assert.equal(h.audits.length, 2);
+});
+
+test('publication projects every frozen member into the Team Runtime agent registry', async () => {
+  const h = fixture();
+  await h.service.publish(admin, 'team', { expectedUpdatedAt: h.team.updatedAt.toISOString() }, 'runtime-projection');
+  const projected = h.runtimeInserts.filter((entry) => entry.table === agentConfigs).map((entry) => entry.row as Record<string, unknown>);
+  assert.equal(projected.length, 1);
+  assert.equal(projected[0]?.id, 'coach');
+  assert.equal(projected[0]?.roleDefinition, 'Guide inquiry');
+  assert.equal(projected[0]?.agentDefinition, 'Original policy');
+  assert.equal(projected[0]?.modelProviderId, 'provider');
+  assert.equal(projected[0]?.modelId, 'model-a');
+  assert.equal(projected[0]?.enabled, true);
+  assert.deepEqual(projected[0]?.capabilities, ['teach']);
 });
 
 test('publication retries after readback failure never create another immutable version', async () => {

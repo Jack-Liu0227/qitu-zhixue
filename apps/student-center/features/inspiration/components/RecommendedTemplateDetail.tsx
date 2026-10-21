@@ -48,7 +48,8 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
         返回推荐项目
       </StudentLink>
       <article className="qitu-inspiration-detail-panel">
-        {template.coverAssetId && <EntityCover assetId={template.coverAssetId} height={180} />}
+        {template.coverAssetId && <EntityCover assetId={template.coverAssetId} height={180}
+          aspectRatio="16 / 9" className="qitu-inspiration-detail-cover" />}
         <header className="qitu-inspiration-template-header">
           <span className="qitu-inspiration-template-cover" aria-hidden="true">
             <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={56} />

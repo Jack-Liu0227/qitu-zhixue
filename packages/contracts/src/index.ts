@@ -8,12 +8,15 @@ export * from './runtime-tool-catalog.js';
 export * from './tool-binding-migration.js';
 
 export * from './project.js';
+export * from './project-history.js';
+export * from './student-history.js';
 export * from './exploration.js';
 export * from './tutor.js';
 export * from './realtime.js';
 export * from './growth.js';
 export * from './tutor-expression-projection.js';
 export * from './growth-domain-projection.js';
+export * from './growth-competency.js';
 export * from './reminder.js';
 export * from './platform.js';
 export * from './parent.js';
@@ -93,3 +96,4 @@ export * from './project-learning.js';
 
 export * from './learning-session-progress.js';
 export * from './learning-session-evidence.js';
+export * from './tutor-lesson-program.js';

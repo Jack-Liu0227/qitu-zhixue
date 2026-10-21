@@ -36,6 +36,8 @@ export interface ProjectSummary {
   templateVersionId?: string | null;
   /** Number of persisted student/assistant turns in the AI tutor session. */
   turnCount?: number;
+  createdAt?: string;
+  lastLearningActivityAt?: string | null;
 }
 
 /**

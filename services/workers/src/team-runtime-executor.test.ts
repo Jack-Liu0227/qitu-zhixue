@@ -387,6 +387,7 @@ test('projection prompts declare every allowed field as required and forbid addi
 test('structured output requires an object and enforces route schema', () => {
   const schema = { type: 'object', required: ['confirmed'], properties: { confirmed: { type: 'boolean' } } };
   assert.deepEqual(parseStructuredAgentOutput('{"confirmed":true}', schema), { confirmed: true });
+  assert.deepEqual(parseStructuredAgentOutput('格式说明：\n{"confirmed":true}\n以上为结果。', schema), { confirmed: true });
   assert.throws(
     () => parseStructuredAgentOutput('{"confirmed":"yes"}', schema),
     (error: unknown) => error instanceof TeamAgentExecutionError && error.code === 'TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH',

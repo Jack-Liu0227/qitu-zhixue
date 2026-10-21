@@ -7,6 +7,7 @@ export interface LearningEvidenceScope {
   objectiveIds: readonly string[];
 }
 export interface LearningEvidenceProof {
+  quality?: LessonQualityStatus;
   kind: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'approved_artifact';
   ref: string;
   scope: LearningEvidenceScope;
@@ -25,9 +26,34 @@ export interface LessonEvidenceProofs {
   reflections: LearningEvidenceProof[];
 }
 export interface LessonEvidenceView extends LessonEvidenceProofs {
+  qualityCriteria?: readonly { id: string; description: string }[];
   scope: LearningEvidenceScope;
   sessionType: string;
   allowedActions: string[];
+}
+
+export interface LessonQualityStatus {
+  status: 'pending' | 'accepted' | 'needs_revision' | 'stale';
+  subjectDigest: string;
+  feedback: readonly { criterionId: string; meets: boolean; feedback: string }[];
+}
+
+export interface LessonQualityDecision {
+  planRevision: number;
+  evidenceRef: string;
+  subjectDigest: string;
+  criteria: readonly { criterionId: string; meets: boolean; feedback: string }[];
+}
+
+export interface LessonQualityQueueItem {
+  planId: string;
+  learningSessionId: string;
+  planRevision: number;
+  projectId: string;
+  lessonTitle: string;
+  proof: LearningEvidenceProof;
+  criteria: readonly { id: string; description: string }[];
+  content: string;
 }
 export interface LearningTextSubmission {
   planRevision: number;

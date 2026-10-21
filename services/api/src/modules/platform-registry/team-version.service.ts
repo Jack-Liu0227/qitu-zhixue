@@ -10,6 +10,11 @@ import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { PlatformRegistryService } from './platform-registry.service';
 import { runtimeIdsForAssistant } from './assistant-runtime-identity';
 import { TEAM_PUBLICATION_SCHEMA, freezeTeamAssistant, readPublishedAssistant } from './team-version.snapshot';
+import {
+  projectPublishedTeamRuntime,
+  type PublishedRuntimeMember,
+  type RuntimeProjectionResult,
+} from './team-version.runtime';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 
 type VersionRow = typeof adminTeamVersions.$inferSelect;
@@ -88,12 +93,23 @@ export class TeamVersionService {
         await tx.select().from(agentMcpBindings).where(inArray(agentMcpBindings.agentId, runtimeIds)).for('share');
         const mcpIds = [...new Set(assistants.flatMap(assistant => assistant.mcpServerIds))];
         if (mcpIds.length) await tx.select().from(runtimeMcpServers).where(inArray(runtimeMcpServers.id, mcpIds)).for('share');
+        const assistantsById = new Map(assistants.map(assistant => [assistant.id, assistant]));
         const snapshots = [];
+        const runtimeMembers: PublishedRuntimeMember[] = [];
         for (const member of members) {
           const runtime = await this.registry.getAssistantRuntime(member.assistantId);
           if (runtime.agent.id !== member.assistantId) throw new ConflictException('助手运行时身份与团队成员不一致');
+          const runtimeSnapshot = freezeTeamAssistant(runtime);
           snapshots.push({ slotId: member.slotId, assistantId: member.assistantId, role: member.role,
-            roleLabel: member.roleLabel, pblPhase: member.pblPhase, runtimeSnapshot: freezeTeamAssistant(runtime) });
+            roleLabel: member.roleLabel, pblPhase: member.pblPhase, runtimeSnapshot });
+          runtimeMembers.push({
+            assistantId: member.assistantId,
+            displayName: assistantsById.get(member.assistantId)?.name ?? member.assistantId,
+            role: member.role,
+            roleLabel: member.roleLabel ?? member.role,
+            snapshot: runtimeSnapshot,
+            live: runtime,
+          });
         }
         const [latest] = await tx.select().from(adminTeamVersions).where(eq(adminTeamVersions.teamId, teamId)).orderBy(desc(adminTeamVersions.version)).limit(1);
         const row: VersionRow = { id: versionId, teamId, version: (latest?.version ?? 0) + 1, name: team.name,
@@ -104,13 +120,75 @@ export class TeamVersionService {
         row.pblSpec.teamVersionPublication = { schemaVersion: TEAM_PUBLICATION_SCHEMA, requestHash,
           sourceUpdatedAt: team.updatedAt.toISOString(), digest };
         await tx.insert(adminTeamVersions).values(row);
+        await projectPublishedTeamRuntime(tx, row, runtimeMembers, actor, row.createdAt);
         await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'admin.team.version.publish',
           targetType: 'admin_team_version', targetId: versionId, idempotencyKey: `${scope}:${key}`,
-          detail: { teamId, version: row.version, snapshotDigest: digest, memberCount: snapshots.length } }, tx);
+          detail: { teamId, version: row.version, snapshotDigest: digest, memberCount: snapshots.length,
+            runtimeProjection: runtimeMembers.map(member => member.assistantId).sort() } }, tx);
       });
       return { status: 201, body: { id: versionId } };
     });
     return this.read(actor, teamId, versionId);
+  }
+
+  /**
+   * Explicit idempotent repair for versions published before runtime
+   * projection was introduced. The version snapshot is never rewritten.
+   */
+  async projectRuntime(actor: CurrentUser, teamId: string, versionId: string, key: string): Promise<RuntimeProjectionResult> {
+    requireAdmin(actor);
+    if (!key?.trim() || key.length > 160) throw new BadRequestException('Idempotency-Key 无效');
+    const db = this.database();
+    const scope = `admin.team.version.runtime:${actor.id}:${teamId}:${versionId}`;
+    const requestHash = hashIdempotentInput(scope, { teamId, versionId }, {});
+    const result = await this.idempotency.execute(scope, key, requestHash, async () => {
+      const [row] = await db.select().from(adminTeamVersions)
+        .where(eq(adminTeamVersions.id, versionId)).limit(1);
+      if (!row || row.teamId !== teamId) throw new NotFoundException('团队版本回读失败');
+      teamVersionView(row);
+
+      const memberRows = row.members as Array<Record<string, unknown>>;
+      const assistantIds = memberRows.map(member => String(member.assistantId));
+      const assistants = await db.select().from(adminAssistants)
+        .where(inArray(adminAssistants.id, assistantIds));
+      const assistantsById = new Map(assistants.map(assistant => [assistant.id, assistant]));
+      const runtimeMembers: PublishedRuntimeMember[] = [];
+      for (const member of memberRows) {
+        const assistantId = String(member.assistantId);
+        const snapshot = readPublishedAssistant(member.runtimeSnapshot, assistantId);
+        const live = await this.registry.getAssistantRuntime(assistantId);
+        if (live.agent.id !== assistantId) throw new ConflictException('ASSISTANT_RUNTIME_IDENTITY_MISMATCH');
+        runtimeMembers.push({
+          assistantId,
+          displayName: assistantsById.get(assistantId)?.name ?? assistantId,
+          role: String(member.role ?? 'custom'),
+          roleLabel: String(member.roleLabel ?? member.role ?? assistantId),
+          snapshot,
+          live,
+        });
+      }
+
+      let projection: RuntimeProjectionResult | null = null;
+      await db.transaction(async tx => {
+        const [locked] = await tx.select().from(adminTeamVersions)
+          .where(eq(adminTeamVersions.id, versionId)).for('update');
+        if (!locked || locked.teamId !== teamId) throw new NotFoundException('团队版本回读失败');
+        teamVersionView(locked);
+        projection = await projectPublishedTeamRuntime(tx, locked, runtimeMembers, actor);
+        await this.audit.write({
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: 'admin.team.version.runtime_projection',
+          targetType: 'admin_team_version',
+          targetId: versionId,
+          idempotencyKey: `${scope}:${key}`,
+          detail: { teamId, ...projection },
+        }, tx);
+      });
+      if (projection === null) throw new ServiceUnavailableException('团队运行时投影未返回结果');
+      return { status: 200, body: projection };
+    });
+    return result.body;
   }
 
   async read(actor: CurrentUser, teamId: string, id: string) {
