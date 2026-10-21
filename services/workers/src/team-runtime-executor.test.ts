@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { adminAssistants, agentConfigs, agentProjectionCandidates, agentRoutes, agentSkillBindings, agentTeamEvents, agentTeamRuns,
   modelModels, modelProviders, modelUsageBindings, tutorSessions, tutorTurns } from '@qitu/database';
-import { expressionQuestion } from '@qitu/contracts';
+import { expressionQuestion, expressionSummary, growthProjectionResultSchema, validateGrowthProjectionResult } from '@qitu/contracts';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
 
@@ -198,12 +198,13 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
   let routeTrigger = 'delegate';
   let routeTaskType = 'interest.confirm';
   let boundAssistant = 'worker';
+  let boundGrowthAssistant: string | null = null;
   let routeOutputSchema: Record<string, unknown> = { type: 'object', required: ['confirmed'] };
   let turnReads = 0;
   let runStudentId = 'student';
   const studentText = '我喜欢光学。缝宽变化有什么影响？';
   const db = {
-    execute: async () => ({ rows: [{ revision: 3, config: { growthProjection: { profileAssistantId: boundAssistant, growthAssistantId: null } } }] }),
+    execute: async () => ({ rows: [{ revision: 3, config: { growthProjection: { profileAssistantId: boundAssistant, growthAssistantId: boundGrowthAssistant } } }] }),
     select: () => ({ from: (table: unknown) => ({ where: (condition: SQL) => {
     const modelId = new PgDialect().sqlToQuery(condition).params[1];
     const rows = table === agentConfigs ? [{ id: 'worker', enabled: true, modelProviderId: null, modelId: null, modelUsage: 'curriculum.plan', capabilities: [] }]
@@ -272,6 +273,9 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
     assert.deepEqual(valid.result, profileOutput);
     assert.equal((valid.analysisManifest as Record<string, unknown>).sourceEventId, 'event');
     assert.ok(requestedBodies.at(-1)!.includes(studentText), 'authorized model request consumes real private student content');
+    const profilePrompt = JSON.parse(requestedBodies.at(-1)!).messages[0].content as string;
+    assert.ok(profilePrompt.includes(JSON.stringify({ ...growthProjectionResultSchema('learner_profile'), allOf: [routeOutputSchema] })),
+      'actual Tutor profile request includes the complete closed contract and route restrictions');
     assert.equal(JSON.stringify(valid).includes(studentText), false);
     assert.equal(JSON.stringify(job.task!.input).includes(studentText), false);
     modelOutput = JSON.stringify({ ...profileOutput, rawConversation: studentText });
@@ -279,6 +283,22 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
     assert.equal(invalid.result, null);
     assert.equal(invalid.analysisErrorCode, 'PROJECTION_UNKNOWN_FIELD');
     assert.equal(JSON.stringify(invalid).includes(studentText), false, 'arbitrary model echoes are not persisted even as proposed results');
+    modelOutput = JSON.stringify(profileOutput);
+    routeOutputSchema = { type: 'object', required: ['version'], properties: { version: { type: 'string' } } };
+    await assert.rejects(execute(job), /TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH/, 'route schema still restricts projection output');
+    routeOutputSchema = { type: 'object', required: ['version'] };
+    boundGrowthAssistant = 'worker';
+    routeTaskType = 'growth.project';
+    job.task!.taskType = routeTaskType;
+    job.task!.input = { ...job.task!.input, projectionType: 'growth_trajectory',
+      authorization: { routeId: 'route', trigger: 'event', fromAgentId: 'tutor', toAgentId: 'worker', taskType: routeTaskType } };
+    const growthOutput = { version: 1, milestones: [], strengths: [], nextQuestions: [],
+      studentSummary: expressionSummary(profileOutput.interests[0]!), evidenceRefs: ['learning_interaction:student-turn'], confidence: 'low' };
+    modelOutput = JSON.stringify(growthOutput);
+    assert.deepEqual((await execute(job)).result, growthOutput);
+    const growthPrompt = JSON.parse(requestedBodies.at(-1)!).messages[0].content as string;
+    assert.ok(growthPrompt.includes(JSON.stringify({ ...growthProjectionResultSchema('growth_trajectory'), allOf: [routeOutputSchema] })),
+      'actual Tutor growth request includes every allowed/required result field');
     const callCount = requestedModels.length;
     const readCount = turnReads;
     runStudentId = 'foreign-student';
@@ -332,6 +352,36 @@ test('Team Agent prompt is bounded and contains only server-owned runtime contex
   assert.match(prompt.system, /不得直接写入领域事实/u);
   assert.match(prompt.user, /student-1/u);
   assert.doesNotMatch(prompt.system, /api[_-]?key/iu);
+});
+
+test('projection prompts declare every allowed field as required and forbid additional fields', () => {
+  const profile = growthProjectionResultSchema('learner_profile');
+  const growth = growthProjectionResultSchema('growth_trajectory');
+  const contracts = [
+    { schema: profile, keys: ['version', 'priorKnowledge', 'targetLevel', 'timeBudgetMinutesPerWeek', 'preferences', 'interests', 'strengths', 'nextQuestions'],
+      sample: { version: 1, priorKnowledge: null, targetLevel: null, timeBudgetMinutesPerWeek: null, preferences: [], interests: [], strengths: [], nextQuestions: [] } },
+    { schema: growth, keys: ['version', 'milestones', 'strengths', 'nextQuestions', 'studentSummary', 'evidenceRefs', 'confidence'],
+      sample: { version: 1, milestones: [], strengths: [], nextQuestions: [], studentSummary: null, evidenceRefs: ['learning_interaction:turn'], confidence: 'low' } },
+  ];
+  for (const [index, contract] of contracts.entries()) {
+    assert.deepEqual(contract.schema.required, contract.keys);
+    assert.equal(contract.schema.additionalProperties, false);
+    assert.ok(contract.schema.properties && typeof contract.schema.properties === 'object');
+    assert.deepEqual(Object.keys(contract.schema.properties), contract.keys);
+    assert.equal(validateGrowthProjectionResult(index === 0 ? 'learner_profile' : 'growth_trajectory', contract.sample).ok, true);
+    const prompt = buildTeamAgentPrompt({ agent: { id: 'projection', displayName: 'Projection', role: 'analysis',
+      roleDefinition: '', agentDefinition: '', capabilities: ['reflect'] }, taskType: 'projection', taskInput: {},
+      globalPolicy: '', skills: [], outputSchema: contract.schema });
+    assert.ok(prompt.system.includes(JSON.stringify(contract.schema)));
+    for (const key of contract.keys) assert.ok(prompt.system.includes(`"${key}"`));
+    assert.throws(() => parseStructuredAgentOutput(JSON.stringify({ ...contract.sample, commentary: 'not allowed' }), contract.schema),
+      /TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH/);
+    for (const key of contract.keys) {
+      const incomplete: Record<string, unknown> = { ...contract.sample };
+      delete incomplete[key];
+      assert.throws(() => parseStructuredAgentOutput(JSON.stringify(incomplete), contract.schema), /TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH/);
+    }
+  }
 });
 
 test('structured output requires an object and enforces route schema', () => {

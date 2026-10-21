@@ -15,7 +15,7 @@ import {
   readTutorProjectionEvidence,
   readDomainProjectionEvidence,
 } from '@qitu/database';
-import { assertRuntimeSkillBudget, domainProjectionInstructions, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateDomainProjection, validateTutorExpressionProjection } from '@qitu/contracts';
+import { assertRuntimeSkillBudget, domainProjectionInstructions, growthProjectionResultSchema, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateDomainProjection, validateTutorExpressionProjection } from '@qitu/contracts';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -183,6 +183,10 @@ async function executeTeamAgentJob(
       sourceEventId: String(task.input.sourceEventId), runId: task.runId, studentId: String(task.input.studentUserId),
       projectId: typeof task.input.projectId === 'string' ? task.input.projectId : null, projectionType,
     }) : null;
+  const analysisType = expression?.manifest.projectionType ?? domain?.manifest.projectionType;
+  const projectionSchema = analysisType ? growthProjectionResultSchema(analysisType) : null;
+  const outputSchema = projectionSchema && route.outputSchema
+    ? { ...projectionSchema, allOf: [route.outputSchema] } : projectionSchema ?? route.outputSchema;
   const prompt = buildTeamAgentPrompt({
     agent: projection?.agent ?? agent,
     taskType: task.taskType,
@@ -197,7 +201,7 @@ async function executeTeamAgentJob(
     skills,
     constraints: expression ? [...DEFAULT_AGENT_CONSTRAINTS, tutorExpressionInstructions(expression)]
       : domain ? [...DEFAULT_AGENT_CONSTRAINTS, domainProjectionInstructions(domain)] : DEFAULT_AGENT_CONSTRAINTS,
-    outputSchema: route.outputSchema,
+    outputSchema,
   });
   let result;
   try {
