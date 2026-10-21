@@ -656,7 +656,7 @@ export function OpticsDiffractionScatteringCard({
   return (
     <div
       ref={cardRef}
-      className={isFullscreen ? 'qitu-optics-experiment-card is-fullscreen' : 'qitu-optics-experiment-card'}
+      className={isFullscreen ? 'qitu-optics-card qitu-optics-experiment-card is-fullscreen' : 'qitu-optics-card qitu-optics-experiment-card'}
       style={{
         margin: '16px 0',
         padding: '20px',

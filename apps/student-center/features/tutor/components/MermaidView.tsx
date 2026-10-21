@@ -69,10 +69,10 @@ export function MermaidView({ code, className }: MermaidViewProps) {
           margin: '12px 0',
           padding: '12px 16px',
           borderRadius: '8px',
-          background: '#f8fafc',
-          border: '1.5px dashed #94a3b8',
+          background: 'var(--qitu-surface-soft, #f8fafc)',
+          border: '1.5px dashed var(--qitu-border, #94a3b8)',
           fontSize: '13px',
-          color: '#334155',
+          color: 'var(--qitu-text, #334155)',
         }}
         role="figure"
         aria-label="Mermaid diagram fallback"
@@ -84,8 +84,8 @@ export function MermaidView({ code, className }: MermaidViewProps) {
           style={{
             margin: 0,
             padding: '10px 14px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--qitu-surface, #ffffff)',
+            border: '1px solid var(--qitu-border, #e2e8f0)',
             borderRadius: '6px',
             fontSize: '12px',
             fontFamily: 'JetBrains Mono, Consolas, monospace',
@@ -107,11 +107,11 @@ export function MermaidView({ code, className }: MermaidViewProps) {
           margin: '12px 0',
           padding: '24px',
           textAlign: 'center',
-          color: '#64748b',
+          color: 'var(--qitu-muted, #64748b)',
           fontSize: '13px',
-          background: '#f8fafc',
+          background: 'var(--qitu-surface-soft, #f8fafc)',
           borderRadius: '8px',
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--qitu-border, #e2e8f0)',
         }}
       >
         <span role="status">正在渲染图示...</span>
@@ -126,8 +126,8 @@ export function MermaidView({ code, className }: MermaidViewProps) {
         margin: '14px 0',
         padding: '16px 20px',
         borderRadius: '12px',
-        background: '#ffffff',
-        border: '1.5px solid #e2e8f0',
+        background: 'var(--qitu-surface, #ffffff)',
+        border: '1.5px solid var(--qitu-border, #e2e8f0)',
         boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
         overflowX: 'auto',
         display: 'flex',

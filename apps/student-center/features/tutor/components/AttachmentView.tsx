@@ -66,36 +66,32 @@ export function AttachmentView({ attachment }: { attachment: AttachmentItem }) {
               }}
             />
             <div
+              className="qitu-attachment-image-footer"
               style={{
                 padding: '6px 10px',
                 fontSize: '11.5px',
-                color: '#475569',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderTop: '1px solid #f1f5f9',
               }}
             >
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                 {attachment.fileName}
               </span>
-              {attachment.sizeText && <span style={{ color: '#94a3b8', fontSize: '10.5px' }}>{attachment.sizeText}</span>}
+              {attachment.sizeText && <span style={{ fontSize: '10.5px' }}>{attachment.sizeText}</span>}
             </div>
           </div>
         </div>
       ) : (
         <div
+          className="qitu-attachment-card"
           style={{
             margin: '8px 0',
             padding: '10px 14px',
             borderRadius: '10px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
             display: 'inline-flex',
             alignItems: 'center',
             gap: '12px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
             maxWidth: '100%',
           }}
         >
@@ -104,10 +100,10 @@ export function AttachmentView({ attachment }: { attachment: AttachmentItem }) {
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
+              className="qitu-attachment-filename"
               style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#1e293b',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -117,7 +113,7 @@ export function AttachmentView({ attachment }: { attachment: AttachmentItem }) {
             >
               {attachment.fileName}
             </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+            <div className="qitu-attachment-meta" style={{ fontSize: '11px', marginTop: '2px' }}>
               {attachment.sizeText || '文件附件'}
             </div>
           </div>
@@ -126,13 +122,11 @@ export function AttachmentView({ attachment }: { attachment: AttachmentItem }) {
             download={attachment.fileName}
             target="_blank"
             rel="noopener noreferrer"
+            className="qitu-attachment-download-btn"
             style={{
               padding: '4px 10px',
               fontSize: '11.5px',
               fontWeight: 600,
-              color: '#2563eb',
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
               borderRadius: '6px',
               textDecoration: 'none',
               cursor: 'pointer',

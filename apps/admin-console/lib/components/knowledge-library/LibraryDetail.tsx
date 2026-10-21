@@ -915,7 +915,7 @@ export function LibraryDetail({
                         />
                         <span>
                           <strong>
-                            <AssistantGlyph value={b.avatar} size={20} /> {b.agentName ?? b.agentId}
+                            {b.avatar || '🤖'} {b.agentName ?? b.agentId}
                           </strong>
                           <small>
                             {b.readonlyReason ??

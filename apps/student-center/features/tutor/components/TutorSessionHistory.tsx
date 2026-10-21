@@ -244,7 +244,7 @@ export function TutorSessionHistory({
           padding: '12px 0 10px',
           border: '1px solid #e2e8f0',
           borderRadius: 14,
-          background: '#ffffff',
+          background: 'var(--qitu-surface, #ffffff)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -259,6 +259,7 @@ export function TutorSessionHistory({
           onClick={onToggle}
           title="展开侧边栏（会话历史）"
           aria-label="展开侧边栏（会话历史）"
+          className="qitu-history-toggle-btn"
           style={{
             width: '52px',
             height: '40px',
@@ -268,10 +269,7 @@ export function TutorSessionHistory({
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            border: '1px solid #cbd5e1',
             borderRadius: '10px',
-            background: '#f8fafc',
-            color: '#1e293b',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             boxSizing: 'border-box',
@@ -279,7 +277,7 @@ export function TutorSessionHistory({
           }}
         >
           <span style={{ fontSize: '14px', lineHeight: 1 }}>📂</span>
-          <span style={{ fontSize: '10px', fontWeight: 600, color: '#475569', marginTop: '2px', lineHeight: 1 }}>展开</span>
+          <span style={{ fontSize: '10px', fontWeight: 600, marginTop: '2px', lineHeight: 1 }}>展开</span>
         </button>
         <button
           type="button"
@@ -392,6 +390,7 @@ export function TutorSessionHistory({
                   title={`${item.title}${item.stageLabel ? ` · ${item.stageLabel}` : ''} · ${item.turnCount}条对话 · ${formatRelativeTime(item.updatedAt)}`}
                   aria-label={`切换到会话：${item.title}`}
                   aria-current={active ? 'true' : undefined}
+                  className={`qitu-history-collapsed-btn qitu-history-collapsed-item ${active ? 'is-active' : ''}`}
                   style={{
                     width: '44px',
                     height: '44px',
@@ -400,25 +399,10 @@ export function TutorSessionHistory({
                     display: 'grid',
                     placeItems: 'center',
                     gap: 0,
-                    border: active ? '1.5px solid #3b82f6' : '1px solid #f1f5f9',
                     borderRadius: '10px',
-                    background: active ? '#eff6ff' : '#ffffff',
-                    boxShadow: active ? '0 2px 8px rgba(59,130,246,0.15)' : 'none',
                     cursor: busy ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
                     position: 'relative',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = '#f8fafc';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = '#ffffff';
-                      e.currentTarget.style.borderColor = '#f1f5f9';
-                    }
                   }}
                 >
                   <span style={{ fontSize: '15px', lineHeight: 1 }} aria-hidden="true">
@@ -426,14 +410,13 @@ export function TutorSessionHistory({
                   </span>
                   <span
                     aria-hidden="true"
+                    className="qitu-history-stage-tag is-mini"
                     style={{
                       position: 'absolute',
                       bottom: 3,
                       right: 4,
                       fontSize: '9px',
                       fontWeight: 700,
-                      color: active ? '#1d4ed8' : '#94a3b8',
-                      background: active ? '#dbeafe' : '#f1f5f9',
                       borderRadius: '4px',
                       padding: '0 3px',
                       lineHeight: '1.4',
@@ -459,7 +442,7 @@ export function TutorSessionHistory({
         padding: '14px 12px',
         border: '1px solid #e2e8f0',
         borderRadius: 14,
-        background: '#ffffff',
+        background: 'var(--qitu-surface, #ffffff)',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
@@ -471,8 +454,8 @@ export function TutorSessionHistory({
       {/* 顶部工具栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <VisualAsset assetId="activity-reflection-v1" size={22} />
-          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>会话历史</h2>
+          <VisualAsset assetId="activity-reflection-v1" size={22} />
+          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--qitu-heading, inherit)' }}>会话历史</h2>
         </div>
         <button
           type="button"
@@ -513,13 +496,12 @@ export function TutorSessionHistory({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="搜索历史会话..."
+          className="qitu-history-search-input"
           style={{
             width: '100%',
             padding: '6px 10px 6px 28px',
             fontSize: '12px',
-            border: '1px solid #cbd5e1',
             borderRadius: '8px',
-            background: '#f8fafc',
             outline: 'none',
           }}
         />
@@ -548,27 +530,13 @@ export function TutorSessionHistory({
               <div
                 key={item.id}
                 onClick={() => handleSelectSession(item)}
+                className={`qitu-history-session-card ${active ? 'is-active' : ''}`}
                 style={{
                   padding: '10px 10px',
                   borderRadius: '10px',
-                  border: active ? '1.5px solid #3b82f6' : '1px solid #f1f5f9',
-                  background: active ? '#eff6ff' : '#ffffff',
                   cursor: 'pointer',
                   position: 'relative',
                   transition: 'all 0.15s ease',
-                  boxShadow: active ? '0 2px 8px rgba(59,130,246,0.12)' : 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = '#f8fafc';
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) {
-                    e.currentTarget.style.background = '#ffffff';
-                    e.currentTarget.style.borderColor = '#f1f5f9';
-                  }
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
@@ -577,10 +545,10 @@ export function TutorSessionHistory({
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
+                      className="qitu-history-session-title"
                       style={{
                         fontSize: '13px',
                         fontWeight: active ? 700 : 500,
-                        color: active ? '#1e40af' : '#1e293b',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
@@ -596,12 +564,11 @@ export function TutorSessionHistory({
                         alignItems: 'center',
                         gap: '6px',
                         fontSize: '11px',
-                        color: active ? '#3b82f6' : '#64748b',
                         marginTop: '3px',
                       }}
                     >
                       {item.stageLabel && (
-                        <span style={{ background: active ? '#dbeafe' : '#f1f5f9', padding: '1px 5px', borderRadius: '4px' }}>
+                        <span className="qitu-history-stage-tag" style={{ padding: '1px 5px', borderRadius: '4px' }}>
                           {item.stageLabel}
                         </span>
                       )}
@@ -614,10 +581,10 @@ export function TutorSessionHistory({
                   <button
                       type="button"
                       onClick={(e) => handleDelete(e, item)}
+                      className="qitu-history-delete-btn"
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#94a3b8',
                         cursor: 'pointer',
                         padding: '2px 4px',
                         fontSize: '12px',

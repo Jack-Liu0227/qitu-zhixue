@@ -1,3 +1,4 @@
+@import "../styles/eyecare-night.css";
 /*
  * 教师端沿用 @qitu/ui 提供的全局设计 token（`--qitu-*`，由 styles.css 定义，
  * 在 layout 中先于本文件引入）。这里只保留一层局部别名，避免同一套品牌色在

@@ -63,7 +63,7 @@ export function AgentRunPanel({ studentId }: { studentId: string }) {
     <section className="qtx-card qtx-agent-run-panel">
       <div className="qtx-panel-header">
         <div className="qtx-panel-title"><span className="dot" /> Agent 协作记录</div>
-        <Button variant="ghost" size="sm" onClick={() => void load()} loading={state.status === 'loading'}>刷新</Button>
+        <Button variant="ghost" size="sm" className="qtx-agent-refresh-btn" onClick={() => void load()} loading={state.status === 'loading'}>刷新</Button>
       </div>
       {state.status === 'loading' ? <p className="qtx-muted">正在加载最新执行记录...</p> : null}
       {state.status === 'loading' ? <SkeletonBlock lines={4} /> : null}

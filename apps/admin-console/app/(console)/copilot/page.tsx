@@ -181,6 +181,7 @@ export default function CopilotPage() {
   });
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
   const { state: assistantCatalog, error: catalogError, refresh: refreshAssistantCatalog } = useAssistantCatalog();
   const capabilities = useCopilotCapabilities();
   const selectedModelItem = availableModels.find((model) => configuredModelKey(model) === selectedModel) ?? null;
@@ -327,7 +328,7 @@ export default function CopilotPage() {
   };
 
   return (
-    <div style={{
+    <div className="copilot-page" style={{
       display: 'flex',
       height: 'calc(100vh - 65px)',
       margin: '-20px -24px -40px',
@@ -337,6 +338,7 @@ export default function CopilotPage() {
       {/* 1. 左侧会话列表与管理（支持折叠） */}
       {isSidebarCollapsed ? (
         <aside
+          className="copilot-sidebar is-collapsed"
           title="启途智学管家会话（已折叠）"
           style={{
             width: '60px',
@@ -463,6 +465,7 @@ export default function CopilotPage() {
         </aside>
       ) : (
         <div
+          className="copilot-sidebar"
           style={{
             width: '280px',
             background: 'rgba(255, 255, 255, 0.92)',
@@ -531,6 +534,7 @@ export default function CopilotPage() {
               return (
                 <div
                   key={sess.id}
+                  className={`copilot-session-item ${isActive ? 'is-active' : ''}`}
                   onClick={() => setCurrentSessionId(sess.id)}
                   style={{
                     display: 'flex',
@@ -576,13 +580,13 @@ export default function CopilotPage() {
           </div>
 
           {/* 快捷配置跳转 */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fafafa', fontSize: '12px' }}>
-            <div style={{ color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>快速转至设置库</div>
+          <div className="copilot-settings-jump-box" style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fafafa', fontSize: '12px' }}>
+            <div className="copilot-settings-jump-title" style={{ color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>快速转至设置库</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <Link href="/settings/assistants" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>AI 助手</Link>
-              <Link href="/settings/teams" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>导师团队</Link>
-              <Link href="/settings/tools" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>工具与MCP</Link>
-              <Link href="/settings/templates" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>PBL模板</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/assistants" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>AI 助手</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/teams" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>导师团队</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/tools" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>工具与MCP</Link>
+              <Link className="copilot-settings-jump-link" href="/settings/templates" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>PBL模板</Link>
             </div>
           </div>
         </div>
@@ -591,11 +595,12 @@ export default function CopilotPage() {
       {/* 2. 中间 Agent 交互流 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
         {/* 顶部状态与快捷控制栏 (Thinking 强度 / 模型选择 / 运行权限) */}
-        <div style={{ minHeight: '56px', background: 'rgba(255, 255, 255, 0.95)', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
+        <div className="copilot-toolbar" style={{ minHeight: '56px', background: 'rgba(255, 255, 255, 0.95)', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {isSidebarCollapsed && (
               <button
                 type="button"
+                className="copilot-expand-btn"
                 onClick={() => setIsSidebarCollapsed(false)}
                 title="展开侧边栏"
                 style={{
@@ -634,9 +639,10 @@ export default function CopilotPage() {
               </select>
             </label>}
             {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
+            <div className="copilot-control-pill copilot-control-assistant" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
               <select
+                className="copilot-control-select"
                 value={activeTestAssistant?.id ?? ''}
                 aria-label="交互助手"
                 disabled={!catalogReady || isGenerating}
@@ -653,9 +659,10 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
+            <div className="copilot-control-pill copilot-control-team" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
               <select
+                className="copilot-control-select"
                 value={selectedTeamId}
                 aria-label="选择团队"
                 disabled={assistantCatalog.kind !== 'ready' || isGenerating}
@@ -672,10 +679,27 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            {/* 模型选择 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
+            {/* Thinking 强度 (参考 Pi Agent: Off / Normal / High / Max) */}
+            <div className="copilot-control-pill copilot-control-thinking" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
               <select
+                className="copilot-control-select"
+                value={thinkingStrength}
+                onChange={(e) => setThinkingStrength(e.target.value as 'off' | 'normal' | 'high' | 'max')}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="max">Max (极限深度思考)</option>
+                <option value="high">High (深度思考)</option>
+                <option value="normal">Normal (标准思考)</option>
+                <option value="off">Off (直接回复)</option>
+              </select>
+            </div>
+
+            {/* 模型选择 */}
+            <div className="copilot-control-pill copilot-control-model" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
+              <select
+                className="copilot-control-select"
                 value={selectedModel}
                 aria-label="管家默认模型"
                 disabled={!availableModels.length || isGenerating || modelSaving}
@@ -696,9 +720,10 @@ export default function CopilotPage() {
             </div>
 
             {/* 权限设置 (参考 Codex 3 个权限: Read Only / Workspace Write / Full Access) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
+            <div className="copilot-control-pill copilot-control-permission" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
               <select
+                className="copilot-control-select"
                 value={runtimePermission}
                 onChange={(e) => handlePermissionChange(e.target.value as 'read_only' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
@@ -733,7 +758,7 @@ export default function CopilotPage() {
         {activeTestAssistant && selectedAssistantId !== 'qitu-assistant' && (
           <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}><AssistantGlyph value={activeTestAssistant.icon} /></span>
+              <span style={{ fontSize: '16px' }}>{activeTestAssistant.icon || '🤖'}</span>
               <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
               <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 单助手预览，团队作为配置上下文）</span>
             </div>
@@ -749,7 +774,7 @@ export default function CopilotPage() {
         )}
 
         {/* 消息历史流 */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="copilot-messages-container" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {activeSession.messages.map((msg) => {
             const isUser = msg.role === 'user';
             const isSystem = msg.role === 'system';
@@ -779,6 +804,7 @@ export default function CopilotPage() {
                 )}
                 <div>
                   <div
+                    className={`copilot-bubble ${isUser ? 'copilot-bubble-user' : 'copilot-bubble-assistant'}`}
                     style={{
                       background: isUser ? '#2563eb' : '#ffffff',
                       color: isUser ? '#ffffff' : '#1e293b',
@@ -799,7 +825,7 @@ export default function CopilotPage() {
 
                   {/* 工具调用情况详细展示 */}
                   {msg.toolSteps && msg.toolSteps.length > 0 && (
-                    <div style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
+                    <div className="copilot-tool-steps-container" style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
                       <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>⚡</span> 工具调用与执行过程 ({msg.toolSteps.length} 步)
                       </div>
@@ -819,7 +845,7 @@ export default function CopilotPage() {
                   {msg.retry && <button type="button" disabled={isGenerating || !capabilities.ready} onClick={() => void performTurn(activeSession.id, msg.id, msg.retry!)} style={{ marginTop: 8 }}>重试未完成操作</button>}
                   {/* 结构化产物卡片展示 */}
                   {msg.artifact && (
-                    <div style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                    <div className="copilot-artifact-card" style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <span style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span>📦</span> {msg.artifact.title}
@@ -891,8 +917,8 @@ export default function CopilotPage() {
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
                 <RobotMascot size={28} decorative />
               </div>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>执行分析...
+              <div className="copilot-thinking-bubble" style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
               </div>
             </div>
           )}
@@ -900,7 +926,7 @@ export default function CopilotPage() {
         </div>
 
         {/* 底部输入框 */}
-        <div style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+        <div className="copilot-composer-container" style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
           {isListening && (
             <div style={{ marginBottom: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }} />
@@ -910,6 +936,7 @@ export default function CopilotPage() {
           )}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
             <textarea
+              className="copilot-textarea"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -934,6 +961,7 @@ export default function CopilotPage() {
             />
             <button
               type="button"
+              className={`copilot-voice-btn ${isListening ? 'is-listening' : ''}`}
               onClick={toggleVoiceInput}
               title={isListening ? '点击停止语音输入' : '开启语音输入'}
               style={{
@@ -957,6 +985,7 @@ export default function CopilotPage() {
               <span>{isListening ? '停止' : '语音'}</span>
             </button>
             <button
+              className="copilot-send-btn"
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isGenerating || modelSaving || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
               style={{

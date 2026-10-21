@@ -1,0 +1,2846 @@
+/* ==========================================================================
+   启途智学 - AI搭档 (夜间暗色护眼模式)
+   参考规范：J:\codes\anse.txt
+   ========================================================================== */
+
+:root[data-qitu-eyecare="true"],
+.qitu-tutor-page[data-eyecare="active"] {
+  --bg-canvas: #121417;
+  --bg-surface: #181B20;
+  --bg-card: #1E2228;
+  --border-subtle: #2E3540;
+  --text-main: #E2E8F0;
+  --text-muted: #94A3B8;
+  --accent-emerald: #10B981;
+
+  --qitu-page: #121417;
+  --qitu-surface: #1E2228;
+  --qitu-surface-soft: #181B20;
+  --qitu-border: #2E3540;
+  --qitu-border-subtle: #282F3B;
+  --qitu-primary-border: #2E3540;
+  --qitu-text: #E2E8F0;
+  --qitu-heading: #F1F5F9;
+  --qitu-muted: #94A3B8;
+  --qitu-primary: #10B981;
+  --qitu-primary-soft: #112F24;
+  --qitu-primary-hover: #059669;
+  --qitu-completed: #10B981;
+  --qitu-completed-soft: #112F24;
+  --qitu-attention: #F59E0B;
+  --qitu-attention-soft: #2D2311;
+  --qitu-shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+  --qitu-shadow-sm: 0 2px 4px rgba(0,0,0,0.4);
+  --qitu-shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --qitu-shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+:root[data-qitu-eyecare="true"] body {
+  background-color: #121417 !important;
+  background-image: none !important;
+  color: #E2E8F0 !important;
+}
+
+/* 柔和暗色滚动条 */
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar,
+.qitu-tutor-page[data-eyecare="active"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-track,
+.qitu-tutor-page[data-eyecare="active"] ::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb,
+.qitu-tutor-page[data-eyecare="active"] ::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+  border-radius: 9999px !important;
+}
+:root[data-qitu-eyecare="true"] ::-webkit-scrollbar-thumb:hover,
+.qitu-tutor-page[data-eyecare="active"] ::-webkit-scrollbar-thumb:hover {
+  background: #3B4452 !important;
+}
+
+/* ---- 护眼模式开关按钮 (头部) ---- */
+.qitu-eyecare-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.qitu-eyecare-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.qitu-eyecare-toggle-btn.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25) !important;
+}
+
+/* ---- 页面外壳与整体背景 ---- */
+.qitu-tutor-page[data-eyecare="active"],
+:root[data-qitu-eyecare="true"] .qitu-tutor-page {
+  background-color: #121417 !important;
+  color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   1. 消除深蓝色文字叠加在深色背景上方的问题
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-tutor-page h1,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page h2,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page h3,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page h4,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page strong,
+:root[data-qitu-eyecare="true"] .qitu-rich-bold,
+.qitu-tutor-page[data-eyecare="active"] h1,
+.qitu-tutor-page[data-eyecare="active"] h2,
+.qitu-tutor-page[data-eyecare="active"] h3,
+.qitu-tutor-page[data-eyecare="active"] h4,
+.qitu-tutor-page[data-eyecare="active"] strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-rich-bold {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-page p,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page span,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page li,
+:root[data-qitu-eyecare="true"] .qitu-tutor-page dd,
+.qitu-tutor-page[data-eyecare="active"] p,
+.qitu-tutor-page[data-eyecare="active"] span,
+.qitu-tutor-page[data-eyecare="active"] li,
+.qitu-tutor-page[data-eyecare="active"] dd {
+  color: #CBD5E1;
+}
+
+/* 拦截并重置所有深蓝/深暗内联文字颜色为高对比度白/浅绿/浅灰 */
+:root[data-qitu-eyecare="true"] [style*="color: #102a5c"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e40af"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e3a8a"],
+:root[data-qitu-eyecare="true"] [style*="color: #1d4ed8"],
+:root[data-qitu-eyecare="true"] [style*="color: #243b5a"],
+:root[data-qitu-eyecare="true"] [style*="color: #0f172a"],
+:root[data-qitu-eyecare="true"] [style*="color: #1e293b"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(16, 42, 92)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(30, 64, 175)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(30, 58, 138)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(29, 78, 216)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(36, 59, 90)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(15, 23, 42)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(30, 41, 59)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #102a5c"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #1e40af"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #1e3a8a"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #1d4ed8"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #243b5a"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #0f172a"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #1e293b"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(16, 42, 92)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(30, 64, 175)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(30, 58, 138)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(29, 78, 216)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(36, 59, 90)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(15, 23, 42)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(30, 41, 59)"] {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] [style*="color: #2563eb"],
+:root[data-qitu-eyecare="true"] [style*="color: #2878f0"],
+:root[data-qitu-eyecare="true"] [style*="color: #3b82f6"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(37, 99, 235)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(40, 120, 240)"],
+:root[data-qitu-eyecare="true"] [style*="color: rgb(59, 130, 246)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #2563eb"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #2878f0"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: #3b82f6"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(37, 99, 235)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(40, 120, 240)"],
+.qitu-tutor-page[data-eyecare="active"] [style*="color: rgb(59, 130, 246)"] {
+  color: #34D399 !important;
+}
+
+/* ==========================================================================
+   2. 对话框背景 (Chat Thread, Dialog Container, Composer)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-tutor-col-center,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-col-center,
+:root[data-qitu-eyecare="true"] .qitu-tutor-grid-full-chat > .qitu-tutor-col-center,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-grid-full-chat > .qitu-tutor-col-center,
+:root[data-qitu-eyecare="true"] .qitu-chat-thread,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-thread {
+  background-color: #121417 !important;
+  background: #121417 !important;
+  border-color: #252A33 !important;
+  color: #E2E8F0 !important;
+  box-shadow: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-track,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-track {
+  background: #15181D !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-thumb,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-col-center .qitu-chat-thread::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+}
+
+/* 消息气泡 */
+:root[data-qitu-eyecare="true"] .qitu-chat-bubble,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-bubble,
+:root[data-qitu-eyecare="true"] .qitu-chat-bubble.is-assistant,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-bubble.is-assistant {
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-chat-bubble.is-student,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-bubble.is-student,
+:root[data-qitu-eyecare="true"] .qitu-chat-bubble.is-user,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-bubble.is-user {
+  background-color: #12281E !important;
+  border: 1px solid #1A5438 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-chat-author,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-author {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-chat-author-role,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-author-role {
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-chat-speech-actions button,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-speech-actions button {
+  background-color: #222832 !important;
+  border-color: #374151 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-chat-speech-actions button:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-chat-speech-actions button:hover {
+  background-color: #2A3342 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+/* 输入框坞 Composer */
+:root[data-qitu-eyecare="true"] .qitu-composer-shell,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell,
+:root[data-qitu-eyecare="true"] .qitu-composer,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer,
+:root[data-qitu-eyecare="true"] .qitu-tutor-col-center .qitu-composer,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-col-center .qitu-composer,
+:root[data-qitu-eyecare="true"] .qitu-tutor-grid-full-chat .qitu-composer,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-grid-full-chat .qitu-composer {
+  background-color: #14171C !important;
+  background: #14171C !important;
+  border: 1.5px solid #282F3B !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell:hover:not(.is-disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell:hover:not(.is-disabled) {
+  background-color: #181C23 !important;
+  background: #181C23 !important;
+  border-color: #384252 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell:focus-within:not(.is-disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell:focus-within:not(.is-disabled),
+:root[data-qitu-eyecare="true"] .qitu-composer:focus-within,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer:focus-within {
+  background-color: #181C23 !important;
+  background: #181C23 !important;
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 6px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell.is-disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell.is-disabled {
+  background: #131519 !important;
+  border-color: #22262E !important;
+  opacity: 0.6 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-shell.is-offline,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell.is-offline {
+  background: #181714 !important;
+  border-color: #5C3D1E !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-input,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-input,
+:root[data-qitu-eyecare="true"] .qitu-composer textarea,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer textarea {
+  color: #F1F5F9 !important;
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-input::placeholder,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-input::placeholder,
+:root[data-qitu-eyecare="true"] .qitu-composer textarea::placeholder,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer textarea::placeholder {
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-actions,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border-top: 1px solid #232832 !important;
+}
+
+/* 语音输入、图片、文件上传键 */
+:root[data-qitu-eyecare="true"] .qitu-composer-mode,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode.is-active,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button.is-listening,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button.is-listening {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-mode:disabled,
+:root[data-qitu-eyecare="true"] .qitu-composer-voice-button:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-mode:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-voice-button:disabled {
+  opacity: 0.45 !important;
+  background: #14171C !important;
+  border-color: #232832 !important;
+  color: #64748B !important;
+}
+
+/* “思考灵感”右侧的四个卡片 */
+:root[data-qitu-eyecare="true"] .qitu-composer-quick-label,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-quick-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2B3340 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip:hover:not(:disabled) {
+  background-color: #222832 !important;
+  background: #222832 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-prompt-chip:disabled,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-prompt-chip:disabled {
+  opacity: 0.45 !important;
+  background: #14171C !important;
+  border-color: #232832 !important;
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button),
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button) {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button):hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-actions button:not(.qitu-composer-submit):not(.qitu-composer-mode):not(.qitu-composer-voice-button):hover {
+  background-color: #222832 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-submit,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-submit {
+  background-color: #10B981 !important;
+  color: #0A261A !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer-submit:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-submit:hover {
+  background-color: #059669 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-composer kbd,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer kbd,
+:root[data-qitu-eyecare="true"] .qitu-composer-shortcut-hint kbd,
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shortcut-hint kbd {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 输入框内附件预览小卡片 */
+:root[data-qitu-eyecare="true"] .qitu-composer-shell div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-composer-shell div[style*="background"] {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+/* 空状态卡片 */
+:root[data-qitu-eyecare="true"] .qitu-tutor-empty-thread,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-empty-thread {
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-empty-thread h2,
+:root[data-qitu-eyecare="true"] .qitu-tutor-empty-thread h3,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-empty-thread h2,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-empty-thread h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-empty-thread p,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-empty-thread p {
+  color: #94A3B8 !important;
+}
+
+/* ==========================================================================
+   3. 对话中给出的回复中的卡片 (PBL, Artifact, Quiz, Board, Milestone, Option)
+   ========================================================================== */
+/* 回复卡片通用暗色背景消除白边 */
+:root[data-qitu-eyecare="true"] .qitu-artifact-card,
+:root[data-qitu-eyecare="true"] .qitu-quiz-card,
+:root[data-qitu-eyecare="true"] .qitu-board-card,
+:root[data-qitu-eyecare="true"] .qitu-milestone-card,
+:root[data-qitu-eyecare="true"] .qitu-idea-card,
+:root[data-qitu-eyecare="true"] .qitu-circuit-card,
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card,
+:root[data-qitu-eyecare="true"] .qitu-optics-card,
+:root[data-qitu-eyecare="true"] .qitu-tutor-card,
+:root[data-qitu-eyecare="true"] [class*="pblCard"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-idea-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-card,
+.qitu-tutor-page[data-eyecare="active"] [class*="pblCard"] {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 交付物卡片 ArtifactFileCard */
+:root[data-qitu-eyecare="true"] .qitu-artifact-icon,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-icon {
+  background-color: #152A20 !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-artifact-icon.is-code,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-icon.is-code {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-artifact-icon.is-data,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-icon.is-data {
+  background-color: #2D2311 !important;
+  color: #FBBF24 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-artifact-icon.is-image,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-icon.is-image {
+  background-color: #2A1730 !important;
+  color: #E879F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-summary,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-summary {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-badge,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-badge {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-btn {
+  background-color: #222832 !important;
+  border-color: #374151 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-btn:hover {
+  background-color: #2A3342 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-btn.is-download,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-btn.is-download {
+  background-color: #10B981 !important;
+  color: #0A261A !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-btn.is-saved,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-btn.is-saved {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-preview,
+.qitu-tutor-page[data-eyecare="active"] .qitu-artifact-preview {
+  background-color: #14171C !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+}
+
+/* 启发式测验卡片 HeuristicQuizCard */
+:root[data-qitu-eyecare="true"] .qitu-quiz-badge,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-badge {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-stem,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-stem {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-btn {
+  background-color: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-btn:hover {
+  background-color: #222730 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-btn.is-selected,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-btn.is-selected {
+  background-color: #12281E !important;
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 1px #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-key,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-key {
+  background-color: #252D3A !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-btn.is-selected .qitu-quiz-option-key,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-btn.is-selected .qitu-quiz-option-key {
+  background-color: #10B981 !important;
+  color: #0A261A !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-option-text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-option-text {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-quiz-hint-box,
+:root[data-qitu-eyecare="true"] .qitu-quiz-explanation,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-hint-box,
+.qitu-tutor-page[data-eyecare="active"] .qitu-quiz-explanation {
+  background-color: #14241B !important;
+  border: 1px solid #1A5438 !important;
+  color: #86EFAC !important;
+}
+
+/* 快捷选项气泡 OptionChips */
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-chip {
+  background-color: #1C2027 !important;
+  border: 1px solid #2B3340 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-chip:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-chip:hover {
+  background-color: #222832 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-chip.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-chip.is-active {
+  background-color: #112F24 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-selected-banner,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-selected-banner {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  border-radius: 8px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-selected-text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-selected-text {
+  font-size: 12px;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-selected-text strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-selected-text strong {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-submit-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-submit-btn {
+  padding: 5px 14px;
+  background-color: #10B981 !important;
+  color: #0A261A !important;
+  border: none;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-option-submit-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-option-submit-btn:hover {
+  background-color: #059669 !important;
+}
+
+/* 自由反馈展开表单 */
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-expanded,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-expanded {
+  margin-top: 12px;
+  padding: 16px;
+  background-color: #181C22 !important;
+  border: 1px solid #2E3643 !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-header,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-close,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-close {
+  background: none;
+  border: none;
+  color: #94A3B8 !important;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-close:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-close:hover {
+  background-color: #222832 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-tags,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-tag-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-tag-btn {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background-color: #1C2027 !important;
+  border: 1px solid #2B3340 !important;
+  color: #CBD5E1 !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-tag-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-tag-btn:hover {
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+  background-color: #222832 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-textarea,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid #2E3643 !important;
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #E2E8F0 !important;
+  background-color: #14171C !important;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-textarea:focus,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-textarea:focus {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+  background-color: #181C22 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-footer,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-hint,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-hint {
+  font-size: 11.5px;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-cancel,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-cancel {
+  padding: 6px 14px;
+  background-color: #222832 !important;
+  border: 1px solid #2E3643 !important;
+  color: #94A3B8 !important;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-cancel:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-cancel:hover {
+  background-color: #2A3342 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-other-submit,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-other-submit {
+  padding: 6px 18px;
+  background-color: #10B981 !important;
+  border: none;
+  color: #0A261A !important;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 附件视图 AttachmentView */
+:root[data-qitu-eyecare="true"] .qitu-attachment-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-card {
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-attachment-filename,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-filename {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-attachment-meta,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-meta {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-attachment-download-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-download-btn {
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-attachment-download-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-download-btn:hover {
+  background-color: #163B2E !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-attachment-image-footer,
+.qitu-tutor-page[data-eyecare="active"] .qitu-attachment-image-footer {
+  background-color: rgba(24, 27, 32, 0.95) !important;
+  border-top: 1px solid #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+/* 数学公式块与高亮代码 MarkdownMathView */
+:root[data-qitu-eyecare="true"] .qitu-math-block,
+.qitu-tutor-page[data-eyecare="active"] .qitu-math-block {
+  background: #14171C !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inline-code,
+.qitu-tutor-page[data-eyecare="active"] .qitu-inline-code {
+  background-color: #14171C !important;
+  border: 1px solid #282F3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-list-bullet,
+:root[data-qitu-eyecare="true"] .qitu-list-num,
+.qitu-tutor-page[data-eyecare="active"] .qitu-list-bullet,
+.qitu-tutor-page[data-eyecare="active"] .qitu-list-num {
+  color: #34D399 !important;
+}
+
+
+/* ---- 对话内白板与生成的图示、图表框 ---- */
+:root[data-qitu-eyecare="true"] .qitu-board-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-header h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-header h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-header > span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-header > span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-caption,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-caption {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-canvas,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-canvas {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1px solid #282F3B !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg-skeleton,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg-skeleton {
+  background: #14171C !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg text {
+  fill: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-svg line,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg line,
+:root[data-qitu-eyecare="true"] .qitu-board-svg path,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-svg path {
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-board-mermaid-fallback,
+.qitu-tutor-page[data-eyecare="active"] .qitu-board-mermaid-fallback {
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+/* Mermaid 图示卡片与内部 SVG 元素 */
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1.5px solid #282F3B !important;
+  border-color: #282F3B !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg text,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg text {
+  fill: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .label,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .label {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg rect,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg polygon,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg circle,
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg path.label-container,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg rect,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg polygon,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg circle,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg path.label-container {
+  fill: #1E2228 !important;
+  stroke: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .node rect,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .node rect {
+  fill: #1E2228 !important;
+  stroke: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .flowchart-link,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .flowchart-link {
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-diagram-card svg .marker,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-diagram-card svg .marker {
+  fill: #64748B !important;
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-fallback-container,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-fallback-container {
+  background: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-fallback-container pre,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-fallback-container pre {
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mermaid-loading,
+.qitu-tutor-page[data-eyecare="active"] .qitu-mermaid-loading {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+  color: #94A3B8 !important;
+}
+
+/* 阶段检查里程碑卡片 MilestoneBlock */
+:root[data-qitu-eyecare="true"] .qitu-milestone-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-card {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-header h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-header h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-header small,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-header small {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-deliverables li,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-deliverables li {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-deliverables li strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-deliverables li strong {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-milestone-lock,
+.qitu-tutor-page[data-eyecare="active"] .qitu-milestone-lock {
+  background: #251B12 !important;
+  border-color: #4A331E !important;
+  color: #FBBF24 !important;
+}
+
+/* 动态仿真工作台卡片 (电路、动能、光学) */
+:root[data-qitu-eyecare="true"] .qitu-circuit-card,
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card,
+:root[data-qitu-eyecare="true"] .qitu-optics-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-circuit-card h4,
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card h4,
+:root[data-qitu-eyecare="true"] .qitu-optics-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card h4,
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card h4 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-circuit-card div[style*="background"],
+:root[data-qitu-eyecare="true"] .qitu-kinetic-card div[style*="background"],
+:root[data-qitu-eyecare="true"] .qitu-optics-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-circuit-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-kinetic-card div[style*="background"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-optics-card div[style*="background"] {
+  background-color: #14171C !important;
+  background: #14171C !important;
+  border-color: #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .katex,
+.qitu-tutor-page[data-eyecare="active"] .katex {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .katex .frac-line,
+.qitu-tutor-page[data-eyecare="active"] .katex .frac-line {
+  border-bottom-color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   4. 对话历史卡片中的 interest_confirmed 等文字底部
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-history-stage-tag,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-stage-tag {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-live-session-sidebar,
+.qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar {
+  background-color: #181B20 !important;
+  border-right: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-toggle-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-toggle-btn {
+  background-color: #1C2027 !important;
+  border: 1px solid #2E3643 !important;
+  color: #CBD5E1 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-history-toggle-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-toggle-btn:hover {
+  background-color: #222832 !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-search-input,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-search-input {
+  background-color: #14171C !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-history-search-input:focus,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-search-input:focus {
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-card {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-card:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-card:hover {
+  background-color: #232832 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-card.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-card.is-active {
+  background-color: #12281E !important;
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 1px #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-collapsed-item,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-collapsed-item {
+  background-color: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-collapsed-item:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-collapsed-item:hover {
+  background-color: #232832 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-collapsed-item.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-collapsed-item.is-active {
+  background-color: #12281E !important;
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 1px #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-card.is-active .qitu-history-session-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-card.is-active .qitu-history-session-title {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-session-meta,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-session-meta {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-history-delete-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-delete-btn {
+  color: #94A3B8 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-history-delete-btn:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-history-delete-btn:hover {
+  color: #EF4444 !important;
+}
+
+/* ==========================================================================
+   5. 项目进度中“当前项目”“当前任务”内文字底部 (SectionCard, StageBadge, etc.)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-section-card,
+:root[data-qitu-eyecare="true"] .qitu-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-section-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-card {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-header,
+:root[data-qitu-eyecare="true"] .qitu-card-header,
+.qitu-tutor-page[data-eyecare="active"] .qitu-section-card-header,
+.qitu-tutor-page[data-eyecare="active"] .qitu-card-header {
+  background: #181B20 !important;
+  border-bottom: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-title,
+:root[data-qitu-eyecare="true"] .qitu-card-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-section-card-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-card-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-action a,
+:root[data-qitu-eyecare="true"] .qitu-section-card-header a {
+  color: #34D399 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-action a:hover,
+:root[data-qitu-eyecare="true"] .qitu-section-card-header a:hover {
+  color: #10B981 !important;
+  text-decoration: underline !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-section-card-body,
+.qitu-tutor-page[data-eyecare="active"] .qitu-section-card-body {
+  background: #181B20 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-project-card,
+:root[data-qitu-eyecare="true"] .qitu-tutor-task,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-project-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-task {
+  background: #181B20 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-project-title,
+:root[data-qitu-eyecare="true"] .qitu-tutor-task-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-project-title,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-task-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-task-detail,
+:root[data-qitu-eyecare="true"] .qitu-tutor-muted,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-task-detail,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-muted {
+  color: #94A3B8 !important;
+}
+
+/* StageBadge & TagChips */
+:root[data-qitu-eyecare="true"] .qitu-stage-badge,
+.qitu-tutor-page[data-eyecare="active"] .qitu-stage-badge {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-current,
+.qitu-tutor-page[data-eyecare="active"] .qitu-stage-current {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-done,
+.qitu-tutor-page[data-eyecare="active"] .qitu-stage-done {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-locked,
+.qitu-tutor-page[data-eyecare="active"] .qitu-stage-locked {
+  background-color: #181B20 !important;
+  border-color: #282F3B !important;
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-attention,
+.qitu-tutor-page[data-eyecare="active"] .qitu-stage-attention {
+  background-color: #2D2311 !important;
+  color: #FBBF24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tag-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tag-chip {
+  background-color: #1C2027 !important;
+  color: #CBD5E1 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tag-primary .qitu-tag-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tag-primary .qitu-tag-chip {
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tag-attention .qitu-tag-chip,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tag-attention .qitu-tag-chip {
+  background-color: #2D2311 !important;
+  color: #FBBF24 !important;
+  border: 1px solid #523D17 !important;
+}
+
+/* 侧边栏 pinned-sources */
+:root[data-qitu-eyecare="true"] .qitu-tutor-pinned-sources,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-pinned-sources {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-pinned-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-pinned-card {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-tab-btn,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-tab-btn {
+  background: #1C2027 !important;
+  border-color: #2B3340 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-tab-btn.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-tab-btn.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* ==========================================================================
+   6. “团队智能体”中的标题文字底部以及icon底部
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border: 1px solid #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-mark,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-mark {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy strong {
+  background: transparent !important;
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy span {
+  background: transparent !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-avatar,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-avatar {
+  background-color: #14171C !important;
+  background: #14171C !important;
+  border-color: #3B4452 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-copy strong {
+  background: transparent !important;
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-copy span {
+  background: transparent !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-details,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-details {
+  background: #15181D !important;
+  border-top: 1px solid #252A33 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-messages li,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-messages li {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-sidebar-tabs,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-sidebar-tabs {
+  background: #13161A !important;
+  border: 1px solid #232832 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-sidebar-tabs button,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-sidebar-tabs button {
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-sidebar-tabs button.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-sidebar-tabs button.is-active {
+  background: #1E2228 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-context-sidebar,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-context-sidebar {
+  background: #181B20 !important;
+  border-left: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-state-panel,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-state-panel {
+  background: #1C2027 !important;
+  border: 1px dashed #2E3643 !important;
+  color: #CBD5E1 !important;
+}
+
+
+/* ---- “项目与进度” 按键及通用幽灵按钮 ---- */
+:root[data-qitu-eyecare="true"] .qitu-button-ghost,
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-ghost:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-button-ghost[aria-expanded="true"],
+.qitu-tutor-page[data-eyecare="active"] .qitu-button-ghost[aria-expanded="true"] {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* ---- 右侧阶段进度树 (TutorTeamRail / PhaseTree) ---- */
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading span {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading > span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading > span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-tree-heading h3,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-tree-heading h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase {
+  background: #14171C !important;
+  background-color: #14171C !important;
+  border: 1px solid #252B35 !important;
+  border-color: #252B35 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-active,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-active {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-completed,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-completed {
+  border-color: #164E35 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-order {
+  background: #252D3A !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-active .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-active .qitu-tutor-phase-order {
+  background: #10B981 !important;
+  color: #0A261A !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase.is-completed .qitu-tutor-phase-order,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase.is-completed .qitu-tutor-phase-order {
+  background: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-copy strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-copy span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-details,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-details {
+  border-top: 1px solid #232832 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-phase-details p,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-phase-details p {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables strong {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-deliverables span.is-submitted,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-deliverables span.is-submitted {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-mark,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-mark {
+  background: #14171C !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy strong,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-team-summary-copy span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-team-summary-copy span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-agent-card,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-agent-card {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-stage-rail,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-stage-rail {
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   7. 顶部头部 (TutorHeader)
+   ========================================================================== */
+
+/* AI搭档标题右侧导师团队 / 助手标识 Badge */
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge.is-team,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge.is-team {
+  background-color: #162638 !important;
+  background: #162638 !important;
+  border: 1px solid #23486F !important;
+  border-color: #23486F !important;
+  color: #93C5FD !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge.is-assistant,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge.is-assistant {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-identity-badge span,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-identity-badge span {
+  color: inherit !important;
+}
+
+/* 会话历史顶部“收起 ◀”按键及通用“收起”按键 */
+:root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost,
+.qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost,
+:root[data-qitu-eyecare="true"] button[aria-label*="收起"],
+.qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"] {
+  background-color: #1C2027 !important;
+  background: #1C2027 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] .qitu-live-session-sidebar .qitu-button-ghost:hover:not(:disabled),
+:root[data-qitu-eyecare="true"] button[aria-label*="收起"]:hover:not(:disabled),
+.qitu-tutor-page[data-eyecare="active"] button[aria-label*="收起"]:hover:not(:disabled) {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-tag,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-tag {
+  font-size: 13px;
+  font-weight: 500;
+  color: #34D399 !important;
+  background-color: #112F24 !important;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-btn.is-llm,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-btn.is-llm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-btn.is-llm:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-btn.is-llm:hover {
+  background-color: #163B2E !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-btn.is-clear,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-btn.is-clear {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #2D1A1C !important;
+  color: #F87171 !important;
+  border: 1px solid #5C2529 !important;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-btn.is-clear:hover,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-btn.is-clear:hover {
+  background-color: #3B1F22 !important;
+  border-color: #EF4444 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-status,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-status {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tutor-header-subtitle,
+.qitu-tutor-page[data-eyecare="active"] .qitu-tutor-header-subtitle {
+  color: #94A3B8 !important;
+}
+
+/* ==========================================================================
+   8. 学生端主外壳联动 (StudentShell)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-student-shell {
+  background-color: #121417 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar,
+:root[data-qitu-eyecare="true"] .qitu-student-sidebar,
+:root[data-qitu-eyecare="true"] .qtx-sidebar {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border-right: 1px solid #252A33 !important;
+}
+
+/* 左上角品牌名称（“启途智学”）纯白高对比度，消除深蓝色不可见问题 */
+:root[data-qitu-eyecare="true"] .qitu-sidebar-name,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-brand strong,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-brand-text strong,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-brand h1,
+:root[data-qitu-eyecare="true"] .qtx-sidebar-brand,
+:root[data-qitu-eyecare="true"] .qtx-sidebar-name {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-tagline,
+:root[data-qitu-eyecare="true"] .qtx-sidebar-tagline {
+  color: #94A3B8 !important;
+}
+
+/* 左侧导航栏普通项 */
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav .qitu-nav-item,
+:root[data-qitu-eyecare="true"] .qitu-nav-item,
+:root[data-qitu-eyecare="true"] .qtx-nav-item,
+:root[data-qitu-eyecare="true"] .qitu-student-nav a {
+  color: #94A3B8 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav .qitu-nav-item:hover,
+:root[data-qitu-eyecare="true"] .qitu-nav-item:hover,
+:root[data-qitu-eyecare="true"] .qtx-nav-item:hover,
+:root[data-qitu-eyecare="true"] .qitu-student-nav a:hover {
+  background-color: #1E252F !important;
+  background: #1E252F !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav .qitu-nav-item:hover .qitu-nav-icon,
+:root[data-qitu-eyecare="true"] .qitu-nav-item:hover .qitu-nav-icon,
+:root[data-qitu-eyecare="true"] .qitu-nav-item:hover svg {
+  color: #34D399 !important;
+}
+
+/* 左侧导航栏当前激活项（背景暗绿底色 + 翠绿色边框与文字） */
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav .qitu-nav-item.is-active,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-nav .qitu-nav-item[aria-current="page"],
+:root[data-qitu-eyecare="true"] .qitu-nav-item.is-active,
+:root[data-qitu-eyecare="true"] .qitu-nav-item[aria-current="page"],
+:root[data-qitu-eyecare="true"] .qtx-nav-item.active,
+:root[data-qitu-eyecare="true"] .qitu-student-nav a[aria-current="page"],
+:root[data-qitu-eyecare="true"] .qitu-student-nav a.is-active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  box-shadow: inset 0 0 0 1px #195A3B, 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-nav-item.is-active .qitu-nav-icon,
+:root[data-qitu-eyecare="true"] .qitu-nav-item.is-active .qitu-nav-label,
+:root[data-qitu-eyecare="true"] .qitu-nav-item.is-active svg,
+:root[data-qitu-eyecare="true"] .qtx-nav-item.active svg {
+  color: #34D399 !important;
+  stroke: #34D399 !important;
+}
+
+/* 左侧导航栏激活光标指示条（Cursor / Indicator Bar：翡翠绿色发光垂直条） */
+:root[data-qitu-eyecare="true"] .qitu-nav-item::before,
+:root[data-qitu-eyecare="true"] .qtx-nav-item::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 3.5px !important;
+  height: 0 !important;
+  border-radius: 4px !important;
+  background: #10B981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7) !important;
+  transition: height 0.18s ease !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-nav-item.is-active::before,
+:root[data-qitu-eyecare="true"] .qitu-nav-item[aria-current="page"]::before,
+:root[data-qitu-eyecare="true"] .qtx-nav-item.active::before {
+  display: block !important;
+  height: 20px !important;
+  background: #10B981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-nav-item:hover::before {
+  display: block !important;
+  height: 12px !important;
+  background: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar.is-collapsed .qitu-nav-item::before {
+  left: 2px !important;
+}
+
+
+:root[data-qitu-eyecare="true"] .qitu-student-header,
+:root[data-qitu-eyecare="true"] .qitu-student-identity {
+  background-color: #15181D !important;
+  border-bottom: 1px solid #252B35 !important;
+  color: #E2E8F0 !important;
+}
+
+
+/* 当前学生账号胶囊 (演示学生) */
+:root[data-qitu-eyecare="true"] .qitu-student-account {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  border-color: #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account:hover {
+  background: #1E2228 !important;
+  background-color: #1E2228 !important;
+  border-color: #384252 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account-name {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account .auth-logout {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-student-account .auth-logout:hover {
+  background: #2D1A1C !important;
+  border-color: #5C2529 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-trigger {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-trigger:hover {
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-panel {
+  background: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-prefs-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mobile-menu-btn {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mobile-menu-btn:hover {
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+/* 主侧边栏底部“收起”按键 (StudentShell / qitu-sidebar-toggle) */
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle,
+:root[data-qitu-eyecare="true"] .qitu-student-sidebar .qitu-sidebar-toggle {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover,
+:root[data-qitu-eyecare="true"] .qitu-student-sidebar .qitu-sidebar-toggle:hover {
+  background-color: #252D3A !important;
+  background: #252D3A !important;
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-icon,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-icon svg {
+  color: #CBD5E1 !important;
+  stroke: currentColor !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover .qitu-sidebar-toggle-icon,
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle:hover .qitu-sidebar-toggle-icon svg {
+  color: #34D399 !important;
+  stroke: currentColor !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-sidebar-toggle-label {
+  color: inherit !important;
+}
+
+/* 问候横幅 (在 /today / 首页等) */
+:root[data-qitu-eyecare="true"] .qitu-greeting-banner {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-greeting-hello {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-greeting-message {
+  color: #94A3B8 !important;
+}
+
+
+
+/* ==========================================================================
+   9. 今天页面 (Today Page - /student/today)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-today-page {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-today-header h1,
+:root[data-qitu-eyecare="true"] .qitu-today-header h2,
+:root[data-qitu-eyecare="true"] .qitu-today-header strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-today-header p,
+:root[data-qitu-eyecare="true"] .qitu-today-header span {
+  color: #94A3B8 !important;
+}
+
+/* 任务卡与今日聚焦卡 (TaskCard / TodayTaskCard) */
+:root[data-qitu-eyecare="true"] .qitu-task-card,
+:root[data-qitu-eyecare="true"] .qitu-today-task-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-card:hover,
+:root[data-qitu-eyecare="true"] .qitu-today-task-card:hover {
+  border-color: #195A3B !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.12) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-card h2,
+:root[data-qitu-eyecare="true"] .qitu-task-card h3,
+:root[data-qitu-eyecare="true"] .qitu-task-card strong,
+:root[data-qitu-eyecare="true"] .qitu-today-task-card strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-card p,
+:root[data-qitu-eyecare="true"] .qitu-task-card span,
+:root[data-qitu-eyecare="true"] .qitu-today-task-card p,
+:root[data-qitu-eyecare="true"] .qitu-today-task-card span {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-card > a {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-card > a:hover {
+  background-color: #195A3B !important;
+  background: #195A3B !important;
+  color: #FFFFFF !important;
+}
+
+/* 探索方向卡 (DirectionCard) */
+:root[data-qitu-eyecare="true"] .qitu-direction-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-direction-card:hover {
+  border-color: #195A3B !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.1) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-direction-card strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-direction-card p,
+:root[data-qitu-eyecare="true"] .qitu-direction-card span {
+  color: #94A3B8 !important;
+}
+
+/* 覆盖 DirectionCard 中的单字图标占位符 ("光") */
+:root[data-qitu-eyecare="true"] .qitu-direction-card span[aria-hidden="true"],
+:root[data-qitu-eyecare="true"] .qitu-direction-avatar {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+  color: #34D399 !important;
+}
+
+/* 阶段推进条 (StageStepper4) */
+:root[data-qitu-eyecare="true"] .qitu-stage-stepper {
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-step {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-step.is-active {
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-step.is-completed {
+  background: #142820 !important;
+  border-color: #195A3B !important;
+  color: #10B981 !important;
+}
+
+/* 继续项目与建议卡 (ContinueProjectCard / SuggestionCard / AiSuggestionCard) */
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card,
+:root[data-qitu-eyecare="true"] .qitu-suggestion-card,
+:root[data-qitu-eyecare="true"] .qitu-ai-suggestion-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card strong,
+:root[data-qitu-eyecare="true"] .qitu-suggestion-card strong,
+:root[data-qitu-eyecare="true"] .qitu-ai-suggestion-card strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card p,
+:root[data-qitu-eyecare="true"] .qitu-suggestion-card p,
+:root[data-qitu-eyecare="true"] .qitu-ai-suggestion-card p {
+  color: #CBD5E1 !important;
+}
+
+/* 覆盖 ContinueProjectCard 中的单字图标占位符 ("光") 与文字 */
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body span[aria-hidden="true"],
+:root[data-qitu-eyecare="true"] .qitu-project-avatar,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card span[aria-hidden="true"] {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body h3,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-body p,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card p {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card .progress-bar,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card [role="progressbar"] {
+  background: #15181D !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card .progress-bar-fill,
+:root[data-qitu-eyecare="true"] .qitu-continue-project-card [role="progressbar"] > div {
+  background: #10B981 !important;
+}
+
+/* ==========================================================================
+   10. 灵感空间 (Inspiration Space - /student/inspiration)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-inspiration-page,
+:root[data-qitu-eyecare="true"] .qitu-inspiration-detail {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-eyebrow {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-tablist {
+  background: #15181D !important;
+  border-color: #252A33 !important;
+}
+
+/* Steam 风格模板卡片 (完全消除原本的 #ffffff 白底) */
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1.5px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  scrollbar-color: #2E3540 #15181D !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-card:hover {
+  border-color: #195A3B !important;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.55), 0 0 12px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-card::-webkit-scrollbar {
+  width: 5px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-card::-webkit-scrollbar-track {
+  background: #15181D !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-card::-webkit-scrollbar-thumb {
+  background: #2E3540 !important;
+  border-radius: 4px;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-cover {
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-meta {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-summary {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-stage-index {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-stage-label {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-outcome {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-outcome-label {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-hint,
+:root[data-qitu-eyecare="true"] .qitu-inspiration-free-explore-hint,
+:root[data-qitu-eyecare="true"] .qitu-inspiration-action-hint {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-free-explore-description {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-detail-panel {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-detail-panel h2 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-detail-note {
+  color: #CBD5E1 !important;
+}
+
+/* ==========================================================================
+   11. 我的项目与项目阶段 (Projects & Workbench - /student/projects)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-projects-list-screen,
+:root[data-qitu-eyecare="true"] .qitu-project-detail-screen,
+:root[data-qitu-eyecare="true"] .qitu-theory-screen,
+:root[data-qitu-eyecare="true"] .qitu-practice-screen,
+:root[data-qitu-eyecare="true"] .qitu-reflection-screen {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-screen-toolbar > h1 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-tabs {
+  background: #15181D !important;
+  border-color: #252A33 !important;
+}
+
+/* 标签切换按键 (.qitu-tab) */
+:root[data-qitu-eyecare="true"] .qitu-tab {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tab:hover {
+  color: #E2E8F0 !important;
+  background: #1E252F !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-tab.is-active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+  border-color: #195A3B !important;
+  box-shadow: inset 0 0 0 1px #195A3B, 0 2px 8px rgba(16, 185, 129, 0.15) !important;
+}
+
+/* 项目搜索框 */
+:root[data-qitu-eyecare="true"] .qitu-project-search input {
+  background-color: #15181D !important;
+  background: #15181D !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-search input:focus-visible {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-search input::placeholder {
+  color: #64748B !important;
+}
+
+/* 项目卡片 (.qitu-project-card - 消除原本写死的 #fff) */
+:root[data-qitu-eyecare="true"] .qitu-project-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-card:hover {
+  border-color: #195A3B !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-card-title,
+:root[data-qitu-eyecare="true"] .qitu-project-card strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-cover,
+:root[data-qitu-eyecare="true"] .qitu-project-cover.is-placeholder {
+  background: #15181D !important;
+  background-color: #15181D !important;
+  border-bottom: 1px solid #252A33 !important;
+  overflow: hidden !important;
+  height: 140px !important;
+  max-height: 140px !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-project-card-body p {
+  color: #CBD5E1 !important;
+}
+
+/* 下一步推进卡 (.qitu-next-step - 消除浅橙色渐变底) */
+:root[data-qitu-eyecare="true"] .qitu-next-step {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-next-step:hover {
+  border-color: #F59E0B !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-next-step > h3 {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-next-step > p {
+  color: #CBD5E1 !important;
+}
+
+/* 阶段卡片与任务项 */
+:root[data-qitu-eyecare="true"] .qitu-stage-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-card h3,
+:root[data-qitu-eyecare="true"] .qitu-stage-card strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stage-card p,
+:root[data-qitu-eyecare="true"] .qitu-stage-card span {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-item {
+  background: #181B20 !important;
+  border: 1px solid #282F3B !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-task-item:hover {
+  background: #1E2228 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-practice-locked {
+  background: #181B20 !important;
+  border: 1px dashed #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mentor-note {
+  background: #181B20 !important;
+  border-left: 3px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mentor-note > p {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-mentor-note > footer {
+  color: #94A3B8 !important;
+}
+
+/* 作品上传器 */
+:root[data-qitu-eyecare="true"] .qitu-artifact-uploader {
+  background: #15181D !important;
+  border: 1px dashed #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-uploader > input[type='file']::file-selector-button {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-uploader > input[type='file']::file-selector-button:hover {
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+/* ==========================================================================
+   12. 成长轨迹 (Growth Timeline - /student/growth)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-growth-page,
+:root[data-qitu-eyecare="true"] .growth-container {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-header h1,
+:root[data-qitu-eyecare="true"] .qitu-growth-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-subtitle {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-back {
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-growth-back:hover {
+  color: #10B981 !important;
+}
+
+/* 成长小计与统计三元组卡片 (.qitu-stat-triple-item) - 彻底消除白底 */
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-item,
+:root[data-qitu-eyecare="true"] .qitu-stat-card {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-value {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-completed .qitu-stat-triple-value {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-triple-attention .qitu-stat-triple-value {
+  color: #F59E0B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-summary-note {
+  color: #94A3B8 !important;
+}
+
+/* 筛选栏 Chips 与下拉框 */
+:root[data-qitu-eyecare="true"] .qitu-filter-chip {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-filter-chip:hover:not(:disabled) {
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  background: #112F24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-filter-chip.is-active {
+  background-color: #112F24 !important;
+  background: #112F24 !important;
+  border-color: #195A3B !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-filter-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-growth-filter-project select {
+  background-color: #1E2228 !important;
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+/* 时间线节点与轨道 */
+:root[data-qitu-eyecare="true"] .qitu-version-step-dot {
+  background-color: #1E2228 !important;
+  border-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-done .qitu-version-step-dot {
+  background-color: #10B981 !important;
+  border-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-line {
+  background: #2E3540 !important;
+  background-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-label {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-version-step-meta {
+  color: #94A3B8 !important;
+}
+
+/* 里程碑、作品、反思、目标条目 */
+:root[data-qitu-eyecare="true"] .qitu-milestone-entry,
+:root[data-qitu-eyecare="true"] .qitu-artifact-entry,
+:root[data-qitu-eyecare="true"] .qitu-reflection-entry,
+:root[data-qitu-eyecare="true"] .qitu-objective-entry {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-context {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-summary {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-quote {
+  background-color: #181B20 !important;
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  border-left: 3px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-mark {
+  color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-reflection-text {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-note {
+  background: #231C10 !important;
+  border: 1px solid #4A3B18 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-badge {
+  background: #2D2311 !important;
+  color: #F59E0B !important;
+  border: 1px solid #4A3B18 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-observation-note-text {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-artifact-cover-mark {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-header {
+  border-bottom: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-title {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-entry-sheet-encouragement {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   13. 个人画像与多维雷达图 (Profile & Radar - /student/profile)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-profile-page {
+  color: #E2E8F0 !important;
+}
+
+/* 头部 Hero 卡片 (消除原浅蓝/白色渐变，转为柔和夜间深色) */
+:root[data-qitu-eyecare="true"] .qitu-profile-hero-card {
+  background: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-hero-title-row h1 {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-school-tag {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-level-badge {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-hero-motto {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-stats-row {
+  border-top-color: #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-label {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-value {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-stat-value.is-highlight {
+  color: #34D399 !important;
+}
+
+/* 多维雷达图暗色适配 */
+:root[data-qitu-eyecare="true"] .qitu-radar-legend {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-grid-polygon {
+  stroke: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-axis {
+  stroke: #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-benchmark-polygon {
+  fill: rgba(148, 163, 184, 0.08) !important;
+  stroke: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-student-polygon {
+  fill: rgba(16, 185, 129, 0.22) !important;
+  stroke: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-node-circle {
+  fill: #181B20 !important;
+  stroke: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-node-circle.is-active {
+  fill: #10B981 !important;
+  stroke: #FFFFFF !important;
+  filter: drop-shadow(0 2px 6px rgba(16, 185, 129, 0.5)) !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-label {
+  fill: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-radar-label.is-active {
+  fill: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-legend-item.is-student .qitu-legend-color {
+  background: rgba(16, 185, 129, 0.6) !important;
+  border-color: #10B981 !important;
+}
+
+/* 选中维度深度详情卡 */
+:root[data-qitu-eyecare="true"] .qitu-dimension-detail-card {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-detail-header strong {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-level-tag {
+  background: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-score {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-score span {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-desc {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-footer {
+  border-top-color: #252A33 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-dimension-lead {
+  color: #34D399 !important;
+}
+
+/* 特质卡片 */
+:root[data-qitu-eyecare="true"] .qitu-trait-card {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-trait-card.is-primary {
+  background: #142820 !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-trait-card.is-suggest {
+  background: #17241E !important;
+  border-color: #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-trait-info strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-trait-info p {
+  color: #CBD5E1 !important;
+}
+
+/* 徽章网格 */
+:root[data-qitu-eyecare="true"] .qitu-profile-badge-item {
+  background: #1E2228 !important;
+  border: 1px solid #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-badge-icon {
+  background: #15181D !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-badge-meta strong {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-badge-meta p {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-badge-meta small {
+  color: #94A3B8 !important;
+}
+
+/* 登录设备管理卡片暗色适配 */
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-section {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-desc,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-meta,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-loading,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-empty {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-refresh {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-refresh:hover:not(:disabled) {
+  background: #164332 !important;
+  color: #6EE7B7 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-item {
+  border-top: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-name {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-revoke {
+  background: #3B1212 !important;
+  background-color: #3B1212 !important;
+  border: 1px solid #7F1D1D !important;
+  color: #FCA5A5 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-profile-device-revoke:hover:not(:disabled) {
+  background: #4C1D1D !important;
+  color: #FECACA !important;
+}
+
+/* ==========================================================================
+   14. 作品展厅与通用空状态 (Works Gallery & States - /student/works)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .qitu-works-page,
+:root[data-qitu-eyecare="true"] .qitu-state {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-state-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-state-description {
+  color: #94A3B8 !important;
+}
+
+/* ==========================================================================
+   15. 学生端全局账号条内护眼模式按钮适配
+   ========================================================================== */
+.qitu-student-account .qitu-eyecare-toggle-btn {
+  margin: 0 4px;
+}

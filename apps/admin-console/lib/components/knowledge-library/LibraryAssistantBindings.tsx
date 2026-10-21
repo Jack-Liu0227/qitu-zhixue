@@ -164,7 +164,7 @@ export function LibraryAssistantBindings({
                   />
                   <span>
                     <strong>
-                      <AssistantGlyph value={binding.avatar} size={20} /> {binding.agentName ?? binding.agentId}
+                      {binding.avatar || '🤖'} {binding.agentName ?? binding.agentId}
                     </strong>
                     <small>
                       {binding.targetEnabled === false

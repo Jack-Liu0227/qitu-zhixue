@@ -69,6 +69,7 @@ export function CircuitSimulationCard({
 
   return (
     <div
+      className="qitu-circuit-card"
       style={{
         margin: '16px 0',
         padding: '20px',

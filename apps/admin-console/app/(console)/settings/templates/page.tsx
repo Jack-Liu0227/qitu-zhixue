@@ -1244,6 +1244,7 @@ export default function AdminTemplatesPage() {
 
                 {is16Sessions ? (
                   <div
+                    className="admin-template-16session-tag"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

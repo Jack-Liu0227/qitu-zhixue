@@ -25,7 +25,7 @@ export function TutorHeader({
           <p className="qitu-tutor-eyebrow">启途智学 · 多智能体协作搭档</p>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             AI搭档
-            <span style={{ fontSize: '13px', fontWeight: 500, color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+            <span className="qitu-tutor-header-tag">
               PBL 互动式教学
             </span>
           </h1>
@@ -39,20 +39,7 @@ export function TutorHeader({
             type="button"
             onClick={onOpenLlmSettings}
             title="配置大语言模型服务商与 API Key"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#eff6ff',
-              color: '#1d4ed8',
-              border: '1px solid #bfdbfe',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
+            className="qitu-tutor-header-btn is-llm"
           >
             <span>⚡</span> 模型接入与设置
           </button>
@@ -61,19 +48,7 @@ export function TutorHeader({
         <button
           onClick={onClearHistory}
           title="清空当前会话历史"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            background: '#ffffff',
-            color: '#ef4444',
-            border: '1px solid #fca5a5',
-            borderRadius: '8px',
-            padding: '6px 10px',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
+          className="qitu-tutor-header-btn is-clear"
         >
           <span>🗑️</span> 清空
         </button>

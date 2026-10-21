@@ -599,7 +599,7 @@ export default function SkillsSettingsPage() {
         </div>
 
         {!editingSkill.local ? (
-          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
+          <div className="admin-skill-readonly-alert" style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
             此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器。
             {editingSkill.runtime === 'admin' ? ' Admin 管家按需加载已发布的专用技能，无需在助手矩阵中勾选。' : ' 与助手的绑定/解绑会通过助手接口真实持久化。'}
           </div>
@@ -709,7 +709,7 @@ export default function SkillsSettingsPage() {
                   {boundAssistants.map((assistant) => (
                     <div key={assistant.id} className="admin-skill-agent-row">
                       <div className="admin-skill-agent-avatar-wrap">
-                        <AssistantGlyph value={assistant.avatar} />
+                        {assistant.avatar || '🤖'}
                       </div>
                       <div className="admin-skill-agent-info">
                         <strong className="admin-skill-agent-name">{assistant.name}</strong>
@@ -976,9 +976,10 @@ export default function SkillsSettingsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+          <div className="admin-skills-view-switcher" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
             <button
               type="button"
+              className={`admin-skills-switch-btn ${skillsViewMode === 'list' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',
@@ -996,6 +997,7 @@ export default function SkillsSettingsPage() {
             </button>
             <button
               type="button"
+              className={`admin-skills-switch-btn ${skillsViewMode === 'matrix' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',
@@ -1148,7 +1150,7 @@ export default function SkillsSettingsPage() {
                     <tr key={asst.id} style={{ background: isEven ? '#ffffff' : '#fafafa', borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '18px' }}><AssistantGlyph value={asst.avatar} /></span>
+                          <span style={{ fontSize: '18px' }}>{asst.avatar || '🤖'}</span>
                           <div>
                             <strong style={{ color: '#0f172a', display: 'block' }}>{asst.name}</strong>
                             <span style={{ fontSize: '12px', color: '#64748b' }}>{asst.role}</span>
@@ -1369,9 +1371,7 @@ export default function SkillsSettingsPage() {
                   <td>
                     <div className="admin-skill-avatar-stack">
                       {bound.slice(0, 3).map((a) => (
-                        <div key={a.id} className="admin-skill-avatar-circle" title={a.name}>
-                          <AssistantGlyph value={a.avatar} />
-                        </div>
+                        <div key={a.id} className="admin-skill-avatar-circle" title={a.name}>{a.avatar || '🤖'}</div>
                       ))}
                       {bound.length > 3 ? (
                         <span className="admin-skill-avatar-more">+{bound.length - 3}</span>
