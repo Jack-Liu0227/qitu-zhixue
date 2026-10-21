@@ -35,6 +35,8 @@ export async function provisionGrowthProjectionRuntime(
   const assistantEnabled = (id: string) => assistants.some((row) => row.id === id && row.enabled);
   const leaders = new Set([
     'qitu-learning-partner',
+    // Free exploration is explicitly owned by this server-registered intake assistant.
+    ...(assistantEnabled('qitu-intake-assistant') ? ['qitu-intake-assistant'] : []),
     ...teams.filter((row) => row.enabled && assistantEnabled(row.leaderAssistantId)).map((row) => row.leaderAssistantId),
     ...versions.filter((row) => row.enabled && frozenVersions.has(row.id) && assistantEnabled(row.leaderAssistantId))
       .map((row) => row.leaderAssistantId),

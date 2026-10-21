@@ -72,6 +72,44 @@ test('explicit save provisions missing exact registered source leaders without p
   assert.equal(f.agents.some((row) => row.id === 'unrelated-assistant'), false);
 });
 
+test('explicit save grants the exact enabled server-declared free-exploration intake source', async () => {
+  const f = fixture();
+  f.assistants.push({ id: 'qitu-intake-assistant', name: 'Intake', role: 'teacher', enabled: true });
+  f.agents.push({ id: 'qitu-intake-assistant', enabled: true });
+  await provisionGrowthProjectionRuntime(f.db, settings, 'admin');
+  const routes = f.routes.filter((row) => row.fromAgentId === 'qitu-intake-assistant');
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0]?.toAgentId, settings.profileAssistantId);
+  assert.equal(routes[0]?.trigger, 'event');
+  assert.equal(routes[0]?.taskType, 'profile.project');
+  assert.equal(f.agents.some((row) => row.id === 'unrelated-assistant'), false);
+});
+
+test('explicit save provisions a missing exact intake identity without broad assistant provisioning', async () => {
+  const f = fixture();
+  f.assistants.push({ id: 'qitu-intake-assistant', name: 'Intake', role: 'teacher', enabled: true });
+  await provisionGrowthProjectionRuntime(f.db, settings, 'admin');
+  const intake = f.agents.find((row) => row.id === 'qitu-intake-assistant');
+  assert.ok(intake);
+  assert.deepEqual(intake.capabilities, ['teach']);
+  assert.equal(intake.modelId, undefined);
+  assert.equal(intake.agentDefinition, undefined);
+  assert.ok(f.routes.some((row) => row.fromAgentId === 'qitu-intake-assistant'));
+  assert.equal(f.agents.some((row) => row.id === 'unrelated-assistant'), false);
+});
+
+test('intake routing requires current Admin authorization and preserves revoked runtime identity', async () => {
+  for (const state of ['admin-disabled', 'runtime-disabled', 'admin-missing']) {
+    const f = fixture();
+    if (state !== 'admin-missing') f.assistants.push({ id: 'qitu-intake-assistant', name: 'Intake', role: 'teacher', enabled: state !== 'admin-disabled' });
+    f.agents.push({ id: 'qitu-intake-assistant', enabled: state !== 'runtime-disabled' });
+    await provisionGrowthProjectionRuntime(f.db, settings, 'admin');
+    assert.equal(f.routes.some((row) => row.fromAgentId === 'qitu-intake-assistant'), false, state);
+    assert.equal(f.agents.find((row) => row.id === 'qitu-intake-assistant')?.enabled, state !== 'runtime-disabled', state);
+    assert.equal(f.agents.filter((row) => row.id === 'qitu-intake-assistant').length, 1);
+  }
+});
+
 test('an explicitly revoked source descriptor stays disabled and receives no new route', async () => {
   const f = fixture();
   const source = f.agents.find((row) => row.id === 'frozen-leader')!;
