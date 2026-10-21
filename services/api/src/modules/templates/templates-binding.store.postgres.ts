@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, or } from 'drizzle-orm';
 import {
   adminTeamVersions,
   learningPlans,
@@ -77,11 +77,12 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
 
   async findBinding(id: string, tx?: AuditTransaction): Promise<BindingRecord | null> {
     const executor = tx ?? this.db;
-    const [row] = await executor
+    const query = executor
       .select()
       .from(pblTemplateTeamBindings)
       .where(eq(pblTemplateTeamBindings.id, id))
       .limit(1);
+    const [row] = await (tx ? query.for('share') : query);
     return row === undefined ? null : mapBinding(row);
   }
 
@@ -90,7 +91,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     tx?: AuditTransaction,
   ): Promise<BindingRecord | null> {
     const executor = tx ?? this.db;
-    const [row] = await executor
+    const query = executor
       .select()
       .from(pblTemplateTeamBindings)
       .where(
@@ -100,6 +101,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         ),
       )
       .limit(1);
+    const [row] = await (tx ? query.for('share') : query);
     return row === undefined ? null : mapBinding(row);
   }
 
@@ -238,6 +240,24 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
       .where(eq(projectBindingSnapshots.projectId, projectId))
       .limit(1);
     return row === undefined ? null : mapSnapshot(row);
+  }
+
+  async reconfirmLegacySnapshot(input: InsertSnapshotRecordInput, expected: SnapshotRecord | null, tx?: AuditTransaction): Promise<void> {
+    const executor = tx ?? this.db;
+    const values = { projectId: input.projectId, templateVersionId: input.templateVersionId, bindingId: input.bindingId,
+      teamVersionId: input.teamVersionId, bindingHash: input.bindingHash, bundleDigest: input.bundleDigest,
+      boundAt: input.boundAt, backfilled: false };
+    const rows = expected === null
+      ? await executor.insert(projectBindingSnapshots).values(values).onConflictDoNothing().returning({ id: projectBindingSnapshots.projectId })
+      : await executor.update(projectBindingSnapshots).set(values).where(and(
+        eq(projectBindingSnapshots.projectId, input.projectId), eq(projectBindingSnapshots.templateVersionId, expected.templateVersionId),
+        eq(projectBindingSnapshots.bindingHash, expected.bindingHash), eq(projectBindingSnapshots.bindingId, expected.bindingId),
+        eq(projectBindingSnapshots.teamVersionId, expected.teamVersionId),
+        eq(projectBindingSnapshots.backfilled, expected.backfilled),
+        expected.bundleDigest === null ? isNull(projectBindingSnapshots.bundleDigest) : eq(projectBindingSnapshots.bundleDigest, expected.bundleDigest),
+        or(eq(projectBindingSnapshots.backfilled, true), isNull(projectBindingSnapshots.bundleDigest)),
+      )).returning({ id: projectBindingSnapshots.projectId });
+    if (!rows.length) throw new TemplateBindingStoreConflictError('项目绑定已变化，请重新读取。');
   }
 
   async listAffectedProjects(templateVersionId: string): Promise<AffectedProjectRecord[]> {

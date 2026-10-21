@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { CurrentUser } from '@qitu/contracts';
+import { hasLearningSessionCompletion } from '@qitu/contracts';
 import type { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import type { MasteryDomainService } from '../mastery/mastery-domain.service';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
@@ -43,7 +44,7 @@ export async function resolveLearningEvidenceContext(
   }
   const scope: LearningEvidenceScope = { projectId: project.id, planId: plan.id, planRevision: plan.version,
     learningSessionId: session.id, objectiveIds };
-  if (write && profile.sessions.every((entry) => entry.completionSpec?.version === 'learning-session-completion.v1')) {
+  if (write && profile.sessions.every(hasLearningSessionCompletion)) {
     const completed = new Set((await plans.listSessionCompletions(plan.id, plan.version)).map((entry) => entry.learningSessionId));
     const current = [...bundle.sessions].sort((left, right) => left.index - right.index).find((entry) => !completed.has(entry.id));
     if (current?.id !== session.id) conflict('LEARNING_SESSION_OUT_OF_ORDER', '请先完成当前课时，再提交后续课时的学习证据');

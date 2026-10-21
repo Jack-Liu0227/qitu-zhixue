@@ -1,4 +1,4 @@
-import { assertRuntimeSkillBudget, parseRuntimeSkill } from '@qitu/contracts';
+import { loadRuntimeSkillPackage } from '@qitu/model-runtime';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -95,7 +95,6 @@ export function buildTutorRuntimeBlocks(
 
   const allowed = enabledSkillIds === undefined ? null : new Set(enabledSkillIds);
   const selected = source.skills.filter(skill => isTeachingRuntimeSkill(skill) && skill.status === 'ready' && skill.publicationStatus === 'published' && allowed?.has(skill.id));
-  assertRuntimeSkillBudget(selected);
   for (const skill of selected) {
     if (!isTeachingRuntimeSkill(skill) || skill.status !== 'ready' || (allowed !== null && !allowed.has(skill.id))) continue;
     blocks.push([
@@ -117,9 +116,9 @@ function discoverRuntimeSkills(skillsRoot: string): {
       .filter((entry) => entry.isDirectory())
       .flatMap((entry): TutorRuntimeSkill[] => {
         const id = entry.name;
-        let raw: string;
+        let parsed: ReturnType<typeof loadRuntimeSkillPackage>;
         try {
-          raw = readFileSync(join(skillsRoot, id, 'SKILL.md'), 'utf8');
+          parsed = loadRuntimeSkillPackage(skillsRoot, id);
         } catch (error) {
           // 读不到 SKILL.md 不能让技能从目录里静默消失：管理面靠这份列表定位
           // 「哪个技能包坏了」，所以保留一条 unavailable 记录。
@@ -137,13 +136,12 @@ function discoverRuntimeSkills(skillsRoot: string): {
           }];
         }
 
-        const parsed = parseRuntimeSkill(id, raw, hash(raw.replace(/\r\n/g, '\n')));
         const { metadata, runtime } = parsed;
         if (runtime === 'dev-only') return [];
         if (runtime === 'unknown') brokenPackages.push({ id, detail: 'Unknown or missing runtime scope' });
         return [{
           id, label: metadata.name ?? id, description: metadata.description ?? null,
-          version: metadata.version ?? null, contentHash: hash(raw),
+          version: metadata.version ?? null, contentHash: parsed.packageDigest,
           status: parsed.ready ? 'ready' as const : 'unavailable' as const,
           content: parsed.content, runtime, publicationStatus: parsed.publicationStatus,
           requiredToolIds: (metadata.requiredToolIds ?? '').split(',').map((id) => id.trim()).filter(Boolean),
@@ -188,7 +186,7 @@ function formatFsError(error: unknown): string {
   return message.replace(/((?:password|token|secret|api[_-]?key|authorization|bearer)\s*[=:]\s*)[^\s,;]+/gi, '$1[REDACTED]');
 }
 
-function findRuntimeRoot(start: string): string {
+export function findRuntimeRoot(start = process.cwd()): string {
   const configured = process.env.QITU_PROJECT_ROOT?.trim();
   if (configured) return resolve(configured);
 

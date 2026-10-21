@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import type { TutorTurn } from '@qitu/contracts';
+import type { TutorProjectContext, TutorTurn } from '@qitu/contracts';
 import { EmptyState, ErrorState, OfflineBanner, SkeletonBlock } from '@qitu/ui';
 import type { TutorLoadStatus, TutorViewError } from '../types';
-import { findRunningToolLabel } from '../state';
+import { findRunningToolLabel, isTutorReplyBlock } from '../state';
 import { ChatBubble } from './ChatBubble';
 import { TypingIndicator } from './TypingIndicator';
+import { ProjectConversationHistory } from './ProjectConversationHistory';
+import { ProjectTeachingPlanRecovery } from './ProjectTeachingPlanRecovery';
+import { ExplorationWelcome } from './ExplorationWelcome';
 
 /** Center conversation column. The composer remains inside this flex column. */
 export function ChatThread({
@@ -19,6 +22,7 @@ export function ChatThread({
   escalated,
   disabled,
   onRetry,
+  onNewExploration,
   onReconnect,
   onSelectOption,
   onSubmitQuestionAnswer,
@@ -32,6 +36,8 @@ export function ChatThread({
   isConfirmingProject = false,
   composer,
   learningActivity,
+  explorationContext,
+  idle = false,
 }: {
   sessionId: string | null;
   turns: TutorTurn[];
@@ -42,6 +48,7 @@ export function ChatThread({
   escalated: boolean;
   disabled: boolean;
   onRetry: () => void;
+  onNewExploration?: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
   onSubmitQuestionAnswer?: (answer: string) => void;
@@ -55,10 +62,16 @@ export function ChatThread({
   isConfirmingProject?: boolean;
   composer: ReactNode;
   learningActivity?: ReactNode;
+  explorationContext?: TutorProjectContext;
+  idle?: boolean;
 }) {
   const hasTurns = turns.length > 0;
+  const bindingUnavailable = error?.code === 'PROJECT_BINDING_RECONFIRM_REQUIRED'
+    || error?.code === 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE' || error?.code === 'PROJECT_TEAM_UNAVAILABLE';
   const newestAssistant = lastAssistantTurn(turns);
   const newestTurn = turns.at(-1);
+  const openingOnly = !projectId && Boolean(explorationContext?.exploration) && turns.length === 1
+    && newestTurn?.seq === 1 && newestTurn.role === 'assistant';
   const streamingTurnId = streaming && newestAssistant !== null ? newestAssistant.turnId : null;
   const showIndicator =
     streaming &&
@@ -71,15 +84,16 @@ export function ChatThread({
   useLayoutEffect(() => {
     const element = threadScrollRef.current;
     if (!element) return;
-    element.scrollTo({ top: element.scrollHeight, left: 0, behavior: 'auto' });
+    element.scrollTo({ top: openingOnly ? 0 : element.scrollHeight, left: 0, behavior: 'auto' });
     nearBottomRef.current = true;
-  }, [sessionId]);
+  }, [sessionId, openingOnly]);
 
   useEffect(() => {
     const element = threadScrollRef.current;
-    if (!element || sessionId === null || !nearBottomRef.current || status === 'loading') return;
-    element.scrollTo({ top: element.scrollHeight, left: 0, behavior: 'auto' });
-  }, [sessionId, status, streaming, turns]);
+    if (!element || sessionId === null || status === 'loading') return;
+    if (!openingOnly && !nearBottomRef.current && newestTurn?.role !== 'student') return;
+    element.scrollTo({ top: openingOnly ? 0 : element.scrollHeight, left: 0, behavior: 'auto' });
+  }, [sessionId, status, streaming, turns, openingOnly, newestTurn?.role]);
 
   return (
     <div className="qitu-tutor-col qitu-tutor-col-center">
@@ -107,30 +121,43 @@ export function ChatThread({
         ) : null}
 
         {status === 'error' && !hasTurns ? (
-          <ErrorState
-            title="会话没有加载出来"
-            description={error?.message}
-            errorCode={error?.code}
-            onRetry={onRetry}
-          />
+          <div>
+            <ErrorState
+              title={bindingUnavailable ? '这个项目的导师配置需要更新' : '会话没有加载出来'}
+              description={bindingUnavailable ? '请联系老师或管理员，在项目模板的导师团队配置中恢复此项目。配置完成后可重试继续学习。' : error?.message}
+              errorCode={bindingUnavailable ? undefined : error?.code}
+              onRetry={onRetry}
+            />
+            {bindingUnavailable && projectId && <ProjectConversationHistory key={projectId} projectId={projectId} />}
+            {error?.code === 'PROJECT_TEACHING_PLAN_UNAVAILABLE' && projectId ? <ProjectTeachingPlanRecovery projectId={projectId} onRecovered={onRetry} /> : null}
+            {bindingUnavailable && onNewExploration && <div style={{ textAlign: 'center' }}>
+              <p>你也可以先开启一次新的兴趣探索。</p>
+              <button type="button" className="qitu-button qitu-button-ghost" onClick={onNewExploration}>新建探索会话</button>
+            </div>}
+          </div>
         ) : null}
 
         {status === 'empty' && !hasTurns ? (
           <div className="qitu-tutor-empty-thread">
-            <h3>从你的好奇心开始</h3>
-            <p>告诉我你想研究的现象、感兴趣的主题，或想亲手做出的作品。启途智学助手会在对话中整理可确认的项目想法。</p>
+            <h3>{idle ? '会话已清理，下一次探索由你开启' : '从你的好奇心开始'}</h3>
+            <p>{idle ? '可以从左侧继续已有对话，或开始一次新的探索。' : '告诉我你想研究的现象、感兴趣的主题，或想亲手做出的作品。启途智学助手会在对话中整理可确认的项目想法。'}</p>
             <button
               type="button"
               className="qitu-button qitu-button-ghost"
-              onClick={() => onSelectOption('开始探索', '我想从自己的兴趣开始探索一个项目')}
-              disabled={disabled || offline}
+              onClick={() => idle ? onNewExploration?.() : onSelectOption('开始探索', '我想从自己的兴趣开始探索一个项目')}
+              disabled={offline || (idle ? !onNewExploration : disabled)}
             >
               开始自由探索
             </button>
           </div>
         ) : null}
 
-        {turns.map((turn) => (
+        {turns.map((turn) => !projectId && explorationContext?.exploration && turn.seq === 1 && turn.role === 'assistant'
+          && turn.blocks.every(isTutorReplyBlock)
+          && turn.blocks.some(block => block.kind === 'options') ? (
+          <ExplorationWelcome key={turn.turnId} context={explorationContext} blocks={turn.blocks}
+            onSelectOption={onSelectOption} disabled={disabled || offline} />
+        ) : (
           <ChatBubble
             key={turn.turnId}
             turn={turn}
@@ -161,7 +188,7 @@ export function ChatThread({
         ) : null}
       </div>
       {isConfirmingProject ? <span className="qitu-sr-only" role="status">正在创建项目</span> : null}
-      {composer}
+      {idle ? null : composer}
     </div>
   );
 }

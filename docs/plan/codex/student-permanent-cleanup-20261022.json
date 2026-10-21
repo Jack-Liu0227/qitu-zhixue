@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-22T00:40:40.004119+08:00",
+  "deployed": true,
+  "host": "study-remote",
+  "services": {
+    "qitu-api": "active",
+    "qitu-auth": "active",
+    "qitu-student": "active",
+    "qitu-parent": "active",
+    "qitu-teacher": "active",
+    "qitu-admin": "active",
+    "qitu-ima-mcp": "active",
+    "qitu-local-embedding": "active"
+  },
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-21T16:37:56.997Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "pages": {
+    "3100/login": 200,
+    "3101/student/projects": 200,
+    "3102/parent": 200,
+    "3103/teacher/dashboard": 200,
+    "3104/admin/settings/templates": 200
+  },
+  "sourceFiles": 43,
+  "sourceHashes": {
+    "apps/student-center/features/projects/components/ProjectCard.tsx": "59b822f205f93e11f227e0995708552374ca8ac8f2af1e01d7c8013d3b0fc0dd",
+    "apps/student-center/features/projects/components/ProjectListScreen.tsx": "c8b9db1a91d47b5ed95471e276d2778292dce9de07c2752bc85168d658a79514",
+    "apps/student-center/features/projects/data/api-projects-data-source.ts": "2021aa586646812977900e72e92582feb0c6e7fc3a6944d94dd096e5e18443b1",
+    "apps/student-center/features/projects/data/data-source.ts": "86e4fc52cea13056cdb9905d89042495c786b6c6fa8f33d67c23057c169e1983",
+    "apps/student-center/features/projects/data/delete-history.ts": "5d9ff9fa9519c4bf143447a049561adfe5db07a7daef769e7c3e18951d39c5ee",
+    "apps/student-center/features/projects/types/index.ts": "929104b612ed6a3c802f32840bf228370f400c12300837072db3f21775240238",
+    "apps/student-center/features/tutor/components/ChatThread.tsx": "4559a2a5ed0b37ad71334a4f15b66c8b05a2ac9af2ac53f7230ec2f5538a2100",
+    "apps/student-center/features/tutor/components/ProjectTeachingPlanRecovery.tsx": "f9dc2d1703c6f8936707acc0b64dc98f0f495137d1cd33c6fecb2d0debe5cfb1",
+    "apps/student-center/features/tutor/components/TutorSessionHistory.tsx": "9528785c0ae62740611eb640aed5768e47e2e48e6db9b077e69eb449b4c7ad48",
+    "apps/student-center/features/tutor/data/dataSource.ts": "6d5f585ee261a4be4a25b51d1ca18b778366b64503ce2494bc92a1208c012e4d",
+    "apps/student-center/features/tutor/data/tutorApiDataSource.ts": "e7b7fb42dd81cdd8e12babb95be917f627e26567ee0db759bad2e314921800c4",
+    "apps/student-center/styles/projects.css": "6167a0ee2bb35d45eb0bf156302039471dadb1457a53960f0cfea629c39954c6",
+    "database/migrations/0047_permanent_history_cleanup.down.sql": "4bfd3ff6e9d68fd0132ace27b3360277003bf22017fa86be3484ed4eff2497ac",
+    "database/migrations/0047_permanent_history_cleanup.sql": "a9221b1356cd074ca996ef3d89b0e3f0f8f6783eb8a04ed207878a7da866e130",
+    "database/migrations/meta/_journal.json": "dac642c6733e24794916288b84e08d7670fe151148f95980faf0aa36e289d789",
+    "packages/contracts/src/index.ts": "3eacc7dbdabe821efbd176f06465cb55dd7e6422e12073a8864504e6dce093ba",
+    "packages/contracts/src/project-history.ts": "dc0930484252499f2ea374c6c07d1b861b3204dcf92046482b839aae67701e0e",
+    "packages/contracts/src/student-history.ts": "58e656510fa59f2bd095eb99af4c528e9f1328bcefdd7b2191b29685673f53dd",
+    "packages/database/src/schema/answer-attempts.ts": "4b1e110d084fa977f8610021a42a2f7940e6d7d08f2ca4fba00d4aad7ecd0894",
+    "packages/database/src/schema/projects.ts": "7d14727fcdb522ab610ab2ab3664dfe78ff6f90570d31bf92e4978907a72365b",
+    "services/api/src/modules/ai-tutor/answer-attempts.drift.test.ts": "7444322a1ad127ef2e9a06c268c78dad1947641190770a27f87643146a796711",
+    "services/api/src/modules/ai-tutor/tutor-activity-context.ts": "b2889ca4c59d3de02ad3b47de257b6d1b07321eb2af43ab1455f58a05671a6c4",
+    "services/api/src/modules/ai-tutor/tutor-exploration.test.ts": "cc8fd0748f8e2792a674ba774eeb9759ea3bbe8641259f1f4362601f35b174a1",
+    "services/api/src/modules/ai-tutor/tutor-failure-metadata.test.ts": "0011772ffb24161df401b5cc5bb2f37fcf18102f28dedaab2fd426c05884ce01",
+    "services/api/src/modules/ai-tutor/tutor-failure-metadata.ts": "bd72e706c9affe28c34cd2cb2f742ad058cff77d0e255cf966ff42b6a7e64708",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.test.ts": "7799cca762717c9c85fcb0923c901c81980de274486389c2594a8eab2d40df85",
+    "services/api/src/modules/ai-tutor/tutor-quiz.store.ts": "2c8acacd289c8f74c9a66363c258bf252e0981fabcd5144bd83af6f9738dddde",
+    "services/api/src/modules/ai-tutor/tutor-session.store.postgres.ts": "23cc83ac80d2bb85a35403537f85cdd78e31ef1dfddc721b217d3de28d9986bf",
+    "services/api/src/modules/ai-tutor/tutor-session.store.ts": "9fcb0ee60f5d983f3ffff9d010fd11bbceef4a5d864da9ec148aa4dba926c921",
+    "services/api/src/modules/ai-tutor/tutor.controller.ts": "0b4a4bea958ce1bbc9614dabeeb68653e26ba1112a30bc6be2a3873ee8845cf8",
+    "services/api/src/modules/ai-tutor/tutor.service.ts": "2f0a6dcc7b53647d1e7434d289b14971f8deb44f4c61c81f29e8db5a220780a4",
+    "services/api/src/modules/platform-registry/assistant-skill-budget.test.ts": "240c6875934d00b7589fa00429fc1c942ea42ffc616da88ba690cfdc253cb6c4",
+    "services/api/src/modules/platform-registry/assistant-skill-budget.ts": "56ad71838d6b7f5ab63517f5e8351587fd9a22c3332d80e88356869427758e57",
+    "services/api/src/modules/platform-registry/platform-registry.service.ts": "ea61ec27f52d3ccb5d858c71d7bf22393093a41e40b95df6563cf3ae7ac265ac",
+    "services/api/src/modules/projects/project-covers.service.ts": "27e5a5c2aadbe4f602f7a51418e3ecf925f2bd9d51676dfe315b471b1b38352d",
+    "services/api/src/modules/projects/project-history.controller.ts": "7718d1805f6951fb4becc643f371de983c24e162064758aed4bf9f3687acba13",
+    "services/api/src/modules/projects/project-history.service.ts": "37114345687fa8d20b6229ad2bc6b43e849d90a47ee4892716c329b9a6b73631",
+    "services/api/src/modules/projects/project-teaching-plan-recovery.service.ts": "5f8a1b63371791176ba7fe4ccf475cd5a9e65e8438d7432772685f2fa7b3ab60",
+    "services/api/src/modules/projects/projects.module.ts": "610fbcbc48b5d00aca429574b291325ed64a67e62a4767e62a81686d38221536",
+    "services/api/src/modules/projects/student-history-cleanup.controller.ts": "33aef70dd1a1696f3e7c5c104bad7c6db455856d1a8bd735b662da4aa4802b7e",
+    "services/api/src/modules/projects/student-history-cleanup.service.ts": "72bad1d882eab86d4d716a2b5ebfdd6f04abfc245b22b2ea1f8da355ebcc7fa0",
+    "services/api/src/modules/projects/student-history-cleanup.sql.ts": "07e77014ff171345c2fc09c0128fbcd1f21ab742d2613fcfb415d558816661e1",
+    "tooling/test-student-history-cleanup.mjs": "9c75133b1c00feae1869b9e55d148607822974b44a2ff2ea4e479fa758546807"
+  },
+  "bindings": {
+    "success": true,
+    "actions": [
+      "skills-optics-concept-coach",
+      "skills-optics-experiment-guide",
+      "publish-current-team",
+      "create-binding",
+      "prepare-frozen-schedule",
+      "validate-binding",
+      "activate-binding",
+      "restore-proj-fb62d1b4-654f-4344-8334-3e6e8395785d",
+      "restore-proj-b28f10e8-d3c8-488e-a3ba-1f6cc86b8919"
+    ],
+    "stage": "verified",
+    "bindingId": "bnd-b10c985b5c562687",
+    "teamVersionId": "team-version-de6ed4a235700951a9eb33a3ae75fd0e",
+    "bundleDigest": "a190c21e1fd66e2969d21e582e258cd911566db279e0400b4da765c6f21d615e",
+    "scheduleProfileId": "optics-16x60-v2",
+    "knowledgeGrantsAdded": 0,
+    "recovered": [
+      {
+        "projectId": "proj-fb62d1b4-654f-4344-8334-3e6e8395785d",
+        "state": "ready"
+      },
+      {
+        "projectId": "proj-b28f10e8-d3c8-488e-a3ba-1f6cc86b8919",
+        "state": "ready"
+      }
+    ]
+  },
+  "tests": {
+    "actualMergedApi": {
+      "passed": 43,
+      "failed": 0,
+      "files": 9
+    },
+    "disposablePostgres": {
+      "groups": 8,
+      "allRealMigrations": true
+    },
+    "browser": {
+      "success": true,
+      "checks": [
+        "two original legacy projects recover exactly one frozen 16-lesson plan and retain intent_confirmed",
+        "anonymous wrong-role and unknown-object deletion denied",
+        "real project theme images load and mobile has no horizontal overflow",
+        "ready template handoff and real frozen-project model SSE complete",
+        "conversation cancel then permanent delete keeps project and starts a fresh generation after reload",
+        "one temporary explicitly confirmed project permanently deleted through UI and absent after refresh",
+        "two temporary drafts permanently deleted using select-page bulk UI",
+        "original project count and continuation selection preserved; only test-created records removed"
+      ],
+      "errors": [],
+      "createdProjects": 1,
+      "removedProjects": 1,
+      "beforeCounts": {
+        "active": 18,
+        "draft": 57,
+        "done": 0
+      },
+      "model": {
+        "status": 200,
+        "milliseconds": 2805,
+        "done": true,
+        "deltas": 40,
+        "error": false,
+        "events": [
+          "tutor.block",
+          "tutor.tool_call",
+          "tutor.tool_result",
+          "tutor.delta",
+          "turn.done"
+        ],
+        "errorCodes": []
+      },
+      "afterCounts": {
+        "active": 18,
+        "draft": 57,
+        "done": 0
+      },
+      "remainingTemporaryProjects": []
+    },
+    "skillBudgetNegative": {
+      "status": 400,
+      "code": "ASSISTANT_SKILL_BUDGET_EXCEEDED",
+      "configurationUnchanged": true
+    }
+  },
+  "legacyProjectFacts": [
+    {
+      "id": "proj-b28f10e8-d3c8-488e-a3ba-1f6cc86b8919",
+      "status": "intent_confirmed",
+      "current_stage_index": 1,
+      "progress_percent": 11,
+      "plans": 1,
+      "mastery_events": 0,
+      "completed_sessions": 0,
+      "artifacts": 0
+    },
+    {
+      "id": "proj-fb62d1b4-654f-4344-8334-3e6e8395785d",
+      "status": "intent_confirmed",
+      "current_stage_index": 1,
+      "progress_percent": 11,
+      "plans": 1,
+      "mastery_events": 0,
+      "completed_sessions": 0,
+      "artifacts": 0
+    }
+  ],
+  "preservedConcurrentChanges": [
+    "apps/admin-console/lib/components/ProjectBindingRecovery.tsx",
+    "apps/admin-console/lib/components/TeachingBindingGuide.tsx",
+    "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx",
+    "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts",
+    "services/api/src/modules/ai-tutor/tutor.runtime-identity.test.ts"
+  ],
+  "limitations": {
+    "knowledgeRetrievalAccepted": false,
+    "fullClassroomAccepted": false,
+    "knowledgeGrantsAdded": 0,
+    "otherUnfrozenLegacyProjectsMigrated": false
+  },
+  "backupDirectory": "/root/qitu-backups/student-cleanup-20261021/",
+  "adminConcurrentTypecheckPassed": true,
+  "subsequentLocalChanges": {
+    "teamRuntimeRefactorPreserved": true,
+    "removedBudgetHelperAndTestNotRestored": true,
+    "priorPlanDocumentationDeletionsNotRestored": true,
+    "acceptedEvidenceAppliesToRemoteReleaseSnapshot": true
+  }
+}

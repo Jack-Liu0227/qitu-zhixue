@@ -5,7 +5,7 @@ import { SectionCard } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 export function freeExploreHref(): string {
-  return '/student/tutor';
+  return '/student/tutor?new=1';
 }
 
 /**

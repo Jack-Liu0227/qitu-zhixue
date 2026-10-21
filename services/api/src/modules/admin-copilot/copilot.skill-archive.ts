@@ -17,7 +17,7 @@ export async function archiveTeachingSkill(actor: CurrentUser, input: Record<str
   const directory = await realpath(join(root, id));
   if (relative(root, directory) !== id) invalid('Skill 路径越界');
   const path = join(directory, 'SKILL.md');
-  if (await realpath(path) !== path || (await stat(path)).size > 262144) invalid('Skill 文件不可用');
+  if (await realpath(path) !== path || !(await stat(path)).isFile()) invalid('Skill 文件不可用');
   const lock = join(directory, '.publish-lock');
   const temporary = join(directory, `.archive-${key}`);
   const oldLock = await stat(lock).catch(() => null);
@@ -29,8 +29,8 @@ export async function archiveTeachingSkill(actor: CurrentUser, input: Record<str
     const header = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!header || /^runtime:\s*admin\s*$/m.test(header[1]!)) invalid('不能删除管理技能或无效来源');
     if (/^status:\s*deprecated\s*$/m.test(header[1]!) && header[1]!.includes(`deleted-from: ${digest}`)) return id;
-    if (createHash('sha256').update(raw).digest('hex') !== digest) throw new ConflictException({ code: 'SKILL_DIGEST_CONFLICT', message: 'Skill 已变化，请回读当前摘要' });
     const catalog = loadRuntimeSkillCatalog().skills.find(item => item.id === id);
+    if ((catalog?.contentHash ?? createHash('sha256').update(raw).digest('hex')) !== digest) throw new ConflictException({ code: 'SKILL_DIGEST_CONFLICT', message: 'Skill 已变化，请回读当前摘要' });
     const managedDraft = /^managed-by:\s*admin-copilot\s*$/m.test(header[1]!) && /^runtime:\s*dev-only\s*$/m.test(header[1]!);
     if (catalog?.runtime !== 'teaching' && !managedDraft) invalid('仅可移除教学技能或管家草稿');
     const lines = header[1]!.split(/\r?\n/).filter(line => !/^(runtime|status|deleted-from):/.test(line));

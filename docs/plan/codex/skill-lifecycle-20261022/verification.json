@@ -1,0 +1,85 @@
+{
+  "scope": "source_and_disposable_fixtures",
+  "sourceSkillsMapped": 30,
+  "newSkillPackages": 17,
+  "enhancedExistingTeachingPackages": 6,
+  "adaptationAndProjectionPackages": 23,
+  "adminAuthoringPackages": 15,
+  "projectionPackages": 2,
+  "originalRequestedPackages": 18,
+  "originalRequestedPackagesChanged": 6,
+  "originalRequestedPackagesRenamed": 0,
+  "canonicalCatalog": {
+    "total": 37,
+    "teaching": 21,
+    "admin": 16
+  },
+  "cleanup": {
+    "singlePackagePerCanonicalId": true,
+    "duplicatePackagesRemoved": 6,
+    "supersessionAndVersionConflictLogic": "removed",
+    "obsoleteGeneratedGuardFiles": "removed",
+    "legacySkillReferencesInActiveSourceAndCurrentBuilds": 0,
+    "scopeExcludedFromReferenceCount": [
+      "upstream sources",
+      "ignored historical audit backups",
+      "other runs temporary snapshots"
+    ]
+  },
+  "dependencyBuildOrder": [
+    "contracts",
+    "database",
+    "infra",
+    "agent-memory",
+    "ai-client",
+    "model-runtime"
+  ],
+  "verification": {
+    "backendBehaviorTests": {
+      "passed": 130,
+      "failed": 0,
+      "files": 17
+    },
+    "canonicalGeneratorTests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "pythonRealFileRenderingTests": {
+      "passed": 4,
+      "failed": 0
+    },
+    "frontendDownloadAdapterTests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "typechecks": {
+      "api": "passed",
+      "workers": "passed",
+      "studentCenter": "passed"
+    },
+    "sourceProvenanceAndPackageDigests": "passed",
+    "interactiveBrowserAcceptance": "not_run",
+    "buildVerifiedAt": "2026-10-21T17:42:38.843Z"
+  },
+  "runtimeStates": {
+    "adaptationSourcePresent": true,
+    "localPublicationMetadata": "published",
+    "productionDeployment": "not_performed",
+    "productionAssistantOrTemplateBindings": "not_modified",
+    "productionModelRequests": "not_probed",
+    "historicalFrozenSnapshots": "not_rewritten"
+  },
+  "existingWorktreeChanges": {
+    "preserved": [
+      "Admin configuration pages",
+      "student projects and tutor",
+      "permanent history cleanup",
+      "contracts and database",
+      "team runtime structured output handling",
+      "teacher artifact review",
+      "document deletions"
+    ],
+    "validation": "API/workers/student whole-source compilation and selected behavior regressions; unrelated product flows not claimed as accepted"
+  },
+  "recordedAt": "2026-10-22T01:43:59+08:00"
+}

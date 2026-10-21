@@ -62,3 +62,14 @@ Pi 返回的 thinking 内容不会直接发送给学生；模型输出仍须经�
 ## 6. 上游同步
 
 版本、commit、许可证、本地改动和更新规则见 [`packages/model-runtime/UPSTREAM.md`](../../packages/model-runtime/UPSTREAM.md)。升级上游时必须重新审查认证、telemetry、网络传输、工具调用和数据脱敏边界。
+
+
+## 通用 MCP Streamable HTTP 适配
+
+@qitu/model-runtime 导出 StreamableMcpClient。宿主提供 McpHttpTransport，负责安全网络、凭据、域名/DNS 校验和取消信号；SDK 实现 initialize、协议版本协商、session header、JSON/SSE、分页 tools/list、工具参数 schema 和每次调用前 authorize。
+
+discover() 用于 Admin 发现；discover(toolIds) 返回允许列表内的真实定义，空列表不授予工具。tool(definition, authorize) 创建 ModelRuntimeTool 闭包；远端 annotations 不成为授权。API 的 CopilotMcp 使用 HTTPS、已登记 endpoint、DNS 地址固定、私网/重定向拒绝和服务端专用凭据。
+
+Admin 的 mcp.invoke 在专用确认接口接受管理员决定后才调用；调用先记 dispatch，远端结果未知时不会自动重发。它没有自动开放到学生侧，也不代替 IMA 项目 grant 和 provenance。没有内嵌 bash、任意文件读写或 stdio 子进程工具。
+
+协议依据：[Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)、[工具与 annotations](https://modelcontextprotocol.io/specification/2025-06-18/server/tools)。

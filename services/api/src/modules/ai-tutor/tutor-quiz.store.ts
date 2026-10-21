@@ -12,7 +12,8 @@ export interface AnswerAttemptRecord {
   id: string;
   schoolId: string | null;
   studentUserId: string;
-  tutorSessionId: string;
+  /** Conversation metadata may be detached after permanent chat deletion. */
+  tutorSessionId: string | null;
   /** 不可变题库 questionId。 */
   quizId: string;
   /** 概念未映射时为 null（F1 的 plan-less 永不出现，正常路径非空）。 */

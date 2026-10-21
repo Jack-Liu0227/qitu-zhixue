@@ -291,3 +291,27 @@ export const OPTICS_16_COMPLETION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProj
     })),
   }] },
 });
+
+/** New identity: old v2/v3 completion semantics are never changed in place. */
+export const OPTICS_16_QUALITY_PROFILE_ID = 'optics-16x60-v4-quality';
+export const OPTICS_16_QUALITY_TEMPLATE_SPEC: ProjectTemplateSpec = parseProjectTemplateSpec({
+  ...OPTICS_16_COMPLETION_TEMPLATE_SPEC,
+  id: 'pbl-optics-inquiry-16s-quality', version: 'v4-16s-quality',
+  phases: OPTICS_16_COMPLETION_TEMPLATE_SPEC.phases.map(phase => ({ ...phase,
+    assignedAssistantId: ({ exploration: 'optics-leader', concept_mastery: 'optics-concept-coach',
+      guided_practice: 'optics-experiment-guide', deliverable_review: 'optics-review-assessor' })[phase.phase],
+  })),
+  curriculum: { profiles: [{ id: OPTICS_16_QUALITY_PROFILE_ID, schedule: { lessonCount: 16, lessonMinutes: 60 },
+    sessions: OPTICS_16_COMPLETION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.map(session => ({ ...session,
+      id: `optics-v4-session-${session.sessionIndex}`,
+      teachingRequirements: ['dynamic_lesson', 'project_knowledge'],
+      completionSpec: { ...session.completionSpec!, version: 'learning-session-completion.v2',
+        qualityReview: { version: 'lesson-quality.v1', reviewer: 'current_teacher',
+          criteria: (session.evidenceRequirements ?? [session.learningGoal ?? session.title]).map((description, index) => ({
+            id: `lesson-${session.sessionIndex}-criterion-${index + 1}`, description,
+          })),
+        },
+      },
+    })),
+  }] },
+});

@@ -44,3 +44,7 @@
 常见错误：401/403 为登录或权限失败；`COPILOT_SCOPE_MISMATCH` 为范围不符；`COPILOT_INPUT_INVALID` 为字段或计划错误；`COPILOT_REFERENCE_REQUIRED` 为未读对应手册；`COPILOT_REFERENCES_UNAVAILABLE` 为资源包缺失或漂移；`COPILOT_PLAN_SKILL_CHANGED` 为执行依据变更。领域 revision 冲突需要回读，不覆盖别人刚保存的配置。
 
 后文 HTTP 表格使用真实 owner 路径。管家 action 通常把 URL 中的 ID 放进 input，并额外要求 revision。直接 HTTP 的 body 不可照抄 action 封套，须按各模块说明展开。所有配置动作均不直接写学生项目、掌握度、作品审批或成长事实。
+
+## 二次确认协议
+
+所有 *.delete 及 mcp.invoke 返回 awaiting_confirmation receipt，携带 confirmation {id,expiresAt,target,impact,parameters}；尚未执行。管理员点击后由浏览器提交 POST /api/v1/admin/copilot/confirmations，body 为 {request:<原始请求>,turnKey:<原请求键>,actionId,confirmationId,decision:"confirm"|"cancel"}。它不是模型 action，不能在计划中生成确认字段或自动调用。凭据绑定管理员、参数、原计划及快照，十分钟失效；取消不可反悔复用同一凭据，源变化需新请求。未确认步骤的依赖 blocked。回执 cancelled 表示未执行。普通重试仍等待确认。

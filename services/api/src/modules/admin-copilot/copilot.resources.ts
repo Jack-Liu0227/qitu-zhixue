@@ -96,7 +96,7 @@ export class CopilotResources {
       const path = join(directory, 'SKILL.md');
       if (await realpath(path) !== path) invalid('Linked skill draft files are not supported');
       const info = await stat(path);
-      if (!info.isFile() || info.size > 262144) invalid('Invalid skill draft file');
+      if (!info.isFile()) invalid('Invalid skill draft file');
       const raw = await readFile(path, 'utf8');
       if (await realpath(path) !== path) invalid('Skill draft path changed while reading');
       const header = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
@@ -139,7 +139,7 @@ export class CopilotResources {
     if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id)) invalid('Skill ID 只能包含小写字母、数字、连字符');
     const description = text(input.description, 'description', 500);
     const version = text(input.version, 'version', 40);
-    const body = text(input.content, 'content', 7500);
+    const body = text(input.content, 'content', Number.POSITIVE_INFINITY);
     if (/[\r\n]/.test(description + version)) invalid('Skill 元数据必须是单行');
     const content = `---\nname: ${id}\ndescription: ${JSON.stringify(description)}\nversion: ${JSON.stringify(version)}\nruntime: dev-only\nstatus: quarantined\nmanaged-by: admin-copilot\n---\n\n${body}\n`;
     const root = await realpath(join(loadTutorRuntimeSource().root, '.agents', 'skills'));
@@ -240,7 +240,7 @@ export class CopilotResources {
       const replay = catalog?.publicationStatus === 'revoked' && raw.includes(`\nrevoked-from: ${digest}\n`);
       if (!replay) {
         if (catalog?.runtime !== 'teaching' || catalog.publicationStatus !== 'published'
-          || createHash('sha256').update(raw).digest('hex') !== digest) throw new ConflictException('Skill source changed or is not a published teaching skill');
+          || catalog.contentHash !== digest) throw new ConflictException('Skill source changed or is not a published teaching skill');
         let revoked = raw.replace(/^(status:[^\r\n]*)(\r?\n)/m, 'status: revoked$2');
         if (revoked === raw) revoked = raw.replace(/^---\r?\n/, '---\nstatus: revoked\n');
         revoked = revoked.replace(/^---\r?\n/, `---\nrevoked-from: ${digest}\n`);

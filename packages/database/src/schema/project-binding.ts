@@ -20,7 +20,7 @@ import { users } from './identity';
  * 与迁移 `0032_pbl_template_team_bindings` 逐列一致。三张表均不可原地改写：
  * - `admin_team_versions`：团队不可变快照（绑定引用版本而非可变的 `admin_teams` 行）；
  * - `pbl_template_team_bindings`：状态机 `draft → validated → active → retired`；
- * - `project_binding_snapshots`：创建时冻结，无 `updated_at`、无更新路径。
+ * - `project_binding_snapshots`：正式完整快照不可覆盖；旧回填或缺摘要快照仅可经审计修复命令重新确认。
  */
 
 /** 服务端计算的绑定校验结果。`checkedAt` 为 null 表示尚未校验。 */

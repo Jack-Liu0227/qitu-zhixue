@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import { prepareTutorLessonActivities } from './tutor-activity-context';
+import { projectTutorLessonProgram } from './tutor-lesson-program';
 import { restoreQuestionResults } from './tutor-question-results';
 import { TutorExperimentService } from './tutor-experiment.service';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
@@ -29,7 +30,6 @@ import type {
   TutorTeamGraph,
   TutorTeamIdentity,
   TutorFeedbackKind,
-  TutorExperimentAction,
   TutorExperimentActionRequest,
   TutorExperimentActionResponse,
   TutorToolCall,
@@ -53,6 +53,7 @@ import { ModelGateway } from '../model-registry/model-gateway';
 import { PlatformDataService } from '../platform-data/platform-data.service';
 import { ProjectsService } from '../projects/projects.service';
 import { currentStudentProject } from '../projects/current-project';
+import { ProjectHistoryService } from '../projects/project-history.service';
 import { LearningPlanStore, type ObjectiveRecord } from '../learning-plan/learning-plan.store';
 import { createTutorProvider, TUTOR_CHAT_USAGE, type TutorModelGateway } from './gateway-tutor.provider';
 import { ImaMcpClient } from './ima-mcp.client';
@@ -66,7 +67,8 @@ import { TemplatesService } from '../templates/templates.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { TeacherService } from '../teacher/teacher.service';
-import { buildProjectOpeningBlocks } from './tutor-opening';
+import { persistTutorOpening } from './tutor-opening.store';
+import { resolveExplorationHandoff } from './tutor-exploration';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
 import { resolveTutorTeachingContext, type TutorTeachingContext } from './tutor-teaching-context';
 import { freezeTutorRuntime } from './tutor-frozen-runtime';
@@ -245,6 +247,7 @@ function isUsableFrozenSnapshot(
  */
 @Injectable()
 export class TutorService {
+  private readonly logger = new Logger(TutorService.name);
   private readonly provider: TutorProvider;
   private readonly contextReader: TutorContextReader;
   private readonly domainWriter: TutorDomainWriter;
@@ -260,7 +263,6 @@ export class TutorService {
   private readonly turnLocks = new Map<string, Promise<void>>();
   private readonly auditLog: AuditEntry[] = [];
   /** Process-local fallback for demo/test mode; live mode reads the audit ledger. */
-  private readonly experimentActions = new Map<string, Set<TutorExperimentAction>>();
   private readonly store: TutorSessionStore;
   private readonly database: import('@qitu/database').Database | null;
 
@@ -315,6 +317,7 @@ export class TutorService {
     @Optional() private readonly teacherService?: TeacherService,
     @Optional() private readonly experiments?: TutorExperimentService,
     @Optional() private readonly learningPlans?: LearningPlanService,
+    @Optional() private readonly projectHistory?: ProjectHistoryService,
   ) {
     const runtime = loadTutorRuntimeSource();
     this.provider = createTutorProvider(dataMode, gateway, buildTutorRuntimeBlocks(runtime, []), ima);
@@ -327,10 +330,14 @@ export class TutorService {
 
   /** Return the student's authorized project projection for the AI搭档 shell. */
   async getProjectContext(projectId: string | undefined, ownerId: string, explicitExploration = false, explorationId?: string, resolvedTeaching?: TutorTeachingContext | null): Promise<TutorProjectContext | null> {
+    if (explicitExploration && projectId === undefined && explorationId !== undefined) {
+      return this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId));
+    }
     if (this.learningStore !== undefined) {
-      const selected = projectId === undefined
+      const preferredId = projectId === undefined && this.projectHistory ? await this.projectHistory.currentSelection(ownerId) : projectId;
+      const selected = preferredId === undefined
         ? currentStudentProject(await this.learningStore.listProjectsByStudent(ownerId))
-        : await this.learningStore.findProject(projectId);
+        : preferredId === null ? null : await this.learningStore.findProject(preferredId);
       if (!selected) return explicitExploration && projectId === undefined
         ? this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, explorationId))
         : null;
@@ -406,13 +413,7 @@ export class TutorService {
   }
 
   private async buildExplorationContext(ownerId: string, exploration?: ExplorationView): Promise<TutorProjectContext> {
-    const teamContext = await this.resolveTeamContext(
-      exploration?.templateVersionId ? `exploration:${exploration.id}` : null,
-      exploration?.templateVersionId ?? null,
-      'exploration',
-      ownerId,
-      true,
-    );
+    const handoff = await this.explorationHandoff(ownerId, exploration);
     return {
       // 探索会话没有项目：绝不返回哨兵项目，否则前端会拿 'exploration'
       // 当真实 projectId 去请求知识库与进度。身份仍由 team 携带。
@@ -420,9 +421,19 @@ export class TutorService {
       progress: { currentStageIndex: 0, stageTotal: PROJECT_STAGES.length, progressPercent: 0 },
       stages: PROJECT_STAGES,
       currentTask: null,
-      team: teamContext.team,
+      team: handoff.team,
+      exploration: handoff.exploration,
       phases: [],
     };
+  }
+
+  private async explorationHandoff(ownerId: string, exploration?: ExplorationView) {
+    const intake = this.findBuiltinAssistant('qitu-intake-assistant');
+    return resolveExplorationHandoff({ ownerId, exploration, bindings: this.templateBindings, registry: this.platformRegistry,
+      fallback: { teamId: null, teamName: null, assistantId: intake?.id ?? 'qitu-intake-assistant',
+        assistantName: intake?.name ?? '启途智学助手', assistantAvatar: intake?.avatar ?? null },
+      loadTeam: async id => this.loadFrozenTeamVersion(id, await this.platformRegistry!.listAssistants()),
+    });
   }
   /**
    * 解析当前会话的团队／助手身份与阶段投影（服务端事实，见
@@ -613,19 +624,35 @@ export class TutorService {
    * 名册来自 admin_team_members 与 admin_assistants 的服务端目录；状态、任务、
    * mailbox 消息和工具事件来自项目范围内的 Team Runtime 安全投影。
    */
-  async getTeamGraph(projectId: string, ownerId: string): Promise<TutorTeamGraph> {
-    if (this.learningStore === undefined) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
-    const project = await this.learningStore.findProject(projectId);
-    if (!project) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
-    if (project.studentId !== ownerId) throw new ForbiddenException({ code: 'TUTOR_PROJECT_FORBIDDEN', message: '无权访问该项目' });
-    const { team, teamConfig } = await this.resolveTeamContext(project.id, project.templateVersionId, project.status, ownerId);
+  async getTeamGraph(projectId: string | undefined, ownerId: string, explorationId?: string): Promise<TutorTeamGraph> {
+    let identity: Pick<Awaited<ReturnType<TutorService['resolveTeamContext']>>, 'team' | 'teamConfig'>;
+    let tutorSessionId: string | undefined;
+    if (projectId) {
+      if (!this.learningStore) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
+      const project = await this.learningStore.findProject(projectId);
+      if (!project) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
+      if (project.studentId !== ownerId) throw new ForbiddenException({ code: 'TUTOR_PROJECT_FORBIDDEN', message: '无权访问该项目' });
+      identity = await this.resolveTeamContext(project.id, project.templateVersionId, project.status, ownerId);
+    } else {
+      if (!explorationId) throw new BadRequestException({ code: 'TUTOR_CONTEXT_REQUIRED', message: '请选择一个项目或探索会话' });
+      const exploration = await this.loadExploration(ownerId, explorationId);
+      identity = await this.explorationHandoff(ownerId, exploration);
+      // This is the existing persistence key; the owned exploration and snapshot are checked separately.
+      const snapshot = await this.store.findById(`exploration-${explorationId}`);
+      if (snapshot) {
+        assertOwnedBy(snapshot, ownerId);
+        if (snapshot.projectId !== null || snapshot.explorationId !== explorationId) throw new ForbiddenException('无权访问该探索会话');
+        tutorSessionId = snapshot.sessionId;
+      }
+    }
+    const { team, teamConfig } = identity;
     const runtimeIds: Record<string, readonly string[]> = Object.fromEntries(
       (teamConfig?.members ?? []).map((member) => [member.assistantId, runtimeAgentIdsFor(member.assistantId)]),
     );
     let runtimeAvailable = true;
-    const runtime = this.teamRuntime === undefined
+    const runtime = this.teamRuntime === undefined || (!projectId && !tutorSessionId)
       ? { runId: null, agents: {} }
-      : await this.teamRuntime.getStudentTeamRuntimeProjection(project.id, ownerId, runtimeIds).catch(() => {
+      : await this.teamRuntime.getStudentTeamRuntimeProjection(projectId ?? null, ownerId, runtimeIds, tutorSessionId).catch(() => {
           runtimeAvailable = false;
           return { runId: null, agents: {} };
         });
@@ -715,36 +742,6 @@ export class TutorService {
   ): Promise<TutorExperimentActionResponse> {
     if (!this.experiments) throw new ServiceUnavailableException({ code: 'TUTOR_EXPERIMENT_OWNER_UNAVAILABLE', message: 'Experiment evidence owner is unavailable' });
     return this.experiments.submit(actorId, record, experimentId, input);
-  }
-
-  /** Read the server-owned experiment action sequence without trusting the UI. */
-  private async readExperimentActionState(
-    sessionId: string,
-    experimentId: string,
-    actorId: string,
-  ): Promise<Set<TutorExperimentAction>> {
-    const key = `${sessionId}:${experimentId}`;
-    const cached = this.experimentActions.get(key);
-    if (!this.durable || !this.database) return new Set(cached ?? []);
-    const rows = await this.database
-      .select({ detail: auditLogs.detail })
-      .from(auditLogs)
-      .where(and(
-        eq(auditLogs.actorId, actorId),
-        eq(auditLogs.action, 'tutor.experiment.action'),
-        eq(auditLogs.targetType, 'tutor_experiment'),
-        eq(auditLogs.targetId, experimentId),
-      ));
-    const actions = new Set<TutorExperimentAction>(cached ?? []);
-    for (const row of rows) {
-      const detail = row.detail;
-      if (detail && typeof detail === 'object' && 'action' in detail) {
-        const action = (detail as { action?: unknown }).action;
-        if (action === 'submit_prediction' || action === 'run' || action === 'record_observation') actions.add(action);
-      }
-    }
-    this.experimentActions.set(key, actions);
-    return actions;
   }
 
   private resolveCurrentLesson(projectId: string, studentId: string) {
@@ -1000,65 +997,6 @@ export class TutorService {
   }
 
   /**
-   * 动态物理微观仿真与课件块下发：当学生询问实验、课件、仿真、单缝衍射、介质散射或波动现象时，
-   * 服务端授权并下发经过校验的模型仿真卡片。
-   */
-  private async buildExperimentBlocks(
-    record: TutorSessionRecord,
-    studentInput?: string,
-  ): Promise<TutorTurn['blocks']> {
-    const text = (studentInput ?? '').toLowerCase();
-    const isExperimentTrigger =
-      /实验|课件|动态|仿真|衍射|狭缝|单缝|散射|微观|光强|波长|条纹/i.test(text);
-
-    if (!isExperimentTrigger) {
-      return [];
-    }
-
-    const immediatePriorHasExperiment = record.turns.slice(-2).some((turn) =>
-      turn.role === 'assistant' && turn.blocks.some((b) => b.kind === 'optics_experiment'),
-    );
-    if (immediatePriorHasExperiment) {
-      return [];
-    }
-
-    const isScattering = /散射|瑞利|米氏|气溶胶/i.test(text);
-    const initialMode: 'diffraction' | 'scattering' = isScattering ? 'scattering' : 'diffraction';
-    const currentLesson = record.projectId === null ? null : await this.resolveCurrentLesson(record.projectId, record.ownerId);
-    const lessonIndex = currentLesson?.lessonIndex ?? 1;
-    const experimentId = `optics-exp-${record.sessionId}-${initialMode}-lesson-${lessonIndex}`;
-    const actionState = await this.readExperimentActionState(record.sessionId, experimentId, record.ownerId);
-
-    const experimentScope = record.projectId && this.experiments
-      ? await this.experiments.scope(record.projectId, record.ownerId, lessonIndex) : undefined;
-    const experimentBlock: TutorReplyBlock = {
-      kind: 'optics_experiment',
-      // Stable within a frozen tutor session: retries/reconnects must not
-      // create a second experiment identity that the action endpoint cannot
-      // authorize.
-      experimentId,
-      title: isScattering ? '介质微粒散射微观动态课件' : '光的单缝衍射微观动态实验课件',
-      summary: isScattering
-        ? '调节微粒半径 r 与入射波长 λ，动态观察 Rayleigh (r ≪ λ) 到 Mie 散射的波长与角分布转变。'
-        : '实时调节狭缝宽度 a、光波长 λ 及光屏距离 D，观测中央明纹展宽与连续光强分布 I(θ) 变化。',
-      initialMode,
-      specVersion: '1.0.0',
-      objectiveId: isScattering ? 'optics.wave.scattering' : 'optics.wave.diffraction',
-      sessionIndex: lessonIndex,
-      // The current student surface persists only these three actions. Do not
-      // advertise parameter/evidence actions until their owner contracts exist.
-      allowedActions: experimentScope ? ['submit_prediction', 'run', 'record_observation'] : [],
-      ...(experimentScope ? { scope: experimentScope } : {}),
-      predictionGate: {
-        required: true,
-        submitted: actionState.has('submit_prediction'),
-      },
-    };
-
-    return [experimentBlock];
-  }
-
-  /**
    * 跨阶段双导师协诊：在实践阶段检测到物理概念归因或操作困惑时，
    * 动态从冻结团队快照解析 concept 导师，挂载 aside 旁白块。
    */
@@ -1283,11 +1221,11 @@ export class TutorService {
     if (this.usesSeededMemory) {
       return this.getOrCreateSession(projectId, ownerId, explorationId);
     }
-    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : `session-${projectId}`;
+    const sessionId = projectId === null ? `exploration-${explorationId ?? ownerId}` : await this.store.projectSessionId(projectId);
     let existing = await this.store.findById(sessionId);
     if (existing !== null) {
       assertOwnedBy(existing, ownerId);
-      if (projectId !== null && existing.turns.length === 0) {
+      if (existing.turns.length === 0) {
         existing = await this.ensureOpeningTurn(existing, projectId, ownerId);
       }
       return this.hydrate(existing);
@@ -1324,9 +1262,7 @@ export class TutorService {
       lastSeq: 0,
       turns: [],
     };
-    if (projectId !== null) {
-      snapshot = await this.ensureOpeningTurn(snapshot, projectId, ownerId);
-    }
+    snapshot = await this.ensureOpeningTurn(snapshot, projectId, ownerId);
     const record = this.hydrate(snapshot);
     await this.commitAudit({
       sessionId: record.sessionId,
@@ -1339,62 +1275,13 @@ export class TutorService {
   }
 
   private async ensureOpeningTurn(
-    snapshot: TutorSessionSnapshot,
-    projectId: string,
-    ownerId: string,
+    snapshot: TutorSessionSnapshot, projectId: string | null, ownerId: string,
   ): Promise<TutorSessionSnapshot> {
-    if (snapshot.turns.length > 0) return snapshot;
-    let projectContext: TutorProjectContext | null = null;
-    try {
-      projectContext = await this.getProjectContext(projectId, ownerId);
-    } catch {
-      return snapshot;
-    }
-    if (!projectContext || !projectContext.project) return snapshot;
-
-    const openingBlocks = buildProjectOpeningBlocks(projectContext);
-    if (openingBlocks.length === 0 || !projectContext.team) return snapshot;
-    const leaderName = projectContext.team.assistantName;
-    const leaderId = projectContext.team.assistantId;
-    const leaderAvatar = projectContext.team.assistantAvatar ?? undefined;
-
-    const openingTurn: TutorTurnRecord = {
-      turnId: `${snapshot.sessionId}:assistant:1`,
-      role: 'assistant',
-      seq: 1,
-      createdAt: new Date().toISOString(),
-      stageBefore: projectContext.project.stage,
-      stageAfter: projectContext.project.stage,
-      pedagogicMove: 'hint',
-      hintLevel: 1,
-      expectedEvidence: '提出当前问题或已有探究尝试',
-      promptVersion: this.contextReader.partner.promptVersion,
-      evidenceRef: null,
-      modality: 'text',
-      author: {
-        id: leaderId,
-        name: leaderName,
-        role: 'leader',
-        avatar: leaderAvatar,
-      },
-      blocks: openingBlocks,
-    };
-
-    try {
-      await this.store.appendTurns({
-        sessionId: snapshot.sessionId,
-        expectedLastSeq: 0,
-        newLastSeq: 1,
-        turns: [openingTurn],
-      });
-      return {
-        ...snapshot,
-        lastSeq: 1,
-        turns: [openingTurn],
-      };
-    } catch {
-      return snapshot;
-    }
+    if (snapshot.turns.length) return snapshot;
+    const context = projectId === null
+      ? await this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, snapshot.explorationId ?? undefined))
+      : await this.getProjectContext(projectId, ownerId);
+    return context ? persistTutorOpening(this.store, snapshot, context, this.contextReader.partner.promptVersion) : snapshot;
   }
 
   /**
@@ -1419,6 +1306,16 @@ export class TutorService {
     if (snapshot === null) throw new NotFoundException('会话不存在');
     assertOwnedBy(snapshot, ownerId);
     return this.hydrate(snapshot);
+  }
+
+  /** Existing owner history remains readable while teaching configuration awaits recovery. */
+  async getProjectConversationHistory(projectId: string, ownerId: string): Promise<GetTutorSessionResponse | null> {
+    const project = await this.learningStore?.findProject(projectId);
+    if (!project || project.studentId !== ownerId) throw new ForbiddenException('无权访问该项目');
+    const snapshot = await this.store.findByProject(projectId);
+    if (!snapshot) return null;
+    assertOwnedBy(snapshot, ownerId);
+    return this.toSessionResponse(this.hydrate(snapshot));
   }
   /** Read existing project session counts without creating empty sessions. */
   async getProjectSessionCounts(
@@ -1681,15 +1578,21 @@ export class TutorService {
     const turnCount = record.turns.filter((turn) => turn.role === 'student').length;
     await this.domainWriter.initialize();
     const teaching = record.projectId === null ? null : await this.resolveTeaching(record.projectId, request.actorId);
+    const handoff = record.projectId === null
+      ? await this.explorationHandoff(request.actorId, await this.loadExploration(request.actorId, record.explorationId ?? undefined)) : null;
+    const runtimeRole = teaching?.role ?? handoff?.role;
     const projectContext = record.projectId === null ? null : await this.getProjectContext(record.projectId, request.actorId, false, undefined, teaching);
     const liveProject = projectContext?.project ?? null;
     if (record.projectId !== null && this.learningStore !== undefined && !liveProject) throw new NotFoundException('项目不存在');
-    const projectTitle = liveProject?.title ?? EXPLORATION_CONTEXT.title;
+    const projectTitle = liveProject?.title ?? handoff?.exploration.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     // The same frozen lesson route drives the shell, prompt and execution identity.
-    const assistantAuthor = await this.resolveTurnAuthor(record, projectStage, teaching);
+    const assistantAuthor = handoff ? { id: handoff.team.assistantId, name: handoff.team.assistantName, role: 'leader',
+      ...(handoff.team.assistantAvatar ? { avatar: handoff.team.assistantAvatar } : {}) }
+      : await this.resolveTurnAuthor(record, projectStage, teaching);
     const conversationAssistantId = assistantAuthor.id;
     const knowledgeAccess = await resolveTutorKnowledgeAccess({ teaching, studentId: request.actorId, assistantId: conversationAssistantId,
+      unconfirmedTemplate: Boolean(handoff?.exploration.templateVersionId),
       projectId: record.projectId, templateVersionId: liveProject?.templateVersionId, plans: this.learningStore, bindings: this.templateBindings, ima: this.imaSettings,
       authorizeManagedTool: async id => {
         const current = await this.platformRegistry?.getAssistantRuntime(conversationAssistantId);
@@ -1705,8 +1608,8 @@ export class TutorService {
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
     const partner = { ...basePartner, id: conversationAssistantId };
     const currentRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAssistantRuntime(conversationAssistantId);
-    const effectiveRuntime = teaching && currentRuntime && this.platformRegistry
-      ? freezeTutorRuntime(currentRuntime, teaching.role, this.platformRegistry.isModelAvailable(teaching.role.modelByPurpose.dialogue!))
+    const effectiveRuntime = runtimeRole && currentRuntime && this.platformRegistry
+      ? freezeTutorRuntime(currentRuntime, runtimeRole, this.platformRegistry.isModelAvailable(runtimeRole.modelByPurpose.dialogue!))
       : currentRuntime;
     if (effectiveRuntime !== null) {
       if (effectiveRuntime.agent.id !== conversationAssistantId) {
@@ -1744,6 +1647,7 @@ export class TutorService {
       }),
     });
     contextPacket.partner = partner;
+    if (teaching) contextPacket.lessonProgram = projectTutorLessonProgram(teaching);
 
     let knowledgeTools: TutorTurnInput['knowledgeTools'];
     let knowledgeState: string | undefined;
@@ -1794,7 +1698,7 @@ export class TutorService {
     // are intentionally fail-closed and never expose student content.
     let teamRunId: string | null = null;
     const leaderAssistantId = record.projectId === null
-      ? 'qitu-learning-partner'
+      ? handoff?.team.assistantId ?? 'qitu-intake-assistant'
       : teaching?.bundle.teamVersion.leaderAssistantId ?? projectContext?.team?.assistantId ?? conversationAssistantId;
     let teamRunLeaderId = runtimeAgentIdsFor(leaderAssistantId)[0] ?? leaderAssistantId;
     if (this.teamRuntime !== undefined) {
@@ -1810,16 +1714,25 @@ export class TutorService {
             projectId: record.projectId,
             tutorSessionId: record.sessionId,
             trigger: 'tutor.turn',
-            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null, assistantId: conversationAssistantId },
+            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null },
             idempotencyKey: `tutor-team-run:${record.sessionId}:${request.idempotencyKey}`,
           },
         );
         teamRunId = typeof run.id === 'string' ? run.id : null;
         const resolvedLeader = (run as { leaderAgentId?: unknown }).leaderAgentId;
         if (typeof resolvedLeader === 'string' && resolvedLeader.trim()) teamRunLeaderId = resolvedLeader;
-      } catch {
-        // Existing Tutor behavior must not regress because Team Runtime is
-        // being rolled out independently from the conversation path.
+      } catch (failure) {
+        // Keep the student conversation available, but make the optional
+        // runtime failure observable. Never log student-authored content.
+        const response = typeof (failure as { getResponse?: () => unknown })?.getResponse === 'function'
+          ? (failure as { getResponse: () => unknown }).getResponse()
+          : null;
+        const code = response && typeof response === 'object' && typeof (response as { code?: unknown }).code === 'string'
+          ? (response as { code: string }).code
+          : failure instanceof Error ? failure.name : 'UNKNOWN';
+        this.logger.warn(
+          `Team Runtime 启动失败：leader=${teamRunLeaderId} session=${record.sessionId} code=${code}`,
+        );
       }
     }
     const lessonActivities = await prepareTutorLessonActivities({ teaching, runtime: effectiveRuntime, projectId: record.projectId,
@@ -1852,9 +1765,9 @@ export class TutorService {
       : null,
       effectiveRuntime === null ? undefined : {
         assistantId: conversationAssistantId, configurationHash: hashRequest(effectiveRuntime),
-        ...(teaching && this.platformRegistry ? { resolveRuntime: async () => freezeTutorRuntime(
-          await this.platformRegistry!.getAssistantRuntime(conversationAssistantId), teaching.role,
-          this.platformRegistry!.isModelAvailable(teaching.role.modelByPurpose.dialogue!),
+        ...(runtimeRole && this.platformRegistry ? { resolveRuntime: async () => freezeTutorRuntime(
+          await this.platformRegistry!.getAssistantRuntime(conversationAssistantId), runtimeRole,
+          this.platformRegistry!.isModelAvailable(runtimeRole.modelByPurpose.dialogue!),
         ) } : {}),
       },
     ) : undefined;
@@ -1991,17 +1904,6 @@ export class TutorService {
       events.push({ seq: ++nextSeq, event: { type: 'block', block } });
     }
 
-    // 动态物理微观仿真与实验课件下发
-    const experimentBlocks = teaching ? [] : await this.buildExperimentBlocks(
-      record,
-      request.content ?? request.optionLabel,
-    );
-    for (const block of experimentBlocks) {
-      assistantBlocks = [...assistantBlocks, block];
-      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
-    }
-
-    // 探索会话：意图记录达到澄清门槛后，由「启途智学助手」附上匹配并复核过的模板卡片。
     // 学生不点击就不创建项目；任何确认仍只经过 Projects 的 confirm-intent 链路。
     const ideaCards = record.projectId === null
       ? await this.buildIdeaCards(record, request.content ?? request.optionLabel)
@@ -2089,30 +1991,35 @@ export class TutorService {
           },
           idempotencyKey: `tutor-team-event:${record.sessionId}:${assistantSeq}`,
         });
+      } catch (failure) {
+        // A diagnostic trace is useful but must never suppress delegation.
+        this.logger.warn(`Team Runtime trace 写入失败：session=${record.sessionId} code=${teamFailureCode(failure)}`);
+      }
+      try {
         const delegationInput = buildTeamDelegationInput(record, request, studentTurn.turnId, projectStage);
         const leaderActor = { id: request.actorId, email: '', displayName: '', role: 'student' as const };
         const tasks = record.projectId === null
-          ? [
-              {
-                recipientAgentId: 'interest-confirmation',
-                taskType: 'interest.confirm',
-                input: {
-                  studentId: request.actorId,
-                  sessionId: record.sessionId,
-                  turnCount: delegationInput.turnCount,
-                  projectStage,
-                  pedagogicMove: request.pedagogicMove ?? null,
-                  // Never persist raw turns in Team Runtime. The child Agent
-                  // receives only an approved metadata marker and evidence ref.
-                  conversationSummary: delegationInput.summary,
-                  evidenceRefs: delegationInput.evidenceRefs,
-                },
+          ? [{
+              recipientAgentId: 'interest-confirmation',
+              taskType: 'interest.confirm',
+              input: {
+                studentId: request.actorId,
+                sessionId: record.sessionId,
+                turnCount: delegationInput.turnCount,
+                projectStage,
+                pedagogicMove: request.pedagogicMove ?? null,
+                // Never persist raw turns in Team Runtime. The child Agent
+                // receives only an approved metadata marker and evidence ref.
+                conversationSummary: delegationInput.summary,
+                evidenceRefs: delegationInput.evidenceRefs,
               },
-            ]
+            }]
           : PBL_PLAN_STAGES.has(projectStage)
-            ? [
-              {
-                recipientAgentId: 'pbl-orchestrator',
+            ? [{
+                // Delegate to the actual team member selected for this lesson.
+                // The obsolete global pbl-orchestrator is disabled and has no
+                // route from a frozen project leader.
+                recipientAgentId: runtimeAgentIdsFor(conversationAssistantId)[0] ?? conversationAssistantId,
                 taskType: 'pbl.plan',
                 input: {
                   studentId: request.actorId,
@@ -2123,8 +2030,7 @@ export class TutorService {
                   currentStage: projectStage,
                   evidenceRefs: delegationInput.evidenceRefs,
                 },
-              },
-            ]
+              }]
             : [];
         for (const task of tasks) {
           await this.teamRuntime.delegateIfAvailable(leaderActor, teamRunId, {
@@ -2138,9 +2044,8 @@ export class TutorService {
             idempotencyKey: `tutor-team-task:${record.sessionId}:${assistantSeq}:${task.taskType}`,
           });
         }
-      } catch {
-        // Outbox failure is observable separately; do not turn a successful
-        // student conversation into HTTP 500 during a partial rollout.
+      } catch (failure) {
+        this.logger.warn(`Team Runtime 委派失败：session=${record.sessionId} code=${teamFailureCode(failure)}`);
       }
     }
     if (escalatedNow) {
@@ -2361,6 +2266,21 @@ function buildTeamDelegationInput(
     evidenceRefs: [`learning_interaction:${studentTurnId}`],
     turnCount: record.turns.filter((turn) => turn.role === 'student').length,
   };
+}
+
+function teamFailureCode(failure: unknown): string {
+  if (typeof failure === 'object' && failure !== null) {
+    const getResponse = (failure as { getResponse?: unknown }).getResponse;
+    if (typeof getResponse === 'function') {
+      const response = getResponse.call(failure) as { code?: unknown } | null;
+      if (response && typeof response.code === 'string' && response.code.length > 0) {
+        return response.code;
+      }
+    }
+    const code = (failure as { code?: unknown }).code;
+    if (typeof code === 'string' && code.length > 0) return code;
+  }
+  return failure instanceof Error ? failure.name : 'UNKNOWN';
 }
 
 export function makeIdeaCard(template: Awaited<ReturnType<TemplatesService['listPublishedTemplates']>>[number]): TutorIdeaCard | null {

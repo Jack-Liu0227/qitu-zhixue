@@ -94,7 +94,8 @@ export interface PblTemplateTeamBinding {
 /**
  * 项目创建时冻结的绑定快照（持久化行，只读）。
  *
- * 不可变性：写入后**永不**原地更新（表上没有 `updated_at`，也没有更新路径）。
+ * 完整的正式快照不可覆盖。历史回填或缺教学摘要的旧快照只允许管理员经明确、
+ * 同版本的修复命令重新确认，旧引用与修复原因保留审计；运行时读取不写入。
  * 之后激活 / 退役绑定只影响新项目，不改写既有快照——这是「冻结版本」保证。
  *
  * `backfilled === true` 表示该行是为历史项目惰性回填的派生快照，而非创建时冻结。
@@ -161,6 +162,17 @@ export interface AdminBindingPreview {
   templateVersionId: string;
   affectedProjects: AdminBindingAffectedProject[];
   activeBinding: PblTemplateTeamBinding | null;
+}
+
+export interface AdminProjectBindingRecovery {
+  projectId: string;
+  state: 'ready' | 'missing' | 'legacy' | 'invalid';
+}
+
+export interface AdminProjectBindingReconfirmation {
+  projectId: string;
+  snapshot: ProjectBindingSnapshot;
+  replayed: boolean;
 }
 
 /**

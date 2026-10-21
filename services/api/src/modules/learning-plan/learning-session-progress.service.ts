@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import type { CompleteLearningSessionResponse, CurrentUser, LearningSessionProgressView, PblTemplateSession } from '@qitu/contracts';
+import { hasLearningSessionCompletion } from '@qitu/contracts';
 import { AccessPolicy } from '../../common/access/access-policy';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
@@ -91,7 +92,7 @@ export class LearningSessionProgressService {
       if (objectiveIds.some((id) => !objectives.has(id))) fail('LEARNING_SESSION_CONTRACT_INVALID', '课时目标不属于当前计划');
       return { session, frozen, objectiveIds };
     });
-    return { bundle, projectId: project.id, sessions, contractReady: sessions.every((entry) => entry.frozen.completionSpec?.version === 'learning-session-completion.v1') };
+    return { bundle, projectId: project.id, sessions, contractReady: sessions.every((entry) => hasLearningSessionCompletion(entry.frozen)) };
   }
 
   private async requirements(actor: CurrentUser, context: ProgressContext, selected: SessionContext, store: LearningPlanStore, refs?: readonly string[]) {
@@ -126,7 +127,15 @@ export class LearningSessionProgressService {
       const matching = evidence[requirement.kind].filter((entry) => entry.scope.projectId === context.projectId
         && entry.scope.planId === plan.id && entry.scope.planRevision === plan.version
         && (requirement.scope === 'project' || entry.scope.learningSessionId === selected.session.id));
-      const distinct = [...new Set(matching.map((entry) => entry.ref))];
+      const qualified = [];
+      for (const proof of matching) {
+        if (spec.version === 'learning-session-completion.v2' && requirement.kind !== 'approved_artifact'
+          && !await this.works.lessonQualityAccepted(actor, proof.scope, proof)) continue;
+        qualified.push(proof);
+      }
+      const distinct = [...new Set(qualified.map((entry) => entry.ref))];
+      if (spec.version === 'learning-session-completion.v2' && qualified.length < requirement.minimumCount
+        && matching.length >= requirement.minimumCount) blockers.push('LESSON_QUALITY_REQUIRED');
       if (distinct.length < requirement.minimumCount) blockers.push(`EVIDENCE_REQUIRED:${requirement.kind}`);
       for (const ref of distinct.slice(0, requirement.minimumCount)) acceptedRefs.add(ref);
     }

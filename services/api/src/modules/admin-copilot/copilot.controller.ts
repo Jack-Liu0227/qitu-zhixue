@@ -1,3 +1,4 @@
+import type { AdminCopilotConfirmationRequest } from '@qitu/contracts';
 import { Body, Controller, Headers, Post, Get } from '@nestjs/common';
 import { AuthService } from '../identity-auth/auth.service';
 import { requireRole } from '../../common/access/request-auth';
@@ -13,6 +14,13 @@ export class CopilotController {
   async capabilities(@Headers('cookie') cookie: string | undefined) {
     const actor = requireRole(this.auth, cookie, 'admin', '管家配置仅管理员可用');
     return { data: await this.copilot.capabilities(actor) };
+  }
+
+  @Post('confirmations')
+  async confirm(@Headers('cookie') cookie: string | undefined, @Body() body: AdminCopilotConfirmationRequest) {
+    const actor = requireRole(this.auth, cookie, 'admin', '仅管理员可以确认删除');
+    try { return { data: await this.copilot.confirm(actor, body) }; }
+    catch (error) { throwHttpForIdempotencyError(error); }
   }
 
   @Post('turns')

@@ -14,7 +14,8 @@ import {
   type Database,
   readTutorProjectionEvidence,
 } from '@qitu/database';
-import { assertRuntimeSkillBudget, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateTutorExpressionProjection } from '@qitu/contracts';
+import { MODEL_USAGE_SLOTS, tutorExpressionInstructions, validateTutorExpressionProjection } from '@qitu/contracts';
+import { loadRuntimeSkillPackage } from '@qitu/model-runtime';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -28,8 +29,6 @@ export { TeamAgentExecutionError } from './team-runtime-route';
 const MAX_GLOBAL_POLICY_CHARS = 8_000;
 const MAX_AGENT_DEFINITION_CHARS = 8_000;
 const MAX_ROLE_CHARS = 4_000;
-// Read admission metadata before applying the shared skill content/prompt budgets.
-const MAX_SKILL_FILE_CHARS = 262_144;
 const MAX_INPUT_CHARS = 32_000;
 const MAX_OUTPUT_CHARS = 64_000;
 const DEFAULT_MAX_TOKENS = 1_200;
@@ -83,7 +82,6 @@ export function buildTeamAgentPrompt(input: {
   constraints?: readonly string[];
   outputSchema?: Record<string, unknown> | null;
 }): { system: string; user: string } {
-  assertRuntimeSkillBudget(input.skills);
   const role = bounded(input.agent.roleDefinition, MAX_ROLE_CHARS);
   const definition = bounded(input.agent.agentDefinition, MAX_AGENT_DEFINITION_CHARS);
   const policy = bounded(input.globalPolicy, MAX_GLOBAL_POLICY_CHARS);
@@ -125,18 +123,58 @@ export function parseStructuredAgentOutput(
   if (typeof text !== 'string' || text.length === 0 || text.length > MAX_OUTPUT_CHARS) {
     throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_INVALID', '模型输出为空或超过大小限制');
   }
-  const candidate = text.trim().replace(/^```(?:json)?\s*/iu, '').replace(/\s*```$/u, '').trim();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(candidate);
-  } catch {
-    throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_JSON_INVALID', '模型未返回合法 JSON');
+  let parsed: Record<string, unknown> | null = null;
+  let sawJson = false;
+  for (const candidate of jsonObjectCandidates(text)) {
+    try {
+      const value: unknown = JSON.parse(candidate);
+      sawJson = true;
+      if (isRecord(value) && !Array.isArray(value)) {
+        parsed = value;
+        break;
+      }
+    } catch {
+      // Try the next balanced object when a model wrapped JSON in prose.
+    }
   }
-  if (!isRecord(parsed) || Array.isArray(parsed)) {
-    throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_OBJECT_REQUIRED', '模型输出必须是 JSON object');
+  if (parsed === null) {
+    throw new TeamAgentExecutionError(
+      sawJson ? 'TEAM_AGENT_OUTPUT_OBJECT_REQUIRED' : 'TEAM_AGENT_OUTPUT_JSON_INVALID',
+      sawJson ? '模型输出必须是 JSON object' : '模型未返回合法 JSON',
+    );
   }
   if (schema !== undefined && schema !== null) validateJsonSchema(parsed, schema);
   return parsed;
+}
+
+function jsonObjectCandidates(text: string): string[] {
+  const normalized = text.trim().replace(/^```(?:json)?\s*/iu, '').replace(/\s*```$/u, '').trim();
+  const candidates = [normalized];
+  for (let start = 0; start < normalized.length; start += 1) {
+    if (normalized[start] !== '{') continue;
+    let depth = 0;
+    let quoted = false;
+    let escaped = false;
+    for (let index = start; index < normalized.length; index += 1) {
+      const character = normalized[index];
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '"') quoted = false;
+        continue;
+      }
+      if (character === '"') quoted = true;
+      else if (character === '{') depth += 1;
+      else if (character === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          candidates.push(normalized.slice(start, index + 1));
+          break;
+        }
+      }
+    }
+  }
+  return candidates;
 }
 
 async function executeTeamAgentJob(
@@ -161,7 +199,7 @@ async function executeTeamAgentJob(
     .where(eq(agentConfigs.id, job.message.senderAgentId)).limit(1);
   if (!sender?.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
   const selection = await resolveTeamAgentModel(db, agent);
-  const skills = await loadAgentSkills(db, agent.id, options.skillRoots, options.env);
+  const skills = await loadAgentSkills(db, agent.id, options.skillRoots, options.env, 'structured_candidate');
   const { authorization: _authorization, ...taskInput } = task.input;
   const projectionType = task.input.projectionType;
   const expression = job.message.messageType === 'projection.request' && task.input.sourceTopic === 'tutor.turn.completed'
@@ -201,12 +239,66 @@ async function executeTeamAgentJob(
     }
     throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CALL_FAILED');
   }
-  const output = parseStructuredAgentOutput(result.text, route.outputSchema);
+  const output = await parseOrRepairStructuredOutput(runtime, {
+    initialText: result.text,
+    input: {
+      usageId: `agent.${agent.id}`,
+      providerId: selection.providerId,
+      modelId: selection.modelId,
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+      maxTokens: options.maxTokens ?? parsePositiveInt(options.env?.QITU_TEAM_RUNTIME_MAX_TOKENS) ?? DEFAULT_MAX_TOKENS,
+      timeoutMs: options.timeoutMs ?? parsePositiveInt(options.env?.QITU_TEAM_RUNTIME_TIMEOUT_MS) ?? DEFAULT_TIMEOUT_MS,
+      requestId: `${job.message.runId}:${task.id}:${job.message.attempts}:repair`,
+    },
+    schema: route.outputSchema,
+  });
   if (!expression) return output;
   // Do not persist arbitrary model echoes of private input, even in a rejected candidate.
   const policyError = validateTutorExpressionProjection(expression.manifest.projectionType, output, expression);
   return { result: policyError ? null : output, analysisManifest: expression.manifest,
     ...(policyError ? { analysisErrorCode: policyError } : {}) };
+}
+
+async function parseOrRepairStructuredOutput(
+  runtime: ReturnType<typeof createModelRuntime>,
+  input: {
+    initialText: string;
+    input: Parameters<ReturnType<typeof createModelRuntime>['complete']>[0];
+    schema?: Record<string, unknown> | null;
+  },
+): Promise<Record<string, unknown>> {
+  try {
+    return parseStructuredAgentOutput(input.initialText, input.schema);
+  } catch (error) {
+    if (!(error instanceof TeamAgentExecutionError)
+      || !['TEAM_AGENT_OUTPUT_JSON_INVALID', 'TEAM_AGENT_OUTPUT_OBJECT_REQUIRED', 'TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH'].includes(error.code)) {
+      throw error;
+    }
+  }
+
+  const schemaText = input.schema ? boundedJson(input.schema, MAX_INPUT_CHARS) : '{"type":"object"}';
+  const repaired = await runtime.complete({
+    ...input.input,
+    messages: [
+      {
+        role: 'system',
+        content: [
+          '你是结构化输出转换器。',
+          '只输出一个符合给定 JSON Schema 的 JSON object。',
+          '不得添加解释、Markdown、代码围栏、前后缀或任何额外字段。',
+          `输出 JSON Schema：${schemaText}`,
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: `请仅修复格式并保留原有语义：\n${bounded(input.initialText, MAX_OUTPUT_CHARS)}`,
+      },
+    ],
+  });
+  return parseStructuredAgentOutput(repaired.text, input.schema);
 }
 
 /** Fresh database reads keep worker routing in sync with administrator changes. */
@@ -288,6 +380,7 @@ export async function loadAgentSkills(
   agentId: string,
   roots?: readonly string[],
   env: NodeJS.ProcessEnv = process.env,
+  executionScope?: 'structured_candidate',
 ) {
   const bindings = await db.select({ skillId: agentSkillBindings.skillId })
     .from(agentSkillBindings)
@@ -296,10 +389,9 @@ export async function loadAgentSkills(
   const skills = bindings.flatMap(({ skillId }) => {
     const path = findSkillFile(skillId, skillRoots);
     if (!path) return [];
-    const content = readSkillContent(path, skillId);
+    const content = readSkillContent(path, skillId, executionScope);
     return content === null ? [] : [{ id: skillId, content }];
   });
-  assertRuntimeSkillBudget(skills);
   return skills;
 }
 
@@ -331,10 +423,11 @@ function findSkillFile(id: string, roots: readonly string[]): string | null {
   return null;
 }
 
-function readBounded(path: string, max: number): string {
+function readBounded(path: string, max?: number): string {
   try {
     if (!existsSync(path)) return '';
-    return readFileSync(path, 'utf8').slice(0, max);
+    const content = readFileSync(path, 'utf8');
+    return max === undefined ? content : content.slice(0, max);
   } catch (error) {
     if (getFsErrorCode(error) !== 'ENOENT') {
       console.warn(`[qitu-workers] skill or policy read failed path=${path}`);
@@ -343,12 +436,15 @@ function readBounded(path: string, max: number): string {
   }
 }
 
-function readSkillContent(path: string, id: string): string | null {
-  const raw = readBounded(path, MAX_SKILL_FILE_CHARS + 1);
-  const parsed = parseRuntimeSkill(id, raw, createHash('sha256').update(raw.replace(/\r\n/g, '\n')).digest('hex'));
+function readSkillContent(path: string, id: string, executionScope?: 'structured_candidate'): string | null {
+  const parsed = loadRuntimeSkillPackage(dirname(dirname(path)), id);
   if (!parsed.ready || parsed.runtime !== 'teaching') return null;
-  // This executor currently produces candidates only. A skill cannot silently add tools.
-  if (parsed.metadata.requiredToolIds?.trim()) throw new TeamAgentExecutionError('TEAM_AGENT_TOOL_NOT_CONFIGURED');
+  // Interactive skills remain authorized in Tutor. They do not belong in this
+  // task's JSON-only prompt, which has no domain tool executor or lesson scope.
+  if (parsed.metadata.requiredToolIds?.trim()) {
+    if (executionScope === 'structured_candidate') return null;
+    throw new TeamAgentExecutionError('TEAM_AGENT_TOOL_NOT_CONFIGURED');
+  }
   return parsed.content;
 }
 

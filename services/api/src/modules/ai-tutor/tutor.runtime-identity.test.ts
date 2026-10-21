@@ -51,11 +51,18 @@ function fixture(frozen = false) {
     backfilled: false,
   }), getFrozenTeachingBundle: async () => teaching.teaching } as unknown as TemplateBindingService;
   const traces: Array<Parameters<TeamRuntimeService['recordEvent']>[0]> = [];
+  const delegations: Array<Parameters<TeamRuntimeService['delegateIfAvailable']>[2]> = [];
   let starts = 0;
   const runtime = {
-    startRun: async () => { starts += 1; return { id: 'synthetic-run' }; },
+    startRun: async () => {
+      starts += 1;
+      return { id: 'synthetic-run', leaderAgentId: teaching.teaching.teamVersion.leaderAssistantId };
+    },
     recordEvent: async (input: Parameters<TeamRuntimeService['recordEvent']>[0]) => { traces.push(input); },
-    delegateIfAvailable: async () => null,
+    delegateIfAvailable: async (_actor: unknown, _runId: string, input: Parameters<TeamRuntimeService['delegateIfAvailable']>[2]) => {
+      delegations.push(input);
+      return null;
+    },
   } as unknown as TeamRuntimeService;
   const calls: Array<{ usage: string; request: ModelCompletionRequest; selection?: ModelRuntimeModelSelection }> = [];
   const gateway = { complete: async (usage: string, request: ModelCompletionRequest, selection?: ModelRuntimeModelSelection) => {
@@ -83,11 +90,14 @@ function fixture(frozen = false) {
   const run = async (key = 'synthetic-turn') => {
     for await (const _event of tutor.runTurn(session, { content: 'Compare predictions', idempotencyKey: key, actorId: project.studentId })) { /* drain */ }
   };
-  return { ...h, tutor, session, run, calls, traces, phases, team, teaching, starts: () => starts };
+  return { ...h, tutor, session, run, calls, traces, delegations, phases, team, teaching, starts: () => starts };
 }
 
 test('frozen phase identity drives real Tutor + SDK + gateway model, prompt, skills, tools, author and trace', async () => {
   const h = fixture();
+  // Make the team leader distinct from the lesson member so this assertion
+  // proves the project turn is delegated to the configured team member.
+  h.teaching.teaching.teamVersion.leaderAssistantId = 'qitu-intake-assistant';
   // Disable the unrelated default to prove SDK no longer re-enters its route.
   h.configs[0]!.enabled = false;
   await h.run();
@@ -106,10 +116,51 @@ test('frozen phase identity drives real Tutor + SDK + gateway model, prompt, ski
   assert.equal(h.traces[0]?.payload?.modelProviderId, 'chosen-provider');
   assert.deepEqual(h.traces[0]?.payload?.skillIds, ['tutor-guided-learning']);
   assert.deepEqual(h.traces[0]?.payload?.toolIds, ['tutor.context_packet']);
+  assert.deepEqual(h.delegations.map((entry) => ({
+    senderAgentId: entry.senderAgentId,
+    recipientAgentId: entry.recipientAgentId,
+    taskType: entry.taskType,
+  })), [{
+    senderAgentId: 'qitu-intake-assistant',
+    recipientAgentId: h.assistant.id,
+    taskType: 'pbl.plan',
+  }]);
   const lastSeq = h.session.lastSeq;
   await h.run();
   assert.equal(h.calls.length, 1, 'idempotent replay cannot invoke another assistant/model');
   assert.equal(h.session.lastSeq, lastSeq);
+});
+
+test('recommended exploration uses the exact published team leader for shell, SDK, model and author without creating a project', async () => {
+  const h = fixture(true);
+  const exploration = { id: 'opaque-exploration', templateVersionId: 'opaque-template-version', source: 'recommended' };
+  h.session.projectId = null;
+  h.session.explorationId = exploration.id;
+  h.teaching.teaching.teamVersion.teamVersionId = h.team.id;
+  Object.assign(h.tutor, {
+    projects: { getExploration: async (owner: string, id: string) => {
+      assert.equal(owner, 'synthetic-owner'); assert.equal(id, exploration.id); return exploration;
+    } },
+    templateBindings: { getExplorationBinding: async (owner: string, id: string) => {
+      assert.equal(owner, 'synthetic-owner'); assert.equal(id, exploration.templateVersionId);
+      return { title: 'Actual chosen course', content: {}, binding: { teamVersionId: h.team.id }, bundle: h.teaching.teaching };
+    } },
+  });
+  const context = await h.tutor.getExplorationProjectContext(exploration.id, 'synthetic-owner');
+  assert.equal(context.project, null);
+  assert.equal(context.exploration?.handoff, 'ready');
+  assert.equal(context.team?.assistantId, h.assistant.id);
+  await h.run('recommended-turn');
+  const dialogue = h.calls.filter(call => call.usage === 'agent.model');
+  assert.equal(dialogue.length, 1);
+  assert.deepEqual(dialogue[0]?.selection, { providerId: 'chosen-provider', modelId: 'same-model-name' });
+  assert.match(String(dialogue[0]?.request.messages[0]?.content), /FROZEN_TEACHING_INSTRUCTION/);
+  assert.equal(h.session.turns.find(turn => turn.role === 'assistant')?.author?.id, context.team?.assistantId);
+  assert.equal(h.session.projectId, null);
+  assert.equal(dialogue[0]?.request.tools, undefined, 'project knowledge is not granted by template preview');
+  h.assistant.enabled = false;
+  await assert.rejects(h.run('recommended-revoked'), ConflictException);
+  assert.equal(h.calls.filter(call => call.usage === 'agent.model').length, 1);
 });
 
 test('missing phase or assigned non-member refuses the turn before any model or runtime task', async () => {
@@ -176,6 +227,22 @@ test('frozen skill/tool ceilings survive additions while current revocation remo
   await h.run('capabilities-revoked');
   assert.deepEqual(h.traces[1]?.payload?.skillIds, []);
   assert.deepEqual(h.traces[1]?.payload?.toolIds, []);
+});
+
+test('actual SDK model request contains the complete current frozen lesson program and changes with the lesson', async () => {
+  const h = fixture(true);
+  await h.run('lesson-1-program');
+  const first = String(h.calls[0]?.request.messages[0]?.content);
+  assert.match(first, /FROZEN_LESSON_GUIDANCE_1/);
+  assert.match(first, /FROZEN_LESSON_EVIDENCE_1/);
+  assert.match(first, /"minutes":30/);
+  assert.match(first, /"planRevision":7/);
+  h.teaching.completed.add('plan-frozen:lesson-1');
+  await h.run('lesson-2-program');
+  const next = String(h.calls[1]?.request.messages[0]?.content);
+  assert.match(next, /FROZEN_LESSON_GUIDANCE_2/);
+  assert.match(next, /FROZEN_LESSON_EVIDENCE_2/);
+  assert.match(next, /plan-frozen:lesson-2/);
 });
 
 test('frozen skill mismatch, model revocation and missing bundle refuse requests before model invocation', async () => {

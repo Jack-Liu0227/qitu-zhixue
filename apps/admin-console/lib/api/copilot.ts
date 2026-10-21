@@ -1,4 +1,4 @@
-import type { AdminCopilotCapabilities, AdminCopilotRequest, AdminCopilotResponse } from '@qitu/contracts';
+import type { AdminCopilotConfirmationRequest, AdminCopilotCapabilities, AdminCopilotRequest, AdminCopilotResponse } from '@qitu/contracts';
 import { adminEnvelopeRequest } from './types';
 
 export function fetchCopilotCapabilities() {
@@ -10,5 +10,11 @@ export function fetchCopilotCapabilities() {
 export function runCopilotTurn(request: AdminCopilotRequest, key: string) {
   return adminEnvelopeRequest<AdminCopilotResponse>({
     path: '/api/v1/admin/copilot/turns', method: 'POST', body: request, idempotencyKey: key,
+  });
+}
+
+export function confirmCopilotTurn(request: AdminCopilotConfirmationRequest) {
+  return adminEnvelopeRequest<AdminCopilotResponse>({
+    path: '/api/v1/admin/copilot/confirmations', method: 'POST', body: request,
   });
 }

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { OPTICS_16_COMPLETION_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import type { CurrentUser } from '@qitu/contracts';
 import type { AccessPolicy } from '../../common/access/access-policy';
 import type { AuditWriter } from '../../common/audit/audit.service';
@@ -52,16 +52,17 @@ export const TEACHER = actor('teacher', 'fullflow-teacher');
 const ADMIN = actor('admin', 'fullflow-admin');
 
 class FixtureDirectory extends WorksDirectory {
-  async isMentorOf(mentorId: string, studentId: string) { return mentorId === TEACHER.id && studentId === STUDENT.id; }
+  currentMentorId = TEACHER.id;
+  async isMentorOf(mentorId: string, studentId: string) { return mentorId === this.currentMentorId && studentId === STUDENT.id; }
   async isGuardianOf() { return false; }
   async studentsOfMentor(id: string) { return id === TEACHER.id ? [STUDENT.id] : []; }
   async childrenOfParent() { return []; }
-  async mentorOfStudent(id: string) { return id === STUDENT.id ? TEACHER.id : null; }
+  async mentorOfStudent(id: string) { return id === STUDENT.id ? this.currentMentorId : null; }
   async schoolOfStudent() { return null; }
 }
 
 /** Only storage, authorization directory and model catalog are synthetic. All learning decisions use production owners. */
-export async function fullflowHarness() {
+export async function fullflowHarness(qualityReview = false) {
   const store = new InMemoryLearningPlanStore();
   const templates = new InMemoryTemplateStore();
   const bindingStore = new InMemoryTemplateBindingStore();
@@ -74,7 +75,7 @@ export async function fullflowHarness() {
   const directory = new FixtureDirectory();
   const access = { canReadStudent: async (user: CurrentUser, student: string) =>
     user.role === 'student' && user.id === student || user.role === 'teacher' && await directory.isMentorOf(user.id, student) } as AccessPolicy;
-  const fixture = opticsTeachingFixture(OPTICS_16_COMPLETION_TEMPLATE_SPEC);
+  const fixture = opticsTeachingFixture(qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SPEC : OPTICS_16_COMPLETION_TEMPLATE_SPEC);
   const source = loadTutorRuntimeSource();
   const skill = source.skills.find((entry) => entry.id === 'pbl-dynamic-lesson');
   assert.ok(skill && skill.status === 'ready' && skill.version);
@@ -82,14 +83,24 @@ export async function fullflowHarness() {
   const registry = { isModelAvailable: () => true, getAssistantRuntime: async (id: string) => ({
     agent: { id, enabled: true, roleDefinition: id, agentDefinition: 'Guide investigation using bounded tools.',
       capabilities: ['teach'], skillIds: [skill.id], toolIds: [tool.id] },
-    skills: [skill], tools: [tool], mcpServers: [], policy: source.policy,
+    skills: [skill], tools: [tool], mcpServers: qualityReview ? [{ serverId: 'ima-knowledge',
+      toolIds: ['ima_search_knowledge', 'ima_read_document'] }] : [], policy: source.policy,
   } as unknown as EffectiveAgentRuntime) } as unknown as PlatformRegistryService;
   const catalog = new TeachingBundleCatalog(registry,
     { listAgentModelOptions: () => [{ providerId: 'isolated-provider', modelId: 'isolated-model', available: true }] } as unknown as ModelRegistryService,
-    {} as KnowledgeCenterService, {} as KnowledgeToolCatalogService);
+    { configuration: async () => ({ config: { knowledgeEngines: { fixture: { provider: 'ima', enabled: true,
+      config: { connectionRef: 'ima-legacy', allowedKnowledgeBaseIds: ['synthetic-kb'] } } } } }) } as unknown as KnowledgeCenterService,
+    { list: async () => ({ stale: false, source: 'mcp', tools: ['ima_search_knowledge', 'ima_read_document'].map(name => ({
+      name, inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    })) }) } as unknown as KnowledgeToolCatalogService);
   fixture.draft.skillPins = fixture.draft.roleMap.map(({ roleSlotId }) => ({ roleSlotId, canonicalId: skill.id,
     version: skill.version!, packageDigest: skill.contentHash }));
   fixture.draft.toolIds = fixture.draft.roleMap.map(({ roleSlotId }) => ({ roleSlotId, toolId: tool.id }));
+  if (qualityReview) {
+    fixture.draft.mcpServerIds = ['ima-knowledge']; fixture.draft.knowledgeBaseIds = ['synthetic-kb'];
+    fixture.draft.toolIds = [...fixture.draft.toolIds, ...fixture.draft.roleMap.flatMap(({ roleSlotId }) =>
+      ['ima_search_knowledge', 'ima_read_document'].map(toolId => ({ roleSlotId, toolId })))];
+  }
   bindingStore.seedTeamVersion({ id: 'fullflow-team-v1', teamId: fixture.teamId, version: 1, name: 'Isolated optics team',
     description: 'Synthetic catalog only', workspaceMode: 'shared', sessionMode: 'auto', leaderAssistantId: fixture.leaderAssistantId,
     members: fixture.members, pblSpec: { phases: ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'] },
@@ -97,7 +108,7 @@ export async function fullflowHarness() {
   const governance = new TemplateGovernanceService(templates, new InMemoryTemplateEvidenceSource(), new InMemoryTemplateVerificationStore(), viewer, keys, audit);
   const bindings = new TemplateBindingService(templates, viewer, bindingStore, keys, audit, catalog);
   const boot = await runOpticsTemplateBootstrap({ governance, bindings, templates, bindingStore }, {
-    teamVersionId: 'fullflow-team-v1', actor: ADMIN, pilotReason: 'Isolated full lifecycle behavior test', teachingBundle: fixture.draft,
+    teamVersionId: 'fullflow-team-v1', actor: ADMIN, pilotReason: 'Isolated full lifecycle behavior test', teachingBundle: fixture.draft, qualityReview,
   });
   const mastery = new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   const artifacts = new InMemoryWorksStore();
@@ -130,6 +141,6 @@ export async function fullflowHarness() {
   const teacher = new TeacherService(teacherDirectory, {} as PlatformDataService, undefined,
     new InMemoryTeacherReviewRepository(audit, artifacts), store, works);
   const experiments = new TutorExperimentService(store, bindings, evidence, keys, audit, null, mastery, registry);
-  return { store, templates, bindings, teaching, current, plan, planId, projectId: confirmedProject.id,
+  return { store, templates, bindings, teaching, current, plan, planId, directory, projectId: confirmedProject.id,
     mastery, plans, assessment, progress, lifecycle, teacher, works, artifacts, facts, evidence, learningEvidence, experiments, events, auditLog };
 }

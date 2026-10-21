@@ -1,5 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
+import { serializeTutorLessonProgram } from '@qitu/ai-client';
+import { projectTutorLessonProgram } from './tutor-lesson-program';
 import type { TutorReplyBlock } from '@qitu/contracts';
 import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import { hashRequest } from '../../common/idempotency';
@@ -49,7 +51,7 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function exact(value: Record<string, unknown>, keys: string[]) {
-  if (Object.keys(value).some((key) => !keys.includes(key))) invalid();
+  if (Object.keys(value).some((key) => !keys.includes(key))) invalid(`Only these fields are allowed: ${keys.join(', ')}.`);
 }
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[<>]|javascript:|data:|https?:\/\//iu.test(value)) invalid();
@@ -110,7 +112,7 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
     ?.sessions.find((session) => session.sessionIndex === input.teaching.session.lessonIndex)?.interactiveSpec?.domainTopic ?? 'none';
   channel.tools = [{
     name: LESSON_ACTIVITY_FUNCTION,
-    description: `Propose one activity for ${input.teaching.lesson.title}: ${input.teaching.currentTask?.detail ?? ''}. Scheduled interactive domain: ${scheduledDomain}. Board uses nodes/edges or TeX; optics uses the registered lesson model. Choice questions need evidence_ref values returned by successful source reads; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
+    description: `Frozen lesson program: ${serializeTutorLessonProgram(projectTutorLessonProgram(input.teaching))}. Scheduled interactive domain: ${scheduledDomain}. Follow this lesson's activities and evidence requirements. Board uses nodes/edges or TeX; optics uses the registered lesson model. Choice questions need verified evidence_ref values; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
     inputSchema: LESSON_ACTIVITY_SCHEMA,
     execute: (args) => {
       const result = queue.then(async () => {
@@ -128,7 +130,19 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
         }
         const key = `lesson-activity:${input.scope.tutorSessionId}:${input.idempotencyKey}`;
         let block: TutorReplyBlock;
-        if (candidate.kind === 'board') block = buildActivityBoard(candidate, `board-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`);
+        if (candidate.kind === 'board') {
+          try {
+            block = buildActivityBoard(candidate, `board-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`);
+          } catch (error) {
+            // The runtime hides arbitrary exceptions. Give the model a bounded
+            // protocol correction so an invalid candidate can be repaired.
+            if (!(error instanceof ConflictException)) throw error;
+            return { isError: true, text: 'BOARD_CANDIDATE_INVALID. Nothing was accepted. Retry with only kind, title and steps. '
+              + 'Each step needs a nonempty caption and either nodes with edges (use [] when no edges), or nonempty tex. '
+              + 'Omit unused fields; never send null or empty tex. Node IDs must match [a-zA-Z][a-zA-Z0-9_]*; '
+              + 'edges must reference those IDs. Do not include summary, mode, parameters, question, raw Mermaid or executable content.' };
+          }
+        }
         else if (candidate.kind === 'optics') {
           exact(candidate, ['kind', 'title', 'summary', 'mode', 'parameters']);
           if (candidate.mode !== 'diffraction' && candidate.mode !== 'scattering') invalid();

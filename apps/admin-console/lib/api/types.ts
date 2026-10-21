@@ -22,9 +22,12 @@ export class AdminOfflineError extends Error {
 }
 
 export class AdminPermissionError extends Error {
-  constructor(message?: string) {
+  readonly status: 401 | 403;
+
+  constructor(message?: string, status: 401 | 403 = 403) {
     super(message ?? '当前账号没有访问该资源的权限');
     this.name = 'AdminPermissionError';
+    this.status = status;
   }
 }
 
@@ -155,6 +158,7 @@ export async function adminEnvelopeRequest<T>(options: AdminEnvelopeRequestOptio
     if (response.status === 401 || response.status === 403) {
       throw new AdminPermissionError(
         problem?.detail ?? problem?.message ?? `权限校验失败（HTTP ${response.status}）`,
+        response.status,
       );
     }
     throw new AdminApiError({

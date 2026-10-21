@@ -21,6 +21,13 @@ export class FakeIdempotencyStore {
   private readonly records = new Map<string, { hash: string; body: unknown; status: number }>();
   executions = 0;
 
+  async lookup<T>(scope: string, key: string, requestHash: string) {
+    const row = this.records.get(`${scope}::${key}`);
+    if (!row) return null;
+    if (row.hash !== requestHash) throw new IdempotencyError('IDEMPOTENCY_CONFLICT', 'conflict');
+    return { status: row.status, body: row.body as T, replayed: true };
+  }
+
   async execute<T>(
     scope: string,
     key: string,

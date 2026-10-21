@@ -49,3 +49,7 @@ members 为 `{assistantId,role,slotId?,roleLabel?,pblPhase?}`。role 为 leader/
 `team.delete {id,expectedUpdatedAt}` 仅 global 可用。已有不可变团队版本或模板 linkedTeamId 引用时返回 TEAM_IN_USE，使用 team.update enabled:false 保留历史语义。删除无引用团队后回读目录确认消失；不会级联删除成员助手。
 
 直接 HTTP 为 `DELETE /api/v1/admin/ai-runtime/teams/:id`，带 Admin 会话和 Idempotency-Key；管家增加 revision 检查。
+
+## 真实团队委派
+
+team.run {runId,senderAgentId,recipientAgentId,taskType,input?,parentTaskId?} 仅 global，使用现有已授权 run，不创建学生、项目或门禁证据。服务端从 run owner 读取真实 project/template 关系，并核对冻结教学包成员与 leader；缺冻结包拒绝。再读取当前 phase，检查对象、路由、角色与门禁后提交任务。team.run.status {runId} 回读 run 与任务状态，不返回学生原始对话。queued 只表示已入队，succeeded 才是任务完成，不能据此批准作品或阶段。team.test 仍是配置检查。删除 team.delete 等待管理员二次确认。

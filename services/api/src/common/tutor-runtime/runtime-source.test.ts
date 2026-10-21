@@ -113,17 +113,16 @@ test('缺失 SKILL.md 的技能仍出现在目录里，但不拖垮整个目录�
   assert.deepEqual(source.skillsSource?.brokenPackages?.map((entry) => entry.id), ['broken']);
 });
 
-test('超预算正文只供目录预览，不将截断规则投入运行', () => {
+test('long authorized skills and aggregate bundles are preserved without character ceilings', () => {
   const { skillsRoot } = createProject();
-  writeSkill(skillsRoot, 'long', `---\nruntime: teaching\nstatus: published\nname: 长技能\n---\n${'甲'.repeat(8_500)}`);
-
+  for (const id of ['long-a', 'long-b']) {
+    writeSkill(skillsRoot, id, `---\nruntime: teaching\nstatus: published\nname: ${id}\n---\n${'a'.repeat(300_000)}END_${id}`);
+  }
   const source = loadTutorRuntimeSource();
-  const content = source.skills[0]?.content ?? '';
-
-  assert.equal(content.startsWith('甲'.repeat(8_000)), true);
-  assert.equal(content.length, 8_000);
-  assert.equal(source.skills[0]?.status, 'unavailable');
-  assert.doesNotMatch(buildTutorRuntimeBlocks(source, ['long']).join(''), /甲/);
+  assert.ok(source.skills.every(skill => skill.status === 'ready' && skill.content.length > 300_000));
+  const blocks = buildTutorRuntimeBlocks(source, ['long-a', 'long-b']).join('');
+  assert.ok(blocks.length > 600_000);
+  assert.ok(blocks.includes('END_long-a') && blocks.includes('END_long-b'));
 });
 
 test('revocation, drafts and malformed metadata never enter teaching prompts', () => {

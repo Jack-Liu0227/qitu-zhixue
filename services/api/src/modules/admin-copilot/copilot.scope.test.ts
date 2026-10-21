@@ -55,7 +55,7 @@ test('new resource authorization requires a successful readback and does not gra
 });
 
 test('destructive lifecycle actions require global scope while owned template/assistant tests keep their object boundary', () => {
-  for (const kind of ['assistant.delete', 'team.delete', 'template.delete', 'skill.delete', 'mcp.delete', 'knowledge.delete'] as const) {
+  for (const kind of ['assistant.delete', 'team.delete', 'template.delete', 'skill.delete', 'mcp.delete', 'knowledge.delete', 'model.delete', 'mcp.invoke', 'team.run', 'team.run.status', 'knowledge.import', 'knowledge.rebuild'] as const) {
     assert.throws(() => assertOperationScope(request, kind, { id: 'optics-coach', templateId: 'optics' }, resources, new Map()), mismatch);
   }
   assertOperationScope(request, 'assistant.test', { id: 'optics-coach', mode: 'configuration' }, resources, new Map());

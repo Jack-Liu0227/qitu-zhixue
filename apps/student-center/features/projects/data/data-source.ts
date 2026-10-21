@@ -1,4 +1,4 @@
-import type { TemplateStage } from '@qitu/contracts';
+import type { ProjectDisplayChange, ProjectHistoryPage, TemplateStage, StudentHistoryDeleteKind, StudentHistoryDeleteReceipt } from '@qitu/contracts';
 import type {
   MentorNoteView,
   NextStep,
@@ -44,6 +44,9 @@ export interface ProjectListQuery {
  * - 不暴露任何写 ProjectStatus / progressPercent / currentStageIndex 的方法（§6.1/§6.4）。
  */
 export interface ProjectsDataSource {
+  deleteHistory?(kind: StudentHistoryDeleteKind, id: string, key: string): Promise<StudentHistoryDeleteReceipt>;
+  queryProjects?(query: ProjectListQuery & { cursor?: string; includeCollected?: boolean }): Promise<ProjectHistoryPage>;
+  changeProjectDisplay?(projectId: string | null, input: ProjectDisplayChange, key: string): Promise<{ superseded: boolean }>;
   listProjects(query: ProjectListQuery): Promise<ProjectListItem[]>;
   getProject(projectId: string): Promise<ProjectDetail | null>;
   getStages(projectId: string): Promise<ProjectStageView[]>;

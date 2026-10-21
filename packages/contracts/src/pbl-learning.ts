@@ -234,8 +234,7 @@ export interface ProjectTemplateSpec {
 
 export type PblTemplateSessionType = 'theory' | 'practice' | 'review';
 
-export interface LearningSessionCompletionSpec {
-  version: 'learning-session-completion.v1';
+interface LearningSessionCompletionRequirements {
   requiredEvidence: readonly {
     kind: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'approved_artifact';
     scope: 'session' | 'project';
@@ -244,7 +243,26 @@ export interface LearningSessionCompletionSpec {
   requiredMasteryObjectiveIds: readonly string[];
 }
 
+export interface LessonQualityReviewSpec {
+  version: 'lesson-quality.v1';
+  reviewer: 'current_teacher';
+  criteria: readonly { id: string; description: string }[];
+}
+
+export type LearningSessionCompletionSpec = LearningSessionCompletionRequirements & (
+  | { version: 'learning-session-completion.v1' }
+  | { version: 'learning-session-completion.v2'; qualityReview: LessonQualityReviewSpec }
+);
+
+export function hasLearningSessionCompletion(session: Pick<PblTemplateSession, 'completionSpec'>): boolean {
+  return session.completionSpec?.version === 'learning-session-completion.v1'
+    || session.completionSpec?.version === 'learning-session-completion.v2';
+}
+
 export interface PblTemplateSession {
+  teachingRequirements?: readonly ('dynamic_lesson' | 'project_knowledge')[];
+  /** Explicit canonical skill requirements frozen with this session, never inferred from its title. */
+  requiredSkillIds?: readonly string[];
   id: string;
   sessionIndex: number;
   title: string;
@@ -618,7 +636,17 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds'], sessionPath, issue);
+    if (session.requiredSkillIds !== undefined && (!Array.isArray(session.requiredSkillIds)
+      || new Set(session.requiredSkillIds).size !== session.requiredSkillIds.length
+      || session.requiredSkillIds.some(value => typeof value !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value)))) {
+      issue(`${sessionPath}.requiredSkillIds`, 'invalid canonical skill requirements');
+    }
+    if (session.teachingRequirements !== undefined && (!Array.isArray(session.teachingRequirements)
+      || session.teachingRequirements.length > 2 || new Set(session.teachingRequirements).size !== session.teachingRequirements.length
+      || session.teachingRequirements.some(value => !['dynamic_lesson', 'project_knowledge'].includes(String(value))))) {
+      issue(`${sessionPath}.teachingRequirements`, 'invalid teaching capability requirements');
+    }
     if (!templateText(session.id) || ids.has(session.id)) issue(`${sessionPath}.id`, 'session id must be unique');
     else ids.add(session.id);
     if (session.sessionIndex !== index + 1) issue(`${sessionPath}.sessionIndex`, 'sessionIndex must be a contiguous one-based integer');
@@ -633,8 +661,28 @@ function validateTemplateProfile(
       const specPath = `${sessionPath}.completionSpec`;
       if (!templateRecord(spec)) issue(specPath, 'completion specification must be an object');
       else {
-        templateKeys(spec, ['version', 'requiredEvidence', 'requiredMasteryObjectiveIds'], specPath, issue);
-        if (spec.version !== 'learning-session-completion.v1') issue(`${specPath}.version`, 'unsupported completion specification');
+        templateKeys(spec, ['version', 'requiredEvidence', 'requiredMasteryObjectiveIds', ...(spec.version === 'learning-session-completion.v2' ? ['qualityReview'] : [])], specPath, issue);
+        if (!['learning-session-completion.v1', 'learning-session-completion.v2'].includes(String(spec.version))) issue(`${specPath}.version`, 'unsupported completion specification');
+        if (spec.version === 'learning-session-completion.v2') {
+          const review = spec.qualityReview;
+          if (!templateRecord(review)) issue(`${specPath}.qualityReview`, 'quality review is required');
+          else {
+            templateKeys(review, ['version', 'reviewer', 'criteria'], `${specPath}.qualityReview`, issue);
+            if (review.version !== 'lesson-quality.v1' || review.reviewer !== 'current_teacher'
+              || !Array.isArray(review.criteria) || review.criteria.length < 1 || review.criteria.length > 8) {
+              issue(`${specPath}.qualityReview`, 'one to eight current-teacher quality criteria are required');
+            } else {
+              const ids = new Set<string>();
+              for (const criterion of review.criteria) {
+                if (!templateRecord(criterion)) { issue(specPath, 'invalid quality criterion'); continue; }
+                templateKeys(criterion, ['id', 'description'], `${specPath}.qualityReview.criteria`, issue);
+                if (!templateText(criterion.id) || !templateText(criterion.description) || criterion.description.length > 600
+                  || ids.has(String(criterion.id))) issue(`${specPath}.qualityReview.criteria`, 'invalid or duplicate quality criterion');
+                ids.add(String(criterion.id));
+              }
+            }
+          }
+        }
         if (!Array.isArray(spec.requiredEvidence) || spec.requiredEvidence.length < 1 || spec.requiredEvidence.length > 4) {
           issue(`${specPath}.requiredEvidence`, 'one to four server-owned evidence requirements are required');
         } else {

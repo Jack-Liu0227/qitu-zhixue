@@ -111,6 +111,24 @@ export class TemplateBindingController {
     return { data: await this.bindings.saveTeachingBundleDraft(actor, id, versionId, bindingId, draft, key) };
   }
 
+  @Post(':id/versions/:versionId/bindings/:bindingId/prepare')
+  @HttpCode(200)
+  async prepare(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string, @Param('versionId') versionId: string, @Param('bindingId') bindingId: string,
+    @Body() body: unknown): Promise<AdminBindingMutationResponse> {
+    const input = pickFields<{ scheduleProfileId?: string; phaseAssignments?: Record<string, string> }>(body, ['scheduleProfileId', 'phaseAssignments']);
+    if (input.scheduleProfileId !== undefined && (typeof input.scheduleProfileId !== 'string' || !input.scheduleProfileId.trim())) {
+      throw new BadRequestException('课时排期标识无效');
+    }
+    if (input.phaseAssignments !== undefined && (!input.phaseAssignments || typeof input.phaseAssignments !== 'object'
+      || Array.isArray(input.phaseAssignments) || Object.entries(input.phaseAssignments).length > 24
+      || Object.values(input.phaseAssignments).some((value) => typeof value !== 'string' || !value.trim() || value.length > 200))) {
+      throw new BadRequestException('阶段成员配置无效');
+    }
+    return { data: await this.bindings.prepareTeachingBundle(this.requireGovernanceActor(cookie), id, versionId, bindingId,
+      input.scheduleProfileId, requireIdempotencyKey(key), input.phaseAssignments) };
+  }
+
   @Post(':id/versions/:versionId/bindings/:bindingId/validate')
   @HttpCode(200)
   async validate(

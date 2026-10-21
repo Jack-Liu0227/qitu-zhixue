@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import {
   tutorSessions,
   tutorTurns,
@@ -93,7 +93,16 @@ export class PostgresTutorSessionStore extends TutorSessionStore {
   }
 
   async create(input: CreateTutorSessionInput): Promise<void> {
-    await this.db
+    await withTransaction(this.db, async tx => {
+      if (input.projectId) {
+        const result = await tx.execute(sql`SELECT tutor_conversation_generation FROM projects WHERE id=${input.projectId} FOR SHARE`);
+        const root = result.rows[0];
+        if (!root || Number(root.tutor_conversation_generation) > 0
+          && input.sessionId !== `session-${input.projectId}:generation:${Number(root.tutor_conversation_generation)}`) {
+          throw new TutorSessionConflictError('项目或会话已变化，请刷新后重试');
+        }
+      }
+      await tx
       .insert(tutorSessions)
       .values({
         id: input.sessionId,
@@ -108,6 +117,15 @@ export class PostgresTutorSessionStore extends TutorSessionStore {
       })
       // 同一会话 id 的并发创建只保留一行；序号从 0 开始，回合由 appendTurns 推进。
       .onConflictDoNothing({ target: tutorSessions.id });
+    });
+  }
+
+  override async projectSessionId(projectId: string): Promise<string> {
+    const result = await this.db.execute(sql`SELECT tutor_conversation_generation FROM projects WHERE id=${projectId}`);
+    const row = result.rows[0];
+    if (!row) throw new TutorSessionConflictError('项目已不存在');
+    const generation = Number(row.tutor_conversation_generation);
+    return generation === 0 ? `session-${projectId}` : `session-${projectId}:generation:${generation}`;
   }
 
   async appendTurns(input: AppendTurnsInput): Promise<void> {

@@ -2,10 +2,19 @@ import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Query
 import { pickFields, requireAnyRole, requireRole } from '../../common/access/request-auth';
 import { AuthService } from '../identity-auth/auth.service';
 import { WorksLearningEvidenceService, type LearningTextSubmission } from './works-learning-evidence.service';
+import type { LessonQualityDecision } from '@qitu/contracts';
 
 @Controller('learning-plans/:planId/sessions/:sessionId')
 export class WorksLearningController {
   constructor(private readonly learning: WorksLearningEvidenceService, private readonly auth: AuthService) {}
+
+  @Post('quality-reviews')
+  async qualityReview(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
+    @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {
+    const actor = requireRole(this.auth, cookie, 'teacher', '仅当前班主任可以评价课内产物');
+    const input = pickFields<LessonQualityDecision>(body, ['planRevision', 'evidenceRef', 'subjectDigest', 'criteria']);
+    return { data: await this.learning.reviewLessonQuality(actor, planId, sessionId, input, requireKey(key)) };
+  }
 
   @Get('evidence')
   async evidence(@Headers('cookie') cookie: string | undefined, @Param('planId') planId: string,

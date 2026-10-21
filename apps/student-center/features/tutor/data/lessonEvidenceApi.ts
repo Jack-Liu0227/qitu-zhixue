@@ -41,7 +41,17 @@ export async function getLessonEvidence(fetchJson: TutorJsonRequest, scope: Less
   for (const key of ['submissions', 'observations', 'approvedArtifacts', 'reflections'] as const) {
     const proofs = data[key];
     if (!Array.isArray(proofs) || proofs.some((proof) => !proofMatches(proof, scope, key === 'approvedArtifacts'))) invalid();
+    for (const proof of proofs) {
+      if (!record(proof) || proof.quality === undefined) continue;
+      const quality = proof.quality;
+      if (!record(quality) || !['pending', 'accepted', 'needs_revision', 'stale'].includes(String(quality.status))
+        || typeof quality.subjectDigest !== 'string' || !Array.isArray(quality.feedback)
+        || quality.feedback.some(item => !record(item) || typeof item.criterionId !== 'string'
+          || typeof item.meets !== 'boolean' || typeof item.feedback !== 'string')) invalid();
+    }
   }
+  if (data.qualityCriteria !== undefined && (!Array.isArray(data.qualityCriteria) || data.qualityCriteria.some(item =>
+    !record(item) || typeof item.id !== 'string' || typeof item.description !== 'string'))) invalid();
   return data as unknown as LessonEvidenceView;
 }
 

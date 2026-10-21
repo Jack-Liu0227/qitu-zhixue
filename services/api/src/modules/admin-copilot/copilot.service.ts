@@ -1,6 +1,6 @@
-import { ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, ADMIN_COPILOT_SCOPES, type AdminCopilotCapabilities, type AdminCopilotPlan, type AdminCopilotReceipt, type AdminCopilotRequest, type AdminCopilotResponse, type CurrentUser } from '@qitu/contracts';
+import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, ADMIN_COPILOT_SCOPES, type AdminCopilotConfirmationRequest, type AdminCopilotCapabilities, type AdminCopilotPlan, type AdminCopilotReceipt, type AdminCopilotRequest, type AdminCopilotResponse, type CurrentUser } from '@qitu/contracts';
 import { ModelGateway } from '../model-registry/model-gateway';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -8,11 +8,14 @@ import { AuditWriter } from '../../common/audit/audit.service';
 import { redactSensitive } from '../../common/audit/audit-redaction';
 import { CopilotOperations } from './copilot.operations';
 import { managementSkill } from './copilot.resources';
-import { invalid, object, parsePlan, parseRequest, resolveInput } from './copilot.protocol';
+import { exact, text, invalid, object, parsePlan, parseRequest, resolveInput } from './copilot.protocol';
 import { OPERATION_GUIDE } from './copilot.guide';
 import { loadRuntimeSkillCatalog } from '../../common/tutor-runtime/runtime-source';
 import { createCopilotReferenceReader, loadCopilotReferences, referenceCatalog } from './copilot.references';
 import { assertOperationScope, rememberCreatedResource, requestScope, type CreatedResources } from './copilot.scope';
+
+import { deletionConfirmation, type DeletionDecision } from './copilot.confirmations';
+import { skillLifecycleCatalog } from './copilot.skill-lifecycle';
 
 @Injectable()
 export class CopilotService {
@@ -33,6 +36,20 @@ export class CopilotService {
   }
 
   async run(actor: CurrentUser, input: AdminCopilotRequest, key: string): Promise<AdminCopilotResponse> {
+    return this.executePlan(actor, input, key);
+  }
+
+  async confirm(actor: CurrentUser, raw: AdminCopilotConfirmationRequest): Promise<AdminCopilotResponse> {
+    if (actor.role !== 'admin') throw new ForbiddenException('仅管理员可以确认删除');
+    const body = object(raw);
+    exact(body, ['request', 'turnKey', 'actionId', 'confirmationId', 'decision']);
+    if (body.decision !== 'confirm' && body.decision !== 'cancel') invalid('确认决定无效');
+    const decision: DeletionDecision = { actionId: text(body.actionId, 'actionId', 48),
+      confirmationId: text(body.confirmationId, 'confirmationId', 80), decision: body.decision };
+    return this.executePlan(actor, parseRequest(body.request), text(body.turnKey, 'turnKey', 200), decision);
+  }
+
+  private async executePlan(actor: CurrentUser, input: AdminCopilotRequest, key: string, decision?: DeletionDecision): Promise<AdminCopilotResponse> {
     if (actor.role !== 'admin') throw new ForbiddenException('管家配置仅向管理员开放');
     input = parseRequest(input);
     // Recheck live authorization, scope, catalog and model availability on every retry.
@@ -78,6 +95,9 @@ export class CopilotService {
       throw new ServiceUnavailableException({ code: 'COPILOT_PLAN_SKILL_CHANGED', message: '管家 Skill 或模块参考已变更，请用新请求重新生成计划。' });
     }
     const { plan } = cached.body;
+    if (decision && !plan.actions.some(action => action.id === decision.actionId && (action.kind.endsWith('.delete') || action.kind === 'mcp.invoke'))) {
+      throw new ForbiddenException('确认操作不属于当前删除计划');
+    }
     if (input.permission === 'read_only' && plan.actions.length) throw new ForbiddenException('只读模式拒绝执行配置写入');
     const results = new Map<string, unknown>();
     const created: CreatedResources = new Map();
@@ -99,9 +119,28 @@ export class CopilotService {
         });
         const scopeResources = await this.operations.scopeResources(actor, input.templateId, input.templateVersionId);
         assertOperationScope(input, action.kind, resolved, scopeResources, created);
+        const confirmation = (action.kind.endsWith('.delete') || action.kind === 'mcp.invoke')
+          ? await deletionConfirmation(this.idempotency, this.audit, actor, stepKey, action.kind, resolved,
+            () => this.operations.deletionSnapshot(actor, action.kind, resolved),
+            decision?.actionId === action.id ? decision : undefined) : null;
+        if (confirmation?.decision === 'pending') {
+          const { sourceDigest: _digest, ...challenge } = confirmation.challenge;
+          receipts.push({ ...receiptBase(action), status: 'awaiting_confirmation', confirmation: challenge,
+            message: '等待你在对话中确认，尚未执行删除' });
+          continue;
+        }
+        if (confirmation?.decision === 'cancel') {
+          receipts.push({ ...receiptBase(action), status: 'cancelled', message: '已取消，未执行删除' });
+          continue;
+        }
         const mutation = await this.idempotency.execute(stepScope, stepKey,
           hashIdempotentInput(stepScope, {}, { kind: action.kind, input: resolved }),
-          async () => ({ body: await this.operations.execute(actor, action.kind, resolved, stepKey) }),
+          async () => {
+            if (confirmation && await this.operations.deletionSnapshot(actor, action.kind, resolved) !== confirmation.challenge.sourceDigest) {
+              throw new ConflictException({ code: 'COPILOT_CONFIRMATION_SOURCE_CHANGED', message: '对象在确认前已变化，请重新发起删除' });
+            }
+            return { body: await this.operations.execute(actor, action.kind, resolved, stepKey) };
+          },
           { processingLeaseMs: 180000 },
         );
         // Always re-read current owner state, including on retries; never cache a success receipt.
@@ -117,12 +156,13 @@ export class CopilotService {
       }
     }
     const succeeded = receipts.filter(r => r.status === 'succeeded').length;
+    const pending = receipts.some(receipt => receipt.status === 'awaiting_confirmation');
     const reply = !receipts.length ? `${plan.reply}\n\n本轮未执行配置写入。`
-      : `已回读确认 ${succeeded}/${receipts.length} 项操作。${succeeded === receipts.length ? '' : '请查看失败原因；重试会复用本轮计划与已完成操作。'}\n\n` +
-        receipts.map(r => `- ${r.status === 'succeeded' ? operationReceiptLabel(r.kind) : r.status === 'failed' ? '失败' : '未执行'}：${r.label}${r.message ? ` — ${r.message}` : ''}`).join('\n') +
-        '\n\n资源保存不等于模板发布或学生运行成功。新模板版本仍需按模板治理流程验证和发布。';
+      : `已完成并回读 ${succeeded}/${receipts.length} 项操作。${pending ? '删除操作等待你逐项确认。' : ''}\n\n` +
+        receipts.map(r => `- ${r.status === 'succeeded' ? operationReceiptLabel(r.kind) : r.status === 'awaiting_confirmation' ? '待确认' : r.status === 'cancelled' ? '已取消' : r.status === 'failed' ? '失败' : '未执行'}：${r.label}${r.message ? ` — ${r.message}` : ''}`).join('\n') +
+        '\n\n资源保存不等于模板发布或学生运行成功。';
     return { reply, receipts, skill: cached.body.skill, contractVersion: ADMIN_COPILOT_CONTRACT_VERSION, scope: requestScope(input),
-      status: !receipts.length ? 'answered' : succeeded === receipts.length ? 'completed' : 'partial' };
+      status: !receipts.length ? 'answered' : pending ? 'awaiting_confirmation' : receipts.every(r => r.status === 'succeeded' || r.status === 'cancelled') ? 'completed' : 'partial' };
   }
 
   private async context(actor: CurrentUser, input: AdminCopilotRequest) {
@@ -165,6 +205,7 @@ export class CopilotService {
         packageDigest: skillCatalog.skills.find(item => item.id === s.id && item.version === s.version)?.contentHash ?? null,
       })),
       skillCatalogStatus: runtime.initialization,
+      skillLifecycle: skillLifecycleCatalog(skillCatalog),
       mcpServers: runtime.mcpServers, tools: runtime.builtInTools, models,
       knowledgeConfiguration: configuration, knowledgeBases,
       growthProjectionSettings: o.growthSettings ? await o.growthSettings.read() : null,
@@ -175,6 +216,10 @@ export class CopilotService {
 }
 
 function operationReceiptLabel(kind: AdminCopilotReceipt['kind']) {
+  if (kind === 'team.run') return '已提交任务';
+  if (kind === 'knowledge.import' || kind === 'knowledge.rebuild') return '已提交构建';
+  if (kind.endsWith('.status')) return '已读取状态';
+  if (kind === 'mcp.invoke') return '已收到远端结果';
   if (kind.endsWith('.test') || kind === 'template.verify') return '检查通过';
   if (kind.endsWith('.delete')) return '已移除';
   if (kind === 'template.archive') return '已归档';

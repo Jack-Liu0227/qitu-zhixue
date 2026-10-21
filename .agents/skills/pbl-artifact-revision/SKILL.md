@@ -3,7 +3,8 @@ name: pbl-artifact-revision
 description: Help a learner make one evidence-linked revision plan for their own artifact while preserving prior versions and leaving submission and approval to server owners.
 version: 1.0.0
 runtime: teaching
-# Qitu-authored adaptation informed by open tutoring and assessment skills; no upstream package text is copied.
+status: published
+references: references/qitu-contract.md, references/adapted-methods.md
 ---
 
 Use this skill only when the server supplies the learner's current artifact version, authorized
@@ -28,3 +29,7 @@ feedback references, the active objective, and any applicable rubric context.
 - Do not supply a finished essay, report, proof, code solution, or other copyable final artifact.
 - If feedback, objective, or artifact provenance is missing or belongs to another project, stop and
   request a fresh server-owned reference.
+
+Use the declared adapted-methods resource for additional evidence-linked teaching methods.
+
+Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.

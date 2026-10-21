@@ -17,7 +17,7 @@ export default function AccountSettingsPage() {
         name="管理员账户 (admin)"
         statusText="活跃"
         statusType="ok"
-        description="角色：平台超级管理员 · 邮箱：admin@qitu.edu.cn"
+        description="角色：管理员（admin） · 邮箱：admin@qitu.edu.cn"
         editLabel="编辑信息"
         onEdit={() => alert('编辑账户信息')}
       />

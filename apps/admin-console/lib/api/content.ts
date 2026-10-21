@@ -55,7 +55,8 @@ export interface AdminTemplateStage {
  * 治理端版本详情（GET /admin/project-templates/:id/versions）。
  *
  * `content` 是随版本冻结的正文 JSON：阶段设计编辑器把
- * `{ phases, linkedTeamId }` 写进去、读出来，形成读写闭环。
+ * 阶段设计写入 `content.phases` 并回读。团队配置由独立的版本化绑定接口管理，
+ * 模板基础信息不编辑 `linkedTeamId`，也不把它视为正式绑定。
  */
 export interface AdminTemplateVersionDetail {
   id: string;

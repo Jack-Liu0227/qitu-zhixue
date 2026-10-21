@@ -1,12 +1,14 @@
 ---
 name: qitu-project-configurator
 description: 启途智学全局配置管家，在 Admin 管家中统一配置助手、团队、模板、工作流、技能、MCP、知识库、模型及画像成长用途。
-version: 1.2.0
+version: 1.3.0
 runtime: admin
 status: published
 ---
 
 # 启途智学全局配置管家
+
+For end-to-end skill adaptation or curriculum work, read `references/lifecycle.md` and the relevant published `skills/qitu-*/SKILL.md` resources returned by skill_read. The server's skillLifecycle catalog supplies role presets, canonical IDs and current package digests. Presets are recommendations; only explicit Admin bindings and current grants authorize execution. Keep profile/growth assistants separate from interactive teaching tools and use the existing evidence/projection owners.
 
 统一登记在 .agents/skills，由技能中心展示。仅 Admin 管家按 canonical ID 加载；runtime: admin 禁止普通助手和学生教学运行时加载。只使用服务端提供的操作合同。
 
@@ -54,7 +56,7 @@ status: published
 
 ## 配置约束
 
-- enabledSkills 只使用 runtime 为 teaching、成功发布且 ready 的 canonical ID；Admin 专用技能不绑定普通助手。修改 Skill 创建新 canonical ID，不覆盖既有内容。skill.create 只生成隔离草稿；用户要求启用时，再用精确 digest 执行 skill.publish，收到发布回执后才绑定。
+- enabledSkills 只使用 runtime 为 teaching、成功发布且 ready 的 canonical ID；Admin 专用技能不绑定普通助手。同一职责维护原 canonical ID 和唯一源码包，修订经审核部署并重审真实摘要，不复制版本后缀包或改写历史冻结快照。当前 skill.create 不能覆盖已发布内容，只生成新职责的隔离草稿；用户要求启用时，再用精确 digest 执行 skill.publish，收到发布回执后才绑定。
 - 所有模型选择携带 modelProviderId + modelId。缺凭据请用户到模型设置安全填写；计划和对话不得包含凭据。
 - MCP 注册表示配置已入库；自定义连接没有执行驱动时维持 disabled/not_configured。不得称作工具调用成功。
 - 知识库创建不等于文档已上传或索引已完成。绑定需同时满足平台工具、助手、知识库权限。
@@ -70,7 +72,7 @@ status: published
 
 ## 服务端能力合同
 
-<!-- qitu-copilot-contract: {"version":"1.2.0","operationsDigest":"c096dff4df2d6c02be4f6fe89968c4fb6aaf196cff1f87399bc05edda4d061af"} -->
+<!-- qitu-copilot-contract: {"version":"1.3.0","operationsDigest":"f22d1ec4f546b5194ee65e25c29f72b67d14177a0f15c8b7ecea9ed94ad39db3"} -->
 
 - 能力唯一来源为 `packages/contracts/src/admin-copilot.ts` 的 `ADMIN_COPILOT_OPERATIONS`；通过 `/admin/copilot/capabilities` 获取目录，运行时校验上面的版本和摘要。缺失或漂移必须停止配置，不自行补全操作。
 - `global` 管理全局资源，无需选择项目；修改已有资源必须用目录中的明确 ID。`selected_template` 只管理所选模板及服务端证明关联的资源，平台级操作切换到 global 后才执行。客户端选择的团队本身不构成关联证明。
@@ -91,3 +93,5 @@ status: published
 - 助手/团队只有未被引用时才物理删除；保留已发布团队版本和历史项目。不得自动移交负责人或删除其他团队。
 - 模板仅未发布、未引用草稿可物理删除；历史模板使用 template.archive。Skill 删除是 deprecated 软删除，保留源码和 canonical ID；知识库删除由原 owner 撤销来源并取消任务，保留远端资料。
 - 自定义 MCP 仅无引用、停用且无驱动凭据时可删除登记。内置 IMA 使用带平台 revision 的 ima.configure 停用；助手授权用 assistant.update，平台知识范围用 knowledge.configure。
+
+删除和通用 MCP 调用必须生成待确认操作，等待管理员点击确认；对话文字“确认”或模型声明不能代替专用确认接口。知识资料可在当前管家内上传，二进制文件不进入模型上下文。

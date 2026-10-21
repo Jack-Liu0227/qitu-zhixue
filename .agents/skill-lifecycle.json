@@ -1,0 +1,406 @@
+{
+  "version": "qitu.skill-lifecycle.v1",
+  "adaptations": [
+    {
+      "id": "pbl-artifact-revision",
+      "runtime": "teaching",
+      "purpose": "artifact",
+      "digest": "a2c58ef5cfb805bf145bdacece439fdb79dc9cc93fc135a81032b968a6fe7b31",
+      "packageDigest": "db9604344f4db1dcf75d64ebfc82a82d2fc2ef9c15503969ad1f2d0ee8abfc6f",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "DeepTutor/deeptutor/skills/builtin/docx/SKILL.md",
+      "sourceDigest": "66afa8c19a53db613ecdd7e45709210db66b8937638325b15c054e8df719f5f6"
+    },
+    {
+      "id": "pbl-source-literacy",
+      "runtime": "teaching",
+      "purpose": "inquiry",
+      "digest": "8001c45b181cf33f3e57da3ed33a5924cc37d85bb82b79c3df0d9ebb51016fe4",
+      "packageDigest": "5a416c240cbd9348def9decc182d17ae36e4db24cba1ccdec1901eb34db2a99d",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "DeepTutor/deeptutor/skills/builtin/pdf/SKILL.md",
+      "sourceDigest": "c950efb9d180879b978f765cfc0e6f217669231a62e618054ebff6df1002a8e3"
+    },
+    {
+      "id": "pbl-artifact-revision",
+      "runtime": "teaching",
+      "purpose": "artifact",
+      "digest": "a2c58ef5cfb805bf145bdacece439fdb79dc9cc93fc135a81032b968a6fe7b31",
+      "packageDigest": "db9604344f4db1dcf75d64ebfc82a82d2fc2ef9c15503969ad1f2d0ee8abfc6f",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "DeepTutor/deeptutor/skills/builtin/pptx/SKILL.md",
+      "sourceDigest": "72e6ecbc8b3194bfbd2d4230abbbd0df2e1f1bfaa5348f0b05b778475edfd009"
+    },
+    {
+      "id": "qitu-skill-creator",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "60d5e7cae0e29549dec51714aa91ce34b9bd2619eda0d3dab7466015f12c9286",
+      "packageDigest": "fe9994e891ef7140e09d82e07a756ad803caa9e528e178ff2f1c9ab0226bbb1f",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "DeepTutor/deeptutor/skills/builtin/skill-creator/SKILL.md",
+      "sourceDigest": "158a8544c752c7aca824d74d51bd3d59b70e36369218d22b52424d4054109b18"
+    },
+    {
+      "id": "pbl-data-literacy",
+      "runtime": "teaching",
+      "purpose": "inquiry",
+      "digest": "d89eeb418f28c39f9621d6f0d087b4edcbfee5e8ec28a606ec1abb35b9249ff1",
+      "packageDigest": "53f52932f2083b4bff54515a1ee0bb97961995df856ae7bf662be6f8a6aad909",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "DeepTutor/deeptutor/skills/builtin/xlsx/SKILL.md",
+      "sourceDigest": "9f5e476f8692ff737bf3251d00e71e52e9b6a9f3837b78914f428022fba89868"
+    },
+    {
+      "id": "qitu-build-personal-skill",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "6d5a8a3e99d6986500091d9b52d0ce34a0d1da36269681cebe4386bc8e68c6ba",
+      "packageDigest": "164e38439a531f1790055e07402b1270bb13c403e98c1146c0b4331f57dc529a",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/build-personal-skill/SKILL.md",
+      "sourceDigest": "5c1bef5c9e768cc416b3139df911adc25db089def5f8bb7e6fcb6af8f0aa1091"
+    },
+    {
+      "id": "qitu-curriculum-planner",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "0c4b80410d9ec814dc0d6c74b389bf53339619a54e03e769cba551be782cf31b",
+      "packageDigest": "c9f9fb15b76bd3d0a977b6757da1107c389de6ecf0dc72450de540dd2b45f365",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/curriculum-planner/SKILL.md",
+      "sourceDigest": "661a274f60d2a18fcf320715e8390cde178b2deb7a07c77669c4f1ce658ed1fb"
+    },
+    {
+      "id": "pbl-dynamic-lesson",
+      "runtime": "teaching",
+      "purpose": "interaction",
+      "digest": "44be4c29fc1664a7540589bc09b65e6ac9648f2ae33dc6eebb450b94e51b7b92",
+      "packageDigest": "f3e9e7ccf0456a41a670ea1bd6d343780f8ad4bb2767e40b1e7d2d497b026841",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/deep-interactive/SKILL.md",
+      "sourceDigest": "bb26d6b34f34bad37a76fef7f9863e1e67a2d4a5fbdf89d4ef08734c74db97bb"
+    },
+    {
+      "id": "pbl-source-literacy",
+      "runtime": "teaching",
+      "purpose": "inquiry",
+      "digest": "8001c45b181cf33f3e57da3ed33a5924cc37d85bb82b79c3df0d9ebb51016fe4",
+      "packageDigest": "5a416c240cbd9348def9decc182d17ae36e4db24cba1ccdec1901eb34db2a99d",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/deep-research/SKILL.md",
+      "sourceDigest": "063ce7f57f178e8e3f4e5cdf52a34a78b9cfbd82c29e45d5ee93325c54f25ca0"
+    },
+    {
+      "id": "pbl-source-literacy",
+      "runtime": "teaching",
+      "purpose": "inquiry",
+      "digest": "8001c45b181cf33f3e57da3ed33a5924cc37d85bb82b79c3df0d9ebb51016fe4",
+      "packageDigest": "5a416c240cbd9348def9decc182d17ae36e4db24cba1ccdec1901eb34db2a99d",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/fact-check/SKILL.md",
+      "sourceDigest": "44979669a1873ed393f249b06352fa37e01c608ce6a3f611368e1502f9ad4427"
+    },
+    {
+      "id": "pbl-understanding-coach",
+      "runtime": "teaching",
+      "purpose": "guide",
+      "digest": "528b69e0d578ea7aa147db78d310dbe2a3ec724fe2f921412641f9e38fe2f109",
+      "packageDigest": "0fe9777641119bdd9d77e2399ea34bb8326583425135b801fbf616b99626685e",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/feynman-learning/SKILL.md",
+      "sourceDigest": "af7d9eaca12896a498259cbae3fa09d196d455b4e72af75d63ed1d1575ca944e"
+    },
+    {
+      "id": "qitu-k12-core-literacy-planning",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "7e6ec8d17f8f65d4fd1add6fdacaf1100d511fbbdda769fd6d142b29b5a10a7d",
+      "packageDigest": "cc27246a0fe722d745187a475b34934dce60f8efeb74c337f7bb3b9739faa44d",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/k12-core-literacy-planning/SKILL.md",
+      "sourceDigest": "fbc03e9245406bac2d5b312f1a5711de311d17dc98eeb30d8eab298ee397c08f"
+    },
+    {
+      "id": "pbl-reflection-coach",
+      "runtime": "teaching",
+      "purpose": "guide",
+      "digest": "3a8576bc7c70d8937e7682d8f0e134d6e0acb623cf182750afae5b573da08d1b",
+      "packageDigest": "6b049b21633d9b3243dbeb764aabd027f1256be2910b752229f2047c7df5f5f3",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/learning-to-learn/SKILL.md",
+      "sourceDigest": "fe8be28613d01efe49a858bb89bf97f84273bd20311c805c36e2bfd28519c2ce"
+    },
+    {
+      "id": "pbl-understanding-coach",
+      "runtime": "teaching",
+      "purpose": "guide",
+      "digest": "528b69e0d578ea7aa147db78d310dbe2a3ec724fe2f921412641f9e38fe2f109",
+      "packageDigest": "0fe9777641119bdd9d77e2399ea34bb8326583425135b801fbf616b99626685e",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/lecture-style/SKILL.md",
+      "sourceDigest": "540e7a4b34cd8d5de66861ebe96c73a14fcd87bc9c020e75edfc92080b23c42a"
+    },
+    {
+      "id": "qitu-page-clone",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "27ea339f0f31bd0b849c6776d0c77dde23cfa9102ed3f68c2cc2fd77ef45c11f",
+      "packageDigest": "8c49084dcb667084a5fd4c13a64aa74c79137ad7cad9b920825e9b32892ebe5a",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/page-clone/SKILL.md",
+      "sourceDigest": "eeb220cf64b6f18c82bb0fe6298603b4626463c401c5170594e80e88ec5561db"
+    },
+    {
+      "id": "qitu-pptx-import",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "e4bcda0d360c6d7193c5a180df663e7164f0de1e69bd1ed6da743435bd7a7231",
+      "packageDigest": "d5aef04b60b1f84ccf5ebf69519254093acda687513986bf1b95cb1788080705",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/pptx-import/SKILL.md",
+      "sourceDigest": "f62f063784886b75c67b299b458f5e936f931503b464f0db716113c9fface1a3"
+    },
+    {
+      "id": "qitu-pro-editing",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "3eadf1515d5fcbe194ada3db3bd942d093a0371f507fcadc4c65a72046688cb7",
+      "packageDigest": "bd9505007e6f0c169f2d33831d781a26337d7cee908b0fbfaa17d514387209a4",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/pro-editing/SKILL.md",
+      "sourceDigest": "5bb929e5f9d630a8fcc5aaa0f16ce956e579358aaeefd91fcadb00063f974a80"
+    },
+    {
+      "id": "pbl-dynamic-lesson",
+      "runtime": "teaching",
+      "purpose": "interaction",
+      "digest": "44be4c29fc1664a7540589bc09b65e6ac9648f2ae33dc6eebb450b94e51b7b92",
+      "packageDigest": "f3e9e7ccf0456a41a670ea1bd6d343780f8ad4bb2767e40b1e7d2d497b026841",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/slide-craft/SKILL.md",
+      "sourceDigest": "cf35eea56909b1427f171c6798ba55392761edb081603138892368d1bd727081"
+    },
+    {
+      "id": "qitu-slide-dsl",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "5aea81947ba2242d2e4ccdcf938190781e326de34c293c0c030e10a78098a18c",
+      "packageDigest": "8c7f84f7d474bc96eb641013050ebb7cd7ffa59aefa7bac42615db68fe477180",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/slide-dsl/SKILL.md",
+      "sourceDigest": "7234933c646c6d6436f8db2bd36862378c89d924a496a1db9ad485171180091a"
+    },
+    {
+      "id": "pbl-reflection-coach",
+      "runtime": "teaching",
+      "purpose": "guide",
+      "digest": "3a8576bc7c70d8937e7682d8f0e134d6e0acb623cf182750afae5b573da08d1b",
+      "packageDigest": "6b049b21633d9b3243dbeb764aabd027f1256be2910b752229f2047c7df5f5f3",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/social-emotional-learning/SKILL.md",
+      "sourceDigest": "4aea1736a8855c2ef32767bf4e5e8428bc573a0d5b1cb9816c84d1ae34e86284"
+    },
+    {
+      "id": "qitu-spiral-curriculum",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "d3a6ce45ef68384b5de1e46bc83780fcc4c0ee84a164bcf56c09c65a3728dffd",
+      "packageDigest": "1f61657788dd49b616cd6a73b5fd87f38941028dee3bcb2c7e26c34be72e9468",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/spiral-curriculum/SKILL.md",
+      "sourceDigest": "fe6fe978ab5ac583fcccb9293d410d8da9e3cd7bb393900698095c2387da5b93"
+    },
+    {
+      "id": "qitu-stage-design",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "0d33a14eb49cca18addfd07ff6307c5ddd14708b56b61476534db7e24623d146",
+      "packageDigest": "c901f3fa5aca7a3b0be6e68e55b255c601cecaa94b445681112cd58074a3043a",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/stage-design/SKILL.md",
+      "sourceDigest": "7275ef6f005eb071e3c943edf3d4355c98a491ea13347c9320995cbfe3370609"
+    },
+    {
+      "id": "qitu-stage-dsl",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "68e594484590e2ab771c8172317c33c593764cc2a530f7e77ba08a97d628693d",
+      "packageDigest": "8a6455e7e5f6c3560b354c3d319521ed1dad8ba8c5d299cc766598cc8c69befd",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/stage-dsl/SKILL.md",
+      "sourceDigest": "53a7d94da2b872076c448771d9cc48471ab5aad82dfe13bcc542cd16be7ce713"
+    },
+    {
+      "id": "qitu-style-clone",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "6a3aed9f2c33658ac0de595a259c18002f9ad8db297ae4da7fab9eb3054f65b7",
+      "packageDigest": "4f6235dd7fa7b8dae189e947bff9c72acb99c241e6c1ffe3c21ed67d70bd8f65",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/style-clone/SKILL.md",
+      "sourceDigest": "a8001f7b4c55ef37de6fd00200a43ab58090d5abe8fb1d9aaa426b4cf74a2df6"
+    },
+    {
+      "id": "qitu-teacher-style-clone",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "87aa7707ae9287b7cd7baad5dfeed40791bf89d143da242411eb0c7ce76fc2cd",
+      "packageDigest": "fc9c42413609f0a3da857eb8e6d1b60a9dcb0e566f56696b7d9f9531a49553bd",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/teacher-style-clone/SKILL.md",
+      "sourceDigest": "9bf4ae1bb9a484d4d426818821bd0530ca20f6f158390280c10c883b750e427b"
+    },
+    {
+      "id": "qitu-understanding-by-design",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "0d4534501f50728c25847c239b9182a79d02a0b9d85f189c42acef3f681bfa33",
+      "packageDigest": "8e3c5c478141614e6965d8cef771aa7fe8af52ba8a68e998e0be42ffc1f82abc",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/understanding-by-design/SKILL.md",
+      "sourceDigest": "75af8be3ec7772b6ae97ac70ceedbb00fcfbb16a6d4addceb5f62ec0b3614808"
+    },
+    {
+      "id": "pbl-artifact-revision",
+      "runtime": "teaching",
+      "purpose": "artifact",
+      "digest": "a2c58ef5cfb805bf145bdacece439fdb79dc9cc93fc135a81032b968a6fe7b31",
+      "packageDigest": "db9604344f4db1dcf75d64ebfc82a82d2fc2ef9c15503969ad1f2d0ee8abfc6f",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/vocational/SKILL.md",
+      "sourceDigest": "0544506924e469b49c89295fe414da440cd081adca520ff584049fafff25a43c"
+    },
+    {
+      "id": "pbl-artifact-revision",
+      "runtime": "teaching",
+      "purpose": "artifact",
+      "digest": "a2c58ef5cfb805bf145bdacece439fdb79dc9cc93fc135a81032b968a6fe7b31",
+      "packageDigest": "db9604344f4db1dcf75d64ebfc82a82d2fc2ef9c15503969ad1f2d0ee8abfc6f",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/workshop-style/SKILL.md",
+      "sourceDigest": "002a4c9842069fb6f24da4b2d3ed0b6a65b0cef08298f5ae05d5905e661d884a"
+    },
+    {
+      "id": "pbl-understanding-coach",
+      "runtime": "teaching",
+      "purpose": "guide",
+      "digest": "528b69e0d578ea7aa147db78d310dbe2a3ec724fe2f921412641f9e38fe2f109",
+      "packageDigest": "0fe9777641119bdd9d77e2399ea34bb8326583425135b801fbf616b99626685e",
+      "resources": [
+        "references/qitu-contract.md",
+        "references/adapted-methods.md"
+      ],
+      "source": "OpenMAIC/skills/agent-runtime/zone-of-proximal-development/SKILL.md",
+      "sourceDigest": "cac0ff39f207570c3a40410fe2b61536ce4a9a5e54b33779a96015e45aab4049"
+    },
+    {
+      "id": "qitu-openmaic",
+      "runtime": "admin",
+      "purpose": "authoring",
+      "digest": "023bdf0db54165242460ae05927a4f2b750da97a4471bb9598540ad1e71e6984",
+      "packageDigest": "36fc33a81e442b08eea62f2e12984efffd2b694287a7937d340c14578ceed8ab",
+      "resources": [
+        "references/qitu-contract.md"
+      ],
+      "source": "OpenMAIC/skills/openmaic/SKILL.md",
+      "sourceDigest": "d0d389091551613b0bc4ee480e8699b11b5bacb54830bf94c6dcdfe2a437b992"
+    }
+  ],
+  "nativeSkills": [
+    {
+      "id": "qitu-learner-profile",
+      "runtime": "teaching",
+      "purpose": "profile",
+      "digest": "afef985bba7de38fbd99da970483a71f73e168e11478415b563a853204ad78d2",
+      "packageDigest": "fa5887ccd525e995209ce08abde604c34a5f301655fae58fda72286d5df155a6",
+      "resources": [
+        "references/qitu-contract.md"
+      ]
+    },
+    {
+      "id": "qitu-growth-trajectory",
+      "runtime": "teaching",
+      "purpose": "growth",
+      "digest": "d996c26f50f8e424454b91bf3242fc3846388325980f2a4e4527151f239410f2",
+      "packageDigest": "77a51ddefd77cbbc4862f93eedebc71734e33338a768ec339098174fc5b5b8bc",
+      "resources": [
+        "references/qitu-contract.md"
+      ]
+    }
+  ],
+  "upstreamLicenses": {
+    "DeepTutor": "Apache-2.0",
+    "OpenMAIC": "MIT"
+  }
+}

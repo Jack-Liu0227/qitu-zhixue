@@ -50,6 +50,7 @@ import {
   insertManualModelRow,
   listBindingUsageIdsForModel,
   listAgentIdsForModel,
+  listFrozenTeamVersionsForModel,
   listAgentIdsForProvider,
   listReferencedModelIds,
   loadModelRow,
@@ -1411,9 +1412,10 @@ export class ModelRegistryService implements OnModuleInit {
         }
         const usageIds = await listBindingUsageIdsForModel(tx, providerId, modelId);
         const agentIds = await listAgentIdsForModel(tx, providerId, modelId);
-        if (usageIds.length > 0 || agentIds.length > 0) {
+        const frozenVersions = await listFrozenTeamVersionsForModel(tx, providerId, modelId);
+        if (usageIds.length > 0 || agentIds.length > 0 || frozenVersions.length > 0) {
           throw new ConflictException(
-            `模型 ${providerId}/${modelId} 已被 Agent 配置引用（${agentIds.join('、')}），不能删除，请先在 AI 运行时清空模型选择`,
+            `模型 ${providerId}/${modelId} 仍被用途、Agent 或冻结团队版本引用，不能删除（Agent: ${agentIds.join('、') || '无'}；冻结版本: ${frozenVersions.join('、') || '无'}）`,
           );
         }
         await deleteManualModelRow(tx, providerId, modelId);

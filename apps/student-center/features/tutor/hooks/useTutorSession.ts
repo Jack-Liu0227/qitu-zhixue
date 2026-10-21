@@ -168,11 +168,15 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
       try {
         const hasExplicitExploration =
           new URLSearchParams(window.location.search).has('explorationId') ||
-          new URLSearchParams(window.location.search).has('new');
+          new URLSearchParams(window.location.search).has('new') ||
+          new URLSearchParams(window.location.search).get('idle') === '1';
 
         if (projectId === undefined && hasExplicitExploration) {
+          const explorationId = new URLSearchParams(window.location.search).get('explorationId');
+          const context = explorationId && dataSource.getExplorationContext ? await dataSource.getExplorationContext(explorationId) : null;
+          if (cancelled || generation !== projectLoadGenerationRef.current) return;
           projectLoadPendingRef.current = false;
-          setProject(null);
+          setProject(context);
           setProjectStatus('empty');
           return;
         }
@@ -219,6 +223,7 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
   useEffect(() => {
     const generation = ++sessionLoadGenerationRef.current;
     if (
+      (projectId === undefined && new URLSearchParams(window.location.search).get('idle') === '1') ||
       projectLoadPendingRef.current || projectStatus === 'loading' ||
       projectStatus === 'error' ||
       (activeProjectId === null && projectId !== undefined)
@@ -267,7 +272,10 @@ export function useTutorSession(projectId?: string, explorationKey: number | str
           idempotencyKey: sessionKeyRef.current,
         });
         const session = await dataSource.getSession(created.sessionId);
+        const context = activeProjectId === null && session.explorationId && dataSource.getExplorationContext
+          ? await dataSource.getExplorationContext(session.explorationId) : undefined;
         if (cancelled || generation !== sessionLoadGenerationRef.current) return;
+        if (context !== undefined) setProject(context);
         lastSeqRef.current = session.lastSeq;
         setTransportOffline(false);
         setSessionId(session.sessionId);

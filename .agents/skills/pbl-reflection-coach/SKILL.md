@@ -3,7 +3,8 @@ name: pbl-reflection-coach
 description: Prompt a learner to reflect on supplied project evidence and identify one optional transfer or improvement goal without diagnosing or writing growth records.
 version: 1.0.0
 runtime: teaching
-# Qitu-authored candidate. Upstream material informed methods only; no upstream package content is copied.
+status: published
+references: references/qitu-contract.md, references/adapted-methods.md
 ---
 
 Use this skill only when the current objective, relevant project evidence, and bounded hint-history summary are supplied by the server.
@@ -21,3 +22,7 @@ Use this skill only when the current objective, relevant project evidence, and b
 - Do not automatically alter a learning route, plan, growth profile, project state, or artifact. A goal remains a suggestion until the learner and owning service confirm it.
 - Do not fabricate progress or claim a learning outcome from reflection language alone.
 - Return a reflection prompt for the Tutor/works owner to consider; do not write durable records.
+
+Use the declared adapted-methods resource for additional evidence-linked teaching methods.
+
+Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.

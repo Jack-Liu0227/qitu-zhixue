@@ -26,6 +26,9 @@ export const DEFAULT_IDEMPOTENCY_PROCESSING_LEASE_MS = 60 * 1000;
 
 /** 作为 Nest DI 稳定注入令牌的抽象接口。 */
 export abstract class IdempotencyStore {
+  /** Optional read API for persisted human decisions; never claims or executes a handler. */
+  lookup?<T>(scope: string, key: string, requestHash: string): Promise<IdempotencyResult<T> | null>;
+
   /**
    * 以 `(scope, key)` 为幂等单元执行 `handler`：
    * - 首次请求执行 handler，并持久化 `response_status` / `response_body`；
@@ -75,6 +78,16 @@ export class IdempotencyService extends IdempotencyStore implements OnModuleInit
   onModuleDestroy(): void {
     if (this.cleanupTimer) clearInterval(this.cleanupTimer);
     this.cleanupTimer = null;
+  }
+
+  override async lookup<T>(scope: string, key: string, requestHash: string): Promise<IdempotencyResult<T> | null> {
+    assertIdempotencyInput(scope, key, requestHash);
+    if (!this.db) throw new ServiceUnavailableException('幂等日志不可用');
+    const existing = await this.load(this.db, scope, key);
+    if (!existing || existing.expiresAt.getTime() <= Date.now()) return null;
+    if (existing.requestHash !== requestHash) throw new IdempotencyError('IDEMPOTENCY_CONFLICT', '确认日志参数不一致');
+    if (existing.status !== 'succeeded') return null;
+    return { status: existing.responseStatus ?? 200, body: existing.responseBody as T, replayed: true };
   }
 
   async execute<T>(

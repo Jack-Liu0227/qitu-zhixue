@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { and, eq } from 'drizzle-orm';
 import { auditLogs, type Database } from '@qitu/database';
 import type { GetTutorSessionResponse, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock } from '@qitu/contracts';
+import { hasLearningSessionCompletion } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -77,7 +78,7 @@ export class TutorExperimentService {
     const objectiveIds = lesson.objectiveIds.map((id) => `${plan.id}:${id}`);
     const objectiveId = requestedObjectiveId ?? (objectiveIds.length === 1 ? objectiveIds[0] : undefined);
     if (!objectiveId || !objectiveIds.includes(objectiveId)) return undefined;
-    if (profile.sessions.every((entry) => entry.completionSpec?.version === 'learning-session-completion.v1')) {
+    if (profile.sessions.every(hasLearningSessionCompletion)) {
       const completed = new Set((await this.plans.listSessionCompletions(plan.id, plan.version)).map((entry) => entry.learningSessionId));
       const current = [...bundle!.sessions].sort((left, right) => left.index - right.index).find((entry) => !completed.has(entry.id));
       if (current?.id !== session.id) return undefined;

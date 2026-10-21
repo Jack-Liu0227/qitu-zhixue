@@ -55,6 +55,8 @@ import { PBL_GATE_INTERNAL_ACTOR } from './internal-gate-actor.js';
 
 export type TeamRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type TeamTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+/** A zero-work tutor run is an abandoned handshake, not a long-lived mentor. */
+export const EMPTY_TEAM_RUN_MAX_AGE_MS = 60 * 1000;
 
 /* ==========================================================================
  * PBL 阶段门禁 —— 服务端强制层
@@ -700,7 +702,7 @@ export class TeamRuntimeService {
     // 硬约束：一个学生同一时间只能有一个当前班主任。幂等键未命中时再查
     // 活跃 run：同 leader 同会话同项目 → 幂等重放；不同 leader → 409。
     if (studentUserId !== null) {
-      const activeRuns = await db
+      let activeRuns = await db
         .select()
         .from(agentTeamRuns)
         .where(and(
@@ -708,6 +710,8 @@ export class TeamRuntimeService {
           inArray(agentTeamRuns.status, ['queued', 'running']),
         ))
         .orderBy(asc(agentTeamRuns.createdAt));
+      activeRuns = await this.expireStaleEmptyRuns(actor, studentUserId, activeRuns);
+      activeRuns = await this.reconcileTerminalRuns(actor, studentUserId, activeRuns);
       const decision = decideMentorUniqueness(
         activeRuns.map((run) => ({
           id: run.id,
@@ -1396,6 +1400,17 @@ export class TeamRuntimeService {
     return toRouteView(updated);
   }
 
+  /** Admin management reads the actual run/project identity before resolving its frozen teaching bundle. */
+  async getProjectIdentityForRun(actor: CurrentUser, runId: string) {
+    const run = await this.getRunRow(runId);
+    this.assertRunAccess(run, actor);
+    if (!run.projectId) throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '该运行没有冻结项目，不能委派正式教学任务' });
+    const [project] = await this.requireDb().select({ id: projects.id, templateVersionId: projects.templateVersionId })
+      .from(projects).where(eq(projects.id, run.projectId)).limit(1);
+    if (!project?.templateVersionId) throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '该项目没有冻结模板版本' });
+    return { projectId: project.id, templateVersionId: project.templateVersionId, leaderAgentId: run.leaderAgentId };
+  }
+
   async getRunGraph(actor: CurrentUser, runId: string): Promise<TeamRunGraph> {
     const db = this.requireDb();
     const run = await this.getRunRow(runId);
@@ -1431,13 +1446,17 @@ export class TeamRuntimeService {
    * 永远不直接返回。
    */
   async getStudentTeamRuntimeProjection(
-    projectId: string,
+    projectId: string | null,
     studentUserId: string,
     assistantRuntimeIds: Readonly<Record<string, readonly string[]>>,
+    tutorSessionId?: string,
   ): Promise<StudentTeamRuntimeProjection> {
+    const runScope = projectId !== null ? eq(agentTeamRuns.projectId, projectId)
+      : tutorSessionId ? and(isNull(agentTeamRuns.projectId), eq(agentTeamRuns.tutorSessionId, tutorSessionId)) : null;
+    if (!runScope) throw new BadRequestException('探索团队投影需要有效会话');
     if (!this.db) return { runId: null, agents: {} };
     const [run] = await this.db.select().from(agentTeamRuns).where(and(
-      eq(agentTeamRuns.projectId, projectId),
+      runScope,
       eq(agentTeamRuns.studentUserId, studentUserId),
     )).orderBy(desc(agentTeamRuns.createdAt)).limit(1);
     if (!run) return { runId: null, agents: {} };
@@ -1471,7 +1490,8 @@ export class TeamRuntimeService {
         const task = taskById.get(event.taskId);
         return task !== undefined && ids.has(task.agentId);
       });
-      const pendingCount = [...ids].reduce((count, id) => count + (mailboxByAgent.get(id)?.pendingCount ?? 0), 0);
+      const pendingCount = projectId === null ? memberMessages.filter(message => message.status === 'queued').length
+        : [...ids].reduce((count, id) => count + (mailboxByAgent.get(id)?.pendingCount ?? 0), 0);
       const latestTask = memberTasks.at(-1);
       const status = studentAgentStatus(run.status, memberTasks, pendingCount, ids.has(run.leaderAgentId));
       output[assistantId] = {
@@ -1651,7 +1671,7 @@ export class TeamRuntimeService {
     const tasks = await tx.select({ status: agentTeamTasks.status }).from(agentTeamTasks)
       .where(eq(agentTeamTasks.runId, runId));
     if (tasks.length === 0) return;
-    const status = tasks.some((task) => task.status === 'failed' || task.status === 'cancelled')
+    const status = tasks.some((task) => task.status === 'failed' || task.status === 'cancelled' || task.status === 'timed_out')
       ? 'failed'
       : tasks.every((task) => task.status === 'succeeded')
         ? 'completed'
@@ -1663,9 +1683,141 @@ export class TeamRuntimeService {
     }).where(eq(agentTeamRuns.id, runId));
   }
 
+  /**
+   * Workers may have acknowledged every task before a previous deployment
+   * learned to close the owning run. Reconcile that durable terminal state
+   * before enforcing mentor uniqueness so an already-finished Tutor run can
+   * never hold the student's single-mentor slot forever.
+   */
+  private async reconcileTerminalRuns(
+    actor: CurrentUser,
+    studentUserId: string,
+    activeRuns: Array<typeof agentTeamRuns.$inferSelect>,
+    now = new Date(),
+  ): Promise<Array<typeof agentTeamRuns.$inferSelect>> {
+    if (activeRuns.length === 0) return activeRuns;
+    const ids = activeRuns.map((run) => run.id);
+    const db = this.requireDb();
+    const [tasks, messages] = await Promise.all([
+      db.select({ runId: agentTeamTasks.runId, status: agentTeamTasks.status }).from(agentTeamTasks)
+        .where(inArray(agentTeamTasks.runId, ids)),
+      db.select({ runId: agentTeamMessages.runId, status: agentTeamMessages.status }).from(agentTeamMessages)
+        .where(and(
+          inArray(agentTeamMessages.runId, ids),
+          inArray(agentTeamMessages.status, ['queued', 'processing']),
+        )),
+    ]);
+    const taskStatuses = new Map<string, string[]>();
+    for (const task of tasks) {
+      const statuses = taskStatuses.get(task.runId) ?? [];
+      statuses.push(task.status);
+      taskStatuses.set(task.runId, statuses);
+    }
+    const runsWithActiveMessages = new Set(messages.map((message) => message.runId));
+    const reconciledIds = new Set<string>();
+
+    for (const run of activeRuns) {
+      const statuses = taskStatuses.get(run.id);
+      if (!statuses || statuses.length === 0 || runsWithActiveMessages.has(run.id)) continue;
+      const status = statuses.some((taskStatus) =>
+        taskStatus === 'failed' || taskStatus === 'cancelled' || taskStatus === 'timed_out')
+        ? 'failed'
+        : statuses.every((taskStatus) => taskStatus === 'succeeded')
+          ? 'completed'
+          : null;
+      if (status === null) continue;
+
+      await db.update(agentTeamRuns).set({
+        status,
+        completedAt: now,
+        updatedAt: now,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      }).where(and(
+        eq(agentTeamRuns.id, run.id),
+        inArray(agentTeamRuns.status, ['queued', 'running']),
+      ));
+      reconciledIds.add(run.id);
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'agent.team_run.reconcile_terminal',
+        targetType: 'agent_team_run',
+        targetId: run.id,
+        detail: { studentUserId, previousStatus: run.status, reconciledStatus: status, taskStatuses: statuses },
+      });
+      this.logger.warn(`已对账终态 Team Run：run=${run.id}，status=${status}，student=${studentUserId}`);
+    }
+
+    return activeRuns.filter((run) => !reconciledIds.has(run.id));
+  }
+
   private requireDb(): Database {
     if (!this.db) throw new ServiceUnavailableException('Team Runtime 存储不可用');
     return this.db;
+  }
+
+  /**
+   * Tutor turns used to create a run even when no team task was delegated.
+   * Those zero-work queued/running rows otherwise hold the one-mentor slot
+   * forever. Only clearly idle tutor runs are expired; task-bearing work is
+   * never touched.
+   */
+  private async expireStaleEmptyRuns(
+    actor: CurrentUser,
+    studentUserId: string,
+    activeRuns: Array<typeof agentTeamRuns.$inferSelect>,
+    now = new Date(),
+  ): Promise<Array<typeof agentTeamRuns.$inferSelect>> {
+    const configured = Number(process.env.QITU_EMPTY_TEAM_RUN_MAX_AGE_MS ?? '');
+    const retentionMs = Number.isFinite(configured) && configured >= 60_000
+      ? configured
+      : EMPTY_TEAM_RUN_MAX_AGE_MS;
+    const cutoff = new Date(now.getTime() - retentionMs);
+    const candidates = activeRuns.filter((run) => run.trigger === 'tutor.turn'
+      && run.updatedAt < cutoff
+      && (run.leaseExpiresAt === null || run.leaseExpiresAt < now));
+    if (candidates.length === 0) return activeRuns;
+
+    const ids = candidates.map((run) => run.id);
+    const db = this.requireDb();
+    const [tasks, messages] = await Promise.all([
+      db.select({ runId: agentTeamTasks.runId }).from(agentTeamTasks)
+        .where(inArray(agentTeamTasks.runId, ids)),
+      db.select({ runId: agentTeamMessages.runId }).from(agentTeamMessages)
+        .where(inArray(agentTeamMessages.runId, ids)),
+    ]);
+    const withWork = new Set([...tasks, ...messages].map((row) => row.runId));
+    const expiredIds = new Set<string>();
+
+    for (const run of candidates) {
+      if (withWork.has(run.id)) continue;
+      await db.update(agentTeamRuns).set({
+        status: 'cancelled',
+        completedAt: now,
+        updatedAt: now,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      }).where(eq(agentTeamRuns.id, run.id));
+      expiredIds.add(run.id);
+      await this.audit.write({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'agent.team_run.expire_empty',
+        targetType: 'agent_team_run',
+        targetId: run.id,
+        detail: {
+          studentUserId,
+          previousStatus: run.status,
+          trigger: run.trigger,
+          createdAt: run.createdAt.toISOString(),
+          retentionMs,
+        },
+      });
+      this.logger.warn(`已回收无任务 Team Run：run=${run.id}，student=${studentUserId}`);
+    }
+
+    return activeRuns.filter((run) => !expiredIds.has(run.id));
   }
 
   private async getAgent(id: string): Promise<AgentRow | null> {

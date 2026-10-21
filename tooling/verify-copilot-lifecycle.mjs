@@ -86,6 +86,7 @@ for (const name of resume ? [] : packages) {
   compile(name, join(root, 'packages', name, name === 'agent-memory' ? 'tsconfig.json' : 'tsconfig.build.json'), { outDir: output(name) });
   if (name === 'contracts') run('contracts-esm', [join(root, 'tooling/fix-esm-extensions.mjs'), output(name)]);
 }
+run('mcp-sdk-behavior', ['--test', relative(root, join(output('model-runtime'), 'mcp-streamable.test.js'))]);
 compile('api', join(root, 'services/api/tsconfig.json'), { outDir: join(directory, 'dist'), declaration: false });
 const api = join(root, 'services/api');
 function moduleTests(module) {
@@ -100,6 +101,13 @@ run('copilot-behavior', ['--import', new URL('./verify-workspace-source.mjs', im
 run('template-behavior', ['--import', new URL('./verify-workspace-source.mjs', import.meta.url).href,
   '--test', '--test-concurrency=2', ...['templates-governance.service.test.js', 'templates.content-validator.test.js',
     'templates.policy.test.js', 'templates.store.postgres.test.js'].map(name => relative(api, join(directory, 'dist/modules/templates', name)))], api);
+run('configuration-bindings', ['--import', new URL('./verify-workspace-source.mjs', import.meta.url).href,
+  '--test', '--test-concurrency=2', ...['templates-binding.service.test.js', 'templates-binding.drift.test.js',
+    'teaching-bundle.draft.test.js', 'teaching-bundle.lifecycle.test.js', 'project-binding-recovery.test.js']
+    .map(name => relative(api, join(directory, 'dist/modules/templates', name)))], api);
+run('tutor-binding-boundaries', ['--import', new URL('./verify-workspace-source.mjs', import.meta.url).href,
+  '--test', ...['tutor.project-context.test.js', 'tutor.team-resolution.test.js']
+    .map(name => relative(api, join(directory, 'dist/modules/ai-tutor', name)))], api);
 const admin = join(root, 'apps/admin-console');
 const config = JSON.parse(readFileSync(join(admin, 'tsconfig.json'), 'utf8'));
 const inherited = Object.fromEntries(Object.entries(config.compilerOptions?.paths ?? {}).map(([key, values]) =>
@@ -108,7 +116,28 @@ const adminConfig = join(directory, 'admin-lifecycle.json');
 writeFileSync(adminConfig, JSON.stringify({ extends: join(admin, 'tsconfig.json'), compilerOptions: {
   incremental: false, noEmit: true, paths: { ...inherited, ...paths },
 }, include: [join(admin, 'next-env.d.ts'), join(admin, 'app/(console)/copilot/**/*.tsx'),
-  join(admin, 'app/(console)/settings/skills/**/*.tsx')], exclude: [join(admin, 'node_modules')] }));
+  join(admin, 'app/(console)/settings/skills/**/*.tsx'), join(admin, 'app/(console)/settings/templates/**/*.tsx')], exclude: [join(admin, 'node_modules')] }));
 run('admin-types', [require.resolve('typescript/bin/tsc'), '-p', adminConfig]);
+const student = join(root, 'apps/student-center');
+const studentConfig = join(directory, 'student-configuration.json');
+const studentPaths = JSON.parse(readFileSync(join(student, 'tsconfig.json'), 'utf8')).compilerOptions?.paths ?? {};
+const studentManifest = JSON.parse(readFileSync(join(student, 'package.json'), 'utf8'));
+const mermaidLock = /mermaid:\r?\n\s+specifier: ([^\r\n]+)\r?\n\s+version: ([^\s(]+)/.exec(readFileSync(join(root, 'pnpm-lock.yaml'), 'utf8'));
+const studentDependencies = {};
+if (mermaidLock?.[1] === studentManifest.dependencies?.mermaid) {
+  const realMermaid = join(root, `node_modules/.pnpm/mermaid@${mermaidLock[2]}/node_modules/mermaid`);
+  if (existsSync(join(realMermaid, 'package.json'))) {
+    const manifest = JSON.parse(readFileSync(join(realMermaid, 'package.json'), 'utf8'));
+    if (manifest.version === mermaidLock[2] && existsSync(join(realMermaid, manifest.types))) {
+      studentDependencies.mermaid = [join(realMermaid, manifest.types)];
+      resolutions.push(`Student compile resolves actual locked mermaid@${manifest.version} declarations; the UNC install snapshot is unchanged.`);
+    }
+  }
+}
+writeFileSync(studentConfig, JSON.stringify({ extends: join(student, 'tsconfig.json'), compilerOptions: {
+  incremental: false, noEmit: true, paths: { ...Object.fromEntries(Object.entries(studentPaths).map(([key, values]) =>
+    [key, values.map(value => resolve(student, value))])), ...paths, ...studentDependencies },
+}, include: [join(student, 'next-env.d.ts'), join(student, 'features/tutor/TutorPage.tsx')], exclude: [join(student, 'node_modules')] }));
+run('student-types', [require.resolve('typescript/bin/tsc'), '-p', studentConfig]);
 save(true);
 process.stdout.write('\nPASS: services/api/.tmp/copilot-lifecycle-verification.json\n');

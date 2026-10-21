@@ -14,6 +14,8 @@ import { TemplateGovernanceService } from '../modules/templates/templates-govern
 import { TemplateStore } from '../modules/templates/templates.store';
 import { TemplatesModule } from '../modules/templates/templates.module';
 import {
+  OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_16_QUALITY_BOOTSTRAP_KEY,
+  OPTICS_16_QUALITY_TEMPLATE_INPUT, OPTICS_16_QUALITY_VERSION_INPUT,
   assertOpticsTemplateStructure,
   OPTICS_16_COMPLETION_BOOTSTRAP_KEY,
   OPTICS_16_COMPLETION_TEMPLATE_SLUG,
@@ -60,6 +62,7 @@ export interface OpticsBootstrapDeps {
 }
 
 export interface OpticsBootstrapArgs {
+  qualityReview?: boolean;
   teamVersionId: string;
   actor: CurrentUser;
   pilotReason: string;
@@ -85,11 +88,11 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const slug = OPTICS_16_COMPLETION_TEMPLATE_SLUG;
-  const templateInput = OPTICS_16_COMPLETION_TEMPLATE_INPUT;
-  const versionInput = OPTICS_16_COMPLETION_VERSION_INPUT;
-  const bootstrapKey = OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
-  const keyPrefix = 'optics16-completion-bootstrap';
+  const slug = args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
@@ -321,6 +324,7 @@ async function ensureActiveBinding(
 /* ============================ CLI ============================ */
 
 interface CliArgs {
+  qualityReview: boolean;
   teamVersionId: string | null;
   adminUserId: string | null;
   pilotReason: string;
@@ -330,6 +334,7 @@ interface CliArgs {
 
 function parseCliArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
+    qualityReview: false,
     teamVersionId: null,
     adminUserId: null,
     pilotReason: '光学 PBL 模板进入试点（bootstrap）',
@@ -338,6 +343,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === '--quality-review') out.qualityReview = true;
     if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
     if (arg === '--teaching-bundle-file') out.teachingBundleFile = argv[index + 1] ?? null;
     if (arg === '--admin-user-id') out.adminUserId = argv[index + 1] ?? null;
@@ -392,6 +398,7 @@ async function main(): Promise<void> {
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
       { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
+        qualityReview: cli.qualityReview,
         ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },
     );
 

@@ -22,7 +22,7 @@ knowledge.bind 的常用 agentKind 为 admin_assistant，mode 为 retrieve。现
 ]}
 ```
 
-这个示例只适用于没有旧授权的新库。现有库必须合并原 bindings。管家 knowledge.create 创建空平台库，既不上传文档也不创建远端 IMA 内容；连接已有库的 mode/connection 字段属于后台连接 owner，当前不在 knowledge.create adapter 白名单。
+这个示例只适用于没有旧授权的新库。现有库必须合并原 bindings。knowledge.create 已委托统一连接 owner，支持 create_new 和 link_existing，须消费真实配置和已验证连接字段。连接 IMA 已有库可能扩展当前全局 allowedKnowledgeBaseIds，旧项目仍取冻结 grant 交集。
 
 平台配置外层为 `{mcpServers,knowledgeEngines,platformTools,growthProjection?}`。project-knowledge 总开关位于 `config.platformTools["project-knowledge"]`，结构是 `{name,description,enabled,tools,boundAssistants}`，tools 使用 knowledge_search/knowledge_read 的 canonical ID。只有用户要求授权检索时才合并助手到 boundAssistants，且保留其他成员。
 
@@ -35,14 +35,14 @@ knowledgeEngines 每个实例是 `{name,description,provider,enabled,config}`。
 | GET/PUT /api/v1/admin/platform-config | PUT `{expectedRevision,config}`，带 Idempotency-Key |
 | POST /api/v1/admin/platform-config/validate | 后台验证当前完整配置 |
 | GET /api/v1/admin/knowledge/bases | 列库 |
-| POST /api/v1/admin/knowledge/bases | 后台连接 owner 支持的建库/链接合同比管家 action 更宽，不能直接塞进 action |
+| POST /api/v1/admin/knowledge/bases | 与 knowledge.create 复用同一连接 owner |
 | GET /api/v1/admin/knowledge/bases/:id | 当前库、revision、构建状态 |
 | GET/PUT /api/v1/admin/knowledge/bases/:id/bindings | PUT `{expectedRevision,bindings}`，带 Idempotency-Key |
 | POST /api/v1/admin/knowledge/bases/:id/uploads | 后台专用文档上传 |
 | POST /api/v1/admin/knowledge/bases/:id/rebuild | 后台专用索引任务 |
 | GET /api/v1/admin/knowledge/jobs/:id | 后台查看索引/同步任务状态 |
 
-上传、链接探测、索引、远端文件管理不是现有管家 action。只能说明下一步或转到后台原入口，不能生成 knowledge.upload/rebuild 等未知操作。回读创建库的 unindexed 状态应明确资料尚不能检索；只有实际任务/检索回执才能报告对应成功。
+管家内“导入知识库资料”使用原 uploads API，文件字节不发送模型。文本可用 knowledge.import {id,title,content,allowMaterialize?}，重建用 knowledge.rebuild {id}，状态用 knowledge.status {id}。不要生成不存在的 knowledge.upload action。上传/导入触发异步索引任务，queued 不代表 ready。远端文件的批量删除未授权，不能伪装本地删除为远端删除。回读创建库的 unindexed 状态应明确资料尚不能检索；只有实际任务/检索回执才能报告对应成功。
 
 ## 测试、更新与删除
 
@@ -52,3 +52,7 @@ knowledgeEngines 每个实例是 `{name,description,provider,enabled,config}`。
 - `knowledge.delete {id,expectedRevision}` 使用同一 owner 软删除，取消未结束任务并撤销来源/连接。保留历史本地记录及上游服务的文档，不发出远端删除命令。回读 lifecycle=deleted，而非把任何 404 都当删除成功。
 
 知识库更新/删除对应 `POST /api/v1/admin/knowledge/bases/:id/settings`，直接请求体分别是 `{expectedRevision,...patch}` 和 `{expectedRevision,deleted:true}`；带 Idempotency-Key。引擎 check 对应 `POST /api/v1/admin/knowledge/engines/:id/check`。
+
+## 已有库连接字段
+
+knowledge.create 的 mode 默认为 create_new。link_existing 时 connection 按实际 provider 使用 externalPath、serverUrl、remoteKnowledgeBaseId、zimName、deviceId 等该 provider 支持的字段，不填密钥。服务端连接 owner 负责路径、清单、模型签名和真实连接检查；不支持的连接器明确失败。knowledge.status 回读 revision/lifecycle/buildState/indexVersion，不返回教材全文。

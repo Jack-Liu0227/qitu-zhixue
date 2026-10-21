@@ -161,6 +161,12 @@ export function TutorReplyBlockView({
         />
       );
     case 'optics_experiment':
+      if (block.allowedActions.length === 0) return <section className="qitu-tutor-hint" role="note">
+        <strong>这条历史预览不需要提交预测</strong>
+        <p>这里尚未进入可操作的实验任务。可以继续和导师交流，确认项目后按当前课时生成课件。</p>
+        <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled}
+          onClick={() => onSelectOption?.('继续了解现象', '请围绕当前探究问题继续介绍现象，一次问我一个观察问题。')}>继续了解现象</button>
+      </section>;
       return (
         <OpticsDiffractionScatteringCard
           disabled={disabled || block.allowedActions.length === 0}

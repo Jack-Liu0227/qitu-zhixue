@@ -52,6 +52,7 @@ function harness(output = plan, modelOutput = ['text'], readReferences = true) {
     models: { listAgentModelOptions: () => [{ ...dialogueModel, output: modelOutput }] },
     knowledge: { configuration: async () => ({ revision: 1, config: {} }), bases: async () => [] },
     scopeResources: async () => ({ bindingStatus: 'draft_reference', teamIds: [], assistantIds: [] }),
+    deletionSnapshot: async () => String(readRevision),
     execute: async (_actor: CurrentUser, kind: string, input: Record<string, unknown>, key: string) => {
       if (kind === 'team.create' && failTeam) throw new BadRequestException({ code: 'TEAM_INVALID', message: '团队暂不可用' });
       executions.push({ kind, input, key });
@@ -334,4 +335,65 @@ test('a negative diagnostic is a failed receipt, blocks dependents and never re-
     assert.equal(result.reply.includes('已保存：Probe'), false);
   }
   assert.equal(probes, 1);
+});
+
+
+test('every delete kind and generic MCP call requires a human decision, ordinary retries never execute it', async () => {
+  for (const kind of ['assistant.delete', 'team.delete', 'template.delete', 'skill.delete', 'mcp.delete', 'knowledge.delete', 'model.delete', 'mcp.invoke'] as const) {
+    const h = harness({ reply: 'Delete proposal', actions: [{ id: 'remove', kind, label: 'Remove exact resource', input: { id: 'fixture' } }] });
+    const input = { ...request, scope: 'global' as const, templateId: null, templateVersionId: null };
+    const proposed = await h.service.run(actor, input, kind);
+    assert.equal(proposed.status, 'awaiting_confirmation');
+    assert.equal(proposed.receipts[0]?.status, 'awaiting_confirmation');
+    const confirmationId = proposed.receipts[0]!.confirmation!.id;
+    const replay = await h.service.run(actor, input, kind);
+    assert.equal(replay.receipts[0]?.confirmation?.id, confirmationId);
+    assert.equal(h.executions.length, 0);
+    const bad = await h.service.confirm(actor, { request: input, turnKey: kind, actionId: 'remove', confirmationId: 'forged', decision: 'confirm' });
+    assert.equal(bad.receipts[0]?.code, 'COPILOT_CONFIRMATION_INVALID');
+    assert.equal(h.executions.length, 0);
+    const command = { request: input, turnKey: kind, actionId: 'remove', confirmationId, decision: 'confirm' as const };
+    const confirmed = await h.service.confirm(actor, command);
+    assert.equal(confirmed.receipts[0]?.status, 'succeeded');
+    await h.service.confirm(actor, command);
+    assert.equal(h.executions.length, 1);
+    assert.equal(h.calls(), 1);
+  }
+});
+
+test('cancellation and source changes prevent deletion; one administrator cannot use another proposal', async () => {
+  const make = () => harness({ reply: 'Remove', actions: [{ id: 'remove', kind: 'team.delete', label: 'Delete team', input: { id: 'fixture' } }] });
+  const input = { ...request, scope: 'global' as const, templateId: null, templateVersionId: null };
+  const h = make();
+  const result = await h.service.run(actor, input, 'cancel');
+  const command = { request: input, turnKey: 'cancel', actionId: 'remove', confirmationId: result.receipts[0]!.confirmation!.id, decision: 'cancel' as const };
+  assert.equal((await h.service.confirm(actor, command)).receipts[0]?.status, 'cancelled');
+  assert.equal((await h.service.confirm(actor, { ...command, decision: 'confirm' })).receipts[0]?.code, 'COPILOT_CONFIRMATION_DECIDED');
+  assert.equal(h.executions.length, 0);
+  const changed = make();
+  const original = await changed.service.run(actor, input, 'changed');
+  changed.revision(2);
+  const stale = await changed.service.confirm(actor, { ...command, turnKey: 'changed', confirmationId: original.receipts[0]!.confirmation!.id, decision: 'confirm' });
+  assert.equal(stale.receipts[0]?.code, 'COPILOT_CONFIRMATION_SOURCE_CHANGED');
+  assert.equal(changed.executions.length, 0);
+  const foreign = await changed.service.confirm({ ...actor, id: 'other-admin' }, { ...command, turnKey: 'changed', decision: 'confirm' });
+  assert.equal(foreign.receipts[0]?.code, 'COPILOT_CONFIRMATION_INVALID');
+  assert.equal(changed.executions.length, 0);
+});
+
+
+test('batch deletion remembers each confirmed or cancelled decision across later confirmations', async () => {
+  const h = harness({ reply: 'Batch proposal', actions: [
+    { id: 'first', kind: 'team.delete', label: 'First team', input: { id: 'first' } },
+    { id: 'second', kind: 'team.delete', label: 'Second team', input: { id: 'second' } },
+  ] });
+  const input = { ...request, scope: 'global' as const, templateId: null, templateVersionId: null };
+  const proposed = await h.service.run(actor, input, 'batch-confirm');
+  const first = proposed.receipts[0]!.confirmation!.id, second = proposed.receipts[1]!.confirmation!.id;
+  const confirmed = await h.service.confirm(actor, { request: input, turnKey: 'batch-confirm', actionId: 'first', confirmationId: first, decision: 'confirm' });
+  assert.deepEqual(confirmed.receipts.map(receipt => receipt.status), ['succeeded', 'awaiting_confirmation']);
+  const finished = await h.service.confirm(actor, { request: input, turnKey: 'batch-confirm', actionId: 'second', confirmationId: second, decision: 'cancel' });
+  assert.deepEqual(finished.receipts.map(receipt => receipt.status), ['succeeded', 'cancelled']);
+  assert.equal(finished.status, 'completed');
+  assert.equal(h.executions.length, 1);
 });

@@ -1,5 +1,5 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, type AdminCopilotActionKind } from '@qitu/contracts';
+import { ADMIN_COPILOT_CONTRACT_VERSION, ADMIN_COPILOT_OPERATIONS, QITU_AUTHORING_SKILL_IDS, type AdminCopilotActionKind } from '@qitu/contracts';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
 import { createHash } from 'node:crypto';
 import { lstat, readFile, realpath } from 'node:fs/promises';
@@ -20,11 +20,11 @@ function unavailable(): never {
     message: '管家模块参考缺失、越界或与能力目录不一致，请同步 Skill 资源包。' });
 }
 
-async function readBounded(path: string, maxBytes: number): Promise<string> {
+async function readBounded(path: string): Promise<string> {
   const info = await lstat(path);
-  if (!info.isFile() || info.isSymbolicLink() || info.size > maxBytes || await realpath(path) !== path) unavailable();
+  if (!info.isFile() || info.isSymbolicLink() || await realpath(path) !== path) unavailable();
   const value = await readFile(path, 'utf8');
-  if (Buffer.byteLength(value, 'utf8') > maxBytes || await realpath(path) !== path) unavailable();
+  if (await realpath(path) !== path) unavailable();
   return value;
 }
 
@@ -36,7 +36,7 @@ export async function loadCopilotReferences(projectRoot = loadRuntimeSkillCatalo
     if (root !== expectedRoot || (await lstat(root)).isSymbolicLink()) unavailable();
     const directory = join(root, 'references');
     if ((await lstat(directory)).isSymbolicLink() || await realpath(directory) !== directory) unavailable();
-    const raw = await readBounded(join(directory, 'catalog.json'), 16000);
+    const raw = await readBounded(join(directory, 'catalog.json'));
     const parsed: unknown = JSON.parse(raw);
     const manifest = object(parsed);
     exact(manifest, ['contractVersion', 'operationsDigest', 'resources']);
@@ -45,7 +45,6 @@ export async function loadCopilotReferences(projectRoot = loadRuntimeSkillCatalo
     const covered = new Set<AdminCopilotActionKind>();
     const paths = new Set<string>();
     const resources: LoadedReference[] = [];
-    let total = 0;
     for (const rawEntry of manifest.resources) {
       const entry = object(rawEntry);
       exact(entry, ['resource', 'description', 'operations']);
@@ -58,14 +57,19 @@ export async function loadCopilotReferences(projectRoot = loadRuntimeSkillCatalo
         covered.add(operation.kind);
         return operation.kind;
       });
-      const content = await readBounded(join(root, ...resource.split('/')), 32768);
-      if (!content.trim() || content.length > 8000) unavailable();
-      total += content.length;
-      if (total > 40000) unavailable();
+      const content = await readBounded(join(root, ...resource.split('/')));
+      if (!content.trim()) unavailable();
       resources.push({ resource, description: text(entry.description, 'description', 300), operations, content,
         digest: createHash('sha256').update(content).digest('hex') });
     }
     if (covered.size !== ADMIN_COPILOT_OPERATIONS.length) unavailable();
+    const catalog = loadRuntimeSkillCatalog(projectRoot);
+    for (const id of QITU_AUTHORING_SKILL_IDS) {
+      const skill = catalog.skills.find(entry => entry.id === id);
+      if (skill?.runtime !== 'admin' || skill.status !== 'ready' || skill.publicationStatus !== 'published') continue;
+      resources.push({ resource: `skills/${id}/SKILL.md`, description: skill.description ?? id,
+        operations: [], content: skill.content, digest: skill.contentHash });
+    }
     const digest = createHash('sha256').update(JSON.stringify({ manifest: parsed,
       files: resources.map(item => [item.resource, item.digest]) })).digest('hex');
     return { digest, resources };
@@ -84,12 +88,12 @@ export function createCopilotReferenceReader(bundle: CopilotReferences) {
     description: 'Read the published Admin configurator module guides before proposing writes. Batch related resources in one call. Read-only; cannot call HTTP, run scripts or read other files.',
     inputSchema: { type: 'object', properties: {
       skill_id: { type: 'string', enum: [MANAGEMENT_SKILL_ID] },
-      resources: { type: 'array', minItems: 1, maxItems: 12, uniqueItems: true,
+      resources: { type: 'array', minItems: 1, maxItems: bundle.resources.length, uniqueItems: true,
         items: { type: 'string', enum: bundle.resources.map(item => item.resource) } },
     }, required: ['skill_id', 'resources'], additionalProperties: false },
     execute: async args => {
       exact(args, ['skill_id', 'resources']);
-      if (args.skill_id !== MANAGEMENT_SKILL_ID || !Array.isArray(args.resources) || args.resources.length < 1 || args.resources.length > 12) {
+      if (args.skill_id !== MANAGEMENT_SKILL_ID || !Array.isArray(args.resources) || args.resources.length < 1 || args.resources.length > bundle.resources.length) {
         throw new BadRequestException({ code: 'COPILOT_REFERENCE_INVALID', message: '仅可读取当前管家目录中的模块手册。' });
       }
       const selected = args.resources.map((resource: unknown) => {
@@ -99,7 +103,7 @@ export function createCopilotReferenceReader(bundle: CopilotReferences) {
       });
       const result = JSON.stringify({ skill_id: MANAGEMENT_SKILL_ID, bundleDigest: bundle.digest,
         resources: selected.map(({ resource, digest, content }) => ({ resource, digest, content })) });
-      if (new Set(args.resources).size !== selected.length || result.length > 47000) {
+      if (new Set(args.resources).size !== selected.length) {
         throw new BadRequestException({ code: 'COPILOT_REFERENCE_INVALID', message: '参考请求重复或超出读取预算。' });
       }
       selected.forEach(item => read.add(item.resource));

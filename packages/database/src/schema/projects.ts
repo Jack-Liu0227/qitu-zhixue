@@ -102,6 +102,7 @@ export const projects = pgTable(
     currentStageIndex: integer('current_stage_index').notNull().default(0),
     stageTotal: integer('stage_total').notNull(),
     progressPercent: integer('progress_percent').notNull().default(0),
+    tutorConversationGeneration: integer('tutor_conversation_generation').notNull().default(0),
     title: text('title').notNull(),
     subtitle: text('subtitle'),
     tags: jsonb('tags').$type<string[]>().notNull().default(sql`'[]'::jsonb`),

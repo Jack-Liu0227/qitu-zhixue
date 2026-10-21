@@ -10,6 +10,16 @@ const progress = { planId: scope.planId, projectId: scope.projectId, planRevisio
   currentSessionId: scope.learningSessionId, completedCount: 0, totalCount: 1, contractReady: true,
   sessions: [{ sessionId: scope.learningSessionId, lessonIndex: 1, title: 'Fixture', status: 'current', completedAt: null, canComplete: true, blockers: [] }] };
 
+test('quality feedback remains attached to the exact proof and malformed owner receipts are rejected', async () => {
+  const evidence = { scope:proof.scope,sessionType:'theory',allowedActions:['respond'],submissions:[{ ...proof,
+    quality:{ status:'needs_revision',subjectDigest:'a'.repeat(64),feedback:[{ criterionId:'criterion',meets:false,feedback:'Connect the observation to your explanation.' }] } }],
+    qualityCriteria:[{ id:'criterion',description:'Explain the observation.' }],observations:[],approvedArtifacts:[],reflections:[] };
+  const result = await getLessonEvidence(async()=>({ data:evidence }),scope);
+  assert.equal(result.submissions[0]!.quality!.status,'needs_revision');
+  await assert.rejects(getLessonEvidence(async()=>({ data:{ ...evidence,submissions:[{ ...proof,quality:{ status:'accepted',subjectDigest:42,feedback:[] } }] } }),scope),
+    { code:'LESSON_EVIDENCE_INVALID' });
+});
+
 test('progress and evidence reject another project, session or revision', async () => {
   await assert.rejects(getLessonProgress(async () => ({ data: { ...progress, projectId: 'other' } }), scope.planId, scope.projectId),
     { code: 'LESSON_PROGRESS_INVALID' });

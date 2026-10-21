@@ -18,6 +18,8 @@ import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
 import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
+import { useTutorTeamGraph } from './hooks/useTutorTeamGraph';
+import { ExplorationProgressPanel } from './components/ExplorationProgressPanel';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
 import { LessonAssessmentCard } from './components/LessonAssessmentCard';
@@ -50,11 +52,12 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     return () => query.removeEventListener('change', syncPanels);
   }, []);
   const [rightSidebarTab, setRightSidebarTab] = useState<'progress' | 'agents'>('progress');
+  const { graph: teamGraph, status: teamGraphStatus, error: teamGraphError, retry: retryTeamGraph } = useTutorTeamGraph({
+    source, projectId: projectId ?? session.project?.project?.id, explorationId: session.explorationId,
+    refreshKey: session.turns.length, watch: rightOpen && rightSidebarTab === 'agents',
+  });
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
-  const [teamGraph, setTeamGraph] = useState<TutorTeamGraph | null>(null);
-  const [teamGraphStatus, setTeamGraphStatus] = useState<TutorLoadStatus>(projectId ? 'loading' : 'empty');
-  const [teamGraphError, setTeamGraphError] = useState<TutorViewError | null>(null);
   const confirmKey = useRef<{ explorationId: string; templateVersionId: string; key: string } | null>(null);
 
   function toggleHistory() {
@@ -78,7 +81,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   useEffect(() => {
     // Entering AI搭档 without an explicit exploration opens the current project.
-    if (!projectId && !searchParams.get('new') && !searchParams.get('explorationId') && !searchParams.get('explorePrompt')) {
+    if (!projectId && searchParams.get('idle') !== '1' && !searchParams.get('new') && !searchParams.get('explorationId') && !searchParams.get('explorePrompt')) {
       let cancelled = false;
       void source.listProjects().then((projects) => {
         if (cancelled) return;
@@ -99,44 +102,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     const prompt = params.get('explorePrompt');
     if (prompt) composer.setDraft(prompt);
   }, [composer.setDraft, routeContextKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!projectId) {
-      setTeamGraph(null);
-      setTeamGraphStatus('empty');
-      setTeamGraphError(null);
-      return () => { cancelled = true; };
-    }
-    setTeamGraphStatus('loading');
-    setTeamGraphError(null);
-    const refreshTimer = window.setTimeout(() => void source.getTeamGraph(projectId).then((graph) => {
-      if (cancelled) return;
-      setTeamGraph(graph);
-      setTeamGraphStatus(graph === null ? 'empty' : 'ready');
-    }).catch((cause: unknown) => {
-      if (cancelled) return;
-      const error = toViewError(cause);
-      setTeamGraph(null);
-      setTeamGraphError(error);
-      setTeamGraphStatus('error');
-    }), session.turns.length > 0 ? 300 : 0);
-    return () => { cancelled = true; window.clearTimeout(refreshTimer); };
-  }, [projectId, source, session.turns.length]);
-
-  const retryTeamGraph = () => {
-    if (!projectId) return;
-    setTeamGraphStatus('loading');
-    setTeamGraphError(null);
-    void source.getTeamGraph(projectId).then((graph) => {
-      setTeamGraph(graph);
-      setTeamGraphStatus(graph === null ? 'empty' : 'ready');
-    }).catch((cause: unknown) => {
-      setTeamGraph(null);
-      setTeamGraphError(toViewError(cause));
-      setTeamGraphStatus('error');
-    });
-  };
 
   const error = session.submitError ?? session.streamNotice ?? (confirmationError ? { message: confirmationError } : null);
 
@@ -196,7 +161,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             ? '离线 · 暂停发送'
             : session.sessionStatus === 'error'
               ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
-              : busy ? '导师正在处理' : ready ? '教学会话已连接' : '正在连接教学会话'}
+              : busy ? '导师正在处理' : ready ? '教学会话已连接' : searchParams.get('idle') === '1' ? '选择会话或开始新的探索' : '正在连接教学会话'}
         </span>
         {projectSummary ? (
           <button
@@ -224,7 +189,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         onToggle={toggleHistory}
         currentProjectId={projectId}
         currentExplorationId={session.explorationId}
-        currentTitle={projectSummary?.title}
+        currentTitle={projectSummary?.title ?? session.project?.exploration?.title}
         currentAssistantName={currentAssistantName}
         currentTurnCount={session.turns.length}
         busy={busy || confirming}
@@ -243,6 +208,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           sessionId={session.sessionId}
           turns={session.turns}
           currentAssistantName={currentAssistantName}
+          explorationContext={session.project?.exploration ? session.project : undefined}
+          idle={searchParams.get('idle') === '1'}
           status={session.sessionStatus === 'ready' && session.turns.length === 0 ? 'empty' : session.sessionStatus}
           error={session.sessionError}
           streaming={session.streaming}
@@ -250,6 +217,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           escalated={session.escalated}
           disabled={!ready || busy || confirming}
           onRetry={session.projectStatus === 'error' ? session.retryProject : session.retrySession}
+          onNewExploration={newExploration}
           onReconnect={session.reconnect}
           onSelectOption={(label, text) => {
             if (!ready || busy || confirming) return;
@@ -265,7 +233,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           onRequestQuizExplanation={(quizId) => session.explainQuiz(quizId)}
           onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
           onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
-          projectId={projectSummary?.id ?? null}
+          projectId={projectSummary?.id ?? projectId ?? null}
           learningActivity={projectSummary && session.project?.lesson ? <><LessonAssessmentCard
             key={`${projectSummary.id}:${session.project.lesson.planId}:${session.project.lesson.planRevision}:${session.project.lesson.learningSessionId}`}
             projectId={projectSummary.id} lesson={session.project.lesson} disabled={!ready || busy || confirming || session.offline}
@@ -297,7 +265,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </div>
           {rightSidebarTab === 'agents' ? (
             <TeamAgentHud
-              key={projectId}
+              key={projectId ?? session.explorationId}
               graph={teamGraph}
               status={teamGraphStatus}
               error={teamGraphError}
@@ -322,7 +290,8 @@ export function TutorPage({ projectId }: { projectId?: string }) {
                 disabled={!ready || busy || confirming || session.offline} />
             </>
           ) : (
-            <div className="qitu-tutor-state-panel" role="status"><strong>自由探索中</strong><p>尚未创建正式项目。项目进度会在你确认想法并创建后显示。</p></div>
+            <ExplorationProgressPanel context={session.project} disabled={!ready || busy || confirming || session.offline}
+              onConfirm={handleOneClickCreateProject} />
           )}
         </aside>
       ) : null}

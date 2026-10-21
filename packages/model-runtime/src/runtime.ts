@@ -225,7 +225,7 @@ async function* runWithPi(resolver: ModelRuntimeResolver, input: ModelRuntimeReq
       input.onToolEvent?.({ type: 'result', callId: call.id, name: call.name, isError: output.isError === true });
       if (signal.aborted) throw transport.failure();
       context.messages.push({ role: 'toolResult', toolCallId: call.id, toolName: call.name,
-        content: [{ type: 'text', text: output.text.slice(0, 48_000) }], isError: output.isError === true, timestamp: Date.now() });
+        content: [{ type: 'text', text: call.name === 'skill_read' ? output.text : output.text.slice(0, 48_000) }], isError: output.isError === true, timestamp: Date.now() });
     }
   }
 }

@@ -28,7 +28,8 @@ export async function verifyLessonEvidence(access: Access, refs: readonly string
 export async function prepareTutorLessonActivities(input: {
   teaching: TutorTeachingContext | null; runtime: EffectiveAgentRuntime | null;
   projectId: string | null; studentId: string; tutorSessionId: string; idempotencyKey: string;
-  knowledgeAccess: Access; registry?: PlatformRegistryService; questions?: LearningPlanService; experiments?: TutorExperimentService;
+  knowledgeAccess: Access; registry?: Pick<PlatformRegistryService, 'getAssistantRuntime' | 'isModelAvailable'>;
+  questions?: Pick<LearningPlanService, 'readPendingQuestionCandidate' | 'acceptQuestionCandidate'>; experiments?: TutorExperimentService;
   resolve(): Promise<TutorTeachingContext | null>;
   hasQuestion(questionId: string): boolean;
 }): Promise<LessonActivityChannel | undefined> {
@@ -37,7 +38,8 @@ export async function prepareTutorLessonActivities(input: {
   const scope = { projectId: input.projectId, planId: teaching.planId, planRevision: teaching.planRevision,
     learningSessionId: teaching.session.id, objectiveId: teaching.objective.id, tutorSessionId: input.tutorSessionId };
   const actor = { id: input.studentId, role: 'student' as const, email: '', displayName: '' };
-  const pendingQuestion = await input.questions?.readPendingQuestionCandidate(actor, scope);
+  const assessmentObjective = [...teaching.session.theoryObjectiveIds, ...teaching.session.practiceObjectiveIds].includes(teaching.objective.id);
+  const pendingQuestion = assessmentObjective ? await input.questions?.readPendingQuestionCandidate(actor, scope) : undefined;
   return createLessonActivityChannel({
     teaching, runtime, scope, idempotencyKey: input.idempotencyKey, pendingQuestion,
     restorePending: !!pendingQuestion && !input.hasQuestion(pendingQuestion.questionId),

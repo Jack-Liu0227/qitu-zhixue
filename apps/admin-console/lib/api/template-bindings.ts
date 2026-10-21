@@ -1,8 +1,8 @@
-import type { PblTemplateTeamBinding } from '@qitu/contracts';
+import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblTemplateTeamBinding } from '@qitu/contracts';
 import { adminEnvelopeRequest, newIdempotencyKey } from './types';
 
-export interface TemplateTeamBinding { binding: PblTemplateTeamBinding; team: { id: string; name: string } | null }
-export interface PublishedTeamVersion { id: string; teamId: string; version: number; name: string; runtimeSnapshotStatus: 'published' | 'legacy_unpinned' }
+export interface TemplateTeamBinding { binding: PblTemplateTeamBinding; configurationReady?: boolean; team: { id: string; name: string; runtimeSnapshotStatus?: string } | null }
+export interface PublishedTeamVersion { id: string; teamId: string; version: number; name: string; runtimeSnapshotStatus: 'published' | 'legacy_unpinned'; members?: { slotId: string; assistantId: string; role?: string }[] }
 const path = (templateId: string, versionId: string) => `/api/v1/admin/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/bindings`;
 export function fetchTemplateBindings(templateId: string, versionId: string) {
   return adminEnvelopeRequest<TemplateTeamBinding[]>({ path: path(templateId, versionId), method: 'GET' });
@@ -19,6 +19,16 @@ export function createTemplateBinding(templateId: string, versionId: string, tea
 export function saveTemplateBundle(templateId: string, versionId: string, bindingId: string, draft: unknown, key = newIdempotencyKey()) {
   return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/teaching-bundle`, method: 'PATCH', body: draft, idempotencyKey: key });
 }
+export function prepareTemplateBundle(templateId: string, versionId: string, bindingId: string, scheduleProfileId: string, key = newIdempotencyKey(), phaseAssignments?: Readonly<Record<string, string>>) {
+  return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/prepare`, method: 'POST', body: { scheduleProfileId, phaseAssignments }, idempotencyKey: key });
+}
 export function transitionTemplateBinding(templateId: string, versionId: string, bindingId: string, action: 'validate' | 'activate', key = newIdempotencyKey()) {
   return adminEnvelopeRequest<{ binding: PblTemplateTeamBinding }>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/${action}`, method: 'POST', idempotencyKey: key });
+}
+export function fetchProjectBindingRecovery(templateId: string, versionId: string) {
+  return adminEnvelopeRequest<AdminProjectBindingRecovery[]>({ path: `${path(templateId, versionId)}/project-recovery`, method: 'GET' });
+}
+export function reconfirmProjectBinding(templateId: string, versionId: string, bindingId: string, projectId: string, reason: string, key: string) {
+  return adminEnvelopeRequest<AdminProjectBindingReconfirmation>({ path: `${path(templateId, versionId)}/${encodeURIComponent(bindingId)}/projects/${encodeURIComponent(projectId)}/reconfirm`,
+    method: 'POST', body: { reason }, idempotencyKey: key });
 }

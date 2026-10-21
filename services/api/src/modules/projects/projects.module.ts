@@ -16,6 +16,15 @@ import { LearningPlanModule } from '../learning-plan/learning-plan.module';
 import { WorksModule } from '../works/works.module';
 import { ProjectLearningLifecycleService } from './project-learning-lifecycle.service';
 import { ProjectLearningLifecycleController } from './project-learning-lifecycle.controller';
+import { ProjectHistoryStore } from './project-history.store';
+import { PostgresProjectHistoryStore } from './project-history.store.postgres';
+import { ProjectHistoryService } from './project-history.service';
+import { ProjectHistoryController } from './project-history.controller';
+import { StudentHistoryCleanupController } from './student-history-cleanup.controller';
+import { StudentHistoryCleanupService } from './student-history-cleanup.service';
+import { ProjectCoversService } from './project-covers.service';
+import { VisualAssetsModule } from '../visual-assets/visual-assets.module';
+import { ProjectTeachingPlanRecoveryService } from './project-teaching-plan-recovery.service';
 
 /**
  * 探索 / 意图确认模块（T6）。
@@ -33,12 +42,17 @@ import { ProjectLearningLifecycleController } from './project-learning-lifecycle
  * 该模块不反向依赖 ProjectsModule，因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule, LearningPlanModule, WorksModule],
-  controllers: [ExplorationsController, ProjectLifecycleController, ProjectLearningLifecycleController],
+  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule, LearningPlanModule, WorksModule, VisualAssetsModule],
+  controllers: [ExplorationsController, ProjectHistoryController, ProjectLifecycleController, ProjectLearningLifecycleController, StudentHistoryCleanupController],
   providers: [
     ProjectsService,
     ProjectLifecycleService,
     ProjectLearningLifecycleService,
+    ProjectHistoryService,
+    StudentHistoryCleanupService,
+    ProjectCoversService,
+    ProjectTeachingPlanRecoveryService,
+    { provide: ProjectHistoryStore, inject: [DATABASE_TOKEN], useFactory: (db: Database | null) => db ? new PostgresProjectHistoryStore(db) : null },
     {
       provide: ExplorationStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],
@@ -52,6 +66,6 @@ import { ProjectLearningLifecycleController } from './project-learning-lifecycle
       },
     },
   ],
-  exports: [ProjectsService, ProjectLifecycleService],
+  exports: [ProjectsService, ProjectLifecycleService, ProjectHistoryService],
 })
 export class ProjectsModule {}

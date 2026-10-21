@@ -27,7 +27,8 @@ async function fixture() {
 
 test('published configurator resources cover the live operations and batched reads preserve the full text', async () => {
   const bundle = await loadCopilotReferences();
-  assert.equal(bundle.resources.length, 10);
+  assert.ok(bundle.resources.some(entry => entry.resource === 'references/lifecycle.md'));
+  assert.ok(bundle.resources.some(entry => entry.resource === 'skills/qitu-understanding-by-design/SKILL.md'));
   assert.equal(new Set(bundle.resources.flatMap(entry => entry.operations)).size, ADMIN_COPILOT_OPERATIONS.length);
   assert.equal('content' in referenceCatalog(bundle).resources[0]!, false);
   const reader = createCopilotReferenceReader(bundle);
@@ -54,7 +55,7 @@ test('reference file edits change the bundle identity even when SKILL.md is unch
   assert.notEqual(first.resources[0]?.digest, second.resources[0]?.digest);
 });
 
-test('missing, oversized, stale, uncovered and escaped resources fail before the model can read', async t => {
+test('long references remain intact while missing, stale, uncovered and escaped resources fail', async t => {
   const f = await fixture(); t.after(() => f.cleanup());
   for (const manifest of [
     { ...f.manifest, contractVersion: 'stale' },
@@ -67,8 +68,10 @@ test('missing, oversized, stale, uncovered and escaped resources fail before the
     await assert.rejects(loadCopilotReferences(f.root), /资源包/);
   }
   await writeFile(f.manifestPath, JSON.stringify(f.manifest));
-  await writeFile(join(f.directory, 'module.md'), 'x'.repeat(8001));
-  await assert.rejects(loadCopilotReferences(f.root), /资源包/);
+  await writeFile(join(f.directory, 'module.md'), 'x'.repeat(300_000) + 'END');
+  const long = await loadCopilotReferences(f.root);
+  const output = await createCopilotReferenceReader(long).tool.execute({ skill_id: 'qitu-project-configurator', resources: ['references/module.md'] });
+  assert.ok(output.text.includes('x'.repeat(300_000) + 'END'));
   await rm(join(f.directory, 'module.md'));
   await assert.rejects(loadCopilotReferences(f.root), /资源包/);
 });

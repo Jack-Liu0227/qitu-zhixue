@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import { createCipheriv, randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { isAbsolute, relative, delimiter, join } from 'node:path';
 import { adminAssistants, agentConfigs, agentProjectionCandidates, agentRoutes, agentSkillBindings, agentTeamEvents, agentTeamRuns,
   modelModels, modelProviders, modelUsageBindings, tutorSessions, tutorTurns } from '@qitu/database';
 import { expressionQuestion } from '@qitu/contracts';
@@ -293,6 +293,7 @@ test('Team Agent prompt is bounded and contains only server-owned runtime contex
 test('structured output requires an object and enforces route schema', () => {
   const schema = { type: 'object', required: ['confirmed'], properties: { confirmed: { type: 'boolean' } } };
   assert.deepEqual(parseStructuredAgentOutput('{"confirmed":true}', schema), { confirmed: true });
+  assert.deepEqual(parseStructuredAgentOutput('格式说明：\n{"confirmed":true}\n以上为结果。', schema), { confirmed: true });
   assert.throws(
     () => parseStructuredAgentOutput('{"confirmed":"yes"}', schema),
     (error: unknown) => error instanceof TeamAgentExecutionError && error.code === 'TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH',
@@ -374,5 +375,32 @@ test('a published skill cannot invent a required worker executor', async () => {
     mkdirSync(join(root, 'needs-tools'));
     writeFileSync(join(root, 'needs-tools', 'SKILL.md'), '---\nruntime: teaching\nstatus: published\nrequiredToolIds: knowledge_search\n---\nRead evidence');
     await assert.rejects(loadAgentSkills(skillDb(['needs-tools']), 'agent', [root], {}), /TEAM_AGENT_TOOL_NOT_CONFIGURED/);
+    mkdirSync(join(root, 'planning'));
+    writeFileSync(join(root, 'planning', 'SKILL.md'), '---\nruntime: teaching\nstatus: published\n---\nPropose a bounded plan');
+    const scoped = await loadAgentSkills(skillDb(['needs-tools', 'planning']), 'agent', [root], {}, 'structured_candidate');
+    assert.deepEqual(scoped.map(skill => skill.id), ['planning']);
+    assert.doesNotMatch(scoped.map(skill => skill.content).join('\n'), /Read evidence/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('worker loads long published bodies and complete reference-backed lifecycle skills', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qitu-team-long-published-'));
+  try {
+    mkdirSync(join(root, 'long', 'references'), { recursive: true });
+    writeFileSync(join(root, 'long', 'SKILL.md'), '---\nruntime: teaching\nstatus: published\nreferences: references/owner.md\n---\n' + 'a'.repeat(300_000) + 'BODY_END');
+    writeFileSync(join(root, 'long', 'references/owner.md'), 'b'.repeat(70_000) + 'REFERENCE_END');
+    const loaded = await loadAgentSkills(skillDb(['long']), 'agent', [root], {});
+    assert.equal(loaded.length, 1);
+    assert.ok(loaded[0]!.content.includes('BODY_END'));
+    assert.ok(loaded[0]!.content.endsWith('REFERENCE_END'));
+    for (const id of ['qitu-learner-profile', 'qitu-growth-trajectory']) {
+      const projection = await loadAgentSkills(skillDb([id]), 'agent', undefined, {});
+      assert.equal(projection.length, 1);
+      assert.ok(projection[0]!.content.includes('owner'));
+    }
+  } finally {
+    const path = relative(tmpdir(), root);
+    assert.ok(path.startsWith('qitu-team-long-published-') && !isAbsolute(path) && !path.includes('..'));
+    rmSync(root, { recursive: true });
+  }
 });

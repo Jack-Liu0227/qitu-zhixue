@@ -48,6 +48,7 @@ export function useProjectsResource<T>(
 
   // 最近一次成功加载的数据，仅内存缓存，供断网只读渲染（不做 localStorage 持久化）。
   const cacheRef = useRef<T | null>(null);
+  const cacheScope = useRef<ReadonlyArray<unknown>>([]);
 
   const [refresh, setRefresh] = useState(0);
   const [retrying, setRetrying] = useState(false);
@@ -55,6 +56,10 @@ export function useProjectsResource<T>(
 
   useEffect(() => {
     let cancelled = false;
+    if (deps.length !== cacheScope.current.length || deps.some((value,index)=>!Object.is(value,cacheScope.current[index]))) {
+      cacheRef.current = null;
+      cacheScope.current = [...deps];
+    }
 
     const run = async (): Promise<void> => {
       if (scenario === 'loading') {

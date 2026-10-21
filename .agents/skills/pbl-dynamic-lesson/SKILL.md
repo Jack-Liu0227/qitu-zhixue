@@ -5,6 +5,7 @@ version: 1.0.0
 runtime: teaching
 status: published
 requiredToolIds: tutor.propose_lesson_activity
+references: references/qitu-contract.md, references/adapted-methods.md
 ---
 
 Use only when the server provides the frozen lesson, current objective, allowed tools and learner evidence. Choose an activity from the learner's latest response, uncertainty and task; do not wait for trigger words.
@@ -16,3 +17,7 @@ Use only when the server provides the frozen lesson, current objective, allowed 
 - The question answer key and explanation are private owner inputs. Do not repeat them in the chat, hints, board, option labels or tool acknowledgement before the student submits. A pending question must not be replaced by a help request.
 
 You propose content, never mastery, project transitions, report approval or growth facts. Generated questions are formative practice until an assessment owner explicitly authorizes a reviewed assessment protocol. Completing a tool call or dragging a parameter does not complete the lesson.
+
+Use the declared adapted-methods resource for additional evidence-linked teaching methods.
+
+Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.

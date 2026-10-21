@@ -3,7 +3,8 @@ name: pbl-data-literacy
 description: Help a learner compare supplied observation records, interpret units and uncertainty, and state limits without inventing data or causal conclusions.
 version: 1.0.0
 runtime: teaching
-# Qitu-authored candidate. Upstream material informed methods only; no upstream package content is copied.
+status: published
+references: references/qitu-contract.md, references/adapted-methods.md
 ---
 
 Use this skill only when the server supplies persisted observation references, units, source type, and the current objective.
@@ -21,3 +22,7 @@ Use this skill only when the server supplies persisted observation references, u
 - Do not make a chart, statistical result, or calculation appear authoritative unless the server has authorized the relevant computation and returned its result.
 - Use the Rayleigh relationship only inside a server-approved domain. Do not label non-Rayleigh behavior as white Mie scattering or describe a single-wavelength result as white.
 - Do not write observations, mastery, artifact approval, or growth records. Return interpretation prompts for the evidence/plan owner to review.
+
+Use the declared adapted-methods resource for additional evidence-linked teaching methods.
+
+Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.

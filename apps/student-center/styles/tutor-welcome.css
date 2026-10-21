@@ -1,0 +1,62 @@
+.qitu-exploration-welcome {
+  --welcome-accent: var(--qitu-primary, #174dcc);
+  width: min(100%, 52rem);
+  margin: 0 auto 1.25rem;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border: 1px solid var(--qitu-border, #dfe7f1);
+  border-radius: 1.25rem;
+  background: var(--qitu-surface, #fff);
+  color: var(--qitu-text, #273951);
+  box-shadow: 0 8px 28px rgb(25 53 96 / 5%);
+}
+.qitu-welcome-topline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: .75rem; }
+.qitu-welcome-label { display: inline-flex; align-items: center; gap: .5rem; color: var(--welcome-accent); font-weight: 650; }
+.qitu-welcome-label > span { width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
+.qitu-welcome-status { color: var(--qitu-muted, #66768b); }
+.qitu-welcome-hero { display: grid; grid-template-columns: minmax(0, 1fr) 7rem; align-items: center; gap: 1.75rem; margin: 1.5rem 0; }
+.qitu-welcome-hero h2 { margin: 0; color: var(--qitu-heading, #132a47); font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 750; letter-spacing: -.035em; line-height: 1.4; text-wrap: pretty; overflow-wrap: anywhere; }
+.qitu-welcome-hero p { margin: .75rem 0 0; color: var(--qitu-muted, #66768b); font-size: .9rem; line-height: 1.8; }
+.qitu-welcome-illustration { display: grid; place-items: center; min-width: 0; aspect-ratio: 1; border-radius: 1.5rem; background: color-mix(in srgb, var(--welcome-accent) 5%, var(--qitu-surface, #fff)); }
+.qitu-welcome-mentor { display: flex; align-items: center; gap: .65rem; margin-bottom: 1.5rem; }
+.qitu-welcome-mentor > div { min-width: 0; display: grid; gap: .2rem; }
+.qitu-welcome-mentor strong { color: var(--qitu-heading, #132a47); font-size: .85rem; font-weight: 650; }
+.qitu-welcome-mentor span { color: var(--qitu-muted, #66768b); font-size: .75rem; overflow-wrap: anywhere; }
+.qitu-welcome-question { margin-bottom: 1.75rem; padding: 1rem 1.15rem; border-left: 3px solid var(--welcome-accent); border-radius: 0 .6rem .6rem 0; background: color-mix(in srgb, var(--welcome-accent) 5%, var(--qitu-surface, #fff)); }
+.qitu-welcome-question > span { color: var(--welcome-accent); font-size: .75rem; font-weight: 650; }
+.qitu-welcome-question p { margin: .45rem 0 0; font-size: 1rem; line-height: 1.75; font-weight: 550; text-wrap: pretty; }
+.qitu-welcome-choice-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: .4rem .75rem; margin-bottom: .8rem; }
+.qitu-welcome-choice-heading h3 { margin: 0; font-size: .95rem; color: var(--qitu-heading, #132a47); }
+.qitu-welcome-choice-heading > span { font-size: .75rem; color: var(--qitu-muted, #66768b); }
+.qitu-welcome-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.qitu-welcome-choice { display: flex; align-items: flex-start; gap: .7rem; padding: 1rem; min-width: 0; min-height: 6rem; border: 1px solid var(--qitu-border, #dfe7f1); border-radius: .8rem; background: var(--qitu-surface, #fff); color: inherit; text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, background-color .15s, box-shadow .15s; }
+.qitu-welcome-choice:not(:disabled):hover { border-color: var(--welcome-accent); background: color-mix(in srgb, var(--welcome-accent) 4%, var(--qitu-surface, #fff)); box-shadow: 0 3px 12px rgb(25 53 96 / 6%); }
+.qitu-welcome-choice:focus-visible, .qitu-welcome-other textarea:focus-visible { outline: 2px solid var(--welcome-accent); outline-offset: 3px; }
+.qitu-welcome-choice:disabled { opacity: .55; cursor: not-allowed; }
+.qitu-welcome-choice-number { flex-shrink: 0; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; background: color-mix(in srgb, var(--welcome-accent) 7%, var(--qitu-surface, #fff)); color: var(--welcome-accent); font-size: .7rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.qitu-welcome-choice-copy { flex: 1; display: grid; gap: .35rem; min-width: 0; }
+.qitu-welcome-choice-copy strong { font-size: .85rem; color: var(--qitu-heading, #132a47); line-height: 1.6; }
+.qitu-welcome-choice-copy > span { font-size: .75rem; line-height: 1.65; color: var(--qitu-muted, #66768b); overflow-wrap: anywhere; }
+.qitu-welcome-choice-arrow { color: var(--qitu-muted, #66768b); font-size: 1rem; }
+.qitu-welcome-choice.is-other { border-style: dashed; }
+.qitu-welcome-other { display: grid; gap: .65rem; margin-top: .9rem; }
+.qitu-welcome-other label { font-size: .85rem; font-weight: 600; }
+.qitu-welcome-other textarea { width: 100%; box-sizing: border-box; resize: vertical; border: 1px solid var(--qitu-border, #dfe7f1); border-radius: .65rem; padding: .8rem; background: var(--qitu-surface, #fff); color: inherit; font: inherit; line-height: 1.6; }
+.qitu-welcome-other button { justify-self: end; }
+.qitu-welcome-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--qitu-border, #dfe7f1); }
+.qitu-welcome-footer ol { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0; padding: 0; list-style: none; color: var(--qitu-muted, #66768b); font-size: .75rem; }
+.qitu-welcome-footer li + li::before { content: '→'; margin-right: .6rem; opacity: .55; }
+.qitu-welcome-footer .is-current { color: var(--welcome-accent); font-weight: 650; }
+.qitu-welcome-footer p { margin: .6rem 0 0; color: var(--qitu-muted, #66768b); font-size: .7rem; line-height: 1.7; }
+.qitu-welcome-pending { font-size: .8rem; color: var(--qitu-muted, #66768b); }
+.qitu-tutor-col-center .qitu-tutor-empty-thread { width: min(100%, 34rem); box-sizing: border-box; margin: 2rem auto; padding: 2rem; border-color: var(--qitu-border, #dfe7f1); background: var(--qitu-surface, #fff); }
+.qitu-tutor-col-center .qitu-tutor-empty-thread h3 { color: var(--qitu-heading, #132a47); }
+.qitu-tutor-col-center .qitu-tutor-empty-thread p { color: var(--qitu-muted, #66768b); }
+@media (max-width: 600px) {
+  .qitu-welcome-hero { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .qitu-welcome-illustration { display: none; }
+  .qitu-welcome-choices { grid-template-columns: minmax(0, 1fr); }
+  .qitu-welcome-choice { min-height: 5rem; }
+  .qitu-welcome-choice-heading > span { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .qitu-welcome-choice { transition: none; } }
+:root[data-qitu-reduced-motion='true'] .qitu-welcome-choice { transition: none; }

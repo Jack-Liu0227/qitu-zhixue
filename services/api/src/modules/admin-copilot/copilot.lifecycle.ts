@@ -11,13 +11,14 @@ import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { KnowledgeLibraryService } from '../knowledge/knowledge-library.service';
 import { KnowledgeEngineService } from '../knowledge/knowledge-engine.service';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
+import { CopilotMcp } from './copilot.mcp';
 import { CopilotResources } from './copilot.resources';
 import { exact, invalid, object, text } from './copilot.protocol';
 
 const KINDS = [
   'assistant.test', 'assistant.delete', 'team.test', 'team.delete', 'template.test', 'template.verify',
   'template.publish', 'template.archive', 'template.delete', 'skill.test', 'skill.delete',
-  'mcp.test', 'mcp.delete', 'knowledge.test', 'knowledge.update', 'knowledge.delete', 'model.test',
+  'mcp.test', 'mcp.delete', 'knowledge.test', 'knowledge.update', 'knowledge.delete', 'model.test', 'model.delete',
 ] as const satisfies readonly AdminCopilotActionKind[];
 type LifecycleKind = typeof KINDS[number];
 export function isLifecycleKind(kind: AdminCopilotActionKind): kind is LifecycleKind {
@@ -45,7 +46,27 @@ export class CopilotLifecycle {
     readonly ima: ImaSettingsService,
     @Optional() readonly library?: KnowledgeLibraryService,
     @Optional() readonly engine?: KnowledgeEngineService,
+    @Optional() readonly mcp?: CopilotMcp,
   ) {}
+
+  async deletionSnapshot(actor: CurrentUser, kind: AdminCopilotActionKind, input: Record<string, unknown>): Promise<string> {
+    if (actor.role !== 'admin') throw new ForbiddenException('仅管理员可以删除');
+    const id = String(input.id ?? input.templateId ?? '');
+    let source: unknown;
+    switch (kind) {
+      case 'assistant.delete': source = (await this.registry.listAssistants()).find(row => row.id === id); break;
+      case 'team.delete': source = (await this.registry.listTeams()).find(row => row.id === id); break;
+      case 'template.delete': source = { template: (await this.templates.listGovernedTemplates(actor)).find(row => row.id === id),
+        versions: await this.templates.listGovernedVersions(actor, id) }; break;
+      case 'skill.delete': source = await this.resources.readSkill(actor, id); break;
+      case 'mcp.delete': source = await this.resources.readMcp(id); break;
+      case 'knowledge.delete': source = await this.knowledge.base(id); break;
+      case 'model.delete': source = this.models.listProviders().providers.find(row => row.id === input.providerId)?.models.find(row => row.id === input.modelId); break;
+      default: invalid('不是删除操作');
+    }
+    if (!source) throw new NotFoundException('待删除对象不存在');
+    return check(source, true).digest;
+  }
 
   async execute(actor: CurrentUser, kind: LifecycleKind, input: Record<string, unknown>, key: string): Promise<Record<string, unknown>> {
     if (actor.role !== 'admin') throw new ForbiddenException('管家生命周期管理仅管理员可用');
@@ -81,6 +102,12 @@ export class CopilotLifecycle {
         const result = await this.templates.publishVersion(actor, templateId, text(input.versionId, 'versionId'), key,
           input.reason === undefined ? null : text(input.reason, 'reason', 2000));
         return { ...result.version, templateId };
+      }
+      case 'model.delete': {
+        exact(input, ['providerId', 'modelId']);
+        const providerId = text(input.providerId, 'providerId'), modelId = text(input.modelId, 'modelId');
+        await this.models.deleteManualModel(providerId, modelId, actor.id, key);
+        return { id: `${providerId}/${modelId}`, providerId, modelId, deleted: true, deletionMode: 'physical' };
       }
       case 'skill.delete': return this.resources.deleteSkill(actor, input, key);
       case 'mcp.delete':
@@ -179,12 +206,19 @@ export class CopilotLifecycle {
     const mode = kind === 'template.verify' ? 'publication_evidence' : kind === 'model.test' ? 'model_connection' : String(input.mode ?? 'configuration');
     const before = await this.configuration(actor, kind, input);
     let passed = before.passed;
+    let probeDetail: Record<string, unknown> = {};
     if (passed && (kind === 'model.test' || kind === 'assistant.test' && mode === 'model_connection')) {
       const providerId = text(kind === 'model.test' ? input.providerId : before.detail.modelProviderId, 'providerId');
       const modelId = text(kind === 'model.test' ? input.modelId : before.detail.modelId, 'modelId');
       passed = (await this.models.testModel(providerId, modelId, actor.id)).ok;
     } else if (passed && kind === 'mcp.test' && mode === 'connection') {
-      passed = input.id === 'ima-knowledge' && (await this.ima.probe(actor)).status === 'connected';
+      if (input.id === 'ima-knowledge') passed = (await this.ima.probe(actor)).status === 'connected';
+      else if (this.mcp) {
+        const probe = await this.mcp.probe(actor, text(input.id, 'id'));
+        passed = probe.ok;
+        probeDetail = { scope: probe.scope, toolCount: probe.toolCount, discoveredTools: probe.tools,
+          truncated: probe.truncated, teachingRuntimeEnabled: false };
+      } else passed = false;
     } else if (passed && kind === 'knowledge.test' && mode === 'engine_connection') {
       if (!this.engine) throw new ServiceUnavailableException('知识引擎测试 owner 不可用');
       passed = (await this.engine.check(text(before.detail.engineId, 'engineId'), key)).ok;
@@ -194,7 +228,7 @@ export class CopilotLifecycle {
     const after = await this.configuration(actor, kind, input);
     if (after.digest !== before.digest) throw new ConflictException({ code: 'COPILOT_TEST_SOURCE_CHANGED', message: '测试期间配置已变化，请用新请求重新测试' });
     return { ...input, id: template ? input.versionId : kind === 'model.test' ? `${String(input.providerId)}/${String(input.modelId)}` : input.id,
-      configurationDigest: before.digest, test: { passed, mode, testedAt: new Date().toISOString(), ...before.detail } };
+      configurationDigest: before.digest, test: { passed, mode, testedAt: new Date().toISOString(), ...before.detail, ...probeDetail } };
   }
 
   async readback(actor: CurrentUser, kind: LifecycleKind, raw: unknown): Promise<unknown> {
@@ -207,6 +241,10 @@ export class CopilotLifecycle {
       if (test.passed !== true || !current.passed) failed(kind === 'mcp.test' && test.mode === 'connection' && id !== 'ima-knowledge'
         ? 'MCP 未配置通用执行驱动，登记存在不能证明连接可用'
         : `检查未通过：${kind}，模式 ${String(test.mode)}；连接、发布证据或运行准入尚未核验通过`);
+      return result;
+    }
+    if (kind === 'model.delete') {
+      if (this.models.listAgentModelOptions().some(row => row.providerId === result.providerId && row.modelId === result.modelId)) throw new ConflictException('模型删除回读失败');
       return result;
     }
     if (kind === 'assistant.delete' && (await this.registry.listAssistants()).some(row => row.id === id)) throw new ConflictException('助手删除回读失败');

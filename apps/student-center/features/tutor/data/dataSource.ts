@@ -25,6 +25,9 @@ import type {
   LessonEvidenceView,
   ReconcileProjectLearningRequest,
   ReconcileProjectLearningResponse,
+  StudentConversationHistoryItem,
+  StudentHistoryDeleteKind,
+  StudentHistoryDeleteReceipt,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import type { TutorProjectContext } from '../types';
@@ -37,10 +40,16 @@ import type { TutorProjectContext } from '../types';
  * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
+  recoverTeachingPlan?(projectId: string, key: string): Promise<void>;
+  listConversationHistory?(): Promise<StudentConversationHistoryItem[]>;
+  deleteHistory?(kind: StudentHistoryDeleteKind, id: string, key: string): Promise<StudentHistoryDeleteReceipt>;
+  getExplorationContext?(explorationId: string): Promise<TutorProjectContext | null>;
+  getProjectConversationHistory?(projectId: string): Promise<GetTutorSessionResponse | null>;
   reconcileLearning?(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string): Promise<ReconcileProjectLearningResponse>;
   getLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>): Promise<LessonEvidenceView>;
   submitLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>, kind: 'responses' | 'artifacts' | 'reflections', request: LearningTextSubmission, idempotencyKey: string): Promise<LearningSubmissionResponse>;
   getLearningArtifact?(projectId: string, artifactId: string): Promise<LearningSubmissionArtifactView>;
+  exportLearningArtifact?(artifactId: string, versionId: string, format: import('@qitu/contracts').ArtifactExportFormat, signal: AbortSignal): Promise<Blob>;
   publishLearningArtifact?(projectId: string, artifactId: string, idempotencyKey: string): Promise<LearningSubmissionArtifactView>;
   getLessonProgress?(planId: string, projectId: string): Promise<LearningSessionProgressView>;
   completeLesson?(planId: string, sessionId: string, request: CompleteLearningSessionRequest, idempotencyKey: string): Promise<CompleteLearningSessionResponse>;
@@ -48,10 +57,12 @@ export interface TutorDataSource {
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;
   listProjects(): Promise<ProjectSummary[]>;
+  listExplorationHistory?(): Promise<Array<{ id:string;title:string;kind:'exploration';explorationId:string;updatedAt:string;turnCount:number }>>;
   /** GET /projects/:id + /stages + /tasks — left-column display projection. */
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
   /** GET /tutor/team-graph?projectId=... — server-filtered agent projection. */
   getTeamGraph(projectId: string): Promise<TutorTeamGraph | null>;
+  getExplorationTeamGraph?(explorationId: string): Promise<TutorTeamGraph | null>;
   getTeamHistory?(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage>;
   /** POST /tutor/sessions — idempotent session creation. */
   createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse>;

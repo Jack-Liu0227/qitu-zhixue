@@ -48,6 +48,8 @@ export abstract class TemplateBindingStore {
   /** `ON CONFLICT (project_id) DO NOTHING`——回填 / 冻结都幂等。 */
   abstract insertSnapshot(input: InsertSnapshotRecordInput, tx?: AuditTransaction): Promise<void>;
   abstract findSnapshot(projectId: string, tx?: AuditTransaction): Promise<SnapshotRecord | null>;
+  /** Explicit audited recovery only; never replaces a complete formal snapshot. */
+  abstract reconfirmLegacySnapshot(input: InsertSnapshotRecordInput, expected: SnapshotRecord | null, tx?: AuditTransaction): Promise<void>;
   abstract listAffectedProjects(templateVersionId: string): Promise<AffectedProjectRecord[]>;
 }
 
@@ -252,6 +254,17 @@ export class InMemoryTemplateBindingStore extends TemplateBindingStore {
   async findSnapshot(projectId: string, _tx?: AuditTransaction): Promise<SnapshotRecord | null> {
     const record = this.snapshots.get(projectId);
     return record === undefined ? null : cloneSnapshot(record);
+  }
+
+  async reconfirmLegacySnapshot(input: InsertSnapshotRecordInput, expected: SnapshotRecord | null): Promise<void> {
+    const current = this.snapshots.get(input.projectId) ?? null;
+    if ((current === null) !== (expected === null) || current && expected && (
+      current.bindingHash !== expected.bindingHash || current.bindingId !== expected.bindingId || current.teamVersionId !== expected.teamVersionId
+      || current.templateVersionId !== expected.templateVersionId || current.backfilled !== expected.backfilled || current.bundleDigest !== expected.bundleDigest
+      || (!current.backfilled && current.bundleDigest !== null))) {
+      throw new TemplateBindingStoreConflictError('项目绑定已变化，请重新读取。');
+    }
+    this.snapshots.set(input.projectId, { ...input, bundleDigest: input.bundleDigest ?? null, backfilled: false });
   }
 
   async listAffectedProjects(templateVersionId: string): Promise<AffectedProjectRecord[]> {

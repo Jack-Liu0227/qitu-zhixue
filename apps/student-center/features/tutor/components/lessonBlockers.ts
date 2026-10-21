@@ -1,6 +1,7 @@
 /** Explain server decisions without inferring completion on the client. */
 export function lessonBlockerLabel(code: string): string {
   const labels: Record<string, string> = {
+    LESSON_QUALITY_REQUIRED: '本课产物尚未取得当前版本的质量评价，请查看反馈或等待班主任复核。',
     LEARNING_SESSION_CONTRACT_REQUIRED: '课时任务配置尚未准备完整，请联系老师。',
     REQUIRED_THEORY_NOT_MASTERED: '请先完成本课要求的正式目标考核。',
     THEORY_GATE_REQUIRED: '请先完成理论学习与考核，再开始实践。',

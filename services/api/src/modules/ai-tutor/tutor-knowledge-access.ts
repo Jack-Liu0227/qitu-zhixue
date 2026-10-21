@@ -54,12 +54,14 @@ export async function resolveTutorKnowledgeAccess(input: {
   studentId: string; assistantId: string; projectId: string | null; templateVersionId?: string | null;
   bindings?: TemplateBindingService; ima?: ImaSettingsService; plans?: LearningPlanStore;
   teaching?: TutorTeachingContext | null;
+  /** Template handoff is a preview, not a frozen project knowledge grant. */
+  unconfirmedTemplate?: boolean;
   authorizeManagedTool?: (toolId: string) => Promise<boolean>;
 }) {
   const strict = input.teaching ? createTutorKnowledgeAccess(input.teaching, input.projectId, input.studentId,
     input.assistantId, input.ima, input.plans, input.bindings) : undefined;
-  let ceiling: readonly string[] | null = input.projectId === null ? null : [];
-  let toolCeiling: readonly string[] | null = input.projectId === null ? null : [];
+  let ceiling: readonly string[] | null = input.projectId === null && !input.unconfirmedTemplate ? null : [];
+  let toolCeiling: readonly string[] | null = input.projectId === null && !input.unconfirmedTemplate ? null : [];
   let digest: string | undefined;
   if (input.projectId && input.templateVersionId && input.bindings) {
     try {

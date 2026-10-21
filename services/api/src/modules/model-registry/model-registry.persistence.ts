@@ -1,5 +1,5 @@
-import { and, eq, notInArray } from 'drizzle-orm';
-import { agentConfigs, modelModels, modelProviders, modelUsageBindings, type Database } from '@qitu/database';
+import { and, eq, notInArray, sql } from 'drizzle-orm';
+import { adminTeamVersions, agentConfigs, modelModels, modelProviders, modelUsageBindings, type Database } from '@qitu/database';
 import type { ModelDescriptor, ModelModality } from '@qitu/contracts';
 import type { AuditTransaction } from '../../common/audit';
 
@@ -609,4 +609,11 @@ export async function deleteBindingRow(
   usageId: string,
 ): Promise<void> {
   await executor.delete(modelUsageBindings).where(eq(modelUsageBindings.usageId, usageId));
+}
+
+/** Published snapshots are historical semantic boundaries, even after mutable Agent selections change. */
+export async function listFrozenTeamVersionsForModel(executor: RegistryExecutor, providerId: string, modelId: string): Promise<string[]> {
+  const rows = await executor.select({ id: adminTeamVersions.id }).from(adminTeamVersions).where(
+    sql`${adminTeamVersions.members} @> ${JSON.stringify([{ runtimeSnapshot: { model: { modelProviderId: providerId, modelId } } }])}::jsonb`);
+  return rows.map(row => row.id);
 }

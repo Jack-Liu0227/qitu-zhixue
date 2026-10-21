@@ -151,11 +151,15 @@ export class TemplateBindingService {
 
   /** Read the server-owned bundle for an Admin binding editor. */
   async listGovernedBindings(actor: CurrentUser, templateId: string, versionId: string) {
-    await this.requireConfigurationVersion(actor, templateId, versionId, false);
+    const { version } = await this.requireConfigurationVersion(actor, templateId, versionId, false);
     const records = await this.bindings.listBindings(versionId);
     return Promise.all(records.map(async (record) => {
       const team = await this.bindings.findTeamVersion(record.teamVersionId);
-      return { binding: toBindingView(record), team: team ? { id: team.teamId, name: team.name } : null };
+      const configurationReady = record.status === 'active' && record.validation.valid && team?.enabled === true
+        && (!requiresTeachingBundle(version.content) || Boolean(team.pblSpec.teamVersionPublication
+          && record.bundleDigest && record.bundlePayload && teachingValueDigest(record.bundlePayload) === record.bundleDigest));
+      return { binding: { ...toBindingView(record), bundleDraft: structuredClone(record.bundleDraft) }, configurationReady,
+        team: team ? { id: team.teamId, name: team.name, runtimeSnapshotStatus: team.pblSpec.teamVersionPublication ? 'published' : 'legacy_unpinned' } : null };
     }));
   }
 
@@ -168,6 +172,24 @@ export class TemplateBindingService {
     await this.requireConfigurationVersion(actor, templateId, versionId, false);
     const binding = await this.requireBindingForVersion(bindingId, versionId);
     return { binding: toBindingView(binding), draft: binding.bundleDraft, bundleDigest: binding.bundleDigest ?? null };
+  }
+
+  async prepareTeachingBundle(actor: CurrentUser, templateId: string, versionId: string, bindingId: string,
+    scheduleProfileId: string | undefined, key: string, phaseAssignments?: Readonly<Record<string, string>>): Promise<BindingMutationResult> {
+    await this.requireConfigurationVersion(actor, templateId, versionId);
+    const binding = await this.requireBindingForVersion(bindingId, versionId);
+    if (binding.status !== 'draft') throw new ConflictException({ code: 'BINDING_DRAFT_REQUIRED', message: '请先保存新的团队绑定草稿。' });
+    if (binding.bundleDraft) {
+      if (scheduleProfileId && binding.bundleDraft.scheduleProfileId !== scheduleProfileId) {
+        throw new ConflictException({ code: 'BUNDLE_PROFILE_CHANGED', message: '已有教学配置使用其他课时排期，请在高级配置中审核修改。' });
+      }
+      return { binding: toBindingView(binding), replayed: true };
+    }
+    const version = await this.templates.findVersion(versionId);
+    const team = await this.bindings.findTeamVersion(binding.teamVersionId);
+    if (!this.bundleCatalog || !version || !team) throw new BadRequestException({ code: 'BUNDLE_CATALOG_UNAVAILABLE', message: '教学配置目录不可用。' });
+    const draft = this.bundleCatalog.prepareDraft(version, team, scheduleProfileId, phaseAssignments);
+    return this.saveTeachingBundleDraft(actor, templateId, versionId, bindingId, draft, key);
   }
 
   /** Persist canonical draft references; resolution/compilation is attached by the server owner. */
@@ -631,8 +653,29 @@ export class TemplateBindingService {
       || binding.bindingHash !== snapshot.bindingHash
       || (binding.bundleDigest ?? null) !== (snapshot.bundleDigest ?? null)) return null;
     const templateVersion = await this.templates.findVersion(templateVersionId);
-    if (requiresTeachingBundle(templateVersion?.content) && !snapshot.bundleDigest) return null;
+    if (requiresTeachingBundle(templateVersion?.content) && (!snapshot.bundleDigest || !binding.bundlePayload
+      || teachingValueDigest(binding.bundlePayload) !== snapshot.bundleDigest)) return null;
     return toSnapshotView(snapshot);
+  }
+
+  /** Preview authority only. This never freezes a project or grants project knowledge access. */
+  async getExplorationBinding(studentId: string, templateVersionId: string) {
+    const schoolId = await this.directory.findSchoolId(studentId);
+    const version = await this.templates.findVersion(templateVersionId);
+    const visible = await this.templates.listTemplates({ visibleToSchoolId: schoolId });
+    const template = visible.find((entry) => entry.id === version?.templateId);
+    if (!template || !version || !['published', 'piloting'].includes(template.status)
+      || !['published', 'piloting'].includes(version.status)) {
+      throw new NotFoundException('该课程模板当前不可用于探索');
+    }
+    const binding = await this.bindings.findActiveBinding(templateVersionId);
+    const team = binding ? await this.bindings.findTeamVersion(binding.teamVersionId) : null;
+    const payload = binding?.bundlePayload ?? null;
+    const ready = binding?.validation.valid && team?.enabled && team.pblSpec.teamVersionPublication
+      && (!requiresTeachingBundle(version.content) || (payload && binding.bundleDigest
+        && teachingValueDigest(payload) === binding.bundleDigest));
+    return { title: template.title, content: version.content,
+      binding: ready ? binding : null, bundle: ready ? payload : null };
   }
 
   async getFrozenTeachingBundle(projectId: string, templateVersionId: string, tx?: AuditTransaction) {
@@ -745,7 +788,7 @@ export class TemplateBindingService {
     const version = await this.templates.findVersion(versionId);
     if (!version || version.templateId !== templateId) throw versionNotFound();
     if (write && (template.status === 'archived' || version.status === 'archived')) throw new ConflictException({ code: 'BINDING_ARCHIVED', message: '已归档版本不能修改团队配置' });
-    return { templateId, versionId };
+    return { templateId, versionId, version };
   }
 
   private async requireBindableVersion(

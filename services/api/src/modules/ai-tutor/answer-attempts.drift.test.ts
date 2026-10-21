@@ -145,7 +145,7 @@ test('drizzle schema declares the ledger with the same index names and columns a
   assert.match(schema, /text\('id'\)\.primaryKey\(\)/);
   assert.match(schema, /text\('school_id'\)\.references\(\(\) => schools\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /text\('student_user_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => users\.id, \{ onDelete: 'restrict' \}\)/);
-  assert.match(schema, /text\('tutor_session_id'\)\s*\.notNull\(\)\s*\.references\(\(\) => tutorSessions\.id, \{ onDelete: 'restrict' \}\)/);
+  assert.match(schema, /text\('tutor_session_id'\)\s*\.references\(\(\) => tutorSessions\.id, \{ onDelete: 'set null' \}\)/);
   assert.match(schema, /quizId: text\('quiz_id'\)\.notNull\(\)/);
   assert.match(schema, /objectiveId: text\('objective_id'\)\.references\(\(\) => learningObjectives\.id, \{ onDelete: 'restrict' \}\)/);
   assert.match(schema, /planId: text\('plan_id'\)\.references\(\(\) => learningPlans\.id, \{ onDelete: 'restrict' \}\)/);

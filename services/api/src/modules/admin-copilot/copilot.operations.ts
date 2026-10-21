@@ -11,8 +11,13 @@ import { executeBinding } from './copilot.bindings';
 import type { CopilotScopeResources } from './copilot.scope';
 import { TemplateGovernanceService } from '../templates/templates-governance.service';
 import type { CreateTemplateInput, UpdateTemplateInput, CreateTemplateVersionInput } from '../templates/templates.types';
+import { KnowledgeConnectionService } from '../knowledge/knowledge-connection.service';
+import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { KnowledgeCenterService } from '../knowledge/knowledge-center.service';
 import { ModelRegistryService, type CreateManualModelInput, type UpdateManualModelInput } from '../model-registry/model-registry.service';
+import { CopilotMcp } from './copilot.mcp';
+import { runtimeIdsForAssistant } from '../platform-registry/assistant-runtime-identity';
+import { isPblPhase } from '@qitu/ai-client';
 import { CopilotResources } from './copilot.resources';
 import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 import { exact, invalid, object, text } from './copilot.protocol';
@@ -32,13 +37,29 @@ export class CopilotOperations {
     @Optional() readonly growthSettings?: GrowthProjectionSettingsService,
     @Optional() readonly teamVersions?: TeamVersionService,
     @Optional() readonly lifecycle?: CopilotLifecycle,
+    @Optional() readonly connection?: KnowledgeConnectionService,
+    @Optional() readonly teamRuntime?: TeamRuntimeService,
+    @Optional() readonly mcp?: CopilotMcp,
   ) {}
+
+  async deletionSnapshot(actor: CurrentUser, kind: AdminCopilotActionKind, input: Record<string, unknown>) {
+    if (kind === 'mcp.invoke') {
+      if (!this.mcp) throw new ServiceUnavailableException('MCP 驱动不可用');
+      return (await this.mcp.snapshot(actor, text(input.id, 'id'))).digest;
+    }
+    if (!this.lifecycle) throw new ServiceUnavailableException('生命周期管理 owner 不可用');
+    return this.lifecycle.deletionSnapshot(actor, kind, input);
+  }
 
   async execute(actor: CurrentUser, kind: AdminCopilotActionKind, input: Record<string, unknown>, key: string): Promise<unknown> {
     if (actor.role !== 'admin') throw new ForbiddenException('管家配置仅管理员可用');
     if (isLifecycleKind(kind)) {
       if (!this.lifecycle) throw new ServiceUnavailableException('生命周期管理 owner 不可用');
       return this.lifecycle.execute(actor, kind, input, key);
+    }
+    if (kind === 'mcp.invoke') {
+      if (!this.mcp) throw new ServiceUnavailableException('MCP 驱动不可用');
+      return this.mcp.invoke(actor, input, key);
     }
     if (kind.startsWith('binding.')) return executeBinding(this.bindings, actor, kind, input, key);
     const id = () => text(input.id, 'id');
@@ -108,7 +129,45 @@ export class CopilotOperations {
           config: { ...current.config, knowledgeEngines: { ...current.config.knowledgeEngines,
             'ima-main': { ...engine, enabled: input.enabled } } } }, key);
       }
-      case 'knowledge.create': return this.knowledge.createBase(actor, input, key);
+      case 'knowledge.create':
+        if (!this.connection) throw new ServiceUnavailableException('知识库连接 owner 不可用');
+        return this.connection.createBase(actor, input, key);
+      case 'knowledge.import': {
+        exact(input, ['id', 'title', 'content', 'allowMaterialize']);
+        const { id: _id, ...body } = input;
+        const base = await this.knowledge.addFile(actor, id(), body, key);
+        return { id: base.id, revision: base.revision, buildState: base.build_state, queued: true };
+      }
+      case 'knowledge.rebuild':
+        exact(input, ['id']);
+        return this.knowledge.rebuild(id(), key);
+      case 'knowledge.status':
+        exact(input, ['id']);
+        return this.knowledgeStatus(id());
+      case 'team.run':
+      case 'team.run.status': {
+        if (!this.teamRuntime) throw new ServiceUnavailableException('团队运行 owner 不可用');
+        const runId = text(input.runId, 'runId');
+        if (kind === 'team.run.status') { exact(input, ['runId']); return this.teamRunStatus(actor, runId); }
+        exact(input, ['runId', 'senderAgentId', 'recipientAgentId', 'taskType', 'input', 'parentTaskId']);
+        if (!this.bindings) throw new ServiceUnavailableException('冻结教学合同 owner 不可用');
+        const identity = await this.teamRuntime.getProjectIdentityForRun(actor, runId);
+        const bundle = await this.bindings.getFrozenTeachingBundle(identity.projectId, identity.templateVersionId);
+        const memberIds = new Set(bundle.teamVersion.members.flatMap(member => runtimeIdsForAssistant(member.assistantId)));
+        if (!memberIds.has(text(input.senderAgentId, 'senderAgentId')) || !memberIds.has(text(input.recipientAgentId, 'recipientAgentId')) ||
+          !runtimeIdsForAssistant(bundle.teamVersion.leaderAssistantId).includes(identity.leaderAgentId)) {
+          throw new ForbiddenException('委派角色不属于项目冻结团队');
+        }
+        const phase = await this.teamRuntime.getPhaseStatus(actor, runId);
+        if (!isPblPhase(phase.phase)) invalid('团队运行缺少合法的服务端阶段');
+        const task = await this.teamRuntime.delegate(actor, runId, {
+          senderAgentId: text(input.senderAgentId, 'senderAgentId'), recipientAgentId: text(input.recipientAgentId, 'recipientAgentId'),
+          taskType: text(input.taskType, 'taskType'), input: input.input === undefined ? {} : object(input.input),
+          parentTaskId: input.parentTaskId === undefined ? null : text(input.parentTaskId, 'parentTaskId'),
+          pblPhase: phase.phase, idempotencyKey: key,
+        });
+        return { id: task.id, runId, status: task.status };
+      }
       case 'knowledge.bind':
         exact(input, ['id', 'expectedRevision', 'bindings']);
         return { id: id(), ...await this.knowledge.saveBaseBindings(actor, id(),
@@ -140,6 +199,23 @@ export class CopilotOperations {
     }
   }
 
+  private async knowledgeStatus(id: string) {
+    const base = await this.knowledge.base(id);
+    return { id: base.id, revision: base.revision, lifecycle: base.lifecycle, buildState: base.build_state,
+      indexVersion: base.active_index_version_id ?? null,
+      jobs: (base.jobs ?? []).slice(0, 5).map(raw => {
+        const job = object(raw);
+        return { id: job.id, state: job.state, errorCode: job.error_code ?? null };
+      }) };
+  }
+
+  private async teamRunStatus(actor: CurrentUser, runId: string) {
+    if (!this.teamRuntime) throw new ServiceUnavailableException('团队运行 owner 不可用');
+    const graph = await this.teamRuntime.getRunGraph(actor, runId);
+    return { id: runId, runId, status: graph.run.status,
+      tasks: graph.tasks.slice(-100).map(task => ({ id: task.id, agentId: task.agentId, taskType: task.taskType, status: task.status })) };
+  }
+
   async scopeResources(actor: CurrentUser, templateId: string | null, versionId: string | null): Promise<CopilotScopeResources> {
     const empty: CopilotScopeResources = { bindingStatus: 'unbound', teamIds: [], assistantIds: [] };
     if (!templateId || !versionId) return empty;
@@ -166,6 +242,26 @@ export class CopilotOperations {
 
   /** Readback is deliberately outside the mutation idempotency record. A failed read can be retried without recreating. */
   async readback(actor: CurrentUser, kind: AdminCopilotActionKind, raw: unknown): Promise<unknown> {
+    if (actor.role !== 'admin') throw new ForbiddenException('仅管理员可以回读配置');
+    if (kind === 'mcp.invoke') {
+      if (!this.mcp) throw new ServiceUnavailableException('MCP 驱动不可用');
+      const receipt = object(raw);
+      if ((await this.mcp.snapshot(actor, text(receipt.id, 'id'))).digest !== receipt.configurationDigest) {
+        throw new ServiceUnavailableException('MCP 配置在调用后变化，结果尚未按当前配置核验');
+      }
+      return receipt;
+    }
+    if (kind === 'knowledge.import' || kind === 'knowledge.rebuild' || kind === 'knowledge.status') return this.knowledgeStatus(text(object(raw).id, 'id'));
+    if (kind === 'team.run' || kind === 'team.run.status') {
+      const previous = object(raw);
+      const current = await this.teamRunStatus(actor, text(previous.runId, 'runId'));
+      if (kind === 'team.run') {
+        const task = current.tasks.find(task => task.id === previous.id);
+        if (!task) throw new ServiceUnavailableException('团队任务未回读到');
+        return { ...task, runId: current.runId };
+      }
+      return current;
+    }
     if (isLifecycleKind(kind)) {
       if (!this.lifecycle) throw new ServiceUnavailableException('生命周期管理 owner 不可用');
       return this.lifecycle.readback(actor, kind, raw);

@@ -16,6 +16,9 @@ export function teachingContextFixture(assistantId = 'session-mentor') {
     templateVersionId: project.templateVersionId, scheduleProfileId: 'profile-frozen',
     template: { curriculum: { profiles: [{ id: 'profile-frozen', sessions: [1, 2].map((index) => ({
       id: `lesson-${index}`, sessionIndex: index, title: `Frozen lesson ${index}`, phase: 'concept_mastery', objectiveIds: [`objective-${index}`],
+      blocks: { review: 10, theory: 30, check: 15, practice: 0, reflect: 5 },
+      learningGoal: `Frozen learning goal ${index}`, activityGuidance: { theory: `FROZEN_LESSON_GUIDANCE_${index}` },
+      evidenceRequirements: [`FROZEN_LESSON_EVIDENCE_${index}`],
       ...(index === 2 ? { checkpoint: { requiredGate: 'TheoryMastered' } } : {}),
     })) }] } },
     teamVersion: { teamVersionId: 'synthetic-team-version', teamId: 'synthetic-team', leaderAssistantId: assistantId,

@@ -6,7 +6,7 @@ import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import { resolveTutorTeachingContext } from './tutor-teaching-context';
 import { GatewayTutorProvider } from './gateway-tutor.provider';
 import type { TutorStreamEvent, TutorTurnInput } from './tutor.provider';
-import { verifyLessonEvidence } from './tutor-activity-context';
+import { prepareTutorLessonActivities, verifyLessonEvidence } from './tutor-activity-context';
 import type { ImaReadEvidence } from './ima-project-scope';
 import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
@@ -29,6 +29,19 @@ async function fixture() {
   return { input, runtime, teaching, questionWrites: () => questionWrites };
 }
 
+test('an observation objective can guide a turn without entering the assessment owner scope', async () => {
+  const h = await fixture();
+  h.teaching.session.theoryObjectiveIds = [];
+  h.teaching.session.practiceObjectiveIds = [];
+  const channel = await prepareTutorLessonActivities({ teaching: h.teaching, runtime: h.runtime,
+    projectId: 'synthetic-project', studentId: 'synthetic-owner', tutorSessionId: 'synthetic-chat', idempotencyKey: 'observation',
+    knowledgeAccess: {}, registry: { getAssistantRuntime: async () => h.runtime, isModelAvailable: () => true },
+    questions: { readPendingQuestionCandidate: async () => { throw Error('observation is not an assessment target'); },
+      acceptQuestionCandidate: async () => { throw Error('no assessment submitted'); } },
+    resolve: async () => h.teaching, hasQuestion: () => false });
+  assert.ok(channel);
+});
+
 test('activity tool requires reviewed skill plus canonical pinned tool; revoked or changed lesson rejects before owner writes', async () => {
   const h = await fixture();
   h.runtime.skills[0]!.publicationStatus = 'quarantined';
@@ -44,6 +57,15 @@ test('activity tool requires reviewed skill plus canonical pinned tool; revoked 
   assert.equal(h.questionWrites(), 0);
   h.runtime.tools = [];
   assert.equal(createLessonActivityChannel(h.input).tools.length, 0);
+});
+
+test('model activity tool receives frozen guidance, activity minutes and required evidence', async () => {
+  const h = await fixture();
+  const description = createLessonActivityChannel(h.input).tools[0]!.description;
+  assert.match(description, /FROZEN_LESSON_GUIDANCE_1/);
+  assert.match(description, /FROZEN_LESSON_EVIDENCE_1/);
+  assert.match(description, /"minutes":30/);
+  assert.match(description, /"planRevision":7/);
 });
 
 test('board construction uses a closed graph/TeX shape and rejects executable or external content', () => {

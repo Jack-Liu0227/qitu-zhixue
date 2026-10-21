@@ -14,6 +14,7 @@ import {
   NotFoundException,
   Optional,
   ServiceUnavailableException,
+  Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
@@ -31,6 +32,7 @@ import type {
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { tutorFailureMetadata } from './tutor-failure-metadata';
 import { TutorTeamHistoryService } from './tutor-team-history.service';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
@@ -82,6 +84,7 @@ const DELAY_BY_TYPE: Record<StreamedTutorEvent['event']['type'], number> = {
  */
 @Controller('tutor')
 export class TutorController {
+  private readonly logger = new Logger(TutorController.name);
   constructor(
     private readonly authService: AuthService,
     private readonly tutorService: TutorService,
@@ -146,6 +149,13 @@ export class TutorController {
     return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
   }
 
+  @Get('project-history')
+  async getProjectHistory(@Headers('cookie') cookieHeader: string | undefined, @Query('projectId') projectId: string) {
+    const actor = this.requireStudent(cookieHeader);
+    if (!projectId || projectId.length > 160) throw new BadRequestException('需要有效的项目标识');
+    return { data: await this.tutorService.getProjectConversationHistory(projectId, actor.id) };
+  }
+
   @Get('project-context')
   async getProjectContext(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -160,14 +170,15 @@ export class TutorController {
   @Get('team-graph')
   async getTeamGraph(
     @Headers('cookie') cookieHeader: string | undefined,
-    @Query('projectId') projectId: string,
+    @Query('projectId') projectId?: string,
+    @Query('explorationId') explorationId?: string,
   ): Promise<{ data: TutorTeamGraph }> {
     const actor = this.requireStudent(cookieHeader);
-    if (!projectId || projectId.length > 160) throw new BadRequestException({
+    if (Boolean(projectId) === Boolean(explorationId) || (projectId?.length ?? 0) > 160 || (explorationId?.length ?? 0) > 160) throw new BadRequestException({
       code: 'TUTOR_PROJECT_ID_REQUIRED',
-      message: 'team-graph 必须提供有效的 projectId',
+      message: '请选择一个有效的项目或探索会话',
     });
-    return { data: await this.tutorService.getTeamGraph(projectId, actor.id) };
+    return { data: await this.tutorService.getTeamGraph(projectId, actor.id, explorationId) };
   }
   @Get('team-history')
   async getTeamHistory(
@@ -275,6 +286,7 @@ export class TutorController {
       // Headers are already sent, so the only honest failure signal left is an
       // SSE `error` frame — the client maps it onto `safety.block` and offers a
       // retry instead of an infinite spinner.
+      this.logger.warn(`Tutor stream failed: ${JSON.stringify(tutorFailureMetadata(error))}`);
       if (!aborted && !response.writableEnded) {
         writeRawFrame(response, 'error', {
           sessionId: record.sessionId,

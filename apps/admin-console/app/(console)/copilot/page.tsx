@@ -3,14 +3,15 @@
 import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { KnowledgeUpload } from '../../../lib/copilot/KnowledgeUpload';
 import { useCopilotModel } from '../../../lib/copilot/use-copilot-model';
 import { useAssistantCatalog } from '../../../lib/copilot/use-assistant-catalog';
 import { resolveCopilotSelection, resolveCopilotTeamSelection } from '../../../lib/copilot/assistant-catalog';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { configuredModelKey } from '../../../lib/api/configuredModels';
-import type { AdminCopilotRequest } from '@qitu/contracts';
-import { runCopilotTurn } from '../../../lib/api/copilot';
+import type { AdminCopilotReceipt, AdminCopilotConfirmationRequest, AdminCopilotRequest } from '@qitu/contracts';
+import { confirmCopilotTurn, runCopilotTurn } from '../../../lib/api/copilot';
 import { useProjectCatalog } from '../../../lib/copilot/use-project-catalog';
 import { useCopilotCapabilities } from '../../../lib/copilot/use-copilot-capabilities';
 import { CopilotCapabilities } from './CopilotCapabilities';
@@ -26,7 +27,7 @@ const COPILOT_PERMISSION_STORAGE_KEY = 'qitu.admin.copilot.permission.v1';
 
 interface ToolExecutionStep {
   name: string;
-  status: 'running' | 'done' | 'error';
+  status: 'running' | 'done' | 'error' | 'pending' | 'cancelled';
   label: string;
   detail?: string;
 }
@@ -37,6 +38,8 @@ interface Message {
   content: string;
   timestamp: string;
   toolSteps?: ToolExecutionStep[];
+  pendingDeletions?: AdminCopilotReceipt[];
+  confirmationRequest?: { request: AdminCopilotRequest; key: string; startedAt: number };
   retry?: { request: AdminCopilotRequest; key: string; startedAt: number };
   artifact?: {
     type: 'assistant' | 'team' | 'mcp' | 'skill' | 'template' | 'knowledge';
@@ -167,7 +170,7 @@ export default function CopilotPage() {
   const [collapsedHoverId, setCollapsedHoverId] = useState<string | null>(null);
 
   // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换（持久化存储，刷新页面不丢失）
-  const { availableModels, selectedModel, modelError, modelSaving, modelNotice, handleModelChange, reloadModels } = useCopilotModel();
+  const { availableModels, selectedModel, modelError, modelSaving, modelLoading, modelIsDefault, modelNotice, handleModelChange, reloadModels } = useCopilotModel();
   const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'full_access'>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -269,7 +272,7 @@ export default function CopilotPage() {
     }
   };
 
-  const performTurn = async (sessionId: string, messageId: string, retry: NonNullable<Message['retry']>) => {
+  const performTurn = async (sessionId: string, messageId: string, retry: NonNullable<Message['retry']>, decision?: Pick<AdminCopilotConfirmationRequest, 'actionId' | 'confirmationId' | 'decision'>) => {
     if (requestInFlight.current || !capabilities.ready) return;
     requestInFlight.current = true;
     setIsGenerating(true);
@@ -278,10 +281,14 @@ export default function CopilotPage() {
     try {
       if (Date.now() - retry.startedAt > 23 * 60 * 60 * 1000) throw new Error('本轮重试期限已过，请先核对资源状态，再发起新指令。');
       update({ content: '正在读取配置、生成计划并执行…' });
-      const result = await runCopilotTurn(retry.request, retry.key);
+      const result = decision
+        ? await confirmCopilotTurn({ request: retry.request, turnKey: retry.key, ...decision })
+        : await runCopilotTurn(retry.request, retry.key);
       update({ content: result.reply, retry: result.status === 'partial' ? retry : undefined,
+        pendingDeletions: result.receipts.filter(receipt => receipt.status === 'awaiting_confirmation'),
+        confirmationRequest: result.status === 'awaiting_confirmation' ? retry : undefined,
         toolSteps: result.receipts.map(receipt => ({ name: receipt.kind, label: receipt.label,
-          status: receipt.status === 'succeeded' ? 'done' : 'error',
+          status: receipt.status === 'succeeded' ? 'done' : receipt.status === 'cancelled' ? 'cancelled' : receipt.status === 'awaiting_confirmation' ? 'pending' : 'error',
           detail: JSON.stringify(receipt.result ?? { code: receipt.code, message: receipt.message }, null, 2) })) });
       const versionReceipt = result.receipts.slice().reverse().find(r => r.kind === 'template.version' && r.status === 'succeeded');
       const createdTemplate = result.receipts.slice().reverse().find(r => r.kind === 'template.create' && r.status === 'succeeded');
@@ -302,7 +309,7 @@ export default function CopilotPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isGenerating || modelSaving || modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
+    if (!inputMessage.trim() || isGenerating || modelSaving || modelLoading || modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
     const content = inputMessage.trim();
     const sessionId = activeSession.id;
     const messageId = newIdempotencyKey();
@@ -678,7 +685,7 @@ export default function CopilotPage() {
               <select
                 value={selectedModel}
                 aria-label="管家默认模型"
-                disabled={!availableModels.length || isGenerating || modelSaving}
+                disabled={!availableModels.length || isGenerating || modelSaving || modelLoading}
                 onChange={(e) => void handleModelChange(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
@@ -686,13 +693,15 @@ export default function CopilotPage() {
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
                     <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
-                      {m.name || m.id}
+                      {m.providerName} / {m.name || m.id}
                     </option>
                   ))
                 ) : (
                   <option value="" disabled>暂无可用的已配置模型</option>
                 )}
               </select>
+              {!modelIsDefault && selectedModel && <button type="button" disabled={isGenerating || modelSaving || modelLoading}
+                onClick={() => void handleModelChange(selectedModel)}>设为默认</button>}
             </div>
 
             {/* 权限设置 (参考 Codex 3 个权限: Read Only / Workspace Write / Full Access) */}
@@ -715,10 +724,14 @@ export default function CopilotPage() {
           </div>
         </div>
 
+        <KnowledgeUpload enabled={scope === 'global' && runtimePermission === 'full_access' && !isGenerating}
+          onSaved={content => setSessions(previous => previous.map(session => session.id !== currentSessionId ? session : {
+            ...session, messages: [...session.messages, { id: newIdempotencyKey(), role: 'assistant', content, timestamp: new Date().toLocaleTimeString() }],
+          }))} />
         <CopilotCapabilities data={capabilities.data} loading={capabilities.loading} error={capabilities.error} scope={scope} refresh={capabilities.refresh} />
-        <div role="status" style={{ padding: '4px 24px', fontSize: 12 }}>{modelSaving ? '正在保存默认模型…' : modelNotice || '模型选择后自动保存为管家默认模型。'} {modelError && <button type="button" onClick={() => void reloadModels()}>重新加载模型</button>}</div>
-        {(projectCatalog.loading || projectCatalog.error || modelError || (!selectedModelItem && !isGenerating)) && <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
-          {projectCatalog.error ?? modelError ?? (projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}
+        <div role="status" style={{ padding: '4px 24px', fontSize: 12 }}>{modelLoading ? '正在读取默认模型…' : modelSaving ? '正在保存默认模型…' : modelNotice || '模型选择后自动保存为管家默认模型。'} {modelError && <button type="button" disabled={modelSaving} onClick={() => void reloadModels()}>重新加载模型</button>}</div>
+        {(projectCatalog.loading || projectCatalog.error || modelLoading || modelError || (!selectedModelItem && !isGenerating)) && <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
+          {projectCatalog.error ?? modelError ?? (modelLoading ? '正在读取管家默认模型…' : projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}
           {projectCatalog.error && <button onClick={projectCatalog.refresh}>重读项目目录</button>}
         </div>}
         {!projectCatalog.loading && !projectCatalog.error && !projectCatalog.templates.length && <div role="status" style={{ padding: '8px 24px', fontSize: 12 }}>暂无已有项目，可让管家创建项目模板。</div>}
@@ -797,6 +810,24 @@ export default function CopilotPage() {
                     )}
                   </div>
 
+                  {msg.confirmationRequest && msg.pendingDeletions?.map(receipt => receipt.confirmation && (
+                    <section key={receipt.id} aria-label="待确认删除" style={{ marginTop: 10, padding: 14, border: '1px solid #fdba74', borderRadius: 8, background: '#fff7ed' }}>
+                      <strong>{receipt.label} · 等待二次确认</strong>
+                      <p>操作：{receipt.kind} · 对象：{receipt.confirmation.target}</p>
+                      <details><summary>核对操作参数</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(receipt.confirmation.parameters, null, 2)}</pre></details>
+                      <p>{receipt.confirmation.impact}</p>
+                      <p>有效期至 {new Date(receipt.confirmation.expiresAt).toLocaleTimeString()}。尚未执行。</p>
+                      <button type="button" disabled={isGenerating || runtimePermission !== 'full_access' || Date.now() >= Date.parse(receipt.confirmation.expiresAt)}
+                        onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                          actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'confirm',
+                        })}>{receipt.kind === 'mcp.invoke' ? '确认调用' : '确认删除'}</button>
+                      <button type="button" disabled={isGenerating}
+                        onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                          actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'cancel',
+                        })}>取消</button>
+                    </section>
+                  ))}
+
                   {/* 工具调用情况详细展示 */}
                   {msg.toolSteps && msg.toolSteps.length > 0 && (
                     <div style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
@@ -806,7 +837,7 @@ export default function CopilotPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {msg.toolSteps.map((step, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                            <span style={{ color: step.status === 'done' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : '!'}</span>
+                            <span aria-label={step.status === 'pending' ? '等待确认' : step.status === 'cancelled' ? '已取消' : step.status === 'done' ? '已完成' : '未完成'} style={{ color: step.status === 'done' ? '#16a34a' : step.status === 'pending' ? '#b45309' : step.status === 'cancelled' ? '#64748b' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : step.status === 'pending' ? '◷' : step.status === 'cancelled' ? '—' : '!'}</span>
                             <span>{step.label}</span>
                             {step.detail && <details><summary>回读详情</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{step.detail}</pre></details>}
                             <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px' }}>{step.name}</code>
@@ -958,7 +989,7 @@ export default function CopilotPage() {
             </button>
             <button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isGenerating || modelSaving || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
+              disabled={!inputMessage.trim() || isGenerating || modelSaving || modelLoading || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
               style={{
                 height: '44px',
                 padding: '0 20px',

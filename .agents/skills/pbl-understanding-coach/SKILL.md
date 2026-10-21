@@ -3,7 +3,8 @@ name: pbl-understanding-coach
 description: Diagnose the earliest missing link in a learner's explanation and coach a bounded same-objective check without writing learning state or deciding mastery.
 version: 1.0.0
 runtime: teaching
-# Qitu-authored candidate informed by adaptive understanding-coaching methods; no upstream package text is copied.
+status: published
+references: references/qitu-contract.md, references/adapted-methods.md
 ---
 
 Use this skill only when the server supplies the current objective, task or question instance,
@@ -51,3 +52,7 @@ Tutor instead of inventing a lesson or question.
 - For optics, keep checks inside the server-registered single-slit diffraction or closed fine-mist
   scattering models and approved parameter domain. Do not generate arbitrary HTML/JS, open-browser
   steps, real-laser procedures, or unsafe experimental instructions.
+
+Use the declared adapted-methods resource for additional evidence-linked teaching methods.
+
+Use the declared Qitu contract resource for scope, owner handoff and lifecycle constraints.

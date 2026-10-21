@@ -4,10 +4,14 @@ export * from './visual-assets.js';
 export * from './display.js';
 export * from './admin-copilot.js';
 export * from './runtime-skills.js';
+export * from './skill-lifecycle.js';
+export * from './artifact-format.js';
 export * from './runtime-tool-catalog.js';
 export * from './tool-binding-migration.js';
 
 export * from './project.js';
+export * from './project-history.js';
+export * from './student-history.js';
 export * from './exploration.js';
 export * from './tutor.js';
 export * from './realtime.js';
@@ -92,3 +96,4 @@ export * from './project-learning.js';
 
 export * from './learning-session-progress.js';
 export * from './learning-session-evidence.js';
+export * from './tutor-lesson-program.js';

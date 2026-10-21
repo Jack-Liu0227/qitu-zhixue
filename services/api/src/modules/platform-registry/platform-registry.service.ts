@@ -1,4 +1,3 @@
-import { assertRuntimeSkillBudget } from '@qitu/contracts';
 import { resolveAgentModelSelection } from './agent-model-selection';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
@@ -302,7 +301,6 @@ export class PlatformRegistryService {
     if (effectiveAgent.skillIds.some(id => !selectedSkills.some(skill => skill.id === id))) {
       throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
     }
-    assertRuntimeSkillBudget(selectedSkills);
     const tools = builtinToolRegistry.listForAgentIds(effectiveAgent.toolIds);
     const mcpServers = (await this.listMcpServerRows())
       .filter((server) => effectiveAgent.mcpServerIds.includes(server.id) && server.enabled)
@@ -331,7 +329,6 @@ export class PlatformRegistryService {
     if (assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
       throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
     }
-    assertRuntimeSkillBudget(selectedSkills);
     // Only exact identity and the explicit historical leader alias may restrict
     // this assistant. Another role's configuration is never inherited.
     const runtimeIds = new Set(runtimeIdsForAssistant(assistantId));

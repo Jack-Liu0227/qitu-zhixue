@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import type { CurrentUser, TutorExperimentActionResponse } from '@qitu/contracts';
+import type { CurrentUser, TutorExperimentActionResponse, LessonQualityDecision } from '@qitu/contracts';
+import { WorksLessonQuality } from './works-lesson-quality';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -37,6 +38,7 @@ export interface LearningSubmissionResponse {
 /** Owns submission receipts; never writes mastery, lesson progress, or project stage. */
 @Injectable()
 export class WorksLearningEvidenceService {
+  private readonly quality: WorksLessonQuality;
   constructor(
     private readonly plans: LearningPlanStore,
     private readonly bindings: TemplateBindingService,
@@ -48,13 +50,33 @@ export class WorksLearningEvidenceService {
     private readonly facts: ProjectEvidenceStore,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
-  ) {}
+  ) {
+    this.quality = new WorksLessonQuality({ plans, bindings, directory, artifacts, facts, evidence, idempotency, audit,
+      readProofs: (actor, scope, refs) => this.readLessonProofs(actor, scope, refs) });
+  }
+
+  reviewLessonQuality(actor: CurrentUser, planId: string, sessionId: string, input: LessonQualityDecision, key: string) {
+    return this.quality.review(actor, planId, sessionId, input, key);
+  }
+
+  listStudentLessonQuality(actor: CurrentUser, studentId: string,cursor?:string) { return this.quality.queue(actor, studentId,cursor); }
+
+  async lessonQualityAccepted(actor: CurrentUser, scope: LearningEvidenceScope, proof: LearningEvidenceProof) {
+    const context = await this.context(actor, scope);
+    return (await this.quality.read(context, proof)).status === 'accepted';
+  }
 
   async getLessonProofs(actor: CurrentUser, planId: string, learningSessionId: string, planRevision: number) {
     const context = await this.context(actor, { planId, learningSessionId, planRevision });
     const allowedActions = actor.role === 'student' && context.bundle.plan.status === 'active'
       ? ['respond', 'submit_artifact', ...(context.lesson.checkpoint?.requiredGate === 'review_completed_and_archived' ? ['reflect'] : [])] : [];
-    return { ...await this.readLessonProofs(actor, context.scope), scope: context.scope, sessionType: context.lesson.sessionType, allowedActions };
+    const proofs = await this.readLessonProofs(actor, context.scope);
+    const completion = context.lesson.completionSpec;
+    if (completion?.version === 'learning-session-completion.v2') {
+      for (const proof of [...proofs.submissions, ...proofs.observations, ...proofs.reflections]) proof.quality = await this.quality.read(context, proof);
+    }
+    return { ...proofs, scope: context.scope, sessionType: context.lesson.sessionType, allowedActions,
+      ...(completion?.version === 'learning-session-completion.v2' ? { qualityCriteria: completion.qualityReview.criteria } : {}) };
   }
 
   async readLessonProofs(actor: CurrentUser, scope: LearningEvidenceScope, refs?: readonly string[]): Promise<LessonEvidenceProofs> {
