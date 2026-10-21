@@ -2307,3 +2307,113 @@
   background-color: #000000 !important;
   border: 1px solid #2E3540 !important;
 }
+
+/* 13.7 飞书机器人状态药丸与供应商预置模板目录消白 */
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-connected {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-connected *,
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-connected .feishu-status-dot {
+  color: #34D399 !important;
+  background: #34D399 !important;
+  background-color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-pending {
+  background: #2D2311 !important;
+  background-color: #2D2311 !important;
+  border: 1px solid #F59E0B !important;
+  color: #FBBF24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-pending *,
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-pending .feishu-status-dot {
+  color: #FBBF24 !important;
+  background: #FBBF24 !important;
+  background-color: #FBBF24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-error {
+  background: #2D1414 !important;
+  background-color: #2D1414 !important;
+  border: 1px solid #EF4444 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-error *,
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-error .feishu-status-dot {
+  color: #F87171 !important;
+  background: #F87171 !important;
+  background-color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-disconnected {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-disconnected *,
+:root[data-qitu-eyecare="true"] .feishu-status-pill.is-disconnected .feishu-status-dot {
+  color: #94A3B8 !important;
+  background: #94A3B8 !important;
+  background-color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-presets-ready-badge {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-presets-ready-badge * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-active-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-active-card * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-api-badge {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-code {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-models {
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-select {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-preset-select option {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+}
