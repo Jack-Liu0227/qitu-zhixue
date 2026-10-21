@@ -1,0 +1,21 @@
+{
+  "source": {
+    "filename": "source.png",
+    "sha256": "4a547a2c5b69cbf296f4d643cd379c8576fa8fb6c287f12e20c36d509223a4bf",
+    "note": "Exact user-supplied original, retained unchanged"
+  },
+  "fullLogo": {
+    "filename": "full.png",
+    "sha256": "c44cf45955d81c04250f20cd7580edbeeee254576810b8500d110f6ea747a046",
+    "tool": "built-in image_gen",
+    "model": "not_exposed",
+    "prompt": "Edit the supplied ORIGINAL Qitu Zhixue logo ONLY by cropping away the excessive blank outer white margins. Preserve this exact existing logo design and its precise original lettering 启途智学 and QITU ZHIXUE, original Q-shaped path/lightbulb mark, colors, proportions, outlines and spacing between logo elements. This is an exact crop/layout task, not a redesign. Keep the entire logo including all sun rays, all four Chinese characters, both short horizontal rules and the complete English wordmark. Keep the original white background. Fit a tight centered crop around the full visible artwork with only a small clean white safety margin of about 3% on each side. Do not add any text or marks, no robot, no new design features, no new shadows, no recoloring, no changing the content.",
+    "cropSourceSha256": "0f4971fbf55f51660ee86387ccf886c299d6119464cea204010819694d591778",
+    "transformation": "Crop white outer margins, then downsample for UI"
+  },
+  "mark": {
+    "filename": "mark.png",
+    "sha256": "c4771afb843acea684cfe3a7d3193f7433ef9fd1f7735ded32ab4e4816724036",
+    "note": "Existing transparent graphic mark of the same user-supplied identity; no wordmark"
+  }
+}

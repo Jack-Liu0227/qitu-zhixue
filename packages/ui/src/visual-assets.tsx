@@ -4,7 +4,7 @@ import { useState, type CSSProperties } from 'react';
 import { getVisualAsset } from '@qitu/contracts';
 import { VISUAL_FILES } from './visual-asset-files';
 
-function ArtworkImage({ src, size, alt, decorative, fit, width, className }: {
+export function ArtworkImage({ src, size, alt, decorative, fit, width, className }: {
   src: string; size: number; alt: string; decorative: boolean; fit: 'contain' | 'cover'; width: number | string; className: string;
 }) {
   const [failed, setFailed] = useState(false);
