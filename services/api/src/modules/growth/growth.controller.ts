@@ -44,8 +44,9 @@ export class GrowthController {
   ) {}
 
   @Get('growth/summary')
-  getSummary(@Headers('cookie') cookieHeader: string | undefined): { data: StudentGrowthSummary } {
+  async getSummary(@Headers('cookie') cookieHeader: string | undefined): Promise<{ data: StudentGrowthSummary }> {
     const user = this.requireStudent(cookieHeader);
+    await this.growthService.refreshStudent(user.id);
     return { data: this.growthService.getSummary(user.id) };
   }
 
@@ -57,7 +58,7 @@ export class GrowthController {
   }
 
   @Get('growth')
-  getTimeline(
+  async getTimeline(
     @Headers('cookie') cookieHeader: string | undefined,
     @Query('type') type?: string,
     @Query('projectId') projectId?: string,
@@ -65,8 +66,9 @@ export class GrowthController {
     @Query('to') to?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
-  ): { data: { items: StudentGrowthTimeline['items'] }; meta: { nextCursor: string | null; hasNext: boolean } } {
+  ): Promise<{ data: { items: StudentGrowthTimeline['items'] }; meta: { nextCursor: string | null; hasNext: boolean } }> {
     const user = this.requireStudent(cookieHeader);
+    await this.growthService.refreshStudent(user.id);
     const timeline = this.growthService.getTimeline(user.id, parseQuery({ type, projectId, from, to, cursor, limit }));
     return {
       data: { items: timeline.items },
@@ -81,10 +83,11 @@ export class GrowthController {
   }
 
   @Get('projects/summaries')
-  getProjectOptions(
+  async getProjectOptions(
     @Headers('cookie') cookieHeader: string | undefined,
-  ): { data: GrowthProjectOption[] } {
+  ): Promise<{ data: GrowthProjectOption[] }> {
     const user = this.requireStudent(cookieHeader);
+    await this.growthService.refreshStudent(user.id);
     return { data: this.growthService.getProjects(user.id) };
   }
 

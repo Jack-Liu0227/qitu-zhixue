@@ -13,8 +13,9 @@ import {
   modelUsageBindings,
   type Database,
   readTutorProjectionEvidence,
+  readDomainProjectionEvidence,
 } from '@qitu/database';
-import { assertRuntimeSkillBudget, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateTutorExpressionProjection } from '@qitu/contracts';
+import { assertRuntimeSkillBudget, domainProjectionInstructions, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateDomainProjection, validateTutorExpressionProjection } from '@qitu/contracts';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -23,6 +24,7 @@ import type { TeamMailboxExecutor } from './team-runtime-worker';
 import type { TeamMailboxJob } from './team-runtime-mailbox-source';
 import { resolveAuthorizedTeamRoute, TeamAgentExecutionError } from './team-runtime-route';
 import { resolveProjectionAssistant } from './team-runtime-projection-settings';
+import { resolveProjectionExecutionConfig } from './team-runtime-projection-config';
 export { TeamAgentExecutionError } from './team-runtime-route';
 
 const MAX_GLOBAL_POLICY_CHARS = 8_000;
@@ -160,8 +162,12 @@ async function executeTeamAgentJob(
   const [sender] = await db.select({ enabled: agentConfigs.enabled }).from(agentConfigs)
     .where(eq(agentConfigs.id, job.message.senderAgentId)).limit(1);
   if (!sender?.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
-  const selection = await resolveTeamAgentModel(db, agent);
-  const skills = await loadAgentSkills(db, agent.id, options.skillRoots, options.env);
+  const projection = job.message.messageType === 'projection.request'
+    ? await resolveProjectionExecutionConfig(db, agent) : null;
+  const selection = projection?.model ?? await resolveTeamAgentModel(db, agent);
+  const skills = projection
+    ? loadProjectionSkills(projection.skillIds, options.skillRoots, options.env)
+    : await loadAgentSkills(db, agent.id, options.skillRoots, options.env);
   const { authorization: _authorization, ...taskInput } = task.input;
   const projectionType = task.input.projectionType;
   const expression = job.message.messageType === 'projection.request' && task.input.sourceTopic === 'tutor.turn.completed'
@@ -170,14 +176,27 @@ async function executeTeamAgentJob(
       sourceEventId: String(task.input.sourceEventId), runId: task.runId, studentId: String(task.input.studentUserId),
       projectId: typeof task.input.projectId === 'string' ? task.input.projectId : null, projectionType,
     }) : null;
+  const domain = job.message.messageType === 'projection.request'
+    && ['project.stage.completed', 'artifact.published', 'reflection.created', 'mastery.assessed'].includes(String(task.input.sourceTopic))
+    && (projectionType === 'learner_profile' || projectionType === 'growth_trajectory')
+    ? await readDomainProjectionEvidence(db, {
+      sourceEventId: String(task.input.sourceEventId), runId: task.runId, studentId: String(task.input.studentUserId),
+      projectId: typeof task.input.projectId === 'string' ? task.input.projectId : null, projectionType,
+    }) : null;
   const prompt = buildTeamAgentPrompt({
-    agent,
+    agent: projection?.agent ?? agent,
     taskType: task.taskType,
     taskInput: expression ? { ...taskInput, studentText: expression.studentText, project: expression.project,
-      previousResult: expression.previousResult, expectedVersion: expression.manifest.baseVersion + 1 } : taskInput,
+      previousResult: expression.previousResult, expectedVersion: expression.manifest.baseVersion + 1 }
+      : domain ? { projectionType, observation: {
+        kind: domain.observation.kind, title: domain.observation.title, factualSummary: domain.observation.factualSummary,
+        milestone: domain.observation.milestone, evidenceRefs: domain.observation.evidenceRefs, occurredAt: domain.observation.occurredAt,
+      },
+        previousResult: domain.previousResult, expectedVersion: domain.manifest.baseVersion + 1 } : taskInput,
     globalPolicy: loadGlobalPolicy(options),
     skills,
-    constraints: expression ? [...DEFAULT_AGENT_CONSTRAINTS, tutorExpressionInstructions(expression)] : DEFAULT_AGENT_CONSTRAINTS,
+    constraints: expression ? [...DEFAULT_AGENT_CONSTRAINTS, tutorExpressionInstructions(expression)]
+      : domain ? [...DEFAULT_AGENT_CONSTRAINTS, domainProjectionInstructions(domain)] : DEFAULT_AGENT_CONSTRAINTS,
     outputSchema: route.outputSchema,
   });
   let result;
@@ -186,6 +205,7 @@ async function executeTeamAgentJob(
       usageId: `agent.${agent.id}`,
       providerId: selection.providerId,
       modelId: selection.modelId,
+      ...(projection?.temperature !== undefined ? { temperature: projection.temperature } : {}),
       messages: [
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user },
@@ -202,6 +222,11 @@ async function executeTeamAgentJob(
     throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CALL_FAILED');
   }
   const output = parseStructuredAgentOutput(result.text, route.outputSchema);
+  if (domain) {
+    const policyError = validateDomainProjection(domain.manifest.projectionType, output, domain);
+    return { result: policyError ? null : output, analysisManifest: domain.manifest,
+      ...(policyError ? { analysisErrorCode: policyError } : {}) };
+  }
   if (!expression) return output;
   // Do not persist arbitrary model echoes of private input, even in a rejected candidate.
   const policyError = validateTutorExpressionProjection(expression.manifest.projectionType, output, expression);
@@ -298,6 +323,23 @@ export async function loadAgentSkills(
     if (!path) return [];
     const content = readSkillContent(path, skillId);
     return content === null ? [] : [{ id: skillId, content }];
+  });
+  assertRuntimeSkillBudget(skills);
+  return skills;
+}
+
+/** A configured projection skill must load in full; omission changes Admin policy. */
+export function loadProjectionSkills(
+  skillIds: readonly string[],
+  roots?: readonly string[],
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const skillRoots = roots ?? defaultSkillRoots(env);
+  const skills = skillIds.map((id) => {
+    const path = findSkillFile(id, skillRoots);
+    const content = path ? readSkillContent(path, id) : null;
+    if (content === null) throw new TeamAgentExecutionError('PROJECTION_SKILL_UNAVAILABLE');
+    return { id, content };
   });
   assertRuntimeSkillBudget(skills);
   return skills;

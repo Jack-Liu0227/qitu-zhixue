@@ -6,6 +6,7 @@ import {
   createTeamAgentExecutor,
   defaultSkillRoots,
   loadAgentSkills,
+  loadProjectionSkills,
   parseStructuredAgentOutput,
   TeamAgentExecutionError,
   resolveTeamAgentModel,
@@ -19,6 +20,8 @@ import { delimiter, join } from 'node:path';
 import { adminAssistants, agentConfigs, agentProjectionCandidates, agentRoutes, agentSkillBindings, agentTeamEvents, agentTeamRuns,
   modelModels, modelProviders, modelUsageBindings, tutorSessions, tutorTurns } from '@qitu/database';
 import { expressionQuestion } from '@qitu/contracts';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
 
 function routingDb(rows: unknown[][]): Database {
   return { select: () => ({ from: () => ({ where: () => ({ limit: async () => rows.shift() ?? [] }) }) }) } as unknown as Database;
@@ -93,6 +96,23 @@ test('missing skill files are ignored without throwing', async () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('projection skills fail closed on any unavailable or non-teaching configured ID', () => {
+  const root = mkdtempSync(join(tmpdir(), 'qitu-projection-skills-'));
+  try {
+    for (const [id, runtime, status] of [
+      ['valid', 'teaching', 'published'], ['admin', 'admin', 'published'],
+      ['development', 'dev-only', 'published'], ['revoked', 'teaching', 'revoked'],
+    ]) {
+      mkdirSync(join(root, id!));
+      writeFileSync(join(root, id!, 'SKILL.md'), `---\nname: ${id}\nruntime: ${runtime}\nstatus: ${status}\n---\nSynthetic teaching policy`);
+    }
+    assert.deepEqual(loadProjectionSkills(['valid'], [root], {}).map((skill) => skill.id), ['valid']);
+    for (const id of ['missing', '../valid', 'admin', 'development', 'revoked']) {
+      assert.throws(() => loadProjectionSkills(['valid', id], [root], {}), /PROJECTION_SKILL_UNAVAILABLE/);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('global Admin configurator skills never enter teaching or projection worker prompts', async () => {
@@ -171,6 +191,10 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
   const encrypted = Buffer.concat([cipher.update('synthetic-test-only'), cipher.final()]);
   const secret = ['v1', iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), encrypted.toString('base64url')].join(':');
   let selectedModel = 'model-a';
+  let projectionModel: string | null = 'admin-model-a';
+  let projectionPrompt = 'Canonical Admin instructions revision one';
+  let projectionSkills: string[] = [];
+  let projectionEnabled = true;
   let routeTrigger = 'delegate';
   let routeTaskType = 'interest.confirm';
   let boundAssistant = 'worker';
@@ -180,11 +204,13 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
   const studentText = '我喜欢光学。缝宽变化有什么影响？';
   const db = {
     execute: async () => ({ rows: [{ revision: 3, config: { growthProjection: { profileAssistantId: boundAssistant, growthAssistantId: null } } }] }),
-    select: () => ({ from: (table: unknown) => ({ where: () => {
+    select: () => ({ from: (table: unknown) => ({ where: (condition: SQL) => {
+    const modelId = new PgDialect().sqlToQuery(condition).params[1];
     const rows = table === agentConfigs ? [{ id: 'worker', enabled: true, modelProviderId: null, modelId: null, modelUsage: 'curriculum.plan', capabilities: [] }]
-      : table === adminAssistants ? [{ enabled: true }]
+      : table === adminAssistants ? [{ id: 'worker', enabled: projectionEnabled, name: 'Canonical Admin assistant', role: 'analysis',
+        instructions: projectionPrompt, modelProviderId: 'provider', modelId: projectionModel, enabledSkills: projectionSkills }]
       : table === modelUsageBindings ? [{ providerId: 'provider', modelId: selectedModel }]
-      : table === modelModels ? [{ enabled: true, modelId: selectedModel, inputModalities: ['text'], outputModalities: ['text'] }]
+      : table === modelModels ? [{ enabled: true, modelId: typeof modelId === 'string' ? modelId : selectedModel, inputModalities: ['text'], outputModalities: ['text'] }]
       : table === modelProviders ? [{ id: 'provider', name: 'Synthetic', enabled: true, baseUrl: `http://127.0.0.1:${address.port}`, api: 'openai-completions', encryptedApiKey: secret }]
       : table === agentRoutes ? [{ id: 'route', fromAgentId: 'tutor', toAgentId: 'worker', trigger: routeTrigger, taskType: routeTaskType, enabled: true, outputSchema: routeOutputSchema }]
       : table === agentTeamRuns ? [{ id: 'synthetic', leaderAgentId: 'tutor', studentUserId: runStudentId, projectId: null }]
@@ -215,9 +241,27 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
     };
     assert.deepEqual(await execute(job), { confirmed: true });
     assert.equal(requestedModels.length, 3);
+    assert.equal(requestedModels.at(-1), 'admin-model-a', 'projection uses Admin direct selection instead of runtime usage');
+    assert.ok(requestedBodies.at(-1)!.includes(projectionPrompt));
+    projectionModel = 'admin-model-b';
+    projectionPrompt = 'Canonical Admin instructions revision two';
+    assert.deepEqual(await execute(job), { confirmed: true });
+    assert.equal(requestedModels.at(-1), 'admin-model-b');
+    assert.ok(requestedBodies.at(-1)!.includes(projectionPrompt), 'Admin prompt changes apply to the next task');
+    const configuredCalls = requestedModels.length;
+    projectionModel = null;
+    await assert.rejects(execute(job), /TEAM_AGENT_MODEL_NOT_CONFIGURED/);
+    projectionModel = 'admin-model-b';
+    projectionSkills = ['missing-canonical-skill'];
+    await assert.rejects(execute(job), /PROJECTION_SKILL_UNAVAILABLE/);
+    projectionSkills = [];
+    projectionEnabled = false;
+    await assert.rejects(execute(job), /PROJECTION_ASSISTANT_UNAVAILABLE/);
+    projectionEnabled = true;
+    assert.equal(requestedModels.length, configuredCalls, 'invalid Admin configuration cannot call the model');
     boundAssistant = 'replacement';
     await assert.rejects(execute(job), /PROJECTION_PURPOSE_CHANGED/);
-    assert.equal(requestedModels.length, 3, 'revoked binding must not invoke the model');
+    assert.equal(requestedModels.length, configuredCalls, 'revoked binding must not invoke the model');
     boundAssistant = 'worker';
     routeOutputSchema = { type: 'object', required: ['version'] };
     job.task!.input = { ...job.task!.input, sourceTopic: 'tutor.turn.completed', sourceEventId: 'event', studentUserId: 'student', projectId: null };

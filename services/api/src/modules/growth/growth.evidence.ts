@@ -18,6 +18,8 @@ export const GROWTH_EVIDENCE_SOURCE_KINDS = [
   'theory_check',
   'artifact',
   'reflection',
+  'project_event',
+  'mastery_event',
   'help_request',
   'learning_interaction',
 ] as const satisfies readonly GrowthEvidenceSourceKind[];

@@ -1,10 +1,11 @@
 'use client';
 
 import { SectionCard } from '@qitu/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StudentGrowthAnalysisView } from '@qitu/contracts';
 import { GrowthOfflineError, GrowthPermissionError } from '../data/growthDataSource';
 import { AnalysisStatus } from './AnalysisStatus';
+import { useAnalysisRefresh } from '../useAnalysisRefresh';
 
 type State = { status: 'loading' } | { status: 'ready'; value: StudentGrowthAnalysisView }
   | { status: 'error' | 'offline' | 'permission'; message: string };
@@ -13,9 +14,11 @@ export function GrowthAnalysisCard({ load }: { load: () => Promise<StudentGrowth
   const [state, setState] = useState<State>({ status: 'loading' });
   const [revision, setRevision] = useState(0);
   const identity = useRef(0);
+  const reload = useCallback(() => setRevision(value => value + 1), []);
+  useAnalysisRefresh(reload);
   useEffect(() => {
     const requestId = ++identity.current;
-    setState({ status: 'loading' });
+    setState(current => current.status === 'ready' ? current : { status: 'loading' });
     load().then(value => {
       if (requestId === identity.current) setState({ status: 'ready', value });
     }).catch(error => {

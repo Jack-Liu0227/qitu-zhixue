@@ -206,8 +206,8 @@ export default function ProfileGrowthSettingsPage() {
         >
           <span>{configuration.error ? '⚠️' : 'ℹ️'}</span>
           {configuration.loading ? '正在读取专任助手与用途绑定…' : configuration.error ?? (purposeOptions.length
-            ? `已读取配置修订 ${configuration.settings?.revision}。用途未配置或助手停用时，相关分析任务不会启动。`
-            : '暂无同时启用的专任助手。请先在助手设置及运行时中配置对应助手。')}
+            ? `已读取配置修订 ${configuration.settings?.revision}。保存用途时登记对应运行时身份与事件路由；模型与提示词使用助手当前配置。用途未配置或助手停用时，相关分析任务不会启动。`
+            : '暂无可用的助手。请先在助手设置中启用助手；运行时已停用的身份需先由管理员恢复。')}
         </span>
         <button
           type="button"

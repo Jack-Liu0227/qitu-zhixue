@@ -79,9 +79,10 @@ export class PostgresTeamProjectionSource {
   async project(job: TeamProjectionJob): Promise<number> {
     const purpose = PROJECTION_TARGETS[job.event.topic];
     if (!purpose) return 0;
-    const purposes = job.event.topic === 'tutor.turn.completed'
-      ? [purpose, { taskType: 'growth.project', projectionType: 'growth_trajectory' as const }]
-      : [purpose];
+    const purposes: Array<{ taskType: string; projectionType: GrowthProjectionType }> = [
+      { taskType: 'profile.project', projectionType: 'learner_profile' },
+      { taskType: 'growth.project', projectionType: 'growth_trajectory' },
+    ];
     let count = 0;
     for (const item of purposes) count += await this.projectPurpose(job, item);
     return count;
@@ -108,7 +109,7 @@ export class PostgresTeamProjectionSource {
     ]);
     if (!agent[0]?.enabled || !route[0]) throw new Error('PROJECTION_EVENT_ROUTE_UNAVAILABLE');
     const runId = job.event.runId ?? await this.ensureRun(job.event, sourceAgentId, studentUserId, projectId);
-    const taskKey = `team-projection-task:${job.event.eventId}:${target.projectionType}`;
+    const taskKey = `team-projection-task:${job.event.eventId}:${target.projectionType}:${target.agentId}`;
     const workerInput = buildWorkerInput(job.event, studentUserId, projectId);
     if (workerInput.evidenceRefs.length === 0) return 0;
     const authorization = teamTaskAuthorization(route[0].id, 'event', sourceAgentId, target.agentId, target.taskType);
@@ -166,7 +167,7 @@ export class PostgresTeamProjectionSource {
           purposeRevision: binding.revision,
         },
         status: 'proposed',
-        idempotencyKey: `team-projection-candidate:${job.event.eventId}:${target.projectionType}`,
+        idempotencyKey: `team-projection-candidate:${job.event.eventId}:${target.projectionType}:${target.agentId}`,
         createdAt: now,
       }).onConflictDoNothing({ target: agentProjectionCandidates.idempotencyKey });
     });
@@ -204,7 +205,7 @@ export class PostgresTeamProjectionSource {
     const existing = await this.db.select({ id: agentTeamRuns.id }).from(agentTeamRuns).where(eq(agentTeamRuns.idempotencyKey, key)).limit(1);
     if (existing[0]) return existing[0].id;
     const id = randomUUID();
-    await this.db.insert(agentTeamRuns).values({ id, leaderAgentId, studentUserId, projectId, trigger: `event:${event.topic}`, status: 'queued', context: { sourceEventId: event.eventId }, idempotencyKey: key, createdBy: null }).onConflictDoNothing({ target: agentTeamRuns.idempotencyKey });
+    await this.db.insert(agentTeamRuns).values({ id, leaderAgentId, studentUserId, projectId, trigger: `event:${event.topic}`, status: 'waiting', context: { sourceEventId: event.eventId, projectionOnly: true }, idempotencyKey: key, createdBy: null }).onConflictDoNothing({ target: agentTeamRuns.idempotencyKey });
     const [run] = await this.db.select({ id: agentTeamRuns.id }).from(agentTeamRuns).where(eq(agentTeamRuns.idempotencyKey, key)).limit(1);
     if (!run) throw new Error('TEAM_RUN_CREATE_FAILED');
     return run.id;
