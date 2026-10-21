@@ -15,6 +15,7 @@ import { GrowthProjectionSettingsController } from './growth-projection-settings
 import { GrowthProjectionSettingsService } from './growth-projection-settings.service';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { GrowthProjectionReviewWorker } from './growth-projection-review.worker';
+import { GrowthDomainEvidenceWorker } from './growth-domain-evidence.worker';
 import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 
 /**
@@ -41,6 +42,7 @@ import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storag
     GrowthProjectionOwnerService,
     GrowthProjectionSettingsService,
     GrowthProjectionReviewWorker,
+    GrowthDomainEvidenceWorker,
     {
       provide: 'DirectoryService',
       useExisting: DirectoryService,

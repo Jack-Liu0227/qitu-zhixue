@@ -16,12 +16,29 @@ const settings = { profileAssistantId: 'profile', growthAssistantId: 'growth' };
 function fixture() {
   type Row = { revision: number; config: Record<string, unknown>; actor?: string; key?: string; request_hash?: string };
   const revisions: Row[] = [{ revision: 1, config: { mcpServers: { keep: true }, knowledgeEngines: {}, platformTools: {} } }];
-  const assistants = [{ id: 'profile', name: 'Profile', enabled: true }, { id: 'growth', name: 'Growth', enabled: true }, { id: 'unpublished', name: 'Draft', enabled: true }];
+  const assistants = [{ id: 'profile', name: 'Profile', role: 'profile', enabled: true }, { id: 'growth', name: 'Growth', role: 'growth', enabled: true }, { id: 'new-assistant', name: 'New', role: 'profile', enabled: true }];
   const agents = [{ id: 'profile', enabled: true }, { id: 'growth', enabled: true }];
+  const backlog = [
+    { id: 'unconfigured', topic: 'agent.team.event', status: 'failed', lastError: 'PROJECTION_PURPOSE_UNCONFIGURED' },
+    { id: 'model', topic: 'agent.team.event', status: 'failed', lastError: 'TEAM_AGENT_MODEL_CALL_FAILED' },
+    { id: 'route', topic: 'agent.team.event', status: 'failed', lastError: 'PROJECTION_EVENT_ROUTE_UNAVAILABLE' },
+    { id: 'unrelated', topic: 'mastery.assessed', status: 'failed', lastError: 'PROJECTION_PURPOSE_UNCONFIGURED' },
+    { id: 'processing', topic: 'agent.team.event', status: 'processing', lastError: 'PROJECTION_PURPOSE_UNCONFIGURED' },
+  ].map((row) => ({ ...row, lastError: row.lastError as string | null, attempts: 5,
+    leaseOwner: 'lease-owner' as string | null, leaseUntil: new Date('2026-10-22T00:00:00Z') as Date | null }));
+  const recoveryUpdates: string[] = [];
   const audits: unknown[] = [];
   const query = async (query: SQL) => {
     const { sql: text, params } = new PgDialect().sqlToQuery(query);
     if (text.includes('pg_advisory_xact_lock')) return { rows: [] };
+    if (text.startsWith('UPDATE outbox')) {
+      recoveryUpdates.push(text);
+      for (const row of backlog) if (row.topic === 'agent.team.event' && row.status === 'failed'
+        && row.lastError === 'PROJECTION_PURPOSE_UNCONFIGURED') {
+        Object.assign(row, { status: 'pending', attempts: 0, leaseOwner: null, leaseUntil: null, lastError: null });
+      }
+      return { rows: [] };
+    }
     if (text.startsWith('INSERT')) {
       revisions.push({ revision: params[0] as number, config: JSON.parse(params[2] as string), actor: params[3] as string, key: params[4] as string, request_hash: params[5] as string });
       return { rows: [] };
@@ -33,25 +50,81 @@ function fixture() {
   const db = {
     execute: query,
     select: () => ({ from: async (table: unknown) => table === adminAssistants ? assistants : table === agentConfigs ? agents : [] }),
+    insert: (table: unknown) => ({ values: (row: { id: string; enabled: boolean }) => ({ onConflictDoNothing: async () => {
+      if (table === agentConfigs && !agents.some((agent) => agent.id === row.id)) agents.push({ id: row.id, enabled: row.enabled });
+    } }) }),
     transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
       const saved = structuredClone(revisions);
-      try { return await fn(db); } catch (error) { revisions.splice(0, revisions.length, ...saved); throw error; }
+      const savedAgents = structuredClone(agents);
+      const savedBacklog = structuredClone(backlog);
+      try { return await fn(db); } catch (error) {
+        revisions.splice(0, revisions.length, ...saved);
+        agents.splice(0, agents.length, ...savedAgents);
+        backlog.splice(0, backlog.length, ...savedBacklog);
+        throw error;
+      }
     },
   } as unknown as Database;
   const knowledge = { configuration: async () => revisions.at(-1)! } as unknown as KnowledgeCenterService;
   const audit = { write: async (entry: unknown) => { audits.push(entry); return 'audit'; } } as AuditWriter;
-  return { service: new GrowthProjectionSettingsService(db, knowledge, audit), revisions, assistants, agents, audits };
+  return { service: new GrowthProjectionSettingsService(db, knowledge, audit), revisions, assistants, agents, audits, audit, backlog, recoveryUpdates };
 }
 
-test('missing settings are explicitly unconfigured and directory requires both enabled identities', async () => {
+test('enabled Admin assistants without runtime descriptors are selectable but not ready', async () => {
   const f = fixture();
   const initial = await f.service.read();
   assert.deepEqual(initial.settings, { profileAssistantId: null, growthAssistantId: null });
   assert.deepEqual(initial.readiness, { profile: 'unconfigured', growth: 'unconfigured' });
-  assert.deepEqual(initial.assistants.map((assistant) => assistant.id), ['growth', 'profile']);
+  assert.deepEqual(initial.assistants.map((assistant) => assistant.id), ['growth', 'new-assistant', 'profile']);
   assert.equal(initial.pendingPolicy, 'proposed');
   f.agents[0]!.enabled = false;
-  assert.deepEqual((await f.service.read()).assistants.map((assistant) => assistant.id), ['growth']);
+  assert.deepEqual((await f.service.read()).assistants.map((assistant) => assistant.id), ['growth', 'new-assistant']);
+  f.revisions[0]!.config.growthProjection = { profileAssistantId: 'new-assistant', growthAssistantId: null };
+  assert.equal((await f.service.read()).readiness.profile, 'disabled_or_missing');
+});
+
+test('explicit purpose save provisions an absent exact descriptor and replay does not duplicate it', async () => {
+  const f = fixture();
+  const input = { expectedRevision: 1, settings: { profileAssistantId: 'new-assistant', growthAssistantId: null } };
+  assert.equal(f.agents.some((row) => row.id === 'new-assistant'), false);
+  const saved = await f.service.save(actor, input, 'provision');
+  assert.equal(saved.readiness.profile, 'ready');
+  assert.equal(f.agents.filter((row) => row.id === 'new-assistant').length, 1);
+  assert.deepEqual(await f.service.save(actor, input, 'provision'), saved);
+  assert.equal(f.agents.filter((row) => row.id === 'new-assistant').length, 1);
+});
+
+test('failed purpose audit rolls back the new runtime descriptor and configuration revision', async () => {
+  const f = fixture();
+  f.audit.write = async () => { throw new Error('SYNTHETIC_AUDIT_FAILURE'); };
+  await assert.rejects(f.service.save(actor, { expectedRevision: 1,
+    settings: { profileAssistantId: 'new-assistant', growthAssistantId: null } }, 'rollback'), /SYNTHETIC_AUDIT_FAILURE/);
+  assert.equal(f.revisions.length, 1);
+  assert.equal(f.agents.some((row) => row.id === 'new-assistant'), false);
+  assert.equal(f.backlog[0]?.status, 'failed');
+});
+
+test('nonnull purpose save retries only unconfigured failed team events, once per save', async () => {
+  const f = fixture();
+  const untouched = structuredClone(f.backlog.slice(1));
+  const input = { expectedRevision: 1, settings };
+  await f.service.save(actor, input, 'recover');
+  assert.deepEqual(f.backlog[0], { id: 'unconfigured', topic: 'agent.team.event', status: 'pending',
+    lastError: null, attempts: 0, leaseOwner: null, leaseUntil: null });
+  assert.deepEqual(f.backlog.slice(1), untouched);
+  assert.equal(f.recoveryUpdates.length, 1);
+  assert.match(f.recoveryUpdates[0]!, /WHERE topic='agent\.team\.event' AND status='failed' AND last_error='PROJECTION_PURPOSE_UNCONFIGURED'/);
+  await f.service.save(actor, input, 'recover');
+  assert.equal(f.recoveryUpdates.length, 1, 'idempotent replay does not restart further events');
+});
+
+test('clearing both purposes does not restart the unconfigured backlog', async () => {
+  const f = fixture();
+  const untouched = structuredClone(f.backlog);
+  await f.service.save(actor, { expectedRevision: 1,
+    settings: { profileAssistantId: null, growthAssistantId: null } }, 'clear');
+  assert.equal(f.recoveryUpdates.length, 0);
+  assert.deepEqual(f.backlog, untouched);
 });
 
 test('purpose save preserves platform config, persists exact IDs, audits and replays idempotently', async () => {
@@ -72,7 +145,7 @@ test('purpose save preserves platform config, persists exact IDs, audits and rep
 
 test('disabled or nonexistent runtime identity cannot be bound and revocation is visible', async () => {
   const f = fixture();
-  await assert.rejects(f.service.save(actor, { expectedRevision: 1, settings: { ...settings, profileAssistantId: 'unpublished' } }, 'missing'), /GROWTH_PROJECTION_ASSISTANT_UNAVAILABLE/);
+  await assert.rejects(f.service.save(actor, { expectedRevision: 1, settings: { ...settings, profileAssistantId: 'missing' } }, 'missing'), /GROWTH_PROJECTION_ASSISTANT_UNAVAILABLE/);
   f.assistants[0]!.enabled = false;
   await assert.rejects(f.service.save(actor, { expectedRevision: 1, settings }, 'disabled'), /GROWTH_PROJECTION_ASSISTANT_UNAVAILABLE/);
   f.assistants[0]!.enabled = true;

@@ -17,7 +17,8 @@ export async function runTeamMailboxOnce(
   options: NodeJS.ProcessEnv = process.env,
 ): Promise<TeamRuntimeWorkerOutcome> {
   const source = new PostgresTeamMailboxSource(db, Number(options.QITU_TEAM_RUNTIME_MAX_ATTEMPTS ?? 3));
-  const job = await source.claim(options.QITU_TEAM_RUNTIME_AGENT_ID?.trim() || undefined);
+  const job = await source.claim(options.QITU_TEAM_RUNTIME_AGENT_ID?.trim() || undefined,
+    options.QITU_TEAM_RUNTIME_PROJECTION_ONLY === 'true');
   if (!job) return { status: 'idle' };
   try {
     const output = await executor(job);

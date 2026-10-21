@@ -1,0 +1,15 @@
+[Unit]
+Description=Qitu profile and growth projection worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/qitu-zhixue
+ExecStart=/usr/bin/bash /root/qitu-zhixue/tooling/run-profile-growth-worker.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

@@ -38,9 +38,11 @@ class Query implements PromiseLike<Row[]> {
   private sort?: SQL;
   private result?: Promise<Row[]>;
   private conflictColumns: { name: string }[] = [];
+  private joinedTable?: Table;
   constructor(private readonly fixture: ProjectionDatabaseFixture, private readonly operation: string, private table?: Table) {}
   from(table: Table) { this.table = table; return this; }
-  where(condition: SQL) { this.condition = condition; return this; }
+  where(condition?: SQL) { this.condition = condition; return this; }
+  leftJoin(table: Table) { this.joinedTable = table; return this; }
   limit(count: number) { this.rowLimit = count; return this; }
   orderBy(sort: SQL) { this.sort = sort; return this; }
   for() { return this; }
@@ -71,9 +73,10 @@ class Query implements PromiseLike<Row[]> {
     if (this.condition) {
       const query = dialect.sqlToQuery(this.condition);
       const checks: Array<(row: Row) => boolean> = [];
-      let remainder = query.sql.replace(/"[^"]+"\."([^"]+)"\s+(=|<)\s+\$(\d+)/gu, (_match, name: string, operator: string, slot: string) => {
+      let remainder = query.sql.replace(/"[^"]+"\."([^"]+)"\s+(=|<|>)\s+\$(\d+)/gu, (_match, name: string, operator: string, slot: string) => {
         const value = query.params[Number(slot) - 1];
-        checks.push((row) => operator === '=' ? row[key(name)] === value : row[key(name)] != null && Number(row[key(name)]) < Number(value));
+        checks.push((row) => operator === '=' ? row[key(name)] === value : row[key(name)] != null && (operator === '>'
+          ? String(row[key(name)]) > String(value) : Number(row[key(name)]) < Number(value)));
         return '';
       });
       remainder = remainder.replace(/"[^"]+"\."([^"]+)"\s+in\s+\(([^)]+)\)/giu, (_match, name: string, slots: string) => {
@@ -89,8 +92,12 @@ class Query implements PromiseLike<Row[]> {
       const order = dialect.sqlToQuery(this.sort).sql;
       const field = key(order.match(/\."([^"]+)"/u)?.[1] ?? 'created_at');
       const sign = order.includes('desc') ? -1 : 1;
-      rows = [...rows].sort((a, b) => sign * (Number(a[field]) - Number(b[field])));
+      rows = [...rows].sort((a, b) => sign * (a[field] instanceof Date && b[field] instanceof Date
+        ? Number(a[field]) - Number(b[field]) : String(a[field]).localeCompare(String(b[field]))));
     }
-    return rows.slice(0, this.rowLimit);
+    rows = rows.slice(0, this.rowLimit);
+    if (this.joinedTable) return rows.map((row) => ({ record: row,
+      projectTitle: this.fixture.rows(this.joinedTable!).find((project) => project.id === row.projectId)?.title ?? null }));
+    return rows;
   }
 }

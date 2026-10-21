@@ -1,0 +1,1200 @@
+{
+  "readAtUtc": "2026-10-21T19:05:34.656Z",
+  "readAtBeijing": "2026-10-22T03:05:34.656000+08:00",
+  "scope": "selected optics template only; authenticated read-only owner APIs; no learner project writes",
+  "templateId": "tpl-a83c1185-074b-4977-90c6-887e248fbbde",
+  "templateVersionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+  "binding": {
+    "id": "bnd-ac6adb20d4f27968",
+    "templateVersionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+    "teamVersionId": "team-version-a58887ab25161859429dd88ff3cfac06",
+    "status": "active",
+    "bindingHash": "8d85c1320b544c29658a9d335057e2dc90553d42b468353505dcfc72eeba91f4",
+    "bundleDigest": "01763bbaec4e77f8270bf6f10fe481d9027ef360a8edceb3158896c337053dce",
+    "validation": {
+      "valid": true,
+      "errors": [],
+      "warnings": [],
+      "checkedAt": "2026-10-21T18:25:01.792Z"
+    },
+    "activatedAt": "2026-10-21T18:25:01.945Z",
+    "retiredAt": null,
+    "createdBy": "admin-demo",
+    "createdAt": "2026-10-21T18:25:01.325Z",
+    "updatedAt": "2026-10-21T18:25:01.945Z",
+    "bundleDraft": {
+      "roleMap": [
+        {
+          "memberId": "slot-optics-leader",
+          "purposes": [
+            "outline",
+            "session",
+            "dialogue"
+          ],
+          "roleSlotId": "slot-optics-leader"
+        },
+        {
+          "memberId": "slot-optics-concept",
+          "purposes": [
+            "outline",
+            "session",
+            "dialogue"
+          ],
+          "roleSlotId": "slot-optics-concept"
+        },
+        {
+          "memberId": "slot-optics-guide",
+          "purposes": [
+            "outline",
+            "session",
+            "dialogue"
+          ],
+          "roleSlotId": "slot-optics-guide"
+        },
+        {
+          "memberId": "slot-optics-review",
+          "purposes": [
+            "outline",
+            "session",
+            "dialogue"
+          ],
+          "roleSlotId": "slot-optics-review"
+        },
+        {
+          "memberId": "slot-qitu-intake-assistant",
+          "purposes": [
+            "outline",
+            "session",
+            "dialogue"
+          ],
+          "roleSlotId": "slot-qitu-intake-assistant"
+        }
+      ],
+      "toolIds": [
+        {
+          "toolId": "mastery_query",
+          "roleSlotId": "slot-optics-leader"
+        },
+        {
+          "toolId": "student_profile_get",
+          "roleSlotId": "slot-optics-leader"
+        },
+        {
+          "toolId": "knowledge_search",
+          "roleSlotId": "slot-optics-concept"
+        },
+        {
+          "toolId": "tutor.propose_lesson_activity",
+          "roleSlotId": "slot-optics-leader"
+        },
+        {
+          "toolId": "tutor.propose_lesson_activity",
+          "roleSlotId": "slot-optics-concept"
+        },
+        {
+          "toolId": "tutor.propose_lesson_activity",
+          "roleSlotId": "slot-optics-guide"
+        },
+        {
+          "toolId": "tutor.propose_lesson_activity",
+          "roleSlotId": "slot-optics-review"
+        },
+        {
+          "toolId": "tutor.propose_lesson_activity",
+          "roleSlotId": "slot-qitu-intake-assistant"
+        }
+      ],
+      "skillPins": [
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-ai-output-audit",
+          "packageDigest": "3c5973d17fced31b6c480e83b732eb7cfd61e08611a4a18e66ece0809494daf0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-driving-question",
+          "packageDigest": "cafc8ac98e13020d0477ae2e9b190b32b0a71462cdb761555d0c3ec6041fb7b1"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-hypothesis-coach",
+          "packageDigest": "c7cf2b04e470710cc7e3f11d2dd21af365a37ef102d336507845abcafa8b4836"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-team-facilitation",
+          "packageDigest": "c85d5e861152daeaa83237f4ce04efd56744d90be712563e3449319183cef7f2"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-concept-probe",
+          "packageDigest": "0eb1de9b35748551b1172b6aa41fb61b50a0674767e321173f570cc9379894f5"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-independent-transfer",
+          "packageDigest": "cfd791ee6060b547acedffd8b3c9569ddc49e010959ed6cb0ac271965f4e07ae"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-source-literacy",
+          "packageDigest": "b5846c9bbc07b8acfc7ba3c85eabf16443d447a437889573317962e6b9fb4284"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-understanding-coach",
+          "packageDigest": "9f3d442462c0b2e291225e264ca42b3dc933277a2eba27506770a474bdcf8f88"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "optics-wave-inquiry",
+          "packageDigest": "ab21e7185ca11d05afaebd8516065b9e9cc899efe76137a7f2f9250f84f59692"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-cer-coach",
+          "packageDigest": "e6a3481199d2c29814c858d57d8d1f3d997c556a1f1becfef2544f43391d4607"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-data-literacy",
+          "packageDigest": "bd0985353e7da47c532f7e410891475fdbb3d74292ff0b687cced1a8f66393a5"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-experiment-design",
+          "packageDigest": "7f2bf4cb3c28fa0afc397afcf78bfe576cf34be1ec05baea6d58afed074fad10"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-hypothesis-coach",
+          "packageDigest": "c7cf2b04e470710cc7e3f11d2dd21af365a37ef102d336507845abcafa8b4836"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-ai-output-audit",
+          "packageDigest": "3c5973d17fced31b6c480e83b732eb7cfd61e08611a4a18e66ece0809494daf0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-artifact-revision",
+          "packageDigest": "1395a15d2fc80f8dec2d0512121060fdd82ce15b81ed3d0847e939bdfc815543"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-cer-coach",
+          "packageDigest": "e6a3481199d2c29814c858d57d8d1f3d997c556a1f1becfef2544f43391d4607"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-defense-coach",
+          "packageDigest": "cad2f5f50871acfa21c5d2dfe48ebb8fabb0103d205ba5dd2cd093907cb9af2b"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-peer-critique",
+          "packageDigest": "079f3f19909344bbe3c0b05f41fed467b30e6b64cd1b467036d39d0fe1f55e53"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-reflection-coach",
+          "packageDigest": "6d8cd6e1a4f94748228190b116ef2b14b191f9bafed767c7e1d4c2ea4d4777be"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-leader",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-concept",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-guide",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-optics-review",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "roleSlotId": "slot-qitu-intake-assistant",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        }
+      ],
+      "mcpServerIds": [],
+      "sessionRoutes": [
+        {
+          "roleSlotId": "slot-qitu-intake-assistant",
+          "sessionIndex": 1
+        },
+        {
+          "roleSlotId": "slot-qitu-intake-assistant",
+          "sessionIndex": 2
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 3
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 4
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 5
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 6
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 7
+        },
+        {
+          "roleSlotId": "slot-optics-concept",
+          "sessionIndex": 8
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 9
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 10
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 11
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 12
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 13
+        },
+        {
+          "roleSlotId": "slot-optics-guide",
+          "sessionIndex": 14
+        },
+        {
+          "roleSlotId": "slot-optics-review",
+          "sessionIndex": 15
+        },
+        {
+          "roleSlotId": "slot-optics-review",
+          "sessionIndex": 16
+        }
+      ],
+      "teamVersionId": "team-version-a58887ab25161859429dd88ff3cfac06",
+      "modelByPurpose": {
+        "slot-optics-guide": {
+          "outline": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "session": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "dialogue": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          }
+        },
+        "slot-optics-leader": {
+          "outline": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "session": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "dialogue": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          }
+        },
+        "slot-optics-review": {
+          "outline": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "session": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "dialogue": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          }
+        },
+        "slot-optics-concept": {
+          "outline": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "session": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "dialogue": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          }
+        },
+        "slot-qitu-intake-assistant": {
+          "outline": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "session": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          },
+          "dialogue": {
+            "modelId": "deepseek-flash",
+            "modelProviderId": "deepseek"
+          }
+        }
+      },
+      "knowledgeBaseIds": [],
+      "scheduleProfileId": "optics-16x60-v2",
+      "templateVersionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+      "approvalPolicyVersion": "f690ce4dcd18"
+    }
+  },
+  "configurationReady": true,
+  "scheduleProfileId": "optics-16x60-v2",
+  "knowledgeBaseIds": [],
+  "mcpServerIds": [],
+  "sessionRoutes": [
+    {
+      "roleSlotId": "slot-qitu-intake-assistant",
+      "sessionIndex": 1
+    },
+    {
+      "roleSlotId": "slot-qitu-intake-assistant",
+      "sessionIndex": 2
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 3
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 4
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 5
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 6
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 7
+    },
+    {
+      "roleSlotId": "slot-optics-concept",
+      "sessionIndex": 8
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 9
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 10
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 11
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 12
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 13
+    },
+    {
+      "roleSlotId": "slot-optics-guide",
+      "sessionIndex": 14
+    },
+    {
+      "roleSlotId": "slot-optics-review",
+      "sessionIndex": 15
+    },
+    {
+      "roleSlotId": "slot-optics-review",
+      "sessionIndex": 16
+    }
+  ],
+  "roles": [
+    {
+      "memberId": "slot-optics-leader",
+      "purposes": [
+        "outline",
+        "session",
+        "dialogue"
+      ],
+      "roleSlotId": "slot-optics-leader",
+      "assistantId": "optics-leader"
+    },
+    {
+      "memberId": "slot-optics-concept",
+      "purposes": [
+        "outline",
+        "session",
+        "dialogue"
+      ],
+      "roleSlotId": "slot-optics-concept",
+      "assistantId": "optics-concept-coach"
+    },
+    {
+      "memberId": "slot-optics-guide",
+      "purposes": [
+        "outline",
+        "session",
+        "dialogue"
+      ],
+      "roleSlotId": "slot-optics-guide",
+      "assistantId": "optics-experiment-guide"
+    },
+    {
+      "memberId": "slot-optics-review",
+      "purposes": [
+        "outline",
+        "session",
+        "dialogue"
+      ],
+      "roleSlotId": "slot-optics-review",
+      "assistantId": "optics-review-assessor"
+    },
+    {
+      "memberId": "slot-qitu-intake-assistant",
+      "purposes": [
+        "outline",
+        "session",
+        "dialogue"
+      ],
+      "roleSlotId": "slot-qitu-intake-assistant",
+      "assistantId": "qitu-intake-assistant"
+    }
+  ],
+  "phases": [
+    {
+      "phase": "exploration",
+      "title": "阶段一：生活情境启发与探究课题确认",
+      "objectiveIds": [
+        "opt-intent-observe",
+        "opt-intent-question"
+      ],
+      "gateCondition": "student_confirmed_intent",
+      "deliverableType": "project_intent_doc",
+      "evidenceProfile": null,
+      "assignedAssistantId": "qitu-intake-assistant"
+    },
+    {
+      "phase": "concept_mastery",
+      "title": "阶段二：光学核心定律探索与概念掌握",
+      "objectiveIds": [
+        "opt-theory-reflection",
+        "opt-theory-refraction",
+        "opt-theory-tir",
+        "opt-theory-lens"
+      ],
+      "gateCondition": "TheoryMastered",
+      "deliverableType": "mastery_checkpoint_report",
+      "evidenceProfile": null,
+      "assignedAssistantId": "optics-concept-coach"
+    },
+    {
+      "phase": "guided_practice",
+      "title": "阶段三：光路搭建、数据采集与规律拟合",
+      "objectiveIds": [
+        "opt-practice-setup",
+        "opt-practice-measure",
+        "opt-practice-fit",
+        "opt-practice-report"
+      ],
+      "gateCondition": "experiment_report_validated",
+      "deliverableType": "simulation_experiment_report",
+      "evidenceProfile": "experiment_report",
+      "assignedAssistantId": "optics-experiment-guide"
+    },
+    {
+      "phase": "deliverable_review",
+      "title": "阶段四：答辩评审与反思成长归档",
+      "objectiveIds": [
+        "opt-review-defend",
+        "opt-review-reflect"
+      ],
+      "gateCondition": "review_completed_and_archived",
+      "deliverableType": "growth_archive_record",
+      "evidenceProfile": null,
+      "assignedAssistantId": "optics-review-assessor"
+    }
+  ],
+  "publishedMembers": [
+    {
+      "slotId": "slot-optics-leader",
+      "assistantId": "optics-leader",
+      "role": "leader",
+      "roleDefinition": "Team Leader / 物理总导师",
+      "instructions": "你是物理光学探究项目的总导师。坚持苏格拉底式发问，引导学生从日常生活中的光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹）出发，提出关于光的本质、传播规律与波动特性的物理问题。在学生未达成概念掌握前，不推进至实验实践阶段。",
+      "skills": [
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-ai-output-audit",
+          "packageDigest": "3c5973d17fced31b6c480e83b732eb7cfd61e08611a4a18e66ece0809494daf0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-driving-question",
+          "packageDigest": "cafc8ac98e13020d0477ae2e9b190b32b0a71462cdb761555d0c3ec6041fb7b1"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-hypothesis-coach",
+          "packageDigest": "c7cf2b04e470710cc7e3f11d2dd21af365a37ef102d336507845abcafa8b4836"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-team-facilitation",
+          "packageDigest": "c85d5e861152daeaa83237f4ce04efd56744d90be712563e3449319183cef7f2"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        }
+      ]
+    },
+    {
+      "slotId": "slot-optics-concept",
+      "assistantId": "optics-concept-coach",
+      "role": "coach",
+      "roleDefinition": "Concept Coach / 概念教练",
+      "instructions": "运用启发式教学，通过生活现象（筷子在水中折断、水底看起来变浅、光纤传光）结合数学公式与作图法，引导学生深刻理解反射定律、折射定律 n = c/v = sinθ₁/sinθ₂、全反射临界角 sinC = 1/n 与凸透镜成像规律。通过测试检验学生理解，在 TheoryMastered 之前严格把关。",
+      "skills": [
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-concept-probe",
+          "packageDigest": "0eb1de9b35748551b1172b6aa41fb61b50a0674767e321173f570cc9379894f5"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-independent-transfer",
+          "packageDigest": "cfd791ee6060b547acedffd8b3c9569ddc49e010959ed6cb0ac271965f4e07ae"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-source-literacy",
+          "packageDigest": "b5846c9bbc07b8acfc7ba3c85eabf16443d447a437889573317962e6b9fb4284"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-understanding-coach",
+          "packageDigest": "9f3d442462c0b2e291225e264ca42b3dc933277a2eba27506770a474bdcf8f88"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        }
+      ]
+    },
+    {
+      "slotId": "slot-optics-guide",
+      "assistantId": "optics-experiment-guide",
+      "role": "teammate",
+      "roleDefinition": "Experiment Guide / 仿真向导",
+      "instructions": "仅在理论概念掌握（TheoryMastered）后开放实验工具。指导学生在光的散射与衍射动态探究台（OpticsDiffractionScatteringCard）中调节激光波长 λ、狭缝宽度 a、光屏距离 D 与介质微粒半径 r，观察衍射中央亮纹宽度变化与瑞利散射波长依赖性，采集数据并完成探究实验报告。",
+      "skills": [
+        {
+          "version": "1.0.0",
+          "canonicalId": "optics-wave-inquiry",
+          "packageDigest": "ab21e7185ca11d05afaebd8516065b9e9cc899efe76137a7f2f9250f84f59692"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-cer-coach",
+          "packageDigest": "e6a3481199d2c29814c858d57d8d1f3d997c556a1f1becfef2544f43391d4607"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-data-literacy",
+          "packageDigest": "bd0985353e7da47c532f7e410891475fdbb3d74292ff0b687cced1a8f66393a5"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-experiment-design",
+          "packageDigest": "7f2bf4cb3c28fa0afc397afcf78bfe576cf34be1ec05baea6d58afed074fad10"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-hypothesis-coach",
+          "packageDigest": "c7cf2b04e470710cc7e3f11d2dd21af365a37ef102d336507845abcafa8b4836"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-visual-explainer",
+          "packageDigest": "0636ecbbcd8b42c8f3d3a788630c498aa14cf795b70f49c2ab22b4fbbff77178"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        }
+      ]
+    },
+    {
+      "slotId": "slot-optics-review",
+      "assistantId": "optics-review-assessor",
+      "role": "reviewer",
+      "roleDefinition": "Reviewer / 评审导师",
+      "instructions": "主持物理光学探究答辩评审。从实验数据真实性、误差分析（单缝衍射中央亮纹边界判定、环境杂散光影响）、CER 科学论证结构（主张-证据-推理）与生活应用迁移四个维度综合评审，生成物理学科核心素养成长归档。",
+      "skills": [
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-ai-output-audit",
+          "packageDigest": "3c5973d17fced31b6c480e83b732eb7cfd61e08611a4a18e66ece0809494daf0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-artifact-revision",
+          "packageDigest": "1395a15d2fc80f8dec2d0512121060fdd82ce15b81ed3d0847e939bdfc815543"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-cer-coach",
+          "packageDigest": "e6a3481199d2c29814c858d57d8d1f3d997c556a1f1becfef2544f43391d4607"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-defense-coach",
+          "packageDigest": "cad2f5f50871acfa21c5d2dfe48ebb8fabb0103d205ba5dd2cd093907cb9af2b"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-peer-critique",
+          "packageDigest": "079f3f19909344bbe3c0b05f41fed467b30e6b64cd1b467036d39d0fe1f55e53"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-reflection-coach",
+          "packageDigest": "6d8cd6e1a4f94748228190b116ef2b14b191f9bafed767c7e1d4c2ea4d4777be"
+        },
+        {
+          "version": "1.0.0",
+          "canonicalId": "tutor-guided-learning",
+          "packageDigest": "c76f17a829f0a9cd80ec3cf163cfdd3712db2815c519ce58ca19dc39ebbe2552"
+        }
+      ]
+    },
+    {
+      "slotId": "slot-qitu-intake-assistant",
+      "assistantId": "qitu-intake-assistant",
+      "role": "coach",
+      "roleDefinition": "Intake Guide / 启途智学助手",
+      "instructions": "你是启途智学助手，是每个学生进入平台后对话的第一位 AI 搭档。你的唯一职责是用苏格拉底式提问确认学生的兴趣与学习意图：先问他/她对什么感兴趣、想解决什么问题、想做出什么作品，再据此推荐一个最合适的项目方向并说明推荐理由。推荐阶段严格遵守「学生未确认意图不得创建正式项目」：只能推荐和澄清，不能声称项目已经建好，也不能替学生确认。学生明确确认项目后，把学习接力给对应的 PBL 导师团队，只做一句话交接，不代替团队教学。全程不直接给出答案或完整代码，不在 TheoryMastered 之前推进实践阶段。",
+      "skills": [
+        {
+          "version": "1.0.0",
+          "canonicalId": "pbl-dynamic-lesson",
+          "packageDigest": "66c5912dfcc76c3dea3953a69741c78eed4325e86d3156c7212a2f6380f79ea0"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "optics-v2-session-1",
+      "index": 1,
+      "title": "光的宏观现象与观察指标",
+      "phase": "exploration",
+      "objectiveIds": [
+        "opt-intent-observe"
+      ],
+      "learningGoal": "观察反射、折射和透镜现象，区分观察与解释，识别角度、距离、虚实正倒等指标。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "带指标与单位的现象观察表",
+        "观察事实与初步解释的区分记录"
+      ]
+    },
+    {
+      "id": "optics-v2-session-2",
+      "index": 2,
+      "title": "提出探究假设与实验方案",
+      "phase": "exploration",
+      "objectiveIds": [
+        "opt-intent-question"
+      ],
+      "learningGoal": "提出可检验假设，设计自变量、因变量与控制变量，形成初步实验构想。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "可检验假设与变量设计表",
+        "待学生确认的探究意向书草稿"
+      ],
+      "checkpoint": {
+        "requiredGate": "student_confirmed_intent"
+      }
+    },
+    {
+      "id": "optics-v2-session-3",
+      "index": 3,
+      "title": "光的直线传播与平面镜成像原理",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-reflection"
+      ],
+      "learningGoal": "在均匀介质中用直线光线模型解释传播；说明像物对称、像物等大及虚像的物理意义。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "标注物像距离与延长线的成像图",
+        "对虚像含义的自主解释"
+      ]
+    },
+    {
+      "id": "optics-v2-session-4",
+      "index": 4,
+      "title": "反射定律公式与光路可逆性",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-reflection"
+      ],
+      "learningGoal": "以法线为角度基准，用 theta_1 = theta_2 定量计算，完成光路可逆作图。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "反射角计算与可逆光路图",
+        "法线基准易错点修订记录"
+      ]
+    },
+    {
+      "id": "optics-v2-session-5",
+      "index": 5,
+      "title": "折射定律与介质折射率定义",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-refraction"
+      ],
+      "learningGoal": "理解 n = c/v，使用 n_1 sin(theta_1) = n_2 sin(theta_2)，判断光疏与光密介质中的偏折。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "折射角计算与偏折方向解释",
+        "折射率定义及适用条件记录"
+      ]
+    },
+    {
+      "id": "optics-v2-session-6",
+      "index": 6,
+      "title": "全反射发生条件与临界角推导",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-tir"
+      ],
+      "learningGoal": "明确 n_1 > n_2 且入射角大于临界角时发生全反射；推导 sin C = n_2/n_1，向空气传播时近似为 1/n_1。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "临界角公式推导与条件判断",
+        "临界状态和全反射状态的区别说明"
+      ]
+    },
+    {
+      "id": "optics-v2-session-7",
+      "index": 7,
+      "title": "凸透镜与凹透镜成像特殊光线作图",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-lens"
+      ],
+      "learningGoal": "用三条特殊光线定像，根据物距 u 与焦距 f 判断像的虚实、正倒和大小。",
+      "blocks": {
+        "check": 15,
+        "review": 10,
+        "theory": 30,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "凸透镜和凹透镜成像作图",
+        "物距区间与像性质对照表"
+      ]
+    },
+    {
+      "id": "optics-v2-session-8",
+      "index": 8,
+      "title": "理论综合闯关与门禁评测",
+      "phase": "concept_mastery",
+      "objectiveIds": [
+        "opt-theory-reflection",
+        "opt-theory-refraction",
+        "opt-theory-tir",
+        "opt-theory-lens"
+      ],
+      "learningGoal": "复核反射、折射、全反射和透镜四个理论目标的掌握证据；仅服务端 TheoryMastered 达标后可解锁实践。",
+      "blocks": {
+        "check": 30,
+        "review": 10,
+        "theory": 15,
+        "reflect": 5,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "四个理论目标的服务端评测引用",
+        "未达标目标的补救记录或复核请求"
+      ],
+      "checkpoint": {
+        "requiredGate": "TheoryMastered"
+      }
+    },
+    {
+      "id": "optics-v2-session-9",
+      "index": 9,
+      "title": "光具座搭建、法线与光轴校准",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-setup"
+      ],
+      "learningGoal": "在 TheoryMastered 通过且教师安全审核后，完成激光源、半圆水槽、透镜和光屏的同轴等高校准。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "装置图与同轴等高校准记录",
+        "教师安全审核与服务端门禁的有效引用"
+      ]
+    },
+    {
+      "id": "optics-v2-session-10",
+      "index": 10,
+      "title": "折射角与物像距数据采集",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-measure"
+      ],
+      "learningGoal": "采集多组入射角、折射角及物距、像距，记录单位、仪器分辨率和实验不确定度。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "角度及物像距原始数据表，含单位与不确定度",
+        "测量来源和异常值处理记录"
+      ]
+    },
+    {
+      "id": "optics-v2-session-11",
+      "index": 11,
+      "title": "单缝衍射现象与条纹特征探究",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-measure"
+      ],
+      "learningGoal": "在批准模型域内调整缝宽 a 与波长 lambda，比较中央亮纹宽度和 I(theta) 强度特征。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "缝宽、波长和中央亮纹特征的模拟观察对照",
+        "模型版本、参数与观测证据引用；不是掌握度通过事实"
+      ]
+    },
+    {
+      "id": "optics-v2-session-12",
+      "index": 12,
+      "title": "封闭细雾室介质散射探究",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-measure"
+      ],
+      "learningGoal": "解释微粒介质中光束的侧向可见性，比较瑞利散射与米氏散射的适用条件和模型边界。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "粒径、波长与侧向可见性的模拟观察对照",
+        "瑞利和米氏模型边界说明及观测证据引用"
+      ]
+    },
+    {
+      "id": "optics-v2-session-13",
+      "index": 13,
+      "title": "数据线性化拟合与实验求参",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-fit"
+      ],
+      "learningGoal": "通过线性化拟合求折射率与焦距，说明坐标、符号约定、残差和参数不确定度。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "带坐标、单位和符号约定的拟合图与参数估计",
+        "残差、不确定度和误差来源分析"
+      ]
+    },
+    {
+      "id": "optics-v2-session-14",
+      "index": 14,
+      "title": "实验报告撰写与 CER 科学论证",
+      "phase": "guided_practice",
+      "objectiveIds": [
+        "opt-practice-report"
+      ],
+      "learningGoal": "整合装置图、数据表与拟合误差分析，以 CER 连接主张、证据和推理，明确结论边界。",
+      "blocks": {
+        "check": 5,
+        "review": 5,
+        "theory": 10,
+        "reflect": 5,
+        "practice": 35
+      },
+      "evidenceRequirements": [
+        "包含装置图、数据表、拟合和 CER 的报告版本引用",
+        "rubric 对照、误差分析与结论边界"
+      ],
+      "checkpoint": {
+        "requiredGate": "experiment_report_validated"
+      }
+    },
+    {
+      "id": "optics-v2-session-15",
+      "index": 15,
+      "title": "实验探究成果答辩与同行质疑",
+      "phase": "deliverable_review",
+      "objectiveIds": [
+        "opt-review-defend"
+      ],
+      "learningGoal": "以可追溯证据说明装置选型、测量误差来源与结论适用范围，回应同行质疑。",
+      "blocks": {
+        "check": 10,
+        "review": 5,
+        "theory": 15,
+        "reflect": 30,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "答辩展示与同行质疑回应记录",
+        "依据证据的报告修订说明"
+      ]
+    },
+    {
+      "id": "optics-v2-session-16",
+      "index": 16,
+      "title": "学习反思与学科素养成长归档",
+      "phase": "deliverable_review",
+      "objectiveIds": [
+        "opt-review-reflect"
+      ],
+      "learningGoal": "反思光学建模与探究方法，以量规自评形成成长归档候选，由服务端 owner 完成正式归档。",
+      "blocks": {
+        "check": 10,
+        "review": 5,
+        "theory": 15,
+        "reflect": 30,
+        "practice": 0
+      },
+      "evidenceRequirements": [
+        "量规自评与建模思维反思",
+        "带有界证据引用的成长归档候选，不含原始学生对话"
+      ],
+      "checkpoint": {
+        "requiredGate": "review_completed_and_archived"
+      }
+    }
+  ],
+  "completionContractsMissing": 16,
+  "requiredSkillsNotDeclared": 16,
+  "teachingRequirementsNotDeclared": 16,
+  "guardPureFunctionChecks": {
+    "readOnly": true,
+    "owner": "deployed checkAnswerLeak pure function",
+    "cases": [
+      {
+        "case": "normal scientific explanation",
+        "input": "结论是：反射角等于入射角。",
+        "level": 5,
+        "verdict": {
+          "ok": false,
+          "reason": "命中泄露措辞「结论是」",
+          "replacement": "这条回复本该由你一步步想出来，我先把它改成一个问题：你觉得哪一步最不确定？"
+        }
+      },
+      {
+        "case": "direct option without marker",
+        "input": "选B就行。",
+        "level": 5,
+        "verdict": {
+          "ok": true
+        }
+      }
+    ]
+  },
+  "sourceReviewHead": "80e09cf8157c470a670a1ef6f0d850f2ba7f25be"
+}

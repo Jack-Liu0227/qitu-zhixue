@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --outDir dist --noEmit false",
+    "build": "tsc --outDir dist --noEmit false && node ../../tooling/fix-esm-extensions.mjs dist",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "typecheck": "tsc --noEmit",
     "test": "pnpm --filter @qitu/database build && tsx --test src/*.test.ts",

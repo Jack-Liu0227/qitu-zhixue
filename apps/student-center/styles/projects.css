@@ -183,9 +183,11 @@
   aspect-ratio: 16 / 9;
   background: var(--qitu-page);
   border-bottom: 1px solid var(--qitu-border);
+  flex-shrink: 0;
 }
 
-.qitu-project-cover > img {
+.qitu-project-cover img,
+.qitu-project-cover .qitu-artwork {
   display: block;
   width: 100%;
   height: 100%;

@@ -150,6 +150,7 @@ export class GrowthService {
 
   /** 只读内存快照：live 下由启动水合 + 服务端写入填充；非 live 由 fixture 填充。 */
   private readonly records = new Map<string, GrowthStoredRecord[]>();
+  private readonly refreshVersions = new Map<string, number>();
 
   constructor(
     @Inject('DirectoryService') private readonly directory: DirectoryService,
@@ -197,6 +198,7 @@ export class GrowthService {
    * or Tutor memory.
    */
   async getStudentProfile(studentId: string): Promise<StudentProfileProjection> {
+    await this.refreshStudent(studentId);
     const summary = this.getSummary(studentId);
     const recentGrowth = this.getTimeline(studentId, {
       type: 'all', projectId: null, from: null, to: null, cursor: null, limit: 6,
@@ -374,6 +376,7 @@ export class GrowthService {
   }
 
   async getParentPage(childId: string, query: StudentGrowthQuery): Promise<ParentGrowthPageData> {
+    await this.refreshStudent(childId);
     const studentSummary = this.getSummary(childId);
     const all = this.recordsFor(childId);
     const page = this.queryRecords(childId, query);
@@ -419,11 +422,21 @@ export class GrowthService {
 
     const stored = buildGrowthStoredRecord({ ...input, projectTitle }, new Date().toISOString());
     const { record } = await this.store.append(stored);
+    this.refreshVersions.set(record.studentId, (this.refreshVersions.get(record.studentId) ?? 0) + 1);
     this.cacheRecord(record);
     return this.toStudentEntry(record);
   }
 
   /* ------------------------------ 内部 ------------------------------ */
+
+  /** Refresh only the authorized student; stale reads cannot erase a newer append. */
+  async refreshStudent(studentId: string): Promise<void> {
+    if (!this.store.persistent) return;
+    const version = (this.refreshVersions.get(studentId) ?? 0) + 1;
+    this.refreshVersions.set(studentId, version);
+    const records = await this.store.listByStudent(studentId);
+    if (this.refreshVersions.get(studentId) === version) this.records.set(studentId, records);
+  }
 
   private recordsFor(studentId: string): GrowthStoredRecord[] {
     return this.records.get(studentId) ?? [];

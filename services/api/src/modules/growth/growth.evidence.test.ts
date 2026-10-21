@@ -83,6 +83,8 @@ test('来源白名单与契约排序一致（防止契约与服务端漂移）',
     'theory_check',
     'artifact',
     'reflection',
+    'project_event',
+    'mastery_event',
     'help_request',
     'learning_interaction',
   ]);

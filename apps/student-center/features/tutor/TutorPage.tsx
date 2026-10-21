@@ -22,6 +22,7 @@ import { useTutorTeamGraph } from './hooks/useTutorTeamGraph';
 import { ExplorationProgressPanel } from './components/ExplorationProgressPanel';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
+import { getStoredEyecare, setStoredEyecare, subscribeEyecare } from './lib/eyecareStorage';
 import { LessonAssessmentCard } from './components/LessonAssessmentCard';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
@@ -56,6 +57,22 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     source, projectId: projectId ?? session.project?.project?.id, explorationId: session.explorationId,
     refreshKey: session.turns.length, watch: rightOpen && rightSidebarTab === 'agents',
   });
+  const [eyecareActive, setEyecareActive] = useState(false);
+
+  useEffect(() => {
+    setEyecareActive(getStoredEyecare());
+    return subscribeEyecare((active) => {
+      setEyecareActive(active);
+    });
+  }, []);
+
+  const toggleEyecare = () => {
+    setEyecareActive((prev) => {
+      const next = !prev;
+      setStoredEyecare(next);
+      return next;
+    });
+  };
   const [confirming, setConfirming] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const confirmKey = useRef<{ explorationId: string; templateVersionId: string; key: string } | null>(null);
@@ -138,7 +155,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
 
   if (session.permissionDenied) return <PermissionDenied title="无法进入 AI搭档" description="你没有访问这个会话的权限，请返回上一页。" />;
 
-  return <div className="qitu-tutor-page">
+  return <div className="qitu-tutor-page" data-eyecare={eyecareActive ? 'active' : 'inactive'}>
     <header className="qitu-tutor-header">
       <div className="qitu-tutor-header-copy">
         <p className="qitu-tutor-eyebrow">启途智学 · 项目式学习</p>
@@ -163,6 +180,19 @@ export function TutorPage({ projectId }: { projectId?: string }) {
               ? session.sessionError?.status === 401 ? '登录已失效' : '会话加载失败'
               : busy ? '导师正在处理' : ready ? '教学会话已连接' : searchParams.get('idle') === '1' ? '选择会话或开始新的探索' : '正在连接教学会话'}
         </span>
+        <button
+          type="button"
+          className={`qitu-eyecare-toggle-btn ${eyecareActive ? 'is-active' : ''}`}
+          onClick={toggleEyecare}
+          aria-pressed={eyecareActive}
+          title={eyecareActive ? '点击退出夜间模式' : '点击开启夜间模式 (2700K~3200K 柔光低眩光)'}
+        >
+          <span className="qitu-eyecare-btn-icon">🌙</span>
+          <span className="qitu-eyecare-btn-text">
+            {eyecareActive ? '夜间模式 (已开启)' : '夜间模式'}
+          </span>
+          {eyecareActive && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
+        </button>
         {projectSummary ? (
           <button
             type="button"
@@ -178,6 +208,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span> 动态实验课件
           </button>
         ) : null}
+
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
         </button>

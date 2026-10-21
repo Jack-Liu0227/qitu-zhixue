@@ -2348,7 +2348,7 @@ export default function AdminModelPage() {
                 <th>状态</th>
                 <th>已挂载模型</th>
                 <th>最近同步</th>
-                <th>操作</th>
+                <th style={{ minWidth: "420px", whiteSpace: "nowrap" }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -2425,6 +2425,9 @@ export default function AdminModelPage() {
                               borderColor: isRowExpanded ? '#3b82f6' : '#dce4ee',
                               color: isRowExpanded ? '#1d4ed8' : '#334155',
                               fontWeight: isRowExpanded ? 600 : 400,
+                              whiteSpace: 'nowrap',
+                              minWidth: 'max-content',
+                              padding: '6px 14px',
                             }}
                             onClick={() => setExpanded(isRowExpanded ? null : provider.id)}
                           >
@@ -2462,6 +2465,7 @@ export default function AdminModelPage() {
                       <tr>
                         <td colSpan={8} style={{ padding: 0 }}>
                           <div
+                            className="provider-expanded-panel"
                             style={{
                               background: '#f8fafc',
                               borderTop: '1px solid #e2e8f0',
@@ -2589,6 +2593,7 @@ export default function AdminModelPage() {
                                   return (
                                     <div
                                       key={model.id}
+                                      className="provider-model-card"
                                       style={{
                                         padding: '10px 12px',
                                         background: '#ffffff',
@@ -2619,6 +2624,7 @@ export default function AdminModelPage() {
                                             </strong>
                                           </label>
                                           <span
+                                            className="provider-model-group-badge"
                                             style={{
                                               fontSize: '10.5px',
                                               padding: '1px 6px',
@@ -2723,7 +2729,10 @@ export default function AdminModelPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '18px' }}>🌐</span>
               <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: 0 }}>支持的供应商目录（服务端预置模板）</h2>
-              <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+              <span
+                className="provider-presets-ready-badge"
+                style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}
+              >
                 {presets.length} 个模板已就绪
               </span>
             </div>
@@ -2734,6 +2743,7 @@ export default function AdminModelPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>选择供应商模板:</label>
             <select
+              className="provider-preset-select"
               value={activePreset?.id ?? ''}
               onChange={(e) => setSelectedPresetId(e.target.value)}
               style={{
@@ -2762,6 +2772,7 @@ export default function AdminModelPage() {
         {/* 选中供应商详情与快速应用卡片（字段全部来自服务端 presets，不编造描述） */}
         {activePreset && (
           <div
+            className="provider-preset-active-card"
             style={{
               background: '#f8fafc',
               border: '1px solid #e2e8f0',
@@ -2776,15 +2787,15 @@ export default function AdminModelPage() {
           >
             <div style={{ flex: 1, minWidth: '320px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '15px', color: '#0f172a' }}>{activePreset.name}</strong>
-                <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px' }}>
+                <strong className="provider-preset-title" style={{ fontSize: '15px', color: '#0f172a' }}>{activePreset.name}</strong>
+                <span className="provider-preset-api-badge" style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px' }}>
                   {activePreset.api}
                 </span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '12px', color: '#475569' }}>
                 <div>
                   <span style={{ color: '#94a3b8' }}>网关地址: </span>
-                  <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                  <code className="provider-preset-code" style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                     {activePreset.baseUrl}
                   </code>
                 </div>
@@ -2795,7 +2806,7 @@ export default function AdminModelPage() {
                 {activePreset.suggestedModels.length > 0 ? (
                   <div>
                     <span style={{ color: '#94a3b8' }}>推荐挂载模型: </span>
-                    <span style={{ fontWeight: 600, color: '#2563eb' }}>
+                    <span className="provider-preset-models" style={{ fontWeight: 600, color: '#2563eb' }}>
                       {activePreset.suggestedModels.map((m) => m.id).join(', ')}
                     </span>
                   </div>

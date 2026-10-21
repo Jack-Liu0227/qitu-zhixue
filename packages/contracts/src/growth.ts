@@ -32,6 +32,8 @@ export type GrowthEvidenceSourceKind =
   | 'theory_check'
   | 'artifact'
   | 'reflection'
+  | 'project_event'
+  | 'mastery_event'
   /** Opaque owned Tutor turn locator; never raw text or proof of mastery. */
   | 'learning_interaction'
   | 'help_request';
@@ -137,7 +139,7 @@ export interface GrowthProjectionValidation {
   value?: GrowthProjectionResult;
 }
 
-const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|help_request|learning_interaction):[A-Za-z0-9._:-]{1,180}$/u;
+const GROWTH_EVIDENCE_RE = /^(student_answer|theory_check|artifact|reflection|project_event|mastery_event|help_request|learning_interaction):[A-Za-z0-9._:-]{1,180}$/u;
 const PROFILE_KEYS = [
   'version', 'priorKnowledge', 'targetLevel', 'timeBudgetMinutesPerWeek',
   'preferences', 'interests', 'strengths', 'nextQuestions',
@@ -146,6 +148,28 @@ const TRAJECTORY_KEYS = [
   'version', 'milestones', 'strengths', 'nextQuestions', 'studentSummary',
   'evidenceRefs', 'confidence',
 ] as const;
+
+/** Prompt contract shares the owner's complete field allow-list; no model-invented wrapper. */
+export function growthProjectionResultSchema(type: GrowthProjectionType): Record<string, unknown> {
+  const version = { type: 'integer', minimum: 1 };
+  const text = { type: ['string', 'null'], pattern: '^\\s*[\\s\\S]{0,1000}\\s*$' };
+  const list = { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 240, pattern: '\\S' } };
+  const properties = type === 'learner_profile' ? {
+    version, priorKnowledge: text, targetLevel: text,
+    timeBudgetMinutesPerWeek: { type: ['integer', 'null'], minimum: 0, maximum: 10080 },
+    preferences: list, interests: list, strengths: list, nextQuestions: list,
+  } satisfies Record<typeof PROFILE_KEYS[number], Record<string, unknown>> : {
+    version, milestones: list, strengths: list, nextQuestions: list, studentSummary: text,
+    evidenceRefs: { type: 'array', minItems: 1, maxItems: 20,
+      items: { type: 'string', pattern: GROWTH_EVIDENCE_RE.source } },
+    confidence: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+  } satisfies Record<typeof TRAJECTORY_KEYS[number], Record<string, unknown>>;
+  return {
+    type: 'object', additionalProperties: false,
+    description: 'Return exactly these top-level fields. Include every required field, use null or [] for empty values, and add no wrapper, commentary, metadata or other fields.',
+    required: [...(type === 'learner_profile' ? PROFILE_KEYS : TRAJECTORY_KEYS)], properties,
+  };
+}
 
 export function isGrowthEvidenceRef(value: unknown): value is string {
   return typeof value === 'string' && GROWTH_EVIDENCE_RE.test(value);

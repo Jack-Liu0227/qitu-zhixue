@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit/audit.service';
 import { KnowledgeCenterService, rows } from '../knowledge/knowledge-center.service';
+import { provisionGrowthProjectionRuntime } from './growth-projection-runtime';
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type ConfigurationRow = { revision: number; config: Record<string, unknown>; request_hash?: string };
@@ -49,6 +50,7 @@ export class GrowthProjectionSettingsService {
       for (const id of [settings.profileAssistantId, settings.growthAssistantId]) {
         if (id !== null && !eligible.some((item) => item.id === id)) throw new BadRequestException('GROWTH_PROJECTION_ASSISTANT_UNAVAILABLE');
       }
+      await provisionGrowthProjectionRuntime(tx, settings, actor.id);
       const revision = current.revision + 1;
       const config = { ...current.config, growthProjection: settings };
       await tx.execute(sql`INSERT INTO platform_configuration_revisions(revision,parent_revision,config,updated_by,idempotency_key,request_hash) VALUES(${revision},${current.revision},${JSON.stringify(config)}::jsonb,${actor.id},${storedKey},${hash})`);
@@ -57,6 +59,10 @@ export class GrowthProjectionSettingsService {
         targetType: 'platform_configuration', targetId: String(revision), idempotencyKey: storedKey,
         detail: { revision, parentRevision: current.revision, ...settings },
       }, tx);
+      if (settings.profileAssistantId !== null || settings.growthAssistantId !== null) {
+        await tx.execute(sql`UPDATE outbox SET status='pending',attempts=0,lease_owner=NULL,lease_until=NULL,last_error=NULL
+          WHERE topic='agent.team.event' AND status='failed' AND last_error='PROJECTION_PURPOSE_UNCONFIGURED'`);
+      }
       const [persisted] = rows<ConfigurationRow>(await tx.execute(sql`SELECT revision,config FROM platform_configuration_revisions WHERE revision=${revision}`));
       if (!persisted) throw new ServiceUnavailableException('CONFIG_READBACK_FAILED');
       return persisted;
@@ -67,8 +73,10 @@ export class GrowthProjectionSettingsService {
   private async view(revision: number, raw: unknown): Promise<GrowthProjectionSettingsView> {
     const settings = parseGrowthProjectionSettings(raw) ?? { ...EMPTY_SETTINGS };
     const assistants = await this.eligibleAssistants(this.database());
+    const runtime = await this.database().select({ id: agentConfigs.id, enabled: agentConfigs.enabled }).from(agentConfigs);
     const readiness = (id: string | null) => id === null ? 'unconfigured' as const
-      : assistants.some((item) => item.id === id) ? 'ready' as const : 'disabled_or_missing' as const;
+      : assistants.some((item) => item.id === id) && runtime.some((item) => item.id === id && item.enabled)
+        ? 'ready' as const : 'disabled_or_missing' as const;
     return {
       revision, settings, assistants,
       readiness: { profile: readiness(settings.profileAssistantId), growth: readiness(settings.growthAssistantId) },
@@ -81,8 +89,8 @@ export class GrowthProjectionSettingsService {
       db.select({ id: adminAssistants.id, name: adminAssistants.name, enabled: adminAssistants.enabled }).from(adminAssistants),
       db.select({ id: agentConfigs.id, enabled: agentConfigs.enabled }).from(agentConfigs),
     ]);
-    const enabled = new Set(agents.filter((agent) => agent.enabled).map((agent) => agent.id));
-    return assistants.filter((assistant) => assistant.enabled && enabled.has(assistant.id))
+    const disabled = new Set(agents.filter((agent) => !agent.enabled).map((agent) => agent.id));
+    return assistants.filter((assistant) => assistant.enabled && !disabled.has(assistant.id))
       .map((assistant) => ({ id: assistant.id, displayName: assistant.name })).sort((a, b) => a.id.localeCompare(b.id));
   }
 

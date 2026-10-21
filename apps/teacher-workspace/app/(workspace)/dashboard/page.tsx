@@ -385,6 +385,7 @@ function DashboardContent({
               <Link
                 key={title}
                 href={href}
+                className="qtx-quick-action-link"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -408,6 +409,7 @@ function DashboardContent({
             ))}
           </div>
           <div
+            className="qtx-quick-action-tip"
             style={{
               marginTop: 14,
               padding: 12,

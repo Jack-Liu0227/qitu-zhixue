@@ -164,6 +164,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
   return (
     <div className="qtx-col-5 qtx-card qtx-student-detail" role="region" aria-label="学生详情" tabIndex={0}>
       <div
+        className="qtx-student-detail-header"
         style={{
           padding: 14,
           background: 'linear-gradient(135deg,#eff6ff,#eef2ff)',
@@ -321,6 +322,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
               {detail.projects.slice(0, 3).map((p) => (
                 <div
                   key={p.projectId}
+                  className="qtx-student-subcard qtx-student-project-card"
                   style={{
                     padding: 10,
                     background: '#f8fafc',
@@ -358,6 +360,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
               {detail.interventions.slice(0, 3).map((i) => (
                 <div
                   key={i.id}
+                  className="qtx-student-subcard qtx-student-intervention-card"
                   style={{
                     padding: 10,
                     background: '#fef2f2',
@@ -390,6 +393,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
               {detail.recentGrowth.slice(0, 2).map((g) => (
                 <div
                   key={g.id}
+                  className="qtx-student-subcard qtx-student-growth-card"
                   style={{
                     padding: 10,
                     background: '#f0fdf4',
@@ -424,7 +428,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
               项目进度
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ flex: 1, height: 8, background: '#eef2f7', borderRadius: 999 }}>
+              <div className="qtx-progress-bar-track" style={{ flex: 1, height: 8, background: '#eef2f7', borderRadius: 999 }}>
                 <div
                   style={{
                     width: `${student.progressPercent}%`,

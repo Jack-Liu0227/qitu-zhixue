@@ -7,6 +7,8 @@ import {
   validateGrowthProjectionResult,
   validateTutorExpressionProjection,
   TUTOR_EXPRESSION_POLICY,
+  DOMAIN_OBSERVATION_POLICY,
+  validateDomainProjection,
   type GrowthProjectionType,
 } from '@qitu/contracts';
 import {
@@ -19,6 +21,7 @@ import {
   agentTeamRuns,
   projects,
   readTutorProjectionEvidence,
+  readDomainProjectionEvidence,
   type Database,
 } from '@qitu/database';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -73,8 +76,8 @@ export class GrowthProjectionOwnerService {
     const source = await this.readSource(db, candidate[0] as CandidateRow);
     const latest = await this.latestAccepted(db, candidate[0] as CandidateRow);
     const errors = [...source.errorCodes, ...latest.errorCodes];
-    if (candidate[0].status === 'proposed' && Array.isArray(candidate[0].payload.evidenceRefs)
-      && candidate[0].payload.evidenceRefs.some((ref) => typeof ref === 'string' && ref.startsWith('learning_interaction:'))) {
+    if (candidate[0].status === 'proposed' && (isDomainSource(candidate[0] as CandidateRow) || (Array.isArray(candidate[0].payload.evidenceRefs)
+      && candidate[0].payload.evidenceRefs.some((ref) => typeof ref === 'string' && ref.startsWith('learning_interaction:'))))) {
       const policyError = await this.checkAutomatic(db, candidate[0] as CandidateRow);
       if (policyError) errors.push(policyError);
     }
@@ -88,7 +91,7 @@ export class GrowthProjectionOwnerService {
 
   /** Internal queue consumer only. The fixed policy is stricter than manual review. */
   async processReady(candidateId: string): Promise<ProjectionReviewResult> {
-    return this.review(candidateId, null, `auto:${TUTOR_EXPRESSION_POLICY}`);
+    return this.review(candidateId, null);
   }
 
   private async review(candidateId: string, actor: ReviewActor | null, idempotencyKey?: string): Promise<ProjectionReviewResult> {
@@ -97,13 +100,15 @@ export class GrowthProjectionOwnerService {
       const [candidate] = await tx.select().from(agentProjectionCandidates)
         .where(eq(agentProjectionCandidates.id, candidateId)).limit(1).for('update');
       if (!candidate) throw new NotFoundException('画像候选不存在');
+      const policyVersion = isDomainSource(candidate as CandidateRow) ? DOMAIN_OBSERVATION_POLICY : TUTOR_EXPRESSION_POLICY;
+      idempotencyKey ??= actor === null ? `auto:${policyVersion}` : undefined;
       if (candidate.status === 'accepted' || candidate.status === 'superseded') {
         return { candidateId, status: candidate.status, errorCode: candidate.reviewErrorCode ?? null, supersededCandidateIds: [] };
       }
       if (candidate.status === 'rejected') {
         return { candidateId, status: candidate.status, errorCode: candidate.reviewErrorCode ?? null, supersededCandidateIds: [] };
       }
-      if (actor === null && candidate.status === 'proposed' && candidate.reviewedBy === `system:${TUTOR_EXPRESSION_POLICY}`
+      if (actor === null && candidate.status === 'proposed' && candidate.reviewedBy === `system:${policyVersion}`
         && candidate.reviewErrorCode) {
         return { candidateId, status: 'proposed', errorCode: candidate.reviewErrorCode, supersededCandidateIds: [] };
       }
@@ -116,8 +121,8 @@ export class GrowthProjectionOwnerService {
       const source = await this.readSource(tx, locked);
       const accepted = await this.latestAccepted(tx, locked, true);
       const errors = [...source.errorCodes, ...accepted.errorCodes];
-      const requiresManifest = Array.isArray(candidate.payload.evidenceRefs)
-        && candidate.payload.evidenceRefs.some((ref) => typeof ref === 'string' && ref.startsWith('learning_interaction:'));
+      const requiresManifest = isDomainSource(locked) || (Array.isArray(candidate.payload.evidenceRefs)
+        && candidate.payload.evidenceRefs.some((ref) => typeof ref === 'string' && ref.startsWith('learning_interaction:')));
       if (actor === null || requiresManifest) {
         const policyError = await this.checkAutomatic(tx, locked);
         if (policyError) errors.push(policyError);
@@ -126,10 +131,10 @@ export class GrowthProjectionOwnerService {
         if (errors.length) {
           const errorCode = errors[0]!;
           await tx.update(agentProjectionCandidates).set({ status: 'proposed', reviewErrorCode: errorCode,
-            reviewedBy: `system:${TUTOR_EXPRESSION_POLICY}`, reviewedAt: new Date() })
+            reviewedBy: `system:${policyVersion}`, reviewedAt: new Date() })
             .where(eq(agentProjectionCandidates.id, candidate.id));
           await this.audit.write({ action: 'growth.projection.defer', targetType: 'agent_projection_candidate', targetId: candidate.id,
-            idempotencyKey: auditKey('defer', candidate.id, idempotencyKey), detail: { errorCode, policyVersion: TUTOR_EXPRESSION_POLICY } }, tx);
+            idempotencyKey: auditKey('defer', candidate.id, idempotencyKey), detail: { errorCode, policyVersion } }, tx);
           return { candidateId, status: 'proposed', errorCode, supersededCandidateIds: [] };
         }
       }
@@ -176,12 +181,12 @@ export class GrowthProjectionOwnerService {
       const supersededCandidateIds = oldRows.map((row) => row.id);
       if (supersededCandidateIds.length > 0) {
         await tx.update(agentProjectionCandidates).set({
-          status: 'superseded', reviewedBy: actor?.id ?? `system:${TUTOR_EXPRESSION_POLICY}`, reviewedAt: new Date(),
+          status: 'superseded', reviewedBy: actor?.id ?? `system:${policyVersion}`, reviewedAt: new Date(),
           supersededByCandidateId: candidate.id,
         }).where(inArray(agentProjectionCandidates.id, supersededCandidateIds));
       }
       await tx.update(agentProjectionCandidates).set({
-        status: 'accepted', reviewedBy: actor?.id ?? `system:${TUTOR_EXPRESSION_POLICY}`, reviewedAt: new Date(),
+        status: 'accepted', reviewedBy: actor?.id ?? `system:${policyVersion}`, reviewedAt: new Date(),
         reviewErrorCode: null, supersededByCandidateId: null,
       }).where(eq(agentProjectionCandidates.id, candidate.id));
       await this.audit.write({
@@ -189,7 +194,7 @@ export class GrowthProjectionOwnerService {
         targetType: 'agent_projection_candidate', targetId: candidate.id,
         idempotencyKey: auditKey('accept', candidate.id, idempotencyKey),
         detail: { projectionType: candidate.projectionType, version: validated.value!.version, supersededCandidateIds,
-          ...(actor === null ? { policyVersion: TUTOR_EXPRESSION_POLICY } : {}) },
+          ...(actor === null ? { policyVersion } : {}) },
       }, tx as AuditTransaction);
       return { candidateId, status: 'accepted', errorCode: null, supersededCandidateIds };
     });
@@ -234,7 +239,7 @@ export class GrowthProjectionOwnerService {
     const result = validateGrowthProjectionResult(candidate.projectionType, payload.result);
     if (!result.ok) errors.push(typeof payload.analysisErrorCode === 'string' && /^PROJECTION_[A-Z_]+$/u.test(payload.analysisErrorCode)
       ? payload.analysisErrorCode : result.code ?? 'PROJECTION_RESULT_INVALID');
-    if (candidate.projectionType === 'growth_trajectory' && result.ok && result.value) {
+    if (candidate.projectionType === 'growth_trajectory' && result.ok && result.value && !isDomainSource(candidate)) {
       const sourceRefs = normalizeGrowthEvidenceRefs(payload.evidenceRefs);
       const trajectory = result.value as { evidenceRefs: string[] };
       if (trajectory.evidenceRefs.length === 0 || trajectory.evidenceRefs.some((ref: string) => !sourceRefs.includes(ref))) errors.push('PROJECTION_EVIDENCE_INVALID');
@@ -274,13 +279,16 @@ export class GrowthProjectionOwnerService {
   private async checkAutomatic(db: Database | AuditTransaction, candidate: CandidateRow): Promise<string | null> {
     if (!isProjectionType(candidate.projectionType) || !candidate.runId || !candidate.studentUserId || typeof candidate.payload.sourceEventId !== 'string') return 'PROJECTION_SOURCE_INVALID';
     try {
-      const evidence = await readTutorProjectionEvidence(db, { sourceEventId: candidate.payload.sourceEventId, runId: candidate.runId,
-        studentId: candidate.studentUserId, projectId: candidate.projectId, projectionType: candidate.projectionType });
+      const input = { sourceEventId: candidate.payload.sourceEventId, runId: candidate.runId,
+        studentId: candidate.studentUserId, projectId: candidate.projectId, projectionType: candidate.projectionType };
+      const domain = isDomainSource(candidate);
+      const evidence = domain ? await readDomainProjectionEvidence(db, input) : await readTutorProjectionEvidence(db, input);
       const stored = candidate.payload.analysisManifest;
       if (!stored || typeof stored !== 'object' || Array.isArray(stored)
         || Object.keys(stored).length !== Object.keys(evidence.manifest).length
         || Object.entries(evidence.manifest).some(([key, value]) => (stored as Record<string, unknown>)[key] !== value)) return 'PROJECTION_MANIFEST_STALE';
-      return validateTutorExpressionProjection(candidate.projectionType, candidate.payload.result, evidence);
+      return 'observation' in evidence ? validateDomainProjection(candidate.projectionType, candidate.payload.result, evidence)
+        : validateTutorExpressionProjection(candidate.projectionType, candidate.payload.result, evidence);
     } catch (error) {
       return error instanceof Error && /^PROJECTION_[A-Z_]+$/u.test(error.message) ? error.message : 'PROJECTION_EVIDENCE_READ_FAILED';
     }
@@ -348,6 +356,10 @@ export class GrowthProjectionOwnerService {
 
 function isProjectionType(value: string): value is GrowthProjectionType {
   return value === 'learner_profile' || value === 'growth_trajectory';
+}
+
+function isDomainSource(candidate: CandidateRow): boolean {
+  return ['project.stage.completed', 'artifact.published', 'reflection.created', 'mastery.assessed'].some((topic) => topic === candidate.payload.sourceTopic);
 }
 
 function resultVersion(payload: Record<string, unknown>): number {

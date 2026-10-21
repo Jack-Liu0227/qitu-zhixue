@@ -146,3 +146,70 @@ test('brand positions preserve the supplied logo and navigation never uses it as
     assert.doesNotMatch(render(NavigationArtwork, { href }), /\/(mark|full|source)\.png|qitu-sidebar-companion/);
   }
 });
+
+function readView(path) {
+  return ts.createSourceFile(path, readFileSync(new URL(path, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+}
+
+function renderAssistantAvatarSlot(className, value) {
+  const source = readView('../apps/admin-console/app/(console)/settings/assistants/page.tsx');
+  let slot;
+  function visit(node) {
+    if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(attr =>
+      ts.isJsxAttribute(attr) && attr.name.getText(source) === 'className' && attr.initializer &&
+      ts.isStringLiteral(attr.initializer) && attr.initializer.text === className)) slot = node;
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.ok(slot, `Missing actual assistant avatar slot: ${className}`);
+  const compiled = ts.transpileModule(`export const AvatarSlot = () => (${slot.getText(source)});`, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', 'AssistantGlyph', 'item', 'editingAssistant', compiled)(
+    require, module, module.exports, AssistantGlyph, { icon: value }, { icon: value });
+  return render(module.exports.AvatarSlot, {});
+}
+
+for (const slot of ['admin-card-icon-box', 'admin-identity-avatar-icon']) {
+  test(`saved material avatars render as images in the real ${slot} view`, () => {
+    for (const value of ['asset:avatar-general-v1', 'asset:avatar-data-v1', '🤖', null, undefined, 'asset:missing-avatar']) {
+      const html = renderAssistantAvatarSlot(slot, value);
+      assert.match(html, /<img/);
+      assert.match(html, value === 'asset:avatar-data-v1' ? /avatar-data-v1/ : /avatar-general-v1/);
+      assert.doesNotMatch(html, /asset:/);
+    }
+  });
+}
+
+test('Admin views never render stored assistant avatar strings directly as JSX text', () => {
+  const views = ['app/(console)/copilot/page.tsx', 'app/(console)/settings/assistants/page.tsx',
+    'app/(console)/settings/page.tsx', 'app/(console)/settings/skills/page.tsx',
+    'app/(console)/settings/teams/components/TeamDetailView.tsx',
+    'lib/components/knowledge-library/CreateLibraryModal.tsx',
+    'lib/components/knowledge-library/LibraryAssistantBindings.tsx',
+    'lib/components/knowledge-library/LibraryDetail.tsx'];
+  const iconOwners = new Set(['item', 'editingAssistant', 'activeTestAssistant']);
+  function isStoredAvatar(node) {
+    if (ts.isPropertyAccessExpression(node)) return node.name.text === 'avatar' ||
+      (node.name.text === 'icon' && ts.isIdentifier(node.expression) && iconOwners.has(node.expression.text));
+    if (ts.isParenthesizedExpression(node)) return isStoredAvatar(node.expression);
+    if (ts.isBinaryExpression(node) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)) {
+      return isStoredAvatar(node.left) || isStoredAvatar(node.right);
+    }
+    if (ts.isConditionalExpression(node)) return isStoredAvatar(node.whenTrue) || isStoredAvatar(node.whenFalse);
+    return false;
+  }
+  const rawSlots = [];
+  for (const view of views) {
+    const source = readView(`../apps/admin-console/${view}`);
+    function visit(node) {
+      if (ts.isJsxExpression(node) && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent)) && isStoredAvatar(node.expression)) {
+        rawSlots.push(`${view}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`);
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(source);
+  }
+  assert.deepEqual(rawSlots, [], `Raw avatar text in Admin views: ${rawSlots.join(', ')}`);
+});

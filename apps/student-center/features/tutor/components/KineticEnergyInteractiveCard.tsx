@@ -39,6 +39,7 @@ export function KineticEnergyInteractiveCard({
 
   return (
     <div
+      className="qitu-kinetic-card"
       style={{
         margin: '16px 0',
         padding: '20px',

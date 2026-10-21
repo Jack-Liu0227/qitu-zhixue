@@ -111,14 +111,12 @@ export function MarkdownMathView({ content }: { content: string }) {
           return (
             <div
               key={index}
+              className="qitu-math-block"
               style={{
                 margin: '14px 0',
                 padding: '14px 18px',
-                background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-                border: '1.5px solid #e2e8f0',
                 borderRadius: '12px',
                 overflowX: 'auto',
-                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)',
               }}
             >
               {html === null ? <code className="katex-fallback">{rawMath}</code> : <div
@@ -151,7 +149,7 @@ function MarkdownParagraph({ text }: { text: string }) {
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           return (
             <div key={lIdx} style={{ display: 'flex', gap: '8px', margin: '4px 0 4px 12px' }}>
-              <span style={{ color: '#2563eb' }}>•</span>
+              <span className="qitu-list-bullet" style={{ color: 'var(--qitu-primary, #2563eb)' }}>•</span>
               <div>
                 <InlineRichText text={trimmed.slice(2)} />
               </div>
@@ -164,7 +162,7 @@ function MarkdownParagraph({ text }: { text: string }) {
         if (numMatch && numMatch[1] && numMatch[2]) {
           return (
             <div key={lIdx} style={{ display: 'flex', gap: '8px', margin: '4px 0 4px 12px' }}>
-              <span style={{ color: '#2563eb', fontWeight: 600, minWidth: '18px' }}>{numMatch[1]}.</span>
+              <span className="qitu-list-num" style={{ color: 'var(--qitu-primary, #2563eb)', fontWeight: 600, minWidth: '18px' }}>{numMatch[1]}.</span>
               <div>
                 <InlineRichText text={numMatch[2]} />
               </div>
@@ -218,9 +216,8 @@ function InlineRichText({ text }: { text: string }) {
           return (
             <code
               key={idx}
+              className="qitu-inline-code"
               style={{
-                background: '#f1f5f9',
-                color: '#0f172a',
                 padding: '2px 6px',
                 borderRadius: '4px',
                 fontFamily: 'JetBrains Mono, Consolas, monospace',
@@ -236,7 +233,7 @@ function InlineRichText({ text }: { text: string }) {
         if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
           const bold = token.slice(2, -2);
           return (
-            <strong key={idx} style={{ fontWeight: 600, color: '#0f172a' }}>
+            <strong key={idx} className="qitu-rich-bold" style={{ fontWeight: 600, color: 'var(--qitu-heading, inherit)' }}>
               <InlineRichText text={bold} />
             </strong>
           );

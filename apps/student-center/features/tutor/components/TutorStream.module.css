@@ -393,3 +393,107 @@
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
 
+/* ------------------------------------------------------------------------- */
+/*  Eye-care night theme overrides                                           */
+/* ------------------------------------------------------------------------- */
+:global(:root[data-qitu-eyecare="true"]) .pblCard,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblCard {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblCard::before,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblCard::before {
+  background: #10B981 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblPhasePill,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblPhasePill {
+  background: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblTeammatePill,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblTeammatePill {
+  background: #181B20 !important;
+  border-color: #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblCardTitle,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblCardTitle {
+  color: #F1F5F9 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblCardSummary,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblCardSummary {
+  color: #CBD5E1 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblTag,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblTag {
+  background: #14171C !important;
+  border: 1px solid #282F3B !important;
+  color: #34D399 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .pblActionButton,
+:global(.qitu-tutor-page[data-eyecare="active"]) .pblActionButton {
+  background: #10B981 !important;
+  color: #0A261A !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .thinkingCard,
+:global(.qitu-tutor-page[data-eyecare="active"]) .thinkingCard {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .thinkingSummary,
+:global(.qitu-tutor-page[data-eyecare="active"]) .thinkingSummary {
+  color: #94A3B8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .thinkingTitle,
+:global(.qitu-tutor-page[data-eyecare="active"]) .thinkingTitle {
+  color: #E2E8F0 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .thinkingBody,
+:global(.qitu-tutor-page[data-eyecare="active"]) .thinkingBody {
+  background: #14171C !important;
+  border-color: #252A33 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .thinkingContent,
+:global(.qitu-tutor-page[data-eyecare="active"]) .thinkingContent {
+  color: #CBD5E1 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .timeline,
+:global(.qitu-tutor-page[data-eyecare="active"]) .timeline {
+  background: #181B20 !important;
+  border-color: #282F3B !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .toolFoldButton,
+:global(.qitu-tutor-page[data-eyecare="active"]) .toolFoldButton {
+  background: #1E2228 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .step,
+:global(.qitu-tutor-page[data-eyecare="active"]) .step {
+  color: #CBD5E1 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .stepRunning,
+:global(.qitu-tutor-page[data-eyecare="active"]) .stepRunning {
+  color: #34D399 !important;
+}
+
+

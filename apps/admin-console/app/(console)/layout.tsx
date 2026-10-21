@@ -5,7 +5,9 @@ import { Avatar, NavSidebar, useResponsiveSidebar, type NavLinkRenderer } from '
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { EyecareButton } from '../../components/EyecareButton';
+import { getStoredEyecare } from '../../lib/eyecare';
 
 /**
  * `next.config.ts` 设置了 `basePath: '/admin'`，所以 `app/(console)/models/page.tsx`
@@ -120,6 +122,13 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
 
   const { collapsed, toggle } = useResponsiveSidebar(pathname);
 
+  useEffect(() => {
+    const active = getStoredEyecare();
+    if (active) {
+      document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+    }
+  }, []);
+
   return (
     <AuthGuard
       expectedRole="admin"
@@ -171,6 +180,7 @@ export default function ConsoleLayout({ children }: Readonly<{ children: ReactNo
               <span className="admin-console-identity-name">
                 {user?.displayName ?? user?.email ?? '管理员'}
               </span>
+              <EyecareButton />
               <PreferencesMenu />
               <LogoutButton redirectTo="/" />
             </div>

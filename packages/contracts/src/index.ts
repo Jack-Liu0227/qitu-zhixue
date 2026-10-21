@@ -17,6 +17,7 @@ export * from './tutor.js';
 export * from './realtime.js';
 export * from './growth.js';
 export * from './tutor-expression-projection.js';
+export * from './growth-domain-projection.js';
 export * from './reminder.js';
 export * from './platform.js';
 export * from './parent.js';

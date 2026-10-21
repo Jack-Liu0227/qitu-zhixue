@@ -1,0 +1,50 @@
+{
+  "url": "http://122.51.130.204",
+  "checkedAt": "2026-10-21T15:42:20.829Z",
+  "checks": {
+    "light": {
+      "cards": 17,
+      "loadedImages": 17,
+      "rawAssetTokens": 0
+    },
+    "night": {
+      "cards": 17,
+      "loadedImages": 17,
+      "rawAssetTokens": 0
+    },
+    "afterRefresh": {
+      "cards": 17,
+      "loadedImages": 17,
+      "rawAssetTokens": 0
+    },
+    "afterDraftCancel": {
+      "cards": 17,
+      "loadedImages": 17,
+      "rawAssetTokens": 0
+    },
+    "mobile": {
+      "width": 390,
+      "documentWidth": 390,
+      "cardsOverflow": false
+    },
+    "skillMatrix": {
+      "rows": 17,
+      "avatars": 17,
+      "rawAssetTokens": 0
+    }
+  },
+  "previewedAssets": [
+    "avatar-general-v1",
+    "avatar-explorer-v1",
+    "avatar-concept-v1",
+    "avatar-experiment-v1",
+    "avatar-coding-v1",
+    "avatar-data-v1",
+    "avatar-review-v1",
+    "avatar-growth-v1",
+    "avatar-coordinator-v1",
+    "avatar-creative-v1"
+  ],
+  "adminWrites": [],
+  "browserErrors": []
+}

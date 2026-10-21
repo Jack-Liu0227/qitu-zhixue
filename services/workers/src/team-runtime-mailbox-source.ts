@@ -33,7 +33,7 @@ export class PostgresTeamMailboxSource {
     private readonly leaseMs = 60_000,
   ) {}
 
-  async claim(agentId?: string): Promise<TeamMailboxJob | null> {
+  async claim(agentId?: string, projectionOnly = false): Promise<TeamMailboxJob | null> {
     return this.db.transaction(async (tx) => {
       const now = new Date();
       const available = and(
@@ -54,11 +54,28 @@ export class PostgresTeamMailboxSource {
         agentFilter,
         // Result messages are durable communication for the leader. They are
         // not executable jobs and must never be claimed by this worker.
-        sql`${agentTeamMessages.messageType} IN ('task.request', 'projection.request')`,
+        projectionOnly ? eq(agentTeamMessages.messageType, 'projection.request')
+          : sql`${agentTeamMessages.messageType} IN ('task.request', 'projection.request')`,
         or(available, expired),
         or(sql`${agentTeamMessages.leaseExpiresAt} IS NULL`, sql`${agentTeamMessages.leaseExpiresAt} < ${now}`),
       )).orderBy(asc(agentTeamMessages.createdAt)).limit(1).for('update', { skipLocked: true });
       if (!message) return null;
+      let [task] = await tx.select().from(agentTeamTasks).where(eq(agentTeamTasks.id, message.taskId ?? '')).limit(1);
+      if (message.messageType === 'projection.request' && task
+        && typeof task.input.studentUserId === 'string'
+        && ['learner_profile', 'growth_trajectory'].includes(String(task.input.projectionType))) {
+        const scope = `growth-generation:${task.input.studentUserId}:${task.input.projectionType}`;
+        const lock = await tx.execute<{ locked: boolean }>(sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${scope},0)) AS locked`);
+        if (!lock.rows[0]?.locked) return null;
+        // Wait for the previous result's owner receipt before choosing a base version.
+        const outstanding = await tx.execute(sql`SELECT c.id FROM agent_projection_candidates c
+          JOIN agent_team_tasks t ON t.id=c.task_id
+          WHERE c.student_user_id=${task.input.studentUserId} AND c.projection_type=${task.input.projectionType}
+          AND c.task_id<>${task.id} AND (c.status='validating' OR
+            (c.status='proposed' AND c.reviewed_at IS NULL AND
+              (t.status='running' OR (t.status='succeeded' AND c.payload ? 'analysisManifest')))) LIMIT 1`);
+        if (outstanding.rows.length) return null;
+      }
 
       const leaseOwner = randomUUID();
       const leaseExpiresAt = new Date(now.getTime() + this.leaseMs);
@@ -79,7 +96,6 @@ export class PostgresTeamMailboxSource {
         await tx.update(agentMailboxes).set({ leaseOwner, leaseExpiresAt, updatedAt: now })
           .where(eq(agentMailboxes.agentId, message.recipientAgentId));
       }
-      let [task] = await tx.select().from(agentTeamTasks).where(eq(agentTeamTasks.id, message.taskId ?? '')).limit(1);
       if (task) {
         await tx.update(agentTeamTasks).set({
           status: 'running',
@@ -98,7 +114,7 @@ export class PostgresTeamMailboxSource {
           leaseExpiresAt,
           updatedAt: now,
         };
-        await tx.update(agentTeamRuns).set({
+        if (message.messageType !== 'projection.request') await tx.update(agentTeamRuns).set({
           status: 'running',
           startedAt: sql`COALESCE(${agentTeamRuns.startedAt}, ${now})`,
           updatedAt: now,
@@ -144,7 +160,8 @@ export class PostgresTeamMailboxSource {
           .where(eq(agentProjectionCandidates.taskId, taskId))
           .limit(1);
         if (candidate) {
-          const expression = job.message.messageType === 'projection.request' && job.task?.input.sourceTopic === 'tutor.turn.completed'
+          const expression = job.message.messageType === 'projection.request'
+            && ['tutor.turn.completed', 'project.stage.completed', 'artifact.published', 'reflection.created', 'mastery.assessed'].includes(String(job.task?.input.sourceTopic))
             && typeof output.analysisManifest === 'object' && output.analysisManifest !== null;
           await tx.update(agentProjectionCandidates).set({
             payload: { ...(candidate.payload ?? {}), result: expression ? output.result : output,
@@ -190,7 +207,7 @@ export class PostgresTeamMailboxSource {
           createdAt: now,
         }).onConflictDoNothing({ target: agentTeamMessages.idempotencyKey });
         await this.enqueueInterestRecommendation(tx, job, output, now);
-        await this.updateRunStatus(tx, job.task?.runId ?? job.message.runId, now);
+        await this.updateRunStatus(tx, job.task?.runId ?? job.message.runId, now, job.message.messageType === 'projection.request');
       }
       await this.clearMailboxLease(tx, job.message.recipientAgentId, job.leaseOwner, now);
       await this.writeCompletionEvent(tx, job, 'succeeded', now, undefined, output);
@@ -256,7 +273,7 @@ export class PostgresTeamMailboxSource {
             createdAt: now,
           }).onConflictDoNothing({ target: agentTeamMessages.idempotencyKey });
         }
-        if (terminal) await this.updateRunStatus(tx, job.task.runId, now);
+        if (terminal) await this.updateRunStatus(tx, job.task.runId, now, job.message.messageType === 'projection.request');
       }
       if (!terminal) {
         await tx.update(agentMailboxes).set({ pendingCount: sql`${agentMailboxes.pendingCount} + 1`, updatedAt: now })
@@ -363,7 +380,12 @@ export class PostgresTeamMailboxSource {
       .where(and(eq(agentMailboxes.agentId, agentId), eq(agentMailboxes.leaseOwner, leaseOwner)));
   }
 
-  private async updateRunStatus(tx: Transaction, runId: string, now: Date): Promise<void> {
+  private async updateRunStatus(tx: Transaction, runId: string, now: Date, projection = false): Promise<void> {
+    if (projection) {
+      const [run] = await tx.select({ context: agentTeamRuns.context }).from(agentTeamRuns).where(eq(agentTeamRuns.id, runId)).limit(1);
+      // Auxiliary analysis never owns the active Tutor run or its mentor slot.
+      if (run?.context.projectionOnly !== true) return;
+    }
     const tasks = await tx.select({ status: agentTeamTasks.status }).from(agentTeamTasks)
       .where(eq(agentTeamTasks.runId, runId));
     if (tasks.length === 0) return;
@@ -371,7 +393,7 @@ export class PostgresTeamMailboxSource {
       ? 'failed'
       : tasks.every((task) => task.status === 'succeeded')
         ? 'completed'
-        : 'running';
+        : projection ? 'waiting' : 'running';
     await tx.update(agentTeamRuns).set({
       status,
       completedAt: status === 'completed' || status === 'failed' ? now : null,

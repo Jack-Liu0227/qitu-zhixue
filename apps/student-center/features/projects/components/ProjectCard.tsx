@@ -20,7 +20,7 @@ export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={project.coverUrl} alt="" />
         ) : (
-          <div className="qitu-project-cover-fallback"><span aria-hidden="true">✦</span><span>{project.kind === 'exploration' ? '兴趣探索' : project.kind === 'plan' ? '学习计划' : '项目探究'}</span></div>
+          <EntityCover assetId="brand-pbl-v1" height={140} />
         )}
       </div>
       <div className="qitu-project-card-body">

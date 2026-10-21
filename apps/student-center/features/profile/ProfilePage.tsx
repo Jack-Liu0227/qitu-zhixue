@@ -6,6 +6,7 @@ import { DeviceManagement } from './DeviceManagement';
 import { loadStudentProfile, ProfileOfflineError, ProfilePermissionError } from './api';
 import type { StudentProfileProjection } from './types';
 import { AnalysisStatus } from '../growth/components/AnalysisStatus';
+import { useAnalysisRefresh } from '../growth/useAnalysisRefresh';
 import { useCurrentUser } from '@qitu/auth';
 
 type PageState =
@@ -39,6 +40,7 @@ export function ProfilePage() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
+  useAnalysisRefresh(reload);
 
   useEffect(() => {
     let cancelled = false;
