@@ -2767,6 +2767,56 @@
   color: #94A3B8 !important;
 }
 
+/* 登录设备管理卡片暗色适配 */
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-section {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #2E3540 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-title {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-desc,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-meta,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-loading,
+:root[data-qitu-eyecare="true"] .qitu-profile-device-empty {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-refresh {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-profile-devices-refresh:hover:not(:disabled) {
+  background: #164332 !important;
+  color: #6EE7B7 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-item {
+  border-top: 1px solid #252A33 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-name {
+  color: #F1F5F9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-profile-device-revoke {
+  background: #3B1212 !important;
+  background-color: #3B1212 !important;
+  border: 1px solid #7F1D1D !important;
+  color: #FCA5A5 !important;
+}
+:root[data-qitu-eyecare="true"] .qitu-profile-device-revoke:hover:not(:disabled) {
+  background: #4C1D1D !important;
+  color: #FECACA !important;
+}
+
 /* ==========================================================================
    14. 作品展厅与通用空状态 (Works Gallery & States - /student/works)
    ========================================================================== */

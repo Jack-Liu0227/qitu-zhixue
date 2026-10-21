@@ -137,7 +137,10 @@ export default function ProfileGrowthSettingsPage() {
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#102a5c' }}>
               学情画像与成长轨迹控制
             </h1>
-            <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+            <span
+              className="admin-profile-growth-tag"
+              style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}
+            >
               专任助手与证据审核
             </span>
           </div>
@@ -174,13 +177,64 @@ export default function ProfileGrowthSettingsPage() {
         </div>
       </div>
 
-      <div role={configuration.error ? 'alert' : 'status'} style={{ padding: '12px 16px', background: configuration.error ? '#fff7ed' : '#eff6ff', borderRadius: 8, fontSize: 13 }}>
-        {configuration.loading ? '正在读取专任助手与用途绑定…' : configuration.error ?? (purposeOptions.length
-          ? `已读取配置修订 ${configuration.settings?.revision}。用途未配置或助手停用时，相关分析任务不会启动。`
-          : '暂无同时启用的专任助手。请先在助手设置及运行时中配置对应助手。')}
-        <button type="button" disabled={configuration.loading || configuration.saving} onClick={configuration.reload} style={{ marginLeft: 12 }}>重新读取配置</button>
+      <div
+        className="admin-growth-status-banner"
+        role={configuration.error ? 'alert' : 'status'}
+        style={{
+          padding: '12px 18px',
+          background: configuration.error ? '#fff7ed' : '#eff6ff',
+          border: configuration.error ? '1px solid #fed7aa' : '1px solid #bfdbfe',
+          borderRadius: 8,
+          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span
+          className="admin-growth-status-text"
+          style={{
+            color: configuration.error ? '#9a3412' : '#1e3a8a',
+            lineHeight: 1.5,
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span>{configuration.error ? '⚠️' : 'ℹ️'}</span>
+          {configuration.loading ? '正在读取专任助手与用途绑定…' : configuration.error ?? (purposeOptions.length
+            ? `已读取配置修订 ${configuration.settings?.revision}。用途未配置或助手停用时，相关分析任务不会启动。`
+            : '暂无同时启用的专任助手。请先在助手设置及运行时中配置对应助手。')}
+        </span>
+        <button
+          type="button"
+          className="admin-growth-reload-btn"
+          disabled={configuration.loading || configuration.saving}
+          onClick={configuration.reload}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 14px',
+            borderRadius: 6,
+            border: '1px solid #93c5fd',
+            background: '#ffffff',
+            color: '#2563eb',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            cursor: configuration.loading || configuration.saving ? 'not-allowed' : 'pointer',
+            opacity: configuration.loading || configuration.saving ? 0.6 : 1,
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span style={{ fontSize: 13 }}>🔄</span> 重新读取配置
+        </button>
       </div>
-      <p style={{ margin: 0, color: '#92400e', fontSize: 13 }}>下方维度、事件与隐私开关是策略预览，当前保存范围仅包含专任助手用途和模型绑定。</p>
+      <p className="admin-growth-preview-notice" style={{ margin: 0, color: '#92400e', fontSize: 13 }}>下方维度、事件与隐私开关是策略预览，当前保存范围仅包含专任助手用途和模型绑定。</p>
 
       {/* 模块一：能力画像维度设置（精美网格卡片与权重进度条） */}
       <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
@@ -480,7 +534,7 @@ export default function ProfileGrowthSettingsPage() {
                   value={profileAssistantId}
                   disabled={!catalogReady}
                   onChange={(e) => setProfileAssistantId(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
+                  className="admin-growth-assistant-select" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
                   <option value="">{configuration.loading ? '\u6b63\u5728\u8bfb\u53d6\u2026' : '\u672a\u914d\u7f6e'}</option>
                   {profileAssistantId && !purposeOptions.some(option => option.id === profileAssistantId) && <option value={profileAssistantId} disabled>当前绑定已不可用</option>}
@@ -500,7 +554,7 @@ export default function ProfileGrowthSettingsPage() {
                       prev.map((a) => (a.id === profileAssistantId ? { ...a, ...patch } : a))
                     );
                   }}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
+                  className="admin-growth-assistant-select" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
                   <option value="" disabled>未绑定，请选择供应商与模型</option>
                   {profileModelValue && !availableModels.some((model) => configuredModelKey(model) === profileModelValue) ? <option value={profileModelValue} disabled>当前绑定不可用，请重新选择</option> : null}
@@ -528,7 +582,7 @@ export default function ProfileGrowthSettingsPage() {
                   value={growthAssistantId}
                   disabled={!catalogReady}
                   onChange={(e) => setGrowthAssistantId(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
+                  className="admin-growth-assistant-select" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
                   <option value="">{configuration.loading ? '\u6b63\u5728\u8bfb\u53d6\u2026' : '\u672a\u914d\u7f6e'}</option>
                   {growthAssistantId && !purposeOptions.some(option => option.id === growthAssistantId) && <option value={growthAssistantId} disabled>当前绑定已不可用</option>}
@@ -548,7 +602,7 @@ export default function ProfileGrowthSettingsPage() {
                       prev.map((a) => (a.id === growthAssistantId ? { ...a, ...patch } : a))
                     );
                   }}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
+                  className="admin-growth-assistant-select" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', color: '#0f172a', background: '#ffffff', outline: 'none' }}
                 >
                   <option value="" disabled>未绑定，请选择供应商与模型</option>
                   {growthModelValue && !availableModels.some((model) => configuredModelKey(model) === growthModelValue) ? <option value={growthModelValue} disabled>当前绑定不可用，请重新选择</option> : null}

@@ -2417,3 +2417,75 @@
   background: #000000 !important;
   color: #FFFFFF !important;
 }
+
+/* 13.8 模板库16课时编排标签与学情画像专任助手审核状态暗色消白 */
+:root[data-qitu-eyecare="true"] .admin-template-16session-tag {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-16session-tag span {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-profile-growth-tag {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-status-banner {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-status-text {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-status-text * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-preview-notice {
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-reload-btn {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-reload-btn:hover:not(:disabled) {
+  background: #164332 !important;
+  color: #6EE7B7 !important;
+  border-color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-reload-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-assistant-select {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-assistant-select option {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+}

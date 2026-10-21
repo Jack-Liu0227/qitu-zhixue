@@ -56,25 +56,25 @@ export function DeviceManagement() {
   }
 
   return (
-    <section style={{ marginTop: 24, padding: 20, border: '1px solid #dce8f7', borderRadius: 12, background: '#fff' }} aria-labelledby="student-device-sessions">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'baseline', flexWrap: 'wrap' }}>
+    <section className="qitu-profile-devices-section" style={{ marginTop: 24, padding: 20, border: '1px solid #dce8f7', borderRadius: 12, background: '#fff' }} aria-labelledby="student-device-sessions">
+      <div className="qitu-profile-devices-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <div>
-          <h2 id="student-device-sessions" style={{ margin: 0, color: '#102a5c', fontSize: 18 }}>登录设备</h2>
-          <p style={{ margin: '6px 0 0', color: '#73839b', fontSize: 13 }}>最多同时登录两台设备。退出不用的设备后，才能登录新设备。</p>
+          <h2 className="qitu-profile-devices-title" id="student-device-sessions" style={{ margin: 0, color: '#102a5c', fontSize: 18 }}>登录设备</h2>
+          <p className="qitu-profile-devices-desc" style={{ margin: '6px 0 0', color: '#73839b', fontSize: 13 }}>最多同时登录两台设备。退出不用的设备后，才能登录新设备。</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading} style={{ border: '1px solid #c6d7ee', background: '#fff', color: '#2878f0', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>刷新</button>
+        <button className="qitu-profile-devices-refresh" type="button" onClick={() => void load()} disabled={loading} style={{ border: '1px solid #c6d7ee', background: '#fff', color: '#2878f0', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>刷新</button>
       </div>
-      {error ? <p role="alert" style={{ color: '#b42318', fontSize: 13 }}>{error}</p> : null}
-      {loading ? <p style={{ color: '#73839b', fontSize: 13 }}>正在加载设备…</p> : null}
-      {!loading && devices.length === 0 ? <p style={{ color: '#73839b', fontSize: 13 }}>暂无设备会话。</p> : null}
+      {error ? <p className="qitu-profile-device-error" role="alert" style={{ color: '#b42318', fontSize: 13 }}>{error}</p> : null}
+      {loading ? <p className="qitu-profile-device-loading" style={{ color: '#73839b', fontSize: 13 }}>正在加载设备…</p> : null}
+      {!loading && devices.length === 0 ? <p className="qitu-profile-device-empty" style={{ color: '#73839b', fontSize: 13 }}>暂无设备会话。</p> : null}
       <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
         {devices.map((device) => (
-          <div key={device.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid #edf2f8' }}>
+          <div key={device.id} className="qitu-profile-device-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid #edf2f8' }}>
             <div>
-              <strong style={{ color: '#1e3557', fontSize: 14 }}>{device.deviceName} {device.current ? '（当前设备）' : ''}</strong>
-              <div style={{ color: '#73839b', fontSize: 12, marginTop: 4 }}>最近活动：{formatTime(device.lastSeenAt)}</div>
+              <strong className="qitu-profile-device-name" style={{ color: '#1e3557', fontSize: 14 }}>{device.deviceName} {device.current ? '（当前设备）' : ''}</strong>
+              <div className="qitu-profile-device-meta" style={{ color: '#73839b', fontSize: 12, marginTop: 4 }}>最近活动：{formatTime(device.lastSeenAt)}</div>
             </div>
-            {!device.current ? <button type="button" onClick={() => void revoke(device.id)} disabled={revoking === device.id} style={{ border: '1px solid #efb4b4', background: '#fff7f7', color: '#b42318', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>{revoking === device.id ? '退出中…' : '退出设备'}</button> : null}
+            {!device.current ? <button className="qitu-profile-device-revoke" type="button" onClick={() => void revoke(device.id)} disabled={revoking === device.id} style={{ border: '1px solid #efb4b4', background: '#fff7f7', color: '#b42318', borderRadius: 6, padding: '6px 10px', cursor: 'pointer' }}>{revoking === device.id ? '退出中…' : '退出设备'}</button> : null}
           </div>
         ))}
       </div>
