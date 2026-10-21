@@ -220,11 +220,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           className={`qitu-eyecare-toggle-btn ${eyecareActive ? 'is-active' : ''}`}
           onClick={toggleEyecare}
           aria-pressed={eyecareActive}
-          title={eyecareActive ? '点击退出夜间暗色护眼模式' : '点击开启夜间暗色护眼模式 (2700K~3200K 柔光低眩光)'}
+          title={eyecareActive ? '点击退出夜间模式' : '点击开启夜间模式 (2700K~3200K 柔光低眩光)'}
         >
           <span className="qitu-eyecare-btn-icon">🌙</span>
           <span className="qitu-eyecare-btn-text">
-            {eyecareActive ? '护眼模式 (已开启)' : '护眼模式'}
+            {eyecareActive ? '夜间模式 (已开启)' : '夜间模式'}
           </span>
           {eyecareActive && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
         </button>

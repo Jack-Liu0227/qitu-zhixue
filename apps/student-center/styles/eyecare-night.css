@@ -2310,9 +2310,14 @@
   color: #F1F5F9 !important;
 }
 
-:root[data-qitu-eyecare="true"] .qitu-project-cover {
+:root[data-qitu-eyecare="true"] .qitu-project-cover,
+:root[data-qitu-eyecare="true"] .qitu-project-cover.is-placeholder {
   background: #15181D !important;
+  background-color: #15181D !important;
   border-bottom: 1px solid #252A33 !important;
+  overflow: hidden !important;
+  height: 140px !important;
+  max-height: 140px !important;
 }
 
 :root[data-qitu-eyecare="true"] .qitu-project-card-body p {

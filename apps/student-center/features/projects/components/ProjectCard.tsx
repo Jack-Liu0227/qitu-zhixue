@@ -20,7 +20,7 @@ export function ProjectCard({ project, readOnly = false }: ProjectCardProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={project.coverUrl} alt="" />
         ) : (
-          <EntityCover assetId="brand-pbl-v1" height={120} />
+          <EntityCover assetId="brand-pbl-v1" height={140} />
         )}
       </div>
       <div className="qitu-project-card-body">
