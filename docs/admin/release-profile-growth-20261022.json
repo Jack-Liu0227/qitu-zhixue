@@ -1,0 +1,221 @@
+{
+  "date": "2026-10-22",
+  "remote": "study-remote",
+  "worktree": "/root/qitu-zhixue",
+  "sourceCommit": "b497da1cb23b2cc856cd697459dc2ac681c9598c",
+  "sourceCommits": [
+    "30f677d",
+    "47ac588",
+    "b497da1"
+  ],
+  "verification": {
+    "runId": "run-1792602524896-1532114",
+    "finishedAt": "2026-10-21T17:09:39.371Z",
+    "apiTests": 99,
+    "workerTests": 38,
+    "concurrentModuleTests": 9,
+    "failed": 0,
+    "postgresFixtureGroups": 6,
+    "steps": [
+      {
+        "name": "build-contracts",
+        "exitCode": 0
+      },
+      {
+        "name": "contracts-esm",
+        "exitCode": 0
+      },
+      {
+        "name": "build-database",
+        "exitCode": 0
+      },
+      {
+        "name": "build-infra",
+        "exitCode": 0
+      },
+      {
+        "name": "build-agent-memory",
+        "exitCode": 0
+      },
+      {
+        "name": "build-ai-client",
+        "exitCode": 0
+      },
+      {
+        "name": "build-model-runtime",
+        "exitCode": 0
+      },
+      {
+        "name": "build-api",
+        "exitCode": 0
+      },
+      {
+        "name": "api-behavior",
+        "exitCode": 0
+      },
+      {
+        "name": "build-workers",
+        "exitCode": 0
+      },
+      {
+        "name": "workers-esm",
+        "exitCode": 0
+      },
+      {
+        "name": "worker-behavior",
+        "exitCode": 0
+      },
+      {
+        "name": "admin-console-types",
+        "exitCode": 0
+      },
+      {
+        "name": "student-center-types",
+        "exitCode": 0
+      },
+      {
+        "name": "postgres-fixture",
+        "exitCode": 0
+      }
+    ],
+    "productionBuilds": [
+      "api",
+      "workers",
+      "admin-console",
+      "student-center"
+    ],
+    "additionalRegressionLog": "/root/qitu-validation/profile-growth-extra-tests.log"
+  },
+  "configuration": {
+    "revision": 66,
+    "purposes": {
+      "profileAssistantId": "profile-analyst-assistant",
+      "growthAssistantId": "growth-trajectory-assistant"
+    },
+    "readiness": {
+      "profile": "ready",
+      "growth": "ready"
+    },
+    "models": {
+      "profile": [
+        "deepseek",
+        "deepseek-flash"
+      ],
+      "growth": [
+        "deepseek",
+        "deepseek-flash"
+      ]
+    }
+  },
+  "realRequest": {
+    "kind": "synthetic-test-account-free-exploration",
+    "httpStatus": 200,
+    "errorFrames": 0,
+    "formalProjectCreated": false,
+    "sessionFingerprint": "157490941829a587",
+    "matchedOwnerReceipts": [
+      {
+        "projectionType": "growth_trajectory",
+        "assistantId": "growth-trajectory-assistant",
+        "version": 2,
+        "policy": "tutor-expression.v1"
+      },
+      {
+        "projectionType": "learner_profile",
+        "assistantId": "profile-analyst-assistant",
+        "version": 1,
+        "policy": "tutor-expression.v1"
+      }
+    ]
+  },
+  "studentDisplay": {
+    "checkedAt": "2026-10-21T17:07:14.200Z",
+    "version": 1,
+    "trajectoryVersion": 2,
+    "freshness": "fresh",
+    "profileStatus": "pending",
+    "growthStatus": "pending",
+    "provenance": {
+      "profileAssistantId": "profile-analyst-assistant",
+      "growthAssistantId": "growth-trajectory-assistant"
+    },
+    "policy": "tutor-expression.v1",
+    "observedThrough": "2026-10-21T17:05:02.703Z",
+    "interests": 1,
+    "preferences": 0,
+    "automaticReadsIn17Seconds": 1,
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 1000
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "pageErrors": [],
+    "checks": [
+      "anonymous-profile-denied",
+      "admin-ui-save-and-authoritative-readback",
+      "student-admin-config-denied",
+      "real-tutor-sse-request-completed",
+      "both-real-model-projections-owner-accepted",
+      "profile-visible-auto-refresh-without-generation",
+      "profile-growth-desktop-mobile-render"
+    ]
+  },
+  "runtime": {
+    "readiness": {
+      "service": "qitu-zhixue-api",
+      "status": "ready",
+      "version": "0.1.0",
+      "checkedAt": "2026-10-21T17:08:05.298Z",
+      "dataMode": "live",
+      "dependencies": {
+        "database": {
+          "status": "ok"
+        },
+        "redis": {
+          "status": "ok"
+        }
+      }
+    },
+    "services": {
+      "qitu-api": {
+        "active": true,
+        "enabled": true,
+        "cwd": "/root/qitu-zhixue"
+      },
+      "qitu-admin": {
+        "active": true,
+        "enabled": true,
+        "cwd": "/root/qitu-zhixue"
+      },
+      "qitu-student": {
+        "active": true,
+        "enabled": true,
+        "cwd": "/root/qitu-zhixue"
+      },
+      "qitu-profile-growth": {
+        "active": true,
+        "enabled": true,
+        "cwd": "/root/qitu-zhixue"
+      }
+    },
+    "projectionWorkerRunAs": "postgres"
+  },
+  "preservation": {
+    "unrelatedFilesInFinalVerification": 147,
+    "stagedUnrelatedChanges": false,
+    "configurationVia": "authenticated-admin-UI-and-readback",
+    "productionFactInjection": false
+  },
+  "limits": [
+    "Formal domain fan-in verified in disposable fixtures, not a full live 16-session project.",
+    "Ability weights, event and privacy switches remain strategy previews.",
+    "Historical failed or noncompliant candidates remain preserved for owner review.",
+    "Concurrent API restarts produced transient 401/502 during QA; authorized display checks were repeated after recovery.",
+    "Display can be pending when newer candidates await review while retaining accepted results."
+  ]
+}

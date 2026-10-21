@@ -48,8 +48,8 @@ every 15 seconds and on focus; reads never invoke generation.
 - [x] Complete config, evidence, execution, review, and display implementation.
 - [x] Build dependency packages from source and run API/worker regressions.
 - [x] Validate transactional uniqueness and replay in a disposable fixture.
-- [ ] Build affected applications and verify authorized browser behavior.
-- [ ] Commit only this repair, deliver to study-remote, and verify live behavior.
+- [x] Build affected applications and verify authorized browser behavior.
+- [x] Commit only this repair, deliver to study-remote, and verify live behavior.
 
 Production configuration readiness, fixture behavior, real model requests, and
 page rendering are reported separately. Tests must not inject mastery or accept
@@ -64,3 +64,21 @@ disposable PGlite transaction/queue groups. The fixture derives actual Drizzle
 constraints, preserves the active Tutor run, and verifies generation serialization
 until an actual owner rejection receipt. It does not connect to production or call
 model providers. Production builds and live model acceptance are separate gates.
+
+## Release verification
+
+The repair is deployed from study-remote main. The final merged-source run
+`run-1792602524896-1532114` passed 99 API and 38 worker tests, nine additional
+concurrent-module regressions, and six disposable PostgreSQL fixture groups.
+API, worker, Admin and student production builds passed.
+
+Live testing exposed two gaps missed by the original mocked-model tests: the
+model needed the owner's complete closed output schema, and the current free
+exploration owner is the exact server-declared intake assistant. Both gaps were
+fixed and regression-tested without relaxing owner acceptance. One normal
+synthetic exploration turn then produced an accepted profile v1 and trajectory
+v2, both matched to that same server event. Visible-page auto-refresh and mobile
+rendering passed. Historical invalid candidates were not force-accepted.
+
+See [release evidence](../../admin/release-profile-growth-20261022.md) and
+[machine-readable verification](../../admin/release-profile-growth-20261022.json).
