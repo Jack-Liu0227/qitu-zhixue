@@ -1,3 +1,4 @@
+import { assertAssistantSkillBudget } from './assistant-skill-budget';
 import { resolveAgentModelSelection } from './agent-model-selection';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
@@ -329,6 +330,7 @@ export class PlatformRegistryService {
     if (assistant.enabledSkills.some((id) => !selectedSkills.some((skill) => skill.id === id))) {
       throw new ConflictException({ code: 'ASSISTANT_SKILL_UNAVAILABLE', message: 'A bound teaching skill is unavailable' });
     }
+    assertAssistantSkillBudget(selectedSkills);
     // Only exact identity and the explicit historical leader alias may restrict
     // this assistant. Another role's configuration is never inherited.
     const runtimeIds = new Set(runtimeIdsForAssistant(assistantId));
@@ -1239,6 +1241,8 @@ export class PlatformRegistryService {
       const inherited = new Set(baseline?.enabledSkills ?? []);
       const unknownSkill = input.enabledSkills.find((skillId) => !knownSkills.has(skillId) && !inherited.has(skillId));
       if (unknownSkill !== undefined) throw new BadRequestException(`未知的 Skill: ${unknownSkill}`);
+      const skillIds = input.enabledSkills;
+      assertAssistantSkillBudget(runtime.skills.filter(skill => skillIds.includes(skill.id)));
     }
     if (input.toolIds !== undefined) {
       const knownTools = new Set(builtinToolRegistry.list().map((tool) => tool.id));

@@ -1,8 +1,31 @@
-import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblTemplateTeamBinding } from '@qitu/contracts';
+import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblPhase, PblTemplateTeamBinding, TeachingBundleDraft } from '@qitu/contracts';
 import { adminEnvelopeRequest, newIdempotencyKey } from './types';
 
 export interface TemplateTeamBinding { binding: PblTemplateTeamBinding; configurationReady?: boolean; team: { id: string; name: string; runtimeSnapshotStatus?: string } | null }
-export interface PublishedTeamVersion { id: string; teamId: string; version: number; name: string; runtimeSnapshotStatus: 'published' | 'legacy_unpinned'; members?: { slotId: string; assistantId: string; role?: string }[] }
+export interface PublishedTeamMember {
+  slotId: string;
+  assistantId: string;
+  role?: string;
+  roleLabel?: string;
+  pblPhase?: PblPhase;
+  runtimeSnapshot?: {
+    model: NonNullable<TeachingBundleDraft['modelByPurpose'][string]['dialogue']>;
+    skills: readonly Omit<TeachingBundleDraft['skillPins'][number], 'roleSlotId'>[];
+    tools: readonly { toolId: string; handlerVersion: string; schemaDigest: string }[];
+    mcpPermissions: readonly { serverId: string; toolIds: readonly string[] }[];
+    promptVersion?: string;
+    digest?: string;
+  };
+}
+export interface PublishedTeamVersion {
+  id: string; teamId: string; version: number; name: string;
+  runtimeSnapshotStatus: 'published' | 'legacy_unpinned';
+  leaderAssistantId?: string;
+  snapshotDigest?: string | null;
+  sourceUpdatedAt?: string | null;
+  createdAt?: string;
+  members?: readonly PublishedTeamMember[];
+}
 const path = (templateId: string, versionId: string) => `/api/v1/admin/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/bindings`;
 export function fetchTemplateBindings(templateId: string, versionId: string) {
   return adminEnvelopeRequest<TemplateTeamBinding[]>({ path: path(templateId, versionId), method: 'GET' });

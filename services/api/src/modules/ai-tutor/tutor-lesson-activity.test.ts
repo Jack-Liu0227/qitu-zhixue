@@ -164,3 +164,17 @@ test('actual candidate schema digest participates in frozen tool pins and detect
   assert.equal(freezeTutorRuntime(drifted, role, true).tools.length, 0);
   assert.equal(createLessonActivityChannel({ ...h.input, runtime: drifted }).tools.length, 0);
 });
+
+test('an observation objective can guide a turn without entering the assessment owner scope', async () => {
+  const h = await fixture();
+  h.teaching.session.theoryObjectiveIds = [];
+  h.teaching.session.practiceObjectiveIds = [];
+  const channel = await prepareTutorLessonActivities({ teaching: h.teaching, runtime: h.runtime,
+    projectId: 'synthetic-project', studentId: 'synthetic-owner', tutorSessionId: 'synthetic-chat', idempotencyKey: 'observation',
+    knowledgeAccess: {}, registry: { getAssistantRuntime: async () => h.runtime, isModelAvailable: () => true },
+    questions: { readPendingQuestionCandidate: async () => { throw Error('observation is not an assessment target'); },
+      acceptQuestionCandidate: async () => { throw Error('no assessment submitted'); } },
+    resolve: async () => h.teaching, hasQuestion: () => false });
+  assert.ok(channel);
+});
+

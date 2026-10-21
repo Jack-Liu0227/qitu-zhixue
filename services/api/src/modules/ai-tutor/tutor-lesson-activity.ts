@@ -36,7 +36,7 @@ interface Input {
   pendingQuestion?: Extract<TutorReplyBlock, { kind: 'quiz' }> | null;
   restorePending?: boolean;
   refresh(): Promise<{ teaching: TutorTeachingContext; runtime: EffectiveAgentRuntime }>;
-  acceptQuestion(candidate: LessonQuestionCandidate, key: string,
+  acceptQuestion?(candidate: LessonQuestionCandidate, key: string,
     verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }>>;
   verifyEvidence(refs: readonly string[]): Promise<readonly ImaReadEvidence[]>;
   proposeOptics(candidate: OpticsCandidate, key: string): Promise<Extract<TutorReplyBlock, { kind: 'optics_experiment' }>>;
@@ -112,7 +112,7 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
     ?.sessions.find((session) => session.sessionIndex === input.teaching.session.lessonIndex)?.interactiveSpec?.domainTopic ?? 'none';
   channel.tools = [{
     name: LESSON_ACTIVITY_FUNCTION,
-    description: `Frozen lesson program: ${serializeTutorLessonProgram(projectTutorLessonProgram(input.teaching))}. Scheduled interactive domain: ${scheduledDomain}. Follow this lesson's activities and evidence requirements. Board uses nodes/edges or TeX; optics uses the registered lesson model. Choice questions need verified evidence_ref values; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
+    description: `Frozen lesson program: ${serializeTutorLessonProgram(projectTutorLessonProgram(input.teaching))}. Scheduled interactive domain: ${scheduledDomain}. Follow this lesson's activities and evidence requirements. Board uses nodes/edges or TeX; optics uses the registered lesson model. Choice questions need verified evidence_ref values and an assessment objective; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
     inputSchema: LESSON_ACTIVITY_SCHEMA,
     execute: (args) => {
       const result = queue.then(async () => {
@@ -149,6 +149,7 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
           block = await input.proposeOptics({ title: text(candidate.title, 100), summary: text(candidate.summary, 500),
             mode: candidate.mode, parameters: record(candidate.parameters) as Record<string, number> }, key);
         } else if (candidate.kind === 'choice_question') {
+          if (!input.acceptQuestion) invalid('当前目标用于观察或反思，不进入题目判定范围。');
           if (input.pendingQuestion) invalid('当前问题尚未完成，请继续当前问题。');
           exact(candidate, ['kind', 'question']);
           block = await input.acceptQuestion(record(candidate.question) as unknown as LessonQuestionCandidate, key, input.verifyEvidence);

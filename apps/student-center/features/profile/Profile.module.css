@@ -1,0 +1,127 @@
+.page {
+  --profile-accent: var(--qitu-primary, #2878f0);
+  --profile-text: var(--qitu-heading, #102a5c);
+  --profile-muted: var(--qitu-muted, #687e9b);
+  --profile-surface: var(--qitu-surface, #fff);
+  --profile-soft: var(--qitu-surface-soft, #f4f8fe);
+  --profile-border: var(--qitu-border, #dce8f7);
+  --profile-grid: color-mix(in srgb, var(--profile-text) 18%, var(--profile-surface));
+  min-width: 0;
+  width: 100%;
+  gap: 20px;
+  color: var(--profile-text);
+}
+:global(:root[data-qitu-eyecare='true']) .page {
+  --profile-accent: #34d399;
+  --profile-text: #f1f5f9;
+  --profile-muted: #a7b6ca;
+  --profile-surface: #1e2228;
+  --profile-soft: #181b20;
+  --profile-border: #344050;
+  --profile-grid: #64748b;
+}
+.page .pageHeader h1 { color: var(--profile-text); }
+:global(:root[data-qitu-eyecare='true']) .primaryLink { background: #047857; color: #fff; }
+.pageHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 2px 4px 0; }
+.pageHeader h1 { margin: 0; font-size: clamp(1.65rem, 2.8vw, 2.15rem); letter-spacing: -.035em; line-height: 1.25; }
+.pageHeader p { margin: 8px 0 0; color: var(--profile-muted); line-height: 1.6; }
+.help { position: relative; max-width: 390px; font-size: .86rem; }
+.help summary { list-style: none; cursor: pointer; color: var(--profile-accent); border: 1px solid color-mix(in srgb, var(--profile-accent) 45%, transparent); border-radius: 10px; padding: 10px 15px; }
+.help summary::-webkit-details-marker { display: none; }
+.help[open] { flex-basis: 100%; max-width: none; }
+.help[open] summary { width: fit-content; }
+.help p { max-width: 840px; padding: 12px 0 0; }
+.radarLayout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.radarPanel, .detailPanel, .section { min-width: 0; background: var(--profile-surface); border: 1px solid var(--profile-border); border-radius: 14px; box-shadow: 0 4px 20px color-mix(in srgb, var(--profile-text) 3%, transparent); }
+.radarPanel { padding: 20px 16px 16px; }
+.panelHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 0 8px; }
+.panelHeading h2 { margin: 0; font-size: .97rem; }
+.panelHeading > span { font-size: .77rem; color: var(--profile-muted); }
+.chart { position: relative; width: 100%; max-width: 620px; aspect-ratio: 6 / 5; margin: 0 auto; isolation: isolate; }
+.chartSvg { display: block; width: 100%; height: 100%; overflow: visible; }
+.gridRing { fill: color-mix(in srgb, var(--profile-accent) 1%, transparent); stroke: var(--profile-grid); stroke-width: .85; }
+.gridAxis { stroke: var(--profile-grid); stroke-width: .8; }
+.axisAnchor { stroke: var(--profile-grid); fill: var(--profile-surface); stroke-width: 1.5; }
+.selectedAnchor { stroke: var(--profile-accent); fill: var(--profile-surface); stroke-width: 2.5; }
+.resultArea { stroke: var(--profile-accent); fill: color-mix(in srgb, var(--profile-accent) 15%, transparent); stroke-width: 2; }
+.resultLine { stroke: var(--profile-accent); stroke-width: 2; }
+.resultPoint { stroke: var(--profile-surface); fill: var(--profile-accent); stroke-width: 2; }
+.axisTabs { position: absolute; inset: 0; pointer-events: none; }
+.axisButton { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 92px; padding: 3px; color: var(--profile-text); font: inherit; background: transparent; border: 0; cursor: pointer; pointer-events: auto; }
+.axisTitle { white-space: nowrap; padding: 5px 9px; border: 1px solid transparent; border-radius: 999px; font-size: clamp(.78rem, 1.15vw, .99rem); font-weight: 700; }
+.axisButton[data-selected='true'] .axisTitle { border-color: var(--profile-accent); color: var(--profile-accent); background: var(--profile-surface); }
+.axisStatus { border-radius: 999px; background: var(--profile-soft); color: var(--profile-muted); padding: 3px 11px; font-size: .72rem; white-space: nowrap; }
+.axisButton:hover .axisTitle { color: var(--profile-accent); }
+.axisButton:focus-visible, .help summary:focus-visible, .dataTable summary:focus-visible, .primaryLink:focus-visible, .textLink:focus-visible { outline: 3px solid color-mix(in srgb, var(--profile-accent) 65%, transparent); outline-offset: 4px; border-radius: 8px; }
+.chartMessage { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44%; padding: 11px 2px; text-align: center; color: var(--profile-muted); background: color-mix(in srgb, var(--profile-surface) 92%, transparent); pointer-events: none; }
+.chartMessage span { font-size: .72rem; }
+.chartMessage strong { display: block; margin-top: 7px; font-size: clamp(.78rem, 1.15vw, .96rem); font-weight: 500; line-height: 1.65; }
+.chartCaption { color: var(--profile-muted); text-align: center; font-size: .77rem; line-height: 1.6; margin: 3px 8px 14px; }
+.dataTable { border-top: 1px solid var(--profile-border); padding: 12px 8px 0; color: var(--profile-muted); font-size: .78rem; }
+.dataTable summary { cursor: pointer; width: fit-content; }
+.tableScroll { width: 100%; overflow-x: auto; }
+.dataTable table { width: 100%; border-collapse: collapse; text-align: left; margin-top: 12px; font-size: .75rem; }
+.dataTable caption { text-align: left; padding: 5px 0 10px; }
+.dataTable th, .dataTable td { padding: 10px 6px; border-top: 1px solid var(--profile-border); line-height: 1.6; }
+.dataTable th { color: var(--profile-text); font-weight: 600; }
+.detailPanel { padding: 23px; display: flex; flex-direction: column; }
+.detailEyebrow { font-size: .85rem; font-weight: 700; margin: 0 0 22px; }
+.detailHeading { display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--profile-border); padding-bottom: 24px; }
+.dimensionGlyph { display: grid; place-items: center; width: 70px; height: 70px; flex: 0 0 auto; border-radius: 50%; color: var(--profile-accent); background: color-mix(in srgb, var(--profile-accent) 11%, var(--profile-surface)); }
+.dimensionGlyph svg { width: 34px; height: 34px; }
+.detailHeading h2 { margin: 0 0 7px; font-size: 1.65rem; letter-spacing: -.02em; }
+.detailHeading p { margin: 0; line-height: 1.7; font-size: .88rem; color: var(--profile-muted); }
+.detailBody { animation: reveal .2s ease-out both; }
+.observation { display: flex; align-items: flex-start; gap: 14px; padding: 22px 18px; margin-top: 20px; border-radius: 12px; background: linear-gradient(135deg, var(--profile-soft), color-mix(in srgb, var(--profile-accent) 4%, var(--profile-surface))); }
+.observationMark { display: grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, #12a89b 14%, var(--profile-surface)); color: #16877d; font-size: 1.5rem; }
+.observation h3, .guidance h3, .evidencePath h3 { margin: 0; font-size: .97rem; line-height: 1.55; }
+.observation p, .guidance p { margin: 8px 0 0; color: var(--profile-muted); font-size: .85rem; line-height: 1.8; }
+.primaryLink { display: inline-flex; align-items: center; justify-content: center; gap: 18px; margin-top: 17px; border-radius: 9px; padding: 11px 16px; color: #fff; background: var(--profile-accent); text-decoration: none; font-size: .86rem; font-weight: 600; line-height: 1.5; }
+.primaryLink:hover { filter: brightness(1.06); }
+.primaryLink span { font-size: 1.25rem; line-height: 1; }
+.guidance { margin: 21px 0; }
+.evidencePath { padding-top: 18px; border-top: 1px solid var(--profile-border); }
+.evidencePath ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 0; margin: 16px 0 8px; }
+.evidencePath li { position: relative; min-width: 0; text-align: center; }
+.evidencePath li + li::before { content: '→'; position: absolute; top: 13px; left: -13px; color: var(--profile-muted); }
+.pathIcon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--profile-soft); color: var(--profile-accent); margin: 0 auto 8px; }
+.pathIcon svg { width: 23px; height: 23px; }
+.evidencePath strong { font-size: .76rem; font-weight: 600; }
+.evidencePath p { font-size: .72rem; color: var(--profile-muted); line-height: 1.7; margin: 12px 0 0; }
+.observation .assessedValue { color: var(--profile-accent); font-size: 1.7rem; font-weight: 700; }
+.assessedValue span { display: block; color: var(--profile-muted); font-size: .75rem; font-weight: 400; }
+.supportGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+.section { padding: 21px 23px; }
+.sectionHeader { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.sectionHeader h2 { margin: 0; font-size: 1.03rem; }
+.textLink { color: var(--profile-accent); font-size: .8rem; line-height: 1.7; text-decoration: none; }
+.textLink:hover { text-decoration: underline; }
+.retry { border: 0; background: transparent; color: var(--profile-accent); font: inherit; cursor: pointer; padding: 0 8px; text-decoration: underline; }
+.emptyNote { background: var(--profile-soft); border: 1px dashed var(--profile-border); border-radius: 10px; padding: 24px 18px; text-align: center; }
+.emptyNote strong { font-size: .94rem; font-weight: 500; }
+.emptyNote p { color: var(--profile-muted); font-size: .83rem; line-height: 1.8; margin: 9px 0 12px; }
+.listBlock + .listBlock { margin-top: 20px; }
+.listBlock h3 { margin: 0 0 10px; font-size: .87rem; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--profile-border); border-radius: 7px; padding: 6px 10px; background: var(--profile-soft); font-size: .83rem; line-height: 1.5; overflow-wrap: anywhere; }
+.muted, .section small { color: var(--profile-muted); line-height: 1.75; font-size: .82rem; }
+.questions { margin: 10px 0 0; padding-left: 20px; color: var(--profile-muted); font-size: .84rem; line-height: 1.9; }
+.recentList { padding: 0; margin: 0; list-style: none; }
+.recentList li { display: grid; grid-template-columns: 7px minmax(0, 1fr); column-gap: 13px; padding-bottom: 20px; }
+.recentList li:last-child { padding-bottom: 0; }
+.recordDot { border-radius: 50%; width: 7px; height: 7px; background: #14a49b; margin-top: 7px; box-shadow: 0 0 0 4px color-mix(in srgb, #14a49b 10%, transparent); }
+.recentList time { font-size: .72rem; color: var(--profile-muted); }
+.recentList strong { display: block; margin: 4px 0; font-size: .88rem; }
+.recentList p { margin: 0; color: var(--profile-muted); line-height: 1.8; font-size: .8rem; overflow-wrap: anywhere; }
+.trajectory { border-top: 1px solid var(--profile-border); margin-top: 20px; padding-top: 16px; }
+.trajectory h3 { margin: 0 0 8px; font-size: .87rem; }
+.trajectory > p { color: var(--profile-muted); line-height: 1.8; font-size: .85rem; }
+.loading { min-height: 350px; display: grid; place-content: center; text-align: center; gap: 12px; background: var(--profile-surface); border: 1px solid var(--profile-border); border-radius: 14px; color: var(--profile-muted); }
+.loading h1 { font-size: 1.25rem; color: var(--profile-text); margin: 0; }
+.loading p { margin: 0; line-height: 1.8; }
+.notice { padding: 12px 16px; border: 1px solid var(--profile-border); border-radius: 10px; background: var(--profile-soft); color: var(--profile-muted); font-size: .86rem; line-height: 1.7; }
+@keyframes reveal { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 960px) { .radarLayout { grid-template-columns: minmax(0, 1fr); } .chart { max-width: 580px; } .axisTitle { font-size: 1rem; } .detailPanel { padding: 22px; } }
+@media (max-width: 640px) { .page { gap: 16px; } .supportGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; } .radarPanel { padding: 17px 8px 14px; } .panelHeading { padding: 0 8px 8px; } .chart { margin-top: 5px; } .axisButton { min-width: 80px; } .axisTitle { font-size: .8rem; padding: 4px 5px; } .axisStatus { font-size: .64rem; padding: 3px 7px; } .chartMessage span { display: none; } .chartMessage strong { font-size: .78rem; margin: 0; } .detailHeading { gap: 13px; } .dimensionGlyph { width: 55px; height: 55px; } .detailHeading h2 { font-size: 1.4rem; } .detailHeading p { font-size: .83rem; } .detailPanel, .section { padding: 19px 17px; } .observation { padding: 18px 13px; gap: 10px; } .observationMark { width: 30px; height: 30px; font-size: 1.15rem; } .primaryLink { padding: 10px 12px; font-size: .8rem; gap: 10px; } .evidencePath ol { gap: 8px; } .evidencePath strong { font-size: .69rem; } .evidencePath li + li::before { left: -10px; } .chartCaption { margin-top: 18px; margin-left: 12px; margin-right: 12px; font-size: .73rem; } }
+@media (prefers-reduced-motion: reduce) { .detailBody { animation: none; } }
+:global(:root[data-qitu-reduced-motion='true']) .detailBody { animation: none; }

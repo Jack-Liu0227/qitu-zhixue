@@ -93,3 +93,22 @@ test('history reads require both project and session ownership and cannot create
   Object.assign(tutor, { learningStore: { findProject: async () => ({ studentId: 'other-owner' }) } });
   await assert.rejects(tutor.getProjectConversationHistory('legacy-project', 'other-owner'));
 });
+
+test('an explicit exploration stays in its own context when a continued project exists', async () => {
+  const tutor = new TutorService('live', { complete: async () => { throw Error('context must not invoke model'); } },
+    undefined, undefined, undefined, new DurableFixture());
+  Object.assign(tutor, {
+    learningStore: { findProject: async () => { throw Error('must not switch to the continued project'); } },
+    projectHistory: { currentSelection: async () => { throw Error('explicit exploration takes precedence'); } },
+    projects: { getExploration: async (ownerId: string, id: string) => {
+      assert.equal(ownerId, 'owner');
+      if (id !== 'owned-exploration') throw Error('exploration access denied');
+      return { id, source: 'free', templateVersionId: null, status: 'exploring' };
+    } },
+  });
+  const context = await tutor.getProjectContext(undefined, 'owner', true, 'owned-exploration');
+  assert.equal(context?.project, null);
+  assert.equal(context?.exploration?.id, 'owned-exploration');
+  await assert.rejects(tutor.getProjectContext(undefined, 'owner', true, 'foreign-exploration'), /access denied/);
+});
+

@@ -1,4 +1,5 @@
 import { ApiError, createApiClient } from '@qitu/api-client';
+import { parseGrowthCompetencyOverview } from '@qitu/contracts';
 import type { StudentProfileProjection } from './types';
 
 export class ProfileOfflineError extends Error {}
@@ -9,7 +10,7 @@ export async function loadStudentProfile(baseUrl = ''): Promise<StudentProfilePr
     const response = await createApiClient(baseUrl).get<{ data: StudentProfileProjection }>(
       '/api/v1/students/me/profile',
     );
-    return response.data;
+    return { ...response.data, competencyOverview: parseGrowthCompetencyOverview(response.data.competencyOverview) };
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
       throw new ProfilePermissionError('Unable to view this student profile');

@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "status": "deployed-and-smoke-verified",
+  "verifiedAt": "2026-10-21T20:40:24.211299+08:00",
+  "production": {
+    "actions": "deployed_and_smoke_tested",
+    "deployed": true,
+    "bindingActivated": false,
+    "projectRecoveryPerformed": false,
+    "projectCount": 18,
+    "activeCount": 18,
+    "explorationSourcedCount": 15,
+    "duplicateExplorationSourceGroups": 0,
+    "displayPreferenceMigrationPresent": true,
+    "normalTutorStreamCompleted": true
+  },
+  "verification": {
+    "sourceRunId": "run-1792584851444-98528",
+    "mainApi": {
+      "passed": 625,
+      "failed": 0,
+      "skipped": 1
+    },
+    "finalOwnerSupplement": {
+      "passed": 20,
+      "failed": 0,
+      "overlapsMain": true
+    },
+    "studentData": {
+      "passed": 12,
+      "failed": 0
+    },
+    "studentRealtimeBoundary": {
+      "passed": 7,
+      "failed": 0
+    },
+    "appTypechecks": [
+      "student-center",
+      "teacher-workspace",
+      "admin-console"
+    ],
+    "browser": {
+      "entryGroups": 6,
+      "configurationGroups": 3,
+      "productionWrites": false
+    },
+    "gitDiffCheck": "passed",
+    "documentation": {
+      "existingProblems": 5,
+      "newProblems": 0
+    },
+    "liveModelAndClassroomAcceptance": false
+  },
+  "workspace": {
+    "baselineDirtyPaths": 156,
+    "changedBaselinePaths": [
+      "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx",
+      "apps/student-center/features/projects/components/ProjectCard.tsx",
+      "apps/student-center/features/projects/components/ProjectListScreen.tsx",
+      "apps/student-center/features/projects/data/api-projects-data-source.test.ts",
+      "apps/student-center/features/projects/data/api-projects-data-source.ts",
+      "apps/student-center/features/tutor/TutorPage.tsx",
+      "apps/student-center/features/tutor/components/ChatThread.tsx",
+      "apps/student-center/features/tutor/data/dataSource.ts",
+      "apps/student-center/features/tutor/data/tutorApiDataSource.ts",
+      "docs/plan/codex/README.md",
+      "services/api/src/modules/ai-tutor/tutor.runtime-identity.test.ts",
+      "services/api/src/modules/ai-tutor/tutor.service.ts",
+      "services/api/src/modules/templates/templates-binding.service.ts",
+      "tooling/verify-pbl-capability.mjs",
+      "tooling/test-configuration-browser.mjs",
+      "tooling/test-student-pbl-data.mjs"
+    ],
+    "preservedBaselinePaths": [
+      ".agents/skills/qitu-project-configurator/SKILL.md",
+      ".agents/skills/qitu-project-configurator/references/catalog.json",
+      ".agents/skills/qitu-project-configurator/references/knowledge.md",
+      ".agents/skills/qitu-project-configurator/references/mcp.md",
+      ".agents/skills/qitu-project-configurator/references/models.md",
+      ".agents/skills/qitu-project-configurator/references/protocol.md",
+      ".agents/skills/qitu-project-configurator/references/teams-workflows.md",
+      "apps/admin-console/app/(console)/copilot/page.tsx",
+      "apps/admin-console/app/(console)/settings/templates/page.tsx",
+      "apps/admin-console/lib/api/content.ts",
+      "apps/admin-console/lib/api/copilot.ts",
+      "apps/admin-console/lib/api/template-bindings.ts",
+      "apps/admin-console/lib/copilot/use-copilot-model.ts",
+      "apps/admin-console/next.config.ts",
+      "apps/admin-console/tsconfig.json",
+      "apps/student-center/features/projects/components/ProjectList.tsx",
+      "apps/student-center/features/projects/data/data-source.ts",
+      "apps/student-center/features/projects/hooks/useProjectsData.ts",
+      "apps/student-center/features/projects/types/index.ts",
+      "apps/student-center/features/tutor/components/CurrentLessonCard.tsx",
+      "apps/student-center/features/tutor/components/LessonWorkPanel.tsx",
+      "apps/student-center/features/tutor/components/TutorSessionHistory.tsx",
+      "apps/student-center/features/tutor/components/lessonBlockers.ts",
+      "apps/student-center/features/tutor/data/lessonEvidenceApi.ts",
+      "apps/student-center/features/tutor/data/lessonWorkspaceApi.test.ts",
+      "apps/teacher-workspace/components/student-artifact-reviews.tsx",
+      "apps/teacher-workspace/lib/teacherApi.ts",
+      "database/migrations/meta/_journal.json",
+      "docs/admin/platform-governance.md",
+      "docs/plan/codex/copilot-lifecycle-verification-20261021.md",
+      "docs/sdk/model-runtime.md",
+      "packages/ai-client/src/context-packet.ts",
+      "packages/ai-client/src/quiz-bank/optics/curriculum.test.ts",
+      "packages/ai-client/src/quiz-bank/optics/curriculum.ts",
+      "packages/ai-client/src/tutor-context.ts",
+      "packages/contracts/src/admin-copilot.ts",
+      "packages/contracts/src/index.ts",
+      "packages/contracts/src/learning-session-evidence.ts",
+      "packages/contracts/src/pbl-learning.ts",
+      "packages/contracts/src/project-binding.ts",
+      "packages/contracts/src/project.ts",
+      "packages/database/src/schema/index.ts",
+      "packages/database/src/schema/project-binding.ts",
+      "packages/model-runtime/src/index.ts",
+      "services/api/src/common/idempotency/idempotency.service.ts",
+      "services/api/src/modules/admin-copilot/copilot.controller.ts",
+      "services/api/src/modules/admin-copilot/copilot.lifecycle.ts",
+      "services/api/src/modules/admin-copilot/copilot.module.ts",
+      "services/api/src/modules/admin-copilot/copilot.operations.ts",
+      "services/api/src/modules/admin-copilot/copilot.scope.test.ts",
+      "services/api/src/modules/admin-copilot/copilot.service.ts",
+      "services/api/src/modules/admin-copilot/copilot.test.ts",
+      "services/api/src/modules/ai-tutor/tutor-experiment.service.ts",
+      "services/api/src/modules/ai-tutor/tutor-lesson-activity.test.ts",
+      "services/api/src/modules/ai-tutor/tutor-lesson-activity.ts",
+      "services/api/src/modules/ai-tutor/tutor-teaching-context.test-fixture.ts",
+      "services/api/src/modules/knowledge/knowledge.module.ts",
+      "services/api/src/modules/learning-plan/learning-session-progress.service.ts",
+      "services/api/src/modules/learning-plan/optics-fullflow.test-fixture.ts",
+      "services/api/src/modules/learning-plan/optics-fullflow.test.ts",
+      "services/api/src/modules/model-registry/model-registry.persistence.ts",
+      "services/api/src/modules/model-registry/model-registry.service.ts",
+      "services/api/src/modules/projects/projects.module.ts",
+      "services/api/src/modules/team-runtime/team-runtime.service.ts",
+      "services/api/src/modules/templates/content/optics.ts",
+      "services/api/src/modules/templates/teaching-bundle.catalog.ts",
+      "services/api/src/modules/templates/teaching-bundle.compiler.test.ts",
+      "services/api/src/modules/templates/teaching-bundle.compiler.ts",
+      "services/api/src/modules/templates/teaching-bundle.test-fixture.ts",
+      "services/api/src/modules/templates/templates-binding.controller.ts",
+      "services/api/src/modules/templates/templates-binding.store.postgres.ts",
+      "services/api/src/modules/templates/templates-binding.store.ts",
+      "services/api/src/modules/templates/templates.module.ts",
+      "services/api/src/modules/templates/templates.test-support.ts",
+      "services/api/src/modules/works/works-learning-context.ts",
+      "services/api/src/modules/works/works-learning-evidence.service.ts",
+      "services/api/src/modules/works/works-learning.controller.ts",
+      "services/api/src/modules/works/works.module.ts",
+      "services/api/src/scripts/optics-template-bootstrap.ts",
+      "tooling/verify-copilot-lifecycle.mjs",
+      "tooling/verify-workspace-source.mjs",
+      "apps/admin-console/lib/components/ProjectBindingRecovery.tsx",
+      "apps/admin-console/lib/copilot/KnowledgeUpload.tsx",
+      "apps/teacher-workspace/components/student-lesson-quality-reviews.tsx",
+      "database/migrations/0046_project_display_preferences.down.sql",
+      "database/migrations/0046_project_display_preferences.sql",
+      "docs/plan/codex/configuration-binding-recovery-20261021.md",
+      "docs/plan/codex/copilot-lifecycle-confirmation-20261021.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/01-current-state.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/02-target-framework.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/03-courseware-and-practice.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/04-project-history.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/05-delivery-plan.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/06-optics-walkthrough.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/07-review-record.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/08-reaudit-20261021.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/09-implementation-and-verification.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/README.md",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/architecture.json",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/architecture.png",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/implementation-verification.json",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/implementation-workspace-preservation.json",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/reaudit-verification.json",
+      "docs/plan/codex/pbl-lesson-architecture-20261021/workspace-preservation.json",
+      "docs/plan/codex/pbl-teaching-audit-20261021.json",
+      "docs/plan/codex/pbl-teaching-audit-20261021.md",
+      "docs/plan/codex/template-binding-release-20261021.md",
+      "packages/contracts/src/project-history.ts",
+      "packages/contracts/src/tutor-lesson-program.ts",
+      "packages/database/src/schema/project-display.ts",
+      "packages/model-runtime/src/mcp-streamable.test.ts",
+      "packages/model-runtime/src/mcp-streamable.ts",
+      "services/api/src/modules/admin-copilot/copilot.adapters.test.ts",
+      "services/api/src/modules/admin-copilot/copilot.confirmations.test.ts",
+      "services/api/src/modules/admin-copilot/copilot.confirmations.ts",
+      "services/api/src/modules/admin-copilot/copilot.mcp.test.ts",
+      "services/api/src/modules/admin-copilot/copilot.mcp.ts",
+      "services/api/src/modules/ai-tutor/tutor-lesson-program.ts",
+      "services/api/src/modules/projects/project-history.controller.ts",
+      "services/api/src/modules/projects/project-history.service.ts",
+      "services/api/src/modules/projects/project-history.store.postgres.ts",
+      "services/api/src/modules/projects/project-history.store.ts",
+      "services/api/src/modules/templates/configuration-binding.test-fixture.ts",
+      "services/api/src/modules/templates/project-binding-recovery.controller.ts",
+      "services/api/src/modules/templates/project-binding-recovery.service.ts",
+      "services/api/src/modules/templates/project-binding-recovery.test.ts",
+      "services/api/src/modules/templates/teaching-bundle.draft.test.ts",
+      "services/api/src/modules/templates/teaching-bundle.draft.ts",
+      "services/api/src/modules/works/works-lesson-quality.controller.ts",
+      "services/api/src/modules/works/works-lesson-quality.test.ts",
+      "services/api/src/modules/works/works-lesson-quality.ts",
+      "snap.bat",
+      "test_courseware.bat",
+      "test_tutor_chat.bat",
+      "tooling/preview-configuration-bindings.mjs",
+      "tooling/preview-pbl-teaching-repair.mjs",
+      "tooling/test-pbl-teaching-browser.cjs",
+      "tooling/test-project-history-postgres.mjs",
+      "trigger_tutor_experiment.bat",
+      "view_theory.bat"
+    ],
+    "tutorServiceLineCount": 2459
+  },
+  "sources": [
+    {
+      "path": "apps/admin-console/lib/components/TeachingBindingGuide.tsx",
+      "sha256": "31a8edbece34236238a83146fc3f69eb04a6c7c969bbe48d9241bb5ae6a6a433"
+    },
+    {
+      "path": "apps/admin-console/lib/components/TemplateTeamBindingPanel.tsx",
+      "sha256": "3e040135118d7531076930604ba6d4a2dfacffd6e882090a19e80303233c52bc"
+    },
+    {
+      "path": "apps/student-center/features/inspiration/components/FreeExplorePanel.tsx",
+      "sha256": "bb6dfa2a342041cea104eba008afd7718f27ea5c58162903e8bcee9161118814"
+    },
+    {
+      "path": "apps/student-center/features/projects/components/ProjectCard.tsx",
+      "sha256": "3176a73f546ce3faeb78cd85b5439b8c0baaca660155bd5fb7df30ebff0072d0"
+    },
+    {
+      "path": "apps/student-center/features/projects/components/ProjectListScreen.tsx",
+      "sha256": "37dc717907b430896249c22b05ac3fd85328150955dc67c757b5f70db36da6bd"
+    },
+    {
+      "path": "apps/student-center/features/projects/data/api-projects-data-source.test.ts",
+      "sha256": "ddcaf12e4aa214f5505ad053eb51abeb2837971e8ff06d8b8f05879067835fbd"
+    },
+    {
+      "path": "apps/student-center/features/projects/data/api-projects-data-source.ts",
+      "sha256": "e99c1e50847ac5b4ffa0289fb93b87cf340bc64eb237c5481c6efd8dcbf89d46"
+    },
+    {
+      "path": "apps/student-center/features/tutor/TutorPage.tsx",
+      "sha256": "a3fae977c0084fdc8e2064fe8cf2cdc88947e4c7cca48b7de21c5ef84d95b039"
+    },
+    {
+      "path": "apps/student-center/features/tutor/components/ChatThread.tsx",
+      "sha256": "115533aae9f571ad43dff4e50e34d50279bf621cb27730e05050f80da6677e2d"
+    },
+    {
+      "path": "apps/student-center/features/tutor/components/ProjectConversationHistory.tsx",
+      "sha256": "5a8deea1e7ba68406f3495fb552405df1f82bcf284b88778fa455e7ec5cf24bb"
+    },
+    {
+      "path": "apps/student-center/features/tutor/data/dataSource.ts",
+      "sha256": "fc2032050668b8c7a6512e778e3bda341e62a2d719af77fd5f7255dd71a893dd"
+    },
+    {
+      "path": "apps/student-center/features/tutor/data/tutor-exploration.test.ts",
+      "sha256": "f3b1277c05049b3f6b467c91a1f61e9f57a5122d433faa668b4c23f85b0c9f78"
+    },
+    {
+      "path": "apps/student-center/features/tutor/data/tutorApiDataSource.ts",
+      "sha256": "f7c5f0256715fcadf501752ee556aebdc198418a7aafc05d386262712539811a"
+    },
+    {
+      "path": "apps/student-center/features/tutor/hooks/useTutorSession.ts",
+      "sha256": "77425b8e7eddea50334abc5bbbe483246b2395a8754dd8b14a288b771aa7463d"
+    },
+    {
+      "path": "apps/student-center/styles/projects.css",
+      "sha256": "834f9b50f466f8bad476cdf3ca25afe184d5c1964da94e40994b005b2b2295d6"
+    },
+    {
+      "path": "docs/plan/codex/README.md",
+      "sha256": "3a21e9924eff3dcf0eada8f0105491811c67da4ab37a9a1cb1da1acfb25aef96"
+    },
+    {
+      "path": "docs/plan/codex/student-entry-history-repair-20261021.md",
+      "sha256": "1bff35eaf5240b014cf4e3fe62a7d0d0ec04a34e44e1eda5ea2b50394499501b"
+    },
+    {
+      "path": "packages/contracts/src/tutor.ts",
+      "sha256": "072d5fdf9e5891647f7808fa2d7472d7b203778e65a3cd26b6b4a8da080a4e80"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-exploration.test.ts",
+      "sha256": "bc2cb0aca849705ba986eef507b3c3bf986cfa59b2267d222cfdafa2f1fbcedb"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-exploration.ts",
+      "sha256": "b5a38192f744512f9723530346a993957156eb957b585ffe9d65ec86a8165f0a"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-knowledge-access.test.ts",
+      "sha256": "5ae1aa2984d123d8e78df13443d6c5ed29bf172328949e326b57036593e8ba2f"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-knowledge-access.ts",
+      "sha256": "cc87f3d18cbb796f48cdf38b0c8e2d4d2836c50c7da370d65cb2c35372f12eb7"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-opening.store.ts",
+      "sha256": "5b19fc769ebec76dbde8e3424590ccdf10fae64ef42da05c0e4f8683bd38c981"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor-opening.ts",
+      "sha256": "39f614824299a419c0ff6ba0c9ee416b3342b828722af46c048c27973d77961d"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor.controller.ts",
+      "sha256": "f7a9880cae7efc41114bcb12318bc288b3fb65917c36794a2445cc60a39eb84c"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor.runtime-identity.test.ts",
+      "sha256": "2e7fd85be2799cbee7e992db2857083d0e1137c215638f57bdb93555dda9a9a3"
+    },
+    {
+      "path": "services/api/src/modules/ai-tutor/tutor.service.ts",
+      "sha256": "56241c6b81d663f66d1c0bf69cfe3daa8e8f3f263fdfabc0654af8bfee48f0cf"
+    },
+    {
+      "path": "services/api/src/modules/templates/templates-binding.service.ts",
+      "sha256": "5a76369facb179062a1e720a8495de6b81a0bc1243a7854797243d294d18f6d8"
+    },
+    {
+      "path": "tooling/preview-entry-history-repair.mjs",
+      "sha256": "bd23d068b1e012998220324a7b94eefacace9336d36197bac0aa2014fab94a17"
+    },
+    {
+      "path": "tooling/test-configuration-browser.mjs",
+      "sha256": "3122e8a7c08d75b448e3684f42d1ee7d501b4d25d633d3f65f532a5375802fa1"
+    },
+    {
+      "path": "tooling/test-entry-history-browser.cjs",
+      "sha256": "4ed1ae4ef1e7b1a0d16d806fc087d465fc18954bfc1399014c3fd3e0bd8dc944"
+    },
+    {
+      "path": "tooling/test-student-pbl-data.mjs",
+      "sha256": "ded290501a28033e3f80b51e7a5bf001fef254d5529ae560cec5a79e5689c1de"
+    },
+    {
+      "path": "tooling/verify-pbl-capability.mjs",
+      "sha256": "de8714aedfe86115ffcfee57d981097c2473e39289d30f29d57d23c3506bb043"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "services/api/.tmp/entry-history-verification-final.log",
+      "sha256": "dbe204f12dae23ed31330e1b12d8baa414198be8a3231890a39b7bc8aa5dc512"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-final-owner-tests.log",
+      "sha256": "892ea53d19906680604cbdb345c4ca93a130636cb47a00e3adda7156155ba498"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-student-data.log",
+      "sha256": "edbee484a7698bda910157929b5c19dc246857d493e67f1ffd2fe295fbacb73b"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-admin-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-browser-test.log",
+      "sha256": "e26c52dbdf9c987f7503cdcf4d49e4f4f708b058b894d74fb9da980369e251ea"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-configuration-browser.log",
+      "sha256": "c6a1a1452a9637e2eebfabee89854c916aa594e1bed5382376d540d195b71fad"
+    },
+    {
+      "path": "services/api/.tmp/entry-history-docs.log",
+      "sha256": "8747bfab71133beba0c3cc8a55fb8ecee3a0aa03f0d905929f78e3e5fd0f0dff"
+    }
+  ],
+  "productionBeforeRelease": {
+    "actions": "read_only",
+    "deployed": false,
+    "bindingActivated": false,
+    "projectRecoveryPerformed": false,
+    "projectCount": 18,
+    "activeCount": 18,
+    "explorationSourcedCount": 15,
+    "duplicateExplorationSourceGroups": 0,
+    "displayPreferenceMigrationPresent": false
+  },
+  "releaseReport": "../../admin/release-study-remote-pbl-20261021.json",
+  "sourceHashScope": "Original local isolation verification; final merged deployment hashes are in releaseReport."
+}

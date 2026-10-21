@@ -5,7 +5,8 @@ import { adminTeamVersions } from '@qitu/database';
 import type { AdminTeamConfig } from '@qitu/contracts';
 import type { LearningPlanStore, LearningProjectRecord } from '../learning-plan/learning-plan.store';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
-import type { TeamRuntimeService } from '../team-runtime/team-runtime.service';
+import { sanitizeTeamClientContext } from '../team-runtime/team-runtime.service';
+import type { StartTeamRunInput, TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import type { ModelCompletionRequest, ModelRuntimeModelSelection } from '../model-registry/model-gateway.types';
 import { assistantRuntimeFixture } from '../platform-registry/assistant-runtime.test-fixture';
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
@@ -54,7 +55,8 @@ function fixture(frozen = false) {
   const delegations: Array<Parameters<TeamRuntimeService['delegateIfAvailable']>[2]> = [];
   let starts = 0;
   const runtime = {
-    startRun: async () => {
+    startRun: async (input: StartTeamRunInput) => {
+      sanitizeTeamClientContext(input.context);
       starts += 1;
       return { id: 'synthetic-run', leaderAgentId: teaching.teaching.teamVersion.leaderAssistantId };
     },

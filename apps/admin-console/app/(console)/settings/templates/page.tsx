@@ -900,7 +900,7 @@ export default function AdminTemplatesPage() {
               </div>
               <p style={{ margin: '8px 0 0', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
                 {editingTemplate.pblSpec
-                  ? `解耦架构优势：本模板采用「教学活动编排（16 课时轨道）」与「平台安全治理策略（Governance Policy）」解耦架构。阶段、门禁判定（如 TheoryMastered 强力阻断物理实践）与导师角色由底层策略集中把关，教研人员无需重复维护冗余阶段表单，直接由 16 课时时间轴驱动教学执行。`
+                  ? '在下方查看每节课的任务与学习证据，在教学编排中安排导师、教学方法和资料。课时完成不代表通过理论核验；实践仍须满足服务端门禁。'
                   : editingTemplate.sourceVersion !== null
                   ? `以下阶段设计读取自最新版本 ${editingTemplate.sourceVersion}；保存会生成新版本（历史版本冻结不可改）。`
                   : '该模板还没有已保存的版本；添加阶段并保存后会生成第一个版本。'}
@@ -1301,7 +1301,7 @@ export default function AdminTemplatesPage() {
                           className="admin-template-info-val"
                           style={{ color: '#dc2626', fontWeight: 600 }}
                         >
-                          TheoryMastered（第 8 课时）
+                          理论核验通过后开放实践
                         </span>
                       </div>
                     </>

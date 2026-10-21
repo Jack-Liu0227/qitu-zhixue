@@ -50,10 +50,8 @@ export async function prepareTutorLessonActivities(input: {
         fresh.role, input.registry!.isModelAvailable(fresh.role.modelByPurpose.dialogue!)) };
     },
     verifyEvidence: (refs) => verifyLessonEvidence(input.knowledgeAccess, refs),
-    acceptQuestion: (candidate, key, verify) => {
-      if (!input.questions) unavailable();
-      return input.questions.acceptQuestionCandidate(actor, scope, candidate, key, verify);
-    },
+    ...(assessmentObjective && input.questions ? { acceptQuestion: (candidate, key, verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>) =>
+      input.questions!.acceptQuestionCandidate(actor, scope, candidate, key, verify) } : {}),
     proposeOptics: (candidate, key) => {
       if (!input.experiments) unavailable();
       return input.experiments.propose(input.studentId, scope, candidate, key);

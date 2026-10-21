@@ -416,6 +416,37 @@ test('startRun expires a stale zero-work tutor run before enforcing mentor uniqu
     'stale empty run must be cancelled so the uniqueness slot is released');
 });
 
+test('startRun expires a stale zero-work manual verification run before enforcing mentor uniqueness', async () => {
+  const stale = fullRunRow({
+    id: 'run-manual-stale',
+    status: 'queued',
+    trigger: 'manual.verification',
+    createdAt: new Date('2026-10-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-10-01T00:00:00.000Z'),
+    leaseExpiresAt: null,
+  });
+  const created = fullRunRow({ id: 'run-manual-new', status: 'queued', context: { phase: 'exploration' } });
+  const queues = new Map<unknown, unknown[][]>([
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [tutorSessions, [[{ id: 'session-new', studentId: 'stu-1', projectId: null }]]],
+    [agentTeamRuns, [[], [stale], [created]]],
+    [agentTeamTasks, [[]]],
+    [agentTeamMessages, [[]]],
+  ]);
+  const { db, probe } = fakeDbWithProbe(queues);
+  const service = new TeamRuntimeService(db, auditStub, outboxStub);
+
+  const view = await service.startRun(STU, {
+    leaderAgentId: 'leader-a',
+    studentUserId: 'stu-1',
+    tutorSessionId: 'session-new',
+    idempotencyKey: 'stale-manual-run',
+  });
+
+  assert.equal(view.id, 'run-manual-new');
+  assert.ok(probe.updates.some((patch) => patch.status === 'cancelled'));
+});
+
 test('startRun reconciles a task-bearing run whose tasks already succeeded before enforcing mentor uniqueness', async () => {
   const stale = fullRunRow({
     id: 'run-finished-work',

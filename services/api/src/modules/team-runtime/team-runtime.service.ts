@@ -57,6 +57,8 @@ export type TeamRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'can
 export type TeamTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 /** A zero-work tutor run is an abandoned handshake, not a long-lived mentor. */
 export const EMPTY_TEAM_RUN_MAX_AGE_MS = 60 * 1000;
+/** Manual verification runs are ephemeral and must never hold a student's mentor slot. */
+export const MANUAL_VERIFICATION_RUN_MAX_AGE_MS = 60 * 1000;
 
 /* ==========================================================================
  * PBL 阶段门禁 —— 服务端强制层
@@ -1774,9 +1776,13 @@ export class TeamRuntimeService {
       ? configured
       : EMPTY_TEAM_RUN_MAX_AGE_MS;
     const cutoff = new Date(now.getTime() - retentionMs);
-    const candidates = activeRuns.filter((run) => run.trigger === 'tutor.turn'
-      && run.updatedAt < cutoff
-      && (run.leaseExpiresAt === null || run.leaseExpiresAt < now));
+    const manualVerificationCutoff = new Date(now.getTime() - MANUAL_VERIFICATION_RUN_MAX_AGE_MS);
+    const candidates = activeRuns.filter((run) => {
+      const expired = run.trigger === 'manual.verification'
+        ? run.updatedAt < manualVerificationCutoff
+        : run.trigger === 'tutor.turn' && run.updatedAt < cutoff;
+      return expired && (run.leaseExpiresAt === null || run.leaseExpiresAt < now);
+    });
     if (candidates.length === 0) return activeRuns;
 
     const ids = candidates.map((run) => run.id);
@@ -1811,7 +1817,7 @@ export class TeamRuntimeService {
           previousStatus: run.status,
           trigger: run.trigger,
           createdAt: run.createdAt.toISOString(),
-          retentionMs,
+          retentionMs: run.trigger === 'manual.verification' ? MANUAL_VERIFICATION_RUN_MAX_AGE_MS : retentionMs,
         },
       });
       this.logger.warn(`已回收无任务 Team Run：run=${run.id}，student=${studentUserId}`);
