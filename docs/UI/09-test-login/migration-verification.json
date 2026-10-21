@@ -1,0 +1,10 @@
+{
+  "migration": "0045",
+  "businessRowsCopied": 0,
+  "forward": "passed",
+  "rollback": "passed",
+  "forwardAgain": "passed",
+  "sourceLedgerCount": 47,
+  "fixtureBaselineLedgerCount": 46,
+  "finalLedgerCount": 47
+}

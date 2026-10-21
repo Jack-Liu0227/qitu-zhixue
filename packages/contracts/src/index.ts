@@ -1,11 +1,18 @@
 // `Role` 与登录契约同源定义在 `./auth`，此处仅做 re-export。
 export * from './auth.js';
+export * from './visual-assets.js';
+export * from './display.js';
+export * from './admin-copilot.js';
+export * from './runtime-skills.js';
+export * from './runtime-tool-catalog.js';
+export * from './tool-binding-migration.js';
 
 export * from './project.js';
 export * from './exploration.js';
 export * from './tutor.js';
 export * from './realtime.js';
 export * from './growth.js';
+export * from './tutor-expression-projection.js';
 export * from './reminder.js';
 export * from './platform.js';
 export * from './parent.js';
@@ -79,3 +86,9 @@ export interface ReadinessResponse {
     redis: DependencyProbe;
   };
 }
+export * from './tutor-history.js';
+export * from './tutor-learning.js';
+export * from './project-learning.js';
+
+export * from './learning-session-progress.js';
+export * from './learning-session-evidence.js';

@@ -1,0 +1,10 @@
+.message-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.message-list { scroll-margin-top: 16px; }
+.project-title h2, .project-summary-text { overflow-wrap: anywhere; }
+@media (max-width: 620px) {
+  .message-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .message-summary .summary-card { padding: 10px 12px; min-height: 72px; gap: 4px; }
+  .message-summary .summary-card strong { font-size: 1.35rem; }
+  .summary-card-head { font-size: .8rem; margin: 0; }
+  .messages-grid { grid-template-columns: minmax(0, 1fr); }
+}

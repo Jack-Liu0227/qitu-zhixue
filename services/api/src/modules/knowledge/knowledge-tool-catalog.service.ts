@@ -1,3 +1,4 @@
+import { RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { runtimeMcpServers } from '@qitu/database';
 import { KnowledgeCenterService } from './knowledge-center.service';
@@ -39,10 +40,8 @@ export class KnowledgeToolCatalogService {
     if (section === 'platformTools') {
       if (id !== 'project-knowledge') throw new NotFoundException('工具未注册');
       return {
-        tools: this.knowledge.tools('', '').map(({ name, description, inputSchema }) => ({
-          name,
-          description,
-          inputSchema,
+        tools: RUNTIME_TOOL_CATALOG.filter(tool => tool.invocation === 'model_tool').map(tool => ({
+          name: tool.id, description: tool.description, inputSchema: tool.inputSchema ?? null,
         })),
         source: 'runtime',
         fetchedAt: new Date().toISOString(),

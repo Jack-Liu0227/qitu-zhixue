@@ -1,34 +1,18 @@
-import companion from '../assets/assistant/qitu-companion.png';
+'use client';
 
-/** Shared artwork is bundled per application so Next preserves each basePath. */
-export function RobotMascot({
-  size = 96,
-  mood = 'happy',
-  decorative = false,
-  className = '',
-}: {
-  size?: number;
-  mood?: 'happy' | 'thinking' | 'cheering';
-  decorative?: boolean;
-  className?: string;
+import { getVisualAsset } from '@qitu/contracts';
+import { VisualAsset } from './visual-assets';
+
+export function RobotMascot({ size = 96, mood = 'happy', decorative = false, className = '' }: {
+  size?: number; mood?: 'happy' | 'thinking' | 'cheering'; decorative?: boolean; className?: string;
 }) {
-  return (
-    <img
-      className={`qitu-robot qitu-robot-${mood} ${className}`.trim()}
-      src={typeof companion === 'string' ? companion : companion.src}
-      width={size}
-      height={size}
-      style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0, verticalAlign: 'middle' }}
-      alt={decorative ? '' : '启途 AI 智学搭档'}
-      aria-hidden={decorative || undefined}
-      draggable={false}
-    />
-  );
+  const assetId = mood === 'thinking' ? 'emotion-thinking-v1'
+    : mood === 'cheering' ? 'emotion-celebrate-v1' : 'avatar-general-v1';
+  return <VisualAsset assetId={assetId} size={size} alt="启途 AI 智学搭档" decorative={decorative} className={className} />;
 }
 
-/** Preserve Admin-selected custom avatars; only replace the legacy robot mark. */
+/** Legacy emoji and URLs render the library default. */
 export function AssistantGlyph({ value, size = 24 }: { value?: string | null; size?: number }) {
-  return !value || value.replace(/\uFE0F/g, '').trim() === '🤖'
-    ? <RobotMascot size={size} decorative />
-    : <span aria-hidden="true">{value}</span>;
+  const asset = getVisualAsset(value);
+  return <VisualAsset assetId={asset?.usages.includes('avatar') ? asset.id : 'avatar-general-v1'} size={size} />;
 }

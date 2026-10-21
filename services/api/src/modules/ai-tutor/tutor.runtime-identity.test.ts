@@ -11,8 +11,10 @@ import { assistantRuntimeFixture } from '../platform-registry/assistant-runtime.
 import { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import { QituSDKFactory } from '../qitu-sdk/qitu-sdk.service';
 import { TutorService } from './tutor.service';
+import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
+import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 
-function fixture() {
+function fixture(frozen = false) {
   const h = assistantRuntimeFixture();
   // A tempting old default exists, but it must not supply this phase's identity.
   h.configs.push(h.runtimeConfig('qitu-learning-partner'));
@@ -32,10 +34,22 @@ function fixture() {
     pblSpec: { phases }, enabled: true, createdBy: null, createdAt: new Date(),
   };
   h.extraRows.set(adminTeamVersions, [team]);
+  const teaching = teachingContextFixture(h.assistant.id);
   const store = {
+    ...(frozen ? teaching.store : {}),
     findProject: async () => project, listProjectsByStudent: async () => [project], listPlansByStudent: async () => [],
   } as unknown as LearningPlanStore;
-  const binding = { findFrozenSnapshotForProject: async () => ({ teamVersionId: team.id }) } as unknown as TemplateBindingService;
+  if (frozen) store.listPlansByStudent = teaching.store.listPlansByStudent;
+  const binding = { findFrozenSnapshotForProject: async () => ({
+    projectId: project.id,
+    templateVersionId: project.templateVersionId,
+    bindingId: 'synthetic-binding',
+    teamVersionId: team.id,
+    bindingHash: 'synthetic-binding-hash',
+    bundleDigest: frozen ? 'synthetic-bundle-digest' : null,
+    boundAt: new Date().toISOString(),
+    backfilled: false,
+  }), getFrozenTeachingBundle: async () => teaching.teaching } as unknown as TemplateBindingService;
   const traces: Array<Parameters<TeamRuntimeService['recordEvent']>[0]> = [];
   let starts = 0;
   const runtime = {
@@ -69,7 +83,7 @@ function fixture() {
   const run = async (key = 'synthetic-turn') => {
     for await (const _event of tutor.runTurn(session, { content: 'Compare predictions', idempotencyKey: key, actorId: project.studentId })) { /* drain */ }
   };
-  return { ...h, tutor, session, run, calls, traces, phases, team, starts: () => starts };
+  return { ...h, tutor, session, run, calls, traces, phases, team, teaching, starts: () => starts };
 }
 
 test('frozen phase identity drives real Tutor + SDK + gateway model, prompt, skills, tools, author and trace', async () => {
@@ -115,10 +129,63 @@ test('missing phase or assigned non-member refuses the turn before any model or 
 });
 
 test('current assistant revocation blocks new turns rather than choosing intake or global partner', async () => {
-  const h = fixture();
+  for (const frozen of [false, true]) {
+    const h = fixture(frozen);
+    await h.run();
+    h.assistant.enabled = false;
+    await assert.rejects(h.run('after-revocation'), ConflictException);
+    assert.equal(h.calls.length, 1);
+    assert.equal(h.starts(), 1);
+  }
+});
+
+test('bundle route shares actual pending lesson with shell and pins instructions/model after Admin edits', async () => {
+  const h = fixture(true);
+  h.teaching.completed.add('plan-frozen:lesson-1');
+  h.teaching.setPending(2);
+  h.phases[0]!.assignedAssistantId = 'obsolete-stage-mentor';
+  h.assistant.instructions = 'CHANGED_ADMIN_PROMPT_MUST_NOT_REPLACE_FROZEN';
+  h.assistant.modelProviderId = 'other-provider';
+  const context = await h.tutor.getProjectContext('synthetic-project', 'synthetic-owner');
+  assert.equal(context?.lesson?.learningSessionId, 'plan-frozen:lesson-2');
+  assert.equal(context?.lesson?.planRevision, 7);
+  assert.equal(context?.currentTask?.id, 'plan-frozen:objective-2');
+  assert.equal(context?.team?.assistantId, h.assistant.id);
   await h.run();
-  h.assistant.enabled = false;
-  await assert.rejects(h.run('after-revocation'), ConflictException);
-  assert.equal(h.calls.length, 1);
-  assert.equal(h.starts(), 1);
+  assert.deepEqual(h.calls[0]?.selection, { providerId: 'chosen-provider', modelId: 'same-model-name' });
+  assert.match(String(h.calls[0]?.request.messages[0]?.content), /FROZEN_TEACHING_INSTRUCTION/);
+  assert.doesNotMatch(String(h.calls[0]?.request.messages[0]?.content), /CHANGED_ADMIN_PROMPT_MUST_NOT_REPLACE_FROZEN/);
+  assert.equal(h.traces[0]?.payload?.learningSessionId, context?.lesson?.learningSessionId);
+  assert.equal(h.traces[0]?.payload?.planRevision, 7);
+  assert.equal(h.session.turns.find((turn) => turn.role === 'assistant')?.author?.id, context?.team?.assistantId);
+  assert.ok(h.session.turns.some((turn) => turn.blocks.some((block) => block.kind === 'text' && block.text.includes('资料尚未核验'))));
+  assert.equal(h.calls[0]?.request.tools, undefined, 'unscoped knowledge tools are not executable');
+});
+
+test('frozen skill/tool ceilings survive additions while current revocation removes access', async () => {
+  const h = fixture(true);
+  const runtime = await h.service.getAssistantRuntime(h.assistant.id);
+  const role = h.teaching.teaching.roles[0]!;
+  role.skills = runtime.skills.map((skill) => ({ canonicalId: skill.id, version: skill.version!, packageDigest: skill.contentHash }));
+  role.tools = runtime.tools.map((tool) => ({ toolId: tool.id, handlerVersion: tool.version, schemaDigest: teachingValueDigest(tool), mcpServerId: null }));
+  await h.run();
+  assert.deepEqual(h.traces[0]?.payload?.skillIds, ['tutor-guided-learning']);
+  assert.deepEqual(h.traces[0]?.payload?.toolIds, ['tutor.context_packet']);
+  h.assistant.enabledSkills = [];
+  h.assistant.toolIds = [];
+  await h.run('capabilities-revoked');
+  assert.deepEqual(h.traces[1]?.payload?.skillIds, []);
+  assert.deepEqual(h.traces[1]?.payload?.toolIds, []);
+});
+
+test('frozen skill mismatch, model revocation and missing bundle refuse requests before model invocation', async () => {
+  for (const mode of ['skill', 'model', 'bundle'] as const) {
+    const h = fixture(true);
+    if (mode === 'skill') h.teaching.teaching.roles[0]!.skills = [{ canonicalId: 'tutor-guided-learning', version: 'stale', packageDigest: 'stale' }];
+    if (mode === 'model') h.teaching.teaching.roles[0]!.modelByPurpose = { dialogue: { modelProviderId: 'revoked-provider', modelId: 'same-model-name', policyVersion: '1' } };
+    if (mode === 'bundle') h.teaching.teaching.templateVersionId = 'other-template-version';
+    await assert.rejects(h.run(), ConflictException);
+    assert.equal(h.calls.length, 0);
+    assert.equal(h.starts(), 0);
+  }
 });

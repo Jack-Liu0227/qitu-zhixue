@@ -1,11 +1,12 @@
 import { computeStageProgress } from '../projects/intent-confirmation.state-machine';
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import type { AuditTransaction } from '../../common/audit/audit.service';
 import {
   learningModules,
   learningObjectives,
   learningPlans,
   learningSessions,
+  learningSessionProgress,
   masteryAttempts,
   masteryEvents,
   masteryObjectiveMappings,
@@ -31,6 +32,8 @@ import type {
 import type { QuestionDifficulty, QuestionKind } from '@qitu/ai-client';
 import {
   LearningPlanStore,
+  assertConfirmedProjectPlan,
+  assertPendingAssessmentBoundary,
   planObjectiveMappings,
   LearningPlanStoreConflictError,
   PendingQuestionConflictError,
@@ -49,6 +52,7 @@ import {
   type PlanBundle,
   type PlanRecord,
   type SessionRecord,
+  type SessionCompletionRecord,
 } from './learning-plan.store';
 import { CURRICULUM_TEMPLATE_VERSION } from './plan-generator';
 
@@ -86,9 +90,57 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     super();
   }
 
+  async withConfirmationTransaction<T>(tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    if (tx) return work(new PostgresLearningPlanStore(tx as unknown as Database, true));
+    return this.commitAssessment((transaction) => work(new PostgresLearningPlanStore(transaction as unknown as Database, true)));
+  }
+  async attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void> {
+    assertConfirmedProjectPlan(project, bundle);
+    await this.commitAssessment(async (tx) => {
+      const [existing] = await tx.select().from(projectsTable).where(eq(projectsTable.id, project.id)).for('update');
+      if (!existing || existing.studentUserId !== project.studentId || existing.templateVersionId !== project.templateVersionId) {
+        throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_SCOPE_INVALID');
+      }
+      const active = await tx.select({ id: learningPlans.id }).from(learningPlans).where(and(
+        eq(learningPlans.projectId, project.id), eq(learningPlans.status, 'active'),
+      )).limit(1);
+      if (active.length) throw new LearningPlanStoreConflictError('PROJECT_ALREADY_HAS_ACTIVE_PLAN');
+      await new PostgresLearningPlanStore(tx as unknown as Database, true).createPlan(bundle);
+    });
+  }
+
+  async listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]> {
+    return this.db.select().from(learningSessionProgress).where(and(eq(learningSessionProgress.planId, planId), eq(learningSessionProgress.planRevision, planRevision)));
+  }
+  async findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null> {
+    const [row] = await this.db.select().from(learningSessionProgress).where(eq(learningSessionProgress.idempotencyKey, key)).limit(1);
+    return row ?? null;
+  }
+  async saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    await this.commitAssessment(async (tx) => { await tx.insert(learningSessionProgress).values(record); await commit(tx); });
+  }
+  async withSessionProgressTransaction<T>(studentId: string, planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T> {
+    return this.commitAssessment(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify(['mastery', studentId])}, 0))`);
+      await tx.select({ id: learningPlans.id }).from(learningPlans).where(eq(learningPlans.id, planId)).for('update');
+      return work(new PostgresLearningPlanStore(tx as unknown as Database, true), tx);
+    });
+  }
+  async finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    return this.commitAssessment(async (tx) => {
+      const rows = await tx.update(learningPlans).set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() }).where(and(
+        eq(learningPlans.id, planId), eq(learningPlans.studentUserId, studentId), eq(learningPlans.projectId, projectId),
+        eq(learningPlans.version, expectedVersion), eq(learningPlans.status, 'active'),
+      )).returning({ id: learningPlans.id });
+      if (!rows.length) return false;
+      await commit?.(tx);
+      return true;
+    });
+  }
+
   async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
     return this.commitAssessment(async (tx) => {
-      const rows = await tx.update(projectsTable).set({ status: next, ...computeStageProgress(next) }).where(and(
+      const rows = await tx.update(projectsTable).set({ status: next, ...computeStageProgress(next), ...(next === 'completed' ? { completedAt: new Date() } : {}) }).where(and(
         eq(projectsTable.id, projectId), eq(projectsTable.studentUserId, studentId), eq(projectsTable.status, expected),
       )).returning({ id: projectsTable.id });
       if (!rows.length) return false;
@@ -134,53 +186,46 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       : withTransaction(this.db, work);
   }
 
-  async findPlanBySignature(
+  override async findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
-    weeks: 4 | 8,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
     templateVersion: string,
     signatureKey?: string,
   ): Promise<PlanBundle | null> {
-    // 签名键（含排课形状）优先；未传时退回旧签名，供升级前落库的草稿命中。
-    // 幂等键在 `learning_plans_idempotency_unique_idx` 上唯一，所以按它取最多一行。
-    const [plan] = await this.db
-      .select()
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.studentUserId, studentUserId),
-          eq(learningPlans.interest, interest),
-          eq(learningPlans.weeks, weeks),
-          eq(learningPlans.templateVersionId, templateVersion),
-          ...(signatureKey === undefined ? [] : [eq(learningPlans.idempotencyKey, signatureKey)]),
-        ),
-      )
-      .orderBy(asc(learningPlans.createdAt))
-      .limit(1);
-    if (plan === undefined) return null;
-    return this.assembleBundle(this.db, plan);
+    const [plan] = await this.db.select().from(learningPlans).where(and(
+      eq(learningPlans.studentUserId, studentUserId),
+      eq(learningPlans.interest, interest),
+      eq(learningPlans.lessonCount, lessonCount),
+      eq(learningPlans.lessonMinutes, lessonMinutes),
+      eq(learningPlans.templateVersionId, templateVersion),
+      ...(signatureKey === undefined ? [] : [eq(learningPlans.idempotencyKey, signatureKey)]),
+    )).orderBy(asc(learningPlans.createdAt)).limit(1);
+    return plan === undefined ? null : this.assembleBundle(this.db, plan);
   }
 
   async createPlan(bundle: PlanBundle): Promise<void> {
     try {
-      await withTransaction(this.db, async (tx) => {
+      await this.commitAssessment(async (tx) => {
         const schoolId = await this.studentSchoolId(bundle.plan.studentUserId);
         await ensureCurriculumTemplate(tx, bundle.plan.templateVersion);
         await tx.insert(learningPlans).values({
           id: bundle.plan.id,
           studentUserId: bundle.plan.studentUserId,
           schoolId,
-          projectId: null,
+          projectId: bundle.plan.projectId,
           interest: bundle.plan.interest,
           goal: bundle.plan.goal,
-          weeks: bundle.plan.weeks,
+          lessonCount: bundle.plan.lessonCount,
+          lessonMinutes: bundle.plan.lessonMinutes,
           minutesPerSession: bundle.plan.minutesPerSession,
           templateVersionId: bundle.plan.templateVersion,
           status: bundle.plan.status,
           version: bundle.plan.version,
           idempotencyKey: bundle.plan.idempotencyKey,
-          confirmedAt: null,
-          completedAt: null,
+          confirmedAt: bundle.plan.confirmedAt,
+          completedAt: bundle.plan.completedAt,
           createdAt: bundle.plan.createdAt,
           updatedAt: bundle.plan.updatedAt,
         });
@@ -190,7 +235,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               id: module.id,
               planId: module.planId,
               name: module.name,
-              weekIndex: module.weekIndex,
+              lessonIndex: module.lessonIndex,
               objective: module.objective,
               ordinal: module.ordinal,
             })),
@@ -217,6 +262,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
               planId: session.planId,
               moduleId: session.moduleId,
               index: session.index,
+              lessonIndex: session.lessonIndex,
               title: session.title ?? null,
               blocks: session.blocks,
               theoryObjectiveIds: [...session.theoryObjectiveIds],
@@ -230,8 +276,9 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
+        const scheduleIdentity = `lesson-${bundle.plan.lessonCount}`;
         throw new LearningPlanStoreConflictError(
-          `计划签名冲突：${bundle.plan.studentUserId}/${bundle.plan.interest}/${bundle.plan.weeks}`,
+          `计划签名冲突：${bundle.plan.studentUserId}/${bundle.plan.interest}/${scheduleIdentity}`,
         );
       }
       throw error;
@@ -436,7 +483,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
       });
   }
 
-  async listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]> {
+  async listAttempts(studentUserId: string, objectiveId: string, options: { includeFormative?: boolean } = {}): Promise<AttemptRecord[]> {
     const rows = await this.db
       .select()
       .from(masteryAttempts)
@@ -444,6 +491,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         and(
           eq(masteryAttempts.studentUserId, studentUserId),
           eq(masteryAttempts.objectiveId, objectiveId),
+          options.includeFormative ? undefined : ne(masteryAttempts.assessmentType, 'formative'),
         ),
       )
       .orderBy(asc(masteryAttempts.createdAt));
@@ -470,6 +518,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   }
 
   async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    if (input.attempt.assessmentType === 'formative') throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
     await this.commitAssessment(async (tx) => {
       await tx.insert(masteryAttempts).values({
         id: input.attempt.id,
@@ -693,30 +742,33 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
     return row === undefined ? null : mapPendingQuestion(row);
   }
 
-  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+  async createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
     try {
-      await this.db.insert(pendingQuestions).values({
-        id: record.id,
-        schoolId: record.schoolId,
-        studentUserId: record.studentUserId,
-        planId: record.planId,
-        sessionId: record.sessionId,
-        objectiveId: record.objectiveId,
-        questionType: record.questionType,
-        prompt: record.prompt,
-        options: record.options.map((option) => ({ ...option })),
-        expectedAnswer: record.expectedAnswer,
-        explanation: record.explanation,
-        difficulty: record.difficulty,
-        assessmentType: record.assessmentType,
-        status: record.status,
-        attempt: record.attempt,
-        hintsUsed: record.hintsUsed,
-        idempotencyKey: record.idempotencyKey,
-        askedAt: record.askedAt,
-        answeredAt: record.answeredAt,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
+      await this.commitAssessment(async (tx) => {
+        await tx.insert(pendingQuestions).values({
+          id: record.id,
+          schoolId: record.schoolId,
+          studentUserId: record.studentUserId,
+          planId: record.planId,
+          sessionId: record.sessionId,
+          objectiveId: record.objectiveId,
+          questionType: record.questionType,
+          prompt: record.prompt,
+          options: record.options.map((option) => ({ ...option })),
+          expectedAnswer: record.expectedAnswer,
+          explanation: record.explanation,
+          difficulty: record.difficulty,
+          assessmentType: record.assessmentType,
+          status: record.status,
+          attempt: record.attempt,
+          hintsUsed: record.hintsUsed,
+          idempotencyKey: record.idempotencyKey,
+          askedAt: record.askedAt,
+          answeredAt: record.answeredAt,
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        });
+        await commit?.(tx);
       });
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -729,6 +781,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
   }
 
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    assertPendingAssessmentBoundary(input);
     return this.commitAssessment(async (tx) => {
       const claimed = await tx
         .update(pendingQuestions)
@@ -737,6 +790,7 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
           and(
             eq(pendingQuestions.id, input.questionId),
             eq(pendingQuestions.status, 'awaiting'),
+            input.attempt.assessmentType === 'formative' ? eq(pendingQuestions.assessmentType, 'formative') : ne(pendingQuestions.assessmentType, 'formative'),
           ),
         )
         .returning({ id: pendingQuestions.id });
@@ -758,36 +812,14 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
         userAnswer: input.attempt.userAnswer,
         createdAt: input.attempt.createdAt,
       });
-      await tx
-        .insert(masteryRecords)
-        .values({
-          id: input.mastery.id,
-          studentUserId: input.mastery.studentUserId,
-          planId: input.mastery.planId,
-          objectiveId: input.mastery.objectiveId,
-          knowledgePointId: input.mastery.knowledgePointId ?? null,
-          courseVersion: input.mastery.courseVersion ?? null,
-          knowledgeType: input.mastery.knowledgeType,
-          status: input.mastery.status,
-          masteryBasisPoints: input.mastery.masteryBasisPoints,
-          thresholdBasisPoints: input.mastery.thresholdBasisPoints,
-          qualitativeMastered: input.mastery.qualitativeMastered,
-          consecutiveCorrect: input.mastery.consecutiveCorrect,
-          consecutiveWrong: input.mastery.consecutiveWrong,
-          intervalIndex: input.mastery.intervalIndex,
-          nextReviewAt: input.mastery.nextReviewAt,
-          reviewCount: input.mastery.reviewCount,
-          lapseCount: input.mastery.lapseCount,
-          sourceEventId: input.mastery.sourceEventId ?? null,
-          sourceSequence: input.mastery.sourceSequence ?? null,
-          assessmentVersion: input.mastery.assessmentVersion ?? null,
-          validFrom: input.mastery.validFrom ?? null,
-          updatedAt: input.mastery.updatedAt,
-        })
-        .onConflictDoUpdate({
-          target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
-          set: {
+      if (input.mastery !== null) {
+        await tx
+          .insert(masteryRecords)
+          .values({
+            id: input.mastery.id,
+            studentUserId: input.mastery.studentUserId,
             planId: input.mastery.planId,
+            objectiveId: input.mastery.objectiveId,
             knowledgePointId: input.mastery.knowledgePointId ?? null,
             courseVersion: input.mastery.courseVersion ?? null,
             knowledgeType: input.mastery.knowledgeType,
@@ -806,8 +838,32 @@ export class PostgresLearningPlanStore extends LearningPlanStore {
             assessmentVersion: input.mastery.assessmentVersion ?? null,
             validFrom: input.mastery.validFrom ?? null,
             updatedAt: input.mastery.updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: [masteryRecords.studentUserId, masteryRecords.objectiveId],
+            set: {
+              planId: input.mastery.planId,
+              knowledgePointId: input.mastery.knowledgePointId ?? null,
+              courseVersion: input.mastery.courseVersion ?? null,
+              knowledgeType: input.mastery.knowledgeType,
+              status: input.mastery.status,
+              masteryBasisPoints: input.mastery.masteryBasisPoints,
+              thresholdBasisPoints: input.mastery.thresholdBasisPoints,
+              qualitativeMastered: input.mastery.qualitativeMastered,
+              consecutiveCorrect: input.mastery.consecutiveCorrect,
+              consecutiveWrong: input.mastery.consecutiveWrong,
+              intervalIndex: input.mastery.intervalIndex,
+              nextReviewAt: input.mastery.nextReviewAt,
+              reviewCount: input.mastery.reviewCount,
+              lapseCount: input.mastery.lapseCount,
+              sourceEventId: input.mastery.sourceEventId ?? null,
+              sourceSequence: input.mastery.sourceSequence ?? null,
+              assessmentVersion: input.mastery.assessmentVersion ?? null,
+              validFrom: input.mastery.validFrom ?? null,
+              updatedAt: input.mastery.updatedAt,
+            },
+          });
+      }
       if (input.masteryEvent !== null) {
         await tx.insert(masteryEvents).values({
           id: input.masteryEvent.id,
@@ -891,8 +947,8 @@ async function ensureCurriculumTemplate(
       id: CURRICULUM_TEMPLATE_ID,
       schoolId: null,
       slug: 'curriculum-plan',
-      title: '4/8 周学习计划课程模板',
-      summary: '兴趣 → 4/8 周计划的平台共享课程模板（理论学习 + 实践交替）。',
+      title: '按课时学习计划课程模板',
+      summary: '兴趣 → 按课时生成学习计划（理论学习 + 实践交替）。',
       status: 'published',
     })
     .onConflictDoNothing({ target: projectTemplates.id });
@@ -911,13 +967,18 @@ async function ensureCurriculumTemplate(
 }
 
 function mapPlan(row: PlanRow): PlanRecord {
+  if (row.lessonCount === null || row.lessonCount === undefined
+    || (row.lessonMinutes !== 60 && row.lessonMinutes !== 120)) {
+    throw new Error(`Learning plan ${row.id} does not contain a valid lesson schedule`);
+  }
   return {
     id: row.id,
     studentUserId: row.studentUserId,
     projectId: row.projectId,
     interest: row.interest,
     goal: row.goal,
-    weeks: row.weeks === 8 ? 8 : 4,
+    lessonCount: row.lessonCount,
+    lessonMinutes: row.lessonMinutes,
     minutesPerSession: row.minutesPerSession,
     templateVersion: row.templateVersionId ?? CURRICULUM_TEMPLATE_VERSION,
     status: row.status as LearningPlanStatus,
@@ -931,11 +992,14 @@ function mapPlan(row: PlanRow): PlanRecord {
 }
 
 function mapModule(row: ModuleRow): ModuleRecord {
+  if (row.lessonIndex === null || row.lessonIndex === undefined || row.lessonIndex < 1) {
+    throw new Error(`Learning module ${row.id} does not contain a valid lessonIndex`);
+  }
   return {
     id: row.id,
     planId: row.planId,
     name: row.name,
-    weekIndex: row.weekIndex,
+    lessonIndex: row.lessonIndex,
     objective: row.objective,
     ordinal: row.ordinal,
   };
@@ -955,11 +1019,15 @@ function mapObjective(row: ObjectiveRow): ObjectiveRecord {
 }
 
 function mapSession(row: SessionRow): SessionRecord {
+  if (row.lessonIndex === null || row.lessonIndex === undefined || row.lessonIndex < 1) {
+    throw new Error(`Learning session ${row.id} does not contain a valid lessonIndex`);
+  }
   return {
     id: row.id,
     planId: row.planId,
     moduleId: row.moduleId,
     index: row.index,
+    lessonIndex: row.lessonIndex,
     title: row.title,
     blocks: (row.blocks as SessionBlock[]) ?? [],
     theoryObjectiveIds: row.theoryObjectiveIds ?? [],

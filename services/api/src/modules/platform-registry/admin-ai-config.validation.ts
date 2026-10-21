@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   GATE_CONDITION_CORE,
+  getVisualAsset,
   GATE_CONDITION_REGISTRY,
   deriveGateConditionForPhase,
   isGateConditionId,
@@ -252,6 +253,7 @@ function parseAssistantBody(body: unknown, partial: boolean): AdminAssistantUpda
   if ('instructions' in body || !partial) out.instructions = trimmedText(body.instructions, 'instructions', 20000, !partial)!;
   if ('avatar' in body) {
     const avatar = trimmedText(body.avatar, 'avatar', 32, false);
+    if (avatar?.startsWith('asset:') && !getVisualAsset(avatar)?.usages.includes('avatar')) invalid('avatar 必须引用已注册的头像素材');
     if (avatar !== undefined) out.avatar = avatar;
   }
   if ('modelProviderId' in body) out.modelProviderId = nullableId(body.modelProviderId, 'modelProviderId');

@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import type { ReactNode } from 'react';
 
 export interface ParadigmTab {
@@ -109,6 +111,11 @@ export interface RowCardProps {
   testLoading?: boolean;
 }
 
+const ROW_ARTWORK: Record<string, string> = {
+  '👤': 'avatar-general-v1', '🖥️': 'capability-tools-v1', '🎨': 'subject-art-v1',
+  '🌐': 'capability-tools-v1', '💾': 'capability-knowledge-v1', 'ℹ': 'avatar-coordinator-v1',
+};
+
 export function RowCard({
   avatarText,
   avatarBg = '#165dff',
@@ -126,7 +133,7 @@ export function RowCard({
   return (
     <div className="settings-row-card">
       <div className="settings-row-avatar" style={{ background: avatarBg }}>
-        {avatarText}
+        <VisualAsset assetId={ROW_ARTWORK[avatarText] ?? 'capability-tools-v1'} size={36} />
       </div>
       <div className="settings-row-meta">
         <div className="settings-row-header">

@@ -7,6 +7,8 @@ import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
 import type { KnowledgeCenterService } from './knowledge-center.service';
 import type { KnowledgeEngineService } from './knowledge-engine.service';
 
+const scope = { authorizeTool: async () => true, key: 'fixture-exploration', knowledgeBaseIds: null };
+
 function fixture() {
   let allowed = true;
   let connected = true;
@@ -48,7 +50,7 @@ function fixture() {
       }
       if (text.includes('FROM knowledge_remote_evidence')) {
         const saved = cache.get(String(params[0]));
-        return saved?.assistant_id === params[1] ? [saved] : [];
+        return saved && saved.assistant_id === params[1] && (saved.origin as { scopeDigest?: string }).scopeDigest === params[2] ? [saved] : [];
       }
       return [];
     },
@@ -82,26 +84,26 @@ function fixture() {
 
 test('linked retrieval returns actual source text with assistant-scoped citations and no credentials', async () => {
   const f = fixture();
-  const result = await f.service.search('student', 'a', '动能');
+  const result = await f.service.search('student', 'a', '动能', 5, scope);
   assert.equal(result.state, 'ready');
   assert.match(result.evidence[0]!.text, /四倍/);
   assert.ok(!JSON.stringify(result).includes('never-return-this'));
   const citation = result.evidence[0]!.citationId;
-  assert.match((await f.service.read('student', 'a', citation)).text, /四倍/);
-  await assert.rejects(f.service.read('student', 'other', citation), /资料不可用/);
+  assert.match((await f.service.read('student', 'a', citation, scope)).text, /四倍/);
+  await assert.rejects(f.service.read('student', 'other', citation, scope), /资料不可用/);
   f.detach();
-  await assert.rejects(f.service.read('student', 'a', citation), /资料不可用/);
+  await assert.rejects(f.service.read('student', 'a', citation, scope), /资料不可用/);
 });
 
 test('global revocation prevents remote calls and invalidates previously returned citations', async () => {
   const f = fixture();
-  const result = await f.service.search('student', 'a', 'q');
+  const result = await f.service.search('student', 'a', 'q', 5, scope);
   f.revoke();
   await assert.rejects(
-    f.service.read('student', 'a', result.evidence[0]!.citationId),
+    f.service.read('student', 'a', result.evidence[0]!.citationId, scope),
     /资料不可用/,
   );
-  assert.equal((await f.service.search('student', 'a', 'q')).state, 'CAPABILITY_NOT_AUTHORIZED');
+  assert.equal((await f.service.search('student', 'a', 'q', 5, scope)).state, 'CAPABILITY_NOT_AUTHORIZED');
   assert.equal(f.calls(), 1);
 });
 
@@ -114,12 +116,41 @@ test('in-flight revocation or connection replacement discards remote results', a
       f[mutation]();
       return receipt;
     };
-    assert.deepEqual((await f.service.search('student', 'a', 'q')).evidence, []);
+    assert.deepEqual((await f.service.search('student', 'a', 'q', 5, scope)).evidence, []);
   }
 });
 
 test('title-only matches never become evidence', async () => {
   const f = fixture();
   f.engine.execute = async () => ({ ok: true, manifest: { items: [{ title: '标题' }] } });
-  assert.equal((await f.service.search('student', 'a', 'q')).state, 'NO_KNOWLEDGE_EVIDENCE');
+  assert.equal((await f.service.search('student', 'a', 'q', 5, scope)).state, 'NO_KNOWLEDGE_EVIDENCE');
+});
+
+test('remote citations bind student, project, source assistant and frozen teaching digest', async () => {
+  const f = fixture();
+  const first = { ...scope, key: JSON.stringify(['student', 'project-a', 'a', 'frozen-digest']), knowledgeBaseIds: ['source'] };
+  const result = await f.service.search('student', 'a', 'q', 5, first);
+  assert.equal(result.evidence.length, 1);
+  const citation = result.evidence[0]!.citationId;
+  assert.equal((await f.service.read('student', 'a', citation, first)).citationId, citation);
+  for (const [student, project, assistant, digest] of [
+    ['other-student', 'project-a', 'a', 'frozen-digest'],
+    ['student', 'project-b', 'a', 'frozen-digest'],
+    ['student', 'project-a', 'other-assistant', 'frozen-digest'],
+    ['student', 'project-a', 'a', 'changed-digest'],
+  ] as const) {
+    const other = { ...first, key: JSON.stringify([student, project, assistant, digest]) };
+    await assert.rejects(f.service.read(student, assistant, citation, other), { status: 404 });
+  }
+  await assert.rejects(f.service.read('student', 'a', citation, {
+    ...first, key: JSON.stringify(['student', 'project-a', 'a']),
+  }), { status: 404 });
+  await assert.rejects(f.service.read('student', 'a', citation, {
+    ...first, authorizeTool: async () => false,
+  }), { status: 404 });
+  let checks = 0;
+  await assert.rejects(f.service.read('student', 'a', citation, {
+    ...first, authorizeTool: async () => ++checks === 1,
+  }), { status: 404 });
+  assert.equal(checks, 2, 'Read must discard a citation revoked after its initial authorization');
 });

@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
-import { loadTutorRuntimeSource } from './runtime-source';
+import { buildTutorRuntimeBlocks, loadRuntimeSkillCatalog, loadTutorRuntimeSource } from './runtime-source';
 
 const tempRoots: string[] = [];
 const originalProjectRoot = process.env.QITU_PROJECT_ROOT;
@@ -32,7 +32,7 @@ after(() => {
 
 test('runtime: dev-only 技能不会进入发现结果', () => {
   const { skillsRoot } = createProject();
-  writeSkill(skillsRoot, 'teaching', '---\nruntime: teaching\n---\n教学内容');
+  writeSkill(skillsRoot, 'teaching', '---\nruntime: teaching\nstatus: published\n---\n教学内容');
   writeSkill(skillsRoot, 'dev-tool', '---\nruntime: dev-only\n---\n开发工具说明');
 
   const source = loadTutorRuntimeSource();
@@ -41,15 +41,37 @@ test('runtime: dev-only 技能不会进入发现结果', () => {
   assert.equal(source.skills.some((skill) => skill.content.includes('开发工具说明')), false);
 });
 
-test('runtime 缺省按 teaching 保留', () => {
+test('未登记的旧技能不得凭缺省元数据进入教学', () => {
   const { skillsRoot } = createProject();
   writeSkill(skillsRoot, 'legacy-teaching', '---\nname: 旧版教学技能\n---\n提问引导');
 
   const source = loadTutorRuntimeSource();
 
-  assert.equal(source.skills.length, 1);
-  assert.equal(source.skills[0]?.id, 'legacy-teaching');
-  assert.equal(source.skills[0]?.status, 'ready');
+  assert.equal(source.skills.length, 0);
+  assert.equal(loadRuntimeSkillCatalog().skills[0]?.status, 'unavailable');
+});
+
+test('统一目录展示 Admin 技能，但教学发现与提示构建均隔离 Admin 指令', () => {
+  const { skillsRoot } = createProject();
+  writeSkill(skillsRoot, 'teaching', '---\nruntime: teaching\nstatus: published\n---\n教学内容');
+  writeSkill(skillsRoot, 'management', '---\nruntime: admin\nstatus: published\n---\nADMIN_ONLY_CONFIGURE');
+  const catalog = loadRuntimeSkillCatalog();
+  assert.equal(catalog.skills.length, 2);
+  assert.equal(catalog.skills.find(skill => skill.id === 'management')?.runtime, 'admin');
+  assert.deepEqual(loadTutorRuntimeSource().skills.map(skill => skill.id), ['teaching']);
+  assert.doesNotMatch(buildTutorRuntimeBlocks(catalog).join('\n'), /ADMIN_ONLY_CONFIGURE/);
+  assert.doesNotMatch(buildTutorRuntimeBlocks(catalog, ['management']).join('\n'), /ADMIN_ONLY_CONFIGURE/);
+  assert.match(buildTutorRuntimeBlocks(catalog, ['teaching']).join('\n'), /教学内容/);
+});
+
+test('未知 runtime 留在管理目录报告不可用，不回退到教学范围', () => {
+  const { skillsRoot } = createProject();
+  writeSkill(skillsRoot, 'unknown-scope', '---\nruntime: misspelled-admin\n---\nPRIVATE_CONFIGURE');
+  const catalog = loadRuntimeSkillCatalog();
+  assert.equal(catalog.skills[0]?.status, 'unavailable');
+  assert.equal(catalog.skills[0]?.runtime, 'unknown');
+  assert.deepEqual(loadTutorRuntimeSource().skills, []);
+  assert.doesNotMatch(buildTutorRuntimeBlocks(catalog).join('\n'), /PRIVATE_CONFIGURE/);
 });
 
 test('技能目录不存在时返回 missing，不抛异常', () => {
@@ -65,7 +87,7 @@ test('技能目录不存在时返回 missing，不抛异常', () => {
 
 test('正文为空时保留 unavailable 状态', () => {
   const { skillsRoot } = createProject();
-  writeSkill(skillsRoot, 'empty', '---\nname: 空技能\n---\n   ');
+  writeSkill(skillsRoot, 'empty', '---\nruntime: teaching\nstatus: published\nname: 空技能\n---\n   ');
 
   const source = loadTutorRuntimeSource();
 
@@ -75,7 +97,7 @@ test('正文为空时保留 unavailable 状态', () => {
 
 test('缺失 SKILL.md 的技能仍出现在目录里，但不拖垮整个目录状态', () => {
   const { skillsRoot } = createProject();
-  writeSkill(skillsRoot, 'healthy', '---\nname: healthy\n---\n教学内容');
+  writeSkill(skillsRoot, 'healthy', '---\nruntime: teaching\nstatus: published\nname: healthy\n---\n教学内容');
   // 只有目录、没有 SKILL.md：典型的坏技能包，不能从管理面静默消失。
   mkdirSync(join(skillsRoot, 'broken'), { recursive: true });
 
@@ -91,14 +113,27 @@ test('缺失 SKILL.md 的技能仍出现在目录里，但不拖垮整个目录�
   assert.deepEqual(source.skillsSource?.brokenPackages?.map((entry) => entry.id), ['broken']);
 });
 
-test('超长正文按 8000 字符截断并附带标记', () => {
+test('超预算正文只供目录预览，不将截断规则投入运行', () => {
   const { skillsRoot } = createProject();
-  writeSkill(skillsRoot, 'long', `---\nname: 长技能\n---\n${'甲'.repeat(8_500)}`);
+  writeSkill(skillsRoot, 'long', `---\nruntime: teaching\nstatus: published\nname: 长技能\n---\n${'甲'.repeat(8_500)}`);
 
   const source = loadTutorRuntimeSource();
   const content = source.skills[0]?.content ?? '';
 
   assert.equal(content.startsWith('甲'.repeat(8_000)), true);
-  assert.equal(content.endsWith('[内容已按运行时预算截断]'), true);
-  assert.equal(content.length, 8_000 + '\n[内容已按运行时预算截断]'.length);
+  assert.equal(content.length, 8_000);
+  assert.equal(source.skills[0]?.status, 'unavailable');
+  assert.doesNotMatch(buildTutorRuntimeBlocks(source, ['long']).join(''), /甲/);
+});
+
+test('revocation, drafts and malformed metadata never enter teaching prompts', () => {
+  const { skillsRoot } = createProject();
+  for (const status of ['revoked', 'reviewed', 'quarantined', 'deprecated', 'typo']) {
+    writeSkill(skillsRoot, status, `---\nruntime: teaching\nstatus: ${status}\n---\nPRIVATE_${status}`);
+  }
+  writeSkill(skillsRoot, 'malformed', '---\nruntime: teaching\nstatus: published');
+  writeSkill(skillsRoot, 'duplicate', '---\nruntime: admin\nruntime: teaching\nstatus: published\n---\nPRIVATE_DUPLICATE');
+  const source = loadRuntimeSkillCatalog();
+  assert.ok(source.skills.every(skill => skill.status === 'unavailable'));
+  assert.doesNotMatch(buildTutorRuntimeBlocks(source, source.skills.map(skill => skill.id)).join(''), /PRIVATE_/);
 });

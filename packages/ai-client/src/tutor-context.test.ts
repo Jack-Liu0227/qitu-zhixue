@@ -11,7 +11,7 @@ export async function runTutorContextAssertions(): Promise<void> {
     async loadLearnerProfile() {
       return {
         studentId: 'student-1', priorKnowledge: null,
-        targetLevel: '入门', timeBudgetMinutesPerWeek: 120, preferences: ['动手'],
+        targetLevel: '入门', timeBudgetMinutes: 120, preferences: ['动手'],
         interests: ['植物'], strengths: ['观察'], nextQuestions: [], version: 1,
         updatedAt: new Date().toISOString(),
       };
@@ -46,9 +46,9 @@ export async function runTutorContextAssertions(): Promise<void> {
   assert(serializeTutorContext(packet).includes('我想观察校园植物'), 'recent message missing');
 
   const draft = {
-    templateVersion: 'v1', weeks: 4 as const, title: '计划', interest: '机器人',
-    sessions: Array.from({ length: 20 }, (_, index) => ({
-      id: `s-${index}`, week: Math.floor(index / 5) + 1, day: (index % 5) + 1,
+    templateVersion: 'v1', lessonCount: 4 as const, lessonMinutes: 60 as const, title: '计划', interest: '机器人',
+    sessions: Array.from({ length: 4 }, (_, index) => ({
+      id: `s-${index}`, lessonIndex: index + 1,
       title: `第 ${index + 1} 次`, blocks: [{
         id: `b-${index}`, title: '实践', minutes: 60, objectiveIds: ['build'],
         activity: 'practice' as const, prerequisiteObjectiveIds: [],
@@ -59,3 +59,6 @@ export async function runTutorContextAssertions(): Promise<void> {
   assert(!result.ok, 'invalid practice plan accepted');
   assert(result.errors.some((error) => error.message.includes('prerequisite')), 'missing prerequisite error');
 }
+
+
+

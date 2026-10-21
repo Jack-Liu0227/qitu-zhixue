@@ -7,31 +7,29 @@ import {
 } from '@qitu/model-runtime';
 import {
   agentConfigs,
-  agentRoutes,
   agentSkillBindings,
   modelModels,
   modelProviders,
   modelUsageBindings,
   type Database,
+  readTutorProjectionEvidence,
 } from '@qitu/database';
-import { MODEL_USAGE_SLOTS } from '@qitu/contracts';
+import { assertRuntimeSkillBudget, MODEL_USAGE_SLOTS, parseRuntimeSkill, tutorExpressionInstructions, validateTutorExpressionProjection } from '@qitu/contracts';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { delimiter, join, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { delimiter, dirname, join, relative, resolve } from 'node:path';
 import type { TeamMailboxExecutor } from './team-runtime-worker';
 import type { TeamMailboxJob } from './team-runtime-mailbox-source';
+import { resolveAuthorizedTeamRoute, TeamAgentExecutionError } from './team-runtime-route';
+import { resolveProjectionAssistant } from './team-runtime-projection-settings';
+export { TeamAgentExecutionError } from './team-runtime-route';
 
 const MAX_GLOBAL_POLICY_CHARS = 8_000;
 const MAX_AGENT_DEFINITION_CHARS = 8_000;
 const MAX_ROLE_CHARS = 4_000;
-const MAX_SKILL_CHARS = 4_000;
-/**
- * 读文件时的内存上限，**不是** prompt 预算。frontmatter 必须在完整内容上解析，
- * 所以先按本上限读入、剔除 frontmatter 后再按 MAX_SKILL_CHARS 截正文。
- */
+// Read admission metadata before applying the shared skill content/prompt budgets.
 const MAX_SKILL_FILE_CHARS = 262_144;
-const MAX_SKILLS = 8;
 const MAX_INPUT_CHARS = 32_000;
 const MAX_OUTPUT_CHARS = 64_000;
 const DEFAULT_MAX_TOKENS = 1_200;
@@ -51,16 +49,6 @@ export interface TeamAgentRuntimeOptions {
   skillRoots?: readonly string[];
   maxTokens?: number;
   timeoutMs?: number;
-}
-
-export class TeamAgentExecutionError extends Error {
-  readonly code: string;
-
-  constructor(code: string, message = code) {
-    super(message);
-    this.name = 'TeamAgentExecutionError';
-    this.code = code;
-  }
 }
 
 /**
@@ -91,15 +79,16 @@ export function buildTeamAgentPrompt(input: {
   taskType: string;
   taskInput: Record<string, unknown>;
   globalPolicy: string;
-    skills: readonly { id: string; content: string }[];
+  skills: readonly { id: string; content: string }[];
   constraints?: readonly string[];
   outputSchema?: Record<string, unknown> | null;
 }): { system: string; user: string } {
+  assertRuntimeSkillBudget(input.skills);
   const role = bounded(input.agent.roleDefinition, MAX_ROLE_CHARS);
   const definition = bounded(input.agent.agentDefinition, MAX_AGENT_DEFINITION_CHARS);
   const policy = bounded(input.globalPolicy, MAX_GLOBAL_POLICY_CHARS);
-  const skills = input.skills.slice(0, MAX_SKILLS).map((skill) =>
-    `### Skill ${bounded(skill.id, 120)}\n${bounded(skill.content, MAX_SKILL_CHARS)}`,
+  const skills = input.skills.map((skill) =>
+    `### Skill ${bounded(skill.id, 120)}\n${skill.content}`,
   );
   const schema = input.outputSchema ? boundedJson(input.outputSchema, MAX_INPUT_CHARS) : '{"type":"object"}';
   const system = [
@@ -160,27 +149,35 @@ async function executeTeamAgentJob(
   if (!task) throw new TeamAgentExecutionError('TEAM_TASK_NOT_FOUND');
   const [agent] = await db.select().from(agentConfigs).where(eq(agentConfigs.id, job.message.recipientAgentId)).limit(1);
   if (!agent || !agent.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
-  const selection = await resolveTeamAgentModel(db, agent);
-  const [route] = await db.select({ outputSchema: agentRoutes.outputSchema })
-    .from(agentRoutes)
-    .where(and(
-      eq(agentRoutes.fromAgentId, job.message.senderAgentId),
-      eq(agentRoutes.toAgentId, job.message.recipientAgentId),
-      eq(agentRoutes.trigger, 'delegate'),
-      eq(agentRoutes.taskType, task.taskType),
-      eq(agentRoutes.enabled, true),
-    )).limit(1);
-  if (!route) {
-    throw new TeamAgentExecutionError('TEAM_AGENT_ROUTE_NOT_FOUND');
+  const route = await resolveAuthorizedTeamRoute(db, job);
+  if (job.message.messageType === 'projection.request') {
+    const projectionType = task.input.projectionType;
+    if (projectionType !== 'learner_profile' && projectionType !== 'growth_trajectory') throw new TeamAgentExecutionError('PROJECTION_TYPE_INVALID');
+    const binding = await resolveProjectionAssistant(db, projectionType);
+    const expectedTask = projectionType === 'learner_profile' ? 'profile.project' : 'growth.project';
+    if (binding.agentId !== agent.id || task.taskType !== expectedTask) throw new TeamAgentExecutionError('PROJECTION_PURPOSE_CHANGED');
   }
+  const [sender] = await db.select({ enabled: agentConfigs.enabled }).from(agentConfigs)
+    .where(eq(agentConfigs.id, job.message.senderAgentId)).limit(1);
+  if (!sender?.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
+  const selection = await resolveTeamAgentModel(db, agent);
   const skills = await loadAgentSkills(db, agent.id, options.skillRoots, options.env);
+  const { authorization: _authorization, ...taskInput } = task.input;
+  const projectionType = task.input.projectionType;
+  const expression = job.message.messageType === 'projection.request' && task.input.sourceTopic === 'tutor.turn.completed'
+    && (projectionType === 'learner_profile' || projectionType === 'growth_trajectory')
+    ? await readTutorProjectionEvidence(db, {
+      sourceEventId: String(task.input.sourceEventId), runId: task.runId, studentId: String(task.input.studentUserId),
+      projectId: typeof task.input.projectId === 'string' ? task.input.projectId : null, projectionType,
+    }) : null;
   const prompt = buildTeamAgentPrompt({
     agent,
     taskType: task.taskType,
-    taskInput: job.message.payload ?? task.input,
+    taskInput: expression ? { ...taskInput, studentText: expression.studentText, project: expression.project,
+      previousResult: expression.previousResult, expectedVersion: expression.manifest.baseVersion + 1 } : taskInput,
     globalPolicy: loadGlobalPolicy(options),
     skills,
-    constraints: DEFAULT_AGENT_CONSTRAINTS,
+    constraints: expression ? [...DEFAULT_AGENT_CONSTRAINTS, tutorExpressionInstructions(expression)] : DEFAULT_AGENT_CONSTRAINTS,
     outputSchema: route.outputSchema,
   });
   let result;
@@ -204,7 +201,12 @@ async function executeTeamAgentJob(
     }
     throw new TeamAgentExecutionError('TEAM_AGENT_MODEL_CALL_FAILED');
   }
-  return parseStructuredAgentOutput(result.text, route.outputSchema);
+  const output = parseStructuredAgentOutput(result.text, route.outputSchema);
+  if (!expression) return output;
+  // Do not persist arbitrary model echoes of private input, even in a rejected candidate.
+  const policyError = validateTutorExpressionProjection(expression.manifest.projectionType, output, expression);
+  return { result: policyError ? null : output, analysisManifest: expression.manifest,
+    ...(policyError ? { analysisErrorCode: policyError } : {}) };
 }
 
 /** Fresh database reads keep worker routing in sync with administrator changes. */
@@ -291,12 +293,14 @@ export async function loadAgentSkills(
     .from(agentSkillBindings)
     .where(and(eq(agentSkillBindings.agentId, agentId), eq(agentSkillBindings.enabled, true)));
   const skillRoots = roots ?? defaultSkillRoots(env);
-  return bindings.slice(0, MAX_SKILLS).flatMap(({ skillId }) => {
+  const skills = bindings.flatMap(({ skillId }) => {
     const path = findSkillFile(skillId, skillRoots);
     if (!path) return [];
-    const content = readSkillContent(path, MAX_SKILL_CHARS);
+    const content = readSkillContent(path, skillId);
     return content === null ? [] : [{ id: skillId, content }];
   });
+  assertRuntimeSkillBudget(skills);
+  return skills;
 }
 
 function loadGlobalPolicy(options: TeamAgentRuntimeOptions): string {
@@ -305,20 +309,24 @@ function loadGlobalPolicy(options: TeamAgentRuntimeOptions): string {
 }
 
 export function defaultSkillRoots(env: NodeJS.ProcessEnv = process.env): string[] {
-  const configured = env.QITU_AGENT_SKILL_ROOTS?.split(delimiter).map((item) => item.trim()).filter(Boolean);
-  return configured && configured.length > 0
-    ? configured
-    : [
-      // .pi/skills 是 Pi/Herdr 开发期制品，不是应用运行时的可执行配置注册表（见 docs/admin/deployment.md）。
-      join(process.cwd(), '.agents', 'skills'),
-    ];
+  const configured = env.QITU_AGENT_SKILL_ROOTS?.split(delimiter).map(item => item.trim()).filter(Boolean);
+  if (configured?.length) return configured;
+  let root = resolve(env.QITU_PROJECT_ROOT?.trim() || process.cwd());
+  if (!env.QITU_PROJECT_ROOT?.trim()) {
+    while (!existsSync(join(root, 'AGENTS.md')) && dirname(root) !== root) root = dirname(root);
+    if (!existsSync(join(root, 'AGENTS.md'))) root = process.cwd();
+  }
+  return [join(root, '.agents', 'skills')];
 }
 
 function findSkillFile(id: string, roots: readonly string[]): string | null {
-  if (!/^[a-zA-Z0-9._-]{1,120}$/u.test(id)) return null;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}$/u.test(id)) return null;
   for (const root of roots) {
     const path = resolve(root, id, 'SKILL.md');
-    if (existsSync(path)) return path;
+    if (existsSync(path)) {
+      const canonical = realpathSync(path);
+      if (relative(realpathSync(root), canonical) === join(id, 'SKILL.md')) return canonical;
+    }
   }
   return null;
 }
@@ -335,43 +343,13 @@ function readBounded(path: string, max: number): string {
   }
 }
 
-function readSkillContent(path: string, max: number): string | null {
-  // 必须在**完整**文件上解析 frontmatter。若像旧实现那样先按 max 截断再剔除，
-  // 超长 frontmatter 会被截在半路（缺闭合 ---）：正则不匹配 → 既漏过 dev-only
-  // 过滤，又把 frontmatter 原文当成教学规则注入 prompt。API 侧（runtime-source.ts）
-  // 本来就是先读全文再截正文，这里对齐它的语义。
-  const raw = readBounded(path, MAX_SKILL_FILE_CHARS);
-  // fail-closed：看起来有 frontmatter 却解析不出闭合块，说明文件被截断或损坏，
-  // 宁可不注入也不能把未知文本当成教学规则送进未成年人的 prompt。
-  if (raw.startsWith('---') && !FRONTMATTER_BLOCK.test(raw)) {
-    console.warn(`[qitu-workers] skill frontmatter is truncated or malformed path=${path}`);
-    return null;
-  }
-  const metadata = readFrontmatter(raw);
-  // 这是与 API 侧有意保留的临时重复；按 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b 收敛。
-  if (metadata.runtime === 'dev-only') return null;
-  return stripFrontmatter(raw).slice(0, max);
-}
-
-const FRONTMATTER_BLOCK = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-
-function readFrontmatter(raw: string): Record<string, string> {
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match?.[1]) return {};
-  const result: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const separator = line.indexOf(':');
-    if (separator < 1) continue;
-    const key = line.slice(0, separator).trim();
-    const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '');
-    if (key && value) result[key] = value;
-  }
-  return result;
-}
-
-function stripFrontmatter(raw: string): string {
-  // 这是与 API 侧有意保留的临时重复；按 docs/plan/20261018-skill-tool-governance-and-assignment.md 的 P1-b 收敛。
-  return raw.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, '').trim();
+function readSkillContent(path: string, id: string): string | null {
+  const raw = readBounded(path, MAX_SKILL_FILE_CHARS + 1);
+  const parsed = parseRuntimeSkill(id, raw, createHash('sha256').update(raw.replace(/\r\n/g, '\n')).digest('hex'));
+  if (!parsed.ready || parsed.runtime !== 'teaching') return null;
+  // This executor currently produces candidates only. A skill cannot silently add tools.
+  if (parsed.metadata.requiredToolIds?.trim()) throw new TeamAgentExecutionError('TEAM_AGENT_TOOL_NOT_CONFIGURED');
+  return parsed.content;
 }
 
 function getFsErrorCode(error: unknown): string | undefined {

@@ -84,5 +84,6 @@ test('来源白名单与契约排序一致（防止契约与服务端漂移）',
     'artifact',
     'reflection',
     'help_request',
+    'learning_interaction',
   ]);
 });

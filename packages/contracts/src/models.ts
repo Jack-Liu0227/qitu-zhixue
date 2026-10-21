@@ -224,7 +224,7 @@ export interface SetProviderModelsResponse {
 /* ------------------------------ 兼容用途绑定 ------------------------------ */
 
 /** 归属的 agent，仅用于后台分组显示。 */
-export type AgentId = 'tutor' | 'inspiration' | 'curriculum' | 'growth' | 'knowledge';
+export type AgentId = 'tutor' | 'inspiration' | 'curriculum' | 'growth' | 'knowledge' | 'admin';
 
 export interface ModelUsageSlot {
   /** 稳定的机器名，例如 `tutor.chat`。 */
@@ -247,6 +247,11 @@ export interface ModelUsageSlot {
 
 /** Shared purpose policy for API and background Agent execution. */
 export const MODEL_USAGE_SLOTS: readonly ModelUsageSlot[] = [
+  {
+    id: 'admin.copilot', agent: 'admin', label: '启途智学管家 · 默认模型',
+    description: '管家新对话自动使用的模型，由管理员选择并保存。',
+    requiresInput: ['text'], requiresOutput: ['text'], fallbackTo: 'tutor.chat',
+  },
   {
     id: 'tutor.chat',
     agent: 'tutor',
@@ -277,7 +282,7 @@ export const MODEL_USAGE_SLOTS: readonly ModelUsageSlot[] = [
     id: 'curriculum.plan',
     agent: 'curriculum',
     label: '学习计划 · 拆解',
-    description: '把模板拆成 4 周 / 8 周路线与每阶段的理论、实践任务。',
+    description: '把模板拆成逐课时路线与每阶段的理论、实践任务。',
     requiresOutput: ['text'],
     fallbackTo: 'tutor.chat',
   },

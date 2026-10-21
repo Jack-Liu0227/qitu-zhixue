@@ -60,6 +60,8 @@ export interface TeacherStudentRow {
   activeDays: number;
   /** 本周完成任务数（过程性计数）。 */
   weeklyTasks: number;
+  /** Activity/intervention owner is unavailable; zero placeholders are not measured counts. */
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherRosterPageData {
@@ -73,6 +75,7 @@ export interface TeacherRosterPageData {
     withoutGuardianCount: number;
   };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherStudentProject {
@@ -133,6 +136,7 @@ export interface TeacherInterventionListPageData {
     resolved: number;
   };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 /**
@@ -185,6 +189,7 @@ export interface TeacherStatisticsPageData {
   /** 需要关注的名单，按停滞时长排序。 */
   needsAttention: TeacherStudentRow[];
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 /* ------------------------------------------------------------------ *
@@ -213,6 +218,7 @@ export interface TeacherFeedbackListPageData {
   items: TeacherFeedbackRow[];
   totals: { processing: number; replied: number; resolved: number };
   dataSource: DataSource;
+  signalsAvailable?: boolean;
 }
 
 export interface TeacherFeedbackDetail {
@@ -254,6 +260,28 @@ export interface ReplyTeacherFeedbackRequest {
  * 学生改完可再批）、`rejected`（不通过，终态）。
  */
 export type TeacherReviewDecision = 'approved' | 'changes_requested' | 'rejected';
+
+export interface TeacherArtifactReviewItem {
+  reviewId: string;
+  artifactId: string;
+  projectId: string | null;
+  status: 'requested' | 'in_review' | 'approved' | 'changes_requested' | 'rejected';
+  artifactTitle: string;
+  artifactVersionId: string | null;
+  artifactVersionOrdinal: number | null;
+  versionAvailable: boolean;
+  requestedAt: string;
+}
+export interface TeacherArtifactReviewPage {
+  items: TeacherArtifactReviewItem[];
+  nextOffset: number | null;
+}
+export interface TeacherArtifactVersionView {
+  id: string;
+  ordinal: number;
+  title: string;
+  inlineText: string | null;
+}
 
 /**
  * `POST /api/v1/teacher/reviews/:reviewId/decision` 的请求体。

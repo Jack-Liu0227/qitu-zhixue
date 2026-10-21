@@ -1,4 +1,5 @@
 import type { StudentGrowthEntry } from '../types';
+import { VisualAsset } from '@qitu/ui';
 import { ArtifactEntry } from './ArtifactEntry';
 import { formatGrowthDate } from './format';
 import { MilestoneEntry } from './MilestoneEntry';
@@ -8,10 +9,10 @@ import { ReflectionEntry } from './ReflectionEntry';
 import { VersionStep } from './VersionStep';
 
 const ICON_GLYPH: Record<StudentGrowthEntry['icon'], string> = {
-  stage: '◆',
-  artifact: '★',
-  reflection: '✎',
-  objective: '✓',
+  stage: 'growth-milestone-v1',
+  artifact: 'growth-artifact-v1',
+  reflection: 'growth-reflection-v1',
+  objective: 'growth-objective-v1',
 };
 
 /**
@@ -35,7 +36,7 @@ export function TimelineEntry({
       last={last}
     >
       <span className="qitu-entry-icon" aria-hidden="true">
-        {ICON_GLYPH[item.icon]}
+        <VisualAsset assetId={ICON_GLYPH[item.icon]} size={28} />
       </span>
       {item.type === 'project_stage_completed' ? (
         <MilestoneEntry entry={item} onSelect={onSelect} />

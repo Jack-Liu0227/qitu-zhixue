@@ -4,9 +4,29 @@ import { OPTICS_16_SESSION_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import { generatePlanFromTemplate } from './template-plan-generator';
 import { validateGeneratedPlan } from './session-plan-validator';
 
-const INPUT = { interest: '光与证据', weeks: 8 as const, goal: null, curriculumSlug: 'optics-physical-inquiry-16s', sessionCount: 16 as const };
+const INPUT = {
+  interest: '光与证据', lessonCount: 16, lessonMinutes: 60 as const, goal: null,
+  curriculumSlug: 'optics-physical-inquiry-16s', sessionCount: 16 as const,
+};
 
 describe('Template-owned plan projection', () => {
+  it('projects canonical lesson-only schedules', () => {
+    const plan = generatePlanFromTemplate({
+      interest: '光与证据',
+      lessonCount: 16,
+      lessonMinutes: 60,
+      goal: null,
+      curriculumSlug: 'optics-physical-inquiry-16s',
+      sessionCount: 16,
+    }, { templateVersion: 'lesson-v2', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC });
+    validateGeneratedPlan(plan);
+    assert.equal(plan.lessonCount, 16);
+    assert.equal(plan.lessonMinutes, 60);
+    assert.equal(plan.modules.length, 16);
+    assert.deepEqual(plan.modules.map((module) => module.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
+    assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, i) => i + 1));
+  });
+
   it('uses resolved session content, objective text and block minutes, not global constants', () => {
     const spec = structuredClone(OPTICS_16_SESSION_TEMPLATE_SPEC);
     const profile = spec.curriculum?.profiles[0];
@@ -36,7 +56,7 @@ describe('Template-owned plan projection', () => {
     }
   });
 
-  it('projects the requested 16 lessons with all objectives covered and no wave theory gates', () => {
+  it('projects the requested 16 lessons with all objectives covered', () => {
     const plan = generatePlanFromTemplate(INPUT, { templateVersion: 'version-16s', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC });
     validateGeneratedPlan(plan);
     assert.deepEqual(plan.sessions.map((session) => session.title), [
@@ -45,8 +65,7 @@ describe('Template-owned plan projection', () => {
       '光具座搭建、法线与光轴校准', '折射角与物像距数据采集', '单缝衍射现象与条纹特征探究', '封闭细雾室介质散射探究',
       '数据线性化拟合与实验求参', '实验报告撰写与 CER 科学论证', '实验探究成果答辩与同行质疑', '学习反思与学科素养成长归档',
     ]);
-    assert.deepEqual(plan.sessions.map((session) => [session.week, session.day]),
-      Array.from({ length: 16 }, (_, index) => [Math.floor(index / 2) + 1, index % 2 + 1]));
+    assert.deepEqual(plan.sessions.map((session) => session.lessonIndex), Array.from({ length: 16 }, (_, index) => index + 1));
     const covered = new Set(plan.sessions.flatMap((session) => session.blocks.flatMap((block) => block.objectiveIds)));
     assert.equal(covered.size, 12);
     for (const objective of plan.objectives) assert.ok(covered.has(objective.id));
@@ -64,7 +83,7 @@ describe('Template-owned plan projection', () => {
   });
 
   it('rejects unavailable or ambiguous profiles and malformed template content instead of fallback', () => {
-    assert.throws(() => generatePlanFromTemplate({ ...INPUT, weeks: 4 }, { templateVersion: 'v2', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC }));
+    assert.throws(() => generatePlanFromTemplate({ ...INPUT, lessonCount: 4 }, { templateVersion: 'v2', templateSpec: OPTICS_16_SESSION_TEMPLATE_SPEC }));
     assert.throws(() => generatePlanFromTemplate(INPUT, { templateVersion: 'v2', templateSpec: undefined }));
     const spec = OPTICS_16_SESSION_TEMPLATE_SPEC;
     const profile = spec.curriculum?.profiles[0];

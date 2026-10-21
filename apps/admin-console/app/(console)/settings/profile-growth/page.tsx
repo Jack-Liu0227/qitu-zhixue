@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { fetchAvailableConfiguredModels, configuredModelKey, configuredModelPatch, type ConfiguredModelItem } from '../../../../lib/api/configuredModels';
-import { fetchAdminAssistantConfigs, updatePersistedAssistant } from '../../../../lib/api/assistants';
-import type { AdminAssistantConfig } from '@qitu/contracts';
+import { VisualAsset } from '@qitu/ui';
+
+import { useState } from 'react';
+import { configuredModelKey, configuredModelPatch } from '../../../../lib/api/configuredModels';
+import { useGrowthProjectionSettings } from '../../../../lib/use-growth-projection-settings';
 
 interface DimensionSetting {
   id: string;
@@ -118,62 +119,13 @@ export default function ProfileGrowthSettingsPage() {
   const [parentReadonlyAccess, setParentReadonlyAccess] = useState(true);
 
   // AI 分析引擎与助手绑定
-  const [profilingModel, setProfilingModel] = useState('');
   const [refreshCycle, setRefreshCycle] = useState('realtime-phase');
-  const [saveNotice, setSaveNotice] = useState('');
-  const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
-  const [catalogReady, setCatalogReady] = useState(false);
-  const [assistants, setAssistants] = useState<AdminAssistantConfig[]>([]);
-  const [profileAssistantId, setProfileAssistantId] = useState('profile-analyst-assistant');
-  const [growthAssistantId, setGrowthAssistantId] = useState('growth-trajectory-assistant');
-
-  useEffect(() => {
-    let current = true;
-    Promise.all([fetchAvailableConfiguredModels(), fetchAdminAssistantConfigs()])
-      .then(([models, configs]) => {
-        if (!current) return;
-        setAvailableModels(models); setAssistants(configs); setCatalogReady(true);
-        setProfilingModel(models[0] ? configuredModelKey(models[0]) : '');
-      }).catch(() => {
-        if (current) { setAvailableModels([]); setCatalogReady(false); setSaveNotice('目录读取失败，模型绑定已禁用；请刷新重试。'); }
-      });
-    return () => { current = false; };
-  }, []);
-
+  const configuration = useGrowthProjectionSettings();
+  const { assistants, setAssistants, availableModels, profileAssistantId, setProfileAssistantId,
+    growthAssistantId, setGrowthAssistantId, profileModelValue, growthModelValue } = configuration;
+  const catalogReady = configuration.ready && !configuration.saving;
+  const purposeOptions = configuration.settings?.assistants ?? [];
   const totalWeight = dimensions.reduce((sum, d) => sum + (d.enabled ? d.weight : 0), 0);
-  const profileAssistant = assistants.find((assistant) => assistant.id === profileAssistantId);
-  const growthAssistant = assistants.find((assistant) => assistant.id === growthAssistantId);
-  const profileModelValue = profileAssistant?.modelId
-    ? configuredModelKey({ providerId: profileAssistant.modelProviderId || '', id: profileAssistant.modelId }) : '';
-  const growthModelValue = growthAssistant?.modelId
-    ? configuredModelKey({ providerId: growthAssistant.modelProviderId || '', id: growthAssistant.modelId }) : '';
-
-  const handleSave = async () => {
-    if (!catalogReady) { setSaveNotice('目录尚未就绪，不能保存模型绑定。'); return; }
-    if (totalWeight !== 100) {
-      alert(`当前启用的维度权重之和为 ${totalWeight}%，请调整至 100% 后保存。`);
-      return;
-    }
-    const targets = [...new Set([profileAssistantId, growthAssistantId])].map((id) => assistants.find((assistant) => assistant.id === id));
-    if (targets.some((assistant) => !assistant?.modelId || !assistant.modelProviderId || !availableModels.some((model) => model.providerId === assistant.modelProviderId && model.id === assistant.modelId))) {
-      setSaveNotice('请选择真实助手及当前目录中的完整供应商与模型绑定。'); return;
-    }
-    const updates = targets.map((assistant) => {
-      if (!assistant) throw new Error('助手目录已变化');
-      return updatePersistedAssistant(assistant.id, { modelId: assistant.modelId, modelProviderId: assistant.modelProviderId });
-    });
-    const results = await Promise.allSettled(updates);
-    if (results.some((result) => result.status === 'rejected')) {
-      setSaveNotice('部分助手配置保存失败；请检查权限或网络后重试。');
-      return;
-    }
-    try {
-      const readback = await fetchAdminAssistantConfigs();
-      if (targets.some((target) => !target || !readback.some((saved) => saved.id === target.id && saved.modelId === target.modelId && saved.modelProviderId === target.modelProviderId))) throw new Error('模型绑定回读不一致');
-    } catch { setSaveNotice('写入后回读失败，请刷新核验，不确认已生效。'); return; }
-    setSaveNotice('助手模型绑定已回读确认；页面上的画像策略与维度开关尚未接入持久化，不代表全平台策略已生效。');
-    setTimeout(() => setSaveNotice(''), 2500);
-  };
 
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -181,26 +133,27 @@ export default function ProfileGrowthSettingsPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '20px' }}>📊</span>
+            <span style={{ fontSize: '20px' }}><VisualAsset assetId="avatar-data-v1" size={24} /></span>
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#102a5c' }}>
               学情画像与成长轨迹控制
             </h1>
             <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-              Agent SDK 自动打分
+              专任助手与证据审核
             </span>
           </div>
           <p style={{ margin: 0, fontSize: '13.5px', color: '#73839b', lineHeight: 1.6 }}>
-            统筹配置学生个人能力画像多维权重、PBL 四阶段事件流捕获、未成年人隐私隔离策略与 AI 动态分析引擎。
+            为个人画像和成长轨迹指定专任助手与模型，生成结果经服务端审核后用于展示。
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {saveNotice ? (
-            <span role="status" style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{saveNotice}</span>
+          {configuration.notice ? (
+            <span role="status" style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>{configuration.notice}</span>
           ) : null}
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => void configuration.save()}
+            disabled={!catalogReady}
             style={{
               padding: '9px 20px',
               background: '#2563eb',
@@ -216,10 +169,18 @@ export default function ProfileGrowthSettingsPage() {
               gap: '6px',
             }}
           >
-            <span>💾</span> 保存配置
+            <span>💾</span> {configuration.saving ? '正在保存…' : '保存助手与模型绑定'}
           </button>
         </div>
       </div>
+
+      <div role={configuration.error ? 'alert' : 'status'} style={{ padding: '12px 16px', background: configuration.error ? '#fff7ed' : '#eff6ff', borderRadius: 8, fontSize: 13 }}>
+        {configuration.loading ? '正在读取专任助手与用途绑定…' : configuration.error ?? (purposeOptions.length
+          ? `已读取配置修订 ${configuration.settings?.revision}。用途未配置或助手停用时，相关分析任务不会启动。`
+          : '暂无同时启用的专任助手。请先在助手设置及运行时中配置对应助手。')}
+        <button type="button" disabled={configuration.loading || configuration.saving} onClick={configuration.reload} style={{ marginLeft: 12 }}>重新读取配置</button>
+      </div>
+      <p style={{ margin: 0, color: '#92400e', fontSize: 13 }}>下方维度、事件与隐私开关是策略预览，当前保存范围仅包含专任助手用途和模型绑定。</p>
 
       {/* 模块一：能力画像维度设置（精美网格卡片与权重进度条） */}
       <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
@@ -242,7 +203,7 @@ export default function ProfileGrowthSettingsPage() {
               </span>
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#73839b' }}>
-              基于雷达图的四维核心素养评价体系，各维度权重自动影响学生结项报告。
+              四维评价策略预览；当前权重尚未接入报告计算。
             </p>
           </div>
           <button
@@ -375,7 +336,7 @@ export default function ProfileGrowthSettingsPage() {
               </span>
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#73839b' }}>
-              自动监听学生探究过程中的重大节点，生成永久链式成长记录。
+              事件策略预览；实际任务由已接入的服务端事件与路由触发，候选内容须审核后进入成长展示。
             </p>
           </div>
         </div>
@@ -446,14 +407,14 @@ export default function ProfileGrowthSettingsPage() {
             </span>
           </h3>
           <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: '#73839b' }}>
-            遵循未成年人个人信息保护规范，严格限制可见范围与脱敏标准。
+            以下为隐私策略预览，当前开关不改变服务端权限与脱敏规则。
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div className="admin-growth-sub-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
               <div>
                 <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>原始对话与学情自动脱敏</strong>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>自动抹除姓名、手机号、家庭住址与人脸敏感信息</span>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>预期最小化展示个人敏感信息，实际处理以服务端规则为准</span>
               </div>
               <input
                 type="checkbox"
@@ -479,7 +440,7 @@ export default function ProfileGrowthSettingsPage() {
             <div className="admin-growth-sub-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
               <div>
                 <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>家长端只读白名单同步</strong>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>仅推送已通过阶段门禁的正面里程碑与作品反思摘要</span>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>仅展示经过授权与审核的有界摘要</span>
               </div>
               <input
                 type="checkbox"
@@ -517,22 +478,13 @@ export default function ProfileGrowthSettingsPage() {
                 </label>
                 <select
                   value={profileAssistantId}
+                  disabled={!catalogReady}
                   onChange={(e) => setProfileAssistantId(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
-                  {assistants.length > 0 ? (
-                    assistants.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.role || '智能导师'})
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="profile-analyst-assistant">学情画像分析助手 (专任导师)</option>
-                      <option value="qitu-assistant">启途智学管家</option>
-                      <option value="tutor-leader">启途总导师</option>
-                    </>
-                  )}
+                  <option value="">{configuration.loading ? '\u6b63\u5728\u8bfb\u53d6\u2026' : '\u672a\u914d\u7f6e'}</option>
+                  {profileAssistantId && !purposeOptions.some(option => option.id === profileAssistantId) && <option value={profileAssistantId} disabled>当前绑定已不可用</option>}
+                  {purposeOptions.map(option => <option key={option.id} value={option.id}>{option.displayName}</option>)}
                 </select>
 
                 <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
@@ -574,22 +526,13 @@ export default function ProfileGrowthSettingsPage() {
                 </label>
                 <select
                   value={growthAssistantId}
+                  disabled={!catalogReady}
                   onChange={(e) => setGrowthAssistantId(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', color: '#0f172a', background: '#ffffff', outline: 'none', marginBottom: '10px' }}
                 >
-                  {assistants.length > 0 ? (
-                    assistants.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.role || '智能导师'})
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="growth-trajectory-assistant">成长轨迹生成助手 (专任导师)</option>
-                      <option value="tutor-leader">启途总导师</option>
-                      <option value="qitu-assistant">启途智学管家</option>
-                    </>
-                  )}
+                  <option value="">{configuration.loading ? '\u6b63\u5728\u8bfb\u53d6\u2026' : '\u672a\u914d\u7f6e'}</option>
+                  {growthAssistantId && !purposeOptions.some(option => option.id === growthAssistantId) && <option value={growthAssistantId} disabled>当前绑定已不可用</option>}
+                  {purposeOptions.map(option => <option key={option.id} value={option.id}>{option.displayName}</option>)}
                 </select>
 
                 <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
@@ -627,7 +570,7 @@ export default function ProfileGrowthSettingsPage() {
 
             <div>
               <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                画像与雷达图刷新周期
+                画像与雷达图刷新周期（策略预览）
               </label>
               <select
                 value={refreshCycle}

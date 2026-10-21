@@ -31,6 +31,7 @@ import type { Database } from '@qitu/database';
 import { projectTemplateVersions, projectTemplates } from '@qitu/database';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { DATABASE_TOKEN } from '../../database';
+import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import {
   canCreateFormalProject,
   closeExploration as closeExplorationState,
@@ -90,6 +91,7 @@ export class ProjectsService {
     @Optional() @Inject(DATABASE_TOKEN) private readonly db: Database | null = null,
     private readonly teamRuntime: TeamRuntimeService,
     @Optional() private readonly templateBindings?: TemplateBindingService,
+    @Optional() private readonly learningPlans?: LearningPlanService,
   ) {}
 
   /* ------------------------------ 读 ------------------------------ */
@@ -269,6 +271,14 @@ export class ProjectsService {
                   message: '项目导师团队尚未配置完成，请联系管理员后重试',
                 });
               }
+              if (!this.learningPlans) throw new ServiceUnavailableException({
+                code: 'PROJECT_TEACHING_PLAN_UNAVAILABLE', message: '项目学习计划服务不可用，请稍后重试',
+              });
+              await this.learningPlans.attachConfirmedProjectPlan({
+                id: projectId, studentId, templateVersionId, status: stage, ...progress,
+                title: deriveProjectTitle(confirmed.draft), subtitle: confirmed.draft.preferredForm,
+                tags: [...confirmed.draft.coreInterests], createdAt: now, completedAt: null,
+              }, tx);
             },
           });
         } catch (error) {

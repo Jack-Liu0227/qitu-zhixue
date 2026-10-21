@@ -19,8 +19,8 @@ const base: EvaluateMasteryInput = {
 async function harness(fail = false) {
   const store = new InMemoryLearningPlanStore();
   const bundle: PlanBundle = {
-    plan: { id: 'plan', studentUserId: 'student', projectId: null, interest: 'math', goal: '', weeks: 4, minutesPerSession: 60, templateVersion: 'v1', status: 'draft', version: 1, idempotencyKey: 'plan', confirmedAt: null, completedAt: null, createdAt: time, updatedAt: time },
-    modules: [{ id: 'module', planId: 'plan', name: 'module', weekIndex: 0, objective: '', ordinal: 0 }],
+    plan: { id: 'plan', studentUserId: 'student', projectId: null, interest: 'math', goal: '', lessonCount: 4, lessonMinutes: 60, minutesPerSession: 60, templateVersion: 'v1', status: 'draft', version: 1, idempotencyKey: 'plan', confirmedAt: null, completedAt: null, createdAt: time, updatedAt: time },
+    modules: [{ id: 'module', planId: 'plan', name: 'module', lessonIndex: 0, objective: '', ordinal: 0 }],
     objectives: [{ id: 'objective', planId: 'plan', moduleId: 'module', name: 'math', type: 'procedure', objective: 'math', prerequisiteIds: [], ordinal: 0 }], sessions: [],
   };
   await store.createPlan(bundle);

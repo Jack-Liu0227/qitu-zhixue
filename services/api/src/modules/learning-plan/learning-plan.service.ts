@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/common';
 import type {
   ConfirmLearningPlanResponse,
+  AnswerInteractiveQuizResponse,
   CurrentUser,
   GenerateLearningPlanResponse,
   KnowledgeType,
@@ -22,17 +24,17 @@ import type {
   NextStepView,
   ProjectSummary,
   PublicQuestion,
+  PlanSessionCount,
   StartSessionResponse,
   SubmitAnswerResponse,
   SubmitEvidenceResponse,
-  PblSchedule,
+  TutorReplyBlock,
 } from '@qitu/contracts';
 // 门禁契约里的**值**导出（+ 对应的类型）：注册表是门禁 id 的真源。必须走值
 // 导入——`import type` 下 `GATE_CONDITION_REGISTRY` 只能当类型用，取不到 `gateId`。
 import {
   GATE_CONDITION_REGISTRY,
   isRegisteredGateCondition,
-  validatePblSchedule,
   type GateConditionId,
 } from '@qitu/contracts';
 import {
@@ -59,6 +61,7 @@ import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { MasteryReadService } from '../mastery/mastery.service';
 import { TeamRuntimeService } from '../team-runtime/team-runtime.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
+import { WorksLearningEvidenceService } from '../works/works-learning-evidence.service';
 import {
   FORMAL_PROJECT_START_STAGE,
   computeStageProgress,
@@ -75,30 +78,25 @@ import {
   type PendingQuestionRecord,
   type PlanBundle,
   type PlanRecord,
+  type LearningProjectRecord,
   type SessionRecord,
 } from './learning-plan.store';
 import {
+  assertGenerateInput,
   PlanGenerationError,
   PlanGenerator,
   type GeneratePlanInput,
   type GeneratedPlan,
-  type PlanSessionCount,
 } from './plan-generator';
-import { generateOpticsPlan } from './optics-plan-generator';
 import { generatePlanFromTemplate } from './template-plan-generator';
-import { OPTICS_TEMPLATE_SLUG, OPTICS_16_TEMPLATE_SLUG } from '../templates/content/optics';
-import {
-  MAX_GOAL_LENGTH,
-  MAX_INTEREST_LENGTH,
-  MIN_INTEREST_LENGTH,
-  SESSION_COUNT_OPTIONS,
-  validateGeneratedPlan,
-} from './session-plan-validator';
+import { OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG } from '../templates/content/optics';
+import { validateGeneratedPlan } from './session-plan-validator';
+import { assertQuestionScope, dynamicQuestionBlock, dynamicQuestionEnvelope, parseChoiceQuestionCandidate, type QuestionCandidateScope, type DynamicQuestionEnvelope } from './question-candidate';
+import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-candidate.sources';
 
 const PLAN_FORBIDDEN_MESSAGE = '无权访问该学习计划';
 const THRESHOLD_BASIS_POINTS = 9000;
 const MAX_EVIDENCE_REF_LENGTH = 200;
-const MAX_EVIDENCE_SUMMARY_LENGTH = 500;
 
 /** 服务端推进 / 门禁的稳定错误码（契约 `LearningPlanErrorCode` 子集）。 */
 type ServiceErrorCode =
@@ -112,7 +110,7 @@ type ServiceErrorCode =
   | 'EVIDENCE_INVALID';
 
 /**
- * 学习计划服务（T？）——「兴趣 → 4/8 周计划 → 逐节掌握」的服务端真源。
+ * 学习计划服务——「兴趣 → 按课时生成计划 → 逐课时掌握」的服务端真源。
  *
  * 硬约束（全部在此强制，客户端无法绕过）：
  *
@@ -124,8 +122,8 @@ type ServiceErrorCode =
  * 3. **判分与題库留在服务端**：题面用 `QuestionCard`（含答案与解析），下发前只经
  *    `toPublicQuestion` 结构化投影；作答请求只有 `questionId` + `answer`。
  * 4. **对象级授权**：学生只能碰自己的计划；班主任只能读当前在带的学生；越权 403。
- * 5. **幂等**：生成按 `(studentId, interest, weeks, templateVersion, **schedule**)`
- *    去重（排课也是计划形状的一部分：4 周 1×120 与 4 周 2×60 是两份不同的草稿）；
+ * 5. **幂等**：生成按 `(studentId, interest, lessonCount, lessonMinutes, templateVersion)`
+ *    去重（课时数量和单课时分钟数共同构成计划形状）；
  *    confirm / answers / evidence 走 `IdempotencyStore`，重试不追加第二次尝试。
  * 6. **审计**：生成、确认、`TheoryMastered`、证据提交各写一次（`TheoryMastered`
  *    用「非达标 → 达标」的状态翻转保证 exactly-once）。
@@ -154,74 +152,84 @@ export class LearningPlanService {
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() private readonly templateBindings?: TemplateBindingService,
+    @Optional() private readonly learningEvidence?: WorksLearningEvidenceService,
   ) {
     this.masteryDomain = mastery ?? new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   }
 
   /* ==================== 生成（draft，无项目） ==================== */
 
+  /** Attach the exact frozen curriculum while the confirmation transaction is still open. */
+  async attachConfirmedProjectPlan(project: LearningProjectRecord, tx?: AuditTransaction): Promise<string> {
+    if (!this.templateBindings || !project.templateVersionId) {
+      throw new ConflictException({ code: 'PROJECT_TEACHING_PLAN_UNAVAILABLE', message: '项目缺少冻结教学合同' });
+    }
+    const teaching = await this.templateBindings.getFrozenTeachingBundle(project.id, project.templateVersionId, tx);
+    const profile = teaching.template.curriculum?.profiles.find(item => item.id === teaching.scheduleProfileId);
+    if (!profile) throw new ConflictException({ code: 'PROJECT_TEACHING_PLAN_UNAVAILABLE', message: '冻结模板缺少已审核的课时安排' });
+    const generated = generatePlanFromTemplate({
+      interest: project.title.slice(0, 60), goal: project.subtitle, lessonCount: profile.schedule.lessonCount,
+      lessonMinutes: profile.schedule.lessonMinutes,
+    }, { templateVersion: project.templateVersionId, templateSpec: teaching.template });
+    validateGeneratedPlan(generated);
+    const bundle = this.buildBundle(project.studentId, generated, project.createdAt);
+    bundle.plan = { ...bundle.plan, projectId: project.id, status: 'active', confirmedAt: project.createdAt,
+      idempotencyKey: `confirmed-project-plan:${project.id}` };
+    return this.store.withConfirmationTransaction(tx, async store => {
+      await store.attachConfirmedProject(project, bundle);
+      await this.audit.write({ actorId: project.studentId, actorRole: 'student', action: 'learning_plan.attach_confirmed_project',
+        targetType: 'learning_plan', targetId: bundle.plan.id, idempotencyKey: bundle.plan.idempotencyKey,
+        detail: { projectId: project.id, templateVersionId: project.templateVersionId, scheduleProfileId: profile.id,
+          lessonCount: bundle.sessions.length } }, tx);
+      return bundle.plan.id;
+    });
+  }
+
   async generatePlan(
     actor: CurrentUser,
-    rawInput: { interest: unknown; weeks: unknown; goal?: unknown; schedule?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
+    rawInput: { interest: unknown; lessonCount?: unknown; lessonMinutes?: unknown; goal?: unknown; sessionCount?: unknown; curriculumSlug?: unknown },
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
-      if (input.curriculumSlug !== OPTICS_TEMPLATE_SLUG && input.curriculumSlug !== OPTICS_16_TEMPLATE_SLUG) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
-          message: `课程模板 ${input.curriculumSlug} 尚无对应计划生成器`,
+          message: `???? ${input.curriculumSlug} ?????????`,
         });
       }
       const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
-      generated = input.curriculumSlug === OPTICS_16_TEMPLATE_SLUG
-        ? generatePlanFromTemplate(input, { templateVersion: resolution.templateVersionId, templateSpec: resolution.content.pbl })
-        : generateOpticsPlan(input, { templateVersion: resolution.templateVersionId });
+      generated = generatePlanFromTemplate(input, {
+        templateVersion: resolution.templateVersionId,
+        templateSpec: resolution.content.pbl,
+      });
     } else {
       generated = this.generator.generate(input);
     }
     validateGeneratedPlan(generated);
 
-    // 去重签名必须**包含排课形状**：4 周 1×120 与 4 周 2×60 的周数、兴趣、
-    // 模板版本完全相同，但计划形状（会话数 / 每节分钟）不同。签名与幂等键
-    // 都带上 `sessionsPerWeek x sessionMinutes`，两种排课各自得到一份草稿。
-    const signatureKey = planSignatureKey(actor.id, generated);
-    const signatureQuery = {
-      studentUserId: actor.id,
-      interest: generated.interest,
-      weeks: generated.weeks,
-      templateVersion: generated.templateVersion,
+    const signatureKey = lessonPlanSignatureKey(actor.id, generated);
+    const findExisting = () => this.store.findPlanByLessonSignature(
+      actor.id,
+      generated.interest,
+      generated.lessonCount,
+      generated.lessonMinutes,
+      generated.templateVersion,
       signatureKey,
-      legacyKeyPrefix: legacyPlanKeyPrefix(actor.id, {
-        templateVersion: generated.templateVersion,
-        weeks: generated.weeks,
-        interest: generated.interest,
-      }),
-      shape: {
-        weeks: generated.weeks,
-        minutesPerSession: generated.minutesPerSession,
-        totalSessions: generated.sessions.length,
-      },
-    };
-    const existing = await findSignatureHit(this.store, signatureQuery);
-    if (existing !== null) {
-      return { plan: await this.toPlanView(existing), deduplicated: true };
-    }
+    );
+    const existing = await findExisting();
+    if (existing !== null) return { plan: await this.toPlanView(existing), deduplicated: true };
 
-    const now = new Date();
-    const bundle = this.buildBundle(actor.id, generated, now);
+    const bundle = this.buildBundle(actor.id, generated, new Date());
     try {
       await this.store.createPlan(bundle);
     } catch (error) {
       if (error instanceof LearningPlanStoreConflictError) {
-        // 并发竞争：同排课的另一请求已落库 → 读回并去重。**同签名不同排课
-        // 的竞争不在这里合并**——它本来就该是两份草稿。
-        const raced = await findSignatureHit(this.store, signatureQuery);
+        const raced = await findExisting();
         if (raced !== null) return { plan: await this.toPlanView(raced), deduplicated: true };
       }
       throw error;
     }
-
     await this.audit.write({
       actorId: actor.id,
       actorRole: actor.role,
@@ -231,16 +239,15 @@ export class LearningPlanService {
       idempotencyKey: bundle.plan.idempotencyKey,
       detail: {
         interest: generated.interest,
-        weeks: generated.weeks,
+        lessonCount: generated.lessonCount,
+        lessonMinutes: generated.lessonMinutes,
         templateVersion: generated.templateVersion,
         modules: generated.modules.length,
         sessions: generated.sessions.length,
         objectives: generated.objectives.length,
       },
     });
-    this.logger.log(
-      `生成计划 draft=${bundle.plan.id} student=${actor.id} weeks=${generated.weeks}`,
-    );
+    this.logger.log(`Generated plan draft=${bundle.plan.id} student=${actor.id} lessons=${generated.lessonCount}`);
     return { plan: await this.toPlanView(bundle), deduplicated: false };
   }
 
@@ -320,7 +327,7 @@ export class LearningPlanService {
               stageTotal: progress.stageTotal,
               progressPercent: progress.progressPercent,
               title: bundle.plan.goal.length > 0 ? bundle.plan.goal : bundle.plan.interest,
-              subtitle: `${bundle.plan.interest} · ${bundle.plan.weeks} 周`,
+              subtitle: `${bundle.plan.interest} · ${bundle.plan.lessonCount} 课时`,
               tags: [bundle.plan.interest],
             },
             // F3: a formal project must carry an immutable binding snapshot. A
@@ -359,7 +366,8 @@ export class LearningPlanService {
               detail: {
                 planId,
                 templateVersion: bundle.plan.templateVersion,
-                weeks: bundle.plan.weeks,
+                lessonCount: bundle.plan.lessonCount,
+                lessonMinutes: bundle.plan.lessonMinutes,
                 stage: FORMAL_PROJECT_START_STAGE,
               },
             });
@@ -433,6 +441,170 @@ export class LearningPlanService {
 
   /* ==================== 作答（判分 + 掌握） ==================== */
 
+  /** Accept only a scoped server proposal; generated keys are formative evidence. */
+  async acceptQuestionCandidate(
+    actor: CurrentUser,
+    sourceScope: QuestionCandidateScope,
+    rawCandidate: unknown,
+    idempotencyKey: string,
+    verifyEvidence: VerifyQuestionEvidence,
+  ): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }>> {
+    const candidate = parseChoiceQuestionCandidate(rawCandidate);
+    await this.assertCandidateContext(actor, sourceScope);
+    await verifyQuestionSources(candidate.sourceRefs, verifyEvidence);
+    const scope = `student.learning-plan.dynamic-question:${actor.id}:${sourceScope.planId}`;
+    const requestHash = hashIdempotentInput(scope, { ...sourceScope }, { ...candidate });
+    const questionId = `question-${createHash('sha256').update(`${scope}:${idempotencyKey}`).digest('hex').slice(0, 40)}`;
+    try {
+      const result = await this.idempotency.execute(scope, idempotencyKey, requestHash, async () =>
+        this.withAssessmentStore(actor.id, async scoped => {
+          await scoped.assertCandidateContext(actor, sourceScope);
+          const sources = await verifyQuestionSources(candidate.sourceRefs, verifyEvidence);
+          const prior = await scoped.store.findPendingQuestion(questionId);
+          if (prior !== null) {
+            const envelope = dynamicQuestionEnvelope(prior);
+            if (prior.studentUserId !== actor.id || envelope.candidateDigest !== requestHash || prior.status !== 'awaiting') {
+              throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '该题已处理或候选内容已改变。' });
+            }
+            return { status: 200, body: { questionId } };
+          }
+          if (await scoped.store.findAwaitingQuestion(actor.id, sourceScope.planId)) {
+            throw new ConflictException({ code: 'QUESTION_ALREADY_AWAITING', message: '请先完成当前待答题；新题不会替换已下发题目。' });
+          }
+          const options = candidate.options.map((option, index) => ({
+            id: `option-${createHash('sha256').update(`${questionId}:${index}`).digest('hex').slice(0, 24)}`,
+            label: String.fromCharCode(65 + index), body: option.text,
+          }));
+          const envelope: DynamicQuestionEnvelope = {
+            schemaVersion: 'qitu.dynamic-choice.v1', kind: 'formative_choice', sourceScope: { ...sourceScope },
+            correctOptionId: options[candidate.correctOptionIndex]!.id, candidateDigest: requestHash, sources,
+          };
+          const now = new Date();
+          await scoped.store.createPendingQuestion({
+            id: questionId, schoolId: await scoped.store.studentSchoolId(actor.id), studentUserId: actor.id,
+            planId: sourceScope.planId, sessionId: sourceScope.learningSessionId, objectiveId: sourceScope.objectiveId,
+            questionType: 'choice', prompt: candidate.prompt, options, expectedAnswer: JSON.stringify(envelope),
+            explanation: candidate.explanation, difficulty: candidate.difficulty, assessmentType: 'formative',
+            status: 'awaiting', attempt: 1, hintsUsed: 0, idempotencyKey: `${scope}:${idempotencyKey}`,
+            askedAt: now, answeredAt: null, createdAt: now, updatedAt: now,
+          }, async tx => {
+            await scoped.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'learning.question.generated',
+              targetType: 'pending_question', targetId: questionId, idempotencyKey: `generated:${questionId}`,
+              detail: { sourceScope, assessmentMode: 'formative', sourceRefs: sources.map(source => source.sourceRef) },
+            }, tx);
+          });
+          return { status: 201, body: { questionId } };
+        }));
+      await this.assertCandidateContext(actor, sourceScope);
+      const pending = await this.store.findPendingQuestion(result.body.questionId);
+      if (pending === null || pending.studentUserId !== actor.id || pending.status !== 'awaiting' ||
+          dynamicQuestionEnvelope(pending).candidateDigest !== requestHash) {
+        throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '待答题已变化，请重新读取当前学习任务。' });
+      }
+      return dynamicQuestionBlock(pending);
+    } catch (error) {
+      if (error instanceof PendingQuestionConflictError) {
+        throw new ConflictException({ code: 'QUESTION_ALREADY_AWAITING', message: '当前已有待答题，新题未覆盖原题。' });
+      }
+      throwHttpForIdempotencyError(error);
+    }
+  }
+
+  /** Recover an accepted question after a turn persistence failure without generating another. */
+  async readPendingQuestionCandidate(actor: CurrentUser, sourceScope: QuestionCandidateScope): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }> | null> {
+    await this.assertCandidateContext(actor, sourceScope);
+    const pending = await this.store.findAwaitingQuestion(actor.id, sourceScope.planId);
+    if (pending === null || pending.assessmentType !== 'formative') return null;
+    const persisted = dynamicQuestionEnvelope(pending).sourceScope;
+    if (Object.keys(persisted).some(key => persisted[key as keyof QuestionCandidateScope] !== sourceScope[key as keyof QuestionCandidateScope])) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '已有待答题属于另一课时或对话，请先返回原任务。' });
+    }
+    return dynamicQuestionBlock(pending);
+  }
+
+  /** Historical readback uses persisted scope and attempt evidence, never a new grading decision. */
+  async readQuestionCandidateResult(
+    actor: CurrentUser, sourceScope: QuestionCandidateScope, questionId: string,
+  ): Promise<AnswerInteractiveQuizResponse | null> {
+    const bundle = await this.requireBundle(sourceScope.planId);
+    this.assertOwnedStudent(actor, bundle.plan);
+    const project = await this.store.findProject(sourceScope.projectId);
+    if (project === null || project.studentId !== actor.id || bundle.plan.projectId !== sourceScope.projectId) {
+      throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+    }
+    const pending = await this.store.findPendingQuestion(questionId);
+    if (pending === null || pending.studentUserId !== actor.id || pending.assessmentType !== 'formative') {
+      throw new NotFoundException({ code: 'QUESTION_RESULT_UNAVAILABLE', message: '动态题记录不可用。' });
+    }
+    const envelope = dynamicQuestionEnvelope(pending);
+    if (Object.keys(envelope.sourceScope).some(key => envelope.sourceScope[key as keyof QuestionCandidateScope] !== sourceScope[key as keyof QuestionCandidateScope])) {
+      throw new ConflictException({ code: 'QUESTION_SCOPE_MISMATCH', message: '题目不属于该项目课时或对话。' });
+    }
+    if (pending.status === 'awaiting') return null;
+    const attempts = (await this.store.listAttempts(actor.id, pending.objectiveId, { includeFormative: true }))
+      .filter(attempt => attempt.questionId === questionId && attempt.planId === pending.planId && attempt.assessmentType === 'formative');
+    const attempt = attempts[0];
+    if (pending.status !== 'answered' || attempts.length !== 1 || !attempt ||
+        !pending.options.some(option => option.id === attempt.userAnswer)) {
+      throw new ConflictException({ code: 'QUESTION_RESULT_UNAVAILABLE', message: '已提交结果暂时无法核验，请稍后重试。' });
+    }
+    return {
+      quizId: questionId, assessmentMode: 'formative', selectedKeys: [attempt.userAnswer!],
+      correct: attempt.isCorrect, attempts: attempt.attemptCount, hintLevel: 1,
+      explanation: pending.explanation, correctKeys: [envelope.correctOptionId], conceptDeltas: [],
+      nextGuidance: '结合解析说明你的推理，再通过目标考核检验掌握情况。', replayed: true,
+    };
+  }
+
+  private async assertCandidateContext(actor: CurrentUser, scope: QuestionCandidateScope): Promise<void> {
+    if (!scope || typeof scope.planId !== 'string') throw new BadRequestException({ code: 'QUESTION_SCOPE_MISMATCH' });
+    const bundle = await this.requireBundle(scope.planId);
+    this.assertOwnedStudent(actor, bundle.plan);
+    this.assertActive(bundle.plan);
+    const session = await this.requireSession(bundle, scope.learningSessionId);
+    assertQuestionScope(scope, bundle, session);
+    const project = await this.store.findProject(scope.projectId);
+    if (project === null || project.studentId !== actor.id) throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+    await this.assertPracticeGate(session, await this.loadStates(actor, bundle), actor, bundle);
+  }
+
+  private async submitFormativeAnswer(
+    actor: CurrentUser, bundle: PlanBundle, session: SessionRecord, states: Map<string, ObjectiveMasteryState>,
+    pending: PendingQuestionRecord, objective: ObjectiveRecord, answer: string, idempotencyKey: string,
+  ): Promise<{ status: number; body: SubmitAnswerResponse }> {
+    const envelope = dynamicQuestionEnvelope(pending);
+    assertQuestionScope(envelope.sourceScope, bundle, session);
+    if (!pending.options.some(option => option.id === answer)) {
+      throw new BadRequestException({ code: 'QUESTION_OPTION_INVALID', message: '请选择本题下发的一个选项。' });
+    }
+    const card = { ...this.pendingToCard(pending), expectedAnswer: pending.options.find(option => option.id === envelope.correctOptionId)!.body };
+    const grade = gradeAnswer(card, answer, 'awaiting');
+    const now = new Date();
+    const attempt: AttemptRecord = {
+      id: newId('attempt'), studentUserId: actor.id, planId: bundle.plan.id, objectiveId: objective.id,
+      questionId: pending.id, result: grade.result, isCorrect: grade.isCorrect, assessmentType: 'formative',
+      errorType: grade.errorType, hintsUsed: pending.hintsUsed, attemptCount: pending.attempt,
+      qualityBasisPoints: qualityBasisPoints(grade.score), userAnswer: answer, createdAt: now,
+    };
+    const completed = await this.store.completePendingQuestion({
+      questionId: pending.id, answeredAt: now, attempt, mastery: null, masteryEvent: null,
+      commit: async tx => {
+        await this.audit.write({ actorId: actor.id, actorRole: actor.role, action: 'learning.question.formative-answered',
+          targetType: 'pending_question', targetId: pending.id, idempotencyKey: `formative:${pending.id}:${idempotencyKey}`,
+          detail: { planId: bundle.plan.id, objectiveId: objective.id, isCorrect: grade.isCorrect, assessmentMode: 'formative' },
+        }, tx);
+      },
+    });
+    if (!completed) throw new ConflictException({ code: 'QUESTION_NOT_AWAITING', message: '该题已作答。' });
+    return { status: 200, body: {
+      questionId: pending.id, assessmentMode: 'formative', correctOptionIds: [envelope.correctOptionId],
+      result: grade.result, isCorrect: grade.isCorrect, score: grade.score, explanation: pending.explanation,
+      errorType: grade.errorType, remediation: grade.remediation,
+      mastery: this.toMasterySummary(await this.store.findMastery(actor.id, objective.id), objective),
+      theoryMastered: computeTheoryMastered(session.theoryObjectiveIds, states), practiceUnlocked: this.isPracticeUnlocked(session, states), replayed: false,
+    } };
+  }
+
   async submitAnswer(
     actor: CurrentUser,
     planId: string,
@@ -455,6 +627,14 @@ export class LearningPlanService {
       throw this.badRequest('LEARNING_PLAN_INVALID', 'answer 必须是字符串');
     }
 
+    const storedQuestion = await this.store.findPendingQuestion(questionId);
+    if (storedQuestion?.assessmentType === 'formative') {
+      const envelope = dynamicQuestionEnvelope(storedQuestion);
+      if (storedQuestion.studentUserId !== actor.id) throw new ForbiddenException(PLAN_FORBIDDEN_MESSAGE);
+      assertQuestionScope(envelope.sourceScope, bundle, session);
+      await this.assertCandidateContext(actor, envelope.sourceScope);
+    }
+
     const scope = `student.learning-plan.answer:${actor.id}:${planId}:${sessionId}:${questionId}`;
     const requestHash = hashIdempotentInput(
       scope,
@@ -469,6 +649,8 @@ export class LearningPlanService {
         requestHash,
         async () => this.withAssessmentStore(actor.id, async (scoped) => {
           const fresh = await scoped.requireBundle(planId);
+          scoped.assertOwnedStudent(actor, fresh.plan);
+          scoped.assertActive(fresh.plan);
           const freshSession = await scoped.requireSession(fresh, sessionId);
           const freshStates = await scoped.loadStates(actor, fresh);
           await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
@@ -493,6 +675,9 @@ export class LearningPlanService {
               code: 'QUESTION_NOT_AWAITING',
               message: '该题引用的目标不存在（数据不一致）',
             });
+          }
+          if (pending.assessmentType === 'formative') {
+            return scoped.submitFormativeAnswer(actor, fresh, freshSession, freshStates, pending, objective, body.answer as string, idempotencyKey);
           }
           const card = scoped.pendingToCard(pending);
           const grade = gradeAnswer(card, body.answer as string, 'awaiting');
@@ -598,7 +783,7 @@ export class LearningPlanService {
     actor: CurrentUser,
     planId: string,
     sessionId: string,
-    body: { objectiveId: unknown; evidenceRef: unknown; summary?: unknown },
+    body: { objectiveId: unknown; evidenceRef: unknown; planRevision?: unknown; summary?: unknown },
     idempotencyKey: string,
   ): Promise<SubmitEvidenceResponse> {
     const bundle = await this.requireBundle(planId);
@@ -607,130 +792,35 @@ export class LearningPlanService {
     const session = await this.requireSession(bundle, sessionId);
     const states = await this.loadStates(actor, bundle);
     await this.assertPracticeGate(session, states, actor, bundle);
-
     const objectiveId = typeof body.objectiveId === 'string' ? body.objectiveId.trim() : '';
-    if (!session.practiceObjectiveIds.includes(objectiveId)) {
-      throw this.badRequest('EVIDENCE_INVALID', '证据只能提交给本会话的实践目标');
-    }
-    const objective = this.objectiveIndex(bundle).get(objectiveId);
-    if (objective === undefined) {
-      throw this.badRequest('EVIDENCE_INVALID', '目标不存在');
-    }
     const evidenceRef = typeof body.evidenceRef === 'string' ? body.evidenceRef.trim() : '';
-    if (evidenceRef.length === 0 || evidenceRef.length > MAX_EVIDENCE_REF_LENGTH) {
-      throw this.badRequest('EVIDENCE_INVALID', 'evidenceRef 长度非法');
+    if (!session.practiceObjectiveIds.includes(objectiveId) || !evidenceRef || evidenceRef.length > MAX_EVIDENCE_REF_LENGTH) {
+      throw this.badRequest('EVIDENCE_INVALID', '需要本课时的实践目标与已保存证据引用');
     }
-    const summary =
-      typeof body.summary === 'string' ? body.summary.trim().slice(0, MAX_EVIDENCE_SUMMARY_LENGTH) : null;
-
+    if (!Number.isSafeInteger(body.planRevision) || body.planRevision !== bundle.plan.version || !bundle.plan.projectId) {
+      throw new ConflictException({ code: 'LEARNING_EVIDENCE_SCOPE_MISMATCH', message: '计划版本已变化，请刷新后重试' });
+    }
+    if (!this.learningEvidence) throw new ConflictException({ code: 'EVIDENCE_ASSESSMENT_REQUIRED', message: '证据 owner 尚不可用，不能确认提交或掌握' });
+    const owner = this.learningEvidence;
     const scope = `student.learning-plan.evidence:${actor.id}:${planId}:${sessionId}:${objectiveId}`;
-    const requestHash = hashIdempotentInput(
-      scope,
-      { planId, sessionId, objectiveId },
-      { evidenceRef, summary },
-    );
-    let theoryMasteredFlip = false;
+    const evidenceScope = (await owner.getLessonProofs(actor, planId, sessionId, bundle.plan.version)).scope;
     try {
-      const result = await this.idempotency.execute(
-        scope,
-        idempotencyKey,
-        requestHash,
-        async () => this.withAssessmentStore(actor.id, async (scoped) => {
-          const fresh = await scoped.requireBundle(planId);
-          const freshSession = await scoped.requireSession(fresh, sessionId);
-          const existing = await scoped.store.listAttempts(fresh.plan.studentUserId, objectiveId);
-          const freshStates = await scoped.loadStates(actor, fresh);
-          await scoped.assertPracticeGate(freshSession, freshStates, actor, fresh);
-          const wasMastered = computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates);
-          const attempt: AttemptRecord = {
-            id: newId('attempt'),
-            studentUserId: fresh.plan.studentUserId,
-            planId,
-            objectiveId,
-            questionId: null,
-            result: 'correct',
-            isCorrect: true,
-            assessmentType: 'qualitative',
-            errorType: null,
-            hintsUsed: 0,
-            attemptCount: existing.length + 1,
-            qualityBasisPoints: qualityBasisPoints(1),
-            userAnswer: evidenceRef,
-            createdAt: new Date(),
-          };
-          const nextMastery = await scoped.recomputeMastery(
-            fresh.plan.studentUserId,
-            fresh,
-            objective,
-            { correctAnswer: true },
-            false,
-            attempt,
-          );
-          const masteryEvent = await scoped.buildMasteryEvent({
-            bundle: fresh,
-            objective,
-            attempt,
-            mastery: nextMastery,
-            answeredAt: attempt.createdAt,
-            idempotencyKey,
-            evidenceRefs: [`evidence:${evidenceRef}`],
-            sourceType: 'practice',
-          });
-          const masteryToPersist = masteryEvent === null
-            ? nextMastery
-            : {
-                ...nextMastery,
-                knowledgePointId: masteryEvent.knowledgePointId,
-                courseVersion: masteryEvent.courseVersion,
-                sourceEventId: masteryEvent.id,
-                sourceSequence: masteryEvent.sequence,
-                assessmentVersion: masteryEvent.assessmentVersion,
-                validFrom: masteryEvent.validFrom,
-              };
-          const isMastered = scoped.theoryMasteredWithCandidate(freshSession, freshStates, masteryToPersist);
-          const shouldEmitTheoryMastered = !wasMastered && isMastered;
-          await scoped.store.completeAssessment({
-            attempt,
-            mastery: masteryToPersist,
-            masteryEvent,
-            commit: async (tx) => {
-              await scoped.emitMasteryAssessed(masteryEvent, tx as AuditTransaction);
-              if (shouldEmitTheoryMastered) {
-                await scoped.emitTheoryMastered(actor, fresh, freshSession, tx as AuditTransaction);
-              }
-              await scoped.audit.write({
-                actorId: actor.id,
-                actorRole: actor.role,
-                action: 'learning_plan.evidence',
-                targetType: 'learning_objective',
-                targetId: objectiveId,
-                idempotencyKey: `${scope}:${idempotencyKey}`,
-                detail: { planId, sessionId, knowledgeType: objective.type },
-              }, tx as AuditTransaction);
-            },
-          });
-          theoryMasteredFlip = shouldEmitTheoryMastered;
-          const updatedStates = await scoped.loadStates(actor, fresh);
-          return {
-            status: 201,
-            body: {
-              objectiveId,
-              accepted: true,
-              theoryMastered: isMastered,
-              practiceUnlocked: scoped.isPracticeUnlocked(freshSession, updatedStates),
-              replayed: false,
-            } satisfies SubmitEvidenceResponse,
-          };
-        }),
-      );
-      const resp = result.body;
-      if (theoryMasteredFlip && !result.replayed) {
-        await this.recordTheoryMasteredGate(actor.id, sessionId);
-      }
-      return result.replayed ? { ...resp, replayed: true } : resp;
-    } catch (error) {
-      throwHttpForIdempotencyError(error);
-    }
+      // The evidence owner validates again on every replay. No correct attempt or mastery event is manufactured.
+      await owner.readLessonProofs(actor, evidenceScope, [evidenceRef]);
+      const result = await this.idempotency.execute(scope, idempotencyKey,
+        hashIdempotentInput(scope, { planId, sessionId, objectiveId }, { evidenceRef, planRevision: body.planRevision }), async () => {
+          const receipt = await owner.recordEvidenceSubmission(actor, evidenceScope, objectiveId, evidenceRef, idempotencyKey);
+          const fresh = await this.requireBundle(planId);
+          const freshSession = await this.requireSession(fresh, sessionId);
+          const freshStates = await this.loadStates(actor, fresh);
+          await this.assertPracticeGate(freshSession, freshStates, actor, fresh);
+          return { status: 201, body: { objectiveId, accepted: true, ...receipt,
+            theoryMastered: computeTheoryMastered(freshSession.theoryObjectiveIds, freshStates),
+            practiceUnlocked: this.isPracticeUnlocked(freshSession, freshStates), replayed: false } satisfies SubmitEvidenceResponse };
+        });
+      await owner.readLessonProofs(actor, evidenceScope, [evidenceRef]);
+      return { ...result.body, replayed: result.replayed };
+    } catch (error) { throwHttpForIdempotencyError(error); throw error; }
   }
 
   /**
@@ -846,6 +936,8 @@ export class LearningPlanService {
         this.access,
         this.masteryDomain,
         this.teamRuntime,
+        this.templateBindings,
+        this.learningEvidence,
       );
       return work(scoped);
     });
@@ -867,19 +959,13 @@ export class LearningPlanService {
       projectId: null,
       interest: generated.interest,
       goal: generated.goal,
-      weeks: generated.weeks,
+      lessonCount: generated.lessonCount,
+      lessonMinutes: generated.lessonMinutes,
       minutesPerSession: generated.minutesPerSession,
       templateVersion: generated.templateVersion,
       status: 'draft',
       version: 1,
-      idempotencyKey: planIdempotencyKey(studentId, {
-        templateVersion: generated.templateVersion,
-        weeks: generated.weeks,
-        interest: generated.interest,
-        sessionsPerWeek: generated.sessions.length / generated.weeks,
-        minutesPerSession: generated.minutesPerSession,
-        curriculumSlug: generated.curriculumSlug,
-      }),
+      idempotencyKey: lessonPlanSignatureKey(studentId, generated),
       confirmedAt: null,
       completedAt: null,
       createdAt: now,
@@ -892,7 +978,7 @@ export class LearningPlanService {
         id: moduleIdMap.get(module.id) ?? module.id,
         planId,
         name: module.name,
-        weekIndex: module.weekIndex,
+        lessonIndex: module.lessonIndex,
         objective: module.objective,
         ordinal: module.ordinal,
       })),
@@ -912,6 +998,7 @@ export class LearningPlanService {
         planId,
         moduleId: moduleIdMap.get(session.moduleId) ?? session.moduleId,
         index: session.index,
+        lessonIndex: session.lessonIndex,
         title: session.title,
         blocks: session.blocks.map((block) => ({
           kind: block.kind,
@@ -940,7 +1027,7 @@ export class LearningPlanService {
       .map((module) => ({
         id: module.id,
         name: module.name,
-        weekIndex: module.weekIndex,
+        lessonIndex: module.lessonIndex,
         objective: module.objective,
         ordinal: module.ordinal,
         objectives: (objectiveByModule.get(module.id) ?? [])
@@ -964,19 +1051,19 @@ export class LearningPlanService {
             return view;
           }),
       }));
-    const schedule = inferPlanSchedule(bundle);
     return {
       id: bundle.plan.id,
       studentUserId: bundle.plan.studentUserId,
       projectId: bundle.plan.projectId,
       interest: bundle.plan.interest,
       goal: bundle.plan.goal,
-      weeks: bundle.plan.weeks,
+      lessonCount: bundle.plan.lessonCount,
+      lessonMinutes: bundle.plan.lessonMinutes,
       minutesPerSession: bundle.plan.minutesPerSession,
       templateVersion: bundle.plan.templateVersion,
       status: bundle.plan.status,
       version: bundle.plan.version,
-      ...(isPlanSessionCount(bundle.sessions.length) ? { sessionCount: bundle.sessions.length } : {}),
+      sessionCount: bundle.sessions.length as PlanSessionCount,
       modules,
       sessions: bundle.sessions
         .slice()
@@ -985,7 +1072,6 @@ export class LearningPlanService {
       confirmedAt: bundle.plan.confirmedAt?.toISOString() ?? null,
       createdAt: bundle.plan.createdAt.toISOString(),
       updatedAt: bundle.plan.updatedAt.toISOString(),
-      ...(schedule === null ? {} : { schedule }),
     };
   }
 
@@ -995,13 +1081,11 @@ export class LearningPlanService {
     states: Map<string, ObjectiveMasteryState>,
   ): LessonSessionView {
     const theoryMastered = computeTheoryMastered(session.theoryObjectiveIds, states);
-    const sessionsPerWeek = inferSessionsPerWeek(bundle);
     return {
       id: session.id,
       moduleId: session.moduleId,
       index: session.index,
-      week: Math.floor(session.index / sessionsPerWeek) + 1,
-      day: (session.index % sessionsPerWeek) + 1,
+      lessonIndex: session.lessonIndex ?? session.index + 1,
       title: session.title ?? `${bundle.plan.interest} · 第 ${session.index + 1} 节`,
       blocks: session.blocks.map((block) => ({
         kind: block.kind,
@@ -1606,226 +1690,29 @@ export class LearningPlanService {
 /**
  * 去重签名查询（服务层唯一入口）。
  *
- * 两步：先按**完整键**（含排课后缀）精确命中；未命中再按旧键前缀回退，并且
- * 只在计划形状（周数 / 每节分钟 / 会话数）与本次请求一致时才认这份规划。
- * 形状比对是必需的：只按前缀认领会让「4 周 1×120」与「4 周 2×60」重新撞车，
- * 而那正是本次要修的缺陷。
+ * 只按完整课时签名命中，计划形状不再由日历周期推导。
  */
-async function findSignatureHit(
-  store: LearningPlanStore,
-  query: SignatureQuery,
-): Promise<PlanBundle | null> {
-  const exact = await store.findPlanBySignature(
-    query.studentUserId,
-    query.interest,
-    query.weeks,
-    query.templateVersion,
-    query.signatureKey,
-  );
-  if (exact !== null) return exact;
-  const legacy = await store.findPlanBySignature(
-    query.studentUserId,
-    query.interest,
-    query.weeks,
-    query.templateVersion,
-    query.legacyKeyPrefix,
-  );
-  if (legacy === null) return null;
-  return isSamePlanShape(legacy, query.shape) ? legacy : null;
-}
-
-interface SignatureQuery {
-  studentUserId: string;
-  interest: string;
-  weeks: 4 | 8;
-  templateVersion: string;
-  /** 含排课后缀的完整幂等键。 */
-  signatureKey: string;
-  /** 旧键前缀（无排课后缀），仅用于兼容读。 */
-  legacyKeyPrefix: string;
-  shape: { weeks: 4 | 8; minutesPerSession: number; totalSessions: number };
-}
-
-function inferSessionsPerWeek(bundle: PlanBundle): 1 | 2 | 5 {
-  const count = bundle.sessions.length;
-  if (count === bundle.plan.weeks) return 1;
-  if (count === bundle.plan.weeks * 2) return 2;
-  return 5;
-}
-
-/** 排课形状标签（`1x120` / `2x60` / 旧语义 `5x60`）。去重签名与幂等键共用。 */
-function scheduleTag(sessionsPerWeek: number, minutesPerSession: number): string {
-  return `${sessionsPerWeek}x${minutesPerSession}`;
-}
-
-/**
- * 生成入参白名单校验（服务端唯一入口）。
- *
- * 只接受学生真正能表达的内容：兴趣、周数、目标、排课、课次数。任何服务端状态
- * （stage / mastery / theoryMastered / projectId / templateVersion 等）由控制器
- * 的 `assertNoServerOwnedFields` 在更外层先行拒绝，这里只做类型与范围校验，
- * 产出一个可信的 `GeneratePlanInput` 交给生成器。
- *
- * 导出给同目录的 `learning-plan.service.test.ts` 使用：生成入参校验是服务层的
- * 职责，测试与服务共用同一判据（避免测试自建一份与实现漂移的白名单）。
- */
-function rejectInput(message: string, path: string): never {
-  throw new PlanGenerationError(message, [{ path, message }]);
-}
-
-function isPlanSessionCount(value: number): value is PlanSessionCount {
-  return value === 4 || value === 8 || value === 16;
-}
-
 export function assertGeneratePlanInput(raw: {
   interest: unknown;
-  weeks: unknown;
+  lessonCount?: unknown;
+  lessonMinutes?: unknown;
   goal?: unknown;
-  schedule?: unknown;
   sessionCount?: unknown;
   curriculumSlug?: unknown;
-}): GeneratePlanInput {  if (typeof raw.interest !== 'string') rejectInput('interest 必须是字符串', 'interest');
-  const interest = (raw.interest as string).trim();
-  if (interest.length < MIN_INTEREST_LENGTH || interest.length > MAX_INTEREST_LENGTH) {
-    rejectInput(`interest 长度须为 ${MIN_INTEREST_LENGTH}–${MAX_INTEREST_LENGTH} 字符`, 'interest');
-  }
-
-  if (raw.weeks !== 4 && raw.weeks !== 8) rejectInput('weeks 只能是 4 或 8', 'weeks');
-  const weeks: 4 | 8 = raw.weeks;
-
-  let goal: string | null = null;
-  if (raw.goal !== undefined && raw.goal !== null) {
-    if (typeof raw.goal !== 'string') rejectInput('goal 必须是字符串', 'goal');
-    const text = raw.goal.trim();
-    if (text.length > MAX_GOAL_LENGTH) rejectInput(`goal 不能超过 ${MAX_GOAL_LENGTH} 字符`, 'goal');
-    goal = text.length === 0 ? null : text;
-  }
-
-  let sessionCount: PlanSessionCount | undefined;
-  if (raw.sessionCount !== undefined && raw.sessionCount !== null) {
-    if (!SESSION_COUNT_OPTIONS.includes(raw.sessionCount as PlanSessionCount)) {
-      rejectInput(`sessionCount 只能是 ${SESSION_COUNT_OPTIONS.join(' 或 ')}`, 'sessionCount');
-    }
-    sessionCount = raw.sessionCount as PlanSessionCount;
-  }
-
-  let curriculumSlug: string | undefined;
-  if (raw.curriculumSlug !== undefined && raw.curriculumSlug !== null) {
-    if (typeof raw.curriculumSlug !== 'string') {
-      rejectInput('curriculumSlug 必须是字符串', 'curriculumSlug');
-    }
-    const slug = (raw.curriculumSlug as string).trim();
-    if (slug.length === 0 || slug.length > 120) {
-      rejectInput('curriculumSlug 长度须为 1–120 字符', 'curriculumSlug');
-    }
-    curriculumSlug = slug;
-  }
-
-  let schedule: PblSchedule | undefined;
-  if (raw.schedule !== undefined && raw.schedule !== null) {
-    if (typeof raw.schedule !== 'object' || Array.isArray(raw.schedule)) {
-      rejectInput('schedule 必须是对象', 'schedule');
-    }
-    // 边界仍拒绝自相矛盾或与 weeks 不一致的排课：生成器与计划校验器会再查一遍，
-    // 但让非法排课在进入业务事务之前就被挡下，错误更早、也更容易定位。
-    // 复用共享的 `validatePblSchedule`，不在此另写第二份字段策略。
-    const candidate = raw.schedule as Record<string, unknown>;
-    const normalized = {
-      durationWeeks: candidate.durationWeeks,
-      weeklyMinutes: candidate.weeklyMinutes,
-      sessionsPerWeek: candidate.sessionsPerWeek,
-      sessionMinutes: candidate.sessionMinutes,
-    } as PblSchedule;
-    const scheduleCheck = validatePblSchedule(normalized);
-    if (!scheduleCheck.valid || normalized.durationWeeks !== weeks) {
-      rejectInput(
-        `schedule 必须与 weeks(${weeks}) 一致且每周总时长为 120 分钟：${scheduleCheck.errors.join('; ') || 'durationWeeks mismatch'}`,
-        'schedule',
-      );
-    }
-    schedule = normalized;
-  }
-
-  return {
-    interest,
-    weeks,
-    goal,
-    ...(schedule === undefined ? {} : { schedule }),
-    ...(sessionCount === undefined ? {} : { sessionCount }),
-    ...(curriculumSlug === undefined ? {} : { curriculumSlug }),
-  };
+}): GeneratePlanInput {
+  return assertGenerateInput(raw);
 }
 
-/**
- * 兼容读的键形（无排课后缀）。由 store 在精确键未命中时按此回退，
- * 保证升级前已落库、键尾还没有排课标签的草稿仍能被读回。
- */
-function legacyPlanKeyPrefix(
-  studentId: string,
-  shape: { templateVersion: string; weeks: 4 | 8; interest: string },
-): string {
-  return `learning-plan:${studentId}:${shape.templateVersion}:${shape.weeks}:${shape.interest}`;
-}
-
-/**
- * 计划生成幂等键 / 去重签名（**唯一真源**）。
- *
- * 排课是计划形状的一部分，必须进签名：否则「4 周 1×120」与「4 周 2×60」会
- * 撞进同一条签名，第二个请求被当成重复并被返回第一份计划的形状。
- * 键形如 `learning-plan:<student>:<templateVersion>:<weeks>:<interest>:<1x120>`；
- * 课程驱动计划再追加 `:<curriculumSlug>`，通用计划保持旧键不变（可继续去重）。
- */
-function planIdempotencyKey(
-  studentId: string,
-  shape: {
-    templateVersion: string;
-    weeks: 4 | 8;
-    interest: string;
-    sessionsPerWeek: number;
-    minutesPerSession: number;
-    curriculumSlug?: string;
-  },
-): string {
-  const base = `${legacyPlanKeyPrefix(studentId, shape)}:${scheduleTag(shape.sessionsPerWeek, shape.minutesPerSession)}`;
-  return shape.curriculumSlug === undefined ? base : `${base}:${shape.curriculumSlug}`;
-}
-
-/** 由生成产物直接算出幂等键（生成路径的唯一入口）。 */
-function planSignatureKey(studentId: string, generated: GeneratedPlan): string {
-  return planIdempotencyKey(studentId, {
+function lessonPlanSignatureKey(studentId: string, generated: GeneratedPlan): string {
+  const signature = hashIdempotentInput(`learning-plan:${studentId}:lesson`, {}, {
     templateVersion: generated.templateVersion,
-    weeks: generated.weeks,
     interest: generated.interest,
-    sessionsPerWeek: generated.sessions.length / generated.weeks,
-    minutesPerSession: generated.minutesPerSession,
-    curriculumSlug: generated.curriculumSlug,
+    lessonCount: generated.lessonCount,
+    lessonMinutes: generated.lessonMinutes,
   });
+  return `learning-plan:${studentId}:lesson:${signature}`;
 }
 
-/**
- * 兼容读：升级前落库的草稿可能在键尾没有排课后缀。
- *
- * 旧实现按 `(student, interest, weeks, templateVersion)` 去重并落库，本文件只
- * 传新键的**前缀**给它比对，因此前缀命中的计划还要按形状二次确认：只有
- * 「周数 / 每节分钟数 / 实际会话数」与请求一致的去重，形状不同宁可另建一份
- * 新草稿——旧行为正是「返回第一份计划的形状」，那才是这次要修的缺陷。
- */
-function isSamePlanShape(
-  bundle: PlanBundle,
-  shape: { weeks: 4 | 8; minutesPerSession: number; totalSessions: number },
-): boolean {
-  return bundle.plan.weeks === shape.weeks
-    && bundle.plan.minutesPerSession === shape.minutesPerSession
-    && bundle.sessions.length === shape.totalSessions;
-}
-
-/**
- * TheoryMastered 门禁证据引用。
- *
- * 必须是**稳定**引用：门禁事件的幂等键是字面量 `gate:<student>:<gate>:<evidenceRef>`
- * （`normalizeKey` 不做哈希），若这里换成「每题一个 / 带时间戳」的引用，翻转之后
- * 每答一题都会新写一条门禁事件。按 (student, gate, session) 稳定即可。
- */
 function theoryMasteredEvidenceRef(sessionId: string): string {
   return `mastery:theory:${sessionId}`;
 }
@@ -1839,14 +1726,3 @@ const CONCEPT_MASTERY_GATE: GateConditionId =
   isRegisteredGateCondition('TheoryMastered')
     ? (GATE_CONDITION_REGISTRY['TheoryMastered']?.gateId ?? 'TheoryMastered')
     : 'TheoryMastered';
-
-function inferPlanSchedule(bundle: PlanBundle): PblSchedule | null {
-  const sessionsPerWeek = inferSessionsPerWeek(bundle);
-  if (sessionsPerWeek === 5) return null;
-  return {
-    durationWeeks: bundle.plan.weeks,
-    weeklyMinutes: 120,
-    sessionsPerWeek,
-    sessionMinutes: bundle.plan.minutesPerSession === 120 ? 120 : 60,
-  };
-}

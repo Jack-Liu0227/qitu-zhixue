@@ -1,10 +1,10 @@
+import { assertRuntimeSkillBudget, parseRuntimeSkill } from '@qitu/contracts';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const POLICY_FILE = 'AGENTS.md';
 const MAX_POLICY_CHARS = 12_000;
-const MAX_SKILL_CHARS = 8_000;
 
 export type TutorRuntimeSkillStatus = 'ready' | 'unavailable';
 export type TutorRuntimeSkillsSourceStatus = 'ready' | 'missing' | 'unreadable';
@@ -17,6 +17,11 @@ export interface TutorRuntimeSkill {
   contentHash: string;
   status: TutorRuntimeSkillStatus;
   content: string;
+  /** One catalog, separate server-owned execution scopes. Legacy skills are teaching. */
+  runtime?: 'teaching' | 'admin' | 'unknown';
+  /** Explicit reviewed publication metadata; readable source alone is not publication. */
+  publicationStatus?: 'quarantined' | 'reviewed' | 'published' | 'deprecated' | 'revoked';
+  requiredToolIds?: readonly string[];
 }
 
 export interface TutorRuntimePolicy {
@@ -43,6 +48,16 @@ export interface TutorRuntimeSource {
 }
 
 export function loadTutorRuntimeSource(start = process.cwd()): TutorRuntimeSource {
+  const source = loadRuntimeSkillCatalog(start);
+  return { ...source, skills: source.skills.filter(isTeachingRuntimeSkill) };
+}
+
+export function isTeachingRuntimeSkill(skill: TutorRuntimeSkill): boolean {
+  return (skill.runtime ?? 'teaching') === 'teaching';
+}
+
+/** Full catalog for Admin visibility; teaching consumers must use loadTutorRuntimeSource. */
+export function loadRuntimeSkillCatalog(start = process.cwd()): TutorRuntimeSource {
   const root = findRuntimeRoot(start);
   const policyPath = join(root, POLICY_FILE);
   const policyRaw = readText(policyPath);
@@ -79,8 +94,10 @@ export function buildTutorRuntimeBlocks(
   }
 
   const allowed = enabledSkillIds === undefined ? null : new Set(enabledSkillIds);
-  for (const skill of source.skills) {
-    if (skill.status !== 'ready' || (allowed !== null && !allowed.has(skill.id))) continue;
+  const selected = source.skills.filter(skill => isTeachingRuntimeSkill(skill) && skill.status === 'ready' && skill.publicationStatus === 'published' && allowed?.has(skill.id));
+  assertRuntimeSkillBudget(selected);
+  for (const skill of selected) {
+    if (!isTeachingRuntimeSkill(skill) || skill.status !== 'ready' || (allowed !== null && !allowed.has(skill.id))) continue;
     blocks.push([
       `已发布教学 Skill（${skill.id}，版本 ${skill.version ?? 'unknown'}，只读能力说明）:`,
       skill.content,
@@ -98,7 +115,7 @@ function discoverRuntimeSkills(skillsRoot: string): {
     const entries = readdirSync(skillsRoot, { withFileTypes: true });
     const skills = entries
       .filter((entry) => entry.isDirectory())
-      .flatMap((entry) => {
+      .flatMap((entry): TutorRuntimeSkill[] => {
         const id = entry.name;
         let raw: string;
         try {
@@ -120,19 +137,16 @@ function discoverRuntimeSkills(skillsRoot: string): {
           }];
         }
 
-        const metadata = readFrontmatter(raw);
-        // 只有显式标记的开发工具才排除，避免旧教学 skill 因缺字段而失效。
-        if (metadata.runtime === 'dev-only') return [];
-
-        const body = stripFrontmatter(raw);
+        const parsed = parseRuntimeSkill(id, raw, hash(raw.replace(/\r\n/g, '\n')));
+        const { metadata, runtime } = parsed;
+        if (runtime === 'dev-only') return [];
+        if (runtime === 'unknown') brokenPackages.push({ id, detail: 'Unknown or missing runtime scope' });
         return [{
-          id,
-          label: metadata.name ?? id,
-          description: metadata.description ?? null,
-          version: metadata.version ?? null,
-          contentHash: hash(raw),
-          status: body.length > 0 ? 'ready' as const : 'unavailable' as const,
-          content: trimForPrompt(body, MAX_SKILL_CHARS),
+          id, label: metadata.name ?? id, description: metadata.description ?? null,
+          version: metadata.version ?? null, contentHash: hash(raw),
+          status: parsed.ready ? 'ready' as const : 'unavailable' as const,
+          content: parsed.content, runtime, publicationStatus: parsed.publicationStatus,
+          requiredToolIds: (metadata.requiredToolIds ?? '').split(',').map((id) => id.trim()).filter(Boolean),
         }];
       })
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -207,10 +221,6 @@ function readFrontmatter(raw: string): Record<string, string> {
     if (key && value) result[key] = value;
   }
   return result;
-}
-
-function stripFrontmatter(raw: string): string {
-  return raw.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, '').trim();
 }
 
 function trimForPrompt(value: string, limit: number): string {

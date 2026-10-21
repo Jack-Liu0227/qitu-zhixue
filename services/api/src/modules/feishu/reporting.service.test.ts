@@ -55,3 +55,8 @@ test('ReportingService fails closed when database is unavailable', async () => {
   );
 });
 
+test('binding another assistant does not give it reporting access', async () => {
+  const service = new ReportingService(null, {} as never, {} as never);
+  await assert.rejects(() => service.buildReport({ id: 'admin-1', role: 'admin' } as never, 'assistant-other'), ForbiddenException);
+});
+

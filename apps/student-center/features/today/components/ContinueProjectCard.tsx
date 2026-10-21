@@ -1,14 +1,12 @@
 import { colors } from '@qitu/design-tokens';
-import { ProgressBar, SectionCard } from '@qitu/ui';
+import { SectionCard, VisualAsset } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 import type { ActiveProjectSummary } from '../types';
-import { StageStepper4 } from './StageStepper4';
 
 /**
- * 「当前项目」card: frozen-template stage strip + server-computed progress.
- * `stageIndex` / `progressPercent` are display-only; the card navigates to the
- * project detail and never writes project state.
+ * "Current project" links into the lesson-first detail page. This card never
+ * writes project state.
  */
 export function ContinueProjectCard({ project }: { project: ActiveProjectSummary | null }) {
   if (!project) return null;
@@ -50,16 +48,12 @@ export function ContinueProjectCard({ project }: { project: ActiveProjectSummary
                 fontWeight: 600,
               }}
             >
-              {project.title.charAt(0)}
+              <VisualAsset assetId="subject-interdisciplinary-v1" size={64} />
             </span>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{ margin: 0, color: colors.heading }}>{project.title}</h3>
             <p style={{ margin: '2px 0 10px', color: colors.muted, fontSize: 13 }}>{project.subtitle}</p>
-            <StageStepper4 stages={project.stages} />
-            <div style={{ marginTop: 10 }}>
-              <ProgressBar percent={project.progressPercent} label={`完成 ${project.progressPercent}%`} />
-            </div>
           </div>
         </div>
       </SectionCard>

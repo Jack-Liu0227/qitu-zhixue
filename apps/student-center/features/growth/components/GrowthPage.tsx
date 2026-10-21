@@ -12,6 +12,7 @@ import {
   type StudentGrowthQuery,
 } from '../types';
 import { EntryDetailSheet } from './EntryDetailSheet';
+import { GrowthAnalysisCard } from './GrowthAnalysisCard';
 import { FilterBar, type GrowthFilterState } from './FilterBar';
 import { GrowthHeader } from './GrowthHeader';
 import {
@@ -221,6 +222,8 @@ export function GrowthPage({
         projectTitle={projectTitle}
       />
 
+      {query.projectId === null && state.status !== 'permission_denied' && source.getAnalysis
+        ? <GrowthAnalysisCard load={source.getAnalysis} /> : null}
       {state.status === 'permission_denied' ? <GrowthPermissionView onBack={handleBack} /> : null}
       {state.status === 'loading' ? <GrowthLoadingView /> : null}
       {state.status === 'error' ? (

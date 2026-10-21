@@ -1,0 +1,246 @@
+{
+  "knownTools": [
+    {
+      "id": "tutor.context_packet",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "tutor.pedagogy_move",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "tutor.mastery_gate",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "tutor.escalation",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "agent-memory.index",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "project.next_step",
+      "status": "enabled",
+      "invocation": "domain_service"
+    },
+    {
+      "id": "mastery_query",
+      "status": "enabled",
+      "invocation": "sdk_read"
+    },
+    {
+      "id": "student_profile_get",
+      "status": "enabled",
+      "invocation": "sdk_read"
+    },
+    {
+      "id": "knowledge_search",
+      "status": "enabled",
+      "invocation": "model_tool"
+    },
+    {
+      "id": "knowledge_read",
+      "status": "enabled",
+      "invocation": "model_tool"
+    },
+    {
+      "id": "tutor.propose_lesson_activity",
+      "status": "enabled",
+      "invocation": "model_tool"
+    }
+  ],
+  "unknownTools": [
+    "artifact_review",
+    "data_analyzer",
+    "growth_record_append",
+    "learning_plan_advance",
+    "mastery_assess",
+    "parent_status_summary",
+    "simulation_runner",
+    "student_status_summary",
+    "teacher_status_summary"
+  ],
+  "assistants": [
+    {
+      "id": "tutor-leader",
+      "name": "启途总导师",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "fighter-concept-coach",
+      "name": "战机原理与概念教练",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "fighter-code-guide",
+      "name": "战机架构与代码向导",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "fighter-review-assessor",
+      "name": "成果评审与答辩导师",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "kinetic-leader",
+      "name": "动能定理总导师",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "kinetic-concept-coach",
+      "name": "功与动能概念教练",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "kinetic-experiment-guide",
+      "name": "动能定理仿真与实验向导",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "kinetic-review-assessor",
+      "name": "物理探究答辩与评审导师",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "profile-analyst-assistant",
+      "name": "学情画像分析助手",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "growth-trajectory-assistant",
+      "name": "成长轨迹生成助手",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "qitu-assistant",
+      "name": "启途智学管家",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "qitu-intake-assistant",
+      "name": "启途智学助手",
+      "source": "builtin",
+      "tools": [],
+      "mcpServers": []
+    },
+    {
+      "id": "optics-leader",
+      "name": "光学探究总导师",
+      "source": "builtin",
+      "tools": [
+        "mastery_query",
+        "learning_plan_advance",
+        "student_profile_get"
+      ],
+      "mcpServers": []
+    },
+    {
+      "id": "optics-concept-coach",
+      "name": "光学原理与概念教练",
+      "source": "builtin",
+      "tools": [
+        "knowledge_search",
+        "mastery_assess"
+      ],
+      "mcpServers": []
+    },
+    {
+      "id": "optics-experiment-guide",
+      "name": "光学仿真与实验向导",
+      "source": "builtin",
+      "tools": [
+        "simulation_runner",
+        "data_analyzer"
+      ],
+      "mcpServers": []
+    },
+    {
+      "id": "optics-review-assessor",
+      "name": "光学探究答辩与评审导师",
+      "source": "builtin",
+      "tools": [
+        "artifact_review",
+        "growth_record_append"
+      ],
+      "mcpServers": []
+    },
+    {
+      "id": "feishu-reporting-assistant",
+      "name": "学生-家长-教师汇报与问题总结助手",
+      "source": "builtin",
+      "tools": [
+        "student_status_summary",
+        "parent_status_summary",
+        "teacher_status_summary"
+      ],
+      "mcpServers": []
+    }
+  ],
+  "mcpServers": [
+    {
+      "id": "mcp-fetch",
+      "label": "fetch",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-grok-search",
+      "label": "groksearch",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-aionui-browser",
+      "label": "aionui-browser",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "mcp-chrome-devtools",
+      "label": "chrome-devtools",
+      "enabled": false,
+      "status": "not_configured",
+      "toolCount": null
+    },
+    {
+      "id": "ima-knowledge",
+      "label": "ima 教材知识库",
+      "enabled": true,
+      "status": "connected",
+      "toolCount": 4
+    }
+  ],
+  "runtimeAgentUnknownTools": []
+}

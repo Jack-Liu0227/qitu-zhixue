@@ -8,17 +8,25 @@ import type {
   CreateTutorTurnResponse,
   AnswerInteractiveQuizRequest,
   AnswerInteractiveQuizResponse,
+  TutorExperimentActionRequest,
+  TutorExperimentActionResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorProjectContext as SharedTutorProjectContext,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorTeamHistoryPage,
   TutorTeamAgent,
+  CompleteLearningSessionRequest,
+  LearningTextSubmission,
+  ReconcileProjectLearningRequest,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import { TutorDataError, type TutorDataSource } from './dataSource';
 import { LiveTutorSocket } from './liveTutorSocket';
 import type { TutorProjectContext } from '../types';
+import { completeLesson, getLessonProgress, reconcileLearning } from './lessonProgressApi';
+import { getLessonEvidence, submitLessonEvidence, getLearningArtifact, publishLearningArtifact, type LessonScope, type LessonSubmissionKind } from './lessonEvidenceApi';
 
 /**
  * The tutor data source the app actually runs on.
@@ -35,6 +43,45 @@ import type { TutorProjectContext } from '../types';
  * logs.
  */
 export class TutorApiDataSource implements TutorDataSource {
+  reconcileLearning(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string) {
+    return reconcileLearning(this.fetchJson.bind(this), projectId, request, idempotencyKey);
+  }
+
+  getLessonEvidence(scope: LessonScope) {
+    return getLessonEvidence(this.fetchJson.bind(this), scope);
+  }
+
+  submitLessonEvidence(scope: LessonScope, kind: LessonSubmissionKind, request: LearningTextSubmission, idempotencyKey: string) {
+    return submitLessonEvidence(this.fetchJson.bind(this), scope, kind, request, idempotencyKey);
+  }
+
+  getLearningArtifact(projectId: string, artifactId: string) {
+    return getLearningArtifact(this.fetchJson.bind(this), projectId, artifactId);
+  }
+
+  publishLearningArtifact(projectId: string, artifactId: string, idempotencyKey: string) {
+    return publishLearningArtifact(this.fetchJson.bind(this), projectId, artifactId, idempotencyKey);
+  }
+
+  getLessonProgress(planId: string, projectId: string) {
+    return getLessonProgress(this.fetchJson.bind(this), planId, projectId);
+  }
+
+  completeLesson(planId: string, sessionId: string, request: CompleteLearningSessionRequest, idempotencyKey: string) {
+    return completeLesson(this.fetchJson.bind(this), planId, sessionId, request, idempotencyKey);
+  }
+
+  async getTeamHistory(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage> {
+    const query = new URLSearchParams({ projectId, assistantId });
+    if (cursor) query.set('cursor', cursor);
+    const data = unwrapData(await this.fetchJson(`/api/v1/tutor/team-history?${query}`, '团队历史读取失败')) as TutorTeamHistoryPage;
+    if (!data || data.projectId !== projectId || data.assistantId !== assistantId || !Array.isArray(data.items)
+      || (data.nextCursor !== null && typeof data.nextCursor !== 'string')) {
+      throw new TutorDataError('团队历史响应与当前项目不一致', 502, 'TUTOR_HISTORY_INVALID');
+    }
+    return data;
+  }
+
   async confirmExploration(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse> {
     const goal = draft.goal.trim();
     const interest = draft.interest.trim();
@@ -79,7 +126,7 @@ export class TutorApiDataSource implements TutorDataSource {
       const candidate = item as Record<string, unknown>;
       if (typeof candidate.id !== 'string' || typeof candidate.title !== 'string' ||
           typeof candidate.status !== 'string' || typeof candidate.progressPercent !== 'number') return [];
-      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent }];
+      return [{ id: candidate.id, title: candidate.title, stage: candidate.status as ProjectSummary['stage'], progress: candidate.progressPercent, isCurrent: candidate.isCurrent === true }];
     });
     const countsBody = unwrapData(await this.fetchJson(`/api/v1/tutor/session-counts?projectIds=${projects.map((project) => encodeURIComponent(project.id)).join(',')}`, '会话消息数加载失败'));
     const counts = countsBody !== null && typeof countsBody === 'object' ? countsBody as Record<string, unknown> : {};
@@ -246,6 +293,29 @@ export class TutorApiDataSource implements TutorDataSource {
     });
   }
 
+  async submitExperimentAction(
+    sessionId: string,
+    experimentId: string,
+    request: TutorExperimentActionRequest,
+  ): Promise<TutorExperimentActionResponse> {
+    const payload = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/interactive/experiments/${encodeURIComponent(experimentId)}/action`,
+      'Experiment action submission failed',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': request.idempotencyKey },
+        body: JSON.stringify(request),
+      },
+    );
+    const data = unwrapData(payload);
+    if (!isTutorExperimentActionResponse(data, experimentId, request.action)
+      || (request.action === 'record_observation' && (data.observationReceipt?.sessionId !== sessionId
+        || data.observationReceipt?.runActionId !== (request.payload as { runActionId?: unknown })?.runActionId))) {
+      throw new TutorDataError('Invalid experiment action response', undefined, 'BAD_EXPERIMENT_ACTION_PAYLOAD');
+    }
+    return data;
+  }
+
   async getSummary(sessionId: string): Promise<TutorSessionSummary> {
     const response = await this.fetchJson(
       `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/summary`,
@@ -258,12 +328,23 @@ export class TutorApiDataSource implements TutorDataSource {
   }
 
   async submitFeedback(
-    _sessionId: string,
-    _request: CreateTutorFeedbackRequest,
+    sessionId: string,
+    request: CreateTutorFeedbackRequest,
   ): Promise<CreateTutorFeedbackResponse> {
-    // No feedback write endpoint is exposed to the student app yet. Fail loud
-    // rather than pretending the feedback was recorded server-side.
-    throw new TutorDataError('反馈暂时无法提交，请稍后重试。', undefined, 'FEEDBACK_UNAVAILABLE');
+    const payload = await this.fetchJson(
+      `/api/v1/tutor/sessions/${encodeURIComponent(sessionId)}/feedback`,
+      'Feedback submission failed',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': request.idempotencyKey },
+        body: JSON.stringify(request),
+      },
+    );
+    const data = unwrapData(payload);
+    if (typeof data !== 'object' || data === null || (data as { accepted?: unknown }).accepted !== true) {
+      throw new TutorDataError('Invalid feedback response', undefined, 'BAD_FEEDBACK_PAYLOAD');
+    }
+    return data as CreateTutorFeedbackResponse;
   }
 
   createSocket(sessionId: string): TutorSocket {
@@ -372,6 +453,28 @@ function isTutorTeamIdentity(value: unknown): boolean {
     typeof candidate.assistantId === 'string' &&
     typeof candidate.assistantName === 'string'
   );
+}
+
+function isTutorExperimentActionResponse(
+  value: unknown,
+  experimentId: string,
+  action: TutorExperimentActionRequest['action'],
+): value is TutorExperimentActionResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<TutorExperimentActionResponse>;
+  if (action === 'record_observation') {
+    const receipt = candidate.observationReceipt;
+    if (!receipt || receipt.experimentId !== experimentId || receipt.provenance !== 'simulated_observation'
+      || typeof receipt.observationId !== 'string' || !receipt.observationId
+      || receipt.evidenceRef !== `experiment_observation:${receipt.observationId}`
+      || typeof receipt.runActionId !== 'string' || !receipt.runActionId
+      || typeof receipt.planId !== 'string' || !receipt.planId || !Number.isSafeInteger(receipt.planRevision)
+      || typeof receipt.savedAt !== 'string' || !Number.isFinite(Date.parse(receipt.savedAt))) return false;
+  }
+  return candidate.accepted === true
+    && candidate.experimentId === experimentId
+    && candidate.action === action
+    && typeof candidate.actionId === 'string' && candidate.actionId.length > 0;
 }
 
 function isTutorTeamGraph(value: unknown): value is TutorTeamGraph {

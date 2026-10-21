@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { VisualAssetsService } from '../visual-assets/visual-assets.service';
+import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import type { CurrentUser } from '@qitu/contracts';
 import { TemplateViewerDirectory } from './template-evidence.store';
 import { assertStudentCanReadTemplate } from './templates.policy';
@@ -23,6 +25,7 @@ export class TemplatesService {
   constructor(
     private readonly store: TemplateStore,
     private readonly directory: TemplateViewerDirectory,
+    @Optional() private readonly visuals?: VisualAssetsService,
   ) {}
 
   async listPublishedTemplates(actor: CurrentUser): Promise<TemplateView[]> {
@@ -77,13 +80,25 @@ export class TemplatesService {
     ) {
       throw versionNotFound();
     }
-    return toTemplateVersionView(version);
+    const view = toTemplateVersionView(version);
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      view.iconAssetId = resolveVisualBinding({ kind: 'template-version', id: version.id }, 'icon', bindings).effectiveAssetId;
+      view.coverAssetId = resolveVisualBinding({ kind: 'template-version', id: version.id }, 'cover', bindings).effectiveAssetId;
+    }
+    return view;
   }
 
   private async project(
     record: Parameters<typeof toTemplateView>[0],
   ): Promise<TemplateView> {
     const versions = await this.store.listVersions(record.id);
-    return toTemplateView(record, latestPublishedVersionId(versions));
+    const view = toTemplateView(record, latestPublishedVersionId(versions));
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      view.iconAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'icon', bindings).effectiveAssetId;
+      view.coverAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'cover', bindings).effectiveAssetId;
+    }
+    return view;
   }
 }

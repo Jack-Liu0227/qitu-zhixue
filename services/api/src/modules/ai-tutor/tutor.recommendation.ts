@@ -131,11 +131,11 @@ function scoreTemplate(template: TemplateView, intentTokens: Set<string>, signal
     }
   }
   const duration = template.estimatedDurationMinutes ?? 0;
-  if (duration > 0 && /短|快|课内|一周/.test(`${signals.goal}${signals.interests.join('')}`) && duration <= 480) {
+  if (duration > 0 && /短|快|课内|少量课时/.test(`${signals.goal}${signals.interests.join('')}`) && duration <= 480) {
     score += 2;
     reasons.push('duration:short-fit');
   }
-  if (duration >= 960 && /长期|深入|系统|八周|8周/.test(`${signals.goal}${signals.interests.join('')}`)) {
+  if (duration >= 960 && /长期|深入|系统|多课时|8课时|8节课/.test(`${signals.goal}${signals.interests.join('')}`)) {
     score += 2;
     reasons.push('duration:long-fit');
   }

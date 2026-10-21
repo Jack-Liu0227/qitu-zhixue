@@ -215,6 +215,8 @@ export interface TutorAgentBoundReadPorts {
 }
 
 export interface TutorAgentToolDescriptor {
+  /** Optional digest of the executable candidate schema; included in teaching bundle tool pins. */
+  inputSchemaDigest?: string;
   id: string;
   version: string;
   capabilities: readonly TutorAgentCapability[];

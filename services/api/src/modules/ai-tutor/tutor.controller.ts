@@ -13,6 +13,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type {
@@ -25,9 +26,12 @@ import type {
   TutorProjectContext,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorExperimentAction,
+  TutorFeedbackKind,
 } from '@qitu/contracts';
 import { AuthService } from '../identity-auth/auth.service';
 import { TutorService } from './tutor.service';
+import { TutorTeamHistoryService } from './tutor-team-history.service';
 import { TutorQuizService } from './tutor-quiz.service';
 import { TutorWorkspaceService } from './tutor-workspace.service';
 import { TeamRuntimeService, teamFrameName, type TeamStreamFrame } from '../team-runtime/team-runtime.service.js';
@@ -88,6 +92,7 @@ export class TutorController {
      */
     @Optional() private readonly teamRuntime?: TeamRuntimeService,
     @Optional() private readonly quiz?: TutorQuizService,
+    @Optional() private readonly teamHistory?: TutorTeamHistoryService,
   ) {}
 
   @Get('templates')
@@ -113,7 +118,7 @@ export class TutorController {
           subject: document.tags[0] ?? '综合创作',
           tags: document.tags,
           difficulty: '入门',
-          durationWeeks: durationWeeksOf(document.content),
+          ...lessonScheduleOf(document.content),
           stages: [{ id: document.stage, label: stageLabelOf(document.stage) }],
           outcome: document.summary,
           score,
@@ -138,7 +143,7 @@ export class TutorController {
       actor.id,
       explorationId,
     );
-    return { data: this.tutorService.toSessionResponse(record) };
+    return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
   }
 
   @Get('project-context')
@@ -164,6 +169,18 @@ export class TutorController {
     });
     return { data: await this.tutorService.getTeamGraph(projectId, actor.id) };
   }
+  @Get('team-history')
+  async getTeamHistory(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Query('projectId') projectId: string,
+    @Query('assistantId') assistantId: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const actor = this.requireStudent(cookieHeader);
+    if (!this.teamHistory) throw new ServiceUnavailableException({ code: 'TUTOR_HISTORY_UNAVAILABLE', message: '历史记录暂不可用。' });
+    return { data: await this.teamHistory.read(actor.id, projectId, assistantId, cursor) };
+  }
+
   @Get('session-counts')
   async getSessionCounts(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -345,7 +362,7 @@ export class TutorController {
   ): Promise<{ data: GetTutorSessionResponse }> {
     const actor = this.requireStudent(cookieHeader);
     const record = await this.tutorService.loadSession(id, actor.id);
-    return { data: this.tutorService.toSessionResponse(record) };
+    return { data: await this.tutorService.toSessionResponseWithEvidence(record) };
   }
 
   /**
@@ -404,6 +421,53 @@ export class TutorController {
     return { data };
   }
 
+  @Post('sessions/:id/feedback')
+  @HttpCode(201)
+  async submitFeedback(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Body() body: { turnId?: unknown; kind?: unknown; note?: unknown; idempotencyKey?: unknown },
+  ): Promise<{ data: { accepted: true } }> {
+    const actor = this.requireStudent(cookieHeader);
+    const key = readRequiredIdempotencyKey(body.idempotencyKey, idempotencyKeyHeader);
+    if (typeof body.turnId !== 'string' || body.turnId.length > 200
+      || !isTutorFeedbackKind(body.kind)
+      || (body.note !== undefined && (typeof body.note !== 'string' || body.note.length > 500))) {
+      throw new BadRequestException({ code: 'TUTOR_FEEDBACK_INVALID', message: '反馈内容格式无效' });
+    }
+    const record = await this.tutorService.loadSession(id, actor.id);
+    const data = await this.tutorService.submitFeedback(actor.id, record, {
+      turnId: body.turnId,
+      kind: body.kind,
+      ...(typeof body.note === 'string' ? { note: body.note } : {}),
+    }, key);
+    return { data };
+  }
+
+  @Post('sessions/:id/interactive/experiments/:experimentId/action')
+  @HttpCode(201)
+  async submitExperimentAction(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Param('experimentId') experimentId: string,
+    @Body() body: { action?: unknown; payload?: unknown; idempotencyKey?: unknown },
+  ): Promise<{ data: import('@qitu/contracts').TutorExperimentActionResponse }> {
+    const actor = this.requireStudent(cookieHeader);
+    const key = readRequiredIdempotencyKey(body.idempotencyKey, idempotencyKeyHeader);
+    if (!isTutorExperimentAction(body.action) || experimentId.length === 0 || experimentId.length > 200) {
+      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: '实验操作格式无效' });
+    }
+    const record = await this.tutorService.loadSession(id, actor.id);
+    const data = await this.tutorService.submitExperimentAction(actor.id, record, experimentId, {
+      action: body.action,
+      ...(body.payload === undefined ? {} : { payload: body.payload }),
+      idempotencyKey: key,
+    });
+    return { data };
+  }
+
   @Get('sessions/:id/summary')
   async getSummary(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -412,6 +476,34 @@ export class TutorController {
     const actor = this.requireStudent(cookieHeader);
     const record = await this.tutorService.loadSession(id, actor.id);
     return { data: this.tutorService.toSummary(record) };
+  }
+
+  @Post('sessions/:id/teacher-intervention')
+  @HttpCode(200)
+  async teacherIntervention(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKeyHeader: string | undefined,
+    @Param('id') id: string,
+    @Body() body: { actionType?: unknown; teacherNotes?: unknown },
+  ): Promise<{ data: { success: boolean; resumedAt: string } }> {
+    const actor = this.requireTeacherOrAdmin(cookieHeader);
+    const idempotencyKey = typeof idempotencyKeyHeader === 'string' ? idempotencyKeyHeader.trim() : '';
+    if (idempotencyKey.length === 0 || idempotencyKey.length > 160) {
+      throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '教师介入必须携带 Idempotency-Key 请求头' });
+    }
+    const actionType = body.actionType;
+    if (actionType !== '线下点拨' && actionType !== '降低难度' && actionType !== '定向放行') {
+      throw new BadRequestException({
+        code: 'INVALID_INTERVENTION_TYPE',
+        message: 'actionType 必须为 线下点拨 | 降低难度 | 定向放行',
+      });
+    }
+    const teacherRole = actor.role === 'admin' ? 'admin' : 'teacher';
+    const data = await this.tutorService.applyTeacherIntervention(id, actor.id, {
+      actionType,
+      teacherNotes: typeof body.teacherNotes === 'string' ? body.teacherNotes : undefined,
+    }, teacherRole, idempotencyKey);
+    return { data };
   }
 
   /* ------------------------------ 内部 ------------------------------ */
@@ -425,10 +517,20 @@ export class TutorController {
     }
     return session.user;
   }
+
+  private requireTeacherOrAdmin(cookieHeader: string | undefined): CurrentUser {
+    const token = readCookie(cookieHeader, SESSION_COOKIE);
+    if (token === undefined) throw new UnauthorizedException('请先登录');
+    const session = this.authService.getSession(token);
+    if (session.user.role !== 'teacher' && session.user.role !== 'admin') {
+      throw new ForbiddenException('仅教师与管理员可执行干预');
+    }
+    return session.user;
+  }
 }
 
-function durationWeeksOf(content: string): number {
-  return /8\s*周计划/.test(content) ? 8 : 4;
+function lessonScheduleOf(content: string): { lessonCount: number; lessonMinutes: 60 | 120 } {
+  return { lessonCount: /16\s*课时/.test(content) ? 16 : 8, lessonMinutes: 60 };
 }
 
 function stageLabelOf(stage: string): string {
@@ -445,6 +547,24 @@ function stageLabelOf(stage: string): string {
     completed: '已完成',
   };
   return labels[stage] ?? '探索与发现';
+}
+
+function readRequiredIdempotencyKey(bodyKey: unknown, headerKey: string | undefined): string {
+  const body = typeof bodyKey === 'string' ? bodyKey.trim() : '';
+  const header = typeof headerKey === 'string' ? headerKey.trim() : '';
+  if (!body && !header) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少幂等键' });
+  if (body && header && body !== header) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_MISMATCH', message: '幂等键不一致' });
+  const value = body || header;
+  if (value.length > 160) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_INVALID', message: '幂等键过长' });
+  return value;
+}
+
+function isTutorFeedbackKind(value: unknown): value is TutorFeedbackKind {
+  return value === 'helpful' || value === 'confusing' || value === 'stuck';
+}
+
+function isTutorExperimentAction(value: unknown): value is TutorExperimentAction {
+  return value === 'submit_prediction' || value === 'run' || value === 'record_observation';
 }
 
 function isMove(value: unknown): value is PedagogicMove {

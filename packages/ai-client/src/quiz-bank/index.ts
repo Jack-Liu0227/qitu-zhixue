@@ -330,3 +330,5 @@ export function gradeQuizKeys(
     errorType: isCorrect ? null : selected.length === 0 ? 'metacognitive' : 'deviation',
   };
 }
+
+export { OPTICS_16_COMPLETION_PROFILE_ID, OPTICS_16_COMPLETION_TEMPLATE_SPEC } from './optics/curriculum.js';

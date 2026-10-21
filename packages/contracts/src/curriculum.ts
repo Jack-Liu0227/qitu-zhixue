@@ -2,7 +2,8 @@ import type { PblPhase } from './team-runtime.js';
 import type { PblCurriculumProfile, PblTemplateSession, ProjectTemplateSpec } from './pbl-learning.js';
 
 export type SessionType = PblTemplateSession['sessionType'];
-export type PlanSessionCount = 4 | 8 | 16;
+/** Session count is always identical to the selected lessonCount. */
+export type PlanSessionCount = number;
 export const SESSION_COUNT_OPTIONS: readonly PlanSessionCount[] = [4, 8, 16];
 
 /** Compatibility names derive from the only template contract. */

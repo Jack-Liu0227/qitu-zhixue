@@ -80,6 +80,9 @@ export const pblTemplateTeamBindings = pgTable(
       .references(() => adminTeamVersions.id, { onDelete: 'restrict' }),
     status: text('status').notNull().default('draft'),
     bindingHash: text('binding_hash').notNull(),
+    bundleDigest: text('bundle_digest'),
+    bundleDraft: jsonb('bundle_draft').$type<Record<string, unknown> | null>(),
+    bundlePayload: jsonb('bundle_payload').$type<Record<string, unknown> | null>(),
     validation: jsonb('validation')
       .$type<PblBindingValidationShape>()
       .notNull()
@@ -118,6 +121,7 @@ export const projectBindingSnapshots = pgTable('project_binding_snapshots', {
     .notNull()
     .references(() => adminTeamVersions.id, { onDelete: 'restrict' }),
   bindingHash: text('binding_hash').notNull(),
+  bundleDigest: text('bundle_digest'),
   boundAt: timestamp('bound_at', { withTimezone: true }).notNull(),
   backfilled: boolean('backfilled').notNull().default(false),
 });

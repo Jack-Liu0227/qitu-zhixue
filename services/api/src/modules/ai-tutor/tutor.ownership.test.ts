@@ -1,3 +1,4 @@
+import { withTutorProviderContext } from './tutor-provider.test-fixture';
 import 'reflect-metadata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -37,7 +38,7 @@ async function drain(
 /* ------------------------------ 会话归属 ------------------------------ */
 
 test('跨学生：同一 projectId 不能被第二个学生取到（403），本人仍可用', () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const owned = service.getOrCreateSession('prj-shared', OWNER);
 
   assert.throws(() => service.getOrCreateSession('prj-shared', OTHER), ForbiddenException);
@@ -49,7 +50,7 @@ test('跨学生：同一 projectId 不能被第二个学生取到（403），本
 });
 
 test('跨学生：按 id 读会话 / 读摘要统一 403，且不泄露会话字段', () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const owned = service.getOrCreateSession('prj-read', OWNER);
 
   const sessionError = captureError(() => service.getSession(owned.sessionId, OTHER));
@@ -66,7 +67,7 @@ test('跨学生：按 id 读会话 / 读摘要统一 403，且不泄露会话字
 });
 
 test('纵深防御：runTurn 在回合执行前再次校验归属', async () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const owned = service.getOrCreateSession('prj-run', OWNER);
 
   await assert.rejects(
@@ -77,7 +78,7 @@ test('纵深防御：runTurn 在回合执行前再次校验归属', async () => 
 });
 
 test('不存在可在授权后 404；越权与不存在文案一致', () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   service.getOrCreateSession('prj-404', OWNER);
 
   assert.throws(() => service.getSession('session-does-not-exist', OWNER), NotFoundException);
@@ -86,7 +87,7 @@ test('不存在可在授权后 404；越权与不存在文案一致', () => {
 });
 
 test('会话开始审计只写一次，actor 是会话归属学生；越权尝试不写审计', () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const record = service.getOrCreateSession('prj-audit', OWNER);
   service.getOrCreateSession('prj-audit', OWNER);
 
@@ -106,7 +107,7 @@ test('会话开始审计只写一次，actor 是会话归属学生；越权尝�
 });
 
 test('服务端权威：客户端夹带的 stage / hintLevel 不会被写入回合', async () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const record = service.getOrCreateSession('prj-stage', OWNER);
 
   const injected = {
@@ -146,7 +147,7 @@ function cookies(token: string): string {
 }
 
 function newController(): { controller: TutorController; service: TutorService } {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   return { controller: new TutorController(authStub(), service), service };
 }
 

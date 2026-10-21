@@ -10,7 +10,6 @@ import {
   type WorkbenchKind,
   type WorkbenchProject,
   type WorkbenchSnapshot,
-  type WorkbenchStageProgress,
 } from '../types/workbench';
 import type { WorkbenchDataSource } from '../data/workbenchDataSource';
 
@@ -91,9 +90,6 @@ export function createHttpWorkbenchDataSource(
   return {
     getProject(projectId: string): Promise<WorkbenchProject> {
       return request<WorkbenchProject>(`${base}/${projectId}`);
-    },
-    getStageProgress(projectId: string): Promise<WorkbenchStageProgress> {
-      return request<WorkbenchStageProgress>(`${base}/${projectId}/stages`);
     },
     getDraft<K extends WorkbenchKind>(projectId: string, kind: K): Promise<WorkbenchDraft<K>> {
       return request<WorkbenchDraft<K>>(`${base}/${projectId}/workbench/${kind}`);

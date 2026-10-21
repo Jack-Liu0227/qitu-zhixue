@@ -27,6 +27,35 @@
 .qitu-tutor-col-center .qitu-chat-bubble code,
 .qitu-tutor-col-center .qitu-markdown-math-content code { overflow-wrap: anywhere; word-break: break-all; }
 
+.qitu-tutor-questions { padding-left: 1.5rem; }
+.qitu-tutor-questions li + li { margin-top: 0.45rem; }
+.qitu-tutor-question-answer { display: grid; gap: 8px; margin-top: 12px; }
+.qitu-tutor-question-answer label { color: var(--qitu-heading); font-size: 0.88rem; font-weight: 650; }
+.qitu-tutor-question-answer textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--qitu-border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--qitu-surface, #fff);
+  color: var(--qitu-heading);
+  font: inherit;
+  resize: vertical;
+}
+.qitu-tutor-question-answer button {
+  justify-self: end;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--qitu-primary, #2563eb);
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.qitu-tutor-question-answer button:disabled { cursor: not-allowed; opacity: 0.55; }
+
 .qitu-tutor-header {
   flex: 0 0 auto;
   display: flex;
@@ -1742,6 +1771,17 @@
 .qitu-tutor-phase-copy span { color: #64748b; font-size: 10px; }
 .qitu-tutor-phase-details { display: grid; gap: 6px; padding: 8px 10px 10px 37px; border-top: 1px solid #f1f5f9; }
 .qitu-tutor-phase-details p { margin: 0; color: #64748b; font-size: 10.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.qitu-tutor-lesson-workspace { margin: 16px 0; padding: 18px; border: 1px solid #dbe5ee; border-radius: 16px; background: #fff; }
+.qitu-tutor-lesson-workspace .qitu-tutor-phase-details { padding: 0; border: 0; }
+.qitu-tutor-lesson-workspace .qitu-tutor-phase-details p { font-size: 13px; line-height: 1.6; }
+.qitu-tutor-lesson-work { display: grid; gap: 12px; }
+.qitu-tutor-lesson-work label { display: grid; gap: 6px; font-size: 13px; }
+.qitu-tutor-lesson-work input:not([type="checkbox"]), .qitu-tutor-lesson-work textarea, .qitu-tutor-lesson-work select { box-sizing: border-box; width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; color: #1e293b; background: #fff; font: inherit; }
+.qitu-tutor-lesson-work fieldset { display: grid; gap: 9px; border: 1px solid #dbe5ee; border-radius: 8px; }
+.qitu-tutor-lesson-work fieldset label { display: flex; gap: 8px; align-items: center; }
+.qitu-tutor-lesson-work button { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #1e293b; font: inherit; cursor: pointer; }
+.qitu-tutor-lesson-work button:disabled { opacity: .55; cursor: not-allowed; }
+.qitu-tutor-lesson-work pre { max-height: 380px; overflow: auto; font: inherit; }
 .qitu-tutor-deliverables { display: grid; gap: 4px; color: #64748b; font-size: 10.5px; }
 .qitu-tutor-deliverables strong { color: #334155; font-size: 10.5px; }
 .qitu-tutor-deliverables span.is-submitted { color: #15803d; }
@@ -1755,7 +1795,7 @@
 .qitu-idea-card-heading { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
 .qitu-idea-card-heading h3 { margin: 0; color: #0f172a; font-size: 13px; overflow-wrap: anywhere; }
 .qitu-idea-card-heading p { margin: 4px 0 0; color: #475569; font-size: 11px; line-height: 1.45; }
-.qitu-idea-weeks { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
+.qitu-idea-lessons { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 700; }
 .qitu-idea-card dl { display: grid; gap: 5px; margin: 0; }
 .qitu-idea-card dl > div { display: grid; gap: 2px; }
 .qitu-idea-card dt { color: #64748b; font-size: 10px; font-weight: 700; }
@@ -1802,7 +1842,9 @@
 .qitu-milestone-deliverables { display: grid; gap: 7px; margin: 13px 0 0; padding: 0; list-style: none; }
 .qitu-milestone-deliverables li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 7px; align-items: center; color: #334155; font-size: 12px; }
 .qitu-milestone-deliverables li strong { color: #64748b; font-size: 10px; white-space: nowrap; }
-.qitu-milestone-lock { margin: 12px 0 0; padding: 9px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; font-size: 12px; line-height: 1.5; }
+.qitu-milestone-lock { margin: 12px 0 0; padding: 9px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; font-size: 12px; line-height: 1.5; border-radius: 6px; }
+.qitu-tutor-hint { display: flex; flex-direction: column; gap: 8px; }
+.qitu-hint-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.8rem; font-weight: 600; width: fit-content; }
 
 @media (max-width: 768px) {
   .qitu-tutor-workspace-layout { flex-direction: column; gap: 8px; padding: 0 8px max(10px, env(safe-area-inset-bottom)); }
@@ -1814,4 +1856,20 @@
   .qitu-tutor-header-subtitle { max-width: 100%; }
   .qitu-tutor-col-center .qitu-composer { padding-inline: 12px !important; }
   .qitu-idea-card-list { grid-template-columns: 1fr; }
+}
+
+.qitu-optics-experiment-card.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: auto;
+  background: #fff;
+}
+
+.qitu-optics-experiment-card:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  overflow: auto;
+  border-radius: 0;
 }

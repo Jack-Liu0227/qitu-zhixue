@@ -27,3 +27,4 @@ export * from './tenancy';
 export * from './tutor-workspace';
 export * from './verification';
 export * from './works';
+export * from './visual-assets';

@@ -5,6 +5,7 @@ import type {
   StudentGrowthSummary,
   StudentGrowthTimeline,
 } from '../types';
+import type { StudentGrowthAnalysisView } from '@qitu/contracts';
 
 /**
  * The ONE swappable async data source for the growth module.
@@ -19,6 +20,7 @@ export interface GrowthDataSource {
   getSummary(): Promise<StudentGrowthSummary>;
   getTimeline(query: StudentGrowthQuery): Promise<StudentGrowthTimeline>;
   getProjectOptions(): Promise<GrowthProjectOption[]>;
+  getAnalysis?(): Promise<StudentGrowthAnalysisView>;
 }
 
 export type GrowthDataSourceErrorCode =

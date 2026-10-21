@@ -1,3 +1,4 @@
+import { withTutorProviderContext } from './tutor-provider.test-fixture';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -162,7 +163,8 @@ function makePlanBundle(studentUserId: string, projectId: string | null): PlanBu
       projectId,
       interest: '光学',
       goal: '理解光的反射、折射与透镜',
-      weeks: 4,
+      lessonCount: 4,
+      lessonMinutes: 60,
       minutesPerSession: 60,
       templateVersion: TEMPLATE_VERSION,
       status: 'active',
@@ -177,7 +179,7 @@ function makePlanBundle(studentUserId: string, projectId: string | null): PlanBu
       id: 'module-optics',
       planId: PLAN_ID,
       name: '光学基础',
-      weekIndex: 1,
+      lessonIndex: 1,
       objective: '建立光学概念',
       ordinal: 1,
     }],
@@ -196,6 +198,7 @@ function makePlanBundle(studentUserId: string, projectId: string | null): PlanBu
       planId: PLAN_ID,
       moduleId: 'module-optics',
       index: 0,
+      lessonIndex: 1,
       blocks: [{ kind: 'theory', minutes: 60 }],
       theoryObjectiveIds: [OBJECTIVE_ID],
       practiceObjectiveIds: [],
@@ -251,7 +254,7 @@ async function seedOpticsProject(store: InMemoryLearningPlanStore, status: Proje
 }
 
 function newTutorService(learningStore?: InMemoryLearningPlanStore): TutorService {
-  return new TutorService(
+  return withTutorProviderContext(new TutorService(
     'demo',
     unusedGateway,
     undefined, // platformData
@@ -265,7 +268,7 @@ function newTutorService(learningStore?: InMemoryLearningPlanStore): TutorServic
     undefined, // platformRegistry
     undefined, // teamRuntime
     learningStore, // learningStore
-  );
+  ), learningStore ? id => learningStore.findProject(id) : undefined);
 }
 
 function newLearningPlanService(

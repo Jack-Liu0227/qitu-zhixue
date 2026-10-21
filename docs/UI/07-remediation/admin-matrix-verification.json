@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "case": "skill checkbox keyboard action saves canonical ID with idempotency key and confirms readback",
+      "passed": true
+    },
+    {
+      "case": "skill partial failure keeps confirmed assistant and identifies failed assistant",
+      "passed": true
+    },
+    {
+      "case": "tool partial failure preserves earlier readback and identifies failed assistant",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

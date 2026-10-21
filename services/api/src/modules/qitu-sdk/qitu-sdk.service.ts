@@ -1,3 +1,4 @@
+import { RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   createQituSDK,
@@ -17,6 +18,7 @@ import { GrowthService } from '../growth/growth.service';
 import { DATA_MODE_TOKEN, type DataMode } from '../../database';
 import { ModelRegistryService } from '../model-registry/model-registry.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
+import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import { hashRequest } from '../../common/idempotency';
 
 const USAGE_BY_CAPABILITY: Readonly<Record<TutorAgentCapability, string>> = {
@@ -52,7 +54,7 @@ export class QituSDKFactory {
     runner: (input: Input, purpose: TutorAgentModelPurpose) => Promise<Result>,
     modelUsageOverride?: string,
     modelSelectionOverride?: { providerId: string; modelId: string } | null,
-    assistantExecution?: { assistantId: string; configurationHash: string },
+    assistantExecution?: { assistantId: string; configurationHash: string; resolveRuntime?: () => Promise<EffectiveAgentRuntime> },
   ) {
     const runtimeScope: TutorAgentScope = {
       actorId: actor.id,
@@ -64,14 +66,23 @@ export class QituSDKFactory {
       actorRole: actor.role as TutorAgentActorRole,
     };
 
+    const resolveRuntime = async (): Promise<EffectiveAgentRuntime> => {
+      const current = assistantExecution === undefined
+        ? await this.platformRegistry.getAgentRuntime(runtimeScope.partnerId)
+        : assistantExecution.resolveRuntime ? await assistantExecution.resolveRuntime()
+          : await this.platformRegistry.getAssistantRuntime(runtimeScope.partnerId);
+      if (!current.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
+      if (current.agent.id !== runtimeScope.partnerId) {
+        throw new ConflictException({ code: 'ASSISTANT_RUNTIME_IDENTITY_MISMATCH', message: 'Runtime identity is unavailable' });
+      }
+      return current;
+    };
     const runThroughAgentRuntime = async (input: Input): Promise<Result> => {
       const shape: RuntimeInputShape = isRecord(input) ? input : {};
       const requestId = readString(shape.requestId) ?? `sdk-request-${Date.now()}`;
       const idempotencyKey = readString(shape.idempotencyKey) ?? `sdk:${requestId}`;
       const query = readString(shape.query) ?? readString(shape.content) ?? '当前学习任务';
-      const agentRuntime = assistantExecution === undefined
-        ? await this.platformRegistry.getAgentRuntime(runtimeScope.partnerId)
-        : await this.platformRegistry.getAssistantRuntime(runtimeScope.partnerId);
+      const agentRuntime = await resolveRuntime();
       if (!agentRuntime.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
       if (assistantExecution !== undefined) {
         if (agentRuntime.agent.id !== runtimeScope.partnerId || !agentRuntime.agent.capabilities.includes('teach')) {
@@ -160,6 +171,40 @@ export class QituSDKFactory {
     };
 
     return createQituSDK<Input, Result, Awaited<ReturnType<GrowthService['getMasteryProfile']>>>(scope, {
+      catalog: {
+        skills: async () => {
+          const runtime = await resolveRuntime();
+          if (!runtime.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
+          return runtime.skills.map(skill => ({ id: skill.id, name: skill.label,
+            description: skill.description ?? '', tools: [...(skill.requiredToolIds ?? [])], systemPromptModifier: skill.content }));
+        },
+        tools: async () => {
+          const runtime = await resolveRuntime();
+          if (!runtime.agent.enabled) throw new Error('AGENT_ROLE_DISABLED');
+          const definitions: import('@qitu/ai-client').QituToolDefinition[] = runtime.tools.filter(tool => !['mastery_query', 'student_profile_get'].includes(tool.id)).map(tool => ({
+            id: tool.id, name: tool.id, description: 'Server-owned domain capability; no generic model executor',
+          }));
+          for (const id of ['mastery_query', 'student_profile_get']) {
+            if (!runtime.tools.some(tool => tool.id === id)) continue;
+            definitions.push({
+              id, name: id, description: 'Authorized read-only domain projection',
+              parametersSchema: RUNTIME_TOOL_CATALOG.find(tool => tool.id === id)!.inputSchema,
+              authorize: async () => {
+                const fresh = await resolveRuntime();
+                return fresh.tools.some(tool => tool.id === id);
+              },
+              execute: async (args, bound) => {
+                if (Object.keys(args).length) throw new Error('SDK_TOOL_ARGUMENT_INVALID');
+                return id === 'mastery_query'
+                  ? this.mastery.forActor(actor).getCurrent({ studentId: bound.studentId, validAt: null, knownAt: null })
+                  : this.growth.getMasteryProfile(actor, bound.studentId);
+              },
+            });
+          }
+          return definitions;
+        },
+        assistants: async () => (await this.platformRegistry.listAssistants()).filter(item => item.id === runtimeScope.partnerId && item.enabled),
+      },
       mastery: this.mastery.forActor(actor),
       agent: {
         run: async (input, bound) => {

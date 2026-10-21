@@ -32,7 +32,8 @@ export interface PlanRecord {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks: 4 | 8;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;
@@ -48,7 +49,7 @@ export interface ModuleRecord {
   id: string;
   planId: string;
   name: string;
-  weekIndex: number;
+  lessonIndex: number;
   objective: string;
   ordinal: number;
 }
@@ -78,11 +79,25 @@ export interface SessionRecord {
   planId: string;
   moduleId: string;
   index: number;
+  lessonIndex: number;
   title?: string | null;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
   practiceObjectiveIds: string[];
   mode: SessionMode;
+}
+
+export interface SessionCompletionRecord {
+  id: string;
+  studentUserId: string;
+  projectId: string;
+  planId: string;
+  planRevision: number;
+  learningSessionId: string;
+  evidenceRefs: string[];
+  idempotencyKey: string;
+  requestHash: string;
+  completedAt: Date;
 }
 
 export interface MasteryRecord {
@@ -131,7 +146,7 @@ export interface AttemptRecord {
   questionId: string | null;
   result: GradeValue;
   isCorrect: boolean;
-  assessmentType: 'quiz' | 'qualitative' | 'review';
+  assessmentType: 'quiz' | 'qualitative' | 'review' | 'formative';
   errorType: LearningErrorType | null;
   hintsUsed: number;
   attemptCount: number;
@@ -159,7 +174,7 @@ export interface PendingQuestionRecord {
   expectedAnswer: string;
   explanation: string;
   difficulty: QuestionDifficulty | null;
-  assessmentType: 'quiz' | 'qualitative' | 'review';
+  assessmentType: 'quiz' | 'qualitative' | 'review' | 'formative';
   status: 'awaiting' | 'answered' | 'expired' | 'cancelled';
   attempt: number;
   hintsUsed: number;
@@ -189,7 +204,7 @@ export interface CompletePendingQuestionInput {
   questionId: string;
   answeredAt: Date;
   attempt: AttemptRecord;
-  mastery: MasteryRecord;
+  mastery: MasteryRecord | null;
   /** null keeps the legacy objective path when no explicit canonical mapping exists. */
   masteryEvent: MasteryEventRecord | null;
   /** Runs inside the Postgres transaction after all learning rows are staged. */
@@ -229,7 +244,7 @@ export interface ConfirmPlanResult {
   created: boolean;
 }
 
-/** 同一 `(student, interest, weeks, templateVersion)` 已存在计划时抛出。 */
+/** Same `(student, interest, lessonCount, lessonMinutes, templateVersion)` already exists. */
 export class LearningPlanStoreConflictError extends Error {
   constructor(message: string) {
     super(message);
@@ -245,7 +260,23 @@ export class PendingQuestionConflictError extends Error {
   }
 }
 
+export function assertConfirmedProjectPlan(project: LearningProjectRecord, bundle: PlanBundle): void {
+  if (bundle.plan.projectId !== project.id || bundle.plan.studentUserId !== project.studentId
+    || !project.templateVersionId || bundle.plan.templateVersion !== project.templateVersionId
+    || bundle.plan.status !== 'active' || !(bundle.plan.confirmedAt instanceof Date)
+    || !Number.isFinite(bundle.plan.confirmedAt.getTime()) || bundle.plan.version < 1 || !Number.isSafeInteger(bundle.plan.version)) {
+    throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_PLAN_SCOPE_INVALID');
+  }
+}
+
 export abstract class LearningPlanStore {
+  abstract withConfirmationTransaction<T>(tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T>;
+  abstract attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void>;
+  abstract listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]>;
+  abstract findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null>;
+  abstract saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
+  abstract withSessionProgressTransaction<T>(studentId: string, planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T>;
+  abstract finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean>;
   abstract transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean>;
   abstract studentSchoolId(studentId: string): Promise<string | null>;
   abstract commitMasteryEvaluation(event: MasteryEventRecord, projection: MasteryRecord | null, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
@@ -254,19 +285,11 @@ export abstract class LearningPlanStore {
     studentId: string,
     work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>,
   ): Promise<T>;
-  /**
-   * 按签名读取既有草稿。
-   *
-   * `signatureKey` 是**含排课形状**的完整幂等键（`learning-plan:<student>:
-   * <templateVersion>:<weeks>:<interest>:<sessionsPerWeek>x<sessionMinutes>`）；
-   * 传旧前缀（无排课后缀）即走兼容读，供升级前落库的草稿命中。
-   * 只按 (student, interest, weeks, templateVersion) 去重是缺陷：4 周 1×120 与
-   * 4 周 2×60 会撞进同一条签名，第二个请求被返回第一份计划的形状。
-   */
-  abstract findPlanBySignature(
+  abstract findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
-    weeks: 4 | 8,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
     templateVersion: string,
     signatureKey?: string,
   ): Promise<PlanBundle | null>;
@@ -295,7 +318,8 @@ export abstract class LearningPlanStore {
 
   abstract upsertMastery(record: MasteryRecord): Promise<void>;
 
-  abstract listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]>;
+  /** Mastery consumers exclude formative attempts by default; opt in only for evidence history. */
+  abstract listAttempts(studentUserId: string, objectiveId: string, options?: { includeFormative?: boolean }): Promise<AttemptRecord[]>;
 
   abstract appendAttempt(attempt: AttemptRecord): Promise<void>;
 
@@ -329,7 +353,7 @@ export abstract class LearningPlanStore {
 
   abstract findPendingQuestion(questionId: string): Promise<PendingQuestionRecord | null>;
 
-  abstract createPendingQuestion(record: PendingQuestionRecord): Promise<void>;
+  abstract createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void>;
 
   /** Atomically claim the awaiting question and persist its attempt + mastery result. */
   abstract completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean>;
@@ -351,6 +375,7 @@ function attemptKey(studentUserId: string, objectiveId: string): string {
 }
 
 export class InMemoryLearningPlanStore extends LearningPlanStore {
+  private readonly sessionCompletions = new Map<string, SessionCompletionRecord>();
   private readonly assessmentLocks = new Map<string, Promise<void>>();
   private readonly plans = new Map<string, PlanBundle>();
   private readonly projects = new Map<string, LearningProjectRecord>();
@@ -360,12 +385,73 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   private readonly masteryEvents = new Map<string, MasteryEventRecord>();
   private readonly objectiveMappings = new Map<string, MasteryObjectiveMappingRecord>();
 
+  async withConfirmationTransaction<T>(_tx: AuditTransaction | undefined, work: (store: LearningPlanStore) => Promise<T>): Promise<T> {
+    // Isolate confirmation writes so a failed callback cannot roll back another student's concurrent work.
+    const scoped = new InMemoryLearningPlanStore();
+    for (const [key, value] of this.plans) scoped.plans.set(key, cloneBundle(value));
+    for (const [key, value] of this.projects) scoped.projects.set(key, { ...value, tags: [...value.tags] });
+    for (const [key, value] of this.objectiveMappings) scoped.objectiveMappings.set(key, { ...value });
+    const planIds = new Set(this.plans.keys()), projectIds = new Set(this.projects.keys()), mappingIds = new Set(this.objectiveMappings.keys());
+    const result = await work(scoped);
+    const plans = [...scoped.plans].filter(([key]) => !planIds.has(key));
+    const projects = [...scoped.projects].filter(([key]) => !projectIds.has(key));
+    const mappings = [...scoped.objectiveMappings].filter(([key]) => !mappingIds.has(key));
+    if (plans.some(([key, candidate]) => this.plans.has(key) || [...this.plans.values()].some((entry) =>
+      entry.plan.projectId === candidate.plan.projectId && entry.plan.status === 'active'))
+      || projects.some(([key]) => this.projects.has(key)) || mappings.some(([key]) => this.objectiveMappings.has(key))) {
+      throw new LearningPlanStoreConflictError('CONFIRMATION_TRANSACTION_CONFLICT');
+    }
+    for (const [key, value] of plans) this.plans.set(key, value);
+    for (const [key, value] of projects) this.projects.set(key, value);
+    for (const [key, value] of mappings) this.objectiveMappings.set(key, value);
+    return result;
+  }
+  async attachConfirmedProject(project: LearningProjectRecord, bundle: PlanBundle): Promise<void> {
+    assertConfirmedProjectPlan(project, bundle);
+    const existing = this.projects.get(project.id);
+    if (existing && (existing.studentId !== project.studentId || existing.templateVersionId !== project.templateVersionId)) {
+      throw new LearningPlanStoreConflictError('CONFIRMED_PROJECT_SCOPE_INVALID');
+    }
+    const active = [...this.plans.values()].find((entry) => entry.plan.projectId === project.id && entry.plan.status === 'active');
+    if (active) throw new LearningPlanStoreConflictError('PROJECT_ALREADY_HAS_ACTIVE_PLAN');
+    await this.createPlan(bundle);
+    this.projects.set(project.id, existing ?? { ...project, tags: [...project.tags] });
+  }
+
+  async listSessionCompletions(planId: string, planRevision: number): Promise<SessionCompletionRecord[]> {
+    return [...this.sessionCompletions.values()].filter((row) => row.planId === planId && row.planRevision === planRevision)
+      .map((row) => ({ ...row, evidenceRefs: [...row.evidenceRefs] }));
+  }
+  async findSessionCompletionByKey(key: string): Promise<SessionCompletionRecord | null> {
+    const row = [...this.sessionCompletions.values()].find((entry) => entry.idempotencyKey === key);
+    return row ? { ...row, evidenceRefs: [...row.evidenceRefs] } : null;
+  }
+  async saveSessionCompletion(record: SessionCompletionRecord, commit: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
+    if ([...this.sessionCompletions.values()].some((row) => row.idempotencyKey === record.idempotencyKey
+      || (row.planId === record.planId && row.planRevision === record.planRevision && row.learningSessionId === record.learningSessionId))) {
+      throw new LearningPlanStoreConflictError('SESSION_COMPLETION_CONFLICT');
+    }
+    this.sessionCompletions.set(record.id, { ...record, evidenceRefs: [...record.evidenceRefs] });
+    try { await commit(); } catch (error) { this.sessionCompletions.delete(record.id); throw error; }
+  }
+  async withSessionProgressTransaction<T>(studentId: string, _planId: string, work: (store: LearningPlanStore, tx?: AuditTransaction) => Promise<T>): Promise<T> {
+    return this.withAssessmentTransaction(studentId, work);
+  }
+  async finishPlanForProject(studentId: string, planId: string, projectId: string, expectedVersion: number, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
+    const bundle = this.plans.get(planId);
+    if (!bundle || bundle.plan.studentUserId !== studentId || bundle.plan.projectId !== projectId
+      || bundle.plan.version !== expectedVersion || bundle.plan.status !== 'active') return false;
+    const before = { ...bundle.plan };
+    bundle.plan = { ...bundle.plan, status: 'completed', completedAt: new Date(), updatedAt: new Date() };
+    try { await commit?.(); return true; } catch (error) { bundle.plan = before; throw error; }
+  }
+
   async transitionProject(studentId: string, projectId: string, expected: ProjectStage, next: ProjectStage, commit: (tx?: AuditTransaction) => Promise<void>): Promise<boolean> {
     const project = this.projects.get(projectId);
     if (!project || project.studentId !== studentId || project.status !== expected) return false;
     const previous = { ...project };
     try {
-      this.projects.set(projectId, { ...project, status: next, ...computeStageProgress(next) });
+      this.projects.set(projectId, { ...project, status: next, ...computeStageProgress(next), completedAt: next === 'completed' ? new Date() : project.completedAt });
       await commit();
       return true;
     } catch (error) {
@@ -415,44 +501,35 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     }
   }
 
-  async findPlanBySignature(
+  override async findPlanByLessonSignature(
     studentUserId: string,
     interest: string,
-    weeks: 4 | 8,
+    lessonCount: number,
+    lessonMinutes: 60 | 120,
     templateVersion: string,
     signatureKey?: string,
   ): Promise<PlanBundle | null> {
     for (const bundle of this.plans.values()) {
       const plan = bundle.plan;
-      if (
-        plan.studentUserId === studentUserId &&
-        plan.interest === interest &&
-        plan.weeks === weeks &&
-        plan.templateVersion === templateVersion &&
-        // 排课是形状的一部分：只有键完全一致才算同一份计划。旧键（无排课
-        // 后缀）同样只是「键相等」的一个特例，因此两种读共用这一条判据。
-        (signatureKey === undefined || plan.idempotencyKey === signatureKey)
-      ) {
-        return cloneBundle(bundle);
-      }
+      if (plan.studentUserId === studentUserId && plan.interest === interest
+        && plan.lessonCount === lessonCount && plan.lessonMinutes === lessonMinutes
+        && plan.templateVersion === templateVersion
+        && (signatureKey === undefined || plan.idempotencyKey === signatureKey)) return cloneBundle(bundle);
     }
     return null;
   }
 
   async createPlan(bundle: PlanBundle): Promise<void> {
-    const existing = await this.findPlanBySignature(
+    const existing = await this.findPlanByLessonSignature(
       bundle.plan.studentUserId,
       bundle.plan.interest,
-      bundle.plan.weeks,
+      bundle.plan.lessonCount,
+      bundle.plan.lessonMinutes,
       bundle.plan.templateVersion,
       bundle.plan.idempotencyKey,
     );
-    if (existing !== null) {
-      throw new LearningPlanStoreConflictError(`已存在同一签名的学习计划：${existing.plan.id}`);
-    }
-    if (this.plans.has(bundle.plan.id)) {
-      throw new LearningPlanStoreConflictError(`学习计划 id 冲突：${bundle.plan.id}`);
-    }
+    if (existing !== null) throw new LearningPlanStoreConflictError(`Duplicate lesson-based plan signature: ${existing.plan.id}`);
+    if (this.plans.has(bundle.plan.id)) throw new LearningPlanStoreConflictError(`Learning plan id conflict: ${bundle.plan.id}`);
     this.plans.set(bundle.plan.id, cloneBundle(bundle));
     for (const mapping of planObjectiveMappings(bundle, null)) await this.upsertObjectiveMapping(mapping);
   }
@@ -545,9 +622,9 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     this.mastery.set(masteryKey(record.studentUserId, record.objectiveId), { ...record });
   }
 
-  async listAttempts(studentUserId: string, objectiveId: string): Promise<AttemptRecord[]> {
+  async listAttempts(studentUserId: string, objectiveId: string, options: { includeFormative?: boolean } = {}): Promise<AttemptRecord[]> {
     const list = this.attempts.get(attemptKey(studentUserId, objectiveId)) ?? [];
-    return list.map((attempt) => ({ ...attempt }));
+    return list.filter(attempt => options.includeFormative || attempt.assessmentType !== 'formative').map((attempt) => ({ ...attempt }));
   }
 
   async appendAttempt(attempt: AttemptRecord): Promise<void> {
@@ -606,6 +683,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
   }
 
   async completeAssessment(input: CompleteAssessmentInput): Promise<void> {
+    if (input.attempt.assessmentType === 'formative') throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
     const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
     const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
     const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
@@ -650,7 +728,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
     return record === undefined ? null : clonePendingQuestion(record);
   }
 
-  async createPendingQuestion(record: PendingQuestionRecord): Promise<void> {
+  async createPendingQuestion(record: PendingQuestionRecord, commit?: (tx?: AuditTransaction) => Promise<void>): Promise<void> {
     if (this.pending.has(record.id)) {
       throw new PendingQuestionConflictError(`待答题 id 冲突：${record.id}`);
     }
@@ -666,18 +744,21 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       }
     }
     this.pending.set(record.id, clonePendingQuestion(record));
+    try { await commit?.(); } catch (error) { this.pending.delete(record.id); throw error; }
   }
 
   async completePendingQuestion(input: CompletePendingQuestionInput): Promise<boolean> {
+    assertPendingAssessmentBoundary(input);
     const record = this.pending.get(input.questionId);
     if (record === undefined || record.status !== 'awaiting') return false;
+    if ((record.assessmentType === 'formative') !== (input.attempt.assessmentType === 'formative')) throw new Error('QUESTION_ASSESSMENT_PROTOCOL_MISMATCH');
 
     // Keep the in-memory adapter's all-or-nothing behavior aligned with Postgres.
     const previousPending = clonePendingQuestion(record);
     const attemptKeyValue = attemptKey(input.attempt.studentUserId, input.attempt.objectiveId);
     const previousAttempts = (this.attempts.get(attemptKeyValue) ?? []).map((attempt) => ({ ...attempt }));
-    const masteryKeyValue = masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
-    const previousMastery = this.mastery.get(masteryKeyValue);
+    const masteryKeyValue = input.mastery === null ? null : masteryKey(input.mastery.studentUserId, input.mastery.objectiveId);
+    const previousMastery = masteryKeyValue === null ? undefined : this.mastery.get(masteryKeyValue);
     const previousEvent = input.masteryEvent === null ? undefined : this.masteryEvents.get(input.masteryEvent.id);
     try {
       this.pending.set(input.questionId, {
@@ -687,7 +768,7 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
         updatedAt: input.answeredAt,
       });
       await this.appendAttempt(input.attempt);
-      await this.upsertMastery(input.mastery);
+      if (input.mastery !== null) await this.upsertMastery(input.mastery);
       if (input.masteryEvent !== null) await this.appendMasteryEvent(input.masteryEvent);
       if (input.commit !== undefined) await input.commit(undefined);
       return true;
@@ -695,8 +776,10 @@ export class InMemoryLearningPlanStore extends LearningPlanStore {
       this.pending.set(input.questionId, previousPending);
       if (previousAttempts.length === 0) this.attempts.delete(attemptKeyValue);
       else this.attempts.set(attemptKeyValue, previousAttempts);
-      if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
-      else this.mastery.set(masteryKeyValue, previousMastery);
+      if (masteryKeyValue !== null) {
+        if (previousMastery === undefined) this.mastery.delete(masteryKeyValue);
+        else this.mastery.set(masteryKeyValue, previousMastery);
+      }
       if (input.masteryEvent !== null) {
         if (previousEvent === undefined) this.masteryEvents.delete(input.masteryEvent.id);
         else this.masteryEvents.set(input.masteryEvent.id, previousEvent);
@@ -767,4 +850,12 @@ export function planObjectiveMappings(bundle: PlanBundle, schoolId: string | nul
 /** 供服务层构造稳定 id；测试可注入固定值。 */
 export function newId(prefix: string): string {
   return `${prefix}-${randomUUID()}`;
+}
+
+/** A generated answer key is never sufficient authority for mastery writes. */
+export function assertPendingAssessmentBoundary(input: CompletePendingQuestionInput): void {
+  const formative = input.attempt.assessmentType === 'formative';
+  if (formative !== (input.mastery === null) || (formative && input.masteryEvent !== null)) {
+    throw new Error('FORMATIVE_MASTERY_WRITE_FORBIDDEN');
+  }
 }

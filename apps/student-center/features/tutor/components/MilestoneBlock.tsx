@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { StudentLink } from '../../../components/student-link';
 
 type MilestoneBlockProps = {
   phaseId: string;
@@ -12,15 +12,24 @@ type MilestoneBlockProps = {
 
 /** Read-only milestone projection. Gate status is never inferred from deliverables. */
 export function MilestoneBlock({ phaseId, title, deliverables, gate, projectId }: MilestoneBlockProps) {
+  const phaseLabel = ({ exploration: '灵感探索', concept_mastery: '理论探究', practice: '实践制作', reflection: '反思完善' } as Record<string, string>)[phaseId] ?? '当前阶段';
+  const isTheorySide = phaseId === 'exploration' || phaseId === 'concept_mastery';
   const theoryBlocked = gate.type === 'TheoryMastered' && gate.status !== 'passed';
   const workbenchHref = projectId ? `/student/projects/${encodeURIComponent(projectId)}/workbench` : null;
   const worksHref = projectId ? `/student/works` : null;
   return (
     <section className="qitu-milestone-card" aria-label="阶段检查">
-      <header className="qitu-milestone-header"><div><span className="qitu-quiz-badge">阶段检查</span><h4>{title}</h4><small>阶段 {phaseId}</small></div><GateStatus type={gate.type} status={gate.status} /></header>
+      <header className="qitu-milestone-header"><div><span className="qitu-quiz-badge">阶段检查</span><h4>{title}</h4><small>{phaseLabel}</small></div><GateStatus type={gate.type} status={gate.status} /></header>
       <ul className="qitu-milestone-deliverables">{deliverables.map((item) => <li key={item.id}><span aria-hidden="true">{item.submitted ? '✓' : '○'}</span><span>{item.title}</span><strong>{item.submitted ? '已提交' : '待提交'}</strong></li>)}</ul>
-      {theoryBlocked ? <p className="qitu-milestone-lock" role="status">理论掌握门禁尚未通过，实践与制作入口暂不可用。</p> : (
-        <div className="qitu-milestone-actions">{workbenchHref ? <Link className="qitu-button qitu-button-primary qitu-button-sm" href={workbenchHref}>进入制作工作台</Link> : null}{worksHref ? <Link className="qitu-button qitu-button-ghost qitu-button-sm" href={worksHref}>查看作品</Link> : null}</div>
+      {theoryBlocked || isTheorySide ? (
+        <p className="qitu-milestone-lock" role="status">
+          {theoryBlocked ? '理论掌握门禁尚未通过，需先完成理论学习与检验。' : '当前处于理论探究阶段，完成阶段目标后将进入制作实践。'}
+        </p>
+      ) : (
+        <div className="qitu-milestone-actions">
+          {workbenchHref ? <StudentLink className="qitu-button qitu-button-primary qitu-button-sm" href={workbenchHref}>进入制作工作台</StudentLink> : null}
+          {worksHref ? <StudentLink className="qitu-button qitu-button-ghost qitu-button-sm" href={worksHref}>查看作品</StudentLink> : null}
+        </div>
       )}
     </section>
   );

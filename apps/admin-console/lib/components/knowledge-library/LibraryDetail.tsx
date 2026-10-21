@@ -1,6 +1,7 @@
 'use client';
 
 import { AssistantGlyph } from '@qitu/ui';
+import { VisualObjectControl } from '../VisualAssetPicker';
 // Layout and operations adapted from DeepTutor KnowledgeBaseDetail/KbFilesTab (6cf793bd, MIT).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -256,6 +257,7 @@ export function LibraryDetail({
               </button>
               <h2>
                 {detail.name}
+                {!readonly && <VisualObjectControl owner={{ kind: 'knowledge', id: detail.id }} usage="icon" label="知识库图标" />}
                 {detail.library_settings?.isDefault && (
                   <span className={styles.defaultBadge}>
                     <Glyph name="star" size={13} />

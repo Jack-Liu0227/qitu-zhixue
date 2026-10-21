@@ -206,6 +206,8 @@ export const agentProjectionCandidates = pgTable(
     idempotencyKey: text('idempotency_key').notNull(),
     reviewedBy: text('reviewed_by'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewErrorCode: text('review_error_code'),
+    supersededByCandidateId: text('superseded_by_candidate_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

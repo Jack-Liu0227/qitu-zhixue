@@ -76,29 +76,37 @@ export function fetchAdminTeamConfigs(): Promise<AdminTeamConfig[]> {
   return adminEnvelopeRequest<AdminTeamConfig[]>({ path: ADMIN_TEAMS_PATH, method: 'GET' });
 }
 
-export function createPersistedTeam(
+export async function createPersistedTeam(
   input: AdminTeamCreateInput,
   idempotencyKey = newIdempotencyKey(),
 ): Promise<AdminTeamConfig> {
-  return adminEnvelopeRequest<AdminTeamConfig>({
+  const saved = await adminEnvelopeRequest<AdminTeamConfig>({
     path: ADMIN_TEAMS_PATH,
     method: 'POST',
     body: input,
     idempotencyKey,
   });
+  return readTeam(saved);
 }
 
-export function updatePersistedTeam(
+export async function updatePersistedTeam(
   id: string,
   patch: AdminTeamUpdateInput,
   idempotencyKey = newIdempotencyKey(),
 ): Promise<AdminTeamConfig> {
-  return adminEnvelopeRequest<AdminTeamConfig>({
+  const saved = await adminEnvelopeRequest<AdminTeamConfig>({
     path: ADMIN_TEAM_ITEM_PATH(id),
     method: 'PATCH',
     body: patch,
     idempotencyKey,
   });
+  return readTeam(saved);
+}
+
+async function readTeam(saved: AdminTeamConfig): Promise<AdminTeamConfig> {
+  const current = (await fetchAdminTeamConfigs()).find((item) => item.id === saved.id);
+  if (!current || current.updatedAt !== saved.updatedAt) throw new Error('团队保存后的回读未确认，请刷新核对后重试。');
+  return current;
 }
 
 export function deletePersistedTeam(

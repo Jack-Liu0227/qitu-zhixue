@@ -19,6 +19,7 @@ export class ReportingService {
   ) {}
 
   async buildReport(actor: CurrentUser, assistantId = 'feishu-reporting-assistant', options: ReportOptions = {}): Promise<FeishuReportDocument> {
+    if (assistantId !== 'feishu-reporting-assistant') throw new ForbiddenException({ code: 'FEISHU_REPORTING_UNSUPPORTED', message: 'Reporting is not supported for this assistant' });
     // D1（docs/plan/20261018-issue-digest-feishu-assistant.md）：
     // 管理员按全局/显式名单生成；班主任只能看到当前所带学生的范围，
     // 范围由服务端从 mentor_assignments 重新解析，不信任请求体字段。
@@ -72,16 +73,11 @@ export class ReportingService {
 
     const parentIssues: string[] = [];
     try {
-      const tickets = await this.db.select({ id: feedbackTickets.id, status: feedbackTickets.status, problem: feedbackTickets.problem, source: feedbackTickets.source }).from(feedbackTickets);
+      const tickets = actor.role === 'admin' ? await this.db.select({ id: feedbackTickets.id, status: feedbackTickets.status }).from(feedbackTickets) : [];
       const openTickets = tickets.filter((t) => t.status !== 'closed');
       if (openTickets.length > 0) {
         parentIssues.push(`当前有 ${openTickets.length} 条待处理家长协同与服务反馈工单`);
-        for (const ticket of openTickets.slice(0, 3)) {
-          if (ticket.problem) {
-            const snippet = ticket.problem.length > 30 ? `${ticket.problem.slice(0, 30)}...` : ticket.problem;
-            parentIssues.push(`诉求反馈: ${snippet}`);
-          }
-        }
+
       }
     } catch {
       // 容错降级

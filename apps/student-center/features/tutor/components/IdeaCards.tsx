@@ -61,7 +61,7 @@ function IdeaCard({
           <h3>{card.title}</h3>
           <p>{card.description}</p>
         </div>
-        <span className="qitu-idea-weeks">{card.weeks} 周</span>
+        <span className="qitu-idea-lessons">{card.lessonCount} 课时</span>
       </div>
       <dl>
         <div><dt>为什么适合</dt><dd>{card.rationale}</dd></div>

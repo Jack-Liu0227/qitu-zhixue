@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post
 import { AuthService } from '../identity-auth/auth.service';
 import { requireRole } from '../../common/access/request-auth';
 import { ProjectLifecycleService } from './project-lifecycle.service';
+import { currentStudentProject } from './current-project';
 
 @Controller('projects')
 export class ProjectLifecycleController {
@@ -10,11 +11,13 @@ export class ProjectLifecycleController {
   async list(@Headers('cookie') cookie: string | undefined) {
     const actor = requireRole(this.auth, cookie, 'student', '仅学生本人可读取项目列表');
     const projects = await this.projects.listProjects(actor);
+    const current = currentStudentProject(projects);
     return { data: projects.map((project) => ({
       id: project.id, title: project.title, subtitle: project.subtitle ?? '', tags: project.tags,
       status: project.status, templateVersionId: project.templateVersionId ?? 'unknown',
       currentStageIndex: project.currentStageIndex, stageTotal: project.stageTotal,
       progressPercent: project.progressPercent,
+      isCurrent: project.id === current?.id,
     })) };
   }
 

@@ -1,0 +1,30 @@
+Status entries added during review (not authored by this UI task):
+ M apps/admin-console/app/(console)/settings/tools/page.tsx
+ M packages/ai-client/src/qitu-sdk.test.ts
+ M packages/ai-client/src/qitu-sdk.ts
+ M packages/model-runtime/src/runtime.test.ts
+ M packages/model-runtime/src/runtime.ts
+ M services/api/src/modules/ai-tutor/gateway-tutor.provider.ts
+ M services/api/src/modules/ai-tutor/ima-mcp.client.ts
+ M services/api/src/modules/ai-tutor/tutor.provider.ts
+ M services/api/src/modules/ai-tutor/tutor.service.ts
+ M services/api/src/modules/knowledge/knowledge-library-retrieval.test.ts
+ M services/api/src/modules/knowledge/knowledge-retrieval.service.ts
+ M services/api/src/modules/knowledge/knowledge-retrieval.test.ts
+ M services/api/src/modules/knowledge/knowledge-tool-catalog.service.ts
+ M services/api/src/modules/knowledge/knowledge-tool-catalog.test.ts
+ M services/api/src/modules/platform-registry/built-in-tools.ts
+ M services/api/src/modules/platform-registry/ima-settings.service.ts
+ M services/api/src/modules/qitu-sdk/qitu-sdk.service.ts
+ M services/workers/src/team-runtime-executor.test.ts
+ M services/workers/src/team-runtime-executor.ts
+?? packages/contracts/src/runtime-skill-baseline.ts
+?? packages/contracts/src/runtime-skills.ts
+?? packages/contracts/src/runtime-tool-catalog.ts
+?? services/api/src/modules/ai-tutor/ima-tool-scope.test.ts
+?? services/api/src/modules/ai-tutor/ima-tool-scope.ts
+?? services/api/src/modules/ai-tutor/tool-event-stream.ts
+?? services/api/src/modules/ai-tutor/tutor-knowledge-access.ts
+?? tooling/verify-runtime-governance.mjs
+
+Removed status entries:

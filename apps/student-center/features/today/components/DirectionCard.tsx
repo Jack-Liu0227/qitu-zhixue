@@ -1,4 +1,5 @@
 import { colors } from '@qitu/design-tokens';
+import { VisualAsset } from '@qitu/ui';
 import { StudentLink } from '../../../components/student-link';
 
 import type { IdeaDirection } from '../types';
@@ -50,7 +51,7 @@ export function DirectionCard({ direction }: { direction: IdeaDirection }) {
             fontWeight: 600,
           }}
         >
-          {direction.title.charAt(0)}
+          <VisualAsset assetId={direction.iconAssetId ?? 'subject-interdisciplinary-v1'} size={48} />
         </span>
       )}
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>

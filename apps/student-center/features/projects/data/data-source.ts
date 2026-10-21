@@ -9,6 +9,7 @@ import type {
   ProjectStage,
   ProjectStageView,
   ProjectTab,
+  LessonScheduleView,
   ReflectionInput,
   TaskSubmission,
   TaskView,
@@ -49,6 +50,7 @@ export interface ProjectsDataSource {
   getTasks(projectId: string): Promise<TaskView[]>;
   getNextStep(projectId: string): Promise<NextStep | null>;
   getTemplateStages(templateVersionId: string): Promise<TemplateStage[]>;
+  getLessonSchedule(projectId: string): Promise<LessonScheduleView | null>;
   getTheoryMaterial(projectId: string): Promise<TheoryMaterial | null>;
   getTheoryQuestions(projectId: string): Promise<TheoryQuestion[]>;
   getMentorNote(projectId: string): Promise<MentorNoteView | null>;

@@ -107,6 +107,21 @@ export class ImaSettingsService {
     return this.getSettings();
   }
 
+  async allowedKnowledgeBaseIds(): Promise<string[]> {
+    if (!this.knowledgeCenter) return [];
+    const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
+    const ids = engine?.config.allowedKnowledgeBaseIds;
+    return engine?.enabled && Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string' && !!id) : [];
+  }
+
+  /** A fresh, fail-closed authorization check before discovery and each tool call. */
+  async currentKnowledgeBaseIds(assistantId: string): Promise<readonly string[]> {
+    if (!this.knowledgeCenter || !(await this.knowledgeCenter.canRetrieve(assistantId))) return [];
+    const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
+    const ids = engine?.config.allowedKnowledgeBaseIds;
+    return engine?.enabled && Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+  }
+
   /** A fresh, fail-closed authorization check before discovery and each tool call. */
   async canCall(agentId: string, toolId: string, assistantId?: string): Promise<boolean> {
     if (this.knowledgeCenter) {

@@ -4,6 +4,7 @@ import './globals.css';
 import './home.css';
 import './public-pages.css';
 import './home/story-film.css';
+import './ui-remediation.css';
 import '@qitu/ui/brand.css';
 
 export const metadata: Metadata = {

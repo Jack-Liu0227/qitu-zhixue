@@ -8,10 +8,23 @@ import type {
   CreateTutorTurnResponse,
   AnswerInteractiveQuizRequest,
   AnswerInteractiveQuizResponse,
+  TutorExperimentActionRequest,
+  TutorExperimentActionResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
   TutorTeamGraph,
+  TutorTeamHistoryPage,
+  LearningSessionProgressView,
+  CompleteLearningSessionRequest,
+  CompleteLearningSessionResponse,
+  LearningEvidenceScope,
+  LearningTextSubmission,
+  LearningSubmissionResponse,
+  LearningSubmissionArtifactView,
+  LessonEvidenceView,
+  ReconcileProjectLearningRequest,
+  ReconcileProjectLearningResponse,
 } from '@qitu/contracts';
 import type { TutorSocket } from '../realtime/tutorRealtimeClient';
 import type { TutorProjectContext } from '../types';
@@ -24,6 +37,13 @@ import type { TutorProjectContext } from '../types';
  * default; tests and QA can inject `MockTutorDataSource` through the provider.
  */
 export interface TutorDataSource {
+  reconcileLearning?(projectId: string, request: ReconcileProjectLearningRequest, idempotencyKey: string): Promise<ReconcileProjectLearningResponse>;
+  getLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>): Promise<LessonEvidenceView>;
+  submitLessonEvidence?(scope: Pick<LearningEvidenceScope, 'projectId' | 'planId' | 'planRevision' | 'learningSessionId'>, kind: 'responses' | 'artifacts' | 'reflections', request: LearningTextSubmission, idempotencyKey: string): Promise<LearningSubmissionResponse>;
+  getLearningArtifact?(projectId: string, artifactId: string): Promise<LearningSubmissionArtifactView>;
+  publishLearningArtifact?(projectId: string, artifactId: string, idempotencyKey: string): Promise<LearningSubmissionArtifactView>;
+  getLessonProgress?(planId: string, projectId: string): Promise<LearningSessionProgressView>;
+  completeLesson?(planId: string, sessionId: string, request: CompleteLearningSessionRequest, idempotencyKey: string): Promise<CompleteLearningSessionResponse>;
   confirmExploration?(explorationId: string, draft: { goal: string; interest: string; templateVersionId?: string }, idempotencyKey: string): Promise<ConfirmIntentResponse>;
   /** GET /students/me/active-project — `null` means no active project (empty state). */
   getActiveProject(): Promise<ProjectSummary | null>;
@@ -32,6 +52,7 @@ export interface TutorDataSource {
   getProjectContext(projectId: string): Promise<TutorProjectContext | null>;
   /** GET /tutor/team-graph?projectId=... — server-filtered agent projection. */
   getTeamGraph(projectId: string): Promise<TutorTeamGraph | null>;
+  getTeamHistory?(projectId: string, assistantId: string, cursor?: string): Promise<TutorTeamHistoryPage>;
   /** POST /tutor/sessions — idempotent session creation. */
   createSession(request: CreateTutorSessionRequest): Promise<CreateTutorSessionResponse>;
   /** GET /tutor/session — initial turns + `lastSeq` cursor seed. */
@@ -49,6 +70,12 @@ export interface TutorDataSource {
   ): Promise<AnswerInteractiveQuizResponse>;
   /** Explicit explain action; the server decides whether to reveal an explanation. */
   requestQuizExplanation(sessionId: string, quizId: string): Promise<void>;
+  /** POST /tutor/sessions/:id/interactive/experiments/:experimentId/action. */
+  submitExperimentAction(
+    sessionId: string,
+    experimentId: string,
+    request: TutorExperimentActionRequest,
+  ): Promise<TutorExperimentActionResponse>;
   /** GET /tutor/sessions/:id/summary — display-only ladder/stall status. */
   getSummary(sessionId: string): Promise<TutorSessionSummary>;
   /** POST /tutor/sessions/:id/feedback — idempotent feedback. */

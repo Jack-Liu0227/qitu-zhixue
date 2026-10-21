@@ -9,6 +9,13 @@ import { DirectoryModule } from '../directory/directory.module';
 import { DirectoryService } from '../directory/directory.service';
 import { GROWTH_RECORD_STORE, InMemoryGrowthRecordStore } from './growth.persistence';
 import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
+import { GrowthProjectionOwnerService } from './growth-projection-owner.service';
+import { GrowthProjectionAdminController } from './growth-projection-admin.controller';
+import { GrowthProjectionSettingsController } from './growth-projection-settings.controller';
+import { GrowthProjectionSettingsService } from './growth-projection-settings.service';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { GrowthProjectionReviewWorker } from './growth-projection-review.worker';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
 
 /**
  * 成长轨迹模块。
@@ -27,10 +34,13 @@ import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
  * 但 HTTP 层永远不提供写接口。
  */
 @Module({
-  imports: [DirectoryModule, AuthModule, MasteryModule],
-  controllers: [GrowthController, ParentGrowthController],
+  imports: [DirectoryModule, AuthModule, MasteryModule, KnowledgeModule, LearningPlanStorageModule],
+  controllers: [GrowthProjectionSettingsController, GrowthProjectionAdminController, GrowthController, ParentGrowthController],
   providers: [
     GrowthService,
+    GrowthProjectionOwnerService,
+    GrowthProjectionSettingsService,
+    GrowthProjectionReviewWorker,
     {
       provide: 'DirectoryService',
       useExisting: DirectoryService,
@@ -48,6 +58,6 @@ import { PostgresGrowthRecordStore } from './growth.persistence.postgres';
       },
     },
   ],
-  exports: [GrowthService],
+  exports: [GrowthService, GrowthProjectionSettingsService],
 })
 export class GrowthModule {}

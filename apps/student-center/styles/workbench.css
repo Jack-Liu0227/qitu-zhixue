@@ -172,7 +172,7 @@
 
 .qitu-workbench-grid {
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: var(--qitu-space-lg);
   align-items: start;
 }
@@ -1082,12 +1082,12 @@
 
 @media (max-width: 1180px) {
   .qitu-workbench-grid {
-    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* AI 建议栏（共享样式 .qitu-tutor-advice）落到底部横跨两列。 */
   .qitu-workbench-grid > .qitu-tutor-advice {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 }
 
@@ -1098,10 +1098,6 @@
 
   .qitu-workbench-grid > .qitu-tutor-advice {
     grid-column: auto;
-  }
-
-  .qitu-stage-rail {
-    position: static;
   }
 
   .qitu-workbench-header {

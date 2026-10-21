@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrandLogo } from '@qitu/ui';
 
 import { Icon } from './home/icons';
 import { SiteNav } from './home/site-nav';
@@ -22,7 +23,7 @@ export function PublicFooter() {
       <div className="home-shell">
         <div className="home-footer-grid">
           <div className="home-footer-brand">
-            <img className="home-footer-logo" src="/brand-logo.png" alt="启途智学" />
+            <BrandLogo className="home-footer-logo" width={180} />
             <p className="home-footer-desc">
               启途智学科技有限公司由西安交通大学团队研发，专注于探究式学习与项目式 AI 教育，
               帮助学习者在真实问题中建立能力、沉淀作品与成长证据。

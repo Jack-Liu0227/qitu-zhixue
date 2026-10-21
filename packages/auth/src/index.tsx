@@ -9,13 +9,15 @@ import {
 } from 'react';
 import type { CurrentUser, LoginResponse, Role } from '@qitu/contracts';
 import { OfflineBanner } from '@qitu/ui';
+import { loginHref } from './login-routing';
+export { loginHref, roleHome, safeRoleDestination } from './login-routing';
 
 // 本地一键预览开关：脚本里设置 NEXT_PUBLIC_DEV_BYPASS_AUTH=1 时跳过真实登录。
 // 生产构建不会设置该变量，行为不受影响。
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 const DEV_BYPASS_AUTH = typeof process !== 'undefined' && process?.env?.NEXT_PUBLIC_DEV_BYPASS_AUTH === '1';
 
-export type AuthState = 'anonymous' | 'authenticated' | 'refreshing';
+export type AuthState = 'anonymous' | 'authenticated' | 'refreshing' | 'unavailable';
 
 // 向后兼容：既有的 `CurrentUser` 类型名继续可用。
 export type { CurrentUser } from '@qitu/contracts';
@@ -187,9 +189,19 @@ export function useCurrentUser(): CurrentUser | null {
 
 type LeaveReason = 'anonymous' | 'expired' | 'forbidden';
 
+export function UnifiedLoginRedirect({ role, target }: { role: Role; target: string }) {
+  const href = loginHref(role, target);
+
+  useEffect(() => {
+    window.location.replace(href);
+  }, [href]);
+
+  return <p role="status">正在前往统一登录页面… <a href={href}>前往登录</a></p>;
+}
+
 export function AuthGuard({
   expectedRole,
-  redirectTo = '/',
+  redirectTo,
   children,
   onUnauthenticated,
 }: {
@@ -230,7 +242,7 @@ export function AuthGuard({
       clearCachedSession();
       setState('anonymous');
       onUnauthenticatedRef.current?.(reason);
-      window.location.assign(redirectTo);
+      window.location.replace(loginHref(expectedRole, `${window.location.pathname}${window.location.search}${window.location.hash}`, reason));
     }
 
     async function revalidateInBackground(): Promise<void> {
@@ -309,11 +321,15 @@ export function AuthGuard({
     setState('refreshing');
     fetchAuthMe()
       .then(async (response) => {
-        if (!response.ok) throw new Error('anonymous');
+        if (response.status === 401 || response.status === 403) {
+          leave(response.status === 403 ? 'forbidden' : 'anonymous');
+          return null;
+        }
+        if (!response.ok) throw new Error('unavailable');
         return (await response.json()) as { data?: LoginResponse };
       })
       .then((payload) => {
-        if (!active) return;
+        if (!active || payload === null) return;
         const data = payload.data;
         if (!data?.user) throw new Error('anonymous');
         if (data.user.role !== expectedRole) {
@@ -325,13 +341,17 @@ export function AuthGuard({
       })
       .catch(() => {
         if (!active) return;
-        leave('anonymous');
+        setState('unavailable');
       });
 
     return () => {
       active = false;
     };
   }, [expectedRole, redirectTo, recheckNonce]);
+
+  if (state === 'unavailable') {
+    return <main className="auth-loading" role="alert"><p>暂时无法验证登录状态，请检查网络后重试。</p><button type="button" className="qitu-button qitu-button-primary" onClick={() => setRecheckNonce((value) => value + 1)}>重新验证</button></main>;
+  }
 
   if (state === 'refreshing') {
     return (

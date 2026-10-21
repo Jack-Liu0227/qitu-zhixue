@@ -1,0 +1,446 @@
+{
+  "tool": "image_gen",
+  "model": "not_exposed",
+  "styleReference": "packages/ui/assets/assistant/qitu-companion.png",
+  "records": [
+    {
+      "id": "avatar-general-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue, matching the attached reference's visual identity. Reference is a STYLE REFERENCE, not an edit target. White ceramic compact robot head, deep navy glass face, cyan eyes, cobalt side accents, friendly attentive smile and a small orbit-like intelligence crest. Premium simplified 3D forms, near-front view, centered, approximately 76 percent of a square canvas, generous even transparent padding. Variant: the general learning companion, no accessories beyond its orbit crest. Readable at 32 pixels. Fully transparent background. No body, text, numbers, enclosing tile, checkerboard, scenery, watermark or status badge. One subject only."
+    },
+    {
+      "id": "avatar-explorer-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large simple compass crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:28:58.923Z"
+    },
+    {
+      "id": "avatar-coding-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large modular coding-block crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:29:33.611Z"
+    },
+    {
+      "id": "avatar-concept-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large open-book crest with a small light. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:29:33.672Z"
+    },
+    {
+      "id": "avatar-experiment-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large simplified microscope crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:30:41.200Z"
+    },
+    {
+      "id": "avatar-review-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large speech-bubble and evidence-card crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:30:41.228Z"
+    },
+    {
+      "id": "avatar-data-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large three-bar data-chart crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:30:42.816Z"
+    },
+    {
+      "id": "avatar-growth-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large fresh sprout crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:31:06.526Z"
+    },
+    {
+      "id": "avatar-coordinator-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large connected-three-nodes crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:31:47.480Z"
+    },
+    {
+      "id": "team-optics-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable team icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: three connected white and cobalt collaboration nodes surrounding a glass prism with one stylized cyan beam. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:31:50.008Z"
+    },
+    {
+      "id": "team-coding-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable team icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: three connected collaboration nodes surrounding modular coding blocks. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:33:12.319Z"
+    },
+    {
+      "id": "team-kinetic-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable team icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: three connected collaboration nodes surrounding a small cart and a curved track. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:33:13.455Z"
+    },
+    {
+      "id": "avatar-creative-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable AI companion avatar for Qitu Zhixue. Attached image is a STYLE REFERENCE. Preserve the same white ceramic compact robot head, navy face, cyan attentive eyes, cobalt accents, friendly smile and near-front view. Variation: one large artist-palette crest. Make this motif large and clearly distinguishable, integrated into the top or side of the head while preserving the face identity. Simplified premium 3D forms. Center the COMPLETE subject in a square canvas with a wide 15 percent empty transparent margin on ALL sides, never crop the head or motif. Readable at 32 pixels. Fully transparent background. No body, text, numbers, letters, watermark, enclosing tile, checkerboard or status badges. One subject only.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:33:13.552Z"
+    },
+    {
+      "id": "template-kinetic-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: one small cobalt cart on a short tilted white laboratory track. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:34:23.524Z"
+    },
+    {
+      "id": "template-optics-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: one glass prism with a clean stylized cyan light beam, thematic illustration not a measured diagram. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:34:23.560Z"
+    },
+    {
+      "id": "template-coding-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: one original friendly toy-like game spacecraft with modular coding blocks, no weapons. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:34:25.040Z"
+    },
+    {
+      "id": "cover-coding-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a creative programming workbench with a blank screen displaying an original simple spacecraft game and modular blocks, no code or text. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:34:46.393Z"
+    },
+    {
+      "id": "cover-optics-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple tabletop optical inquiry scene with a prism, screen and enclosed observation chamber, decorative thematic scene with no measured data. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:34:46.886Z"
+    },
+    {
+      "id": "cover-kinetic-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable template cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple tabletop inquiry scene with a small cart, tilted track and a blank notebook, no measured data. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:35:17.941Z"
+    },
+    {
+      "id": "subject-coding-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple blank cobalt computer screen with three modular blocks. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:35:19.379Z"
+    },
+    {
+      "id": "subject-physics-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple pendulum and a small glass prism. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:35:56.795Z"
+    },
+    {
+      "id": "subject-math-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a sphere, cube and geometric measuring compass, no numbers or formulas. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:35:56.809Z"
+    },
+    {
+      "id": "subject-engineering-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple interlocking gear and structural building block. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:35:56.827Z"
+    },
+    {
+      "id": "subject-art-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple paint palette and brush. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:36:31.100Z"
+    },
+    {
+      "id": "activity-concept-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable activity icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: an open blank book and one glowing discovery light. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:37:08.474Z"
+    },
+    {
+      "id": "subject-interdisciplinary-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable subject icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: three connected geometric shapes around a small light of discovery. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:37:08.537Z"
+    },
+    {
+      "id": "activity-reflection-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable activity icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a blank notebook and a simple speech bubble. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:38:06.856Z"
+    },
+    {
+      "id": "activity-experiment-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable activity icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple microscope with one blank observation card. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:38:06.877Z"
+    },
+    {
+      "id": "activity-inquiry-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable activity icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a magnifying glass examining a blank thought bubble. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:38:06.893Z"
+    },
+    {
+      "id": "capability-skills-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable capability icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple connected set of three learning blocks and an open book. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:39:14.908Z"
+    },
+    {
+      "id": "capability-tools-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable capability icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a compact toolbox and two connected nodes. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:39:46.176Z"
+    },
+    {
+      "id": "capability-knowledge-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable capability icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: three neatly arranged blank books and a small magnifier. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:39:46.820Z"
+    },
+    {
+      "id": "capability-growth-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable capability icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a blank journal with a growing sprout. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:40:27.175Z"
+    },
+    {
+      "id": "artifact-program-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple blank computer screen with modular building blocks on a clean creative workbench. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:40:27.204Z"
+    },
+    {
+      "id": "artifact-report-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a blank scientific notebook, a small observation apparatus and tidy pencil, no charts or invented results. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:40:29.067Z"
+    },
+    {
+      "id": "artifact-video-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple cobalt camera and two blank storyboard frames. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:40:48.368Z"
+    },
+    {
+      "id": "artifact-design-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a folded paper model, geometric shapes and simple design tools. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:40:48.923Z"
+    },
+    {
+      "id": "artifact-integrated-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: an open creative portfolio containing geometric models, blank pages and modular blocks. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:41:44.729Z"
+    },
+    {
+      "id": "artifact-presentation-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable artifact cover for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a simple presentation easel with blank cards and a small speaker podium. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. A pale low-contrast blue-white backdrop is allowed. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:41:44.752Z"
+    },
+    {
+      "id": "growth-milestone-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable growth icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a small flag at a waypoint on a gently rising path, no award or completion checkmark. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:41:46.163Z"
+    },
+    {
+      "id": "growth-artifact-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable growth icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a small open display pedestal with an original geometric creation. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:42:20.301Z"
+    },
+    {
+      "id": "support-teacher-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable support illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a friendly abstract adult educator helping a learner examine a tabletop model, no identifiable real people. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:42:50.427Z"
+    },
+    {
+      "id": "growth-reflection-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable growth icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a blank journal and a calm speech bubble. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:43:19.828Z"
+    },
+    {
+      "id": "support-family-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable support illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: two abstract adults and a learner sharing a blank learning notebook with a small robot companion, no identifiable people. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:43:19.858Z"
+    },
+    {
+      "id": "growth-objective-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable growth icon for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a clear concentric target with a small light at its center, no checkmark or score. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:43:32.822Z"
+    },
+    {
+      "id": "support-review-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable support illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a learner and friendly robot looking at blank project cards together, no scores or identifiable people. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:44:08.084Z"
+    },
+    {
+      "id": "empty-project-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable empty illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a friendly robot beside an empty open project folder and a small discovery light. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:44:08.125Z"
+    },
+    {
+      "id": "empty-explore-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable empty illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a friendly white and cobalt robot holding a compass beside a small unexplored path. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:45:16.288Z"
+    },
+    {
+      "id": "empty-artifact-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable empty illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a friendly robot beside an empty creative display stand with a few clean building blocks. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:45:16.351Z"
+    },
+    {
+      "id": "empty-search-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable empty illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a friendly robot gently examining an empty open folder with a magnifying glass. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:45:16.375Z"
+    },
+    {
+      "id": "emotion-thinking-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable emotion illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: the Qitu robot looking thoughtfully upward, with a single small thought bubble and no lettering. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:45:52.622Z"
+    },
+    {
+      "id": "brand-pbl-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable brand illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: learners and a friendly small robot exploring a tabletop model with blank evidence cards and simple creative materials, no identifiable people. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:46:27.288Z"
+    },
+    {
+      "id": "brand-collaboration-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable brand illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: a learner, an educator and a small friendly robot creating a geometric project together, no identifiable people. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Landscape composition suitable for a 16:9 card, all main subjects centered within crop-safe margins. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:47:00.124Z"
+    },
+    {
+      "id": "emotion-encourage-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable emotion illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: the Qitu robot making a friendly supportive gesture beside a small glowing discovery light. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:47:00.154Z"
+    },
+    {
+      "id": "emotion-celebrate-v1",
+      "kind": "saved",
+      "prompt": "Create one reusable emotion illustration for the Qitu Zhixue educational asset library. Attached robot image is a MATERIAL AND PALETTE STYLE REFERENCE only. Subject: the Qitu robot smiling with raised hands and three simple geometric confetti shapes, no trophy or achievement text. Premium simplified 3D ceramic and glass forms, white and cobalt blue #0038b2, navy #132646, cyan #37cddd, restrained soft lighting and clean clear silhouette. Square composition, complete subject centered with at least 15 percent empty transparent margin on all sides; readable at 32 pixels. Fully transparent background, no floor or solid backdrop. No text, letters, numbers, formulas, invented charts, logos, watermark, checkerboard, interface, status badges or framing tile. The picture is decorative thematic artwork, never learning evidence or a measured scientific result.",
+      "tool": "image_gen",
+      "model": "not_exposed",
+      "time": "2026-10-20T20:47:04.809Z"
+    }
+  ],
+  "referenceSnapshot": "style-reference.png",
+  "referenceSha256": "ee347a90a2aa004de58131b542e63458777a8e3fbe362f94994d733e77d6160e"
+}

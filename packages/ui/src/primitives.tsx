@@ -1,6 +1,7 @@
 import { cloneElement, isValidElement, useId } from 'react';
 import type { ButtonHTMLAttributes, CSSProperties, ReactElement, ReactNode } from 'react';
 import { colors } from '@qitu/design-tokens';
+import defaultAvatar from '../assets/brand/qitu-user-avatar-v2.png';
 
 /** 拼接 className，过滤空值，供本文件内的基础组件复用。 */
 function cx(...parts: Array<string | false | null | undefined>): string {
@@ -299,7 +300,6 @@ export function Avatar({
   alt?: string;
   size?: 'sm' | 'md' | 'lg';
 }) {
-  const initial = name ? (Array.from(name.trim())[0] ?? '') : '';
   if (src) {
     return (
       <span className={cx('qitu-avatar', `qitu-avatar-${size}`)}>
@@ -314,7 +314,7 @@ export function Avatar({
       aria-label={name ?? '用户头像'}
       title={name}
     >
-      {initial}
+      <img className="qitu-avatar-img" src={typeof defaultAvatar === 'string' ? defaultAvatar : defaultAvatar.src} alt="" />
     </span>
   );
 }

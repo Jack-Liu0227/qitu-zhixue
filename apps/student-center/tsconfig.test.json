@@ -12,6 +12,7 @@
     "incremental": false
   },
   "files": [
+    "types/mermaid.d.ts",
     "features/growth/data/projectStudentEntry.ts",
     "features/growth/data/projectStudentEntry.test.ts",
     "features/growth/components/ObservationNote.tsx",
@@ -21,6 +22,9 @@
     "features/tutor/components/MarkdownMathView.test.tsx",
     "features/tutor/components/OpticsDiffractionScatteringCard.test.tsx",
     "features/tutor/lib/opticsPreviewModel.test.ts",
-    "features/inspiration/data/inspiration-api-data-source.test.ts"
+    "features/inspiration/data/inspiration-api-data-source.test.ts",
+    "features/projects/data/api-projects-data-source.test.ts",
+    "features/tutor/data/tutor-confirmation.test.ts",
+    "features/tutor/data/lessonWorkspaceApi.test.ts"
   ]
 }

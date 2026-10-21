@@ -1,6 +1,6 @@
 'use client';
 
-import { RobotMascot } from '@qitu/ui';
+import { Avatar, NavigationArtwork, VisualAsset } from '@qitu/ui';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -86,6 +86,13 @@ function DashboardContent({
   roster: TeacherRosterPageData;
   interventions: TeacherInterventionListPageData;
 }) {
+  const stageGroup = (stage: string | null) => {
+    if (stage === 'exploration' || stage === 'intent_confirmed') return 'Inspiration';
+    if (stage === 'theory_learning' || stage === 'theory_check') return 'Research';
+    if (stage === 'practice_ready' || stage === 'practice_building') return 'Making';
+    if (stage) return 'Showcase';
+    return null;
+  };
   const recentStudents = roster.students.slice(0, 4);
   const recentIssues = interventions.items.slice(0, 3);
   const stageColors: Record<string, string> = {
@@ -113,9 +120,9 @@ function DashboardContent({
               </div>
             </div>
             <div>
-              <h2>早上好，{roster.teacher.displayName}！</h2>
+              <h2>你好，{roster.teacher.displayName}！</h2>
               <p>
-                今天有 {interventions.totals.open} 个待处理问题
+                {interventions.signalsAvailable === false ? '关注提醒统计暂未接入' : `目前有 ${interventions.totals.open} 个待处理问题`}
                 {roster.totals.stuckCount > 0 ? `，其中 ${roster.totals.stuckCount} 个需要重点关注` : ''}。
               </p>
             </div>
@@ -129,7 +136,7 @@ function DashboardContent({
             <div className="qtx-bubble">
               {roster.dataSource === 'demo' ? '🧪 演示数据' : '已为你整理今日待办～'}
             </div>
-            <RobotMascot size={40} decorative />
+            <VisualAsset assetId="support-teacher-v1" size={48} />
           </div>
         </div>
       </section>
@@ -145,21 +152,21 @@ function DashboardContent({
         />
         <MetricCard
           label="进行中的项目"
-          value={String(roster.students.filter((s) => s.currentProjectId).length)}
+          value={String(roster.students.reduce((sum, student) => sum + student.activeProjectCount, 0))}
           delta={null}
           icon={<ActivityIcon size={22} />}
           tone="#4f46e5"
         />
         <MetricCard
           label="待处理问题"
-          value={String(interventions.totals.open)}
+          value={interventions.signalsAvailable === false ? '—' : String(interventions.totals.open)}
           delta={null}
           icon={<AlertIcon size={22} />}
           tone="#d97706"
         />
         <MetricCard
           label="需要关注"
-          value={String(roster.totals.stuckCount)}
+          value={roster.signalsAvailable === false ? '—' : String(roster.totals.stuckCount)}
           delta={null}
           icon={<CheckCircleIcon size={22} />}
           tone="#059669"
@@ -177,11 +184,11 @@ function DashboardContent({
               导出周报没有后端接口，不摆放一个点了没反应的按钮；
               改成不具交互性的说明文字。
             */}
-            <span className="qtx-panel-hint">周报导出暂未开放</span>
+            <span className="qtx-panel-hint">按当前学生的当前项目统计人数</span>
           </div>
           <div style={{ display: 'grid', gap: 14, padding: '8px 0' }}>
             {Object.entries(stageLabels).map(([stage, label]) => {
-              const count = roster.students.filter((s) => s.currentStage === stage).length;
+              const count = roster.students.filter((s) => stageGroup(s.currentStage) === stage).length;
               const total = roster.students.filter((s) => s.currentStage).length;
               const percent = total > 0 ? Math.round((count / total) * 100) : 0;
               return (
@@ -235,7 +242,7 @@ function DashboardContent({
           </div>
           {recentIssues.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 24, color: '#94a3b8', fontSize: 13 }}>
-              暂无待处理问题
+              暂无可展示的待处理问题
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
@@ -295,14 +302,14 @@ function DashboardContent({
         </div>
       </section>
 
-      <section className="qtx-card qtx-panel" aria-label="关注学生"><div className="qtx-panel-header"><h2 className="qtx-panel-title">关注学生</h2><Link href="/students" className="qtx-link">查看学生</Link></div><AttentionStudents students={roster.students.filter((student) => student.stuck || student.attentionCount > 0)} /></section>
+      <section className="qtx-card qtx-panel" aria-label="关注学生"><div className="qtx-panel-header"><h2 className="qtx-panel-title">关注学生</h2><Link href="/students" className="qtx-link">查看学生</Link></div><AttentionStudents students={roster.students.filter((student) => student.stuck || student.attentionCount > 0)} available={roster.signalsAvailable !== false} /></section>
 
       {/* 底部：最近活跃学生 + 快捷操作 */}
       <section className="qtx-grid qtx-grid-12">
         <div className="qtx-col-7 qtx-card qtx-panel">
           <div className="qtx-panel-header">
             <div className="qtx-panel-title">
-              <span className="dot" style={{ background: '#4f46e5' }} /> 最近活跃学生
+              <span className="dot" style={{ background: '#4f46e5' }} /> {roster.signalsAvailable === false ? '学生项目概览' : '最近活跃学生'}
             </div>
             <Link className="qtx-link" href="/students">
               学生管理 <ArrowRightIcon size={14} />
@@ -333,7 +340,7 @@ function DashboardContent({
                             className="qtx-avatar"
                             style={{ width: 32, height: 32, borderRadius: 10, fontSize: 13 }}
                           >
-                            {s.avatarInitial}
+                            <Avatar name={s.displayName} />
                           </span>
                           <div>
                             <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>
@@ -342,17 +349,17 @@ function DashboardContent({
                         </div>
                       </td>
                       <td>{s.currentProjectTitle ?? '—'}</td>
-                      <td>{s.activeDays} 天</td>
-                      <td>{s.weeklyTasks} 个</td>
+                      <td>{s.signalsAvailable === false ? '暂未接入' : `${s.activeDays} 天`}</td>
+                      <td>{s.signalsAvailable === false ? '暂未接入' : `${s.weeklyTasks} 个`}</td>
                       <td>
                         <span
-                          className={`qtx-badge ${s.stuck ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
+                          className={`qtx-badge ${s.signalsAvailable === false ? 'qtx-badge-slate' : s.stuck ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
                         >
                           <span
                             className="qtx-status-dot"
-                            style={{ background: s.stuck ? '#d97706' : '#059669' }}
+                            style={{ background: s.signalsAvailable === false ? '#64748b' : s.stuck ? '#d97706' : '#059669' }}
                           />
-                          {s.stuck ? '需要关注' : '正常'}
+                          {s.signalsAvailable === false ? '待观察' : s.stuck ? '需要关注' : '正常'}
                         </span>
                       </td>
                     </tr>
@@ -374,7 +381,7 @@ function DashboardContent({
               ['📋', '查看问题', '处理介入请求', '/issues'],
               ['👨‍🎓', '学生名册', '查看学生详情', '/students'],
               ['📊', '数据统计', '班级学习概览', '/statistics'],
-            ] as const).map(([emoji, title, desc, href]) => (
+            ] as const).map(([, title, desc, href]) => (
               <Link
                 key={title}
                 href={href}
@@ -395,7 +402,7 @@ function DashboardContent({
                   textDecoration: 'none',
                 }}
               >
-                <span style={{ fontSize: 22 }}>{emoji}</span>
+                <NavigationArtwork href={href} size={30} />
                 <strong style={{ fontSize: 13, color: '#1e293b' }}>{title}</strong>
                 <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{desc}</span>
               </Link>

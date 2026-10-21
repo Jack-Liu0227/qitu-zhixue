@@ -1,3 +1,4 @@
+import { withTutorProviderContext } from './tutor-provider.test-fixture';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ModelGatewayError } from '../model-registry/model-gateway.errors';
@@ -65,7 +66,7 @@ async function drain(
 }
 
 test('幂等：同一 idempotencyKey 重放不追加回合、事件逐字节一致', async () => {
-  const service = new TutorService('live', new StubGateway('你观察到哪一片叶子最不一样？'));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway('你观察到哪一片叶子最不一样？')));
   const record = service.getOrCreateSession('prj-idem', 'stu-1');
   const request = { content: '叶子发黄', idempotencyKey: 'turn-1', actorId: 'stu-1' };
 
@@ -82,7 +83,7 @@ test('幂等：同一 idempotencyKey 重放不追加回合、事件逐字节一�
 });
 
 test('live + 未配置：显式 error 事件，审计记为普通回合而非拦截', async () => {
-  const service = new TutorService('live', new StubGateway(null));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway(null)));
   const record = service.getOrCreateSession('prj-unconfigured', 'stu-1');
 
   const events = await drain(
@@ -99,7 +100,7 @@ test('live + 未配置：显式 error 事件，审计记为普通回合而非拦
 });
 
 test('live + 答案泄露：审计记为 guard_block', async () => {
-  const service = new TutorService('live', new StubGateway('答案是叶绿素减少了，你觉得呢？'));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway('答案是叶绿素减少了，你觉得呢？')));
   const record = service.getOrCreateSession('prj-leak', 'stu-1');
 
   await drain(
@@ -118,7 +119,7 @@ test('真实自由探索回合提取并写入意图后立即匹配推荐；同�
     '{"goalUser":"同学","coreInterests":["植物"]}', '{}',
     '{"goalUser":"同学","coreInterests":["植物"]}', '{}',
   ]);
-  const service = new TutorService('demo', gateway);
+  const service = withTutorProviderContext(new TutorService('demo', gateway));
   let current = extractionExploration();
   let updates = 0;
   const templates = [{ id: 'plant', status: 'published', latestPublishedVersionId: 'plant-v1', title: '校园植物观察', summary: '观察叶片', learningObjectives: ['记录植物'], domain: '科学', estimatedDurationMinutes: 300 }];
@@ -161,7 +162,7 @@ test('非法 JSON、超长字段和空字段不更新意图，但 Tutor 回合�
   ];
   for (const [index, response] of invalidResponses.entries()) {
     const gateway = new ScriptedGateway([response]);
-    const service = new TutorService('demo', gateway);
+    const service = withTutorProviderContext(new TutorService('demo', gateway));
     let updates = 0;
     Object.assign(service, {
       projects: { getExploration: async () => extractionExploration(), updateIntentDraft: async () => { updates += 1; } },
@@ -208,7 +209,7 @@ test('exploration recommendations use deterministic fallback, verify publication
     { id: 'plant', status: 'published', latestPublishedVersionId: 'plant-v1', title: '校园植物观察', summary: '观察叶片', learningObjectives: ['记录植物'], domain: '科学', estimatedDurationMinutes: 300 },
     { id: 'robot', status: 'published', latestPublishedVersionId: 'robot-v1', title: '机器人设计', summary: '传感器控制', learningObjectives: ['工程设计'], domain: '工程', estimatedDurationMinutes: 400 },
   ];
-  const service = new TutorService('live', new StubGateway(null));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway(null)));
   const exploration = {
     id: 'exp-recommend', source: 'free', templateVersionId: null, status: 'awaiting_confirmation',
     intentDraft: { id: 'draft', explorationId: 'exp-recommend', goalUser: '观察植物生长', coreInterests: ['植物'], preferredForm: null, targetBeneficiary: null, confirmedAt: null, updatedAt: new Date().toISOString() },
@@ -240,7 +241,7 @@ test('exploration recommendations use deterministic fallback, verify publication
 });
 
 test('insufficient intent does not recommend; invalid/unpublished model IDs never become cards', async () => {
-  const service = new TutorService('live', new StubGateway('{"templateIds":["forged"]}'));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway('{"templateIds":["forged"]}')));
   const exploration = { id: 'exp-thin', source: 'free', templateVersionId: null, status: 'exploring', intentDraft: null, projectId: null, createdAt: '', updatedAt: '' };
   Object.assign(service, {
     projects: { getExploration: async () => exploration },
@@ -260,7 +261,7 @@ test('same intent does not repeat cards; a changed intent can recommend a differ
     { id: 'solar', status: 'published', latestPublishedVersionId: 'solv', title: '太阳能小车', summary: '光伏能源', learningObjectives: ['太阳能'], domain: '工程', estimatedDurationMinutes: 300 },
   ];
   let current = { id: 'exp-throttle', source: 'free', templateVersionId: null, status: 'awaiting_confirmation', intentDraft: { id: 'd', explorationId: 'exp-throttle', goalUser: '观察植物生长', coreInterests: ['植物'], preferredForm: null, targetBeneficiary: null, confirmedAt: null, updatedAt: '' }, projectId: null, createdAt: '', updatedAt: '' };
-  const service = new TutorService('live', new StubGateway(null));
+  const service = withTutorProviderContext(new TutorService('live', new StubGateway(null)));
   Object.assign(service, { projects: { getExploration: async () => current }, templates: { listPublishedTemplates: async () => data, getPublishedTemplate: async (_actor: unknown, id: string) => data.find((item) => item.id === id)! } });
   const record = service.getOrCreateSession(null, 'owner', 'exp-throttle');
   const call = (service as unknown as { buildIdeaCards(input: never): Promise<Array<{ templateId: string }>> }).buildIdeaCards.bind(service);
@@ -282,7 +283,7 @@ test('same intent does not repeat cards; a changed intent can recommend a differ
 
 test('model recommendation result naming an unpublished template is rejected at revalidation', async () => {
   const gateway = new StubGateway('{"templateIds":["plant"]}');
-  const service = new TutorService('live', gateway);
+  const service = withTutorProviderContext(new TutorService('live', gateway));
   const exploration = { id: 'exp-unpublished', source: 'free', templateVersionId: null, status: 'awaiting_confirmation', intentDraft: { id: 'd', explorationId: 'exp-unpublished', goalUser: '观察植物', coreInterests: ['植物'], preferredForm: null, targetBeneficiary: null, confirmedAt: null, updatedAt: '' }, projectId: null, createdAt: '', updatedAt: '' };
   Object.assign(service, { projects: { getExploration: async () => exploration }, templates: { listPublishedTemplates: async () => [{ id: 'plant', status: 'published', latestPublishedVersionId: 'pv', title: '植物观察', summary: '观察植物', learningObjectives: ['植物'], domain: '科学', estimatedDurationMinutes: 300 }], getPublishedTemplate: async () => { throw new Error('not published anymore'); } } });
   const record = service.getOrCreateSession(null, 'owner', 'exp-unpublished');
@@ -293,7 +294,7 @@ test('model recommendation result naming an unpublished template is rejected at 
 });
 
 test('recommendation-bearing exploration turn is authored by qitu-intake-assistant', async () => {
-  const service = new TutorService('demo', new StubGateway('not used'));
+  const service = withTutorProviderContext(new TutorService('demo', new StubGateway('not used')));
   const exploration = { id: 'exp-author', source: 'free', templateVersionId: null, status: 'awaiting_confirmation', intentDraft: { id: 'd', explorationId: 'exp-author', goalUser: '观察植物', coreInterests: ['植物'], preferredForm: null, targetBeneficiary: null, confirmedAt: null, updatedAt: '' }, projectId: null, createdAt: '', updatedAt: '' };
   const template = { id: 'plant-author', status: 'published', latestPublishedVersionId: 'pv', title: '植物观察', summary: '观察植物', learningObjectives: ['植物'], domain: '科学', estimatedDurationMinutes: 300 };
   Object.assign(service, { projects: { getExploration: async () => exploration }, templates: { listPublishedTemplates: async () => [template], getPublishedTemplate: async () => template } });
@@ -307,7 +308,7 @@ test('recommendation-bearing exploration turn is authored by qitu-intake-assista
 
 test('demo 模式：使用 Heuristic provider，完全不调用模型网关', async () => {
   const gateway = new StubGateway('不该被用到');
-  const service = new TutorService('demo', gateway);
+  const service = withTutorProviderContext(new TutorService('demo', gateway));
   const record = service.getOrCreateSession('project-demo-001', 'stu-1');
 
   const events = await drain(

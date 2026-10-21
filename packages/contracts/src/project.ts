@@ -26,6 +26,8 @@ export interface ProjectDeepLink {
 }
 
 export interface ProjectSummary {
+  /** Selected by the server project owner, never guessed from list position. */
+  isCurrent?: boolean;
   id: string;
   title: string;
   stage: ProjectStage;

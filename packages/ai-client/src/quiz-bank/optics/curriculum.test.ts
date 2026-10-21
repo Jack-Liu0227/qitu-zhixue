@@ -1,11 +1,34 @@
 import { getPhaseAndRoleForSession, parseProjectTemplateSpec, validateProjectTemplateSpec } from '@qitu/contracts';
 import { OPTICS_TEMPLATE_SPEC } from './content.js';
-import { OPTICS_16_SESSION_TEMPLATE_SPEC } from './curriculum.js';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_SESSION_TEMPLATE_SPEC } from './curriculum.js';
 
 export function runOpticsCurriculumAssertions(): void {
+  const completion = OPTICS_16_COMPLETION_TEMPLATE_SPEC;
+  if (!validateProjectTemplateSpec(completion).valid) throw new Error('Completion curriculum does not validate');
+  if (completion.version === OPTICS_16_SESSION_TEMPLATE_SPEC.version || completion.id === OPTICS_16_SESSION_TEMPLATE_SPEC.id) throw new Error('Completion rules must have a new identity');
+  const completionProfile = completion.curriculum!.profiles[0]!;
+  if (OPTICS_16_SESSION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.some((session) => session.completionSpec)) throw new Error('Frozen v2 completion semantics changed');
+  for (const session of completionProfile.sessions) {
+    if (session.completionSpec?.version !== 'learning-session-completion.v1') throw new Error('Missing completion rule');
+    if (session.phase === 'concept_mastery' && session.completionSpec.requiredMasteryObjectiveIds.join() !== session.objectiveIds.join()) throw new Error('Theory completion skipped assessment');
+  }
+  const firstCompletion = completionProfile.sessions[0]!;
+  for (const spec of [
+    { ...firstCompletion.completionSpec, version: 'unknown' },
+    { ...firstCompletion.completionSpec, requiredEvidence: [] },
+    { ...firstCompletion.completionSpec, requiredEvidence: [{ kind: 'session_response', scope: 'project', minimumCount: 1 }] },
+    { ...firstCompletion.completionSpec, requiredEvidence: [{ kind: 'experiment_observation', scope: 'session', minimumCount: 0 }] },
+    { ...firstCompletion.completionSpec, requiredMasteryObjectiveIds: ['opt-intent-observe'] },
+    { ...firstCompletion.completionSpec, completed: true },
+  ]) {
+    const invalid = { ...completion, curriculum: { profiles: [{ ...completionProfile, sessions: [{ ...firstCompletion, completionSpec: spec }, ...completionProfile.sessions.slice(1)] }] } };
+    if (validateProjectTemplateSpec(invalid).valid) throw new Error('Invalid completion policy accepted');
+  }
   const spec = OPTICS_16_SESSION_TEMPLATE_SPEC;
   const profile = spec.curriculum?.profiles[0];
   if (profile === undefined) throw new Error('16-session profile missing');
+  if (!('lessonCount' in profile.schedule) || profile.schedule.lessonCount !== 16
+    || profile.schedule.lessonMinutes !== 60) throw new Error('16-session profile must be lesson-first');
   if (parseProjectTemplateSpec(spec) !== spec) throw new Error('Parser must not rewrite template content');
   if (OPTICS_TEMPLATE_SPEC.version !== 'v1' || OPTICS_TEMPLATE_SPEC.curriculum !== undefined) throw new Error('Legacy template was changed');
   if (!validateProjectTemplateSpec(OPTICS_TEMPLATE_SPEC).valid) throw new Error('Legacy template no longer parses');
@@ -21,8 +44,8 @@ export function runOpticsCurriculumAssertions(): void {
     { ...spec, phases: [...spec.phases].reverse() },
     { ...spec, curriculum: { profiles: [{ ...profile, sessions: profile.sessions.slice(1) }] } },
     replaceFirst({ ...first, sessionIndex: 1.5 }),
-    replaceFirst({ ...first, week: 2 }),
-    replaceFirst({ ...first, session: 0 }),
+    replaceFirst({ ...first, calendarSlot: 2 }),
+    replaceFirst({ ...first, lessonIndex: 0 }),
     replaceFirst({ ...first, objectiveIds: ['opt-practice-measure'] }),
     replaceFirst({ ...first, durationMinutes: 59 }),
     replaceFirst({ ...first, blocks: { ...first.blocks, review: -1 } }),
@@ -59,4 +82,19 @@ export function runOpticsCurriculumAssertions(): void {
   }
   const shortened = { ...profile, sessions: [{ ...first, phase: 'deliverable_review' as const }] };
   if (getPhaseAndRoleForSession(1, shortened).phase !== 'deliverable_review') throw new Error('Resolver guessed phase from numeric range');
+
+  // Governance Policy decoupling test: verify phases auto-derivation when omitted
+  const { phases: _omitted, ...specWithoutPhases } = spec;
+  const validatedWithoutPhases = validateProjectTemplateSpec(specWithoutPhases);
+  if (!validatedWithoutPhases.valid) throw new Error(`Auto-deriving phases from policy failed: ${JSON.stringify(validatedWithoutPhases.errors)}`);
+  const derived = specWithoutPhases as typeof specWithoutPhases & { phases: readonly unknown[] };
+  if (!Array.isArray(derived.phases) || derived.phases.length !== 4) {
+    throw new Error('Auto-derivation did not populate 4 phases');
+  }
+  const derivedConceptPhase = (derived.phases as { phase: string; gateCondition: string }[]).find(
+    (p) => p.phase === 'concept_mastery',
+  );
+  if (derivedConceptPhase?.gateCondition !== 'TheoryMastered') {
+    throw new Error('Derived concept_mastery phase missing TheoryMastered gate');
+  }
 }

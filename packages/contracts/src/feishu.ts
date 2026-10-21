@@ -1,8 +1,10 @@
 export type FeishuDomain = 'feishu' | 'lark';
 
 export interface AdminFeishuSettings {
-  id: 'admin-reporting';
+  id: string;
+  assistantId: string;
   enabled: boolean;
+  inboundEnabled: boolean;
   connected: boolean;
   appId: string | null;
   domain: FeishuDomain;
@@ -15,6 +17,7 @@ export interface AdminFeishuSettings {
 
 export interface AdminFeishuSettingsPatch {
   enabled?: boolean;
+  inboundEnabled?: boolean;
   appId?: string | null;
   /** Secrets are accepted only on write and are never returned. */
   appSecret?: string | null;
@@ -23,6 +26,15 @@ export interface AdminFeishuSettingsPatch {
   domain?: FeishuDomain;
   reportAssistantId?: string | null;
   reportRecipients?: readonly string[];
+}
+
+export interface FeishuBridgeStatus {
+  assistantId: string;
+  state: 'stopped' | 'starting' | 'connected' | 'reconnecting' | 'error';
+  errorCode?: string;
+  lastReceivedAt?: string;
+  lastReplyAt?: string;
+  reportingSupported: boolean;
 }
 
 export interface FeishuQrSession {

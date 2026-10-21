@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { CurrentUser } from '@qitu/contracts';
+import type { CurrentUser, TeachingBundleDraft } from '@qitu/contracts';
+import { readFileSync } from 'node:fs';
+import { parseTeachingBundleDraft } from '../modules/templates/templates-binding.controller';
 import { AuditModule } from '../common/audit/audit.module';
 import { IdempotencyModule } from '../common/idempotency/idempotency.module';
 import { hashRequest } from '../common/idempotency/idempotency.hash';
@@ -13,14 +15,10 @@ import { TemplateStore } from '../modules/templates/templates.store';
 import { TemplatesModule } from '../modules/templates/templates.module';
 import {
   assertOpticsTemplateStructure,
-  OPTICS_BOOTSTRAP_KEY,
-  OPTICS_TEMPLATE_INPUT,
-  OPTICS_TEMPLATE_SLUG,
-  OPTICS_VERSION_INPUT,
-  OPTICS_16_BOOTSTRAP_KEY,
-  OPTICS_16_TEMPLATE_SLUG,
-  OPTICS_16_TEMPLATE_INPUT,
-  OPTICS_16_VERSION_INPUT,
+  OPTICS_16_COMPLETION_BOOTSTRAP_KEY,
+  OPTICS_16_COMPLETION_TEMPLATE_SLUG,
+  OPTICS_16_COMPLETION_TEMPLATE_INPUT,
+  OPTICS_16_COMPLETION_VERSION_INPUT,
 } from '../modules/templates/content/optics';
 import { assertTemplateTeachingContent } from '../modules/templates/templates.content-validator';
 import type {
@@ -65,7 +63,7 @@ export interface OpticsBootstrapArgs {
   teamVersionId: string;
   actor: CurrentUser;
   pilotReason: string;
-  curriculum?: 'legacy-v1' | '16s-v2';
+  teachingBundle?: Omit<TeachingBundleDraft, 'templateVersionId' | 'teamVersionId'>;
 }
 
 export interface OpticsBootstrapStep {
@@ -87,14 +85,13 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const use16 = args.curriculum === '16s-v2';
-  const slug = use16 ? OPTICS_16_TEMPLATE_SLUG : OPTICS_TEMPLATE_SLUG;
-  const templateInput = use16 ? OPTICS_16_TEMPLATE_INPUT : OPTICS_TEMPLATE_INPUT;
-  const versionInput = use16 ? OPTICS_16_VERSION_INPUT : OPTICS_VERSION_INPUT;
-  const bootstrapKey = use16 ? OPTICS_16_BOOTSTRAP_KEY : OPTICS_BOOTSTRAP_KEY;
-  const keyPrefix = use16 ? 'optics16-bootstrap' : 'optics-bootstrap';
-  if (use16) assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
-  else assertOpticsTemplateStructure();
+  const slug = OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = 'optics16-completion-bootstrap';
+  assertOpticsTemplateStructure();
+  assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
   const steps: OpticsBootstrapStep[] = [];
 
@@ -156,7 +153,7 @@ export async function runOpticsTemplateBootstrap(
   }
 
   // 3. pilot：draft → piloting；已是 piloting/published 视为幂等 no-op；其余 fail loudly。
-  if (use16 && hashRequest({ stages: version.stages, content: version.content, rubric: version.rubric })
+  if (hashRequest({ stages: version.stages, content: version.content, rubric: version.rubric })
     !== hashRequest({ stages: versionInput.stages, content: versionInput.content ?? {}, rubric: versionInput.rubric ?? [] })) {
     throw new OpticsBootstrapError('16-session bootstrap identity has different content; create a new reviewed template version instead of overwriting or reusing it.');
   }
@@ -228,7 +225,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = args.curriculum === '16s-v2' ? 'optics16-bootstrap' : 'optics-bootstrap';
+  const keyPrefix = 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -275,6 +272,14 @@ async function ensureActiveBinding(
   if (current === null) throw new OpticsBootstrapError(`绑定不存在：${bindingId}`);
 
   if (current.status === 'draft') {
+    if (!current.bundleDraft && args.teachingBundle) {
+      const draft = parseTeachingBundleDraft({
+        ...args.teachingBundle, templateVersionId: version.id, teamVersionId: args.teamVersionId,
+      });
+      await deps.bindings.saveTeachingBundleDraft(
+        args.actor, template.id, version.id, bindingId, draft, `${keyPrefix}:bundle:${bindingId}`,
+      );
+    }
     await deps.bindings.validateBinding(
       args.actor,
       template.id,
@@ -320,7 +325,7 @@ interface CliArgs {
   adminUserId: string | null;
   pilotReason: string;
   refused: string[];
-  curriculum: 'legacy-v1' | '16s-v2';
+  teachingBundleFile: string | null;
 }
 
 function parseCliArgs(argv: string[]): CliArgs {
@@ -329,16 +334,16 @@ function parseCliArgs(argv: string[]): CliArgs {
     adminUserId: null,
     pilotReason: '光学 PBL 模板进入试点（bootstrap）',
     refused: [],
-    curriculum: 'legacy-v1',
+    teachingBundleFile: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
+    if (arg === '--teaching-bundle-file') out.teachingBundleFile = argv[index + 1] ?? null;
     if (arg === '--admin-user-id') out.adminUserId = argv[index + 1] ?? null;
     if (arg === '--pilot-reason') out.pilotReason = argv[index + 1] ?? out.pilotReason;
     if (arg === '--publish') out.refused.push('publish');
     if (arg === '--verify') out.refused.push('verify');
-    if (arg === '--curriculum-16s') out.curriculum = '16s-v2';
   }
   return out;
 }
@@ -386,7 +391,8 @@ async function main(): Promise<void> {
 
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
-      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason, curriculum: cli.curriculum },
+      { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
+        ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },
     );
 
     console.log('[optics-bootstrap] 完成。');

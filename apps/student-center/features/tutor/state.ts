@@ -77,6 +77,24 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
       const exp = value as { experimentId?: unknown; title?: unknown };
       return typeof exp.experimentId === 'string' && typeof exp.title === 'string';
     }
+    case 'optics_experiment': {
+      const exp = value as { experimentId?: unknown; title?: unknown; specVersion?: unknown; objectiveId?: unknown; sessionIndex?: unknown; allowedActions?: unknown };
+      return typeof exp.experimentId === 'string'
+        && typeof exp.title === 'string'
+        && typeof exp.specVersion === 'string'
+        && typeof exp.objectiveId === 'string'
+        && Number.isSafeInteger(exp.sessionIndex)
+        && Array.isArray(exp.allowedActions)
+        && exp.allowedActions.every((action) => typeof action === 'string');
+    }
+    case 'aside': {
+      const aside = value as { copilot?: unknown; targetPhase?: unknown; content?: unknown; evidenceRef?: unknown };
+      if (typeof aside.copilot !== 'object' || aside.copilot === null || typeof aside.content !== 'string') return false;
+      const copilot = aside.copilot as { id?: unknown; name?: unknown; role?: unknown; avatar?: unknown };
+      return typeof copilot.id === 'string' && typeof copilot.name === 'string' && typeof copilot.role === 'string'
+        && ['exploration', 'concept_mastery', 'guided_practice', 'deliverable_review'].includes(String(aside.targetPhase))
+        && (aside.evidenceRef === undefined || typeof aside.evidenceRef === 'string');
+    }
     default:
       return false;
   }

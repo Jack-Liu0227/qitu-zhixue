@@ -36,6 +36,19 @@ function makeService(): GrowthService {
   return new GrowthService(makeDirectory());
 }
 
+function makeProfileService(rows: Array<Record<string, unknown>>): Promise<Awaited<ReturnType<GrowthService['getStudentProfile']>>> {
+  const db = {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          orderBy: async () => rows.map((row) => ({ status: 'accepted', ...row })),
+        }),
+      }),
+    }),
+  };
+  return new GrowthService(makeDirectory(), undefined, undefined, undefined, db as never).getStudentProfile('student-test');
+}
+
 const baseInput: GrowthRecordInput = {
   studentId: 'student-test',
   type: 'objective_mastered',
@@ -54,6 +67,56 @@ const EMPTY_QUERY = {
   cursor: null,
   limit: 20,
 };
+
+test('student profile composition does not invent expert conclusions without accepted projection output', async () => {
+  const profile = await makeService().getStudentProfile('student-test');
+  assert.equal(profile.freshness, 'unavailable');
+  assert.deepEqual(profile.strengths, []);
+  assert.equal(profile.trajectory, null);
+  assert.equal(profile.provenance.profileAssistantId, null);
+  assert.equal(profile.provenance.growthAssistantId, null);
+});
+
+test('student profile composition parses only the latest accepted expert projections', async () => {
+  const profile = await makeProfileService([
+    {
+      agentId: 'configured-profile',
+      projectionType: 'learner_profile',
+      payload: {
+        result: {
+          version: 3,
+          interests: ['光学'],
+          strengths: ['证据推理'],
+          preferences: ['先做模拟再复盘'],
+          nextQuestions: ['如何验证散射模型？'],
+        },
+      },
+      createdAt: new Date('2026-10-20T10:00:00.000Z'),
+    },
+    {
+      agentId: 'configured-growth',
+      projectionType: 'growth_trajectory',
+      payload: {
+        result: {
+          version: 2,
+          milestones: ['完成一次可复现实验'],
+          studentSummary: '你开始用证据解释现象。',
+          evidenceRefs: ['artifact:artifact-1'],
+          confidence: 'medium',
+        },
+      },
+      createdAt: new Date('2026-10-20T09:00:00.000Z'),
+    },
+  ]);
+  assert.equal(profile.freshness, 'fresh');
+  assert.equal(profile.provenance.profileAssistantId, 'configured-profile');
+  assert.equal(profile.provenance.growthAssistantId, 'configured-growth');
+  assert.deepEqual(profile.interests, ['光学']);
+  assert.deepEqual(profile.strengths, ['证据推理']);
+  assert.equal(profile.trajectory?.studentSummary, '你开始用证据解释现象。');
+  assert.deepEqual(profile.trajectory?.evidenceRefs, ['artifact:artifact-1']);
+  assert.equal(profile.updatedAt, '2026-10-20T10:00:00.000Z');
+});
 
 /* --------------------------- 禁止字段扫描 --------------------------- */
 

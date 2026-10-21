@@ -37,29 +37,37 @@ export function fetchAdminAssistantConfigs(): Promise<AdminAssistantConfig[]> {
   return adminEnvelopeRequest<AdminAssistantConfig[]>({ path: ADMIN_ASSISTANTS_PATH, method: 'GET' });
 }
 
-export function createPersistedAssistant(
+export async function createPersistedAssistant(
   input: AdminAssistantCreateInput,
   idempotencyKey: string = newIdempotencyKey(),
 ): Promise<AdminAssistantConfig> {
-  return adminEnvelopeRequest<AdminAssistantConfig>({
+  const saved = await adminEnvelopeRequest<AdminAssistantConfig>({
     path: ADMIN_ASSISTANTS_PATH,
     method: 'POST',
     body: input,
     idempotencyKey,
   });
+  return readAssistant(saved);
 }
 
-export function updatePersistedAssistant(
+export async function updatePersistedAssistant(
   id: string,
   patch: AdminAssistantUpdateInput,
   idempotencyKey: string = newIdempotencyKey(),
 ): Promise<AdminAssistantConfig> {
-  return adminEnvelopeRequest<AdminAssistantConfig>({
+  const saved = await adminEnvelopeRequest<AdminAssistantConfig>({
     path: ADMIN_ASSISTANT_ITEM_PATH(id),
     method: 'PATCH',
     body: patch,
     idempotencyKey,
   });
+  return readAssistant(saved);
+}
+
+async function readAssistant(saved: AdminAssistantConfig): Promise<AdminAssistantConfig> {
+  const current = (await fetchAdminAssistantConfigs()).find((item) => item.id === saved.id);
+  if (!current || current.updatedAt !== saved.updatedAt) throw new Error('助手保存后的回读未确认，请刷新核对后重试。');
+  return current;
 }
 
 export function deletePersistedAssistant(

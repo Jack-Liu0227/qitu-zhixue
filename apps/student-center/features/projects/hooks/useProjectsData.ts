@@ -154,13 +154,14 @@ export function useProjectOverview(
   options?: ResourceOptions<ProjectOverview>,
 ): AsyncResource<ProjectOverview> {
   const load = useCallback(async (): Promise<ProjectOverview> => {
-    const [project, stages, tasks, nextStep] = await Promise.all([
+    const [project, stages, tasks, nextStep, lessonSchedule] = await Promise.all([
       projectsDataSource.getProject(projectId),
       projectsDataSource.getStages(projectId),
       projectsDataSource.getTasks(projectId),
       projectsDataSource.getNextStep(projectId),
+      projectsDataSource.getLessonSchedule(projectId),
     ]);
-    return { project, stages, tasks, nextStep };
+    return { project, stages, tasks, nextStep, lessonSchedule };
   }, [projectId]);
   return useProjectsResource(load, [projectId], {
     ...options,

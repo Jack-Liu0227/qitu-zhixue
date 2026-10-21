@@ -218,13 +218,16 @@ const SESSIONS: readonly Pick<PblTemplateSession,
   },
 ];
 
+const { phases: _opticsPhases, ...baseOpticsSpec } = OPTICS_TEMPLATE_SPEC;
+
 /** New immutable source identity; never amend the v1 template in place. */
 export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProjectTemplateSpec({
-  ...OPTICS_TEMPLATE_SPEC,
+  ...baseOpticsSpec,
   id: 'pbl-optics-inquiry-16s',
   version: 'v2-16s',
   title: '光学探究：从光路模型到衍射与散射证据',
   description: '以真实问题为起点，在概念检查后开展受限模拟、数据分析、CER 论证与反思；检查点不自动产生掌握或作品通过事实。',
+  governancePolicyId: 'standard-stem-pbl:v1',
   theme: { drivingQuestion: '我们如何用光路和波动模型解释观察到的现象，并用可追溯的证据说明模型的适用边界？' },
   safetyRequirements: [
     'TheoryMastered 前仅允许低风险模拟提示；实践操作仍由服务端校验。',
@@ -245,19 +248,46 @@ export const OPTICS_16_SESSION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProject
     knowledgeType: objective.knowledgeType,
     conceptId: objective.conceptId,
   })),
-  schedules: [{ durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60, moduleCount: 8, sessionCount: 16 }],
+  // The current curriculum is lesson-first. Calendar placement is deliberately
+  // absent from the governed template; lesson order is carried by sessionIndex.
+  schedules: [{ lessonCount: 16, lessonMinutes: 60 }],
   curriculum: {
     profiles: [{
       id: OPTICS_16_PROFILE_ID,
-      schedule: { durationWeeks: 8, weeklyMinutes: 120, sessionsPerWeek: 2, sessionMinutes: 60 },
+      schedule: { lessonCount: 16, lessonMinutes: 60 },
       sessions: SESSIONS.map((session, index) => ({
         ...session,
         id: `optics-v2-session-${index + 1}`,
         sessionIndex: index + 1,
-        week: Math.floor(index / 2) + 1,
-        session: index % 2 + 1,
         durationMinutes: 60,
       })),
     }],
   },
+});
+
+/** Completion rules have a new immutable identity; v2 remains unchanged. */
+export const OPTICS_16_COMPLETION_PROFILE_ID = 'optics-16x60-v3';
+export const OPTICS_16_COMPLETION_TEMPLATE_SPEC: ProjectTemplateSpec = parseProjectTemplateSpec({
+  ...OPTICS_16_SESSION_TEMPLATE_SPEC,
+  id: 'pbl-optics-inquiry-16s-completion',
+  version: 'v3-16s-completion',
+  curriculum: { profiles: [{
+    id: OPTICS_16_COMPLETION_PROFILE_ID,
+    schedule: { lessonCount: 16, lessonMinutes: 60 },
+    sessions: OPTICS_16_SESSION_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.map((session) => ({
+      ...session,
+      id: `optics-v3-session-${session.sessionIndex}`,
+      completionSpec: {
+        version: 'learning-session-completion.v1',
+        requiredMasteryObjectiveIds: session.phase === 'concept_mastery' ? [...session.objectiveIds] : [],
+        requiredEvidence: session.sessionIndex === 11 || session.sessionIndex === 12
+          ? [{ kind: 'experiment_observation', scope: 'session', minimumCount: 1 }]
+          : session.sessionIndex === 14
+            ? [{ kind: 'submitted_artifact', scope: 'session', minimumCount: 1 }, { kind: 'approved_artifact', scope: 'project', minimumCount: 1 }]
+            : session.sessionIndex === 16
+              ? [{ kind: 'session_response', scope: 'session', minimumCount: 1 }, { kind: 'approved_artifact', scope: 'project', minimumCount: 1 }]
+              : [{ kind: 'session_response', scope: 'session', minimumCount: 1 }],
+      },
+    })),
+  }] },
 });

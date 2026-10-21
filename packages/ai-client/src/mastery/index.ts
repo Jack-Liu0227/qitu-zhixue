@@ -39,8 +39,8 @@ export const ATTEMPT_PENALTY_MAX = 0.2;
 /**
  * 间隔复习序列，按目标类型（DT `learning/scheduler.py`）。
  *
- * 本产品课次为每周 5 节（迁移 0008 + 现有 curriculum 校验器：`weeks * 5` 节），
- * 因此**1 天间隔 == 1 个课次下标**。`design` 沿用 DT 的 `14,28`。
+ * 间隔值直接按后续课时的序号差解释，不映射到自然日或日历周期。
+ * `design` 沿用 DT 的 `14,28`。
  */
 export const REVIEW_INTERVALS: Readonly<Record<KnowledgeType, readonly number[]>> = {
   memory: [0, 1, 3, 7, 14, 30, 60],
@@ -219,7 +219,7 @@ export function reviewIntervalSessions(
 /**
  * 下一次复习所在的课次下标。
  *
- * 课次是每周 5 节，因此「天」与「课次」一一对应（迁移 0008 的计划密度）。
+ * 间隔值直接按后续课时序号计算，不依赖每周课次密度或自然日。
  */
 export function nextReviewSessionIndex(
   knowledgeType: KnowledgeType,

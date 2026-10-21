@@ -75,3 +75,6 @@ POST  /api/v1/projects/:id/simulator-runs                   模拟器试聊
 
 - [`projects.md`](./projects.md)
 - [`works.md`](./works.md)
+# 旧工作台入口兼容（2026-10-21）
+
+`/student/projects/:projectId/workbench` 保留为书签兼容入口，转到同项目的 `?mode=practice`。实践区从现有项目和学习计划 owner 读取权限与门禁；未满足 TheoryMastered 仍不放行。旧入口不再在 Next 服务端调用没有来源地址和会话的相对 HTTP 数据源。下面的独立工作台说明保留为模块参考，不代表该旧入口仍单独运行。

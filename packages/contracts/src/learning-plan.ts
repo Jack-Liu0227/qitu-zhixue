@@ -1,14 +1,13 @@
 import type { ProjectSummary } from './project.js';
-import type { PblSchedule } from './pbl-learning.js';
 import type { PlanSessionCount } from './curriculum.js';
 
 /**
- * 4/8 周学习计划与掌握度契约。
+ * 按课时排程的学习计划与掌握度契约。
  *
  * 服务端 owns 全部状态：计划结构、`templateVersion` 冻结、掌握度、`TheoryMastered`
- * 与阶段推进。本文件里的请求体刻意只保留学生真正能表达的内容（兴趣、周数、作答、
+ * 与阶段推进。本文件里的请求体刻意只保留学生真正能表达的内容（兴趣、课时数、作答、
  * 证据引用），**没有任何** `stage` / `mastery` / `theoryMastered` / `projectId` 字段；
- * 客户端塞入这些字段不会生效，服务端按白名单拒绝。
+ * 客户端塞入这些字段不会生效，服务端按字段白名单拒绝。
  *
  * 形状对齐 `docs/student/learning-plan.md` §3，并与迁移 0008 的
  * `learning_plans` / `learning_modules` / `learning_objectives` / `learning_sessions`
@@ -17,9 +16,6 @@ import type { PlanSessionCount } from './curriculum.js';
 
 /** 计划生命周期。只由服务端状态迁移，客户端不可写。 */
 export type LearningPlanStatus = 'draft' | 'active' | 'completed' | 'archived';
-
-/** 计划周数，只允许 4 或 8。 */
-export type LearningPlanWeeks = 4 | 8;
 
 /** 四类目标，决定用哪种掌握门槛。 */
 export type KnowledgeType = 'memory' | 'concept' | 'procedure' | 'design';
@@ -81,6 +77,12 @@ export type LearningPlanErrorCode =
   | 'LEARNING_SESSION_NOT_FOUND'
   | 'THEORY_MASTERED_REQUIRED'
   | 'QUESTION_NOT_AWAITING'
+  | 'QUESTION_CANDIDATE_INVALID'
+  | 'QUESTION_SOURCE_UNVERIFIED'
+  | 'QUESTION_SCOPE_MISMATCH'
+  | 'QUESTION_ALREADY_AWAITING'
+  | 'QUESTION_OPTION_INVALID'
+  | 'QUESTION_RESULT_UNAVAILABLE'
   | 'EVIDENCE_INVALID'
   | 'LEARNING_PLAN_UNAVAILABLE';
 
@@ -113,11 +115,12 @@ export interface LearningObjectiveView {
   conceptId?: string | null;
 }
 
-/** 模块（周）投影。 */
+/** 单课时模块投影。 */
 export interface LessonModuleView {
   id: string;
   name: string;
-  weekIndex: number;
+  /** One-based lesson order. */
+  lessonIndex: number;
   objective: string;
   ordinal: number;
   objectives: LearningObjectiveView[];
@@ -128,8 +131,8 @@ export interface LessonSessionView {
   id: string;
   moduleId: string;
   index: number;
-  week: number;
-  day: number;
+  /** One-based lesson order. */
+  lessonIndex: number;
   title: string;
   blocks: SessionBlock[];
   theoryObjectiveIds: string[];
@@ -146,30 +149,28 @@ export interface LearningPlanView {
   projectId: string | null;
   interest: string;
   goal: string;
-  weeks: LearningPlanWeeks;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   minutesPerSession: number;
   templateVersion: string;
   status: LearningPlanStatus;
   version: number;
-  /** Explicit lesson count; legacy plans may omit it and derive it from sessions. */
-  sessionCount?: PlanSessionCount;
+  sessionCount: PlanSessionCount;
   modules: LessonModuleView[];
   sessions: LessonSessionView[];
   confirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Optional during the v1 migration; old plans keep their `weeks` semantics. */
-  schedule?: PblSchedule;
   templateId?: string | null;
 }
 
 /** 生成计划。模型输出不可信，服务端校验通过才会落库为草稿。 */
 export interface GenerateLearningPlanRequest {
   interest: string;
-  weeks: LearningPlanWeeks;
-  sessionCount?: PlanSessionCount;
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
+  sessionCount: PlanSessionCount;
   goal?: string | null;
-  schedule?: PblSchedule;
   /**
    * 课程模板 slug（可选）。提供时按模板治理 / 生效绑定解析模板版本，从模板
    * 内容生成计划（课程驱动路径）；省略时走确定性通用生成器（现状不变）。
@@ -179,7 +180,7 @@ export interface GenerateLearningPlanRequest {
 
 export interface GenerateLearningPlanResponse {
   plan: LearningPlanView;
-  /** 同一 `(studentId, interest, weeks, templateVersion)` 命中既有草稿时为 true。 */
+  /** Same `(studentId, interest, lessonCount, lessonMinutes, templateVersion)` draft hit. */
   deduplicated: boolean;
 }
 
@@ -239,6 +240,9 @@ export interface SubmitAnswerRequest {
 
 export interface SubmitAnswerResponse {
   questionId: string;
+  assessmentMode?: 'formative';
+  /** Only returned after the question owner has accepted an answer. */
+  correctOptionIds?: string[];
   result: GradeValue;
   isCorrect: boolean;
   score: number;
@@ -254,6 +258,7 @@ export interface SubmitAnswerResponse {
 
 /** 实践证据请求：引用 + 可选摘要，服务端校验目标类型与理论门槛。 */
 export interface SubmitEvidenceRequest {
+  planRevision: number;
   objectiveId: string;
   evidenceRef: string;
   summary?: string | null;
@@ -265,4 +270,7 @@ export interface SubmitEvidenceResponse {
   theoryMastered: boolean;
   practiceUnlocked: boolean;
   replayed: boolean;
+  assessmentStatus?: 'assessment_required';
+  masteryUpdated?: false;
+  evidenceRef?: string;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { RobotMascot } from '@qitu/ui';
+import { Avatar, RobotMascot } from '@qitu/ui';
 
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -14,6 +14,7 @@ import {
 } from '../../../components/icons';
 import { MetricCard } from '../../../components/metric-card';
 import { AgentRunPanel } from '../../../components/agent-run-panel';
+import { StudentArtifactReviews } from '../../../components/student-artifact-reviews';
 import {
   teacherApi,
   TeacherOfflineError,
@@ -175,7 +176,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
             className="qtx-avatar"
             style={{ width: 44, height: 44, borderRadius: 14, fontSize: 17 }}
           >
-            {student.avatarInitial}
+            <Avatar name={student.displayName} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -190,7 +191,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
                   className="qtx-status-dot"
                   style={{ background: student.stuck ? '#d97706' : '#059669' }}
                 />
-                {student.stuck ? '需要关注' : '正常'}
+                {student.signalsAvailable === false ? '待观察' : student.stuck ? '需要关注' : '正常'}
               </span>
             </div>
           </div>
@@ -236,19 +237,19 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
         <div style={{ display: 'grid', gap: 8, fontSize: 13, color: '#475569' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">本周会话</span>
-            <strong>{detail.sessionsThisWeek} 次</strong>
+            <strong>{student.signalsAvailable === false ? '暂未接入' : `${detail.sessionsThisWeek} 次`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">本周时长</span>
-            <strong>{detail.minutesThisWeek} 分钟</strong>
+            <strong>{student.signalsAvailable === false ? '暂未接入' : `${detail.minutesThisWeek} 分钟`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">活跃天数</span>
-            <strong>{student.activeDays} 天</strong>
+            <strong>{student.signalsAvailable === false ? '暂未接入' : `${student.activeDays} 天`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">本周任务</span>
-            <strong>{student.weeklyTasks} 个</strong>
+            <strong>{student.signalsAvailable === false ? '暂未接入' : `${student.weeklyTasks} 个`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">完成项目</span>
@@ -260,7 +261,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="qtx-muted">待处理问题</span>
-            <strong>{student.attentionCount} 个</strong>
+            <strong>{student.signalsAvailable === false ? '暂未接入' : `${student.attentionCount} 个`}</strong>
           </div>
         </div>
 
@@ -455,6 +456,7 @@ function StudentDetailPanel({ studentId }: { studentId: string }) {
           当前支持查看学生名册与学习概览；完整档案、家长周报推送与沟通记录暂未开放。
         </div>
         <AgentRunPanel studentId={student.studentId} />
+        <StudentArtifactReviews studentId={student.studentId} />
       </div>
     </div>
   );
@@ -547,14 +549,14 @@ export default function StudentsPage() {
         />
         <MetricCard
           label="需要关注"
-          value={String(data.totals.stuckCount)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.stuckCount)}
           delta={null}
           icon={<SparklesIcon size={22} />}
           tone="#d97706"
         />
         <MetricCard
           label="待处理问题"
-          value={String(data.totals.attentionCount)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.attentionCount)}
           delta={null}
           icon={<SlidersIcon size={22} />}
           tone="#4f46e5"
@@ -648,7 +650,7 @@ export default function StudentsPage() {
                               className="qtx-avatar"
                               style={{ width: 34, height: 34, borderRadius: 10, fontSize: 13 }}
                             >
-                              {s.avatarInitial}
+                              <Avatar name={s.displayName} />
                             </span>
                             <div>
                               <strong style={{ color: '#1e293b' }}>{s.displayName}</strong>
@@ -660,7 +662,7 @@ export default function StudentsPage() {
                           </div>
                         </td>
                         <td>{s.currentProjectTitle ?? '—'}</td>
-                        <td>{s.weeklyTasks} 个</td>
+                        <td>{s.signalsAvailable === false ? '暂未接入' : `${s.weeklyTasks} 个`}</td>
                         <td>
                           <span
                             className={`qtx-badge ${s.stuck ? 'qtx-badge-amber' : 'qtx-badge-emerald'}`}
@@ -669,7 +671,7 @@ export default function StudentsPage() {
                               className="qtx-status-dot"
                               style={{ background: s.stuck ? '#d97706' : '#059669' }}
                             />
-                            {s.stuck ? '需要关注' : '正常'}
+                            {s.signalsAvailable === false ? '待观察' : s.stuck ? '需要关注' : '正常'}
                           </span>
                         </td>
                         <td>

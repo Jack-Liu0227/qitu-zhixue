@@ -869,6 +869,13 @@ export class TeamRuntimeService {
     const messageKey = `${taskKey}:request`;
     const taskId = randomUUID();
     const now = new Date();
+    const authorizedInput = {
+      ...(input.input ?? {}),
+      authorization: {
+        routeId: route[0].id, trigger: 'delegate', fromAgentId: input.senderAgentId,
+        toAgentId: input.recipientAgentId, taskType: input.taskType,
+      },
+    };
     await withTransaction(db, async (tx) => {
       const insertedTasks = await tx.insert(agentTeamTasks).values({
         id: taskId,
@@ -877,7 +884,7 @@ export class TeamRuntimeService {
         agentId: input.recipientAgentId,
         taskType: input.taskType,
         status: 'queued',
-        input: input.input ?? {},
+        input: authorizedInput,
         idempotencyKey: taskKey,
         maxAttempts: clampAttempts(input.maxAttempts),
         createdAt: now,
@@ -893,7 +900,7 @@ export class TeamRuntimeService {
         senderAgentId: input.senderAgentId,
         recipientAgentId: input.recipientAgentId,
         messageType: 'task.request',
-        payload: input.input ?? {},
+        payload: authorizedInput,
         status: 'queued',
         correlationId: task.id,
         idempotencyKey: messageKey,

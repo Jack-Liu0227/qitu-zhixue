@@ -144,10 +144,18 @@ export class PostgresTeamMailboxSource {
           .where(eq(agentProjectionCandidates.taskId, taskId))
           .limit(1);
         if (candidate) {
+          const expression = job.message.messageType === 'projection.request' && job.task?.input.sourceTopic === 'tutor.turn.completed'
+            && typeof output.analysisManifest === 'object' && output.analysisManifest !== null;
           await tx.update(agentProjectionCandidates).set({
-            payload: { ...(candidate.payload ?? {}), result: output },
+            payload: { ...(candidate.payload ?? {}), result: expression ? output.result : output,
+              ...(expression ? { analysisManifest: output.analysisManifest,
+                ...(typeof output.analysisErrorCode === 'string' ? { analysisErrorCode: output.analysisErrorCode } : {}) } : {}) },
             status: 'proposed',
-          }).where(eq(agentProjectionCandidates.id, candidate.id));
+          }).where(and(eq(agentProjectionCandidates.id, candidate.id), eq(agentProjectionCandidates.status, 'proposed')));
+          if (expression) await tx.insert(outbox).values({
+            id: `growth-projection-ready:${candidate.id}`, topic: 'growth.projection.ready',
+            payload: { candidateId: candidate.id }, status: 'pending',
+          }).onConflictDoNothing({ target: outbox.id });
         }
         // Keep the child-to-leader result in the same mailbox protocol. It is
         // already delivered by this worker and must never be claimed as a new
@@ -275,7 +283,7 @@ export class PostgresTeamMailboxSource {
     if (job.task?.taskType !== 'interest.confirm' && job.task?.taskType !== 'interest.confirmation') return;
     if (output.confirmed !== true) return;
 
-    const [route] = await tx.select({ toAgentId: agentRoutes.toAgentId })
+    const [route] = await tx.select({ id: agentRoutes.id, toAgentId: agentRoutes.toAgentId })
       .from(agentRoutes)
       .where(and(
         eq(agentRoutes.fromAgentId, job.message.recipientAgentId),
@@ -298,6 +306,10 @@ export class PostgresTeamMailboxSource {
       interests: boundedStringArray(output.interests, 8, 120),
       learnerProfile: null,
       availableTemplateIds: [],
+      authorization: {
+        routeId: route.id, trigger: 'delegate', fromAgentId: job.message.recipientAgentId,
+        toAgentId: recipientAgentId, taskType: 'project.recommend',
+      },
     } satisfies Record<string, unknown>;
     if (!input.studentId) return;
 

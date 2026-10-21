@@ -1,10 +1,11 @@
 'use client';
 
-import { AssistantGlyph } from '@qitu/ui';
+import { VisualAsset } from '@qitu/ui';
 
-import { useEffect, useRef, useState } from 'react';
+import { AssistantGlyph, ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ErrorState, OfflineBanner, PermissionDenied, SkeletonBlock } from '@qitu/ui';
 import type { TutorTeamGraph } from '@qitu/contracts';
 import { ChatThread } from './components/ChatThread';
 import { Composer } from './components/Composer';
@@ -12,27 +13,35 @@ import { ProjectCard } from './components/ProjectCard';
 import { CurrentTask } from './components/CurrentTask';
 import { TutorSessionHistory } from './components/TutorSessionHistory';
 import { TeamAgentHud } from './components/TeamAgentHud';
+import { CurrentLessonCard, LessonLearningWorkspace } from './components/CurrentLessonCard';
 import { TutorTeamRail } from './components/TutorTeamRail';
 import { useComposer } from './hooks/useComposer';
+import { useTutorViewport } from './hooks/useTutorViewport';
 import { useTutorSession } from './hooks/useTutorSession';
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
 import { getStoredEyecare, setStoredEyecare, subscribeEyecare } from './lib/eyecareStorage';
+import { LessonAssessmentCard } from './components/LessonAssessmentCard';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
 export function TutorPage({ projectId }: { projectId?: string }) {
+  useTutorViewport();
   const router = useRouter();
   const searchParams = useSearchParams();
   const source = useTutorDataSource();
+  const loadTeamHistory = useCallback((assistantId: string, cursor?: string) => {
+    if (!projectId || !source.getTeamHistory) return Promise.reject(new Error('团队历史暂不可用'));
+    return source.getTeamHistory(projectId, assistantId, cursor);
+  }, [source, projectId]);
   const [explorationKey, setExplorationKey] = useState(0);
   const routeContextKey = searchParams.toString();
   const session = useTutorSession(projectId, routeContextKey || explorationKey);
   const composer = useComposer();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [rightOpen, setRightOpen] = useState(false);
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1100px)');
+    const query = window.matchMedia('(max-width: 1600px)');
     const syncPanels = () => {
       setLeftOpen(!query.matches);
       setRightOpen(!query.matches);
@@ -90,7 +99,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       let cancelled = false;
       void source.listProjects().then((projects) => {
         if (cancelled) return;
-        const activeProject = projects.find((p) => p.stage !== 'completed') ?? projects[0];
+        const activeProject = projects.find((p) => p.isCurrent);
         if (activeProject) router.replace(`/tutor/${encodeURIComponent(activeProject.id)}`);
       }).catch(() => {
         // The session surface will expose the server error; never insert demo data.
@@ -118,7 +127,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
     }
     setTeamGraphStatus('loading');
     setTeamGraphError(null);
-    void source.getTeamGraph(projectId).then((graph) => {
+    const refreshTimer = window.setTimeout(() => void source.getTeamGraph(projectId).then((graph) => {
       if (cancelled) return;
       setTeamGraph(graph);
       setTeamGraphStatus(graph === null ? 'empty' : 'ready');
@@ -128,9 +137,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
       setTeamGraph(null);
       setTeamGraphError(error);
       setTeamGraphStatus('error');
-    });
-    return () => { cancelled = true; };
-  }, [projectId, source]);
+    }), session.turns.length > 0 ? 300 : 0);
+    return () => { cancelled = true; window.clearTimeout(refreshTimer); };
+  }, [projectId, source, session.turns.length]);
 
   const retryTeamGraph = () => {
     if (!projectId) return;
@@ -219,6 +228,22 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </span>
           {eyecareActive && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
         </button>
+        {projectSummary ? (
+          <button
+            type="button"
+            className="qitu-button qitu-button-ghost"
+            disabled={!ready || busy || confirming || session.offline}
+            onClick={() => {
+              void composer.submit(
+                '请在当前 AI 搭档会话中打开动态物理课件，先让我提交预测，再运行单缝衍射或散射仿真。',
+                session.submitText,
+              );
+            }}
+          >
+            <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span> 动态实验课件
+          </button>
+        ) : null}
+
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
         </button>
@@ -241,6 +266,9 @@ export function TutorPage({ projectId }: { projectId?: string }) {
         }}
       />
       <div className="qitu-tutor-center-column">
+        {session.projectRefreshError ? <div role="alert" className="qitu-tutor-inline-alert">
+          {session.projectRefreshError.message}<button type="button" onClick={() => { void session.refreshProjectContext(); }}>重新读取课时</button>
+        </div> : null}
         {error ? <div role="alert" className="qitu-tutor-inline-alert">{error.message} {error.code ? `（${error.code}）` : ''}<button type="button" onClick={session.dismissStreamNotice}>关闭提示</button></div> : null}
         <ChatThread
           sessionId={session.sessionId}
@@ -259,10 +287,23 @@ export function TutorPage({ projectId }: { projectId?: string }) {
             if (text) void composer.submit(text, session.submitText);
             else void session.selectOption(label).catch(() => undefined);
           }}
+          onSubmitQuestionAnswer={(answer) => {
+            if (!ready || busy || confirming || session.offline) return;
+            void composer.submit(answer, session.submitText);
+          }}
           onOneClickCreateProject={handleOneClickCreateProject}
           onAnswerQuiz={(quizId, selectedKeys, idempotencyKey) => session.answerQuiz(quizId, selectedKeys, idempotencyKey)}
           onRequestQuizExplanation={(quizId) => session.explainQuiz(quizId)}
+          onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
+          onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
           projectId={projectSummary?.id ?? null}
+          learningActivity={projectSummary && session.project?.lesson ? <><LessonAssessmentCard
+            key={`${projectSummary.id}:${session.project.lesson.planId}:${session.project.lesson.planRevision}:${session.project.lesson.learningSessionId}`}
+            projectId={projectSummary.id} lesson={session.project.lesson} disabled={!ready || busy || confirming || session.offline}
+            onChanged={session.refreshProjectContext}
+          /><LessonLearningWorkspace projectId={projectSummary.id} lesson={session.project.lesson}
+            refreshKey={session.project} disabled={!ready || busy || confirming || session.offline}
+            onProgressChanged={session.refreshProjectContext} /></> : null}
           isConfirmingProject={confirming}
           composer={
             <Composer
@@ -287,12 +328,14 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </div>
           {rightSidebarTab === 'agents' ? (
             <TeamAgentHud
+              key={projectId}
               graph={teamGraph}
               status={teamGraphStatus}
               error={teamGraphError}
               offline={session.offline}
               permissionDenied={teamGraphError?.status === 403}
               onRetry={retryTeamGraph}
+              loadHistory={source.getTeamHistory && projectId ? loadTeamHistory : undefined}
             />
           ) : session.projectStatus === 'loading' ? (
             <div className="qitu-tutor-state-panel" aria-busy="true"><SkeletonBlock lines={4} height={18} /></div>
@@ -303,8 +346,11 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           ) : projectSummary && session.project ? (
             <>
               <ProjectCard project={projectSummary} />
-              <CurrentTask task={session.project.currentTask} />
               <TutorTeamRail phases={session.project.phases ?? []} />
+              <CurrentTask task={session.project.currentTask} />
+              <CurrentLessonCard projectId={projectSummary.id} lesson={session.project.lesson ?? null}
+                refreshKey={session.project} onProgressChanged={session.refreshProjectContext}
+                disabled={!ready || busy || confirming || session.offline} />
             </>
           ) : (
             <div className="qitu-tutor-state-panel" role="status"><strong>自由探索中</strong><p>尚未创建正式项目。项目进度会在你确认想法并创建后显示。</p></div>

@@ -11,6 +11,7 @@ import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 import { CircuitSimulationCard } from './CircuitSimulationCard';
 import { OpticsDiffractionScatteringCard } from './OpticsDiffractionScatteringCard';
+import { AsideAdvisorCard } from './AsideAdvisorCard';
 import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
@@ -39,17 +40,21 @@ export function SafeReplyFallback() {
 export function TutorReplyBlockView({
   block,
   onSelectOption,
+  onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
+  onExperimentAction,
   projectId,
   disabled = false,
 }: {
   block: TutorReplyBlock;
   onSelectOption?: (label: string, text?: string) => void;
+  onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
   projectId?: string | null;
   disabled?: boolean;
 }) {
@@ -57,7 +62,13 @@ export function TutorReplyBlockView({
     case 'text':
       return <MarkdownMathView content={block.text} />;
     case 'questions':
-      return <NumberedQuestionList items={block.items} />;
+      return (
+        <NumberedQuestionList
+          items={block.items}
+          onSubmitAnswer={onSubmitQuestionAnswer}
+          disabled={disabled}
+        />
+      );
     case 'options':
       return (
         <OptionChips
@@ -71,7 +82,7 @@ export function TutorReplyBlockView({
       return (
         <div className="qitu-tutor-hint">
           <HintLevelIndicator level={block.level} />
-          <p className="qitu-tutor-text">{block.text}</p>
+          <MarkdownMathView content={block.text} />
         </div>
       );
     case 'evidence':
@@ -118,6 +129,7 @@ export function TutorReplyBlockView({
           onRequestExplanation={onRequestQuizExplanation ? () => onRequestQuizExplanation(block.questionId) : undefined}
           rationaleHint={block.rationaleHint}
           graded={block.graded}
+          persistedAnswer={block.answer}
           disabled={disabled}
         />
       );
@@ -139,11 +151,26 @@ export function TutorReplyBlockView({
           onExperimentComplete={(summary) => onSelectOption?.('电路探究结论', summary)}
         />
       );
+    case 'aside':
+      return (
+        <AsideAdvisorCard
+          copilot={block.copilot}
+          targetPhase={block.targetPhase}
+          content={block.content}
+          evidenceRef={block.evidenceRef}
+        />
+      );
     case 'optics_experiment':
       return (
         <OpticsDiffractionScatteringCard
-          disabled
+          disabled={disabled || block.allowedActions.length === 0}
+          savedObservation={block.savedObservation}
+          key={block.experimentId}
           initialMode={block.initialMode}
+          initialParameters={block.initialParameters}
+          allowedModels={block.allowedModels}
+          predictionGate={block.predictionGate}
+          onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}
         />
       );
     case 'attachment':

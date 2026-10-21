@@ -1,5 +1,6 @@
 import { ApiError } from '@qitu/api-client';
 import type { ProjectStage } from '@qitu/contracts';
+import { schoolDate } from '@qitu/contracts';
 import type { ActiveProjectSummary, IdeaDirection, NotificationList, TodayTask, TodayView } from '../types';
 import type { TodayDataSource } from './todayDataSource';
 
@@ -54,11 +55,10 @@ export class ApiTodayDataSource implements TodayDataSource {
     stageTotal?: number;
     templateVersionId?: string;
   } | null> {
-    const projects = await this.fetchJson<Array<{ id: string; status: string; title: string }>>('/api/v1/projects');
+    const projects = await this.fetchJson<Array<{ id: string; status: string; title: string; isCurrent: boolean }>>('/api/v1/projects');
     if (!projects || projects.length === 0) return null;
     return (
-      projects.find((p) => p.status !== 'completed' && p.status !== 'archived') ??
-      projects[0] ??
+      projects.find((p) => p.isCurrent) ??
       null
     );
   }
@@ -66,14 +66,15 @@ export class ApiTodayDataSource implements TodayDataSource {
   async getToday(): Promise<TodayView> {
     // 1. 探索推荐方向：只用模板库真实数据，副标题只用服务端 summary。
     const templates =
-      (await this.fetchJson<Array<{ id: string; title: string; summary?: string | null }>>(
+      (await this.fetchJson<Array<{ id: string; title: string; summary?: string | null; iconAssetId?: string | null }>>(
         '/api/v1/project-templates',
       )) ?? [];
     const directions: IdeaDirection[] = templates
-      .filter((t): t is { id: string; title: string; summary?: string | null } =>
+      .filter((t) =>
         typeof t?.id === 'string' && typeof t?.title === 'string')
       .map((t) => ({
         templateId: t.id,
+        iconAssetId: typeof t.iconAssetId === 'string' ? t.iconAssetId : null,
         title: t.title,
         subtitle: t.summary ?? '',
         coverUrl: '',
@@ -105,7 +106,7 @@ export class ApiTodayDataSource implements TodayDataSource {
     }
 
     return {
-      date: new Date().toISOString().slice(0, 10),
+      date: schoolDate(),
       // Q1 gap：C1 没有服务端问候名来源；页面当前不渲染该字段，留空而非编造。
       greetingName: '',
       avatarUrl: null,

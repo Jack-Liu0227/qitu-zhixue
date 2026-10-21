@@ -27,6 +27,8 @@ export interface AdminKnowledgeDocument {
 }
 
 export interface AdminProjectTemplate {
+  iconAssetId?: string | null;
+  coverAssetId?: string | null;
   id: string;
   schoolId: string | null;
   scope: string;
@@ -144,6 +146,14 @@ export function createAdminTemplateVersion(
     path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/versions`,
     method: 'POST',
     body: input,
+    idempotencyKey: newIdempotencyKey(),
+  });
+}
+
+export function deleteAdminTemplate(id: string): Promise<{ success: boolean; id: string }> {
+  return adminEnvelopeRequest<{ success: boolean; id: string }>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}`,
+    method: 'DELETE',
     idempotencyKey: newIdempotencyKey(),
   });
 }

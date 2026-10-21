@@ -1,3 +1,4 @@
+import { TemplatesModule } from '../templates/templates.module';
 import { Module, forwardRef } from '@nestjs/common';
 import type { Database } from '@qitu/database';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
@@ -45,7 +46,7 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
  * （`knowledge.embed` 未接入 ModelGateway），仅作为接口预留，不参与关键词检索。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, forwardRef(() => PlatformRegistryModule)],
+  imports: [forwardRef(() => TemplatesModule), AuthModule, ModelRegistryModule, forwardRef(() => PlatformRegistryModule)],
   controllers: [
     KnowledgeController,
     KnowledgeAdminController,
@@ -89,6 +90,9 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     { provide: KnowledgeScopeAuthorizer, useClass: DefaultKnowledgeScopeAuthorizer },
   ],
   exports: [
+    KnowledgeLibraryService,
+    KnowledgeEngineService,
+    KnowledgeToolCatalogService,
     KnowledgeService,
     RetrievalPort,
     EmbeddingProvider,

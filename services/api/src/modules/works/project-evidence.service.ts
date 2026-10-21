@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import type { TutorExperimentActionResponse } from '@qitu/contracts';
 import { randomUUID } from 'node:crypto';
-import type { ArtifactRecord } from './works.store';
+import type { ArtifactRecord, ArtifactVersionRecord, MentorReviewRecord } from './works.store';
 import {
   ProjectEvidenceSource,
   ProjectEvidenceStore,
@@ -38,6 +39,75 @@ export class ProjectEvidenceMaterializer {
       this.logger.log(`项目证据新增 ${inserted} 条（服务端物化）`);
     }
     return inserted;
+  }
+
+  /** Simulation observations are evidence, never a mastery/artifact acceptance decision. */
+  async saveExperimentObservation(input: {
+    studentId: string;
+    receipt: NonNullable<TutorExperimentActionResponse['observationReceipt']>;
+    objectiveId: string;
+    parameters: Record<string, number>;
+    observation: string;
+  }): Promise<NonNullable<TutorExperimentActionResponse['observationReceipt']>> {
+    const receipt = input.receipt;
+    await this.ingestServerFacts([{
+      projectId: receipt.projectId, studentUserId: input.studentId, schoolId: null, artifactId: null,
+      columnKind: 'independent', sourceKind: 'experiment_observation', sourceId: receipt.observationId,
+      label: '已保存模拟观察（非真实测量）',
+      detail: JSON.stringify({ receipt, objectiveId: input.objectiveId, parameters: input.parameters, observation: input.observation }),
+      occurredAt: new Date(receipt.savedAt),
+    }]);
+    const saved = (await this.store.listByProject(receipt.projectId)).find((record) =>
+      record.sourceKind === 'experiment_observation' && record.sourceId === receipt.observationId
+      && record.studentUserId === input.studentId);
+    if (!saved?.detail) throw new ServiceUnavailableException({ code: 'OBSERVATION_RECEIPT_UNAVAILABLE', message: '观察保存回读失败，请重试' });
+    const persisted = JSON.parse(saved.detail) as typeof input;
+    if (persisted.receipt?.parameterDigest !== receipt.parameterDigest ||
+      persisted.receipt?.runActionId !== receipt.runActionId) {
+      throw new ServiceUnavailableException({ code: 'OBSERVATION_RECEIPT_INVALID', message: '观察回执不匹配' });
+    }
+    return persisted.receipt;
+  }
+
+  async experimentReceipts(projectId: string, studentId: string, sessionId: string) {
+    const rows = await this.store.listByProject(projectId);
+    return rows.flatMap((row) => {
+      if (row.sourceKind !== 'experiment_observation' || row.studentUserId !== studentId || !row.detail) return [];
+      const stored = JSON.parse(row.detail) as { receipt?: TutorExperimentActionResponse['observationReceipt'] };
+      return stored.receipt?.sessionId === sessionId ? [stored.receipt] : [];
+    });
+  }
+
+  /** Freeze the exact immutable version presented to the assigned reviewer. */
+  async recordArtifactReviewRequest(artifact: ArtifactRecord, version: ArtifactVersionRecord, review: MentorReviewRecord): Promise<void> {
+    if (!artifact.projectId) return;
+    const sourceId = `review:${review.id}`;
+    const detail = JSON.stringify({ schema: 'qitu.artifact-review-request.v1', reviewId: review.id,
+      artifactVersionId: version.id, versionOrdinal: version.ordinal });
+    await this.ingestServerFacts([{
+      projectId: artifact.projectId, studentUserId: artifact.studentId, schoolId: artifact.schoolId,
+      artifactId: artifact.id, columnKind: 'independent', sourceKind: 'task_submission', sourceId,
+      label: '作品版本已送审', detail, occurredAt: review.requestedAt,
+    }]);
+    const saved = (await this.store.listByProject(artifact.projectId)).find((row) =>
+      row.sourceKind === 'task_submission' && row.sourceId === sourceId && row.studentUserId === artifact.studentId
+      && row.artifactId === artifact.id);
+    if (saved?.detail !== detail) throw new ServiceUnavailableException({
+      code: 'ARTIFACT_REVIEW_VERSION_MISMATCH', message: '送审版本回读不一致，请刷新后重试',
+    });
+  }
+
+  async hasArtifactReviewRequest(artifact: ArtifactRecord, version: ArtifactVersionRecord, review: MentorReviewRecord): Promise<boolean> {
+    if (!artifact.projectId) return false;
+    return (await this.store.listByProject(artifact.projectId)).some((row) => {
+      if (row.sourceKind !== 'task_submission' || row.sourceId !== `review:${review.id}`
+        || row.studentUserId !== artifact.studentId || row.artifactId !== artifact.id || !row.detail) return false;
+      try {
+        const data = JSON.parse(row.detail) as Record<string, unknown>;
+        return data.schema === 'qitu.artifact-review-request.v1' && data.reviewId === review.id
+          && data.artifactVersionId === version.id && data.versionOrdinal === version.ordinal;
+      } catch { return false; }
+    });
   }
 
   /** 从已注册的服务端来源采集并物化（如 `tutor_turns` 的 ai_helped）。 */

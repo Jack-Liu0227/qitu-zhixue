@@ -6,6 +6,26 @@
 > 实现入口：`apps/student-center/features/growth/**`、`services/api/src/modules/growth`、
 > `services/api/src/modules/mastery`。
 
+## 学生个人画像与成长轨迹组合展示（2026-10-20）
+
+学生端 `/student/profile` 是只读展示面，不是第三个 AI 助手，也不属于 Tutor 的职责。
+
+| 专家助手 | Runtime canonical ID | 责任 | 证据触发来源 |
+|---|---|---|---|
+| 学情画像分析助手 (`profile-analyst-assistant`) | `learner-profile` | 综合已有学习证据，更新兴趣、优势、学习偏好、先备知识与待探索问题 | `tutor.turn.completed` |
+| 成长轨迹生成助手 (`growth-trajectory-assistant`) | `growth-analyst` | 汇总项目阶段、作品发布、反思与掌握评估，形成成长阶段总结/里程碑 | `project.stage.completed`、`artifact.published`、`reflection.created`、`mastery.assessed` |
+
+**合并原则：**两份专家输出分开保存、分别标明来源与版本，再由 Growth 只读组合接口拼成学生可读投影。Tutor 只提供已发生的学习证据，不生成画像标签、成长结论、里程碑，也不写成长档案。
+
+### 当前接线与状态
+
+- Worker 通过 `agent.team.event` outbox 为画像与成长专家创建幂等任务和 `agent_projection_candidates` 候选；助手输出回写为候选 `payload.result`。
+- 学生端组合读取：`GET /api/v1/students/me/profile`。API 只读取 `status='accepted'` 的候选，画像取 `learner_profile`，轨迹取 `growth_trajectory`；候选 `proposed` 不会显示为事实。
+- 当前 worker 将新输出保存为 `proposed`；仓库尚无画像/成长候选的正式审核、接受并落权威 read model 的完整 owner 流程。因此缺少已确认投影时页面显示“画像正在形成”，不能把 `proposed` 临时改作 `accepted` 或把 Tutor 记忆当作兜底。
+- 现有 Growth 记录仍来自 Growth owner；专家轨迹摘要与权威成长事件并列呈现，不能覆盖掌握度、项目状态、作品通过等事实。
+
+当前实现已明确边界并完成学生端只读组合接口/状态展示，但“专家自动产出 → 候选审核接受 → 当前投影刷新”尚未端到端闭环。上线前必须补齐 owner 接受流程和运行时助手/路由真实启用验证；不能仅凭源码注册或配置存在宣称助手已经在生产运行。
+
 ## 1. 页面构成
 
 - `GrowthHeader` + `GrowthSummaryCard` + `FilterBar`。
@@ -109,3 +129,7 @@ GET /api/v1/mastery/regressions         退步检测
 
 成长轨迹为空时，机器人和鼓励文字纵向居中并参与正常文档流；
 完整插画容器不使用共享状态图标的 72px 固定宽高，避免覆盖标题或正文。
+
+## Projection owner status
+
+Projection candidates now cross a closed contract and are validated, accepted, rejected, versioned, superseded, and audited by the Growth owner before they can appear in `/student/profile`. The remaining production work is the parent-specific accepted projection and end-to-end event-to-page verification; proposed candidates must continue to render as unavailable.

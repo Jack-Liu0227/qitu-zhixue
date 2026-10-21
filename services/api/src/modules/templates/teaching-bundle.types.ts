@@ -1,4 +1,5 @@
 import type { ProjectTemplateSpec } from '@qitu/contracts';
+export type { TeachingBundleDraft } from '@qitu/contracts';
 
 export const TEACHING_BUNDLE_SCHEMA_VERSION = 'qitu.teaching-bundle.v1' as const;
 export const TEACHING_BUNDLE_COMPILER_VERSION = '1.0.0' as const;

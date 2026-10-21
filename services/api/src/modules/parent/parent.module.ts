@@ -10,6 +10,9 @@ import { ParentController } from './parent.controller';
 import { ParentGrowthExportService } from './growth-export.service';
 import { PostgresGrowthExportStore } from './growth-export.store';
 import { GrowthExportStore } from './growth-export.types';
+import { ParentAcceptedProfileService } from './accepted-profile.service';
+import { LearningPlanStorageModule } from '../learning-plan/learning-plan-storage.module';
+import { WorksModule } from '../works/works.module';
 
 /**
  * 家长陪伴中心模块。
@@ -25,9 +28,10 @@ import { GrowthExportStore } from './growth-export.types';
  * 由 `ParentGrowthExportService` 诚实返回 503——不退回内存假装成功。
  */
 @Module({
-  imports: [AuthModule, DirectoryModule, GrowthModule, PlatformDataModule, FeedbackModule],
+  imports: [AuthModule, DirectoryModule, GrowthModule, PlatformDataModule, FeedbackModule, LearningPlanStorageModule, WorksModule],
   controllers: [ParentController],
   providers: [
+    ParentAcceptedProfileService,
     ParentGrowthExportService,
     {
       provide: GrowthExportStore,

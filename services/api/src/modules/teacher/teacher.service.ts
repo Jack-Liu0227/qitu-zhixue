@@ -1,8 +1,12 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { and, desc, eq } from 'drizzle-orm';
 import { mentorReviews, withTransaction, type Database } from '@qitu/database';
 import { DirectoryService } from '../directory/directory.service';
 import { PlatformDataService } from '../platform-data/platform-data.service';
+import { LearningPlanStore } from '../learning-plan/learning-plan.store';
+import { WorksService } from '../works/works.service';
+import { InMemoryWorksStore, type MentorReviewRecord } from '../works/works.store';
+import { currentStudentProject } from '../projects/current-project';
 import { TeamRuntimeService, type TeacherAgentRunProjection } from '../team-runtime/team-runtime.service';
 import type { AuditEntry } from '../../common/audit/audit-entry';
 import type { AuditWriter } from '../../common/audit/audit.service';
@@ -116,6 +120,7 @@ export type ApplyReviewDecisionResult = 'applied' | 'stale';
  */
 export abstract class TeacherReviewRepository {
   abstract findReviewById(reviewId: string): Promise<TeacherReviewRecord | null>;
+  abstract listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]>;
   abstract applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult>;
 }
 
@@ -164,6 +169,13 @@ export class PostgresTeacherReviewRepository extends TeacherReviewRepository {
     return rows[0] === undefined ? null : mapReviewRow(rows[0]);
   }
 
+  async listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]> {
+    const rows = await this.db.select().from(mentorReviews)
+      .where(and(eq(mentorReviews.studentUserId, studentId), eq(mentorReviews.mentorUserId, mentorId), eq(mentorReviews.kind, 'artifact')))
+      .orderBy(desc(mentorReviews.requestedAt), desc(mentorReviews.id)).offset(offset).limit(limit);
+    return rows.map(mapReviewRow);
+  }
+
   async applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult> {
     return withTransaction(this.db, async (tx) => {
       const updated = await tx
@@ -192,7 +204,7 @@ export class PostgresTeacherReviewRepository extends TeacherReviewRepository {
 export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   private readonly rows = new Map<string, TeacherReviewRecord>();
 
-  constructor(private readonly audit?: AuditWriter) {
+  constructor(private readonly audit?: AuditWriter, private readonly shared?: InMemoryWorksStore) {
     super();
   }
 
@@ -202,11 +214,23 @@ export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   }
 
   async findReviewById(reviewId: string): Promise<TeacherReviewRecord | null> {
+    if (this.shared) {
+      const row = await this.shared.findReviewById(reviewId);
+      return row ? this.projectShared(row) : null;
+    }
     const row = this.rows.get(reviewId);
     return row === undefined ? null : { ...row };
   }
 
+  async listForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<TeacherReviewRecord[]> {
+    if (this.shared) return (await this.shared.listReviewsForStudent(studentId, mentorId, offset, limit)).map((row) => this.projectShared(row));
+    return [...this.rows.values()].filter((row) => row.studentUserId === studentId && row.mentorUserId === mentorId && row.kind === 'artifact')
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime() || right.id.localeCompare(left.id))
+      .slice(offset, offset + limit).map((row) => ({ ...row }));
+  }
+
   async applyDecision(input: ApplyReviewDecisionInput): Promise<ApplyReviewDecisionResult> {
+    if (this.shared) return this.shared.applyReviewDecision(input, async () => { await this.audit?.write(input.audit); });
     const current = this.rows.get(input.reviewId);
     if (current === undefined || current.status !== input.expectedStatus) return 'stale';
     const next: TeacherReviewRecord = {
@@ -226,6 +250,10 @@ export class InMemoryTeacherReviewRepository extends TeacherReviewRepository {
   reset(): void {
     this.rows.clear();
   }
+
+  private projectShared(row: MentorReviewRecord): TeacherReviewRecord {
+    return { ...row, studentUserId: row.studentId, artifactRef: row.artifactId };
+  }
 }
 
 /**
@@ -241,7 +269,33 @@ export class TeacherService {
     // 存储由 `TeacherModule` 按数据模式提供；缺位时 `decideReview` 诚实 503，
     // 绝不“内存里批成功”。
     @Optional() @Inject(TeacherReviewRepository) private readonly reviews?: TeacherReviewRepository,
+    @Optional() private readonly learningStore?: LearningPlanStore,
+    @Optional() private readonly works?: WorksService,
   ) {}
+
+  async listStudentReviews(actor: CurrentUser, studentId: string, offset = 0, limit = 20) {
+    if (actor.role !== 'teacher') throw new ForbiddenException('复核列表仅限当前班主任');
+    await this.assertTeacherCanAccessStudent(actor.id, studentId);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10_000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      throw new BadRequestException({ code: 'TEACHER_REVIEW_REQUEST_INVALID', message: '分页范围无效' });
+    }
+    if (!this.reviews || !this.works) throw new ServiceUnavailableException({ code: 'TEACHER_REVIEW_UNAVAILABLE', message: '复核读取服务尚不可用' });
+    const rows = await this.reviews.listForStudent(studentId, actor.id, offset, limit + 1);
+    const items = [];
+    for (const row of rows.slice(0, limit)) {
+      if (!row.artifactRef || row.kind !== 'artifact' || row.studentUserId !== studentId || row.mentorUserId !== actor.id) continue;
+      try {
+        const version = await this.works.getAssignedReviewVersion(actor, row.id, row.artifactRef);
+        if (version.projectId !== row.projectId) continue;
+        items.push({ reviewId: row.id, ...version, status: row.status, requestedAt: row.requestedAt.toISOString() });
+      } catch (error) {
+        if (error instanceof ForbiddenException || error instanceof NotFoundException) continue;
+        throw error;
+      }
+    }
+    await this.assertTeacherCanAccessStudent(actor.id, studentId);
+    return { items, nextOffset: rows.length > limit ? offset + limit : null };
+  }
 
   /**
    * Assert that teacherUserId currently mentors studentUserId (active assignment).
@@ -292,40 +346,22 @@ export class TeacherService {
       guardianCounts.set(studentId, (guardianCounts.get(studentId) ?? 0) + 1);
     }
 
-    return students.map((s) => {
-      const demo = this.platformData.getStudent(s.userId);
-      const projects = this.platformData.getProjectsByStudent(s.userId);
-      const activeProjects = projects.filter(
-        (project) => project.stage !== 'completed' && project.stage !== 'published',
-      );
-      const current = activeProjects[0] ?? projects[0] ?? null;
-      const activeDays = demo?.lastActivityAt
-        ? isWithinDays(demo.lastActivityAt, 7)
-          ? 1
-          : 0
-        : 0;
+    if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
+    return Promise.all(students.map(async (s) => {
+      const projects = await this.learningStore!.listProjectsByStudent(s.userId);
+      const current = currentStudentProject(projects);
       return {
-        studentId: s.userId,
-        displayName: s.displayName,
-        email: s.email,
-        gradeLabel: demo?.gradeLabel ?? null,
-        classLabel: demo?.classLabel ?? null,
-        avatarInitial: s.displayName.charAt(0),
-        activeProjectCount: demo?.activeProjectCount ?? activeProjects.length,
-        projectsCompleted:
-          demo?.projectsCompleted ?? projects.filter((project) => project.stage === 'completed' || project.stage === 'published').length,
-        currentProjectId: current?.projectId ?? demo?.currentProjectId ?? null,
-        currentProjectTitle: current?.title ?? demo?.currentProjectTitle ?? null,
-        currentStage: current?.stage ?? demo?.currentStage ?? null,
-        progressPercent: current?.progressPercent ?? demo?.progressPercent ?? 0,
-        lastActivityAt: demo?.lastActivityAt ?? null,
-        stuck: demo?.stuck ?? false,
-        attentionCount: demo?.attentionCount ?? 0,
-        guardianCount: guardianCounts.get(s.userId) ?? 0,
-        activeDays,
-        weeklyTasks: 0,
+        studentId: s.userId, displayName: s.displayName, email: s.email,
+        gradeLabel: null, classLabel: null, avatarInitial: s.displayName.charAt(0),
+        activeProjectCount: projects.filter((project) => !['completed', 'published', 'exploration'].includes(project.status)).length,
+        projectsCompleted: projects.filter((project) => ['completed', 'published'].includes(project.status)).length,
+        currentProjectId: current?.id ?? null, currentProjectTitle: current?.title ?? null,
+        currentStage: current?.status ?? null, progressPercent: current?.progressPercent ?? 0,
+        lastActivityAt: null, stuck: false, attentionCount: 0,
+        guardianCount: guardianCounts.get(s.userId) ?? 0, activeDays: 0, weeklyTasks: 0,
+        signalsAvailable: false,
       };
-    });
+    }));
   }
 
   /**
@@ -341,30 +377,13 @@ export class TeacherService {
 
     const guardians = await this.directory.guardiansOfStudent(studentUserId);
 
-    const studentRow: TeacherStudentRow = {
-      studentId: student.userId,
-      displayName: student.displayName,
-      email: student.email,
-      gradeLabel: null,
-      classLabel: null,
-      avatarInitial: student.displayName.charAt(0),
-      activeProjectCount: 0,
-      projectsCompleted: 0,
-      currentProjectId: null,
-      currentProjectTitle: null,
-      currentStage: null,
-      progressPercent: 0,
-      lastActivityAt: null,
-      stuck: false,
-      attentionCount: 0,
-      guardianCount: guardians.length,
-      activeDays: 0,
-      weeklyTasks: 0,
-    };
+    const studentRow = (await this.getRoster(teacherUserId)).find((row) => row.studentId === studentUserId);
+    if (!studentRow || !this.learningStore) throw new NotFoundException('学生数据不可用');
+    const projects = await this.learningStore.listProjectsByStudent(studentUserId);
 
     return {
       student: studentRow,
-      projects: [],
+      projects: projects.map((project) => ({ projectId: project.id, title: project.title, stage: project.status, progressPercent: project.progressPercent, updatedAt: project.createdAt.toISOString() })),
       interventions: [],
       recentGrowth: [],
       guardians: guardians.map((g) => ({
@@ -555,15 +574,10 @@ export class TeacherService {
   async getStatistics(teacherUserId: string): Promise<TeacherStatisticsPageData> {
     const teacher = await this.getTeacherIdentity(teacherUserId);
     const students = await this.getRoster(teacherUserId);
-    const assignedIds = new Set(students.map((student) => student.studentId));
-    const projects = [...assignedIds].flatMap((studentId) =>
-      this.platformData.getProjectsByStudent(studentId),
-    );
-    const stageDistribution = countStages(projects.map((project) => project.stage));
-    const interventions = this.platformData
-      .getInterventionsByTeacher(teacherUserId)
-      .filter((intervention) => intervention.status !== 'resolved');
-    const weeklyActivity = buildWeeklyActivity(students);
+    if (!this.learningStore) throw new ServiceUnavailableException('项目统计暂不可用');
+    const projects = (await Promise.all(students.map((student) => this.learningStore!.listProjectsByStudent(student.studentId)))).flat();
+    const stageDistribution = countStages(projects.map((project) => project.status));
+    const interventions = await this.listInterventions(teacherUserId);
 
     return {
       teacher,
@@ -575,10 +589,11 @@ export class TeacherService {
         tasksCompletedThisWeek: students.reduce((sum, student) => sum + student.weeklyTasks, 0),
         openInterventions: interventions.length,
       },
-      weeklyActivity,
+      weeklyActivity: [],
       stageDistribution,
       needsAttention: students.filter((student) => student.stuck || student.attentionCount > 0),
-      dataSource: 'demo',
+      dataSource: 'live',
+      signalsAvailable: false,
     };
   }
 }

@@ -1,0 +1,17 @@
+{
+  "codeCommit": "b912456048f810a90fa78e8fed28af379bc5a76c",
+  "runtimeDependencyBuild": "passed",
+  "adminProductionBuild": "passed",
+  "workspaceConfiguredTests": "passed",
+  "cleanApiTests": { "total": 1231, "passed": 1221, "failed": 0, "skipped": 10 },
+  "isolatedPostgresTests": { "total": 8, "passed": 8, "failed": 0, "businessRowsCopied": 0, "fixtureDropped": true },
+  "remoteMigratedAssistants": 5,
+  "remoteRetiredBindings": 9,
+  "remoteUnknownToolIdsAfterReadback": 0,
+  "auditRowsVerified": 5,
+  "idempotentReplay": "passed",
+  "imaConnectionAndListProbe": "passed",
+  "imaDiscoveredReadOnlyTools": 4,
+  "productionTeachingDataWritten": false,
+  "otherWorkspaceChangesIncludedInCandidate": false
+}

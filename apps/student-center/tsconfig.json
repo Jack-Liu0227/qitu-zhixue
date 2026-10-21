@@ -12,7 +12,6 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@qitu/contracts": ["../../packages/contracts/src/index"],
       "@qitu/ui": ["../../packages/ui/src/index"],
       "@qitu/ai-client": ["../../packages/ai-client/src/index"]
     }

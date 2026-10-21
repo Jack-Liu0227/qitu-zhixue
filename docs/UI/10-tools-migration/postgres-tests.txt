@@ -1,0 +1,59 @@
+TAP version 13
+# Subtest: tool binding migration uses real isolated PostgreSQL transactions, audit and idempotency
+    # Subtest: non-admin and anonymous requests never reach writes
+    ok 1 - non-admin and anonymous requests never reach writes
+      ---
+      duration_ms: 11.864834
+      type: 'test'
+      ...
+    # Subtest: stale previews cannot overwrite a concurrent binding update
+    ok 2 - stale previews cannot overwrite a concurrent binding update
+      ---
+      duration_ms: 24.056973
+      type: 'test'
+      ...
+    # Subtest: successful migration preserves unrelated fields and writes original bindings in the same audit transaction
+    ok 3 - successful migration preserves unrelated fields and writes original bindings in the same audit transaction
+      ---
+      duration_ms: 13.15066
+      type: 'test'
+      ...
+    # Subtest: audit failure rolls back every assistant update
+    ok 4 - audit failure rolls back every assistant update
+      ---
+      duration_ms: 8.101112
+      type: 'test'
+      ...
+    # Subtest: database readback mismatch is rejected and rolled back
+    ok 5 - database readback mismatch is rejected and rolled back
+      ---
+      duration_ms: 16.910235
+      type: 'test'
+      ...
+    # Subtest: concurrent plans serialize; one applies and the other observes the new revision
+    ok 6 - concurrent plans serialize; one applies and the other observes the new revision
+      ---
+      duration_ms: 13.458498
+      type: 'test'
+      ...
+    # Subtest: idempotent PATCH replay returns the same receipt without repeated updates or audit
+    ok 7 - idempotent PATCH replay returns the same receipt without repeated updates or audit
+      ---
+      duration_ms: 19.091412
+      type: 'test'
+      ...
+    1..7
+ok 1 - tool binding migration uses real isolated PostgreSQL transactions, audit and idempotency
+  ---
+  duration_ms: 141.677146
+  type: 'test'
+  ...
+1..1
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 628.156103

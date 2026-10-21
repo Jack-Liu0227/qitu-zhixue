@@ -1,4 +1,5 @@
 import { ApiError, createApiClient } from '@qitu/api-client';
+import type { StudentGrowthAnalysisView } from '@qitu/contracts';
 import {
   GrowthOfflineError,
   GrowthPermissionError,
@@ -105,6 +106,9 @@ export function createGrowthApiDataSource(baseUrl: string): GrowthDataSource {
   }
 
   return {
+    async getAnalysis(): Promise<StudentGrowthAnalysisView> {
+      return (await client.get<GrowthEnvelope<StudentGrowthAnalysisView>>('/api/v1/students/me/growth/analysis')).data;
+    },
     async loadGrowthPage(query: StudentGrowthQuery): Promise<StudentGrowthPageData> {
       const [summary, timeline, projects] = await Promise.all([
         client.get<GrowthEnvelope<StudentGrowthSummary>>('/api/v1/students/me/growth/summary'),

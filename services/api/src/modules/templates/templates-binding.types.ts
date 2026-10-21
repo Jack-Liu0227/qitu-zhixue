@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
 import type { PblBindingStatus, PblTemplateTeamBindingValidation } from '@qitu/contracts';
 import { hashRequest } from '../../common/idempotency/idempotency.hash';
+import type { CompiledTeachingBundle } from './teaching-bundle.types';
+import type { TeachingBundleDraft } from '@qitu/contracts';
 
 /**
  * 模板版本 ↔ 团队版本绑定的领域类型与纯函数（F2 / F3）。
@@ -35,6 +37,9 @@ export interface BindingRecord {
   teamVersionId: string;
   status: PblBindingStatus;
   bindingHash: string;
+  bundleDigest?: string | null;
+  bundleDraft: TeachingBundleDraft | null;
+  bundlePayload: CompiledTeachingBundle['payload'] | null;
   validation: PblTemplateTeamBindingValidation;
   activatedAt: Date | null;
   retiredAt: Date | null;
@@ -50,6 +55,7 @@ export interface SnapshotRecord {
   bindingId: string;
   teamVersionId: string;
   bindingHash: string;
+  bundleDigest: string | null;
   boundAt: Date;
   backfilled: boolean;
 }
@@ -59,6 +65,7 @@ export interface CreateBindingRecordInput {
   templateVersionId: string;
   teamVersionId: string;
   bindingHash: string;
+  bundleDigest?: string | null;
   createdBy: string | null;
   now: Date;
 }
@@ -69,8 +76,18 @@ export interface InsertSnapshotRecordInput {
   bindingId: string;
   teamVersionId: string;
   bindingHash: string;
+  bundleDigest?: string | null;
   boundAt: Date;
   backfilled: boolean;
+}
+
+export interface UpdateTeachingBundleRecordInput {
+  expectedUpdatedAt?: Date;
+  draft: TeachingBundleDraft;
+  payload: CompiledTeachingBundle['payload'] | null;
+  digest: string | null;
+  bindingHash?: string;
+  now: Date;
 }
 
 /** B5 预览里受影响的存量项目（仅 id 与标题，绝不含学生原文）。 */
@@ -96,8 +113,9 @@ export function computeBindingHash(
   templateVersionId: string,
   teamVersionId: string,
   pblSpecHash: string,
+  bundleDigest: string | null = null,
 ): string {
-  return hashRequest({ templateVersionId, teamVersionId, pblSpecHash });
+  return hashRequest({ templateVersionId, teamVersionId, pblSpecHash, bundleDigest });
 }
 
 /**

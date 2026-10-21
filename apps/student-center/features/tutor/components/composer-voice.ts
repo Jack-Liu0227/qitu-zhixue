@@ -12,6 +12,12 @@ export interface QuickPromptItem {
 
 export const QUICK_PROMPTS: readonly QuickPromptItem[] = [
   {
+    id: 'explore-experiment',
+    icon: '🔬',
+    label: '动态物理实验课件',
+    prompt: '我想通过微观动态课件仿真，观察单缝衍射和散射条纹的实时变化规律。',
+  },
+  {
     id: 'first-step',
     icon: '💡',
     label: '理清第一步思路',

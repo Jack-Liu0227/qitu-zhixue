@@ -372,6 +372,31 @@ export class InMemoryWorksStore extends WorksStore {
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
+  async findReviewById(id: string): Promise<MentorReviewRecord | null> {
+    const row = this.reviews.get(id);
+    return row ? cloneReview(row) : null;
+  }
+
+  async listReviewsForStudent(studentId: string, mentorId: string, offset: number, limit: number): Promise<MentorReviewRecord[]> {
+    return [...this.reviews.values()].filter((row) => row.studentId === studentId && row.mentorUserId === mentorId)
+      .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime() || right.id.localeCompare(left.id))
+      .slice(offset, offset + limit).map(cloneReview);
+  }
+
+  async applyReviewDecision(input: { reviewId: string; expectedStatus: string; status: MentorReviewRecord['status'];
+    decision: string; comment: string | null; reviewedAt: Date }, audit: () => Promise<unknown>): Promise<'applied' | 'stale'> {
+    const current = this.reviews.get(input.reviewId);
+    if (!current || current.status !== input.expectedStatus) return 'stale';
+    const next = { ...current, status: input.status, decision: input.decision, comment: input.comment,
+      reviewedAt: input.reviewedAt, updatedAt: input.reviewedAt };
+    this.reviews.set(current.id, next);
+    try { await audit(); } catch (error) {
+      if (this.reviews.get(current.id) === next) this.reviews.set(current.id, current);
+      throw error;
+    }
+    return 'applied';
+  }
+
   async findVersionById(
     versionId: string,
   ): Promise<{ artifact: ArtifactRecord; version: ArtifactVersionRecord } | null> {

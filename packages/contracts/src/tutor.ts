@@ -101,6 +101,12 @@ export type TutorReplyBlock =
   | {
       kind: 'quiz';
       questionId: string;
+      /** Server-owned scope for persisted dynamic questions; never inferred from labels. */
+      sourceScope?: TutorQuestionSourceScope;
+      assessmentMode?: 'formative';
+      /** Authenticated owner projection; populated only after a persisted answer. */
+      answer?: AnswerInteractiveQuizResponse;
+      sourceRefs?: readonly string[];
       stem: string;
       type?: 'single' | 'multiple' | 'heuristic';
       options: { key: string; text: string; hint?: string }[];
@@ -112,6 +118,10 @@ export type TutorReplyBlock =
       rationaleHint?: string;
       /** 已判分结果；未作答时缺省。由服务端写入，客户端不得自行推断。 */
       graded?: { correct: boolean; attempts: number; hintLevel: TutorHintLevel };
+      /** 标记本题是否为 L3 答错后派生的降维微步题 */
+      isDecomposed?: boolean;
+      /** 注入自学生实测或仿真的上下文参数 */
+      parameterContext?: Record<string, string | number>;
     }
   /**
    * 动态物理/算法参数探索实验卡片 (如动能定理控制变量法实验)。
@@ -140,10 +150,42 @@ export type TutorReplyBlock =
       title: string;
       summary?: string;
       initialMode?: 'diffraction' | 'scattering';
+      initialParameters?: Record<string, number>;
+      allowedModels?: readonly ('diffraction' | 'scattering')[];
       specVersion: string;
       objectiveId: string;
       sessionIndex: number;
-      allowedActions: readonly ('set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
+      allowedActions: readonly ('submit_prediction' | 'set_parameter' | 'run' | 'record_observation' | 'submit_evidence')[];
+      scope?: {
+        planId: string;
+        planRevision: number;
+        learningSessionId: string;
+        /** Actual frozen plan objective; block.objectiveId identifies the registered model domain. */
+        objectiveId?: string;
+        rubricRef: string;
+        cerRef: string;
+      };
+      savedObservation?: TutorExperimentActionResponse['observationReceipt'];
+      predictionGate?: {
+        required: boolean;
+        submitted: boolean;
+        hypothesis?: string;
+      };
+    }
+  /**
+   * 协诊导师旁白块：同一 Turn 内挂载非主讲导师的跨阶段诊断建议
+   */
+  | {
+      kind: 'aside';
+      copilot: {
+        id: string;
+        name: string;
+        role: string;
+        avatar?: string;
+      };
+      targetPhase: 'exploration' | 'concept_mastery' | 'guided_practice' | 'deliverable_review';
+      content: string;
+      evidenceRef?: string;
     }
   /**
    * 学生或导师发送的图片与文件附件。
@@ -199,8 +241,9 @@ export interface TutorIdeaCard {
   ideaId: string;
   title: string;
   description: string;
-  /** 计划周期（周）。 */
-  weeks: 4 | 8;
+  /** Lesson-based schedule selected for the idea. */
+  lessonCount: number;
+  lessonMinutes: 60 | 120;
   /** 为什么适合这个学生（适配理由）。 */
   rationale: string;
   /** 关联的项目模板 id；服务端校验存在且 published。 */
@@ -314,6 +357,20 @@ export interface TutorProjectContext {
   team?: TutorTeamIdentity;
   /** 来自 `PblTemplate.phases` 的真实阶段投影；无模板时为空数组。 */
   phases?: TutorPhaseProjection[];
+  /** 当前冻结课时投影。阶段仅作为服务端策略元数据，不在学生端作为课程主轴展示。 */
+  lesson?: {
+    planId?: string;
+    planRevision?: number;
+    learningSessionId?: string;
+    roleSlotId?: string;
+    assistantId?: string;
+    objectiveId?: string | null;
+    lessonIndex: number;
+    lessonCount: number;
+    title: string;
+    status: 'current' | 'completed' | 'locked';
+    checkpoint?: string | null;
+  } | null;
 }
 
 /**
@@ -331,7 +388,7 @@ export interface TutorTeamIdentity {
   assistantId: string;
   /** 本轮接管的助手展示名，例如「启途智学助手」「启途总导师」。 */
   assistantName: string;
-  /** 助手头像（emoji 或图片 URL），缺省时前端用默认头像。 */
+  /** 助手头像，支持 emoji、asset: 素材引用及兼容图片 URL；缺省采用默认头像。 */
   assistantAvatar?: string | null;
 }
 
@@ -531,6 +588,42 @@ export interface CreateTutorFeedbackResponse {
   accepted: true;
 }
 
+/** POST /tutor/sessions/:id/interactive/experiments/:experimentId/action */
+export type TutorExperimentAction = 'submit_prediction' | 'run' | 'record_observation';
+
+export interface TutorExperimentActionRequest {
+  action: TutorExperimentAction;
+  payload?: unknown;
+  idempotencyKey: string;
+}
+
+export interface TutorExperimentActionResponse {
+  accepted: true;
+  actionId: string;
+  experimentId: string;
+  action: TutorExperimentAction;
+  /** Optional server-computed model projection for a run action. */
+  simulationResult?: { mode: 'diffraction' | 'scattering'; summary: string };
+  /** Returned only after the works evidence owner has persisted and read back the observation. */
+  observationReceipt?: {
+    observationId: string;
+    experimentId: string;
+    evidenceRef: string;
+    projectId: string;
+    sessionId: string;
+    planId: string;
+    planRevision: number;
+    learningSessionId: string;
+    runActionId: string;
+    objectiveId?: string;
+    parameterDigest: string;
+    provenance: 'simulated_observation';
+    rubricRef: string;
+    cerRef: string;
+    savedAt: string;
+  };
+}
+
 /**
  * POST /api/v1/tutor/sessions/:id/interactive/:quizId/answer
  *
@@ -545,15 +638,17 @@ export interface AnswerInteractiveQuizRequest {
 
 export interface AnswerInteractiveQuizResponse {
   quizId: string;
+  /** Generated practice is feedback evidence and cannot grant mastery. */
+  assessmentMode?: 'formative';
+  /** Persisted selected option IDs, available only to the owning student after submission. */
+  selectedKeys?: string[];
   correct: boolean;
   /** 该题累计作答次数（含本次）。 */
   attempts: number;
   /** 作答后该概念的提示阶梯等级。 */
   hintLevel: TutorHintLevel;
-  /**
-   * 正确答案与解析：**仅在概念已达标或学生显式请求 `explain` 时才非空**。
-   * 在此之前必须为 null，避免答案泄露。
-   */
+  /** Reviewed bank questions require an explicit explain request after answering.
+   * Generated formative questions return their complete explanation upon submission. */
   explanation: string | null;
   correctKeys: string[] | null;
   /** 关联概念的掌握度变化投影；无变化时为空数组。 */
@@ -562,4 +657,14 @@ export interface AnswerInteractiveQuizResponse {
   nextGuidance?: string | null;
   /** 幂等重放标记：true 表示本次是重放，未重复计分。 */
   replayed: boolean;
+}
+
+/** A generated question belongs to one project, plan revision, lesson and tutor conversation. */
+export interface TutorQuestionSourceScope {
+  projectId: string;
+  planId: string;
+  planRevision: number;
+  learningSessionId: string;
+  objectiveId: string;
+  tutorSessionId: string;
 }

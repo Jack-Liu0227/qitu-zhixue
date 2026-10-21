@@ -1,11 +1,12 @@
+'use client';
+
 import { SectionCard } from '@qitu/ui';
 import type { TheoryMaterial } from '../types';
+import { MarkdownMathView } from '../../tutor/components/MarkdownMathView';
 
-export interface TheoryModuleProps {
-  material: TheoryMaterial;
-}
+export interface TheoryModuleProps { material: TheoryMaterial }
 
-/** 理论学习材料（只读）；不渲染任何原始对话/语音。 */
+/** Display server-provided plan context; interactive experiments belong to Tutor. */
 export function TheoryModule({ material }: TheoryModuleProps) {
   return (
     <SectionCard title={material.title}>
@@ -13,7 +14,7 @@ export function TheoryModule({ material }: TheoryModuleProps) {
         {material.sections.map((section) => (
           <section key={section.heading}>
             <h4>{section.heading}</h4>
-            <p>{section.body}</p>
+            <MarkdownMathView content={section.body} />
           </section>
         ))}
       </div>

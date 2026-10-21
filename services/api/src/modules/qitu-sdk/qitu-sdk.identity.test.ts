@@ -64,3 +64,31 @@ test('SDK rejects the same bare model name from another provider even with a mat
   });
   assert.equal(h.executions(), 0);
 });
+
+test('SDK skill catalog and tool calls share the frozen resolver and respect later revocation', async () => {
+  const h = assistantRuntimeFixture();
+  const runtime = await h.service.getAssistantRuntime(h.assistant.id);
+  runtime.tools = [{ id: 'mastery_query', name: 'mastery_query', version: 'v1', kind: 'builtin',
+    actorRoles: ['student'], agentIds: [h.assistant.id], description: 'fixture' } as never];
+  runtime.agent.toolIds = ['mastery_query', 'student_profile_get'];
+  let current = runtime;
+  let reads = 0;
+  let mutableReads = 0;
+  let executed = 0;
+  const factory = new QituSDKFactory({ forActor: () => ({ getCurrent: async () => { executed++; return []; } }) } as never,
+    {} as never, {} as never, {} as never, {
+      getAssistantRuntime: async () => { mutableReads++; throw new Error('MUTABLE_RUNTIME_FORBIDDEN'); },
+    } as never, 'live');
+  const sdk = factory.create({ id: 'owner', role: 'student', email: '', displayName: '' },
+    { studentId: 'owner', projectId: 'project' }, async () => null, undefined, undefined,
+    { assistantId: h.assistant.id, configurationHash: hashRequest(runtime), resolveRuntime: async () => { reads++; return current; } });
+  assert.deepEqual((await sdk.skills.list()).map(skill => skill.id), runtime.skills.map(skill => skill.id));
+  assert.deepEqual((await sdk.tools.list()).map(tool => tool.id), ['mastery_query']);
+  await sdk.tools.call('mastery_query', {});
+  assert.equal(executed, 1);
+  current = { ...runtime, tools: [] };
+  await assert.rejects(sdk.tools.call('mastery_query', {}), /SDK_TOOL_NOT_FOUND/);
+  assert.equal(executed, 1);
+  assert.equal(mutableReads, 0);
+  assert.ok(reads >= 5);
+});

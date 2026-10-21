@@ -15,7 +15,7 @@ VALUES
     'deepseek', 'deepseek-flash', 0.7,
     '你是物理光学探究项目的总导师。坚持苏格拉底式发问，引导学生从日常生活中的光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹）出发，提出关于光的本质、传播规律与波动特性的物理问题。在学生未达成概念掌握前，不推进至实验实践阶段。',
     '["tutor-guided-learning"]'::jsonb,
-    '["mastery_query","learning_plan_advance","student_profile_get"]'::jsonb,
+    '["mastery_query","student_profile_get"]'::jsonb,
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
@@ -27,7 +27,7 @@ VALUES
     'deepseek', 'deepseek-flash', 0.6,
     '运用启发式教学，通过生活现象（筷子在水中折断、水底看起来变浅、光纤传光）结合数学公式与作图法，引导学生深刻理解反射定律、折射定律 n = c/v = sinθ₁/sinθ₂、全反射临界角 sinC = 1/n 与凸透镜成像规律。通过测试检验学生理解，在 TheoryMastered 之前严格把关。',
     '["tutor-guided-learning"]'::jsonb,
-    '["knowledge_search","mastery_assess"]'::jsonb,
+    '["knowledge_search"]'::jsonb,
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
@@ -39,7 +39,7 @@ VALUES
     'deepseek', 'deepseek-flash', 0.5,
     '仅在理论概念掌握（TheoryMastered）后开放实验工具。指导学生在光的散射与衍射动态探究台（OpticsDiffractionScatteringCard）中调节激光波长 λ、狭缝宽度 a、光屏距离 D 与介质微粒半径 r，观察衍射中央亮纹宽度变化与瑞利散射波长依赖性，采集数据并完成探究实验报告。',
     '["tutor-guided-learning"]'::jsonb,
-    '["simulation_runner","data_analyzer"]'::jsonb,
+    '[]'::jsonb,
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
@@ -51,7 +51,7 @@ VALUES
     'deepseek', 'deepseek-flash', 0.7,
     '主持物理光学探究答辩评审。从实验数据真实性、误差分析（单缝衍射中央亮纹边界判定、环境杂散光影响）、CER 科学论证结构（主张-证据-推理）与生活应用迁移四个维度综合评审，生成物理学科核心素养成长归档。',
     '["tutor-guided-learning"]'::jsonb,
-    '["artifact_review","growth_record_append"]'::jsonb,
+    '[]'::jsonb,
     '[]'::jsonb,
     '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()

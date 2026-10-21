@@ -1,3 +1,6 @@
+import { WorksModule } from '../works/works.module';
+import { LearningSessionProgressController } from './learning-session-progress.controller';
+import { LearningSessionProgressService } from './learning-session-progress.service';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../identity-auth/auth.module';
 import { MasteryModule } from '../mastery/mastery.module';
@@ -20,9 +23,9 @@ import { DeterministicPlanGenerator, PlanGenerator } from './plan-generator';
  * 依赖是单向的（team-runtime 不依赖 learning-plan），因此无循环导入。
  */
 @Module({
-  imports: [AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
-  controllers: [LearningPlanController],
-  providers: [LearningPlanService, { provide: PlanGenerator, useFactory: () => new DeterministicPlanGenerator() }],
-  exports: [LearningPlanService, LearningPlanStorageModule],
+  imports: [WorksModule, AuthModule, LearningPlanStorageModule, MasteryModule, TeamRuntimeModule, TemplatesModule],
+  controllers: [LearningPlanController, LearningSessionProgressController],
+  providers: [LearningSessionProgressService, LearningPlanService, { provide: PlanGenerator, useFactory: () => new DeterministicPlanGenerator() }],
+  exports: [LearningSessionProgressService, LearningPlanService, LearningPlanStorageModule],
 })
 export class LearningPlanModule {}

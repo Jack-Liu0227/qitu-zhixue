@@ -26,6 +26,8 @@
 - `/admin/settings/knowledge`、`templates`、`database`：知识、模板和数据库状态。
 - `/admin/settings/feishu`：管理员汇报助手的 Feishu/Lark 机器人配置、手机授权状态和汇报范围；该页面不保存明文凭证。
 
+旧的 `/admin/settings/dialogs`“已安装的对话”静态原型入口已退役。真实对话开场由冻结模板、团队绑定和 AI Tutor 上下文生成；不保留第二套浏览器本地对话流、安装记录或兼容配置。
+
 模型专属覆盖在 AI 运行时维护；用途模型和链路自动分发在供应商工作区维护，不增加导航。管理员明确选择用途后才清空专属覆盖；学生不能自由换模。
 
 ## 权限与数据边界
@@ -45,6 +47,8 @@ Agent 写入使用 Admin-only API、幂等键、事务和审计。子 Agent 不�
 
 Feishu 只是外部通知渠道，不是新的权限边界。管理员配置、二维码会话、凭证轮换和发送状态均由服务端持久化并审计；`open_id` 必须映射到启途管理员后才能生成报告。报告助手只读聚合学生、家长授权投影和教师运营摘要，默认最小化可见范围，禁止发送原始未成年人对话或语音。手机扫码绑定、状态机、错误码和真实租户验收的当前台账见 [`../plan/20261018-issue-digest-feishu-assistant.md`](../plan/20261018-issue-digest-feishu-assistant.md)；[2026-10-17 早期方案](../archive/pre-20261018/plan/20261017-feishu-reporting-assistant.md) 仅作历史参考，不代表真实租户验收通过。
 QR session recovery, provider-controlled expiry, permissions, audit events and regression coverage: [Feishu QR binding](./feishu-qr-binding.md).
+
+按助手独立绑定、双向消息、实际连接诊断、权限复核与 0044 发布要求见 [飞书机器人与助手消息绑定](./feishu-assistant-messages.md)。
 
 <!-- Settings navigation: the sidebar is the only section switcher; /settings/models redirects to /settings/model-providers. -->
 
@@ -73,3 +77,9 @@ The settings UI now uses the sidebar as its single source of navigation. Provide
 ### 知识库卡片选择与助手绑定
 
 知识库卡片左上角显示选择框，单击卡片选中一个知识库，双击打开详情；键盘空格选择，Enter 打开。列表下方的“检索助手绑定”始终显示当前选中库的助手，而非平台整体检索权限。未选择时显示引导，读取失败支持重试。勾选或取消后点击“保存助手绑定”调用逐库绑定接口，沿用修订校验、幂等与权限控制，并保留其他类型 Agent 的绑定。切换库丢弃未保存草稿；快速切换不得显示上一个库的延迟响应。全局工具开关和助手启用状态仍限制实际检索。
+
+### 全站素材库与默认展示
+
+Admin 在现有助手、团队、模板、知识库编辑位置选择共享素材；外观设置集中维护默认值。新助手可直接继承默认，已有定制头像保留；批量选择逐对象返回结果，保存后回读确认，只重试失败项。素材 ID 只表示外观，不改变 canonical skill ID、模型 pair、团队角色或教学门禁。
+
+素材目录及绑定接口位于 `/api/v1/admin/visual-assets`，仅管理员可访问。写入执行对象存在性、用途与版本引用校验、修订冲突、幂等和事务内审计；持久化需要 0043 迁移。首批素材为已生成的公开内置文件，上传和在线生图尚未开放。源码范围、错误码、浏览器测试和生产发布边界见 [素材库实施记录](../plan/codex/visual-assets/04-implementation.md)。

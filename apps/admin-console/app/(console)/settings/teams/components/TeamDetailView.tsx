@@ -1,6 +1,6 @@
 'use client';
 
-import { AssistantGlyph } from '@qitu/ui';
+import { AssistantGlyph, VisualAsset } from '@qitu/ui';
 
 import type { AdminTeamConfig, AdminTeamMember, AdminAssistantConfig, AdminTeamUpdateInput } from '@qitu/contracts';
 import { useState } from 'react';
@@ -251,7 +251,7 @@ function RoleExplanationPanel() {
   return (
     <div className="role-explanation-panel">
       <div className="role-explanation-header">
-        <span className="role-icon">💡</span>
+        <span className="role-icon"><VisualAsset assetId="subject-interdisciplinary-v1" size={24} /></span>
         <strong>PBL 导师团队四类角色分工与调度机制</strong>
       </div>
       <p className="role-explanation-intro">
@@ -261,7 +261,7 @@ function RoleExplanationPanel() {
       <div className="role-cards-grid">
         <div className="role-card">
           <div className="role-card-title">
-            <span className="role-emoji">👑</span>
+            <VisualAsset assetId="avatar-coordinator-v1" size={28} />
             <strong>队长 / 总负责人 (Leader)</strong>
           </div>
           <p className="role-card-desc">
@@ -271,7 +271,7 @@ function RoleExplanationPanel() {
 
         <div className="role-card">
           <div className="role-card-title">
-            <span className="role-emoji">🎓</span>
+            <VisualAsset assetId="avatar-concept-v1" size={28} />
             <strong>原理教练 (Coach)</strong>
           </div>
           <p className="role-card-desc">
@@ -281,7 +281,7 @@ function RoleExplanationPanel() {
 
         <div className="role-card">
           <div className="role-card-title">
-            <span className="role-emoji">💻</span>
+            <VisualAsset assetId="avatar-coding-v1" size={28} />
             <strong>伙伴向导 (Teammate)</strong>
           </div>
           <p className="role-card-desc">
@@ -291,7 +291,7 @@ function RoleExplanationPanel() {
 
         <div className="role-card">
           <div className="role-card-title">
-            <span className="role-emoji">⚖️</span>
+            <VisualAsset assetId="avatar-review-v1" size={28} />
             <strong>评审导师 (Reviewer)</strong>
           </div>
           <p className="role-card-desc">

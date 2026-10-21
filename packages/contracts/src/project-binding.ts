@@ -22,6 +22,23 @@
 
 /** 绑定生命周期状态。服务端状态机，客户端不可写。 */
 export type PblBindingStatus = 'draft' | 'validated' | 'active' | 'retired';
+export type TeachingPurpose = 'outline' | 'session' | 'dialogue';
+
+/** Canonical references an Admin may edit before the server resolves artifacts. */
+export interface TeachingBundleDraft {
+  /** Explicit route required when the frozen template has no assigned assistant for a phase. */
+  sessionRoutes?: readonly { sessionIndex: number; roleSlotId: string }[];
+  templateVersionId: string;
+  teamVersionId: string;
+  scheduleProfileId: string;
+  roleMap: readonly { roleSlotId: string; memberId: string; purposes: readonly TeachingPurpose[] }[];
+  skillPins: readonly { roleSlotId: string; canonicalId: string; version: string; packageDigest: string }[];
+  toolIds: readonly { roleSlotId: string; toolId: string }[];
+  mcpServerIds: readonly string[];
+  knowledgeBaseIds: readonly string[];
+  modelByPurpose: Readonly<Record<string, Readonly<Partial<Record<TeachingPurpose, { modelProviderId: string; modelId: string }>>>>>;
+  approvalPolicyVersion: string;
+}
 
 /**
  * 绑定状态迁移表（声明式，供服务端状态机与漂移测试共用）。
@@ -63,6 +80,9 @@ export interface PblTemplateTeamBinding {
   teamVersionId: string;
   status: PblBindingStatus;
   bindingHash: string;
+  /** Digest of the immutable teaching bundle compiled for this binding. */
+  bundleDigest: string | null;
+  bundleDraft?: TeachingBundleDraft | null;
   validation: PblTemplateTeamBindingValidation;
   activatedAt: string | null;
   retiredAt: string | null;
@@ -85,6 +105,8 @@ export interface ProjectBindingSnapshot {
   bindingId: string;
   teamVersionId: string;
   bindingHash: string;
+  /** Teaching bundle digest frozen together with the binding. */
+  bundleDigest: string | null;
   /** Immutable, binding-scoped IMA grant copied at project confirmation. */
   imaGrant?: {
     serverId: 'ima-knowledge';

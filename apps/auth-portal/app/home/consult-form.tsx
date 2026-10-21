@@ -347,7 +347,7 @@ export function ConsultationForm() {
           rows={4}
           maxLength={MESSAGE_MAX}
           value={message}
-          placeholder="例：想了解 4 周 / 8 周的学习计划怎么安排，希望先做一个关于水质的项目。"
+          placeholder="例：想了解 8 个课时的学习计划怎么安排，希望先做一个关于水质的项目。"
           aria-invalid={fieldErrors.message !== undefined}
           onChange={(event) => setMessage(event.target.value)}
         />

@@ -8,6 +8,8 @@ import type {
   CreateTutorTurnResponse,
   AnswerInteractiveQuizRequest,
   AnswerInteractiveQuizResponse,
+  TutorExperimentActionRequest,
+  TutorExperimentActionResponse,
   GetTutorSessionResponse,
   ProjectSummary,
   TutorSessionSummary,
@@ -206,6 +208,16 @@ export class MockTutorDataSource implements TutorDataSource {
     await this.delay();
     this.assertReadable();
     throw new TutorDataError('演示数据源未连接解析服务', 501, 'EXPLAIN_UNAVAILABLE');
+  }
+
+  async submitExperimentAction(
+    _sessionId: string,
+    experimentId: string,
+    request: TutorExperimentActionRequest,
+  ): Promise<TutorExperimentActionResponse> {
+    await this.delay();
+    this.assertReadable();
+    return { accepted: true, actionId: `mock-action-${request.idempotencyKey}`, experimentId, action: request.action };
   }
 
   async getSummary(_sessionId: string): Promise<TutorSessionSummary> {

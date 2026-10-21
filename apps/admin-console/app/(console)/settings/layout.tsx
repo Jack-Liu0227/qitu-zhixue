@@ -1,6 +1,6 @@
 'use client';
 
-import { AssistantGlyph } from '@qitu/ui';
+import { NavigationArtwork } from '@qitu/ui';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -52,7 +52,6 @@ const FALLBACK_SETTINGS_NAV: NavGroup[] = [
   {
     group: '应用与会话',
     items: [
-      { href: '/settings/dialogs', label: '已安装的对话', icon: '💬' },
       { href: '/settings/appearance', label: '外观偏好', icon: '◐' },
       { href: '/settings/ops', label: '沉浸运维', icon: '🌐' },
       { href: '/settings/system', label: '系统设置', icon: '⚙️' },
@@ -93,6 +92,10 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const [registry, setRegistry] = useState<AdminSettingsRegistry | null>(null);
   const [registryLoading, setRegistryLoading] = useState(true);
   const [registryError, setRegistryError] = useState('');
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [navigationQuery, setNavigationQuery] = useState('');
+
+  useEffect(() => { setNavigationOpen(false); }, [pathname]);
 
   useEffect(() => {
     let active = true;
@@ -127,8 +130,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className={`settings-shell ${siderCollapsed ? 'is-sider-collapsed' : ''}`}>
-      <aside className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
+    <div className={`settings-shell ${siderCollapsed ? 'is-sider-collapsed' : ''} ${navigationOpen ? 'is-navigation-open' : ''}`}>
+      <button type="button" className="settings-mobile-nav-toggle qitu-button" aria-expanded={navigationOpen} aria-controls="settings-navigation" onClick={() => { setSiderCollapsed(false); setNavigationOpen(!navigationOpen); }}>
+        {navigationOpen ? '收起设置目录' : `设置目录 · ${navigation.flatMap((group) => group.items).find((item) => isItemActive(item.href))?.label ?? '设置'}`}
+      </button>
+      <aside id="settings-navigation" className={`settings-sider ${siderCollapsed ? 'is-collapsed' : ''}`} aria-label="设置导航">
         <div className="settings-sider-head">
           {!siderCollapsed && <span className="settings-sider-title">系统偏好设置</span>}
           <button
@@ -147,15 +153,16 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         </div>
         {!siderCollapsed && registryLoading && <div role="status" style={{ padding: '8px 16px', fontSize: '12px', color: '#64748b' }}>正在读取设置清单…</div>}
         {!siderCollapsed && registryError && <div role="alert" style={{ padding: '8px 16px', fontSize: '12px', color: '#b42318' }}>{registryError}</div>}
+        {!siderCollapsed && <label className="settings-nav-search">查找设置<input type="search" value={navigationQuery} placeholder="输入名称" onChange={(event) => setNavigationQuery(event.target.value)} /></label>}
         <div className="settings-sider-scroll">
-          {navigation.map((grp, idx) => (
+          {navigation.map((grp) => ({ ...grp, items: grp.items.filter((item) => `${grp.group} ${item.label}`.includes(navigationQuery.trim())) })).filter((grp) => grp.items.length > 0).map((grp, idx) => (
             <div key={grp.group} className="settings-sider-section">
               {!siderCollapsed ? <div className="settings-sider-group">{grp.group}</div> : idx > 0 ? <div className="settings-sider-divider" aria-hidden="true" /> : null}
               {grp.items.map((item) => {
                 const active = isItemActive(item.href);
                 return (
                   <Link key={item.href} href={item.href} className={`settings-sider-item ${active ? 'is-active' : ''}`} title={`${grp.group} · ${item.label}`} aria-current={active ? 'page' : undefined}>
-                    <span className="settings-sider-icon" aria-hidden="true">{item.icon}</span>
+                    <span className="settings-sider-icon" aria-hidden="true"><NavigationArtwork href={item.href} size={24} /></span>
                     {!siderCollapsed && <span className="settings-sider-label">{item.label}</span>}
                   </Link>
                 );

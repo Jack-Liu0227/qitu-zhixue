@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable, Inject, UnauthorizedException } 
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { CurrentUser, LoginResponse } from '@qitu/contracts';
 import type { DirectoryService } from '../directory/directory.service';
+import { allowsConfiguredTestLogin, testLoginOptions } from './test-login';
 
 export interface AuthUser extends CurrentUser {
   passwordHash: string;
@@ -78,8 +79,12 @@ export class AuthService {
   private readonly attempts = new Map<string, AttemptRecord>();
 
   constructor(
-    @Inject('DirectoryService') private readonly directory: DirectoryService,
+    @Inject('DirectoryService') private readonly directory: Pick<DirectoryService, 'findCredentialByEmail' | 'allowsDemoLogin' | 'findUser'>,
   ) {}
+
+  testLoginOptions() {
+    return testLoginOptions(this.directory);
+  }
 
   /**
    * 校验口令并签发会话。
@@ -106,7 +111,8 @@ export class AuthService {
     const expectedHash = credential?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const passwordMatches = safePasswordEqual(providedHash, expectedHash);
 
-    if (credential === null || !passwordMatches) {
+    const demoAccount = credential && (credential.user.userId.endsWith('-demo') || /@qtzx\.local$/i.test(credential.user.email));
+    if (credential === null || !passwordMatches || (demoAccount && !this.directory.allowsDemoLogin() && !allowsConfiguredTestLogin(credential.user))) {
       this.recordFailure(email, clientKey);
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
@@ -195,6 +201,11 @@ export class AuthService {
         code: 'UNAUTHENTICATED',
         message: '登录已失效',
       });
+    }
+    if ((record.user.id.endsWith('-demo') || /@qtzx\.local$/i.test(record.user.email)) && !this.directory.allowsDemoLogin()
+      && !allowsConfiguredTestLogin({ userId: record.user.id, role: record.user.role })) {
+      this.sessions.delete(token as string);
+      throw new UnauthorizedException({ code: 'UNAUTHENTICATED', message: '登录已失效' });
     }
     record.lastSeenAt = Date.now();
     return {

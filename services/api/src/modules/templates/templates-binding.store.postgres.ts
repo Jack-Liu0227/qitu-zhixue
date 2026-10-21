@@ -18,6 +18,7 @@ import type {
   InsertSnapshotRecordInput,
   SnapshotRecord,
   TeamVersionRecord,
+  UpdateTeachingBundleRecordInput,
 } from './templates-binding.types';
 
 const PG_UNIQUE_VIOLATION = '23505';
@@ -58,6 +59,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
           teamVersionId: input.teamVersionId,
           status: 'draft',
           bindingHash: input.bindingHash,
+          bundleDigest: input.bundleDigest,
           createdBy: input.createdBy,
           createdAt: input.now,
           updatedAt: input.now,
@@ -114,23 +116,52 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     id: string,
     validation: BindingRecord['validation'],
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     const [row] = await this.db
       .update(pblTemplateTeamBindings)
       .set({ validation, updatedAt: now })
-      .where(eq(pblTemplateTeamBindings.id, id))
+      .where(and(eq(pblTemplateTeamBindings.id, id),
+        ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'draft')] : [])))
       .returning();
-    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     return mapBinding(row);
   }
 
-  async setStatus(id: string, status: PblBindingStatus, now: Date): Promise<BindingRecord> {
+  async updateTeachingBundle(
+    id: string,
+    input: UpdateTeachingBundleRecordInput,
+  ): Promise<BindingRecord> {
+    const [row] = await this.db
+      .update(pblTemplateTeamBindings)
+      .set({
+        bundleDigest: input.digest,
+        bundleDraft: input.draft as unknown as Record<string, unknown>,
+        bundlePayload: input.payload as unknown as Record<string, unknown> | null,
+        ...(input.bindingHash === undefined ? {} : { bindingHash: input.bindingHash }),
+        // A bundle change invalidates a previous validation stamp.
+        validation: { valid: false, errors: [], warnings: [], checkedAt: null },
+        status: 'draft',
+        updatedAt: input.now,
+      })
+      .where(and(
+        eq(pblTemplateTeamBindings.id, id),
+        eq(pblTemplateTeamBindings.status, 'draft'),
+        ...(input.expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, input.expectedUpdatedAt)] : []),
+      ))
+      .returning();
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Teaching Bundle changed during compilation');
+    return mapBinding(row);
+  }
+
+  async setStatus(id: string, status: PblBindingStatus, now: Date, expectedUpdatedAt?: Date): Promise<BindingRecord> {
     const [row] = await this.db
       .update(pblTemplateTeamBindings)
       .set({ status, updatedAt: now })
-      .where(eq(pblTemplateTeamBindings.id, id))
+      .where(and(eq(pblTemplateTeamBindings.id, id),
+        ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'draft')] : [])))
       .returning();
-    if (row === undefined) throw new Error(`binding not found: ${id}`);
+    if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during validation');
     return mapBinding(row);
   }
 
@@ -138,6 +169,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
     templateVersionId: string,
     bindingId: string,
     now: Date,
+    expectedUpdatedAt?: Date,
   ): Promise<BindingRecord> {
     try {
       return await withTransaction(this.db, async (tx) => {
@@ -155,9 +187,10 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         const [row] = await tx
           .update(pblTemplateTeamBindings)
           .set({ status: 'active', activatedAt: now, updatedAt: now })
-          .where(eq(pblTemplateTeamBindings.id, bindingId))
+          .where(and(eq(pblTemplateTeamBindings.id, bindingId),
+            ...(expectedUpdatedAt ? [eq(pblTemplateTeamBindings.updatedAt, expectedUpdatedAt), eq(pblTemplateTeamBindings.status, 'validated')] : [])))
           .returning();
-        if (row === undefined) throw new Error(`binding not found: ${bindingId}`);
+        if (row === undefined) throw new TemplateBindingStoreConflictError('Binding changed during activation');
         return mapBinding(row);
       });
     } catch (error) {
@@ -190,6 +223,7 @@ export class PostgresTemplateBindingStore extends TemplateBindingStore {
         bindingId: input.bindingId,
         teamVersionId: input.teamVersionId,
         bindingHash: input.bindingHash,
+        bundleDigest: input.bundleDigest,
         boundAt: input.boundAt,
         backfilled: input.backfilled,
       })
@@ -254,6 +288,9 @@ function mapBinding(row: BindingRow): BindingRecord {
     teamVersionId: row.teamVersionId,
     status: row.status as BindingRecord['status'],
     bindingHash: row.bindingHash,
+    bundleDigest: row.bundleDigest ?? null,
+    bundleDraft: row.bundleDraft as BindingRecord['bundleDraft'],
+    bundlePayload: row.bundlePayload as BindingRecord['bundlePayload'],
     validation: {
       valid: validation.valid,
       errors: [...(validation.errors ?? [])],
@@ -275,6 +312,7 @@ function mapSnapshot(row: SnapshotRow): SnapshotRecord {
     bindingId: row.bindingId,
     teamVersionId: row.teamVersionId,
     bindingHash: row.bindingHash,
+    bundleDigest: row.bundleDigest ?? null,
     boundAt: row.boundAt,
     backfilled: row.backfilled,
   };

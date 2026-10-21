@@ -1,7 +1,7 @@
 'use client';
 
 import { LogoutButton, useCurrentUser } from '@qitu/auth';
-import { BrandMark } from '@qitu/ui';
+import { Avatar, BrandMark, NavigationArtwork } from '@qitu/ui';
 import { PreferencesMenu } from '@qitu/ui/preferences';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -61,7 +61,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
     teacherApi
       .interventions()
       .then((response) => {
-        if (!cancelled) setPendingCount(response.data.totals.open);
+        if (!cancelled) setPendingCount(response.data.signalsAvailable === false ? null : response.data.totals.open);
       })
       .catch(() => {
         if (!cancelled) setPendingCount(null);
@@ -75,7 +75,6 @@ export function TeacherShell({ children }: { children: ReactNode }) {
     href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 
   const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : null;
-  const avatarInitial = user?.displayName.trim().charAt(0) || '—';
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
@@ -101,7 +100,6 @@ export function TeacherShell({ children }: { children: ReactNode }) {
 
           <nav className="qtx-nav">
             {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
               const showBadge =
                 item.badgeKey === 'openInterventions' &&
                 pendingCount !== null &&
@@ -113,7 +111,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
                   className={`qtx-nav-item${isActive(item.href) ? ' active' : ''}`}
                   onClick={() => setIsMobileOpen(false)}
                 >
-                  <Icon size={19} />
+                  <NavigationArtwork href={item.href} size={24} />
                   <span>{item.label}</span>
                   {showBadge ? <em className="qtx-nav-badge">{pendingCount}</em> : null}
                 </Link>
@@ -150,7 +148,7 @@ export function TeacherShell({ children }: { children: ReactNode }) {
             <div className="qtx-user" aria-busy={!user}>
             {user ? (
               <>
-                <span className="qtx-avatar">{avatarInitial}</span>
+                <span className="qtx-avatar" aria-hidden="true"><Avatar name={user.displayName} /></span>
                 <span>
                   <div className="qtx-user-name">{user.displayName}</div>
                   <div className="qtx-user-role">{roleLabel}</div>

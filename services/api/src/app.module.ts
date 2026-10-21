@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { VisualAssetsModule } from './modules/visual-assets/visual-assets.module';
 import { DatabaseModule } from './database';
 import { AccessModule } from './common/access/access.module';
 import { AuditModule } from './common/audit/audit.module';
@@ -33,10 +34,12 @@ import { InitializationModule } from './modules/initialization/initialization.mo
 import { ModelSettingsModule } from './modules/settings/model-config.module';
 import { TeamRuntimeModule } from './modules/team-runtime/team-runtime.module';
 import { FeishuModule } from './modules/feishu/feishu.module';
+import { CopilotModule } from './modules/admin-copilot/copilot.module';
 
 @Module({
   imports: [
     DatabaseModule,
+    VisualAssetsModule,
     AccessModule,
     AuditModule,
     IdempotencyModule,
@@ -72,6 +75,7 @@ import { FeishuModule } from './modules/feishu/feishu.module';
     ModelSettingsModule,
     TeamRuntimeModule,
     FeishuModule,
+    CopilotModule,
   ],
 })
 export class AppModule {}

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Headers,
@@ -247,6 +248,17 @@ export class TemplateGovernanceController {
         normalizeReason(request.reason),
       ),
     };
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  async delete(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('id') id: string,
+  ): Promise<{ data: { success: boolean; id: string } }> {
+    const actor = this.requireGovernanceActor(cookieHeader);
+    return { data: await this.governance.deleteTemplate(actor, id, requireIdempotencyKey(idempotencyKey)) };
   }
 
   private requireGovernanceActor(cookieHeader: string | undefined): CurrentUser {

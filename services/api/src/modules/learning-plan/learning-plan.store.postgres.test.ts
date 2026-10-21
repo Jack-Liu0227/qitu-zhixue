@@ -20,7 +20,9 @@ function adapterDatabase(): Database {
         where: () => {
           const rows = table === users ? [{ schoolId: null }] : structuredClone(tables.get(table) ?? []);
           return Object.assign(Promise.resolve(rows), {
-            orderBy: async () => rows,
+            orderBy: () => Object.assign(Promise.resolve(rows), {
+              limit: async (count: number) => rows.slice(0, count),
+            }),
             limit: async (count: number) => rows.slice(0, count),
           });
         },
@@ -36,18 +38,18 @@ it('Postgres adapter writes and reloads frozen lesson titles and guidance; legac
   const bundle: PlanBundle = {
     plan: {
       id: 'fixture-plan', studentUserId: 'fixture-student', projectId: null, interest: 'Optics', goal: 'Evidence',
-      weeks: 8, minutesPerSession: 60, templateVersion: 'fixture-16s-version', status: 'draft', version: 1,
+      lessonCount: 8, lessonMinutes: 60, minutesPerSession: 60, templateVersion: 'fixture-16s-version', status: 'draft', version: 1,
       idempotencyKey: 'fixture-plan-key', confirmedAt: null, completedAt: null, createdAt: now, updatedAt: now,
     },
-    modules: [{ id: 'fixture-module', planId: 'fixture-plan', name: 'Week 1', weekIndex: 1, objective: 'Observe', ordinal: 1 }],
+    modules: [{ id: 'fixture-module', planId: 'fixture-plan', name: 'Lesson 1', lessonIndex: 1, objective: 'Observe', ordinal: 1 }],
     objectives: [],
     sessions: [{
-      id: 'fixture-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 0,
+      id: 'fixture-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 0, lessonIndex: 1,
       title: 'Frozen optics observation lesson',
       blocks: [{ kind: 'reflect', minutes: 5, title: 'Reflection', guidance: 'Compare prediction and evidence', evidenceRequirements: ['Observation table'] }],
       theoryObjectiveIds: [], practiceObjectiveIds: [], mode: 'study',
     }, {
-      id: 'fixture-legacy-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 1,
+      id: 'fixture-legacy-session', planId: 'fixture-plan', moduleId: 'fixture-module', index: 1, lessonIndex: 2,
       blocks: [{ kind: 'theory', minutes: 60 }], theoryObjectiveIds: [], practiceObjectiveIds: [], mode: 'study',
     }],
   };
@@ -60,4 +62,37 @@ it('Postgres adapter writes and reloads frozen lesson titles and guidance; legac
   const sessions = await store.listSessions('fixture-plan');
   assert.deepEqual(sessions.map((session) => session.title), ['Frozen optics observation lesson', null]);
   assert.deepEqual(sessions[1]?.blocks, [{ kind: 'theory', minutes: 60 }]);
+});
+
+it('Postgres adapter round-trips lesson-only schedule fields without weekly placement', async () => {
+  const now = new Date('2026-10-20T00:00:00Z');
+  const store = new PostgresLearningPlanStore(adapterDatabase());
+  const bundle: PlanBundle = {
+    plan: {
+      id: 'fixture-lesson-plan', studentUserId: 'fixture-student', projectId: null, interest: 'Optics', goal: 'Evidence',
+      lessonCount: 16, lessonMinutes: 60, minutesPerSession: 60, templateVersion: 'fixture-lesson-version',
+      status: 'draft', version: 1, idempotencyKey: 'fixture-lesson-plan-key', confirmedAt: null, completedAt: null,
+      createdAt: now, updatedAt: now,
+    },
+    modules: [{
+      id: 'fixture-lesson-module', planId: 'fixture-lesson-plan', name: 'Lesson 1', lessonIndex: 1,
+      objective: 'Observe', ordinal: 1,
+    }],
+    objectives: [],
+    sessions: [{
+      id: 'fixture-lesson-session', planId: 'fixture-lesson-plan', moduleId: 'fixture-lesson-module', index: 0,
+      lessonIndex: 1, title: 'Observation', blocks: [{ kind: 'theory', minutes: 60 }],
+      theoryObjectiveIds: [], practiceObjectiveIds: [], mode: 'study',
+    }],
+  };
+
+  await store.createPlan(bundle);
+  const read = await store.findPlan('fixture-lesson-plan');
+  assert.equal(read?.lessonCount, 16);
+  assert.equal(read?.lessonMinutes, 60);
+  assert.equal((await store.findBundle('fixture-lesson-plan'))?.modules[0]?.lessonIndex, 1);
+  assert.equal((await store.findSession('fixture-lesson-plan', 'fixture-lesson-session'))?.lessonIndex, 1);
+  assert.ok(await store.findPlanByLessonSignature(
+    'fixture-student', 'Optics', 16, 60, 'fixture-lesson-version', 'fixture-lesson-plan-key',
+  ));
 });

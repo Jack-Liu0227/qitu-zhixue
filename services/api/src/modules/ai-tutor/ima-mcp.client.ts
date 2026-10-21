@@ -1,6 +1,8 @@
+import { createImaScopeGuard, type ImaKnowledgeScope } from './ima-tool-scope';
 import { Injectable } from '@nestjs/common';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
 import type { TutorAgentMcpDescriptor } from '@qitu/contracts';
+import { ImaProjectBoundary, type ImaProjectScope } from './ima-project-scope';
 
 export const IMA_MCP_SERVER_ID = 'ima-knowledge';
 export const IMA_READ_TOOLS = [
@@ -29,7 +31,14 @@ export class ImaMcpClient {
   async toolsFor(
     servers: readonly TutorAgentMcpDescriptor[],
     authorize?: (toolId: string) => Promise<boolean>,
+    scope?: ImaProjectScope | ImaKnowledgeScope,
   ): Promise<ModelRuntimeTool[]> {
+    const projectScope = scope && 'projectId' in scope ? scope : undefined;
+    const scopedKnowledge = projectScope ? { knowledgeBaseIds: async () => {
+      const current = await projectScope.refreshAllowedKnowledgeBaseIds();
+      return projectScope.knowledgeBaseIds.filter(id => current.includes(id));
+    } } : scope as ImaKnowledgeScope | undefined;
+    const guard = scopedKnowledge ? createImaScopeGuard(scopedKnowledge) : undefined;
     const binding = servers.find(
       (server) => server.serverId === IMA_MCP_SERVER_ID && server.transport === 'streamable_http',
     );
@@ -40,6 +49,7 @@ export class ImaMcpClient {
         ).filter((id): id is string => id !== null)
       : binding.toolIds;
     if (!allowedTools.length) return [];
+    const project = projectScope ? new ImaProjectBoundary(projectScope) : null;
     const endpoint = this.env.QITU_IMA_MCP_URL;
     const token = this.env.QITU_IMA_MCP_TOKEN;
     if (!endpoint || !token || token.length < 32 || /[\r\n]/.test(token))
@@ -158,13 +168,17 @@ export class ImaMcpClient {
           allowedTools.includes(tool.name) &&
           record(tool.inputSchema),
       )
-      .map((tool) => ({
+      .map((tool) => {
+        project?.assertDefinition(tool.name as string, tool.inputSchema as Record<string, unknown>);
+        return {
         name: tool.name as string,
         description: String(tool.description ?? '').slice(0, 2000),
         inputSchema: tool.inputSchema as Record<string, unknown>,
         execute: async (args, signal) => {
           if (authorize && !(await authorize(tool.name as string)))
             throw new Error('IMA_MCP_ACCESS_REVOKED');
+          const kb = project ? await project.before(tool.name as string, args) : guard ? await guard.before(tool.name as string, args) : null;
+          if (project && guard && await guard.before(tool.name as string, args) !== kb) throw new Error('IMA_PROJECT_SCOPE_DENIED');
           const result = await rpc(
             'tools/call',
             { name: tool.name, arguments: args },
@@ -179,9 +193,12 @@ export class ImaMcpClient {
                 .join('\n')
             : '';
           if (!text) throw new Error('IMA_MCP_EMPTY_RESULT');
-          return { text: text.slice(0, 48_000), isError: result.isError === true };
+          if (authorize && !(await authorize(tool.name as string))) throw new Error('IMA_MCP_ACCESS_REVOKED');
+          if (guard && result.isError) throw new Error('IMA_PROJECT_RETRIEVAL_FAILED');
+          const scoped = guard ? await guard.after(tool.name as string, kb, text) : text;
+          return { text: project ? await project.after(tool.name as string, kb, scoped, args.document_ref) : scoped.slice(0, 48_000), isError: result.isError === true };
         },
-      }));
+      }; });
   }
 }
 

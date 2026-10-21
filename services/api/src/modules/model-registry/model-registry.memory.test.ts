@@ -100,3 +100,19 @@ test('供应商启停是服务端状态，并影响 Agent 模型可用性', asyn
   assert.equal(disabled?.enabled, false);
   assert.equal(service.listAgentModelOptions().some((option) => option.providerId === 'qwen-dashscope' && option.available), false);
 });
+
+
+test('copilot default keeps its provider/model pair independently from tutor usage', async () => {
+  const service = memoryService();
+  await service.upsertProvider('qwen-dashscope', { baseUrl: 'https://dashscope.example.com' }, 'admin-1');
+  await service.bindUsage('tutor.chat', { providerId: 'qwen-dashscope', modelId: 'qwen-plus' }, 'admin-1');
+  assert.deepEqual(service.getUsages().bindings.find(row => row.usageId === 'admin.copilot')?.resolved,
+    { providerId: 'qwen-dashscope', modelId: 'qwen-plus' });
+  await service.bindUsage('admin.copilot', { providerId: 'qwen-dashscope', modelId: 'qwen-max' }, 'admin-1');
+  assert.deepEqual(service.getUsages().bindings.find(row => row.usageId === 'admin.copilot')?.resolved,
+    { providerId: 'qwen-dashscope', modelId: 'qwen-max' });
+  assert.equal(service.getUsages().bindings.find(row => row.usageId === 'tutor.chat')?.modelId, 'qwen-plus');
+  await service.createManualModel('qwen-dashscope', { modelId: 'fixture-embedding', displayName: 'Fixture embedding', input: ['text'], output: ['embedding'] }, 'admin-1', 'fixture-embedding-create');
+  await assert.rejects(() => service.bindUsage('admin.copilot', { providerId: 'qwen-dashscope', modelId: 'fixture-embedding' }, 'admin-1'),
+    (error: unknown) => error instanceof BadRequestException);
+});

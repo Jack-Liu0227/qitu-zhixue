@@ -111,6 +111,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
   const learningStore = {
     findProject: async () => ({ ...project }),
     listProjectsByStudent: async () => [],
+    listPlansByStudent: async () => [],
   } as unknown as LearningPlanStore;
 
   const templateBindings = {
@@ -120,6 +121,7 @@ test('快照命中：团队来自冻结 teamVersionId，退役/重新激活绑�
       bindingId: 'binding-frozen',
       teamVersionId: 'team-ver-frozen',
       bindingHash: 'hash-frozen',
+      bundleDigest: null,
       boundAt: '2026-01-01T00:00:00.000Z',
       backfilled: false,
     }),
@@ -174,6 +176,44 @@ test('missing frozen snapshot fails visibly without a legacy team fallback', asy
   assert.equal(legacyReads, 0);
 });
 
+test('missing binding service fails closed without consulting the mutable roster', async () => {
+  let legacyReads = 0;
+  const tutor = newTutor({
+    learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
+    database: fakeDb({}),
+    platformRegistry: {
+      listAssistants: async () => [],
+      listTeams: async () => { legacyReads += 1; return []; },
+      getTeamForTemplateVersion: async () => { legacyReads += 1; return null; },
+    } as unknown as PlatformRegistryService,
+  });
+  await assert.rejects(tutor.getProjectContext(project.id, 'owner'), (error: unknown) => {
+    assert.ok(error instanceof ConflictException);
+    assert.equal((error.getResponse() as { code: string }).code, 'PROJECT_BINDING_RECONFIRM_REQUIRED');
+    return true;
+  });
+  assert.equal(legacyReads, 0);
+});
+
+test('a required bundle rejected by the binding owner fails closed before mutable team lookup', async () => {
+  const tutor = newTutor({
+    learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
+    templateBindings: {
+      findFrozenSnapshotForProject: async () => null,
+    } as unknown as TemplateBindingService,
+    database: fakeDb({ frozenTeam: frozenTeamRow() }),
+    platformRegistry: {
+      listAssistants: async () => [],
+      listTeams: async () => { throw new Error('mutable roster must not be read'); },
+    } as unknown as PlatformRegistryService,
+  });
+  await assert.rejects(tutor.getProjectContext(project.id, 'owner'), (error: unknown) => {
+    assert.ok(error instanceof ConflictException);
+    assert.equal((error.getResponse() as { code: string }).code, 'PROJECT_BINDING_RECONFIRM_REQUIRED');
+    return true;
+  });
+});
+
 const opticsMembers = [
   { assistantId: 'optics-leader', roleLabel: '物理总导师', phaseScope: 'exploration' },
   { assistantId: 'optics-concept-coach', roleLabel: '概念教练', phaseScope: 'concept_mastery' },
@@ -184,7 +224,12 @@ const opticsMembers = [
 function opticsTutor(options: { disabled?: string; missing?: string; runtimeStatus?: 'running' | 'failed'; runtimeError?: boolean; teamEnabled?: boolean } = {}) {
   const tutor = newTutor({
     learningStore: { findProject: async () => ({ ...project }) } as unknown as LearningPlanStore,
-    templateBindings: { findFrozenSnapshotForProject: async () => ({ teamVersionId: 'tv-optics-1' }) } as unknown as TemplateBindingService,
+    templateBindings: { findFrozenSnapshotForProject: async () => ({
+      projectId: project.id, templateVersionId: project.templateVersionId,
+      bindingId: 'binding-optics', teamVersionId: 'tv-optics-1',
+      bindingHash: 'hash-optics', bundleDigest: 'bundle-optics',
+      boundAt: new Date().toISOString(), backfilled: false,
+    }) } as unknown as TemplateBindingService,
     database: fakeDb({ frozenTeam: frozenTeamRow({
       leaderAssistantId: 'optics-concept-coach',
       members: opticsMembers as unknown as AdminTeamConfig['members'],

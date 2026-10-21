@@ -1,5 +1,7 @@
 'use client';
 
+import { VisualAsset } from '@qitu/ui';
+
 import { useState } from 'react';
 
 export interface PluginItem {
@@ -171,7 +173,7 @@ export default function PluginsSettingsPage() {
               <div key={plugin.id} className="admin-knowledge-item-card">
                 <div className="admin-knowledge-card-top">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>🧩</span>
+                    <span style={{ fontSize: '20px' }}><VisualAsset assetId="capability-skills-v1" size={24} /></span>
                     <strong className="admin-knowledge-card-title">{plugin.name}</strong>
                     <span
                       style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '4px', background: '#fff7ed', color: '#c2410c', fontWeight: 600 }}

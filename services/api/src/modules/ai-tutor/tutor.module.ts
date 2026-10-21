@@ -20,9 +20,15 @@ import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { TemplatesModule } from '../templates/templates.module';
 import { MasteryModule } from '../mastery/mastery.module';
 import { PlanAdjustmentModule } from '../plan-adjustment/plan-adjustment.module';
+import { TeacherModule } from '../teacher/teacher.module';
 import { InMemoryTutorQuizStore, TutorQuizStore } from './tutor-quiz.store';
 import { PostgresTutorQuizStore } from './tutor-quiz.store.postgres';
 import { TutorQuizService } from './tutor-quiz.service';
+import { TutorExperimentService } from './tutor-experiment.service';
+import { WorksModule } from '../works/works.module';
+import { TutorTeamHistoryService } from './tutor-team-history.service';
+import { TutorLessonAssessmentService } from './tutor-lesson-assessment.service';
+import { TutorLessonAssessmentController } from './tutor-lesson-assessment.controller';
 
 /**
  * AI 搭档模块。
@@ -40,13 +46,16 @@ import { TutorQuizService } from './tutor-quiz.service';
  * 这里直接注入其抽象即可。
  */
 @Module({
-  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule],
-  controllers: [TutorController],
+  imports: [AuthModule, ModelRegistryModule, PlatformDataModule, ProjectsModule, RemindersModule, QituSDKModule, PlatformRegistryModule, TeamRuntimeModule, LearningPlanModule, KnowledgeModule, TemplatesModule, MasteryModule, PlanAdjustmentModule, TeacherModule, WorksModule],
+  controllers: [TutorController, TutorLessonAssessmentController],
   providers: [
     { provide: ImaMcpClient, useFactory: () => new ImaMcpClient() },
     TutorService,
     TutorWorkspaceService,
     TutorQuizService,
+    TutorExperimentService,
+    TutorTeamHistoryService,
+    TutorLessonAssessmentService,
     {
       provide: TutorQuizStore,
       inject: [DATABASE_TOKEN, DATA_MODE_TOKEN],

@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "nest start --watch",
     "prebuild": "pnpm --filter @qitu/database build && pnpm --filter @qitu/agent-memory build",
-    "build": "nest build",
+    "build": "nest build --path tsconfig.build.json",
     "lint": "node ../../tooling/lint-baseline.mjs",
     "pretypecheck": "pnpm --filter @qitu/database build && pnpm --filter @qitu/agent-memory build",
     "typecheck": "tsc --noEmit",
     "test": "pnpm --filter @qitu/database build && pnpm --filter @qitu/infra build && pnpm --filter @qitu/agent-memory build && tsc -p tsconfig.json --outDir .tmp/test-dist && node --test \".tmp/test-dist/**/*.test.js\""
   },
   "dependencies": {
+    "@larksuiteoapi/node-sdk": "1.76.0",
     "@qitu/agent-memory": "workspace:*",
     "@qitu/contracts": "workspace:*",
     "@qitu/database": "workspace:*",
@@ -22,6 +23,7 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "drizzle-orm": "^0.36.4",
+    "express": "^5.2.1",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
@@ -30,6 +32,7 @@
     "@nestjs/cli": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
     "typescript": "^5.8.3"
   }
 }

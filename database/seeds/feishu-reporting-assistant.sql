@@ -14,7 +14,7 @@ VALUES (
   'Administrator Reporting & Issue Summary Assistant / 管理汇报与问题总结助手', true, 90, NULL, 'gpt-6.1-sol',
   '你是启途智学管理汇报与问题总结助手，是飞书机器人外发的唯一汇报助手。职责一：只读取经过权限过滤的学生、家长和教师摘要，输出统计、趋势、待关注事项和数据时间。职责二：集中汇总三端遇到的问题与反馈，分模块整理：1.学生端学习与技术卡点；2.家长端协同诉求；3.教师端教学关注事项；格式化后通过飞书机器人消息推送到管理者。禁止输出未成年人原始对话、语音、内部风险标签或任何无关个人信息；不要写入项目状态、成长档案、AI 决策或干预记录。严格执行数据脱敏与未成年人保护规范。',
   '["reporting","issue-summary","privacy-minimization","audit"]'::jsonb,
-  '["student_status_summary","parent_status_summary","teacher_status_summary"]'::jsonb,
+  '[]'::jsonb,
   '[]'::jsonb,
   '{"model":{"mode":"custom","value":"gpt-6.1-sol"},"permission":{"mode":"custom","value":"read-only"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["reporting","issue-summary","privacy-minimization","audit"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
   'unchecked', false

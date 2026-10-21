@@ -21,13 +21,17 @@ export function ChatThread({
   onRetry,
   onReconnect,
   onSelectOption,
+  onSubmitQuestionAnswer,
   onOneClickCreateProject,
   onRequestQuizExplanation,
   onAnswerQuiz,
+  onExperimentAction,
+  onFeedback,
   projectId,
   currentAssistantName,
   isConfirmingProject = false,
   composer,
+  learningActivity,
 }: {
   sessionId: string | null;
   turns: TutorTurn[];
@@ -40,13 +44,17 @@ export function ChatThread({
   onRetry: () => void;
   onReconnect: () => void;
   onSelectOption: (label: string, text?: string) => void;
+  onSubmitQuestionAnswer?: (answer: string) => void;
   onOneClickCreateProject?: (goal: string, interest: string, templateVersionId: string) => void;
   onRequestQuizExplanation?: (quizId: string) => Promise<void>;
   onAnswerQuiz?: (quizId: string, selectedKeys: string[], idempotencyKey: string) => Promise<import('@qitu/contracts').AnswerInteractiveQuizResponse>;
+  onExperimentAction?: (experimentId: string, action: 'submit_prediction' | 'run' | 'record_observation', payload: unknown, idempotencyKey: string) => void | Promise<boolean | import('@qitu/contracts').TutorExperimentActionResponse>;
+  onFeedback?: (turnId: string, kind: import('@qitu/contracts').TutorFeedbackKind, idempotencyKey: string) => Promise<void>;
   projectId?: string | null;
   currentAssistantName?: string;
   isConfirmingProject?: boolean;
   composer: ReactNode;
+  learningActivity?: ReactNode;
 }) {
   const hasTurns = turns.length > 0;
   const newestAssistant = lastAssistantTurn(turns);
@@ -128,15 +136,19 @@ export function ChatThread({
             turn={turn}
             currentAssistantName={currentAssistantName}
             onSelectOption={onSelectOption}
+            onSubmitQuestionAnswer={onSubmitQuestionAnswer}
             onOneClickCreateProject={onOneClickCreateProject}
             onRequestQuizExplanation={onRequestQuizExplanation}
             onAnswerQuiz={onAnswerQuiz}
+            onExperimentAction={onExperimentAction}
+            onFeedback={onFeedback}
             projectId={projectId}
             disabled={disabled || offline}
             streaming={turn.turnId === streamingTurnId}
           />
         ))}
 
+        {learningActivity}
         {showIndicator ? <TypingIndicator label={runningToolLabel ?? 'AI搭档正在思考'} /> : null}
 
         {status === 'error' && hasTurns ? (

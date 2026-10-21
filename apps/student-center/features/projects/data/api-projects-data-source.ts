@@ -1,9 +1,9 @@
-import type { TemplateStage } from '@qitu/contracts';
+import type { LearningPlanView, TemplateStage } from '@qitu/contracts';
 import type { ProjectsDataSource } from './data-source';
 import type {
   MentorNoteView, NextStep, PresignRequest, PresignResponse, ProjectDetail, ProjectListItem,
   ProjectStageView, ProjectTab, ReflectionInput, TaskSubmission, TaskView,
-  TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
+  LessonScheduleView, TheoryAnswer, TheoryCheckResult, TheoryMaterial, TheoryQuestion,
 } from '../types';
 import { ProjectsDataError } from './data-source';
 
@@ -12,7 +12,6 @@ type SessionIndex = { id: string; theoryObjectiveIds: string[]; practiceObjectiv
 /** API adapter for the governed project and learning-plan contracts. */
 export class ApiProjectsDataSource implements ProjectsDataSource {
   private readonly planCache = new Map<string, { planId: string; sessions: SessionIndex[] }>();
-  private readonly questionCache = new Map<string, { sessionId: string; options: string[] }>();
 
   async listProjects(query: { tab: ProjectTab; q?: string }): Promise<ProjectListItem[]> {
     const payload = await this.request<{ data: ProjectListItem[] }>('/api/v1/projects');
@@ -48,57 +47,43 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
     return payload.data.stages ?? [];
   }
 
+  async getLessonSchedule(projectId: string): Promise<LessonScheduleView | null> {
+    const project = await this.getProject(projectId);
+    if (!project?.learningPlanId) return null;
+    const plan = (await this.request<{ data: LearningPlanView }>(`/api/v1/learning-plans/${encodeURIComponent(project.learningPlanId)}`)).data;
+    return {
+      lessonCount: plan.lessonCount,
+      lessonMinutes: plan.lessonMinutes,
+      lessons: plan.sessions
+        .slice()
+        .sort((left, right) => left.lessonIndex - right.lessonIndex)
+        .map(({ lessonIndex, title, blocks }) => ({ lessonIndex, title, blocks })),
+    };
+  }
+
   async getTheoryMaterial(projectId: string): Promise<TheoryMaterial | null> {
     const plan = await this.loadPlan(projectId);
-    const sections = plan.modules.map((module) => ({ heading: module.name, body: module.objectives.map((objective) => `${objective.name}: ${objective.objective}`).join('\n') }));
+    const sections = plan.modules.map((module) => ({
+      heading: module.name,
+      body: module.objectives.map((objective) => `${objective.name}: ${objective.objective}`).join('\n'),
+    }));
     return sections.length > 0 ? { title: plan.goal || plan.interest, sections } : null;
   }
 
-  async getTheoryQuestions(projectId: string): Promise<TheoryQuestion[]> {
-    const plan = await this.loadPlan(projectId);
-    const questions: TheoryQuestion[] = [];
-    for (const session of plan.sessions.filter((item) => item.theoryObjectiveIds.length > 0)) {
-      const next = await this.request<{ data: { question: { questionId: string; prompt: string; options: Array<{ id: string; label: string; body: string }> } | null } }>(`/api/v1/learning-plans/${encodeURIComponent(plan.planId)}/sessions/${encodeURIComponent(session.id)}/next-step`);
-      const question = next.data.question;
-      if (!question || this.questionCache.has(question.questionId)) continue;
-      // The grading owner compares the answer against the option body; ids
-      // are transport metadata and must not be sent as the learner answer.
-      const options = question.options.map((option) => option.body || option.label || option.id);
-      this.questionCache.set(question.questionId, { sessionId: session.id, options });
-      questions.push({ id: question.questionId, prompt: question.prompt, options, allowFreeText: options.length === 0 });
-    }
-    return questions;
+  async getTheoryQuestions(_projectId: string): Promise<TheoryQuestion[]> {
+    // A formal question belongs to one current Tutor session and objective.
+    // Reading a project page must not allocate questions across every lesson.
+    return [];
   }
 
   async getMentorNote(_projectId: string): Promise<MentorNoteView | null> { return null; }
 
-  async submitTheoryCheck(projectId: string, answers: TheoryAnswer[], idempotencyKey: string): Promise<TheoryCheckResult> {
-    const plan = await this.loadPlan(projectId);
-    let passed = true;
-    let theoryMastered = false;
-    for (const answer of answers) {
-      const metadata = this.questionCache.get(answer.questionId);
-      if (!metadata) { passed = false; continue; }
-      const option = answer.answer?.trim() || metadata.options[answer.optionIndex];
-      if (!option) { passed = false; continue; }
-      const response = await this.request<{ data: { isCorrect: boolean; theoryMastered: boolean } }>(`/api/v1/learning-plans/${encodeURIComponent(plan.planId)}/sessions/${encodeURIComponent(metadata.sessionId)}/answers`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': `${idempotencyKey}:${answer.questionId}` },
-        body: JSON.stringify({ questionId: answer.questionId, answer: option }),
-      });
-      passed = passed && response.data.isCorrect;
-      theoryMastered = response.data.theoryMastered;
-    }
-    return { passed, theoryMastered, nextStage: theoryMastered ? 'practice_ready' : undefined };
+  async submitTheoryCheck(_projectId: string, _answers: TheoryAnswer[], _idempotencyKey: string): Promise<TheoryCheckResult> {
+    throw unsupported('Formal assessment is available in the current project Tutor session.');
   }
 
-  async completeTask(taskId: string, idempotencyKey: string): Promise<{ taskId: string; status: ProjectDetail['status'] }> {
-    const mapping = this.findTask(taskId);
-    if (!mapping) throw new ProjectsDataError('Task context expired; refresh the project', 409, 'TASK_CONTEXT_EXPIRED');
-    const response = await this.request<{ data: { stage: ProjectDetail['status'] } }>(`/api/v1/projects/${encodeURIComponent(mapping.projectId)}/advance`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey }, body: '{}',
-    });
-    return { taskId, status: response.data.stage };
+  async completeTask(_taskId: string, _idempotencyKey: string): Promise<{ taskId: string; status: ProjectDetail['status'] }> {
+    throw unsupported('请在当前项目 AI 搭档中提交课时证据并申请完成课时。');
   }
 
   async submitTask(taskId: string, payload: TaskSubmission, idempotencyKey: string): Promise<{ submissionId: string }> {
@@ -174,9 +159,9 @@ export class ApiProjectsDataSource implements ProjectsDataSource {
 }
 
 function matchesTab(project: ProjectListItem, tab: ProjectTab): boolean {
-  if (tab === 'done') return project.status === 'completed';
-  if (tab === 'draft') return project.status === 'exploration' || project.status === 'intent_confirmed';
-  return project.status !== 'completed' && project.status !== 'exploration' && project.status !== 'intent_confirmed';
+  if (tab === 'done') return project.status === 'completed' || project.status === 'published';
+  if (tab === 'draft') return project.status === 'exploration';
+  return !['completed', 'published', 'exploration'].includes(project.status);
 }
 
 function unsupported(message: string): ProjectsDataError { return new ProjectsDataError(message, 501, 'SERVER_CONTRACT_REQUIRED'); }

@@ -1,5 +1,11 @@
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import {
+  GROWTH_PROJECTION_CONTRACT_VERSION,
+  normalizeGrowthEvidenceRefs,
+  type GrowthProjectionWorkerInput,
+  type GrowthProjectionType,
+} from '@qitu/contracts';
+import {
   agentConfigs,
   agentMailboxes,
   agentProjectionCandidates,
@@ -11,6 +17,8 @@ import {
   type Database,
 } from '@qitu/database';
 import { randomUUID } from 'node:crypto';
+import { teamTaskAuthorization } from './team-runtime-route';
+import { resolveProjectionAssistant } from './team-runtime-projection-settings';
 
 export interface TeamEventPayload {
   eventId: string;
@@ -27,12 +35,12 @@ export interface TeamProjectionJob {
   leaseOwner: string;
 }
 
-const PROJECTION_TARGETS: Readonly<Record<string, { agentId: string; taskType: string; projectionType: string }>> = {
-  'tutor.turn.completed': { agentId: 'learner-profile', taskType: 'profile.project', projectionType: 'learner_profile' },
-  'project.stage.completed': { agentId: 'growth-analyst', taskType: 'growth.project', projectionType: 'growth_trajectory' },
-  'artifact.published': { agentId: 'growth-analyst', taskType: 'growth.project', projectionType: 'growth_trajectory' },
-  'reflection.created': { agentId: 'growth-analyst', taskType: 'growth.project', projectionType: 'growth_trajectory' },
-  'mastery.assessed': { agentId: 'growth-analyst', taskType: 'growth.project', projectionType: 'growth_trajectory' },
+const PROJECTION_TARGETS: Readonly<Record<string, { taskType: string; projectionType: GrowthProjectionType }>> = {
+  'tutor.turn.completed': { taskType: 'profile.project', projectionType: 'learner_profile' },
+  'project.stage.completed': { taskType: 'growth.project', projectionType: 'growth_trajectory' },
+  'artifact.published': { taskType: 'growth.project', projectionType: 'growth_trajectory' },
+  'reflection.created': { taskType: 'growth.project', projectionType: 'growth_trajectory' },
+  'mastery.assessed': { taskType: 'growth.project', projectionType: 'growth_trajectory' },
 };
 
 /**
@@ -69,13 +77,25 @@ export class PostgresTeamProjectionSource {
   }
 
   async project(job: TeamProjectionJob): Promise<number> {
-    const target = PROJECTION_TARGETS[job.event.topic];
-    if (!target) return 0;
+    const purpose = PROJECTION_TARGETS[job.event.topic];
+    if (!purpose) return 0;
+    const purposes = job.event.topic === 'tutor.turn.completed'
+      ? [purpose, { taskType: 'growth.project', projectionType: 'growth_trajectory' as const }]
+      : [purpose];
+    let count = 0;
+    for (const item of purposes) count += await this.projectPurpose(job, item);
+    return count;
+  }
+
+  private async projectPurpose(job: TeamProjectionJob, purpose: { taskType: string; projectionType: GrowthProjectionType }): Promise<number> {
+    const binding = await resolveProjectionAssistant(this.db, purpose.projectionType);
+    const target = { ...purpose, agentId: binding.agentId };
     const payload = job.event.payload;
     const studentUserId = asString(payload.studentUserId);
     const projectId = asString(payload.projectId);
-    const sourceAgentId = await this.resolveSourceAgent(job.event.runId);
-    if (!sourceAgentId) return 0;
+    if (studentUserId === null) throw new Error('PROJECTION_OWNER_INVALID');
+    const sourceAgentId = await this.resolveSourceAgent(job.event);
+    if (!sourceAgentId) throw new Error('PROJECTION_SOURCE_AGENT_UNAVAILABLE');
     const [agent, route] = await Promise.all([
       this.db.select({ id: agentConfigs.id, enabled: agentConfigs.enabled }).from(agentConfigs).where(eq(agentConfigs.id, target.agentId)).limit(1),
       this.db.select({ id: agentRoutes.id }).from(agentRoutes).where(and(
@@ -86,9 +106,12 @@ export class PostgresTeamProjectionSource {
         eq(agentRoutes.enabled, true),
       )).limit(1),
     ]);
-    if (!agent[0]?.enabled || !route[0]) return 0;
+    if (!agent[0]?.enabled || !route[0]) throw new Error('PROJECTION_EVENT_ROUTE_UNAVAILABLE');
     const runId = job.event.runId ?? await this.ensureRun(job.event, sourceAgentId, studentUserId, projectId);
     const taskKey = `team-projection-task:${job.event.eventId}:${target.projectionType}`;
+    const workerInput = buildWorkerInput(job.event, studentUserId, projectId);
+    if (workerInput.evidenceRefs.length === 0) return 0;
+    const authorization = teamTaskAuthorization(route[0].id, 'event', sourceAgentId, target.agentId, target.taskType);
     const taskId = randomUUID();
     const now = new Date();
     await this.db.transaction(async (tx) => {
@@ -98,7 +121,7 @@ export class PostgresTeamProjectionSource {
         agentId: target.agentId,
         taskType: target.taskType,
         status: 'queued',
-        input: { eventId: job.event.eventId, topic: job.event.topic, payload, projectionType: target.projectionType },
+        input: { ...workerInput, projectionType: target.projectionType, authorization, purposeRevision: binding.revision },
         idempotencyKey: taskKey,
         maxAttempts: 3,
         createdAt: now,
@@ -114,7 +137,7 @@ export class PostgresTeamProjectionSource {
         senderAgentId: sourceAgentId,
         recipientAgentId: target.agentId,
         messageType: 'projection.request',
-        payload: { eventId: job.event.eventId, topic: job.event.topic, payload, projectionType: target.projectionType },
+        payload: { ...workerInput, projectionType: target.projectionType, authorization, purposeRevision: binding.revision },
         status: 'queued',
         correlationId: task.id,
         idempotencyKey: `${taskKey}:message`,
@@ -132,7 +155,16 @@ export class PostgresTeamProjectionSource {
         projectionType: target.projectionType,
         studentUserId,
         projectId,
-        payload: { sourceEventId: job.event.eventId, sourceTopic: job.event.topic, evidence: payload },
+        payload: {
+          contractVersion: GROWTH_PROJECTION_CONTRACT_VERSION,
+          sourceEventId: workerInput.sourceEventId,
+          sourceTopic: workerInput.sourceTopic,
+          studentUserId: workerInput.studentUserId,
+          projectId: workerInput.projectId,
+          evidenceRefs: workerInput.evidenceRefs,
+          sourceMetadata: workerInput.sourceMetadata,
+          purposeRevision: binding.revision,
+        },
         status: 'proposed',
         idempotencyKey: `team-projection-candidate:${job.event.eventId}:${target.projectionType}`,
         createdAt: now,
@@ -151,12 +183,19 @@ export class PostgresTeamProjectionSource {
     await this.db.update(outbox).set({ status: terminal ? 'failed' : 'pending', lastError: code, leaseOwner: null, leaseUntil: null }).where(and(eq(outbox.id, job.outboxId), eq(outbox.leaseOwner, job.leaseOwner)));
   }
 
-  private async resolveSourceAgent(runId: string | null | undefined): Promise<string | null> {
+  private async resolveSourceAgent(event: TeamEventPayload): Promise<string | null> {
+    const runId = event.runId;
     if (runId) {
-      const [run] = await this.db.select({ leaderAgentId: agentTeamRuns.leaderAgentId }).from(agentTeamRuns).where(eq(agentTeamRuns.id, runId)).limit(1);
-      if (run) return run.leaderAgentId;
+      const [run] = await this.db.select().from(agentTeamRuns).where(eq(agentTeamRuns.id, runId)).limit(1);
+      if (!run || run.studentUserId !== asString(event.payload.studentUserId) || run.projectId !== asString(event.payload.projectId)) {
+        throw new Error('PROJECTION_OWNER_INVALID');
+      }
+      if (typeof event.payload.sourceAgentId === 'string' && event.payload.sourceAgentId !== run.leaderAgentId) throw new Error('PROJECTION_SOURCE_AGENT_INVALID');
+      return run.leaderAgentId;
     }
-    const [leader] = await this.db.select({ id: agentConfigs.id }).from(agentConfigs).where(eq(agentConfigs.id, 'qitu-learning-partner')).limit(1);
+    const sourceAgentId = asString(event.payload.sourceAgentId);
+    if (!sourceAgentId) throw new Error('PROJECTION_SOURCE_AGENT_REQUIRED');
+    const [leader] = await this.db.select({ id: agentConfigs.id }).from(agentConfigs).where(and(eq(agentConfigs.id, sourceAgentId), eq(agentConfigs.enabled, true))).limit(1);
     return leader?.id ?? null;
   }
 
@@ -187,4 +226,35 @@ function parsePayload(value: unknown): TeamEventPayload | null {
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Build the only payload that projection agents may receive. No event body or transcript crosses this boundary. */
+export function buildWorkerInput(
+  event: TeamEventPayload,
+  studentUserId: string,
+  projectId: string | null,
+): GrowthProjectionWorkerInput {
+  const payload = event.payload;
+  const refs = normalizeGrowthEvidenceRefs([
+    ...(Array.isArray(payload.evidenceRefs) ? payload.evidenceRefs : []),
+    ...(typeof payload.evidenceRef === 'string' ? [payload.evidenceRef] : []),
+  ]);
+  const sourceMetadata: GrowthProjectionWorkerInput['sourceMetadata'] = {};
+  for (const key of ['sessionId', 'stage', 'assistantId', 'actionId', 'studentTurnId', 'assistantTurnId'] as const) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.length > 0 && value.length <= 180) sourceMetadata[key] = value;
+  }
+  for (const key of ['assistantSeq', 'lessonIndex'] as const) {
+    const value = payload[key];
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 0) sourceMetadata[key] = value;
+  }
+  return {
+    contractVersion: GROWTH_PROJECTION_CONTRACT_VERSION,
+    studentUserId,
+    projectId,
+    sourceEventId: event.eventId,
+    sourceTopic: event.topic,
+    evidenceRefs: refs,
+    sourceMetadata,
+  };
 }

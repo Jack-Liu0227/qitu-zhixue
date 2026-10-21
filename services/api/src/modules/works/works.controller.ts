@@ -43,7 +43,7 @@ const SERVER_OWNED_FIELDS = [
   'audit',
 ] as const;
 
-const VERSION_FIELDS = ['note', 'objectKey', 'thumbnailRef', 'capturedAt'] as const;
+const VERSION_FIELDS = ['note', 'inlineText', 'objectKey', 'thumbnailRef', 'capturedAt'] as const;
 
 const ARTIFACT_STATUSES = new Set<ArtifactStatus>([
   'draft',

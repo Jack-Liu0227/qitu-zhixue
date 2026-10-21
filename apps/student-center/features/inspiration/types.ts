@@ -13,6 +13,8 @@ export type InspirationDifficulty = '入门' | '进阶' | '挑战';
 
 /** 一条推荐项目模板（只读展示；点击开始后创建对应项目并进入团队）。 */
 export interface InspirationTemplate {
+  iconAssetId?: string | null;
+  coverAssetId?: string | null;
   id: string;
   title: string;
   summary: string;
@@ -21,7 +23,8 @@ export interface InspirationTemplate {
   /** 服务端未提供可识别的难度时为 null：不显示，也不编造。 */
   difficulty: InspirationDifficulty | null;
   /** 由服务端 estimatedDurationMinutes 换算；无数据时为 null（不显示）。 */
-  durationWeeks: number | null;
+  lessonCount: number | null;
+  lessonMinutes: 60 | 120 | null;
   /** The published template version bound to recommended explorations; null means unavailable. */
   templateVersionId: string | null;
   /** 阶段明细逐字来自模板数据；组件只负责渲染。 */

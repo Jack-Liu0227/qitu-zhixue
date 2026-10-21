@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -16,7 +17,7 @@ import { projects } from './projects';
 import { projectTemplateVersions } from './project-templates';
 
 /**
- * Learning plans: 「兴趣 → 4/8 周学习计划」的服务端真源
+ * Learning plans: 「兴趣 → 按课时排程的学习计划」服务端真源
  * (docs/student/learning-plan.md §3 / §9).
  *
  * 硬规则衔接：
@@ -39,8 +40,8 @@ export const learningPlans = pgTable(
     /** 触发计划的兴趣（自由文本，学生原话）。 */
     interest: text('interest').notNull(),
     goal: text('goal').notNull(),
-    /** 4 或 8；由服务端校验。 */
-    weeks: integer('weeks').notNull(),
+    lessonCount: integer('lesson_count').notNull(),
+    lessonMinutes: integer('lesson_minutes').notNull(),
     minutesPerSession: integer('minutes_per_session').notNull().default(60),
     /** 冻结引用；确认意图后写入，之后不可漂移。 */
     templateVersionId: text('template_version_id'),
@@ -53,6 +54,10 @@ export const learningPlans = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    scheduleShapeCheck: check(
+      'learning_plans_schedule_shape_check',
+      sql`${table.lessonCount} BETWEEN 1 AND 128 AND ${table.lessonMinutes} IN (60, 120) AND ${table.minutesPerSession} = ${table.lessonMinutes}`,
+    ),
     idempotencyUniqueIdx: uniqueIndex('learning_plans_idempotency_unique_idx').on(
       table.idempotencyKey,
     ),
@@ -71,9 +76,9 @@ export const learningPlans = pgTable(
 );
 
 /**
- * Plan modules: 一周一个（或 4 周计划里一周两个）。
+ * Plan modules: 每个课时一个。
  *
- * `ordinal` 在计划内唯一，保证「第几周 / 第几个模块」稳定。
+ * `ordinal` 在计划内唯一，保证课时模块顺序稳定。
  */
 export const learningModules = pgTable(
   'learning_modules',
@@ -83,12 +88,16 @@ export const learningModules = pgTable(
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    weekIndex: integer('week_index').notNull(),
+    lessonIndex: integer('lesson_index').notNull(),
     objective: text('objective').notNull().default(''),
     ordinal: integer('ordinal').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
+    placementCheck: check(
+      'learning_modules_placement_check',
+      sql`${table.lessonIndex} > 0`,
+    ),
     planOrdinalUniqueIdx: uniqueIndex('learning_modules_plan_ordinal_unique_idx').on(
       table.planId,
       table.ordinal,
@@ -145,6 +154,7 @@ export const learningSessions = pgTable(
       .notNull()
       .references(() => learningModules.id, { onDelete: 'cascade' }),
     index: integer('index').notNull(),
+    lessonIndex: integer('lesson_index').notNull(),
     /** Frozen at generation; historical rows keep their legacy display title. */
     title: text('title'),
     /** `{ kind, minutes }[]`；服务端校验合计 = 每节时长。 */
@@ -159,7 +169,6 @@ export const learningSessions = pgTable(
       .default(sql`'[]'::jsonb`),
     /** `'outline' | 'study' | 'review'`。 */
     mode: text('mode').notNull().default('study'),
-    scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
@@ -364,3 +373,21 @@ export const masteryAttempts = pgTable(
     ),
   }),
 );
+
+/** Immutable completion receipts. A plan revision never inherits another revision's completion. */
+export const learningSessionProgress = pgTable('learning_session_progress', {
+  id: text('id').primaryKey(),
+  studentUserId: text('student_user_id').notNull().references(() => users.id),
+  projectId: text('project_id').notNull().references(() => projects.id),
+  planId: text('plan_id').notNull().references(() => learningPlans.id, { onDelete: 'cascade' }),
+  planRevision: integer('plan_revision').notNull(),
+  learningSessionId: text('learning_session_id').notNull().references(() => learningSessions.id, { onDelete: 'cascade' }),
+  evidenceRefs: jsonb('evidence_refs').$type<string[]>().notNull(),
+  idempotencyKey: text('idempotency_key').notNull(),
+  requestHash: text('request_hash').notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }).notNull(),
+}, (table) => ({
+  sessionRevisionUnique: uniqueIndex('learning_session_progress_session_revision_unique').on(table.planId, table.planRevision, table.learningSessionId),
+  keyUnique: uniqueIndex('learning_session_progress_key_unique').on(table.idempotencyKey),
+  revisionPositive: check('learning_session_progress_revision_positive', sql`${table.planRevision} > 0`),
+}));

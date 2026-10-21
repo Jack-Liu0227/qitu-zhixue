@@ -154,6 +154,7 @@ function cloneProject(record: ProjectRecord): ProjectRecord {
 export class InMemoryExplorationStore extends ExplorationStore {
   private readonly explorations = new Map<string, ExplorationRecord>();
   private readonly projects = new Map<string, ProjectRecord>();
+  private readonly confirmationLocks = new Map<string, Promise<void>>();
 
   async createExploration(input: CreateExplorationInput): Promise<ExplorationRecord> {
     const record: ExplorationRecord = {
@@ -203,6 +204,20 @@ export class InMemoryExplorationStore extends ExplorationStore {
   }
 
   async persistConfirmation(input: PersistConfirmationInput): Promise<ProjectRecord> {
+    const previous = this.confirmationLocks.get(input.explorationId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => { release = resolve; });
+    this.confirmationLocks.set(input.explorationId, current);
+    await previous;
+    try {
+      return await this.persistConfirmationLocked(input);
+    } finally {
+      release();
+      if (this.confirmationLocks.get(input.explorationId) === current) this.confirmationLocks.delete(input.explorationId);
+    }
+  }
+
+  private async persistConfirmationLocked(input: PersistConfirmationInput): Promise<ProjectRecord> {
     const record = this.explorations.get(input.explorationId);
     if (record === undefined) throw new Error(`exploration not found: ${input.explorationId}`);
     if (this.findProjectByExplorationSync(input.explorationId) !== null) {
@@ -213,9 +228,6 @@ export class InMemoryExplorationStore extends ExplorationStore {
     }
     // Run the binding precondition before publishing in-memory state, matching transaction rollback.
     await input.commit?.(input.project.id);
-    if (this.findProjectByExplorationSync(input.explorationId) !== null) {
-      throw new ExplorationStoreConflictError('project already exists for exploration: ' + input.explorationId);
-    }
     record.status = 'confirmed';
     record.templateVersionId = input.project.templateVersionId;
     record.updatedAt = input.confirmedAt;

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TutorService, type StreamedTutorEvent } from '../ai-tutor/tutor.service';
+import { withTutorProviderContext } from '../ai-tutor/tutor-provider.test-fixture';
 import type { TutorModelGateway } from '../ai-tutor/gateway-tutor.provider';
 import {
   LEARNING_PROGRESS_STALL_SOURCE,
@@ -48,7 +49,7 @@ async function runStallTurn(service: TutorService, record: ReturnType<TutorServi
 
 test('连续卡顿首次越过阈值时上报一次，继续卡顿不重复', async () => {
   const sink = new RecordingSink();
-  const service = new TutorService('demo', unusedGateway, undefined, sink);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway, undefined, sink));
   const record = service.getOrCreateSession('prj-stall', 'stu-1');
 
   for (let i = 1; i < LEARNING_STALL_ESCALATION_THRESHOLD; i += 1) {
@@ -70,7 +71,7 @@ test('连续卡顿首次越过阈值时上报一次，继续卡顿不重复', as
 });
 
 test('未接线 sink 时回合照常完成（fail-closed，不影响 AI 搭档）', async () => {
-  const service = new TutorService('demo', unusedGateway);
+  const service = withTutorProviderContext(new TutorService('demo', unusedGateway));
   const record = service.getOrCreateSession('prj-no-sink', 'stu-1');
   await runStallTurn(service, record, 'turn-1');
   assert.equal(record.stallCount, 1);

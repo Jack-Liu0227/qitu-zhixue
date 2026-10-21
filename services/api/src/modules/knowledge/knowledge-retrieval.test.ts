@@ -8,6 +8,8 @@ import type { KnowledgeCenterService } from './knowledge-center.service';
 import type { KnowledgeEngineService } from './knowledge-engine.service';
 import { KnowledgeBuildWorker } from './knowledge-build.worker';
 
+const scope = { authorizeTool: async () => true, key: 'fixture-exploration', knowledgeBaseIds: null };
+
 function fixture() {
   let authorized = true;
   let version = 'v1';
@@ -64,22 +66,22 @@ function fixture() {
 
 test('manual knowledge is searchable without a project binding; citations use the original manual base', async () => {
   const f = fixture();
-  const result = await f.service.search('student', 'assistant', '动能');
+  const result = await f.service.search('student', 'assistant', '动能', 5, scope);
   assert.equal(result.state, 'ready');
   assert.equal(result.evidence[0]?.knowledgeBaseId, 'manual');
   assert.match(
-    (await f.service.read('student', 'assistant', result.evidence[0]!.citationId)).text,
+    (await f.service.read('student', 'assistant', result.evidence[0]!.citationId, scope)).text,
     /四倍/,
   );
   f.deleteMember();
-  await assert.rejects(f.service.read('student', 'assistant', 'v1~m1'), /资料不可用/);
+  await assert.rejects(f.service.read('student', 'assistant', 'v1~m1', scope), /资料不可用/);
 });
 
 test('global revocation prevents all data/engine access; in-flight revocation discards results', async () => {
   const f = fixture();
   f.revoke();
   assert.equal(
-    (await f.service.search('student', 'assistant', 'q')).state,
+    (await f.service.search('student', 'assistant', 'q', 5, scope)).state,
     'CAPABILITY_NOT_AUTHORIZED',
   );
   assert.deepEqual(f.calls(), { queries: 0, engineCalls: 0 });
@@ -90,8 +92,8 @@ test('global revocation prevents all data/engine access; in-flight revocation di
     g.revoke();
     return receipt;
   };
-  assert.equal((await g.service.search('student', 'assistant', 'q')).evidence.length, 0);
-  await assert.rejects(g.service.read('student', 'assistant', 'v1~m1'), /资料不可用/);
+  assert.equal((await g.service.search('student', 'assistant', 'q', 5, scope)).evidence.length, 0);
+  await assert.rejects(g.service.read('student', 'assistant', 'v1~m1', scope), /资料不可用/);
 });
 
 test('index replacement while retrieving invalidates both results and historical citation reads', async () => {
@@ -102,13 +104,13 @@ test('index replacement while retrieving invalidates both results and historical
     f.replace();
     return receipt;
   };
-  assert.equal((await f.service.search('student', 'assistant', 'q')).evidence.length, 0);
-  await assert.rejects(f.service.read('student', 'assistant', 'v1~m1'), /资料不可用/);
+  assert.equal((await f.service.search('student', 'assistant', 'q', 5, scope)).evidence.length, 0);
+  await assert.rejects(f.service.read('student', 'assistant', 'v1~m1', scope), /资料不可用/);
 });
 
 test('tools reject hidden base IDs, paths and invalid result budgets', async () => {
   const f = fixture();
-  const [search, read] = f.service.tools('student', 'assistant');
+  const [search, read] = f.service.tools('student', 'assistant', scope);
   for (const args of [
     { query: 'q', knowledgeBaseId: 'private' },
     { query: 'q', topK: 100 },
@@ -162,4 +164,14 @@ test('a queued historical project preparation job is cancelled before model or s
     statements.some((s) => s.includes('INSERT INTO knowledge_base_members')),
     false,
   );
+});
+
+test('missing scope denies access and a frozen ceiling excludes newly granted bases', async () => {
+  const f = fixture();
+  assert.deepEqual((await f.service.search('student', 'assistant', 'q')).evidence, []);
+  assert.deepEqual(f.service.tools('student', 'assistant'), []);
+  const frozen = { ...scope, key: 'project:a', knowledgeBaseIds: ['other'] };
+  assert.deepEqual((await f.service.search('student', 'assistant', 'q', 5, frozen)).evidence, []);
+  await assert.rejects(f.service.read('student', 'assistant', 'v1~m1', frozen));
+  assert.equal(f.calls().engineCalls, 0);
 });

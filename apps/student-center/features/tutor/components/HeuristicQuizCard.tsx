@@ -13,6 +13,7 @@ export interface HeuristicQuizCardProps {
   options: { key: string; text: string; hint?: string }[];
   rationaleHint?: string;
   graded?: { correct: boolean; attempts: number; hintLevel: TutorHintLevel };
+  persistedAnswer?: AnswerInteractiveQuizResponse;
   onSubmitAnswer?: (selectedKeys: string[], idempotencyKey: string) => Promise<AnswerInteractiveQuizResponse>;
   onRequestExplanation?: () => Promise<void>;
   disabled?: boolean;
@@ -29,6 +30,7 @@ export function HeuristicQuizCard({
   options,
   rationaleHint,
   graded,
+  persistedAnswer,
   onSubmitAnswer,
   onRequestExplanation,
   disabled = false,
@@ -39,7 +41,7 @@ export function HeuristicQuizCard({
   const [error, setError] = useState<string | null>(null);
   const [explainPending, setExplainPending] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
-  const effectiveGrade = answer ?? (graded ? { ...graded, explanation: null, correctKeys: null, conceptDeltas: [], replayed: false, quizId: questionId } : null);
+  const effectiveGrade = answer ?? persistedAnswer ?? (graded ? { ...graded, explanation: null, correctKeys: null, conceptDeltas: [], replayed: false, quizId: questionId } : null);
   const idempotencyKey = useMemo(() => createIdempotencyKey(), [questionId]);
   const isMulti = type === 'multiple';
 
@@ -86,11 +88,11 @@ export function HeuristicQuizCard({
       </div>
       <div className="qitu-quiz-stem"><MarkdownMathView content={stem} /></div>
       <div className="qitu-quiz-options" aria-disabled={disabled || Boolean(effectiveGrade)}>
-        {options.map((option) => {
-          const selected = selectedKeys.includes(option.key);
+        {options.map((option, index) => {
+          const selected = (answer?.selectedKeys ?? persistedAnswer?.selectedKeys ?? selectedKeys).includes(option.key);
           return (
             <button key={option.key} type="button" className={`qitu-quiz-option-btn${selected ? ' is-selected' : ''}`} disabled={disabled || pending || Boolean(effectiveGrade)} onClick={() => toggle(option.key)}>
-              <span className="qitu-quiz-option-key">{option.key}</span>
+              <span className="qitu-quiz-option-key">{String.fromCharCode(65 + index)}</span>
               <span className="qitu-quiz-option-content"><span className="qitu-quiz-option-text">{option.text}</span></span>
               <span className="qitu-quiz-option-indicator" aria-hidden="true">{selected ? '✓' : '→'}</span>
             </button>

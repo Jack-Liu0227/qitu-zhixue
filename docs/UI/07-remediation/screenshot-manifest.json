@@ -1,0 +1,423 @@
+{
+  "createdAt": "2026-10-20T21:11:26.386522+00:00",
+  "count": 52,
+  "source": "local development services and synthetic UI projections",
+  "screenshots": [
+    {
+      "file": "after/admin/copilot-1440.png",
+      "group": "admin",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 288358,
+      "sha256": "9c81363ac5d829de0eaf0fb35a88697dd4352248730642e619dc765c9009e678"
+    },
+    {
+      "file": "after/admin/copilot-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 844,
+      "bytes": 83895,
+      "sha256": "9a7d3e42977c0dda5b0394563bd4b110d93fae8ea90101b0ac517cd1d3e1f1ed"
+    },
+    {
+      "file": "after/admin/settings-1440.png",
+      "group": "admin",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 273928,
+      "sha256": "7bbb5cae86b1aeeb1fa7965ef173989a2084dc4403bb195ff78a91d68b174cae"
+    },
+    {
+      "file": "after/admin/settings-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 844,
+      "bytes": 113383,
+      "sha256": "e6d4ecbf66546234b013073e8f67ecb052bbfee288d3c0a79f7118403956c0bb"
+    },
+    {
+      "file": "after/admin/settings-mobile-search-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 844,
+      "bytes": 84939,
+      "sha256": "4df45cafafad839a79435eda73277b0b16a5423256156acfec02f5e1591e3f18"
+    },
+    {
+      "file": "after/admin/settings-skills-1440.png",
+      "group": "admin",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 227982,
+      "sha256": "d628b9c6c4e0c1c046ac12e5c3f10292bbaadd044aa0d2a85e1e9a2fdd571baf"
+    },
+    {
+      "file": "after/admin/settings-skills-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 844,
+      "bytes": 92299,
+      "sha256": "c64dd1938b809cd7592427b6ad033b2ca86e3c4942b6e0b5e58d8ebdf1ef29d5"
+    },
+    {
+      "file": "after/admin/settings-tools-1440.png",
+      "group": "admin",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 323121,
+      "sha256": "fcb25812b29229665557363ec4266a536c79c1127e8d8338d337ebb4faf5434a"
+    },
+    {
+      "file": "after/admin/settings-tools-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 844,
+      "bytes": 116709,
+      "sha256": "38d1d5f3f1c12b531f969c8f6671299f794acf74d636a29d78d8d0036b698b8c"
+    },
+    {
+      "file": "after/admin/skills-matrix-fixture-1440.png",
+      "group": "admin",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 214830,
+      "sha256": "bd10d67ca27b62b34974f3d957ccd83dfecc0642eae762757766c61db7c606ef"
+    },
+    {
+      "file": "after/admin/skills-matrix-fixture-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 1000,
+      "bytes": 102917,
+      "sha256": "9427226cef1a9c7c258b92f3320e1ec0b764f97d0ca41b6cdbd8ebc61dfc08d7"
+    },
+    {
+      "file": "after/admin/tools-partial-failure-fixture-390.png",
+      "group": "admin",
+      "width": 390,
+      "height": 1000,
+      "bytes": 135960,
+      "sha256": "ccb76c5c099208ac50ebc33abcc9e3b5563c87ab41998797bdc1673c32acbcec"
+    },
+    {
+      "file": "after/home/home-1440.png",
+      "group": "home",
+      "width": 1425,
+      "height": 3568,
+      "bytes": 2176227,
+      "sha256": "717986f4dcfef9186d20a9843bca8de1d58e1eb9559f475f893dd4a2e9910106"
+    },
+    {
+      "file": "after/home/home-320.png",
+      "group": "home",
+      "width": 305,
+      "height": 5418,
+      "bytes": 903196,
+      "sha256": "8a4287b68daf45214153832eb1caff7ba89e84c029655547c0c31b2a1281e6c6"
+    },
+    {
+      "file": "after/home/home-390.png",
+      "group": "home",
+      "width": 375,
+      "height": 5273,
+      "bytes": 1017633,
+      "sha256": "c99ffde2c38d5d9cccd5684e776893f932f4dd88dee9dad7d8970477c63d47ac"
+    },
+    {
+      "file": "after/login/login-1440.png",
+      "group": "login",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 140602,
+      "sha256": "fced903d6da00c9a2b686f6082c82e79e697730aa8dc146c722b54b6c3711437"
+    },
+    {
+      "file": "after/login/login-320.png",
+      "group": "login",
+      "width": 320,
+      "height": 844,
+      "bytes": 61907,
+      "sha256": "7c13d9ef5df28438a686d042112b843d8a96c4d1711e6d2be29e743a6782872c"
+    },
+    {
+      "file": "after/login/login-390.png",
+      "group": "login",
+      "width": 390,
+      "height": 844,
+      "bytes": 65186,
+      "sha256": "7ab50454765dd7e4c53cfed21653154f6662639ed9354aa73351bb5f2f1e6ac0"
+    },
+    {
+      "file": "after/login/offline-390.png",
+      "group": "login",
+      "width": 375,
+      "height": 861,
+      "bytes": 62996,
+      "sha256": "384ea61598cae7bf37b2f11fa3803bf98226e6aea724ddc69b5cffb7b1768418"
+    },
+    {
+      "file": "after/parent/dashboard-a-b-a-error-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1640,
+      "bytes": 98701,
+      "sha256": "f939a2c91e40e735b67b6658fb923fe2a8678c40da9d13f86e3e71dbc33eb5ba"
+    },
+    {
+      "file": "after/parent/dashboard-a-b-a-success-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1640,
+      "bytes": 98701,
+      "sha256": "f939a2c91e40e735b67b6658fb923fe2a8678c40da9d13f86e3e71dbc33eb5ba"
+    },
+    {
+      "file": "after/parent/home-1440.png",
+      "group": "parent",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 117571,
+      "sha256": "5357adbd6da97cd08b796a7471fb8e0358edd213d768ebac43251adefd1be477"
+    },
+    {
+      "file": "after/parent/home-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 848,
+      "bytes": 68702,
+      "sha256": "52b220e3e80155bdd9f43ba82a5aaee4b20cbb8213ac2cbd9637ce45c9bb3eb3"
+    },
+    {
+      "file": "after/parent/messages-1440.png",
+      "group": "parent",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 130202,
+      "sha256": "2c9bc52b8b9567e8462351396d6ec7c1acd6e7f9e8ed0c81acd8f4441870f412"
+    },
+    {
+      "file": "after/parent/messages-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1192,
+      "bytes": 83856,
+      "sha256": "29fde6f0a2088aa6fecaf012197ac8934e8649de3f417b14d5af4a11544d024c"
+    },
+    {
+      "file": "after/parent/messages-a-b-a-error-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1043,
+      "bytes": 70111,
+      "sha256": "1ebe72cce268bd2bcd31b26a01ebe880f68febaf18029efe3a4d530fd527c152"
+    },
+    {
+      "file": "after/parent/messages-a-b-a-success-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1043,
+      "bytes": 70111,
+      "sha256": "1ebe72cce268bd2bcd31b26a01ebe880f68febaf18029efe3a4d530fd527c152"
+    },
+    {
+      "file": "after/parent/progress-1440.png",
+      "group": "parent",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 113574,
+      "sha256": "eeedf9034b5af20de96998abd531523af6976d2398e30db26222037a79e5e7b5"
+    },
+    {
+      "file": "after/parent/progress-390.png",
+      "group": "parent",
+      "width": 390,
+      "height": 844,
+      "bytes": 51237,
+      "sha256": "4a22f8c8d005b7ab8418c712f276f0fa821a31c0baeacea4314ff8ff302ae53e"
+    },
+    {
+      "file": "after/parent/progress-a-b-a-error-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1489,
+      "bytes": 98637,
+      "sha256": "31077dd95f0675a39e918b2cc4a89b13766f87dc0698cceacb2dd33c8e2018cd"
+    },
+    {
+      "file": "after/parent/progress-a-b-a-success-390.png",
+      "group": "parent",
+      "width": 382,
+      "height": 1489,
+      "bytes": 98637,
+      "sha256": "31077dd95f0675a39e918b2cc4a89b13766f87dc0698cceacb2dd33c8e2018cd"
+    },
+    {
+      "file": "after/student/inspiration-1440.png",
+      "group": "student",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 123575,
+      "sha256": "150d433216d8b35a6eee31ca0842665866081989bfb4f0261fec522fbe585405"
+    },
+    {
+      "file": "after/student/inspiration-390.png",
+      "group": "student",
+      "width": 390,
+      "height": 844,
+      "bytes": 51700,
+      "sha256": "ded2470820ac1d47bb0b6a220906551eeab80a72cbbef417d54dd795166bdb91"
+    },
+    {
+      "file": "after/student/optics-preview-fixture-1440.png",
+      "group": "student",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 188201,
+      "sha256": "86089b276eb3d35af50e7d97893606073efa0513e8bea6918ffe16290937c964"
+    },
+    {
+      "file": "after/student/optics-preview-fixture-390.png",
+      "group": "student",
+      "width": 390,
+      "height": 844,
+      "bytes": 63198,
+      "sha256": "9dee8d188c9c2c4bde64969118988141acd9aa8babcc9712590de6420e12cb71"
+    },
+    {
+      "file": "after/student/profile-1440.png",
+      "group": "student",
+      "width": 1432,
+      "height": 1758,
+      "bytes": 293222,
+      "sha256": "1a6c4b4636736af92274101051080827a33a7595c13286e9ce8e7faecc0496a9"
+    },
+    {
+      "file": "after/student/profile-390.png",
+      "group": "student",
+      "width": 382,
+      "height": 2793,
+      "bytes": 217396,
+      "sha256": "c7c5b6e27cc8997a682d25c7ed4b10616be07fa34ac24049587541cafe12ae7b"
+    },
+    {
+      "file": "after/student/projects-1440.png",
+      "group": "student",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 129862,
+      "sha256": "1f8427cb4ba2f159019482ecafc1d5109ad87f1a2d20db7effb0609d2339c0cc"
+    },
+    {
+      "file": "after/student/projects-390.png",
+      "group": "student",
+      "width": 390,
+      "height": 844,
+      "bytes": 59523,
+      "sha256": "7fdbd83e710870703b0de1c6dc08228c778c03e60bbb0ff82f36e5a3af1843e9"
+    },
+    {
+      "file": "after/student/today-1440.png",
+      "group": "student",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 127854,
+      "sha256": "418769ef3084d265873f26e02cb15a3ddff25a51df201946b2857870a8384e6a"
+    },
+    {
+      "file": "after/student/today-390.png",
+      "group": "student",
+      "width": 382,
+      "height": 975,
+      "bytes": 76174,
+      "sha256": "110f3f2bfe00ee076002aadd47b21e667d63bdf770560b9c63839e41b5842195"
+    },
+    {
+      "file": "after/student/tutor-fixture-1440.png",
+      "group": "student",
+      "width": 1440,
+      "height": 960,
+      "bytes": 142713,
+      "sha256": "231b6897eca0e7987dae0a1126ce556414c67af6bbb6007cc97f446b65b02ab9"
+    },
+    {
+      "file": "after/student/tutor-fixture-375.png",
+      "group": "student",
+      "width": 375,
+      "height": 667,
+      "bytes": 48861,
+      "sha256": "2fa9083ab8662ba0faf42eee6b17bbf37f712ad29336ca788d50f2ee229189d7"
+    },
+    {
+      "file": "after/student/tutor-fixture-768.png",
+      "group": "student",
+      "width": 768,
+      "height": 844,
+      "bytes": 77566,
+      "sha256": "514203312129ddc699d2979ac36ad2cf3640bddcad62ab9c1c2cfe9809f27102"
+    },
+    {
+      "file": "after/teacher/dashboard-1440.png",
+      "group": "teacher",
+      "width": 1425,
+      "height": 1118,
+      "bytes": 159233,
+      "sha256": "a0934bd1b203c1bfffeadf160b1b243c5e0aa22cc00d2296122dc21fcd5d3084"
+    },
+    {
+      "file": "after/teacher/dashboard-390.png",
+      "group": "teacher",
+      "width": 375,
+      "height": 1665,
+      "bytes": 108678,
+      "sha256": "4626ffe33e9001c6151a3581703f7b076c4683c8bbe4b442b0c45974f71899ce"
+    },
+    {
+      "file": "after/teacher/issues-1440.png",
+      "group": "teacher",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 132952,
+      "sha256": "7c0455bc7527004720044e1dd2134f2e463faf6ff661f4072b82226a513a069d"
+    },
+    {
+      "file": "after/teacher/issues-390.png",
+      "group": "teacher",
+      "width": 390,
+      "height": 844,
+      "bytes": 75082,
+      "sha256": "dde5e0c3cd3b5beb57810c5ff608cd2c8a1c52c2f9d5beb97c81f81de5fd1b58"
+    },
+    {
+      "file": "after/teacher/statistics-1440.png",
+      "group": "teacher",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 149578,
+      "sha256": "07e138c19292a44e576708ef2554b389f2214e8896bf7d7c743c0e03bbbe4d6d"
+    },
+    {
+      "file": "after/teacher/statistics-390.png",
+      "group": "teacher",
+      "width": 375,
+      "height": 1143,
+      "bytes": 94788,
+      "sha256": "614748f007a7a63465362625484bb1bfb3004f1e2a06d0d0e3b57d904fa78ceb"
+    },
+    {
+      "file": "after/teacher/students-1440.png",
+      "group": "teacher",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 162885,
+      "sha256": "b52222d2dfa44e52b8930e556fb2f52a064d1365172b07115a3195f0047ce9a2"
+    },
+    {
+      "file": "after/teacher/students-390.png",
+      "group": "teacher",
+      "width": 375,
+      "height": 1480,
+      "bytes": 102740,
+      "sha256": "40e461362f047b1674b840c807e873bf44785cfd0ade2273a66fae3dee7541e7"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import type {
   ProjectListItem,
   ProjectStage,
   ProjectStageView,
+  LessonScheduleView,
   ReflectionInput,
   TaskSubmission,
   TaskView,
@@ -85,6 +86,11 @@ export class MockProjectsDataSource implements ProjectsDataSource {
   async getTemplateStages(templateVersionId: string): Promise<TemplateStage[]> {
     await delay();
     return (MOCK_TEMPLATE_STAGES[templateVersionId] ?? []).map((item) => ({ ...item }));
+  }
+
+  async getLessonSchedule(_projectId: string): Promise<LessonScheduleView | null> {
+    await delay();
+    return null;
   }
 
   async getTheoryMaterial(projectId: string): Promise<TheoryMaterial | null> {

@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-20T23:05:27.597809+00:00",
+  "head": "829f1ccd6fb3f324d86682b112802526ec430488",
+  "dirty": false,
+  "readiness": {
+    "service": "qitu-zhixue-api",
+    "status": "ready",
+    "version": "0.1.0",
+    "checkedAt": "2026-10-20T23:05:27.597Z",
+    "dataMode": "live",
+    "dependencies": {
+      "database": {
+        "status": "ok"
+      },
+      "redis": {
+        "status": "ok"
+      }
+    }
+  },
+  "testLogin": {
+    "status": 200,
+    "cacheControl": "no-store",
+    "roles": [
+      "admin",
+      "parent",
+      "student",
+      "teacher"
+    ],
+    "credentialsExported": false
+  },
+  "environmentFileMode": "0o600",
+  "migrationLedger": "47|1792540800001",
+  "services": "Id=qitu-api.service\nActiveState=active\nMainPID=1154743\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-auth.service\nActiveState=active\nMainPID=1155405\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-student.service\nActiveState=active\nMainPID=1156547\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-parent.service\nActiveState=active\nMainPID=1157203\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-teacher.service\nActiveState=active\nMainPID=1157549\nWorkingDirectory=/root/qitu-zhixue\n\nId=qitu-admin.service\nActiveState=active\nMainPID=1157907\nWorkingDirectory=/root/qitu-zhixue"
+}

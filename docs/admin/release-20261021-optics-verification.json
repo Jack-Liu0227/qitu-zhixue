@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-21",
+  "scope": "main-code-deployment-and-isolated-verification",
+  "coreCodeSha": "fc9384040d2adb4f6ff94a76d5372cf48a24504e",
+  "validatedCoreSha": "ae7631b9f20bbbda7f121c5aca910ccdb2d56345",
+  "liveCodeShaAtVerification": "3f9f9957fd310024b7aef7401ad7f447e16b4b42",
+  "checkedAt": "2026-10-20T22:20:56.007Z",
+  "coreCI": {
+    "run": 39505693589,
+    "conclusion": "success"
+  },
+  "latestBusinessCodeCI": {
+    "run": 39506862723,
+    "conclusion": "success"
+  },
+  "coreTests": {
+    "api": {
+      "total": 1220,
+      "passed": 1211,
+      "failed": 0,
+      "skipped": 9
+    },
+    "skippedTestsRerunInDisposablePostgres": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "providerMocked": true,
+      "databaseDropped": true
+    },
+    "opticsDisposablePostgres": {
+      "checksPassed": 12,
+      "databaseDropped": true,
+      "syntheticOnly": true,
+      "providerCalled": false,
+      "masteryInjected": false
+    },
+    "opticsOwnerBehavior": {
+      "passed": 599,
+      "failed": 0,
+      "stepsPassed": 12
+    },
+    "worker": {
+      "passed": 34,
+      "failed": 0
+    },
+    "workspaceTestsPassed": true,
+    "workspaceTypecheckPassed": true,
+    "workspaceLintPassed": true,
+    "copilotLifecyclePassed": true,
+    "runtimeAndFrontendBuildsPassed": true,
+    "deploymentScriptPassed": true,
+    "basePathPassed": true,
+    "documentation": {
+      "documents": 46,
+      "localLinks": 215,
+      "problems": 0
+    }
+  },
+  "database": {
+    "migrationRows": 47,
+    "latestWhen": 1792540800001,
+    "learningSessionProgressExists": true,
+    "encryptedBackupVerified": true,
+    "productionSeedRun": false
+  },
+  "http": {
+    "pages": [
+      {
+        "path": "/",
+        "status": 200,
+        "bytes": 56830,
+        "finalUrl": "http://127.0.0.1/"
+      },
+      {
+        "path": "/login",
+        "status": 200,
+        "bytes": 11084,
+        "finalUrl": "http://127.0.0.1/login"
+      },
+      {
+        "path": "/student/today",
+        "status": 200,
+        "bytes": 8428,
+        "finalUrl": "http://127.0.0.1/student/today"
+      },
+      {
+        "path": "/student/tutor",
+        "status": 200,
+        "bytes": 9051,
+        "finalUrl": "http://127.0.0.1/student/tutor"
+      },
+      {
+        "path": "/parent",
+        "status": 200,
+        "bytes": 8188,
+        "finalUrl": "http://127.0.0.1/parent"
+      },
+      {
+        "path": "/teacher/dashboard",
+        "status": 200,
+        "bytes": 8653,
+        "finalUrl": "http://127.0.0.1/teacher/dashboard"
+      },
+      {
+        "path": "/admin",
+        "status": 200,
+        "bytes": 8735,
+        "finalUrl": "http://127.0.0.1/admin"
+      },
+      {
+        "path": "/admin/settings/templates",
+        "status": 200,
+        "bytes": 10573,
+        "finalUrl": "http://127.0.0.1/admin/settings/templates"
+      },
+      {
+        "path": "/admin/settings/teams",
+        "status": 200,
+        "bytes": 10886,
+        "finalUrl": "http://127.0.0.1/admin/settings/teams"
+      },
+      {
+        "path": "/admin/settings/skills",
+        "status": 200,
+        "bytes": 10559,
+        "finalUrl": "http://127.0.0.1/admin/settings/skills"
+      },
+      {
+        "path": "/admin/copilot",
+        "status": 200,
+        "bytes": 9210,
+        "finalUrl": "http://127.0.0.1/admin/copilot"
+      }
+    ],
+    "assetCount": 72,
+    "permissions": [
+      {
+        "path": "/api/v1/projects",
+        "anonymousStatus": 401
+      },
+      {
+        "path": "/api/v1/admin/overview",
+        "anonymousStatus": 401
+      },
+      {
+        "path": "/api/v1/teacher/roster",
+        "anonymousStatus": 401
+      }
+    ],
+    "readiness": [
+      {
+        "base": "http://127.0.0.1",
+        "body": {
+          "service": "qitu-zhixue-api",
+          "status": "ready",
+          "version": "0.1.0",
+          "checkedAt": "2026-10-20T22:20:56.007Z",
+          "dataMode": "live",
+          "dependencies": {
+            "database": {
+              "status": "ok"
+            },
+            "redis": {
+              "status": "ok"
+            }
+          }
+        }
+      },
+      {
+        "base": "http://122.51.130.204",
+        "body": {
+          "service": "qitu-zhixue-api",
+          "status": "ready",
+          "version": "0.1.0",
+          "checkedAt": "2026-10-20T22:20:56.014Z",
+          "dataMode": "live",
+          "dependencies": {
+            "database": {
+              "status": "ok"
+            },
+            "redis": {
+              "status": "ok"
+            }
+          }
+        }
+      }
+    ],
+    "upstreams": [
+      {
+        "url": "http://127.0.0.1:8787/healthz",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3215/login",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3211/student/today",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3212/parent",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3213/teacher/dashboard",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3214/admin",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:4115/health",
+        "status": 200,
+        "anonymousStatus": 401,
+        "body": {
+          "status": "ready",
+          "model": "bge-small-zh-v1.5",
+          "dimensions": 512
+        },
+        "credentialsExported": false
+      }
+    ]
+  },
+  "services": [
+    {
+      "unit": "qitu-admin.service",
+      "beforePid": 1116971,
+      "afterPid": 1133783,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:14:45 CST"
+    },
+    {
+      "unit": "qitu-api.service",
+      "beforePid": 1100237,
+      "afterPid": 1135406,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:17:02 CST"
+    },
+    {
+      "unit": "qitu-auth.service",
+      "beforePid": 1104654,
+      "afterPid": 1135795,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:17:30 CST"
+    },
+    {
+      "unit": "qitu-eye-admin.service",
+      "beforePid": 975458,
+      "afterPid": 1133863,
+      "state": "active",
+      "workingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye",
+      "startedAt": "Wed 2026-10-21 06:14:47 CST"
+    },
+    {
+      "unit": "qitu-eye-auth.service",
+      "beforePid": 516324,
+      "afterPid": 1133963,
+      "state": "active",
+      "workingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye",
+      "startedAt": "Wed 2026-10-21 06:14:48 CST"
+    },
+    {
+      "unit": "qitu-eye-parent.service",
+      "beforePid": 876874,
+      "afterPid": 1133994,
+      "state": "active",
+      "workingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye",
+      "startedAt": "Wed 2026-10-21 06:14:49 CST"
+    },
+    {
+      "unit": "qitu-eye-student.service",
+      "beforePid": 797853,
+      "afterPid": 1134028,
+      "state": "active",
+      "workingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye",
+      "startedAt": "Wed 2026-10-21 06:14:49 CST"
+    },
+    {
+      "unit": "qitu-eye-teacher.service",
+      "beforePid": 914870,
+      "afterPid": 1134091,
+      "state": "active",
+      "workingDirectory": "/root/qitu-worktrees/qitu-zhixue-eye",
+      "startedAt": "Wed 2026-10-21 06:14:49 CST"
+    },
+    {
+      "unit": "qitu-ima-mcp.service",
+      "beforePid": 3191583,
+      "afterPid": 1134149,
+      "state": "active",
+      "workingDirectory": "/opt/qitu-ima",
+      "startedAt": "Wed 2026-10-21 06:14:50 CST"
+    },
+    {
+      "unit": "qitu-local-embedding.service",
+      "beforePid": 3266890,
+      "afterPid": 1134156,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue/services/knowledge",
+      "startedAt": "Wed 2026-10-21 06:14:50 CST"
+    },
+    {
+      "unit": "qitu-parent.service",
+      "beforePid": 1114583,
+      "afterPid": 1133038,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:13:31 CST"
+    },
+    {
+      "unit": "qitu-student.service",
+      "beforePid": 1104774,
+      "afterPid": 1132601,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:12:58 CST"
+    },
+    {
+      "unit": "qitu-teacher.service",
+      "beforePid": 1104977,
+      "afterPid": 1133455,
+      "state": "active",
+      "workingDirectory": "/root/qitu-zhixue",
+      "startedAt": "Wed 2026-10-21 06:14:03 CST"
+    }
+  ],
+  "browser": {
+    "scope": "public anonymous; viewport simulation",
+    "commandsPassed": 31,
+    "evaluations": [
+      {
+        "url": "http://122.51.130.204/",
+        "title": "启途智学 · AI 驱动的项目式学习平台",
+        "width": 1440,
+        "scrollWidth": 1425
+      },
+      {
+        "url": "http://122.51.130.204/login",
+        "title": "统一登录 · 启途智学",
+        "width": 1440,
+        "scrollWidth": 1440,
+        "hasPassword": true
+      },
+      {
+        "url": "http://122.51.130.204/",
+        "title": "启途智学 · AI 驱动的项目式学习平台",
+        "width": 390,
+        "scrollWidth": 375
+      },
+      {
+        "url": "http://122.51.130.204/login",
+        "title": "统一登录 · 启途智学",
+        "width": 390,
+        "scrollWidth": 375,
+        "hasPassword": true
+      },
+      {
+        "kind": "anonymous-student",
+        "url": "http://122.51.130.204/login?role=student&next=%2Fstudent%2Ftutor&reason=anonymous",
+        "width": 390,
+        "scrollWidth": 375,
+        "composerVisible": false
+      },
+      {
+        "kind": "anonymous-parent",
+        "url": "http://122.51.130.204/login?role=parent&next=%2Fparent&reason=anonymous",
+        "width": 390,
+        "scrollWidth": 375
+      },
+      {
+        "kind": "anonymous-teacher",
+        "url": "http://122.51.130.204/login?role=teacher&next=%2Fteacher%2Fdashboard&reason=anonymous",
+        "width": 390,
+        "scrollWidth": 375
+      },
+      {
+        "kind": "anonymous-admin",
+        "url": "http://122.51.130.204/login?role=admin&next=%2Fadmin&reason=anonymous",
+        "width": 390,
+        "scrollWidth": 375
+      }
+    ],
+    "pageErrors": [],
+    "screenshots": [
+      {
+        "name": "home-desktop.png",
+        "sha256": "53858cd82f9144e848f46db899f0586836b5d190c6991c3650c3cad760fcbedc"
+      },
+      {
+        "name": "login-desktop.png",
+        "sha256": "eb22eaa0aaa628f56b168de9db3967ef81d83a64b8dec0957f7c7763ea934b8e"
+      },
+      {
+        "name": "home-mobile.png",
+        "sha256": "c5a365ba618edfa35bc7a4717523d26e96e181f49e27340c40319d299a73e72d"
+      },
+      {
+        "name": "login-mobile.png",
+        "sha256": "fed136b683c5db3efe392e263cb9e966c939e36a739ec65f116dc869daec18c1"
+      }
+    ]
+  },
+  "productionLearningFlowVerified": false,
+  "newTemplateActivatedByThisDeployment": false,
+  "credentialsExported": false,
+  "rawStudentDataExported": false,
+  "preservedUntrackedPaths": [
+    "snap.bat",
+    "test_courseware.bat",
+    "test_tutor_chat.bat",
+    "trigger_tutor_experiment.bat",
+    "view_theory.bat"
+  ],
+  "serverEvidenceDirectory": "/root/qitu-zhixue/.runtime/release-20261021-optics-fc9384040d2a"
+}

@@ -4,7 +4,10 @@ import {
   Injectable,
   Inject,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { VisualAssetsService } from '../visual-assets/visual-assets.service';
+import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
 import type { CurrentUser } from '@qitu/contracts';
 import { assertTemplateTeachingContent } from './templates.content-validator';
 import { AuditWriter } from '../../common/audit/audit.service';
@@ -110,6 +113,7 @@ export class TemplateGovernanceService {
     private readonly directory: TemplateViewerDirectory,
     private readonly idempotency: IdempotencyStore,
     private readonly audit: AuditWriter,
+    @Optional() private readonly visuals?: VisualAssetsService,
   ) {}
 
   /* ============================ 列表与详情 ============================ */
@@ -247,6 +251,36 @@ export class TemplateGovernanceService {
   }
 
   /* ============================ 版本 ============================ */
+
+  async deleteTemplate(
+    actor: CurrentUser,
+    templateId: string,
+    idempotencyKey: string,
+  ): Promise<{ success: boolean; id: string }> {
+    const { template } = await this.requireGovernableTemplate(actor, templateId);
+    const versions = await this.store.listVersions(templateId);
+    if (template.status !== 'draft' || versions.some(version => version.status !== 'draft')) {
+      throw new ConflictException({ code: 'TEMPLATE_DELETE_PROTECTED', message: '仅可删除未发布草稿；已有发布或历史语义的模板请使用归档' });
+    }
+    const scope = `template.delete:${actor.id}:${templateId}`;
+    const requestHash = hashIdempotentInput(scope, { templateId }, {});
+    const result = await this.executeIdempotent(scope, idempotencyKey, requestHash, async () => {
+      await this.store.deleteTemplate(templateId, async tx => {
+        await this.audit.write({
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: 'template.delete',
+          targetType: 'project_template',
+          targetId: templateId,
+          idempotencyKey: `${scope}:${idempotencyKey}`,
+          reason: '管理员直接删除模板',
+          detail: { slug: template.slug, title: template.title },
+        }, tx);
+      });
+      return { status: 200, body: { success: true, id: templateId } };
+    });
+    return result.body;
+  }
 
   async createVersion(
     actor: CurrentUser,
@@ -640,7 +674,13 @@ export class TemplateGovernanceService {
 
   private async project(record: ProjectTemplateRecord): Promise<TemplateView> {
     const versions = await this.store.listVersions(record.id);
-    return toTemplateView(record, latestPublishedVersionId(versions));
+    const view = toTemplateView(record, latestPublishedVersionId(versions));
+    if (this.visuals) {
+      const bindings = await this.visuals.presentationSnapshot();
+      view.iconAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'icon', bindings).effectiveAssetId;
+      view.coverAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'cover', bindings).effectiveAssetId;
+    }
+    return view;
   }
 
   private async executeIdempotent<T>(

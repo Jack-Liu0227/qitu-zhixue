@@ -30,7 +30,9 @@ export function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 export * from './brand';
+export * from './visual-assets';
 export { AssistantGlyph } from './assistant';
+export { NavigationArtwork } from './navigation-artwork';
 export * from './shell';
 export * from './primitives';
 export * from './states';

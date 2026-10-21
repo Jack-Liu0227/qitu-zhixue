@@ -49,6 +49,13 @@ export class GrowthController {
     return { data: this.growthService.getSummary(user.id) };
   }
 
+  /** Read-only composition used by the student profile surface. */
+  @Get('profile')
+  async getProfile(@Headers('cookie') cookieHeader: string | undefined) {
+    const user = this.requireStudent(cookieHeader);
+    return { data: await this.growthService.getStudentProfile(user.id) };
+  }
+
   @Get('growth')
   getTimeline(
     @Headers('cookie') cookieHeader: string | undefined,
@@ -65,6 +72,12 @@ export class GrowthController {
       data: { items: timeline.items },
       meta: { nextCursor: timeline.nextCursor, hasNext: timeline.hasNext },
     };
+  }
+
+  @Get('growth/analysis')
+  async getAnalysis(@Headers('cookie') cookieHeader: string | undefined) {
+    const user = this.requireStudent(cookieHeader);
+    return { data: await this.growthService.getGrowthAnalysis(user.id) };
   }
 
   @Get('projects/summaries')

@@ -1,0 +1,130 @@
+{
+  "results": [
+    {
+      "viewport": {
+        "width": 375,
+        "height": 667
+      },
+      "metrics": {
+        "width": 375,
+        "height": 667,
+        "scrollWidth": 375,
+        "composer": {
+          "x": 30.666667938232422,
+          "y": 414.8645935058594,
+          "right": 344.6666679382324,
+          "bottom": 638.6666870117188,
+          "width": 314,
+          "height": 223.80209350585938
+        },
+        "thread": {
+          "x": 30.666667938232422,
+          "y": 232.95834350585938,
+          "right": 344.6666679382324,
+          "bottom": 398.8645935058594,
+          "width": 314,
+          "height": 165.90625
+        },
+        "mathOverflow": [
+          {
+            "client": 214,
+            "scroll": 673,
+            "hasHorizontalScrollOwner": true,
+            "moved": true
+          },
+          {
+            "client": 214,
+            "scroll": 214,
+            "hasHorizontalScrollOwner": false,
+            "moved": false
+          }
+        ]
+      }
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 844
+      },
+      "metrics": {
+        "width": 768,
+        "height": 844,
+        "scrollWidth": 768,
+        "composer": {
+          "x": 30.666667938232422,
+          "y": 633.53125,
+          "right": 737.3333549499512,
+          "bottom": 815.3333435058594,
+          "width": 706.6666870117188,
+          "height": 181.80209350585938
+        },
+        "thread": {
+          "x": 30.666667938232422,
+          "y": 232.95834350585938,
+          "right": 737.3333549499512,
+          "bottom": 617.5312805175781,
+          "width": 706.6666870117188,
+          "height": 384.57293701171875
+        },
+        "mathOverflow": [
+          {
+            "client": 607,
+            "scroll": 673,
+            "hasHorizontalScrollOwner": true,
+            "moved": true
+          },
+          {
+            "client": 607,
+            "scroll": 607,
+            "hasHorizontalScrollOwner": false,
+            "moved": false
+          }
+        ]
+      }
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "metrics": {
+        "width": 1440,
+        "height": 960,
+        "scrollWidth": 1440,
+        "composer": {
+          "x": 378.66668701171875,
+          "y": 745.53125,
+          "right": 1403.3334350585938,
+          "bottom": 927.3333435058594,
+          "width": 1024.666748046875,
+          "height": 181.80209350585938
+        },
+        "thread": {
+          "x": 378.66668701171875,
+          "y": 214.7916717529297,
+          "right": 1403.3334350585938,
+          "bottom": 729.5312957763672,
+          "width": 1024.666748046875,
+          "height": 514.7396240234375
+        },
+        "mathOverflow": [
+          {
+            "client": 673,
+            "scroll": 673,
+            "hasHorizontalScrollOwner": false,
+            "moved": false
+          },
+          {
+            "client": 673,
+            "scroll": 673,
+            "hasHorizontalScrollOwner": false,
+            "moved": false
+          }
+        ]
+      }
+    }
+  ],
+  "sidebarMutualExclusion": true,
+  "blocked": [],
+  "errors": []
+}

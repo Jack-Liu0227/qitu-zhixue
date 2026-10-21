@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { OfflineBanner, Button } from '@qitu/ui';
 import {
   parentApi,
@@ -10,23 +10,25 @@ import {
 } from './parentApi';
 import { EmptyView, ErrorView, LoadingState, PermissionView } from './ParentStates';
 export function DemoPill({ source }: { source?: string }) {
-  return <span className="demo-pill">{source === 'live' ? '实时数据' : '演示数据'}</span>;
+  return source ? <span className="demo-pill">{source === 'live' ? '服务端数据' : '演示数据'}</span> : null;
 }
 export function useChildren() {
+  const generation = useRef(0);
   const [state, setState] = useState<{
     status: 'loading' | 'ready' | 'empty' | 'error' | 'offline' | 'permission';
     children: ChildRef[];
   }>({ status: 'loading', children: [] });
   const reload = useCallback(() => {
+    const request = ++generation.current;
     setState({ status: 'loading', children: [] });
     void parentApi
       .children()
-      .then((r) =>
+      .then((r) => request === generation.current &&
         setState(
           r.data.length ? { status: 'ready', children: r.data } : { status: 'empty', children: [] },
         ),
       )
-      .catch((e) =>
+      .catch((e) => request === generation.current &&
         setState({
           status:
             e instanceof ParentPermissionError
@@ -38,7 +40,7 @@ export function useChildren() {
         }),
       );
   }, []);
-  useEffect(reload, [reload]);
+  useEffect(() => { reload(); return () => { ++generation.current; }; }, [reload]);
   return { state, reload };
 }
 export function ChildPicker({

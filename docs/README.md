@@ -13,7 +13,7 @@
 4. 按角色阅读入口：
    - 管理端（控制权枢纽）：[`admin/platform-governance.md`](./admin/platform-governance.md)
    - 公开站点：[`admin/public-site.md`](./admin/public-site.md)
-   - 学生端（AI搭档与灵感空间）：[`student/today.md`](./student/today.md) 与 [`student/tutor.md`](./student/tutor.md)
+   - 学生端（AI搭档、个人画像与成长轨迹）：[`student/today.md`](./student/today.md)、[`student/tutor.md`](./student/tutor.md)、[`student/growth.md`](./student/growth.md)
    - 班主任端：[`teacher/dashboard.md`](./teacher/dashboard.md)
    - 家长端：[`parent/home.md`](./parent/home.md)
    - SDK：[`sdk/overview.md`](./sdk/overview.md)

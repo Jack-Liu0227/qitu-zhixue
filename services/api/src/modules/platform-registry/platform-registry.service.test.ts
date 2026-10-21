@@ -7,6 +7,12 @@ import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { IdempotencyError } from '../../common/idempotency/idempotency.errors';
 import type { IdempotencyResult, IdempotentHandler } from '../../common/idempotency/idempotency.types';
 import { parseAssistantCreate, parseTeamCreate } from './admin-ai-config.validation';
+import { ADMIN_COPILOT_OPERATIONS, RUNTIME_TOOL_CATALOG } from '@qitu/contracts';
+import { builtinToolRegistry } from './built-in-tools';
+import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
+import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
+import { loadRuntimeSkillCatalog } from '../../common/tutor-runtime/runtime-source';
+import { validateManagementSkill } from '../admin-copilot/copilot.resources';
 
 function fakeDatabase() {
   const partner = {
@@ -137,8 +143,17 @@ test('runtime projection uses persisted partner metadata and excludes prompt con
   assert.equal(snapshot.policy.id, 'AGENTS.md');
   assert.equal(snapshot.policy.status, 'ready');
   assert.equal(snapshot.skills.some((skill) => skill.id === 'student-module'), false);
+  const management = snapshot.skills.find(skill => skill.id === 'qitu-project-configurator');
+  assert.equal(management?.runtime, 'admin');
+  assert.equal(management?.publicationStatus, 'published');
+  assert.match(management?.content ?? '', /qitu-copilot-contract:/);
   assert.equal(snapshot.agents.some((agent) => agent.id === 'admin'), false);
-  assert.deepEqual(snapshot.builtInTools[0]?.agentIds, ['qitu-learning-partner']);
+  const contextTool = snapshot.builtInTools.find(tool => tool.id === 'tutor.context_packet');
+  assert.deepEqual(contextTool?.agentIds, []); // No persisted tool binding exists in this fixture.
+  assert.equal(contextTool?.invocation, 'domain_service');
+  const lessonTool = snapshot.builtInTools.find(tool => tool.id === 'tutor.propose_lesson_activity');
+  assert.deepEqual(lessonTool?.agentIds, []);
+  assert.equal(lessonTool?.invocation, 'model_tool');
   assert.deepEqual(snapshot.mcpServers, []);
 });
 
@@ -608,3 +623,30 @@ function teamCreateBody(overrides: Row = {}): Row {
     ...overrides,
   };
 }
+
+test('merged runtime registry retains canonical tool behavior and freezes the actual lesson candidate schema', () => {
+  const tools = builtinToolRegistry.list();
+  assert.equal(new Set(tools.map(tool => tool.id)).size, tools.length);
+  for (const canonical of RUNTIME_TOOL_CATALOG) {
+    const tool = tools.find(tool => tool.id === canonical.id);
+    assert.equal(tool?.invocation, canonical.invocation);
+    assert.deepEqual(tool?.agentIds, []);
+    const descriptor = builtinToolRegistry.listForAgentIds([canonical.id])[0];
+    assert.equal(descriptor?.version, canonical.version);
+    assert.deepEqual(descriptor?.capabilities, canonical.capabilities);
+    if (canonical.inputSchema) assert.equal(descriptor?.inputSchemaDigest, teachingValueDigest(canonical.inputSchema));
+  }
+  const lesson = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity'])[0];
+  assert.equal(lesson?.inputSchemaDigest, teachingValueDigest(LESSON_ACTIVITY_SCHEMA));
+  assert.deepEqual(lesson?.capabilities, ['teach']);
+  assert.deepEqual(builtinToolRegistry.listForAgentIds(['unregistered-tool']), []);
+});
+
+test('management capability union keeps governed publication, revocation, binding and growth operations in the checked Skill contract', () => {
+  const skill = loadRuntimeSkillCatalog().skills.find(item => item.id === 'qitu-project-configurator');
+  assert.equal(validateManagementSkill(skill).id, 'qitu-project-configurator');
+  const ids = ADMIN_COPILOT_OPERATIONS.map(operation => operation.kind);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const kind of ['team.version', 'binding.activate', 'growth.projection.configure', 'skill.revoke'] as const) assert.ok(ids.includes(kind));
+  assert.deepEqual(ADMIN_COPILOT_OPERATIONS.find(operation => operation.kind === 'skill.revoke')?.scopes, ['global']);
+});

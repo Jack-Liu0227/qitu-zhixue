@@ -1,9 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { VisualAsset } from '@qitu/ui';
+import { TemplateTeamBindingPanel } from '../../../../lib/components/TemplateTeamBindingPanel';
+import { VisualSelector } from '../../../../lib/components/VisualAssetPicker';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AdminProjectTemplate, AdminTemplateVersionDetail } from '../../../../lib/api/content';
 import {
-  archiveAdminTemplate,
+  deleteAdminTemplate,
   createAdminTemplate,
   createAdminTemplateVersion,
   fetchAdminTemplateVersions,
@@ -11,7 +15,11 @@ import {
   updateAdminTemplate,
 } from '../../../../lib/api/content';
 import { fetchAdminTeamConfigs } from '../../../../lib/api/teams';
-import type { AdminTeamConfig } from '@qitu/contracts';
+import type {
+  AdminTeamConfig,
+  ProjectTemplateSpec,
+  PblTemplateSession,
+} from '@qitu/contracts';
 import { AdminStateViews } from '../../../../lib/components/AdminStateViews';
 
 /**
@@ -44,6 +52,12 @@ interface TemplateEditorState {
   phases: PblPhaseDesign[];
   /** 阶段设计取自哪个版本；null = 该模板还没有任何版本。 */
   sourceVersion: string | null;
+  sourceVersionId: string | null;
+  sourceContent: Record<string, unknown>;
+  sourceStages: AdminTemplateVersionDetail['stages'];
+  sourceRubric: unknown[];
+  /** 若最新版本包含治理版 ProjectTemplateSpec，保存在此以供课时轨道展示并启用防呆 */
+  pblSpec: ProjectTemplateSpec | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,6 +67,92 @@ const STATUS_LABELS: Record<string, string> = {
   archived: '已归档',
 };
 
+const PHASE_META: Record<
+  string,
+  { label: string; tag: string; color: string; bg: string; border: string; mentor: string; defaultGate: string }
+> = {
+  exploration: {
+    label: '探索破冰 (exploration)',
+    tag: '探索',
+    color: '#d97706',
+    bg: '#fffbeb',
+    border: '#fde68a',
+    mentor: '主导导师 (Lead Advisor)',
+    defaultGate: 'student_confirmed_intent (探究意向书确认)',
+  },
+  concept_mastery: {
+    label: '概念奠基 (concept_mastery)',
+    tag: '概念',
+    color: '#2563eb',
+    bg: '#eff6ff',
+    border: '#bfdbfe',
+    mentor: '概念教练 (Concept Coach)',
+    defaultGate: 'TheoryMastered (四大物理定律通关)',
+  },
+  guided_practice: {
+    label: '探究实践 (guided_practice)',
+    tag: '实践',
+    color: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+    mentor: '实验向导 (Lab Guide)',
+    defaultGate: 'practice_artifact_approved (CER 实验报告通过)',
+  },
+  deliverable_review: {
+    label: '成果答辩与归档 (deliverable_review)',
+    tag: '答辩',
+    color: '#9333ea',
+    bg: '#faf5ff',
+    border: '#e9d5ff',
+    mentor: '评审导师 (Reviewer)',
+    defaultGate: 'review_completed_and_archived (素养成长归档)',
+  },
+};
+
+const GATE_DESCRIPTIONS: Record<
+  string,
+  { title: string; desc: string; badge: string; color: string; bg: string; border: string }
+> = {
+  TheoryMastered: {
+    title: '【TheoryMastered 核心门禁】',
+    desc: '四大物理定律（光的直线传播、反射定律、折射定律、全反射/透镜规律）评测全达标，解锁光具座搭建与实践操作权限',
+    badge: '🛡️ 核心理论门禁',
+    color: '#dc2626',
+    bg: '#fef2f2',
+    border: '#fecaca',
+  },
+  student_confirmed_intent: {
+    title: '【意图确认门禁】',
+    desc: '学生显式确认探究意向书草稿并立项，未确认前禁止创建正式项目',
+    badge: '🚩 意向立项门禁',
+    color: '#d97706',
+    bg: '#fffbeb',
+    border: '#fde68a',
+  },
+  practice_artifact_approved: {
+    title: '【实践成果门禁】',
+    desc: '实验探究报告与 CER（主张-证据-推理）科学论证提交，需经导师审核通过',
+    badge: '📝 成果评审门禁',
+    color: '#16a34a',
+    bg: '#f0fdf4',
+    border: '#bbf7d0',
+  },
+  review_completed_and_archived: {
+    title: '【结项归档门禁】',
+    desc: '学科素养成长反思与量规自评由服务端 owner 正式完成归档',
+    badge: '🎓 素养成长归档',
+    color: '#9333ea',
+    bg: '#faf5ff',
+    border: '#e9d5ff',
+  },
+};
+
+const SESSION_TYPE_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  theory: { label: '理论探究', icon: 'activity-concept-v1', color: '#1d4ed8', bg: '#dbeafe' },
+  practice: { label: '实验操作', icon: 'activity-experiment-v1', color: '#15803d', bg: '#dcfce7' },
+  review: { label: '答辩归档', icon: 'activity-reflection-v1', color: '#7e22ce', bg: '#f3e8ff' },
+};
+
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -60,6 +160,7 @@ function asText(value: unknown): string {
 /**
  * 从版本数据解析阶段设计。只认版本里真实存在的字段：
  * - `content.phases` 是本页保存时写入的结构，优先使用；
+ * - 治理版 `content.pbl` 的 `phases`；
  * - 否则退到版本冻结的 `stages`（id/label）生成骨架，其余字段留空由治理者补全；
  * - 两者都没有时返回空数组，页面展示诚实空态。
  */
@@ -76,6 +177,18 @@ function parsePhasesFromVersion(version: AdminTemplateVersionDetail): PblPhaseDe
         mentorRole: asText(item.mentorRole),
       }));
     if (parsed.length > 0) return parsed;
+  }
+  if (content.pbl && typeof content.pbl === 'object') {
+    const pbl = content.pbl as ProjectTemplateSpec;
+    if (Array.isArray(pbl.phases) && pbl.phases.length > 0) {
+      return pbl.phases.map((phase, index) => ({
+        id: phase.phase || `phase-${index + 1}`,
+        name: phase.title || phase.phase,
+        gateRule: phase.gateCondition || '',
+        stagePrompt: `【${phase.title || phase.phase}】阶段主导角色：${phase.assignedAssistantId ?? '系统分配'}；交付物：${phase.deliverableType ?? '无'}`,
+        mentorRole: phase.assignedAssistantId ?? '',
+      }));
+    }
   }
   return version.stages.map((stage, index) => ({
     id: stage.id || `phase-${index + 1}`,
@@ -96,10 +209,13 @@ export default function AdminTemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<TemplateEditorState | null>(null);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [versionsError, setVersionsError] = useState<Error | null>(null);
-  const [editorTab, setEditorTab] = useState<'basic' | 'workflow'>('workflow');
+  const [editorTab, setEditorTab] = useState<'sessions' | 'workflow' | 'basic'>('workflow');
+
   const [saveNotice, setSaveNotice] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const displayedTemplates = templates;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,27 +239,40 @@ export default function AdminTemplatesPage() {
   }, [load]);
 
   /** 按需拉取某模板的版本数据，把最新版本的阶段设计读进编辑器。 */
+  const versionRequest = useRef(0);
   const loadVersions = useCallback(async (templateId: string) => {
+    const request = ++versionRequest.current;
     setVersionsLoading(true);
     setVersionsError(null);
     try {
       const versions = await fetchAdminTemplateVersions(templateId);
+      if (request !== versionRequest.current) return;
       const latest = versions.length > 0 ? versions[versions.length - 1] ?? null : null;
       setEditingTemplate((prev) => {
         if (prev === null || prev.id !== templateId) return prev;
         if (latest === null) return prev;
         const content = (latest.content ?? {}) as Record<string, unknown>;
+        const pblSpec =
+          content.pbl && typeof content.pbl === 'object'
+            ? (content.pbl as ProjectTemplateSpec)
+            : null;
+        if (pblSpec) {
+          setEditorTab('sessions');
+        }
         return {
           ...prev,
           phases: parsePhasesFromVersion(latest),
           linkedTeamId: asText(content.linkedTeamId),
           sourceVersion: latest.version,
+          sourceVersionId: latest.id, sourceContent: latest.content, sourceStages: latest.stages, sourceRubric: latest.rubric,
+          pblSpec,
         };
       });
     } catch (cause) {
+      if (request !== versionRequest.current) return;
       setVersionsError(cause instanceof Error ? cause : new Error('版本数据加载失败'));
     } finally {
-      setVersionsLoading(false);
+      if (request === versionRequest.current) setVersionsLoading(false);
     }
   }, []);
 
@@ -164,24 +293,26 @@ export default function AdminTemplatesPage() {
       linkedTeamId: '',
       phases: [],
       sourceVersion: null,
+      sourceVersionId: null, sourceContent: {}, sourceStages: [], sourceRubric: [],
+      pblSpec: null,
     });
     void loadVersions(template.id);
   };
 
   const handleDeleteTemplate = async (id: string, title: string) => {
-    if (!window.confirm(`确定要归档项目模板「${title}」吗？`)) return;
+    if (!window.confirm(`确定要彻底删除项目模板「${title}」吗？
+此操作将直接从数据库中物理删除该模板及其全部版本，无法恢复。`)) return;
     setSaving(true);
+    setSaveError('');
     try {
-      const result = await archiveAdminTemplate(id);
-      setTemplates((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, ...result.template } : item)),
-      );
+      await deleteAdminTemplate(id);
+      setTemplates((prev) => prev.filter((item) => item.id !== id));
+      if (editingTemplate?.id === id) setEditingTemplate(null);
     } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : '模板归档失败');
+      setSaveError(cause instanceof Error ? cause.message : '模板删除失败');
     } finally {
       setSaving(false);
     }
-    if (editingTemplate?.id === id) setEditingTemplate(null);
   };
 
   const handleCreateTemplate = async () => {
@@ -268,11 +399,14 @@ export default function AdminTemplatesPage() {
     // 后端约束：published 模板不可改元数据（只能加新版本）；archived 模板两者都不行。
     const canUpdateMeta = editingTemplate.status !== 'published' && editingTemplate.status !== 'archived';
     const canCreateVersion = editingTemplate.status !== 'archived';
-    if (!canUpdateMeta && !(canCreateVersion && phases.length > 0)) {
+    if (!canUpdateMeta && !(canCreateVersion && (editingTemplate.pblSpec || phases.length > 0))) {
       setSaveError('已归档模板不能编辑，也不能生成新版本');
       return;
     }
 
+    if (editingTemplate.linkedTeamId && !editingTemplate.pblSpec && !phases.length) {
+      setSaveError('请先添加至少一个阶段，再保存团队草稿关联。'); return;
+    }
     setSaving(true);
     try {
       let notice: string;
@@ -289,16 +423,22 @@ export default function AdminTemplatesPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === result.template.id ? { ...t, ...result.template } : t)),
         );
-        notice = '基础信息已保存 ✔';
+        const readback = (await fetchAdminTemplates()).find((row) => row.id === result.template.id);
+        if (!readback || readback.updatedAt !== result.template.updatedAt) throw new Error('基础信息回读未确认，请重新加载核对');
+        notice = '基础信息已保存并回读确认';
       } else {
         notice = '';
       }
 
-      if (canCreateVersion && phases.length > 0) {
+      if (canCreateVersion && (editingTemplate.pblSpec || phases.length > 0)) {
+        const content = { ...editingTemplate.sourceContent };
+        delete content.bootstrapKey;
         const result = await createAdminTemplateVersion(editingTemplate.id, {
-          stages: phases.map((phase) => ({ id: phase.id, label: phase.name })),
+          stages: editingTemplate.pblSpec ? editingTemplate.sourceStages : phases.map((phase) => ({ id: phase.id, label: phase.name })),
+          rubric: editingTemplate.sourceRubric,
           content: {
-            phases,
+            ...content,
+            ...(!editingTemplate.pblSpec ? { phases } : {}),
             linkedTeamId: editingTemplate.linkedTeamId || null,
           },
         });
@@ -309,10 +449,12 @@ export default function AdminTemplatesPage() {
               : t,
           ),
         );
+        const readback = (await fetchAdminTemplateVersions(editingTemplate.id)).find((version) => version.id === result.version.id);
+        if (!readback || asText(readback.content.linkedTeamId) !== editingTemplate.linkedTeamId) throw new Error('版本保存后的团队关联回读不一致，请重新加载核对。');
         setEditingTemplate((prev) =>
           prev === null || prev.id !== editingTemplate.id
             ? prev
-            : { ...prev, phases, title, summary, sourceVersion: result.version.version },
+            : { ...prev, phases, title, summary, sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
         );
         notice = `阶段设计已保存为新版本 ${result.version.version} ✔`;
       } else if (phases.length === 0) {
@@ -320,10 +462,7 @@ export default function AdminTemplatesPage() {
       }
 
       setSaveNotice(notice);
-      window.setTimeout(() => {
-        setSaveNotice('');
-        setEditingTemplate(null);
-      }, 900);
+
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : '模板保存失败');
     } finally {
@@ -339,6 +478,10 @@ export default function AdminTemplatesPage() {
     const boundTeam = teams.find((t) => t.id === editingTemplate.linkedTeamId);
     const linkedTeamMissing =
       editingTemplate.linkedTeamId.length > 0 && boundTeam === undefined;
+    const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
+    const lessonSessions = lessonProfile?.sessions ?? [];
+    const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
+    const lessonMinutes = lessonProfile?.schedule.lessonMinutes ?? lessonSessions[0]?.durationMinutes ?? 60;
 
     return (
       <div className="admin-template-editor-view">
@@ -363,20 +506,40 @@ export default function AdminTemplatesPage() {
                 {saveError}
               </span>
             ) : null}
+            {editingTemplate.pblSpec ? (
+              <span
+                style={{
+                  backgroundColor: '#e8f3ff',
+                  color: '#165dff',
+                  border: '1px solid #bedaff',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="该模板由 ProjectTemplateSpec 治理，需通过版本发布流程更新"
+              >
+                课程合同受保护 · 团队配置可编辑
+              </span>
+            ) : null}
             <button
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving || versionsLoading}
+              disabled={saving || versionsLoading || !!versionsError}
+              title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，需通过版本发布流程更新' : undefined}
             >
-              保存模板与阶段设计
+              {editingTemplate.pblSpec ? '已锁定（通过版本流更新）' : '保存模板与阶段设计'}
             </button>
             <button
               type="button"
               className="settings-action-btn is-danger"
               onClick={() => handleDeleteTemplate(editingTemplate.id, editingTemplate.title)}
             >
-              🗑️ 归档
+              🗑️ 删除模板
             </button>
             <button
               type="button"
@@ -388,15 +551,26 @@ export default function AdminTemplatesPage() {
           </div>
         </div>
 
-        {/* 选项卡：基础配置 vs PBL 流程与阶段提示词 */}
+        {/* 选项卡：课时教学主线 vs 基础配置 */}
+        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={editingTemplate.sourceVersionId} teams={teams} />
         <div className="team-editor-top-tabs">
-          <button
-            type="button"
-            className={`team-editor-tab-item${editorTab === 'workflow' ? ' is-active' : ''}`}
-            onClick={() => setEditorTab('workflow')}
-          >
-            PBL 阶段设计与专属 Prompt
-          </button>
+          {editingTemplate.pblSpec ? (
+            <button
+              type="button"
+              className={`team-editor-tab-item${editorTab === 'sessions' ? ' is-active' : ''}`}
+              onClick={() => setEditorTab('sessions')}
+            >
+              📅 课时教学主线（16 课时）
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`team-editor-tab-item${editorTab === 'workflow' ? ' is-active' : ''}`}
+              onClick={() => setEditorTab('workflow')}
+            >
+              PBL 教学编排与专属 Prompt
+            </button>
+          )}
           <button
             type="button"
             className={`team-editor-tab-item${editorTab === 'basic' ? ' is-active' : ''}`}
@@ -406,15 +580,303 @@ export default function AdminTemplatesPage() {
           </button>
         </div>
 
-        {editorTab === 'workflow' ? (
+        {editorTab === 'sessions' && editingTemplate.pblSpec ? (
           <div className="admin-template-workflow-container">
-            <div className="admin-template-workflow-intro">
-              <strong>PBL 教学全流程设计与门禁管控：</strong>
-              <span>
-                {editingTemplate.sourceVersion !== null
+            {/* 顶栏宏观概览 */}
+            <div
+              className="admin-template-workflow-intro"
+              style={{
+                borderLeft: '4px solid #165dff',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                padding: '16px 20px',
+                borderRadius: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <strong style={{ fontSize: '15px', color: '#0f172a' }}>
+                    🛡️ {lessonCount} 课时教学主线（ProjectTemplateSpec 治理版 · {editingTemplate.pblSpec.version || editingTemplate.sourceVersion || 'v2'}）
+                  </strong>
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      background: '#e8f3ff',
+                      color: '#165dff',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    治理策略解耦架构 · standard-stem-pbl:v1
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  共 {lessonCount} 课时（每课时 {lessonMinutes} 分钟）
+                </span>
+              </div>
+              <p style={{ margin: '8px 0 4px', color: '#334155', fontSize: '13px', lineHeight: 1.6 }}>
+                <strong>驱动性问题：</strong> {editingTemplate.pblSpec.theme?.drivingQuestion || editingTemplate.pblSpec.description}
+              </p>
+              {editingTemplate.pblSpec.safetyRequirements && editingTemplate.pblSpec.safetyRequirements.length > 0 ? (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '8px 12px', borderRadius: '6px' }}>
+                  <strong>⚠️ 安全与实践要求：</strong> {editingTemplate.pblSpec.safetyRequirements.join('；')}
+                </div>
+              ) : null}
+            </div>
+
+            {/* A lesson card is the schedule unit; phase is shown only as governance metadata. */}
+            <div className="admin-template-phases-list">
+              {lessonSessions.map((session: PblTemplateSession) => {
+                const phaseMeta = PHASE_META[session.phase] ?? {
+                  label: session.phase,
+                  tag: session.phase,
+                  color: '#4e5969',
+                  bg: '#f2f3f5',
+                  border: '#e5e6eb',
+                  mentor: '导师',
+                  defaultGate: '无',
+                };
+                const typeMeta = SESSION_TYPE_META[session.sessionType] ?? {
+                  label: session.sessionType,
+                  icon: '📌',
+                  color: '#4e5969',
+                  bg: '#f2f3f5',
+                };
+                const gateId = session.checkpoint?.requiredGate;
+                const gateInfo = gateId ? GATE_DESCRIPTIONS[gateId] : null;
+
+                return (
+                  <div
+                    key={session.id || `session-${session.sessionIndex}`}
+                    className="admin-template-phase-card"
+                    style={{ borderLeft: `5px solid ${phaseMeta.color}` }}
+                  >
+                    {/* 头部标题与标签 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: phaseMeta.color,
+                            color: '#ffffff',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {session.sessionIndex}
+                        </span>
+                        <strong style={{ fontSize: '16px', color: '#1d2129' }}>
+                          第 {session.sessionIndex} 课时：{session.title}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            color: typeMeta.color,
+                            background: typeMeta.bg,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          <VisualAsset assetId={typeMeta.icon} size={20} /> {typeMeta.label}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#4e5969', fontWeight: 600 }}>
+                        ⏱️ {session.durationMinutes} 分钟
+                      </span>
+                    </div>
+
+                    {/* 门禁卡片 */}
+                    {gateInfo ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          background: gateInfo.bg,
+                          border: `1px solid ${gateInfo.border}`,
+                          borderRadius: '8px',
+                        }}
+                      >
+                        <span style={{ fontSize: '16px' }}>🚩</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: gateInfo.color, fontSize: '13px' }}>{gateInfo.title}</strong>
+                            <span style={{ fontSize: '11px', background: '#ffffff', color: gateInfo.color, border: `1px solid ${gateInfo.border}`, padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              {gateInfo.badge}
+                            </span>
+                          </div>
+                          <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: gateInfo.color, lineHeight: 1.5 }}>
+                            {gateInfo.desc}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 微观仿真挂载 */}
+                    {session.interactiveSpec?.enabled ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '6px',
+                          fontSize: '12.5px',
+                          color: '#166534',
+                        }}
+                      >
+                        <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span>
+                        <span>
+                          <strong>挂载微观仿真原型：</strong>
+                          <code style={{ background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', margin: '0 4px', fontFamily: 'monospace' }}>
+                            {session.interactiveSpec.domainTopic}
+                          </code>
+                          （{session.interactiveSpec.allowHypothesisPrediction ? '支持' : '限制'}假设预测对比；区分模型计算、模拟观察与真实测量）
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* 课时目标 */}
+                    {session.learningGoal ? (
+                      <div style={{ fontSize: '13px', color: '#1d2129', lineHeight: 1.6, background: '#f7f8fa', padding: '10px 14px', borderRadius: '8px' }}>
+                        <strong>🎯 本节学习目标：</strong>
+                        <span>{session.learningGoal}</span>
+                      </div>
+                    ) : null}
+
+                    {/* 5 步教学活动时间分配 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#86909c' }}>
+                        <span>⏳ 课堂教学活动时间分配：</span>
+                        <span>
+                          回顾 {session.blocks.review}m · 理论 {session.blocks.theory}m · 测验 {session.blocks.check}m · 实践 {session.blocks.practice}m · 反思 {session.blocks.reflect}m
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: '#e5e6eb' }}>
+                        {session.blocks.review > 0 ? (
+                          <div style={{ width: `${(session.blocks.review / session.durationMinutes) * 100}%`, background: '#f59e0b' }} title={`回顾: ${session.blocks.review}分钟`} />
+                        ) : null}
+                        {session.blocks.theory > 0 ? (
+                          <div style={{ width: `${(session.blocks.theory / session.durationMinutes) * 100}%`, background: '#3b82f6' }} title={`理论探究: ${session.blocks.theory}分钟`} />
+                        ) : null}
+                        {session.blocks.check > 0 ? (
+                          <div style={{ width: `${(session.blocks.check / session.durationMinutes) * 100}%`, background: '#ef4444' }} title={`检查测验: ${session.blocks.check}分钟`} />
+                        ) : null}
+                        {session.blocks.practice > 0 ? (
+                          <div style={{ width: `${(session.blocks.practice / session.durationMinutes) * 100}%`, background: '#10b981' }} title={`实践模拟: ${session.blocks.practice}分钟`} />
+                        ) : null}
+                        {session.blocks.reflect > 0 ? (
+                          <div style={{ width: `${(session.blocks.reflect / session.durationMinutes) * 100}%`, background: '#8b5cf6' }} title={`总结反思: ${session.blocks.reflect}分钟`} />
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* 证据链要求 */}
+                    {session.evidenceRequirements && session.evidenceRequirements.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#4e5969' }}>
+                          📋 课堂证据链要求（收口凭据）：
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {session.evidenceRequirements.map((ev, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                fontSize: '12px',
+                                color: '#334155',
+                                background: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              ✓ {ev}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 教学活动指导 */}
+                    {session.activityGuidance ? (
+                      <details style={{ fontSize: '12px', color: '#4e5969', borderTop: '1px dashed #e5e6eb', paddingTop: '8px' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#165dff' }}>
+                          展开查看 5 步教学活动指导建议 ▾
+                        </summary>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px' }}>
+                          {session.activityGuidance.review ? (
+                            <div style={{ background: '#fdf6ec', padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong style={{ color: '#b45309' }}>[回顾]</strong> {session.activityGuidance.review}
+                            </div>
+                          ) : null}
+                          {session.activityGuidance.theory ? (
+                            <div style={{ background: '#eff6ff', padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong style={{ color: '#1d4ed8' }}>[理论]</strong> {session.activityGuidance.theory}
+                            </div>
+                          ) : null}
+                          {session.activityGuidance.check ? (
+                            <div style={{ background: '#fef2f2', padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong style={{ color: '#b91c1c' }}>[检查]</strong> {session.activityGuidance.check}
+                            </div>
+                          ) : null}
+                          {session.activityGuidance.practice ? (
+                            <div style={{ background: '#f0fdf4', padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong style={{ color: '#15803d' }}>[实践]</strong> {session.activityGuidance.practice}
+                            </div>
+                          ) : null}
+                          {session.activityGuidance.reflect ? (
+                            <div style={{ background: '#faf5ff', padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong style={{ color: '#7e22ce' }}>[反思]</strong> {session.activityGuidance.reflect}
+                            </div>
+                          ) : null}
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : editorTab === 'workflow' ? (
+          <div className="admin-template-workflow-container">
+            <div className="admin-template-workflow-intro" style={{ borderLeft: editingTemplate.pblSpec ? '4px solid #165dff' : undefined }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <strong>
+                  {editingTemplate.pblSpec ? '🛡️ 平台治理策略（Governance Policy 解耦模式）：' : 'PBL 教学全流程设计与门禁管控：'}
+                </strong>
+                {editingTemplate.pblSpec ? (
+                  <span
+                    style={{
+                      backgroundColor: '#e6fffa',
+                      color: '#0f766e',
+                      border: '1px solid #99f6e4',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    已绑定策略：standard-stem-pbl:v1（STEM 物理探究标准治理策略）
+                  </span>
+                ) : null}
+              </div>
+              <p style={{ margin: '8px 0 0', color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+                {editingTemplate.pblSpec
+                  ? `解耦架构优势：本模板采用「教学活动编排（16 课时轨道）」与「平台安全治理策略（Governance Policy）」解耦架构。阶段、门禁判定（如 TheoryMastered 强力阻断物理实践）与导师角色由底层策略集中把关，教研人员无需重复维护冗余阶段表单，直接由 16 课时时间轴驱动教学执行。`
+                  : editingTemplate.sourceVersion !== null
                   ? `以下阶段设计读取自最新版本 ${editingTemplate.sourceVersion}；保存会生成新版本（历史版本冻结不可改）。`
                   : '该模板还没有已保存的版本；添加阶段并保存后会生成第一个版本。'}
-              </span>
+              </p>
             </div>
 
             {versionsLoading ? (
@@ -445,72 +907,178 @@ export default function AdminTemplatesPage() {
                   </div>
                 ) : (
                   <div className="admin-template-phases-list">
-                    {editingTemplate.phases.map((phase, idx) => (
-                      <div key={phase.id} className="admin-template-phase-card">
-                        <div className="admin-phase-card-header">
-                          <div className="admin-phase-header-left">
-                            <span className="admin-phase-index-badge">{idx + 1}</span>
-                            <input
-                              className="admin-input-text admin-phase-title-text"
-                              style={{ maxWidth: '280px' }}
-                              value={phase.name}
-                              placeholder="阶段名称（必填）"
-                              onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
-                            />
-                            <input
-                              className="admin-input-text"
-                              style={{ maxWidth: '200px', fontSize: '12px' }}
-                              value={phase.mentorRole}
-                              placeholder="绑定导师角色"
-                              onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className="admin-skill-dot-btn"
-                            style={{ color: '#ef4444' }}
-                            title="删除该阶段"
-                            onClick={() => removePhase(phase.id)}
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                    {editingTemplate.phases.map((phase, idx) => {
+                      const meta = PHASE_META[phase.id] ?? {
+                        label: phase.name,
+                        color: '#165dff',
+                        bg: '#eff6ff',
+                        border: '#bfdbfe',
+                        mentor: phase.mentorRole || '未分配',
+                        defaultGate: phase.gateRule || '无门禁',
+                      };
+                      const isLocked = Boolean(editingTemplate.pblSpec);
 
-                        <div className="admin-phase-card-body">
-                          <div className="admin-phase-gate-box">
-                            <span className="admin-phase-gate-label">🛡️ 阶段硬性门禁规则:</span>
-                            <input
-                              className="admin-input-text"
-                              style={{ flex: 1 }}
-                              value={phase.gateRule}
-                              placeholder="例如：未通过理论掌握度检测前不得进入实践"
-                              onChange={(e) => updatePhase(phase.id, { gateRule: e.target.value })}
-                            />
+                      return (
+                        <div
+                          key={phase.id}
+                          className="admin-template-phase-card"
+                          style={{ borderLeft: `5px solid ${meta.color}` }}
+                        >
+                          <div className="admin-phase-card-header">
+                            <div className="admin-phase-header-left">
+                              <span
+                                className="admin-phase-index-badge"
+                                style={{ background: meta.color }}
+                              >
+                                {idx + 1}
+                              </span>
+                              {isLocked ? (
+                                <>
+                                  <strong style={{ fontSize: '15px', color: '#1d2129' }}>
+                                    {phase.name || meta.label}
+                                  </strong>
+                                  <span
+                                    style={{
+                                      fontSize: '12px',
+                                      background: '#f2f3f5',
+                                      color: '#4e5969',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                    }}
+                                  >
+                                    ID: <code>{phase.id}</code>
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '12px',
+                                      background: meta.bg,
+                                      color: meta.color,
+                                      border: `1px solid ${meta.border}`,
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    责任导师：{phase.mentorRole || meta.mentor}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '12px',
+                                      background: '#f7f8fa',
+                                      color: '#86909c',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                    }}
+                                  >
+                                    🔒 只读锁定
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <input
+                                    className="admin-input-text admin-phase-title-text"
+                                    style={{ maxWidth: '280px' }}
+                                    value={phase.name}
+                                    placeholder="阶段名称（必填）"
+                                    onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
+                                  />
+                                  <input
+                                    className="admin-input-text"
+                                    style={{ maxWidth: '200px', fontSize: '12px' }}
+                                    value={phase.mentorRole}
+                                    placeholder="绑定导师角色"
+                                    onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
+                                  />
+                                </>
+                              )}
+                            </div>
+                            {!isLocked ? (
+                              <button
+                                type="button"
+                                className="admin-skill-dot-btn"
+                                style={{ color: '#ef4444' }}
+                                title="删除该阶段"
+                                onClick={() => removePhase(phase.id)}
+                              >
+                                🗑️
+                              </button>
+                            ) : null}
                           </div>
 
-                          <div className="admin-phase-prompt-box">
-                            <label className="admin-phase-prompt-label">
-                              阶段引导 Prompt (系统提示词):
-                            </label>
-                            <textarea
-                              className="admin-prompt-editor-box"
-                              rows={6}
-                              value={phase.stagePrompt}
-                              onChange={(e) => updatePhase(phase.id, { stagePrompt: e.target.value })}
-                              placeholder="在此配置该阶段导师的苏格拉底式发问策略与引导约束..."
-                            />
+                          <div className="admin-phase-card-body">
+                            <div
+                              className="admin-phase-gate-box"
+                              style={{
+                                background: phase.id === 'concept_mastery' ? '#fef2f2' : meta.bg,
+                                borderColor: phase.id === 'concept_mastery' ? '#fecaca' : meta.border,
+                              }}
+                            >
+                              <span
+                                className="admin-phase-gate-label"
+                                style={{
+                                  color: phase.id === 'concept_mastery' ? '#dc2626' : meta.color,
+                                }}
+                              >
+                                🛡️ 阶段硬性门禁规则:
+                              </span>
+                              {isLocked ? (
+                                <span style={{ fontSize: '13px', color: '#1d2129', fontWeight: 600 }}>
+                                  {phase.gateRule || meta.defaultGate}
+                                </span>
+                              ) : (
+                                <input
+                                  className="admin-input-text"
+                                  style={{ flex: 1 }}
+                                  value={phase.gateRule}
+                                  placeholder="例如：未通过理论掌握度检测前不得进入实践"
+                                  onChange={(e) => updatePhase(phase.id, { gateRule: e.target.value })}
+                                />
+                              )}
+                            </div>
+
+                            <div className="admin-phase-prompt-box">
+                              <label className="admin-phase-prompt-label">
+                                阶段引导 Prompt (系统提示词):
+                              </label>
+                              {isLocked ? (
+                                <div
+                                  style={{
+                                    background: '#f7f8fa',
+                                    border: '1px solid #e5e6eb',
+                                    borderRadius: '8px',
+                                    padding: '12px 14px',
+                                    fontSize: '13px',
+                                    color: '#334155',
+                                    lineHeight: 1.6,
+                                    whiteSpace: 'pre-wrap',
+                                  }}
+                                >
+                                  {phase.stagePrompt || '（系统默认阶段引导策略）'}
+                                </div>
+                              ) : (
+                                <textarea
+                                  className="admin-prompt-editor-box"
+                                  rows={6}
+                                  value={phase.stagePrompt}
+                                  onChange={(e) => updatePhase(phase.id, { stagePrompt: e.target.value })}
+                                  placeholder="在此配置该阶段导师的苏格拉底式发问策略与引导约束..."
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 
-                <div style={{ marginTop: '12px' }}>
-                  <button type="button" className="settings-action-btn" onClick={addPhase}>
-                    + 添加阶段
-                  </button>
-                </div>
+                {!editingTemplate.pblSpec ? (
+                  <div style={{ marginTop: '12px' }}>
+                    <button type="button" className="settings-action-btn" onClick={addPhase}>
+                      + 添加阶段
+                    </button>
+                  </div>
+                ) : null}
               </>
             )}
           </div>
@@ -551,7 +1119,7 @@ export default function AdminTemplatesPage() {
                   />
                 </div>
                 <div className="admin-form-row">
-                  <label className="admin-form-label">绑定导师团队</label>
+                  <label className="admin-form-label">团队草稿关联</label>
                   {teams.length === 0 && !linkedTeamMissing ? (
                     <span style={{ fontSize: '12px', color: '#86909c' }}>
                       暂无可选导师团队（团队数据为空）
@@ -579,7 +1147,7 @@ export default function AdminTemplatesPage() {
                   )}
                   {boundTeam ? (
                     <span style={{ fontSize: '12px', color: '#86909c', marginLeft: '8px' }}>
-                      当前绑定：{boundTeam.name}
+                      草稿关联：{boundTeam.name}
                     </span>
                   ) : null}
                 </div>
@@ -613,7 +1181,7 @@ export default function AdminTemplatesPage() {
         <div className="settings-titlebox">
           <h1>项目模板库</h1>
           <div className="settings-desc">
-            Admin 统一维护项目式学习（PBL）模板。阶段设计与导师提示词随模板版本冻结保存，修改即产生新版本。
+            Admin 统一维护项目式学习（PBL）模板。全面以课时为基本教学单元进行编排与交付收口。
           </div>
         </div>
         <div className="settings-page-actions">
@@ -634,66 +1202,146 @@ export default function AdminTemplatesPage() {
         </div>
       ) : null}
 
-      {templates.length === 0 ? (
+      {displayedTemplates.length === 0 ? (
         <div className="settings-empty" style={{ padding: '32px', textAlign: 'center' }}>
-          <strong>模板库为空</strong>
+          <strong>暂无项目模板</strong>
           <p style={{ margin: '8px 0 0', color: '#86909c', fontSize: '13px' }}>
-            点击右上角「新建项目模板」创建第一个模板，然后在编辑器中补全阶段设计。
+            点击右上角「新建项目模板」创建新模板。
           </p>
         </div>
       ) : (
         <div className="admin-templates-cards-grid">
-          {templates.map((template) => (
-            <div key={template.id} className="admin-template-item-card">
-              <div className="admin-template-item-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>📦</span>
-                  <strong className="admin-template-item-title">{template.title}</strong>
-                </div>
-                <span className="admin-template-status-pill">
-                  {STATUS_LABELS[template.status] ?? template.status}
-                </span>
-              </div>
-
-              <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
-
-              <div className="admin-template-info-list">
-                <div className="admin-template-info-row">
-                  <span className="admin-template-info-label">适用领域:</span>
-                  <span className="admin-template-info-val">{template.domain || '未设置'}</span>
-                </div>
-                <div className="admin-template-info-row">
-                  <span className="admin-template-info-label">发布版本:</span>
-                  <span className="admin-template-info-val">
-                    {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+          {displayedTemplates.map((template) => {
+            const is16Sessions =
+              template.slug.includes('16s') || template.title.includes('16');
+            return (
+              <div key={template.id} className="admin-template-item-card">
+                <div className="admin-template-item-head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={40} />
+                    <strong className="admin-template-item-title">{template.title}</strong>
+                  </div>
+                  <span
+                    className="admin-template-status-pill"
+                    style={{
+                      backgroundColor:
+                        template.status === 'published'
+                          ? '#e6f8ea'
+                          : template.status === 'archived'
+                            ? '#f2f3f5'
+                            : '#e8f3ff',
+                      color:
+                        template.status === 'published'
+                          ? '#00b42a'
+                          : template.status === 'archived'
+                            ? '#86909c'
+                            : '#165dff',
+                    }}
+                  >
+                    {STATUS_LABELS[template.status] ?? template.status}
                   </span>
                 </div>
-              </div>
 
-              <div
-                className="admin-template-card-footer"
-                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
-              >
-                <button
-                  type="button"
-                  className="settings-action-btn is-primary"
-                  style={{ flex: 1 }}
-                  onClick={() => openEditor(template)}
+                {is16Sessions ? (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      marginTop: '6px',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <span>📅 16 课时项目教学编排</span>
+                  </div>
+                ) : null}
+
+                <p className="admin-template-item-desc">{template.summary || '暂无描述'}</p>
+                <div style={{ display: 'flex', gap: 8, margin: '10px 0', flexWrap: 'wrap' }}>
+                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="icon" label="选择主题图标" onSaved={() => void load()} />
+                  <VisualSelector owner={{ kind: 'template', id: template.id }} usage="cover" label="选择主题封面" onSaved={() => void load()} />
+                  {template.latestPublishedVersionId && <VisualSelector owner={{ kind: 'template-version', id: template.latestPublishedVersionId }} usage="icon" label="版本图标" onSaved={() => void load()} />}
+                </div>
+
+                <div className="admin-template-info-list">
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">适用领域:</span>
+                    <span className="admin-template-info-val">{template.domain || '未设置'}</span>
+                  </div>
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">课时规划:</span>
+                    <span
+                      className="admin-template-info-val"
+                      style={{
+                        fontWeight: is16Sessions ? 600 : 'normal',
+                        color: is16Sessions ? '#165dff' : undefined,
+                      }}
+                    >
+                      {is16Sessions ? '16 课时（60 分钟/课时）' : '课时轨道尚未配置'}
+                    </span>
+                  </div>
+                  {is16Sessions ? (
+                    <>
+                      <div className="admin-template-info-row">
+                        <span className="admin-template-info-label">治理策略:</span>
+                        <span
+                          className="admin-template-info-val"
+                          style={{ color: '#0f766e', fontWeight: 600 }}
+                          title="解耦治理：STEM 物理项目式探究标准治理策略 (standard-stem-pbl:v1)"
+                        >
+                          🛡️ standard-stem-pbl:v1
+                        </span>
+                      </div>
+                      <div className="admin-template-info-row">
+                        <span className="admin-template-info-label">核心门禁:</span>
+                        <span
+                          className="admin-template-info-val"
+                          style={{ color: '#dc2626', fontWeight: 600 }}
+                        >
+                          TheoryMastered（第 8 课时）
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="admin-template-info-row">
+                    <span className="admin-template-info-label">发布版本:</span>
+                    <span className="admin-template-info-val">
+                      {template.latestPublishedVersionId ? '已有发布版本' : '尚无发布版本'}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="admin-template-card-footer"
+                  style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
                 >
-                  配置团队与阶段设计 →
-                </button>
-                <button
-                  type="button"
-                  className="admin-skill-dot-btn"
-                  style={{ color: '#ef4444' }}
-                  onClick={() => handleDeleteTemplate(template.id, template.title)}
-                  title="归档模板"
-                >
-                  🗑️
-                </button>
+                  <button
+                    type="button"
+                    className="settings-action-btn is-primary"
+                    style={{ flex: 1 }}
+                    onClick={() => openEditor(template)}
+                  >
+                    {is16Sessions ? '查看 16 课时教学编排 →' : '配置项目与团队绑定 →'}
+                  </button>
+                  <button
+                    type="button"
+                    className="settings-action-btn is-danger"
+                    onClick={() => handleDeleteTemplate(template.id, template.title)}
+                    title="删除项目模板"
+                  >
+                    🗑️ 删除
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

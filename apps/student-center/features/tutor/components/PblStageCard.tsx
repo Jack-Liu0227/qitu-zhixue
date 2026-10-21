@@ -12,13 +12,6 @@ interface PblStageCardProps {
   onAction?: () => void;
 }
 
-const PHASE_NAMES = {
-  exploration: '阶段一 · 项目意图',
-  concept_mastery: '阶段二 · 核心原理探究',
-  guided_practice: '阶段三 · 代码实践（Pygame）',
-  deliverable_review: '阶段四 · 成果答辩',
-};
-
 export function PblStageCard({
   phase,
   title,
@@ -32,7 +25,7 @@ export function PblStageCard({
     <div className={styles.pblCard} data-phase={phase}>
       <header className={styles.pblCardHeader}>
         <div className={styles.pblCardBadgeGroup}>
-          <span className={styles.pblPhasePill}>{PHASE_NAMES[phase]}</span>
+          <span className={styles.pblPhasePill}>课时探究活动</span>
           {teammateLabel && (
             <span className={styles.pblTeammatePill}>{teammateLabel}</span>
           )}

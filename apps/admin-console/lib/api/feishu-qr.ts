@@ -1,5 +1,13 @@
 import type { FeishuIntegrationConfig, FeishuQrStatusResponse } from './feishu';
 
+/**
+ * Refresh only after the provider's advertised expiry. A client-side lead time
+ * would hide a still-scannable QR and can shorten providers with short TTLs.
+ */
+export function shouldRefreshFeishuQr(remainingSeconds: number | null): boolean {
+  return remainingSeconds === 0;
+}
+
 export function applyFeishuQrStatus(current: FeishuIntegrationConfig, status: FeishuQrStatusResponse): FeishuIntegrationConfig {
   const pending = status.status === 'pending';
   return {

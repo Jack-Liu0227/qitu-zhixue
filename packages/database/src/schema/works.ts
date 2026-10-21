@@ -26,6 +26,7 @@ export const PROJECT_EVIDENCE_SOURCE_KINDS = [
   'reflection',
   'mastery_attempt',
   'artifact',
+  'experiment_observation',
 ] as const;
 
 /**

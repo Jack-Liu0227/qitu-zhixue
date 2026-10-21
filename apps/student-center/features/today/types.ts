@@ -36,6 +36,7 @@ export interface TodaySuggestion {
 
 /** C1 projection: "从一个想法开始" direction card (Q2 pending). Read-only. */
 export interface IdeaDirection {
+  iconAssetId?: string | null;
   templateId: string;
   title: string;
   subtitle: string;

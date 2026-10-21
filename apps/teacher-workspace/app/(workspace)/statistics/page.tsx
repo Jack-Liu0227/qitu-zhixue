@@ -143,17 +143,25 @@ export default function StatisticsPage() {
                   学情洞察与过程性分析
                 </span>
               </div>
-              <p>基于真实探究行为事件的实时班级指标 · 数据不是标签，而是发现每个孩子闪光点的线索</p>
+              <p>查看当前名下学生的项目分布与已接入的学习指标</p>
             </div>
           </div>
 
           <div className="qtx-banner-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span className="qtx-bubble">
-              {data.dataSource === 'demo' ? '🧪 演示数据模式' : '🟢 实时同步中'}
+              {data.dataSource === 'demo' ? '演示数据模式' : '服务端统计快照'}
             </span>
             <button
               type="button"
-              onClick={() => alert('学情数据已导出为 CSV 报表')}
+              onClick={() => {
+                const rows = [['指标', '数值'], ['学生总数', String(data.totals.studentCount)],
+                  ['本周学习次数', data.signalsAvailable === false ? '暂未接入' : String(data.totals.sessionsThisWeek)],
+                  ['本周学习时长（分钟）', data.signalsAvailable === false ? '暂未接入' : String(data.totals.minutesThisWeek)],
+                  ...data.stageDistribution.map((item) => [stageLabels[item.stage] ?? '状态待确认', String(item.count)])];
+                const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map((row) => row.join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+                const link = document.createElement('a'); link.href = url; link.download = '班级项目统计.csv'; link.click();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -175,6 +183,7 @@ export default function StatisticsPage() {
         </div>
       </section>
 
+      {data.signalsAvailable === false && <p role="status">项目统计来自当前名下学生；学习时长、活跃度与关注提醒统计尚未接入，显示为“—”。</p>}
       {/* 指标卡 */}
       <section className="qtx-grid qtx-grid-4">
         <MetricCard
@@ -192,21 +201,21 @@ export default function StatisticsPage() {
         />
         <MetricCard
           label="本周学习次数"
-          value={String(data.totals.sessionsThisWeek)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.sessionsThisWeek)}
           delta={null}
           icon={<SparklesIcon size={22} />}
           tone="#4f46e5"
         />
         <MetricCard
           label="本周学习时长"
-          value={`${data.totals.minutesThisWeek}分钟`}
+          value={data.signalsAvailable === false ? '—' : `${data.totals.minutesThisWeek}分钟`}
           delta={null}
           icon={<TrendingUpIcon size={22} />}
           tone="#0d9488"
         />
         <MetricCard
           label="本周完成任务"
-          value={String(data.totals.tasksCompletedThisWeek)}
+          value={data.signalsAvailable === false ? '—' : String(data.totals.tasksCompletedThisWeek)}
           delta={null}
           icon={<HeartIcon size={22} />}
           tone="#e11d48"
@@ -284,7 +293,7 @@ export default function StatisticsPage() {
           </div>
           {data.weeklyActivity.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
-              暂无活跃数据
+              {data.signalsAvailable === false ? '活跃度统计暂未接入' : '暂无活跃数据'}
             </div>
           ) : (
             <>
@@ -405,7 +414,7 @@ export default function StatisticsPage() {
               查看学生 <ArrowRightIcon size={14} />
             </Link>
           </div>
-          <AttentionStudents students={data.needsAttention} />
+          <AttentionStudents students={data.needsAttention} available={data.signalsAvailable !== false} />
         </div>
       </section>
     </div>

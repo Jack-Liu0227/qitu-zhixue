@@ -1,0 +1,413 @@
+{
+  "origin": "http://127.0.0.1:4180",
+  "dataMode": "isolated test memory; no production data or writes",
+  "results": [
+    {
+      "case": "public entry and honest offline login",
+      "passed": true
+    },
+    {
+      "case": "student anonymous deep link -> unified login -> original destination",
+      "passed": true
+    },
+    {
+      "case": "teacher anonymous deep link -> unified login -> original destination",
+      "passed": true
+    },
+    {
+      "case": "parent anonymous deep link -> unified login -> original destination",
+      "passed": true
+    },
+    {
+      "case": "admin anonymous deep link -> unified login -> original destination",
+      "passed": true
+    },
+    {
+      "case": "mobile settings directory and filter",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    {
+      "file": "after/home/home-1440.png",
+      "route": "/",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1425,
+        "title": "启途智学 · AI 驱动的项目式学习平台"
+      }
+    },
+    {
+      "file": "after/home/home-390.png",
+      "route": "/",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 375,
+        "title": "启途智学 · AI 驱动的项目式学习平台"
+      }
+    },
+    {
+      "file": "after/home/home-320.png",
+      "route": "/",
+      "width": 320,
+      "metrics": {
+        "viewport": 320,
+        "scroll": 305,
+        "title": "启途智学 · AI 驱动的项目式学习平台"
+      }
+    },
+    {
+      "file": "after/login/login-1440.png",
+      "route": "/login",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "统一登录 · 启途智学"
+      }
+    },
+    {
+      "file": "after/login/login-390.png",
+      "route": "/login",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "统一登录 · 启途智学"
+      }
+    },
+    {
+      "file": "after/login/login-320.png",
+      "route": "/login",
+      "width": 320,
+      "metrics": {
+        "viewport": 320,
+        "scroll": 320,
+        "title": "统一登录 · 启途智学"
+      }
+    },
+    {
+      "file": "after/login/offline-390.png",
+      "route": "/login",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 375,
+        "title": "统一登录 · 启途智学"
+      }
+    },
+    {
+      "file": "after/student/today-1440.png",
+      "route": "/student/today",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/student/today-390.png",
+      "route": "/student/today",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 382,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/student/projects-1440.png",
+      "route": "/student/projects",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/student/projects-390.png",
+      "route": "/student/projects",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/student/profile-1440.png",
+      "route": "/student/profile",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1432,
+        "title": "个人画像 · 启途智学"
+      }
+    },
+    {
+      "file": "after/student/profile-390.png",
+      "route": "/student/profile",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 382,
+        "title": "个人画像 · 启途智学"
+      }
+    },
+    {
+      "file": "after/student/inspiration-1440.png",
+      "route": "/student/inspiration",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/student/inspiration-390.png",
+      "route": "/student/inspiration",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 学生学习中心"
+      }
+    },
+    {
+      "file": "after/teacher/dashboard-1440.png",
+      "route": "/teacher/dashboard",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1425,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/dashboard-390.png",
+      "route": "/teacher/dashboard",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 375,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/students-1440.png",
+      "route": "/teacher/students",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/students-390.png",
+      "route": "/teacher/students",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 375,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/statistics-1440.png",
+      "route": "/teacher/statistics",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/statistics-390.png",
+      "route": "/teacher/statistics",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 375,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/issues-1440.png",
+      "route": "/teacher/issues",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/teacher/issues-390.png",
+      "route": "/teacher/issues",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 班主任工作台"
+      }
+    },
+    {
+      "file": "after/parent/home-1440.png",
+      "route": "/parent",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/parent/home-390.png",
+      "route": "/parent",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 382,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/parent/progress-1440.png",
+      "route": "/parent/progress",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/parent/progress-390.png",
+      "route": "/parent/progress",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/parent/messages-1440.png",
+      "route": "/parent/messages",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/parent/messages-390.png",
+      "route": "/parent/messages",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 382,
+        "title": "启途智学 · 家长陪伴中心"
+      }
+    },
+    {
+      "file": "after/admin/copilot-1440.png",
+      "route": "/admin/copilot",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/copilot-390.png",
+      "route": "/admin/copilot",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-1440.png",
+      "route": "/admin/settings",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-390.png",
+      "route": "/admin/settings",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-skills-1440.png",
+      "route": "/admin/settings/skills",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-skills-390.png",
+      "route": "/admin/settings/skills",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-mobile-search-390.png",
+      "route": "/admin/settings/skills",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-tools-1440.png",
+      "route": "/admin/settings/tools",
+      "width": 1440,
+      "metrics": {
+        "viewport": 1440,
+        "scroll": 1440,
+        "title": "启途智学 · 平台管理后台"
+      }
+    },
+    {
+      "file": "after/admin/settings-tools-390.png",
+      "route": "/admin/settings/tools",
+      "width": 390,
+      "metrics": {
+        "viewport": 390,
+        "scroll": 390,
+        "title": "启途智学 · 平台管理后台"
+      }
+    }
+  ]
+}

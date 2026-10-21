@@ -3,18 +3,26 @@
 import { AssistantGlyph, RobotMascot } from '@qitu/ui';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useCopilotModel } from '../../../lib/copilot/use-copilot-model';
 import { useAssistantCatalog } from '../../../lib/copilot/use-assistant-catalog';
 import { resolveCopilotSelection, resolveCopilotTeamSelection } from '../../../lib/copilot/assistant-catalog';
 import Link from 'next/link';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { fetchAvailableConfiguredModels, configuredModelKey, type ConfiguredModelItem } from '../../../lib/api/configuredModels';
-import { createPersistedAssistant } from '../../../lib/api/assistants';
-import { createPersistedTeam } from '../../../lib/api/teams';
+import { configuredModelKey } from '../../../lib/api/configuredModels';
+import type { AdminCopilotRequest } from '@qitu/contracts';
+import { runCopilotTurn } from '../../../lib/api/copilot';
+import { useProjectCatalog } from '../../../lib/copilot/use-project-catalog';
+import { useCopilotCapabilities } from '../../../lib/copilot/use-copilot-capabilities';
+import { CopilotCapabilities } from './CopilotCapabilities';
 import { newIdempotencyKey } from '../../../lib/api/modelRegistry';
 
 // v2 intentionally avoids replaying pre-audit sessions that claimed persistence
 // without a server acknowledgement. They remain in the old key for diagnostics.
-const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v2';
+// v3 intentionally drops pre-registry examples and stale local artifacts.
+// Runtime entities are server-owned; old browser history must not resurrect a
+// deleted team or disabled assistant in the copilot surface.
+const COPILOT_SESSIONS_STORAGE_KEY = 'qitu.admin.copilot.sessions.v4';
+const COPILOT_PERMISSION_STORAGE_KEY = 'qitu.admin.copilot.permission.v1';
 
 interface ToolExecutionStep {
   name: string;
@@ -29,6 +37,7 @@ interface Message {
   content: string;
   timestamp: string;
   toolSteps?: ToolExecutionStep[];
+  retry?: { request: AdminCopilotRequest; key: string; startedAt: number };
   artifact?: {
     type: 'assistant' | 'team' | 'mcp' | 'skill' | 'template' | 'knowledge';
     title: string;
@@ -42,88 +51,21 @@ interface Session {
   title: string;
   updatedAt: string;
   messages: Message[];
+  templateId?: string | null;
+  templateVersionId?: string | null;
 }
 
 const INITIAL_SESSIONS: Session[] = [
   {
     id: 'sess-default',
-    title: 'Copilot example (runtime unverified)',
+    title: '新对话',
     updatedAt: 'just now',
     messages: [
       {
         id: 'msg-1',
         role: 'system',
-        content: 'This is an example Copilot session. Assistant, team, tool, and gate metadata below was not probed against the current server and does not indicate published or persisted runtime state.',
-        timestamp: '10:00',
-      },
-      {
-        id: 'msg-2',
-        role: 'user',
-        content: 'Check whether the kinetic-energy PBL team and its skill/tool bindings are complete.',
-        timestamp: '10:01',
-      },
-      {
-        id: 'msg-3',
-        role: 'assistant',
-        content: 'Example response only. Run a new request to perform a real server-backed check; this seeded message is not evidence of a database or runtime probe.',
-        timestamp: '10:02',
-        toolSteps: [
-          { name: 'query_db_teams', status: 'error', label: 'Example step: current database query was not executed' },
-          { name: 'check_capability_matrix', status: 'error', label: 'Example step: runtime binding check was not executed' },
-          { name: 'verify_theory_gate', status: 'error', label: 'Example step: server-side TheoryMastered check was not executed' },
-        ],
-        artifact: {
-          type: 'team',
-          title: 'Kinetic-energy team example (unverified)',
-          details: 'Example metadata only; current database, runtime tools, and team binding were not verified',
-          jsonPreview: JSON.stringify({
-            id: 'team-kinetic-energy',
-            name: 'Kinetic-energy PBL mentor team',
-            gate: 'TheoryMastered',
-            assistants: ['asst-coach-socrates', 'asst-guide-seeker', 'asst-reviewer-rigor'],
-            status: 'unverified',
-          }, null, 2),
-        },
-      },
-    ],
-  },
-  {
-    id: 'sess-create-agent',
-    title: '新建化学反应平衡导师',
-    updatedAt: '10分钟前',
-    messages: [
-      {
-        id: 'ca-1',
-        role: 'system',
-        content: '启途智学管家就绪。',
-        timestamp: '09:40',
-      },
-      {
-        id: 'ca-2',
-        role: 'user',
-        content: '我想创建一个化学平衡移动探究助手，支持勒夏特列原理的苏格拉底式发问。',
-        timestamp: '09:41',
-      },
-      {
-        id: 'ca-3',
-        role: 'assistant',
-        content: '已基于平台规范为您自动生成新助手草案：\n- **角色**：化学探究导师（勒夏特列引导者）\n- **发问风格**：苏格拉底提问式，单次回复不超过 150 字\n- **推荐工具**：化学方程式平衡计算工具 + 图像生成',
-        timestamp: '09:42',
-        toolSteps: [
-          { name: 'agent_sdk_spec_generate', status: 'done', label: '根据 Agent SDK 标准协议生成智能体模型参数' }
-        ],
-        artifact: {
-          type: 'assistant',
-          title: 'AI 助手：化学平衡探究引导者 (Le Chatelier Guide)',
-          details: '底座模型：qwen-max | 约束：禁止直接公布答案，从浓度/压强/温度三个变量引导学生观察',
-          jsonPreview: JSON.stringify({
-            name: '化学平衡探究导师',
-            role: 'Coach',
-            model: 'qwen-max',
-            maxTurns: 12,
-            systemPrompt: '你是化学平衡引导导师，遵循勒夏特列原理逐步引导学生理解平衡移动规律。'
-          }, null, 2),
-        },
+        content: '启途智学管家可在全局范围管理平台资源，也可围绕选中的项目模板进行配置。可执行操作以核验后的技能目录为准，保存、校验和启用分别提供服务端回执。',
+        timestamp: '刚刚',
       },
     ],
   },
@@ -224,20 +166,39 @@ export default function CopilotPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [collapsedHoverId, setCollapsedHoverId] = useState<string | null>(null);
 
-  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换
-  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
-  const [selectedModel, setSelectedModel] = useState<string>('');
-  const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'workspace_write' | 'full_access'>('full_access');
-  const [availableModels, setAvailableModels] = useState<ConfiguredModelItem[]>([]);
+  // 2. 快捷设置状态：Thinking 强度、底座模型选择、运行权限设置、测试助手切换（持久化存储，刷新页面不丢失）
+  const { availableModels, selectedModel, modelError, modelSaving, modelNotice, handleModelChange, reloadModels } = useCopilotModel();
+  const [runtimePermission, setRuntimePermission] = useState<'read_only' | 'full_access'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(COPILOT_PERMISSION_STORAGE_KEY);
+        if (cached && ['read_only', 'full_access'].includes(cached)) {
+          return cached as 'read_only' | 'full_access';
+        }
+      } catch {}
+    }
+    return 'read_only';
+  });
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('qitu-assistant');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [thinkingStrength, setThinkingStrength] = useState<'off' | 'normal' | 'high' | 'max'>('high');
   const { state: assistantCatalog, error: catalogError, refresh: refreshAssistantCatalog } = useAssistantCatalog();
+  const capabilities = useCopilotCapabilities();
   const selectedModelItem = availableModels.find((model) => configuredModelKey(model) === selectedModel) ?? null;
   const assistantOptions = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.catalog.assistants : [], [assistantCatalog]);
   const teamOptions = useMemo(() => assistantCatalog.kind === 'ready' ? assistantCatalog.catalog.teams : [], [assistantCatalog]);
   const activeTestAssistant = assistantOptions.find((assistant) => assistant.id === selectedAssistantId);
   const activeTeam = teamOptions.find((team) => team.id === selectedTeamId);
   const catalogReady = assistantCatalog.kind === 'ready' && activeTestAssistant !== undefined;
+
+  const handlePermissionChange = (perm: 'read_only' | 'full_access') => {
+    setRuntimePermission(perm);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(COPILOT_PERMISSION_STORAGE_KEY, perm);
+      } catch {}
+    }
+  };
 
   useEffect(() => {
     if (assistantCatalog.kind === 'ready') {
@@ -246,20 +207,6 @@ export default function CopilotPage() {
     }
   }, [assistantCatalog]);
 
-  useEffect(() => {
-    fetchAvailableConfiguredModels()
-      .then((models) => {
-        if (models && models.length > 0) {
-          setAvailableModels(models);
-          setSelectedModel((prev) => (
-            models.some((m) => configuredModelKey(m) === prev)
-              ? prev
-              : configuredModelKey(models[0]!)
-          ));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -272,6 +219,20 @@ export default function CopilotPage() {
   }, [sessions]);
 
   const activeSession = sessions.find((s) => s.id === currentSessionId) ?? sessions[0]!;
+  const scope = activeSession.templateId ? 'selected_template' as const : 'global' as const;
+  const projectCatalog = useProjectCatalog(activeSession.templateId ?? null);
+  const setProject = (templateId: string | null, templateVersionId: string | null) => {
+    setSessions(previous => previous.map(session => session.id === activeSession.id
+      ? { ...session, templateId, templateVersionId } : session));
+  };
+  useEffect(() => {
+    if (!projectCatalog.loading && !projectCatalog.error && activeSession.templateId && !activeSession.templateVersionId) {
+      const first = projectCatalog.versions[0];
+      if (first) setProject(activeSession.templateId, first.id);
+    }
+  }, [projectCatalog.loading, projectCatalog.error, projectCatalog.versions, activeSession.id, activeSession.templateId, activeSession.templateVersionId]);
+  const requestInFlight = useRef(false);
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -309,501 +270,61 @@ export default function CopilotPage() {
     }
   };
 
-  // 严格精确提取用户命名，杜绝“未知名称”或“tool-xxxx”
-  const extractPreciseEntityName = (userText: string, type: 'assistant' | 'team' | 'mcp' | 'skill' | 'template' | 'knowledge'): string => {
-    const quoteMatch = userText.match(/[「“"']([^」”"']{2,30})[」”"']/);
-    if (quoteMatch && quoteMatch[1]?.trim()) {
-      return quoteMatch[1].trim();
-    }
-    const colonMatch = userText.match(/[:：]\s*([^\s,，。；\n]{2,30})/);
-    if (colonMatch && colonMatch[1]?.trim()) {
-      return colonMatch[1].trim();
-    }
-    const verbMatch = userText.match(/(?:创建|新建|添加|配置|组建|设计|生成)\s*(?:一个|个|一门|一款)?\s*([^,，。！？\n]{2,24})/);
-    if (verbMatch && verbMatch[1]?.trim()) {
-      let raw = verbMatch[1].trim()
-        .replace(/^(助手|智能体|团队|工具|MCP|技能|技能包|模板|知识库|文档)/, '')
-        .replace(/(助手|智能体|团队|工具|MCP|技能|技能包|模板|知识库|文档)$/, '')
-        .trim();
-      if (raw.length >= 2) {
-        if (type === 'assistant') return raw.endsWith('导师') || raw.endsWith('助手') || raw.endsWith('教练') ? raw : `${raw}启发导师`;
-        if (type === 'team') return raw.endsWith('团队') ? raw : `${raw}导师团队`;
-        if (type === 'mcp') return raw.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^\w-]/g, '') || `${raw}-mcp`;
-        if (type === 'skill') return raw.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^\w-]/g, '') || `${raw}-skill`;
-        if (type === 'template') return raw.endsWith('模板') ? raw : `${raw}探究课题模板`;
-        if (type === 'knowledge') return raw.endsWith('讲义') || raw.endsWith('文档') || raw.endsWith('资料') ? raw : `${raw}参考讲义`;
-      }
-    }
-    switch (type) {
-      case 'assistant': return '高中物理力学启发导师';
-      case 'team': return '跨学科项目式探究导师团队';
-      case 'mcp': return 'python-matplotlib-plotter-mcp';
-      case 'skill': return 'socratic-deep-inquiry-skill';
-      case 'template': return '综合性科学探究与工程实践模板';
-      case 'knowledge': return '核心物理规律推导与误差分析讲义';
+  const performTurn = async (sessionId: string, messageId: string, retry: NonNullable<Message['retry']>) => {
+    if (requestInFlight.current || !capabilities.ready) return;
+    requestInFlight.current = true;
+    setIsGenerating(true);
+    const update = (patch: Partial<Message>) => setSessions(previous => previous.map(session => session.id !== sessionId
+      ? session : { ...session, messages: session.messages.map(message => message.id === messageId ? { ...message, ...patch } : message) }));
+    try {
+      if (Date.now() - retry.startedAt > 23 * 60 * 60 * 1000) throw new Error('本轮重试期限已过，请先核对资源状态，再发起新指令。');
+      update({ content: '正在读取配置、生成计划并执行…' });
+      const result = await runCopilotTurn(retry.request, retry.key);
+      update({ content: result.reply, retry: result.status === 'partial' ? retry : undefined,
+        toolSteps: result.receipts.map(receipt => ({ name: receipt.kind, label: receipt.label,
+          status: receipt.status === 'succeeded' ? 'done' : 'error',
+          detail: JSON.stringify(receipt.result ?? { code: receipt.code, message: receipt.message }, null, 2) })) });
+      const versionReceipt = result.receipts.slice().reverse().find(r => r.kind === 'template.version' && r.status === 'succeeded');
+      const createdTemplate = result.receipts.slice().reverse().find(r => r.kind === 'template.create' && r.status === 'succeeded');
+      const saved = versionReceipt?.result as { id?: string; templateId?: string } | undefined;
+      const created = createdTemplate?.result as { id?: string } | undefined;
+      if (saved?.id && saved.templateId) setSessions(previous => previous.map(s => s.id === sessionId ? { ...s, templateId: saved.templateId!, templateVersionId: saved.id! } : s));
+      else if (created?.id) setSessions(previous => previous.map(s => s.id === sessionId ? { ...s, templateId: created.id!, templateVersionId: null } : s));
+      await refreshAssistantCatalog();
+      projectCatalog.refresh();
+      capabilities.refresh();
+      await reloadModels();
+    } catch (error) {
+      update({ content: `请求未完成：${error instanceof Error ? error.message : '服务器不可用'}。可使用下方按钮重试同一操作。`, retry });
+    } finally {
+      requestInFlight.current = false;
+      setIsGenerating(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isGenerating || !catalogReady) return;
-    const userText = inputMessage.trim();
-    setIsGenerating(true);
-    // Revalidate before using a role that another Admin tab may have deleted.
-    const groups = await refreshAssistantCatalog();
-    const confirmedAssistant = groups?.assistants
-      .find((assistant) => assistant.id === selectedAssistantId);
-    if (!confirmedAssistant) { setIsGenerating(false); return; }
-    if (selectedTeamId && !groups?.teams.some((team) => team.id === selectedTeamId)) {
-      setSelectedTeamId('');
-    }
-
-    setInputMessage('');
-    const userMsg: Message = {
-      id: `usr-${Date.now()}`,
-      role: 'user',
-      content: userText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    if (!inputMessage.trim() || isGenerating || modelSaving || modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
+    const content = inputMessage.trim();
+    const sessionId = activeSession.id;
+    const messageId = newIdempotencyKey();
+    const request: AdminCopilotRequest = {
+      message: content,
+      scope,
+      history: activeSession.messages.filter((m): m is Message & { role: 'user' | 'assistant' } => m.role !== 'system')
+        .slice(-12).map(m => ({ role: m.role, content: m.content.slice(0, 6000) })),
+      templateId: activeSession.templateId ?? null, templateVersionId: activeSession.templateVersionId ?? null,
+      assistantId: selectedAssistantId, teamId: selectedTeamId || null,
+      modelProviderId: selectedModelItem.providerId, modelId: selectedModelItem.id, permission: runtimePermission,
     };
-
-    const updated = sessions.map((s) =>
-      s.id === currentSessionId
-        ? {
-            ...s,
-            updatedAt: '刚刚',
-            messages: [...s.messages, userMsg],
-          }
-        : s
-    );
-    setSessions(updated);
-    setIsGenerating(true);
-
-    setTimeout(async () => {
-      let replyContent = '';
-      let toolSteps: ToolExecutionStep[] = [];
-      let artifact: Message['artifact'];
-
-      // A. 若当前选择测试特定助手（非默认启途智学管家），则以该助手的真实人设与职责回答
-      if (selectedAssistantId !== 'qitu-assistant') {
-        const asst = confirmedAssistant;
-        if (asst.id === 'qitu-intake-assistant') {
-          toolSteps = [
-            { name: 'intent_recognition', status: 'done', label: '苏格拉底短轮次意图探索与好奇心探寻' },
-            { name: 'pbl_catalog_match', status: 'done', label: '检索匹配当前学情适宜的 PBL 项目库' },
-          ];
-          replyContent = `你好！我是**启途智学助手**。很高兴和你开启探索旅程！\n\n针对你聊到的内容：“${userText}”，每一个伟大的科学发现都始于一个小小的疑问。你希望深入哪一类挑战？\n\n1. 🚀 **雷霆战机游戏设计**：用 Python 打造你的专属飞机大战、弹幕算法与碰撞检测！\n2. ⚡ **动手学动能定理**：解密过山车与滑板加速背后的机械能转换秘密！\n\n告诉我想法，我会为你一键开启项目搭档团队！`;
-        } else if (asst.id.includes('concept') || asst.id.includes('coach')) {
-          toolSteps = [
-            { name: 'socratic_tutor_inquiry', status: 'done', label: `【${asst.name}】调用短轮次苏格拉底启发规范（严禁直接给答案）` },
-            { name: 'theory_gate_check', status: 'done', label: '核验核心概念前置推导状态' },
-          ];
-          replyContent = `我是【**${asst.name}**】。\n\n针对你提出的问题：“${userText}”，让我们退一步从根本原理来思考：\n\n1. 在你的探究模型中，决定这一物理量或状态发生改变的核心原因是什么？\n2. 假设合外力或初始速度加倍，你预期系统的响应曲线会呈现怎样的变化趋势？\n\n请试着写出你的推导猜想，我们再一步步验证！`;
-        } else if (asst.id.includes('code') || asst.id.includes('guide') || asst.id.includes('experiment')) {
-          toolSteps = [
-            { name: 'sandbox_inspect', status: 'done', label: `【${asst.name}】安全沙箱代码断点与语法环境自检` },
-            { name: 'progressive_hint_provider', status: 'done', label: '下发第 1 级思维脚手架与分步排错线索' },
-          ];
-          replyContent = `我是【**${asst.name}**】。我们正在沙箱中协助你排查与实现：\n\n针对：“${userText}”，建议按照以下梯级线索进行调试：\n- **检查点 1**：确认进入主循环前，所有变量或精灵对象已完成合法初始化；\n- **检查点 2**：在控制台中打印每一帧的关键坐标变量，排查是否出现越界或负数；\n- **检查点 3**：如果遇到语法异常，关注报错提示的具体行号和未定义的变量标识符。\n\n尝试修改后控制台输出了什么？告诉我，我们继续推进。`;
-        } else if (asst.id.includes('review') || asst.id.includes('assessor')) {
-          toolSteps = [
-            { name: 'rubrics_evaluation', status: 'done', label: `【${asst.name}】调取多维形成性评价量规（概念/工程/表达）` },
-            { name: 'reflection_generator', status: 'done', label: '生成批判性思维与误差溯源追问' },
-          ];
-          replyContent = `我是【**${asst.name}**】。\n\n依据项目量规，我对你的探究思路进行了形成性审查：\n\n- **科学严谨性**：理论逻辑闭环，但实验系统误差（如阻力、传感器采样频率）尚未纳入修正。\n- **工程规范性**：沙箱代码结构良好，需注意函数单一职责与常量抽取。\n- **反思追问**：如果在完全失重的环境下重新做这个实验，你的结论会有哪些不同？`;
-        } else {
-          toolSteps = [
-            { name: 'custom_asst_runtime', status: 'done', label: `执行【${asst.name}】专属角色交互策略` }
-          ];
-          replyContent = `我是【**${asst.name}**】（${asst.role}）。已收到你的输入：“${userText}”。遵循我的角色职责与启途智学教学规范，我将引导你一步步拆解问题并达成目标。`;
-        }
-      } else if (userText.includes('助手') || userText.includes('智能体')) {
-        // B. 启途智学管家：创建助手（精准命名）
-        const newAsstId = `asst-custom-${Date.now()}`;
-        const asstName = extractPreciseEntityName(userText, 'assistant');
-        const customAsst = {
-          id: newAsstId,
-          source: 'user',
-          name: asstName,
-          description: `由启途智学管家自动创建：${userText}`,
-          role: '导师助手',
-          icon: '🤖',
-          enabled: true,
-          model: selectedModel,
-          permission: runtimePermission,
-          thinkingLevel: thinkingStrength,
-          skillsCount: 4,
-          mcpSetting: '自动记住上次',
-          systemPrompt: `你是遵循苏格拉底教学法的${asstName}，坚决不直接提供代码或答案，引导学生通过观察与推导独立解决问题。`,
-          deletable: true,
-          sortOrder: 99,
-        };
-        try {
-          // The server is the source of truth. Only expose/cache the assistant after
-          // the create request has been acknowledged; localStorage is not persistence.
-          if (!selectedModelItem) throw new Error('模型目录不可用或选择已失效，请刷新后重新选择。');
-          const persisted = await createPersistedAssistant(
-            {
-              name: customAsst.name,
-              description: customAsst.description,
-              role: customAsst.role,
-              instructions: customAsst.systemPrompt,
-              modelProviderId: selectedModelItem?.providerId ?? null,
-              modelId: selectedModelItem?.id ?? null,
-              enabled: true,
-            },
-            newIdempotencyKey(),
-          );
-          await refreshAssistantCatalog();
-          toolSteps = [
-            { name: 'agent_sdk_spec_parser', status: 'done', label: `Parsed assistant role: ${customAsst.name}` },
-            { name: 'model_router_bind', status: 'done', label: `Model route selected: ${selectedModel || 'server default'} (thinking: ${thinkingStrength})` },
-            { name: 'persist_assistant_db', status: 'done', label: 'Server persisted the assistant and returned the record' },
-          ];
-          replyContent = `Assistant **${customAsst.name}** was created and persisted by the server.\n\nOpen **[Settings > AI assistants](/settings/assistants)** to verify the returned record.`;
-          artifact = {
-            type: 'assistant',
-            title: `Generated assistant: ${customAsst.name}`,
-            details: 'Server confirmed creation; the local cache is display-only',
-            jsonPreview: JSON.stringify(persisted, null, 2),
-          };
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : 'server response error';
-          toolSteps = [
-            { name: 'agent_sdk_spec_parser', status: 'done', label: `Parsed assistant role: ${customAsst.name}` },
-            { name: 'persist_assistant_db', status: 'error', label: `Server persistence failed: ${reason}` },
-          ];
-          replyContent = `Assistant draft **${customAsst.name}** was generated, but the server did not persist it. No success state is shown.\n\nFailure reason: ${reason}\n\nRetry here or use **[Settings > AI assistants](/settings/assistants)**.`;
-          artifact = {
-            type: 'assistant',
-            title: `Assistant draft: ${customAsst.name}`,
-            details: `Server persistence failed; draft is only in this conversation: ${reason}`,
-            jsonPreview: JSON.stringify(customAsst, null, 2),
-          };
-        }
-      } else if (userText.includes('团队') || userText.includes('组建')) {
-        // C. 启途智学管家：创建团队（精准命名）
-        const newTeamId = `team-custom-${Date.now()}`;
-        const teamName = extractPreciseEntityName(userText, 'team');
-
-        const coachAsst = {
-          id: `asst-${newTeamId}-coach`,
-          source: 'user',
-          name: `${teamName}-概念教练`,
-          description: `${teamName}专属苏格拉底概念启发教练`,
-          role: '概念教练',
-          icon: '💡',
-          enabled: true,
-          model: selectedModel,
-          permission: runtimePermission,
-          thinkingLevel: thinkingStrength,
-          skillsCount: 4,
-          mcpSetting: '自动记住上次',
-          systemPrompt: `你是${teamName}的概念教练，遵循苏格拉底提问启发教学，引导学生梳理知识图谱，不直接给出答案。`,
-          deletable: true,
-          sortOrder: 10,
-        };
-        const guideAsst = {
-          id: `asst-${newTeamId}-guide`,
-          source: 'user',
-          name: `${teamName}-实践向导`,
-          description: `${teamName}专属实践与动手实验向导`,
-          role: '沙箱向导',
-          icon: '🛠️',
-          enabled: true,
-          model: selectedModel,
-          permission: runtimePermission,
-          thinkingLevel: thinkingStrength,
-          skillsCount: 3,
-          mcpSetting: '自动记住上次',
-          systemPrompt: `你是${teamName}的实践向导，负责指导学生进入动手实践阶段，保障实验与代码安全。`,
-          deletable: true,
-          sortOrder: 11,
-        };
-        const reviewerAsst = {
-          id: `asst-${newTeamId}-reviewer`,
-          source: 'user',
-          name: `${teamName}-评审导师`,
-          description: `${teamName}专属作品评价与反思辅导导师`,
-          role: '评审导师',
-          icon: '📋',
-          enabled: true,
-          model: selectedModel,
-          permission: runtimePermission,
-          thinkingLevel: thinkingStrength,
-          skillsCount: 4,
-          mcpSetting: '自动记住上次',
-          systemPrompt: `你是${teamName}的评审导师，依据项目标准对学生作品进行多维度形成性评价。`,
-          deletable: true,
-          sortOrder: 12,
-        };
-
-        const newAssistants = [coachAsst, guideAsst, reviewerAsst];
-        const customTeam = {
-          id: newTeamId,
-          name: teamName,
-          description: `Generated by Copilot: ${userText}`,
-          leaderAssistantId: coachAsst.id,
-          workspaceMode: 'shared',
-          sessionMode: 'supervised',
-          concurrencyLimit: 3,
-          status: 'draft',
-          members: [
-            { assistantId: coachAsst.id, roleLabel: 'Concept coach', orderIndex: 0, isOptional: false },
-            { assistantId: guideAsst.id, roleLabel: 'Sandbox guide', orderIndex: 1, isOptional: false },
-            { assistantId: reviewerAsst.id, roleLabel: 'Review mentor', orderIndex: 2, isOptional: false },
-          ],
-          updatedAt: new Date().toISOString(),
-        };
-        try {
-          // Create assistants first and use the server-issued ids for the team
-          // relation. Client-generated ids are never valid persistence references.
-          if (!selectedModelItem) throw new Error('模型目录不可用或选择已失效，请刷新后重新选择。');
-          const persistedAssistants = await Promise.all(
-            newAssistants.map((asst) =>
-              createPersistedAssistant(
-                {
-                  name: asst.name,
-                  description: asst.description,
-                  role: asst.role,
-                  instructions: asst.systemPrompt,
-                  modelProviderId: selectedModelItem?.providerId ?? null,
-                  modelId: selectedModelItem?.id ?? null,
-                  enabled: true,
-                },
-                newIdempotencyKey(),
-              ),
-            ),
-          );
-          const persistedTeam = await createPersistedTeam(
-            {
-              name: customTeam.name,
-              description: customTeam.description,
-              leaderAssistantId: persistedAssistants[0]!.id,
-              members: [
-                { assistantId: persistedAssistants[0]!.id, role: 'coach', roleLabel: 'Concept coach' },
-                { assistantId: persistedAssistants[1]!.id, role: 'teammate', roleLabel: 'Sandbox guide' },
-                { assistantId: persistedAssistants[2]!.id, role: 'reviewer', roleLabel: 'Review mentor' },
-              ],
-              workspaceMode: 'shared',
-              sessionMode: 'supervised',
-              concurrencyLimit: 3,
-              enabled: true,
-            },
-            newIdempotencyKey(),
-          );
-          const persistedTeamPreview = {
-            ...customTeam,
-            id: persistedTeam.id,
-            leaderAssistantId: persistedAssistants[0]!.id,
-            members: customTeam.members.map((member, index) => ({
-              ...member,
-              assistantId: persistedAssistants[index]!.id,
-            })),
-          };
-          await refreshAssistantCatalog();
-          toolSteps = [
-            { name: 'create_team_assistants', status: 'done', label: `Created and registered 3 team assistants` },
-            { name: 'team_orchestrator', status: 'done', label: `Built team: ${customTeam.name}` },
-            { name: 'pbl_gate_validator', status: 'done', label: 'TheoryMastered gate validated by the server contract' },
-            { name: 'persist_team_registry', status: 'done', label: 'Team and assistant records persisted and re-read' },
-          ];
-          replyContent = `Team assistants (**${coachAsst.name}**, **${guideAsst.name}**, **${reviewerAsst.name}**) and team **${customTeam.name}** were created in the server registry.
-
-Open **[Settings > AI assistants](/settings/assistants)** or **[Settings > Teams](/settings/teams)** to verify the returned records.`;
-          artifact = {
-            type: 'team',
-            title: `Generated PBL team: ${customTeam.name}`,
-            details: 'Server confirmed the team and all three assistant records',
-            jsonPreview: JSON.stringify({ team: persistedTeamPreview, createdAssistants: persistedAssistants }, null, 2),
-          };
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : 'server response error';
-          toolSteps = [
-            { name: 'create_team_assistants', status: 'error', label: `Team persistence failed: ${reason}` },
-          ];
-          replyContent = `A team draft (**${customTeam.name}**) was prepared, but the server did not confirm the complete team write. No success state is shown.
-
-Failure reason: ${reason}
-
-If some assistant records were created before the failure, review them in **[Settings > AI assistants](/settings/assistants)** before retrying.`;
-          artifact = {
-            type: 'team',
-            title: `Team draft: ${customTeam.name}`,
-            details: `Server persistence failed; this draft is only in the current conversation: ${reason}`,
-            jsonPreview: JSON.stringify({ team: customTeam, createdAssistants: newAssistants }, null, 2),
-          };
-        }
-      } else if (userText.includes('MCP') || userText.includes('工具')) {
-        // D. 启途智学管家：创建 MCP 工具（精准命名）
-        const newMcpId = `mcp-custom-${Date.now()}`;
-        const mcpName = extractPreciseEntityName(userText, 'mcp');
-        const customMcp = {
-          id: newMcpId,
-          name: mcpName,
-          command: 'npx',
-          args: ['-y', `@tools/${mcpName}`],
-          env: { QITU_ENV: 'production' },
-          transport: 'stdio',
-          status: 'draft',
-          latencyMs: null,
-          tools: ['data_query', 'scientific_plot', 'schema_audit'],
-          boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
-          description: `由启途智学管家自动配置：${userText}`,
-          rawJson: JSON.stringify(
-            {
-              mcpServers: {
-                [mcpName]: {
-                  command: 'npx',
-                  args: ['-y', `@tools/${mcpName}`],
-                  env: { QITU_ENV: 'production' },
-                },
-              },
-              boundAssistants: ['启途智学管家', '动手学动能定理总导师', '雷霆战机总导师'],
-            },
-            null,
-            2
-          ),
-        };
-        toolSteps = [
-          { name: 'mcp_json_schema_build', status: 'done', label: `Generated MCP draft: ${customMcp.name}` },
-          { name: 'security_sandbox_audit', status: 'done', label: `Security policy checked (permission: ${runtimePermission})` },
-          { name: 'persist_tool_matrix', status: 'error', label: 'MCP creation is unavailable from Copilot; nothing was persisted' },
-        ];
-        replyContent = `MCP draft **${customMcp.name}** is ready for review, but Copilot does not have a server MCP-create contract. It was not written to the runtime registry or localStorage.
-
-Open **[Settings > MCP and tools](/settings/tools)** to configure it through the supported server flow.`;
-        artifact = {
-          type: 'mcp',
-          title: `MCP draft: ${customMcp.name}`,
-          details: 'Draft only; no runtime connection, binding, or persistence was claimed',
-          jsonPreview: JSON.stringify(customMcp, null, 2),
-        };
-      } else if (userText.includes('技能') || userText.includes('skill') || userText.includes('规范') || userText.includes('能力包')) {
-        // E. 启途智学管家：创建技能包（精准命名）
-        const skillSlug = extractPreciseEntityName(userText, 'skill');
-        const customSkill = {
-          id: skillSlug,
-          name: skillSlug,
-          description: `由启途智学管家自动配置规范技能：${userText}`,
-          tags: ['启发探究', '苏格拉底', 'PBL规范'],
-          filesCount: 2,
-          addedBy: '启途智学管家',
-          updatedAtText: '刚刚',
-          boundAssistantIds: [],
-          files: [
-            {
-              name: 'SKILL.md',
-              sizeBytes: 2500,
-              content: `# ${skillSlug} 规范指南\n\n## 技能定位与核心目标\n定义智能体在应对学生提问时的教学互动范式，坚守启发思考而非倾倒答案原则。\n\n## 核心铁律 (Hard Constraints)\n1. 严禁向学生直接提供可执行完整代码。\n2. 阶段门禁检查：TheoryMastered 达标前坚决阻断实践阶段跳转。`,
-            },
-            {
-              name: 'prompts/instruction.txt',
-              sizeBytes: 1100,
-              content: `[SKILL PROMPT CONTRACT]\nSkill: ${skillSlug}\nMode: Socratic inquiry & structured scaffolding. Keep turns concise and question-driven.`,
-            },
-          ],
-        };
-        toolSteps = [
-          { name: 'skill_ast_validator', status: 'done', label: `Validated draft SKILL.md and prompt structure: ${customSkill.name}` },
-          { name: 'assistant_skill_binder', status: 'error', label: 'Runtime skill binding requires a canonical catalog id' },
-          { name: 'persist_skill_registry', status: 'error', label: 'Skill content create API is unavailable from Copilot; nothing was persisted' },
-        ];
-        replyContent = `Skill draft **${customSkill.name}** was generated, but it remains a local conversation artifact. Copilot cannot create or bind runtime skill content, so no database/runtime success is claimed.
-
-Use **[Settings > Skills](/settings/skills)** to select a canonical runtime skill and save its binding.`;
-        artifact = {
-          type: 'skill',
-          title: `Skill draft: ${customSkill.name}`,
-          details: 'Draft only; no runtime skill id was bound and no persistence was attempted',
-          jsonPreview: JSON.stringify(customSkill, null, 2),
-        };
-      } else if (userText.includes('模板') || userText.includes('项目模板') || userText.includes('模板库')) {
-        // F. 启途智学管家：创建模板（精准命名）
-        const newTplId = `tpl-custom-${Date.now()}`;
-        const tplTitle = extractPreciseEntityName(userText, 'template');
-        const customTpl = {
-          id: newTplId,
-          title: tplTitle,
-          summary: `由启途智学管家自动设计：${userText}`,
-          content: '包含阶段一意图确认、阶段二理论推导(TheoryMastered门禁)、阶段三代码仿真与阶段四答辩反思。',
-          stage: 'exploration',
-          tags: ['项目式学习', '科学探究', '跨学科'],
-          updatedAt: new Date().toISOString(),
-          linkedTeamId: null,
-          phases: [
-            { id: 'p1', name: '意图确认与选题', gateRule: '学生明确目标与预期成果', stagePrompt: '启发学生提出假设', mentorRole: '总导师' },
-            { id: 'p2', name: '核心理论推导与考核 (TheoryMastered)', gateRule: '达标85%以上通过概念闭环', stagePrompt: '苏格拉底追问推导', mentorRole: '概念教练' },
-            { id: 'p3', name: '工程仿真与实验制作', gateRule: '沙箱验证通过', stagePrompt: '指导编程与数据拟合', mentorRole: '沙箱向导' },
-            { id: 'p4', name: '结项答辩与成长建档', gateRule: '完成答辩量规', stagePrompt: '概念盲区追问', mentorRole: '评审导师' },
-          ],
-        };
-        toolSteps = [
-          { name: 'template_schema_compiler', status: 'done', label: `Compiled PBL draft stages and gates: ${customTpl.title}` },
-          { name: 'persist_template_store', status: 'error', label: 'Template publishing is unavailable from Copilot; nothing was persisted' },
-        ];
-        replyContent = `PBL template draft **${customTpl.title}** was generated, but it was not published to the template library. Copilot has no frozen template/version write flow here, so it cannot claim a server success.
-
-Use **[Settings > Project templates](/settings/templates)** to create and publish a version through the supported API.`;
-        artifact = {
-          type: 'template',
-          title: `PBL template draft: ${customTpl.title}`,
-          details: 'Draft only; no template version, team binding, or publication was persisted',
-          jsonPreview: JSON.stringify(customTpl, null, 2),
-        };
-      } else if (userText.includes('知识库') || userText.includes('文档') || userText.includes('知识')) {
-        // G. 启途智学管家：创建知识库（精准命名）
-        const newDocId = `doc-custom-${Date.now()}`;
-        const docTitle = extractPreciseEntityName(userText, 'knowledge');
-        const customDoc = {
-          id: newDocId,
-          title: docTitle,
-          category: 'kinetic',
-          targetTeam: '全平台通用导师',
-          chunksCount: 0,
-          status: 'draft',
-          content: `由启途智学管家生成：${userText}\n\n该文档已建立向量切片索引，支持各学科导师在苏格拉底提问时实时召回。`,
-          updatedAt: new Date().toISOString(),
-        };
-        toolSteps = [
-          { name: 'rag_vector_embed', status: 'error', label: 'No knowledge base/source was selected; embedding was not run' },
-          { name: 'persist_knowledge_base', status: 'error', label: 'Knowledge document create API requires a bound base; nothing was persisted' },
-        ];
-        replyContent = `Knowledge document draft **${customDoc.title}** was prepared, but it was not indexed or saved. Copilot cannot choose a knowledge base on the client or claim vectorization without a server job.
-
-Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and upload/create the source there.`;
-        artifact = {
-          type: 'knowledge',
-          title: `Knowledge document draft: ${customDoc.title}`,
-          details: 'Draft only; no chunks, vector index, or knowledge-base record was persisted',
-          jsonPreview: JSON.stringify(customDoc, null, 2),
-        };
-      } else {
-        toolSteps = [
-          { name: 'qitu_agent_sdk_scan', status: 'done', label: '全量扫描系统配置与微模块依赖' }
-        ];
-        replyContent = `已收到指令：“${userText}”。我已通过平台 Agent SDK 扫描相关的助手配置、团队依赖与数据模型。您可以输入“创建一个高中物理力学探究团队”、“新增一个 Python 绘图工具”或“为动能定理添加补充知识库”，我将为您精准命名并实时配置，立即可在对应设置页面查验。`;
-      }
-
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        role: 'assistant',
-        content: replyContent,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        toolSteps,
-        artifact,
-      };
-
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentSessionId
-            ? {
-                ...s,
-                messages: [...s.messages, botMsg],
-              }
-            : s
-        )
-      );
-      setIsGenerating(false);
-    }, 600);
+    const retry = { request, key: newIdempotencyKey(), startedAt: Date.now() };
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setSessions(previous => previous.map(session => session.id !== sessionId ? session : {
+      ...session, title: session.messages.some(m => m.role === 'user') ? session.title : content.slice(0, 24), updatedAt: '刚刚',
+      messages: [...session.messages, { id: newIdempotencyKey(), role: 'user', content, timestamp },
+        { id: messageId, role: 'assistant', content: '正在处理…', timestamp, retry }],
+    }));
+    setInputMessage('');
+    await performTurn(sessionId, messageId, retry);
   };
 
   return (
@@ -1097,12 +618,26 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             )}
             <div>
               <div style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a' }}>{activeSession.title}</div>
-              <div style={{ fontSize: '11.5px', color: '#64748b' }}>启途多智能体系统管理控制台 · 具备实时配置自动修改与写入能力</div>
+              <div style={{ fontSize: '11.5px', color: '#64748b' }}>{scope === 'global' ? '全局配置' : '当前模板配置'} · 执行结果以服务端回执为准</div>
             </div>
           </div>
 
           {/* 快捷设置区 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <label style={{ fontSize: 12 }}>范围：
+              <select aria-label="选择已有项目" value={activeSession.templateId ?? ''} disabled={isGenerating || projectCatalog.loading}
+                onChange={event => setProject(event.target.value || null, null)}>
+                <option value="">全局配置</option>
+                {projectCatalog.templates.map(t => <option key={t.id} value={t.id}>{t.title} · {t.status}</option>)}
+              </select>
+            </label>
+            {activeSession.templateId && <label style={{ fontSize: 12 }}>版本：
+              <select aria-label="选择项目版本" value={activeSession.templateVersionId ?? ''} disabled={isGenerating || projectCatalog.loading}
+                onChange={event => setProject(activeSession.templateId ?? null, event.target.value || null)}>
+                <option value="">{projectCatalog.loading ? '正在读取…' : '暂无版本'}</option>
+                {projectCatalog.versions.map(v => <option key={v.id} value={v.id}>{v.version} · {v.status}</option>)}
+              </select>
+            </label>}
             {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
             <div className="copilot-control-pill copilot-control-assistant" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
               <span className="copilot-control-label" style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
@@ -1166,9 +701,12 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <select
                 className="copilot-control-select"
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                aria-label="管家默认模型"
+                disabled={!availableModels.length || isGenerating || modelSaving}
+                onChange={(e) => void handleModelChange(e.target.value)}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
+                <option value="" disabled>请选择默认模型</option>
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => (
                     <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
@@ -1187,12 +725,11 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
               <select
                 className="copilot-control-select"
                 value={runtimePermission}
-                onChange={(e) => setRuntimePermission(e.target.value as 'read_only' | 'workspace_write' | 'full_access')}
+                onChange={(e) => handlePermissionChange(e.target.value as 'read_only' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
-                <option value="full_access">Full Access (完全访问 · 免确认写入)</option>
-                <option value="workspace_write">Workspace Write (工作区写入)</option>
-                <option value="read_only">Read Only (只读安全模式)</option>
+                <option value="full_access">配置模式（可创建和修改资源）</option>
+                <option value="read_only">只读模式（分析与建议）</option>
               </select>
             </div>
 
@@ -1203,6 +740,13 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
           </div>
         </div>
 
+        <CopilotCapabilities data={capabilities.data} loading={capabilities.loading} error={capabilities.error} scope={scope} refresh={capabilities.refresh} />
+        <div role="status" style={{ padding: '4px 24px', fontSize: 12 }}>{modelSaving ? '正在保存默认模型…' : modelNotice || '模型选择后自动保存为管家默认模型。'} {modelError && <button type="button" onClick={() => void reloadModels()}>重新加载模型</button>}</div>
+        {(projectCatalog.loading || projectCatalog.error || modelError || (!selectedModelItem && !isGenerating)) && <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
+          {projectCatalog.error ?? modelError ?? (projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}
+          {projectCatalog.error && <button onClick={projectCatalog.refresh}>重读项目目录</button>}
+        </div>}
+        {!projectCatalog.loading && !projectCatalog.error && !projectCatalog.templates.length && <div role="status" style={{ padding: '8px 24px', fontSize: 12 }}>暂无已有项目，可让管家创建项目模板。</div>}
         {/* 助手切换提示横幅 */}
         {(catalogError || (assistantCatalog.kind === 'ready' && assistantOptions.length === 0)) && (
           <div role={catalogError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: '13px' }}>
@@ -1216,7 +760,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>{activeTestAssistant.icon || '🤖'}</span>
               <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
-              <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 遵循自建 Agent SDK 教学与交互约束）</span>
+              <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 单助手预览，团队作为配置上下文）</span>
             </div>
             <button
               type="button"
@@ -1288,8 +832,9 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {msg.toolSteps.map((step, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                            <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>
+                            <span style={{ color: step.status === 'done' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : '!'}</span>
                             <span>{step.label}</span>
+                            {step.detail && <details><summary>回读详情</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{step.detail}</pre></details>}
                             <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px' }}>{step.name}</code>
                           </div>
                         ))}
@@ -1297,6 +842,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                     </div>
                   )}
 
+                  {msg.retry && <button type="button" disabled={isGenerating || !capabilities.ready} onClick={() => void performTurn(activeSession.id, msg.id, msg.retry!)} style={{ marginTop: 8 }}>重试未完成操作</button>}
                   {/* 结构化产物卡片展示 */}
                   {msg.artifact && (
                     <div className="copilot-artifact-card" style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -1399,7 +945,7 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
                   handleSendMessage();
                 }
               }}
-              placeholder="对启途智学管家说：例如“帮我为高中物理力学创建一个探究小队”或“配置一个新的 GrokSearch MCP”..."
+              placeholder={scope === 'global' ? '例如：检查全局助手、模型、技能及知识库配置，说明哪些已启用。' : '例如：检查当前光学模板的课时、团队与技能绑定，列出需要补齐的配置。'}
               style={{
                 flex: 1,
                 minHeight: '44px',
@@ -1441,17 +987,17 @@ Open **[Settings > Knowledge](/settings/knowledge)**, select a bound base, and u
             <button
               className="copilot-send-btn"
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isGenerating || !catalogReady}
+              disabled={!inputMessage.trim() || isGenerating || modelSaving || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
               style={{
                 height: '44px',
                 padding: '0 20px',
-                background: !inputMessage.trim() || isGenerating || !catalogReady ? '#94a3b8' : '#2563eb',
+                background: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? '#94a3b8' : '#2563eb',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
                 fontWeight: 600,
                 fontSize: '13.5px',
-                cursor: !inputMessage.trim() || isGenerating || !catalogReady ? 'not-allowed' : 'pointer',
+                cursor: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? 'not-allowed' : 'pointer',
               }}
             >
               发送指令

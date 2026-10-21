@@ -5,7 +5,6 @@ import { AuthService } from '../identity-auth/auth.service';
 import { IdempotencyStore } from '../../common/idempotency/idempotency.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
 import { throwHttpForIdempotencyError } from '../../common/idempotency/idempotency.errors';
-import { randomUUID } from 'node:crypto';
 import { FeishuService, parseFeishuPatch } from './feishu.service';
 import { ReportingService } from './reporting.service';
 import { FeishuReportWorker } from './report-worker.service';
@@ -35,7 +34,8 @@ export class FeishuController {
     const actor = requireRole(this.auth, cookie, 'admin', '管理汇报仅向管理员开放');
     if (!this.reporting || !this.worker) throw new BadRequestException('汇报服务不可用');
     const assistantId = parseAssistantId(queryAssistantId ?? readAssistantId(body));
-    const idempotencyKey = key?.trim() || `deliver-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    const idempotencyKey = key?.trim();
+    if (!idempotencyKey || idempotencyKey.length > 160) throw new BadRequestException({ code: 'IDEMPOTENCY_KEY_REQUIRED', message: '缺少或无效的 Idempotency-Key' });
     const report = await this.reporting.buildReport(actor, assistantId);
     const result = await this.worker.deliver({ idempotencyKey, assistantId, report });
     return { data: result };
@@ -109,11 +109,12 @@ export class FeishuController {
 
 function readAssistantId(body: unknown): string | undefined {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return undefined;
-  const value = (body as Record<string, unknown>).assistantId;
-  return typeof value === 'string' ? value : undefined;
+  if (!('assistantId' in body)) return undefined;
+  if (typeof body.assistantId !== 'string' || !body.assistantId.trim()) throw new BadRequestException({ code: 'FEISHU_CONFIG_INVALID', message: 'assistantId 无效' });
+  return body.assistantId;
 }
 
-function parseAssistantId(value: string | undefined): string {
+export function parseAssistantId(value: string | undefined): string {
   const assistantId = value?.trim() || 'feishu-reporting-assistant';
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(assistantId)) {
     throw new BadRequestException({ code: 'FEISHU_CONFIG_INVALID', message: 'assistantId 无效' });

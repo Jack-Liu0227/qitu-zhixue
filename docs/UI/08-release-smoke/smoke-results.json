@@ -1,0 +1,80 @@
+{
+  "origin": "http://122.51.130.204",
+  "checkedAt": "2026-10-20T21:48:01.628Z",
+  "anonymousOnly": true,
+  "cases": [
+    {
+      "role": "admin",
+      "route": "/admin/login",
+      "destination": "/admin",
+      "status": "passed"
+    },
+    {
+      "role": "admin",
+      "route": "/admin/login?next=%2Fadmin%2Fsettings%2Fassistants%3Ftab%3Dskills%23matrix",
+      "destination": "/admin/settings/assistants?tab=skills#matrix",
+      "status": "passed"
+    },
+    {
+      "role": "admin",
+      "route": "/admin/login?next=%2F%2Fevil.invalid",
+      "destination": "/admin",
+      "status": "passed"
+    },
+    {
+      "role": "admin",
+      "route": "/admin/login?next=%2Fadmin%2Fassistants&next=%2Fadmin%2Ftemplates",
+      "destination": "/admin",
+      "status": "passed"
+    },
+    {
+      "role": "parent",
+      "route": "/parent/login",
+      "destination": "/parent",
+      "status": "passed"
+    },
+    {
+      "role": "parent",
+      "route": "/parent/login?next=%2Fparent%2Fprogress%3Fview%3Dweek%23chart",
+      "destination": "/parent/progress?view=week#chart",
+      "status": "passed"
+    },
+    {
+      "role": "parent",
+      "route": "/parent/login?next=%2Fstudent%2Ftutor",
+      "destination": "/parent",
+      "status": "passed"
+    },
+    {
+      "role": "parent",
+      "route": "/parent/login?next=%2Fparent%2Fprogress&next=%2Fparent%2Fmessages",
+      "destination": "/parent",
+      "status": "passed"
+    },
+    {
+      "role": "student",
+      "route": "/student/today?view=week#tasks",
+      "destination": "/student/today?view=week#tasks",
+      "status": "passed"
+    },
+    {
+      "role": "teacher",
+      "route": "/teacher/dashboard?view=week#tasks",
+      "destination": "/teacher/dashboard?view=week#tasks",
+      "status": "passed"
+    },
+    {
+      "role": "parent",
+      "route": "/parent/progress?view=week#chart",
+      "destination": "/parent/progress?view=week#chart",
+      "status": "passed"
+    },
+    {
+      "role": "admin",
+      "route": "/admin/settings/assistants?tab=skills#matrix",
+      "destination": "/admin/settings/assistants?tab=skills#matrix",
+      "status": "passed"
+    }
+  ],
+  "pageErrors": []
+}
