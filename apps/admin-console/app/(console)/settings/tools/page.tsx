@@ -328,13 +328,13 @@ export default function ToolsSettingsPage() {
 
 
       {loading || assistantsPending ? (
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+        <div className="admin-tools-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
           正在读取 AI 运行时目录与助手列表…
         </div>
       ) : (
         <>
           {/* 视图：智能体与工具启用与关闭矩阵 */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="admin-tools-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <strong style={{ fontSize: '15px', color: '#0f172a' }}>智能体与工具启用与关闭矩阵 (Capability & Authorization Matrix)</strong>
@@ -531,7 +531,7 @@ export default function ToolsSettingsPage() {
           </div>
 
           {/* 模块二：运行时上报的内置工具（只读） */}
-          <div style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div className="admin-tools-card" style={{ marginTop: '20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
             <div style={{ marginBottom: '14px' }}>
               <strong style={{ fontSize: '15px', color: '#0f172a' }}>内置工具 (Builtin Tools)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
@@ -546,7 +546,7 @@ export default function ToolsSettingsPage() {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
                 {builtinTools.map((tool) => (
-                  <div key={tool.id} style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <div key={tool.id} className="admin-builtin-tool-card" style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
                       <strong style={{ fontSize: '13px', color: '#0f172a' }}>{tool.label}</strong>
                       <span style={{ fontSize: '11px', color: tool.status === 'error' || tool.status === 'unavailable' ? '#b91c1c' : '#16a34a', fontWeight: 600 }}>

@@ -222,7 +222,7 @@ export default function ProfileGrowthSettingsPage() {
       </div>
 
       {/* 模块一：能力画像维度设置（精美网格卡片与权重进度条） */}
-      <section style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
+      <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -266,6 +266,7 @@ export default function ProfileGrowthSettingsPage() {
           {dimensions.filter((d) => d.enabled).map((dim) => (
             <div
               key={dim.id}
+              className="admin-dimension-card"
               style={{
                 width: `${dim.weight}%`,
                 background: dim.color,
@@ -281,6 +282,7 @@ export default function ProfileGrowthSettingsPage() {
           {dimensions.map((dim) => (
             <div
               key={dim.id}
+              className="admin-dimension-card"
               style={{
                 padding: '16px',
                 borderRadius: '10px',
@@ -359,7 +361,7 @@ export default function ProfileGrowthSettingsPage() {
       </section>
 
       {/* 模块二：成长轨迹事件流捕获（卡片流水流转） */}
-      <section style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
+      <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -431,7 +433,7 @@ export default function ProfileGrowthSettingsPage() {
       {/* 模块三与四：双栏卡片（未成年人隐私策略 + AI 引擎配置） */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
         {/* 未成年人隐私与隔离 */}
-        <section style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
+        <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>3. 未成年人数据隐私与隔离策略</span>
             <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
@@ -485,7 +487,7 @@ export default function ProfileGrowthSettingsPage() {
         </section>
 
         {/* AI 画像分析引擎 */}
-        <section style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
+        <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>4. AI 分析推理模型与生成频率</span>
             <span style={{ fontSize: '11px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>

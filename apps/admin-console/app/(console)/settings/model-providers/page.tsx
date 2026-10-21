@@ -2348,7 +2348,7 @@ export default function AdminModelPage() {
                 <th>状态</th>
                 <th>已挂载模型</th>
                 <th>最近同步</th>
-                <th>操作</th>
+                <th style={{ minWidth: "420px", whiteSpace: "nowrap" }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -2425,6 +2425,9 @@ export default function AdminModelPage() {
                               borderColor: isRowExpanded ? '#3b82f6' : '#dce4ee',
                               color: isRowExpanded ? '#1d4ed8' : '#334155',
                               fontWeight: isRowExpanded ? 600 : 400,
+                              whiteSpace: 'nowrap',
+                              minWidth: 'max-content',
+                              padding: '6px 14px',
                             }}
                             onClick={() => setExpanded(isRowExpanded ? null : provider.id)}
                           >

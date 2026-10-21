@@ -1730,3 +1730,318 @@
 :root[data-qitu-eyecare="true"] .settings-main [style*="background: #f7f8fa"] * {
   color: #FFFFFF !important;
 }
+
+
+/* ==========================================================================
+   12. 管理员端深度专项排查与消白治理
+   12.1 模型接入：通道 Logo 卡片黑底绿边、长按键防折行、协议与状态消白、字体全白
+   12.2 AI 助手与技能中心：Emoji 纯真呈现与技能中心「被谁使用」圆形头像黑底绿边
+   12.3 工具与 MCP 页面：全容器黑底白字、模式切换器暗色调、内置工具卡片黑底白字
+   12.4 生态插件扩展：卡片去白、“标准化接入协议”黑底白字绿边
+   12.5 内容与数据四子页面（知识中心、模板库、学情画像、数据库）：卡片全量黑底白字
+   ========================================================================== */
+
+/* 12.1 模型接入页面治理 */
+:root[data-qitu-eyecare="true"] .provider-logo {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .protocol-chip {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-status.is-ready {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-status.is-warning {
+  background: #2D2311 !important;
+  background-color: #2D2311 !important;
+  border: 1px solid #F59E0B !important;
+  color: #FBBF24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-status.is-off {
+  background: #181B20 !important;
+  background-color: #181B20 !important;
+  border: 1px solid #374151 !important;
+  color: #9CA3AF !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-actions .settings-pill-btn {
+  white-space: nowrap !important;
+  min-width: max-content !important;
+  flex-shrink: 0 !important;
+  padding: 6px 14px !important;
+  background: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .runtime-actions .settings-pill-btn:hover {
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table th:last-child,
+:root[data-qitu-eyecare="true"] .provider-table td:last-child {
+  min-width: 440px !important;
+  white-space: nowrap !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table,
+:root[data-qitu-eyecare="true"] .provider-table * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-name-cell code,
+:root[data-qitu-eyecare="true"] .provider-model-row code,
+:root[data-qitu-eyecare="true"] .admin-runtime-table code,
+:root[data-qitu-eyecare="true"] .provider-url,
+:root[data-qitu-eyecare="true"] .provider-muted,
+:root[data-qitu-eyecare="true"] .provider-stats span,
+:root[data-qitu-eyecare="true"] .runtime-test-message {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-table,
+:root[data-qitu-eyecare="true"] .provider-table table,
+:root[data-qitu-eyecare="true"] .admin-runtime-table,
+:root[data-qitu-eyecare="true"] .provider-toolbar,
+:root[data-qitu-eyecare="true"] .provider-detail {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+}
+
+/* 12.2 技能中心「被谁使用」Emoji 头像容器 */
+:root[data-qitu-eyecare="true"] .admin-skill-avatar-circle {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.3) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-avatar-more {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-none-used {
+  color: #9CA3AF !important;
+}
+
+/* 12.3 工具与 MCP 页面全量消白 */
+:root[data-qitu-eyecare="true"] .admin-tools-page-view,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-tools-page-view div,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view section,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view table,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view thead,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view tbody,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view tr,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view th,
+:root[data-qitu-eyecare="true"] .admin-tools-page-view td {
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-tools-card,
+:root[data-qitu-eyecare="true"] .admin-builtin-tool-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-tools-page-view button {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-tools-page-view button:hover {
+  border-color: #10B981 !important;
+  color: #34D399 !important;
+}
+
+/* 12.4 生态插件扩展：卡片去白、“标准化接入协议”黑底白字绿边 */
+:root[data-qitu-eyecare="true"] .admin-editor-tag.is-green,
+:root[data-qitu-eyecare="true"] .admin-editor-card-header .admin-editor-tag.is-green {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.25) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hook-doc-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hook-badge {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-hook-title,
+:root[data-qitu-eyecare="true"] .admin-hook-desc {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-knowledge-item-card,
+:root[data-qitu-eyecare="true"] .admin-template-item-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-knowledge-item-card *,
+:root[data-qitu-eyecare="true"] .admin-template-item-card * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-knowledge-card-top,
+:root[data-qitu-eyecare="true"] .admin-template-item-head,
+:root[data-qitu-eyecare="true"] .admin-template-info-list,
+:root[data-qitu-eyecare="true"] .admin-knowledge-meta-list {
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-workflow-container,
+:root[data-qitu-eyecare="true"] .admin-template-workflow-intro,
+:root[data-qitu-eyecare="true"] .admin-phase-card,
+:root[data-qitu-eyecare="true"] .admin-phase-row {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+/* 12.5 内容与数据四子页面治理 */
+/* (1) 知识中心 /settings/knowledge */
+:root[data-qitu-eyecare="true"] [class*="libraryCard"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="libraryCard"]:hover {
+  border-color: #34D399 !important;
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.35) !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="libraryCard"] h2,
+:root[data-qitu-eyecare="true"] [class*="libraryCard"] p,
+:root[data-qitu-eyecare="true"] [class*="cardFooter"],
+:root[data-qitu-eyecare="true"] [class*="cardFooter"] * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="detail"],
+:root[data-qitu-eyecare="true"] [class*="fileWorkspace"],
+:root[data-qitu-eyecare="true"] [class*="fileSidebar"],
+:root[data-qitu-eyecare="true"] [class*="preview"],
+:root[data-qitu-eyecare="true"] [class*="taskBar"],
+:root[data-qitu-eyecare="true"] [class*="sidebarHead"],
+:root[data-qitu-eyecare="true"] [class*="fileRow"],
+:root[data-qitu-eyecare="true"] [class*="searchBar"],
+:root[data-qitu-eyecare="true"] [class*="modal"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-color: #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="fileActive"] {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="secondary"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="badge"],
+:root[data-qitu-eyecare="true"] [class*="defaultBadge"],
+:root[data-qitu-eyecare="true"] [class*="libraryBadge"] {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* (2) 学情画像与轨迹 /settings/profile-growth */
+:root[data-qitu-eyecare="true"] .admin-profile-growth-section,
+:root[data-qitu-eyecare="true"] .admin-dimension-card,
+:root[data-qitu-eyecare="true"] .settings-main section[style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-main section[style*="background: rgb(255, 255, 255)"],
+:root[data-qitu-eyecare="true"] .settings-shell section[style*="background: #ffffff"],
+:root[data-qitu-eyecare="true"] .settings-shell section[style*="background: rgb(255, 255, 255)"],
+:root[data-qitu-eyecare="true"] .settings-main section {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-profile-growth-section *,
+:root[data-qitu-eyecare="true"] .admin-dimension-card *,
+:root[data-qitu-eyecare="true"] .settings-main section *,
+:root[data-qitu-eyecare="true"] .settings-shell section * {
+  color: #FFFFFF !important;
+}
+
+/* (3) 数据库与初始化 /settings/database */
+:root[data-qitu-eyecare="true"] .admin-runtime-cards,
+:root[data-qitu-eyecare="true"] .admin-runtime-cards .qitu-section-card,
+:root[data-qitu-eyecare="true"] .admin-runtime-row {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-runtime-cards *,
+:root[data-qitu-eyecare="true"] .admin-runtime-row * {
+  color: #FFFFFF !important;
+}

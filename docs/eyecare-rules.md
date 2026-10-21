@@ -159,6 +159,25 @@
        3. **AI 助手卡片深底白字**：卡片 `.admin-assistant-card` 与编辑器卡片 `.admin-editor-card` 统一重写为纯黑背景 `#000000 !important`，卡片标题与正文纯白 `#FFFFFF !important`，角色胶囊与操作按钮为深森林绿 `#112F24` 搭配薄荷绿文字 `#34D399`，头像框为黑底配翡翠绿边框；
        4. **设置总览“全栈协同”与 Emoji 规范**：`.settings-overview-intro` 横幅统一为纯黑 `#000000 !important` 配翠绿边框 `#10B981`，“全栈协同”徽标设为黑底绿字；全部卡片 Emoji 图标容器（`.settings-overview-icon`、`.admin-card-icon-box`、`.settings-row-avatar`、`.team-card-icon` 等）统一重写为纯黑底色配翠绿发光边框（`background: #000000 !important; border: 1px solid #10B981 !important; color: #FFFFFF !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4) !important;`）；
        5. **工作区全页面文字底框排查拦截**：全面排查“工作区”下所有页面（设置总览、账号设置、团队卡片、详情视图、技能面板、模态弹窗、飞书配置卡片等），所有存在文字的卡片、输入框、表格、单元格全部强制为纯黑底色 `#000000 !important`，文字为纯白 `#FFFFFF !important`；并在 `.settings-shell` 与 `.settings-main` 作用域内对一切浅白底内联属性（`[style*="background: #fff"]`、`#fafafa`、`#f8fafc`、`#f1f5f9`、`#eff6ff`、`#f0fdf4` 等）施加黑底白字强制拦截。
+   - **场景 F：模型接入、AI助手/技能中心Emoji、操作长按钮、工具与MCP、生态插件与内容数据四子页面治理 (Model Providers, Emoji Fidelity, Action Buttons, Tools/MCP, Plugins & Content Data 4 Sub-pages)**：
+     - **问题现象**：
+       1. AI 助手卡片与技能中心中因 `AssistantGlyph` 内部尝试加载并渲染共享图像组件，若图片未正常载入或在微型容器（26px）中渲染时，会退化展示图片 alt 属性文本（如“启途 AI 智学搭档”），导致 emoji 变成了一串文字；
+       2. “模型接入”页面通道名称前的卡片 `.provider-logo`（原写死 `#e9efff` 浅蓝白底）、“协议”徽章 `.protocol-chip`（原写死 `#eef2f7` 浅灰底）与“状态”徽标 `.runtime-status`（`.is-ready`、`.is-warning`、`.is-off` 原浅色底）均存在刺眼浅色底色；
+       3. “模型接入”表格中的“操作”列按钮文案（如“▼ 二级展开 (模型管理)”）因列宽不足发生文字换行折行；表格内代码、模型数、网关地址与最近同步文字颜色未全量转为纯白；
+       4. “工具与MCP”页面顶部模式切换器、智能体授权矩阵卡片、单元格及运行时上报的内置工具卡片包含大量硬编码白色与浅灰底色（`#ffffff`、`#f8fafc`、`#f1f5f9`）；
+       5. “生态插件”页面扩展卡片仍为白色，且“标准化接入协议”横幅未适配黑底白字绿边；
+       6. “内容与数据”四大子页面（知识中心 `/settings/knowledge`、项目模板库 `/settings/templates`、学情画像与轨迹 `/settings/profile-growth`、数据库 `/settings/database`）内部大量卡片、侧栏、预览面板与列表项存在刺眼白底。
+     - **治理策略**：
+       1. **Emoji 真实呈现**：在 AI 助手卡片、技能中心“被谁使用”、团队成员等所有管理端场景中，直接渲染原生字符 `{avatar || '🤖'}`，杜绝图像组件失效或 alt 字符溢出；技能中心圆形头像容器 `.admin-skill-avatar-circle` 赋予纯黑底色与翡翠绿边框（`#000000` / `#10B981`）；
+       2. **模型接入通道与状态消白**：`.provider-logo` 强制转为黑底绿边白字（`#000000` / `#10B981` / `#FFFFFF`），`.protocol-chip` 与 `.runtime-status.is-ready` 转为深森林绿（`#112F24` / `#34D399`），`.runtime-status.is-warning` 转为深琥珀暗色（`#2D2311` / `#FBBF24`），`.runtime-status.is-off` 转为暗黑灰色（`#181B20` / `#9CA3AF`）；
+       3. **操作按钮防折行与全字体纯白**：`.runtime-actions` 设为 `flex-wrap: nowrap`，按钮 `.settings-pill-btn` 强制 `white-space: nowrap !important; min-width: max-content !important; padding: 6px 14px !important;`，操作列 `th`/`td` 设置 `min-width: 440px !important;`；表格内全部文本、代码与数值统一重设为高对比度纯白 `#FFFFFF !important;`；
+       4. **工具与 MCP 全量消白**：将 `.admin-tools-page-view` 内所有模式切换器、授权矩阵卡片 `.admin-tools-card`、内置工具卡片 `.admin-builtin-tool-card` 统一重设为纯黑底色、翠绿边框与纯白文字；
+       5. **生态插件去白与标准化接入协议**：卡片 `.admin-knowledge-item-card` 与文档卡片 `.admin-hook-doc-card` 设为黑底绿边白字，挂载钩子徽标 `.admin-hook-badge` 设为 `#112F24`，顶部“标准化接入协议”横幅 `.admin-editor-tag.is-green` 设为纯黑底色、纯白文字、翠绿发光边框（`#000000` / `#FFFFFF` / `border: 1px solid #10B981`）；
+       6. **内容与数据四大页面卡片全量黑化**：
+          - 知识中心：覆盖 `.libraryCard`、工作区 `.fileWorkspace`、侧栏 `.fileSidebar`、预览区 `.preview` 为纯黑底色 `#000000` 与纯白文字，激活文件项为 `#112F24`；
+          - 项目模板库：覆盖模板卡片 `.admin-template-item-card`、阶段设计卡片与工作流容器为黑底绿边；
+          - 学情画像与轨迹：为 4 大业务分区 `.admin-profile-growth-section` 及维度卡片 `.admin-dimension-card` 覆盖纯黑背景与纯白文字；
+          - 数据库与初始化：覆盖运行时卡片 `.admin-runtime-cards .qitu-section-card` 及检查项 `.admin-runtime-row` 为黑底绿边白字。
 
 ---
 
@@ -281,6 +300,11 @@
   - [ ] 管理员端：“AI 助手”卡片全部转为纯黑深色底色 + 纯白高对比文字，角色药丸与编辑按键为深森林绿，头像框为黑底翠绿边框。
   - [ ] 管理员端：“设置总览”中的“全栈协同”横幅底色转为纯黑（`#000000`）；所有卡片 Emoji 图标容器统一为纯黑底色配翠绿发光边框（`#10B981`）。
   - [ ] 管理员端：“工作区”下各页面（设置总览、账号设置、团队工作区、知识库、技能中心等）任何存在文字的卡片、输入框、表格与面板底框全面消除白底，统一为黑色背景 + 纯白文字。
+  - [ ] 管理员端：AI 助手卡片与技能中心“被谁使用”纯净渲染原生 Emoji，杜绝退化为 alt 字符串；头像框为黑底翠绿边框。
+  - [ ] 管理员端：“模型接入”通道名称前 Logo 卡片为黑底绿边纯白文字；“协议”与“状态”全面消除浅白底，分别转为深森林绿与暗色调；操作列按键防折行；全量字体纯白。
+  - [ ] 管理员端：“工具与 MCP”全页面容器、授权矩阵卡片与内置工具卡片彻底消白，为纯黑底色与纯白文字。
+  - [ ] 管理员端：“生态插件”卡片消除白色背景，“标准化接入协议”横幅为黑色底色纯白文字绿色发光边框。
+  - [ ] 管理员端：“内容与数据”四大子页面（知识中心、项目模板库、学情画像与轨迹、数据库与初始化）所有白色卡片、列表项与面板全面转为黑色背景与高对比纯白文字。
 - [ ] **3. 对比度与可读性巡检**：
   - [ ] 学生端、家长端、教师端、管理员端左上角“启途智学”均为高对比度纯白（`#FFFFFF`）。
   - [ ] 无任何深蓝色字体（`#102a5c`、`#1e293b` 等）叠在暗色背景上导致不可见的情况。

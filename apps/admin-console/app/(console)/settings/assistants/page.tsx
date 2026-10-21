@@ -339,7 +339,7 @@ export default function AdminAssistantsPage() {
           <div className="admin-identity-content">
             <div className="admin-identity-avatar-col">
               <div className="admin-identity-avatar-box">
-                <span className="admin-identity-avatar-icon"><AssistantGlyph value={editingAssistant.icon} size={64} /></span>
+                <span className="admin-identity-avatar-icon">{editingAssistant.icon || '🤖'}</span>
               </div>
               <button
                 type="button"
@@ -669,7 +669,7 @@ export default function AdminAssistantsPage() {
                       }}
                       style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <div className="admin-card-icon-box"><AssistantGlyph value={item.icon} size={30} /></div>
+                    <div className="admin-card-icon-box">{item.icon || '🤖'}</div>
                   </div>
                   <div className="admin-card-actions-group">
                     <button

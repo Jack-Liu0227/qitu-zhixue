@@ -661,7 +661,7 @@ export function CreateLibraryModal({
                       }
                     />
                     <span>
-                      <AssistantGlyph value={a.avatar} size={20} /> {a.name}
+                      {a.avatar || '🤖'} {a.name}
                       {!a.enabled ? '（已停用）' : ''}
                     </span>
                   </label>

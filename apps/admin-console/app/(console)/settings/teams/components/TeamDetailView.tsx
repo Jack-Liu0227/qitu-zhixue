@@ -132,7 +132,7 @@ function MembersPanel({
               onClick={() => onOpenMemberEdit(member)}
             >
               <div className="member-card-avatar">
-                <AssistantGlyph value={member.avatar || assistant?.avatar} size={30} />
+                {member.avatar || assistant?.avatar || '🤖'}
               </div>
               <div className="member-card-info">
                 <div className="member-card-name">
