@@ -758,7 +758,7 @@ export default function CopilotPage() {
         {activeTestAssistant && selectedAssistantId !== 'qitu-assistant' && (
           <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}>{activeTestAssistant.icon || '🤖'}</span>
+              <span style={{ fontSize: '16px' }}><AssistantGlyph value={activeTestAssistant.icon} /></span>
               <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
               <span style={{ color: '#15803d' }}>（角色：{activeTestAssistant.role} · 单助手预览，团队作为配置上下文）</span>
             </div>
