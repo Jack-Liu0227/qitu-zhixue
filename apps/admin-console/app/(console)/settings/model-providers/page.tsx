@@ -2465,6 +2465,7 @@ export default function AdminModelPage() {
                       <tr>
                         <td colSpan={8} style={{ padding: 0 }}>
                           <div
+                            className="provider-expanded-panel"
                             style={{
                               background: '#f8fafc',
                               borderTop: '1px solid #e2e8f0',
@@ -2592,6 +2593,7 @@ export default function AdminModelPage() {
                                   return (
                                     <div
                                       key={model.id}
+                                      className="provider-model-card"
                                       style={{
                                         padding: '10px 12px',
                                         background: '#ffffff',
@@ -2622,6 +2624,7 @@ export default function AdminModelPage() {
                                             </strong>
                                           </label>
                                           <span
+                                            className="provider-model-group-badge"
                                             style={{
                                               fontSize: '10.5px',
                                               padding: '1px 6px',

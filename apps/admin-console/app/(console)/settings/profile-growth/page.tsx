@@ -228,6 +228,7 @@ export default function ProfileGrowthSettingsPage() {
             <h3 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>1. 能力画像多维评价模型</span>
               <span
+                className={`admin-growth-weight-badge ${totalWeight === 100 ? 'is-valid' : 'is-invalid'}`}
                 style={{
                   fontSize: '12px',
                   fontWeight: 600,
@@ -246,6 +247,7 @@ export default function ProfileGrowthSettingsPage() {
           </div>
           <button
             type="button"
+            className="admin-growth-reset-btn"
             onClick={() => setDimensions(DEFAULT_DIMENSIONS)}
             style={{
               padding: '5px 12px',
@@ -262,11 +264,11 @@ export default function ProfileGrowthSettingsPage() {
         </div>
 
         {/* 综合权重分布条 */}
-        <div style={{ height: '10px', borderRadius: '5px', overflow: 'hidden', display: 'flex', background: '#f1f5f9', marginBottom: '18px' }}>
+        <div className="admin-growth-progress-track" style={{ height: '10px', borderRadius: '5px', overflow: 'hidden', display: 'flex', background: '#f1f5f9', marginBottom: '18px' }}>
           {dimensions.filter((d) => d.enabled).map((dim) => (
             <div
               key={dim.id}
-              className="admin-dimension-card"
+              className="admin-dimension-bar-item"
               style={{
                 width: `${dim.weight}%`,
                 background: dim.color,
@@ -302,6 +304,7 @@ export default function ProfileGrowthSettingsPage() {
                   </div>
                   <button
                     type="button"
+                    className={`admin-dimension-status-btn ${dim.enabled ? 'is-enabled' : 'is-disabled'}`}
                     onClick={() => setDimensions((prev) => prev.map((d) => (d.id === dim.id ? { ...d, enabled: !d.enabled } : d)))}
                     style={{
                       padding: '2px 8px',
@@ -323,7 +326,7 @@ export default function ProfileGrowthSettingsPage() {
                   {dim.description}
                 </p>
 
-                <div style={{ fontSize: '11px', background: '#f8fafc', color: '#64748b', padding: '4px 8px', borderRadius: '4px', border: '1px solid #f1f5f9' }}>
+                <div className="admin-dimension-source" style={{ fontSize: '11px', background: '#f8fafc', color: '#64748b', padding: '4px 8px', borderRadius: '4px', border: '1px solid #f1f5f9' }}>
                   评定来源: {dim.evalSource}
                 </div>
               </div>
@@ -333,6 +336,7 @@ export default function ProfileGrowthSettingsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input
                     type="number"
+                    className="admin-dimension-weight-input"
                     min={0}
                     max={100}
                     value={dim.weight}
@@ -366,7 +370,7 @@ export default function ProfileGrowthSettingsPage() {
           <div>
             <h3 style={{ margin: 0, fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>2. PBL 关键事件流捕获与档案自动沉淀</span>
-              <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+              <span className="admin-growth-audit-badge" style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
                 不可篡改审计流
               </span>
             </h3>
@@ -380,6 +384,7 @@ export default function ProfileGrowthSettingsPage() {
           {eventRules.map((rule) => (
             <div
               key={rule.id}
+              className="admin-growth-event-card"
               style={{
                 padding: '14px 16px',
                 borderRadius: '10px',
@@ -403,7 +408,7 @@ export default function ProfileGrowthSettingsPage() {
                     style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#2563eb' }}
                   />
                 </div>
-                <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', display: 'inline-block', marginBottom: '8px' }}>
+                <code className="admin-growth-event-code" style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', display: 'inline-block', marginBottom: '8px' }}>
                   {rule.event}
                 </code>
                 <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
@@ -436,7 +441,7 @@ export default function ProfileGrowthSettingsPage() {
         <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>3. 未成年人数据隐私与隔离策略</span>
-            <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+            <span className="admin-growth-badge" style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
               合规保护
             </span>
           </h3>
@@ -445,7 +450,7 @@ export default function ProfileGrowthSettingsPage() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
+            <div className="admin-growth-sub-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
               <div>
                 <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>原始对话与学情自动脱敏</strong>
                 <span style={{ fontSize: '11.5px', color: '#64748b' }}>自动抹除姓名、手机号、家庭住址与人脸敏感信息</span>
@@ -458,7 +463,7 @@ export default function ProfileGrowthSettingsPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
+            <div className="admin-growth-sub-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
               <div>
                 <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>当前班主任专属隔离</strong>
                 <span style={{ fontSize: '11.5px', color: '#64748b' }}>一个学生同一时间只能由其绑定的当前班主任查看完整轨迹</span>
@@ -471,7 +476,7 @@ export default function ProfileGrowthSettingsPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
+            <div className="admin-growth-sub-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px' }}>
               <div>
                 <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>家长端只读白名单同步</strong>
                 <span style={{ fontSize: '11.5px', color: '#64748b' }}>仅推送已通过阶段门禁的正面里程碑与作品反思摘要</span>
@@ -490,7 +495,7 @@ export default function ProfileGrowthSettingsPage() {
         <section className="admin-profile-growth-section" style={{ background: '#ffffff', border: '1px solid #e4ecf7', borderRadius: '14px', padding: '20px 24px', boxShadow: '0 4px 16px rgba(16, 42, 92, 0.03)' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#102a5c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>4. AI 分析推理模型与生成频率</span>
-            <span style={{ fontSize: '11px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+            <span className="admin-growth-badge" style={{ fontSize: '11px', background: '#f3e8ff', color: '#7e22ce', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
               推理引擎
             </span>
           </h3>
@@ -500,13 +505,13 @@ export default function ProfileGrowthSettingsPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* 提示：模型配置在助手里实现 */}
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+            <div className="admin-growth-tip-box" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
               💡 <strong>模型配置规范：</strong>学情画像与成长轨迹分析模型直接在专任助手中配置与托管，无需在系统级独立指定。选择专任助手后，下方直接联动该助手的专属大语言模型。
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
               {/* 学情画像专任助手及模型 */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+              <div className="admin-growth-assistant-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   学情画像专任分析助手
                 </label>
@@ -563,7 +568,7 @@ export default function ProfileGrowthSettingsPage() {
               </div>
 
               {/* 成长轨迹专任助手及模型 */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+              <div className="admin-growth-assistant-box" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   成长轨迹专任追踪助手
                 </label>

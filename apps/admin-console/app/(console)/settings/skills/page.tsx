@@ -568,7 +568,7 @@ export default function SkillsSettingsPage() {
         </div>
 
         {!editingSkill.local ? (
-          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
+          <div className="admin-skill-readonly-alert" style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
             此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器；与助手的绑定/解绑会通过助手接口真实持久化。
           </div>
         ) : null}
@@ -941,9 +941,10 @@ export default function SkillsSettingsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
+          <div className="admin-skills-view-switcher" style={{ background: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'flex', border: '1px solid #e2e8f0' }}>
             <button
               type="button"
+              className={`admin-skills-switch-btn ${skillsViewMode === 'list' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',
@@ -961,6 +962,7 @@ export default function SkillsSettingsPage() {
             </button>
             <button
               type="button"
+              className={`admin-skills-switch-btn ${skillsViewMode === 'matrix' ? 'is-active' : ''}`}
               style={{
                 padding: '6px 14px',
                 border: 'none',

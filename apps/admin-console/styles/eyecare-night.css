@@ -2045,3 +2045,265 @@
 :root[data-qitu-eyecare="true"] .admin-runtime-row * {
   color: #FFFFFF !important;
 }
+
+/* ========================================================================= */
+/* 13. 管理员端设置中心深度消白与高对比度增强 (Section 13)                    */
+/* ========================================================================= */
+
+/* 13.1 模型接入二级展开 */
+:root[data-qitu-eyecare="true"] .provider-expanded-panel {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-top: 1px solid #10B981 !important;
+  border-bottom: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-expanded-panel * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-model-card,
+:root[data-qitu-eyecare="true"] .provider-presets-catalog {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-model-card * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-model-group-badge {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  color: #34D399 !important;
+  border: 1px solid #195A3B !important;
+}
+
+:root[data-qitu-eyecare="true"] .provider-model-add input {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+/* 13.2 技能中心：切换按键、搜索框与详情卡片消白 */
+:root[data-qitu-eyecare="true"] .admin-skills-view-switcher {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skills-switch-btn {
+  background: transparent !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skills-switch-btn.is-active {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skills-search-input-wrap {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skills-search-input-wrap input {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-readonly-alert {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-meta-pill,
+:root[data-qitu-eyecare="true"] .admin-skill-tag-chip {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-add-tag-btn {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px dashed #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-card-section,
+:root[data-qitu-eyecare="true"] .admin-skill-files-workbench {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-card-section *,
+:root[data-qitu-eyecare="true"] .admin-skill-files-workbench * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-agent-row {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-agent-avatar-wrap {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-input-text,
+:root[data-qitu-eyecare="true"] .admin-skill-textarea,
+:root[data-qitu-eyecare="true"] .admin-skill-tags-input-box input {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+/* 13.3 工具与 MCP 徽标消白 */
+:root[data-qitu-eyecare="true"] .admin-tools-summary-badge,
+:root[data-qitu-eyecare="true"] .admin-tools-role-pill,
+:root[data-qitu-eyecare="true"] .admin-builtin-reg-badge,
+:root[data-qitu-eyecare="true"] .admin-builtin-risk-badge:not(.is-high) {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-builtin-gate-badge {
+  background: #2D2311 !important;
+  background-color: #2D2311 !important;
+  border: 1px solid #F59E0B !important;
+  color: #FBBF24 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-builtin-risk-badge.is-high {
+  background: #2D1414 !important;
+  background-color: #2D1414 !important;
+  border: 1px solid #EF4444 !important;
+  color: #F87171 !important;
+}
+
+/* 13.4 知识中心搜索框消白 */
+:root[data-qitu-eyecare="true"] [class*="search"],
+:root[data-qitu-eyecare="true"] [class*="fileSearch"] {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="search"] input,
+:root[data-qitu-eyecare="true"] [class*="fileSearch"] input {
+  background: transparent !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] [class*="listToolbar"] select {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+/* 13.5 模板库“已发布”高对比清晰度 */
+:root[data-qitu-eyecare="true"] .admin-template-status-pill {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+/* 13.6 学情画像与轨迹：消灭浅绿白底与事件卡片消白 */
+:root[data-qitu-eyecare="true"] .admin-growth-weight-badge.is-valid,
+:root[data-qitu-eyecare="true"] .admin-growth-audit-badge,
+:root[data-qitu-eyecare="true"] .admin-growth-badge,
+:root[data-qitu-eyecare="true"] .admin-growth-tip-box,
+:root[data-qitu-eyecare="true"] .admin-growth-tip-box *,
+:root[data-qitu-eyecare="true"] .admin-growth-event-code,
+:root[data-qitu-eyecare="true"] .admin-dimension-source,
+:root[data-qitu-eyecare="true"] .admin-dimension-source * {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #195A3B !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-weight-badge.is-invalid {
+  background: #2D1414 !important;
+  background-color: #2D1414 !important;
+  border: 1px solid #EF4444 !important;
+  color: #F87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-event-card,
+:root[data-qitu-eyecare="true"] .admin-growth-sub-card,
+:root[data-qitu-eyecare="true"] .admin-growth-assistant-box,
+:root[data-qitu-eyecare="true"] .admin-dimension-card {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-event-card *,
+:root[data-qitu-eyecare="true"] .admin-growth-sub-card *,
+:root[data-qitu-eyecare="true"] .admin-growth-assistant-box *,
+:root[data-qitu-eyecare="true"] .admin-dimension-card * {
+  color: #FFFFFF !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dimension-status-btn.is-enabled {
+  background: #112F24 !important;
+  background-color: #112F24 !important;
+  border: 1px solid #10B981 !important;
+  color: #34D399 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dimension-status-btn.is-disabled {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-dimension-weight-input,
+:root[data-qitu-eyecare="true"] .admin-growth-reset-btn {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+  color: #FFFFFF !important;
+  caret-color: #10B981 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-growth-progress-track {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border: 1px solid #2E3540 !important;
+}
