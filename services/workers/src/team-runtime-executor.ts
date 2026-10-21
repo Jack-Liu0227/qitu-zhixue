@@ -84,6 +84,7 @@ export function buildTeamAgentPrompt(input: {
   constraints?: readonly string[];
   outputSchema?: Record<string, unknown> | null;
 }): { system: string; user: string } {
+  assertRuntimeSkillBudget(input.skills);
   const role = bounded(input.agent.roleDefinition, MAX_ROLE_CHARS);
   const definition = bounded(input.agent.agentDefinition, MAX_AGENT_DEFINITION_CHARS);
   const policy = bounded(input.globalPolicy, MAX_GLOBAL_POLICY_CHARS);
@@ -422,6 +423,7 @@ export async function loadAgentSkills(
     const content = readSkillContent(path, skillId, executionScope);
     return content === null ? [] : [{ id: skillId, content }];
   });
+  assertRuntimeSkillBudget(skills);
   return skills;
 }
 
