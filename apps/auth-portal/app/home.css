@@ -1946,9 +1946,9 @@
 .home-footer-logo {
   display: block;
   width: 164px;
-  height: 78px;
+  height: auto;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
   padding: 4px;
   border-radius: 12px;
   background: #fff;
