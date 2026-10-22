@@ -89,7 +89,7 @@ import {
   type GeneratedPlan,
 } from './plan-generator';
 import { generatePlanFromTemplate } from './template-plan-generator';
-import { OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG } from '../templates/content/optics';
+import { OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG } from '../templates/content/optics';
 import { validateGeneratedPlan } from './session-plan-validator';
 import { assertQuestionScope, dynamicQuestionBlock, dynamicQuestionEnvelope, parseChoiceQuestionCandidate, type QuestionCandidateScope, type DynamicQuestionEnvelope } from './question-candidate';
 import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-candidate.sources';
@@ -192,7 +192,7 @@ export class LearningPlanService {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
-      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `???? ${input.curriculumSlug} ?????????`,

@@ -8,6 +8,7 @@ import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { TemplateBindingService } from '../templates/templates-binding.service';
 import { WorksLearningEvidenceService } from '../works/works-learning-evidence.service';
 import { LearningPlanStore, type PlanBundle, type SessionCompletionRecord, type SessionRecord } from './learning-plan.store';
+import { projectLessonActivities } from './lesson-activity-progress';
 
 interface SessionContext { session: SessionRecord; frozen: PblTemplateSession; objectiveIds: string[] }
 interface ProgressContext { bundle: PlanBundle; projectId: string; sessions: SessionContext[]; contractReady: boolean; }
@@ -143,7 +144,22 @@ export class LearningSessionProgressService {
     if (selected.frozen.checkpoint?.requiredGate === 'experiment_report_validated'
       && !proof.submissions.some((submission) => submission.kind === 'submitted_artifact' && proof.approvedArtifacts.some((approved) =>
         !!submission.artifactId && !!submission.artifactVersionId && approved.artifactId === submission.artifactId && approved.artifactVersionId === submission.artifactVersionId))) blockers.push('SUBMITTED_REPORT_APPROVAL_REQUIRED');
+    const activities = selected.frozen.activityRequirements ? await this.activities(actor, context, selected, store) : undefined;
+    if (activities?.some(activity => activity.status !== 'completed')) blockers.push('LESSON_ACTIVITIES_INCOMPLETE');
+    for (const activity of activities ?? []) for (const ref of activity.evidenceRefs) acceptedRefs.add(ref);
     return { blockers, evidenceRefs: [...acceptedRefs].sort() };
+  }
+
+  private async activities(actor: CurrentUser, context: ProgressContext, selected: SessionContext, store: LearningPlanStore, completed = false, locked = false) {
+    if (completed || locked) return projectLessonActivities({ lesson: selected.frozen, sessionId: selected.session.id,
+      proofs: [], masteryAccepted: false, sessionCompleted: completed, locked });
+    const { plan } = context.bundle;
+    const view = await this.works.getLessonProofs(actor, plan.id, selected.session.id, plan.version);
+    const ids = selected.frozen.completionSpec?.requiredMasteryObjectiveIds.map(id => `${plan.id}:${id}`) ?? [];
+    const awaiting = await store.findAwaitingQuestion(plan.studentUserId, plan.id);
+    return projectLessonActivities({ lesson: selected.frozen, sessionId: selected.session.id,
+      proofs: [...view.submissions, ...view.observations, ...view.reflections], sessionCompleted: completed, locked,
+      masteryAccepted: !awaiting && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, plan.studentUserId, plan.id, ids, store) });
   }
 
   private async project(actor: CurrentUser, context: ProgressContext, store: LearningPlanStore): Promise<LearningSessionProgressView> {
@@ -158,6 +174,7 @@ export class LearningSessionProgressService {
         : !isCurrent ? ['PREVIOUS_SESSION_INCOMPLETE'] : plan.status !== 'active' ? ['LEARNING_PLAN_NOT_ACTIVE']
           : (await this.requirements(actor, context, entry, store)).blockers;
       sessions.push({ sessionId: entry.session.id, lessonIndex: entry.session.lessonIndex, title: entry.frozen.title,
+        ...(entry.frozen.activityRequirements ? { activities: await this.activities(actor, context, entry, store, !!completed, !completed && !isCurrent) } : {}),
         status: completed ? 'completed' as const : isCurrent ? 'current' as const : 'locked' as const,
         completedAt: completed?.completedAt.toISOString() ?? null, canComplete: isCurrent && !completed && blockers.length === 0, blockers });
     }

@@ -4,6 +4,7 @@ import type { TutorPhaseProjection, TutorProjectContext, TutorReplyBlock } from 
 export function buildProjectInteractionBlocks(
   context: TutorProjectContext | null,
 ): TutorReplyBlock[] {
+  if (context?.lesson) return []; // Actual lesson/activity owner replaces the static four-phase courseware.
   if (context?.project === null || context?.project === undefined || !context.phases?.length) return [];
 
   const theoryGatePassed = context.phases.some(

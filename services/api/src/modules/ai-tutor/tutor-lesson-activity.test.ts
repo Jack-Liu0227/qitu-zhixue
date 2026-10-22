@@ -68,6 +68,18 @@ test('model activity tool receives frozen guidance, activity minutes and require
   assert.match(description, /"planRevision":7/);
 });
 
+test('a pending assessment cannot leak its solution through a board or be replaced by another tool activity', async () => {
+  const h = await fixture();
+  const channel = createLessonActivityChannel({ ...h.input, assessmentPending: true });
+  for (const candidate of [board, { kind: 'choice_question', question: {} }, { kind: 'optics', mode: 'diffraction' }]) {
+    const rejected = await channel.tools[0]!.execute(candidate);
+    assert.equal(rejected.isError, true);
+    assert.match(rejected.text, /PENDING_ASSESSMENT/);
+  }
+  assert.equal(channel.blocks().length, 0);
+  assert.equal(h.questionWrites(), 0);
+});
+
 test('board construction uses a closed graph/TeX shape and rejects executable or external content', () => {
   const block = buildActivityBoard(board, 'stable-board');
   assert.match(block.steps[0]!.mermaid!, /slit --> band/);
@@ -128,6 +140,19 @@ test('accepted quiz suppresses model answer text; accepted owner block survives 
   }
 });
 
+test('a question created during model generation is rechecked before narration and boards are emitted', async () => {
+  const h = await fixture(); const channel = createLessonActivityChannel(h.input);
+  const provider = new GatewayTutorProvider({ complete: async () => {
+    await channel.tools[0]!.execute(board);
+    return modelResult('选B就行。');
+  } });
+  const events = await drain(provider, { ...turn, lessonActivities: channel,
+    disclosure: { kind: 'instruction' }, refreshDisclosure: async () => ({ kind: 'pending_assessment',
+      questionId: 'concurrent-owner-question', prompt: 'Public pending question', options: [], protectedTexts: [] }) });
+  assert.equal(events.some(event => event.type === 'block' && event.block.kind === 'board'), false);
+  assert.doesNotMatch(JSON.stringify(events), /选B就行/);
+});
+
 test('question source verification requires this turn actual read, frozen/current grant intersection and unexpired metadata', async () => {
   const evidence: ImaReadEvidence = { sourceRef: 'source-1', knowledgeBaseId: 'kb-1', documentRefHash: 'a'.repeat(64), expiresAt: 2000 };
   let permitted = true; let current = ['kb-1'];
@@ -141,16 +166,16 @@ test('question source verification requires this turn actual read, frozen/curren
 });
 
 
-test('recovered pending question is publicly restored without replacement; help can still propose a board', async () => {
+test('recovered pending question is restored; replacement questions and unreviewed boards stay blocked', async () => {
   const h = await fixture();
   const pending = { kind: 'quiz' as const, questionId: 'existing-owner-question', stem: 'Existing question', options: [{ key: 'stable-a', text: 'A' }] };
   const channel = createLessonActivityChannel({ ...h.input, pendingQuestion: pending, restorePending: true });
   assert.deepEqual(channel.blocks(), [pending]);
-  await assert.rejects(channel.tools[0]!.execute({ kind: 'choice_question', question: {} }));
-  await channel.tools[0]!.execute(board);
+  assert.equal((await channel.tools[0]!.execute({ kind: 'choice_question', question: {} })).isError, true);
+  assert.equal((await channel.tools[0]!.execute(board)).isError, true);
   assert.equal(h.questionWrites(), 0);
   assert.equal(channel.blocks()[0], pending);
-  assert.equal(channel.blocks()[1]?.kind, 'board');
+  assert.equal(channel.blocks().length, 1);
 });
 
 

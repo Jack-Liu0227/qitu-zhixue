@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { test } from 'node:test';
 import { adminTeamVersions, projectTemplateVersions, pblGateEvidence, type Database } from '@qitu/database';
 import { TutorService } from './tutor.service';
@@ -34,7 +36,13 @@ const project: LearningProjectRecord = {
 function fakeDb(input: { frozenTeam?: unknown; binding?: unknown }): Database {
   const select = () => ({
     from: (table: unknown) => {
-      if (table === pblGateEvidence) return { where: async () => [] };
+      if (table === pblGateEvidence) return { innerJoin: () => ({ where: async (condition: SQL) => {
+        const query = new PgDialect().sqlToQuery(condition);
+        assert.match(query.sql, /project_id/);
+        assert.ok(query.params.includes(project.id), 'gate display must be scoped to the requested project');
+        assert.ok(query.params.includes(project.studentId), 'gate display must retain the student scope');
+        return [];
+      } }) };
       if (table === adminTeamVersions) {
         return {
           where: () => ({ limit: async () => (input.frozenTeam === undefined ? [] : [input.frozenTeam]) }),

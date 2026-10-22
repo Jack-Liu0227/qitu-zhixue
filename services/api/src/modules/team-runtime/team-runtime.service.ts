@@ -2034,6 +2034,7 @@ export function studentAgentStatus(
 }
 
 function studentTaskSummary(taskType: string, status: string): string {
+  if (taskType === 'pbl.plan' && status === 'succeeded') return '规划建议已生成';
   const label = taskType === 'interest.confirm' ? '梳理兴趣方向'
     : taskType === 'project.recommend' ? '整理项目建议'
       : taskType === 'pbl.plan' ? '规划项目阶段'

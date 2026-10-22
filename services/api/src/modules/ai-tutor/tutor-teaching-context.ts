@@ -78,6 +78,7 @@ export async function resolveTutorTeachingContext(
   if (!role || !role.modelByPurpose.dialogue || !teaching.teamVersion.members.some((member) =>
     member.memberId === role.memberId && member.assistantId === role.assistantId)) unavailable('PROJECT_TEACHING_ROUTE_INVALID');
   const lesson = {
+    completedCount: completed.size,
     lessonIndex: selected.session.lessonIndex, lessonCount: profile.sessions.length, title: selected.frozen.title,
     status: completed.has(selected.session.id) ? 'completed' as const : 'current' as const,
     checkpoint: selected.frozen.checkpoint?.requiredGate ?? null,

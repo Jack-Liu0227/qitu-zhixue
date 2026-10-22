@@ -41,6 +41,7 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
   const alive = useRef(true);
   const keys = useRef(new Map<string, string>());
   const { projectId, planId, planRevision, learningSessionId } = scope;
+  const activity = lesson.activities?.find(entry => entry.status === 'current');
   const stableScope = { projectId, planId, planRevision, learningSessionId };
   useEffect(() => {
     alive.current = true;
@@ -54,7 +55,9 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       const result = await source.getLessonEvidence({ projectId, planId, planRevision, learningSessionId });
       if (!alive.current || request !== generation.current) return;
       setEvidence(result);
-      setKind((old) => old === 'reflections' && !result.allowedActions.includes('reflect') ? 'responses' : old);
+      setKind((old) => activity?.kind === 'reflect' && result.allowedActions.includes('reflect') ? 'reflections'
+        : activity?.evidence === 'submitted_artifact' ? 'artifacts'
+          : old === 'reflections' && !result.allowedActions.includes('reflect') ? 'responses' : old);
       setObjectiveId((old) => result.scope.objectiveIds.includes(old) ? old : result.scope.objectiveIds[0] ?? '');
       const known = new Set([...result.submissions, ...result.observations, ...result.approvedArtifacts, ...result.reflections].map((proof) => proof.ref));
       setSelected((old) => old.filter((ref) => known.has(ref)));
@@ -65,7 +68,7 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
       setLoading(false);
       setEvidence(null);
     }
-  }, [source, projectId, planId, planRevision, learningSessionId]);
+  }, [source, projectId, planId, planRevision, learningSessionId, activity?.kind, activity?.evidence]);
   useEffect(() => { void reload(); }, [reload, refreshKey]);
 
   const run = async (fingerprint: string, operation: (key: string) => Promise<void>) => {
@@ -88,6 +91,7 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
   };
   const submit = () => {
     const body = { planRevision, content: content.trim(), evidenceRefs: selected,
+      ...(activity ? { activityId: activity.activityId } : {}),
       ...(kind === 'artifacts' ? { title: title.trim(), objectiveId, requestReview: true } : {}) };
     void run(JSON.stringify([kind, body]), async (key) => {
       if (!source.submitLessonEvidence) throw new Error('学习内容提交服务暂不可用。');
@@ -109,6 +113,9 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
   return (
     <div className="qitu-tutor-lesson-work">
       <h4>第 {lesson.lessonIndex} 课 · {lesson.title}</h4>
+      {activity ? <div role="note"><strong>当前活动</strong><p>{activity.guidance}</p>
+        {activity.evidence === 'mastery' ? <p>请在正式目标考核中作答；聊天求助不会替你提交。</p>
+          : activity.evidence === 'experiment_observation' ? <p>请在本课注册实验中保存观察记录。</p> : null}</div> : null}
       {lesson.blockers.length ? <ul>{lesson.blockers.map((reason) => <li key={reason}>{lessonBlockerLabel(reason)}</li>)}</ul> : null}
       {loading ? <p role="status">正在读取已保存的证据…</p> : null}
       {error ? <p role="alert">{error}</p> : null}
@@ -159,7 +166,9 @@ export function LessonWorkPanel({ scope, lesson, refreshKey, disabled, onSaved, 
             }}>查看内容与审核状态</button> : null}
           </div>)}
         </fieldset> : <p>暂无已保存证据。可先提交本课表达，或在对话实验中保存观察。</p>}
-        <button type="button" disabled={blocked || !actionAllowed || !content.trim() || (kind === 'artifacts' && (!title.trim() || !objectiveId))}
+        <button type="button" disabled={blocked || !actionAllowed || !content.trim()
+          || (!!lesson.activities && (!activity || activity.evidence !== (kind === 'artifacts' ? 'submitted_artifact' : 'session_response')))
+          || (kind === 'artifacts' && (!title.trim() || !objectiveId))}
           onClick={submit}>{pending ? '正在提交…' : '保存学习记录'}</button>
         <button type="button" disabled={blocked || !lesson.canComplete || selected.length === 0}
           onClick={() => { void run(JSON.stringify(['complete', selected]), async (key) => {

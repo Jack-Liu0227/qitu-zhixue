@@ -30,6 +30,9 @@ export function serializeTutorContext(packet: TutorContextPacket): string {
   if (packet.lessonProgram) {
     lines.push('当前冻结课时教案（按活动指导开展教学；保存、质量评价、掌握度和完成分别由服务端确认）：');
     lines.push(serializeTutorLessonProgram(packet.lessonProgram));
+    if (packet.lessonProgram.currentActivity !== undefined) lines.push(packet.lessonProgram.currentActivity
+      ? '本轮只围绕 currentActivity 的指导、学习证据和学生困难开展一个教学动作。课件页数不代表活动完成；不要讲授后续活动或越过待答题。'
+      : '本课活动已无待办，等待服务端完成课时或后续审核，不自行生成下一课任务。');
   }
   if (packet.learnerProfile !== null) {
     lines.push(`学习偏好：${packet.learnerProfile.preferences.join('、') || '未记录'}`);

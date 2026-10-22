@@ -28,7 +28,22 @@ export function buildExplorationOpeningBlocks(context: TutorProjectContext): Tut
 /** Called only with the owner's frozen project/team projection, never a title classifier. */
 export function buildProjectOpeningBlocks(context: TutorProjectContext): TutorReplyBlock[] {
   const { project, team, phases } = context;
-  if (!project || !team?.teamId || !phases?.length) return [];
+  if (!project || !team?.teamId) return [];
+  if (context.lesson) {
+    const lesson = context.lesson;
+    const activity = lesson.currentActivity;
+    return [
+      { kind: 'text', text: `第 ${lesson.lessonIndex} / ${lesson.lessonCount} 课 · ${lesson.title}\n\n你好，我是${team.assistantName}。${team.teamName ?? '项目导师团队'}将按本课任务陪你学习。已完成 ${lesson.completedCount ?? 0} 课时。` },
+      { kind: 'text', text: activity?.guidance ?? context.currentTask?.detail ?? '先回顾你的观察和已有想法，再围绕本课目标继续探究。' },
+      ...(lesson.status === 'current' ? [{ kind: 'options' as const, allowOther: true, items: [
+        { label: '开始当前活动', text: '请按照当前课时和活动，结合我已有的学习证据开展教学，需要时生成分步图示。' },
+        { label: '先看一个示例', text: '请解释当前活动所需的概念，并用一个独立示例演示方法。不要替我提交待答题。' },
+        { label: '我有疑问', text: '我想先说说不理解的地方，请结合当前活动帮我弄清楚。' },
+      ] }] : []),
+      { kind: 'text', text: '图示翻页只切换展示。回答、考核与观察经服务端确认后，才能完成活动和课时。' },
+    ];
+  }
+  if (!phases?.length) return [];
   const activePhase = phases.find((phase) => phase.status === 'active');
   const phaseId = pblPhaseForProjectStage(project.stage);
   if (!isPblPhase(phaseId)) return [];

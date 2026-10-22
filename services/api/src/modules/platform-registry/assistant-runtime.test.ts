@@ -3,8 +3,25 @@ import { test } from 'node:test';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { assistantRuntimeFixture } from './assistant-runtime.test-fixture';
 import { ImaSettingsService } from './ima-settings.service';
+import { loadTutorRuntimeSource } from '../../common/tutor-runtime/runtime-source';
 
 const actor = { id: 'synthetic-admin', role: 'admin', email: '', displayName: '' } as const;
+
+test('a published teaching role retains all granted skills without an aggregate character ceiling', async () => {
+  const h = assistantRuntimeFixture();
+  h.assistant.enabledSkills = ['tutor-guided-learning', 'pbl-concept-probe', 'pbl-understanding-coach',
+    'pbl-source-literacy', 'pbl-visual-explainer', 'pbl-independent-transfer', 'pbl-dynamic-lesson'];
+  h.assistant.toolIds.push('tutor.propose_lesson_activity');
+  const source = loadTutorRuntimeSource();
+  const runtime = await h.service.getAssistantRuntime(h.assistant.id);
+  assert.deepEqual(runtime.skills.map(skill => skill.id).sort(), [...h.assistant.enabledSkills].sort());
+  assert.ok(runtime.skills.reduce((sum, skill) => sum + skill.content.length, 0) > 24_000);
+  for (const skill of runtime.skills) {
+    const published = source.skills.find(entry => entry.id === skill.id);
+    assert.equal(skill.content, published?.content);
+    assert.equal(skill.contentHash, published?.contentHash);
+  }
+});
 
 test('Admin-only teaching assistant uses its exact provider/model, prompt, skills and tools', async () => {
   const h = assistantRuntimeFixture();

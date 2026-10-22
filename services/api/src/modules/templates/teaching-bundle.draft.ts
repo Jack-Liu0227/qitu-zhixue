@@ -27,8 +27,9 @@ export function draftFromPublishedTeam(
   if (new Set(members.map((member) => member.slotId)).size !== members.length
     || new Set(members.map((member) => member.assistantId)).size !== members.length) reject('团队成员标识重复，请重新发布团队。');
   const sessionRoutes = profile.sessions.map((session) => {
-    const assigned = template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
-    const selectedMemberId = phaseAssignments[session.phase];
+    const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId
+      : template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
+    const selectedMemberId = template.lessonPolicy === 'lesson-guided.v1' ? undefined : phaseAssignments[session.phase];
     const member = assigned ? members.find((candidate) => candidate.assistantId === assigned
       && (!selectedMemberId || candidate.slotId === selectedMemberId)) : members.find((candidate) => candidate.slotId === selectedMemberId);
     if (!member) return reject(`第 ${session.sessionIndex} 课没有明确匹配的团队成员，请先配置课程阶段的指定助手。`);

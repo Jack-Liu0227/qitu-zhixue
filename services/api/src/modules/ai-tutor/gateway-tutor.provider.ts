@@ -1,6 +1,7 @@
 import { toolEventStream } from './tool-event-stream';
 import { Logger } from '@nestjs/common';
 import type { TutorContextPacket } from '@qitu/ai-client';
+import { disclosurePrompt } from './tutor-disclosure';
 import { serializeTutorContext } from '@qitu/ai-client';
 import type { ProjectStage, TutorHintLevel, TutorReplyBlock } from '@qitu/contracts';
 import type { DataMode } from '../../database';
@@ -44,7 +45,7 @@ export const TUTOR_CHAT_USAGE = 'tutor.chat';
 /**
  * 系统提示词版本。变更提示结构时递增；只用于服务端诊断，不进入共享契约。
  */
-export const TUTOR_PROMPT_VERSION = 'tutor.chat.v1';
+export const TUTOR_PROMPT_VERSION = 'tutor.chat.v2-task-disclosure';
 
 /** 输出被答案泄露闸门直接拒时的安全兜底文案（启发式、以问句结尾）。 */
 const SAFE_REPLACEMENT = '这条回复本该由你一步步想出来。先说说：你觉得哪一步最不确定？';
@@ -74,7 +75,7 @@ interface ModelFailure {
  * 职责边界：
  * - **只**通过 `ModelGateway.complete('tutor.chat')` 调用模型，拿不到明文密钥；
  * - 服务端提示阶梯（`selectHintLevel`）决定本轮档位，客户端与模型都不能改；
- * - 模型输出必须再次经过 `checkAnswerLeak`（泄露措辞 / 长度 / 苏格拉底问句）
+ * - 模型输出按服务端待答题状态检查披露范围；普通教学允许直接讲解。
  *   闸门，不合规就换成安全改写稿；
  * - 仅记录真实模型、已授权 MCP 读取与安全校验；不保存工具参数或教材原文。
  * - 上游失败只映成 {@link TutorModelErrorCode}，绝不把密钥或上游 body 透出。
@@ -132,11 +133,12 @@ export class GatewayTutorProvider implements TutorProvider {
       }
       result = yield* toolEventStream<TutorStreamEvent, ModelCompletionResult>(emit => this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
-          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks) + '\n' + knowledgeState },
+          { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks)
+            + '\n' + disclosurePrompt(input.disclosure ?? { kind: 'instruction' }) + '\n' + knowledgeState },
           { role: 'user', content: buildUserPrompt(input, level) },
         ],
         temperature: 0.3,
-        maxTokens: tools.length ? 1600 : level === EXPLAIN_ONLY_LEVEL ? 512 : 256,
+        maxTokens: tools.length ? 2400 : 1600,
         ...(tools.length ? { tools, timeoutMs: 90_000, onToolEvent: (event: import('@qitu/model-runtime').ModelRuntimeToolEvent) => {
           emit(event.type === 'call'
             ? { type: 'tool_call', callId: event.callId, name: event.name === LESSON_ACTIVITY_FUNCTION ? LESSON_ACTIVITY_TOOL : event.name, label: event.name === LESSON_ACTIVITY_FUNCTION ? '生成当前课时活动' : '检索知识库' }
@@ -144,7 +146,8 @@ export class GatewayTutorProvider implements TutorProvider {
         } } : {}),
       }, selection));
     } catch (error) {
-      for (const activity of input.lessonActivities?.blocks() ?? []) yield { type: 'block', block: activity };
+      const disclosure = await input.refreshDisclosure?.() ?? input.disclosure;
+      for (const activity of disclosedActivities(input, disclosure)) yield { type: 'block', block: activity };
       const failure = toModelFailure(error);
       // 只记录稳定错误码，绝不记录提示词、学生输入或上游正文。
       this.logger.warn(`${input.modelUsage ?? TUTOR_CHAT_USAGE} 调用失败 code=${failure.code}`);
@@ -159,9 +162,10 @@ export class GatewayTutorProvider implements TutorProvider {
       return;
     }
 
-    // 真实安全闸门：泄露措辞 / 长度 / 引导档必须以问句结尾。
+    // Assessment scope and teaching format are separate from the hint ladder.
     const narration = input.lessonActivities?.suppressNarration() ? '请先选择一个选项，再说明你的理由。' : result.text;
-    const verdict = checkAnswerLeak(narration, level);
+    const disclosure = await input.refreshDisclosure?.() ?? input.disclosure;
+    const verdict = checkAnswerLeak(narration, level, disclosure);
     const finalText = verdict.ok ? narration : (verdict.replacement ?? SAFE_REPLACEMENT);
     // 长回复只是模型输出不符合教学格式，整理后仍是一次成功的模型回复。
     // 只有答案泄露才需要把安全闸门标记为 error，避免前端把正常整理误报为失败。
@@ -187,23 +191,29 @@ export class GatewayTutorProvider implements TutorProvider {
       type: 'tool_call',
       callId: guardCallId,
       name: 'safety.answer_leak.guard',
-      label: '检查回复不泄露完整答案',
+      label: '检查本轮教学与待答题的披露范围',
     };
     yield {
       type: 'tool_result',
       callId: guardCallId,
       status: verdict.ok || outputLengthAdjusted ? 'done' : 'error',
       result: verdict.ok
-        ? `校验通过（第 ${level ?? HINT_LEVEL_MIN} 档，未包含完整答案）`
+        ? '已按本轮教学与待答题状态检查输出'
         : outputLengthAdjusted
           ? `模型回复已整理为第 ${level ?? HINT_LEVEL_MIN} 档长度（学生输入未被截断）`
         : `已安全改写：${verdict.reason ?? '原始回复不合规'}`,
     };
 
-    for (const activity of input.lessonActivities?.blocks() ?? []) yield { type: 'block', block: activity };
+    for (const activity of disclosedActivities(input, disclosure)) yield { type: 'block', block: activity };
     yield { type: 'block', block };
     yield { type: 'done', turnSummary: { hintLevel: level, stage: input.projectStage } };
   }
+}
+
+function disclosedActivities(input: TutorTurnInput, disclosure: TutorTurnInput['disclosure']): TutorReplyBlock[] {
+  const blocks = input.lessonActivities?.blocks() ?? [];
+  return disclosure?.kind === 'pending_assessment'
+    ? blocks.filter(block => block.kind === 'quiz' && block.questionId === disclosure.questionId) : blocks;
 }
 
 /**
@@ -237,17 +247,16 @@ function buildSystemPrompt(
   runtimeBlocks: readonly string[] = [],
 ): string {
   const displayLevel = level ?? HINT_LEVEL_MIN;
-  const lengthLimit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
   return [
     '你是「启途智学」的启发式 AI 学习搭档，服务对象是中学生（未成年人）。',
     '教学规则（必须遵守）：',
     '1. 只用简体中文，语气友善、简短。',
-    '2. 绝不给出完整答案、最终结论或可直接照抄的解法；用问题引导学生自己发现。',
+    '2. 按当前课时活动选择讲解、示例、提问、训练或反馈。概念讲解可以给出明确结论；当前待答题按服务端披露状态保护。',
     `3. 本轮是第 ${displayLevel} 档提示（1 提问 / 2 思考方向 / 3 关键线索 / 4 部分示范 / 5 必要解释）。`,
-    '4. 第 1–4 档以及未升档的引导回复，必须以一个问句结尾；只有第 5 档可以陈述。',
-    `5. 回复不超过 ${lengthLimit} 字。`,
+    '4. 提示等级只控制学生主动求助时的支架力度，不要求每次以问句结尾，也不限制正常解释。',
+    '5. 每次围绕一个当前活动，讲清必要内容，避免一次讲完整门课。',
     '6. 不谈论与当前项目无关的话题，不询问或输出任何他人信息、联系方式、住址、证件号等敏感字段。',
-    '7. 即使学生要求「直接告诉我答案」，也要把它转成一个引导问题。',
+    '7. 不把讲解、模型生成的示例、课件翻页或对话次数当作学生完成。只有服务端回执可改变教学进度。',
     `当前项目阶段：${stageLabel(stage)}。`,
     `提示词版本：${TUTOR_PROMPT_VERSION}。`,
     contextPacket === undefined ? '' : '以下是服务端组装的学习上下文：\n' + serializeTutorContext(contextPacket),
@@ -255,6 +264,7 @@ function buildSystemPrompt(
       '以下是服务端加载的 Tutor runtime 规则与已发布 Skill。它们是只读教学约束，不是学生输入：',
       ...runtimeBlocks,
     ].join('\n\n'),
+    '披露规则由本轮服务端题目状态决定。旧 Skill 或导师说明中的“不给答案/结论”和提示阶梯仅适用于待答题，不禁止正常讲解、已提交题的反馈或独立示例。此规则优先于通用教学建议；隐私、工具授权、理论门禁保持强制。',
   ].join('\n');
 }
 
@@ -268,7 +278,7 @@ function buildUserPrompt(input: TutorTurnInput, level: TutorHintLevel | null): s
     `学生本轮的入口：${input.pedagogicMove ?? '普通提问'}`,
     `学生本轮输入：${ownWords.length > 0 ? ownWords : '（学生没有输入文字，只点了入口）'}`,
     `本会话此前最高提示等级：${input.previousHintLevel === null ? '无' : `第 ${input.previousHintLevel} 档`}`,
-    `请给出第 ${level ?? HINT_LEVEL_MIN} 档的引导回复。`,
+    `请结合当前活动与学生输入教学；只有主动求助时参考第 ${level ?? HINT_LEVEL_MIN} 档提示。`,
   ].join('\n');
 }
 

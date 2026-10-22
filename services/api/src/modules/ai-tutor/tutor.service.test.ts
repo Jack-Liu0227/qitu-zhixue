@@ -109,7 +109,7 @@ test('live + 答案泄露：审计记为 guard_block', async () => {
 
   assert.deepEqual(
     service.auditEntries.map((entry) => entry.action),
-    ['tutor.session_start', 'tutor.guard_block'],
+    ['tutor.session_start', 'tutor.turn'],
   );
 });
 

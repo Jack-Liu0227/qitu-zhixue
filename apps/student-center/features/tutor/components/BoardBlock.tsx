@@ -21,8 +21,8 @@ export function BoardBlock({ title, steps }: { title?: string; steps: BoardStep[
         {step.svg ? <SafeSvg source={step.svg} /> : null}
       </div>
       <footer className="qitu-board-footer">
-        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" disabled={boundedIndex === 0} onClick={() => setStepIndex(boundedIndex - 1)}>上一步</button>
-        <button type="button" className="qitu-button qitu-button-primary qitu-button-sm" disabled={boundedIndex >= steps.length - 1} onClick={() => setStepIndex(boundedIndex + 1)}>下一步</button>
+        <button type="button" className="qitu-button qitu-button-ghost qitu-button-sm" disabled={boundedIndex === 0} onClick={() => setStepIndex(boundedIndex - 1)}>上一页图示</button>
+        <button type="button" className="qitu-button qitu-button-primary qitu-button-sm" disabled={boundedIndex >= steps.length - 1} onClick={() => setStepIndex(boundedIndex + 1)}>下一页图示</button>
       </footer>
     </section>
   );

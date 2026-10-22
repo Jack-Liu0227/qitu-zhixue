@@ -14,6 +14,7 @@ import { TemplateGovernanceService } from '../modules/templates/templates-govern
 import { TemplateStore } from '../modules/templates/templates.store';
 import { TemplatesModule } from '../modules/templates/templates.module';
 import {
+  OPTICS_GUIDED_TEMPLATE_SLUG, OPTICS_GUIDED_BOOTSTRAP_KEY, OPTICS_GUIDED_TEMPLATE_INPUT, OPTICS_GUIDED_VERSION_INPUT,
   OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_16_QUALITY_BOOTSTRAP_KEY,
   OPTICS_16_QUALITY_TEMPLATE_INPUT, OPTICS_16_QUALITY_VERSION_INPUT,
   assertOpticsTemplateStructure,
@@ -62,6 +63,7 @@ export interface OpticsBootstrapDeps {
 }
 
 export interface OpticsBootstrapArgs {
+  guidedLessons?: boolean;
   qualityReview?: boolean;
   teamVersionId: string;
   actor: CurrentUser;
@@ -88,11 +90,11 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const slug = args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
-  const templateInput = args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
-  const versionInput = args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
-  const bootstrapKey = args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
-  const keyPrefix = args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  const slug = args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
@@ -228,7 +230,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = 'optics16-completion-bootstrap';
+  const keyPrefix = args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -324,6 +326,7 @@ async function ensureActiveBinding(
 /* ============================ CLI ============================ */
 
 interface CliArgs {
+  guidedLessons: boolean;
   qualityReview: boolean;
   teamVersionId: string | null;
   adminUserId: string | null;
@@ -334,6 +337,7 @@ interface CliArgs {
 
 function parseCliArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
+    guidedLessons: false,
     qualityReview: false,
     teamVersionId: null,
     adminUserId: null,
@@ -343,6 +347,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === '--guided-lessons') out.guidedLessons = true;
     if (arg === '--quality-review') out.qualityReview = true;
     if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
     if (arg === '--teaching-bundle-file') out.teachingBundleFile = argv[index + 1] ?? null;
@@ -399,6 +404,7 @@ async function main(): Promise<void> {
       { governance, bindings, templates, bindingStore },
       { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
         qualityReview: cli.qualityReview,
+        guidedLessons: cli.guidedLessons,
         ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },
     );
 
