@@ -106,7 +106,7 @@ export class CopilotService {
       let resolved: Record<string, unknown>;
       try { resolved = object(resolveInput(action.input, results)); }
       catch {
-        receipts.push({ ...receiptBase(action), status: 'blocked', code: 'COPILOT_DEPENDENCY_FAILED', message: '前序资源未成功回读，依赖操作未执行' });
+        receipts.push({ ...receiptBase(action), input: action.input, status: 'blocked', code: 'COPILOT_DEPENDENCY_FAILED', message: '前序资源未成功回读，依赖操作未执行' });
         continue;
       }
       const stepKey = createHash('sha256').update(`${actor.id}:${key}:${action.id}`).digest('hex');
@@ -125,12 +125,12 @@ export class CopilotService {
             decision?.actionId === action.id ? decision : undefined) : null;
         if (confirmation?.decision === 'pending') {
           const { sourceDigest: _digest, ...challenge } = confirmation.challenge;
-          receipts.push({ ...receiptBase(action), status: 'awaiting_confirmation', confirmation: challenge,
+          receipts.push({ ...receiptBase(action), input: resolved, status: 'awaiting_confirmation', confirmation: challenge,
             message: '等待你在对话中确认，尚未执行删除' });
           continue;
         }
         if (confirmation?.decision === 'cancel') {
-          receipts.push({ ...receiptBase(action), status: 'cancelled', message: '已取消，未执行删除' });
+          receipts.push({ ...receiptBase(action), input: resolved, status: 'cancelled', message: '已取消，未执行删除' });
           continue;
         }
         const mutation = await this.idempotency.execute(stepScope, stepKey,
@@ -149,10 +149,10 @@ export class CopilotService {
         // Otherwise later publication/revision changes rewrite prior $ref inputs on a plan retry.
         results.set(action.id, mutation.body);
         rememberCreatedResource(created, action.kind, result);
-        receipts.push({ ...receiptBase(action), status: 'succeeded', result: redactSensitive(result) });
+        receipts.push({ ...receiptBase(action), input: resolved, status: 'succeeded', result: redactSensitive(result) });
       } catch (error) {
         const details = publicFailure(error);
-        receipts.push({ ...receiptBase(action), status: 'failed', ...details });
+        receipts.push({ ...receiptBase(action), input: resolved, status: 'failed', ...details });
       }
     }
     const succeeded = receipts.filter(r => r.status === 'succeeded').length;

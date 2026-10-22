@@ -2799,3 +2799,19 @@
 :root[data-qitu-eyecare="true"] .admin-session-guidance-item strong {
   color: inherit !important;
 }
+
+
+:root[data-qitu-eyecare="true"] .copilot-step-item {
+  background: #1A1E24 !important;
+  border-color: #2E3540 !important;
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-step-item strong {
+  color: #E2E8F0 !important;
+}
+
+:root[data-qitu-eyecare="true"] .copilot-step-json-block {
+  background: #0D1117 !important;
+  border: 1px solid #2E3540 !important;
+}

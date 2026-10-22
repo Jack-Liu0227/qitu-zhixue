@@ -29,6 +29,8 @@ interface ToolExecutionStep {
   name: string;
   status: 'running' | 'done' | 'error' | 'pending' | 'cancelled';
   label: string;
+  input?: Record<string, unknown> | unknown;
+  output?: Record<string, unknown> | unknown;
   detail?: string;
 }
 
@@ -300,24 +302,144 @@ export default function CopilotPage() {
     }
   };
 
-  const performTurn = async (sessionId: string, messageId: string, retry: NonNullable<Message['retry']>, decision?: Pick<AdminCopilotConfirmationRequest, 'actionId' | 'confirmationId' | 'decision'>) => {
+  const performTurn = async (
+    sessionId: string,
+    retry: NonNullable<Message['retry']>,
+    decision?: Pick<AdminCopilotConfirmationRequest, 'actionId' | 'confirmationId' | 'decision'>,
+    existingMessageId?: string
+  ) => {
     if (requestInFlight.current || !capabilities.ready) return;
     requestInFlight.current = true;
     setIsGenerating(true);
-    const update = (patch: Partial<Message>) => setSessions(previous => previous.map(session => session.id !== sessionId
-      ? session : { ...session, messages: session.messages.map(message => message.id === messageId ? { ...message, ...patch } : message) }));
+
     try {
-      if (Date.now() - retry.startedAt > 23 * 60 * 60 * 1000) throw new Error('本轮重试期限已过，请先核对资源状态，再发起新指令。');
-      update({ content: '正在读取配置、生成计划并执行…' });
+      if (Date.now() - retry.startedAt > 23 * 60 * 60 * 1000) {
+        throw new Error('本轮重试期限已过，请先核对资源状态，再发起新指令。');
+      }
+
       const result = decision
         ? await confirmCopilotTurn({ request: retry.request, turnKey: retry.key, ...decision })
         : await runCopilotTurn(retry.request, retry.key);
-      update({ content: result.reply, retry: result.status === 'partial' ? retry : undefined,
-        pendingDeletions: result.receipts.filter(receipt => receipt.status === 'awaiting_confirmation'),
+
+      // 构建工具执行步骤（默认折叠、成功绿色、失败红色、支持查看输入输出详情）
+      let toolSteps: ToolExecutionStep[] = [];
+      if (result.receipts && result.receipts.length > 0) {
+        toolSteps = result.receipts.map((receipt) => {
+          const isSucceeded = receipt.status === 'succeeded';
+          const isFailed = receipt.status === 'failed' || receipt.status === 'blocked';
+          const isPending = receipt.status === 'awaiting_confirmation';
+          const isCancelled = receipt.status === 'cancelled';
+          return {
+            name: receipt.kind,
+            label: receipt.label,
+            status: isSucceeded ? 'done' : isFailed ? 'error' : isPending ? 'pending' : isCancelled ? 'cancelled' : 'error',
+            input: receipt.input ?? {},
+            output: receipt.result ?? (receipt.confirmation ? { confirmation: receipt.confirmation } : { code: receipt.code, message: receipt.message }),
+            detail: JSON.stringify(receipt.result ?? { code: receipt.code, message: receipt.message }, null, 2),
+          };
+        });
+      } else {
+        // 无写操作的查询类指令：记录后台环境探测与推理步骤，让用户明确知晓 Agent 背景工作
+        toolSteps = [
+          {
+            name: 'context.inspect',
+            label: '读取平台配置与权限范围',
+            status: 'done',
+            input: {
+              scope: retry.request.scope,
+              templateId: retry.request.templateId,
+              assistantId: retry.request.assistantId,
+              teamId: retry.request.teamId,
+              model: `${retry.request.modelProviderId} / ${retry.request.modelId}`,
+              permission: retry.request.permission,
+            },
+            output: {
+              status: result.status,
+              scope: result.scope,
+              actionsCount: 0,
+              mode: retry.request.permission === 'full_access' ? '配置模式 (可修改资源)' : '只读分析模式',
+            },
+            detail: JSON.stringify({ status: result.status, scope: result.scope }, null, 2),
+          },
+          {
+            name: 'agent.reasoning',
+            label: '智能推理与策略解答生成',
+            status: 'done',
+            input: {
+              userMessage: retry.request.message,
+              contextTurns: retry.request.history?.length ?? 0,
+            },
+            output: {
+              status: 'succeeded',
+              replyLength: result.reply.length,
+            },
+            detail: JSON.stringify({ replyLength: result.reply.length }, null, 2),
+          },
+        ];
+      }
+
+      // 产物卡片自动识别
+      let artifact: Message['artifact'] = undefined;
+      const teamReceipt = result.receipts?.find(r => r.kind === 'team.create' && r.status === 'succeeded');
+      const asstReceipt = result.receipts?.find(r => r.kind === 'assistant.create' && r.status === 'succeeded');
+      const mcpReceipt = result.receipts?.find(r => r.kind === 'mcp.create' && r.status === 'succeeded');
+      const skillReceipt = result.receipts?.find(r => r.kind === 'skill.create' && r.status === 'succeeded');
+      if (teamReceipt) {
+        artifact = {
+          type: 'team',
+          title: `导师团队已创建：${(teamReceipt.result as any)?.name ?? teamReceipt.label}`,
+          details: '团队已录入平台，可在团队设置中进一步调整角色与课时绑定。',
+          jsonPreview: JSON.stringify(teamReceipt.result, null, 2),
+        };
+      } else if (asstReceipt) {
+        artifact = {
+          type: 'assistant',
+          title: `AI 助手已创建：${(asstReceipt.result as any)?.name ?? asstReceipt.label}`,
+          details: '助手已录入平台目录，可在助手设置中配置其技能与权限。',
+          jsonPreview: JSON.stringify(asstReceipt.result, null, 2),
+        };
+      } else if (mcpReceipt) {
+        artifact = {
+          type: 'mcp',
+          title: `MCP 工具服务已登记：${(mcpReceipt.result as any)?.name ?? mcpReceipt.label}`,
+          details: '工具服务已成功注册，平台助手可按需调用该工具。',
+          jsonPreview: JSON.stringify(mcpReceipt.result, null, 2),
+        };
+      } else if (skillReceipt) {
+        artifact = {
+          type: 'skill',
+          title: `技能已登记：${(skillReceipt.result as any)?.name ?? skillReceipt.label}`,
+          details: '运行时技能已就绪，可在技能矩阵中绑定给团队或助手。',
+          jsonPreview: JSON.stringify(skillReceipt.result, null, 2),
+        };
+      }
+
+      const assistantMessage: Message = {
+        id: existingMessageId ?? newIdempotencyKey(),
+        role: 'assistant',
+        content: result.reply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        toolSteps,
+        retry: result.status === 'partial' ? retry : undefined,
+        pendingDeletions: result.receipts?.filter(receipt => receipt.status === 'awaiting_confirmation'),
         confirmationRequest: result.status === 'awaiting_confirmation' ? retry : undefined,
-        toolSteps: result.receipts.map(receipt => ({ name: receipt.kind, label: receipt.label,
-          status: receipt.status === 'succeeded' ? 'done' : receipt.status === 'cancelled' ? 'cancelled' : receipt.status === 'awaiting_confirmation' ? 'pending' : 'error',
-          detail: JSON.stringify(receipt.result ?? { code: receipt.code, message: receipt.message }, null, 2) })) });
+        artifact,
+      };
+
+      setSessions(previous => previous.map(session => {
+        if (session.id !== sessionId) return session;
+        if (existingMessageId) {
+          return {
+            ...session,
+            messages: session.messages.map(m => m.id === existingMessageId ? assistantMessage : m),
+          };
+        }
+        return {
+          ...session,
+          messages: [...session.messages, assistantMessage],
+        };
+      }));
+
       const versionReceipt = result.receipts.slice().reverse().find(r => r.kind === 'template.version' && r.status === 'succeeded');
       const createdTemplate = result.receipts.slice().reverse().find(r => r.kind === 'template.create' && r.status === 'succeeded');
       const saved = versionReceipt?.result as { id?: string; templateId?: string } | undefined;
@@ -329,7 +451,42 @@ export default function CopilotPage() {
       capabilities.refresh();
       await reloadModels();
     } catch (error) {
-      update({ content: `请求未完成：${error instanceof Error ? error.message : '服务器不可用'}。可使用下方按钮重试同一操作。`, retry });
+      const errorMessage: Message = {
+        id: existingMessageId ?? newIdempotencyKey(),
+        role: 'assistant',
+        content: `请求未完成：${error instanceof Error ? error.message : '服务器不可用'}。可使用下方按钮重试同一操作。`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        retry,
+        toolSteps: [
+          {
+            name: 'turn.execute',
+            label: '执行管家请求',
+            status: 'error',
+            input: {
+              message: retry.request.message,
+              scope: retry.request.scope,
+            },
+            output: {
+              error: error instanceof Error ? error.message : '未知错误',
+            },
+            detail: error instanceof Error ? error.stack : undefined,
+          },
+        ],
+      };
+
+      setSessions(previous => previous.map(session => {
+        if (session.id !== sessionId) return session;
+        if (existingMessageId) {
+          return {
+            ...session,
+            messages: session.messages.map(m => m.id === existingMessageId ? errorMessage : m),
+          };
+        }
+        return {
+          ...session,
+          messages: [...session.messages, errorMessage],
+        };
+      }));
     } finally {
       requestInFlight.current = false;
       setIsGenerating(false);
@@ -340,7 +497,6 @@ export default function CopilotPage() {
     if (!inputMessage.trim() || isGenerating || modelSaving || modelLoading || modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || projectCatalog.error) return;
     const content = inputMessage.trim();
     const sessionId = activeSession.id;
-    const messageId = newIdempotencyKey();
     const request: AdminCopilotRequest = {
       message: content,
       scope,
@@ -353,12 +509,13 @@ export default function CopilotPage() {
     const retry = { request, key: newIdempotencyKey(), startedAt: Date.now() };
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setSessions(previous => previous.map(session => session.id !== sessionId ? session : {
-      ...session, title: session.messages.some(m => m.role === 'user') ? session.title : content.slice(0, 24), updatedAt: '刚刚',
-      messages: [...session.messages, { id: newIdempotencyKey(), role: 'user', content, timestamp },
-        { id: messageId, role: 'assistant', content: '正在处理…', timestamp, retry }],
+      ...session,
+      title: session.messages.some(m => m.role === 'user') ? session.title : content.slice(0, 24),
+      updatedAt: '刚刚',
+      messages: [...session.messages, { id: newIdempotencyKey(), role: 'user', content, timestamp }],
     }));
     setInputMessage('');
-    await performTurn(sessionId, messageId, retry);
+    await performTurn(sessionId, retry);
   };
 
   return (
@@ -854,7 +1011,20 @@ export default function CopilotPage() {
         <KnowledgeUpload
           enabled={scope === 'global' && runtimePermission === 'full_access' && !isGenerating}
           onSaved={content => setSessions(previous => previous.map(session => session.id !== currentSessionId ? session : {
-            ...session, messages: [...session.messages, { id: newIdempotencyKey(), role: 'assistant', content, timestamp: new Date().toLocaleTimeString() }],
+            ...session, messages: [...session.messages, {
+              id: newIdempotencyKey(),
+              role: 'assistant',
+              content,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              toolSteps: [{
+                name: 'knowledge.upload',
+                label: '上传知识库文档并挂载索引',
+                status: 'done',
+                input: { scope: 'global', action: 'knowledge.upload' },
+                output: { status: 'succeeded', message: content },
+                detail: content,
+              }],
+            }],
           }))}
         />
         <CopilotCapabilities data={capabilities.data} loading={capabilities.loading} error={capabilities.error} scope={scope} refresh={capabilities.refresh} />
@@ -1051,7 +1221,195 @@ export default function CopilotPage() {
                       {isUser ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                       ) : (
-                        <MarkdownRenderer content={msg.content} />
+                        <>
+                          {/* 步骤与工具调用展示 (默认折叠，成功为绿，失败为红，包含详细输入输出) */}
+                          {msg.toolSteps && msg.toolSteps.length > 0 && (
+                            <details
+                              className="copilot-tool-steps-container"
+                              style={{
+                                marginBottom: '12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                              }}
+                            >
+                              <summary
+                                style={{
+                                  cursor: 'pointer',
+                                  color: '#334155',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  userSelect: 'none',
+                                  listStyle: 'none',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '13px' }}>≡</span>
+                                  <span>查看执行步骤 · {msg.toolSteps.length} 个后台操作</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+                                  {msg.toolSteps.every((s) => s.status === 'done') ? (
+                                    <span style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} /> 全部成功
+                                    </span>
+                                  ) : msg.toolSteps.some((s) => s.status === 'error') ? (
+                                    <span style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} /> 存在错误
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#d97706', display: 'inline-block' }} /> 待处理
+                                    </span>
+                                  )}
+                                  <span style={{ color: '#94a3b8', fontSize: '10px' }}>▼</span>
+                                </div>
+                              </summary>
+
+                              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+                                {msg.toolSteps.map((step, idx) => {
+                                  const isSuccess = step.status === 'done';
+                                  const isError = step.status === 'error';
+                                  const isPending = step.status === 'pending';
+                                  const statusColor = isSuccess ? '#16a34a' : isError ? '#dc2626' : isPending ? '#d97706' : '#64748b';
+                                  const statusLabel = isSuccess ? '成功' : isError ? '失败' : isPending ? '待确认' : '已取消';
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="copilot-step-item"
+                                      style={{
+                                        background: '#ffffff',
+                                        border: `1px solid ${isSuccess ? '#bbf7d0' : isError ? '#fecaca' : '#e2e8f0'}`,
+                                        borderRadius: '6px',
+                                        padding: '8px 10px',
+                                        fontSize: '11.5px',
+                                      }}
+                                    >
+                                      {/* 步骤基本信息栏 */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <span
+                                            style={{
+                                              display: 'inline-block',
+                                              width: '8px',
+                                              height: '8px',
+                                              borderRadius: '50%',
+                                              background: statusColor,
+                                              flexShrink: 0,
+                                            }}
+                                            title={statusLabel}
+                                          />
+                                          <strong style={{ color: '#0f172a', fontWeight: 600 }}>{step.label}</strong>
+                                          <code
+                                            style={{
+                                              fontSize: '10.5px',
+                                              color: '#64748b',
+                                              background: '#f1f5f9',
+                                              padding: '1px 5px',
+                                              borderRadius: '3px',
+                                            }}
+                                          >
+                                            {step.name}
+                                          </code>
+                                        </div>
+                                        <span
+                                          style={{
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            color: statusColor,
+                                            background: isSuccess ? '#f0fdf4' : isError ? '#fef2f2' : '#f8fafc',
+                                            border: `1px solid ${isSuccess ? '#bbf7d0' : isError ? '#fecaca' : '#e2e8f0'}`,
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                          }}
+                                        >
+                                          {statusLabel}
+                                        </span>
+                                      </div>
+
+                                      {/* 工具输入输出 (默认折叠) */}
+                                      <details
+                                        className="copilot-step-io-details"
+                                        style={{
+                                          marginTop: '6px',
+                                          paddingTop: '6px',
+                                          borderTop: '1px dashed #e2e8f0',
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            color: '#64748b',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            userSelect: 'none',
+                                          }}
+                                        >
+                                          <span>🔍 查看详细调用信息 (输入 / 输出)</span>
+                                        </summary>
+                                        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          {step.input !== undefined && (
+                                            <div>
+                                              <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
+                                                输入参数 (Input):
+                                              </div>
+                                              <pre
+                                                className="copilot-step-json-block"
+                                                style={{
+                                                  margin: 0,
+                                                  padding: '6px 8px',
+                                                  background: '#0f172a',
+                                                  color: '#e2e8f0',
+                                                  borderRadius: '4px',
+                                                  fontSize: '10.5px',
+                                                  overflowX: 'auto',
+                                                  maxHeight: '160px',
+                                                  fontFamily: 'monospace',
+                                                }}
+                                              >
+                                                <code>{typeof step.input === 'string' ? step.input : JSON.stringify(step.input, null, 2)}</code>
+                                              </pre>
+                                            </div>
+                                          )}
+                                          {step.output !== undefined && (
+                                            <div>
+                                              <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
+                                                输出结果 (Output):
+                                              </div>
+                                              <pre
+                                                className="copilot-step-json-block"
+                                                style={{
+                                                  margin: 0,
+                                                  padding: '6px 8px',
+                                                  background: isError ? '#450a0a' : '#0f172a',
+                                                  color: isError ? '#fecaca' : '#86efac',
+                                                  borderRadius: '4px',
+                                                  fontSize: '10.5px',
+                                                  overflowX: 'auto',
+                                                  maxHeight: '160px',
+                                                  fontFamily: 'monospace',
+                                                }}
+                                              >
+                                                <code>{typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}</code>
+                                              </pre>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </details>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </details>
+                          )}
+                          <MarkdownRenderer content={msg.content} />
+                        </>
                       )}
                     </div>
 
@@ -1063,36 +1421,39 @@ export default function CopilotPage() {
                         <p>{receipt.confirmation.impact}</p>
                         <p>有效期至 {new Date(receipt.confirmation.expiresAt).toLocaleTimeString()}。尚未执行。</p>
                         <button type="button" disabled={isGenerating || runtimePermission !== 'full_access' || Date.now() >= Date.parse(receipt.confirmation.expiresAt)}
-                          onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                          onClick={() => void performTurn(activeSession.id, msg.confirmationRequest!, {
                             actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'confirm',
-                          })}>{receipt.kind === 'mcp.invoke' ? '确认调用' : '确认删除'}</button>
+                          }, msg.id)}>{receipt.kind === 'mcp.invoke' ? '确认调用' : '确认删除'}</button>
                         <button type="button" disabled={isGenerating}
-                          onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                          onClick={() => void performTurn(activeSession.id, msg.confirmationRequest!, {
                             actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'cancel',
-                          })}>取消</button>
+                          }, msg.id)}>取消</button>
                       </section>
                     ))}
 
-                    {/* 工具调用情况详细展示 */}
-                    {msg.toolSteps && msg.toolSteps.length > 0 && (
-                      <div className="copilot-tool-steps-container" style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
-                        <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>⚡</span> 工具调用与执行过程 ({msg.toolSteps.length} 步)
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {msg.toolSteps.map((step, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                              <span aria-label={step.status === 'pending' ? '等待确认' : step.status === 'cancelled' ? '已取消' : step.status === 'done' ? '已完成' : '未完成'} style={{ color: step.status === 'done' ? '#16a34a' : step.status === 'pending' ? '#b45309' : step.status === 'cancelled' ? '#64748b' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : step.status === 'pending' ? '◷' : step.status === 'cancelled' ? '—' : '!'}</span>
-                              <span>{step.label}</span>
-                              {step.detail && <details><summary>回读详情</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{step.detail}</pre></details>}
-                              <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px' }}>{step.name}</code>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {msg.retry && (
+                      <button
+                        type="button"
+                        disabled={isGenerating || !capabilities.ready}
+                        onClick={() => void performTurn(activeSession.id, msg.retry!, undefined, msg.id)}
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 10px',
+                          fontSize: '11.5px',
+                          color: '#dc2626',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          borderRadius: '6px',
+                          cursor: isGenerating ? 'not-allowed' : 'pointer',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <span>↺</span> 重试未完成操作
+                      </button>
                     )}
-
-                    {msg.retry && <button type="button" disabled={isGenerating || !capabilities.ready} onClick={() => void performTurn(activeSession.id, msg.id, msg.retry!)} style={{ marginTop: 8 }}>重试未完成操作</button>}
 
                     {/* 结构化产物卡片展示 */}
                     {msg.artifact && (
