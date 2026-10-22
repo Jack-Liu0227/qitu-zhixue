@@ -28,4 +28,15 @@
 - Admin 类型检查、lint 和生产构建。
 - 浏览器验证覆盖真实页面配合合成 API 的全部远端范围、新修订号、并发上限、逐项诊断、草稿保留、原请求重放、权限中止、空目录、不完整目录、读取失败、回读失败、离线和 390px 布局。合成会话不代表真实生产认证验收。
 
-发布结果和截图在远程构建及复测后补充。本次不为验收修改生产知识库认证、绑定或教学事实。
+## 发布回执
+
+2026-10-22 已推送 `study-remote` 并在 `/root/qitu-zhixue` 发布包含 `198db3b` 的 Admin 构建。原远程 `ccbda5d` 及其教学、夜间模式和移动端提交全部保留。本地原始 UNC 工作区的未提交改动未参与提交或覆盖。
+
+- Windows 和 Linux 的分类/范围测试均为 3 通过、0 失败；Linux 的 contracts 构建、Admin 类型检查、lint 和生产构建均通过。
+- 实际线上前端构建配合合成 API 的浏览器验证为 14 通过、0 页面异常，含内部设置容器的横向溢出检查。视觉复核发现矩阵最小宽度撑开外层网格，已用知识中心单列网格约束修复，并重新构建发布与复测。
+- `qitu-admin` 重启后为 active；API readiness 为 live/ready，数据库与 Redis 为 ok。匿名连接检查 POST 返回 401。
+- API、Auth、Student、Parent、Teacher、IMA MCP 和本地 embedding 的服务 PID 均未因本次部署变化。只替换 Admin 构建，不迁移数据库，不修改 API 运行产物。
+- 浏览器会话及所有诊断返回均为合成 fixture。未使用生产管理员会话执行真实连接检测，未为验收修改生产认证、逐库状态、助手绑定或教学事实。3 项测试验证诊断分类，真实认证状态须由管理员点击按钮后读取服务端回执。
+- 没有改动 API，本次未重跑 API 全量测试；上一轮矩阵发布的既有基线失败不在本次修复范围内。
+
+[截图与机器回执](../UI/knowledge-connection-checks-20261022/README.md)。Linux 构建日志位于 `/root/qitu-knowledge-batch-verify/.verification/`，最终部署备份位于 `/root/qitu-backups/knowledge-connection-checks-final-20261022T141331Z/`。保留旧 `.next` 与其他服务 PID 前后记录，可恢复 Admin 产物而不回滚源码或其他服务。

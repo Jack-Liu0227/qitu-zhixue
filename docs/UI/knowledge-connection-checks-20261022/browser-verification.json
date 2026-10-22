@@ -1,0 +1,21 @@
+{
+  "passed": 14,
+  "checks": [
+    "unchecked historic ready status is not displayed as a verified connection",
+    "one click checks all six remote libraries including disabled and filtered libraries with fresh revisions and at most two requests",
+    "per-library credentials, rejected authorization, missing resource and network failure remain distinct",
+    "checks pause matrix and engine writes and preserve the unsaved binding draft",
+    "an interrupted committed request is replayed alone with exactly the same payload and idempotency key",
+    "desktop settings content contains results without hidden horizontal overflow or sidebar occlusion",
+    "each result opens the existing knowledge configuration drawer",
+    "admin permission loss stops queued requests and is not reported as remote authentication failure",
+    "local-only directory displays an empty state without probes",
+    "incomplete directory fails closed before any connection request",
+    "catalog failure is visible and starts no probes",
+    "failed directory readback remains visible alongside actual connection receipts",
+    "real browser offline state disables batch requests",
+    "390px mobile completes all probes and displays results without horizontal overflow"
+  ],
+  "pageErrors": [],
+  "scope": "Browser uses actual app with synthetic admin API responses; no production writes."
+}
