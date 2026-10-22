@@ -119,6 +119,18 @@ export class KnowledgeConnectionService {
       });
     if (adapter && connection.flavour) {
       receipt = await adapter.connect(engine, connection.externalRef);
+      if (receipt.ok && engine.provider === 'ima') {
+        const directory = await this.engine.execute(engine, {
+          operation: 'documents',
+          externalRef: connection.externalRef,
+          folderId: '',
+          cursor: '',
+        });
+        receipt = {
+          ...directory,
+          status: directory.status ?? (directory.ok ? 'ready' : 'unavailable'),
+        };
+      }
       if (!receipt.ok)
         throw new BadRequestException({
           code: receipt.errorCode ?? 'REMOTE_CONNECTION_FAILED',

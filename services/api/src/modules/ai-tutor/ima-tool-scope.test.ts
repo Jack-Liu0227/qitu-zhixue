@@ -27,7 +27,7 @@ test('four IMA tools share a ceiling and reads require recent in-scope provenanc
 
 test('frozen grant intersects current Admin authorization and missing bundle denies', async () => {
   let current = ['a', 'new'];
-  const ima = { allowedKnowledgeBaseIds: async () => current, canCall: async () => true } as never;
+  const ima = { currentKnowledgeBaseIds: async () => current, canCall: async () => true } as never;
   const base = { studentId: 'student', assistantId: 'assistant', projectId: 'p', templateVersionId: 'v', ima };
   const access = await resolveTutorKnowledgeAccess({ ...base, bindings: {
     getFrozenTeachingBundle: async () => ({ knowledgeGrant: { knowledgeBaseIds: ['a'], allowedTools: ['ima_search_knowledge'] } }),

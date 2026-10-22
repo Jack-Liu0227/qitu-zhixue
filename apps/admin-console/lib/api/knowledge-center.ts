@@ -1,4 +1,10 @@
 import { adminEnvelopeRequest } from './types';
+import type {
+  KnowledgeBindingMatrix,
+  KnowledgeMatrixPatch,
+  KnowledgeMatrixSaveResult,
+  KnowledgeConnectionCommand,
+} from '@qitu/contracts';
 
 export interface ImaKnowledgeBasePage {
   knowledgeBases: { id: string; name: string; description: string | null }[];
@@ -79,6 +85,7 @@ export interface Base {
   revision?: number;
   assistant_count?: number;
   library_settings?: {
+    enabled?: boolean;
     folders?: string[];
     storageWorkspaceRef?: string;
     isDefault?: boolean;
@@ -291,3 +298,42 @@ export const syncKnowledgeSource = (baseId: string, sourceId: string, body: unkn
   );
 export const cancelKnowledgeJob = (jobId: string, key: string) =>
   centerRequest<unknown>(`knowledge/jobs/${encodeURIComponent(jobId)}/cancel`, 'POST', {}, key);
+
+export const fetchKnowledgeMatrix = () =>
+  centerRequest<KnowledgeBindingMatrix>('knowledge/binding-matrix');
+export const patchKnowledgeMatrix = (body: KnowledgeMatrixPatch, key: string) =>
+  centerRequest<{ results: KnowledgeMatrixSaveResult[] }>(
+    'knowledge/binding-matrix',
+    'PATCH',
+    body,
+    key,
+  );
+export const setKnowledgeRetrieval = (expectedRevision: number, enabled: boolean, key: string) =>
+  centerRequest('knowledge/retrieval', 'PATCH', { expectedRevision, enabled }, key);
+export interface KnowledgeConnectionCheck {
+  id: string;
+  ok: boolean;
+  status: string;
+  errorCode: string | null;
+  revision: number;
+  checkedAt: string;
+  message: string;
+}
+export const checkLibraryConnection = (id: string, body: KnowledgeConnectionCommand, key: string) =>
+  centerRequest<KnowledgeConnectionCheck>(
+    `knowledge/bases/${encodeURIComponent(id)}/check`,
+    'POST',
+    body,
+    key,
+  );
+export const reconnectKnowledgeLibrary = (
+  id: string,
+  body: KnowledgeConnectionCommand,
+  key: string,
+) =>
+  centerRequest<KnowledgeConnectionCheck>(
+    `knowledge/bases/${encodeURIComponent(id)}/connection`,
+    'PATCH',
+    body,
+    key,
+  );

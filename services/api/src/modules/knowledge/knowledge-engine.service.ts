@@ -64,7 +64,7 @@ export class KnowledgeEngineService {
       (input.cursor !== undefined &&
         (typeof input.cursor !== 'string' || input.cursor.length > 2048)) ||
       (input.limit !== undefined &&
-        (!Number.isInteger(input.limit) || Number(input.limit) < 1 || Number(input.limit) > 50))
+        (!Number.isInteger(input.limit) || Number(input.limit) < 1 || Number(input.limit) > 20))
     )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: 'ima 列表请求参数无效' });
     const { config } = await this.center.configuration();

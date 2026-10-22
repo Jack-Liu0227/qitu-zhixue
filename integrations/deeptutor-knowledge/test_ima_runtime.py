@@ -76,6 +76,17 @@ class ImaDiscoveryTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["manifest"]["items"][0]["id"], "doc-1")
 
+    def test_invalid_library_identity_is_actionable_without_exposing_upstream_text(self):
+        from deeptutor.services.rag.pipelines.ima.envelope import ImaAPIError
+        for operation in ("documents", "search", "connect"):
+            with patch.object(ImaTransport, "post", side_effect=ImaAPIError(
+                    "invalid knowledge_base_id. fixture-secret do not retry")):
+                receipt = asyncio.run(engine_runtime.run(self.request(
+                    operation, externalRef={"remoteKnowledgeBaseId": "old-id"})))
+            self.assertFalse(receipt["ok"])
+            self.assertEqual(receipt["errorCode"], "IMA_KB_ID_INVALID")
+            self.assertNotIn("fixture-secret", json.dumps(receipt))
+
     def test_original_returns_exact_pdf_and_rejects_note_or_missing_media(self):
         pdf = b'%PDF-1.7\nfixture\n%%EOF'
         request = self.request('read_original', documentId='doc-1', externalRef={'remoteKnowledgeBaseId': 'selected'})

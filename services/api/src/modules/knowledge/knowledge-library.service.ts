@@ -10,6 +10,7 @@ import { AuditWriter } from '../../common/audit/audit.service';
 import { KnowledgeCenterService, checksum, rows } from './knowledge-center.service';
 import { record, type EngineConfig } from './knowledge-center.config';
 import { KnowledgeEngineService } from './knowledge-engine.service';
+import { imaConnectionMessage } from './knowledge-ima-errors';
 
 /** Per-library choices are separate from reusable engine defaults and never contain credentials. */
 export function libraryEngine(
@@ -37,6 +38,7 @@ export class KnowledgeLibraryService {
             'expectedRevision',
             'name',
             'isDefault',
+            'enabled',
             'deleted',
             'engineInstanceId',
             'createFolder',
@@ -47,6 +49,7 @@ export class KnowledgeLibraryService {
       (input.name !== undefined &&
         (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 160)) ||
       (input.isDefault !== undefined && typeof input.isDefault !== 'boolean') ||
+      (input.enabled !== undefined && typeof input.enabled !== 'boolean') ||
       (input.deleted !== undefined && input.deleted !== true)
     )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: '知识库管理参数无效' });
@@ -131,6 +134,7 @@ export class KnowledgeLibraryService {
         const settings: Record<string, unknown> = {
           ...base.library_settings,
           ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
           ...(input.engineInstanceId !== undefined ? { engineOverrides: {} } : {}),
         };
         const folders = Array.isArray(settings.folders) ? (settings.folders as string[]) : [];
@@ -194,7 +198,10 @@ export class KnowledgeLibraryService {
     if (!result.ok)
       throw new BadRequestException({
         code: result.errorCode ?? 'SOURCE_DOCUMENTS_UNAVAILABLE',
-        message: '此来源暂不提供文件目录，请通过已绑定助手检索，或到原服务管理文件。',
+        message:
+          engine.provider === 'ima'
+            ? imaConnectionMessage(result.errorCode)
+            : '此来源的文件目录读取失败，请检查连接或到原服务管理。',
       });
     return result.manifest;
   }

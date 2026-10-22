@@ -8,6 +8,7 @@ export function imaConnectionMessage(code?: string): string {
     IMA_UNREACHABLE: '服务器暂时无法连接 ima，请检查网络后重试。',
     IMA_UPSTREAM_INVALID_RESPONSE: 'ima 接口暂不可用或返回异常，请稍后重试。',
     IMA_KB_ID_IS_CLIENT_ID: '这里需要知识库 ID，不能填写 Client ID。请验证凭证并从列表选择知识库。',
+    IMA_KB_ID_INVALID: '关联库 ID 无效，请重新读取 ima 官方知识库列表并重新关联。',
     REMOTE_RESOURCE_NOT_FOUND:
       '凭证已被 ima 接受，但此知识库 ID 不存在或不可访问。请从列表选择 OpenAPI 知识库 ID，不要使用页面内部 ID。',
     ENGINE_CLOUD_URL_UNSUPPORTED: 'ima 服务地址应为 https://ima.qq.com。',

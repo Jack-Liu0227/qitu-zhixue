@@ -24,6 +24,7 @@ export * from './platform.js';
 export * from './parent.js';
 export * from './admin.js';
 export * from './ima-settings.js';
+export * from './knowledge-center.js';
 export * from './feishu.js';
 export * from './feishu-report.js';
 export * from './agent-runtime.js';

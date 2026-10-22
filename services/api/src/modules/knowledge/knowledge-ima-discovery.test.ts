@@ -53,11 +53,11 @@ test('saved and draft credentials list through the same adapter without saving d
     ...f.engine,
     config: { ...f.engine.config, clientId: 'draft-client', apiKey: 'draft-key' },
   };
-  await f.service.listImaBases('ima', { engine: draft, cursor: 'next', limit: 50 });
+  await f.service.listImaBases('ima', { engine: draft, cursor: 'next', limit: 20 });
   assert.deepEqual(f.requests[1]!.credentials, { clientId: 'draft-client', apiKey: 'draft-key' });
   assert.equal(f.requests[1]!.operation, 'list_bases');
   assert.equal(f.requests[1]!.cursor, 'next');
-  assert.equal(f.requests[1]!.limit, 50);
+  assert.equal(f.requests[1]!.limit, 20);
   assert.deepEqual(f.config, before);
   assert.ok(!JSON.stringify(first).includes('saved-secret'));
 });
@@ -68,7 +68,7 @@ test('discovery rejects bad cursors, limits, unknown engines and injected fields
     { cursor: 1 },
     { cursor: 'a'.repeat(2049) },
     { limit: 0 },
-    { limit: 51 },
+    { limit: 21 },
     { limit: 1.5 },
     { clientId: 'mix-account' },
   ])

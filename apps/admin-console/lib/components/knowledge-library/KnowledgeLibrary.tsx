@@ -1,12 +1,11 @@
 'use client';
-import { VisualBoundIcon } from '../VisualAssetPicker';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { KnowledgeBindingMatrix as Matrix } from '@qitu/contracts';
+import { VisualBoundIcon } from '../VisualAssetPicker';
 import {
   centerRequest,
   createKnowledgeBase,
-  fetchAssistantBindings,
-  saveBaseBindings,
-  type AssistantBindings,
   type Base,
   type BaseDetail,
   type EngineGroup,
@@ -14,17 +13,9 @@ import {
 import { createIdempotentRetryKey, newIdempotencyKey } from '../../api/types';
 import { KnowledgeEngines } from '../knowledge-engines/KnowledgeEngines';
 import { CreateLibraryModal, type LibraryCreation } from './CreateLibraryModal';
-import { LibraryDetail } from './LibraryDetail';
-import { LibraryAssistantBindings } from './LibraryAssistantBindings';
-import {
-  EngineIcon,
-  fileBase64,
-  Glyph,
-  message,
-  statusLabels,
-  time,
-  type ModelOption,
-} from './shared';
+import { KnowledgeBindingMatrix } from './KnowledgeBindingMatrix';
+import { LibraryConfiguration } from './LibraryConfiguration';
+import { Glyph, fileBase64, message, statusLabels, time, type ModelOption } from './shared';
 import styles from './KnowledgeLibrary.module.css';
 
 export function KnowledgeLibrary() {
@@ -32,170 +23,151 @@ export function KnowledgeLibrary() {
   const [bases, setBases] = useState<Base[]>([]);
   const [engines, setEngines] = useState<EngineGroup[]>([]);
   const [models, setModels] = useState<ModelOption[]>([]);
-  const [assistants, setAssistants] = useState<AssistantBindings | null>(null);
+  const [matrix, setMatrix] = useState<Matrix | null>(null);
+  const [detail, setDetail] = useState<BaseDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const [detail, setDetail] = useState<BaseDetail | null>(null);
-  const [create, setCreate] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(true);
+  const [create, setCreate] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const generation = useRef(0);
+  const detailGeneration = useRef(0);
   const retry = useRef(createIdempotentRetryKey());
-  const bindingContainer = useRef<HTMLDivElement>(null);
-  const [bindingHeight, setBindingHeight] = useState(0);
-  useEffect(() => {
-    const container = bindingContainer.current;
-    if (!container) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry)
-        setBindingHeight((height) => Math.max(height, Math.ceil(entry.contentRect.height)));
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [loading, tab, Boolean(detail)]);
   const load = useCallback(async (quiet = false) => {
+    const current = ++generation.current;
     if (!quiet) setLoading(true);
     setError('');
     try {
-      const [libraries, groups, catalog, options] = await Promise.all([
+      const [libraries, groups] = await Promise.all([
         centerRequest<Base[]>('knowledge/bases'),
         centerRequest<EngineGroup[]>('knowledge/engines'),
-        fetchAssistantBindings(),
-        centerRequest<ModelOption[]>('knowledge/engine-models'),
       ]);
+      if (current !== generation.current) return;
       setBases(libraries);
       setEngines(groups);
-      setAssistants(catalog);
-      setModels(options);
     } catch (e) {
-      setError(message(e));
+      if (current === generation.current) setError(message(e));
+      throw e;
     } finally {
-      setLoading(false);
+      if (current === generation.current) setLoading(false);
     }
   }, []);
   useEffect(() => {
-    void load();
+    void load().catch(() => {});
     const update = () => setOnline(navigator.onLine);
     update();
     window.addEventListener('online', update);
     window.addEventListener('offline', update);
     return () => {
+      generation.current++;
+      detailGeneration.current++;
       window.removeEventListener('online', update);
       window.removeEventListener('offline', update);
     };
   }, [load]);
-  const open = async (id: string) => {
-    setSelectedId(id);
+  const refreshed = useCallback(async () => {
+    await load(true);
+    setRefreshToken((token) => token + 1);
+  }, [load]);
+  const readMatrix = useCallback((value: Matrix) => setMatrix(value), []);
+  async function configure(id: string) {
+    const token = ++detailGeneration.current;
     setBusy(true);
     setError('');
+    setSelectedId(id);
     try {
-      setDetail(await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`));
-      setTab('bases');
+      const next = await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`);
+      if (token === detailGeneration.current) setDetail(next);
     } catch (e) {
-      setError(message(e));
+      if (token === detailGeneration.current) setError(message(e));
     } finally {
-      setBusy(false);
+      if (token === detailGeneration.current) setBusy(false);
     }
-  };
-  const refreshDetail = useCallback(async () => {
-    const id = detail?.id;
-    if (!id) throw new Error('未选择知识库');
-    const next = await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`);
-    setDetail(next);
-    return next;
-  }, [detail?.id]);
+  }
   async function created(creation: LibraryCreation) {
     const base = await createKnowledgeBase(
       creation.request,
-      retry.current.keyFor('create:' + JSON.stringify(creation.request)),
+      retry.current.keyFor(JSON.stringify(creation.request)),
     );
     retry.current.acknowledge();
-    const errors: string[] = [];
-    if (creation.assistantIds.length)
-      try {
-        await saveBaseBindings(
-          base.id,
-          {
-            expectedRevision: base.revision ?? 1,
-            bindings: creation.assistantIds.map((agentId) => ({
-              agentKind: 'admin_assistant',
-              agentId,
-              mode: 'retrieve',
-              enabled: true,
-            })),
-          },
-          newIdempotencyKey(),
-        );
-      } catch (e) {
-        errors.push('绑定助手：' + message(e));
-      }
-    for (const file of creation.files)
+    const failures: string[] = [];
+    for (const file of creation.files) {
       try {
         await centerRequest(
-          `knowledge/bases/${base.id}/uploads`,
+          `knowledge/bases/${encodeURIComponent(base.id)}/uploads`,
           'POST',
           { fileName: file.name, base64: await fileBase64(file) },
           newIdempotencyKey(),
         );
       } catch (e) {
-        errors.push(file.name + '：' + message(e));
+        failures.push(`${file.name}：${message(e)}`);
       }
+    }
     setCreate(false);
-    await load(true);
-    await open(base.id);
+    setSelectedId(base.id);
+    await refreshed();
     setNotice(
-      errors.length
-        ? '知识库已创建，以下操作未完成，可在详情页重试：' + errors.join('；')
-        : '知识库已创建',
+      failures.length
+        ? `知识库已创建，部分文档导入失败：${failures.join('；')}`
+        : '知识库已创建，可在下方矩阵绑定助手。',
     );
+    document.getElementById('knowledge-binding-matrix')?.scrollIntoView({ behavior: 'smooth' });
   }
-  const groups = engines.filter((g) => g.instances.length);
   const visible = bases.filter(
     (b) =>
+      b.kind !== 'project' &&
       b.name.toLowerCase().includes(query.toLowerCase()) &&
       (filter === 'all' ||
         engines
           .find((g) => g.provider === filter)
           ?.instances.some((i) => i.id === b.engine_instance_id)),
   );
-  const selectedBase = visible.find((base) => base.id === selectedId);
   return (
     <div className={`admin-settings-page ${styles.root}`}>
-      {!detail && (
-        <>
-          <div className="settings-pagehead">
-            <div className="settings-titlebox">
-              <h1>知识中心</h1>
-              <div className="settings-desc">整理教学资料，为 AI 助手连接可信的知识。</div>
-            </div>
-            {tab === 'bases' && (
-              <button
-                className={styles.primary}
-                disabled={!online || loading || busy}
-                onClick={() => setCreate(true)}
-              >
-                <Glyph name="plus" />
-                创建知识库
-              </button>
-            )}
-          </div>
-          <nav className={styles.mainTabs}>
-            <button role="tab" aria-selected={tab === 'bases'} onClick={() => setTab('bases')}>
-              知识库
-            </button>
-            <button role="tab" aria-selected={tab === 'engines'} onClick={() => setTab('engines')}>
-              知识引擎
-            </button>
-          </nav>
-        </>
-      )}
+      <div className="settings-pagehead">
+        <div className="settings-titlebox">
+          <h1>知识中心</h1>
+          <div className="settings-desc">配置知识库，统一管理助手可使用的教学资料</div>
+        </div>
+        {tab === 'bases' && (
+          <button
+            className={styles.primary}
+            disabled={!online || loading || busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                setModels(await centerRequest<ModelOption[]>('knowledge/engine-models'));
+                setCreate(true);
+              } catch (e) {
+                setError(message(e));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <Glyph name="plus" />
+            添加知识库
+          </button>
+        )}
+      </div>
+      <nav className={styles.mainTabs} aria-label="知识中心视图">
+        <button role="tab" aria-selected={tab === 'bases'} onClick={() => setTab('bases')}>
+          知识库
+        </button>
+        <button role="tab" aria-selected={tab === 'engines'} onClick={() => setTab('engines')}>
+          知识引擎
+        </button>
+      </nav>
       {error && (
         <div className={styles.error} role="alert">
           {error}
-          <button className={styles.textButton} onClick={() => void load()}>
+          <button className={styles.textButton} onClick={() => void refreshed().catch(() => {})}>
             重新读取
           </button>
         </div>
@@ -203,165 +175,152 @@ export function KnowledgeLibrary() {
       {notice && (
         <div className={styles.notice} role="status">
           {notice}
-          <button className={styles.iconButton} aria-label="关闭提示" onClick={() => setNotice('')}>
-            <Glyph name="close" size={14} />
-          </button>
         </div>
       )}
-      {!online && (
-        <p className={styles.error}>当前离线，可查看已读取内容；恢复连接后可继续保存。</p>
+      {!online && <p className={styles.error}>当前离线，可查看已读取配置，恢复网络后再保存。</p>}
+      {loading && (
+        <div className={styles.empty} role="status">
+          正在读取知识库配置…
+        </div>
       )}
-      {loading ? (
-        <div className={styles.empty}>正在读取知识中心…</div>
-      ) : detail ? (
-        <LibraryDetail
+      <div hidden={tab !== 'engines' || loading}>
+        <KnowledgeEngines
+          engines={engines}
+          online={online}
+          onChanged={refreshed}
+          onOpenBase={configure}
+        />
+      </div>
+      <div hidden={tab !== 'bases'}>
+        {!loading && (
+          <>
+            <div className={styles.listToolbar}>
+              <label className={styles.search}>
+                <Glyph name="search" />
+                <input
+                  aria-label="搜索知识库"
+                  placeholder="搜索知识库…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </label>
+              <select
+                aria-label="筛选知识引擎"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">全部引擎</option>
+                {engines
+                  .filter((g) => g.instances.length)
+                  .map((g) => (
+                    <option value={g.provider} key={g.provider}>
+                      {g.name}
+                    </option>
+                  ))}
+              </select>
+              <span>{error ? '配置读取异常' : `${visible.length} 个知识库`}</span>
+            </div>
+            {!error && !visible.length && (
+              <div className={styles.empty}>
+                <Glyph name="layers" size={32} />
+                <h2>{query ? '没有匹配的知识库' : '先配置知识库，再绑定助手'}</h2>
+                <p>可新建本地索引库，或关联已有的远端知识库。</p>
+              </div>
+            )}
+            <div className={styles.libraryGrid}>
+              {visible.map((base) => {
+                const state = matrix?.libraries.find((l) => l.id === base.id);
+                const group = engines.find((g) =>
+                  g.instances.some((i) => i.id === base.engine_instance_id),
+                );
+                const stateText = !state
+                  ? '状态待核验'
+                  : !state.enabled
+                    ? '已停用'
+                    : state.reasons.length
+                      ? state.reasons.join('，')
+                      : state.connectionStatus
+                        ? '上次连接检查通过'
+                        : (statusLabels[state.buildState] ?? state.buildState);
+                return (
+                  <article className={styles.libraryCard} key={base.id}>
+                    <div className={styles.split}>
+                      <VisualBoundIcon owner={{ kind: 'knowledge', id: base.id }} size={34} />
+                      <span
+                        className={`${styles.badge} ${state?.reasons.length ? styles.bad : ''}`}
+                      >
+                        {stateText}
+                      </span>
+                    </div>
+                    <h2>{base.name}</h2>
+                    <p>{group?.name ?? '未配置引擎'}</p>
+                    <p>
+                      最近检查：
+                      {state?.connectionStatus ? time(state.lastCheckedAt) : '索引构建后验证'}
+                    </p>
+                    <div className={styles.cardFooter}>
+                      <span>
+                        {matrix
+                          ? matrix.bindings.filter(
+                              (b) => b.knowledgeBaseId === base.id && b.enabled,
+                            ).length
+                          : '未知'}{' '}
+                        位助手已绑定
+                      </span>
+                      <button
+                        className={styles.textButton}
+                        disabled={busy}
+                        onClick={() => void configure(base.id)}
+                      >
+                        配置
+                      </button>
+                      <button
+                        className={styles.textButton}
+                        onClick={() => {
+                          setSelectedId(base.id);
+                          document
+                            .getElementById('knowledge-binding-matrix')
+                            ?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        查看绑定
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
+        <KnowledgeBindingMatrix
+          online={online}
+          refreshToken={refreshToken}
+          focusLibraryId={selectedId}
+          onRead={readMatrix}
+        />
+        <p>文件与教材内容在来源中维护；助手授权在此矩阵统一配置。</p>
+      </div>
+      {create && (
+        <CreateLibraryModal
+          engines={engines}
+          models={models}
+          online={online}
+          onClose={() => setCreate(false)}
+          onChanged={refreshed}
+          onCreate={created}
+        />
+      )}
+      {detail && (
+        <LibraryConfiguration
           key={detail.id}
           detail={detail}
           engines={engines}
           online={online}
-          onRefresh={refreshDetail}
-          onBack={() => {
+          onClose={() => {
+            detailGeneration.current++;
             setDetail(null);
-            setNotice('');
-            void load(true);
           }}
-          onDeleted={async () => {
-            setDetail(null);
-            setNotice('知识库已删除');
-            await load(true);
-          }}
-        />
-      ) : tab === 'engines' ? (
-        <KnowledgeEngines
-          engines={engines}
-          online={online}
-          onChanged={() => load(true)}
-          onOpenBase={open}
-        />
-      ) : (
-        <>
-          <div className={styles.listToolbar}>
-            <label className={styles.search}>
-              <Glyph name="search" />
-              <input
-                aria-label="搜索知识库"
-                placeholder="搜索知识库…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-            <select
-              aria-label="筛选知识引擎"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            >
-              <option value="all">全部引擎</option>
-              {groups.map((g) => (
-                <option key={g.provider} value={g.provider}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            <span>{visible.length} 个知识库 · 单击选择，双击打开</span>
-          </div>
-          {visible.length === 0 ? (
-            <div className={styles.empty}>
-              <span className={styles.emptyGlyph}>
-                <Glyph name="layers" size={36} />
-              </span>
-              <h2>{query ? '没有匹配的知识库' : '创建你的第一个知识库'}</h2>
-              <p>上传教学文档，或关联已有知识库，再将它绑定到 AI 助手。</p>
-              <button className={styles.primary} disabled={!online} onClick={() => setCreate(true)}>
-                <Glyph name="plus" />
-                创建知识库
-              </button>
-            </div>
-          ) : (
-            <div className={styles.libraryGrid}>
-              {visible.map((base) => {
-                const group = engines.find((g) =>
-                  g.instances.some((i) => i.id === base.engine_instance_id),
-                );
-                return (
-                  <button
-                    className={`${styles.libraryCard} ${selectedId === base.id ? styles.librarySelected : ''}`}
-                    aria-label={base.name}
-                    aria-pressed={selectedId === base.id}
-                    aria-describedby="library-selection-hint"
-                    key={base.id}
-                    disabled={busy}
-                    onClick={() => setSelectedId(base.id)}
-                    onDoubleClick={() => void open(base.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        void open(base.id);
-                      }
-                    }}
-                  >
-                    <span className={styles.selectionBox} aria-hidden="true">
-                      {selectedId === base.id ? '✓' : ''}
-                    </span>
-                    <div className={styles.split}>
-                      <VisualBoundIcon owner={{ kind: 'knowledge', id: base.id }} size={36} />
-                      <span
-                        className={`${styles.badge} ${base.build_state === 'failed' ? styles.bad : ''}`}
-                      >
-                        {statusLabels[base.build_state] ?? base.build_state}
-                      </span>
-                    </div>
-                    <h2>
-                      {base.name}
-                      {base.library_settings?.isDefault && <Glyph name="star" size={16} />}
-                    </h2>
-                    <p>
-                      {group?.name ?? '历史资料库'} · {base.document_count} 份文档
-                    </p>
-                    <div className={styles.cardFooter}>
-                      <span>{base.assistant_count ?? 0} 位助手</span>
-                      <small>更新于 {time(base.updated_at)}</small>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <p id="library-selection-hint" className={styles.selectionHint}>
-            单击知识库查看助手绑定，双击打开详情；键盘空格选择，Enter 打开。
-          </p>
-          <div
-            ref={bindingContainer}
-            className={styles.bindingContainer}
-            style={{ minHeight: bindingHeight || undefined }}
-          >
-            {selectedBase ? (
-              <LibraryAssistantBindings
-                key={selectedBase.id}
-                base={selectedBase}
-                online={online}
-                onBusyChange={setBusy}
-                onSaved={() => load(true)}
-              />
-            ) : (
-              <section className={styles.globalBindings} aria-label="检索助手绑定">
-                <h2 className={styles.bindingTitle}>
-                  <Glyph name="assistant" /> 检索助手绑定
-                </h2>
-                <p>请先选择一个知识库，查看和管理它绑定的 AI 助手。</p>
-              </section>
-            )}
-          </div>
-        </>
-      )}
-      {create && (
-        <CreateLibraryModal
-          engines={engines}
-          assistants={assistants}
-          models={models}
-          online={online}
-          onClose={() => setCreate(false)}
-          onChanged={() => load(true)}
-          onCreate={created}
+          onChanged={refreshed}
         />
       )}
     </div>

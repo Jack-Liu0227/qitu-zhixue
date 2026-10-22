@@ -30,8 +30,9 @@ import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KnowledgeConnectionService } from './knowledge-connection.service';
 import { KnowledgeLinkProbeService } from './knowledge-link-probe.service';
 import { KnowledgeLibraryService } from './knowledge-library.service';
+import { KnowledgeMatrixService } from './knowledge-matrix.service';
+import { KnowledgeConnectionCheckService } from './knowledge-connection-check.service';
 import { PlatformRegistryModule } from '../platform-registry/platform-registry.module';
-
 
 /**
  * 作用域知识模块。
@@ -46,7 +47,12 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
  * （`knowledge.embed` 未接入 ModelGateway），仅作为接口预留，不参与关键词检索。
  */
 @Module({
-  imports: [forwardRef(() => TemplatesModule), AuthModule, ModelRegistryModule, forwardRef(() => PlatformRegistryModule)],
+  imports: [
+    forwardRef(() => TemplatesModule),
+    AuthModule,
+    ModelRegistryModule,
+    forwardRef(() => PlatformRegistryModule),
+  ],
   controllers: [
     KnowledgeController,
     KnowledgeAdminController,
@@ -54,6 +60,8 @@ import { PlatformRegistryModule } from '../platform-registry/platform-registry.m
     KnowledgeRetrievalController,
   ],
   providers: [
+    KnowledgeMatrixService,
+    KnowledgeConnectionCheckService,
     KnowledgeUploadService,
     KnowledgeLibraryService,
     KnowledgeConnectionService,

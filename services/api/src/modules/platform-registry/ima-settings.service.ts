@@ -108,26 +108,19 @@ export class ImaSettingsService {
   }
 
   async allowedKnowledgeBaseIds(): Promise<string[]> {
-    if (!this.knowledgeCenter) return [];
-    const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
-    const ids = engine?.config.allowedKnowledgeBaseIds;
-    return engine?.enabled && Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string' && !!id) : [];
+    return this.knowledgeCenter ? this.knowledgeCenter.imaKnowledgeBaseIds() : [];
   }
 
   /** A fresh, fail-closed authorization check before discovery and each tool call. */
-  async currentKnowledgeBaseIds(assistantId: string): Promise<readonly string[]> {
-    if (!this.knowledgeCenter || !(await this.knowledgeCenter.canRetrieve(assistantId))) return [];
-    const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
-    const ids = engine?.config.allowedKnowledgeBaseIds;
-    return engine?.enabled && Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+  async currentKnowledgeBaseIds(assistantId: string, studentId?: string): Promise<readonly string[]> {
+    return this.knowledgeCenter ? this.knowledgeCenter.imaKnowledgeBaseIds(assistantId, studentId) : [];
   }
 
   /** A fresh, fail-closed authorization check before discovery and each tool call. */
   async canCall(agentId: string, toolId: string, assistantId?: string): Promise<boolean> {
     if (this.knowledgeCenter) {
       if (!assistantId || !(await this.knowledgeCenter.canRetrieve(assistantId))) return false;
-      const engine = (await this.knowledgeCenter.configuration()).config.knowledgeEngines['ima-main'];
-      if (!engine?.enabled || (Array.isArray(engine.config.allowedKnowledgeBaseIds) && engine.config.allowedKnowledgeBaseIds.length === 0)) return false;
+      if (!(await this.currentKnowledgeBaseIds(assistantId)).length) return false;
     }
     if (!this.db || !IMA_READ_TOOLS.some((tool) => tool === toolId)) return false;
     try {

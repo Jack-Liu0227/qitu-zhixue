@@ -119,6 +119,7 @@ export function redactConnection(connection: {
   status: string;
   credentialRef?: string | null;
   lastErrorCode?: string | null;
+  lastCheckAt?: string | null;
 }): Record<string, unknown> {
   const externalRef = { ...connection.externalRef };
   if (typeof externalRef.externalPath === 'string') externalRef.externalPath = '[allowlisted path]';
@@ -129,6 +130,7 @@ export function redactConnection(connection: {
     credentialConfigured: Boolean(connection.credentialRef),
     status: connection.status,
     lastErrorCode: connection.lastErrorCode ?? null,
+    lastCheckAt: connection.lastCheckAt ?? null,
   };
 }
 
@@ -218,7 +220,9 @@ export function validateKnowledgeConfig(
 ): PlatformKnowledgeConfig {
   const root = record(input);
   if (
-    Object.keys(root).some((k) => !['mcpServers', 'knowledgeEngines', 'platformTools', 'growthProjection'].includes(k))
+    Object.keys(root).some(
+      (k) => !['mcpServers', 'knowledgeEngines', 'platformTools', 'growthProjection'].includes(k),
+    )
   )
     invalid('存在未知配置分区');
   const result = structuredClone(current);
@@ -226,8 +230,13 @@ export function validateKnowledgeConfig(
   if (root.growthProjection !== undefined) {
     const incoming = parseGrowthProjectionSettings(root.growthProjection);
     const existing = parseGrowthProjectionSettings(current.growthProjection);
-    if (!incoming || !existing || incoming.profileAssistantId !== existing.profileAssistantId
-      || incoming.growthAssistantId !== existing.growthAssistantId) invalid('GROWTH_PROJECTION_OWNER_REQUIRED');
+    if (
+      !incoming ||
+      !existing ||
+      incoming.profileAssistantId !== existing.profileAssistantId ||
+      incoming.growthAssistantId !== existing.growthAssistantId
+    )
+      invalid('GROWTH_PROJECTION_OWNER_REQUIRED');
   }
   if (root.mcpServers !== undefined) {
     const servers = record(root.mcpServers);
