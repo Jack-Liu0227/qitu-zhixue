@@ -249,7 +249,7 @@ test('tutor.chat 未绑定：返回 MODEL_NOT_CONFIGURED，不产生任何引导
   assert.equal(error.code, 'MODEL_NOT_CONFIGURED');
   assert.equal(error.retryable, false);
   assert.equal(blocksOf(events).length, 0);
-  assert.equal(events.some((e) => e.type === 'block'), false);
+  assert.deepEqual(events.filter(event => event.type === 'block').map(event => event.block), [{ kind: 'text', text: error.message }]);
 
   const done = events.find((e) => e.type === 'done');
   assert.ok(done && done.type === 'done');
@@ -268,6 +268,7 @@ test('Agent 清空模型：不回落到旧 tutor.chat 绑定', async () => {
   assert.equal(error.code, 'MODEL_NOT_CONFIGURED');
   assert.equal(gateway.calls.length, 0);
   assert.equal(blocksOf(events).length, 0);
+  assert.deepEqual(events.filter(event => event.type === 'block').map(event => event.block), [{ kind: 'text', text: error.message }]);
 });
 
 test('可重试上游故障：返回 MODEL_UNAVAILABLE 且 retryable=true', async () => {

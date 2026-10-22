@@ -131,6 +131,7 @@ export class GatewayTutorProvider implements TutorProvider {
           knowledgeState = 'ima 知识库本轮连接失败，明确告知无法查证教材，不得假称已检索或引用教材。';
         }
       }
+      if (input.knowledgeTools?.length) knowledgeState += '\n已提供受治理的 knowledge_search / knowledge_read，可优先使用这条检索路径。用简短知识词搜索；实际读取后返回的 evidence_ref 才能用于推荐卡或引用改编。某条检索路径失败时不要重复尝试相同请求；最多更换一次关键词或路径，仍不可用就明确说明并给出一般教学帮助。';
       result = yield* toolEventStream<TutorStreamEvent, ModelCompletionResult>(emit => this.gateway.complete(input.modelUsage ?? TUTOR_CHAT_USAGE, {
         messages: [
           { role: 'system', content: buildSystemPrompt(level, input.projectStage, input.contextPacket, this.runtimeBlocks)
@@ -158,6 +159,7 @@ export class GatewayTutorProvider implements TutorProvider {
         message: failure.message,
         retryable: failure.retryable,
       };
+      yield { type: 'block', block: { kind: 'text', text: failure.message } };
       yield { type: 'done', turnSummary: { hintLevel: null, stage: input.projectStage } };
       return;
     }

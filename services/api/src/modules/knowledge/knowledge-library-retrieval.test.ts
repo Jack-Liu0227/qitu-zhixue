@@ -4,10 +4,34 @@ import assert from 'node:assert/strict';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
 import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
+import type { ImaReadEvidence } from '../ai-tutor/ima-project-scope';
 import type { KnowledgeCenterService } from './knowledge-center.service';
 import type { KnowledgeEngineService } from './knowledge-engine.service';
 
 const scope = { authorizeTool: async () => true, key: 'fixture-exploration', knowledgeBaseIds: null };
+
+test('only a successful scoped managed read issues a bounded lesson source receipt; revocation rejects it', async () => {
+  const f = fixture(); const evidence: ImaReadEvidence[] = [];
+  let accepted = true;
+  const projectScope = { ...scope, key: 'frozen-project-scope', knowledgeBaseIds: ['source'],
+    recordReadEvidence: async (value: ImaReadEvidence) => { if (!accepted) return false; evidence.push(value); return true; } };
+  const found = await f.service.search('student', 'a', 'q', 5, projectScope);
+  assert.equal(evidence.length, 0);
+  const citationId = found.evidence[0]!.citationId;
+  const tool = f.service.tools('student', 'a', projectScope).find(tool => tool.name === 'knowledge_read')!;
+  const read = await tool.execute({ citationId });
+  assert.equal(read.isError, false);
+  assert.equal(JSON.parse(read.text).evidence_ref, evidence[0]?.sourceRef);
+  assert.equal(evidence[0]?.knowledgeBaseId, 'source');
+  assert.match(evidence[0]!.documentRefHash, /^[a-f0-9]{64}$/);
+  assert.ok(evidence[0]!.expiresAt > Date.now() && evidence[0]!.expiresAt <= Date.now() + 300_000);
+  assert.ok(!JSON.stringify(evidence).includes('速度'));
+  accepted = false;
+  assert.equal((await tool.execute({ citationId })).isError, true);
+  assert.equal(evidence.length, 1);
+  f.detach();
+  await assert.rejects(f.service.read('student', 'a', citationId, projectScope));
+});
 
 function fixture() {
   let allowed = true;

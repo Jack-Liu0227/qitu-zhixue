@@ -47,6 +47,7 @@ export interface ManagedKnowledgeScope {
   authorizeTool?: (toolId: string) => Promise<boolean>;
   /** null is reserved for explicitly governed free exploration; project IDs are remote IMA ceilings. */
   knowledgeBaseIds: readonly string[] | null;
+  recordReadEvidence?: (evidence: ImaReadEvidence) => Promise<boolean>;
 }
 
 /** Shared access envelope: project turns retain the stronger owner/pin/provenance capability. */
@@ -107,6 +108,13 @@ export async function resolveTutorKnowledgeAccess(input: {
       if (!current.length || JSON.stringify(current) !== JSON.stringify(managedCeiling)) return false;
       return authorize(toolId === 'knowledge_search' ? 'ima_search_knowledge' : 'ima_read_document');
     },
+    ...(strict?.scope ? { recordReadEvidence: async (evidence: ImaReadEvidence) => {
+      if (!strict.scope || !await input.authorizeManagedTool?.('knowledge_read')
+        || !await authorize('ima_read_document') || !strict.scope.knowledgeBaseIds.includes(evidence.knowledgeBaseId)
+        || !(await strict.scope.refreshAllowedKnowledgeBaseIds()).includes(evidence.knowledgeBaseId)) return false;
+      strict.scope.recordReadEvidence?.(evidence);
+      return true;
+    } } : {}),
   };
   return { ...strict, managed, ima, authorize };
 }

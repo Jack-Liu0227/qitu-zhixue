@@ -20,6 +20,21 @@ export class KnowledgeRetrievalService {
     private readonly engine: KnowledgeEngineService,
   ) {}
 
+  private async attestRead(base: KnowledgeBaseRow, citationId: string, title: string, scope?: ManagedKnowledgeScope, fingerprint?: string) {
+    if (!scope?.recordReadEvidence) return {};
+    const connection = await this.connection(base);
+    const kb = connection?.external_ref.remoteKnowledgeBaseId;
+    if (!connection || connection.engine.provider !== 'ima' || !kb || !scope.knowledgeBaseIds?.includes(kb)
+      || fingerprint && connection.fingerprint !== fingerprint) {
+      throw new NotFoundException('资料不可用');
+    }
+    const documentRefHash = checksum(JSON.stringify({ citationId, fingerprint: connection.fingerprint }));
+    const sourceRef = `knowledge-read:${checksum(JSON.stringify([scope.key, kb, documentRefHash]))}`;
+    if (!await scope.recordReadEvidence({ sourceRef, knowledgeBaseId: kb, documentRefHash, title,
+      expiresAt: Date.now() + 5 * 60_000 })) throw new NotFoundException('资料不可用');
+    return { evidence_ref: sourceRef };
+  }
+
   private async connection(base: KnowledgeBaseRow) {
     const [connection] = await this.center.query<{
       id: string;
@@ -251,6 +266,7 @@ export class KnowledgeRetrievalService {
         origin: record.origin,
         knowledgeBase: base.name,
         locator: null,
+        ...await this.attestRead(base, citationId, record.title, scope, record.fingerprint),
       };
     }
     const parts = citationId.split('~');
@@ -274,6 +290,7 @@ export class KnowledgeRetrievalService {
       origin: member.origin,
       knowledgeBase: base.name,
       locator: null,
+      ...await this.attestRead(base, citationId, member.title, scope),
     };
   }
 

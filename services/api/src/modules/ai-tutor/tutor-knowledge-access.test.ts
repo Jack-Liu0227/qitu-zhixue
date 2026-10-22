@@ -6,6 +6,34 @@ import { resolveTutorTeachingContext } from './tutor-teaching-context';
 import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import type { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
+import type { ImaReadEvidence } from './ima-project-scope';
+
+test('managed source receipts enter this project turn only while owner, frozen scope and current tool grants agree', async () => {
+  const h = teachingContextFixture();
+  h.teaching.knowledgeGrant = { serverId: 'ima-knowledge', knowledgeBaseIds: ['original'], allowedTools: ['ima_read_document'] };
+  h.teaching.roles[0]!.tools = [{ toolId: 'ima_read_document', mcpServerId: 'ima-knowledge', schemaDigest: 'digest', handlerVersion: 'ima-mcp.v1' }];
+  const teaching = await resolveTutorTeachingContext(h.store, h.project, h.teaching);
+  let allowed = true;
+  let current = ['original'];
+  const access = await resolveTutorKnowledgeAccess({ studentId: h.project.studentId, assistantId: teaching.role.assistantId,
+    projectId: h.project.id, templateVersionId: h.project.templateVersionId!, teaching, plans: h.store,
+    bindings: { getFrozenTeachingBundle: async () => h.teaching } as unknown as TemplateBindingService,
+    ima: { canCall: async () => true, currentKnowledgeBaseIds: async () => current } as unknown as ImaSettingsService,
+    authorizeManagedTool: async () => allowed });
+  const evidence: ImaReadEvidence = { sourceRef: 'knowledge-read:fixture', knowledgeBaseId: 'original',
+    documentRefHash: 'a'.repeat(64), title: 'Approved source', expiresAt: Date.now() + 60_000 };
+  assert.equal(await access.managed.recordReadEvidence!(evidence), true);
+  assert.equal(access.readEvidence!.get(evidence.sourceRef), evidence);
+  access.readEvidence!.clear();
+  assert.equal(await access.managed.recordReadEvidence!({ ...evidence, knowledgeBaseId: 'unfrozen' }), false);
+  allowed = false;
+  assert.equal(await access.managed.recordReadEvidence!(evidence), false);
+  allowed = true; current = [];
+  assert.equal(await access.managed.recordReadEvidence!(evidence), false);
+  current = ['original']; h.project.studentId = 'other-student';
+  assert.equal(await access.managed.recordReadEvidence!(evidence), false);
+  assert.equal(access.readEvidence!.size, 0);
+});
 
 test('template handoff cannot inherit current global knowledge libraries before project confirmation', async () => {
   const input = { studentId: 'synthetic-student', assistantId: 'published-mentor', projectId: null,
