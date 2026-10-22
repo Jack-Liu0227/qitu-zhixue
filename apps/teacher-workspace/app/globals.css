@@ -265,7 +265,20 @@ a { color: inherit; text-decoration: none; }
 
 /* ============ Tables ============ */
 /* 窄屏下表格横向滚动，而不是压缩列或溢出撑破卡片。 */
-.qtx-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.qtx-table-wrap {
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.qtx-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+.qtx-table-wrap::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
 .qtx-table-wrap .qtx-table { min-width: 520px; }
 .qtx-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
 .qtx-table th { padding: 10px 8px; color: var(--qtx-faint); font-weight: 600; border-bottom: 1px solid #eef2f7; }
@@ -465,7 +478,7 @@ a { color: inherit; text-decoration: none; }
 .qtx-topbar > :first-child { min-width: 0; margin-right: auto; }
 .qtx-user-name { overflow-wrap: anywhere; }
 .qtx-btn { white-space: normal; height: auto; }
-.qtx-table { display: block; max-width: 100%; overflow-x: auto; }
+.qtx-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
 @media (max-width: 768px) {
   .qtx-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .qtx-metric { padding: 12px; gap: 8px; }

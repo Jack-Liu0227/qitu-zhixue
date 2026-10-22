@@ -1837,8 +1837,42 @@
 .qitu-board-header h4, .qitu-milestone-header h4 { margin: 6px 0 0; color: #102a5c; font-size: 15px; }
 .qitu-board-header > span { flex: 0 0 auto; color: #64748b; font-size: 11px; }
 .qitu-board-caption { margin: 10px 0; color: #334155; font-size: 13px; line-height: 1.5; }
-.qitu-board-canvas { max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
-.qitu-board-canvas > * { max-width: 100%; }
+.qitu-board-canvas {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.qitu-board-canvas::-webkit-scrollbar {
+  height: 6px;
+}
+.qitu-board-canvas::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.qitu-board-canvas > * {
+  min-width: fit-content;
+  max-width: none;
+}
+.qitu-markdown-math-content .katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 2px;
+  margin: 0.6em 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.qitu-markdown-math-content .katex {
+  font-size: 1.05em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
 .qitu-board-mermaid-fallback { min-width: min(520px, 100%); padding: 12px; border: 1px dashed #93c5fd; background: #f8fbff; color: #334155; }
 .qitu-board-mermaid-fallback ol { margin: 8px 0; padding-left: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .qitu-board-mermaid-fallback small { color: #64748b; }
@@ -1858,15 +1892,64 @@
 .qitu-hint-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.8rem; font-weight: 600; width: fit-content; }
 
 @media (max-width: 768px) {
-  .qitu-tutor-workspace-layout { flex-direction: column; gap: 8px; padding: 0 8px max(10px, env(safe-area-inset-bottom)); }
-  .qitu-tutor-workspace-layout > aside { width: 100% !important; flex: 0 0 auto; max-height: min(28vh, 156px); }
-  .qitu-tutor-center-column { flex: 1 1 0; min-height: 220px; }
-  .qitu-tutor-context-sidebar { flex: 0 0 auto; max-height: min(30vh, 190px); }
-  .qitu-tutor-header { align-items: flex-start; padding: 8px 12px; }
-  .qitu-tutor-header-actions { width: 100%; justify-content: space-between; }
-  .qitu-tutor-header-subtitle { max-width: 100%; }
-  .qitu-tutor-col-center .qitu-composer { padding-inline: 12px !important; }
-  .qitu-idea-card-list { grid-template-columns: 1fr; }
+  .qitu-tutor-workspace-layout {
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px max(10px, env(safe-area-inset-bottom));
+    position: relative;
+  }
+  .qitu-live-session-sidebar.is-collapsed {
+    display: none !important;
+  }
+  .qitu-live-session-sidebar:not(.is-collapsed) {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: min(300px, 85vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 1000 !important;
+    border-radius: 0 16px 16px 0 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18) !important;
+    background: var(--qitu-surface, #ffffff) !important;
+  }
+  .qitu-tutor-context-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: min(340px, 88vw) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 1000 !important;
+    border-radius: 16px 0 0 16px !important;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18) !important;
+    overflow-y: auto !important;
+    background: var(--qitu-surface, #ffffff) !important;
+  }
+  .qitu-tutor-center-column {
+    flex: 1 1 auto;
+    min-height: calc(100dvh - 140px);
+    width: 100%;
+  }
+  .qitu-tutor-header {
+    align-items: flex-start;
+    padding: 8px 12px;
+  }
+  .qitu-tutor-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .qitu-tutor-header-subtitle {
+    max-width: 100%;
+  }
+  .qitu-tutor-col-center .qitu-composer {
+    padding-inline: 12px !important;
+  }
+  .qitu-idea-card-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .qitu-optics-experiment-card.is-fullscreen {
@@ -1884,3 +1967,6 @@
   overflow: auto;
   border-radius: 0;
 }
+
+.qitu-learning-resource{padding:20px;border:1px solid var(--qitu-border,#dbe6f5);border-radius:16px;background:var(--qitu-surface,#fff)}
+.qitu-learning-resource h4{margin:12px 0 8px}.qitu-learning-resource p{line-height:1.7}.qitu-learning-sources{padding-left:20px;line-height:1.8}.qitu-learning-attribution{padding:10px 16px;color:var(--qitu-text-secondary,#64748b);font-size:12px}
