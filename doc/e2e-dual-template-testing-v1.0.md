@@ -40,13 +40,14 @@ flowchart LR
 
 | 指标项 | 模板一：几何光学与微观探究 (Template 1) | 模板二：波动干涉与衍射 (Template 2) |
 | :--- | :--- | :--- |
-| **项目标识 (Project ID)** | `proj-c3fb749d-667a-467f-991e-0ed7544140bd` | `proj-b7f8c432-a0f9-4f51-8e33-13a714bd7da2` |
-| **学习计划 (Plan ID)** | `plan-73204281-46db-4b84-8d28-bf7fad283579` | `plan-e00da247-dac9-46f9-a8b8-53e9b8a517dc` |
+| **首轮验证项目 (Run 1 Project)** | `proj-c3fb749d-667a-467f-991e-0ed7544140bd` (`completed`) | `proj-b7f8c432-a0f9-4f51-8e33-13a714bd7da2` (`completed`) |
+| **重启复测项目 (Run 2 Project)** | `proj-5b494ae9-5939-4c95-8979-ca5b8736d0f3` (`completed`) | `proj-b6d120a6-c833-4ac7-8939-7969c221ea3d` (`completed`) |
+| **复测计划标识 (Run 2 Plan)** | `plan-3ec4c60b-cbf6-4a96-b29b-7805f44301e0` | `plan-35199b30-47ae-41f6-b477-5cdc5aa5bdc0` |
 | **课时总数与进度** | **16 / 16** 课时全部完成 (100%) | **8 / 8** 课时全部完成 (100%) |
 | **项目最终状态** | `status: "completed"`, `current_stage_index: 9` | `status: "completed"`, `current_stage_index: 9` |
 | **计划最终状态** | `status: "completed"`, `version: 1` | `status: "completed"`, `version: 1` |
-| **结项正式作品** | `art-b88106af-9167-42f6-9235-cb69c6ed5502` (`published`) | `art-dee68e1c-d13e-44a1-b902-df34bfeec85a` (`published`) |
-| **导师评审通过** | `mr-e8821366-eba0-4c4d-bda8-f905b2153331` (`approved`) | `mr-e8821366-eba0-4c4d-bda8-f905b2153331` (`approved`) |
+| **结项正式作品** | `art-b4d641bd-2986-4a51-ae54-d6e17a8aa36c` (`published`) | `art-8b823d66-868d-4b0d-af08-7f3e35fd5a92` (`published`) |
+| **导师评审通过** | `mr-a4a0ecc3-6f46-411c-b58d-cee91a04177c` (`approved`) | `mr-a83f8fd2-4984-487b-9076-73f3c30505ec` (`approved`) |
 | **四大门禁达标率** | **4 / 4 (100%) 全通关** | **4 / 4 (100%) 全通关** |
 
 ```mermaid
@@ -122,6 +123,27 @@ flowchart TD
 
 ---
 
+### 2.5 远程全量服务重启与健康巡检记录 (Remote Service Restart Audit)
+
+全流程测试完成后，对 `study-remote` (`122.51.130.204`) 进行了全量工作空间构建与生产服务重启，状态巡检全部为 Active (100% 健康)：
+
+| 服务单元 (Service Unit) | 监听端口 / 执行入口 | 状态 (Status) | 验证路径与结果 |
+| :--- | :--- | :--- | :--- |
+| `qitu-api.service` | 4100 / `/etc/qitu/launch-api-main.sh` | **active (running)** | `GET /api/v1/health` -> HTTP 200 OK |
+| `qitu-student.service` | 3101 / `next start -p 3101` | **active (running)** | `GET /student/today` -> HTTP 200 OK |
+| `qitu-teacher.service` | 3103 / `next start -p 3103` | **active (running)** | `GET /teacher` -> HTTP 307 Redirect (Auth) |
+| `qitu-admin.service` | 3104 / `next start -p 3104` | **active (running)** | `GET /settings/templates` -> HTTP 200 OK |
+| `qitu-auth.service` | 3100 / `next start -p 3100` | **active (running)** | `GET /login` -> HTTP 200 OK |
+| `qitu-parent.service` | 3102 / `next start -p 3102` | **active (running)** | `GET /parent` -> HTTP 200 OK |
+| `qitu-workers.service` | `/etc/qitu/launch-workers-main.sh` | **active (running)** | 异步作业引擎已连通 Redis/DB |
+| `qitu-profile-growth.service` | `run-profile-growth-worker.sh` | **active (running)** | 画像素养事实投影服务运行正常 |
+| `qitu-ima-mcp.service` | 4001 / `/opt/qitu-ima` | **active (running)** | 知识库教材 MCP RPC 服务正常 |
+| `qitu-local-embedding.service` | 5001 / `local_embedding_server.py` | **active (running)** | 私有中文 CPU 向量嵌入模型响应正常 |
+| `nginx.service` | 80, 3000, 3200 | **active (running)** | 反向代理分流与静态资源缓存生效 |
+| `postgresql@18-main.service` | 5432 / UNIX domain socket | **active (running)** | 关系事实库读写与外键事务正常 |
+
+---
+
 ## 三、 遇到的问题记录与逐个击破（Issue Log）
 
 | 问题编号 | 发现阶段与模板 | 现象与错误码 | 根因分析 | 解决方案与修复代码 | 状态 |
@@ -135,4 +157,7 @@ flowchart TD
 | **ISSUE-07** | 实践产物评审与发布 | 作品审核列表为空且调用 `/works/:id/publish` 返回 404 | 教师端复核路由为 `/teacher/students/:studentId/reviews`，学生端发布路由为 `/artifacts/:id/publish` | 纠正接口路由路径并联动 `decideReview` 审核批准，作品顺利发布并物化 Gate 3 证据 | **已修复 (Fixed)** |
 | **ISSUE-08** | 理论题目动态触发 | 概念通关阶段轮询待答题为空，阻断通关 | 服务端生成题目的触发接口为 `/learning-plans/:id/sessions/:sessionId/next-step` | 课时出题阶段显式请求 `next-step` 接口，自动构建题目卡并落库 `pending_questions`，驱动掌握度阈值闭环 | **已修复 (Fixed)** |
 | **ISSUE-09** | 幂等键字符超长阻断 | 提交学习回应返回 400 `IDEMPOTENCY_KEY_INVALID` | 复合构造的 Idempotency-Key 包含课时与活动 UUID，总长度达到 162 字符，超过服务端 160 字符硬限制 | 重构幂等键为短哈希格式 `k-l{lesson}-a{act}-{timestamp}`（约 20 字符），安全避免超长溢出 | **已修复 (Fixed)** |
+| **ISSUE-10** | 自动化会话跨项目串扰 | 模板二微观实验仿真提交返回 409 `TUTOR_EXPERIMENT_REVISION_CHANGED` | 自动化脚本在获取导师会话时按 `WHERE student_id = 'student-demo'` 排序，误取了模板一新立项的导师会话 | 修正为 `WHERE project_id = $1` 精确绑定当前探究项目的导师会话，消除会话串扰 | **已修复 (Fixed)** |
+| **ISSUE-11** | 模板二作品发布遗漏批准 | 模板二 Lesson 7 课时完成返回 409 `SUBMITTED_REPORT_APPROVAL_REQUIRED` | 脚本旧逻辑请求 `/teacher/reviews?studentUserId=...` 未匹配到待审记录，导致作品未被审核即调用发布 | 同步更新为标准导师待审队列路由并在批准后完成发布，Lesson 7 与 Lesson 8 100% 顺畅通关 | **已修复 (Fixed)** |
+| **ISSUE-12** | 远程编译与服务同步 | 服务重启后前端变更未能即时生效 | Next.js 生产服务运行独立构建产物，推送代码后需先执行 `pnpm build` 再执行 `systemctl restart` | 远程执行全量增量构建后重启所有 10 项业务守护服务，外网与端到端测试全线通过 | **已修复 (Fixed)** |
 
