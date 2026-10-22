@@ -570,6 +570,7 @@ export interface AdminCopilotReceipt {
   kind: AdminCopilotActionKind;
   label: string;
   status: 'succeeded' | 'failed' | 'blocked' | 'awaiting_confirmation' | 'cancelled';
+  input?: Record<string, unknown>;
   confirmation?: { id: string; expiresAt: string; target: string; impact: string; parameters: Record<string, unknown> };
   result?: unknown;
   code?: string;
