@@ -7,6 +7,7 @@ import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
 import type { ImaSettingsService } from '../platform-registry/ima-settings.service';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
 import type { ImaReadEvidence } from './ima-project-scope';
+import { verifyLessonEvidence } from './tutor-activity-context';
 
 test('managed source receipts enter this project turn only while owner, frozen scope and current tool grants agree', async () => {
   const h = teachingContextFixture();
@@ -24,6 +25,7 @@ test('managed source receipts enter this project turn only while owner, frozen s
     documentRefHash: 'a'.repeat(64), title: 'Approved source', expiresAt: Date.now() + 60_000 };
   assert.equal(await access.managed.recordReadEvidence!(evidence), true);
   assert.equal(access.readEvidence!.get(evidence.sourceRef), evidence);
+  assert.deepEqual(await verifyLessonEvidence(access, [evidence.sourceRef]), [evidence]);
   access.readEvidence!.clear();
   assert.equal(await access.managed.recordReadEvidence!({ ...evidence, knowledgeBaseId: 'unfrozen' }), false);
   allowed = false;

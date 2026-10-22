@@ -1,0 +1,6 @@
+.dock { margin: 20px 0; border: 1px solid #dce5f6; border-radius: 16px; background: #f7faff; color: #1c3357; }
+.dock > summary { cursor: pointer; padding: 18px 20px; font-weight: 650; }
+.dock > summary small { display: block; margin: 6px 0 0 16px; color: #64748b; font-weight: 400; }
+.content { display: grid; gap: 16px; padding: 0 20px 20px; }
+.content textarea, .content select, .content input:not([type='checkbox']):not([type='radio']) { box-sizing: border-box; max-width: 100%; }
+@media (max-width: 640px) { .content { padding: 0 12px 12px; } .dock > summary { padding: 16px 12px; } }

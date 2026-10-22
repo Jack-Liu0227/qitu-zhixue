@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ConflictException } from '@nestjs/common';
 import { builtinToolRegistry } from '../platform-registry/built-in-tools';
 import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import { teachingContextFixture } from './tutor-teaching-context.test-fixture';
@@ -22,7 +23,7 @@ async function fixture() {
       learningSessionId: teaching.session.id, objectiveId: teaching.objective!.id, tutorSessionId: 'chat' },
     refresh: async () => ({ teaching, runtime }),
     verifyEvidence: async (refs: readonly string[]) => {
-      reads++; if (!allowed || refs.some(ref => ref !== source.sourceRef)) throw Error('source denied'); return [source];
+      reads++; if (!allowed || refs.some(ref => ref !== source.sourceRef)) throw new ConflictException({ code: 'TUTOR_RESOURCE_UNVERIFIED' }); return [source];
     }, proposeOptics: async (): Promise<never> => { throw Error('not called'); } };
   return { input, source, reads: () => reads, revoke: () => { allowed = false; } };
 }
@@ -63,12 +64,12 @@ test('unread, expired, revoked or invented claims cannot produce resources or re
   for (const value of [{ ...candidate, title: 'https://invalid.example' }, { ...candidate, sourceRefs: ['invented'] },
     { ...candidate, url: 'https://invalid.example' }, { ...candidate, sourceRefs: [h.source.sourceRef, h.source.sourceRef] }]) {
     const channel = createLessonActivityChannel(h.input);
-    await assert.rejects(channel.tools[0]!.execute(value)); assert.deepEqual(channel.blocks(), []);
+    assert.equal((await channel.tools[0]!.execute(value)).isError, true); assert.deepEqual(channel.blocks(), []);
   }
   h.source.expiresAt = 0;
-  await assert.rejects(createLessonActivityChannel(h.input).tools[0]!.execute(candidate));
+  assert.equal((await createLessonActivityChannel(h.input).tools[0]!.execute(candidate)).isError, true);
   h.source.expiresAt = Date.now() + 60000; h.revoke();
-  await assert.rejects(createLessonActivityChannel(h.input).tools[0]!.execute(candidate));
+  assert.equal((await createLessonActivityChannel(h.input).tools[0]!.execute(candidate)).isError, true);
   const pending = { kind: 'quiz' as const, questionId: 'owner-question', stem: '待回答', options: [{ key: 'a', text: '选项' }] };
   const channel = createLessonActivityChannel({ ...h.input, pendingQuestion: pending, restorePending: true });
   assert.equal((await channel.tools[0]!.execute(candidate)).isError, true); assert.deepEqual(channel.blocks(), [pending]);

@@ -170,7 +170,13 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
             // The runtime hides arbitrary exceptions. Give the model a bounded
             // protocol correction so an invalid candidate can be repaired.
             if (!(error instanceof ConflictException)) throw error;
+            const detail = error.getResponse();
+            if (typeof detail === 'object' && detail !== null && 'code' in detail
+              && ['TUTOR_RESOURCE_INVALID', 'TUTOR_RESOURCE_UNVERIFIED', 'TUTOR_ACTIVITY_UNAVAILABLE'].includes(String(detail.code))) {
+              return { isError: true, text: `${detail.code}. Read an authorized source in this turn and copy its exact evidence_ref into sourceRefs. Do not claim it was adapted or verified until accepted.` };
+            }
             return { isError: true, text: 'BOARD_CANDIDATE_INVALID. Nothing was accepted. Retry with only kind, title and steps. '
+              + (waveProtocol ? 'For an adapted board also include origin=adapted and sourceRefs from actual read evidence_ref values; for a new board use origin=generated and omit sourceRefs. ' : '')
               + 'Each step needs a nonempty caption and either nodes with edges (use [] when no edges), or nonempty tex. '
               + 'Omit unused fields; never send null or empty tex. Node IDs must match [a-zA-Z][a-zA-Z0-9_]*; '
               + 'edges must reference those IDs. Do not include summary, mode, parameters, question, raw Mermaid or executable content.' };
@@ -184,9 +190,16 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
         }
         else if (candidate.kind === 'recommendation') {
           if (!waveProtocol) invalid();
-          exact(candidate, ['kind', 'title', 'summary', 'sourceRefs']);
-          const sources = await resolveActivitySources(candidate.sourceRefs, input.verifyEvidence);
-          block = { kind: 'learning_resource', title: text(candidate.title, 100), summary: text(candidate.summary, 500), sources };
+          try {
+            exact(candidate, ['kind', 'title', 'summary', 'sourceRefs']);
+            const sources = await resolveActivitySources(candidate.sourceRefs, input.verifyEvidence);
+            block = { kind: 'learning_resource', title: text(candidate.title, 100), summary: text(candidate.summary, 500), sources };
+          } catch (error) {
+            if (!(error instanceof ConflictException)) throw error;
+            const detail = error.getResponse();
+            const code = typeof detail === 'object' && detail !== null && 'code' in detail ? String(detail.code) : 'TUTOR_ACTIVITY_INVALID';
+            return { isError: true, text: `${code}. Nothing was accepted. Recommendation requires exactly kind, title (1-100 chars), summary (1-500 chars), sourceRefs (exact evidence_ref from an authorized read this turn). Omit origin, steps, links, nulls and unused fields.` };
+          }
         }
         else if (candidate.kind === 'optics') {
           exact(candidate, ['kind', 'title', 'summary', 'mode', 'parameters']);
