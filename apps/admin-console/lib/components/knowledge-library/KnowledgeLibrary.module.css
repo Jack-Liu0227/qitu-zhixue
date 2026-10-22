@@ -4,6 +4,7 @@
   --kb-muted: #758397;
   --kb-line: #e4e9f0;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   color: var(--kb-ink);
 }
 .root button,
