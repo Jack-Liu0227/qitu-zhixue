@@ -18,11 +18,11 @@
 | [admin-unauth-mobile.png](admin-unauth-mobile.png) | 390 × 844 |
 | [empty-validation-desktop.png](empty-validation-desktop.png) | 1440 × 1000 |
 | [login-desktop.png](login-desktop.png) | 1440 × 1000 |
-| [login-mobile.png](login-mobile.png) | 375 × 959 |
-| [offline-mobile.png](offline-mobile.png) | 375 × 1048 |
+| [login-mobile.png](login-mobile.png) | 390 × 844 |
+| [offline-mobile.png](offline-mobile.png) | 390 × 924 |
 | [parent-unauth-desktop.png](parent-unauth-desktop.png) | 1440 × 1000 |
 | [parent-unauth-mobile.png](parent-unauth-mobile.png) | 390 × 844 |
-| [student-unauth-desktop.png](student-unauth-desktop.png) | 1425 × 3578 |
-| [student-unauth-mobile.png](student-unauth-mobile.png) | 375 × 5463 |
-| [teacher-unauth-desktop.png](teacher-unauth-desktop.png) | 1425 × 3578 |
-| [teacher-unauth-mobile.png](teacher-unauth-mobile.png) | 375 × 5463 |
+| [student-unauth-desktop.png](student-unauth-desktop.png) | 1440 × 1000 |
+| [student-unauth-mobile.png](student-unauth-mobile.png) | 390 × 844 |
+| [teacher-unauth-desktop.png](teacher-unauth-desktop.png) | 1440 × 1000 |
+| [teacher-unauth-mobile.png](teacher-unauth-mobile.png) | 390 × 844 |

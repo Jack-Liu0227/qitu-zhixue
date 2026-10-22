@@ -19,19 +19,19 @@
 
 | 文件 | 尺寸 |
 |---|---|
-| [dashboard-desktop.png](dashboard-desktop.png) | 1425 × 1120 |
-| [dashboard-mobile.png](dashboard-mobile.png) | 375 × 1855 |
+| [dashboard-desktop.png](dashboard-desktop.png) | 1440 × 1120 |
+| [dashboard-mobile.png](dashboard-mobile.png) | 390 × 1736 |
 | [issues-desktop.png](issues-desktop.png) | 1440 × 1000 |
-| [issues-mobile.png](issues-mobile.png) | 390 × 844 |
-| [knowledge-desktop.png](knowledge-desktop.png) | 1425 × 1120 |
-| [knowledge-mobile.png](knowledge-mobile.png) | 375 × 1855 |
+| [issues-mobile.png](issues-mobile.png) | 390 × 887 |
+| [knowledge-desktop.png](knowledge-desktop.png) | 1440 × 1120 |
+| [knowledge-mobile.png](knowledge-mobile.png) | 390 × 1736 |
 | [statistics-desktop.png](statistics-desktop.png) | 1440 × 1000 |
-| [statistics-mobile.png](statistics-mobile.png) | 375 × 1228 |
+| [statistics-mobile.png](statistics-mobile.png) | 390 × 1070 |
 | [student-detail-desktop.png](student-detail-desktop.png) | 1440 × 1000 |
 | [student-detail-loading-desktop.png](student-detail-loading-desktop.png) | 1440 × 1000 |
-| [student-detail-mobile.png](student-detail-mobile.png) | 375 × 2053 |
+| [student-detail-mobile.png](student-detail-mobile.png) | 390 × 2678 |
 | [students-desktop.png](students-desktop.png) | 1440 × 1000 |
 | [students-mobile-scroll-0-1.png](students-mobile-scroll-0-1.png) | 390 × 844 |
 | [students-mobile-scroll-0-2.png](students-mobile-scroll-0-2.png) | 390 × 844 |
 | [students-mobile-scroll-0-3.png](students-mobile-scroll-0-3.png) | 390 × 844 |
-| [students-mobile.png](students-mobile.png) | 375 × 2053 |
+| [students-mobile.png](students-mobile.png) | 390 × 2678 |

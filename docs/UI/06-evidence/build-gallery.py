@@ -14,6 +14,8 @@ GROUPS = {
 metrics = json.loads((ROOT / '06-evidence/browser-metrics.json').read_text(encoding='utf-8'))
 items = []
 for path in sorted(ROOT.glob('*/*.png')):
+    if path.parent.name not in GROUPS:
+        continue
     data = path.read_bytes()
     assert data[:8] == b'\x89PNG\r\n\x1a\n', path
     width, height = struct.unpack('>II', data[16:24])

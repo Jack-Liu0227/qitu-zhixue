@@ -16,9 +16,9 @@
 
 | 文件 | 尺寸 |
 |---|---|
-| [home-desktop.png](home-desktop.png) | 1432 × 1033 |
-| [home-mobile.png](home-mobile.png) | 382 × 2177 |
+| [home-desktop.png](home-desktop.png) | 1440 × 1004 |
+| [home-mobile.png](home-mobile.png) | 390 × 2148 |
 | [messages-desktop.png](messages-desktop.png) | 1440 × 1000 |
-| [messages-mobile.png](messages-mobile.png) | 382 × 1372 |
-| [progress-desktop.png](progress-desktop.png) | 1432 × 1190 |
-| [progress-mobile.png](progress-mobile.png) | 382 × 1897 |
+| [messages-mobile.png](messages-mobile.png) | 390 × 976 |
+| [progress-desktop.png](progress-desktop.png) | 1440 × 1000 |
+| [progress-mobile.png](progress-mobile.png) | 390 × 844 |

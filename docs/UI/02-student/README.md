@@ -29,8 +29,8 @@
 
 | 文件 | 尺寸 |
 |---|---|
-| [growth-desktop.png](growth-desktop.png) | 1432 × 1008 |
-| [growth-mobile.png](growth-mobile.png) | 382 × 1266 |
+| [growth-desktop.png](growth-desktop.png) | 1440 × 1295 |
+| [growth-mobile.png](growth-mobile.png) | 390 × 1568 |
 | [inspiration-desktop.png](inspiration-desktop.png) | 1440 × 1000 |
 | [inspiration-mobile.png](inspiration-mobile.png) | 390 × 844 |
 | [optics-preview-desktop-part-2.png](optics-preview-desktop-part-2.png) | 1440 × 1000 |
@@ -43,27 +43,27 @@
 | [optics-preview-mobile-part-6.png](optics-preview-mobile-part-6.png) | 390 × 844 |
 | [optics-preview-mobile.png](optics-preview-mobile.png) | 390 × 844 |
 | [practice-route-desktop.png](practice-route-desktop.png) | 1440 × 1000 |
-| [practice-route-mobile.png](practice-route-mobile.png) | 382 × 1113 |
-| [profile-desktop.png](profile-desktop.png) | 1432 × 1348 |
-| [profile-mobile.png](profile-mobile.png) | 382 × 2495 |
-| [project-detail-desktop.png](project-detail-desktop.png) | 1432 × 2558 |
-| [project-detail-mobile.png](project-detail-mobile.png) | 382 × 3381 |
-| [project-from-list-desktop.png](project-from-list-desktop.png) | 1432 × 2093 |
-| [project-from-list-mobile.png](project-from-list-mobile.png) | 382 × 2789 |
-| [project-learn-desktop.png](project-learn-desktop.png) | 1432 × 2558 |
-| [project-learn-mobile.png](project-learn-mobile.png) | 382 × 3381 |
+| [practice-route-mobile.png](practice-route-mobile.png) | 390 × 5268 |
+| [profile-desktop.png](profile-desktop.png) | 1440 × 1598 |
+| [profile-mobile.png](profile-mobile.png) | 390 × 2494 |
+| [project-detail-desktop.png](project-detail-desktop.png) | 1440 × 4292 |
+| [project-detail-mobile.png](project-detail-mobile.png) | 390 × 5008 |
+| [project-from-list-desktop.png](project-from-list-desktop.png) | 1440 × 4292 |
+| [project-from-list-mobile.png](project-from-list-mobile.png) | 390 × 5008 |
+| [project-learn-desktop.png](project-learn-desktop.png) | 1440 × 4292 |
+| [project-learn-mobile.png](project-learn-mobile.png) | 390 × 5008 |
 | [project-practice-desktop.png](project-practice-desktop.png) | 1440 × 1000 |
-| [project-practice-mobile.png](project-practice-mobile.png) | 382 × 1113 |
+| [project-practice-mobile.png](project-practice-mobile.png) | 390 × 5268 |
 | [projects-desktop.png](projects-desktop.png) | 1440 × 1000 |
-| [projects-mobile.png](projects-mobile.png) | 382 × 1752 |
+| [projects-mobile.png](projects-mobile.png) | 390 × 1081 |
 | [recommended-detail-desktop.png](recommended-detail-desktop.png) | 1440 × 1000 |
-| [recommended-detail-mobile.png](recommended-detail-mobile.png) | 382 × 1156 |
+| [recommended-detail-mobile.png](recommended-detail-mobile.png) | 390 × 844 |
 | [reflection-route-desktop.png](reflection-route-desktop.png) | 1440 × 1000 |
-| [reflection-route-mobile.png](reflection-route-mobile.png) | 382 × 1060 |
+| [reflection-route-mobile.png](reflection-route-mobile.png) | 390 × 5008 |
 | [theory-route-desktop.png](theory-route-desktop.png) | 1440 × 1000 |
-| [theory-route-mobile.png](theory-route-mobile.png) | 382 × 3381 |
+| [theory-route-mobile.png](theory-route-mobile.png) | 390 × 5008 |
 | [today-desktop.png](today-desktop.png) | 1440 × 1000 |
-| [today-mobile.png](today-mobile.png) | 382 × 917 |
+| [today-mobile.png](today-mobile.png) | 390 × 1072 |
 | [tutor-desktop.png](tutor-desktop.png) | 1440 × 1000 |
 | [tutor-mobile.png](tutor-mobile.png) | 390 × 844 |
 | [workbench-route-desktop.png](workbench-route-desktop.png) | 1440 × 1000 |
