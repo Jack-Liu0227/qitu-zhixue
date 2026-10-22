@@ -65,10 +65,6 @@ export function ChatBubble({
   const showCaret = streaming && !isStudent && lastRaw !== undefined && isTextBlock(lastRaw);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState<import('@qitu/contracts').TutorFeedbackKind | null>(null);
-  const [feedbackPending, setFeedbackPending] = useState(false);
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
-  const feedbackKeysRef = useRef(new Map<import('@qitu/contracts').TutorFeedbackKind, string>());
   const [speechRate, setSpeechRate] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -304,32 +300,6 @@ export function ChatBubble({
           ),
         )}
         {showCaret ? <StreamCaret /> : null}
-        {!isStudent && onFeedback && !streaming ? (
-          <div className="qitu-tutor-feedback-actions" role="group" aria-label="回复反馈">
-            <span>这条回复对你有帮助吗？</span>
-            {(['helpful', 'confusing', 'stuck'] as const).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                className="qitu-button qitu-button-ghost qitu-button-sm"
-                disabled={feedbackPending || feedbackSent !== null || disabled}
-                onClick={() => {
-                  const idempotencyKey = feedbackKeysRef.current.get(kind) ?? createIdempotencyKey();
-                  feedbackKeysRef.current.set(kind, idempotencyKey);
-                  setFeedbackPending(true);
-                  setFeedbackError(null);
-                  void onFeedback(turn.turnId, kind, idempotencyKey)
-                    .then(() => { setFeedbackSent(kind); feedbackKeysRef.current.delete(kind); })
-                    .catch((error: unknown) => setFeedbackError(error instanceof Error ? error.message : '反馈暂未送达，请重试'))
-                    .finally(() => setFeedbackPending(false));
-                }}
-              >
-                {feedbackSent === kind ? '已记录' : kind === 'helpful' ? '有帮助' : kind === 'confusing' ? '没看懂' : '我卡住了'}
-              </button>
-            ))}
-            {feedbackError ? <span role="alert">{feedbackError}</span> : null}
-          </div>
-        ) : null}
       </div>
     </div>
   );

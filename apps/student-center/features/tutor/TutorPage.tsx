@@ -191,21 +191,6 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           </span>
           {eyecareActive && <span className="qitu-eyecare-pulse-dot" aria-hidden="true" />}
         </button>
-        {projectSummary ? (
-          <button
-            type="button"
-            className="qitu-button qitu-button-ghost"
-            disabled={!ready || busy || confirming || session.offline}
-            onClick={() => {
-              void composer.submit(
-                '请在当前 AI 搭档会话中打开动态物理课件，先让我提交预测，再运行单缝衍射或散射仿真。',
-                session.submitText,
-              );
-            }}
-          >
-            <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span> 动态实验课件
-          </button>
-        ) : null}
 
         <button type="button" className="qitu-button qitu-button-ghost" onClick={toggleContext} aria-expanded={rightOpen}>
           项目与进度
