@@ -3,7 +3,6 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   type ComposerMode,
-  QUICK_PROMPTS,
   type VoiceCapability,
   type VoiceSelection,
   type VoiceStatus,
@@ -469,13 +468,6 @@ export function Composer({
     }
   };
 
-  const handleApplyPrompt = (promptText: string) => {
-    if (disabled) return;
-    const nextValue = draft.trim().length > 0 ? `${draft.trim()} ${promptText}` : promptText;
-    onDraftChange(nextValue);
-    textareaRef.current?.focus();
-  };
-
   return (
     <form className="qitu-composer" onSubmit={(event) => { event.preventDefault(); submit(); }}>
       {/* 正在录音或识别时的动态声波指示条 */}
@@ -527,23 +519,6 @@ export function Composer({
         </div>
       )}
 
-      {mode === 'text' ? (
-        <div className="qitu-composer-quick-prompts" role="group" aria-label="启发思考快捷提问">
-          <span className="qitu-composer-quick-label">思考灵感：</span>
-          {QUICK_PROMPTS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="qitu-composer-prompt-chip"
-              disabled={disabled || submitting}
-              onClick={() => handleApplyPrompt(item.prompt)}
-            >
-              <span aria-hidden="true">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       {/* 隐藏的文件输入组件 */}
       <input

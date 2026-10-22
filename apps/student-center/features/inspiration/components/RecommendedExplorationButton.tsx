@@ -50,6 +50,20 @@ export function RecommendedExplorationButton({
         keyRef.current,
       );
       if (scope !== scopeRef.current) return;
+      if (dataSource.confirmRecommendedExploration) {
+        try {
+          const confirmed = await dataSource.confirmRecommendedExploration(
+            result.id,
+            templateVersionId,
+            `${keyRef.current}:confirm`,
+          );
+          if (scope !== scopeRef.current) return;
+          router.push(`/tutor/${encodeURIComponent(confirmed.projectId)}`);
+          return;
+        } catch {
+          // If direct confirmation fails (e.g. template requires manual intake dialog), fallback to exploration
+        }
+      }
       router.push(`/tutor?explorationId=${encodeURIComponent(result.id)}`);
     } catch (cause) {
       if (scope !== scopeRef.current) return;

@@ -379,7 +379,7 @@ export const OPTICS_PHASES: readonly PblTemplatePhase[] = [
     gateCondition: 'student_confirmed_intent' as GateConditionId,
     deliverableType: 'project_intent_doc',
     evidenceProfile: null as EvidenceProfile | null,
-    assignedAssistantId: 'qitu-intake-assistant',
+    assignedAssistantId: 'optics-leader',
   },
   {
     phase: 'concept_mastery',

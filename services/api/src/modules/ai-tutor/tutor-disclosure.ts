@@ -16,7 +16,7 @@ export function pendingDisclosure(question: PendingQuestionRecord): TutorDisclos
 
 export function disclosurePrompt(disclosure: TutorDisclosure): string {
   return disclosure.kind === 'instruction'
-    ? '本轮为教学讲解：允许讲清概念、公式、结论及标明为示例的解题过程。不要用反问代替必要解释。AI 示例不代表学生掌握或作品通过。'
+    ? '本轮为教学讲解：默认学生零基础，先用通俗比喻与生动生活现象讲解定性机理，再结合公式、图表或动态课件给出清晰结论；不要用空洞反问代替必要解释。AI 示例不代表学生掌握或作品通过。'
     : `本轮存在尚未提交的题目。允许解释先备概念、给线索或不同题的示例；不得代选选项、完成当前题、输出私有答案或解析。求助不作判错，不替换当前题。公开题目：${JSON.stringify({ questionId: disclosure.questionId, prompt: disclosure.prompt, options: disclosure.options })}`;
 }
 

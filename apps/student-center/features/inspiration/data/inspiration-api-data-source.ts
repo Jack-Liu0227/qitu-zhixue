@@ -100,6 +100,43 @@ export class InspirationApiDataSource implements InspirationDataSource {
     return data as unknown as ExplorationView;
   }
 
+  async confirmRecommendedExploration(
+    explorationId: string,
+    templateVersionId: string,
+    idempotencyKey: string,
+  ): Promise<{ projectId: string }> {
+    let response: Response;
+    try {
+      response = await fetch(`/api/v1/explorations/${encodeURIComponent(explorationId)}/confirm-intent`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'idempotency-key': idempotencyKey,
+        },
+        body: JSON.stringify({ templateVersionId }),
+      });
+    } catch {
+      throw new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
+    }
+    const payload: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const detail = isRecord(payload) && typeof payload.message === 'string'
+        ? payload.message
+        : `学习意图确认失败（${response.status}）`;
+      const code = isRecord(payload) && typeof payload.code === 'string'
+        ? payload.code
+        : `HTTP_${response.status}`;
+      throw new ApiError(detail, response.status, code);
+    }
+    const data: unknown = isRecord(payload) && 'data' in payload ? payload.data : payload;
+    if (!isRecord(data) || !isRecord(data.project) || typeof data.project.id !== 'string') {
+      throw new ApiError('确认响应格式异常', response.status, 'BAD_CONFIRM_PAYLOAD');
+    }
+    return { projectId: data.project.id };
+  }
+
   /** 把服务端模板投影为展示模型；缺失字段留空，绝不编造内容。 */
   private async toTemplates(list: unknown[], endpoint: string): Promise<InspirationTemplate[]> {
     const items = list.filter(isRecord);

@@ -16,4 +16,9 @@ export interface InspirationDataSource {
     request: CreateExplorationRequest,
     idempotencyKey: string,
   ): Promise<ExplorationView>;
+  confirmRecommendedExploration?(
+    explorationId: string,
+    templateVersionId: string,
+    idempotencyKey: string,
+  ): Promise<{ projectId: string }>;
 }

@@ -13,11 +13,11 @@ VALUES
     '负责物理光学探究全流程把控、生活情境启发、探究课题界定与阶段门禁把关。',
     'Team Leader / 物理总导师', true, 13,
     'deepseek', 'deepseek-flash', 0.7,
-    '你是物理光学探究项目的总导师。坚持苏格拉底式发问，引导学生从日常生活中的光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹）出发，提出关于光的本质、传播规律与波动特性的物理问题。在学生未达成概念掌握前，不推进至实验实践阶段。',
-    '["tutor-guided-learning"]'::jsonb,
-    '["mastery_query","student_profile_get"]'::jsonb,
+    '你是物理光学探究项目的总导师。假定学生零基础，用日常光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹）通俗引入，激发学生提出物理问题。带领团队落实「理论讲授->课件演示->随堂随测->留痕推进」四步闭环。在学生未达成概念掌握（TheoryMastered）前，不推进至实验实践阶段。',
+    '["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry","pbl-driving-question","pbl-visual-explainer"]'::jsonb,
+    '["tutor.propose_lesson_activity","tutor.propose_wave_activity","mastery_query","student_profile_get","knowledge_search"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
   ),
   (
@@ -25,11 +25,11 @@ VALUES
     '负责光的反射定律、折射定律与折射率、全反射临界角及透镜成像规律解析与概念闯关。',
     'Concept Coach / 概念教练', true, 14,
     'deepseek', 'deepseek-flash', 0.6,
-    '运用启发式教学，通过生活现象（筷子在水中折断、水底看起来变浅、光纤传光）结合数学公式与作图法，引导学生深刻理解反射定律、折射定律 n = c/v = sinθ₁/sinθ₂、全反射临界角 sinC = 1/n 与凸透镜成像规律。通过测试检验学生理解，在 TheoryMastered 之前严格把关。',
-    '["tutor-guided-learning"]'::jsonb,
-    '["knowledge_search"]'::jsonb,
+    '你是物理光学原理与概念教练。假定学生零基础，先用生活比喻（筷子在水中折断、水底看起来变浅、光纤传光、水波相遇叠加）讲清定性机理，再结合几何图示与公式（反射定律、折射定律 n = c/v = sinθ₁/sinθ₂、全反射临界角 sinC = n₂/n₁、透镜成像与波动叠加）推导。主动生成动态板书（kind=''board''）或图示预览进行直观演示；随后出随堂单选题检验，并在答题阶段严格守卫答案，给出梯级提示。在 TheoryMastered 之前严格把关。',
+    '["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry","pbl-understanding-coach","pbl-concept-probe","pbl-visual-explainer","pbl-cer-coach"]'::jsonb,
+    '["tutor.propose_lesson_activity","tutor.propose_wave_activity","knowledge_search"]'::jsonb,
     '[]'::jsonb,
-    '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
   ),
   (
@@ -37,11 +37,11 @@ VALUES
     '负责在 TheoryMastered 后指导学生搭建光路、进行单缝衍射图样分析与介质微粒散射仿真探究。',
     'Experiment Guide / 仿真向导', true, 15,
     'deepseek', 'deepseek-flash', 0.5,
-    '仅在理论概念掌握（TheoryMastered）后开放实验工具。指导学生在光的散射与衍射动态探究台（OpticsDiffractionScatteringCard）中调节激光波长 λ、狭缝宽度 a、光屏距离 D 与介质微粒半径 r，观察衍射中央亮纹宽度变化与瑞利散射波长依赖性，采集数据并完成探究实验报告。',
-    '["tutor-guided-learning"]'::jsonb,
+    '仅在理论概念掌握（TheoryMastered）后开放定量实验工具。严格贯彻控制变量法（一次只改变一个自变量，如狭缝宽度 a、波长 λ、屏距 D 或微粒半径 r），指导学生在单缝衍射、双缝干涉与细雾室介质散射中采集数据，严格区分模型计算、模拟观察与实测数据，记录异常值并完成探究实验报告。',
+    '["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry","pbl-experiment-design","pbl-hypothesis-coach","pbl-data-literacy"]'::jsonb,
+    '["tutor.propose_lesson_activity","tutor.propose_wave_activity"]'::jsonb,
     '[]'::jsonb,
-    '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
   ),
   (
@@ -49,11 +49,11 @@ VALUES
     '负责光学实验报告审查、CER 证据链核验、线上答辩评审与物理学科核心素养成长归档。',
     'Reviewer / 评审导师', true, 16,
     'deepseek', 'deepseek-flash', 0.7,
-    '主持物理光学探究答辩评审。从实验数据真实性、误差分析（单缝衍射中央亮纹边界判定、环境杂散光影响）、CER 科学论证结构（主张-证据-推理）与生活应用迁移四个维度综合评审，生成物理学科核心素养成长归档。',
-    '["tutor-guided-learning"]'::jsonb,
+    '主持物理光学探究答辩评审。从实验数据真实性、误差分析（单缝衍射中央亮纹边界判定、环境杂散光影响）、CER 科学论证结构（主张-证据-推理）与生活应用迁移四个维度综合评审，引导学生明确光学模型适用边界，生成物理学科核心素养成长归档。',
+    '["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry","pbl-artifact-revision","pbl-defense-coach","pbl-reflection-coach"]'::jsonb,
+    '["tutor.propose_lesson_activity","tutor.propose_wave_activity"]'::jsonb,
     '[]'::jsonb,
-    '[]'::jsonb,
-    '{"model":{"mode":"default","value":"qwen3.8-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
+    '{"model":{"mode":"default","value":"deepseek-flash"},"permission":{"mode":"auto","value":"supervised"},"thought_level":{"mode":"high","value":"balanced"},"skills":{"mode":"custom","value":["tutor-guided-learning","pbl-dynamic-lesson","optics-coherent-wave-inquiry"]},"mcps":{"mode":"default","value":[]}}'::jsonb,
     'online', true, NULL, NOW(), NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
@@ -78,7 +78,7 @@ VALUES
     'team-optics-inquiry',
     '探究光的路径：从反射定律到透镜成像 PBL 导师团队',
     '面向物理光学探究、单缝衍射与介质散射实验设计的专属多智能体协同导师团队。引导学生从生活情境发问、光学核心定律推导、动态仿真验证到答辩反思归档。',
-    'shared', 'supervised', 'optics-concept-coach',
+    'shared', 'supervised', 'optics-leader',
     2,
     $pbl${
       "projectId": "pbl-optics-inquiry",
@@ -88,7 +88,7 @@ VALUES
         {
           "phase": "exploration",
           "title": "阶段一：生活情境启发与探究课题确认",
-          "assignedAssistantId": "qitu-intake-assistant",
+          "assignedAssistantId": "optics-leader",
           "assignedRoleLabel": "物理总导师",
           "learningObjectives": [
             "观察生活中的光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹），提出物理问题",
@@ -177,7 +177,7 @@ VALUES
     '物理光学探究导师团队初始稳定版本',
     'shared',
     'supervised',
-    'optics-concept-coach',
+    'optics-leader',
     '[
       {"assistantId": "optics-leader", "roleLabel": "物理总导师", "phaseScope": "exploration"},
       {"assistantId": "optics-concept-coach", "roleLabel": "概念教练", "phaseScope": "concept_mastery"},
@@ -192,7 +192,7 @@ VALUES
         {
           "phase": "exploration",
           "title": "阶段一：生活情境启发与探究课题确认",
-          "assignedAssistantId": "qitu-intake-assistant",
+          "assignedAssistantId": "optics-leader",
           "assignedRoleLabel": "物理总导师",
           "learningObjectives": [
             "观察生活中的光影现象（彩虹、水面折射、雾中光束与窄缝衍射条纹），提出物理问题",
@@ -249,12 +249,11 @@ VALUES
       "theoryMasteredGate": true,
       "allowAutonomousAdvance": false
     }$pbl$::jsonb,
-    true,
-    'admin-1',
-    NOW()
+    true, NULL, NOW()
   )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
+  description = EXCLUDED.description,
   leader_assistant_id = EXCLUDED.leader_assistant_id,
   members = EXCLUDED.members,
   pbl_spec = EXCLUDED.pbl_spec,

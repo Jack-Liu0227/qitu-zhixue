@@ -22,7 +22,6 @@ import { ExplorationProgressPanel } from './components/ExplorationProgressPanel'
 import { useTutorDataSource } from './TutorDataSourceProvider';
 import { createIdempotencyKey } from './idempotency';
 import { getStoredEyecare, setStoredEyecare, subscribeEyecare } from './lib/eyecareStorage';
-import { LessonLearningDock } from './components/LessonLearningDock';
 import type { TutorLoadStatus, TutorViewError } from './types';
 
 /** Teaching state and gate decisions come only from the owned server session. */
@@ -264,10 +263,7 @@ export function TutorPage({ projectId }: { projectId?: string }) {
           onExperimentAction={(experimentId, action, payload, idempotencyKey) => session.submitExperimentAction(experimentId, { action, payload, idempotencyKey })}
           onFeedback={(turnId, kind, idempotencyKey) => session.submitFeedback({ turnId, kind, idempotencyKey })}
           projectId={projectSummary?.id ?? projectId ?? null}
-          learningActivity={projectSummary && session.project?.lesson ? <LessonLearningDock
-            projectId={projectSummary.id} lesson={session.project.lesson} refreshKey={session.project}
-            disabled={!ready || busy || confirming || session.offline} onChanged={session.refreshProjectContext}
-          /> : null}
+          learningActivity={null}
           isConfirmingProject={confirming}
           composer={
             <Composer
