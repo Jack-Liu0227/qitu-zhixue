@@ -15,7 +15,7 @@ import {
   readTutorProjectionEvidence,
   readDomainProjectionEvidence,
 } from '@qitu/database';
-import { assertRuntimeSkillBudget, domainProjectionInstructions, growthProjectionResultSchema, MODEL_USAGE_SLOTS, tutorExpressionInstructions, validateDomainProjection, validateTutorExpressionProjection } from '@qitu/contracts';
+import { domainProjectionInstructions, growthProjectionResultSchema, MODEL_USAGE_SLOTS, tutorExpressionInstructions, validateDomainProjection, validateTutorExpressionProjection } from '@qitu/contracts';
 import { loadRuntimeSkillPackage } from '@qitu/model-runtime';
 import { and, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
@@ -84,7 +84,6 @@ export function buildTeamAgentPrompt(input: {
   constraints?: readonly string[];
   outputSchema?: Record<string, unknown> | null;
 }): { system: string; user: string } {
-  assertRuntimeSkillBudget(input.skills);
   const role = bounded(input.agent.roleDefinition, MAX_ROLE_CHARS);
   const definition = bounded(input.agent.agentDefinition, MAX_AGENT_DEFINITION_CHARS);
   const policy = bounded(input.globalPolicy, MAX_GLOBAL_POLICY_CHARS);
@@ -423,7 +422,6 @@ export async function loadAgentSkills(
     const content = readSkillContent(path, skillId, executionScope);
     return content === null ? [] : [{ id: skillId, content }];
   });
-  assertRuntimeSkillBudget(skills);
   return skills;
 }
 
@@ -440,7 +438,6 @@ export function loadProjectionSkills(
     if (content === null) throw new TeamAgentExecutionError('PROJECTION_SKILL_UNAVAILABLE');
     return { id, content };
   });
-  assertRuntimeSkillBudget(skills);
   return skills;
 }
 
@@ -535,6 +532,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function validateJsonSchema(value: unknown, schema: Record<string, unknown>, depth = 0): void {
   if (depth > 8) throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_SCHEMA_INVALID');
+  if (schema.allOf !== undefined) {
+    if (!Array.isArray(schema.allOf) || !schema.allOf.length) throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_SCHEMA_INVALID');
+    for (const constraint of schema.allOf) {
+      if (!isRecord(constraint)) throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_SCHEMA_INVALID');
+      validateJsonSchema(value, constraint, depth + 1);
+    }
+  }
   const type = schema.type;
   if (typeof type === 'string' && !matchesJsonType(value, type)) {
     throw new TeamAgentExecutionError('TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH');

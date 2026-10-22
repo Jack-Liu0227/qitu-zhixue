@@ -21,6 +21,15 @@ class StorePathFixture extends InMemoryTutorSessionStore {
   override readonly durable: boolean = true;
 }
 
+test('formal opening is lesson-led even when governance stage differs; no static four-phase board is injected', () => {
+  const blocks = buildProjectOpeningBlocks({ ...context,
+    lesson: { lessonIndex: 7, lessonCount: 12, completedCount: 6, title: '透镜作图', status: 'current' } });
+  assert.match(JSON.stringify(blocks), /第 7 \/ 12 课/);
+  assert.match(JSON.stringify(blocks), /已完成 6 课时/);
+  assert.equal(blocks.some(block => block.kind === 'board' || block.kind === 'pbl_card'), false);
+  assert.equal(blocks.some(block => block.kind === 'options'), true);
+});
+
 test('opening uses actual project, phase and team, not optics titles, version prefixes or a fixed schedule', () => {
   const blocks = buildProjectOpeningBlocks(context);
   const card = blocks.find((block) => block.kind === 'pbl_card');

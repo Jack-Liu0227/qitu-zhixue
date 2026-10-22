@@ -580,6 +580,7 @@ export default function AdminTemplatesPage() {
           {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
         </select></label>
         <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
+          lessonPolicy={editingTemplate.pblSpec?.lessonPolicy}
           versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []} phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams} />
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (

@@ -332,3 +332,4 @@ export function gradeQuizKeys(
 }
 
 export { OPTICS_16_COMPLETION_PROFILE_ID, OPTICS_16_COMPLETION_TEMPLATE_SPEC } from './optics/curriculum.js';
+export { OPTICS_GUIDED_PROFILE_ID, OPTICS_GUIDED_TEMPLATE_SPEC, OPTICS_GUIDED_ROLE_REQUIREMENTS } from './optics/guided-curriculum.js';

@@ -279,10 +279,9 @@ test('real Team executor sends scenario-selected model and rereads binding on ne
     assert.equal(JSON.stringify(valid).includes(studentText), false);
     assert.equal(JSON.stringify(job.task!.input).includes(studentText), false);
     modelOutput = JSON.stringify({ ...profileOutput, rawConversation: studentText });
-    const invalid = await execute(job);
-    assert.equal(invalid.result, null);
-    assert.equal(invalid.analysisErrorCode, 'PROJECTION_UNKNOWN_FIELD');
-    assert.equal(JSON.stringify(invalid).includes(studentText), false, 'arbitrary model echoes are not persisted even as proposed results');
+    await assert.rejects(execute(job), (error: unknown) => error instanceof TeamAgentExecutionError
+      && error.code === 'TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH'
+      && !JSON.stringify(error).includes(studentText), 'closed output rejects arbitrary private fields before persistence');
     modelOutput = JSON.stringify(profileOutput);
     routeOutputSchema = { type: 'object', required: ['version'], properties: { version: { type: 'string' } } };
     await assert.rejects(execute(job), /TEAM_AGENT_OUTPUT_SCHEMA_MISMATCH/, 'route schema still restricts projection output');

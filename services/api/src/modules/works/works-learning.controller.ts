@@ -26,7 +26,7 @@ export class WorksLearningController {
   async respond(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
     @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {
     const actor = requireRole(this.auth, cookie, 'student', '学习回应仅限学生本人提交');
-    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs']);
+    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs', 'activityId']);
     return { data: await this.learning.submitResponse(actor, planId, sessionId, input, requireKey(key)) };
   }
 
@@ -34,7 +34,7 @@ export class WorksLearningController {
   async artifact(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
     @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {
     const actor = requireRole(this.auth, cookie, 'student', '课时作品仅限学生本人提交');
-    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs', 'objectiveId', 'title', 'requestReview']);
+    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs', 'objectiveId', 'title', 'requestReview', 'activityId']);
     return { data: await this.learning.submitArtifact(actor, planId, sessionId, input, requireKey(key)) };
   }
 
@@ -42,7 +42,7 @@ export class WorksLearningController {
   async reflect(@Headers('cookie') cookie: string | undefined, @Headers('idempotency-key') key: string | undefined,
     @Param('planId') planId: string, @Param('sessionId') sessionId: string, @Body() body: unknown) {
     const actor = requireRole(this.auth, cookie, 'student', '学习反思仅限学生本人提交');
-    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs']);
+    const input = pickFields<LearningTextSubmission>(body, ['planRevision', 'content', 'evidenceRefs', 'activityId']);
     return { data: await this.learning.submitReflection(actor, planId, sessionId, input, requireKey(key)) };
   }
 }

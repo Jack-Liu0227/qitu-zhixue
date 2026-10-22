@@ -1,7 +1,9 @@
 import type { LessonActivity, PblTemplateSession } from './pbl-learning.js';
+import type { LessonActivityProgress } from './learning-session-progress.js';
 
 /** Server projection of one actual frozen lesson. It grants no execution authority. */
 export interface TutorLessonProgram {
+  currentActivity?: LessonActivityProgress | null;
   templateVersionId: string;
   planId: string;
   planRevision: number;

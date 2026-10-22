@@ -87,9 +87,18 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
         if (syncPending) void synchronize(syncPending.planRevision, syncPending.key); else void reload();
       }}>{syncPending ? '重试同步进度' : '重新读取课表'}</button></div> : null}
       {progress ? <>
-        {mode === 'schedule' ? <p>已完成 {progress.completedCount} / {progress.totalCount} 课时</p> : null}
+        {mode === 'schedule' ? <><p>已完成 {progress.completedCount} / {progress.totalCount} 课时</p>
+          <progress aria-label="已完成课时" max={progress.totalCount || 1} value={progress.completedCount} />
+          {current ? <p><strong>当前：第 {current.lessonIndex} 课 · {current.title}</strong></p> : null}
+          {current?.activities?.length ? <ol className="qitu-lesson-activities" aria-label="本课活动">
+            {current.activities.map(activity => <li key={activity.activityId} aria-current={activity.status === 'current' ? 'step' : undefined}>
+              <strong>{({ review: '回顾与观察', theory: '概念与示例', check: '检查与补救', practice: '探究任务', reflect: '表达与反思' })[activity.kind]}</strong>
+              <span> · {activity.status === 'completed' ? '已完成' : activity.status === 'current' ? '当前活动' : '待解锁'}</span>
+              {activity.status === 'current' ? <p>{activity.guidance}</p> : null}
+            </li>)}
+          </ol> : null}</> : null}
         {!progress.contractReady ? <p role="status">课时任务尚未准备完整，请联系老师检查项目配置。</p> : null}
-        {mode === 'schedule' ? <ol style={{ paddingInlineStart: 20 }}>
+        {mode === 'schedule' ? <ol className="qitu-lesson-schedule">
           {progress.sessions.map((item) => <li key={item.sessionId} aria-current={item.status === 'current' ? 'step' : undefined}>
             <strong>第 {item.lessonIndex} 课 · {item.title}</strong>
             <span> · {item.status === 'completed' ? '已完成' : item.status === 'current' ? '当前课时' : '待解锁'}</span>
@@ -97,7 +106,7 @@ function LessonProgressPanel({ projectId, planId, refreshKey, onProgressChanged,
           </li>)}
         </ol> : null}
         {current && mode === 'work' ? <LessonWorkPanel
-          key={`${current.sessionId}:${progress.planRevision}`}
+          key={`${current.sessionId}:${progress.planRevision}:${current.activities?.find(activity => activity.status === 'current')?.activityId ?? ''}`}
           scope={{ projectId, planId, planRevision: progress.planRevision, learningSessionId: current.sessionId }}
           lesson={current}
           refreshKey={progress}

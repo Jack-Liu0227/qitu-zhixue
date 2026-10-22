@@ -41,8 +41,13 @@ export function teachingContextFixture(assistantId = 'session-mentor') {
   } as unknown as LearningPlanStore;
   return { project, plan, bundle, teaching, store, mastered, completed,
     setPending: (sessionIndex: number, objectiveIndex = sessionIndex) => { awaiting = {
+      id: 'pending-fixture', schoolId: null, questionType: 'choice', prompt: 'Public fixture question',
+      options: [{ id: 'A', label: 'A', body: 'First fixture option' }, { id: 'B', label: 'B', body: 'Second fixture option' }],
+      expectedAnswer: 'A', explanation: 'Private fixture explanation', difficulty: 'easy', assessmentType: 'quiz',
+      attempt: 1, hintsUsed: 0, idempotencyKey: 'pending-fixture', askedAt: new Date(0), answeredAt: null,
+      createdAt: new Date(0), updatedAt: new Date(0),
       studentUserId: project.studentId, planId: plan.id, sessionId: `${plan.id}:lesson-${sessionIndex}`,
       objectiveId: `${plan.id}:objective-${objectiveIndex}`, status: 'awaiting',
-    } as PendingQuestionRecord; },
+    }; },
   };
 }

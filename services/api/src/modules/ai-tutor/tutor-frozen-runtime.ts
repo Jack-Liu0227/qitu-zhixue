@@ -2,6 +2,19 @@ import { ConflictException } from '@nestjs/common';
 import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import type { CompiledTeachingRole } from '../templates/teaching-bundle.types';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
+import type { TutorTeachingContext } from './tutor-teaching-context';
+
+export function scopeTutorRuntimeToLesson(runtime: EffectiveAgentRuntime, teaching?: TutorTeachingContext | null): EffectiveAgentRuntime {
+  if (teaching?.bundle.template.lessonPolicy !== 'lesson-guided.v1') return runtime;
+  const lesson = teaching.bundle.template.curriculum?.profiles.find(profile => profile.id === teaching.bundle.scheduleProfileId)
+    ?.sessions.find(session => session.sessionIndex === teaching.session.lessonIndex);
+  const required = lesson?.requiredSkillIds;
+  if (!required?.length || required.some(id => !runtime.skills.some(skill => skill.id === id))) {
+    throw new ConflictException({ code: 'LESSON_SKILL_UNAVAILABLE', message: '本课所需教学技能未获当前授权，请管理员检查课时配置。' });
+  }
+  const skills = runtime.skills.filter(skill => required.includes(skill.id));
+  return { ...runtime, skills, agent: { ...runtime.agent, skillIds: skills.map(skill => skill.id) } };
+}
 
 /** The current catalogue may revoke capabilities; it cannot rewrite a historical lesson. */
 export function freezeTutorRuntime(

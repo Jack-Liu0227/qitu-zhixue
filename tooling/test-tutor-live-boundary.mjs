@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
 import ts from 'typescript';
+import { createRequire } from 'node:module';
+import './verify-workspace-source.mjs';
 
 const root = resolve(import.meta.dirname, '..');
+const require = createRequire(import.meta.url);
 const cache = new Map();
 test('observation success requires a persisted receipt for the submitted session and run', async () => {
   const { TutorApiDataSource } = loadModule('apps/student-center/features/tutor/data/tutorApiDataSource.ts');
@@ -40,6 +43,7 @@ function loadModule(relative) {
   cache.set(path, exports);
   const code = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   new Function('require', 'exports', code)((name) => {
+    if (name === '@qitu/contracts') return require(name);
     if (!name.startsWith('.')) throw new Error(`Unexpected runtime dependency: ${name}`);
     return loadModule(resolve(path, '..', name) + '.ts');
   }, exports);

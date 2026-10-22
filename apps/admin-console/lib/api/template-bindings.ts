@@ -1,7 +1,12 @@
 import type { AdminProjectBindingRecovery, AdminProjectBindingReconfirmation, PblPhase, PblTemplateTeamBinding, TeachingBundleDraft } from '@qitu/contracts';
 import { adminEnvelopeRequest, newIdempotencyKey } from './types';
 
-export interface TemplateTeamBinding { binding: PblTemplateTeamBinding; configurationReady?: boolean; team: { id: string; name: string; runtimeSnapshotStatus?: string } | null }
+export interface TemplateTeamBinding {
+  binding: PblTemplateTeamBinding;
+  configurationReady?: boolean;
+  teachingReadiness?: { lessonCompletionReady: boolean; lessonSkillsDeclared: boolean; knowledgeRequired: boolean; knowledgeScopeDeclared: boolean };
+  team: { id: string; name: string; runtimeSnapshotStatus?: string } | null;
+}
 export interface PublishedTeamMember {
   slotId: string;
   assistantId: string;

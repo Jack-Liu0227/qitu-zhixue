@@ -35,6 +35,7 @@ interface Input {
   idempotencyKey: string;
   pendingQuestion?: Extract<TutorReplyBlock, { kind: 'quiz' }> | null;
   restorePending?: boolean;
+  assessmentPending?: boolean;
   refresh(): Promise<{ teaching: TutorTeachingContext; runtime: EffectiveAgentRuntime }>;
   acceptQuestion?(candidate: LessonQuestionCandidate, key: string,
     verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>): Promise<Extract<TutorReplyBlock, { kind: 'quiz' }>>;
@@ -123,6 +124,16 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
           invalid('课时、教学配置或权限已变化，请刷新后继续。');
         }
         const candidate = record(args);
+        const activity = fresh.teaching.lesson.currentActivity;
+        if (fresh.teaching.bundle.template.lessonPolicy === 'lesson-guided.v1') {
+          if (!activity || activity.activityId !== input.teaching.lesson.currentActivity?.activityId) invalid('当前活动已完成或变化，请刷新课时。');
+          if (candidate.kind === 'choice_question' && activity.kind !== 'check') invalid('选择题只用于当前检查活动。');
+          if (candidate.kind === 'optics' && activity.kind !== 'practice') invalid('实验只用于当前实践活动。');
+        }
+        // Arbitrary board/formula text must not become a second answer-disclosure channel.
+        if (input.assessmentPending || input.pendingQuestion) {
+          return { isError: true, text: 'PENDING_ASSESSMENT. Keep the existing question. Give a bounded textual hint; do not generate boards, experiments, replacement questions or answer keys.' };
+        }
         const digest = hashRequest(candidate);
         if (acceptedDigest) {
           if (acceptedDigest !== digest) invalid('本轮已有活动，请先完成当前任务。');
