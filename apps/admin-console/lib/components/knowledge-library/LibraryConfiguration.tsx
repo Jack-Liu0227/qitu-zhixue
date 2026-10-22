@@ -11,6 +11,7 @@ import {
 import { newIdempotencyKey } from '../../api/types';
 import { KnowledgeFileUpload } from '../KnowledgeFileUpload';
 import { ImaLibraryPicker } from './ImaLibraryPicker';
+import { connectionDiagnostic } from './connection-checks';
 import { Glyph, message, time } from './shared';
 import styles from './KnowledgeConfiguration.module.css';
 
@@ -51,6 +52,11 @@ export function LibraryConfiguration({
   const group = engines.find((g) => g.instances.some((i) => i.id === base.engine_instance_id));
   const engine = group?.instances.find((i) => i.id === base.engine_instance_id);
   const remote = !!base.connection && base.connection.status !== 'not_applicable';
+  const connectionState = connectionDiagnostic(
+    base.connection?.status ?? null,
+    base.connection?.lastErrorCode ?? null,
+    base.connection?.lastCheckAt ?? null,
+  );
   const disabled = busy || !online || uncertain;
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -221,11 +227,12 @@ export function LibraryConfiguration({
           <section className={styles.section}>
             <h3>连接与资源</h3>
             <p>
-              状态：{base.connection?.status} · 最近检查：{time(base.connection?.lastCheckAt)}
+              状态：{connectionState.label} · 最近检查：{time(base.connection?.lastCheckAt)}
             </p>
             {base.connection?.lastErrorCode && (
               <p className={styles.error}>{base.connection.lastErrorCode}</p>
             )}
+            <p className={styles.muted}>{connectionState.detail}</p>
             <p className={styles.muted}>
               原文件由原服务维护。连接检查、知识检索与原文读取分别验证。
             </p>

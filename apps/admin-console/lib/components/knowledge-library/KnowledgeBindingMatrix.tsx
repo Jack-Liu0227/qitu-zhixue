@@ -20,11 +20,13 @@ const bound = (data: Matrix, library: string, assistant: string) =>
 
 export function KnowledgeBindingMatrix({
   online,
+  blocked = false,
   refreshToken,
   focusLibraryId,
   onRead,
 }: {
   online: boolean;
+  blocked?: boolean;
   refreshToken: number;
   focusLibraryId: string | null;
   onRead: (data: Matrix) => void;
@@ -94,7 +96,8 @@ export function KnowledgeBindingMatrix({
   }, [drafts, uncertain]);
 
   const dirty = Object.values(drafts);
-  const editable = !!data?.complete && catalogValid && !loading && !saving && !uncertain && online;
+  const editable =
+    !!data?.complete && catalogValid && !loading && !saving && !uncertain && online && !blocked;
   const assistants =
     data?.assistants.filter((a) => a.name.toLowerCase().includes(query.toLowerCase())) ?? [];
   const libraries =
@@ -126,7 +129,7 @@ export function KnowledgeBindingMatrix({
   }
 
   async function save() {
-    if (!data || !online || saving || loading || (!catalogValid && !uncertain)) return;
+    if (!data || !online || blocked || saving || loading || (!catalogValid && !uncertain)) return;
     setSaving(true);
     setError('');
     setNotice('');
@@ -244,7 +247,7 @@ export function KnowledgeBindingMatrix({
           <p>勾选助手可使用的知识库。正式项目仍按已确认的教材范围执行。</p>
         </div>
         <button
-          disabled={!online || !data || !catalogValid || saving || uncertain || loading}
+          disabled={!online || blocked || !data || !catalogValid || saving || uncertain || loading}
           onClick={async () => {
             if (!data) return;
             setSaving(true);
@@ -444,6 +447,7 @@ export function KnowledgeBindingMatrix({
       <footer className={styles.footer}>
         <span>
           {dirty.length} 项待保存{uncertain ? ' · 提交待核验' : ''}
+          {blocked ? ' · 正在检测连接，暂缓保存' : ''}
         </span>
         <button
           disabled={!dirty.length || saving || uncertain}
@@ -458,6 +462,7 @@ export function KnowledgeBindingMatrix({
           className={styles.primary}
           disabled={
             !online ||
+            blocked ||
             saving ||
             loading ||
             (!uncertain && (!dirty.length || !data?.complete || !catalogValid))

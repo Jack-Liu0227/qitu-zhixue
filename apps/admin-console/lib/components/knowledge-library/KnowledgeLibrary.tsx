@@ -15,6 +15,8 @@ import { KnowledgeEngines } from '../knowledge-engines/KnowledgeEngines';
 import { CreateLibraryModal, type LibraryCreation } from './CreateLibraryModal';
 import { KnowledgeBindingMatrix } from './KnowledgeBindingMatrix';
 import { LibraryConfiguration } from './LibraryConfiguration';
+import { RemoteConnectionChecks } from './RemoteConnectionChecks';
+import { connectionDiagnostic } from './connection-checks';
 import { Glyph, fileBase64, message, statusLabels, time, type ModelOption } from './shared';
 import styles from './KnowledgeLibrary.module.css';
 
@@ -28,6 +30,7 @@ export function KnowledgeLibrary() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
@@ -76,6 +79,7 @@ export function KnowledgeLibrary() {
   }, [load]);
   const readMatrix = useCallback((value: Matrix) => setMatrix(value), []);
   async function configure(id: string) {
+    if (checking) return;
     const token = ++detailGeneration.current;
     setBusy(true);
     setError('');
@@ -137,7 +141,7 @@ export function KnowledgeLibrary() {
         {tab === 'bases' && (
           <button
             className={styles.primary}
-            disabled={!online || loading || busy}
+            disabled={!online || loading || busy || checking}
             onClick={async () => {
               setBusy(true);
               setError('');
@@ -160,7 +164,12 @@ export function KnowledgeLibrary() {
         <button role="tab" aria-selected={tab === 'bases'} onClick={() => setTab('bases')}>
           知识库
         </button>
-        <button role="tab" aria-selected={tab === 'engines'} onClick={() => setTab('engines')}>
+        <button
+          role="tab"
+          disabled={checking}
+          aria-selected={tab === 'engines'}
+          onClick={() => setTab('engines')}
+        >
           知识引擎
         </button>
       </nav>
@@ -192,6 +201,13 @@ export function KnowledgeLibrary() {
         />
       </div>
       <div hidden={tab !== 'bases'}>
+        <RemoteConnectionChecks
+          online={online}
+          disabled={loading || busy || !!detail || create}
+          onBusyChange={setChecking}
+          onChanged={refreshed}
+          onConfigure={configure}
+        />
         {!loading && (
           <>
             <div className={styles.listToolbar}>
@@ -240,7 +256,11 @@ export function KnowledgeLibrary() {
                     : state.reasons.length
                       ? state.reasons.join('，')
                       : state.connectionStatus
-                        ? '上次连接检查通过'
+                        ? connectionDiagnostic(
+                            state.connectionStatus,
+                            state.lastErrorCode,
+                            state.lastCheckedAt,
+                          ).label
                         : (statusLabels[state.buildState] ?? state.buildState);
                 return (
                   <article className={styles.libraryCard} key={base.id}>
@@ -254,6 +274,18 @@ export function KnowledgeLibrary() {
                     </div>
                     <h2>{base.name}</h2>
                     <p>{group?.name ?? '未配置引擎'}</p>
+                    {state?.connectionStatus && state.lastErrorCode && (
+                      <p>
+                        {
+                          connectionDiagnostic(
+                            state.connectionStatus,
+                            state.lastErrorCode,
+                            state.lastCheckedAt,
+                          ).label
+                        }{' '}
+                        · {state.lastErrorCode}
+                      </p>
+                    )}
                     <p>
                       最近检查：
                       {state?.connectionStatus ? time(state.lastCheckedAt) : '索引构建后验证'}
@@ -269,7 +301,7 @@ export function KnowledgeLibrary() {
                       </span>
                       <button
                         className={styles.textButton}
-                        disabled={busy}
+                        disabled={busy || checking}
                         onClick={() => void configure(base.id)}
                       >
                         配置
@@ -294,6 +326,7 @@ export function KnowledgeLibrary() {
         )}
         <KnowledgeBindingMatrix
           online={online}
+          blocked={checking}
           refreshToken={refreshToken}
           focusLibraryId={selectedId}
           onRead={readMatrix}
