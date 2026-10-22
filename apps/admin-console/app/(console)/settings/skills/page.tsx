@@ -612,7 +612,7 @@ export default function SkillsSettingsPage() {
         </div>
 
         {!editingSkill.local ? (
-          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#92400e', fontSize: '12.5px', lineHeight: 1.6 }}>
+          <div className="admin-skill-readonly-banner">
             此技能来自 AI 运行时目录（只读来源）。在本页修改属性或文件仅暂存于当前会话，不会写回服务器。
             {editingSkill.runtime === 'admin' ? ' Admin 管家按需加载已发布的专用技能，无需在助手矩阵中勾选。' : ' 与助手的绑定/解绑会通过助手接口真实持久化。'}
           </div>
@@ -1053,6 +1053,9 @@ export default function SkillsSettingsPage() {
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
                 当前矩阵包含 {assistants.length} 位助手、{matrixSkills.length} 项技能。勾选后保存并回读，结果以页面回执为准。
               </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className="admin-matrix-scroll-hint">↔ 可横向滚动查看全部技能列</span>
             </div>
           </div>
 

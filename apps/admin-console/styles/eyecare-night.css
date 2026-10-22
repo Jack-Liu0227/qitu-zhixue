@@ -2489,3 +2489,313 @@
   background: #000000 !important;
   color: #FFFFFF !important;
 }
+
+/* ==========================================================================
+   13. 智能助手详情与配置适配 (Problem 1)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-assistant-editor-view {
+  background: #0d1117 !important;
+  background-color: #0d1117 !important;
+  border: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-editor-topbar {
+  background: #161b22 !important;
+  border-bottom: 1px solid #2d333b !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-back-btn {
+  background: #21262d !important;
+  color: #c9d1d9 !important;
+  border: 1px solid #30363d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-assistant-back-btn:hover {
+  background: #30363d !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-card {
+  background: #161b22 !important;
+  background-color: #161b22 !important;
+  border: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-card-header {
+  border-bottom: 1px solid #2d333b !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-editor-section-title {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-identity-avatar-box {
+  background: #0d1117 !important;
+  border: 1px solid #2d333b !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-row {
+  border-bottom: 1px solid #21262d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-label-col,
+:root[data-qitu-eyecare="true"] .admin-config-name {
+  color: #c9d1d9 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-field-col {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-field-col .admin-select {
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+  border: 1px solid #30363d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-selector-pill {
+  background: #1e293b !important;
+  color: #60a5fa !important;
+  border: 1px solid #334155 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-hint {
+  color: #8b949e !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-config-link {
+  color: #58a6ff !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-segmented-ctrl {
+  background: #21262d !important;
+  border: 1px solid #30363d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-segmented-item {
+  color: #8b949e !important;
+  background: transparent !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-segmented-item.is-active {
+  background: #30363d !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-expand-toggle-btn {
+  color: #8b949e !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-prompt-editor-box {
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+  border: 1px solid #30363d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-rules-preview-pane {
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+  border: 1px solid #30363d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-rules-preview-pane pre {
+  color: #f0f6fc !important;
+}
+
+/* ==========================================================================
+   14. 技能中心只读提示 & 矩阵横向滚动提示 (Problem 2)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-skill-readonly-banner {
+  background: #231c0a !important;
+  background-color: #231c0a !important;
+  border: 1px solid #854d0e !important;
+  color: #fde047 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-skill-readonly-banner * {
+  color: inherit !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-matrix-scroll-hint {
+  background: #161b22 !important;
+  color: #94a3b8 !important;
+  border: 1px solid #30363d !important;
+}
+
+/* ==========================================================================
+   15. 项目模板库与 16 课时教学主线夜间模式深度消白 (Problem 3)
+   ========================================================================== */
+:root[data-qitu-eyecare="true"] .admin-template-editor-view {
+  background: transparent !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-editor-topbar {
+  background: #161b22 !important;
+  border-bottom: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-editor-topbar h1 {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-editor-top-tabs {
+  background: #161b22 !important;
+  border-bottom: 1px solid #2d333b !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-editor-tab-item {
+  color: #8b949e !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-editor-tab-item:hover {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-editor-tab-item.is-active {
+  color: #58a6ff !important;
+}
+
+:root[data-qitu-eyecare="true"] .team-editor-tab-item.is-active::after {
+  background: #58a6ff !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-workflow-container {
+  background: #0d1117 !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-workflow-intro,
+:root[data-qitu-eyecare="true"] .admin-template-sessions-intro {
+  background: #161b22 !important;
+  background-color: #161b22 !important;
+  border: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-workflow-intro strong,
+:root[data-qitu-eyecare="true"] .admin-template-sessions-intro strong,
+:root[data-qitu-eyecare="true"] .admin-template-workflow-intro p,
+:root[data-qitu-eyecare="true"] .admin-template-sessions-intro p {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-safety-box {
+  background: #231c0a !important;
+  border: 1px solid #854d0e !important;
+  color: #fde047 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-safety-box strong {
+  color: #fde047 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-phase-card {
+  background: #161b22 !important;
+  background-color: #161b22 !important;
+  border: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-template-phase-card strong,
+:root[data-qitu-eyecare="true"] .admin-template-phase-card p,
+:root[data-qitu-eyecare="true"] .admin-template-phase-card span {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-gate-box {
+  background: #251a0e !important;
+  background-color: #251a0e !important;
+  border: 1px solid #854d0e !important;
+  color: #fde047 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-gate-box strong,
+:root[data-qitu-eyecare="true"] .admin-session-gate-box span,
+:root[data-qitu-eyecare="true"] .admin-session-gate-box p {
+  color: #fef08a !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-gate-badge {
+  background: #111318 !important;
+  color: #fde047 !important;
+  border: 1px solid #854d0e !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-simulation-box {
+  background: #0d2419 !important;
+  background-color: #0d2419 !important;
+  border: 1px solid #14532d !important;
+  color: #4ade80 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-simulation-box strong,
+:root[data-qitu-eyecare="true"] .admin-session-simulation-box span {
+  color: #4ade80 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-simulation-code {
+  background: #163e2c !important;
+  color: #86efac !important;
+  border: 1px solid #14532d !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-goal-box {
+  background: #161920 !important;
+  background-color: #161920 !important;
+  border: 1px solid #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-goal-box strong,
+:root[data-qitu-eyecare="true"] .admin-session-goal-box span {
+  color: #f0f6fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-time-track {
+  background: #2d333b !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-evidence-pill {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item.is-review {
+  background: #291e0a !important;
+  border: 1px solid #78350f !important;
+  color: #fde047 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item.is-theory {
+  background: #0f1f38 !important;
+  border: 1px solid #1e3a8a !important;
+  color: #60a5fa !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item.is-check {
+  background: #2d1215 !important;
+  border: 1px solid #7f1d1d !important;
+  color: #f87171 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item.is-practice {
+  background: #0f241a !important;
+  border: 1px solid #14532d !important;
+  color: #4ade80 !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item.is-reflect {
+  background: #201335 !important;
+  border: 1px solid #581c87 !important;
+  color: #c084fc !important;
+}
+
+:root[data-qitu-eyecare="true"] .admin-session-guidance-item strong {
+  color: inherit !important;
+}

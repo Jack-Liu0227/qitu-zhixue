@@ -49,6 +49,8 @@ export function ParentShell({ children }: { children: ReactNode }) {
     const active = getStoredEyecare();
     if (active) {
       document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-qitu-eyecare');
     }
   }, []);
 
