@@ -2,6 +2,24 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { InspirationApiDataSource } from './inspiration-api-data-source';
 
+test('template lesson duration follows server schedule metadata and stays unknown without it', async () => {
+  const original = globalThis.fetch;
+  let scheduling: Record<string, unknown> = { lessonCount: 8, lessonMinutes: 60 };
+  globalThis.fetch = async url => Response.json({ data: String(url).endsWith('/api/v1/project-templates')
+    ? [{ id: 'wave', title: 'Wave inquiry', estimatedDurationMinutes: 480, latestPublishedVersionId: 'wave-v1', ...scheduling }]
+    : { stages: [] } });
+  try {
+    const source = new InspirationApiDataSource();
+    const item = (await source.listTemplates())[0]!;
+    assert.equal(item.lessonCount, 8); assert.equal(item.lessonMinutes, 60);
+    scheduling = { lessonCount: 4, lessonMinutes: 120 };
+    assert.equal((await source.listTemplates())[0]!.lessonCount, 4);
+    scheduling = {};
+    const unknown = (await source.listTemplates())[0]!;
+    assert.equal(unknown.lessonCount, null); assert.equal(unknown.lessonMinutes, null);
+  } finally { globalThis.fetch = original; }
+});
+
 test('opening a recommended exploration never confirms or creates a formal project', async () => {
   const original = globalThis.fetch;
   const calls: Array<{ url: string; init?: RequestInit }> = [];

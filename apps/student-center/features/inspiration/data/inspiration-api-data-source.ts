@@ -109,7 +109,6 @@ export class InspirationApiDataSource implements InspirationDataSource {
       .map((item): InspirationTemplate => {
         const id = item.id as string;
         const difficulty = toDifficulty(item.difficulty);
-        const minutes = typeof item.estimatedDurationMinutes === 'number' ? item.estimatedDurationMinutes : null;
         const domain = typeof item.domain === 'string' ? item.domain : null;
         return {
           id,
@@ -121,8 +120,8 @@ export class InspirationApiDataSource implements InspirationDataSource {
             ? item.learningObjectives.filter((tag): tag is string => typeof tag === 'string')
             : [],
           difficulty,
-          lessonCount: minutes !== null && minutes > 0 ? Math.max(1, Math.ceil(minutes / 60)) : null,
-          lessonMinutes: minutes !== null && minutes > 0 && minutes % 120 === 0 ? 120 : minutes !== null && minutes > 0 ? 60 : null,
+          lessonCount: Number.isSafeInteger(item.lessonCount) && Number(item.lessonCount) > 0 ? Number(item.lessonCount) : null,
+          lessonMinutes: item.lessonMinutes === 60 || item.lessonMinutes === 120 ? item.lessonMinutes : null,
           stages: stagesById.get(id) ?? [],
           outcome: typeof item.outcomeForm === 'string' ? item.outcomeForm : '',
           iconAssetId: typeof item.iconAssetId === 'string' ? item.iconAssetId : null,

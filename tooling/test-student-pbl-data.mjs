@@ -15,11 +15,12 @@ function load(path){
   new Function('require','exports',code)(name=>{
     if(name.startsWith('node:'))return require(name);
     if(name==='@qitu/contracts')return require(name);
+    if(name==='@qitu/api-client')return load(resolve(root,'packages/api-client/src/index.ts'));
     if(!name.startsWith('.'))throw new Error(`Unexpected browser data dependency: ${name}`);
     return load(resolve(dirname(path),name)+'.ts');
   },exports);
   return exports;
 }
-for(const test of ['features/projects/data/api-projects-data-source.test.ts','features/tutor/data/lessonWorkspaceApi.test.ts','features/tutor/data/tutor-confirmation.test.ts','features/tutor/data/tutor-exploration.test.ts']){
+for(const test of ['features/projects/data/api-projects-data-source.test.ts','features/tutor/data/lessonWorkspaceApi.test.ts','features/tutor/data/tutor-confirmation.test.ts','features/tutor/data/tutor-exploration.test.ts','features/inspiration/data/inspiration-api-data-source.test.ts']){
   load(resolve(root,'apps/student-center',test));
 }

@@ -5,6 +5,8 @@ import type { CurrentUser } from '@qitu/contracts';
 import { TemplateViewerDirectory } from './template-evidence.store';
 import { assertStudentCanReadTemplate } from './templates.policy';
 import { TemplateStore } from './templates.store';
+import { TemplateBindingStore } from './templates-binding.store';
+import { teachingValueDigest } from './teaching-bundle.canonical';
 import {
   latestPublishedVersionId,
   templateNotFound,
@@ -26,6 +28,7 @@ export class TemplatesService {
     private readonly store: TemplateStore,
     private readonly directory: TemplateViewerDirectory,
     @Optional() private readonly visuals?: VisualAssetsService,
+    @Optional() private readonly bindings?: TemplateBindingStore,
   ) {}
 
   async listPublishedTemplates(actor: CurrentUser): Promise<TemplateView[]> {
@@ -94,6 +97,13 @@ export class TemplatesService {
   ): Promise<TemplateView> {
     const versions = await this.store.listVersions(record.id);
     const view = toTemplateView(record, latestPublishedVersionId(versions));
+    const binding = view.latestPublishedVersionId ? await this.bindings?.findActiveBinding(view.latestPublishedVersionId) : null;
+    const bundle = binding?.bundlePayload;
+    const profile = bundle && binding?.status === 'active' && binding.validation.valid
+      && bundle.templateVersionId === view.latestPublishedVersionId && teachingValueDigest(bundle) === binding.bundleDigest
+      ? bundle.template.curriculum?.profiles.find(item => item.id === bundle.scheduleProfileId) : null;
+    view.lessonCount = profile?.schedule.lessonCount ?? null;
+    view.lessonMinutes = profile?.schedule.lessonMinutes ?? null;
     if (this.visuals) {
       const bindings = await this.visuals.presentationSnapshot();
       view.iconAssetId = resolveVisualBinding({ kind: 'template', id: record.id }, 'icon', bindings).effectiveAssetId;

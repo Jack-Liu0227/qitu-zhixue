@@ -93,6 +93,8 @@ export interface CreateTemplateVersionInput {
 /* ============================ 读操作投影 ============================ */
 
 export interface TemplateView {
+  lessonCount?: number | null;
+  lessonMinutes?: number | null;
   iconAssetId?: string | null;
   coverAssetId?: string | null;
   id: string;

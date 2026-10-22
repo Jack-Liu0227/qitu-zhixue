@@ -5,6 +5,11 @@ import { actor, DEFAULT_STAGES, VALID_CREATE_INPUT } from './templates.test-supp
 import type { InMemoryTemplateStore } from './templates.store';
 import type { ReadHarness } from './templates.test-support';
 import { makeReadHarness } from './templates.test-support';
+import { TemplatesService } from './templates.service';
+import type { TemplateBindingStore } from './templates-binding.store';
+import { teachingValueDigest } from './teaching-bundle.canonical';
+import { teachingContextFixture } from '../ai-tutor/tutor-teaching-context.test-fixture';
+import { WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 
 const NOW = new Date('2026-02-01T00:00:00.000Z');
 
@@ -40,6 +45,25 @@ describe('TemplatesService（学生只读作用域）', () => {
 
   beforeEach(() => {
     harness = makeReadHarness();
+  });
+
+  it('returns actual active frozen lesson scheduling; duration totals never imply a 120-minute lesson', async () => {
+    const { store, directory } = harness;
+    const { versionId } = await seedTemplate(store, { id: 'wave', slug: 'wave-schedule', schoolId: null, status: 'published' });
+    const { teaching } = teachingContextFixture();
+    teaching.templateVersionId = versionId;
+    teaching.template = WAVE_OPTICS_TEMPLATE_SPEC;
+    teaching.scheduleProfileId = 'wave-optics-8x60-v1';
+    let valid = true;
+    const service = new TemplatesService(store, directory, undefined, { findActiveBinding: async () => ({
+      status: 'active', validation: { valid }, bundlePayload: teaching, bundleDigest: teachingValueDigest(teaching),
+    }) } as unknown as TemplateBindingStore);
+    const view = await service.getPublishedTemplate(actor('student', 'student-a'), 'wave');
+    assert.equal(view.lessonCount, 8); assert.equal(view.lessonMinutes, 60);
+    assert.ok(!JSON.stringify(view).includes('FROZEN_TEACHING_INSTRUCTION'));
+    valid = false;
+    const unavailable = await service.getPublishedTemplate(actor('student', 'student-a'), 'wave');
+    assert.equal(unavailable.lessonCount, null); assert.equal(unavailable.lessonMinutes, null);
   });
 
   it('列表 = 平台 ∪ 本校已发布，不含他校 / 未发布', async () => {
