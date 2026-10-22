@@ -5,6 +5,7 @@ import type { CurrentUser, TeachingBundleDraft } from '@qitu/contracts';
 import { readFileSync } from 'node:fs';
 import { parseTeachingBundleDraft } from '../modules/templates/templates-binding.controller';
 import { AuditModule } from '../common/audit/audit.module';
+import { AccessModule } from '../common/access/access.module';
 import { IdempotencyModule } from '../common/idempotency/idempotency.module';
 import { hashRequest } from '../common/idempotency/idempotency.hash';
 import { DatabaseModule } from '../database';
@@ -367,7 +368,7 @@ function parseCliArgs(argv: string[]): CliArgs {
 }
 
 @Module({
-  imports: [DatabaseModule, IdempotencyModule, AuditModule, TemplatesModule],
+  imports: [DatabaseModule, AccessModule, IdempotencyModule, AuditModule, TemplatesModule],
 })
 class OpticsBootstrapModule {}
 

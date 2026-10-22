@@ -12,6 +12,8 @@ export function TeachingRoutingBoard({ profile, phases, members, team, draft, as
   onAssign: (phase: string, memberId: string) => void; onDraft: (draft: TeachingBundleDraft) => void;
   onSelectMember: (memberId: string) => void;
 }) {
+  const options = members.filter((member) => member.runtimeSnapshot);
+
   return <section className={styles.routing} aria-label="课程与课时安排">
     <header className={styles.columnHeader}><h3>课程与课时安排</h3><span>{profile ? `${profile.sessions.length} 课时` : '尚未选择排期'}</span></header>
     {!profile ? <div className={styles.empty}>先选择课时排期，再为课程分配授课导师。</div> :
@@ -20,27 +22,31 @@ export function TeachingRoutingBoard({ profile, phases, members, team, draft, as
         {phases.map((phase) => {
           const sessions = profile.sessions.filter((session) => session.phase === phase.phase);
           if (!sessions.length) return null;
-          const fixedMember = phase.assignedAssistantId ? members.find((member) => member.assistantId === phase.assignedAssistantId) : undefined;
-          const options = members.filter((member) => member.runtimeSnapshot && (!phase.assignedAssistantId || member.assistantId === phase.assignedAssistantId));
+          const assignedSlot = assignments[phase.phase];
+          const fixedMember = assignedSlot
+            ? members.find((member) => member.slotId === assignedSlot)
+            : phase.assignedAssistantId
+              ? members.find((member) => member.assistantId === phase.assignedAssistantId)
+              : undefined;
+
           return <section key={phase.phase} className={styles.phase} data-phase={phase.phase}>
             <div className={styles.phaseHeading}><strong>{phase.title}</strong><span>{sessions.length} 课时</span>
-              {!draft && !lessonPolicy && <label className={styles.phaseAssign}><span className={styles.srOnly}>{phase.title}的导师</span>
-                <select aria-label={`${phase.title}的导师`} value={fixedMember?.slotId ?? assignments[phase.phase] ?? ''}
-                  disabled={!editable || !!phase.assignedAssistantId} onChange={(event) => {
+              {!draft && <label className={styles.phaseAssign}><span className={styles.srOnly}>{phase.title}的导师</span>
+                <select aria-label={`${phase.title}的导师`} value={fixedMember?.slotId ?? ''}
+                  disabled={!editable} onChange={(event) => {
                     onAssign(phase.phase, event.target.value); onSelectMember(event.target.value);
                   }}>
-                  <option value="">请选择成员</option>{members.map((member) => <option key={member.slotId} value={member.slotId}>
+                  <option value="">请选择成员</option>{options.map((member) => <option key={member.slotId} value={member.slotId}>
                     {publishedMemberName(member, team)} · {member.roleLabel || member.role || '导师'}</option>)}
                 </select>
               </label>}
             </div>
-            {phase.assignedAssistantId && !fixedMember && <p className={styles.issue} role="alert">指定助手 {phase.assignedAssistantId} 不在此团队版本中。</p>}
+            {phase.assignedAssistantId && !fixedMember && !assignedSlot && <p className={styles.issue} role="alert">指定助手 {phase.assignedAssistantId} 不在此团队版本中，请在上方重新选择导师。</p>}
             {sessions.map((session) => {
-              const lessonOptions = lessonPolicy === 'lesson-guided.v1'
-                ? members.filter(member => member.runtimeSnapshot && member.assistantId === session.leadAssistantId) : options;
+              const lessonOptions = options;
               const route = draft?.sessionRoutes?.find((item) => item.sessionIndex === session.sessionIndex);
               const role = draft?.roleMap.find((item) => item.roleSlotId === route?.roleSlotId);
-              const memberId = draft ? role?.memberId : lessonPolicy ? lessonOptions[0]?.slotId : fixedMember?.slotId ?? assignments[phase.phase];
+              const memberId = draft ? role?.memberId : fixedMember?.slotId ?? assignments[phase.phase];
               const member = members.find((item) => item.slotId === memberId);
               const routeUnavailable = !!draft && !!route && (!member || !lessonOptions.some((item) => item.slotId === member.slotId));
               return <div className={styles.lesson} key={session.id}>

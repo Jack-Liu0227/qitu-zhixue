@@ -30,8 +30,11 @@ export function draftFromPublishedTeam(
     const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId
       : template.phases.find((phase) => phase.phase === session.phase)?.assignedAssistantId;
     const selectedMemberId = template.lessonPolicy === 'lesson-guided.v1' ? undefined : phaseAssignments[session.phase];
-    const member = assigned ? members.find((candidate) => candidate.assistantId === assigned
-      && (!selectedMemberId || candidate.slotId === selectedMemberId)) : members.find((candidate) => candidate.slotId === selectedMemberId);
+    const member = selectedMemberId
+      ? members.find((candidate) => candidate.slotId === selectedMemberId)
+      : assigned
+        ? members.find((candidate) => candidate.assistantId === assigned)
+        : undefined;
     if (!member) return reject(`第 ${session.sessionIndex} 课没有明确匹配的团队成员，请先配置课程阶段的指定助手。`);
     return { sessionIndex: session.sessionIndex, roleSlotId: member.slotId };
   });

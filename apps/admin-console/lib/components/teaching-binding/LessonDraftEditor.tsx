@@ -15,9 +15,8 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange }: {
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const profiles = spec.curriculum?.profiles ?? [];
   const profile = profiles.find(entry => entry.id === selectedProfileId) ?? profiles[0];
-  const team = teams.find(entry => entry.id === spec.teamId);
-  const members = (team?.members ?? []).filter(entry => entry.assistantId !== 'qitu-intake-assistant');
-  if (spec.lessonPolicy !== 'lesson-guided.v1') return <p className={styles.note}>这是历史课程合同。逐课主讲、开场与协作编辑适用于新的课时教学合同，旧项目保留已冻结的课程。</p>;
+  const team = teams.find(entry => entry.id === spec.teamId) ?? teams[0];
+  const members = (team?.members && team.members.length > 0 ? team.members : teams.flatMap(t => t.members)).filter(entry => entry.assistantId !== 'qitu-intake-assistant');
   if (!profile) return <p role="status">尚未配置课时排期。</p>;
   function update(lessonId: string, patch: Partial<PblTemplateSession>) {
     if (disabled || !spec.curriculum || !profile) return;
@@ -28,15 +27,19 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange }: {
   return <section className={styles.editor} aria-label="编辑课时课程草稿">
     <header><div><h3>逐课教学设计</h3><p>修改保存在新课程草稿中。发布团队版本、编译并启用后，才供新项目使用。</p></div>
       <a href="/settings/teams">管理导师团队与成员 →</a></header>
-    {!team ? <p role="alert">课程团队尚未加载，暂不能选择导师。请先在团队管理中配置真实成员。</p> : null}
+    {!members.length ? <p role="alert">课程团队尚未加载，暂不能选择导师。请先在团队管理中配置真实成员。</p> : null}
     {profiles.length > 1 ? <label>课时安排<select value={profile.id} onChange={event => setSelectedProfileId(event.target.value)}>
       {profiles.map(entry => <option key={entry.id} value={entry.id}>{entry.id}</option>)}</select></label> : null}
     {profile.sessions.map(lesson => <details key={lesson.id} className={styles.lesson}>
       <summary><strong>第 {lesson.sessionIndex} 课 · {lesson.title}</strong><span>{name(lesson.leadAssistantId ?? '') || '待安排导师'} · {lesson.durationMinutes} 分钟</span></summary>
       <fieldset disabled={disabled}><div className={styles.grid}>
         <label>课时名称<input value={lesson.title} maxLength={200} onChange={event => update(lesson.id, { title: event.target.value })} /></label>
-        <label>本课主讲<select value={lesson.leadAssistantId ?? ''} disabled={!team} onChange={event => update(lesson.id, { leadAssistantId: event.target.value })}>
-          <option value="" disabled>选择团队成员</option>{members.map(member => <option key={member.assistantId} value={member.assistantId}>{member.assistantName} · {member.roleLabel ?? member.role}</option>)}</select></label>
+        <label>本课主讲<select value={lesson.leadAssistantId ?? ''} disabled={!members.length} onChange={event => update(lesson.id, { leadAssistantId: event.target.value })}>
+          <option value="">未指定主讲导师</option>
+          {lesson.leadAssistantId && !members.some(m => m.assistantId === lesson.leadAssistantId) ? (
+            <option value={lesson.leadAssistantId}>{lesson.leadAssistantId}（当前设定）</option>
+          ) : null}
+          {members.map(member => <option key={member.assistantId} value={member.assistantId}>{member.assistantName} · {member.roleLabel ?? member.role}</option>)}</select></label>
       </div>
       <label>学习目标<textarea value={lesson.learningGoal ?? ''} maxLength={1000} onChange={event => update(lesson.id, { learningGoal: event.target.value })} /></label>
       {lesson.opening ? <div className={styles.opening}><h4>本课固定开场</h4>
@@ -51,6 +54,9 @@ export function LessonDraftEditor({ spec, teams, disabled, onChange }: {
         <textarea value={lesson.activityGuidance?.[activity.id] ?? ''} maxLength={1500} onChange={event => update(lesson.id, { activityGuidance: { ...lesson.activityGuidance, [activity.id]: event.target.value } })} /></label>)}
       <h4>按需协作</h4>{(lesson.collaborators ?? []).map((collaborator, index) => <div className={styles.collaboration} key={`${lesson.id}:${index}`}>
         <label>协作导师<select value={collaborator.assistantId} onChange={event => update(lesson.id, { collaborators: lesson.collaborators!.map((entry, i) => i === index ? { ...entry, assistantId: event.target.value } : entry) })}>
+          {collaborator.assistantId && !members.some(m => m.assistantId === collaborator.assistantId) ? (
+            <option value={collaborator.assistantId}>{collaborator.assistantId}（当前设定）</option>
+          ) : null}
           {members.filter(member => member.assistantId !== lesson.leadAssistantId).map(member => <option key={member.assistantId} value={member.assistantId}>{member.assistantName}</option>)}</select></label>
         <label>参与活动<select value={collaborator.activity} onChange={event => update(lesson.id, { collaborators: lesson.collaborators!.map((entry, i) => i === index ? { ...entry, activity: event.target.value as LessonActivity } : entry) })}>
           {ACTIVITIES.filter(activity => lesson.blocks[activity.id] > 0).map(activity => <option key={activity.id} value={activity.id}>{activity.label}</option>)}</select></label>

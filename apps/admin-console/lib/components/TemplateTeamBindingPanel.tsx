@@ -74,9 +74,11 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
   const profile = profiles.find((entry) => entry.id === (draft?.scheduleProfileId ?? profileId));
   const routedPhases = phases.filter((phase) => profile?.sessions.some((session) => session.phase === phase.phase));
   const assignmentsReady = lessonPolicy === 'lesson-guided.v1' ? !!profile && profile.sessions.every(session =>
-    members.some(member => member.assistantId === session.leadAssistantId)) : routedPhases.every((phase) => phase.assignedAssistantId
-    ? members.some((member) => member.assistantId === phase.assignedAssistantId)
-    : members.some((member) => member.slotId === phaseAssignments[phase.phase]));
+    members.some(member => member.assistantId === session.leadAssistantId)) : routedPhases.every((phase) => {
+      const assignedSlot = phaseAssignments[phase.phase];
+      if (assignedSlot) return members.some((member) => member.slotId === assignedSlot);
+      return phase.assignedAssistantId ? members.some((member) => member.assistantId === phase.assignedAssistantId) : false;
+    });
   const disabled = !!busy || loading || versionsLoading || !catalogReady || !versionsReady || !online || failure?.kind === 'permission';
   const editable = !disabled && selectedPublished && !staleDraft && (!current || current.binding.status === 'draft') && preview.kind !== 'invalid';
   const dirty = !!current && edits.current.has(current.binding.id);
@@ -145,6 +147,26 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
     if (!current) return;
     edits.current.delete(current.binding.id); setStaleDraft(false);
     setBundleText(current.binding.bundleDraft ? JSON.stringify(current.binding.bundleDraft, null, 2) : '');
+  }
+
+  async function createNewDraftBinding() {
+    if (actionInFlight.current || !versionId || !selectedPublished || !teamVersionId) return;
+    actionInFlight.current = true;
+    setBusy('save');
+    setFailure(null);
+    setNotice('');
+    try {
+      const key = newIdempotencyKey();
+      await createTemplateBinding(templateId, versionId, teamVersionId, key);
+      const rows = await fetchTemplateBindings(templateId, versionId);
+      setRecords(rows);
+      setNotice('已为当前团队版本创建新的配置草稿，可以在下方自由修改导师分配并重新校验启用。');
+    } catch (error) {
+      setFailure(failureView(error));
+    } finally {
+      actionInFlight.current = false;
+      setBusy(null);
+    }
   }
 
   async function act(kind: Action) {
@@ -270,8 +292,20 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
       {!!current?.binding.validation.errors.length && <div className={styles.validation} role="alert"><strong>待处理的检查项</strong><ul>{current.binding.validation.errors.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}</ul></div>}
       {!!current?.binding.validation.warnings.length && <div className={styles.validation}><strong>检查提醒</strong><ul>{current.binding.validation.warnings.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}</ul></div>}
       <footer className={styles.actions}><span>{busy ? '正在保存并核对服务器结果…' : current?.binding.validation.checkedAt ? `最近校验：${new Date(current.binding.validation.checkedAt).toLocaleString('zh-CN')}` : '保存后可运行配置检查'}</span>
-        <div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           {!current && <Button variant="secondary" size="sm" type="button" disabled={disabled || !selectedPublished} onClick={() => void act('save')}>保存团队绑定</Button>}
+          {current?.binding.status === 'active' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              disabled={disabled || !selectedPublished}
+              onClick={() => void createNewDraftBinding()}
+              title="当前绑定已生效。点击创建新的配置草稿，以修改阶段或课时对应的导师。"
+            >
+              ✏️ 重新编排（创建新绑定草稿）
+            </Button>
+          )}
           {requiresBundle && current && !current.binding.bundleDraft && <Button variant="secondary" size="sm" type="button"
             disabled={disabled || current.binding.status !== 'draft' || !profile || !assignmentsReady || !selectedPublished} onClick={() => void act('prepare')}>生成教学配置</Button>}
           {current?.binding.bundleDraft && <Button variant="secondary" size="sm" type="button" disabled={disabled || !dirty || !editable || !draft} onClick={() => void act('bundle')}>保存教学配置</Button>}

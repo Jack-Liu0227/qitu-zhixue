@@ -522,7 +522,7 @@ export default function AdminTemplatesPage() {
   if (editingTemplate) {
     const selectedVersion = templateVersions.find((version) => version.id === editingTemplate.sourceVersionId);
     const courseDirty = !!editingTemplate.pblSpec && canonicalCourseJson(editingTemplate.pblSpec) !== canonicalCourseJson(editingTemplate.sourceContent.pbl);
-    const courseTeam = teams.find(team => team.id === editingTemplate.pblSpec?.teamId);
+    const courseTeam = teams.find(team => team.id === editingTemplate.pblSpec?.teamId) ?? teams[0];
     const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
     const lessonSessions = lessonProfile?.sessions ?? [];
     const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
@@ -602,7 +602,7 @@ export default function AdminTemplatesPage() {
           {!selectedVersion && <option value="">尚无版本</option>}
           {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
         </select></label>
-        {selectedVersion && editingTemplate.pblSpec?.lessonPolicy === 'lesson-guided.v1' ? <CourseVersionActions key={selectedVersion.id}
+        {selectedVersion && editingTemplate.pblSpec ? <CourseVersionActions key={selectedVersion.id}
           templateId={editingTemplate.id} versionId={selectedVersion.id} status={selectedVersion.status}
           disabled={saving || courseDirty || editingTemplate.status === 'archived'} onChanged={() => void loadVersions(editingTemplate.id, selectedVersion.id)} /> : null}
         {courseDirty ? <p role="status" className="admin-template-workflow-intro">课时设计有未保存的修改。请先保存课程草稿，再为新版本配置导师团队与资料。</p> : (
@@ -637,16 +637,19 @@ export default function AdminTemplatesPage() {
           </button>
         </div>
 
-        {editorTab === 'sessions' && editingTemplate.pblSpec?.lessonPolicy === 'lesson-guided.v1' ? <div className="admin-template-workflow-container">
-          <LessonDraftEditor spec={editingTemplate.pblSpec} teams={teams} disabled={saving || editingTemplate.status === 'archived'}
-            onChange={spec => setEditingTemplate(previous => previous ? { ...previous, pblSpec: spec } : previous)} />
-          {courseTeam ? <TeamRosterEditor key={courseTeam.id} team={courseTeam} spec={editingTemplate.pblSpec}
-            disabled={saving || editingTemplate.status === 'archived'} onSaved={saved => setTeams(previous => previous.map(team => team.id === saved.id ? saved : team))} /> : null}
-        </div> : null}
-        {editorTab === 'sessions' && editingTemplate.pblSpec && editingTemplate.pblSpec.lessonPolicy !== 'lesson-guided.v1' ? (
+        
+        {editorTab === 'sessions' && editingTemplate.pblSpec ? (
           <div className="admin-template-workflow-container">
-            {/* 顶栏宏观概览 */}
-            <div
+            <LessonDraftEditor spec={editingTemplate.pblSpec} teams={teams} disabled={saving || editingTemplate.status === 'archived'}
+              onChange={spec => setEditingTemplate(previous => previous ? { ...previous, pblSpec: spec } : previous)} />
+            {courseTeam ? <TeamRosterEditor key={courseTeam.id} team={courseTeam} spec={editingTemplate.pblSpec}
+              disabled={saving || editingTemplate.status === 'archived'} onSaved={saved => setTeams(previous => previous.map(team => team.id === saved.id ? saved : team))} /> : null}
+            <details style={{ marginTop: '20px' }}>
+              <summary style={{ cursor: 'pointer', padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155' }}>
+                📋 查看课时宏观概览、门禁卡片与时间分配（参考视图） ▾
+              </summary>
+              <div style={{ marginTop: '12px' }}>
+                <div
               className="admin-template-workflow-intro admin-template-sessions-intro"
               style={{
                 borderLeft: '4px solid #165dff',
@@ -902,6 +905,8 @@ export default function AdminTemplatesPage() {
                 );
               })}
             </div>
+              </div>
+            </details>
           </div>
         ) : editorTab === 'workflow' ? (
           <div className="admin-template-workflow-container">
@@ -1038,13 +1043,22 @@ export default function AdminTemplatesPage() {
                                     placeholder="阶段名称（必填）"
                                     onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
                                   />
-                                  <input
-                                    className="admin-input-text"
-                                    style={{ maxWidth: '200px', fontSize: '12px' }}
-                                    value={phase.mentorRole}
-                                    placeholder="绑定导师角色"
-                                    onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
-                                  />
+                                  <select
+                                    className="admin-select"
+                                    style={{ maxWidth: '200px', fontSize: '12px' }}
+                                    value={phase.mentorRole}
+                                    onChange={(e) => updatePhase(phase.id, { mentorRole: e.target.value })}
+                                  >
+                                    <option value="">未指定导师角色</option>
+                                    {phase.mentorRole && !teams.some(t => t.members.some(m => m.assistantName === phase.mentorRole || m.role === phase.mentorRole)) ? (
+                                      <option value={phase.mentorRole}>{phase.mentorRole}（当前设定）</option>
+                                    ) : null}
+                                    {teams.flatMap(t => t.members.map(m => (
+                                      <option key={`${t.id}-${m.assistantId}`} value={m.assistantName}>
+                                        {m.assistantName}（{m.roleLabel || m.role} · {t.name}）
+                                      </option>
+                                    )))}
+                                  </select>
                                 </>
                               )}
                             </div>
