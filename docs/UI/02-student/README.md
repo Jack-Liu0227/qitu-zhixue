@@ -44,7 +44,7 @@
 | [optics-preview-mobile.png](optics-preview-mobile.png) | 390 × 844 |
 | [practice-route-desktop.png](practice-route-desktop.png) | 1440 × 1000 |
 | [practice-route-mobile.png](practice-route-mobile.png) | 390 × 5268 |
-| [profile-desktop.png](profile-desktop.png) | 1440 × 1598 |
+| [profile-desktop.png](profile-desktop.png) | 1440 × 1524 |
 | [profile-mobile.png](profile-mobile.png) | 390 × 2494 |
 | [project-detail-desktop.png](project-detail-desktop.png) | 1440 × 4292 |
 | [project-detail-mobile.png](project-detail-mobile.png) | 390 × 5008 |
