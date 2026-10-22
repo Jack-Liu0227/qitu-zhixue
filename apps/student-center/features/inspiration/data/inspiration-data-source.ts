@@ -20,5 +20,11 @@ export interface InspirationDataSource {
     explorationId: string,
     templateVersionId: string,
     idempotencyKey: string,
+    draft?: {
+      goalUser?: string;
+      coreInterests?: string[];
+      preferredForm?: string;
+      targetBeneficiary?: string;
+    },
   ): Promise<{ projectId: string }>;
 }

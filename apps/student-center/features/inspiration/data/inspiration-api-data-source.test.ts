@@ -55,3 +55,33 @@ test('lost exploration response is retryable with the same key; permission failu
     assert.deepEqual(keys, ['retry-key', 'retry-key']);
   } finally { globalThis.fetch = original; }
 });
+
+test('confirming recommended exploration patches draft and creates formal project', async () => {
+  const original = globalThis.fetch;
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), init });
+    if (String(url).endsWith('/confirm-intent')) {
+      return new Response(JSON.stringify({ data: { project: { id: 'proj-optics-101' } } }), { status: 201 });
+    }
+    return new Response(JSON.stringify({ data: { id: 'exp-123', status: 'awaiting_confirmation' } }), { status: 200 });
+  };
+  try {
+    const source = new InspirationApiDataSource();
+    const result = await source.confirmRecommendedExploration('exp-123', 'optics-16x60-v2', 'key-confirm', {
+      goalUser: '波动光学双缝干涉',
+      coreInterests: ['光的波动性', '杨氏双缝干涉'],
+    });
+    assert.equal(result.projectId, 'proj-optics-101');
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0]?.url, '/api/v1/explorations/exp-123');
+    assert.equal(calls[0]?.init?.method, 'PATCH');
+    const patchBody = JSON.parse(String(calls[0]?.init?.body));
+    assert.equal(patchBody.goalUser, '波动光学双缝干涉');
+    assert.deepEqual(patchBody.coreInterests, ['光的波动性', '杨氏双缝干涉']);
+
+    assert.equal(calls[1]?.url, '/api/v1/explorations/exp-123/confirm-intent');
+    assert.equal(calls[1]?.init?.method, 'POST');
+    assert.equal(new Headers(calls[1]?.init?.headers).get('idempotency-key'), 'key-confirm');
+  } finally { globalThis.fetch = original; }
+});

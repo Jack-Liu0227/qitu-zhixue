@@ -104,7 +104,51 @@ export class InspirationApiDataSource implements InspirationDataSource {
     explorationId: string,
     templateVersionId: string,
     idempotencyKey: string,
+    draft?: {
+      goalUser?: string;
+      coreInterests?: string[];
+      preferredForm?: string;
+      targetBeneficiary?: string;
+    },
   ): Promise<{ projectId: string }> {
+    // 1. 确保候选意图形成（PATCH），驱动状态机 exploring -> awaiting_confirmation
+    const goal = (draft?.goalUser?.trim() || '自主探究学习').slice(0, 120);
+    const rawInterests = draft?.coreInterests && draft.coreInterests.length > 0
+      ? draft.coreInterests
+      : [goal];
+    const coreInterests = rawInterests
+      .map((t) => (typeof t === 'string' ? t.trim().slice(0, 24) : ''))
+      .filter((t) => t.length > 0);
+    const interests = coreInterests.length > 0 ? coreInterests.slice(0, 5) : ['科学探究'];
+
+    try {
+      const patchRes = await fetch(`/api/v1/explorations/${encodeURIComponent(explorationId)}`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          goalUser: goal,
+          coreInterests: interests,
+          preferredForm: draft?.preferredForm?.trim().slice(0, 120) || null,
+          targetBeneficiary: draft?.targetBeneficiary?.trim().slice(0, 120) || null,
+        }),
+      });
+      if (!patchRes.ok) {
+        const payload: unknown = await patchRes.json().catch(() => null);
+        const detail = isRecord(payload) && typeof payload.message === 'string'
+          ? payload.message
+          : `学习意图草稿保存失败（${patchRes.status}）`;
+        throw new ApiError(detail, patchRes.status);
+      }
+    } catch (cause) {
+      if (cause instanceof ApiError) throw cause;
+      throw new ApiError('网络不可用', 0, 'NETWORK_OFFLINE');
+    }
+
+    // 2. 确认意图并创建正式项目（awaiting_confirmation -> confirmed）
     let response: Response;
     try {
       response = await fetch(`/api/v1/explorations/${encodeURIComponent(explorationId)}/confirm-intent`, {
