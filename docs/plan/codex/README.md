@@ -76,6 +76,10 @@ Implementation and rollout boundaries: [16-session template](../../admin/optics-
 - [Design and scope](./teaching-profile-ui-20261022.md).
 - [Verification and integration limits](./teaching-profile-ui-verification-20261022.md).
 
+## AI 搭档团队与逐课闭环重设计（2026-10-22）
+
+[本轮核查与方案](./tutor-course-team-redesign-20261022/README.md) 区分接待助手、领域总导师、逐课主讲与协作，以及服务端完成 owner。用户最新要求只考虑干涉与衍射，[当前 8 课时设计](./tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md) 包含动态课件／题目、双缝模型缺口与完成证据。原 16 课及散射方案保留为历史；当前仍是设计稿，未实施或发布，团队版本 v5 不代表新课程已上线。
+
 ## New implementation slices (2026-10-20)
 
 - [光学全流程实施与验收（2026-10-21）](./optics-template-runtime/06-fullflow-implementation-20261021.md)：冻结课时完成规则、真实学习证据与归档路径。

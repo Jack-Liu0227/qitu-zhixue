@@ -35,7 +35,9 @@ export function draftFromPublishedTeam(
     if (!member) return reject(`第 ${session.sessionIndex} 课没有明确匹配的团队成员，请先配置课程阶段的指定助手。`);
     return { sessionIndex: session.sessionIndex, roleSlotId: member.slotId };
   });
-  const used = members.filter((member) => member.assistantId === team.leaderAssistantId
+  const collaboratorIds = new Set(profile.sessions.flatMap(session => session.collaborators?.map(role => role.assistantId) ?? []));
+  if ([...collaboratorIds].some(id => !members.some(member => member.assistantId === id))) reject('协作导师不在已发布团队版本中。');
+  const used = members.filter((member) => member.assistantId === team.leaderAssistantId || collaboratorIds.has(member.assistantId)
     || sessionRoutes.some((route) => route.roleSlotId === member.slotId));
   if (!used.some((member) => member.assistantId === team.leaderAssistantId)) reject('团队负责人不在已发布成员中。');
   const purposes = ['outline', 'session', 'dialogue'] as const;

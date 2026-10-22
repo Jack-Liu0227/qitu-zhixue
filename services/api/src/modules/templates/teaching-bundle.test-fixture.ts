@@ -36,5 +36,5 @@ export function opticsTeachingFixture(template: ProjectTemplateSpec = OPTICS_16_
     { listAgentModelOptions: () => [{ providerId: 'isolated-provider', modelId: 'isolated-model', available: true }] } as unknown as ModelRegistryService,
     {} as KnowledgeCenterService, {} as KnowledgeToolCatalogService,
   );
-  return { catalog, draft, members, teamId: template.teamId, leaderAssistantId: assistantIds[0]! };
+  return { catalog, draft, members, teamId: template.teamId, leaderAssistantId: assistantIds.find(id => id !== 'qitu-intake-assistant') ?? assistantIds[0]! };
 }

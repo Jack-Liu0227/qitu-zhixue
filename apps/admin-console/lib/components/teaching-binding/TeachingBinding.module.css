@@ -260,3 +260,5 @@
   border-left-color: #d29922 !important;
   color: #fde047 !important;
 }
+
+.nextStep{padding:12px 16px;border-radius:10px;background:var(--qitu-surface-soft,#f2f6fc);font-size:13px;line-height:1.7}.summaryGrid{display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;margin:12px 0}.summaryGrid>div{padding:12px 16px;border:1px solid var(--qitu-border,#e2e8f0);border-radius:10px}.summaryGrid dt{font-size:12px;color:var(--qitu-muted,#64748b)}.summaryGrid dd{margin:6px 0 0;font-size:14px;line-height:1.5}.guidanceNote{font-size:12px;line-height:1.7;color:var(--qitu-muted,#64748b)}@media(max-width:800px){.summaryGrid{grid-template-columns:1fr}}

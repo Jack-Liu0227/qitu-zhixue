@@ -11,12 +11,15 @@ import { HeuristicQuizCard } from './HeuristicQuizCard';
 import { KineticEnergyInteractiveCard } from './KineticEnergyInteractiveCard';
 import { CircuitSimulationCard } from './CircuitSimulationCard';
 import { OpticsDiffractionScatteringCard } from './OpticsDiffractionScatteringCard';
+import { WaveOpticsExperimentCard } from './WaveOpticsExperimentCard';
 import { AsideAdvisorCard } from './AsideAdvisorCard';
 import { AttachmentView } from './AttachmentView';
 
 import { MarkdownMathView } from './MarkdownMathView';
 import { IdeaCards } from './IdeaCards';
 import { BoardBlock } from './BoardBlock';
+import { LearningOpeningCard } from './LearningOpeningCard';
+import { LearningResourceCard, LearningSources } from './LearningResourceCard';
 import { MilestoneBlock } from './MilestoneBlock';
 
 /**
@@ -59,6 +62,8 @@ export function TutorReplyBlockView({
   disabled?: boolean;
 }) {
   switch (block.kind) {
+    case 'learning_opening':
+      return <LearningOpeningCard block={block} />;
     case 'text':
       return <MarkdownMathView content={block.text} />;
     case 'questions':
@@ -87,6 +92,8 @@ export function TutorReplyBlockView({
       );
     case 'evidence':
       return <EvidenceChip reference={block.ref} />;
+    case 'learning_resource':
+      return <LearningResourceCard {...block} disabled={disabled} onRead={onSelectOption} />;
     case 'tool':
       // A lone step; a run of consecutive steps is grouped into one panel by
       // `ChatBubble` so the student reads one 「执行过程」 card, not N of them.
@@ -134,7 +141,9 @@ export function TutorReplyBlockView({
         />
       );
     case 'board':
-      return <BoardBlock title={block.title} steps={block.steps} />;
+      return <><BoardBlock title={block.title} steps={block.steps} />{block.provenance ? <div className="qitu-learning-attribution">
+        <span>{block.provenance.origin === 'adapted' ? '根据已核验资料改编' : '导师按本课目标生成'} · 翻页用于查看图示</span>
+        {block.provenance.sources.length ? <LearningSources sources={block.provenance.sources} /> : null}</div> : null}</>;
     case 'milestone':
       return <MilestoneBlock phaseId={block.phaseId} title={block.title} deliverables={block.deliverables} gate={block.gate} projectId={projectId} />;
     case 'interactive_experiment':
@@ -161,6 +170,9 @@ export function TutorReplyBlockView({
         />
       );
     case 'optics_experiment':
+      if (block.specVersion === '2.0.0') return <WaveOpticsExperimentCard key={block.experimentId} block={block} disabled={disabled || block.allowedActions.length === 0}
+        onAction={(action, payload, key) => onExperimentAction?.(block.experimentId, action, payload, key)} />;
+      if (block.initialMode === 'interference' || block.allowedModels?.some(mode => mode === 'interference')) return <SafeReplyFallback />;
       if (block.allowedActions.length === 0) return <section className="qitu-tutor-hint" role="note">
         <strong>这条历史预览不需要提交预测</strong>
         <p>这里尚未进入可操作的实验任务。可以继续和导师交流，确认项目后按当前课时生成课件。</p>
@@ -174,7 +186,7 @@ export function TutorReplyBlockView({
           key={block.experimentId}
           initialMode={block.initialMode}
           initialParameters={block.initialParameters}
-          allowedModels={block.allowedModels}
+          allowedModels={block.allowedModels?.filter((mode): mode is 'diffraction' | 'scattering' => mode === 'diffraction' || mode === 'scattering')}
           predictionGate={block.predictionGate}
           onAction={(action, payload, idempotencyKey) => onExperimentAction?.(block.experimentId, action, payload, idempotencyKey)}
         />

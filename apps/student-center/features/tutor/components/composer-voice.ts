@@ -14,8 +14,8 @@ export const QUICK_PROMPTS: readonly QuickPromptItem[] = [
   {
     id: 'explore-experiment',
     icon: '🔬',
-    label: '动态物理实验课件',
-    prompt: '我想通过微观动态课件仿真，观察单缝衍射和散射条纹的实时变化规律。',
+    label: '动态演示课件',
+    prompt: '我想通过动态图示课件，观察干涉和衍射条纹的几何光路与明暗变化规律。',
   },
   {
     id: 'first-step',

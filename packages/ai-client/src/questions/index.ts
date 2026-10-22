@@ -1,4 +1,5 @@
 import type { KnowledgeType, QuestionKind } from '@qitu/contracts';
+import { buildWaveReadinessQuestion } from './wave-readiness.js';
 
 /**
  * 题库与题面边界（纯函数，零 I/O）。
@@ -50,6 +51,7 @@ export interface QuestionObjectiveInput {
   id: string;
   name: string;
   type: KnowledgeType;
+  conceptId?: string | null;
 }
 
 export interface BuildQuestionInput {
@@ -185,6 +187,8 @@ function mutate(value: string, seed: number): string {
  * 题干不重复。`type` 决定题型，`index` 决定难度与题干措辞。
  */
 export function buildQuestion(input: BuildQuestionInput): QuestionCard {
+  const readiness = buildWaveReadinessQuestion(input);
+  if (readiness) return readiness;
   const { objective, index } = input;
   const seed = input.seed ?? objective.id;
   const questionType = questionKindForType(objective.type, index);

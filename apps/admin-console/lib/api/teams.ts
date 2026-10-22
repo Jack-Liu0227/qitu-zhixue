@@ -93,12 +93,14 @@ export async function updatePersistedTeam(
   id: string,
   patch: AdminTeamUpdateInput,
   idempotencyKey = newIdempotencyKey(),
+  expectedUpdatedAt?: string,
 ): Promise<AdminTeamConfig> {
   const saved = await adminEnvelopeRequest<AdminTeamConfig>({
     path: ADMIN_TEAM_ITEM_PATH(id),
     method: 'PATCH',
     body: patch,
     idempotencyKey,
+    ifMatch: expectedUpdatedAt,
   });
   return readTeam(saved);
 }

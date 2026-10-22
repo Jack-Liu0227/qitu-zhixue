@@ -6,6 +6,8 @@ import type { TutorReplyBlock, TutorTurn } from '@qitu/contracts';
  */
 function serializeBlock(block: TutorReplyBlock): string {
   switch (block.kind) {
+    case 'learning_opening':
+      return `【${block.mode === 'lesson' ? `第 ${block.lessonIndex} 课` : '探索开始'}】${block.title}\n${block.scenario}\n${block.goal ?? ''}\n${block.prompt}`;
     case 'text':
       return block.text.trim();
     case 'hint':
@@ -36,6 +38,8 @@ function serializeBlock(block: TutorReplyBlock): string {
       return `【互动测验】${block.stem}`;
     case 'board':
       return `【分步白板】${block.title ?? ''}\n${block.steps.map((step, index) => `${index + 1}. ${step.caption}`).join('\n')}`;
+    case 'learning_resource':
+      return `【推荐资料】${block.title}\n${block.summary}\n${block.sources.map(source => source.title).join('、')}`;
     case 'milestone':
       return `【阶段检查】${block.title}\n${block.deliverables.map((item) => `${item.submitted ? '已提交' : '待提交'}：${item.title}`).join('\n')}`;
     case 'attachment':

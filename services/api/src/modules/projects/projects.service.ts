@@ -315,7 +315,7 @@ export class ProjectsService {
 
       const body = result.body;
       // T15：意图确认成立后写入 PBL 门禁证据（详见 recordIntentConfirmationGate 的三条约束）。
-      await this.recordIntentConfirmationGate(studentId, explorationId);
+      await this.recordIntentConfirmationGate(studentId, explorationId, body.project.id);
       // `execute` 命中持久化记录时，把「未创建新项目」这一事实补进响应。
       return result.replayed ? { ...body, replayed: true } : body;
     } catch (error) {
@@ -340,10 +340,11 @@ export class ProjectsService {
   private async recordIntentConfirmationGate(
     studentId: string,
     explorationId: string,
+    projectId: string,
   ): Promise<void> {
     try {
       await this.teamRuntime.recordGateForStudent({
-        studentUserId: studentId,
+        studentUserId: studentId, projectId,
         gate: 'student_confirmed_intent',
         evidenceRef: `intent_confirmation:${explorationId}`,
         source: 'projects.confirm-intent',

@@ -25,6 +25,20 @@ type PanelState =
   | { status: 'permission' }
   | { status: 'error'; message: string };
 
+function formatRunTimestamp(value: string | null): string {
+  if (!value) return '时间未知';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 /** Teacher-safe view of one student's latest Team run. */
 export function AgentRunPanel({ studentId }: { studentId: string }) {
   const [state, setState] = useState<PanelState>({ status: 'loading' });
@@ -75,9 +89,9 @@ export function AgentRunPanel({ studentId }: { studentId: string }) {
         <div className="qtx-agent-run-content" role="region" aria-label="协作记录明细" tabIndex={0}>
           <AgentRunGraph
             nodes={state.data.nodes}
-            description={`${state.data.runId ? `Run ${state.data.runId}` : '暂无 Run ID'} · ${state.data.generatedAt ?? '时间未知'}`}
+            description={`${state.data.runId ? `批次 #${state.data.runId.slice(0, 8)}` : '暂无批次号'} · ${formatRunTimestamp(state.data.generatedAt)}`}
           />
-          <AgentActivityFeed items={state.data.activity} emptyMessage="该次运行没有可展示的 Activity。" />
+          <AgentActivityFeed items={state.data.activity} emptyMessage="该次运行暂无协作活动记录。" />
         </div>
       ) : null}
     </section>

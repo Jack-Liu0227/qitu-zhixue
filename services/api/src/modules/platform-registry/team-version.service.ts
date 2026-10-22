@@ -1,3 +1,4 @@
+import { assertDomainLeader } from '../../common/intake-boundary';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { asc, desc, eq, inArray } from 'drizzle-orm';
@@ -83,6 +84,7 @@ export class TeamVersionService {
           throw new BadRequestException({ code: 'TEAM_VERSION_WORKFLOW_INVALID', message: '发布需要启用团队并配置保留理论门禁的 PBL 工作流。' });
         }
         const members = await tx.select().from(adminTeamMembers).where(eq(adminTeamMembers.teamId, teamId)).orderBy(asc(adminTeamMembers.sortOrder)).for('share');
+        assertDomainLeader(team.leaderAssistantId);
         const ids = members.map(member => member.assistantId);
         if (!ids.length || ids.length > 24 || new Set(ids).size !== ids.length || !ids.includes(team.leaderAssistantId)) throw new BadRequestException('团队成员或负责人配置无效');
         // Hold shared source locks while the established resolver reads committed configuration.

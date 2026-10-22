@@ -1805,53 +1805,244 @@ summary:focus-visible,
 .qitu-team-run-item {
   position: relative;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: var(--qitu-space-sm);
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--qitu-space-md);
   padding: 0 0 var(--qitu-space-md);
 }
 
 .qitu-team-run-item:not(:last-child)::before {
   content: '';
   position: absolute;
-  top: 16px;
+  top: 18px;
   bottom: 0;
-  left: 7px;
-  width: 1px;
+  left: 9px;
+  width: 2px;
   background: var(--qitu-border);
 }
 
 .qitu-team-run-marker {
   z-index: 1;
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
   border: 3px solid var(--qitu-primary-border);
   border-radius: 50%;
   background: var(--qitu-surface);
+  box-shadow: 0 0 0 2px var(--qitu-surface);
 }
 
-.qitu-team-run-content { display: grid; gap: 4px; min-width: 0; }
-.qitu-team-graph-action { flex: 0 0 auto; }
+.qitu-team-run-marker-succeeded {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
 
+.qitu-team-run-marker-running {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  animation: qitu-pulse 1.8s infinite;
+}
+
+.qitu-team-run-marker-failed {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.qitu-team-run-content {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 14px;
+  background: var(--qitu-surface);
+  border: 1px solid var(--qitu-border);
+  border-radius: var(--qitu-radius-md);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.qitu-team-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qitu-space-sm);
+}
+
+.qitu-team-run-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qitu-team-run-label {
+  color: var(--qitu-heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.qitu-team-run-agent-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--qitu-radius-xs);
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-family: monospace;
+}
+
+.qitu-team-run-summary {
+  margin: 0;
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.qitu-team-run-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.74rem;
+  color: var(--qitu-muted);
+}
+
+.qitu-team-run-meta {
+  color: #0284c7;
+  font-weight: 500;
+}
+
+.qitu-team-run-meta-time {
+  color: #94a3b8;
+}
+
+.qitu-team-graph-desc {
+  margin: 3px 0 0;
+  color: var(--qitu-muted);
+  font-size: 0.78rem;
+}
+
+/* Activity Feed Redesign */
 .qitu-team-activity-item {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) auto;
-  gap: var(--qitu-space-sm);
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: var(--qitu-space-md);
   align-items: start;
-  padding: var(--qitu-space-sm) 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--qitu-border);
 }
 
-.qitu-team-activity-item:last-child { border-bottom: 0; }
-.qitu-team-activity-item time { color: var(--qitu-muted); font-size: 0.72rem; }
-.qitu-team-activity-item > div { display: grid; gap: 3px; min-width: 0; }
-.qitu-team-activity-item strong { color: var(--qitu-heading); font-size: 0.8rem; }
-.qitu-team-activity-item small { color: var(--qitu-muted); font-size: 0.72rem; overflow-wrap: anywhere; }
+.qitu-team-activity-item:last-child {
+  border-bottom: 0;
+}
+
+.qitu-team-activity-time-col {
+  padding-top: 2px;
+}
+
+.qitu-team-time-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid #e2e8f0;
+}
+
+.qitu-team-activity-body {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.qitu-team-activity-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qitu-team-activity-actor-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qitu-team-activity-actor {
+  color: var(--qitu-heading);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.qitu-team-activity-type-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid #bfdbfe;
+}
+
+.qitu-team-activity-summary-text {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.qitu-team-activity-detail-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.qitu-team-payload-drawer {
+  margin-top: 4px;
+}
+
+.qitu-team-payload-toggle {
+  cursor: pointer;
+  color: #6366f1;
+  font-size: 0.74rem;
+  user-select: none;
+  font-weight: 500;
+  padding: 2px 0;
+}
+
+.qitu-team-payload-toggle:hover {
+  text-decoration: underline;
+}
+
+.qitu-team-payload-code {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  max-height: 240px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
 @media (max-width: 700px) {
   .qitu-team-node-lanes { grid-template-columns: minmax(0, 1fr); }
   .qitu-team-edge { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
   .qitu-team-edge-kind { grid-column: 1 / -1; }
-  .qitu-team-activity-item { grid-template-columns: 44px minmax(0, 1fr); }
+  .qitu-team-activity-item { grid-template-columns: 56px minmax(0, 1fr); }
   .qitu-team-activity-item > .qitu-team-status { grid-column: 2; }
 }
 

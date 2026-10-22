@@ -14,4 +14,5 @@ export interface StudentConversationHistoryItem {
   updatedAt: string;
   turnCount: number;
   stageLabel?: string;
+  includesExploration?: boolean;
 }

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { auditLogs, type Database } from '@qitu/database';
-import type { GetTutorSessionResponse, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock } from '@qitu/contracts';
+import type { GetTutorSessionResponse, TutorExperimentActionRequest, TutorExperimentActionResponse, TutorReplyBlock, SavedWaveExperiment } from '@qitu/contracts';
 import { hasLearningSessionCompletion } from '@qitu/contracts';
 import { DATABASE_TOKEN } from '../../database';
 import { AuditWriter } from '../../common/audit';
@@ -15,6 +15,9 @@ import { isLessonActivityAuthorized, type LessonActivityScope, type OpticsCandid
 import { MasteryDomainService } from '../mastery/mastery-domain.service';
 import { PlatformRegistryService } from '../platform-registry/platform-registry.service';
 import { freezeTutorRuntime } from './tutor-frozen-runtime';
+import { isWaveActivityAuthorized, WAVE_ACTIVITY_TOOL } from './tutor-lesson-activity';
+import { parseWaveOpticsParameters, projectWaveOptics, WaveOpticsDomainError } from '@qitu/ai-client';
+import { LearningSessionProgressService } from '../learning-plan/learning-session-progress.service';
 
 type ExperimentBlock = Extract<TutorReplyBlock, { kind: 'optics_experiment' }>;
 type ActionRecord = { id: string; detail: Record<string, unknown> };
@@ -32,6 +35,7 @@ export class TutorExperimentService {
     @Inject(DATABASE_TOKEN) private readonly db: Database | null,
     @Optional() private readonly mastery?: MasteryDomainService,
     @Optional() private readonly registry?: PlatformRegistryService,
+    @Optional() private readonly lessonProgress?: LearningSessionProgressService,
   ) {}
 
   async propose(actorId: string, scope: LessonActivityScope, candidate: OpticsCandidate, key: string): Promise<ExperimentBlock> {
@@ -44,23 +48,27 @@ export class TutorExperimentService {
     const teaching = await this.bindings.getFrozenTeachingBundle(project.id, project.templateVersionId);
     const lesson = teaching.template.curriculum?.profiles.find((profile) => profile.id === teaching.scheduleProfileId)
       ?.sessions.find((entry) => entry.sessionIndex === session.lessonIndex);
-    const expectedTopic = candidate.mode === 'diffraction' ? 'diffraction_slit' : 'particle_scattering';
+    const expectedTopic = candidate.mode === 'diffraction' ? 'diffraction_slit' : candidate.mode === 'interference' ? 'double_slit_interference' : 'particle_scattering';
     if (!lesson?.interactiveSpec?.enabled || lesson.interactiveSpec.domainTopic !== expectedTopic
       || session.id !== `${plan.plan.id}:${lesson.id}` || plan.plan.templateVersion !== teaching.templateVersionId
       || !lesson.objectiveIds.some((id) => `${plan.plan.id}:${id}` === scope.objectiveId)) this.reject('MODEL_NOT_SCHEDULED', '本课时未授权该实验模型');
     const actor = { id: actorId, role: 'student' as const, email: '', displayName: '' };
     if (!this.mastery || !await this.mastery.checkRequiredObjectives(actor, actorId, plan.plan.id, session.theoryObjectiveIds, this.plans)) this.reject('GATE_REQUIRED', '尚无有效的理论掌握证据');
-    const validated = validateTutorExperimentAction(candidate.mode, 'run', { mode: candidate.mode, parameters: candidate.parameters });
+    const specVersion = lesson.requiredToolIds?.includes(WAVE_ACTIVITY_TOOL) ? '2.0.0' : '1.0.0';
+    const validated = validateTutorExperimentAction(candidate.mode, 'run', { mode: candidate.mode, parameters: candidate.parameters }, specVersion);
     const frozenScope = await this.scope(project.id, actorId, session.lessonIndex, scope.objectiveId);
     if (!frozenScope || frozenScope.planRevision !== scope.planRevision || frozenScope.learningSessionId !== scope.learningSessionId) this.reject('REVISION_CHANGED', '课时状态已变化');
-    return {
+    if (specVersion === '2.0.0' && (!scope.activityId || frozenScope.activityId !== scope.activityId)) this.reject('ACTIVITY_CHANGED', '当前实践活动已变化');
+    const block: ExperimentBlock = {
       kind: 'optics_experiment', experimentId: `optics-${hashRequest({ scope, key }).slice(0, 32)}`,
       title: candidate.title, summary: candidate.summary, initialMode: candidate.mode,
       initialParameters: validated.auditPayload.parameters as Record<string, number>, allowedModels: [candidate.mode],
-      specVersion: '1.0.0', objectiveId: `optics.wave.${candidate.mode}`, sessionIndex: session.lessonIndex,
+      specVersion, objectiveId: `optics.wave.${candidate.mode}`, sessionIndex: session.lessonIndex,
       allowedActions: ['submit_prediction', 'run', 'record_observation'], scope: frozenScope,
       predictionGate: { required: true, submitted: false },
     };
+    if (specVersion === '2.0.0') await this.assertDynamicAccess(actorId, project.id, block);
+    return block;
   }
 
   async scope(projectId: string, studentId: string, lessonIndex: number, requestedObjectiveId?: string): Promise<ExperimentBlock['scope']> {
@@ -83,8 +91,10 @@ export class TutorExperimentService {
       const current = [...bundle!.sessions].sort((left, right) => left.index - right.index).find((entry) => !completed.has(entry.id));
       if (current?.id !== session.id) return undefined;
     }
+    const activityId = lesson.requiredToolIds?.includes(WAVE_ACTIVITY_TOOL) ? await this.currentPracticeActivity(studentId, plan.id, session.id) : undefined;
     return {
       planId: plan.id, planRevision: plan.version, learningSessionId: session.id, objectiveId,
+      ...(activityId ? { activityId } : {}),
       rubricRef: `rubric:${project.templateVersionId}:${teaching.template.rubricId}`,
       cerRef: 'cer:claim-evidence-reasoning:v1',
     };
@@ -102,8 +112,8 @@ export class TutorExperimentService {
     if (project.status !== 'practice_ready' && project.status !== 'practice_building') {
       this.reject('GATE_REQUIRED', 'TheoryMastered 门禁通过后才能进入实验操作');
     }
-    if (block.specVersion !== '1.0.0' || !Number.isSafeInteger(block.sessionIndex)
-      || block.sessionIndex < 1 || !['optics.wave.diffraction', 'optics.wave.scattering'].includes(block.objectiveId)) {
+    if (!['1.0.0', '2.0.0'].includes(block.specVersion) || !Number.isSafeInteger(block.sessionIndex)
+      || block.sessionIndex < 1 || !['optics.wave.diffraction', 'optics.wave.scattering', ...(block.specVersion === '2.0.0' ? ['optics.wave.interference'] : [])].includes(block.objectiveId)) {
       this.reject('PROTOCOL_REQUIRED', '实验协议需要更新，请重新打开课件');
     }
     const currentScope = await this.scope(project.id, actorId, block.sessionIndex, block.scope?.objectiveId);
@@ -114,8 +124,8 @@ export class TutorExperimentService {
     }
     const learningObjectiveId = currentScope.objectiveId;
     await this.assertDynamicAccess(actorId, record.projectId, block);
-    const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload);
-    if (block.allowedModels && !block.allowedModels.includes(validated.auditPayload.mode as 'diffraction' | 'scattering')) {
+    const validated = validateTutorExperimentAction(block.initialMode, input.action, input.payload, block.specVersion);
+    if (block.allowedModels && !block.allowedModels.some(mode => mode === validated.auditPayload.mode)) {
       this.reject('MODEL_NOT_SCHEDULED', '本活动未授权该实验模型');
     }
     const payload = input.payload as Record<string, unknown>;
@@ -163,6 +173,8 @@ export class TutorExperimentService {
         actionId, requestHash, projectId: project.id, sessionId: record.sessionId, experimentId,
         ...currentScope, action: input.action, specVersion: block.specVersion, objectiveId: block.objectiveId,
         ...validated.auditPayload, parameterDigest,
+        ...(block.specVersion === '2.0.0' ? { objectiveId: learningObjectiveId, modelObjectiveId: block.objectiveId,
+          modelVersion: 'wave-optics-model.v1', savedAt } : {}),
         ...(observationReceipt ? { evidenceRef: observationReceipt.evidenceRef } : {}),
       };
       if (!previous) await this.audit.write({
@@ -195,7 +207,7 @@ export class TutorExperimentService {
     const lesson = bundle.template.curriculum?.profiles.find((entry) => entry.id === bundle.scheduleProfileId)
       ?.sessions.find((entry) => entry.sessionIndex === session.lessonIndex);
     const mode = block.allowedModels[0];
-    const topic = mode === 'diffraction' ? 'diffraction_slit' : mode === 'scattering' ? 'particle_scattering' : null;
+    const topic = mode === 'diffraction' ? 'diffraction_slit' : mode === 'interference' ? 'double_slit_interference' : mode === 'scattering' ? 'particle_scattering' : null;
     if (!lesson?.interactiveSpec?.enabled || lesson.interactiveSpec.domainTopic !== topic || block.allowedModels.length !== 1
       || session.lessonIndex !== block.sessionIndex || session.id !== `${plan.plan.id}:${lesson.id}`
       || plan.plan.templateVersion !== bundle.templateVersionId) this.reject('MODEL_NOT_SCHEDULED', '当前课时未授权该模型');
@@ -205,10 +217,23 @@ export class TutorExperimentService {
     const runtime = freezeTutorRuntime(await this.registry.getAssistantRuntime(role.assistantId), role,
       this.registry.isModelAvailable(role.modelByPurpose.dialogue));
     if (!isLessonActivityAuthorized(runtime)) this.reject('AUTHORIZATION_REVOKED', '本实验的教学工具授权已撤销');
+    if (block.specVersion === '2.0.0' && (!lesson.requiredToolIds?.includes(WAVE_ACTIVITY_TOOL) || !isWaveActivityAuthorized(runtime))) {
+      this.reject('AUTHORIZATION_REVOKED', '本课波动工具授权已撤销');
+    }
+    if (block.specVersion === '2.0.0' && (!block.scope.activityId
+      || block.scope.activityId !== await this.currentPracticeActivity(actorId, plan.plan.id, session.id))) this.reject('ACTIVITY_CHANGED', '当前实践活动已变化');
     const actor = { id: actorId, role: 'student' as const, email: '', displayName: '' };
     if (!await this.mastery.checkRequiredObjectives(actor, actorId, plan.plan.id, session.theoryObjectiveIds, this.plans)) {
       this.reject('GATE_REQUIRED', '当前理论掌握证据未满足实践门禁');
     }
+  }
+
+  private async currentPracticeActivity(studentId: string, planId: string, sessionId: string): Promise<string> {
+    if (!this.lessonProgress) this.reject('ACTIVITY_UNAVAILABLE', '课时活动服务暂不可用');
+    const progress = await this.lessonProgress.readProgress({ id: studentId, role: 'student', email: '', displayName: '' }, planId);
+    const activity = progress.sessions.find(session => session.sessionId === sessionId)?.activities?.find(entry => entry.status === 'current');
+    if (progress.currentSessionId !== sessionId || activity?.kind !== 'practice') this.reject('ACTIVITY_CHANGED', '请在当前实践活动中操作');
+    return activity.activityId;
   }
 
   private async read(actorId: string, sessionId: string, experimentId: string): Promise<ActionRecord[]> {
@@ -226,11 +251,31 @@ export class TutorExperimentService {
   async restore(record: TutorSessionRecord, response: GetTutorSessionResponse): Promise<GetTutorSessionResponse> {
     if (!record.projectId || !response.turns.some((turn) => turn.blocks.some((block) => block.kind === 'optics_experiment'))) return response;
     const receipts = await this.evidence.experimentReceipts(record.projectId, record.ownerId, record.sessionId);
+    const states = new Map<string, SavedWaveExperiment>();
+    for (const block of response.turns.flatMap(turn => turn.blocks)) {
+      if (block.kind !== 'optics_experiment' || block.specVersion !== '2.0.0' || !block.scope) continue;
+      const actions = (await this.read(record.ownerId, record.sessionId, block.experimentId)).filter(action =>
+        action.detail.projectId === record.projectId && action.detail.planId === block.scope?.planId
+        && action.detail.planRevision === block.scope?.planRevision && action.detail.learningSessionId === block.scope?.learningSessionId
+        && action.detail.objectiveId === block.scope?.objectiveId && action.detail.mode === block.initialMode
+        && action.detail.activityId === block.scope?.activityId
+        && action.detail.modelVersion === 'wave-optics-model.v1');
+      const runs: SavedWaveExperiment['runs'][number][] = [];
+      for (const action of actions.filter(action => action.detail.action === 'run')
+        .sort((a, b) => String(a.detail.savedAt).localeCompare(String(b.detail.savedAt))).slice(-3)) {
+        try {
+          const parameters = parseWaveOpticsParameters(action.detail.mode, action.detail.parameters);
+          runs.push({ actionId: action.id, parameters, projection: projectWaveOptics(parameters) });
+        } catch (error) { if (!(error instanceof WaveOpticsDomainError)) throw error; }
+      }
+      states.set(block.experimentId, { predictionSubmitted: actions.some(action => action.detail.action === 'submit_prediction'), runs });
+    }
     return { ...response, turns: response.turns.map((turn) => ({ ...turn, blocks: turn.blocks.map((block) => {
       if (block.kind !== 'optics_experiment') return block;
       const saved = receipts.filter((receipt) => receipt.experimentId === block.experimentId)
         .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
-      return saved ? { ...block, savedObservation: saved } : block;
+      const savedExperiment = states.get(block.experimentId);
+      return { ...block, ...(saved ? { savedObservation: saved } : {}), ...(savedExperiment ? { savedExperiment } : {}) };
     }) })) };
   }
 

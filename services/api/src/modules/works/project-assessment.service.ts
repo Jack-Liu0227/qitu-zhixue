@@ -368,7 +368,7 @@ export class ProjectAssessmentService {
       gateWrite = await applyAutomaticAcceptance(
         this.teamRuntime,
         decision,
-        { studentUserId: input.studentUserId, evidenceRef, source: 'works.publish-approved' },
+        { studentUserId: input.studentUserId, projectId: input.projectId, evidenceRef, source: 'works.publish-approved' },
       );
       if (gateWrite.written) {
         this.logger.log(

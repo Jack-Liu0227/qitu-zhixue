@@ -2,19 +2,23 @@ import { ConflictException } from '@nestjs/common';
 import type { ModelRuntimeTool } from '@qitu/model-runtime';
 import { serializeTutorLessonProgram } from '@qitu/ai-client';
 import { projectTutorLessonProgram } from './tutor-lesson-program';
-import type { TutorReplyBlock } from '@qitu/contracts';
+import type { TutorReplyBlock, OpticsExperimentMode } from '@qitu/contracts';
 import type { EffectiveAgentRuntime } from '../platform-registry/platform-registry.service';
 import { hashRequest } from '../../common/idempotency';
 import type { TutorTeachingContext } from './tutor-teaching-context';
 import type { ImaReadEvidence } from './ima-project-scope';
 import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
+import { WAVE_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/wave-activity.schema';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
+import { resolveActivitySources } from './tutor-activity-resources';
+import { buildWavePreview } from './tutor-wave-preview';
 export { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
 
 export const LESSON_ACTIVITY_SKILL = 'pbl-dynamic-lesson';
 export const LESSON_ACTIVITY_TOOL = 'tutor.propose_lesson_activity';
 // Canonical Admin identity stays dotted; the explicit wire alias is portable across model providers.
 export const LESSON_ACTIVITY_FUNCTION = 'tutor_propose_lesson_activity';
+export const WAVE_ACTIVITY_TOOL = 'tutor.propose_wave_activity';
 export interface LessonQuestionCandidate {
   prompt: string; options: { text: string }[]; correctOptionIndex: number; explanation: string;
   difficulty: 'easy' | 'medium' | 'hard'; sourceRefs: string[];
@@ -22,6 +26,7 @@ export interface LessonQuestionCandidate {
 export interface LessonActivityScope {
   projectId: string; planId: string; planRevision: number; learningSessionId: string;
   objectiveId: string; tutorSessionId: string;
+  activityId?: string;
 }
 export interface LessonActivityChannel {
   tools: ModelRuntimeTool[];
@@ -42,7 +47,7 @@ interface Input {
   verifyEvidence(refs: readonly string[]): Promise<readonly ImaReadEvidence[]>;
   proposeOptics(candidate: OpticsCandidate, key: string): Promise<Extract<TutorReplyBlock, { kind: 'optics_experiment' }>>;
 }
-export interface OpticsCandidate { title: string; summary: string; mode: 'diffraction' | 'scattering'; parameters: Record<string, number> }
+export interface OpticsCandidate { title: string; summary: string; mode: OpticsExperimentMode; parameters: Record<string, number> }
 
 function invalid(message = '教学活动候选不符合当前课时协议。'): never {
   throw new ConflictException({ code: 'TUTOR_ACTIVITY_INVALID', message });
@@ -64,6 +69,11 @@ export function isLessonActivityAuthorized(runtime: EffectiveAgentRuntime): bool
       && (skill.publicationStatus === 'published' || skill.publicationStatus === 'reviewed'))
     && runtime.tools.some((tool) => tool.id === LESSON_ACTIVITY_TOOL && tool.version === 'tutor.propose_lesson_activity.v1'
       && tool.inputSchemaDigest === teachingValueDigest(LESSON_ACTIVITY_SCHEMA));
+}
+
+export function isWaveActivityAuthorized(runtime: EffectiveAgentRuntime): boolean {
+  return isLessonActivityAuthorized(runtime) && runtime.tools.some(tool => tool.id === WAVE_ACTIVITY_TOOL
+    && tool.version === 'tutor.propose_wave_activity.v1' && tool.inputSchemaDigest === teachingValueDigest(WAVE_ACTIVITY_SCHEMA));
 }
 
 export function buildActivityBoard(candidate: Record<string, unknown>, boardId: string): Extract<TutorReplyBlock, { kind: 'board' }> {
@@ -111,14 +121,18 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
   if (!isLessonActivityAuthorized(input.runtime)) return channel;
   const scheduledDomain = input.teaching.bundle.template.curriculum?.profiles.find((profile) => profile.id === input.teaching.bundle.scheduleProfileId)
     ?.sessions.find((session) => session.sessionIndex === input.teaching.session.lessonIndex)?.interactiveSpec?.domainTopic ?? 'none';
+  const waveProtocol = input.teaching.bundle.template.curriculum?.profiles.find(profile => profile.id === input.teaching.bundle.scheduleProfileId)
+    ?.sessions.find(session => session.sessionIndex === input.teaching.session.lessonIndex)?.requiredToolIds?.includes(WAVE_ACTIVITY_TOOL) === true;
+  if (waveProtocol && !isWaveActivityAuthorized(input.runtime)) invalid('本课的波动教学工具未获授权或已撤销。');
   channel.tools = [{
+    // The wire alias stays compatible with reviewed skill instructions; the frozen capability selects its schema and owner checks.
     name: LESSON_ACTIVITY_FUNCTION,
-    description: `Frozen lesson program: ${serializeTutorLessonProgram(projectTutorLessonProgram(input.teaching))}. Scheduled interactive domain: ${scheduledDomain}. Follow this lesson's activities and evidence requirements. Board uses nodes/edges or TeX; optics uses the registered lesson model. Choice questions need verified evidence_ref values and an assessment objective; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
-    inputSchema: LESSON_ACTIVITY_SCHEMA,
+    description: `Frozen lesson program: ${serializeTutorLessonProgram(projectTutorLessonProgram(input.teaching))}. Scheduled interactive domain: ${scheduledDomain}. Follow this lesson's activities and evidence requirements. Board uses nodes/edges or TeX; optics uses the registered lesson model. ${waveProtocol ? 'For conceptual observation before the gate, wave_preview generates only read-only registered wave diagrams; no parameters, actions or saved experimental evidence. Choose resources according to current student evidence: recommendation needs actual read evidence_ref sourceRefs; an adapted board needs origin adapted plus sourceRefs; a new board uses origin generated and no sources. Never invent a citation or link. Unavailable knowledge must be stated as unverified. Double slit mode is interference; start with wavelength 550 nm, slitWidth 20 micrometres, slitSeparation 150 micrometres, screenDistance 2 m. Only one variable per comparison. Aperture extent squared divided by wavelength times screen distance must be <=0.1 for the far-field approximation. ' : ''}Choice questions need verified evidence_ref values and an assessment objective; they are formative, never a mastery decision.${input.pendingQuestion ? ` A question is already pending; do not create another or reveal its answer. Public question: ${JSON.stringify({ stem: input.pendingQuestion.stem, options: input.pendingQuestion.options })}` : ''}`,
+    inputSchema: waveProtocol ? WAVE_ACTIVITY_SCHEMA : LESSON_ACTIVITY_SCHEMA,
     execute: (args) => {
       const result = queue.then(async () => {
         const fresh = await input.refresh();
-        if (!isLessonActivityAuthorized(fresh.runtime) || fresh.teaching.planId !== input.scope.planId
+        if (!isLessonActivityAuthorized(fresh.runtime) || waveProtocol && !isWaveActivityAuthorized(fresh.runtime) || fresh.teaching.planId !== input.scope.planId
           || fresh.teaching.planRevision !== input.scope.planRevision || fresh.teaching.session.id !== input.scope.learningSessionId
           || fresh.teaching.objective?.id !== input.scope.objectiveId || fresh.teaching.role.roleSlotId !== input.teaching.role.roleSlotId) {
           invalid('课时、教学配置或权限已变化，请刷新后继续。');
@@ -127,8 +141,8 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
         const activity = fresh.teaching.lesson.currentActivity;
         if (fresh.teaching.bundle.template.lessonPolicy === 'lesson-guided.v1') {
           if (!activity || activity.activityId !== input.teaching.lesson.currentActivity?.activityId) invalid('当前活动已完成或变化，请刷新课时。');
-          if (candidate.kind === 'choice_question' && activity.kind !== 'check') invalid('选择题只用于当前检查活动。');
-          if (candidate.kind === 'optics' && activity.kind !== 'practice') invalid('实验只用于当前实践活动。');
+          if (candidate.kind === 'choice_question' && activity.kind !== 'check') return { isError: true, text: 'CHOICE_QUESTION_ONLY_IN_CHECK. The current activity is for explanation/exploration. Propose a conceptual board (kind=\'board\') instead of a quiz.' };
+          if (candidate.kind === 'optics' && activity.kind !== 'practice') return { isError: true, text: 'OPTICS_SIMULATION_PRACTICE_GATED. Quantitative optics simulation is restricted to practice activities after TheoryMastered. For current concept/explore activities, propose a conceptual board (kind=\'board\') with visual diagrams and steps instead.' };
         }
         // Arbitrary board/formula text must not become a second answer-disclosure channel.
         if (input.assessmentPending || input.pendingQuestion) {
@@ -143,7 +157,15 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
         let block: TutorReplyBlock;
         if (candidate.kind === 'board') {
           try {
-            block = buildActivityBoard(candidate, `board-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`);
+            if (waveProtocol) {
+              exact(candidate, ['kind', 'title', 'steps', 'origin', 'sourceRefs']);
+              if (candidate.origin !== undefined && candidate.origin !== 'generated' && candidate.origin !== 'adapted') invalid();
+              const origin = candidate.origin ?? 'generated';
+              if (origin === 'generated' && candidate.sourceRefs !== undefined) invalid('引用资料时请选择改编，并先核验资料。');
+              const sources = origin === 'adapted' ? await resolveActivitySources(candidate.sourceRefs, input.verifyEvidence) : [];
+              block = { ...buildActivityBoard({ kind: 'board', title: candidate.title, steps: candidate.steps },
+                `board-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`), provenance: { origin, sources } };
+            } else block = buildActivityBoard(candidate, `board-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`);
           } catch (error) {
             // The runtime hides arbitrary exceptions. Give the model a bounded
             // protocol correction so an invalid candidate can be repaired.
@@ -154,9 +176,22 @@ export function createLessonActivityChannel(input: Input): LessonActivityChannel
               + 'edges must reference those IDs. Do not include summary, mode, parameters, question, raw Mermaid or executable content.' };
           }
         }
+        else if (candidate.kind === 'wave_preview') {
+          if (!waveProtocol) invalid();
+          exact(candidate, ['kind', 'title', 'summary']);
+          block = buildWavePreview(`preview-${hashRequest({ scope: input.scope, key }).slice(0, 32)}`, text(candidate.title, 100),
+            candidate.summary === undefined ? '先描述你观察到的图样，不急着解释。' : text(candidate.summary, 300));
+        }
+        else if (candidate.kind === 'recommendation') {
+          if (!waveProtocol) invalid();
+          exact(candidate, ['kind', 'title', 'summary', 'sourceRefs']);
+          const sources = await resolveActivitySources(candidate.sourceRefs, input.verifyEvidence);
+          block = { kind: 'learning_resource', title: text(candidate.title, 100), summary: text(candidate.summary, 500), sources };
+        }
         else if (candidate.kind === 'optics') {
           exact(candidate, ['kind', 'title', 'summary', 'mode', 'parameters']);
-          if (candidate.mode !== 'diffraction' && candidate.mode !== 'scattering') invalid();
+          if (candidate.mode !== 'diffraction' && candidate.mode !== 'scattering' && candidate.mode !== 'interference') invalid();
+          if (waveProtocol ? candidate.mode === 'scattering' : candidate.mode === 'interference') invalid();
           block = await input.proposeOptics({ title: text(candidate.title, 100), summary: text(candidate.summary, 500),
             mode: candidate.mode, parameters: record(candidate.parameters) as Record<string, number> }, key);
         } else if (candidate.kind === 'choice_question') {

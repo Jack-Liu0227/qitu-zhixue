@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import type { TutorReplyBlock } from '@qitu/contracts';
 
 export interface OptionChipsProps {
@@ -21,26 +21,18 @@ export function OptionChips({
 }: OptionChipsProps) {
   const [otherOpen, setOtherOpen] = useState(false);
   const [otherText, setOtherText] = useState('');
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
-  const listId = useId();
-
-  const selectedItem = items.find((item) => item.label === selectedLabel);
 
   return (
     <div className="qitu-tutor-options" role="group" aria-label="快捷选项">
-      <div className="qitu-tutor-options-chips" id={listId}>
+      <div className="qitu-tutor-options-chips">
         {items.map((item) => {
-          const isSelected = selectedLabel === item.label;
           return (
             <button
               key={`${item.label}-${item.text}`}
               type="button"
-              className={`qitu-tutor-option-chip${isSelected ? ' is-active' : ''}`}
-              style={{
-                fontWeight: isSelected ? 600 : undefined,
-              }}
+              className="qitu-tutor-option-chip"
               disabled={disabled}
-              onClick={() => setSelectedLabel(item.label)}
+              onClick={() => onSelect(item.label, item.text)}
             >
               <span className="qitu-tutor-option-label">{item.label}</span>
               <span className="qitu-tutor-option-text">{item.text}</span>
@@ -59,27 +51,12 @@ export function OptionChips({
         ) : null}
       </div>
 
-      {/* 确认发送按钮 */}
-      {selectedItem && (
-        <div className="qitu-tutor-option-selected-banner">
-          <span className="qitu-tutor-option-selected-text">
-            已选择选项 <strong>{selectedItem.label}</strong>：{selectedItem.text}
-          </span>
-          <button
-            type="button"
-            className="qitu-tutor-option-submit-btn"
-            disabled={disabled}
-            onClick={() => onSelect(selectedItem.label, selectedItem.text)}
-          >
-            确认提交 ↵
-          </button>
-        </div>
-      )}
       {allowOther && otherOpen ? (
         <form
           className="qitu-tutor-other-expanded"
           onSubmit={(event) => {
             event.preventDefault();
+            if (disabled) return;
             const text = otherText.trim();
             if (text.length === 0) return;
             onSelect('其他', text);
@@ -107,15 +84,16 @@ export function OptionChips({
           {/* 快捷灵感标签 */}
           <div className="qitu-tutor-other-tags">
             {[
-              '我想换一个更有挑战的课题',
-              '我想深入探究几何碰撞数学推导',
-              '希望最终做出 Python 仿真动画',
-              '作品需要包含战机射击与敌人生成',
+              '我想先看一个例子',
+              '请把这一步讲慢一点',
+              '我想比较两种解释',
+              '我有不同的观察',
             ].map((tag) => (
               <button
                 key={tag}
                 type="button"
                 className="qitu-tutor-other-tag-btn"
+                disabled={disabled}
                 onClick={() => setOtherText((prev) => (prev ? `${prev}；${tag}` : tag))}
               >
                 + {tag}
@@ -125,11 +103,13 @@ export function OptionChips({
 
           <textarea
             className="qitu-tutor-other-textarea"
+            disabled={disabled}
             value={otherText}
             onChange={(event) => setOtherText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
+                if (disabled) return;
                 const text = otherText.trim();
                 if (text.length === 0) return;
                 onSelect('其他', text);
@@ -160,7 +140,7 @@ export function OptionChips({
               <button
                 type="submit"
                 className="qitu-tutor-other-submit"
-                disabled={!otherText.trim()}
+                disabled={disabled || !otherText.trim()}
               >
                 发送想法 🚀
               </button>

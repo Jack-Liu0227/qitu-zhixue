@@ -71,6 +71,18 @@ export interface AdminTemplateVersionDetail {
   createdBy: string | null;
 }
 
+export interface AdminCourseVerification {
+  templateVersionId: string; passed: boolean; evaluatedAt: string;
+  checks: { key: string; label: string; passed: boolean; detail: string }[];
+}
+
+export function runAdminCourseTransition(templateId: string, versionId: string, action: 'pilot' | 'verify' | 'publish', reason: string, key: string) {
+  return adminEnvelopeRequest<{ report?: AdminCourseVerification }>({
+    path: `/api/v1/admin/project-templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}/${action}`,
+    method: 'POST', ...(action === 'verify' ? {} : { body: { reason } }), idempotencyKey: key,
+  });
+}
+
 export interface AdminTemplateMutation {
   template: AdminProjectTemplate;
   replayed: boolean;
@@ -142,12 +154,13 @@ export function updateAdminTemplate(
 export function createAdminTemplateVersion(
   id: string,
   input: { stages: AdminTemplateStage[]; content: Record<string, unknown>; rubric?: unknown[] },
+  idempotencyKey = newIdempotencyKey(),
 ): Promise<AdminTemplateVersionMutation> {
   return adminEnvelopeRequest<AdminTemplateVersionMutation>({
     path: `/api/v1/admin/project-templates/${encodeURIComponent(id)}/versions`,
     method: 'POST',
     body: input,
-    idempotencyKey: newIdempotencyKey(),
+    idempotencyKey,
   });
 }
 

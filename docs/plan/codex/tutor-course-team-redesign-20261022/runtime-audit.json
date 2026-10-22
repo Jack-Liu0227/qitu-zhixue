@@ -1,0 +1,191 @@
+{
+  "readAt": "2026-10-22T11:04:42.806Z",
+  "readOnly": true,
+  "scope": "Selected optics template configuration only; no student messages or credentials.",
+  "source": {
+    "branch": "main",
+    "head": "f8d631c98f981de66e14644e5cd9f001104053f3",
+    "workingTree": "Contains earlier authorized implementation changes; source presence is not publication."
+  },
+  "configuration": {
+    "templateId": "tpl-a83c1185-074b-4977-90c6-887e248fbbde",
+    "templateVersionId": "tplv-a024e9d6-025e-4b47-876b-d14ab5d6c8b0",
+    "templateVersion": "v1",
+    "templateStatus": "published",
+    "scheduleProfileId": "optics-16x60-v2",
+    "teamId": "team-optics-inquiry",
+    "teamVersionId": "team-version-0097047a54c8d8fe8cc010673eef2bc6",
+    "teamVersion": 5,
+    "leaderAssistantId": "optics-leader",
+    "bindingId": "bnd-78418c631fcd9306",
+    "bindingStatus": "active",
+    "configurationReady": true,
+    "teachingReadiness": {
+      "lessonCompletionReady": false,
+      "lessonSkillsDeclared": false,
+      "knowledgeRequired": false,
+      "knowledgeScopeDeclared": false
+    },
+    "knowledgeBaseIds": [],
+    "mcpServerIds": []
+  },
+  "phases": [
+    {
+      "phase": "exploration",
+      "assignedAssistantId": "qitu-intake-assistant"
+    },
+    {
+      "phase": "concept_mastery",
+      "assignedAssistantId": "optics-concept-coach"
+    },
+    {
+      "phase": "guided_practice",
+      "assignedAssistantId": "optics-experiment-guide"
+    },
+    {
+      "phase": "deliverable_review",
+      "assignedAssistantId": "optics-review-assessor"
+    }
+  ],
+  "members": [
+    {
+      "slotId": "slot-optics-leader",
+      "assistantId": "optics-leader"
+    },
+    {
+      "slotId": "slot-optics-concept",
+      "assistantId": "optics-concept-coach"
+    },
+    {
+      "slotId": "slot-optics-guide",
+      "assistantId": "optics-experiment-guide"
+    },
+    {
+      "slotId": "slot-optics-review",
+      "assistantId": "optics-review-assessor"
+    },
+    {
+      "slotId": "slot-qitu-intake-assistant",
+      "assistantId": "qitu-intake-assistant"
+    }
+  ],
+  "sessions": [
+    {
+      "sessionIndex": 1,
+      "title": "光的宏观现象与观察指标",
+      "assistantId": "qitu-intake-assistant",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 2,
+      "title": "提出探究假设与实验方案",
+      "assistantId": "qitu-intake-assistant",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 3,
+      "title": "光的直线传播与平面镜成像原理",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 4,
+      "title": "反射定律公式与光路可逆性",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 5,
+      "title": "折射定律与介质折射率定义",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 6,
+      "title": "全反射发生条件与临界角推导",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 7,
+      "title": "凸透镜与凹透镜成像特殊光线作图",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 8,
+      "title": "理论综合闯关与门禁评测",
+      "assistantId": "optics-concept-coach",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 9,
+      "title": "光具座搭建、法线与光轴校准",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 10,
+      "title": "折射角与物像距数据采集",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 11,
+      "title": "单缝衍射现象与条纹特征探究",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 12,
+      "title": "封闭细雾室介质散射探究",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 13,
+      "title": "数据线性化拟合与实验求参",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 14,
+      "title": "实验报告撰写与 CER 科学论证",
+      "assistantId": "optics-experiment-guide",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 15,
+      "title": "实验探究成果答辩与同行质疑",
+      "assistantId": "optics-review-assessor",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    },
+    {
+      "sessionIndex": 16,
+      "title": "学习反思与学科素养成长归档",
+      "assistantId": "optics-review-assessor",
+      "hasCompletionSpec": false,
+      "requiredSkillIds": []
+    }
+  ],
+  "limitations": [
+    "No student dialogue read by this configuration audit.",
+    "No course or team mutations performed.",
+    "This audit does not run or prove a complete classroom workflow."
+  ]
+}

@@ -16,6 +16,7 @@ export interface HistorySessionItem {
   updatedAt: string;
   turnCount: number;
   stageLabel?: string;
+  includesExploration?: boolean;
 }
 
 
@@ -508,6 +509,7 @@ export function TutorSessionHistory({
                         </span>
                       )}
                       <span>{item.turnCount}条对话</span>
+                      {item.includesExploration ? <span>含前期探索</span> : null}
                       <span>·</span>
                       <span>{formatRelativeTime(item.updatedAt)}</span>
                     </div>

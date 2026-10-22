@@ -4,6 +4,9 @@ import type {
   StageProgressDisplay,
   TemplateStage,
 } from './project.js';
+import type { OpticsExperimentMode, SavedWaveExperiment, WaveOpticsProjection } from './wave-optics.js';
+import type { PblTemplateSession } from './pbl-learning.js';
+import type { TutorLearningScope } from './tutor-learning.js';
 
 /**
  * The pedagogic move a student requests through the tutor interaction. The client
@@ -27,6 +30,17 @@ export type PedagogicMove =
  */
 export type TutorHintLevel = 1 | 2 | 3 | 4 | 5;
 
+/** Bounded citation metadata from an authorized read; never a document capability. */
+export interface TutorLearningSource {
+  sourceRef: string;
+  title: string;
+}
+
+export type TutorOpeningBlock = { kind: 'learning_opening'; title: string; scenario: string; prompt: string; goal?: string } & (
+  { mode: 'lesson'; scope: TutorLearningScope; lessonIndex: number; lessonCount: number }
+  | { mode: 'exploration' | 'template' }
+);
+
 /**
  * A single structured reply block.
  *
@@ -41,6 +55,7 @@ export type TutorHintLevel = 1 | 2 | 3 | 4 | 5;
  *   level by itself.
  */
 export type TutorReplyBlock =
+  | TutorOpeningBlock
   | { kind: 'text'; text: string }
   | { kind: 'questions'; items: string[] }
   | {
@@ -50,6 +65,7 @@ export type TutorReplyBlock =
     }
   | { kind: 'hint'; level: TutorHintLevel; text: string }
   | { kind: 'evidence'; ref: string }
+  | { kind: 'learning_resource'; title: string; summary: string; sources: readonly TutorLearningSource[] }
   /**
    * 一次工具调用及其结果。
    *
@@ -149,9 +165,9 @@ export type TutorReplyBlock =
       experimentId: string;
       title: string;
       summary?: string;
-      initialMode?: 'diffraction' | 'scattering';
+      initialMode?: OpticsExperimentMode;
       initialParameters?: Record<string, number>;
-      allowedModels?: readonly ('diffraction' | 'scattering')[];
+      allowedModels?: readonly OpticsExperimentMode[];
       specVersion: string;
       objectiveId: string;
       sessionIndex: number;
@@ -160,12 +176,14 @@ export type TutorReplyBlock =
         planId: string;
         planRevision: number;
         learningSessionId: string;
+        activityId?: string;
         /** Actual frozen plan objective; block.objectiveId identifies the registered model domain. */
         objectiveId?: string;
         rubricRef: string;
         cerRef: string;
       };
       savedObservation?: TutorExperimentActionResponse['observationReceipt'];
+      savedExperiment?: SavedWaveExperiment;
       predictionGate?: {
         required: boolean;
         submitted: boolean;
@@ -213,6 +231,7 @@ export type TutorReplyBlock =
    */
   | {
       kind: 'board';
+      provenance?: { origin: 'generated' | 'adapted'; sources: readonly TutorLearningSource[] };
       boardId: string;
       title?: string;
       steps: { caption: string; mermaid?: string; tex?: string; svg?: string }[];
@@ -366,6 +385,11 @@ export interface TutorProjectContext {
   phases?: TutorPhaseProjection[];
   /** 当前冻结课时投影。阶段仅作为服务端策略元数据，不在学生端作为课程主轴展示。 */
   lesson?: {
+    collaborationAvailable?: boolean;
+    opening?: PblTemplateSession['opening'];
+    learningGoal?: string;
+    assessmentAvailable?: boolean;
+    evidenceRefs?: readonly string[];
     completedCount?: number;
     currentActivity?: import('./learning-session-progress.js').LessonActivityProgress | null;
     planId?: string;
@@ -420,6 +444,13 @@ export interface TutorPhaseProjection {
 
 /** 团队智能体运行状态（右侧栏「团队智能体」Tab）。 */
 export type TutorTeamAgentStatus = 'ready' | 'running' | 'waiting' | 'failed' | 'offline';
+
+export interface TutorLessonCollaborationView {
+  projectId: string;
+  scope: TutorLearningScope;
+  status: 'unavailable' | 'idle' | 'queued' | 'running' | 'ready' | 'failed';
+  blocks: readonly TutorReplyBlock[];
+}
 
 /** 智能体参与的一次可见对话事件（已服务端过滤脱敏，不含内部提示词）。 */
 export interface TutorTeamAgentMessage {
@@ -612,7 +643,7 @@ export interface TutorExperimentActionResponse {
   experimentId: string;
   action: TutorExperimentAction;
   /** Optional server-computed model projection for a run action. */
-  simulationResult?: { mode: 'diffraction' | 'scattering'; summary: string };
+  simulationResult?: { mode: OpticsExperimentMode; summary: string; waveProjection?: WaveOpticsProjection };
   /** Returned only after the works evidence owner has persisted and read back the observation. */
   observationReceipt?: {
     observationId: string;
@@ -623,6 +654,7 @@ export interface TutorExperimentActionResponse {
     planId: string;
     planRevision: number;
     learningSessionId: string;
+    activityId?: string;
     runActionId: string;
     objectiveId?: string;
     parameterDigest: string;

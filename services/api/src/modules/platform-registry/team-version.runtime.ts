@@ -1,3 +1,4 @@
+import { LESSON_COLLABORATION_SCHEMA } from '@qitu/contracts';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   agentConfigs,
@@ -164,23 +165,26 @@ async function syncDelegationRoutes(
         : undefined)
       .filter((assistantId): assistantId is string =>
         typeof assistantId === 'string'
-        && assistantId.length > 0
-        && assistantId !== version.leaderAssistantId),
+        && assistantId.length > 0),
   )].sort();
 
   for (const toAgentId of recipients) {
-    const taskType = 'pbl.plan';
-    const [existing] = await tx.select().from(agentRoutes).where(and(
+    const taskTypes = toAgentId === version.leaderAssistantId ? ['lesson.collaborate']
+      : toAgentId === 'qitu-intake-assistant' ? ['pbl.plan'] : ['pbl.plan', 'lesson.collaborate'];
+    for (const taskType of taskTypes) {
+    const outputSchema = taskType === 'lesson.collaborate' ? LESSON_COLLABORATION_SCHEMA : PBL_PLAN_OUTPUT_SCHEMA;
+    const matching = await tx.select().from(agentRoutes).where(and(
       eq(agentRoutes.fromAgentId, version.leaderAssistantId),
       eq(agentRoutes.toAgentId, toAgentId),
       eq(agentRoutes.trigger, 'delegate'),
       eq(agentRoutes.taskType, taskType),
-    )).limit(1);
+    ));
+    const existing = matching.find(route => route.fromAgentId === version.leaderAssistantId && route.toAgentId === toAgentId && route.trigger === 'delegate' && route.taskType === taskType);
     if (existing) {
-      if (!existing.enabled || JSON.stringify(existing.outputSchema) !== JSON.stringify(PBL_PLAN_OUTPUT_SCHEMA)) {
+      if (!existing.enabled || JSON.stringify(existing.outputSchema) !== JSON.stringify(outputSchema)) {
         await tx.update(agentRoutes).set({
           enabled: true,
-          outputSchema: PBL_PLAN_OUTPUT_SCHEMA,
+          outputSchema,
           updatedBy: actorId,
           updatedAt: now,
         }).where(eq(agentRoutes.id, existing.id));
@@ -198,11 +202,12 @@ async function syncDelegationRoutes(
       trigger: 'delegate',
       taskType,
       enabled: true,
-      outputSchema: PBL_PLAN_OUTPUT_SCHEMA,
+      outputSchema,
       updatedBy: actorId,
       createdAt: now,
       updatedAt: now,
     });
+    }
   }
 }
 

@@ -1,3 +1,6 @@
+import { readLessonCollaborationEvidence } from '@qitu/database';
+import type { LessonCollaborationScope } from '@qitu/contracts';
+import { assertDomainLeader } from '../../common/intake-boundary';
 import {
   BadRequestException,
   ConflictException,
@@ -126,7 +129,7 @@ const SAFE_FRAME_ENUMS: Record<string, ReadonlySet<string>> = {
   pblPhase: new Set(PBL_PHASE_ORDER),
   passedGate: KNOWN_PBL_GATES,
   requiredGate: KNOWN_PBL_GATES,
-  taskType: new Set(['interest.confirmation', 'project.recommendation', 'pbl.plan', 'pbl.advance', 'project.review', 'profile.generate', 'growth.record']),
+  taskType: new Set(['lesson.collaborate', 'interest.confirmation', 'project.recommendation', 'pbl.plan', 'pbl.advance', 'project.review', 'profile.generate', 'growth.record']),
   status: new Set(['queued', 'running', 'succeeded', 'failed', 'cancelled']),
   trigger: new Set(['manual', 'autonomous', 'delegate']),
   errorCode: new Set([...Object.values(PBL_TEAM_ERROR_CODES), ...Array.from(KNOWN_PBL_GATES, (gate) => pblGateErrorCode(gate))]),
@@ -518,6 +521,7 @@ export interface TeacherAgentRunProjection {
     status?: TeacherNodeStatus;
     summary: string;
     detail?: string | null;
+    rawPayload?: string | null;
   }[];
   generatedAt: string | null;
 }
@@ -544,6 +548,8 @@ export interface TeamRunGraph {
   messages: readonly Record<string, unknown>[];
   events: readonly Record<string, unknown>[];
 }
+
+const LESSON_COLLABORATION_OWNER = Symbol('lesson-collaboration-owner');
 
 @Injectable()
 export class TeamRuntimeService {
@@ -661,16 +667,19 @@ export class TeamRuntimeService {
     tx: Parameters<Parameters<Database['transaction']>[0]>[0],
     runId: string,
     studentUserId: string,
+    projectId: string | null,
   ): Promise<number> {
+    if (!projectId) return 0;
     const rows = await tx
       .select()
       .from(pblGateEvidence)
-      .where(and(eq(pblGateEvidence.studentUserId, studentUserId), isNull(pblGateEvidence.consumedAt)))
+      .where(and(eq(pblGateEvidence.studentUserId, studentUserId), eq(pblGateEvidence.projectId, projectId), isNull(pblGateEvidence.consumedAt)))
       .orderBy(asc(pblGateEvidence.createdAt));
     if (rows.length === 0) return 0;
     const consumedAt = new Date();
     let flushed = 0;
     for (const row of rows) {
+      if (row.projectId !== projectId) continue;
       const key = normalizeKey(`gate:${studentUserId}:${row.gate}:${row.evidenceRef}`, 'team-gate');
       await this.writeGateSatisfiedForRun(tx, runId, studentUserId, row.gate, row.evidenceRef, row.source, key, 'ledger_flush');
       await tx
@@ -688,6 +697,7 @@ export class TeamRuntimeService {
     const clientContext = sanitizeTeamClientContext(input.context);
     const db = this.requireDb();
     const leaderAgentId = input.leaderAgentId?.trim() || 'qitu-learning-partner';
+    assertDomainLeader(leaderAgentId);
     const studentUserId = input.studentUserId ?? (actor.role === 'student' ? actor.id : null);
     this.assertStudentScope(actor, studentUserId);
     await this.assertStudentObjects(actor, studentUserId, input.projectId ?? null, input.tutorSessionId ?? null);
@@ -771,7 +781,7 @@ export class TeamRuntimeService {
         if (studentUserId !== null) {
           try {
             await tx.execute(sql`SAVEPOINT pbl_gate_flush`);
-            const flushed = await this.flushPendingGateEvidence(tx, id, studentUserId);
+            const flushed = await this.flushPendingGateEvidence(tx, id, studentUserId, input.projectId ?? null);
             await tx.execute(sql`RELEASE SAVEPOINT pbl_gate_flush`);
             if (flushed > 0) {
               this.logger.log(`PBL 待冲刷门禁已物化：run=${id}，学生=${studentUserId}，共 ${flushed} 条`);
@@ -833,12 +843,29 @@ export class TeamRuntimeService {
    * Delegate is the only supported Agent-to-Agent call. The allow-list route
    * is checked server-side; parentAgentId is not treated as authorization.
    */
-  async delegate(actor: CurrentUser, runId: string, input: DelegateTaskInput) {
+  async delegateLessonCollaboration(actor: CurrentUser, runId: string, input: Omit<DelegateTaskInput, 'taskType'>) {
+    return this.delegate(actor, runId, { ...input, taskType: 'lesson.collaborate' }, LESSON_COLLABORATION_OWNER);
+  }
+
+  async delegate(actor: CurrentUser, runId: string, input: DelegateTaskInput, owner?: symbol) {
+    if (input.taskType === 'lesson.collaborate' && owner !== LESSON_COLLABORATION_OWNER) {
+      throw new BadRequestException({ code: 'LESSON_COLLABORATION_OWNER_REQUIRED', message: 'Classroom tasks require the lesson owner' });
+    }
     const db = this.requireDb();
     const run = await this.getRunRow(runId);
     this.assertRunAccess(run, actor);
     // 服务端门禁：携带 pblPhase 的委派先过冻结门禁（例如未达成
     // TheoryMastered 时任何进入 guided_practice 的委派都会被 409 拒绝）。
+    if (input.taskType === 'lesson.collaborate') {
+      const scope = input.input?.scope as LessonCollaborationScope | undefined;
+      if (!scope || scope.projectId !== run.projectId || scope.studentId !== run.studentUserId) {
+        throw new BadRequestException({ code: 'LESSON_COLLABORATION_SCOPE_INVALID', message: 'Collaboration project mismatch' });
+      }
+      const collaboration = await readLessonCollaborationEvidence(db, scope, input.recipientAgentId);
+      if (collaboration.leaderAssistantId !== run.leaderAgentId || input.senderAgentId !== run.leaderAgentId) {
+        throw new BadRequestException({ code: 'LESSON_COLLABORATION_SCOPE_INVALID', message: 'Collaboration team mismatch' });
+      }
+    }
     if (input.pblPhase !== undefined) {
       if (!isPblPhase(input.pblPhase)) throw new BadRequestException({ code: PBL_TEAM_ERROR_CODES.PHASE_INVALID, message: 'pblPhase 不在冻结阶段枚举内' });
       const satisfied = await this.loadSatisfiedGates(db, runId);
@@ -1038,6 +1065,7 @@ export class TeamRuntimeService {
    * - gate 不在冻结枚举 → 400 PBL_GATE_UNKNOWN，且不落任何事件/审计。
    */
   async recordGateForStudent(input: {
+    projectId?: string | null;
     studentUserId: string;
     gate: string;
     evidenceRef: string;
@@ -1066,17 +1094,19 @@ export class TeamRuntimeService {
       .from(agentTeamRuns)
       .where(and(
         eq(agentTeamRuns.studentUserId, studentUserId),
+        ...(input.projectId ? [eq(agentTeamRuns.projectId, input.projectId)] : [isNull(agentTeamRuns.projectId)]),
         inArray(agentTeamRuns.status, ['queued', 'running']),
       ))
       .orderBy(asc(agentTeamRuns.createdAt))
       .limit(1);
-    if (!run) {
+    if (!run || (run.projectId ?? null) !== (input.projectId ?? null)) {
       try {
         await db
           .insert(pblGateEvidence)
           .values({
             id: `pblge-${randomUUID()}`,
             studentUserId,
+            projectId: input.projectId ?? null,
             gate,
             evidenceRef: writable.evidenceRef,
             source: writable.source,
@@ -1466,7 +1496,7 @@ export class TeamRuntimeService {
     const assistantIds = Object.keys(assistantRuntimeIds);
     const runtimeIds = [...new Set(Object.values(assistantRuntimeIds).flat())];
     if (runtimeIds.length === 0) return { runId: run.id, agents: {} };
-    const [tasks, messages, events, mailboxes] = await Promise.all([
+    const [tasks, messages, events] = await Promise.all([
       this.db.select().from(agentTeamTasks).where(and(eq(agentTeamTasks.runId, run.id), inArray(agentTeamTasks.agentId, runtimeIds))).orderBy(asc(agentTeamTasks.createdAt)),
       this.db.select().from(agentTeamMessages).where(and(
         eq(agentTeamMessages.runId, run.id),
@@ -1477,10 +1507,8 @@ export class TeamRuntimeService {
         ),
       )).orderBy(asc(agentTeamMessages.createdAt)),
       this.db.select().from(agentTeamEvents).where(eq(agentTeamEvents.runId, run.id)).orderBy(asc(agentTeamEvents.occurredAt)),
-      this.db.select().from(agentMailboxes).where(inArray(agentMailboxes.agentId, runtimeIds)),
     ]);
     const taskById = new Map(tasks.map((task) => [task.id, task]));
-    const mailboxByAgent = new Map(mailboxes.map((mailbox) => [mailbox.agentId, mailbox]));
     const output: Record<string, StudentTeamAgentRuntimeProjection> = {};
 
     for (const assistantId of assistantIds) {
@@ -1492,8 +1520,7 @@ export class TeamRuntimeService {
         const task = taskById.get(event.taskId);
         return task !== undefined && ids.has(task.agentId);
       });
-      const pendingCount = projectId === null ? memberMessages.filter(message => message.status === 'queued').length
-        : [...ids].reduce((count, id) => count + (mailboxByAgent.get(id)?.pendingCount ?? 0), 0);
+      const pendingCount = memberMessages.filter(message => message.status === 'queued').length;
       const latestTask = memberTasks.at(-1);
       const status = studentAgentStatus(run.status, memberTasks, pendingCount, ids.has(run.leaderAgentId));
       output[assistantId] = {
@@ -1549,25 +1576,33 @@ export class TeamRuntimeService {
           durationMs: durationMs(run.startedAt, run.completedAt),
         }];
     const activity = [
-      ...tasks.map((task) => ({
-        id: `task:${task.id}`,
-        timestamp: (task.completedAt ?? task.startedAt ?? task.createdAt).toISOString(),
-        actorId: task.agentId,
-        actorLabel: labels.get(task.agentId) ?? task.agentId,
-        type: task.taskType,
-        status: toTeacherStatus(task.status),
-        summary: task.errorCode ? `${task.status}: ${task.errorCode}` : `任务 ${task.status}`,
-        detail: task.output ? summarizePayload(task.output) : null,
-      })),
-      ...events.map((event) => ({
-        id: `event:${event.id}`,
-        timestamp: event.occurredAt.toISOString(),
-        actorId: run.leaderAgentId,
-        actorLabel: labels.get(run.leaderAgentId) ?? run.leaderAgentId,
-        type: event.topic,
-        summary: event.topic,
-        detail: summarizePayload(event.payload),
-      })),
+      ...tasks.map((task) => {
+        const formatted = formatTeacherActivityTask(task.taskType, task.status, task.output, task.errorCode);
+        return {
+          id: `task:${task.id}`,
+          timestamp: (task.completedAt ?? task.startedAt ?? task.createdAt).toISOString(),
+          actorId: task.agentId,
+          actorLabel: labels.get(task.agentId) ?? task.agentId,
+          type: formatted.type,
+          status: toTeacherStatus(task.status),
+          summary: formatted.summary,
+          detail: formatted.detail,
+          rawPayload: formatted.rawPayload,
+        };
+      }),
+      ...events.map((event) => {
+        const formatted = formatTeacherActivityEvent(event.topic, event.payload);
+        return {
+          id: `event:${event.id}`,
+          timestamp: event.occurredAt.toISOString(),
+          actorId: run.leaderAgentId,
+          actorLabel: labels.get(run.leaderAgentId) ?? run.leaderAgentId,
+          type: formatted.type,
+          summary: formatted.summary,
+          detail: formatted.detail,
+          rawPayload: formatted.rawPayload,
+        };
+      }),
     ].sort((left, right) => left.timestamp.localeCompare(right.timestamp));
 
     return {
@@ -2034,6 +2069,7 @@ export function studentAgentStatus(
 }
 
 function studentTaskSummary(taskType: string, status: string): string {
+  if (taskType === 'lesson.collaborate') return status === 'succeeded' ? '协作建议已生成' : status === 'failed' ? '协作暂未完成' : '正在协助本课探究';
   if (taskType === 'pbl.plan' && status === 'succeeded') return '规划建议已生成';
   const label = taskType === 'interest.confirm' ? '梳理兴趣方向'
     : taskType === 'project.recommend' ? '整理项目建议'
@@ -2093,9 +2129,145 @@ function toTeacherRunNode(
     agentId: row.agentId,
     label,
     status: toTeacherStatus(row.status),
-    summary: row.errorCode ? `${row.status}: ${row.errorCode}` : `任务 ${row.status}`,
+    summary: toTeacherTaskSummary(row.status, row.errorCode, row.taskType),
     startedAt: row.startedAt?.toISOString() ?? null,
     finishedAt: row.completedAt?.toISOString() ?? null,
     durationMs: durationMs(row.startedAt, row.completedAt),
+  };
+}
+
+function toTeacherTaskSummary(status: string, errorCode?: string | null, taskType?: string): string {
+  if (errorCode) return `执行异常: ${errorCode}`;
+  if (status === 'succeeded' || status === 'completed') {
+    if (taskType === 'profile.project') return '已完成学生学情多维画像分析';
+    if (taskType === 'growth.trajectory') return '已提炼沉淀学生探究成长轨迹';
+    if (taskType === 'intake.dispatch') return '已完成探究任务分发与上下文委派';
+    return '已顺利完成协作任务';
+  }
+  if (status === 'running') return '正在执行任务中...';
+  if (status === 'queued') return '排队等待执行';
+  if (status === 'failed') return '任务执行未完成';
+  return `任务状态: ${status}`;
+}
+
+function formatTeacherActivityTask(
+  taskType: string,
+  status: string,
+  output: unknown,
+  errorCode?: string | null,
+): { type: string; summary: string; detail: string | null; rawPayload: string | null } {
+  const rawPayload = output ? (typeof output === 'string' ? output : JSON.stringify(output, null, 2)) : null;
+  const p = (typeof output === 'object' && output !== null ? output : {}) as Record<string, unknown>;
+
+  let type = taskType;
+  let summary = toTeacherTaskSummary(status, errorCode, taskType);
+  let detail: string | null = null;
+
+  if (taskType === 'profile.project') {
+    type = '学情画像分析';
+    summary = status === 'succeeded' || status === 'completed' ? '完成学生认知水平与探究表现多维分析' : toTeacherTaskSummary(status, errorCode, taskType);
+    const manifest = (p['analysisManifest'] ?? {}) as Record<string, unknown>;
+    const parts: string[] = [];
+    if (manifest['policyVersion']) parts.push(`策略版本: ${String(manifest['policyVersion'])}`);
+    if (manifest['projectionType']) parts.push(`画像快照: ${String(manifest['projectionType'])}`);
+    if (parts.length > 0) detail = parts.join(' · ');
+  } else if (taskType === 'growth.trajectory') {
+    type = '成长轨迹沉淀';
+    summary = status === 'succeeded' || status === 'completed' ? '提炼并归档学生探究证据链与成长记录' : toTeacherTaskSummary(status, errorCode, taskType);
+  } else if (taskType === 'intake.dispatch') {
+    type = '探究任务分发';
+    summary = status === 'succeeded' || status === 'completed' ? '初始化探究上下文并委派协作智能体' : toTeacherTaskSummary(status, errorCode, taskType);
+  }
+
+  return { type, summary, detail, rawPayload };
+}
+
+function formatTeacherActivityEvent(
+  topic: string,
+  payload: unknown,
+): { type: string; summary: string; detail: string | null; rawPayload: string | null } {
+  const p = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>;
+  const rawPayload = payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)) : null;
+
+  if (topic === 'tutor.turn.completed') {
+    const seq = p['assistantSeq'] ?? p['studentSeq'];
+    const summary = seq ? `完成第 ${seq} 轮启发式导学交互，已关联探究证据链` : '完成一轮启发式导学交互，已关联探究证据链';
+    const detailParts: string[] = [];
+    if (p['stage']) detailParts.push(`阶段: ${String(p['stage'])}`);
+    if (p['evidenceRef']) detailParts.push(`证据链: ${String(p['evidenceRef']).slice(0, 45)}...`);
+    return {
+      type: '探究互动 (turn.completed)',
+      summary,
+      detail: detailParts.length > 0 ? detailParts.join(' · ') : null,
+      rawPayload,
+    };
+  }
+
+  if (topic === 'tutor.turn.trace') {
+    const model = p['modelId'] ? String(p['modelId']) : '默认底座';
+    const skills = Array.isArray(p['skillIds']) ? p['skillIds'].join(', ') : '';
+    const stage = p['stage'] ? String(p['stage']) : '';
+    const summary = skills ? `策略引擎调度教学技能 [${skills}]，底座模型 [${model}]` : `策略引擎完成决策规划，底座模型 [${model}]`;
+    const detailParts: string[] = [];
+    if (stage) detailParts.push(`阶段: ${stage}`);
+    if (p['toolIds'] && Array.isArray(p['toolIds'])) detailParts.push(`工具: ${p['toolIds'].join(', ')}`);
+    return {
+      type: '教学决策 (turn.trace)',
+      summary,
+      detail: detailParts.length > 0 ? detailParts.join(' · ') : null,
+      rawPayload,
+    };
+  }
+
+  if (topic === 'profile.project') {
+    return {
+      type: '学情画像 (profile.project)',
+      summary: '更新学生探究表现与能力画像快照',
+      detail: p['policyVersion'] ? `画像策略: ${String(p['policyVersion'])}` : null,
+      rawPayload,
+    };
+  }
+
+  if (topic === 'growth.trajectory') {
+    return {
+      type: '成长轨迹 (growth.trajectory)',
+      summary: '沉淀学生探究成长里程碑记录',
+      detail: null,
+      rawPayload,
+    };
+  }
+
+  if (topic === 'agent.team.task.succeeded') {
+    return {
+      type: '任务完成 (task.succeeded)',
+      summary: '子智能体协作任务已成功执行完毕',
+      detail: '协作产出已回传导师并同步上下文',
+      rawPayload,
+    };
+  }
+
+  if (topic === 'agent.team.task.started') {
+    return {
+      type: '任务启动 (task.started)',
+      summary: '子智能体协作任务已启动执行',
+      detail: null,
+      rawPayload,
+    };
+  }
+
+  if (topic === 'agent.team.task.failed') {
+    return {
+      type: '任务异常 (task.failed)',
+      summary: '子智能体协作任务执行遇到异常',
+      detail: p['errorCode'] ? `错误代码: ${String(p['errorCode'])}` : null,
+      rawPayload,
+    };
+  }
+
+  return {
+    type: topic,
+    summary: topic.replace(/\./g, ' · '),
+    detail: null,
+    rawPayload,
   };
 }

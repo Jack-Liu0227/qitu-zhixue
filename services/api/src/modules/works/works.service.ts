@@ -474,7 +474,7 @@ export class WorksService {
           }
         }
         if (!validApproval) throw new ConflictException({ code: 'ARTIFACT_CURRENT_REVIEW_REQUIRED', message: '当前版本需要在任班主任复核，不能重放旧发布结果' });
-        await this.recordReviewCompletedGate(studentId, artifactId);
+        await this.recordReviewCompletedGate(studentId, artifactId, current.projectId);
       }
       return result.body;
     } catch (error) {
@@ -494,10 +494,10 @@ export class WorksService {
    * 三条约束与 T15 一致（放 execute 之外 / 失败不回滚发布 / 靠确定性幂等键去重），
    * `recorded` | `already_satisfied` | `deferred` 三种状态都视为成功。
    */
-  private async recordReviewCompletedGate(studentId: string, artifactId: string): Promise<void> {
+  private async recordReviewCompletedGate(studentId: string, artifactId: string, projectId: string | null): Promise<void> {
     try {
       await this.teamRuntime.recordGateForStudent({
-        studentUserId: studentId,
+        studentUserId: studentId, projectId,
         gate: 'review_completed_and_archived',
         evidenceRef: `artifact:${artifactId}`,
         source: 'works.publish-approved',

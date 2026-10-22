@@ -6,6 +6,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
+import { projects } from './projects';
 
 /**
  * PBL 门禁「待冲刷证据账本」（T21，服务端私有）。
@@ -29,6 +30,7 @@ export const pblGateEvidence = pgTable(
   'pbl_gate_evidence',
   {
     id: text('id').primaryKey(),
+    projectId: text('project_id').references(() => projects.id, { onDelete: 'cascade' }),
     studentUserId: text('student_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -45,6 +47,7 @@ export const pblGateEvidence = pgTable(
       table.gate,
       table.evidenceRef,
     ),
+    projectPendingIdx: index('pbl_gate_evidence_project_pending_idx').on(table.projectId, table.consumedAt),
     studentPendingIdx: index('pbl_gate_evidence_student_pending_idx').on(table.studentUserId, table.consumedAt),
   }),
 );

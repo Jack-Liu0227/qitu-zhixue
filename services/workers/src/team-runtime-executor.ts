@@ -1,3 +1,5 @@
+import { readLessonCollaborationEvidence } from '@qitu/database';
+import type { LessonCollaborationScope } from '@qitu/contracts';
 import {
   createModelRuntime,
   decryptModelRuntimeSecret,
@@ -202,10 +204,31 @@ async function executeTeamAgentJob(
   if (!sender?.enabled) throw new TeamAgentExecutionError('TEAM_AGENT_DISABLED');
   const projection = job.message.messageType === 'projection.request'
     ? await resolveProjectionExecutionConfig(db, agent) : null;
-  const selection = projection?.model ?? await resolveTeamAgentModel(db, agent);
-  const skills = projection
+  const collaboration = task.taskType === 'lesson.collaborate'
+    ? await readLessonCollaborationEvidence(db, task.input.scope as LessonCollaborationScope, agent.id) : null;
+  if (collaboration && collaboration.leaderAssistantId !== job.message.senderAgentId) throw new TeamAgentExecutionError('LESSON_COLLABORATION_SENDER_CHANGED');
+  if (collaboration && !agent.capabilities.includes('teach')) throw new TeamAgentExecutionError('LESSON_COLLABORATION_CAPABILITY_DISABLED');
+  const currentSelection = projection?.model ?? await resolveTeamAgentModel(db, agent);
+  const pinned = collaboration?.role.modelByPurpose.dialogue;
+  if (collaboration && (!pinned || currentSelection.providerId !== pinned.modelProviderId || currentSelection.modelId !== pinned.modelId)) {
+    throw new TeamAgentExecutionError('LESSON_COLLABORATION_MODEL_CHANGED');
+  }
+  const selection = currentSelection;
+  let skills = projection
     ? loadProjectionSkills(projection.skillIds, options.skillRoots, options.env)
     : await loadAgentSkills(db, agent.id, options.skillRoots, options.env, 'structured_candidate');
+  if (collaboration) {
+    const roots = options.skillRoots ?? defaultSkillRoots(options.env ?? process.env);
+    skills = skills.filter(skill => {
+      if (!collaboration.requiredSkillIds.includes(skill.id)) return false;
+      const pin = collaboration.role.skills.find(entry => entry.canonicalId === skill.id);
+      const path = findSkillFile(skill.id, roots);
+      if (!pin || !path) return false;
+      const parsed = loadRuntimeSkillPackage(dirname(dirname(path)), skill.id);
+      return parsed.ready && parsed.packageDigest === pin.packageDigest;
+    });
+    if (collaboration.requiredSkillIds.some(id => !skills.some(skill => skill.id === id))) throw new TeamAgentExecutionError('LESSON_COLLABORATION_SKILL_CHANGED');
+  }
   const { authorization: _authorization, ...taskInput } = task.input;
   const projectionType = task.input.projectionType;
   const expression = job.message.messageType === 'projection.request' && task.input.sourceTopic === 'tutor.turn.completed'
@@ -226,9 +249,10 @@ async function executeTeamAgentJob(
   const outputSchema = projectionSchema && route.outputSchema
     ? { ...projectionSchema, allOf: [route.outputSchema] } : projectionSchema ?? route.outputSchema;
   const prompt = buildTeamAgentPrompt({
-    agent: projection?.agent ?? agent,
+    agent: collaboration ? { ...agent, ...collaboration.role.instructions } : projection?.agent ?? agent,
     taskType: task.taskType,
-    taskInput: expression ? { ...taskInput, studentText: expression.studentText, project: expression.project,
+    taskInput: collaboration ? { lesson: collaboration.lesson, evidence: collaboration.evidence, purpose: (task.input.scope as LessonCollaborationScope).purpose,
+      instruction: '????????????????????????????????????????????????????????????????????' } : expression ? { ...taskInput, studentText: expression.studentText, project: expression.project,
       previousResult: expression.previousResult, expectedVersion: expression.manifest.baseVersion + 1 }
       : domain ? { projectionType, observation: {
         kind: domain.observation.kind, title: domain.observation.title, factualSummary: domain.observation.factualSummary,

@@ -17,20 +17,26 @@ export class StudentHistoryCleanupService {
   async conversations(actor: CurrentUser): Promise<StudentConversationHistoryItem[]> {
     if (actor.role !== 'student') throw new ForbiddenException('仅学生本人可读取会话历史');
     if (!this.db) throw new ServiceUnavailableException('会话历史暂不可用');
-    const result = await this.db.execute(sql`SELECT s.id session_id,s.project_id,s.exploration_id,p.status,
+    const result = await this.db.execute(sql`WITH scoped AS (SELECT p.id project_id,
+      CASE WHEN p.id IS NULL THEN e.id ELSE NULL END exploration_id,p.status,
       coalesce(p.title,nullif(btrim(tpl.title),''),nullif(btrim(i.goal_user),''),'自由探索') title,
-      greatest(s.created_at,coalesce(max(t.created_at),s.created_at)) updated_at,count(t.id)::int turn_count
-      FROM tutor_sessions s LEFT JOIN projects p ON p.id=s.project_id AND p.student_user_id=${actor.id}
+      greatest(s.created_at,coalesce(t.created_at,s.created_at)) updated_at,t.id turn_id,
+      s.exploration_id IS NOT NULL includes_exploration
+      FROM tutor_sessions s
       LEFT JOIN exploration_sessions e ON e.id=s.exploration_id AND e.student_user_id=${actor.id}
+      LEFT JOIN projects p ON (p.id=s.project_id OR (s.project_id IS NULL AND p.source_exploration_id=e.id)) AND p.student_user_id=${actor.id}
       LEFT JOIN project_template_versions v ON v.id=e.template_version_id
       LEFT JOIN project_templates tpl ON tpl.id=v.template_id
       LEFT JOIN intent_confirmations i ON i.exploration_id=e.id LEFT JOIN tutor_turns t ON t.session_id=s.id
       WHERE s.student_id=${actor.id} AND (p.id IS NOT NULL OR (s.project_id IS NULL AND e.id IS NOT NULL))
-      GROUP BY s.id,p.title,p.status,i.goal_user,tpl.title ORDER BY updated_at DESC,s.id DESC LIMIT 100`);
+      ) SELECT project_id,exploration_id,status,title,max(updated_at) updated_at,count(DISTINCT turn_id)::int turn_count,
+      bool_or(includes_exploration) includes_exploration FROM scoped
+      GROUP BY project_id,exploration_id,status,title ORDER BY updated_at DESC,coalesce(project_id,exploration_id) DESC LIMIT 100`);
     return result.rows.map(row => ({ id: String(row.project_id ?? row.exploration_id), title: String(row.title),
       kind: row.project_id ? 'project' : 'exploration',
       ...(row.project_id ? { projectId: String(row.project_id), stageLabel: projectStageLabel(String(row.status)) }
         : { explorationId: String(row.exploration_id) }),
+      ...(row.project_id && row.includes_exploration ? { includesExploration: true } : {}),
       updatedAt: new Date(String(row.updated_at)).toISOString(), turnCount: Number(row.turn_count) }));
   }
 
@@ -55,7 +61,7 @@ export class StudentHistoryCleanupService {
             throw new ConflictException({ code: 'EXPLORATION_DELETE_CONFIRMED', message: '探索已创建正式项目，请删除对应项目' });
           }
           const explorationIds = kind === 'exploration' ? [id]
-            : kind === 'project' && typeof root.source_exploration_id === 'string' ? [root.source_exploration_id] : [];
+            : (kind === 'project' || kind === 'conversation') && typeof root.source_exploration_id === 'string' ? [root.source_exploration_id] : [];
           if (explorationIds.length) {
             const explorations = await tx.execute(sql`SELECT id,student_user_id FROM exploration_sessions WHERE ${inIds('id', explorationIds)} FOR UPDATE`);
             if (explorations.rows.some(row => row.student_user_id !== actor.id)) throw new ConflictException('探索归属异常，未执行删除');
@@ -81,7 +87,7 @@ export class StudentHistoryCleanupService {
           if (kind === 'conversation') await tx.execute(sql`UPDATE projects SET tutor_conversation_generation=tutor_conversation_generation+1 WHERE id=${id}`);
           if (kind === 'project') await deleteProjectContent(tx, id, actor.id);
           if (kind === 'plan') await deletePlans(tx, [id]);
-          if (explorationIds.length) {
+          if (explorationIds.length && kind !== 'conversation') {
             await tx.execute(sql`DELETE FROM pbl_gate_evidence WHERE student_user_id=${actor.id}
               AND ${inIds('evidence_ref', explorationIds.map(value => `intent_confirmation:${value}`))}`);
             await tx.execute(sql`DELETE FROM intent_confirmations WHERE ${inIds('exploration_id', explorationIds)}`);

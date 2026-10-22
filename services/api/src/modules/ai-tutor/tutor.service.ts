@@ -1,3 +1,5 @@
+import { coordinateLessonCollaboration } from './tutor-lesson-collaboration';
+import { startTutorTeamRun } from './tutor-team-run';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { LearningPlanService } from '../learning-plan/learning-plan.service';
 import { prepareTutorLessonActivities } from './tutor-activity-context';
@@ -752,6 +754,10 @@ export class TutorService {
     return resolveLegacyTutorLesson(this.learningStore, projectId, studentId);
   }
 
+  async readTeachingForCollaboration(projectId: string, studentId: string) {
+    return this.resolveTeaching(projectId, studentId);
+  }
+
   private async resolveTeaching(projectId: string, studentId: string): Promise<TutorTeachingContext | null> {
     if (!this.learningStore || !this.templateBindings) return null;
     const project = await this.learningStore.findProject(projectId);
@@ -769,6 +775,13 @@ export class TutorService {
       context.lesson.currentActivity = progress.sessions.find(entry => entry.sessionId === progress.currentSessionId)
         ?.activities?.find(activity => activity.status === 'current') ?? null;
       context.lesson.completedCount = progress.completedCount;
+      context.lesson.assessmentAvailable = context.lesson.assessmentAvailable === true && context.lesson.currentActivity?.kind === 'check';
+      context.lesson.evidenceRefs = progress.sessions.find(entry => entry.sessionId === progress.currentSessionId)
+        ?.activities?.flatMap(activity => activity.evidenceRefs) ?? [];
+      const lessonSpec = context.bundle.template.curriculum?.profiles.find(entry => entry.id === context.bundle.scheduleProfileId)
+        ?.sessions.find(entry => entry.sessionIndex === context.session.lessonIndex);
+      context.lesson.collaborationAvailable = lessonSpec?.collaborators?.some(entry => entry.activity === context.lesson.currentActivity?.kind
+        && (entry.trigger === 'on_request' || (context.lesson.evidenceRefs?.length ?? 0) > 0)) ?? false;
       const activity = context.lesson.currentActivity;
       if (activity) context.currentTask = { id: activity.activityId, title: context.lesson.title,
         detail: activity.guidance, isTodayFocus: true };
@@ -1292,7 +1305,7 @@ export class TutorService {
   private async ensureOpeningTurn(
     snapshot: TutorSessionSnapshot, projectId: string | null, ownerId: string,
   ): Promise<TutorSessionSnapshot> {
-    if (snapshot.turns.length) return snapshot;
+    if (snapshot.turns.length && projectId === null) return snapshot;
     const context = projectId === null
       ? await this.buildExplorationContext(ownerId, await this.loadExploration(ownerId, snapshot.explorationId ?? undefined))
       : await this.getProjectContext(projectId, ownerId);
@@ -1602,7 +1615,7 @@ export class TutorService {
     const projectTitle = liveProject?.title ?? handoff?.exploration.title ?? EXPLORATION_CONTEXT.title;
     const projectStage = liveProject?.stage ?? (record.projectId === null ? EXPLORATION_CONTEXT.stage : 'theory_learning');
     // The same frozen lesson route drives the shell, prompt and execution identity.
-    const assistantAuthor = handoff ? { id: handoff.team.assistantId, name: handoff.team.assistantName, role: 'leader',
+    const assistantAuthor = handoff ? { id: handoff.team.assistantId, name: handoff.team.assistantName, role: '挑战介绍',
       ...(handoff.team.assistantAvatar ? { avatar: handoff.team.assistantAvatar } : {}) }
       : await this.resolveTurnAuthor(record, projectStage, teaching);
     const conversationAssistantId = assistantAuthor.id;
@@ -1720,45 +1733,13 @@ export class TutorService {
     // Team Runtime is an observability/delegation boundary. Tutor turns remain
     // usable when the optional runtime tables are not migrated yet; failures
     // are intentionally fail-closed and never expose student content.
-    let teamRunId: string | null = null;
-    const leaderAssistantId = record.projectId === null
-      ? handoff?.team.assistantId ?? 'qitu-intake-assistant'
-      : teaching?.bundle.teamVersion.leaderAssistantId ?? projectContext?.team?.assistantId ?? conversationAssistantId;
-    let teamRunLeaderId = runtimeAgentIdsFor(leaderAssistantId)[0] ?? leaderAssistantId;
-    if (this.teamRuntime !== undefined) {
-      try {
-        const run = await this.teamRuntime.startRun(
-          { id: request.actorId, email: '', displayName: '', role: 'student' },
-          {
-            // Freeze the leader from the resolved project team. The runtime
-            // must not silently fall back to a global leader when a phase
-            // assistant is speaking.
-            leaderAgentId: teamRunLeaderId,
-            studentUserId: request.actorId,
-            projectId: record.projectId,
-            tutorSessionId: record.sessionId,
-            trigger: 'tutor.turn',
-            context: { turnCount, pedagogicMove: request.pedagogicMove ?? null },
-            idempotencyKey: `tutor-team-run:${record.sessionId}:${request.idempotencyKey}`,
-          },
-        );
-        teamRunId = typeof run.id === 'string' ? run.id : null;
-        const resolvedLeader = (run as { leaderAgentId?: unknown }).leaderAgentId;
-        if (typeof resolvedLeader === 'string' && resolvedLeader.trim()) teamRunLeaderId = resolvedLeader;
-      } catch (failure) {
-        // Keep the student conversation available, but make the optional
-        // runtime failure observable. Never log student-authored content.
-        const response = typeof (failure as { getResponse?: () => unknown })?.getResponse === 'function'
-          ? (failure as { getResponse: () => unknown }).getResponse()
-          : null;
-        const code = response && typeof response === 'object' && typeof (response as { code?: unknown }).code === 'string'
-          ? (response as { code: string }).code
-          : failure instanceof Error ? failure.name : 'UNKNOWN';
-        this.logger.warn(
-          `Team Runtime 启动失败：leader=${teamRunLeaderId} session=${record.sessionId} code=${code}`,
-        );
-      }
-    }
+    const leaderAssistantId = teaching?.bundle.teamVersion.leaderAssistantId ?? projectContext?.team?.assistantId ?? conversationAssistantId;
+    const teamRun = await startTutorTeamRun({ runtime: this.teamRuntime, projectId: record.projectId, studentId: request.actorId,
+      tutorSessionId: record.sessionId, leaderAgentId: runtimeAgentIdsFor(leaderAssistantId)[0] ?? leaderAssistantId,
+      turnCount, pedagogicMove: request.pedagogicMove ?? null, key: request.idempotencyKey,
+      onFailure: code => this.logger.warn(`Team Runtime unavailable: session=${record.sessionId} code=${code}`) });
+    const teamRunId = teamRun.id;
+    const teamRunLeaderId = teamRun.leaderAgentId;
     const lessonActivities = await prepareTutorLessonActivities({ teaching, runtime: effectiveRuntime, projectId: record.projectId,
       assessmentPending: disclosure.kind === 'pending_assessment',
       studentId: request.actorId, tutorSessionId: record.sessionId, idempotencyKey: request.idempotencyKey, knowledgeAccess,
@@ -1906,7 +1887,20 @@ export class TutorService {
     }
 
     // 跨阶段双导师协诊旁白 (aside)
-    const asideBlock = await this.buildCoPilotAsideBlock(
+    const collaborationBlocks = await coordinateLessonCollaboration({ runtime: this.teamRuntime, registry: this.platformRegistry,
+      teaching, runId: teamRunId, studentId: request.actorId, projectId: record.projectId,
+      requested: request.pedagogicMove === 'review_work', assessmentPending: (await refreshDisclosure()).kind === 'pending_assessment',
+      resolve: () => record.projectId ? this.resolveTeaching(record.projectId, request.actorId) : Promise.resolve(null),
+      hasResult: ref => record.turns.some(turn => turn.blocks.some(block => block.kind === 'aside' && block.evidenceRef === ref)),
+    }).catch(failure => {
+      this.logger.warn(`Lesson collaboration unavailable: session=${record.sessionId} code=${teamFailureCode(failure)}`);
+      return [];
+    });
+    for (const block of collaborationBlocks) {
+      assistantBlocks.push(block);
+      events.push({ seq: ++nextSeq, event: { type: 'block', block } });
+    }
+    const asideBlock = teaching?.bundle.template.lessonPolicy === 'lesson-guided.v1' ? null : await this.buildCoPilotAsideBlock(
       record,
       projectContext,
       conversationAssistantId,
@@ -2023,7 +2017,7 @@ export class TutorService {
       try {
         const delegationInput = buildTeamDelegationInput(record, request, studentTurn.turnId, projectStage);
         const leaderActor = { id: request.actorId, email: '', displayName: '', role: 'student' as const };
-        const tasks = record.projectId === null
+        const tasks = teaching?.bundle.template.lessonPolicy === 'lesson-guided.v1' ? [] : record.projectId === null
           ? [{
               recipientAgentId: 'interest-confirmation',
               taskType: 'interest.confirm',

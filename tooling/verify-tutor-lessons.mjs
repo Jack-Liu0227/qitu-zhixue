@@ -123,7 +123,7 @@ function findTests(directory) {
   });
 }
 const focusDirectories = ['templates', 'learning-plan', 'ai-tutor', 'projects', 'works', 'platform-registry', 'qitu-sdk'];
-const currentNames = new Set(['guided-lesson-flow', 'lesson-activity-progress', 'gateway-tutor.provider', 'tutor-disclosure',
+const currentNames = new Set(['tutor-exploration', 'wave-course-authoring', 'lesson-collaboration-scope', 'team-runtime.student-status', 'team-runtime.session-routing', 'team-runtime.protocol', 'team-runtime.gate', 'lesson-collaboration', 'wave-teaching-resources', 'wave-optics-experiment', 'wave-optics-model', 'wave-optics-curriculum', 'tutor-activity-optics', 'guided-lesson-flow', 'lesson-activity-progress', 'gateway-tutor.provider', 'tutor-disclosure',
   'assistant-runtime', 'runtime-source', 'catalog-skills', 'team-version', 'team-version.runtime',
   'tutor-lesson-activity', 'tutor-lesson-activity.feedback', 'tutor-lesson-assessment.service', 'tutor-opening', 'tutor-teaching-context', 'tutor.runtime-identity', 'tutor.team-resolution',
   'tutor.service', 'learning-session-progress', 'optics-fullflow', 'works-learning-evidence', 'works-lesson-quality',
@@ -158,6 +158,11 @@ if (clientTests.length) run('ai-client-template-tests', ['--import', loader, '--
   run('student-pbl-data-tests',['--test','tooling/test-student-pbl-data.mjs']);
   run('student-live-boundary-tests',['--test','tooling/test-tutor-live-boundary.mjs']);
 }
+const workerOutput = join(runDirectory, 'workers');
+compile('workers', join(root, 'services/workers/tsconfig.json'), { outDir: workerOutput });
+run('workers-esm-extensions', [join(root, 'tooling/fix-esm-extensions.mjs'), workerOutput]);
+const workerTests = findTests(workerOutput).filter(file => file.includes('team-runtime'));
+if (workerTests.length) run('team-worker-tests', ['--import', loader, '--test', ...workerTests], join(root, 'services/workers'));
 saveReport(true);
 console.log(`\nPASS: ${steps.length} source-build, owner behavior and app typecheck steps.`);
 console.log('Report: services/api/.tmp/pbl-capability/verification.json');

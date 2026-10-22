@@ -14,6 +14,8 @@ export * from './project-history.js';
 export * from './student-history.js';
 export * from './exploration.js';
 export * from './tutor.js';
+export * from './wave-optics.js';
+export * from './lesson-collaboration.js';
 export * from './realtime.js';
 export * from './growth.js';
 export * from './tutor-expression-projection.js';

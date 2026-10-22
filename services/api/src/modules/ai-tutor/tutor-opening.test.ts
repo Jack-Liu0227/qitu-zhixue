@@ -6,6 +6,7 @@ import { buildProjectOpeningBlocks } from './tutor-opening';
 import { InMemoryTutorSessionStore } from './tutor-session.store';
 import type { LearningPlanStore } from '../learning-plan/learning-plan.store';
 import type { TemplateBindingService } from '../templates/templates-binding.service';
+import { WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 
 const context: TutorProjectContext = {
   project: { id: 'project-real', title: 'Frozen project title', stage: 'intent_confirmed', progress: 10, templateVersionId: 'tplv-random-uuid' },
@@ -20,6 +21,37 @@ const context: TutorProjectContext = {
 class StorePathFixture extends InMemoryTutorSessionStore {
   override readonly durable: boolean = true;
 }
+
+test('frozen lesson openings persist once per actual lesson and revision, including after restart and concurrent reads', async () => {
+  const store = new StorePathFixture();
+  const sessions = WAVE_OPTICS_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions;
+  const current = structuredClone(context);
+  const select = (index: number) => {
+    const lesson = sessions[index]!;
+    current.lesson = { title: lesson.title, lessonIndex: index + 1, lessonCount: sessions.length, completedCount: index, status: 'current',
+      planId: 'actual-plan', planRevision: 1, learningSessionId: `actual-plan:${lesson.id}`, opening: lesson.opening, learningGoal: lesson.learningGoal };
+    current.team = { ...context.team!, assistantId: lesson.leadAssistantId!, assistantName: `Mentor for lesson ${index + 1}` };
+  };
+  select(0);
+  const make = () => {
+    const tutor = new TutorService('live', { complete: async () => { throw Error('opening must not call a model'); } }, undefined, undefined, undefined, store);
+    Object.assign(tutor, { learningStore: { findProject: async () => ({ studentId: 'owner' }) }, getProjectContext: async () => current });
+    return tutor;
+  };
+  await Promise.all([make().resolveSession(current.project!.id, 'owner'), make().resolveSession(current.project!.id, 'owner')]);
+  let saved = await store.findByProject(current.project!.id); assert.equal(saved?.turns.length, 1);
+  const block = saved!.turns[0]!.blocks[0]; assert.ok(block?.kind === 'learning_opening' && block.mode === 'lesson');
+  assert.equal(block.prompt, sessions[0]!.opening!.prompt); assert.equal(block.lessonCount, 8);
+  select(1);
+  const next = await make().resolveSession(current.project!.id, 'owner');
+  assert.equal(next.turns.length, 2); assert.equal(next.turns[1]?.author?.id, sessions[1]!.leadAssistantId);
+  assert.equal(next.turns[1]?.author?.role, '课时导师');
+  assert.deepEqual((await make().resolveSession(current.project!.id, 'owner')).turns, next.turns);
+  current.lesson!.planRevision = 2;
+  saved = await make().resolveSession(current.project!.id, 'owner');
+  assert.equal(saved.turns.length, 3);
+  assert.equal(current.project!.stage, 'intent_confirmed');
+});
 
 test('formal opening is lesson-led even when governance stage differs; no static four-phase board is injected', () => {
   const blocks = buildProjectOpeningBlocks({ ...context,

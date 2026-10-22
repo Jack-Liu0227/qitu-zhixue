@@ -17,6 +17,14 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as { kind?: unknown };
   switch (candidate.kind) {
+    case 'learning_opening': {
+      const opening = value as { mode?: unknown; title?: unknown; scenario?: unknown; prompt?: unknown; lessonIndex?: unknown; lessonCount?: unknown; scope?: unknown };
+      if (typeof opening.title !== 'string' || typeof opening.scenario !== 'string' || typeof opening.prompt !== 'string') return false;
+      if (opening.mode === 'exploration' || opening.mode === 'template') return true;
+      const scope = opening.scope as { planId?: unknown; planRevision?: unknown; learningSessionId?: unknown } | undefined;
+      return opening.mode === 'lesson' && Number.isSafeInteger(opening.lessonIndex) && Number.isSafeInteger(opening.lessonCount)
+        && !!scope && typeof scope.planId === 'string' && Number.isSafeInteger(scope.planRevision) && typeof scope.learningSessionId === 'string';
+    }
     case 'text':
       return typeof (value as { text?: unknown }).text === 'string';
     case 'questions':
@@ -31,6 +39,10 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
     }
     case 'evidence':
       return typeof (value as { ref?: unknown }).ref === 'string';
+    case 'learning_resource': {
+      const resource = value as { title?: unknown; summary?: unknown; sources?: unknown };
+      return typeof resource.title === 'string' && typeof resource.summary === 'string' && isLearningSources(resource.sources);
+    }
     case 'tool':
       return isTutorToolCall((value as { call?: unknown }).call);
     case 'think': {
@@ -52,8 +64,10 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
           typeof (option as { key?: unknown }).key === 'string' && typeof (option as { text?: unknown }).text === 'string');
     }
     case 'board': {
-      const board = value as { boardId?: unknown; steps?: unknown };
-      return typeof board.boardId === 'string' && Array.isArray(board.steps) && board.steps.every(isBoardStep);
+      const board = value as { boardId?: unknown; steps?: unknown; provenance?: { origin?: unknown; sources?: unknown } };
+      return typeof board.boardId === 'string' && Array.isArray(board.steps) && board.steps.every(isBoardStep)
+        && (board.provenance === undefined || (board.provenance !== null
+          && ['generated', 'adapted'].includes(String(board.provenance.origin)) && isLearningSources(board.provenance.sources)));
     }
     case 'milestone': {
       const milestone = value as { phaseId?: unknown; title?: unknown; deliverables?: unknown; gate?: unknown };
@@ -98,6 +112,11 @@ export function isTutorReplyBlock(value: unknown): value is TutorReplyBlock {
     default:
       return false;
   }
+}
+
+function isLearningSources(value: unknown): boolean {
+  return Array.isArray(value) && value.length <= 8 && value.every(source => typeof source === 'object' && source !== null
+    && typeof source.sourceRef === 'string' && typeof source.title === 'string');
 }
 
 /** Runtime guard for `TutorToolCall` (also used by the stream parser). */

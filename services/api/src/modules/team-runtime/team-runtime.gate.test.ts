@@ -1279,12 +1279,13 @@ function ledgerRow(over: Record<string, unknown> = {}) {
 }
 
 test('T22 main regression: deferred ledger row → startRun flushes it → gate satisfied → advancePhase exploration→concept_mastery succeeds', async () => {
-  const created = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { topic: 'thunder-fighter', phase: 'exploration' } });
-  const conceptRun = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'running', context: { topic: 'thunder-fighter', phase: 'concept_mastery' } });
+  const created = fullRunRow({ projectId: 'project-a',  id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { topic: 'thunder-fighter', phase: 'exploration' } });
+  const conceptRun = fullRunRow({ projectId: 'project-a',  id: 'run-1', studentUserId: 'stu-1', status: 'running', context: { topic: 'thunder-fighter', phase: 'concept_mastery' } });
   const flushedGateEvent = { payload: { gate: 'student_confirmed_intent', phase: 'exploration', evidenceRef: 'intent_confirmation:abc', source: 'projects.confirm-intent', via: 'ledger_flush' } };
   const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }], [{ id: 'project-a', studentUserId: 'stu-1' }]]],
     [agentConfigs, [[agentRow('leader-a')]]],
-    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: null }]]],
+    [tutorSessions, [[{ id: 'session-1', studentId: 'stu-1', projectId: 'project-a' }]]],
     [agentTeamRuns, [
       [],                     // p1 recordGateForStudent 活跃 run 查询 → 无
       [],                     // p2 startRun 幂等查询
@@ -1300,14 +1301,14 @@ test('T22 main regression: deferred ledger row → startRun flushes it → gate 
       [flushedGateEvent],     // p4 loadSatisfiedGates
       [],                     // p4 recordEvent(phase_advanced) 查重
     ]],
-    [pblGateEvidence, [[ledgerRow()]]], // p2 冲刷 select
+    [pblGateEvidence, [[ledgerRow({ projectId: 'project-a' })]]], // p2 冲刷 select
   ]);
   const { db, probe } = fakeDbWithProbe(queues);
   const audit = auditSpy();
   const service = new TeamRuntimeService(db, audit as never, outboxStub);
 
   // p1：无 run → deferred 落账本 1 行。
-  const deferred = await service.recordGateForStudent({
+  const deferred = await service.recordGateForStudent({ projectId: 'project-a', 
     studentUserId: 'stu-1',
     gate: 'student_confirmed_intent',
     evidenceRef: 'intent_confirmation:abc',
@@ -1321,6 +1322,7 @@ test('T22 main regression: deferred ledger row → startRun flushes it → gate 
   // p2：startRun 建 run 并在同一事务内物化账本。
   const actor: CurrentUser = { id: 'stu-1', email: '', displayName: '', role: 'student' };
   const runView = await service.startRun(actor, {
+    projectId: 'project-a',
     leaderAgentId: 'leader-a',
     studentUserId: 'stu-1',
     tutorSessionId: 'session-1',
@@ -1379,29 +1381,31 @@ test('T22: direct recorded path never writes the ledger (no double-path duplicat
 });
 
 test('T22: a second startRun after terminal does not re-emit the same-key gate event', async () => {
-  const runA = fullRunRow({ id: 'run-a', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
-  const runB = fullRunRow({ id: 'run-b', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const runA = fullRunRow({ projectId: 'project-a',  id: 'run-a', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const runB = fullRunRow({ projectId: 'project-a',  id: 'run-b', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
   const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }], [{ id: 'project-a', studentUserId: 'stu-1' }]]],
     [agentConfigs, [[agentRow('leader-a')], [agentRow('leader-a')]]],
     [agentTeamRuns, [
       [], [], [runA],   // 第一次 startRun：幂等 / 活跃 / 回读
       [], [], [runB],   // 第二次 startRun（前一个已终态，活跃查询为空）
     ]],
     [agentTeamEvents, [[], []]], // 两次冲刷各自的同键查重（此处均返回空行但账本只有一行未消费）
-    [pblGateEvidence, [[ledgerRow()], []]], // 第一次有账本；第二次已 consumed（空）
+    [pblGateEvidence, [[ledgerRow({ projectId: 'project-a' })], []]], // 第一次有账本；第二次已 consumed（空）
   ]);
   const { db, probe } = fakeDbWithProbe(queues);
   const audit = auditSpy();
   const service = new TeamRuntimeService(db, audit as never, outboxStub);
-  await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-1' });
-  await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-2' });
+  await service.startRun(STU, { projectId: 'project-a',  leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-1' });
+  await service.startRun(STU, { projectId: 'project-a',  leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-2' });
   assert.equal(gateEventInserts(probe.inserts).length, 1, 'flushed exactly once across two runs');
   assert.equal(probe.updates.filter((patchValue) => 'consumedRunId' in patchValue).length, 1);
 });
 
 test('T22: flush failure is logged and must not roll back or block run creation', async () => {
-  const created = fullRunRow({ id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
+  const created = fullRunRow({ projectId: 'project-a',  id: 'run-1', studentUserId: 'stu-1', status: 'queued', context: { phase: 'exploration' } });
   const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }], [{ id: 'project-a', studentUserId: 'stu-1' }]]],
     [agentConfigs, [[agentRow('leader-a')]]],
     [agentTeamRuns, [[], [], [created]]],
     // 队列项本身必须是 Error（shift 后直接 instanceof Error → select 抛出）。
@@ -1417,7 +1421,7 @@ test('T22: flush failure is logged and must not roll back or block run creation'
     return true;
   }) as typeof Logger.prototype.error;
   try {
-    const runView = await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-flush-fail' });
+    const runView = await service.startRun(STU, { projectId: 'project-a',  leaderAgentId: 'leader-a', studentUserId: 'stu-1', idempotencyKey: 't22-flush-fail' });
     assert.equal(runView.id, 'run-1', 'run must still be created when the flush fails');
   } finally {
     Logger.prototype.error = original;
@@ -1643,10 +1647,11 @@ test('T26: stable evidenceRef keeps one event per session while other sessions s
 });
 
 test('T26: mastery flip with no active run defers to the ledger and startRun flushes it', async () => {
-  const created = fullRunRow({ id: 'run-42', studentUserId: 'stu-1', status: 'queued', context: { topic: 'physics', phase: 'concept_mastery' } });
+  const created = fullRunRow({ projectId: 'project-a',  id: 'run-42', studentUserId: 'stu-1', status: 'queued', context: { topic: 'physics', phase: 'concept_mastery' } });
   const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }], [{ id: 'project-a', studentUserId: 'stu-1' }]]],
     [agentConfigs, [[agentRow('leader-a')]]],
-    [tutorSessions, [[{ id: 'session-42', studentId: 'stu-1', projectId: null }]]],
+    [tutorSessions, [[{ id: 'session-42', studentId: 'stu-1', projectId: 'project-a' }]]],
     [agentTeamRuns, [
       [],            // p1 recordGateForStudent：无活跃 run → 落账本
       [],            // p2 startRun 幂等查询
@@ -1656,6 +1661,7 @@ test('T26: mastery flip with no active run defers to the ledger and startRun flu
     [agentTeamEvents, [[]]],  // p2 冲刷查重 → 插入
     [pblGateEvidence, [[{
       id: 'pblge-t26',
+      projectId: 'project-a',
       studentUserId: 'stu-1',
       gate: 'TheoryMastered',
       evidenceRef: T26_EVIDENCE_REF,
@@ -1669,7 +1675,7 @@ test('T26: mastery flip with no active run defers to the ledger and startRun flu
   const audit = auditSpy();
   const service = new TeamRuntimeService(db, audit as never, outboxStub);
 
-  const deferred = await service.recordGateForStudent({
+  const deferred = await service.recordGateForStudent({ projectId: 'project-a', 
     studentUserId: 'stu-1',
     gate: 'TheoryMastered',
     evidenceRef: T26_EVIDENCE_REF,
@@ -1679,7 +1685,7 @@ test('T26: mastery flip with no active run defers to the ledger and startRun flu
   assert.equal(probe.insertTables.filter((table) => table === pblGateEvidence).length, 1, 'deferred evidence must land in the ledger');
   assert.equal(gateEventInserts(probe.inserts).length, 0, 'deferred evidence writes no event yet');
 
-  await service.startRun(STU, {
+  await service.startRun(STU, { projectId: 'project-a', 
     leaderAgentId: 'leader-a',
     studentUserId: 'stu-1',
     tutorSessionId: 'session-42',
@@ -1691,4 +1697,28 @@ test('T26: mastery flip with no active run defers to the ledger and startRun flu
   assert.equal(flushed[0]?.idempotencyKey, T26_KEY);
   assert.equal((flushed[0]?.payload as Record<string, unknown>).gate, 'TheoryMastered');
   assert.equal((flushed[0]?.payload as Record<string, unknown>).via, 'ledger_flush');
+});
+
+
+test('formal project gate evidence never attaches to another project active run', async () => {
+  const { service, probe } = newServiceWithProbe(new Map([
+    [agentTeamRuns, [[fullRunRow({ id: 'other-run', projectId: 'project-b' })]]],
+  ]));
+  const result = await service.recordGateForStudent({ studentUserId: 'stu-1', projectId: 'project-a', gate: 'TheoryMastered',
+    evidenceRef: 'mastery:project-a', source: 'learning-plan.theory-mastered' });
+  assert.equal(result.status, 'deferred');
+  assert.equal(gateEventInserts(probe.inserts).length, 0);
+  assert.equal((probe.inserts.find(value => (value as Record<string, unknown>).gate === 'TheoryMastered') as Record<string, unknown>).projectId, 'project-a');
+});
+
+test('new project run flushes only its own ledger rows; unscoped history and another project stay pending', async () => {
+  const queues = new Map<unknown, unknown[][]>([
+    [projects, [[{ id: 'project-a', studentUserId: 'stu-1' }]]],
+    [agentConfigs, [[agentRow('leader-a')]]],
+    [agentTeamRuns, [[], [], [fullRunRow({ id: 'new-run', projectId: 'project-a' })]]],
+    [pblGateEvidence, [[ledgerRow({ projectId: 'project-a' }), ledgerRow({ id: 'other', projectId: 'project-b' }), ledgerRow({ id: 'legacy', projectId: null })]]],
+  ]);
+  const { service, probe } = newServiceWithProbe(queues);
+  await service.startRun(STU, { leaderAgentId: 'leader-a', studentUserId: 'stu-1', projectId: 'project-a', idempotencyKey: 'project-gate-scope' });
+  assert.equal(gateEventInserts(probe.inserts).length, 1);
 });

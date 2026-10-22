@@ -1,5 +1,6 @@
 import { RUNTIME_TOOL_CATALOG, type RuntimeToolCatalogEntry } from '@qitu/contracts';
 import { LESSON_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/lesson-activity.schema';
+import { WAVE_ACTIVITY_SCHEMA } from '../../common/tutor-runtime/wave-activity.schema';
 import { teachingValueDigest } from '../templates/teaching-bundle.canonical';
 import type {
   AdminRuntimeBuiltinTool,
@@ -13,6 +14,13 @@ import type {
  * Presence does not grant access; actual assistant bindings are projected by PlatformRegistryService. */
 const BUILTIN_TOOL_CATALOG: readonly RuntimeToolCatalogEntry[] = [
   ...RUNTIME_TOOL_CATALOG,
+  {
+    id: 'tutor.propose_wave_activity', version: 'tutor.propose_wave_activity.v1',
+    label: '干涉与衍射教学候选', invocation: 'model_tool',
+    description: 'Propose safe boards, scoped questions and registered finite-width single/double slit activities. Execution requires server gates.',
+    inputSchema: WAVE_ACTIVITY_SCHEMA, inputSchemaDigest: teachingValueDigest(WAVE_ACTIVITY_SCHEMA),
+    capabilities: ['teach'], execution: 'server_owned', riskLevel: 'medium', requiresTheoryMastered: false,
+  },
   {
     id: 'tutor.propose_lesson_activity', version: 'tutor.propose_lesson_activity.v1',
     label: '生成本课时教学活动候选', invocation: 'model_tool',

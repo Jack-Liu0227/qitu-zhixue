@@ -2,6 +2,12 @@
 
 import { VisualAsset } from '@qitu/ui';
 import { TemplateTeamBindingPanel } from '../../../../lib/components/TemplateTeamBindingPanel';
+import { LessonDraftEditor } from '../../../../lib/components/teaching-binding/LessonDraftEditor';
+import { TeamRosterEditor } from '../../../../lib/components/teaching-binding/TeamRosterEditor';
+import { CourseVersionActions } from '../../../../lib/components/teaching-binding/CourseVersionActions';
+import { canonicalCourseJson } from '../../../../lib/components/teaching-binding/lesson-draft';
+import { parseProjectTemplateSpec } from '@qitu/contracts';
+import { newIdempotencyKey } from '../../../../lib/api/types';
 import { VisualSelector } from '../../../../lib/components/VisualAssetPicker';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -215,6 +221,7 @@ export default function AdminTemplatesPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const courseSaveAttempt = useRef<{ signature: string; key: string; version: string } | null>(null);
 
   const displayedTemplates = templates;
 
@@ -426,8 +433,18 @@ export default function AdminTemplatesPage() {
       return;
     }
 
-    const versionChanged = !editingTemplate.pblSpec && phases.length > 0
+    let courseSpec: ProjectTemplateSpec | null = null;
+    try { courseSpec = editingTemplate.pblSpec ? parseProjectTemplateSpec(editingTemplate.pblSpec) : null; }
+    catch (failure) { setSaveError(failure instanceof Error ? failure.message : '课程草稿校验失败'); return; }
+    const courseChanged = courseSpec !== null && canonicalCourseJson(courseSpec) !== canonicalCourseJson(editingTemplate.sourceContent.pbl);
+    const versionChanged = courseChanged || !courseSpec && phases.length > 0
       && (!editingTemplate.sourceVersionId || JSON.stringify(phases) !== JSON.stringify(editingTemplate.sourcePhases));
+    const signature = canonicalCourseJson({ id: editingTemplate.id, sourceVersionId: editingTemplate.sourceVersionId, courseSpec, phases });
+    if (courseSaveAttempt.current?.signature !== signature) courseSaveAttempt.current = {
+      signature, key: newIdempotencyKey(), version: `${courseSpec?.version ?? 'v1'}.edit-${Date.now()}`,
+    };
+    const attempt = courseSaveAttempt.current;
+    const nextCourseSpec = courseSpec ? { ...courseSpec, version: attempt.version } : null;
     setSaving(true);
     try {
       let notice: string;
@@ -454,14 +471,15 @@ export default function AdminTemplatesPage() {
       if (canCreateVersion && versionChanged) {
         const content = { ...editingTemplate.sourceContent };
         delete content.bootstrapKey;
+        if (nextCourseSpec) delete content.phases;
         const result = await createAdminTemplateVersion(editingTemplate.id, {
           stages: editingTemplate.pblSpec ? editingTemplate.sourceStages : phases.map((phase) => ({ id: phase.id, label: phase.name })),
           rubric: editingTemplate.sourceRubric,
           content: {
             ...content,
-            ...(!editingTemplate.pblSpec ? { phases } : {}),
+            ...(nextCourseSpec ? { pbl: nextCourseSpec } : { phases }),
           },
-        });
+        }, attempt.key);
         setTemplates((prev) =>
           prev.map((t) =>
             t.id === editingTemplate.id
@@ -470,7 +488,8 @@ export default function AdminTemplatesPage() {
           ),
         );
         const readback = (await fetchAdminTemplateVersions(editingTemplate.id)).find((version) => version.id === result.version.id);
-        if (!readback || JSON.stringify(parsePhasesFromVersion(readback)) !== JSON.stringify(phases)) throw new Error('版本保存后的阶段设计回读不一致，请重新加载核对。');
+        if (!readback || (nextCourseSpec ? canonicalCourseJson(parseProjectTemplateSpec(readback.content.pbl)) !== canonicalCourseJson(nextCourseSpec)
+          : JSON.stringify(parsePhasesFromVersion(readback)) !== JSON.stringify(phases))) throw new Error('课程草稿保存后的回读不一致，请重新加载核对。');
         setTemplateVersions((previous) => [...previous.filter((item) => item.id !== readback.id), readback]);
         const params = new URLSearchParams(window.location.search);
         params.set('versionId', readback.id);
@@ -478,9 +497,11 @@ export default function AdminTemplatesPage() {
         setEditingTemplate((prev) =>
           prev === null || prev.id !== editingTemplate.id
             ? prev
-            : { ...prev, phases, sourcePhases: phases, title, summary, sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
+            : { ...prev, phases, sourcePhases: phases, title, summary, pblSpec: nextCourseSpec,
+              sourceVersion: readback.version, sourceVersionId: readback.id, sourceContent: readback.content, sourceStages: readback.stages, sourceRubric: readback.rubric },
         );
-        notice = `阶段设计已保存为新版本 ${result.version.version} ✔`;
+        courseSaveAttempt.current = null;
+        notice = `课程草稿已保存为新版本 ${result.version.version}，发布并启用后供新项目使用。`;
       } else if (phases.length === 0) {
         notice = `${notice ? `${notice}；` : ''}尚未添加任何阶段，未生成新版本`;
       }
@@ -500,6 +521,8 @@ export default function AdminTemplatesPage() {
   // 模板与 PBL 流程编辑器
   if (editingTemplate) {
     const selectedVersion = templateVersions.find((version) => version.id === editingTemplate.sourceVersionId);
+    const courseDirty = !!editingTemplate.pblSpec && canonicalCourseJson(editingTemplate.pblSpec) !== canonicalCourseJson(editingTemplate.sourceContent.pbl);
+    const courseTeam = teams.find(team => team.id === editingTemplate.pblSpec?.teamId);
     const lessonProfile = editingTemplate.pblSpec?.curriculum?.profiles?.[0];
     const lessonSessions = lessonProfile?.sessions ?? [];
     const lessonCount = lessonProfile?.schedule.lessonCount ?? lessonSessions.length;
@@ -551,10 +574,10 @@ export default function AdminTemplatesPage() {
               type="button"
               className="settings-action-btn is-primary"
               onClick={handleSaveTemplate}
-              disabled={saving || versionsLoading || !!versionsError || (editingTemplate.pblSpec !== null && !canEditMeta(editingTemplate.status))}
+              disabled={saving || versionsLoading || !!versionsError || editingTemplate.status === 'archived'}
               title={editingTemplate.pblSpec ? '采用 ProjectTemplateSpec 治理，需通过版本发布流程更新' : undefined}
             >
-              {editingTemplate.pblSpec ? canEditMeta(editingTemplate.status) ? '保存基础信息' : '课程已发布' : '保存模板与阶段设计'}
+              {saving ? '正在保存并回读…' : editingTemplate.pblSpec ? '保存课程草稿' : '保存模板与阶段设计'}
             </button>
             <button
               type="button"
@@ -579,9 +602,14 @@ export default function AdminTemplatesPage() {
           {!selectedVersion && <option value="">尚无版本</option>}
           {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
         </select></label>
-        <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
+        {selectedVersion && editingTemplate.pblSpec?.lessonPolicy === 'lesson-guided.v1' ? <CourseVersionActions key={selectedVersion.id}
+          templateId={editingTemplate.id} versionId={selectedVersion.id} status={selectedVersion.status}
+          disabled={saving || courseDirty || editingTemplate.status === 'archived'} onChanged={() => void loadVersions(editingTemplate.id, selectedVersion.id)} /> : null}
+        {courseDirty ? <p role="status" className="admin-template-workflow-intro">课时设计有未保存的修改。请先保存课程草稿，再为新版本配置导师团队与资料。</p> : (
+<TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
           lessonPolicy={editingTemplate.pblSpec?.lessonPolicy}
           versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []} phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams} />
+        )}
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
             <button
@@ -609,7 +637,13 @@ export default function AdminTemplatesPage() {
           </button>
         </div>
 
-        {editorTab === 'sessions' && editingTemplate.pblSpec ? (
+        {editorTab === 'sessions' && editingTemplate.pblSpec?.lessonPolicy === 'lesson-guided.v1' ? <div className="admin-template-workflow-container">
+          <LessonDraftEditor spec={editingTemplate.pblSpec} teams={teams} disabled={saving || editingTemplate.status === 'archived'}
+            onChange={spec => setEditingTemplate(previous => previous ? { ...previous, pblSpec: spec } : previous)} />
+          {courseTeam ? <TeamRosterEditor key={courseTeam.id} team={courseTeam} spec={editingTemplate.pblSpec}
+            disabled={saving || editingTemplate.status === 'archived'} onSaved={saved => setTeams(previous => previous.map(team => team.id === saved.id ? saved : team))} /> : null}
+        </div> : null}
+        {editorTab === 'sessions' && editingTemplate.pblSpec && editingTemplate.pblSpec.lessonPolicy !== 'lesson-guided.v1' ? (
           <div className="admin-template-workflow-container">
             {/* 顶栏宏观概览 */}
             <div

@@ -159,15 +159,19 @@ export class PlatformRegistryController {
     @Headers('idempotency-key') key: string | undefined,
     @Param('teamId') teamId: string,
     @Body() body: unknown,
+    @Headers('if-match') match?: string,
   ): Promise<AdminTeamResponse> {
     const actor = requireRole(this.auth, cookie, 'admin', '团队配置仅向管理员开放');
     const idempotencyKey = requireAdminAiIdempotencyKey(key);
     const input = parseTeamUpdate(body);
+    const expectedUpdatedAt = match?.replace(/^"|"$/gu, '');
+    if (expectedUpdatedAt && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(expectedUpdatedAt)
+      || !Number.isFinite(Date.parse(expectedUpdatedAt)))) throw new BadRequestException('Invalid If-Match timestamp');
     const scope = `${ADMIN_AI_RUNTIME_IDEMPOTENCY_SCOPES.teamUpdate}:${teamId}`;
     try {
-      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, input), async () => ({
+      const result = await this.idempotency.execute(scope, idempotencyKey, hashIdempotentInput(scope, { actorId: actor.id, teamId }, expectedUpdatedAt ? { input, expectedUpdatedAt } : input), async () => ({
         status: 200,
-        body: await this.registry.updateTeam(actor, teamId, input),
+        body: await this.registry.updateTeam(actor, teamId, input, expectedUpdatedAt),
       }));
       return { data: result.body };
     } catch (error) {

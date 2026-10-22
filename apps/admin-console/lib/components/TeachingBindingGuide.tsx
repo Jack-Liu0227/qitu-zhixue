@@ -24,16 +24,12 @@ export function TeachingBindingGuide({ published, saved, draft, ready, canActiva
         <span><strong>{title}</strong><small>{detail}</small></span>
       </li>)}
     </ol>
-    <p role="status" style={{ margin: '8px 0 0' }}>下一步：{next}</p>
-    {draft && <dl style={{ display: 'flex', flexWrap: 'wrap', gap: 20, margin: '8px 0 0' }}>
+    <p role="status" className={styles.nextStep}>下一步：{next}</p>
+    {draft && <dl className={styles.summaryGrid}>
       <div><dt>教学角色</dt><dd>{draft.roleMap.length} 位</dd></div>
       <div><dt>课时路由</dt><dd>{draft.sessionRoutes?.length ?? 0} 课时</dd></div>
       <div><dt>知识库范围</dt><dd>{draft.knowledgeBaseIds.length ? `已配置 ${draft.knowledgeBaseIds.length} 个库，仍需运行时授权校验` : '尚未授权知识库；不会自动访问全部资料'}</dd></div>
     </dl>}
-    {draft && <details><summary>核对角色、模型与技能</summary><ul>{draft.roleMap.map(role => {
-      const model = draft.modelByPurpose[role.roleSlotId]?.dialogue;
-      return <li key={role.roleSlotId}>角色 {role.roleSlotId} · 成员 {role.memberId} · 对话模型 {model ? `${model.modelProviderId} / ${model.modelId}` : '未配置'} · 技能 {draft.skillPins.filter(pin => pin.roleSlotId === role.roleSlotId).map(pin => pin.canonicalId).join('、') || '无'}</li>;
-    })}</ul></details>}
-    <p style={{ margin: '8px 0 0' }}>注意：团队版本冻结的是 Admin 助手配置。Team Runtime 还需要同 ID 的运行时 Agent；只有助手、没有运行时 Agent 时，普通对话仍可继续，但团队委派不会启动。</p>
+    <p className={styles.guidanceNote}>逐课导师及固定开场在“课时教学主线”中编辑；模型、教学方法与资料范围可在下方按导师核对。团队版本发布时同步运行配置。</p>
   </>;
 }

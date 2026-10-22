@@ -1,10 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import type { TutorExperimentAction, TutorExperimentActionResponse } from '@qitu/contracts';
+import type { TutorExperimentAction, TutorExperimentActionResponse, OpticsExperimentMode } from '@qitu/contracts';
+import { parseWaveOpticsParameters, parametersWithoutMode, projectWaveOptics, WaveOpticsDomainError } from '@qitu/ai-client';
 
 export function validateTutorExperimentAction(
-  initialMode: 'diffraction' | 'scattering' | undefined,
+  initialMode: OpticsExperimentMode | undefined,
   action: TutorExperimentAction,
   rawPayload: unknown,
+  specVersion = '1.0.0',
 ): {
   auditPayload: Record<string, unknown>;
   simulationResult?: TutorExperimentActionResponse['simulationResult'];
@@ -14,6 +16,29 @@ export function validateTutorExperimentAction(
   }
   const payload = rawPayload as Record<string, unknown>;
   const mode = payload.mode;
+  if (specVersion === '2.0.0') {
+    if (mode !== 'diffraction' && mode !== 'interference') throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Unknown wave model' });
+    const keys = action === 'submit_prediction' ? ['mode', 'hypothesis', 'parameters']
+      : action === 'run' ? ['mode', 'parameters'] : ['mode', 'parameters', 'runActionId', 'observation'];
+    if (Object.keys(payload).some(key => !keys.includes(key))) throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Unknown wave action field' });
+    if (action === 'submit_prediction') {
+      if (typeof payload.hypothesis !== 'string' || !payload.hypothesis.trim() || payload.hypothesis.length > 200) {
+        throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Prediction required' });
+      }
+      return { auditPayload: { mode, predictionProvided: true } };
+    }
+    try {
+      const parameters = parseWaveOpticsParameters(mode, payload.parameters);
+      const waveProjection = projectWaveOptics(parameters);
+      return { auditPayload: { mode, parameters: parametersWithoutMode(parameters) }, simulationResult: {
+        mode, summary: `归一化远场模型计算，中央衍射包络宽度约 ${waveProjection.centralBandWidthMm.toFixed(2)} mm。模拟结果，不是真实测量。`, waveProjection,
+      } };
+    } catch (error) {
+      if (!(error instanceof WaveOpticsDomainError)) throw error;
+      throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: error.message });
+    }
+  }
+  if (specVersion !== '1.0.0') throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Unknown experiment protocol' });
   if (mode !== 'diffraction' && mode !== 'scattering') {
     throw new BadRequestException({ code: 'TUTOR_EXPERIMENT_INPUT_INVALID', message: 'Invalid experiment model' });
   }

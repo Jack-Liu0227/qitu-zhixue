@@ -397,6 +397,7 @@ export function resolveDerivedAutomaticGateId(input: {
  */
 export interface GateEvidenceWriter {
   recordGateForStudent(input: {
+    projectId?: string | null;
     studentUserId: string;
     gate: string;
     evidenceRef: string;
@@ -406,6 +407,7 @@ export interface GateEvidenceWriter {
 }
 
 export interface AutomaticAcceptanceContext {
+  projectId?: string | null;
   /** 候选归属学生（写门禁的主体，取服务端记录，不取请求体）。 */
   studentUserId: string;
   /** 门禁证据引用：指向那条留痕的验收决定（>= 8 字符）。 */
@@ -434,6 +436,7 @@ export async function applyAutomaticAcceptance(
   }
   const result = await writer.recordGateForStudent({
     studentUserId: context.studentUserId,
+    projectId: context.projectId ?? null,
     gate: decision.gate,
     evidenceRef: context.evidenceRef,
     source: context.source,

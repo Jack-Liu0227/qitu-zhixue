@@ -337,6 +337,13 @@
       "when": 1792540800003,
       "tag": "0047_permanent_history_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792674177826,
+      "tag": "0048_project_scoped_gate_evidence",
+      "breakpoints": true
     }
   ]
 }

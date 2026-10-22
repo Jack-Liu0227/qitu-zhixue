@@ -1,3 +1,4 @@
+import { assertDomainLeader } from '../../common/intake-boundary';
 import { resolveAgentModelSelection } from './agent-model-selection';
 import { VisualAssetsService } from '../visual-assets/visual-assets.service';
 import { resolveVisualBinding } from '../visual-assets/visual-assets.policy';
@@ -1015,6 +1016,7 @@ export class PlatformRegistryService {
   }
 
   async createTeam(actor: CurrentUser, input: AdminTeamCreateInput, creationId?: string): Promise<AdminTeamConfig> {
+    assertDomainLeader(input.leaderAssistantId);
     if (!this.db) throw new ServiceUnavailableException('团队配置存储不可用');
     const replay = creationId ? (await this.listTeams()).find(team => team.id === creationId) : undefined;
     if (replay) return replay;
@@ -1093,6 +1095,7 @@ export class PlatformRegistryService {
       const currentMembers = allMembers.filter((member) => member.teamId === teamId);
       const assistantRows = await tx.select().from(adminAssistants);
       const leaderAssistantId = patch.leaderAssistantId ?? existing.leaderAssistantId;
+      assertDomainLeader(leaderAssistantId);
       const now = new Date();
       let memberRows: readonly MemberRow[] = currentMembers;
       let replaced = false;

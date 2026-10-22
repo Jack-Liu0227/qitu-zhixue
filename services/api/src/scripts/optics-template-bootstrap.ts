@@ -24,6 +24,8 @@ import {
   OPTICS_16_COMPLETION_VERSION_INPUT,
 } from '../modules/templates/content/optics';
 import { assertTemplateTeachingContent } from '../modules/templates/templates.content-validator';
+import { WAVE_OPTICS_TEMPLATE_SLUG, WAVE_OPTICS_BOOTSTRAP_KEY, WAVE_OPTICS_TEMPLATE_INPUT,
+  WAVE_OPTICS_VERSION_INPUT } from '../modules/templates/content/wave-optics';
 import type {
   ProjectTemplateRecord,
   ProjectTemplateVersionRecord,
@@ -63,6 +65,7 @@ export interface OpticsBootstrapDeps {
 }
 
 export interface OpticsBootstrapArgs {
+  waveOptics?: boolean;
   guidedLessons?: boolean;
   qualityReview?: boolean;
   teamVersionId: string;
@@ -90,11 +93,12 @@ export async function runOpticsTemplateBootstrap(
   deps: OpticsBootstrapDeps,
   args: OpticsBootstrapArgs,
 ): Promise<OpticsBootstrapReport> {
-  const slug = args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
-  const templateInput = args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
-  const versionInput = args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
-  const bootstrapKey = args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
-  const keyPrefix = args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  if (args.waveOptics && (args.guidedLessons || args.qualityReview)) throw new OpticsBootstrapError('波动专题不能与旧课程版本类型混用');
+  const slug = args.waveOptics ? WAVE_OPTICS_TEMPLATE_SLUG : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_SLUG : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SLUG : OPTICS_16_COMPLETION_TEMPLATE_SLUG;
+  const templateInput = args.waveOptics ? WAVE_OPTICS_TEMPLATE_INPUT : args.guidedLessons ? OPTICS_GUIDED_TEMPLATE_INPUT : args.qualityReview ? OPTICS_16_QUALITY_TEMPLATE_INPUT : OPTICS_16_COMPLETION_TEMPLATE_INPUT;
+  const versionInput = args.waveOptics ? WAVE_OPTICS_VERSION_INPUT : args.guidedLessons ? OPTICS_GUIDED_VERSION_INPUT : args.qualityReview ? OPTICS_16_QUALITY_VERSION_INPUT : OPTICS_16_COMPLETION_VERSION_INPUT;
+  const bootstrapKey = args.waveOptics ? WAVE_OPTICS_BOOTSTRAP_KEY : args.guidedLessons ? OPTICS_GUIDED_BOOTSTRAP_KEY : args.qualityReview ? OPTICS_16_QUALITY_BOOTSTRAP_KEY : OPTICS_16_COMPLETION_BOOTSTRAP_KEY;
+  const keyPrefix = args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   assertOpticsTemplateStructure();
   assertTemplateTeachingContent(versionInput.content ?? {}, versionInput.stages);
 
@@ -230,7 +234,7 @@ async function ensureActiveBinding(
   version: ProjectTemplateVersionRecord,
   steps: OpticsBootstrapStep[],
 ): Promise<string> {
-  const keyPrefix = args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
+  const keyPrefix = args.waveOptics ? 'wave8-bootstrap' : args.guidedLessons ? 'optics16-guided-bootstrap' : args.qualityReview ? 'optics16-quality-bootstrap' : 'optics16-completion-bootstrap';
   const active = await deps.bindingStore.findActiveBinding(version.id);
   if (active !== null) {
     if (active.teamVersionId === args.teamVersionId) {
@@ -326,6 +330,7 @@ async function ensureActiveBinding(
 /* ============================ CLI ============================ */
 
 interface CliArgs {
+  waveOptics: boolean;
   guidedLessons: boolean;
   qualityReview: boolean;
   teamVersionId: string | null;
@@ -337,6 +342,7 @@ interface CliArgs {
 
 function parseCliArgs(argv: string[]): CliArgs {
   const out: CliArgs = {
+    waveOptics: false,
     guidedLessons: false,
     qualityReview: false,
     teamVersionId: null,
@@ -347,6 +353,7 @@ function parseCliArgs(argv: string[]): CliArgs {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (arg === '--wave-optics') out.waveOptics = true;
     if (arg === '--guided-lessons') out.guidedLessons = true;
     if (arg === '--quality-review') out.qualityReview = true;
     if (arg === '--team-version-id') out.teamVersionId = argv[index + 1] ?? null;
@@ -403,6 +410,7 @@ async function main(): Promise<void> {
     const report = await runOpticsTemplateBootstrap(
       { governance, bindings, templates, bindingStore },
       { teamVersionId: cli.teamVersionId, actor, pilotReason: cli.pilotReason,
+        waveOptics: cli.waveOptics,
         qualityReview: cli.qualityReview,
         guidedLessons: cli.guidedLessons,
         ...(cli.teachingBundleFile ? { teachingBundle: JSON.parse(readFileSync(cli.teachingBundleFile, 'utf8')) } : {}) },

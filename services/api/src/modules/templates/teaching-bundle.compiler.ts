@@ -1,3 +1,4 @@
+import { assertDomainLeader, assertFormalTeachingAssistant } from '../../common/intake-boundary';
 import { parseProjectTemplateSpec } from '@qitu/contracts';
 import { canonicalTeachingJson, teachingValueDigest } from './teaching-bundle.canonical';
 import {
@@ -190,6 +191,7 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
   requireId(source.teamVersion.teamVersionId, 'teamVersion.teamVersionId');
   if (source.teamVersion.teamId !== template.teamId) reject('TEMPLATE_TEAM_MISMATCH', 'teamVersion.teamId');
   requireId(source.teamVersion.leaderAssistantId, 'teamVersion.leaderAssistantId');
+  assertDomainLeader(source.teamVersion.leaderAssistantId);
   indexBy(source.teamVersion.members, (member) => member.memberId, 'teamVersion.members');
   indexBy(source.teamVersion.members, (member) => member.assistantId, 'teamVersion.members.assistantId');
   if (!source.teamVersion.members.some((member) => member.assistantId === source.teamVersion.leaderAssistantId)) {
@@ -202,6 +204,9 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
   if (source.roles.length === 0) reject('ROLE_REQUIRED', 'roles');
   const roles = [...source.roles].sort((a, b) => a.roleSlotId < b.roleSlotId ? -1 : a.roleSlotId > b.roleSlotId ? 1 : 0)
     .map((role) => compileRole(source, role));
+  // Historical contracts included intake in their pre-confirmation exploration phase.
+  // Explicit lesson-guided contracts describe formal lessons and may never route to intake.
+  if (template.lessonPolicy === 'lesson-guided.v1') for (const role of roles) assertFormalTeachingAssistant(role.assistantId);
   const routeIndices = new Set<number>();
   const sessionRoutes = source.sessionRoutes.map((route) => {
     if (!Number.isSafeInteger(route.sessionIndex) ||
@@ -218,6 +223,17 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
     if (session === undefined) reject('SESSION_ROUTE_INVALID', 'sessionRoutes.sessionIndex');
     for (const skillId of session?.requiredSkillIds ?? []) {
       if (!role.skills.some(skill => skill.canonicalId === skillId)) reject('SESSION_SKILL_REQUIRED', `${session.id}.${skillId}`);
+    }
+    for (const toolId of session.requiredToolIds ?? []) {
+      if (!role.tools.some(tool => tool.toolId === toolId)) reject('SESSION_TOOL_REQUIRED', `${session.id}.${toolId}`);
+    }
+    for (const participant of session.collaborators ?? []) {
+      const matches = roles.filter(candidate => candidate.assistantId === participant.assistantId && candidate.modelByPurpose.dialogue);
+      const collaborator = matches[0];
+      if (matches.length !== 1 || !collaborator) reject('SESSION_COLLABORATOR_UNRESOLVED', `${session.id}.${participant.assistantId}`);
+      if (participant.requiredSkillIds.some(id => !collaborator.skills.some(skill => skill.canonicalId === id))) {
+        reject('SESSION_COLLABORATOR_SKILL_REQUIRED', `${session.id}.${participant.assistantId}`);
+      }
     }
     if (session?.teachingRequirements?.includes('dynamic_lesson') && (!role.skills.some(skill => skill.canonicalId === 'pbl-dynamic-lesson')
       || !role.tools.some(tool => tool.toolId === 'tutor.propose_lesson_activity'))) {

@@ -10,8 +10,9 @@ export function buildExplorationOpeningBlocks(context: TutorProjectContext): Tut
     ? `你好，我是${name}。我们从「${meta!.title}」开始探索。${meta?.handoff === 'ready' ? `\n\n${context.team?.teamName}将陪你梳理问题，确认项目后再按课时开展学习。` : '\n\n模板导师配置尚待管理员完善，我会先陪你整理兴趣和问题。'}`
     : `你好，我是${name}，你的探索搭档。\n\n最近有什么让你好奇的现象，或想亲手做出的东西？还没有想法也没关系，我们可以从一件小事聊起。`;
   return [
-    { kind: 'text', text: greeting },
-    ...(meta?.drivingQuestion ? [{ kind: 'text' as const, text: `这次的探究问题：${meta.drivingQuestion}\n\n你已经观察到了什么？` }] : []),
+    { kind: 'learning_opening', mode: template ? 'template' : 'exploration',
+      title: template ? meta!.title : '从一个好奇，开始你的探究', scenario: greeting,
+      prompt: meta?.drivingQuestion ?? '你最近观察到了什么，或想亲手做出什么？' },
     { kind: 'options', allowOther: true, items: template ? [
       { label: '先了解挑战', text: `请用一个贴近日常的例子，带我认识「${meta!.title}」要探究的问题，先不要创建项目。` },
       { label: '聊聊我的观察', text: '我想先说说我观察到的现象，请一次问我一个问题。' },
@@ -32,6 +33,14 @@ export function buildProjectOpeningBlocks(context: TutorProjectContext): TutorRe
   if (context.lesson) {
     const lesson = context.lesson;
     const activity = lesson.currentActivity;
+    if (lesson.opening && lesson.planId && lesson.planRevision && lesson.learningSessionId) return [
+      { kind: 'learning_opening', mode: 'lesson', title: lesson.title, scenario: lesson.opening.scenario,
+        prompt: lesson.opening.prompt, ...(lesson.learningGoal ? { goal: lesson.learningGoal } : {}),
+        lessonIndex: lesson.lessonIndex, lessonCount: lesson.lessonCount,
+        scope: { planId: lesson.planId, planRevision: lesson.planRevision, learningSessionId: lesson.learningSessionId } },
+      ...(lesson.status === 'current' ? [{ kind: 'options' as const, allowOther: true,
+        items: lesson.opening.options.map(option => ({ label: option.label, text: option.text })) }] : []),
+    ];
     return [
       { kind: 'text', text: `第 ${lesson.lessonIndex} / ${lesson.lessonCount} 课 · ${lesson.title}\n\n你好，我是${team.assistantName}。${team.teamName ?? '项目导师团队'}将按本课任务陪你学习。已完成 ${lesson.completedCount ?? 0} 课时。` },
       { kind: 'text', text: activity?.guidance ?? context.currentTask?.detail ?? '先回顾你的观察和已有想法，再围绕本课目标继续探究。' },

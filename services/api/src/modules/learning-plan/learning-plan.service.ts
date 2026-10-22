@@ -90,6 +90,7 @@ import {
 } from './plan-generator';
 import { generatePlanFromTemplate } from './template-plan-generator';
 import { OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG } from '../templates/content/optics';
+import { WAVE_OPTICS_TEMPLATE_SLUG } from '../templates/content/wave-optics';
 import { validateGeneratedPlan } from './session-plan-validator';
 import { assertQuestionScope, dynamicQuestionBlock, dynamicQuestionEnvelope, parseChoiceQuestionCandidate, type QuestionCandidateScope, type DynamicQuestionEnvelope } from './question-candidate';
 import { verifyQuestionSources, type VerifyQuestionEvidence } from './question-candidate.sources';
@@ -192,7 +193,7 @@ export class LearningPlanService {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
     if (input.curriculumSlug !== undefined) {
-      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
+      if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
           message: `???? ${input.curriculumSlug} ?????????`,
@@ -849,7 +850,14 @@ export class LearningPlanService {
       return;
     }
     try {
+      const plans = await this.store.listPlansByStudent(studentId);
+      let projectId: string | null = null;
+      for (const plan of plans.filter(entry => entry.projectId && (entry.status === 'active' || entry.status === 'completed'))) {
+        if (await this.store.findSession(plan.id, sessionId)) { projectId = plan.projectId; break; }
+      }
+      if (!projectId) return;
       await this.teamRuntime.recordGateForStudent({
+        projectId,
         studentUserId: studentId,
         gate: CONCEPT_MASTERY_GATE,
         evidenceRef: theoryMasteredEvidenceRef(sessionId),
@@ -1623,7 +1631,7 @@ export class LearningPlanService {
 
   private buildCard(objective: ObjectiveRecord, index: number): QuestionCard {
     return buildQuestion({
-      objective: { id: objective.id, name: objective.name, type: objective.type },
+      objective: { id: objective.id, name: objective.name, type: objective.type, conceptId: objective.conceptId },
       index,
       seed: objective.id,
     });

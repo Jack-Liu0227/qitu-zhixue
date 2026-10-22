@@ -110,6 +110,7 @@ export function createIdempotentRetryKey(): {
 }
 
 export interface AdminEnvelopeRequestOptions {
+  ifMatch?: string;
   path: string;
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
   body?: unknown;
@@ -128,6 +129,7 @@ export interface AdminEnvelopeRequestOptions {
  */
 export async function adminEnvelopeRequest<T>(options: AdminEnvelopeRequestOptions): Promise<T> {
   const headers: Record<string, string> = { accept: 'application/json' };
+  if (options.ifMatch) headers['If-Match'] = JSON.stringify(options.ifMatch);
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   if (
     options.idempotencyKey !== undefined &&

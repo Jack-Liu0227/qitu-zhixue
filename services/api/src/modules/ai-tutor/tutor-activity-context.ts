@@ -37,7 +37,8 @@ export async function prepareTutorLessonActivities(input: {
   const { teaching, runtime } = input;
   if (!teaching?.objective || !runtime || !input.projectId || !input.registry) return undefined;
   const scope = { projectId: input.projectId, planId: teaching.planId, planRevision: teaching.planRevision,
-    learningSessionId: teaching.session.id, objectiveId: teaching.objective.id, tutorSessionId: input.tutorSessionId };
+    learningSessionId: teaching.session.id, objectiveId: teaching.objective.id, tutorSessionId: input.tutorSessionId,
+    ...(teaching.lesson.currentActivity ? { activityId: teaching.lesson.currentActivity.activityId } : {}) };
   const actor = { id: input.studentId, role: 'student' as const, email: '', displayName: '' };
   const assessmentObjective = [...teaching.session.theoryObjectiveIds, ...teaching.session.practiceObjectiveIds].includes(teaching.objective.id);
   const pendingQuestion = assessmentObjective ? await input.questions?.readPendingQuestionCandidate(actor, scope) : undefined;

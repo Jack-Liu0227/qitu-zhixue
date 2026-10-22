@@ -7,7 +7,7 @@ import {
   agentSkillBindings,
   agentToolBindings,
 } from '@qitu/database';
-import { PBL_PLAN_OUTPUT_SCHEMA, type CurrentUser } from '@qitu/contracts';
+import { PBL_PLAN_OUTPUT_SCHEMA, LESSON_COLLABORATION_SCHEMA, type CurrentUser } from '@qitu/contracts';
 import { builtinToolRegistry } from './built-in-tools';
 import type { EffectiveAgentRuntime } from './platform-registry.service';
 import { freezeTeamAssistant } from './team-version.snapshot';
@@ -138,11 +138,16 @@ test('published team projection creates the exact leader-to-lesson-member delega
   await projectPublishedTeamRuntime(h.tx as never, version, members(), admin);
 
   const routes = (h.rows.get(agentRoutes) ?? []) as Array<Record<string, unknown>>;
-  assert.equal(routes.length, 1);
+  assert.equal(routes.length, 3);
   assert.equal(routes[0]?.fromAgentId, 'team-leader');
   assert.equal(routes[0]?.toAgentId, 'lesson-coach');
   assert.equal(routes[0]?.trigger, 'delegate');
   assert.equal(routes[0]?.taskType, 'pbl.plan');
   assert.equal(routes[0]?.enabled, true);
   assert.deepEqual(routes[0]?.outputSchema, PBL_PLAN_OUTPUT_SCHEMA);
+  assert.equal(routes[1]?.taskType, 'lesson.collaborate');
+  assert.deepEqual(routes[1]?.outputSchema, LESSON_COLLABORATION_SCHEMA);
+  assert.equal(routes[2]?.fromAgentId, 'team-leader');
+  assert.equal(routes[2]?.toAgentId, 'team-leader');
+  assert.equal(routes[2]?.taskType, 'lesson.collaborate');
 });

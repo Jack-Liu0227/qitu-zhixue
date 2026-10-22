@@ -52,6 +52,7 @@ export interface TeamActivityItem {
   status?: TeamRunStatus;
   summary: string;
   detail?: string | null;
+  rawPayload?: string | null;
 }
 
 const STATUS_LABEL: Record<TeamNodeStatus, string> = {
@@ -206,7 +207,7 @@ export function AgentRunGraph({
       <header className="qitu-team-graph-header">
         <div>
           <h3>{title}</h3>
-          {description ? <p>{description}</p> : null}
+          {description ? <p className="qitu-team-graph-desc">{description}</p> : null}
         </div>
         {action ? <div className="qitu-team-graph-action">{action}</div> : null}
       </header>
@@ -214,17 +215,24 @@ export function AgentRunGraph({
         <ol className="qitu-team-run-list">
           {nodes.map((node) => (
             <li key={node.id} className="qitu-team-run-item">
-              <span className="qitu-team-run-marker" aria-hidden="true" />
+              <span className={`qitu-team-run-marker qitu-team-run-marker-${node.status}`} aria-hidden="true" />
               <div className="qitu-team-run-content">
                 <div className="qitu-team-run-head">
-                  <strong>{node.label}</strong>
+                  <div className="qitu-team-run-title-row">
+                    <strong className="qitu-team-run-label">{node.label}</strong>
+                    <span className="qitu-team-run-agent-tag">{node.agentId}</span>
+                  </div>
                   <TeamRunStatusBadge status={node.status} />
                 </div>
-                <code>{node.agentId}</code>
-                {node.summary ? <p>{node.summary}</p> : null}
-                {node.durationMs !== undefined && node.durationMs !== null ? (
-                  <span className="qitu-team-run-meta">耗时 {formatDuration(node.durationMs)}</span>
-                ) : null}
+                {node.summary ? <p className="qitu-team-run-summary">{node.summary}</p> : null}
+                <div className="qitu-team-run-meta-row">
+                  {node.durationMs !== undefined && node.durationMs !== null ? (
+                    <span className="qitu-team-run-meta">⏱ 耗时 {formatDuration(node.durationMs)}</span>
+                  ) : null}
+                  {node.finishedAt ? (
+                    <span className="qitu-team-run-meta-time">完成于 {formatActivityTime(node.finishedAt)}</span>
+                  ) : null}
+                </div>
               </div>
             </li>
           ))}
@@ -236,7 +244,7 @@ export function AgentRunGraph({
 
 export function AgentActivityFeed({
   items,
-  title = 'Activity',
+  title = '协作活动流水 (Activity)',
   emptyMessage = '暂无协作活动',
 }: {
   items: readonly TeamActivityItem[];
@@ -245,25 +253,59 @@ export function AgentActivityFeed({
 }) {
   return (
     <section className="qitu-team-activity" aria-label={title}>
-      <header className="qitu-team-graph-header"><h3>{title}</h3></header>
+      <header className="qitu-team-graph-header">
+        <div>
+          <h3>{title}</h3>
+          <p className="qitu-team-graph-desc">按时间序记录探究交互、技能调度与画像评估全链路事件</p>
+        </div>
+      </header>
       {items.length === 0 ? <p className="qitu-team-empty">{emptyMessage}</p> : (
         <ol className="qitu-team-activity-list">
-          {items.map((item) => (
-            <li key={item.id} className="qitu-team-activity-item">
-              <time dateTime={item.timestamp}>{formatActivityTime(item.timestamp)}</time>
-              <div>
-                <strong>{item.actorLabel}</strong>
-                <span className="qitu-team-activity-type">{item.type}</span>
-                <p>{item.summary}</p>
-                {item.detail ? <small>{item.detail}</small> : null}
-              </div>
-              {item.status ? <TeamRunStatusBadge status={item.status} /> : null}
-            </li>
-          ))}
+          {items.map((item) => {
+            const hasRaw = Boolean(item.rawPayload || (item.detail && item.detail.startsWith('{')));
+            const rawContent = item.rawPayload ?? (item.detail && item.detail.startsWith('{') ? tryFormatJson(item.detail) : null);
+            return (
+              <li key={item.id} className="qitu-team-activity-item">
+                <div className="qitu-team-activity-time-col">
+                  <time dateTime={item.timestamp} className="qitu-team-time-badge">
+                    {formatActivityTime(item.timestamp)}
+                  </time>
+                </div>
+                <div className="qitu-team-activity-body">
+                  <div className="qitu-team-activity-topbar">
+                    <div className="qitu-team-activity-actor-group">
+                      <strong className="qitu-team-activity-actor">{item.actorLabel}</strong>
+                      <span className="qitu-team-activity-type-pill">{item.type}</span>
+                    </div>
+                    {item.status ? <TeamRunStatusBadge status={item.status} /> : null}
+                  </div>
+                  <p className="qitu-team-activity-summary-text">{item.summary}</p>
+                  {item.detail && !item.detail.startsWith('{') ? (
+                    <div className="qitu-team-activity-detail-highlight">{item.detail}</div>
+                  ) : null}
+                  {hasRaw && rawContent ? (
+                    <details className="qitu-team-payload-drawer">
+                      <summary className="qitu-team-payload-toggle">查看底层技术明细 (Payload Trace)</summary>
+                      <pre className="qitu-team-payload-code">{rawContent}</pre>
+                    </details>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
   );
+}
+
+function tryFormatJson(str: string): string {
+  try {
+    const parsed = JSON.parse(str);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return str;
+  }
 }
 
 function formatDuration(durationMs: number): string {
@@ -274,5 +316,5 @@ function formatDuration(durationMs: number): string {
 function formatActivityTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }

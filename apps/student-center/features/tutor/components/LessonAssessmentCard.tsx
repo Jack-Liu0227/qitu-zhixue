@@ -34,6 +34,7 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }:
     return () => { active.current = false; for (const controller of controllers.current) controller.abort(); };
   }, []);
   if (!lesson.planId || !lesson.planRevision || !lesson.learningSessionId || lesson.status !== 'current') return null;
+  if (!lesson.assessmentAvailable && !result) return null;
   const scope: TutorLearningScope = { planId: lesson.planId, planRevision: lesson.planRevision, learningSessionId: lesson.learningSessionId };
   const matches = (value: TutorLearningScope | undefined) => value?.planId === scope.planId &&
     value.planRevision === scope.planRevision && value.learningSessionId === scope.learningSessionId;
@@ -64,11 +65,11 @@ export function LessonAssessmentCard({ projectId, lesson, disabled, onChanged }:
     await onChanged();
   });
 
-  return <section className="qitu-tutor-inline-alert" aria-label="本课目标考核" style={{ margin: '12px 0', padding: 16 }}>
+  return <section className="qitu-lesson-assessment-card" aria-label="本课目标考核">
     <strong>第 {lesson.lessonIndex} 课 · 检查我的理解</strong>
     <p>解释你的思路，导师会依据目标考核结果继续引导。</p>
     {error ? <p role="alert">{error}</p> : null}
-    {!view || result ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy} onClick={() => { void start(); }}>
+    {lesson.assessmentAvailable !== false && (!view || result) ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy} onClick={() => { void start(); }}>
       {busy ? '正在读取…' : result ? '继续检查当前目标' : '开始检查本课理解'}
     </button> : null}
     {view?.blockedReason ? <p role="status">{view.blockedReason}</p> : null}

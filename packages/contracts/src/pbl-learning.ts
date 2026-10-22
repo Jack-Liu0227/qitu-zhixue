@@ -155,6 +155,13 @@ export function matchesPolicyGate(actualGate: string, policyGate: string): boole
 
 export const GLOBAL_GOVERNANCE_POLICIES: readonly PblGovernancePolicy[] = [
   STANDARD_STEM_PBL_POLICY,
+  {
+    ...STANDARD_STEM_PBL_POLICY,
+    id: 'wave-optics-pbl:v1', name: '干涉与衍射项目式探究', version: 'v1',
+    description: '以冻结的波动准备目标核验 TheoryMastered，实践仅调用注册的单缝与双缝模型。',
+    phases: STANDARD_STEM_PBL_POLICY.phases.map(phase => phase.phase === 'guided_practice'
+      ? { ...phase, allowedToolTypesAfterGate: ['single_slit_diffraction', 'double_slit_interference'] } : { ...phase }),
+  },
 ];
 
 export function findGovernancePolicy(policyId: string): PblGovernancePolicy | undefined {
@@ -262,6 +269,21 @@ export function hasLearningSessionCompletion(session: Pick<PblTemplateSession, '
 }
 
 export interface PblTemplateSession {
+  opening?: {
+    version: 'lesson-opening.v1';
+    scenario: string;
+    prompt: string;
+    options: readonly { id: string; label: string; text: string }[];
+  };
+  /** Adaptive content uses authorized recommendations, generation, or attributed adaptation. */
+  contentStrategy?: 'adaptive.v1';
+  collaborators?: readonly {
+    assistantId: string;
+    activity: LessonActivity;
+    trigger: 'on_request' | 'after_evidence';
+    purpose: 'explain' | 'critique';
+    requiredSkillIds: readonly string[];
+  }[];
   /** Explicit lesson lead, independent of the governance-phase coordinator. */
   leadAssistantId?: string;
   activityRequirements?: readonly {
@@ -271,6 +293,7 @@ export interface PblTemplateSession {
   teachingRequirements?: readonly ('dynamic_lesson' | 'project_knowledge')[];
   /** Explicit canonical skill requirements frozen with this session, never inferred from its title. */
   requiredSkillIds?: readonly string[];
+  requiredToolIds?: readonly string[];
   id: string;
   sessionIndex: number;
   title: string;
@@ -665,6 +688,45 @@ function validateGuidedProfile(profile: unknown, path: string, issue: (path: str
   }
 }
 
+function validateLessonAuthoring(session: Record<string, unknown>, path: string, issue: (path: string, message: string) => void): void {
+  if (session.contentStrategy !== undefined && session.contentStrategy !== 'adaptive.v1') issue(path, 'invalid content strategy');
+  if (session.opening !== undefined) {
+    const opening = session.opening;
+    if (!templateRecord(opening)) issue(path, 'invalid lesson opening');
+    else {
+      templateKeys(opening, ['version', 'scenario', 'prompt', 'options'], path, issue);
+      if (opening.version !== 'lesson-opening.v1' || !templateText(opening.scenario) || opening.scenario.length > 2000
+        || !templateText(opening.prompt) || opening.prompt.length > 1000 || !Array.isArray(opening.options)
+        || !opening.options.length || opening.options.length > 4) issue(path, 'invalid bounded lesson opening');
+      const seen = new Set<string>();
+      for (const option of Array.isArray(opening.options) ? opening.options : []) {
+        if (!templateRecord(option)) { issue(path, 'invalid opening option'); continue; }
+        templateKeys(option, ['id', 'label', 'text'], path, issue);
+        if (!templateText(option.id) || seen.has(option.id) || !templateText(option.label) || option.label.length > 60
+          || !templateText(option.text) || option.text.length > 500) issue(path, 'invalid opening option');
+        if (typeof option.id === 'string') seen.add(option.id);
+      }
+    }
+  }
+  if (session.collaborators !== undefined) {
+    if (!Array.isArray(session.collaborators) || session.collaborators.length > 8) { issue(path, 'invalid lesson collaborators'); return; }
+    const seen = new Set<string>();
+    for (const role of session.collaborators) {
+      if (!templateRecord(role)) { issue(path, 'invalid collaborator'); continue; }
+      templateKeys(role, ['assistantId', 'activity', 'trigger', 'purpose', 'requiredSkillIds'], path, issue);
+      const key = `${role.assistantId}:${role.activity}:${role.trigger}:${role.purpose}`;
+      if (!templateText(role.assistantId) || role.assistantId === 'qitu-intake-assistant'
+        || role.assistantId === session.leadAssistantId || seen.has(key)
+        || !templateEnum(role.activity, TEMPLATE_ACTIVITIES) || !templateRecord(session.blocks) || !Number(session.blocks[String(role.activity)])
+        || !templateEnum(role.trigger, ['on_request', 'after_evidence']) || !templateEnum(role.purpose, ['explain', 'critique'])
+        || !templateStrings(role.requiredSkillIds) || !role.requiredSkillIds.length
+        || role.requiredSkillIds.some(id => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id))) issue(path, 'invalid collaborator scope or capability');
+      seen.add(key);
+    }
+  }
+  if (session.leadAssistantId === 'qitu-intake-assistant') issue(path, 'intake assistant cannot teach formal lessons');
+}
+
 function validateTemplateProfile(
   profile: unknown, path: string, profileIds: Set<string>, schedules: readonly PblTemplateSchedule[],
   objectives: ReadonlyMap<string, Record<string, unknown>>, phases: ReadonlyMap<string, Record<string, unknown>>,
@@ -689,9 +751,13 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'leadAssistantId', 'activityRequirements'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'requiredToolIds', 'leadAssistantId', 'activityRequirements', 'opening', 'contentStrategy', 'collaborators'], sessionPath, issue);
+    validateLessonAuthoring(session, sessionPath, issue);
     if (session.leadAssistantId !== undefined && !templateText(session.leadAssistantId)) issue(`${sessionPath}.leadAssistantId`, 'invalid lead assistant');
     if (session.activityRequirements !== undefined) validateActivityRequirements(session, sessionPath, issue);
+    if (session.requiredToolIds !== undefined && (!templateStrings(session.requiredToolIds)
+      || session.requiredToolIds.length > 16 || new Set(session.requiredToolIds).size !== session.requiredToolIds.length
+      || session.requiredToolIds.some(id => !/^[a-z][a-z0-9._-]{0,159}$/.test(id)))) issue(sessionPath, 'invalid tool requirements');
     if (session.requiredSkillIds !== undefined && (!Array.isArray(session.requiredSkillIds)
       || new Set(session.requiredSkillIds).size !== session.requiredSkillIds.length
       || session.requiredSkillIds.some(value => typeof value !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value)))) {

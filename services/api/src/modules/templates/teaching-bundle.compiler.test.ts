@@ -94,6 +94,20 @@ describe('pure teaching bundle compiler', () => {
       error instanceof TeachingBundleCompilationError && error.issue === 'LESSON_DYNAMIC_CAPABILITY_REQUIRED');
   });
 
+  it('rejects an ungranted session tool and a collaborator absent from the frozen team roles', () => {
+    const source = fixture();
+    const session = source.template.curriculum?.profiles[0]?.sessions[0];
+    assert.ok(session);
+    session.requiredToolIds = ['tutor.propose_wave_activity'];
+    assert.throws(() => compileTeachingBundle(source), (error: unknown) =>
+      error instanceof TeachingBundleCompilationError && error.issue === 'SESSION_TOOL_REQUIRED');
+    session.requiredToolIds = [];
+    session.collaborators = [{ assistantId: 'missing-assistant', activity: 'reflect', trigger: 'after_evidence',
+      purpose: 'critique', requiredSkillIds: ['tutor-guided-learning'] }];
+    assert.throws(() => compileTeachingBundle(source), (error: unknown) =>
+      error instanceof TeachingBundleCompilationError && error.issue === 'SESSION_COLLABORATOR_UNRESOLVED');
+  });
+
   it('rejects a knowledge-required lesson without a frozen project grant; a scoped role can compile', () => {
     const source = fixture();
     source.template.curriculum!.profiles[0]!.sessions[0]!.teachingRequirements = ['project_knowledge'];

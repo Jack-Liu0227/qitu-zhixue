@@ -12,6 +12,7 @@ export * from './curriculum.js';
 export * from './context-packet.js';
 export * from './mastery/index.js';
 export * from './questions/index.js';
+export * from './optics/index.js';
 export * from './grading/index.js';
 export * from './assistant-registry.js';
 export * from './pbl-team.js';
