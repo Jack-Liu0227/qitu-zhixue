@@ -208,6 +208,8 @@ export function derivePhasesFromPolicyAndSessions(
 export type PblTemplateSchedule = PblLessonSchedule;
 
 export interface ProjectTemplateSpec {
+  /** Opt-in immutable teaching semantics. Omitted on historical templates. */
+  lessonPolicy?: 'lesson-guided.v1';
   contractVersion: typeof PBL_LEARNING_CONTRACT_VERSION;
   id: string;
   version: string;
@@ -260,6 +262,12 @@ export function hasLearningSessionCompletion(session: Pick<PblTemplateSession, '
 }
 
 export interface PblTemplateSession {
+  /** Explicit lesson lead, independent of the governance-phase coordinator. */
+  leadAssistantId?: string;
+  activityRequirements?: readonly {
+    activity: LessonActivity;
+    evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery';
+  }[];
   teachingRequirements?: readonly ('dynamic_lesson' | 'project_knowledge')[];
   /** Explicit canonical skill requirements frozen with this session, never inferred from its title. */
   requiredSkillIds?: readonly string[];
@@ -472,7 +480,9 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
   if (!templateRecord(input)) return { valid: false, errors: [{ path: 'pbl', message: 'pbl must be an object' }] };
   templateKeys(input, ['contractVersion', 'id', 'version', 'status', 'title', 'description', 'targetDomain', 'ageRange',
     'prerequisites', 'materials', 'safetyRequirements', 'objectives', 'phases', 'schedules', 'finalDeliverableType',
-    'rubricId', 'teamId', 'governancePolicyId', 'theme', 'curriculum'], 'pbl', issue);
+    'rubricId', 'teamId', 'governancePolicyId', 'theme', 'curriculum', 'lessonPolicy'], 'pbl', issue);
+  if (input.lessonPolicy !== undefined && input.lessonPolicy !== 'lesson-guided.v1') issue('lessonPolicy', 'unsupported lesson policy');
+  if (input.lessonPolicy && !input.curriculum) issue('curriculum', 'lesson-guided teaching requires a frozen curriculum');
   if (input.contractVersion !== PBL_LEARNING_CONTRACT_VERSION) issue('contractVersion', 'unsupported contractVersion');
   for (const key of ['id', 'version', 'title', 'description', 'targetDomain', 'finalDeliverableType', 'rubricId', 'teamId']) {
     if (!templateText(input[key])) issue(key, `${key} must be non-empty text`);
@@ -589,6 +599,7 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
       const profileIds = new Set<string>();
       for (const [index, profile] of input.curriculum.profiles.entries()) {
         validateTemplateProfile(profile, `curriculum.profiles[${index}]`, profileIds, schedules, objectives, phases, issue);
+        if (input.lessonPolicy === 'lesson-guided.v1') validateGuidedProfile(profile, `curriculum.profiles[${index}]`, issue);
       }
       if (activePolicy) {
         for (const profile of input.curriculum.profiles) {
@@ -610,6 +621,48 @@ export function validateProjectTemplateSpec(input: unknown): ProjectTemplateVali
     }
   }
   return { valid: errors.length === 0, errors };
+}
+
+function validateActivityRequirements(session: Record<string, unknown>, path: string, issue: (path: string, message: string) => void): void {
+  if (!Array.isArray(session.activityRequirements) || !templateRecord(session.blocks)) {
+    issue(path, 'activity requirements must reference scheduled blocks'); return;
+  }
+  const seen = new Set<string>();
+  for (const item of session.activityRequirements) {
+    if (!templateRecord(item)) { issue(path, 'invalid activity requirement'); continue; }
+    templateKeys(item, ['activity', 'evidence'], path, issue);
+    if (!templateEnum(item.activity, TEMPLATE_ACTIVITIES) || seen.has(String(item.activity))
+      || !templateInteger(session.blocks[String(item.activity)], 1, 120)
+      || !templateEnum(item.evidence, ['session_response', 'experiment_observation', 'submitted_artifact', 'mastery'])
+      || (item.evidence === 'mastery' && (item.activity !== 'check' || !templateRecord(session.completionSpec)
+        || !Array.isArray(session.completionSpec.requiredMasteryObjectiveIds) || !session.completionSpec.requiredMasteryObjectiveIds.length))) {
+      issue(path, 'invalid or duplicate activity evidence requirement');
+    }
+    seen.add(String(item.activity));
+  }
+  for (const activity of TEMPLATE_ACTIVITIES) if (Number(session.blocks[activity]) > 0 && !seen.has(activity)) {
+    issue(path, `missing activity evidence requirement: ${activity}`);
+  }
+}
+
+function validateGuidedProfile(profile: unknown, path: string, issue: (path: string, message: string) => void): void {
+  if (!templateRecord(profile) || !Array.isArray(profile.sessions)) return;
+  for (const session of profile.sessions) {
+    if (!templateRecord(session)) continue;
+    const at = `${path}.${session.id}`;
+    if (!templateText(session.leadAssistantId) || !Array.isArray(session.requiredSkillIds) || !session.requiredSkillIds.length
+      || !Array.isArray(session.teachingRequirements) || !session.teachingRequirements.includes('dynamic_lesson')
+      || !templateRecord(session.completionSpec) || session.completionSpec.version !== 'learning-session-completion.v2') {
+      issue(at, 'guided lessons require a lead, canonical skills, dynamic teaching and quality-reviewed completion');
+    }
+    if (session.activityRequirements === undefined) issue(at, 'guided lessons require activity evidence rules');
+    if (templateRecord(session.blocks)) for (const activity of TEMPLATE_ACTIVITIES) {
+      if (Number(session.blocks[activity]) > 0 && (!templateRecord(session.activityGuidance) || !templateText(session.activityGuidance[activity]))) {
+        issue(at, `missing scheduled activity guidance: ${activity}`);
+      }
+    }
+    if (templateRecord(session.checkpoint) && session.checkpoint.requiredGate === 'student_confirmed_intent') issue(at, 'intent confirmation occurs before formal lessons');
+  }
 }
 
 function validateTemplateProfile(
@@ -636,7 +689,9 @@ function validateTemplateProfile(
     const sessionPath = `${path}.sessions[${index}]`;
     if (!templateRecord(session)) { issue(sessionPath, 'session must be an object'); continue; }
     templateKeys(session, ['id', 'sessionIndex', 'title', 'phase', 'sessionType', 'objectiveIds',
-      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds'], sessionPath, issue);
+      'durationMinutes', 'blocks', 'learningGoal', 'activityGuidance', 'evidenceRequirements', 'completionSpec', 'checkpoint', 'interactiveSpec', 'teachingRequirements', 'requiredSkillIds', 'leadAssistantId', 'activityRequirements'], sessionPath, issue);
+    if (session.leadAssistantId !== undefined && !templateText(session.leadAssistantId)) issue(`${sessionPath}.leadAssistantId`, 'invalid lead assistant');
+    if (session.activityRequirements !== undefined) validateActivityRequirements(session, sessionPath, issue);
     if (session.requiredSkillIds !== undefined && (!Array.isArray(session.requiredSkillIds)
       || new Set(session.requiredSkillIds).size !== session.requiredSkillIds.length
       || session.requiredSkillIds.some(value => typeof value !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(value)))) {

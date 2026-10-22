@@ -1,4 +1,16 @@
+import type { LessonActivity } from './pbl-learning.js';
+
+export interface LessonActivityProgress {
+  activityId: string;
+  kind: LessonActivity;
+  guidance: string;
+  minutes: number;
+  evidence: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'mastery';
+  status: 'completed' | 'current' | 'locked';
+  evidenceRefs: string[];
+}
 export interface LearningSessionProgressItem {
+  activities?: LessonActivityProgress[];
   sessionId: string;
   lessonIndex: number;
   title: string;

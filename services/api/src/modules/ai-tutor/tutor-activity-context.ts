@@ -4,7 +4,7 @@ import type { EffectiveAgentRuntime, PlatformRegistryService } from '../platform
 import type { TutorExperimentService } from './tutor-experiment.service';
 import type { TutorTeachingContext } from './tutor-teaching-context';
 import type { createTutorKnowledgeAccess } from './tutor-knowledge-access';
-import { freezeTutorRuntime } from './tutor-frozen-runtime';
+import { freezeTutorRuntime, scopeTutorRuntimeToLesson } from './tutor-frozen-runtime';
 import { createLessonActivityChannel, type LessonActivityChannel } from './tutor-lesson-activity';
 import type { ImaReadEvidence } from './ima-project-scope';
 
@@ -32,6 +32,7 @@ export async function prepareTutorLessonActivities(input: {
   questions?: Pick<LearningPlanService, 'readPendingQuestionCandidate' | 'acceptQuestionCandidate'>; experiments?: TutorExperimentService;
   resolve(): Promise<TutorTeachingContext | null>;
   hasQuestion(questionId: string): boolean;
+  assessmentPending?: boolean;
 }): Promise<LessonActivityChannel | undefined> {
   const { teaching, runtime } = input;
   if (!teaching?.objective || !runtime || !input.projectId || !input.registry) return undefined;
@@ -41,13 +42,13 @@ export async function prepareTutorLessonActivities(input: {
   const assessmentObjective = [...teaching.session.theoryObjectiveIds, ...teaching.session.practiceObjectiveIds].includes(teaching.objective.id);
   const pendingQuestion = assessmentObjective ? await input.questions?.readPendingQuestionCandidate(actor, scope) : undefined;
   return createLessonActivityChannel({
-    teaching, runtime, scope, idempotencyKey: input.idempotencyKey, pendingQuestion,
+    teaching, runtime, scope, idempotencyKey: input.idempotencyKey, pendingQuestion, assessmentPending: input.assessmentPending,
     restorePending: !!pendingQuestion && !input.hasQuestion(pendingQuestion.questionId),
     refresh: async () => {
       const fresh = await input.resolve();
       if (!fresh) unavailable();
-      return { teaching: fresh, runtime: freezeTutorRuntime(await input.registry!.getAssistantRuntime(fresh.role.assistantId),
-        fresh.role, input.registry!.isModelAvailable(fresh.role.modelByPurpose.dialogue!)) };
+      return { teaching: fresh, runtime: scopeTutorRuntimeToLesson(freezeTutorRuntime(await input.registry!.getAssistantRuntime(fresh.role.assistantId),
+        fresh.role, input.registry!.isModelAvailable(fresh.role.modelByPurpose.dialogue!)), fresh) };
     },
     verifyEvidence: (refs) => verifyLessonEvidence(input.knowledgeAccess, refs),
     ...(assessmentObjective && input.questions ? { acceptQuestion: (candidate, key, verify: (refs: readonly string[]) => Promise<readonly ImaReadEvidence[]>) =>

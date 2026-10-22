@@ -366,6 +366,8 @@ export interface TutorProjectContext {
   phases?: TutorPhaseProjection[];
   /** 当前冻结课时投影。阶段仅作为服务端策略元数据，不在学生端作为课程主轴展示。 */
   lesson?: {
+    completedCount?: number;
+    currentActivity?: import('./learning-session-progress.js').LessonActivityProgress | null;
     planId?: string;
     planRevision?: number;
     learningSessionId?: string;

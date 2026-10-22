@@ -39,7 +39,7 @@ import type {
 } from '@qitu/contracts';
 import { DATA_MODE_TOKEN, DATABASE_TOKEN, type DataMode } from '../../database';
 import { and, eq } from 'drizzle-orm';
-import { adminTeamVersions, auditLogs, pblGateEvidence } from '@qitu/database';
+import { adminTeamVersions, auditLogs, pblGateEvidence, agentTeamRuns } from '@qitu/database';
 import { BUILTIN_ASSISTANTS, isObjectiveMastered } from '@qitu/ai-client';
 import { findQuizBankEntryByConcept, toQuizBlockProjection } from '@qitu/ai-client/quiz-bank';
 import { hashRequest, IdempotencyStore } from '../../common/idempotency';
@@ -71,7 +71,9 @@ import { persistTutorOpening } from './tutor-opening.store';
 import { resolveExplorationHandoff } from './tutor-exploration';
 import { resolveFrozenTeamMembers } from './tutor-team-members';
 import { resolveTutorTeachingContext, type TutorTeachingContext } from './tutor-teaching-context';
-import { freezeTutorRuntime } from './tutor-frozen-runtime';
+import { LearningSessionProgressService } from '../learning-plan/learning-session-progress.service';
+import { pendingDisclosure, type TutorDisclosure } from './tutor-disclosure';
+import { freezeTutorRuntime, scopeTutorRuntimeToLesson } from './tutor-frozen-runtime';
 import { resolveTutorKnowledgeAccess } from './tutor-knowledge-access';
 import { resolveLegacyTutorLesson } from './tutor-legacy-lesson';
 import {
@@ -317,6 +319,7 @@ export class TutorService {
     @Optional() private readonly teacherService?: TeacherService,
     @Optional() private readonly experiments?: TutorExperimentService,
     @Optional() private readonly learningPlans?: LearningPlanService,
+    @Optional() private readonly lessonProgress?: LearningSessionProgressService,
     @Optional() private readonly projectHistory?: ProjectHistoryService,
   ) {
     const runtime = loadTutorRuntimeSource();
@@ -499,7 +502,7 @@ export class TutorService {
             assistantName: leader?.name ?? fallback.assistantName,
             assistantAvatar: leader?.avatar ?? null,
           };
-          const phases = await this.projectPhases(frozenTeam, stage, ownerId);
+          const phases = await this.projectPhases(frozenTeam, stage, ownerId, projectId);
           return { team, phases, teamConfig: frozenTeam };
         }
         throw new ConflictException({ code: 'PROJECT_TEAM_UNAVAILABLE', message: '项目冻结的导师团队不可用，请联系老师或管理员。' });
@@ -524,7 +527,7 @@ export class TutorService {
         assistantName: leader?.name ?? fallback.assistantName,
         assistantAvatar: leader?.avatar ?? null,
       };
-      const phases = await this.projectPhases(teamConfig, stage, ownerId);
+      const phases = await this.projectPhases(teamConfig, stage, ownerId, projectId);
       return { team, phases, teamConfig };
     } catch (error) {
       if (error instanceof ConflictException) throw error;
@@ -573,13 +576,13 @@ export class TutorService {
     return BUILTIN_ASSISTANTS.find((assistant) => assistant.id === id);
   }
 
-  private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string): Promise<TutorPhaseProjection[]> {
+  private async projectPhases(teamConfig: AdminTeamConfig | null, stage: ProjectStage, ownerId: string, projectId: string | null): Promise<TutorPhaseProjection[]> {
     const spec = teamConfig?.pblSpec;
     if (!spec?.phases?.length) return [];
     const currentPhase = pblPhaseForProjectStage(stage);
     const phases = [...spec.phases];
     const currentIndex = Math.max(0, phases.findIndex((phase) => phase.phase === currentPhase));
-    const satisfiedGates = await this.loadSatisfiedGatesForStudent(ownerId);
+    const satisfiedGates = await this.loadSatisfiedGatesForProject(ownerId, projectId);
     return phases.map((phase, index) => {
       const status: TutorPhaseProjection['status'] =
         index < currentIndex ? 'completed' : index === currentIndex ? 'active' : 'locked';
@@ -609,12 +612,13 @@ export class TutorService {
     });
   }
 
-  private async loadSatisfiedGatesForStudent(studentId: string): Promise<Set<string>> {
-    if (this.database === null) return new Set();
+  private async loadSatisfiedGatesForProject(studentId: string, projectId: string | null): Promise<Set<string>> {
+    if (this.database === null || !projectId) return new Set();
     const rows = await this.database
       .select({ gate: pblGateEvidence.gate })
       .from(pblGateEvidence)
-      .where(eq(pblGateEvidence.studentUserId, studentId));
+      .innerJoin(agentTeamRuns, eq(pblGateEvidence.consumedRunId, agentTeamRuns.id))
+      .where(and(eq(pblGateEvidence.studentUserId, studentId), eq(agentTeamRuns.studentUserId, studentId), eq(agentTeamRuns.projectId, projectId)));
     return new Set(rows.map((row) => row.gate));
   }
 
@@ -758,7 +762,18 @@ export class TutorService {
     if (bundle.teamVersion.teamVersionId !== snapshot.teamVersionId) {
       throw new ConflictException({ code: 'PROJECT_TEACHING_BUNDLE_UNAVAILABLE', message: '项目教学包与冻结团队不一致。' });
     }
-    return resolveTutorTeachingContext(this.learningStore, project, bundle);
+    const context = await resolveTutorTeachingContext(this.learningStore, project, bundle);
+    if (bundle.template.lessonPolicy === 'lesson-guided.v1') {
+      if (!this.lessonProgress) throw new ConflictException({ code: 'LESSON_PROGRESS_UNAVAILABLE', message: '课时活动服务尚未接通' });
+      const progress = await this.lessonProgress.readProgress({ id: studentId, email: '', displayName: '', role: 'student' }, context.planId);
+      context.lesson.currentActivity = progress.sessions.find(entry => entry.sessionId === progress.currentSessionId)
+        ?.activities?.find(activity => activity.status === 'current') ?? null;
+      context.lesson.completedCount = progress.completedCount;
+      const activity = context.lesson.currentActivity;
+      if (activity) context.currentTask = { id: activity.activityId, title: context.lesson.title,
+        detail: activity.guidance, isTodayFocus: true };
+    }
+    return context;
   }
 
   private async resolveTurnAuthor(record: TutorSessionRecord, stage: ProjectStage, teaching?: TutorTeachingContext | null): Promise<NonNullable<TutorTurn['author']>> {
@@ -1608,9 +1623,10 @@ export class TutorService {
       : await this.workspace.getPartnerProfile(this.contextReader.partner.id);
     const partner = { ...basePartner, id: conversationAssistantId };
     const currentRuntime = this.platformRegistry === undefined ? null : await this.platformRegistry.getAssistantRuntime(conversationAssistantId);
-    const effectiveRuntime = runtimeRole && currentRuntime && this.platformRegistry
+    const resolvedRuntime = runtimeRole && currentRuntime && this.platformRegistry
       ? freezeTutorRuntime(currentRuntime, runtimeRole, this.platformRegistry.isModelAvailable(runtimeRole.modelByPurpose.dialogue!))
       : currentRuntime;
+    const effectiveRuntime = resolvedRuntime ? scopeTutorRuntimeToLesson(resolvedRuntime, teaching) : null;
     if (effectiveRuntime !== null) {
       if (effectiveRuntime.agent.id !== conversationAssistantId) {
         throw new ConflictException({ code: 'ASSISTANT_RUNTIME_IDENTITY_MISMATCH', message: '导师运行身份不一致，请联系管理员' });
@@ -1648,6 +1664,14 @@ export class TutorService {
     });
     contextPacket.partner = partner;
     if (teaching) contextPacket.lessonProgram = projectTutorLessonProgram(teaching);
+    const refreshDisclosure = async (): Promise<TutorDisclosure> => {
+      const pending = teaching ? await this.learningStore?.findAwaitingQuestion(request.actorId, teaching.planId) : null;
+      if (pending && (pending.sessionId !== teaching?.session.id || pending.studentUserId !== request.actorId)) {
+        throw new ConflictException({ code: 'PROJECT_TEACHING_PENDING_SCOPE_INVALID', message: '待答题范围已变化，请刷新' });
+      }
+      return pending ? pendingDisclosure(pending) : { kind: 'instruction' };
+    };
+    const disclosure = await refreshDisclosure();
 
     let knowledgeTools: TutorTurnInput['knowledgeTools'];
     let knowledgeState: string | undefined;
@@ -1736,6 +1760,7 @@ export class TutorService {
       }
     }
     const lessonActivities = await prepareTutorLessonActivities({ teaching, runtime: effectiveRuntime, projectId: record.projectId,
+      assessmentPending: disclosure.kind === 'pending_assessment',
       studentId: request.actorId, tutorSessionId: record.sessionId, idempotencyKey: request.idempotencyKey, knowledgeAccess,
       registry: this.platformRegistry, questions: this.learningPlans, experiments: this.experiments,
       hasQuestion: (id) => record.turns.some((turn) => turn.blocks.some((block) => block.kind === 'quiz' && block.questionId === id)),
@@ -1749,7 +1774,7 @@ export class TutorService {
         const generated: TutorStreamEvent[] = [];
         for await (const event of this.provider.generateTurn({
           ...providerInput,
-          knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities,
+          knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
           authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
           modelUsage: purpose.usageId,
           modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
@@ -1765,10 +1790,10 @@ export class TutorService {
       : null,
       effectiveRuntime === null ? undefined : {
         assistantId: conversationAssistantId, configurationHash: hashRequest(effectiveRuntime),
-        ...(runtimeRole && this.platformRegistry ? { resolveRuntime: async () => freezeTutorRuntime(
+        ...(runtimeRole && this.platformRegistry ? { resolveRuntime: async () => scopeTutorRuntimeToLesson(freezeTutorRuntime(
           await this.platformRegistry!.getAssistantRuntime(conversationAssistantId), runtimeRole,
           this.platformRegistry!.isModelAvailable(runtimeRole.modelByPurpose.dialogue!),
-        ) } : {}),
+        ), teaching) } : {}),
       },
     ) : undefined;
     if (unifiedSDK) {
@@ -1776,7 +1801,7 @@ export class TutorService {
     }
 
     const input: TutorTurnInput = {
-      knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities,
+      knowledgeTools, knowledgeState, knowledgeScope: knowledgeAccess.scope, lessonActivities, disclosure, refreshDisclosure,
       authorizeKnowledgeTool, imaKnowledgeScope: knowledgeAccess.ima,
       modelUsage: effectiveRuntime === null ? contextPacket.partner.modelUsage : 'agent.model',
       modelProviderId: effectiveRuntime?.agent.modelProviderId ?? undefined,
@@ -2077,9 +2102,8 @@ export class TutorService {
   /**
    * 演示会话的初始历史。
    *
-   * 它刻意停在第 1 档提示上，且 **没有任何 assistant 文本块是完整答案**：
-   * 历史必须与实时流遵守同一条「只提问不给答案」规则，否则学生会从历史里
-   * 读到实时流不肯给的结论。
+   * Demo seeds remain bounded examples. Live instruction and answer disclosure
+   * use the actual lesson and pending-question owners instead of these seeds.
    */
   private seedSession(
     sessionId: string,

@@ -580,6 +580,7 @@ export default function AdminTemplatesPage() {
           {templateVersions.map((version) => <option key={version.id} value={version.id}>{version.version} · {STATUS_LABELS[version.status] ?? version.status}</option>)}
         </select></label>
         <TemplateTeamBindingPanel key={editingTemplate.sourceVersionId} templateId={editingTemplate.id} versionId={versionsLoading || versionsError ? null : editingTemplate.sourceVersionId}
+          lessonPolicy={editingTemplate.pblSpec?.lessonPolicy}
           versionStatus={selectedVersion?.status ?? 'draft'} profiles={editingTemplate.pblSpec?.curriculum?.profiles ?? []} phases={editingTemplate.pblSpec?.phases ?? []} requiresBundle={editingTemplate.pblSpec !== null} teams={teams} />
         <div className="team-editor-top-tabs">
           {editingTemplate.pblSpec ? (
@@ -612,11 +613,9 @@ export default function AdminTemplatesPage() {
           <div className="admin-template-workflow-container">
             {/* 顶栏宏观概览 */}
             <div
-              className="admin-template-workflow-intro"
+              className="admin-template-workflow-intro admin-template-sessions-intro"
               style={{
                 borderLeft: '4px solid #165dff',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
                 padding: '16px 20px',
                 borderRadius: '12px',
               }}
@@ -647,7 +646,7 @@ export default function AdminTemplatesPage() {
                 <strong>驱动性问题：</strong> {editingTemplate.pblSpec.theme?.drivingQuestion || editingTemplate.pblSpec.description}
               </p>
               {editingTemplate.pblSpec.safetyRequirements && editingTemplate.pblSpec.safetyRequirements.length > 0 ? (
-                <div style={{ marginTop: '8px', fontSize: '12px', color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '8px 12px', borderRadius: '6px' }}>
+                <div className="admin-template-safety-box" style={{ marginTop: '8px', fontSize: '12px', padding: '8px 12px', borderRadius: '6px' }}>
                   <strong>⚠️ 安全与实践要求：</strong> {editingTemplate.pblSpec.safetyRequirements.join('；')}
                 </div>
               ) : null}
@@ -723,25 +722,24 @@ export default function AdminTemplatesPage() {
                     {/* 门禁卡片 */}
                     {gateInfo ? (
                       <div
+                        className="admin-session-gate-box"
                         style={{
                           display: 'flex',
                           alignItems: 'flex-start',
                           gap: '10px',
                           padding: '10px 14px',
-                          background: gateInfo.bg,
-                          border: `1px solid ${gateInfo.border}`,
                           borderRadius: '8px',
                         }}
                       >
                         <span style={{ fontSize: '16px' }}>🚩</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <strong style={{ color: gateInfo.color, fontSize: '13px' }}>{gateInfo.title}</strong>
-                            <span style={{ fontSize: '11px', background: '#ffffff', color: gateInfo.color, border: `1px solid ${gateInfo.border}`, padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                            <strong className="admin-session-gate-title" style={{ fontSize: '13px' }}>{gateInfo.title}</strong>
+                            <span className="admin-session-gate-badge" style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
                               {gateInfo.badge}
                             </span>
                           </div>
-                          <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: gateInfo.color, lineHeight: 1.5 }}>
+                          <p className="admin-session-gate-desc" style={{ margin: '4px 0 0', fontSize: '12.5px', lineHeight: 1.5 }}>
                             {gateInfo.desc}
                           </p>
                         </div>
@@ -751,22 +749,20 @@ export default function AdminTemplatesPage() {
                     {/* 微观仿真挂载 */}
                     {session.interactiveSpec?.enabled ? (
                       <div
+                        className="admin-session-simulation-box"
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
                           padding: '8px 12px',
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
                           borderRadius: '6px',
                           fontSize: '12.5px',
-                          color: '#166534',
                         }}
                       >
                         <span><VisualAsset assetId="activity-experiment-v1" size={24} /></span>
                         <span>
                           <strong>挂载微观仿真原型：</strong>
-                          <code style={{ background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', margin: '0 4px', fontFamily: 'monospace' }}>
+                          <code className="admin-session-simulation-code" style={{ padding: '2px 6px', borderRadius: '4px', margin: '0 4px', fontFamily: 'monospace' }}>
                             {session.interactiveSpec.domainTopic}
                           </code>
                           （{session.interactiveSpec.allowHypothesisPrediction ? '支持' : '限制'}假设预测对比；区分模型计算、模拟观察与真实测量）
@@ -776,7 +772,7 @@ export default function AdminTemplatesPage() {
 
                     {/* 课时目标 */}
                     {session.learningGoal ? (
-                      <div style={{ fontSize: '13px', color: '#1d2129', lineHeight: 1.6, background: '#f7f8fa', padding: '10px 14px', borderRadius: '8px' }}>
+                      <div className="admin-session-goal-box" style={{ fontSize: '13px', lineHeight: 1.6, padding: '10px 14px', borderRadius: '8px' }}>
                         <strong>🎯 本节学习目标：</strong>
                         <span>{session.learningGoal}</span>
                       </div>
@@ -790,7 +786,7 @@ export default function AdminTemplatesPage() {
                           回顾 {session.blocks.review}m · 理论 {session.blocks.theory}m · 测验 {session.blocks.check}m · 实践 {session.blocks.practice}m · 反思 {session.blocks.reflect}m
                         </span>
                       </div>
-                      <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: '#e5e6eb' }}>
+                      <div className="admin-session-time-track" style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
                         {session.blocks.review > 0 ? (
                           <div style={{ width: `${(session.blocks.review / session.durationMinutes) * 100}%`, background: '#f59e0b' }} title={`回顾: ${session.blocks.review}分钟`} />
                         ) : null}
@@ -819,11 +815,9 @@ export default function AdminTemplatesPage() {
                           {session.evidenceRequirements.map((ev, i) => (
                             <span
                               key={i}
+                              className="admin-session-evidence-pill"
                               style={{
                                 fontSize: '12px',
-                                color: '#334155',
-                                background: '#f1f5f9',
-                                border: '1px solid #e2e8f0',
                                 padding: '3px 8px',
                                 borderRadius: '6px',
                               }}
@@ -843,28 +837,28 @@ export default function AdminTemplatesPage() {
                         </summary>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px' }}>
                           {session.activityGuidance.review ? (
-                            <div style={{ background: '#fdf6ec', padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong style={{ color: '#b45309' }}>[回顾]</strong> {session.activityGuidance.review}
+                            <div className="admin-session-guidance-item is-review" style={{ padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong>[回顾]</strong> {session.activityGuidance.review}
                             </div>
                           ) : null}
                           {session.activityGuidance.theory ? (
-                            <div style={{ background: '#eff6ff', padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong style={{ color: '#1d4ed8' }}>[理论]</strong> {session.activityGuidance.theory}
+                            <div className="admin-session-guidance-item is-theory" style={{ padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong>[理论]</strong> {session.activityGuidance.theory}
                             </div>
                           ) : null}
                           {session.activityGuidance.check ? (
-                            <div style={{ background: '#fef2f2', padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong style={{ color: '#b91c1c' }}>[检查]</strong> {session.activityGuidance.check}
+                            <div className="admin-session-guidance-item is-check" style={{ padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong>[检查]</strong> {session.activityGuidance.check}
                             </div>
                           ) : null}
                           {session.activityGuidance.practice ? (
-                            <div style={{ background: '#f0fdf4', padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong style={{ color: '#15803d' }}>[实践]</strong> {session.activityGuidance.practice}
+                            <div className="admin-session-guidance-item is-practice" style={{ padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong>[实践]</strong> {session.activityGuidance.practice}
                             </div>
                           ) : null}
                           {session.activityGuidance.reflect ? (
-                            <div style={{ background: '#faf5ff', padding: '6px 8px', borderRadius: '4px' }}>
-                              <strong style={{ color: '#7e22ce' }}>[反思]</strong> {session.activityGuidance.reflect}
+                            <div className="admin-session-guidance-item is-reflect" style={{ padding: '6px 8px', borderRadius: '4px' }}>
+                              <strong>[反思]</strong> {session.activityGuidance.reflect}
                             </div>
                           ) : null}
                         </div>

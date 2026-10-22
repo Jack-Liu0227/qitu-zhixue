@@ -398,7 +398,8 @@ export default function ToolsSettingsPage() {
                   行代表助手（来自助手配置接口），列代表 MCP 服务器与内置工具（来自 AI 运行时快照）。勾选或取消会立即通过服务端接口持久化。
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="admin-matrix-scroll-hint">↔ 可横向滚动查看全部授权列</span>
                 <span className="admin-tools-summary-badge" style={{ fontSize: '12px', color: '#165dff', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
                   {assistants.length} 位助手 · {mcpServers.length} 个 MCP 服务 · {builtinTools.length} 个内置工具
                 </span>

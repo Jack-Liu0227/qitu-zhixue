@@ -105,7 +105,9 @@ test('Tutor passes bound tools to the gateway, preserves truthful events and ans
     request.onToolEvent?.({ type: 'result', callId: 'read1', name: 'ima_read_document', isError: false });
     return result('答案是照抄课本就行，你觉得呢？');
   });
-  const events = await collect(new GatewayTutorProvider(gateway, [], ima), await imaInput());
+  const events = await collect(new GatewayTutorProvider(gateway, [], ima), { ...await imaInput(), disclosure: {
+    kind: 'pending_assessment', questionId: 'pending-fixture', prompt: 'Public question', options: [], protectedTexts: [],
+  } });
   assert.ok(events.some((event) => event.type === 'tool_call' && event.name === 'ima_read_document'));
   assert.ok(events.some((event) => event.type === 'tool_result' && event.callId === 'read1' && event.status === 'done'));
   assert.doesNotMatch(JSON.stringify(events), /private textbook passage/);
@@ -189,7 +191,7 @@ test('正常回复：走 tutor.chat，产出 deltas + hint 块 + done，工具�
 
   const done = events.find((e) => e.type === 'done');
   assert.ok(done && done.type === 'done');
-  assert.equal(done.turnSummary.hintLevel, 1);
+  assert.equal(done.turnSummary.hintLevel, null);
 
   assert.equal(events.some((e) => e.type === 'error'), false);
 });
@@ -198,7 +200,7 @@ test('正常回复：走 tutor.chat，产出 deltas + hint 块 + done，工具�
 
 test('答案泄露：闸门改写输出，块内不含泄露措辞且标记 guard error', async () => {
   const gateway = new StubGateway(() => result('答案是叶绿素减少了，你觉得呢？'));
-  const events = await collect(new GatewayTutorProvider(gateway));
+  const events = await collect(new GatewayTutorProvider(gateway), { ...BASE_INPUT, disclosure: { kind: 'pending_assessment', questionId: 'pending', prompt: 'Question', options: [], protectedTexts: [] } });
 
   const guard = events.find(
     (e) => e.type === 'tool_result' && e.callId === 'call-guard-sess-1',
@@ -215,7 +217,7 @@ test('答案泄露：闸门改写输出，块内不含泄露措辞且标记 guar
 });
 
 test('超长回复：被安全闸门截断改写，不超过档位长度', async () => {
-  const long = '这是一段很长的解释。'.repeat(40) + '你觉得先看哪一步？';
+  const long = '这是一段很长的解释。'.repeat(400) + '你觉得先看哪一步？';
   const gateway = new StubGateway(() => result(long));
   const events = await collect(new GatewayTutorProvider(gateway), {
     ...BASE_INPUT,
@@ -224,9 +226,9 @@ test('超长回复：被安全闸门截断改写，不超过档位长度', async
 
   const block = events.find((e) => e.type === 'block');
   assert.ok(block && block.type === 'block' && block.block.kind === 'hint');
-  assert.ok(block.block.text.length <= 160);
+  assert.ok(block.block.text.length <= 2400);
   assert.match(block.block.text, /这是一段很长的解释/);
-  assert.match(block.block.text, /？$/);
+  assert.match(block.block.text, /…$/);
   assert.doesNotMatch(block.block.text, /提示词太长/);
   const guard = events.find((event) => event.type === 'tool_result' && event.callId === 'call-guard-sess-1');
   assert.ok(guard && guard.type === 'tool_result');

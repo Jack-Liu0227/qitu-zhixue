@@ -3,10 +3,19 @@ export const EYECARE_CHANGE_EVENT = 'qitu-eyecare-change';
 export function getStoredEyecare(): boolean {
   if (typeof window === 'undefined') return false;
   try {
+    // 默认进入页面不开启夜间模式；清除历史遗留的持久化强开标记
+    localStorage.removeItem('qitu.student.eyecare');
+    localStorage.removeItem('qitu.admin.eyecare');
+    localStorage.removeItem('qitu.teacher.eyecare');
+    localStorage.removeItem('qitu.parent.eyecare');
+    localStorage.removeItem('qitu.eyecare');
+
     const saved =
-      localStorage.getItem('qitu.teacher.eyecare') ??
-      localStorage.getItem('qitu.eyecare') ??
-      localStorage.getItem('qitu.student.eyecare');
+      sessionStorage.getItem('qitu.admin.eyecare') ??
+      sessionStorage.getItem('qitu.eyecare') ??
+      sessionStorage.getItem('qitu.teacher.eyecare') ??
+      sessionStorage.getItem('qitu.parent.eyecare') ??
+      sessionStorage.getItem('qitu.student.eyecare');
     return saved === '1' || saved === 'true';
   } catch {
     return false;
@@ -16,9 +25,11 @@ export function getStoredEyecare(): boolean {
 export function setStoredEyecare(active: boolean): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem('qitu.teacher.eyecare', active ? '1' : '0');
-    localStorage.setItem('qitu.eyecare', active ? '1' : '0');
-    localStorage.setItem('qitu.student.eyecare', active ? '1' : '0');
+    sessionStorage.setItem('qitu.admin.eyecare', active ? '1' : '0');
+    sessionStorage.setItem('qitu.eyecare', active ? '1' : '0');
+    sessionStorage.setItem('qitu.student.eyecare', active ? '1' : '0');
+    sessionStorage.setItem('qitu.parent.eyecare', active ? '1' : '0');
+    sessionStorage.setItem('qitu.teacher.eyecare', active ? '1' : '0');
     if (active) {
       document.documentElement.setAttribute('data-qitu-eyecare', 'true');
     } else {

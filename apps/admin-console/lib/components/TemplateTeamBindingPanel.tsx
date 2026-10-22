@@ -23,7 +23,8 @@ const failureView = (error: unknown): Failure => error instanceof AdminPermissio
     : error instanceof AdminApiError && error.status === 409 ? { kind: 'stale', message: error.message }
       : { kind: 'error', message: error instanceof Error ? error.message : '操作未确认，请重试。' };
 
-export function TemplateTeamBindingPanel({ templateId, versionId, teams, versionStatus, profiles, phases, requiresBundle }: {
+export function TemplateTeamBindingPanel({ templateId, versionId, teams, versionStatus, profiles, phases, requiresBundle, lessonPolicy }: {
+  lessonPolicy?: ProjectTemplateSpec['lessonPolicy'];
   templateId: string; versionId: string | null; teams: AdminTeamConfig[]; versionStatus: string;
   profiles: NonNullable<ProjectTemplateSpec['curriculum']>['profiles'];
   requiresBundle: boolean; phases: ProjectTemplateSpec['phases'];
@@ -55,12 +56,13 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
   const current = records.filter((row) => row.binding.teamVersionId === teamVersionId && row.binding.status !== 'retired')
     .sort((a, b) => b.binding.createdAt.localeCompare(a.binding.createdAt))[0];
   const active = records.find((row) => row.binding.status === 'active');
-  const activeReady = Boolean(active?.configurationReady);
+  const activeReady = Boolean(active?.configurationReady) && (!requiresBundle || active?.teachingReadiness?.lessonCompletionReady !== false);
   const activeBlockers = active ? [
     !active.binding.validation.valid ? '服务端绑定校验未通过' : null,
     active.team?.runtimeSnapshotStatus !== 'published' ? '团队版本仍是 legacy_unpinned，尚未形成发布快照' : null,
     !active.binding.bundleDraft ? '缺少教学配置草稿' : null,
     !active.binding.bundleDigest ? '缺少服务端编译后的教学包 digest' : null,
+    requiresBundle && active.teachingReadiness?.lessonCompletionReady === false ? '缺少逐课完成规则，需创建新的课程版本' : null,
   ].filter((item): item is string => item !== null) : [];
   const selectedVersion = versions.find((row) => row.id === teamVersionId);
   const selectedPublished = selectedVersion?.runtimeSnapshotStatus === 'published';
@@ -71,7 +73,8 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
   const draft = preview.kind === 'ready' ? preview.draft : null;
   const profile = profiles.find((entry) => entry.id === (draft?.scheduleProfileId ?? profileId));
   const routedPhases = phases.filter((phase) => profile?.sessions.some((session) => session.phase === phase.phase));
-  const assignmentsReady = routedPhases.every((phase) => phase.assignedAssistantId
+  const assignmentsReady = lessonPolicy === 'lesson-guided.v1' ? !!profile && profile.sessions.every(session =>
+    members.some(member => member.assistantId === session.leadAssistantId)) : routedPhases.every((phase) => phase.assignedAssistantId
     ? members.some((member) => member.assistantId === phase.assignedAssistantId)
     : members.some((member) => member.slotId === phaseAssignments[phase.phase]));
   const disabled = !!busy || loading || versionsLoading || !catalogReady || !versionsReady || !online || failure?.kind === 'permission';
@@ -254,7 +257,7 @@ export function TemplateTeamBindingPanel({ templateId, versionId, teams, version
             </button>;
           })}
         </aside>
-        <TeachingRoutingBoard profile={profile} phases={phases} members={members} team={team} draft={draft} assignments={phaseAssignments}
+        <TeachingRoutingBoard lessonPolicy={lessonPolicy} profile={profile} phases={phases} members={members} team={team} draft={draft} assignments={phaseAssignments}
           editable={editable} onAssign={(phase, memberId) => setPhaseAssignments((previous) => ({ ...previous, [phase]: memberId }))}
           onDraft={editDraft} onSelectMember={setSelectedMemberId} />
         <TeachingRoleInspector member={selectedMember} team={team} draft={draft} catalog={runtime} editable={editable} onDraft={editDraft} />

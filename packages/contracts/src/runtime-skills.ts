@@ -1,14 +1,12 @@
 import { LEGACY_TEACHING_SKILL_HASHES } from './runtime-skill-baseline.js';
 
-export const MAX_RUNTIME_SKILL_CHARS = 8_000;
-export const MAX_RUNTIME_SKILLS_PROMPT_CHARS = 24_000;
 export type SkillPublicationStatus = 'quarantined' | 'reviewed' | 'published' | 'deprecated' | 'revoked';
 
 /** Shared API/worker admission. This is deliberately a flat frontmatter contract, not YAML execution. */
 export function parseRuntimeSkill(id: string, raw: string, normalizedHash: string) {
   const metadata: Record<string, string> = Object.create(null);
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  let valid = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}$/.test(id) && raw.length <= 262_144;
+  let valid = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,119}$/.test(id);
   if (raw.startsWith('---') && !match) valid = false;
   for (const line of (match?.[1] ?? '').split(/\r?\n/)) {
     if (!line.trim() || line.trim().startsWith('#')) continue;
@@ -28,14 +26,8 @@ export function parseRuntimeSkill(id: string, raw: string, normalizedHash: strin
   const content = (match ? raw.slice(match[0].length) : raw).replace(/\r\n/g, '\n').trim();
   return {
     metadata, runtime, publicationStatus, legacy,
-    content: content.slice(0, MAX_RUNTIME_SKILL_CHARS),
-    ready: valid && content.length > 0 && content.length <= MAX_RUNTIME_SKILL_CHARS
+    content,
+    ready: valid && content.length > 0
       && runtime !== 'unknown' && runtime !== 'dev-only' && publicationStatus === 'published',
   };
-}
-
-export function assertRuntimeSkillBudget(skills: readonly { content: string }[]): void {
-  if (skills.reduce((sum, skill) => sum + skill.content.length, 0) > MAX_RUNTIME_SKILLS_PROMPT_CHARS) {
-    throw new Error('RUNTIME_SKILL_BUDGET_EXCEEDED');
-  }
 }

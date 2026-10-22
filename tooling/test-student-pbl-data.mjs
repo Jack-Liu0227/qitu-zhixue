@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
+import './verify-workspace-source.mjs';
 
 // Execute the actual browser data adapters and their node:test cases. App typechecking is a separate gate.
 const require=createRequire(import.meta.url);
@@ -13,6 +14,7 @@ function load(path){
   const code=ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
   new Function('require','exports',code)(name=>{
     if(name.startsWith('node:'))return require(name);
+    if(name==='@qitu/contracts')return require(name);
     if(!name.startsWith('.'))throw new Error(`Unexpected browser data dependency: ${name}`);
     return load(resolve(dirname(path),name)+'.ts');
   },exports);
