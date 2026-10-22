@@ -37,6 +37,7 @@ export function assistantRuntimeFixture(): AssistantRuntimeFixture {
   const extraRows = new Map<unknown, unknown[]>();
   class Chain {
     constructor(private readonly rows: unknown[]) {}
+    innerJoin() { return this; }
     where() { return this; }
     orderBy() { return this; }
     limit() { return this; }

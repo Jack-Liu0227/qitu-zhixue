@@ -5,6 +5,7 @@ import type {
   TutorReplyBlock,
 } from '@qitu/contracts';
 import type { TutorContextPacket } from '@qitu/ai-client';
+import { leaksPendingAnswer, type TutorDisclosure } from './tutor-disclosure';
 
 /**
  * AI搭档的回合引擎接口（provider seam）。
@@ -14,6 +15,9 @@ import type { TutorContextPacket } from '@qitu/ai-client';
  * 任何改动。契约与流式事件是与前端共享的，换实现不会改变线上协议。
  */
 export interface TutorTurnInput {
+  /** Server-only assessment state. Never populated from browser content or serialized wholesale. */
+  disclosure?: TutorDisclosure;
+  refreshDisclosure?: () => Promise<TutorDisclosure>;
   imaKnowledgeScope?: import('./ima-tool-scope').ImaKnowledgeScope;
   knowledgeTools?: import('@qitu/model-runtime').ModelRuntimeTool[];
   knowledgeState?: string;
@@ -128,8 +132,8 @@ export function selectHintLevel(
     case 'debug_guide':
       return riseFrom(previous, turnCount);
     default:
-      // 纯文字提问也走引导路径：默认从第 1 档开始，之后每轮最多 +1。
-      return riseFrom(previous, turnCount);
+      // Ordinary instruction does not climb a conversation-wide help ladder.
+      return null;
   }
 }
 
@@ -148,76 +152,28 @@ function riseFrom(
  * 答案泄露防护
  * ------------------------------------------------------------------ */
 
-/**
- * 会让学生直接拿到结论的措辞。命中即视为「泄露完整答案」，必须改写。
- * 这不是分类器，是一道确定性的最后闸门：真实模型接进来以后它依然生效。
- */
-const ANSWER_LEAK_MARKERS = [
-  '答案是',
-  '答案就是',
-  '正确答案',
-  '结论是',
-  '所以说，答案',
-  '直接告诉你',
-  '标准答案',
-];
-
-/** 引导档（1–4）里，回复必须是启发式的：以问句收尾。 */
-const SOCRATIC_TAIL = /[?？]\s*$/;
-
 export interface AnswerLeakVerdict {
   ok: boolean;
   reason?: string;
-  /** 直接被拒时的改写稿；仍然只包含启发式内容。 */
   replacement?: string;
 }
 
-/**
- * 对最终回复做答案泄露校验。
- *
- * 规则：
- * - 命中 `ANSWER_LEAK_MARKERS` → 失败，给出启发式改写稿。
- * - 第 1–4 档必须以问句收尾（苏格拉底式），并且不得长于 160 字。
- * - 第 5 档（`explain`，唯一允许讲解的入口）允许陈述句，但仍然受长度约束，
- *   且仍不得命中泄露措辞。
- * - `null` 等级（仅 `stall_signal` / `review_work` 的兜底）按引导档处理。
- */
-function shortenReply(text: string, level: TutorHintLevel | null): string {
-  const limit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
+/** Check actual assessment scope independently from teaching format. */
+export function checkAnswerLeak(text: string, level: TutorHintLevel | null, disclosure: TutorDisclosure = { kind: 'instruction' }): AnswerLeakVerdict {
   const trimmed = text.trim();
-  if (trimmed.length <= limit) return trimmed;
-  if (level === EXPLAIN_ONLY_LEVEL) return `${trimmed.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
-
-  const questionTail = '你觉得呢？';
-  const available = Math.max(1, limit - questionTail.length - 1);
-  const prefix = trimmed.slice(0, available).replace(/[，。！？；：、\s]+$/u, '').trimEnd();
-  return `${prefix}${prefix ? '，' : ''}${questionTail}`;
-}
-
-export function checkAnswerLeak(text: string, level: TutorHintLevel | null): AnswerLeakVerdict {
-  const trimmed = text.trim();
-  for (const marker of ANSWER_LEAK_MARKERS) {
-    if (trimmed.includes(marker)) {
+  if (leaksPendingAnswer(trimmed, disclosure)) {
       return {
         ok: false,
-        reason: `命中泄露措辞「${marker}」`,
-        replacement: '这条回复本该由你一步步想出来，我先把它改成一个问题：你觉得哪一步最不确定？',
+        reason: '待答题需要保留独立作答空间',
+        replacement: '这道题先保留给你作答。我可以解释相关概念或换一道示例；你希望先弄清哪个条件？',
       };
-    }
   }
-  const limit = level === EXPLAIN_ONLY_LEVEL ? 320 : 160;
+  const limit = disclosure.kind === 'instruction' ? 2400 : 800;
   if (trimmed.length > limit) {
     return {
       ok: false,
       reason: `模型回复长度 ${trimmed.length} 超过第 ${level ?? 1} 档上限 ${limit}`,
-      replacement: shortenReply(trimmed, level),
-    };
-  }
-  if (level !== EXPLAIN_ONLY_LEVEL && !SOCRATIC_TAIL.test(trimmed)) {
-    return {
-      ok: false,
-      reason: '引导档回复必须以问句收尾',
-      replacement: `${trimmed.replace(/[。!！]\s*$/, '')}，你觉得呢？`,
+      replacement: `${trimmed.slice(0, limit - 1).trimEnd()}…`,
     };
   }
   return { ok: true };
@@ -302,7 +258,7 @@ export class HeuristicTutorProvider implements TutorProvider {
 
     // 生成候选回复，再做答案泄露校验。
     const candidate = composeReply(input, level);
-    const verdict = checkAnswerLeak(candidate.text, level);
+    const verdict = checkAnswerLeak(candidate.text, level, input.disclosure);
     const finalText = verdict.ok ? candidate.text : (verdict.replacement ?? candidate.text);
     const finalBlock = verdict.ok ? candidate.block : { kind: 'hint' as const, level: level ?? HINT_LEVEL_MIN, text: finalText };
 
@@ -311,13 +267,13 @@ export class HeuristicTutorProvider implements TutorProvider {
     }
 
     // 步骤 4 —— 答案泄露校验（真实闸门；上面的最终文案就是它的产物）。
-    yield { type: 'tool_call', callId: callIds.guard, name: 'safety.answer_leak.guard', label: '检查回复不泄露完整答案' };
+    yield { type: 'tool_call', callId: callIds.guard, name: 'safety.answer_leak.guard', label: '检查教学输出范围' };
     yield {
       type: 'tool_result',
       callId: callIds.guard,
       status: verdict.ok ? 'done' : 'error',
       result: verdict.ok
-        ? `校验通过（第 ${level ?? HINT_LEVEL_MIN} 档，未包含完整答案）`
+        ? '已按本轮教学与待答题状态检查输出'
         : `已改写：${verdict.reason ?? '原始回复不合规'}`,
     };
 

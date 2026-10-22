@@ -16,10 +16,12 @@ import { WorksService, type ArtifactView } from './works.service';
 import { WorksStore } from './works.store';
 import { boundedStudentText, decodeInlineVersion } from './works-inline-content';
 import { conflict, requireLearningPracticeGate, resolveLearningEvidenceContext, sameIds } from './works-learning-context';
+import { projectLessonActivities } from '../learning-plan/lesson-activity-progress';
 import type { LearningEvidenceProof, LearningEvidenceScope, LearningSubmissionReceipt, LessonEvidenceProofs } from './works-learning-evidence.types';
 
 export type { LearningEvidenceProof, LearningEvidenceScope, LessonEvidenceProofs } from './works-learning-evidence.types';
 export interface LearningTextSubmission {
+  activityId?: string;
   planRevision: number;
   content: string;
   evidenceRefs?: readonly string[];
@@ -101,6 +103,7 @@ export class WorksLearningEvidenceService {
       const text = decodeInlineVersion(stored.version.note).inlineText;
       if (!text || digest(text) !== receipt.contentDigest) continue;
       const proof: LearningEvidenceProof = {
+        ...(receipt.activityId ? { activityId: receipt.activityId } : {}),
         kind: receipt.kind, ref: `${row.sourceKind}:${row.sourceId}`, scope: receipt.scope,
         objectiveId: receipt.scope.objectiveIds[0]!, sourceKind: row.sourceKind as 'task_submission' | 'reflection',
         artifactId: receipt.artifactId, artifactVersionId: receipt.artifactVersionId,
@@ -177,16 +180,32 @@ export class WorksLearningEvidenceService {
     if (body.requestReview !== undefined && typeof body.requestReview !== 'boolean') invalid('requestReview 必须为布尔值');
     const inputScope = { planId, learningSessionId, planRevision: body.planRevision };
     const initial = await this.context(actor, inputScope, true);
+    if (body.activityId !== undefined && (typeof body.activityId !== 'string'
+      || !initial.lesson.activityRequirements?.some(requirement => body.activityId === `${learningSessionId}:activity:${requirement.activity}`
+        && requirement.evidence === kind))) invalid('活动标识与本课任务或提交类型不一致');
+    if (initial.lesson.activityRequirements && body.activityId === undefined) invalid('本课提交需要明确的活动标识');
     const objectiveIds = body.objectiveId === undefined ? initial.scope.objectiveIds : [body.objectiveId];
     if (!objectiveIds.every((id) => initial.scope.objectiveIds.includes(id))) conflict('LEARNING_EVIDENCE_OBJECTIVE_MISMATCH', '目标不属于该课时');
     // Store the full frozen lesson scope; caller-selected objective never changes authorization.
     const operation = reflection ? 'reflection' : kind;
     const idemScope = `learning.${operation}:${actor.id}:${planId}:${learningSessionId}`;
     const normalized = { content, evidenceRefs, objectiveId: body.objectiveId ?? null, title: body.title ?? null,
-      requestReview: body.requestReview === true, planRevision: body.planRevision };
+      requestReview: body.requestReview === true, planRevision: body.planRevision,
+      ...(body.activityId ? { activityId: body.activityId } : {}) };
     try {
       const result = await this.idempotency.execute(idemScope, key, hashIdempotentInput(idemScope, inputScope, normalized), async () => {
         const context = await this.context(actor, inputScope, true);
+        if (context.lesson.activityRequirements) {
+          const view = await this.getLessonProofs(actor, planId, learningSessionId, body.planRevision);
+          const ids = context.lesson.completionSpec?.requiredMasteryObjectiveIds.map(id => `${planId}:${id}`) ?? [];
+          const pending = await this.plans.findAwaitingQuestion(actor.id, planId);
+          const activities = projectLessonActivities({ lesson: context.lesson, sessionId: learningSessionId,
+            proofs: [...view.submissions, ...view.observations, ...view.reflections],
+            masteryAccepted: !pending && ids.length > 0 && await this.mastery.checkRequiredObjectives(actor, actor.id, planId, ids, this.plans) });
+          if (activities.find(activity => activity.status === 'current')?.activityId !== body.activityId) {
+            conflict('LESSON_ACTIVITY_OUT_OF_ORDER', '当前活动已变化或前置活动尚未完成，请刷新后继续');
+          }
+        }
         await requireLearningPracticeGate(this.mastery, this.plans, actor, context);
         if (reflection && context.lesson.checkpoint?.requiredGate !== 'review_completed_and_archived') {
           conflict('REFLECTION_SESSION_REQUIRED', '当前课时没有最终反思归档任务');
@@ -204,6 +223,7 @@ export class WorksLearningEvidenceService {
         const versionId = artifact.latestVersion?.id;
         if (!versionId || artifact.latestVersion?.inlineText !== content) conflict('LEARNING_EVIDENCE_READBACK_FAILED', '学习产物保存回读失败');
         const receipt: LearningSubmissionReceipt = { schema: 'qitu.learning-submission.v1', kind,
+          ...(body.activityId ? { activityId: body.activityId } : {}),
           scope: context.scope, artifactId: artifact.id, artifactVersionId: versionId,
           contentDigest: digest(content), evidenceRefs };
         const sourceKind = reflection ? 'reflection' as const : 'task_submission' as const;
@@ -255,7 +275,8 @@ function readSubmission(row: ProjectEvidenceRecord): LearningSubmissionReceipt |
       || typeof data.scope.learningSessionId !== 'string' || !Number.isSafeInteger(data.scope.planRevision)
       || !Array.isArray(data.scope.objectiveIds) || !data.scope.objectiveIds.length
       || data.scope.objectiveIds.some((id) => typeof id !== 'string') || typeof data.artifactId !== 'string'
-      || typeof data.artifactVersionId !== 'string' || !/^[a-f0-9]{64}$/u.test(data.contentDigest)) return null;
+      || typeof data.artifactVersionId !== 'string' || !/^[a-f0-9]{64}$/u.test(data.contentDigest)
+      || (data.activityId !== undefined && (typeof data.activityId !== 'string' || !data.activityId.startsWith(`${data.scope.learningSessionId}:activity:`)))) return null;
     return data;
   } catch { return null; }
 }

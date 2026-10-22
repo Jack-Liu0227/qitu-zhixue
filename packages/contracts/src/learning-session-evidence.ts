@@ -7,6 +7,7 @@ export interface LearningEvidenceScope {
   objectiveIds: readonly string[];
 }
 export interface LearningEvidenceProof {
+  activityId?: string;
   quality?: LessonQualityStatus;
   kind: 'session_response' | 'experiment_observation' | 'submitted_artifact' | 'approved_artifact';
   ref: string;
@@ -56,6 +57,7 @@ export interface LessonQualityQueueItem {
   content: string;
 }
 export interface LearningTextSubmission {
+  activityId?: string;
   planRevision: number;
   content: string;
   evidenceRefs?: readonly string[];

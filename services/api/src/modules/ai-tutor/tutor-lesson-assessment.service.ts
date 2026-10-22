@@ -14,7 +14,7 @@ export class TutorLessonAssessmentService {
   ) {}
 
   async start(actor: CurrentUser, projectId: string, expected: TutorLearningScope): Promise<TutorLessonAssessmentView> {
-    const scope = await this.current(actor, projectId, expected);
+    const scope = await this.current(actor, projectId, expected, true);
     const pending = await this.store.findAwaitingQuestion(actor.id, scope.planId);
     if (pending?.assessmentType === 'formative') return { projectId, scope, nextStep: null, blockedReason: '请先完成对话中的巩固题，再检查目标理解。' };
     if (pending && pending.sessionId !== scope.learningSessionId) this.conflict();
@@ -41,13 +41,16 @@ export class TutorLessonAssessmentService {
     return { projectId, scope, answer };
   }
 
-  private async current(actor: CurrentUser, projectId: string, expected: TutorLearningScope): Promise<TutorLearningScope> {
+  private async current(actor: CurrentUser, projectId: string, expected: TutorLearningScope, requireCheck = false): Promise<TutorLearningScope> {
     if (actor.role !== 'student') throw new ForbiddenException('目标考核仅允许学生本人操作');
     if (!Number.isSafeInteger(expected.planRevision) || expected.planRevision < 1 || typeof expected.planId !== 'string' || typeof expected.learningSessionId !== 'string') this.conflict();
     const context = await this.tutor.getProjectContext(projectId, actor.id);
     const lesson = context?.lesson;
     if (context?.project?.id !== projectId || !lesson || lesson.status !== 'current' || lesson.planId !== expected.planId ||
         lesson.planRevision !== expected.planRevision || lesson.learningSessionId !== expected.learningSessionId) this.conflict();
+    if (requireCheck && lesson.currentActivity !== undefined && lesson.currentActivity?.kind !== 'check') {
+      throw new ConflictException({ code: 'TUTOR_ACTIVITY_CHECK_REQUIRED', message: '请先完成当前活动，再进入本课检查。' });
+    }
     return { planId: expected.planId, planRevision: expected.planRevision, learningSessionId: expected.learningSessionId };
   }
   private conflict(): never {

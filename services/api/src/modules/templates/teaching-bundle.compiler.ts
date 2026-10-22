@@ -228,8 +228,9 @@ export function compileTeachingBundle(source: TeachingBundleSource): CompiledTea
         && role.tools.some(tool => tool.toolId === id && tool.mcpServerId === 'ima-knowledge')))) {
       reject('LESSON_KNOWLEDGE_CAPABILITY_REQUIRED', `sessionRoutes.${route.sessionIndex}`);
     }
-    const phase = template.phases.find((entry) => entry.phase === session?.phase);
-    if (phase?.assignedAssistantId !== null && phase?.assignedAssistantId !== role.assistantId) {
+    const phase = template.phases.find((entry) => entry.phase === session.phase);
+    const assigned = template.lessonPolicy === 'lesson-guided.v1' ? session.leadAssistantId : phase?.assignedAssistantId;
+    if (assigned != null && assigned !== role.assistantId) {
       reject('TEMPLATE_ROLE_MISMATCH', 'sessionRoutes.roleSlotId');
     }
     return { sessionIndex: route.sessionIndex, roleSlotId: route.roleSlotId };

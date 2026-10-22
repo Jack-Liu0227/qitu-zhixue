@@ -12,6 +12,7 @@ export function projectTutorLessonProgram(context: TutorTeachingContext): TutorL
     throw new ConflictException({ code: 'PROJECT_TEACHING_SESSION_INVALID', message: '当前课时与冻结教案不一致' });
   }
   return {
+    ...(context.lesson.currentActivity !== undefined ? { currentActivity: context.lesson.currentActivity } : {}),
     templateVersionId: context.bundle.templateVersionId, planId: context.planId, planRevision: context.planRevision,
     learningSessionId: context.session.id, lessonIndex: lesson.sessionIndex, title: lesson.title,
     learningGoal: lesson.learningGoal ?? lesson.title,

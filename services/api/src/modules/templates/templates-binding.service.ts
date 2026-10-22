@@ -22,6 +22,7 @@ import { IMA_READ_TOOLS } from '../ai-tutor/ima-mcp.client';
 import {
   ADMIN_TEMPLATE_BINDING_IDEMPOTENCY_SCOPES,
   PBL_BINDING_STATUS_TRANSITIONS,
+  hasLearningSessionCompletion,
 } from '@qitu/contracts';
 import { AuditWriter, type AuditTransaction } from '../../common/audit/audit.service';
 import { hashIdempotentInput } from '../../common/idempotency/idempotency.hash';
@@ -158,7 +159,15 @@ export class TemplateBindingService {
       const configurationReady = record.status === 'active' && record.validation.valid && team?.enabled === true
         && (!requiresTeachingBundle(version.content) || Boolean(team.pblSpec.teamVersionPublication
           && record.bundleDigest && record.bundlePayload && teachingValueDigest(record.bundlePayload) === record.bundleDigest));
+      const profile = record.bundlePayload?.template.curriculum?.profiles.find(profile => profile.id === record.bundlePayload?.scheduleProfileId);
+      const teachingReadiness = {
+        lessonCompletionReady: !!profile?.sessions.length && profile.sessions.every(hasLearningSessionCompletion),
+        lessonSkillsDeclared: !!profile?.sessions.length && profile.sessions.every(session => !!session.requiredSkillIds?.length),
+        knowledgeRequired: profile?.sessions.some(session => session.teachingRequirements?.includes('project_knowledge')) ?? false,
+        knowledgeScopeDeclared: !!record.bundlePayload?.knowledgeGrant?.knowledgeBaseIds.length,
+      };
       return { binding: { ...toBindingView(record), bundleDraft: structuredClone(record.bundleDraft) }, configurationReady,
+        teachingReadiness,
         team: team ? { id: team.teamId, name: team.name, runtimeSnapshotStatus: team.pblSpec.teamVersionPublication ? 'published' : 'legacy_unpinned' } : null };
     }));
   }
