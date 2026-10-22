@@ -1,5 +1,7 @@
 # PBL 能力链架构与实施入口
 
+- [知识中心配置与助手绑定矩阵](./knowledge-center-config-matrix-20261022.md)：2026-10-22 已确认的配置界面、增量授权、IMA 重新关联与验证边界。
+
 > Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](../../admin/release-20261019-main.md).
 
 > 状态：2026-10-19 / capability-v1-m1 首批源码已实现，本地全量离线验证已通过（1040 项 API 测试），生产未验收；源码基线 `43a0307eb776185d7561f213d75b3d7312616aa9` 加当前工作树。

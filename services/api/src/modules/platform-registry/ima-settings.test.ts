@@ -86,6 +86,7 @@ test('unified knowledge capability revocation also blocks legacy ima MCP for pro
   let allowed = true;
   const center = {
     canRetrieve: async (id: string) => allowed && id === h.assistant.id,
+    imaKnowledgeBaseIds: async (id: string) => allowed && id === h.assistant.id ? ['approved'] : [],
     configuration: async () => ({config: {knowledgeEngines: {'ima-main': {enabled: true, config: {allowedKnowledgeBaseIds: ['approved']}}}}}),
   };
   const service = new ImaSettingsService(h.db, {} as never, center as never);

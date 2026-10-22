@@ -311,9 +311,43 @@ export class KnowledgeCenterService {
     if (!globallyAllowed) return false;
     if (!knowledgeBaseId) return true;
     const [binding] = await this.query<{ enabled: boolean }>(
-      sql`SELECT b.enabled FROM knowledge_base_agent_bindings b JOIN knowledge_bases k ON k.id=b.kb_id WHERE b.kb_id=${knowledgeBaseId} AND b.agent_kind='admin_assistant' AND b.agent_id=${assistantId} AND b.mode='retrieve' AND b.enabled=true AND k.lifecycle='active'`,
+      sql`SELECT b.enabled FROM knowledge_base_agent_bindings b JOIN knowledge_bases k ON k.id=b.kb_id WHERE b.kb_id=${knowledgeBaseId} AND b.agent_kind='admin_assistant' AND b.agent_id=${assistantId} AND b.mode='retrieve' AND b.enabled=true AND k.lifecycle='active' AND k.library_settings->>'enabled' IS DISTINCT FROM 'false'`,
     );
     return binding?.enabled === true;
+  }
+
+  /** Current per-library grants are also the ceiling for legacy IMA tools. */
+  async imaKnowledgeBaseIds(assistantId?: string, studentId?: string): Promise<string[]> {
+    if (assistantId && !(await this.canRetrieve(assistantId))) return [];
+    const { config } = await this.configuration();
+    const connections = await this.query<{
+      engine_instance_id: string;
+      external_ref: Record<string, unknown>;
+    }>(
+      sql`SELECT k.engine_instance_id,c.external_ref FROM knowledge_base_connections c
+        JOIN knowledge_bases k ON k.id=c.kb_id WHERE c.provider='ima' AND c.status='ready'
+        AND k.lifecycle='active' AND k.kind<>'project' AND k.library_settings->>'enabled' IS DISTINCT FROM 'false'
+        AND (${studentId === undefined} OR EXISTS(SELECT 1 FROM users u WHERE u.id=${studentId ?? ''}
+          AND (k.kind='platform' OR (k.kind='school' AND k.school_id=u.school_id)
+          OR (k.kind='student' AND k.owner_user_id=u.id))))
+        AND (${assistantId === undefined} OR EXISTS(SELECT 1 FROM knowledge_base_agent_bindings b
+          WHERE b.kb_id=k.id AND b.agent_kind='admin_assistant' AND b.agent_id=${assistantId ?? ''}
+          AND b.mode='retrieve' AND b.enabled=true))`,
+    );
+    const allowed: string[] = [];
+    for (const connection of connections) {
+      const engine = config.knowledgeEngines[connection.engine_instance_id];
+      const id = connection.external_ref.remoteKnowledgeBaseId;
+      if (
+        engine?.enabled &&
+        engine.provider === 'ima' &&
+        typeof id === 'string' &&
+        Array.isArray(engine.config.allowedKnowledgeBaseIds) &&
+        engine.config.allowedKnowledgeBaseIds.includes(id)
+      )
+        allowed.push(id);
+    }
+    return [...new Set(allowed)];
   }
 
   async baseBindings(knowledgeBaseId: string) {
@@ -594,8 +628,9 @@ export class KnowledgeCenterService {
       credential_ref: string | null;
       status: string;
       last_error_code: string | null;
+      last_check_at: string | null;
     }>(
-      sql`SELECT flavour,provider,external_ref,credential_ref,status,last_error_code FROM knowledge_base_connections WHERE kb_id=${id}`,
+      sql`SELECT flavour,provider,external_ref,credential_ref,status,last_error_code,last_check_at::text FROM knowledge_base_connections WHERE kb_id=${id}`,
     );
     const sources = await this.query<{
       id: string;
@@ -631,6 +666,7 @@ export class KnowledgeCenterService {
             credentialRef: connection.credential_ref,
             status: connection.status,
             lastErrorCode: connection.last_error_code,
+            lastCheckAt: connection.last_check_at,
           })
         : { status: 'not_applicable' },
       bindings: { bindingRevision: base.revision, bindings },

@@ -40,7 +40,7 @@ test('citation reads use cached assistant provenance, frozen project scope and c
       return bundle;
     },
   } as never, {
-    allowedKnowledgeBaseIds: async () => currentKnowledgeBaseIds,
+    currentKnowledgeBaseIds: async () => currentKnowledgeBaseIds,
     canCall: async (agentId: string, toolId: string, assistantId: string) => {
       assert.equal(agentId, 'actual-source-assistant');
       assert.equal(assistantId, 'actual-source-assistant');

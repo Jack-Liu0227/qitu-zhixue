@@ -88,5 +88,8 @@ async def ima_request(data):
         return failure("IMA_TIMEOUT", "unreachable")
     except httpx.RequestError:
         return failure("IMA_UNREACHABLE", "unreachable")
-    except ImaAPIError:
+    except ImaAPIError as error:
+        # Classify the documented business failure without forwarding upstream text.
+        if 'invalid knowledge_base_id' in str(error).lower():
+            return failure('IMA_KB_ID_INVALID')
         return failure("IMA_UPSTREAM_INVALID_RESPONSE", "unavailable")

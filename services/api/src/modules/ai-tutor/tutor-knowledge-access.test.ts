@@ -9,7 +9,7 @@ import type { TemplateBindingService } from '../templates/templates-binding.serv
 
 test('template handoff cannot inherit current global knowledge libraries before project confirmation', async () => {
   const input = { studentId: 'synthetic-student', assistantId: 'published-mentor', projectId: null,
-    ima: { allowedKnowledgeBaseIds: async () => ['global-only-library'], canCall: async () => true } as unknown as ImaSettingsService,
+    ima: { currentKnowledgeBaseIds: async () => ['assistant-library'], canCall: async () => true } as unknown as ImaSettingsService,
     authorizeManagedTool: async () => true };
   const access = await resolveTutorKnowledgeAccess({ ...input, unconfirmedTemplate: true });
   assert.deepEqual(await access.ima.knowledgeBaseIds(), []);
@@ -17,7 +17,7 @@ test('template handoff cannot inherit current global knowledge libraries before 
   for (const id of ['knowledge_search', 'knowledge_read']) assert.equal(await access.managed.authorizeTool!(id), false);
   assert.deepEqual(access.managed.knowledgeBaseIds, []);
   // The existing separately governed free-intake path retains its explicit Admin policy.
-  assert.deepEqual(await (await resolveTutorKnowledgeAccess(input)).ima.knowledgeBaseIds(), ['global-only-library']);
+  assert.deepEqual(await (await resolveTutorKnowledgeAccess(input)).ima.knowledgeBaseIds(), ['assistant-library']);
 });
 
 test('project scope refresh rechecks owner, frozen digest and current knowledge grants', async () => {

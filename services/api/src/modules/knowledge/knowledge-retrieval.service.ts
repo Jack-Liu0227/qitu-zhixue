@@ -113,7 +113,7 @@ export class KnowledgeRetrievalService {
       JOIN users u ON u.id=${studentId}
       JOIN knowledge_base_agent_bindings b ON b.kb_id=k.id AND b.agent_kind='admin_assistant'
         AND b.agent_id=${assistantId} AND b.mode='retrieve' AND b.enabled=true
-      WHERE k.lifecycle='active' AND (k.kind='platform' OR
+      WHERE k.lifecycle='active' AND k.library_settings->>'enabled' IS DISTINCT FROM 'false' AND (k.kind='platform' OR
         (k.kind='school' AND k.school_id=u.school_id) OR
         (k.kind='student' AND k.owner_user_id=u.id))
         AND ${ceiling} ORDER BY (k.library_settings->>'isDefault'='true') DESC NULLS LAST,k.id`);

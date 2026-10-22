@@ -1,5 +1,4 @@
 'use client';
-import { AssistantGlyph } from '@qitu/ui';
 // Adapted from HKUDS/DeepTutor CreateKbModal.tsx at 6cf793bd (MIT); Qitu APIs and admin authorization.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -7,7 +6,6 @@ import {
   centerRequest,
   fetchCenterConfig,
   saveCenterConfig,
-  type AssistantBindings,
   type CreateBaseRequest,
   type Engine,
   type EngineGroup,
@@ -25,10 +23,9 @@ import {
 import styles from './KnowledgeLibrary.module.css';
 import { ImaLibraryPicker } from './ImaLibraryPicker';
 
-export type LibraryCreation = { request: CreateBaseRequest; files: File[]; assistantIds: string[] };
+export type LibraryCreation = { request: CreateBaseRequest; files: File[] };
 export function CreateLibraryModal({
   engines,
-  assistants,
   models,
   online,
   onClose,
@@ -36,7 +33,6 @@ export function CreateLibraryModal({
   onCreate,
 }: {
   engines: EngineGroup[];
-  assistants: AssistantBindings | null;
   models: ModelOption[];
   online: boolean;
   onClose: () => void;
@@ -55,7 +51,6 @@ export function CreateLibraryModal({
   const [embedding, setEmbedding] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedAssistants, setSelectedAssistants] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -638,37 +633,6 @@ export function CreateLibraryModal({
               )}
             </div>
           )}
-          {assistants && (
-            <details className={styles.defaultConfig}>
-              <summary>
-                绑定 AI 助手（可选）
-                <span className={styles.badge}>{selectedAssistants.length} 位</span>
-              </summary>
-              <p>选择一个或多个助手；创建后也可以在知识库的“AI 助手”中调整。</p>
-              <div className={styles.assistantGrid}>
-                {assistants.catalog.map((a) => (
-                  <label className={styles.assistantCard} key={a.id}>
-                    <input
-                      type="checkbox"
-                      disabled={!a.enabled}
-                      checked={selectedAssistants.includes(a.id)}
-                      onChange={(e) =>
-                        setSelectedAssistants(
-                          e.target.checked
-                            ? [...selectedAssistants, a.id]
-                            : selectedAssistants.filter((id) => id !== a.id),
-                        )
-                      }
-                    />
-                    <span>
-                      <AssistantGlyph value={a.avatar} size={20} /> {a.name}
-                      {!a.enabled ? '（已停用）' : ''}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </details>
-          )}
           {!online && (
             <p className={styles.error} role="alert">
               当前离线，请恢复网络后重试。
@@ -709,7 +673,7 @@ export function CreateLibraryModal({
               setBusy(true);
               setError('');
               try {
-                await onCreate({ request: request(), files, assistantIds: selectedAssistants });
+                await onCreate({ request: request(), files });
               } catch (e) {
                 setError(message(e));
               } finally {

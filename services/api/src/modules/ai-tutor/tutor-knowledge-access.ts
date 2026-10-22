@@ -35,7 +35,7 @@ export function createTutorKnowledgeAccess(
         if (!project || project.studentId !== studentId || project.templateVersionId !== teaching.bundle.templateVersionId) return [];
         const current = await bindings.getFrozenTeachingBundle(projectId, project.templateVersionId!);
         if (teachingValueDigest(current) !== digest) return [];
-        return settings.currentKnowledgeBaseIds(assistantId);
+        return settings.currentKnowledgeBaseIds(assistantId, studentId);
       },
     },
   };
@@ -88,7 +88,7 @@ export async function resolveTutorKnowledgeAccess(input: {
           if (teachingValueDigest(await input.bindings.getFrozenTeachingBundle(input.projectId, input.templateVersionId)) !== digest) return [];
         } catch { return []; }
       }
-      const current = await input.ima?.allowedKnowledgeBaseIds() ?? [];
+      const current = await input.ima?.currentKnowledgeBaseIds(input.assistantId, input.studentId) ?? [];
       return current.filter(id => ceiling === null || ceiling.includes(id));
     },
   };

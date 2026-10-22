@@ -5,6 +5,7 @@ import {
   Headers,
   Optional,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -24,6 +25,8 @@ import { KnowledgeToolCatalogService } from './knowledge-tool-catalog.service';
 import { KnowledgeSourceSyncService } from './knowledge-source-sync.service';
 import { KnowledgeUploadService } from './knowledge-upload.service';
 import { KnowledgeLibraryService } from './knowledge-library.service';
+import { KnowledgeMatrixService } from './knowledge-matrix.service';
+import { KnowledgeConnectionCheckService } from './knowledge-connection-check.service';
 
 @Controller('admin')
 export class KnowledgeCenterController {
@@ -37,6 +40,8 @@ export class KnowledgeCenterController {
     private readonly linkedProbe: KnowledgeLinkProbeService,
     private readonly sourceSync: KnowledgeSourceSyncService,
     @Optional() private readonly library?: KnowledgeLibraryService,
+    @Optional() private readonly matrix?: KnowledgeMatrixService,
+    @Optional() private readonly connectionCheck?: KnowledgeConnectionCheckService,
   ) {}
   private actor(cookie: string | undefined) {
     return requireRole(this.auth, cookie, 'admin', '知识中心仅向管理员开放');
@@ -83,6 +88,34 @@ export class KnowledgeCenterController {
     this.actor(cookie);
     return { data: await this.center.bases() };
   }
+  @Get('knowledge/binding-matrix')
+  async bindingMatrix(@Headers('cookie') cookie: string | undefined) {
+    this.actor(cookie);
+    if (!this.matrix) throw new ServiceUnavailableException('绑定矩阵不可用');
+    return { data: await this.matrix.get() };
+  }
+  @Patch('knowledge/binding-matrix')
+  async patchMatrix(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    if (!this.matrix) throw new ServiceUnavailableException('绑定矩阵不可用');
+    return { data: await this.matrix.patch(actor, body, idempotencyKey) };
+  }
+  @Patch('knowledge/retrieval')
+  async retrievalSettings(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    if (!this.matrix) throw new ServiceUnavailableException('绑定矩阵不可用');
+    return { data: await this.matrix.retrieval(actor, body, idempotencyKey) };
+  }
   @Post('knowledge/engines/:id/ima-bases')
   async imaBases(
     @Headers('cookie') cookie: string | undefined,
@@ -121,6 +154,30 @@ export class KnowledgeCenterController {
   async baseBindings(@Headers('cookie') cookie: string | undefined, @Param('id') id: string) {
     this.actor(cookie);
     return { data: await this.center.baseBindings(id) };
+  }
+  @Post('knowledge/bases/:id/check')
+  async checkConnection(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    if (!this.connectionCheck) throw new ServiceUnavailableException('连接检查不可用');
+    return { data: await this.connectionCheck.run(actor, id, body, idempotencyKey) };
+  }
+  @Patch('knowledge/bases/:id/connection')
+  async reconnectLibrary(
+    @Headers('cookie') cookie: string | undefined,
+    @Headers('idempotency-key') key: string | undefined,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const actor = this.actor(cookie);
+    const idempotencyKey = requireIdempotencyKey(key);
+    if (!this.connectionCheck) throw new ServiceUnavailableException('重新关联不可用');
+    return { data: await this.connectionCheck.run(actor, id, body, idempotencyKey, true) };
   }
   @Post('knowledge/bases/:id/settings')
   async librarySettings(
