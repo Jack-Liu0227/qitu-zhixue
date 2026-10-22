@@ -5,6 +5,7 @@ import { assertDomainLeader } from '../../common/intake-boundary';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
