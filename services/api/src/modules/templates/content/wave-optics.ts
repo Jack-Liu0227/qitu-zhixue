@@ -8,7 +8,7 @@ export const WAVE_OPTICS_TEMPLATE_INPUT: CreateTemplateInput = {
   summary: WAVE_OPTICS_TEMPLATE_SPEC.description, domain: 'physics', ageRange: '13–15', difficulty: 'introductory',
   estimatedDurationMinutes: 480, requiredMaterials: [...WAVE_OPTICS_TEMPLATE_SPEC.materials],
   learningObjectives: WAVE_OPTICS_TEMPLATE_SPEC.objectives.map(objective => objective.description),
-  outcomeForm: WAVE_OPTICS_TEMPLATE_SPEC.finalDeliverableType,
+  outcomeForm: '明暗条纹探究档案',
   safetyNotes: WAVE_OPTICS_TEMPLATE_SPEC.safetyRequirements.join('\n'),
 };
 export const WAVE_OPTICS_VERSION_INPUT: CreateTemplateVersionInput = {
