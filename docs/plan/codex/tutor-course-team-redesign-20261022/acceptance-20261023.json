@@ -1,0 +1,430 @@
+{
+  "checkedAt": "2026-10-22T16:39:24.786838+00:00",
+  "success": true,
+  "verifiedBusinessCommit": "4b45a1a221ca4bf48521371395f0c5c9a930a5f1",
+  "preservedSourceDifference": "Local source verification included the existing optional AdminCopilotReceipt.input type field; not part of this delivery or production bundle",
+  "deployedCodeCommit": "fdcfbbc776bf60ccaed07cb2dccd2e44749f7ba4",
+  "presentationOnlyFollowup": "Human-readable outcomeForm; runtime course identity unchanged",
+  "api": {
+    "tests": 796,
+    "pass": 795,
+    "fail": 0,
+    "skipped": 1
+  },
+  "studentAdapters": {
+    "tests": 15,
+    "pass": 15,
+    "fail": 0,
+    "skipped": 0
+  },
+  "studentBoundaries": {
+    "tests": 7,
+    "pass": 7,
+    "fail": 0,
+    "skipped": 0
+  },
+  "teamWorkers": {
+    "tests": 30,
+    "pass": 30,
+    "fail": 0,
+    "skipped": 0
+  },
+  "verificationSteps": [
+    {
+      "name": "build-contracts",
+      "exitCode": 0
+    },
+    {
+      "name": "contracts-esm-extensions",
+      "exitCode": 0
+    },
+    {
+      "name": "build-database",
+      "exitCode": 0
+    },
+    {
+      "name": "build-infra",
+      "exitCode": 0
+    },
+    {
+      "name": "build-agent-memory",
+      "exitCode": 0
+    },
+    {
+      "name": "build-ai-client",
+      "exitCode": 0
+    },
+    {
+      "name": "build-model-runtime",
+      "exitCode": 0
+    },
+    {
+      "name": "build-api",
+      "exitCode": 0
+    },
+    {
+      "name": "api-behavior-tests",
+      "exitCode": 0
+    },
+    {
+      "name": "ai-client-assertions",
+      "exitCode": 0
+    },
+    {
+      "name": "build-student-center-types",
+      "exitCode": 0
+    },
+    {
+      "name": "build-teacher-workspace-types",
+      "exitCode": 0
+    },
+    {
+      "name": "build-admin-console-types",
+      "exitCode": 0
+    },
+    {
+      "name": "student-pbl-data-tests",
+      "exitCode": 0
+    },
+    {
+      "name": "student-live-boundary-tests",
+      "exitCode": 0
+    },
+    {
+      "name": "build-workers",
+      "exitCode": 0
+    },
+    {
+      "name": "workers-esm-extensions",
+      "exitCode": 0
+    },
+    {
+      "name": "team-worker-tests",
+      "exitCode": 0
+    }
+  ],
+  "extraChecks": {
+    "success": true,
+    "steps": [
+      {
+        "name": "lint",
+        "exitCode": 0,
+        "log": "/root/wave8-extra-lint.log"
+      },
+      {
+        "name": "history",
+        "exitCode": 0,
+        "log": "/root/wave8-extra-history.log"
+      },
+      {
+        "name": "project-history",
+        "exitCode": 0,
+        "log": "/root/wave8-extra-project-history.log"
+      },
+      {
+        "name": "build-student",
+        "exitCode": 0,
+        "log": "/root/wave8-extra-build-student.log"
+      },
+      {
+        "name": "build-admin",
+        "exitCode": 0,
+        "log": "/root/wave8-extra-build-admin.log"
+      }
+    ]
+  },
+  "browserGroups": {
+    "admin": {
+      "checks": [
+        "eight-lesson-editor",
+        "four-domain-teacher-choices",
+        "fixed-opening-edit",
+        "new-version-save-readback",
+        "old-version-immutable",
+        "own-draft-cleanup"
+      ],
+      "errors": []
+    },
+    "student": {
+      "checks": [
+        "free opening has visual choices and no formal project",
+        "actual 8 lessons, current activity and domain mentor",
+        "real 4-person team without the intake assistant",
+        "offline composer is disabled and connection recovers",
+        "explicit team permission failure and successful retry",
+        "learning record owner is reachable and persists after refresh",
+        "narrow viewport keeps accessible progress controls"
+      ],
+      "errors": []
+    },
+    "delete": {
+      "checks": [
+        "conversation button permanently deletes formal and source exploration chat; project retained",
+        "deleted conversation stays absent after reload",
+        "project cover image rendered",
+        "project button permanently deletes fixture and related records; absent after reload",
+        "own browser fixtures cleaned with required idempotency keys",
+        "free exploration conversation button permanently deletes and remains absent after reload"
+      ],
+      "errors": []
+    },
+    "handoff": {
+      "checks": [
+        "visible pilot template and 8 lessons",
+        "actual inspiration handoff button",
+        "template opening and mentor",
+        "dynamic history title",
+        "no project before confirmation",
+        "own exploration cleanup"
+      ],
+      "errors": []
+    }
+  },
+  "realModelCases": [
+    {
+      "case": "generated",
+      "seconds": 21.63,
+      "frameTypes": {
+        "tutor.tool_call": 6,
+        "tutor.tool_result": 6,
+        "tutor.delta": 119,
+        "tutor.block": 2,
+        "turn.done": 1,
+        "team.member_delegated": 2
+      },
+      "newTurns": 2,
+      "blocks": [
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "board",
+          "origin": "generated",
+          "sources": 0
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "accepted": true,
+      "lessonStill": 1,
+      "completedLessons": 0,
+      "passed": true
+    },
+    {
+      "case": "recommended",
+      "seconds": 20.12,
+      "frameTypes": {
+        "tutor.tool_call": 7,
+        "tutor.tool_result": 7,
+        "tutor.delta": 135,
+        "tutor.block": 2,
+        "turn.done": 1,
+        "team.member_delegated": 2
+      },
+      "newTurns": 2,
+      "blocks": [
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "learning_resource",
+          "origin": null,
+          "sources": 1
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "accepted": true,
+      "lessonStill": 1,
+      "completedLessons": 0,
+      "passed": true
+    },
+    {
+      "case": "adapted",
+      "seconds": 25.53,
+      "frameTypes": {
+        "tutor.tool_call": 9,
+        "tutor.tool_result": 9,
+        "tutor.delta": 101,
+        "tutor.block": 2,
+        "turn.done": 1,
+        "team.member_delegated": 2
+      },
+      "newTurns": 2,
+      "blocks": [
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "tool"
+        },
+        {
+          "kind": "board",
+          "origin": "adapted",
+          "sources": 1
+        },
+        {
+          "kind": "hint"
+        }
+      ],
+      "accepted": true,
+      "lessonStill": 1,
+      "completedLessons": 0,
+      "passed": true
+    }
+  ],
+  "configuration": {
+    "success": true,
+    "templateId": "tpl-f37fa560-ecc4-4559-83df-e888a01406e7",
+    "templateVersionId": "tplv-efd7f9b0-3e59-4824-85c9-2f271a33eeb8",
+    "status": "piloting",
+    "bindingId": "bnd-4f1a274b280348f5",
+    "bindingStatus": "active",
+    "bindingHash": "55df9db9c550c500470ad01c1804f8c2e227d5c44e014ca6f6c9351390e36ff4",
+    "bundleDigest": "29833aaaf76cab3f98011c663ac6f5ec3a6fc24a7e0d317732b173fff252535e",
+    "teamVersionId": "team-version-97648af88b3a44bf19ada41589126ad3",
+    "scheduleProfileId": "wave-optics-8x60-v1",
+    "schedule": {
+      "lessonCount": 8,
+      "lessonMinutes": 60
+    },
+    "mentorCount": 4,
+    "knowledgeBaseCount": 2,
+    "studentSchedule": {
+      "lessonCount": 8,
+      "lessonMinutes": 60
+    },
+    "studentVisible": true,
+    "formalPublication": false
+  },
+  "services": {
+    "qitu-api": "active",
+    "qitu-workers": "active",
+    "qitu-profile-growth": "active",
+    "qitu-student": "active",
+    "qitu-admin": "active",
+    "qitu-parent": "active",
+    "qitu-teacher": "active",
+    "qitu-auth": "active",
+    "qitu-fix-student": "active",
+    "qitu-fix-parent": "active",
+    "qitu-fix-teacher": "active",
+    "qitu-fix-admin": "active",
+    "qitu-fix-auth": "active",
+    "qitu-ima-mcp": "active",
+    "qitu-local-embedding": "active"
+  },
+  "http": [
+    {
+      "path": "/api/v1/health",
+      "status": 200,
+      "seconds": 0.08
+    },
+    {
+      "path": "/api/v1/health/ready",
+      "status": 200,
+      "seconds": 0.12
+    },
+    {
+      "path": "/student/today",
+      "status": 200,
+      "seconds": 0.07
+    },
+    {
+      "path": "/admin/settings/templates",
+      "status": 200,
+      "seconds": 0.11
+    },
+    {
+      "path": "/teacher/dashboard",
+      "status": 200,
+      "seconds": 0.11
+    },
+    {
+      "path": "/parent/",
+      "status": 200,
+      "seconds": 0.19
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "seconds": 0.1
+    }
+  ],
+  "dependencies": {
+    "database": "ok",
+    "redis": "ok"
+  },
+  "cleanup": {
+    "onlyOwnFixturesDeleted": true,
+    "priorProjectCount": 1,
+    "finalProjectCount": 1
+  },
+  "documentationCheck": {
+    "newRecordLocalLinks": "passed",
+    "globalChecker": "failed on existing missing historical documents/status and local image links; recorded in implementation notes"
+  },
+  "limits": {
+    "fullOwnerFlow": "isolated synthetic fixture only",
+    "humanClassroomAcceptance": false,
+    "formalCoursePublication": false,
+    "coursewareAssetHub": false,
+    "allDirectImaToolsVerified": false
+  },
+  "evidenceHashes": {
+    "final-verification.json": "e1ff8efb63821cd04ef2159d23c5c48f1af8b3f89690beac14075c7bc3c3a130",
+    "final-verification.log": "2809d7c8bdeca60cf68fcc4290062f1ce2e69153f363cb95cb224a8b7ffcce0e",
+    "final-extra-report.json": "6fe2f56a3908f99da0d93a60c23d3a3d4350221a8752fd34c5e4ac4e0a215b77",
+    "live-model-results.json": "6c1f34cdabd9c3234f76ad0445eddb4e8f9681325761d61c87be27ccb4698ef6",
+    "final-config-readback.json": "d83d3c60f4b14982ea97706d792151aa167000117e7df26098e1b606b68294e5",
+    "live-health.json": "63c6908114af4edbcd99e383e027f49562ac9ed95ccda42b931f483c4b3a8517",
+    "final-deployment-report.json": "c189bf21ab2454f66d1274149fe2a5cddb65a12d6aa1aa5e5f3492bdd06c50d1"
+  }
+}

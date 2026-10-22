@@ -1,5 +1,7 @@
 # PBL 能力链架构与实施入口
 
+- 2026-10-23 当前专题：[干涉与衍射八课设计](./tutor-course-team-redesign-20261022/05-interference-diffraction-curriculum.md)、[实施与验收记录](./tutor-course-team-redesign-20261022/06-implementation-and-acceptance.md)。新专题已部署为受治理试点，正式课堂验收与课件资产库自动归档仍按记录中的边界推进。下方 2026-10-19 交付状态属于当时基线。
+
 - [知识中心配置与助手绑定矩阵](./knowledge-center-config-matrix-20261022.md)：2026-10-22 已确认的配置界面、增量授权、IMA 重新关联与验证边界。
 
 > Release update (2026-10-19 21:39:47 +08:00): `63e3be8` is deployed, main is synchronized, and migration 0036 is applied. Earlier offline-only statements below describe the pre-release round. Full teaching acceptance and 16-session bootstrap activation are still not complete. [Release evidence](../../admin/release-20261019-main.md).
