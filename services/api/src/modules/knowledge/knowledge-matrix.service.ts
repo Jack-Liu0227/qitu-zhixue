@@ -302,8 +302,9 @@ export class KnowledgeMatrixService {
       typeof input.enabled !== 'boolean'
     )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: '检索开关参数无效' });
+    const enabled = input.enabled;
     const requestHash = checksum(
-      JSON.stringify({ expectedRevision: input.expectedRevision, enabled: input.enabled }),
+      JSON.stringify({ expectedRevision: input.expectedRevision, enabled }),
     );
     const auditKey = `knowledge.retrieval:${actor.id}:${checksum(key)}`;
     return this.center.database().transaction(async (tx) => {
@@ -317,7 +318,7 @@ export class KnowledgeMatrixService {
             code: 'IDEMPOTENCY_CONFLICT',
             message: '幂等键已用于其他检索开关操作',
           });
-        return { configurationRevision: replay.detail.revision, enabled: input.enabled };
+        return { configurationRevision: replay.detail.revision, enabled };
       }
       const [current] = rows<{ revision: number; config: PlatformKnowledgeConfig }>(
         await tx.execute(
@@ -330,7 +331,7 @@ export class KnowledgeMatrixService {
           message: '配置已变化，请重新读取',
         });
       const config = structuredClone(current.config);
-      config.platformTools['project-knowledge'].enabled = input.enabled;
+      config.platformTools['project-knowledge'].enabled = enabled;
       const revision = current.revision + 1;
       await tx.execute(sql`INSERT INTO platform_configuration_revisions(revision,parent_revision,config,updated_by,idempotency_key,request_hash)
         VALUES(${revision},${current.revision},${JSON.stringify(config)}::jsonb,${actor.id},${auditKey},${requestHash})`);
@@ -342,11 +343,11 @@ export class KnowledgeMatrixService {
           targetType: 'platform_configuration',
           targetId: String(revision),
           idempotencyKey: auditKey,
-          detail: { requestHash, revision, enabled: input.enabled },
+          detail: { requestHash, revision, enabled },
         },
         tx,
       );
-      return { configurationRevision: revision, enabled: input.enabled };
+      return { configurationRevision: revision, enabled };
     });
   }
 }
