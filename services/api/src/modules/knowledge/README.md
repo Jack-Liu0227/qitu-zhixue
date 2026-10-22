@@ -101,11 +101,11 @@
 - `knowledge.service.test.ts`：写入幂等、冲突、修订 / 校验生命周期、检索授权隔离、单篇读取授权。
 - `knowledge.content.test.ts`：checksum、版本自增、分块边界、证据投影截断。
 
-运行（未纳入 `services/api/package.json` 的既有测试 glob，属本切片范围外）：
+当前 API 的 test 脚本已包含全部编译后的测试。定向运行知识模块时，先按依赖图构建，再在 API 包目录运行，避免依赖快照或工作目录造成假失败：
 
 ```bash
+pnpm -r --filter '@qitu/api^...' build
 cd services/api
-pnpm --filter @qitu/database build
-../../node_modules/.bin/tsc -p tsconfig.json --outDir .tmp/test-dist
-node --test ".tmp/test-dist/modules/knowledge/**/*.test.js"
+pnpm exec tsc -p tsconfig.json --outDir .tmp/test-dist
+node --test ".tmp/test-dist/modules/knowledge/*.test.js"
 ```

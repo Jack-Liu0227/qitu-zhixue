@@ -1,0 +1,16 @@
+{
+  "passed": 10,
+  "checks": [
+    "desktop matrix loads without file reader",
+    "configuration opens in drawer with connection actions",
+    "disabled assistant binding remains revocable",
+    "partial save clears confirmed cell and retains failed draft",
+    "failed readback locks edits and replays exact request and idempotency key",
+    "tab switch retains matrix draft",
+    "failed catalog refresh blocks new grants and preserves last visible data",
+    "offline state blocks writes",
+    "390px assistant selector uses same save contract without horizontal overflow",
+    "permission failure disables grants and empty directory displays guidance"
+  ],
+  "pageErrors": []
+}
