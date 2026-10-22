@@ -1,0 +1,94 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { fullflowHarness, STUDENT, TEACHER } from './optics-fullflow.test-fixture';
+import type { TutorSessionRecord } from '../ai-tutor/tutor.service';
+
+test('eight wave lessons close through actual answer, observation, teacher review, portfolio and reflection owners in an isolated fixture', async () => {
+  const h = await fullflowHarness(true, true, true);
+  const revision = h.plan.plan.version;
+  const profile = h.teaching.template.curriculum!.profiles[0]!;
+  assert.equal(h.plan.sessions.length, 8);
+  assert.ok(h.teaching.roles.every(role => role.assistantId !== 'qitu-intake-assistant'));
+  let answers = 0, observations = 0, reflections = 0;
+  for (const session of h.plan.sessions) {
+    const frozen = profile.sessions[session.lessonIndex - 1]!;
+    const scope = { planId: h.planId, planRevision: revision, learningSessionId: session.id };
+    assert.equal((await h.current()).role.assistantId, frozen.leadAssistantId);
+    for (let step = 0; ; step++) {
+      assert.ok(step < 7, 'each lesson must converge through its frozen activities');
+      const view = await h.progress.readProgress(STUDENT, h.planId);
+      const activity = view.sessions.find(item => item.sessionId === session.id)!.activities!.find(item => item.status === 'current');
+      if (!activity) break;
+      const key = `wave8-${session.lessonIndex}-${activity.kind}`;
+      const submission = { planRevision: revision, activityId: activity.activityId,
+        content: 'Isolated learner response: I compare one parameter, retain units, distinguish fine fringes and the envelope, and identify model limitations.' };
+      if (activity.evidence === 'mastery') {
+        assert.equal(session.lessonIndex, 2, 'only the explicit readiness objectives are mastery-gated');
+        const ids = frozen.completionSpec!.requiredMasteryObjectiveIds.map(id => `${h.planId}:${id}`);
+        for (let round = 0; !await h.mastery.checkRequiredObjectives(STUDENT, STUDENT.id, h.planId, ids, h.store); round++) {
+          assert.ok(round < 18);
+          const started = await h.assessment.start(STUDENT, h.projectId, scope);
+          assert.ok(started.nextStep?.question);
+          const question = await h.store.findPendingQuestion(started.nextStep.question.questionId); assert.ok(question);
+          // Private oracle exists only in this disposable fixture; answers still pass through the real grading owner.
+          const result = await h.assessment.answer(STUDENT, h.projectId, { ...scope, questionId: question.id, answer: question.expectedAnswer }, `wave-answer-${answers++}`);
+          assert.equal(result.answer.isCorrect, true);
+          assert.equal(result.answer.mastery?.qualitativeMastered, true);
+        }
+      } else if (activity.evidence === 'experiment_observation') {
+        const mode = frozen.interactiveSpec?.domainTopic === 'diffraction_slit' ? 'diffraction' : 'interference';
+        const parameters: Record<string, number> = mode === 'interference'
+          ? { wavelength: 550, slitWidth: 20, slitSeparation: 150, screenDistance: 2 }
+          : { wavelength: 550, slitWidth: 50, screenDistance: 2 };
+        const chatId = `wave-chat-${session.lessonIndex}`;
+        const block = await h.experiments.propose(STUDENT.id, { ...scope, projectId: h.projectId,
+          objectiveId: `${h.planId}:${frozen.objectiveIds[0]!}`, tutorSessionId: chatId, activityId: activity.activityId },
+        { title: 'Registered wave comparison', summary: 'A simulated observation, not a measurement.', mode, parameters }, key);
+        assert.equal(block.specVersion, '2.0.0');
+        const record = { sessionId: chatId, ownerId: STUDENT.id, projectId: h.projectId,
+          turns: [{ blocks: [block] }] } as unknown as TutorSessionRecord;
+        await h.experiments.submit(STUDENT.id, record, block.experimentId,
+          { action: 'submit_prediction', payload: { mode, hypothesis: 'I predict a change in the pattern when the chosen variable changes.' }, idempotencyKey: `${key}-predict` });
+        const count = session.lessonIndex === 4 || session.lessonIndex === 6 ? 2 : 1;
+        for (let sample = 0; sample < count; sample++) {
+          const varied = { ...parameters, wavelength: sample ? 450 : 550 };
+          const run = await h.experiments.submit(STUDENT.id, record, block.experimentId,
+            { action: 'run', payload: { mode, parameters: varied }, idempotencyKey: `${key}-run-${sample}` });
+          assert.equal(run.simulationResult?.waveProjection?.mode, mode);
+          const observed = await h.experiments.submit(STUDENT.id, record, block.experimentId,
+            { action: 'record_observation', payload: { mode, parameters: varied, runActionId: run.actionId,
+              observation: 'This simulated comparison retains aperture geometry and screen distance while varying wavelength.' }, idempotencyKey: `${key}-observe-${sample}` });
+          assert.ok(observed.observationReceipt); observations++;
+        }
+      } else if (activity.evidence === 'submitted_artifact') {
+        const report = await h.learningEvidence.submitArtifact(STUDENT, h.planId, session.id,
+          { ...submission, title: 'Isolated interference and diffraction portfolio', requestReview: true }, key);
+        const item = (await h.teacher.listStudentReviews(TEACHER, STUDENT.id)).items.find(item => item.artifactId === report.artifact.id); assert.ok(item);
+        await h.teacher.decideReview(TEACHER, item.reviewId, { decision: 'approved', comment: 'Accepted only in disposable owner behavior verification.' });
+        await h.works.publishArtifact(STUDENT.id, report.artifact.id, `${key}-publish`);
+      } else if (session.lessonIndex === 8 && activity.kind === 'reflect') {
+        const result = await h.learningEvidence.submitReflection(STUDENT, h.planId, session.id, submission, key);
+        assert.equal(result.proof.sourceKind, 'reflection'); reflections++;
+      } else {
+        await h.learningEvidence.submitResponse(STUDENT, h.planId, session.id, submission, key);
+      }
+      if (activity.evidence !== 'mastery') {
+        for (const item of (await h.learningEvidence.listStudentLessonQuality(TEACHER, STUDENT.id)).items) {
+          assert.equal(item.learningSessionId, session.id);
+          await h.learningEvidence.reviewLessonQuality(TEACHER, h.planId, session.id, {
+            planRevision: revision, evidenceRef: item.proof.ref, subjectDigest: item.proof.quality!.subjectDigest,
+            criteria: item.criteria.map(criterion => ({ criterionId: criterion.id, meets: true, feedback: 'Synthetic teacher decision in isolated fixture.' })),
+          }, `${key}-quality-${item.proof.ref}`);
+        }
+      }
+      assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, session.lessonIndex - 1);
+    }
+    const done = await h.progress.complete(STUDENT, h.planId, session.id,
+      { projectId: h.projectId, planRevision: revision, evidenceRefs: [] }, `wave-complete-${session.lessonIndex}`);
+    assert.equal(done.progress.completedCount, session.lessonIndex);
+    await h.lifecycle.reconcile(STUDENT, h.projectId, { planId: h.planId, planRevision: revision }, `wave-reconcile-${session.lessonIndex}`);
+  }
+  assert.ok(answers >= 3); assert.equal(observations, 7); assert.equal(reflections, 1);
+  assert.equal((await h.progress.readProgress(STUDENT, h.planId)).completedCount, 8);
+  assert.equal((await h.store.findProject(h.projectId))?.status, 'completed');
+});

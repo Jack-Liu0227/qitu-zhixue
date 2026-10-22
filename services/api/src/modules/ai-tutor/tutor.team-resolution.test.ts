@@ -235,7 +235,7 @@ function opticsTutor(options: { disabled?: string; missing?: string; runtimeStat
     templateBindings: { findFrozenSnapshotForProject: async () => ({
       projectId: project.id, templateVersionId: project.templateVersionId,
       bindingId: 'binding-optics', teamVersionId: 'tv-optics-1',
-      bindingHash: 'hash-optics', bundleDigest: 'bundle-optics',
+      bindingHash: 'hash-optics', bundleDigest: null,
       boundAt: new Date().toISOString(), backfilled: false,
     }) } as unknown as TemplateBindingService,
     database: fakeDb({ frozenTeam: frozenTeamRow({

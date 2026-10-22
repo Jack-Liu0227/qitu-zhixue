@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC, OPTICS_GUIDED_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
+import { OPTICS_16_COMPLETION_TEMPLATE_SPEC, OPTICS_16_QUALITY_TEMPLATE_SPEC, OPTICS_GUIDED_TEMPLATE_SPEC, WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import type { CurrentUser } from '@qitu/contracts';
 import type { AccessPolicy } from '../../common/access/access-policy';
 import type { AuditWriter } from '../../common/audit/audit.service';
@@ -62,7 +62,8 @@ class FixtureDirectory extends WorksDirectory {
 }
 
 /** Only storage, authorization directory and model catalog are synthetic. All learning decisions use production owners. */
-export async function fullflowHarness(qualityReview = false, guidedLessons = false) {
+export async function fullflowHarness(qualityReview = false, guidedLessons = false, waveOptics = false) {
+  guidedLessons ||= waveOptics;
   qualityReview ||= guidedLessons;
   const store = new InMemoryLearningPlanStore();
   const templates = new InMemoryTemplateStore();
@@ -76,18 +77,20 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   const directory = new FixtureDirectory();
   const access = { canReadStudent: async (user: CurrentUser, student: string) =>
     user.role === 'student' && user.id === student || user.role === 'teacher' && await directory.isMentorOf(user.id, student) } as AccessPolicy;
-  const fixture = opticsTeachingFixture(guidedLessons ? OPTICS_GUIDED_TEMPLATE_SPEC : qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SPEC : OPTICS_16_COMPLETION_TEMPLATE_SPEC);
+  const spec = waveOptics ? WAVE_OPTICS_TEMPLATE_SPEC : guidedLessons ? OPTICS_GUIDED_TEMPLATE_SPEC
+    : qualityReview ? OPTICS_16_QUALITY_TEMPLATE_SPEC : OPTICS_16_COMPLETION_TEMPLATE_SPEC;
+  const fixture = opticsTeachingFixture(spec);
   const source = loadTutorRuntimeSource();
   const skill = source.skills.find((entry) => entry.id === 'pbl-dynamic-lesson');
   assert.ok(skill && skill.status === 'ready' && skill.version);
-  const tool = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity'])[0]!;
+  const tools = builtinToolRegistry.listForAgentIds(['tutor.propose_lesson_activity', ...(waveOptics ? ['tutor.propose_wave_activity'] : [])]);
   const skillsFor = (id: string) => guidedLessons ? source.skills.filter(skill =>
-    OPTICS_GUIDED_TEMPLATE_SPEC.curriculum!.profiles[0]!.sessions.filter(session => session.leadAssistantId === id)
+    spec.curriculum!.profiles[0]!.sessions.filter(session => session.leadAssistantId === id)
       .some(session => session.requiredSkillIds?.includes(skill.id))) : [skill];
   const registry = { isModelAvailable: () => true, getAssistantRuntime: async (id: string) => ({
     agent: { id, enabled: true, roleDefinition: id, agentDefinition: 'Guide investigation using bounded tools.',
-      capabilities: ['teach'], skillIds: skillsFor(id).map(skill => skill.id), toolIds: [tool.id] },
-    skills: skillsFor(id), tools: [tool], mcpServers: qualityReview ? [{ serverId: 'ima-knowledge',
+      capabilities: ['teach'], skillIds: skillsFor(id).map(skill => skill.id), toolIds: tools.map(tool => tool.id) },
+    skills: skillsFor(id), tools, mcpServers: qualityReview ? [{ serverId: 'ima-knowledge',
       toolIds: ['ima_search_knowledge', 'ima_read_document'] }] : [], policy: source.policy,
   } as unknown as EffectiveAgentRuntime) } as unknown as PlatformRegistryService;
   const catalog = new TeachingBundleCatalog(registry,
@@ -100,7 +103,7 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   fixture.draft.skillPins = fixture.draft.roleMap.flatMap(({ roleSlotId, memberId }) =>
     skillsFor(fixture.members.find(member => member.slotId === memberId)!.assistantId).map(skill => ({ roleSlotId, canonicalId: skill.id,
       version: skill.version!, packageDigest: skill.contentHash })));
-  fixture.draft.toolIds = fixture.draft.roleMap.map(({ roleSlotId }) => ({ roleSlotId, toolId: tool.id }));
+  fixture.draft.toolIds = fixture.draft.roleMap.flatMap(({ roleSlotId }) => tools.map(tool => ({ roleSlotId, toolId: tool.id })));
   if (qualityReview) {
     fixture.draft.mcpServerIds = ['ima-knowledge']; fixture.draft.knowledgeBaseIds = ['synthetic-kb'];
     fixture.draft.toolIds = [...fixture.draft.toolIds, ...fixture.draft.roleMap.flatMap(({ roleSlotId }) =>
@@ -113,7 +116,8 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   const governance = new TemplateGovernanceService(templates, new InMemoryTemplateEvidenceSource(), new InMemoryTemplateVerificationStore(), viewer, keys, audit);
   const bindings = new TemplateBindingService(templates, viewer, bindingStore, keys, audit, catalog);
   const boot = await runOpticsTemplateBootstrap({ governance, bindings, templates, bindingStore }, {
-    teamVersionId: 'fullflow-team-v1', actor: ADMIN, pilotReason: 'Isolated full lifecycle behavior test', teachingBundle: fixture.draft, qualityReview, guidedLessons,
+    teamVersionId: 'fullflow-team-v1', actor: ADMIN, pilotReason: 'Isolated full lifecycle behavior test', teachingBundle: fixture.draft,
+    waveOptics, qualityReview: !waveOptics && qualityReview, guidedLessons: !waveOptics && guidedLessons,
   });
   const mastery = new MasteryDomainService(store, new MasteryReadService(store, access), access, audit, outbox);
   const artifacts = new InMemoryWorksStore();
@@ -150,7 +154,7 @@ export async function fullflowHarness(qualityReview = false, guidedLessons = fal
   const teacherDirectory = { studentsOfMentor: async (id: string) => (await directory.studentsOfMentor(id)).map((userId) => ({ userId })) } as DirectoryService;
   const teacher = new TeacherService(teacherDirectory, {} as PlatformDataService, undefined,
     new InMemoryTeacherReviewRepository(audit, artifacts), store, works);
-  const experiments = new TutorExperimentService(store, bindings, evidence, keys, audit, null, mastery, registry);
+  const experiments = new TutorExperimentService(store, bindings, evidence, keys, audit, null, mastery, registry, progress);
   return { store, templates, bindings, teaching, current, plan, planId, directory, projectId: confirmedProject.id, registry,
     mastery, plans, assessment, progress, lifecycle, teacher, works, artifacts, facts, evidence, learningEvidence, experiments, events, auditLog };
 }

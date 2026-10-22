@@ -285,6 +285,7 @@ describe('WorksService — 发布授权与幂等', () => {
     assert.equal(h.gates.calls.length, 1, '发布成功必须触发一次门禁写入');
     assert.deepEqual(h.gates.calls[0], {
       studentUserId: STUDENT.id,
+      projectId: null,
       gate: 'review_completed_and_archived',
       evidenceRef: `artifact:${created.id}`,
       source: 'works.publish-approved',

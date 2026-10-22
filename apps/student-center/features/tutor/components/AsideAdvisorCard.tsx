@@ -15,13 +15,15 @@ export interface AsideAdvisorCardProps {
   targetPhase: 'exploration' | 'concept_mastery' | 'guided_practice' | 'deliverable_review';
   content: string;
   evidenceRef?: string;
+  proposalRef?: string;
+  lesson?: { index: number; title: string };
 }
 
 const PHASE_LABELS: Record<AsideAdvisorCardProps['targetPhase'], string> = {
-  exploration: '阶段一 · 现象聚焦',
-  concept_mastery: '阶段二 · 核心原理',
-  guided_practice: '阶段三 · 实验仿真',
-  deliverable_review: '阶段四 · 方案答辩',
+  exploration: '现象与问题',
+  concept_mastery: '概念理解',
+  guided_practice: '实践探究',
+  deliverable_review: '成果与反思',
 };
 
 export function AsideAdvisorCard({
@@ -29,6 +31,7 @@ export function AsideAdvisorCard({
   targetPhase,
   content,
   evidenceRef,
+  lesson,
 }: AsideAdvisorCardProps) {
   return (
     <aside
@@ -55,7 +58,7 @@ export function AsideAdvisorCard({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <AssistantGlyph value={copilot.avatar} size={22} />
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--qitu-heading, #1e293b)' }}>
             {copilot.name}
           </span>
           <span
@@ -63,8 +66,8 @@ export function AsideAdvisorCard({
               fontSize: '11px',
               padding: '1px 6px',
               borderRadius: '4px',
-              backgroundColor: '#e0e7ff',
-              color: '#4338ca',
+              backgroundColor: 'var(--qitu-primary-soft, #e0e7ff)',
+              color: 'var(--qitu-primary, #4338ca)',
               fontWeight: 500,
             }}
           >
@@ -72,11 +75,11 @@ export function AsideAdvisorCard({
           </span>
         </div>
         <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-          跨阶段提示 · {PHASE_LABELS[targetPhase]}
+          {lesson ? `第 ${lesson.index} 课 · ${lesson.title}` : `协作提示 · ${PHASE_LABELS[targetPhase]}`}
         </span>
       </header>
 
-      <div style={{ color: '#334155', fontSize: '13.5px' }}>
+      <div style={{ color: 'var(--qitu-text, #334155)', fontSize: '13.5px' }}>
         <MarkdownMathView content={content} />
       </div>
 

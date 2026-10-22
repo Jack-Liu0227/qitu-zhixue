@@ -37,7 +37,7 @@ try {
     try { await pg.exec(readFileSync(join(root, 'database/migrations', `${entry.tag}.sql`), 'utf8')); }
     catch (error) { throw new Error(`Fixture migration ${entry.tag}: ${error.message}`, { cause: error }); }
   }
-  checks.push('all-real-migrations-including-0047');
+  checks.push('all-reviewed-migrations-including-project-scoped-gates');
   await pg.exec(`INSERT INTO users(id,email,display_name,role,password_hash) VALUES
     ('student','fixture-student@example.test','Fixture','student','unused'),('other','fixture-other@example.test','Other','student','unused');
     INSERT INTO tutor_partners(id,display_name,soul,prompt_version) VALUES ('partner','Fixture partner','Fixture','v1');
@@ -48,10 +48,13 @@ try {
     ('plan','student','project','Optics','Fixture goal',16,60,60,'active','plan'),('draft','student',NULL,'Art','Draft',1,60,60,'draft','draft');
     INSERT INTO tutor_sessions(id,student_id,partner_id,project_id,exploration_id,source) VALUES
     ('session','student','partner','project',NULL,'project'),('explore-session','student','partner',NULL,'explore','exploration'),
-    ('private-session','other','partner','private',NULL,'project');
+    ('private-session','other','partner','private',NULL,'project'),
+    ('source-session','student','partner',NULL,'source','exploration');
+    INSERT INTO intent_confirmations(id,exploration_id,goal_user) VALUES ('source-intent','source','Confirmed project intent');
     INSERT INTO tutor_turns(id,session_id,student_id,role,content,blocks,seq) VALUES
     ('turn','session','student','assistant','Fixture text','[]',1),('explore-turn','explore-session','student','assistant','Draft text','[]',1),
-    ('other-turn','private-session','other','assistant','Private text','[]',1);
+    ('other-turn','private-session','other','assistant','Private text','[]',1),
+    ('source-turn','source-session','student','assistant','Pre-confirmation text','[]',1);
     INSERT INTO answer_attempts(id,student_user_id,tutor_session_id,quiz_id,plan_id,concept_id,result,idempotency_key)
     VALUES ('answer','student','session','quiz','plan','concept','correct','answer');
     INSERT INTO student_project_lists(student_user_id,current_project_id,version) VALUES ('student','project',3);
@@ -74,6 +77,11 @@ try {
   checks.push('role-object-ownership-and-boundary-validation');
   const history = await service.conversations(student);
   assert.equal(history.length, 2); assert.ok(history.every(item => item.id !== 'private'));
+  assert.equal(history.filter(item => item.id === 'project').length, 1);
+  assert.equal(history.some(item => item.id === 'source'), false);
+  assert.equal(history.find(item => item.id === 'project').includesExploration, true);
+  assert.equal(history.find(item => item.id === 'project').turnCount, 2);
+  checks.push('exact-source-FK-groups-exploration-and-formal-project-chat');
   await pg.exec(`INSERT INTO project_templates(id,slug,title,summary,status) VALUES ('history-template','history-title','Template exploration title','Fixture','published');
     INSERT INTO project_template_versions(id,template_id,version,status) VALUES ('history-version','history-template','v1','published');
     INSERT INTO exploration_sessions(id,student_user_id,source,template_version_id,status) VALUES
@@ -100,6 +108,10 @@ try {
   assert.equal(first.deleted, true); assert.equal((await service.remove(student, 'conversation', 'project', 'chat-delete')).replayed, true);
   assert.equal(await count('tutor_sessions', "WHERE id='session'"), 0);
   assert.equal(await count('tutor_turns', "WHERE id='turn'"), 0);
+  assert.equal(await count('tutor_sessions', "WHERE id='source-session'"), 0);
+  assert.equal(await count('tutor_turns', "WHERE id='source-turn'"), 0);
+  assert.equal(await count('intent_confirmations', "WHERE id='source-intent'"), 1);
+  assert.equal(await count('exploration_sessions', "WHERE id='source'"), 1);
   assert.equal(await count('idempotency_keys', "WHERE id='cached'"), 0);
   assert.equal(await count('agent_team_runs', "WHERE id='queued-run'"), 0);
   assert.equal((await pg.query("SELECT pending_count FROM agent_mailboxes WHERE agent_id='fixture-leader'")).rows[0].pending_count,0);

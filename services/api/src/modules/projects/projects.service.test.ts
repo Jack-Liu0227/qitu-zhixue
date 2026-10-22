@@ -197,11 +197,12 @@ describe('ProjectsService（T6 意图确认）', () => {
     const created = await service.createExploration('student-1', RECOMMENDED, 'c1');
     await service.updateIntentDraft('student-1', created.id, { coreInterests: ['机器人'] });
 
-    await service.confirmIntent('student-1', created.id, 'gate-key-1');
+    const confirmed = await service.confirmIntent('student-1', created.id, 'gate-key-1');
 
     assert.equal(gates.calls.length, 1, '确认意图必须且只能触发一次门禁写入');
     assert.deepEqual(gates.calls[0], {
       studentUserId: 'student-1',
+      projectId: confirmed.project.id,
       gate: 'student_confirmed_intent',
       evidenceRef: `intent_confirmation:${created.id}`,
       source: 'projects.confirm-intent',

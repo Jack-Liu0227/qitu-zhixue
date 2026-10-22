@@ -167,6 +167,8 @@ export function TutorReplyBlockView({
           targetPhase={block.targetPhase}
           content={block.content}
           evidenceRef={block.evidenceRef}
+          proposalRef={block.proposalRef}
+          lesson={block.lesson}
         />
       );
     case 'optics_experiment':

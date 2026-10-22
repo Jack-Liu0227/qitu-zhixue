@@ -3,6 +3,7 @@ import type {
   LearningPlanBlockActivity,
   SessionBlockKind,
   SessionMode,
+  ProjectTemplateSpec,
 } from '@qitu/contracts';
 
 export interface SessionPlanShape {
@@ -120,8 +121,9 @@ export function findPrerequisiteCycle(
   return null;
 }
 
-export function validateGeneratedPlan(plan: SessionPlanShape): void {
+export function validateGeneratedPlan(plan: SessionPlanShape, template?: ProjectTemplateSpec): void {
   const errors: PlanViolation[] = [];
+  const frozenGateIds = template?.phases.find(phase => phase.phase === 'concept_mastery')?.objectiveIds;
   const expectedCount = expectedSessionCount(plan);
   if (!Number.isSafeInteger(plan.lessonCount) || plan.lessonCount < 1 || plan.lessonCount > 128) {
     errors.push({ path: 'lessonCount', message: 'lessonCount must be an integer between 1 and 128' });
@@ -246,7 +248,11 @@ export function validateGeneratedPlan(plan: SessionPlanShape): void {
     }
     for (const objectiveId of session.theoryObjectiveIds) {
       const objective = objectiveById.get(objectiveId);
-      const acceptedTypes = plan.curriculumSlug === undefined ? ['memory', 'concept'] : GATED_THEORY_TYPES;
+      const acceptedTypes = template ? PRACTICE_PREREQUISITE_TYPES
+        : plan.curriculumSlug === undefined ? ['memory', 'concept'] : GATED_THEORY_TYPES;
+      if (template && !frozenGateIds?.includes(objectiveId)) {
+        errors.push({ path, message: `theory gate objective ${objectiveId} is not declared by the frozen template` });
+      }
       if (objective !== undefined && !acceptedTypes.includes(objective.type)) {
         errors.push({ path, message: `theory gate objective ${objectiveId} has an invalid type` });
       }

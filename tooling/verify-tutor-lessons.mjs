@@ -122,8 +122,8 @@ function findTests(directory) {
     return entry.isDirectory() ? findTests(path) : entry.name.endsWith('.test.js') ? [path] : [];
   });
 }
-const focusDirectories = ['templates', 'learning-plan', 'ai-tutor', 'projects', 'works', 'platform-registry', 'qitu-sdk'];
-const currentNames = new Set(['tutor-exploration', 'wave-course-authoring', 'lesson-collaboration-scope', 'team-runtime.student-status', 'team-runtime.session-routing', 'team-runtime.protocol', 'team-runtime.gate', 'lesson-collaboration', 'wave-teaching-resources', 'wave-optics-experiment', 'wave-optics-model', 'wave-optics-curriculum', 'tutor-activity-optics', 'guided-lesson-flow', 'lesson-activity-progress', 'gateway-tutor.provider', 'tutor-disclosure',
+const focusDirectories = ['templates', 'learning-plan', 'ai-tutor', 'projects', 'works', 'platform-registry', 'qitu-sdk', 'team-runtime'];
+const currentNames = new Set(['wave-course-fullflow', 'tutor-exploration', 'wave-course-authoring', 'lesson-collaboration-scope', 'team-runtime.student-status', 'team-runtime.session-routing', 'team-runtime.protocol', 'team-runtime.gate', 'lesson-collaboration', 'wave-teaching-resources', 'wave-optics-experiment', 'wave-optics-model', 'wave-optics-curriculum', 'tutor-activity-optics', 'guided-lesson-flow', 'lesson-activity-progress', 'gateway-tutor.provider', 'tutor-disclosure',
   'assistant-runtime', 'runtime-source', 'catalog-skills', 'team-version', 'team-version.runtime',
   'tutor-lesson-activity', 'tutor-lesson-activity.feedback', 'tutor-lesson-assessment.service', 'tutor-opening', 'tutor-teaching-context', 'tutor.runtime-identity', 'tutor.team-resolution',
   'tutor.service', 'learning-session-progress', 'optics-fullflow', 'works-learning-evidence', 'works-lesson-quality',

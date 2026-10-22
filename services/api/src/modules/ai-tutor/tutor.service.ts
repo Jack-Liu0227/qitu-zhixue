@@ -1259,18 +1259,14 @@ export class TutorService {
     let existing = await this.store.findById(sessionId);
     if (existing !== null) {
       assertOwnedBy(existing, ownerId);
-      if (existing.turns.length === 0) {
-        existing = await this.ensureOpeningTurn(existing, projectId, ownerId);
-      }
+      existing = await this.ensureOpeningTurn(existing, projectId, ownerId);
       return this.hydrate(existing);
     }
     if (projectId !== null) {
       let projectSession = await this.store.findByProject(projectId);
       if (projectSession !== null) {
         assertOwnedBy(projectSession, ownerId);
-        if (projectSession.turns.length === 0) {
-          projectSession = await this.ensureOpeningTurn(projectSession, projectId, ownerId);
-        }
+        projectSession = await this.ensureOpeningTurn(projectSession, projectId, ownerId);
         return this.hydrate(projectSession);
       }
     }

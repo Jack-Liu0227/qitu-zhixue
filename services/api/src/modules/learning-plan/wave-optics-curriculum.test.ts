@@ -4,6 +4,7 @@ import { validateProjectTemplateSpec } from '@qitu/contracts';
 import { buildQuestion, toPublicQuestion, gradeAnswer } from '@qitu/ai-client';
 import { WAVE_OPTICS_TEMPLATE_SPEC, WAVE_OPTICS_READINESS_IDS, OPTICS_16_SESSION_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import { generatePlanFromTemplate } from './template-plan-generator';
+import { validateGeneratedPlan } from './session-plan-validator';
 
 test('wave course generates eight exact frozen lessons with only its approved readiness gates', () => {
   const template = WAVE_OPTICS_TEMPLATE_SPEC;
@@ -11,6 +12,10 @@ test('wave course generates eight exact frozen lessons with only its approved re
   const plan = generatePlanFromTemplate({ interest: '干涉与衍射', goal: '明暗条纹探究档案', lessonCount: 8, lessonMinutes: 60 },
     { templateVersion: 'wave-course-v1', templateSpec: template });
   assert.equal(plan.sessions.length, 8);
+  validateGeneratedPlan(plan, template);
+  const altered = structuredClone(plan);
+  altered.sessions[1]!.theoryObjectiveIds = ['wave-question'];
+  assert.throws(() => validateGeneratedPlan(altered, template), /not declared by the frozen template/);
   assert.deepEqual(plan.sessions[1]?.theoryObjectiveIds, [...WAVE_OPTICS_READINESS_IDS]);
   for (const session of plan.sessions.slice(2, 7)) assert.deepEqual(session.theoryObjectiveIds, [...WAVE_OPTICS_READINESS_IDS]);
   assert.ok(plan.sessions.every(session => !session.theoryObjectiveIds.some(id => id.startsWith('opt-theory-'))));

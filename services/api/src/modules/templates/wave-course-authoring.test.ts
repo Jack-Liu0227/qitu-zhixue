@@ -2,20 +2,21 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { WAVE_OPTICS_TEMPLATE_SPEC } from '@qitu/ai-client/quiz-bank';
 import { parseProjectTemplateSpec } from '@qitu/contracts';
-import { makeGovernanceHarness, actor, VALID_CREATE_INPUT, DEFAULT_STAGES } from './templates.test-support';
+import { makeGovernanceHarness, actor, VALID_CREATE_INPUT } from './templates.test-support';
+import { WAVE_OPTICS_VERSION_INPUT } from './content/wave-optics';
 
 test('editing an eight-lesson course creates a separate idempotent draft and readbacks its actual content', async () => {
   const h = makeGovernanceHarness(); const admin = actor('admin', 'course-author');
   const created = await h.service.createTemplate(admin, { ...VALID_CREATE_INPUT, slug: 'wave-authoring-fixture' }, 'template');
   const first = await h.service.createVersion(admin, created.template.id,
-    { stages: DEFAULT_STAGES, content: { pbl: WAVE_OPTICS_TEMPLATE_SPEC }, rubric: [] }, 'original');
+    { ...WAVE_OPTICS_VERSION_INPUT }, 'original');
   await h.service.pilotVersion(admin, created.template.id, first.version.id, 'pilot', 'Synthetic authoring fixture');
   const edited = structuredClone(WAVE_OPTICS_TEMPLATE_SPEC);
   edited.version = 'v1-8s-guided.edit-fixture';
   const lesson = edited.curriculum!.profiles[0]!.sessions[0]!;
   lesson.leadAssistantId = 'optics-concept-coach';
   lesson.opening = { ...lesson.opening!, prompt: 'Which observation would you record first?' };
-  const input = { stages: DEFAULT_STAGES, content: { pbl: edited }, rubric: [] };
+  const input = { stages: WAVE_OPTICS_VERSION_INPUT.stages, content: { pbl: edited }, rubric: [] };
   const saved = await h.service.createVersion(admin, created.template.id, input, 'edited');
   const replay = await h.service.createVersion(admin, created.template.id, input, 'edited');
   assert.equal(replay.version.id, saved.version.id); assert.equal(replay.replayed, true);

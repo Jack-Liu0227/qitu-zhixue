@@ -1,2 +1,3 @@
 # Keep shell scripts executable and portable across Windows and Linux
 tooling/*.sh text eol=lf
+.agents/skills/optics-coherent-wave-inquiry/** text eol=lf

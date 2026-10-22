@@ -24,6 +24,7 @@ import type {
   NextStepView,
   ProjectSummary,
   PublicQuestion,
+  ProjectTemplateSpec,
   PlanSessionCount,
   StartSessionResponse,
   SubmitAnswerResponse,
@@ -35,6 +36,7 @@ import type {
 import {
   GATE_CONDITION_REGISTRY,
   isRegisteredGateCondition,
+  parseProjectTemplateSpec,
   type GateConditionId,
 } from '@qitu/contracts';
 import {
@@ -172,7 +174,7 @@ export class LearningPlanService {
       interest: project.title.slice(0, 60), goal: project.subtitle, lessonCount: profile.schedule.lessonCount,
       lessonMinutes: profile.schedule.lessonMinutes,
     }, { templateVersion: project.templateVersionId, templateSpec: teaching.template });
-    validateGeneratedPlan(generated);
+    validateGeneratedPlan(generated, teaching.template);
     const bundle = this.buildBundle(project.studentId, generated, project.createdAt);
     bundle.plan = { ...bundle.plan, projectId: project.id, status: 'active', confirmedAt: project.createdAt,
       idempotencyKey: `confirmed-project-plan:${project.id}` };
@@ -192,22 +194,24 @@ export class LearningPlanService {
   ): Promise<GenerateLearningPlanResponse> {
     const input = assertGeneratePlanInput(rawInput);
     let generated: GeneratedPlan;
+    let teachingTemplate: ProjectTemplateSpec | undefined;
     if (input.curriculumSlug !== undefined) {
       if (![OPTICS_16_TEMPLATE_SLUG, OPTICS_16_COMPLETION_TEMPLATE_SLUG, OPTICS_16_QUALITY_TEMPLATE_SLUG, OPTICS_GUIDED_TEMPLATE_SLUG, WAVE_OPTICS_TEMPLATE_SLUG].includes(input.curriculumSlug)) {
         throw new BadRequestException({
           code: 'CURRICULUM_TEMPLATE_UNAVAILABLE',
-          message: `???? ${input.curriculumSlug} ?????????`,
+          message: `课程 ${input.curriculumSlug} 尚未通过模板授权。`,
         });
       }
       const resolution = await this.resolveCurriculumTemplate(actor, input.curriculumSlug);
+      teachingTemplate = parseProjectTemplateSpec(resolution.content.pbl);
       generated = generatePlanFromTemplate(input, {
         templateVersion: resolution.templateVersionId,
-        templateSpec: resolution.content.pbl,
+        templateSpec: teachingTemplate,
       });
     } else {
       generated = this.generator.generate(input);
     }
-    validateGeneratedPlan(generated);
+    validateGeneratedPlan(generated, teachingTemplate);
 
     const signatureKey = lessonPlanSignatureKey(actor.id, generated);
     const findExisting = () => this.store.findPlanByLessonSignature(
@@ -1453,7 +1457,7 @@ export class LearningPlanService {
 
     const action = nextAction({
       hasPendingQuestion: false,
-      dueReviewObjectiveId,
+      dueReviewObjectiveId: candidate === null ? dueReviewObjectiveId : null,
       candidate:
         candidate === null || candidateObjective === undefined
           ? null

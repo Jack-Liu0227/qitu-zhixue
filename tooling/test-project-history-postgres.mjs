@@ -32,9 +32,12 @@ const pg = new PGlite();
 const checks = [];
 try {
   await pg.exec(`CREATE TABLE users(id text PRIMARY KEY);
+    CREATE TABLE project_templates(id text PRIMARY KEY,title text);
+    CREATE TABLE project_template_versions(id text PRIMARY KEY,template_id text REFERENCES project_templates(id));
     CREATE TABLE projects(id text PRIMARY KEY,student_user_id text REFERENCES users(id),template_version_id text,source_exploration_id text,
       title text,subtitle text,tags jsonb DEFAULT '[]',status text,current_stage_index integer DEFAULT 1,
-      stage_total integer DEFAULT 10,progress_percent integer DEFAULT 10,created_at timestamptz,completed_at timestamptz);
+      stage_total integer DEFAULT 10,progress_percent integer DEFAULT 10,tutor_conversation_generation integer NOT NULL DEFAULT 0,
+      created_at timestamptz,completed_at timestamptz);
     CREATE TABLE exploration_sessions(id text PRIMARY KEY,student_user_id text,status text,template_version_id text,created_at timestamptz);
     CREATE TABLE intent_confirmations(exploration_id text,goal_user text);
     CREATE TABLE learning_plans(id text PRIMARY KEY,student_user_id text,status text,project_id text,template_version_id text,goal text,interest text,created_at timestamptz);`);

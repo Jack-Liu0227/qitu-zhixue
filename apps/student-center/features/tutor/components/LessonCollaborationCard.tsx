@@ -8,7 +8,7 @@ import { AsideAdvisorCard } from './AsideAdvisorCard';
 export function LessonCollaborationCard({ projectId, lesson, disabled, onChanged }: {
   projectId: string; lesson: NonNullable<TutorProjectContext['lesson']>; disabled: boolean; onChanged(): void;
 }) {
-  const scope = useMemo(() => ({ planId: lesson.planId!, planRevision: lesson.planRevision!, learningSessionId: lesson.learningSessionId! }),
+  const scope = useMemo(() => ({ planId: lesson.planId ?? '', planRevision: lesson.planRevision ?? 0, learningSessionId: lesson.learningSessionId ?? '' }),
     [lesson.planId, lesson.planRevision, lesson.learningSessionId]);
   const [view, setView] = useState<TutorLessonCollaborationView | null>(null);
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ export function LessonCollaborationCard({ projectId, lesson, disabled, onChanged
     if (!response.ok) throw new Error(response.status === 403 ? '当前账号没有本课协作权限。'
       : typeof payload?.message === 'string' ? payload.message : '协作状态暂时无法读取，请重试。');
     const next = payload?.data as TutorLessonCollaborationView | undefined;
-    if (!next || next.projectId !== projectId || next.scope.planId !== scope.planId || next.scope.planRevision !== scope.planRevision
+    if (!next || !next.scope || next.projectId !== projectId || next.scope.planId !== scope.planId || next.scope.planRevision !== scope.planRevision
       || next.scope.learningSessionId !== scope.learningSessionId || !Array.isArray(next.blocks)) throw new Error('协作回执与当前课时不一致，请刷新。');
     return next;
   }
@@ -51,10 +51,12 @@ export function LessonCollaborationCard({ projectId, lesson, disabled, onChanged
   }, [base, scope, reload]);
   async function request() {
     if (disabled || busy) return;
+    const signal = controller.current?.signal;
+    if (!signal) return;
     attempt.current ??= createIdempotencyKey();
     setBusy(true); setError(''); const identity = generation.current;
     try {
-      const next = await fetchView('POST', controller.current!.signal);
+      const next = await fetchView('POST', signal);
       if (identity !== generation.current) return;
       attempt.current = null; setView(next); changed.current(); refresh.current();
     } catch (failure) { if (identity === generation.current && !controller.current?.signal.aborted) setError(failure instanceof Error ? failure.message : '导师协作未确认，请重试。'); }
@@ -66,9 +68,9 @@ export function LessonCollaborationCard({ projectId, lesson, disabled, onChanged
     {!view && !error ? <p role="status">正在读取本课协作状态…</p> : null}
     {view?.status === 'queued' || view?.status === 'running' ? <p role="status">协作导师正在准备建议。你可以继续阅读或整理本课证据。</p> : null}
     {view?.status === 'unavailable' ? <p role="status">请先完成当前问题，再继续本课探究。</p> : null}
-    {view?.blocks.map((block, index) => block.kind === 'aside' ? <AsideAdvisorCard key={`${block.evidenceRef}:${index}`} {...block} /> : null)}
+    {view?.blocks.map((block, index) => block.kind === 'aside' ? <AsideAdvisorCard key={`${block.proposalRef ?? block.evidenceRef}:${index}`} {...block} /> : null)}
     {view?.status === 'ready' && !view.blocks.length ? <p role="status">协作建议已在对话中展示。</p> : null}
-    {(!view || ['idle', 'failed'].includes(view.status)) ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy}
+    {view && ['idle', 'failed'].includes(view.status) ? <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy}
       onClick={() => void request()}>{busy ? '正在邀请…' : view?.status === 'failed' ? '重新邀请协作导师' : '邀请本课协作导师'}</button> : null}
     <button type="button" className="qitu-button qitu-button-ghost" disabled={disabled || busy} onClick={() => setReload(value => value + 1)}>刷新建议</button>
   </section>;
