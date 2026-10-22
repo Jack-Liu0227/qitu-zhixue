@@ -58,6 +58,33 @@ interface Session {
   templateVersionId?: string | null;
 }
 
+const QUICK_PROMPTS = [
+  {
+    icon: '🔍',
+    title: '平台全局健康检查',
+    desc: '检查全局助手、底座模型、运行时技能及知识库配置，说明哪些已启用就绪。',
+    prompt: '检查全局助手、底座模型、技能及知识库配置，说明哪些已启用。',
+  },
+  {
+    icon: '👥',
+    title: '导师团队与角色分析',
+    desc: '查看当前导师团队配置与角色分配，分析技能覆盖完整度与可用性。',
+    prompt: '查看当前导师团队配置与角色分配，分析技能覆盖完整度。',
+  },
+  {
+    icon: '📚',
+    title: 'PBL 教学模板核查',
+    desc: '检查当前模板的课时、团队与技能绑定，列出需要补齐的配置项。',
+    prompt: '检查当前选中的 PBL 教学模板的课时、团队与技能绑定，列出需要补齐的配置。',
+  },
+  {
+    icon: '🛡️',
+    title: '知识库与授权范围审计',
+    desc: '排查当前绑定的知识库资源与授权范围，校验已挂载的教材文档与索引。',
+    prompt: '检查当前绑定的知识库资源与授权范围，排查未挂载文档与索引状态。',
+  },
+];
+
 const INITIAL_SESSIONS: Session[] = [
   {
     id: 'sess-default',
@@ -475,9 +502,9 @@ export default function CopilotPage() {
           className="copilot-sidebar"
           style={{
             width: '280px',
-            background: 'rgba(255, 255, 255, 0.92)',
+            background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(12px)',
-            borderRight: '1px solid #e4ecf7',
+            borderRight: '1px solid #e2e8f0',
             display: 'flex',
             flexDirection: 'column',
             flexShrink: 0,
@@ -486,7 +513,7 @@ export default function CopilotPage() {
           <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '18px' }}><RobotMascot size={22} decorative /></span> 启途智学管家
+                <RobotMascot size={22} decorative /> 启途智学管家
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0284c7', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
@@ -502,7 +529,8 @@ export default function CopilotPage() {
                     color: '#64748b',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    padding: '2px',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
                   }}
                 >
                   ◀
@@ -513,8 +541,8 @@ export default function CopilotPage() {
               onClick={handleCreateSession}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                background: '#2563eb',
+                padding: '9px 12px',
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
@@ -525,16 +553,17 @@ export default function CopilotPage() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                boxShadow: '0 1px 2px rgba(37,99,235,0.2)',
+                boxShadow: '0 2px 4px rgba(37,99,235,0.2)',
+                transition: 'all 0.15s ease',
               }}
             >
-              <span>+</span> 新建管理会话
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span> 新建管理会话
             </button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', padding: '4px 8px', letterSpacing: '0.05em' }}>
-              会话历史
+              会话历史 ({sessions.length})
             </div>
             {sessions.map((sess) => {
               const isActive = sess.id === currentSessionId;
@@ -587,13 +616,23 @@ export default function CopilotPage() {
           </div>
 
           {/* 快捷配置跳转 */}
-          <div className="copilot-settings-jump-box" style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', background: '#fafafa', fontSize: '12px' }}>
-            <div className="copilot-settings-jump-title" style={{ color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>快速转至设置库</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              <Link className="copilot-settings-jump-link" href="/settings/assistants" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>AI 助手</Link>
-              <Link className="copilot-settings-jump-link" href="/settings/teams" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>导师团队</Link>
-              <Link className="copilot-settings-jump-link" href="/settings/tools" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>工具与MCP</Link>
-              <Link className="copilot-settings-jump-link" href="/settings/templates" style={{ color: '#2563eb', textDecoration: 'none', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px' }}>PBL模板</Link>
+          <div className="copilot-settings-jump-box" style={{ padding: '12px 14px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+            <div className="copilot-settings-jump-title" style={{ color: '#64748b', fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span>⚙️</span> 快速配置导航
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              <Link className="copilot-settings-jump-link" href="/settings/assistants" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '30px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'all 0.15s' }}>
+                <span>🤖</span> AI 助手
+              </Link>
+              <Link className="copilot-settings-jump-link" href="/settings/teams" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '30px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'all 0.15s' }}>
+                <span>👥</span> 导师团队
+              </Link>
+              <Link className="copilot-settings-jump-link" href="/settings/tools" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '30px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'all 0.15s' }}>
+                <span>🔧</span> 工具与MCP
+              </Link>
+              <Link className="copilot-settings-jump-link" href="/settings/templates" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '30px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'all 0.15s' }}>
+                <span>📚</span> PBL模板
+              </Link>
             </div>
           </div>
         </div>
@@ -601,60 +640,108 @@ export default function CopilotPage() {
 
       {/* 2. 中间 Agent 交互流 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
-        {/* 顶部状态与快捷控制栏 (Thinking 强度 / 模型选择 / 运行权限) */}
-        <div className="copilot-toolbar" style={{ minHeight: '56px', background: 'rgba(255, 255, 255, 0.95)', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isSidebarCollapsed && (
-              <button
-                type="button"
-                className="copilot-expand-btn"
-                onClick={() => setIsSidebarCollapsed(false)}
-                title="展开侧边栏"
-                style={{
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
+        {/* 顶部控制命令台 */}
+        <div className="copilot-toolbar" style={{ background: 'rgba(255, 255, 255, 0.98)', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '10px 24px', gap: '8px', flexShrink: 0 }}>
+          {/* 状态与当前会话概览行 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {isSidebarCollapsed && (
+                <button
+                  type="button"
+                  className="copilot-expand-btn"
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  title="展开侧边栏"
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 600,
+                  }}
+                >
+                  📁 会话列表
+                </button>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>{activeSession.title}</span>
+                <span style={{
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  padding: '2px 8px',
                   borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  color: '#334155',
-                }}
-              >
-                📁 会话列表
-              </button>
-            )}
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a' }}>{activeSession.title}</div>
-              <div style={{ fontSize: '11.5px', color: '#64748b' }}>{scope === 'global' ? '全局配置' : '当前模板配置'} · 执行结果以服务端回执为准</div>
+                  background: scope === 'global' ? '#f1f5f9' : '#eff6ff',
+                  color: scope === 'global' ? '#475569' : '#1d4ed8',
+                  border: '1px solid',
+                  borderColor: scope === 'global' ? '#e2e8f0' : '#bfdbfe',
+                }}>
+                  {scope === 'global' ? '🌐 全局配置' : '📑 模板专有'}
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>· 执行结果以服务端回执为准</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: catalogReady ? '#16a34a' : '#64748b' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: catalogReady ? '#22c55e' : '#94a3b8', display: 'inline-block' }} />
+                {catalogReady ? `助手目录已同步${activeTeam ? ` · 团队：${activeTeam.name}` : ''}` : '助手目录未就绪'}
+              </span>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                {modelLoading ? '正在读取默认模型…' : modelSaving ? '正在保存默认模型…' : modelNotice || ''}
+              </span>
             </div>
           </div>
 
-          {/* 快捷设置区 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 12 }}>范围：
-              <select aria-label="选择已有项目" value={activeSession.templateId ?? ''} disabled={isGenerating || projectCatalog.loading}
-                onChange={event => setProject(event.target.value || null, null)}>
+          {/* 统一控制药丸货架 (统一高度 32px，一致边框与背景) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
+            {/* 范围选择 */}
+            <div className="copilot-control-pill copilot-control-scope" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🌐 范围:</span>
+              <select
+                className="copilot-control-select"
+                aria-label="选择已有项目"
+                value={activeSession.templateId ?? ''}
+                disabled={isGenerating || projectCatalog.loading}
+                onChange={event => setProject(event.target.value || null, null)}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+              >
                 <option value="">全局配置</option>
                 {projectCatalog.templates.map(t => <option key={t.id} value={t.id}>{t.title} · {t.status}</option>)}
               </select>
-            </label>
-            {activeSession.templateId && <label style={{ fontSize: 12 }}>版本：
-              <select aria-label="选择项目版本" value={activeSession.templateVersionId ?? ''} disabled={isGenerating || projectCatalog.loading}
-                onChange={event => setProject(activeSession.templateId ?? null, event.target.value || null)}>
-                <option value="">{projectCatalog.loading ? '正在读取…' : '暂无版本'}</option>
-                {projectCatalog.versions.map(v => <option key={v.id} value={v.id}>{v.version} · {v.status}</option>)}
-              </select>
-            </label>}
-            {/* 工作与测试助手选择 (支持启途智学管家或任意团队/启用的助手在同一处测试) */}
-            <div className="copilot-control-pill copilot-control-assistant" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '3px 8px' }}>
-              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}><RobotMascot size={18} decorative /> 交互助手:</span>
+            </div>
+
+            {/* 版本选择（若选中模板） */}
+            {activeSession.templateId && (
+              <div className="copilot-control-pill copilot-control-version" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>📑 版本:</span>
+                <select
+                  className="copilot-control-select"
+                  aria-label="选择项目版本"
+                  value={activeSession.templateVersionId ?? ''}
+                  disabled={isGenerating || projectCatalog.loading}
+                  onChange={event => setProject(activeSession.templateId ?? null, event.target.value || null)}
+                  style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="">{projectCatalog.loading ? '正在读取…' : '暂无版本'}</option>
+                  {projectCatalog.versions.map(v => <option key={v.id} value={v.id}>{v.version} · {v.status}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* 工作与测试助手选择 */}
+            <div className="copilot-control-pill copilot-control-assistant" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <RobotMascot size={16} decorative /> 交互助手:
+              </span>
               <select
                 className="copilot-control-select"
                 value={activeTestAssistant?.id ?? ''}
                 aria-label="交互助手"
                 disabled={!catalogReady || isGenerating}
                 onChange={(e) => setSelectedAssistantId(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#1e3a8a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '200px' }}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#1e3a8a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '180px' }}
                 title="选择在当前控制台中测试的助手角色"
               >
                 {!catalogReady && <option value="">{assistantCatalog.kind === 'loading' ? '正在读取助手与团队…' : '暂无可选择的助手'}</option>}
@@ -666,15 +753,16 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            <div className="copilot-control-pill copilot-control-team" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '3px 8px' }}>
-              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>团队:</span>
+            {/* 团队选择 */}
+            <div className="copilot-control-pill copilot-control-team" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#166534', fontWeight: 700 }}>👥 团队:</span>
               <select
                 className="copilot-control-select"
                 value={selectedTeamId}
                 aria-label="选择团队"
                 disabled={assistantCatalog.kind !== 'ready' || isGenerating}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#166534', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '260px' }}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#166534', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '200px' }}
                 title="选择在当前控制台中使用的协作团队"
               >
                 <option value="">不使用团队</option>
@@ -686,9 +774,53 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            {/* Thinking 强度 (参考 Pi Agent: Off / Normal / High / Max) */}
-            <div className="copilot-control-pill copilot-control-thinking" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考强度:</span>
+            {/* 底座模型选择 */}
+            <div className="copilot-control-pill copilot-control-model" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
+              <select
+                className="copilot-control-select"
+                value={selectedModel}
+                aria-label="管家默认模型"
+                disabled={!availableModels.length || isGenerating || modelSaving || modelLoading}
+                onChange={(e) => void handleModelChange(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer', maxWidth: '210px' }}
+              >
+                <option value="" disabled>请选择默认模型</option>
+                {availableModels.length > 0 ? (
+                  availableModels.map((m) => (
+                    <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
+                      {m.providerName} / {m.name || m.id}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>暂无可用的已配置模型</option>
+                )}
+              </select>
+              {!modelIsDefault && selectedModel && (
+                <button
+                  type="button"
+                  disabled={isGenerating || modelSaving || modelLoading}
+                  onClick={() => void handleModelChange(selectedModel)}
+                  style={{
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  设为默认
+                </button>
+              )}
+            </div>
+
+            {/* Thinking 思考强度 */}
+            <div className="copilot-control-pill copilot-control-thinking" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🧠 思考:</span>
               <select
                 className="copilot-control-select"
                 value={thinkingStrength}
@@ -702,34 +834,8 @@ export default function CopilotPage() {
               </select>
             </div>
 
-            {/* 模型选择 */}
-            <div className="copilot-control-pill copilot-control-model" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
-              <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>◈ 模型:</span>
-              <select
-                className="copilot-control-select"
-                value={selectedModel}
-                aria-label="管家默认模型"
-                disabled={!availableModels.length || isGenerating || modelSaving || modelLoading}
-                onChange={(e) => void handleModelChange(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="" disabled>请选择默认模型</option>
-                {availableModels.length > 0 ? (
-                  availableModels.map((m) => (
-                    <option key={configuredModelKey(m)} value={configuredModelKey(m)}>
-                      {m.providerName} / {m.name || m.id}
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>暂无可用的已配置模型</option>
-                )}
-              </select>
-              {!modelIsDefault && selectedModel && <button type="button" disabled={isGenerating || modelSaving || modelLoading}
-                onClick={() => void handleModelChange(selectedModel)}>设为默认</button>}
-            </div>
-
-            {/* 权限设置 (参考 Codex 3 个权限: Read Only / Workspace Write / Full Access) */}
-            <div className="copilot-control-pill copilot-control-permission" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '3px 8px' }}>
+            {/* 权限设置 */}
+            <div className="copilot-control-pill copilot-control-permission" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '32px', padding: '0 10px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
               <span className="copilot-control-label" style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>🛡️ 权限:</span>
               <select
                 className="copilot-control-select"
@@ -737,39 +843,50 @@ export default function CopilotPage() {
                 onChange={(e) => handlePermissionChange(e.target.value as 'read_only' | 'full_access')}
                 style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0f172a', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
-                <option value="full_access">配置模式（可创建和修改资源）</option>
-                <option value="read_only">只读模式（分析与建议）</option>
+                <option value="full_access">配置模式 (可修改资源)</option>
+                <option value="read_only">只读模式 (分析建议)</option>
               </select>
             </div>
-
-            <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: catalogReady ? '#16a34a' : '#64748b', marginLeft: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: catalogReady ? '#22c55e' : '#94a3b8', display: 'inline-block' }} />
-              {catalogReady ? `助手目录已同步${activeTeam ? ` · 团队：${activeTeam.name}` : ''}` : '助手目录未就绪'}
-            </span>
           </div>
         </div>
 
-        <KnowledgeUpload enabled={scope === 'global' && runtimePermission === 'full_access' && !isGenerating}
+        {/* 知识库上传与操作能力折叠区 */}
+        <KnowledgeUpload
+          enabled={scope === 'global' && runtimePermission === 'full_access' && !isGenerating}
           onSaved={content => setSessions(previous => previous.map(session => session.id !== currentSessionId ? session : {
             ...session, messages: [...session.messages, { id: newIdempotencyKey(), role: 'assistant', content, timestamp: new Date().toLocaleTimeString() }],
-          }))} />
+          }))}
+        />
         <CopilotCapabilities data={capabilities.data} loading={capabilities.loading} error={capabilities.error} scope={scope} refresh={capabilities.refresh} />
-        <div role="status" style={{ padding: '4px 24px', fontSize: 12 }}>{modelLoading ? '正在读取默认模型…' : modelSaving ? '正在保存默认模型…' : modelNotice || '模型选择后自动保存为管家默认模型。'} {modelError && <button type="button" disabled={modelSaving} onClick={() => void reloadModels()}>重新加载模型</button>}</div>
-        {(projectCatalog.loading || projectCatalog.error || modelLoading || modelError || (!selectedModelItem && !isGenerating)) && <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
-          {projectCatalog.error ?? modelError ?? (modelLoading ? '正在读取管家默认模型…' : projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}
-          {projectCatalog.error && <button onClick={projectCatalog.refresh}>重读项目目录</button>}
-        </div>}
-        {!projectCatalog.loading && !projectCatalog.error && !projectCatalog.templates.length && <div role="status" style={{ padding: '8px 24px', fontSize: 12 }}>暂无已有项目，可让管家创建项目模板。</div>}
-        {/* 助手切换提示横幅 */}
+
+        {/* 状态与告警栏 */}
+        {(projectCatalog.loading || projectCatalog.error || modelLoading || modelError || (!selectedModelItem && !isGenerating)) && (
+          <div role={projectCatalog.error || modelError ? 'alert' : 'status'} style={{ padding: '8px 24px', background: '#fff7ed', borderBottom: '1px solid #fed7aa', color: '#9a3412', fontSize: '12.5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>⚠️ {projectCatalog.error ?? modelError ?? (modelLoading ? '正在读取管家默认模型…' : projectCatalog.loading ? '正在读取已有项目…' : '没有可用模型，请先在模型设置中配置供应商与模型。')}</span>
+            {projectCatalog.error && (
+              <button onClick={projectCatalog.refresh} style={{ padding: '2px 8px', background: '#fff', border: '1px solid #fdba74', borderRadius: '4px', fontSize: '11.5px', color: '#9a3412', cursor: 'pointer', fontWeight: 600 }}>
+                重读项目目录
+              </button>
+            )}
+            {modelError && (
+              <button type="button" disabled={modelSaving} onClick={() => void reloadModels()} style={{ padding: '2px 8px', background: '#fff', border: '1px solid #fdba74', borderRadius: '4px', fontSize: '11.5px', color: '#9a3412', cursor: 'pointer', fontWeight: 600 }}>
+                重新加载模型
+              </button>
+            )}
+          </div>
+        )}
+
         {(catalogError || (assistantCatalog.kind === 'ready' && assistantOptions.length === 0)) && (
-          <div role={catalogError ? 'alert' : 'status'} style={{ padding: '10px 24px', background: '#fff7ed', color: '#9a3412', fontSize: '13px' }}>
-            {catalogError ?? '当前没有已启用的助手，请到 AI 助手设置中配置。'}
-            <button type="button" onClick={() => { void refreshAssistantCatalog(); }} style={{ marginLeft: '12px' }}>重新读取目录</button>
+          <div role={catalogError ? 'alert' : 'status'} style={{ padding: '8px 24px', background: '#fff7ed', borderBottom: '1px solid #fed7aa', color: '#9a3412', fontSize: '12.5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>⚠️ {catalogError ?? '当前没有已启用的助手，请到 AI 助手设置中配置。'}</span>
+            <button type="button" onClick={() => { void refreshAssistantCatalog(); }} style={{ padding: '2px 8px', background: '#fff', border: '1px solid #fdba74', borderRadius: '4px', fontSize: '11.5px', color: '#9a3412', cursor: 'pointer', fontWeight: 600 }}>
+              重新读取目录
+            </button>
           </div>
         )}
 
         {activeTestAssistant && selectedAssistantId !== 'qitu-assistant' && (
-          <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '7px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
+          <div className="copilot-team-banner" style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#166534', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}><AssistantGlyph value={activeTestAssistant.icon} /></span>
               <strong>当前正在测试平台助手：【{activeTestAssistant.name}】</strong>
@@ -777,178 +894,283 @@ export default function CopilotPage() {
             </div>
             <button
               type="button"
+              className="copilot-team-banner-btn"
               disabled={!assistantOptions.some((assistant) => assistant.id === 'qitu-assistant')}
               onClick={() => setSelectedAssistantId('qitu-assistant')}
-              style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
+              style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '4px', padding: '3px 10px', fontSize: '11.5px', color: '#166534', cursor: 'pointer', fontWeight: 600 }}
             >
               切回管家管理模式
             </button>
           </div>
         )}
 
-        {/* 消息历史流 */}
+        {/* 3. 消息流与空状态工作区 */}
         <div className="copilot-messages-container" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {activeSession.messages.map((msg) => {
-            const isUser = msg.role === 'user';
-            const isSystem = msg.role === 'system';
+          {/* 当会话中没有用户发言时，展示精美的 AI 工作台英雄迎新卡与快捷操作卡 */}
+          {!activeSession.messages.some((m) => m.role === 'user') ? (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '32px 24px',
+              maxWidth: '860px',
+              margin: '0 auto',
+              width: '100%',
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                border: '1px solid #bfdbfe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px',
+                boxShadow: '0 8px 16px rgba(37,99,235,0.08)',
+              }}>
+                <RobotMascot size={42} decorative />
+              </div>
 
-            if (isSystem) {
-              return (
-                <div key={msg.id} style={{ alignSelf: 'center', maxWidth: '80%', background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '8px 16px', borderRadius: '20px', textAlign: 'center' }}>
-                  {msg.content}
-                </div>
-              );
-            }
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', textAlign: 'center' }}>
+                启途智学 AI 管家工作台
+              </h2>
 
-            return (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  alignSelf: isUser ? 'flex-end' : 'flex-start',
-                  maxWidth: isSidebarCollapsed ? '90%' : '80%',
-                }}
-              >
-                {!isUser && (
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                    <RobotMascot size={28} decorative />
-                  </div>
-                )}
-                <div>
-                  <div
-                    className={`copilot-bubble ${isUser ? 'copilot-bubble-user' : 'copilot-bubble-assistant'}`}
+              <p style={{ fontSize: '13.5px', color: '#64748b', margin: '0 0 24px', textAlign: 'center', maxWidth: '620px', lineHeight: 1.6 }}>
+                统一调度底层模型、校验运行时技能、配置导师团队与编排 PBL 教学资源。操作以核验后的技能目录为准，变更具有严格的服务端闭环回执。
+              </p>
+
+              {/* 4 个快捷操作引导卡片 */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '12px',
+                width: '100%',
+                marginBottom: '24px',
+              }}>
+                {QUICK_PROMPTS.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setInputMessage(item.prompt)}
                     style={{
-                      background: isUser ? '#2563eb' : '#ffffff',
-                      color: isUser ? '#ffffff' : '#1e293b',
-                      padding: '12px 18px',
-                      borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                      fontSize: '13.5px',
-                      lineHeight: 1.6,
-                      boxShadow: isUser ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
-                      border: isUser ? 'none' : '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      padding: '14px 16px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2563eb';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(37,99,235,0.08)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    {isUser ? (
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                    ) : (
-                      <MarkdownRenderer content={msg.content} />
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{item.title}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
+                      {item.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* 系统安全审计提示 */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 16px',
+                background: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+                borderRadius: '999px',
+                fontSize: '11.5px',
+                color: '#475569',
+              }}>
+                <span>🔒</span>
+                <span>{activeSession.messages.find(m => m.role === 'system')?.content || '启途智学管家可在全局范围管理平台资源，也可围绕选中的项目模板进行配置。'}</span>
+              </div>
+            </div>
+          ) : (
+            activeSession.messages.map((msg) => {
+              const isUser = msg.role === 'user';
+              const isSystem = msg.role === 'system';
+
+              if (isSystem) {
+                return (
+                  <div key={msg.id} style={{ alignSelf: 'center', maxWidth: '80%', background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 14px', borderRadius: '20px', textAlign: 'center' }}>
+                    {msg.content}
                   </div>
+                );
+              }
 
-                  {msg.confirmationRequest && msg.pendingDeletions?.map(receipt => receipt.confirmation && (
-                    <section key={receipt.id} aria-label="待确认删除" style={{ marginTop: 10, padding: 14, border: '1px solid #fdba74', borderRadius: 8, background: '#fff7ed' }}>
-                      <strong>{receipt.label} · 等待二次确认</strong>
-                      <p>操作：{receipt.kind} · 对象：{receipt.confirmation.target}</p>
-                      <details><summary>核对操作参数</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(receipt.confirmation.parameters, null, 2)}</pre></details>
-                      <p>{receipt.confirmation.impact}</p>
-                      <p>有效期至 {new Date(receipt.confirmation.expiresAt).toLocaleTimeString()}。尚未执行。</p>
-                      <button type="button" disabled={isGenerating || runtimePermission !== 'full_access' || Date.now() >= Date.parse(receipt.confirmation.expiresAt)}
-                        onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
-                          actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'confirm',
-                        })}>{receipt.kind === 'mcp.invoke' ? '确认调用' : '确认删除'}</button>
-                      <button type="button" disabled={isGenerating}
-                        onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
-                          actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'cancel',
-                        })}>取消</button>
-                    </section>
-                  ))}
-
-                  {/* 工具调用情况详细展示 */}
-                  {msg.toolSteps && msg.toolSteps.length > 0 && (
-                    <div className="copilot-tool-steps-container" style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
-                      <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>⚡</span> 工具调用与执行过程 ({msg.toolSteps.length} 步)
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {msg.toolSteps.map((step, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                            <span aria-label={step.status === 'pending' ? '等待确认' : step.status === 'cancelled' ? '已取消' : step.status === 'done' ? '已完成' : '未完成'} style={{ color: step.status === 'done' ? '#16a34a' : step.status === 'pending' ? '#b45309' : step.status === 'cancelled' ? '#64748b' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : step.status === 'pending' ? '◷' : step.status === 'cancelled' ? '—' : '!'}</span>
-                            <span>{step.label}</span>
-                            {step.detail && <details><summary>回读详情</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{step.detail}</pre></details>}
-                            <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px' }}>{step.name}</code>
-                          </div>
-                        ))}
-                      </div>
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    alignSelf: isUser ? 'flex-end' : 'flex-start',
+                    maxWidth: isSidebarCollapsed ? '90%' : '80%',
+                  }}
+                >
+                  {!isUser && (
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                      <RobotMascot size={28} decorative />
                     </div>
                   )}
-
-                  {msg.retry && <button type="button" disabled={isGenerating || !capabilities.ready} onClick={() => void performTurn(activeSession.id, msg.id, msg.retry!)} style={{ marginTop: 8 }}>重试未完成操作</button>}
-                  {/* 结构化产物卡片展示 */}
-                  {msg.artifact && (
-                    <div className="copilot-artifact-card" style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>📦</span> {msg.artifact.title}
-                        </span>
-                        <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '4px' }}>
-                          {msg.artifact.type.toUpperCase()}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>{msg.artifact.details}</div>
-                      {msg.artifact.jsonPreview && (
-                        <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: '10px', borderRadius: '6px', fontSize: '11px', overflowX: 'auto', maxHeight: '180px' }}>
-                          <code>{msg.artifact.jsonPreview}</code>
-                        </pre>
+                  <div>
+                    <div
+                      className={`copilot-bubble ${isUser ? 'copilot-bubble-user' : 'copilot-bubble-assistant'}`}
+                      style={{
+                        background: isUser ? '#2563eb' : '#ffffff',
+                        color: isUser ? '#ffffff' : '#1e293b',
+                        padding: '12px 18px',
+                        borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                        fontSize: '13.5px',
+                        lineHeight: 1.6,
+                        boxShadow: isUser ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
+                        border: isUser ? 'none' : '1px solid #e2e8f0',
+                      }}
+                    >
+                      {isUser ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                      ) : (
+                        <MarkdownRenderer content={msg.content} />
                       )}
-                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {msg.artifact.type === 'team' && (
-                          <>
-                            <Link
-                              href="/settings/teams"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
-                            >
-                              👥 前往团队设置查看
-                            </Link>
+                    </div>
+
+                    {msg.confirmationRequest && msg.pendingDeletions?.map(receipt => receipt.confirmation && (
+                      <section key={receipt.id} aria-label="待确认删除" style={{ marginTop: 10, padding: 14, border: '1px solid #fdba74', borderRadius: 8, background: '#fff7ed' }}>
+                        <strong>{receipt.label} · 等待二次确认</strong>
+                        <p>操作：{receipt.kind} · 对象：{receipt.confirmation.target}</p>
+                        <details><summary>核对操作参数</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(receipt.confirmation.parameters, null, 2)}</pre></details>
+                        <p>{receipt.confirmation.impact}</p>
+                        <p>有效期至 {new Date(receipt.confirmation.expiresAt).toLocaleTimeString()}。尚未执行。</p>
+                        <button type="button" disabled={isGenerating || runtimePermission !== 'full_access' || Date.now() >= Date.parse(receipt.confirmation.expiresAt)}
+                          onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                            actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'confirm',
+                          })}>{receipt.kind === 'mcp.invoke' ? '确认调用' : '确认删除'}</button>
+                        <button type="button" disabled={isGenerating}
+                          onClick={() => void performTurn(activeSession.id, msg.id, msg.confirmationRequest!, {
+                            actionId: receipt.id, confirmationId: receipt.confirmation!.id, decision: 'cancel',
+                          })}>取消</button>
+                      </section>
+                    ))}
+
+                    {/* 工具调用情况详细展示 */}
+                    {msg.toolSteps && msg.toolSteps.length > 0 && (
+                      <div className="copilot-tool-steps-container" style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 12px', fontSize: '12px' }}>
+                        <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>⚡</span> 工具调用与执行过程 ({msg.toolSteps.length} 步)
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {msg.toolSteps.map((step, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
+                              <span aria-label={step.status === 'pending' ? '等待确认' : step.status === 'cancelled' ? '已取消' : step.status === 'done' ? '已完成' : '未完成'} style={{ color: step.status === 'done' ? '#16a34a' : step.status === 'pending' ? '#b45309' : step.status === 'cancelled' ? '#64748b' : '#dc2626', fontWeight: 700 }}>{step.status === 'done' ? '✓' : step.status === 'pending' ? '◷' : step.status === 'cancelled' ? '—' : '!'}</span>
+                              <span>{step.label}</span>
+                              {step.detail && <details><summary>回读详情</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 240, overflow: 'auto' }}>{step.detail}</pre></details>}
+                              <code style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px' }}>{step.name}</code>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {msg.retry && <button type="button" disabled={isGenerating || !capabilities.ready} onClick={() => void performTurn(activeSession.id, msg.id, msg.retry!)} style={{ marginTop: 8 }}>重试未完成操作</button>}
+
+                    {/* 结构化产物卡片展示 */}
+                    {msg.artifact && (
+                      <div className="copilot-artifact-card" style={{ marginTop: '10px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>📦</span> {msg.artifact.title}
+                          </span>
+                          <span style={{ fontSize: '11px', background: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '4px' }}>
+                            {msg.artifact.type.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>{msg.artifact.details}</div>
+                        {msg.artifact.jsonPreview && (
+                          <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: '10px', borderRadius: '6px', fontSize: '11px', overflowX: 'auto', maxHeight: '180px' }}>
+                            <code>{msg.artifact.jsonPreview}</code>
+                          </pre>
+                        )}
+                        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {msg.artifact.type === 'team' && (
+                            <>
+                              <Link
+                                href="/settings/teams"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                👥 前往团队设置查看
+                              </Link>
+                              <Link
+                                href="/settings/assistants"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                              >
+                                <RobotMascot size={18} decorative /> 查看创建的导师助手
+                              </Link>
+                            </>
+                          )}
+                          {msg.artifact.type === 'assistant' && (
                             <Link
                               href="/settings/assistants"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
                             >
-                              <RobotMascot size={18} decorative /> 查看创建的导师助手
+                              <RobotMascot size={18} decorative /> 前往助手设置查看
                             </Link>
-                          </>
-                        )}
-                        {msg.artifact.type === 'assistant' && (
-                          <Link
-                            href="/settings/assistants"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
-                          >
-                            <RobotMascot size={18} decorative /> 前往助手设置查看
-                          </Link>
-                        )}
-                        {msg.artifact.type === 'mcp' && (
-                          <Link
-                            href="/settings/tools"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
-                          >
-                            🔧 前往工具与 MCP 设置
-                          </Link>
-                        )}
-                        {msg.artifact.type === 'skill' && (
-                          <Link
-                            href="/settings/skills"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
-                          >
-                            ⚡ 前往技能设置
-                          </Link>
-                        )}
+                          )}
+                          {msg.artifact.type === 'mcp' && (
+                            <Link
+                              href="/settings/tools"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                            >
+                              🔧 前往工具与 MCP 设置
+                            </Link>
+                          )}
+                          {msg.artifact.type === 'skill' && (
+                            <Link
+                              href="/settings/skills"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '5px 12px', background: '#2563eb', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}
+                            >
+                              ⚡ 前往技能设置
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', textAlign: isUser ? 'right' : 'left' }}>
-                    {msg.timestamp}
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', textAlign: isUser ? 'right' : 'left' }}>
+                      {msg.timestamp}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
+
           {isGenerating && (
             <div style={{ display: 'flex', gap: '12px', alignSelf: 'flex-start' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
                 <RobotMascot size={28} decorative />
               </div>
-              <div className="copilot-thinking-bubble" style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0' }}>
+              <div className="copilot-thinking-bubble" style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '16px 16px 16px 2px', fontSize: '13px', color: '#64748b', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                 启途管家正在利用 <strong>{selectedModelItem?.id ?? (selectedModel || 'server default')}</strong>（{thinkingStrength === 'max' || thinkingStrength === 'high' ? '深度推理' : '标准推理'}）执行分析...
               </div>
             </div>
@@ -956,86 +1178,141 @@ export default function CopilotPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 底部输入框 */}
-        <div className="copilot-composer-container" style={{ padding: '16px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
-          {isListening && (
-            <div style={{ marginBottom: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite' }} />
-              <strong>正在语音输入中：</strong>
-              <span>{voiceInterim || '请对麦克风说话，语音将自动转写为文字...'}</span>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-            <textarea
-              className="copilot-textarea"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder={scope === 'global' ? '例如：检查全局助手、模型、技能及知识库配置，说明哪些已启用。' : '例如：检查当前光学模板的课时、团队与技能绑定，列出需要补齐的配置。'}
+        {/* 4. 底部现代化输入框 */}
+        <div className="copilot-composer-container" style={{ padding: '16px 24px 20px', background: 'rgba(255, 255, 255, 0.96)', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
+          <div style={{ maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+            {isListening && (
+              <div style={{ marginBottom: '10px', padding: '8px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                <strong>正在语音输入：</strong>
+                <span>{voiceInterim || '请对麦克风说话，语音将自动转写为文字...'}</span>
+              </div>
+            )}
+
+            <div
               style={{
-                flex: 1,
-                minHeight: '44px',
-                maxHeight: '120px',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: isListening ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
-                fontSize: '13.5px',
-                resize: 'none',
-                outline: 'none',
-                transition: 'border-color 0.2s',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '14px',
+                background: '#ffffff',
+                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
-            />
-            <button
-              type="button"
-              className={`copilot-voice-btn ${isListening ? 'is-listening' : ''}`}
-              onClick={toggleVoiceInput}
-              title={isListening ? '点击停止语音输入' : '开启语音输入'}
-              style={{
-                height: '44px',
-                padding: '0 14px',
-                background: isListening ? '#ef4444' : '#f1f5f9',
-                color: isListening ? '#ffffff' : '#334155',
-                border: '1px solid',
-                borderColor: isListening ? '#ef4444' : '#cbd5e1',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
+            >
+              <textarea
+                className="copilot-textarea"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={scope === 'global' ? '向启途智学管家下发指令，例如：检查全局助手、模型、技能及知识库配置...' : '围绕当前模板下发指令，例如：检查当前光学模板的课时、团队与技能绑定...'}
+                style={{
+                  width: '100%',
+                  minHeight: '56px',
+                  maxHeight: '140px',
+                  padding: '12px 16px 6px',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: '13.5px',
+                  lineHeight: 1.6,
+                  resize: 'none',
+                  color: '#0f172a',
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s',
-              }}
-            >
-              <span style={{ fontSize: '15px' }}>{isListening ? '⏹️' : '🎙️'}</span>
-              <span>{isListening ? '停止' : '语音'}</span>
-            </button>
-            <button
-              className="copilot-send-btn"
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isGenerating || modelSaving || modelLoading || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
-              style={{
-                height: '44px',
-                padding: '0 20px',
-                background: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? '#94a3b8' : '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '13.5px',
-                cursor: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? 'not-allowed' : 'pointer',
-              }}
-            >
-              发送指令
-            </button>
-          </div>
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>
-            快捷操作：Enter 发送，Shift + Enter 换行。支持麦克风语音转写、Markdown、LaTeX 公式、工具调用与配置自动化生成。
+                justifyContent: 'space-between',
+                padding: '6px 14px 10px',
+                borderTop: '1px solid #f8fafc',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: scope === 'global' ? '#f1f5f9' : '#eff6ff',
+                    color: scope === 'global' ? '#475569' : '#1d4ed8',
+                    border: '1px solid',
+                    borderColor: scope === 'global' ? '#e2e8f0' : '#bfdbfe',
+                    fontWeight: 600,
+                  }}>
+                    {scope === 'global' ? '🌐 全局模式' : '📑 模板专有'}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    background: runtimePermission === 'full_access' ? '#f0fdf4' : '#f8fafc',
+                    color: runtimePermission === 'full_access' ? '#166534' : '#64748b',
+                    border: '1px solid',
+                    borderColor: runtimePermission === 'full_access' ? '#bbf7d0' : '#cbd5e1',
+                    fontWeight: 600,
+                  }}>
+                    {runtimePermission === 'full_access' ? '🛡️ 配置模式 (写权限)' : '🛡️ 只读模式'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className={`copilot-voice-btn ${isListening ? 'is-listening' : ''}`}
+                    onClick={toggleVoiceInput}
+                    title={isListening ? '点击停止语音输入' : '开启语音输入'}
+                    style={{
+                      height: '34px',
+                      padding: '0 12px',
+                      background: isListening ? '#ef4444' : '#f8fafc',
+                      color: isListening ? '#ffffff' : '#334155',
+                      border: '1px solid',
+                      borderColor: isListening ? '#ef4444' : '#cbd5e1',
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span>{isListening ? '⏹️' : '🎙️'}</span>
+                    <span>{isListening ? '停止' : '语音'}</span>
+                  </button>
+
+                  <button
+                    className="copilot-send-btn"
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim() || isGenerating || modelSaving || modelLoading || !!modelError || !catalogReady || !capabilities.ready || !selectedModelItem || projectCatalog.loading || !!projectCatalog.error}
+                    style={{
+                      height: '34px',
+                      padding: '0 18px',
+                      background: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? '#cbd5e1' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? 'not-allowed' : 'pointer',
+                      boxShadow: !inputMessage.trim() || isGenerating || !catalogReady || !capabilities.ready ? 'none' : '0 2px 6px rgba(37,99,235,0.25)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    发送指令 ↵
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px', textAlign: 'center' }}>
+              快捷操作：Enter 发送 · Shift + Enter 换行 · 支持麦克风语音转写、Markdown 与全链路配置自动化执行
+            </div>
           </div>
         </div>
       </div>
