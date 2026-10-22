@@ -89,3 +89,6 @@ services/knowledge/
 
 # Generated local PDF reader worker, fonts and CMaps
 /apps/admin-console/public/pdfjs/
+
+# Local test scratch scripts
+scratch/
