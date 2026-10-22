@@ -32,6 +32,7 @@ export function KnowledgeBindingMatrix({
   const [data, setData] = useState<Matrix | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [loading, setLoading] = useState(true);
+  const [catalogValid, setCatalogValid] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -48,10 +49,12 @@ export function KnowledgeBindingMatrix({
   const read = useCallback(async (rebase = false) => {
     const token = ++sequence.current;
     setLoading(true);
+    setCatalogValid(false);
     try {
       const next = await fetchKnowledgeMatrix();
       if (token !== sequence.current) return null;
       setData(next);
+      setCatalogValid(true);
       readCallback.current(next);
       if (rebase)
         setDrafts((current) =>
@@ -91,7 +94,7 @@ export function KnowledgeBindingMatrix({
   }, [drafts, uncertain]);
 
   const dirty = Object.values(drafts);
-  const editable = !!data?.complete && !loading && !saving && !uncertain && online;
+  const editable = !!data?.complete && catalogValid && !loading && !saving && !uncertain && online;
   const assistants =
     data?.assistants.filter((a) => a.name.toLowerCase().includes(query.toLowerCase())) ?? [];
   const libraries =
@@ -123,7 +126,7 @@ export function KnowledgeBindingMatrix({
   }
 
   async function save() {
-    if (!data || !online || saving || loading) return;
+    if (!data || !online || saving || loading || (!catalogValid && !uncertain)) return;
     setSaving(true);
     setError('');
     setNotice('');
@@ -241,7 +244,7 @@ export function KnowledgeBindingMatrix({
           <p>勾选助手可使用的知识库。正式项目仍按已确认的教材范围执行。</p>
         </div>
         <button
-          disabled={!online || !data || saving || uncertain || loading}
+          disabled={!online || !data || !catalogValid || saving || uncertain || loading}
           onClick={async () => {
             if (!data) return;
             setSaving(true);
@@ -410,7 +413,11 @@ export function KnowledgeBindingMatrix({
               选择助手
               <select
                 aria-label="手机端选择助手"
-                value={mobileAssistant || assistants[0]?.id || ''}
+                value={
+                  assistants.some((a) => a.id === mobileAssistant)
+                    ? mobileAssistant
+                    : assistants[0]?.id || ''
+                }
                 onChange={(e) => setMobileAssistant(e.target.value)}
               >
                 {assistants.map((a) => (
@@ -450,7 +457,10 @@ export function KnowledgeBindingMatrix({
         <button
           className={styles.primary}
           disabled={
-            !online || saving || loading || (!uncertain && (!dirty.length || !data?.complete))
+            !online ||
+            saving ||
+            loading ||
+            (!uncertain && (!dirty.length || !data?.complete || !catalogValid))
           }
           onClick={() => void save()}
         >
