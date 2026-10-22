@@ -633,12 +633,18 @@ export class TutorService {
   async getTeamGraph(projectId: string | undefined, ownerId: string, explorationId?: string): Promise<TutorTeamGraph> {
     let identity: Pick<Awaited<ReturnType<TutorService['resolveTeamContext']>>, 'team' | 'teamConfig'>;
     let tutorSessionId: string | undefined;
+    let teaching: TutorTeachingContext | null = null;
     if (projectId) {
       if (!this.learningStore) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
       const project = await this.learningStore.findProject(projectId);
       if (!project) throw new NotFoundException({ code: 'TUTOR_PROJECT_NOT_FOUND', message: '项目不存在' });
       if (project.studentId !== ownerId) throw new ForbiddenException({ code: 'TUTOR_PROJECT_FORBIDDEN', message: '无权访问该项目' });
       identity = await this.resolveTeamContext(project.id, project.templateVersionId, project.status, ownerId);
+      teaching = await this.resolveTeaching(project.id, ownerId);
+      if (teaching) {
+        const author = await this.resolveTurnAuthor({ projectId: project.id, ownerId } as TutorSessionRecord, project.status, teaching);
+        identity.team = { ...identity.team, assistantId: author.id, assistantName: author.name, assistantAvatar: author.avatar ?? null };
+      }
     } else {
       if (!explorationId) throw new BadRequestException({ code: 'TUTOR_CONTEXT_REQUIRED', message: '请选择一个项目或探索会话' });
       const exploration = await this.loadExploration(ownerId, explorationId);
@@ -658,7 +664,7 @@ export class TutorService {
     let runtimeAvailable = true;
     const runtime = this.teamRuntime === undefined || (!projectId && !tutorSessionId)
       ? { runId: null, agents: {} }
-      : await this.teamRuntime.getStudentTeamRuntimeProjection(projectId ?? null, ownerId, runtimeIds, tutorSessionId).catch(() => {
+      : await this.teamRuntime.getStudentTeamRuntimeProjection(projectId ?? null, ownerId, runtimeIds, tutorSessionId, teaching ? { planId: teaching.planId, planRevision: teaching.planRevision, learningSessionId: teaching.session.id } : undefined).catch(() => {
           runtimeAvailable = false;
           return { runId: null, agents: {} };
         });
@@ -676,7 +682,7 @@ export class TutorService {
         color: member.color ?? null,
         status: !teamConfig?.enabled || !enabledIds.has(member.assistantId) || !runtimeAvailable
           ? 'offline' : dynamic?.status ?? 'ready',
-        currentTaskSummary: dynamic?.currentTaskSummary ?? null,
+        currentTaskSummary: dynamic?.currentTaskSummary ?? (teaching?.role.assistantId === member.assistantId ? '本课主讲' : null),
         pblPhase: member.pblPhase ?? null,
         messages: dynamic?.messages ?? [],
         toolCalls: dynamic?.toolCalls ?? [],
@@ -1891,7 +1897,7 @@ export class TutorService {
       teaching, runId: teamRunId, studentId: request.actorId, projectId: record.projectId,
       requested: request.pedagogicMove === 'review_work', assessmentPending: (await refreshDisclosure()).kind === 'pending_assessment',
       resolve: () => record.projectId ? this.resolveTeaching(record.projectId, request.actorId) : Promise.resolve(null),
-      hasResult: ref => record.turns.some(turn => turn.blocks.some(block => block.kind === 'aside' && block.evidenceRef === ref)),
+      hasResult: ref => record.turns.some(turn => turn.blocks.some(block => block.kind === 'aside' && block.proposalRef === ref)),
     }).catch(failure => {
       this.logger.warn(`Lesson collaboration unavailable: session=${record.sessionId} code=${teamFailureCode(failure)}`);
       return [];

@@ -6,7 +6,7 @@ import type { TutorTeachingContext } from './tutor-teaching-context';
 import { freezeTutorRuntime } from './tutor-frozen-runtime';
 
 interface Input {
-  runtime?: Pick<TeamRuntimeService, 'delegateLessonCollaboration' | 'getRunGraph'>;
+  runtime?: Pick<TeamRuntimeService, 'delegateLessonCollaboration' | 'listLessonCollaborationTasksForProject'>;
   registry?: Pick<PlatformRegistryService, 'getAssistantRuntime' | 'isModelAvailable'>;
   teaching: TutorTeachingContext | null; runId: string | null; studentId: string; projectId: string | null;
   requested: boolean; assessmentPending: boolean;
@@ -18,6 +18,11 @@ interface Input {
 }
 function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function acceptedOutput(value: unknown): value is { suggestion: string; question: string } {
+  return object(value) && Object.keys(value).every(key => ['suggestion', 'question'].includes(key))
+    && typeof value.suggestion === 'string' && typeof value.question === 'string' && Boolean(value.suggestion.trim()) && Boolean(value.question.trim())
+    && value.suggestion.length <= 1000 && value.question.length <= 300 && !/[<>]|https?:|javascript:|data:/iu.test(value.suggestion + value.question);
 }
 function candidates(teaching: TutorTeachingContext, input: Input) {
   const lesson = teaching.bundle.template.curriculum?.profiles.find(entry => entry.id === teaching.bundle.scheduleProfileId)
@@ -41,7 +46,7 @@ export async function coordinateLessonCollaboration(input: Input): Promise<Tutor
   if (!fresh || fresh.planId !== input.teaching.planId || fresh.planRevision !== input.teaching.planRevision
     || fresh.session.id !== input.teaching.session.id || fresh.lesson.currentActivity?.activityId !== input.teaching.lesson.currentActivity?.activityId) return [];
   const actor = { id: input.studentId, role: 'student' as const, email: '', displayName: '' };
-  const graph = await input.runtime.getRunGraph(actor, input.runId);
+  const tasks = await input.runtime.listLessonCollaborationTasksForProject(actor, input.projectId!);
   const blocks: TutorReplyBlock[] = [];
   for (const { config, scope } of candidates(fresh, input)) {
     const role = fresh.bundle.roles.find(entry => entry.assistantId === config.assistantId);
@@ -49,28 +54,28 @@ export async function coordinateLessonCollaboration(input: Input): Promise<Tutor
     const runtime = freezeTutorRuntime(await input.registry.getAssistantRuntime(role.assistantId), role,
       input.registry.isModelAvailable(role.modelByPurpose.dialogue));
     if (!runtime.agent.capabilities.includes('teach') || config.requiredSkillIds.some(id => !runtime.skills.some(skill => skill.id === id))) continue;
-    const task = [...graph.tasks].reverse().find(entry => entry.taskType === 'lesson.collaborate' && entry.agentId === config.assistantId
+    const task = [...tasks].reverse().find(entry => entry.taskType === 'lesson.collaborate' && entry.agentId === config.assistantId
       && object(entry.input) && object(entry.input.scope) && hashRequest(entry.input.scope) === hashRequest(scope));
-    if (!task || ['failed', 'cancelled'].includes(String(task.status)) && input.retryFailedKey) {
+    const rejected = task?.status === 'succeeded' && !acceptedOutput(task.output);
+    if (!task || (['failed', 'cancelled'].includes(String(task.status)) || rejected) && input.retryFailedKey) {
       if (input.enqueue === false) { input.onStatus?.(task ? 'failed' : 'idle'); continue; }
       await input.runtime.delegateLessonCollaboration(actor, input.runId, { senderAgentId: fresh.bundle.teamVersion.leaderAssistantId,
         recipientAgentId: config.assistantId, input: { scope },
-        idempotencyKey: `lesson-collaboration:${hashRequest({ scope, retry: task ? input.retryFailedKey : null })}` });
+        idempotencyKey: `lesson-collaboration:${hashRequest({ runId: input.runId, scope, retry: task ? input.retryFailedKey : null })}` });
       input.onStatus?.('queued');
       continue;
     }
-    input.onStatus?.(task.status === 'succeeded' ? 'ready' : ['failed', 'cancelled'].includes(String(task.status)) ? 'failed' : task.status === 'running' ? 'running' : 'queued');
+    input.onStatus?.(rejected || ['failed', 'cancelled'].includes(String(task.status)) ? 'failed'
+      : task.status === 'succeeded' ? 'ready' : task.status === 'running' ? 'running' : 'queued');
     const ref = `team-task:${task.id}`;
     if (task.status !== 'succeeded' || input.hasResult(ref)) continue;
     const output = task.output;
-    if (!object(output) || Object.keys(output).some(key => !['suggestion', 'question'].includes(key))
-      || typeof output.suggestion !== 'string' || typeof output.question !== 'string'
-      || !output.suggestion.trim() || !output.question.trim() || output.suggestion.length > 1000 || output.question.length > 300
-      || /[<>]|https?:|javascript:|data:/iu.test(output.suggestion + output.question)) continue;
+    if (!acceptedOutput(output)) continue;
     const phase = fresh.bundle.template.curriculum!.profiles.find(entry => entry.id === fresh.bundle.scheduleProfileId)!
       .sessions.find(entry => entry.sessionIndex === fresh.session.lessonIndex)!.phase;
     blocks.push({ kind: 'aside', copilot: { id: role.assistantId, name: runtime.agent.label, role: '协作导师' }, targetPhase: phase,
-      content: `${output.suggestion}\n\n${output.question}`, evidenceRef: ref });
+      content: `${output.suggestion}\n\n${output.question}`, proposalRef: ref,
+      lesson: { index: fresh.session.lessonIndex, title: fresh.lesson.title } });
   }
   const latest = await input.resolve();
   if (!latest || latest.planRevision !== fresh.planRevision || latest.session.id !== fresh.session.id

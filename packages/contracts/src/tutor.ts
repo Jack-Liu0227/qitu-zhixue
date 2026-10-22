@@ -204,6 +204,8 @@ export type TutorReplyBlock =
       targetPhase: 'exploration' | 'concept_mastery' | 'guided_practice' | 'deliverable_review';
       content: string;
       evidenceRef?: string;
+      proposalRef?: string;
+      lesson?: { index: number; title: string };
     }
   /**
    * 学生或导师发送的图片与文件附件。

@@ -1,3 +1,4 @@
+import { matchesCurrentLessonScope } from './team-runtime.lesson-scope';
 import { readLessonCollaborationEvidence } from '@qitu/database';
 import type { LessonCollaborationScope } from '@qitu/contracts';
 import { assertDomainLeader } from '../../common/intake-boundary';
@@ -1472,6 +1473,17 @@ export class TeamRuntimeService {
     return run?.id ?? null;
   }
 
+  /** Classroom candidates survive run completion; a new run must not replay an old task into a different mailbox. */
+  async listLessonCollaborationTasksForProject(actor: CurrentUser, projectId: string): Promise<readonly Record<string, unknown>[]> {
+    if (actor.role !== 'student') throw new ForbiddenException('Classroom candidate reads require the student owner');
+    await this.assertStudentObjects(actor, actor.id, projectId, null);
+    const rows = await this.requireDb().select({ task: agentTeamTasks }).from(agentTeamTasks)
+      .innerJoin(agentTeamRuns, eq(agentTeamTasks.runId, agentTeamRuns.id))
+      .where(and(eq(agentTeamRuns.projectId, projectId), eq(agentTeamRuns.studentUserId, actor.id), eq(agentTeamTasks.taskType, 'lesson.collaborate')))
+      .orderBy(desc(agentTeamTasks.createdAt)).limit(50);
+    return rows.reverse().map(row => toTaskView(row.task));
+  }
+
   /**
    * 学生端团队图的动态投影。查询严格绑定 student_user_id + project_id，
    * 并且只把运行事实的安全摘要投影出去：任务输入、消息 payload、事件 payload
@@ -1482,6 +1494,7 @@ export class TeamRuntimeService {
     studentUserId: string,
     assistantRuntimeIds: Readonly<Record<string, readonly string[]>>,
     tutorSessionId?: string,
+    learningScope?: import('@qitu/contracts').TutorLearningScope,
   ): Promise<StudentTeamRuntimeProjection> {
     const runScope = projectId !== null ? eq(agentTeamRuns.projectId, projectId)
       : tutorSessionId ? and(isNull(agentTeamRuns.projectId), eq(agentTeamRuns.tutorSessionId, tutorSessionId)) : null;
@@ -1508,12 +1521,25 @@ export class TeamRuntimeService {
       )).orderBy(asc(agentTeamMessages.createdAt)),
       this.db.select().from(agentTeamEvents).where(eq(agentTeamEvents.runId, run.id)).orderBy(asc(agentTeamEvents.occurredAt)),
     ]);
-    const taskById = new Map(tasks.map((task) => [task.id, task]));
+    const scopedTasks = tasks.filter(task => task.taskType !== 'lesson.collaborate' || !learningScope
+      || matchesCurrentLessonScope(task.input.scope, learningScope));
+    if (projectId && learningScope) {
+      const previous = await this.db.select({ task: agentTeamTasks }).from(agentTeamTasks)
+        .innerJoin(agentTeamRuns, eq(agentTeamTasks.runId, agentTeamRuns.id)).where(and(
+          eq(agentTeamRuns.projectId, projectId), eq(agentTeamRuns.studentUserId, studentUserId), eq(agentTeamTasks.taskType, 'lesson.collaborate'),
+          sql`${agentTeamTasks.input}->'scope'->>'planId'=${learningScope.planId}`,
+          sql`${agentTeamTasks.input}->'scope'->>'planRevision'=${String(learningScope.planRevision)}`,
+          sql`${agentTeamTasks.input}->'scope'->>'learningSessionId'=${learningScope.learningSessionId}`,
+        )).orderBy(desc(agentTeamTasks.createdAt)).limit(50);
+      for (const row of previous) if (!scopedTasks.some(task => task.id === row.task.id)) scopedTasks.push(row.task);
+    }
+    scopedTasks.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+    const taskById = new Map(scopedTasks.map((task) => [task.id, task]));
     const output: Record<string, StudentTeamAgentRuntimeProjection> = {};
 
     for (const assistantId of assistantIds) {
       const ids = new Set(assistantRuntimeIds[assistantId] ?? []);
-      const memberTasks = tasks.filter((task) => ids.has(task.agentId));
+      const memberTasks = scopedTasks.filter((task) => ids.has(task.agentId));
       const memberMessages = messages.filter((message) => ids.has(message.mailboxAgentId) || ids.has(message.senderAgentId) || ids.has(message.recipientAgentId));
       const memberEvents = events.filter((event) => {
         if (event.taskId === null) return false;
@@ -1522,7 +1548,8 @@ export class TeamRuntimeService {
       });
       const pendingCount = memberMessages.filter(message => message.status === 'queued').length;
       const latestTask = memberTasks.at(-1);
-      const status = studentAgentStatus(run.status, memberTasks, pendingCount, ids.has(run.leaderAgentId));
+      const activeTasks = memberTasks.filter(task => task.status === 'queued' || task.status === 'running');
+      const status = studentAgentStatus(run.status, activeTasks.length ? activeTasks : latestTask ? [latestTask] : [], pendingCount, ids.has(run.leaderAgentId));
       output[assistantId] = {
         status,
         currentTaskSummary: latestTask ? studentTaskSummary(latestTask.taskType, latestTask.status) : null,
@@ -2069,7 +2096,7 @@ export function studentAgentStatus(
 }
 
 function studentTaskSummary(taskType: string, status: string): string {
-  if (taskType === 'lesson.collaborate') return status === 'succeeded' ? '协作建议已生成' : status === 'failed' ? '协作暂未完成' : '正在协助本课探究';
+  if (taskType === 'lesson.collaborate') return status === 'succeeded' ? '协作候选已生成' : status === 'failed' ? '协作暂未完成' : '正在协助本课探究';
   if (taskType === 'pbl.plan' && status === 'succeeded') return '规划建议已生成';
   const label = taskType === 'interest.confirm' ? '梳理兴趣方向'
     : taskType === 'project.recommend' ? '整理项目建议'

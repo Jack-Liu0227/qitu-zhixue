@@ -36,9 +36,9 @@ async function fixture() {
     status: 'current', evidence: 'session_response', evidenceRefs: [] };
   teaching.lesson.evidenceRefs = ['task_submission:saved'];
   const tasks: Record<string, unknown>[] = [];
-  const runtime = { getRunGraph: async () => ({ tasks }), delegateLessonCollaboration: async (_actor: unknown, _run: string, input: Record<string, unknown>) => {
+  const runtime = { listLessonCollaborationTasksForProject: async () => tasks, delegateLessonCollaboration: async (_actor: unknown, _run: string, input: Record<string, unknown>) => {
     tasks.push({ id: 'task', agentId: 'reviewer', taskType: 'lesson.collaborate', input: input.input, status: 'queued' } as TeamRunGraph['tasks'][number]);
-  } } as unknown as Pick<TeamRuntimeService, 'delegateLessonCollaboration' | 'getRunGraph'>;
+  } } as unknown as Pick<TeamRuntimeService, 'delegateLessonCollaboration' | 'listLessonCollaborationTasksForProject'>;
   const live = { agent: { id: 'reviewer', enabled: true, capabilities: ['teach'], skillIds: [pin.canonicalId], label: '评议导师' },
     skills: [{ id: pin.canonicalId, version: pin.version, contentHash: pin.packageDigest, status: 'ready', publicationStatus: 'published' }],
     tools: [], mcpServers: [] } as unknown as EffectiveAgentRuntime;
@@ -52,6 +52,7 @@ test('collaboration queues scoped evidence once, accepts only matching current r
   assert.deepEqual(await coordinateLessonCollaboration(h.input), []);
   assert.equal(h.tasks.length, 1);
   await coordinateLessonCollaboration(h.input); assert.equal(h.tasks.length, 1);
+  await coordinateLessonCollaboration({ ...h.input, runId: 'a-later-run' }); assert.equal(h.tasks.length, 1);
   const task = h.tasks[0]!; task.status = 'succeeded'; task.output = { suggestion: '为结论补充一组对照。', question: '哪一个变量保持不变？' };
   const blocks = await coordinateLessonCollaboration(h.input);
   assert.equal(blocks[0]?.kind, 'aside'); assert.equal(h.teaching.lesson.status, 'current');

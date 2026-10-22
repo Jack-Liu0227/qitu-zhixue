@@ -37,7 +37,7 @@ export class TutorLessonCollaborationService {
       teaching, runId, studentId: actor.id, projectId, requested: true, assessmentPending: false,
       enqueue: Boolean(key), retryFailedKey: key,
       resolve: () => this.tutor.readTeachingForCollaboration(projectId, actor.id),
-      hasResult: ref => snapshot.turns.some(turn => turn.blocks.some(block => block.kind === 'aside' && block.evidenceRef === ref)),
+      hasResult: ref => snapshot.turns.some(turn => turn.blocks.some(block => block.kind === 'aside' && block.proposalRef === ref)),
       onStatus: status => statuses.push(status),
     });
     const priorities: readonly TutorLessonCollaborationView['status'][] = ['failed', 'running', 'queued', 'ready', 'idle'];
