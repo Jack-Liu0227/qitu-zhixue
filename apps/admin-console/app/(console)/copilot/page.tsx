@@ -382,7 +382,7 @@ export default function CopilotPage() {
       let artifact: Message['artifact'] = undefined;
       const teamReceipt = result.receipts?.find(r => r.kind === 'team.create' && r.status === 'succeeded');
       const asstReceipt = result.receipts?.find(r => r.kind === 'assistant.create' && r.status === 'succeeded');
-      const mcpReceipt = result.receipts?.find(r => r.kind === 'mcp.create' && r.status === 'succeeded');
+      const mcpReceipt = result.receipts?.find(r => r.kind === 'mcp.register' && r.status === 'succeeded');
       const skillReceipt = result.receipts?.find(r => r.kind === 'skill.create' && r.status === 'succeeded');
       if (teamReceipt) {
         artifact = {
