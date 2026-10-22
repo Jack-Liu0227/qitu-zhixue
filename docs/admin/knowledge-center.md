@@ -84,7 +84,7 @@ location ~ ^/api/v1/admin/knowledge/bases/[^/]+/uploads/?$ {
 
 实现参照 HKUDS/DeepTutor `6cf793bd` 的 `useImaConnection`、`ImaConnectionFields`、`ImaClient.search_knowledge_bases` 和 `probe_knowledge_base`；同时核对 GitHub main 的官方列表与详情请求。复用已安装并固定版本的 DeepTutor 客户端，不引入第二套 ima HTTP 签名逻辑。
 
-- 管理员接口：`POST /api/v1/admin/knowledge/engines/:id/ima-bases`；请求可传 `cursor`、`limit`（1–50）以及完整的草稿 `engine`。未传草稿则复用该实例的已存配置。
+- 管理员接口：`POST /api/v1/admin/knowledge/engines/:id/ima-bases`；请求可传 `cursor`、`limit`（1–20，按当前接口约束）以及完整的草稿 `engine`。未传草稿则复用该实例的已存配置。
 - 只读列库不会保存凭证、建立知识库或增加助手权限。列表 ID 直接用于连接预检和关联；创建时服务端重新调用官方详情接口确认访问权限。仅关联成功后沿用现有授权/绑定流程。
 - Client ID 是账户身份；客户端地址里的 `knowledgeBaseId` 可能是内部 ID，均不可替代 OpenAPI 返回的知识库 ID。手动填写模式须先检查连接。
 - 列表支持分页、去重和明确的空状态；修改凭证、切换实例或来源时作废旧列表、选择和预检，忽略过期请求。读取失败可重试，未保存的凭证不能提交关联。

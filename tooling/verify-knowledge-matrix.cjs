@@ -307,14 +307,53 @@ const config = {
     );
     assert.equal(await center.canRetrieve('mentor-a', 'library-b'), false);
   });
+  await verify(
+    'retrieval switch is revisioned, replayable and preserves per-library grants',
+    async () => {
+      const snapshot = await matrix.get();
+      const body = { expectedRevision: snapshot.configurationRevision, enabled: false };
+      const receipt = await matrix.retrieval(actor, body, 'retrieval-off');
+      assert.equal(await center.canRetrieve('mentor-a'), false);
+      assert.deepEqual(await matrix.retrieval(actor, body, 'retrieval-off'), receipt);
+      await assert.rejects(matrix.retrieval(actor, { ...body, enabled: true }, 'retrieval-off'));
+      await matrix.retrieval(
+        actor,
+        { expectedRevision: receipt.configurationRevision, enabled: true },
+        'retrieval-on',
+      );
+      assert.equal(await center.canRetrieve('mentor-a', 'library-school'), true);
+      assert.equal(Object.hasOwn(receipt, 'config'), false);
+    },
+  );
+  let upstreamInvalid = false;
   const engine = {
     adapterFor: () => ({ connect: async () => ({ ok: true, status: 'ready' }) }),
     execute: async (_, request) =>
-      request.externalRef.remoteKnowledgeBaseId === 'invalid'
+      upstreamInvalid || request.externalRef.remoteKnowledgeBaseId === 'invalid'
         ? { ok: false, errorCode: 'IMA_KB_ID_INVALID' }
         : { ok: true, status: 'ready', manifest: { items: [] } },
   };
   const connection = new Check(center, engine, audit);
+  await verify(
+    'failed current-resource check replaces stale ready state with an actionable error',
+    async () => {
+      upstreamInvalid = true;
+      const receipt = await connection.run(
+        actor,
+        'library-a',
+        { expectedRevision: nextA },
+        'check-invalid',
+      );
+      nextA++;
+      assert.equal(receipt.ok, false);
+      assert.equal(receipt.errorCode, 'IMA_KB_ID_INVALID');
+      assert.equal(
+        (await matrix.get()).libraries.find((l) => l.id === 'library-a').connectionStatus,
+        'error',
+      );
+      upstreamInvalid = false;
+    },
+  );
   await verify('failed relink keeps previous connection and frozen semantics', async () => {
     await assert.rejects(
       connection.run(

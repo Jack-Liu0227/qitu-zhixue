@@ -84,6 +84,16 @@
 
 ## 测试
 
+### 配置矩阵与连接治理（2026-10-22）
+
+`GET/PATCH /admin/knowledge/binding-matrix`、`PATCH /admin/knowledge/retrieval`、`POST /admin/knowledge/bases/:id/check` 与 `PATCH /admin/knowledge/bases/:id/connection` 仅限真实管理员；写操作必须提供幂等键。矩阵按库增量更新与修订校验，保留未提交的 Agent、权限模式和历史绑定，不替换整个授权数组。
+
+矩阵、连接和全局配置共用现有事务锁与审计。失败的绑定组记录稳定错误码和库 ID，日志不包含凭证或上游正文。主要错误为 `KNOWLEDGE_BINDING_CONFLICT`、`IDEMPOTENCY_CONFLICT`、`CONFIG_REVISION_CONFLICT`、`IMA_KB_ID_INVALID` 和既有 IMA 网络/认证错误。回读失败不表示保存失败，客户端应复用原请求及幂等键核验。
+
+当前逐库授权同样约束 IMA MCP，按真实引擎实例及连接解析，再与用户对象范围、当前引擎白名单、冻结项目 grant 和工具授权取交集。重连不重写冻结项目授权；旧引用缓存失效。
+
+`knowledge-matrix.test.ts` 覆盖输入、角色和幂等前置校验。`tooling/verify-knowledge-matrix.cjs` 只接受空的 `qitu_knowledge_verify_*` 隔离数据库，真实验证 PostgreSQL 事务、并发、审计失败回滚、部分成功、撤权、连接检查和显式重连；不读取生产学生资料。
+
 `services/api/src/modules/knowledge/` 下：
 
 - `knowledge.scope.test.ts`：作用域隔离、verified-only、写权限矩阵、来源守卫。

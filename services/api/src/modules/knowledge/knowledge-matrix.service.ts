@@ -3,6 +3,7 @@ import {
   ConflictException,
   HttpException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type {
@@ -75,6 +76,7 @@ export function parseMatrixPatch(body: unknown): KnowledgeMatrixPatch {
 
 @Injectable()
 export class KnowledgeMatrixService {
+  private readonly logger = new Logger(KnowledgeMatrixService.name);
   constructor(
     private readonly center: KnowledgeCenterService,
     private readonly audit: AuditWriter,
@@ -175,6 +177,9 @@ export class KnowledgeMatrixService {
       } catch (error) {
         const response = error instanceof HttpException ? error.getResponse() : null;
         const detail = typeof response === 'object' && response !== null ? record(response) : {};
+        this.logger.warn(
+          `Binding rejected library=${change.knowledgeBaseId} code=${typeof detail.code === 'string' ? detail.code : 'KNOWLEDGE_BINDING_SAVE_FAILED'}`,
+        );
         results.push({
           knowledgeBaseId: change.knowledgeBaseId,
           status: 'failed',
@@ -297,23 +302,51 @@ export class KnowledgeMatrixService {
       typeof input.enabled !== 'boolean'
     )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: '检索开关参数无效' });
-    const { config } = await this.center.configuration();
-    return this.center.save(
-      actor,
-      {
-        expectedRevision: input.expectedRevision,
-        config: {
-          ...config,
-          platformTools: {
-            ...config.platformTools,
-            'project-knowledge': {
-              ...config.platformTools['project-knowledge'],
-              enabled: input.enabled,
-            },
-          },
-        },
-      },
-      key,
+    const requestHash = checksum(
+      JSON.stringify({ expectedRevision: input.expectedRevision, enabled: input.enabled }),
     );
+    const auditKey = `knowledge.retrieval:${actor.id}:${checksum(key)}`;
+    return this.center.database().transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(281017)`);
+      const [replay] = rows<{ detail: { requestHash: string; revision: number } }>(
+        await tx.execute(sql`SELECT detail FROM audit_logs WHERE idempotency_key=${auditKey}`),
+      );
+      if (replay) {
+        if (replay.detail.requestHash !== requestHash)
+          throw new ConflictException({
+            code: 'IDEMPOTENCY_CONFLICT',
+            message: '幂等键已用于其他检索开关操作',
+          });
+        return { configurationRevision: replay.detail.revision, enabled: input.enabled };
+      }
+      const [current] = rows<{ revision: number; config: PlatformKnowledgeConfig }>(
+        await tx.execute(
+          sql`SELECT revision,config FROM platform_configuration_revisions ORDER BY revision DESC LIMIT 1`,
+        ),
+      );
+      if (!current || current.revision !== input.expectedRevision)
+        throw new ConflictException({
+          code: 'CONFIG_REVISION_CONFLICT',
+          message: '配置已变化，请重新读取',
+        });
+      const config = structuredClone(current.config);
+      config.platformTools['project-knowledge'].enabled = input.enabled;
+      const revision = current.revision + 1;
+      await tx.execute(sql`INSERT INTO platform_configuration_revisions(revision,parent_revision,config,updated_by,idempotency_key,request_hash)
+        VALUES(${revision},${current.revision},${JSON.stringify(config)}::jsonb,${actor.id},${auditKey},${requestHash})`);
+      await this.audit.write(
+        {
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: 'knowledge.retrieval.settings',
+          targetType: 'platform_configuration',
+          targetId: String(revision),
+          idempotencyKey: auditKey,
+          detail: { requestHash, revision, enabled: input.enabled },
+        },
+        tx,
+      );
+      return { configurationRevision: revision, enabled: input.enabled };
+    });
   }
 }
