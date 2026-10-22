@@ -93,7 +93,7 @@
 @media (max-width: 640px) {
   .settings-permission-matrix tr > :first-child { min-width: 148px !important; max-width: 148px; white-space: normal; overflow-wrap: anywhere; }
 }
-.settings-permission-matrix::after { content: '可横向滚动查看全部授权列'; display: block; position: sticky; left: 0; padding: 8px; font-size: 12px; color: #475569; background: #f8fafc; width: fit-content; }
+.settings-permission-matrix::after { display: none !important; content: none !important; }
 
 
 @media (max-width: 860px) {

@@ -143,3 +143,120 @@
 @media (prefers-reduced-motion: no-preference) {
   .memberButton { transition: background-color 160ms ease; }
 }
+
+/* Eyecare Night Mode overrides */
+:global(:root[data-qitu-eyecare="true"]) .panel {
+  --teaching-primary: #38bdf8 !important;
+  --teaching-soft: #16253b !important;
+  --teaching-surface: #111318 !important;
+  --teaching-subtle: #161920 !important;
+  --teaching-border: #2d333b !important;
+  --teaching-text: #f0f6fc !important;
+  --teaching-muted: #8b949e !important;
+  background: #111318 !important;
+  border-color: #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .panel * {
+  border-color: #2d333b;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .header h2,
+:global(:root[data-qitu-eyecare="true"]) .steps strong,
+:global(:root[data-qitu-eyecare="true"]) .columnHeader h3,
+:global(:root[data-qitu-eyecare="true"]) .inspectorSection h4,
+:global(:root[data-qitu-eyecare="true"]) .inspectorIdentity strong,
+:global(:root[data-qitu-eyecare="true"]) .lessonTitle strong,
+:global(:root[data-qitu-eyecare="true"]) .phaseHeading > strong {
+  color: #f0f6fc !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .workspace,
+:global(:root[data-qitu-eyecare="true"]) .steps li,
+:global(:root[data-qitu-eyecare="true"]) .tableHeading,
+:global(:root[data-qitu-eyecare="true"]) .advanced,
+:global(:root[data-qitu-eyecare="true"]) .inspector,
+:global(:root[data-qitu-eyecare="true"]) .routing {
+  background: #161920 !important;
+  border-color: #2d333b !important;
+  color: #f0f6fc !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .stepNumber {
+  background: #21262d !important;
+  color: #c9d1d9 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .currentStep {
+  background: #16253b !important;
+  color: #38bdf8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .currentStep .stepNumber {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .memberButton {
+  color: #c9d1d9 !important;
+  border-bottom-color: #21262d !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .memberButton:hover {
+  background: #21262d !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .memberButton[aria-pressed="true"] {
+  background: #16253b !important;
+  color: #38bdf8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .avatar {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #38bdf8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .status {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #8b949e !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .status[data-active="true"] {
+  background: #16253b !important;
+  border-color: #0284c7 !important;
+  color: #38bdf8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .panel select,
+:global(:root[data-qitu-eyecare="true"]) .panel textarea,
+:global(:root[data-qitu-eyecare="true"]) .panel input {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+  color: #f0f6fc !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .panel select option {
+  background: #161920 !important;
+  color: #f0f6fc !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .failure,
+:global(:root[data-qitu-eyecare="true"]) .validation {
+  background: #231c0a !important;
+  border-left-color: #d29922 !important;
+  color: #fde047 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .notice {
+  background: #16253b !important;
+  color: #38bdf8 !important;
+}
+
+:global(:root[data-qitu-eyecare="true"]) .knowledgeEmpty {
+  background: #231c0a !important;
+  border-left-color: #d29922 !important;
+  color: #fde047 !important;
+}

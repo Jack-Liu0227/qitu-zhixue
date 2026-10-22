@@ -323,9 +323,11 @@ export function StudentShellHost({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const eyecare = window.localStorage.getItem('qitu.student.eyecare');
-      if (eyecare === '1' || eyecare === 'true') {
+      const active = getStoredEyecare();
+      if (active) {
         document.documentElement.setAttribute('data-qitu-eyecare', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-qitu-eyecare');
       }
     } catch {
       // ignore
