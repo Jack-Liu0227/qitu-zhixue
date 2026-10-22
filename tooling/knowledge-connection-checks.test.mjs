@@ -1,9 +1,22 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import {
-  connectionDiagnostic,
-  remoteLibraries,
-} from '../apps/admin-console/lib/components/knowledge-library/connection-checks.ts';
+import ts from 'typescript';
+
+// Some deployed Node builds omit native TS support; use the workspace compiler.
+const source = readFileSync(
+  new URL(
+    '../apps/admin-console/lib/components/knowledge-library/connection-checks.ts',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const { outputText } = ts.transpileModule(source, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+});
+const { connectionDiagnostic, remoteLibraries } = await import(
+  `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
+);
 
 const checkedAt = '2026-10-22T13:00:00Z';
 test('connection diagnostics distinguish missing credentials, rejected authorization and resource failures', () => {

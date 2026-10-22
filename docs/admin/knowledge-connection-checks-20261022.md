@@ -24,7 +24,7 @@
 
 ## 验证
 
-- `node --experimental-strip-types --test tooling/knowledge-connection-checks.test.mjs`：3 项分类和范围测试。
+- `node --test tooling/knowledge-connection-checks.test.mjs`：3 项分类和范围测试，使用工作区 TypeScript 编译器，不依赖 Node 原生类型擦除支持。
 - Admin 类型检查、lint 和生产构建。
 - 浏览器验证覆盖真实页面配合合成 API 的全部远端范围、新修订号、并发上限、逐项诊断、草稿保留、原请求重放、权限中止、空目录、不完整目录、读取失败、回读失败、离线和 390px 布局。合成会话不代表真实生产认证验收。
 
