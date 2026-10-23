@@ -14,7 +14,7 @@
 
 知识库由管理员手动创建或连接已有知识库。学生创建、确认项目不会建库、复制资料、自动选材或提交知识准备任务；对话没有选库和项目建库等待状态。
 
-### 统一查看与编辑面板（2026-10-23 追加）
+### 账号与连接直接编辑（2026-10-23 追加）
 
 知识库「设置」页现可直接编辑账号与连接：共享引擎卡片显示服务地址、Client ID、API Key 和受影响的知识库；复用 `RemoteConnectionFields`，对应 DeepTutor `EngineDetail` / `ImaConnectionFields`，与知识引擎页写入同一份 `platform-config`，不另建凭证存储。服务地址变化时清空旧 API Key；IMA 和 PageIndex 的官方地址固定，可恢复错误的历史地址。共享凭证草稿未保存时，不用旧凭证执行单库连接操作。
 
@@ -22,7 +22,18 @@
 
 共享引擎保存前回读并比较实例快照，保留其他引擎、MCP 和工具配置；未确认提交固定 payload/revision/幂等键，已收到回执后只重试读取。最终按回读的实例值确认成功，其他页面再次覆盖时明确提示冲突。凭证仅在管理员页面会话与既有配置存储中处理，不写入新增日志、Git 或浏览器持久化缓存。
 
-账号/连接编辑增量验证：12 项浏览器交互检查、原有 27 项文件工作区回归、6 项新增后端行为测试通过；Admin typecheck、Admin/API lint 通过。新增测试位于 `knowledge-connection-edit.test.ts`，覆盖字段与地址、凭证拒绝、失败保留、证据失效、IMA 目录验证、幂等回放、并发冲突和 Admin 权限。UNC 验证显式构建 contracts/database/ai-client 并解析工作区产物；连接模块独立编译通过。本地全量 API 检查另有并行 `tutor-courseware-activity.ts` 的两处类型错误，未修改或纳入本次提交；正式发布以远端对应源码全量编译与回归结果为准。
+账号/连接编辑增量验证：12 项浏览器交互检查、原有 27 项文件工作区回归、6 项新增后端行为测试通过；Admin typecheck、Admin/API lint 通过。新增测试位于 `knowledge-connection-edit.test.ts`，覆盖字段与地址、凭证拒绝、失败保留、证据失效、IMA 目录验证、幂等回放、并发冲突和 Admin 权限。UNC 验证显式构建 contracts/database/ai-client 并解析工作区产物；连接模块独立编译通过。本地全量 API 检查当时发现并行 `tutor-courseware-activity.ts` 的两处类型错误，未修改或纳入本次提交；正式发布源码的全量编译与回归结果如下。
+
+#### 账号与连接编辑发布回执
+
+2026-10-23 16:57（Asia/Shanghai），`970ef40567cd218873cad0a38352d384210795b1` 已合入 `study-remote/main` 并在正式目录发布，Admin build ID 为 `0xaG8eb2Wclpn6Lqm0b83`。远端按 API/Admin 依赖图构建，API 全量类型编译、知识模块 106 项测试、Admin typecheck、双方 lint 与生产构建全部通过。
+
+- 已发布页面使用隔离合成 API 通过 12 项账号/连接检查及 27 项文件工作区回归，浏览器异常为 0。全部配置写入均由浏览器拦截，不修改真实账号或知识库；此结果不代表真实外部账号的连接验收。
+- 静态资源检查通过，匿名连接编辑 API 返回 401，API readiness 为 live/ready，database、redis 为 ok。Admin PID `2269676 → 2277765`，API PID `2259330 → 2277389`，其余八个受检服务 PID 未变化；没有数据库迁移。
+- 合并前后已有远端修改与脚本 SHA-256 一致，构建过程中相关源码哈希无变化。备份 `/root/qitu-backups/knowledge-connections-20261023T085417Z/` 保存旧 Admin `.next`、API `dist`、构建/测试日志、服务与源码快照、浏览器脚本和验收结果。
+- 本地并行课件、课时绑定、Tutor、知识检索及其合同/数据库修改均未纳入本次提交；`knowledge.module.ts`、`knowledge-retrieval.service.ts`、知识中心 `page.tsx` 等并行文件未覆盖。本次发布保留远端已有 Admin/学生页面修改；这些工作独立于本次知识连接验收。
+
+### 统一查看与编辑面板（2026-10-23）
 
 根据用户对 DeepTutor 面板一致性的反馈，现改为页内 `LibraryWorkspace`，移除独立 `LibraryFilesDialog` 和 `LibraryConfiguration`。文件区左侧使用可折叠的本地目录树，右侧保留 PDF/文本预览，并提供创建文件夹、移动及移除本地文件；其他维护操作分别放入来源、索引版本和设置页签。云端只展示文件和设置，不出现不支持的本地写入入口。知识库列表及助手矩阵保持挂载，返回后保留原列表状态；全局导航不变。
 
