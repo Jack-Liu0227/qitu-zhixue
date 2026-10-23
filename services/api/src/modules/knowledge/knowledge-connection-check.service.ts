@@ -12,6 +12,7 @@ import { record, type PlatformKnowledgeConfig } from './knowledge-center.config'
 import { KnowledgeEngineService } from './knowledge-engine.service';
 import { imaConnectionMessage } from './knowledge-ima-errors';
 import { libraryEngine } from './knowledge-library.service';
+import { editedKnowledgeConnection } from './knowledge-connection-edit';
 
 @Injectable()
 export class KnowledgeConnectionCheckService {
@@ -24,15 +25,19 @@ export class KnowledgeConnectionCheckService {
   async run(actor: CurrentUser, id: string, body: unknown, key: string, reconnect = false) {
     const input = record(body);
     if (
-      Object.keys(input).some((k) => !['expectedRevision', 'remoteKnowledgeBaseId'].includes(k)) ||
+      Object.keys(input).some(
+        (k) => !['expectedRevision', 'remoteKnowledgeBaseId', 'connection'].includes(k),
+      ) ||
       typeof input.expectedRevision !== 'number' ||
       !Number.isSafeInteger(input.expectedRevision) ||
       (input.remoteKnowledgeBaseId !== undefined &&
         (typeof input.remoteKnowledgeBaseId !== 'string' ||
           !input.remoteKnowledgeBaseId.trim() ||
           input.remoteKnowledgeBaseId.length > 512)) ||
-      (!reconnect && input.remoteKnowledgeBaseId !== undefined) ||
-      (reconnect && typeof input.remoteKnowledgeBaseId !== 'string')
+      (!reconnect &&
+        (input.remoteKnowledgeBaseId !== undefined || input.connection !== undefined)) ||
+      (input.remoteKnowledgeBaseId !== undefined && input.connection !== undefined) ||
+      (reconnect && input.remoteKnowledgeBaseId === undefined && input.connection === undefined)
     )
       throw new BadRequestException({ code: 'CONFIG_INVALID', message: '连接操作参数无效' });
     const requestHash = checksum(JSON.stringify({ id, body, reconnect }));
@@ -64,16 +69,15 @@ export class KnowledgeConnectionCheckService {
     }>(sql`SELECT external_ref,provider FROM knowledge_base_connections WHERE kb_id=${id}`);
     const { config } = await this.center.configuration();
     const configured = config.knowledgeEngines[base.engine_instance_id ?? ''];
-    if (!connection || !configured?.enabled)
+    if (!connection || !configured?.enabled || connection.provider !== configured.provider)
       throw new NotFoundException('关联连接或已启用的知识引擎不存在');
-    if (reconnect && configured.provider !== 'ima')
-      throw new BadRequestException({
-        code: 'REMOTE_CONNECTION_UNSUPPORTED',
-        message: '此来源请通过原服务管理连接',
-      });
-    const externalRef = { ...connection.external_ref };
-    if (reconnect && typeof input.remoteKnowledgeBaseId === 'string')
-      externalRef.remoteKnowledgeBaseId = input.remoteKnowledgeBaseId.trim();
+    const externalRef = reconnect
+      ? editedKnowledgeConnection(
+          configured.provider,
+          connection.external_ref,
+          input.connection ?? { remoteKnowledgeBaseId: input.remoteKnowledgeBaseId },
+        )
+      : { ...connection.external_ref };
     const engineHash = checksum(JSON.stringify(configured));
     const externalHash = checksum(JSON.stringify(connection.external_ref));
     const engine = libraryEngine(base, configured);
@@ -97,7 +101,10 @@ export class KnowledgeConnectionCheckService {
     if (reconnect && !receipt.ok)
       throw new BadRequestException({
         code: errorCode,
-        message: imaConnectionMessage(errorCode ?? undefined),
+        message:
+          engine.provider === 'ima'
+            ? imaConnectionMessage(errorCode ?? undefined)
+            : '连接验证失败，原连接已保留，请检查服务地址、资源及引擎凭证',
       });
     const checkedAt = new Date().toISOString();
     return this.center.database().transaction(async (tx) => {
@@ -151,7 +158,7 @@ export class KnowledgeConnectionCheckService {
         const allowed = Array.isArray(nowEngine.config.allowedKnowledgeBaseIds)
           ? nowEngine.config.allowedKnowledgeBaseIds
           : [];
-        if (!allowed.includes(externalRef.remoteKnowledgeBaseId)) {
+        if (engine.provider === 'ima' && !allowed.includes(externalRef.remoteKnowledgeBaseId)) {
           const next = structuredClone(current.config);
           const target = next.knowledgeEngines[fresh.engine_instance_id ?? ''];
           if (!target) throw new NotFoundException('知识引擎不可用');

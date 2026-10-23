@@ -16,6 +16,14 @@
 
 ### 统一查看与编辑面板（2026-10-23 追加）
 
+知识库「设置」页现可直接编辑账号与连接：共享引擎卡片显示服务地址、Client ID、API Key 和受影响的知识库；复用 `RemoteConnectionFields`，对应 DeepTutor `EngineDetail` / `ImaConnectionFields`，与知识引擎页写入同一份 `platform-config`，不另建凭证存储。服务地址变化时清空旧 API Key；IMA 和 PageIndex 的官方地址固定，可恢复错误的历史地址。共享凭证草稿未保存时，不用旧凭证执行单库连接操作。
+
+单库「连接与资源」直接编辑 IMA 库 ID、WeKnora 地址/库 ID、LightRAG Server 地址/Workspace、Kiwix 地址/ZIM 名称；IMA 也可通过账号目录选库。既有 `PATCH /admin/knowledge/bases/:id/connection` 新增 `connection` 字段，保留旧 `remoteKnowledgeBaseId` 请求兼容。服务端按 provider 校验字段、地址和资源，禁止单库连接携带密钥；真实适配器验证成功后才写入，失败保留旧连接。Admin 权限、版本与幂等检查、资源证据失效和脱敏审计沿用原 owner；只在 IMA 重新关联时更新对应白名单，其他服务不写 IMA 授权。原有助手绑定和冻结项目合同不变。
+
+共享引擎保存前回读并比较实例快照，保留其他引擎、MCP 和工具配置；未确认提交固定 payload/revision/幂等键，已收到回执后只重试读取。最终按回读的实例值确认成功，其他页面再次覆盖时明确提示冲突。凭证仅在管理员页面会话与既有配置存储中处理，不写入新增日志、Git 或浏览器持久化缓存。
+
+账号/连接编辑增量验证：12 项浏览器交互检查、原有 27 项文件工作区回归、6 项新增后端行为测试通过；Admin typecheck、Admin/API lint 通过。新增测试位于 `knowledge-connection-edit.test.ts`，覆盖字段与地址、凭证拒绝、失败保留、证据失效、IMA 目录验证、幂等回放、并发冲突和 Admin 权限。UNC 验证显式构建 contracts/database/ai-client 并解析工作区产物；连接模块独立编译通过。本地全量 API 检查另有并行 `tutor-courseware-activity.ts` 的两处类型错误，未修改或纳入本次提交；正式发布以远端对应源码全量编译与回归结果为准。
+
 根据用户对 DeepTutor 面板一致性的反馈，现改为页内 `LibraryWorkspace`，移除独立 `LibraryFilesDialog` 和 `LibraryConfiguration`。文件区左侧使用可折叠的本地目录树，右侧保留 PDF/文本预览，并提供创建文件夹、移动及移除本地文件；其他维护操作分别放入来源、索引版本和设置页签。云端只展示文件和设置，不出现不支持的本地写入入口。知识库列表及助手矩阵保持挂载，返回后保留原列表状态；全局导航不变。
 
 验证：Admin 类型检查及 lint 通过，隔离浏览器运行真实组件通过 27 项检查，包含原有本地/云端浏览能力、PDF 页码和设置草稿跨页签保留、来源草稿独立、嵌套目录与移动、上传刷新、移除成员后留在详情、删除库后返回列表、键盘切换、390px 布局，以及写入期间导航锁定、响应丢失时同键重试、写成功后回读 403 仅重试 GET。浏览器异常为 0；11 次写入全部由隔离合成 API 拦截，没有修改真实知识库。API 与数据库合同未改动，继续沿用此前已通过的知识模块 100 项测试。

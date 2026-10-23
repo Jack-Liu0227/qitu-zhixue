@@ -9,6 +9,7 @@ import {
   type EngineGroup,
 } from '../../api/knowledge-center';
 import styles from './RemoteEngineSettings.module.css';
+import { RemoteConnectionFields } from './RemoteConnectionFields';
 
 const descriptions: Record<
   string,
@@ -110,15 +111,10 @@ export function RemoteEngineSettings({
   const instance = group.instances.find((i) => i.id === instanceId);
   const apiKey = String(draft.config.apiKey ?? '');
   const clientId = String(draft.config.clientId ?? '');
-  const [showKey, setShowKey] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [probe, setProbe] = useState<{ fingerprint: string; receipt: EngineCheck } | null>(null);
-  const setApiKey = (value: string) =>
-    onChange({ ...draft, config: { ...draft.config, apiKey: value } });
-  const setClientId = (value: string) =>
-    onChange({ ...draft, config: { ...draft.config, clientId: value } });
   const isServer = ['lightrag-server', 'weknora'].includes(group.provider);
   const serverUrl = String(
     draft.config.server_url ??
@@ -250,88 +246,7 @@ export function RemoteEngineSettings({
         </h3>
         <div className={styles.card}>
           <p>{copy.credentials}</p>
-          <div className={styles.fields}>
-            {
-              <label htmlFor="remote-server-url">
-                服务器地址
-                <input
-                  id="remote-server-url"
-                  type="url"
-                  readOnly={!isServer}
-                  value={isServer ? String(draft.config.server_url ?? '') : serverUrl}
-                  placeholder={
-                    group.provider === 'weknora'
-                      ? 'https://weknora.example.com'
-                      : 'http://localhost:9621'
-                  }
-                  onChange={(e) =>
-                    onChange({
-                      ...draft,
-                      config: { ...draft.config, server_url: e.target.value, apiKey: '' },
-                    })
-                  }
-                  disabled={disabled}
-                />
-              </label>
-            }
-            {group.provider === 'ima' && (
-              <label htmlFor="remote-client-id">
-                CLIENT ID
-                <input
-                  id="remote-client-id"
-                  value={clientId}
-                  placeholder="输入你的 ima Client ID"
-                  onChange={(e) => setClientId(e.target.value)}
-                  autoComplete="off"
-                  disabled={disabled}
-                />
-              </label>
-            )}
-            <label htmlFor="remote-api-key">
-              API KEY{group.provider === 'lightrag-server' && <span> · 可选</span>}
-              <div className={styles.secretInput}>
-                <input
-                  id="remote-api-key"
-                  type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={
-                    group.provider === 'lightrag-server'
-                      ? '仅当服务器开启认证时填写'
-                      : '输入 API Key'
-                  }
-                  autoComplete="new-password"
-                  spellCheck={false}
-                  disabled={disabled}
-                />
-                <button
-                  type="button"
-                  aria-label={showKey ? '隐藏 API Key' : '显示 API Key'}
-                  onClick={() => setShowKey((v) => !v)}
-                  disabled={disabled}
-                >
-                  {showKey ? '隐藏' : '显示'}
-                </button>
-              </div>
-            </label>
-            {group.provider === 'weknora' && (
-              <label htmlFor="remote-kb-id">
-                默认知识库 ID · 可选
-                <input
-                  id="remote-kb-id"
-                  value={String(draft.config.remoteKnowledgeBaseId ?? '')}
-                  onChange={(e) =>
-                    onChange({
-                      ...draft,
-                      config: { ...draft.config, remoteKnowledgeBaseId: e.target.value },
-                    })
-                  }
-                  placeholder="连接具体知识库时也可指定"
-                  disabled={disabled}
-                />
-              </label>
-            )}
-          </div>
+          <RemoteConnectionFields draft={draft} disabled={disabled} onChange={onChange} />
           {receipt && (
             <div className={receipt.ok ? styles.success : styles.error} role="status">
               <strong>{receipt.ok ? '✓ 连接测试通过' : '连接测试未通过'}</strong>

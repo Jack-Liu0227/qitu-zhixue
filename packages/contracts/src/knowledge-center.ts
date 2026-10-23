@@ -52,4 +52,10 @@ export type KnowledgeMatrixSaveResult =
 export interface KnowledgeConnectionCommand {
   expectedRevision: number;
   remoteKnowledgeBaseId?: string;
+  connection?: {
+    serverUrl?: string;
+    remoteKnowledgeBaseId?: string;
+    workspace?: string;
+    zimName?: string;
+  };
 }

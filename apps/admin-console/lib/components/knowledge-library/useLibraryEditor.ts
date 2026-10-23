@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   centerRequest,
+  fetchCenterConfig,
   type BaseDetail,
+  type Engine,
   type KnowledgeConnectionCheck,
 } from '../../api/knowledge-center';
 import { newIdempotencyKey } from '../../api/types';
@@ -12,11 +14,15 @@ import { message } from './shared';
 type Receipt = Partial<KnowledgeConnectionCheck> & { deleted?: boolean };
 type Pending = {
   path: string;
-  body: object;
-  method: 'POST' | 'PATCH';
+  body?: object;
+  prepare?: () => Promise<object>;
+  verify?: () => Promise<void>;
+  started?: boolean;
+  method: 'POST' | 'PATCH' | 'PUT';
   key: string;
   receipt?: Receipt;
 };
+export class LibraryReadbackConflict extends Error {}
 
 export function useLibraryEditor(
   detail: BaseDetail,
@@ -48,10 +54,40 @@ export function useLibraryEditor(
     await onChanged();
     return next;
   }
-  async function execute(path?: string, body?: object, method: 'POST' | 'PATCH' = 'POST') {
+  async function readEngine(id: string, accept: (engine: Engine) => void) {
+    if (!online || running.current || pending.current) return;
+    running.current = true;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const current = await fetchCenterConfig();
+      const engine = current.config.knowledgeEngines[id];
+      if (!engine) throw new Error('知识引擎已不存在，请返回列表重新读取。');
+      await refresh();
+      accept(engine);
+    } catch (error) {
+      setError(message(error));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }
+  async function execute(
+    path?: string,
+    body?: object | (() => Promise<object>),
+    method: 'POST' | 'PATCH' | 'PUT' = 'POST',
+    verify?: () => Promise<void>,
+  ) {
     if (!online || running.current) return false;
     if (!pending.current && path && body)
-      pending.current = { path, body, method, key: newIdempotencyKey() };
+      pending.current = {
+        path,
+        ...(typeof body === 'function' ? { prepare: body as () => Promise<object> } : { body }),
+        method,
+        verify,
+        key: newIdempotencyKey(),
+      };
     const request = pending.current;
     if (!request) return false;
     running.current = true;
@@ -59,6 +95,8 @@ export function useLibraryEditor(
     setError('');
     setNotice('');
     try {
+      if (!request.body) request.body = await request.prepare!();
+      request.started = true;
       // Once acknowledged, retry only the readback; ambiguous writes replay the same key.
       request.receipt ??= await centerRequest<Receipt>(
         request.path,
@@ -75,6 +113,7 @@ export function useLibraryEditor(
         return true;
       }
       await refresh();
+      await request.verify?.();
       const result = request.receipt;
       pending.current = null;
       setUncertain(false);
@@ -87,12 +126,14 @@ export function useLibraryEditor(
     } catch (e) {
       setError(message(e));
       if (
-        !request.receipt &&
-        e instanceof Error &&
-        'status' in e &&
-        typeof e.status === 'number' &&
-        e.status >= 400 &&
-        e.status < 500
+        !request.started ||
+        e instanceof LibraryReadbackConflict ||
+        (!request.receipt &&
+          e instanceof Error &&
+          'status' in e &&
+          typeof e.status === 'number' &&
+          e.status >= 400 &&
+          e.status < 500)
       ) {
         pending.current = null;
         setUncertain(false);
@@ -114,6 +155,7 @@ export function useLibraryEditor(
     notice,
     filesRevision,
     refresh,
+    readEngine,
     execute,
     settings,
   };

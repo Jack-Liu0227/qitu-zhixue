@@ -171,6 +171,19 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+.accountFields {
+  margin: 18px 0;
+}
+.accountFields > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.accountFields label {
+  margin: 0;
+}
+.accountFields > div > label:first-child {
+  grid-column: 1 / -1;
+}
 .workspace .danger {
   color: #b34c55;
   border-color: #eecfd2;
@@ -217,6 +230,9 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 760px) {
+  .accountFields > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .workspace {
     height: max(600px, calc(100dvh - 130px));
     border-radius: 10px;
