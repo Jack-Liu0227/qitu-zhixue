@@ -1,5 +1,6 @@
 import { ApiError } from '@qitu/api-client';
 import type { CreateExplorationRequest, ExplorationView, TemplateStage } from '@qitu/contracts';
+import { subjectLabel } from '@qitu/contracts';
 import type { InspirationDataSource } from './inspiration-data-source';
 import type { InspirationDifficulty, InspirationTemplate } from '../types';
 
@@ -11,15 +12,20 @@ const DOMAIN_LABELS: Record<string, string> = {
   programming_game_dev: '游戏开发',
   programming: '编程',
   physics_mechanics: '物理力学',
+  physics_optics: '物理 · 光学',
+  physics: '物理',
   design: '设计',
   art: '艺术',
+  science: '科学探究',
+  mathematics: '数学',
+  engineering: '工程设计',
 };
 
-/** 服务端难度枚举 → 展示词。未知值返回 null（不显示，而不是编一个）。 */
+/** 服务端难度枚举 → 展示词。支持中英文及各种级别别名。未知值返回 null。 */
 function toDifficulty(value: unknown): InspirationDifficulty | null {
-  if (value === 'beginner' || value === '入门') return '入门';
-  if (value === 'intermediate' || value === '进阶') return '进阶';
-  if (value === 'advanced' || value === '挑战') return '挑战';
+  if (value === 'beginner' || value === 'introductory' || value === '入门') return '入门';
+  if (value === 'intermediate' || value === 'medium' || value === '进阶') return '进阶';
+  if (value === 'advanced' || value === 'hard' || value === '挑战') return '挑战';
   return null;
 }
 
@@ -181,7 +187,7 @@ export class InspirationApiDataSource implements InspirationDataSource {
     return { projectId: data.project.id };
   }
 
-  /** 把服务端模板投影为展示模型；缺失字段留空，绝不编造内容。 */
+  /** 把服务端模板投影为展示模型；规范提炼短标签，完整保留长句目标用于探究亮点与详情。 */
   private async toTemplates(list: unknown[], endpoint: string): Promise<InspirationTemplate[]> {
     const items = list.filter(isRecord);
     const stagesById = await this.loadStages(items, endpoint);
@@ -191,15 +197,41 @@ export class InspirationApiDataSource implements InspirationDataSource {
         const id = item.id as string;
         const difficulty = toDifficulty(item.difficulty);
         const domain = typeof item.domain === 'string' ? item.domain : null;
+        const subject = domain ? (DOMAIN_LABELS[domain] ?? subjectLabel(domain)) : '';
+
+        // 提取服务端长句目标
+        const rawObjectives = Array.isArray(item.learningObjectives)
+          ? item.learningObjectives.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+          : [];
+
+        // 规范提炼短标签：优先取明确 tags；若无则从短目标或学科/成果形式提取精简标签，绝不把几十字长句当标签
+        const rawTags = Array.isArray(item.tags)
+          ? item.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+          : [];
+        let cleanTags = rawTags.filter((t) => t.length <= 12);
+
+        if (cleanTags.length === 0) {
+          const candidateShort = rawObjectives.filter((o) => o.length <= 10);
+          if (candidateShort.length > 0) {
+            cleanTags = candidateShort.slice(0, 3);
+          } else {
+            const derived: string[] = [];
+            if (subject) derived.push(subject);
+            if (typeof item.outcomeForm === 'string' && item.outcomeForm.length > 0 && item.outcomeForm.length <= 8) {
+              derived.push(item.outcomeForm);
+            }
+            cleanTags = derived;
+          }
+        }
+
         return {
           id,
           title: item.title as string,
           summary: typeof item.summary === 'string' ? item.summary : '',
           templateVersionId: typeof item.latestPublishedVersionId === 'string' ? item.latestPublishedVersionId : null,
-          subject: domain ? (DOMAIN_LABELS[domain] ?? domain) : '',
-          tags: Array.isArray(item.learningObjectives)
-            ? item.learningObjectives.filter((tag): tag is string => typeof tag === 'string')
-            : [],
+          subject,
+          tags: cleanTags,
+          learningObjectives: rawObjectives,
           difficulty,
           lessonCount: Number.isSafeInteger(item.lessonCount) && Number(item.lessonCount) > 0 ? Number(item.lessonCount) : null,
           lessonMinutes: item.lessonMinutes === 60 || item.lessonMinutes === 120 ? item.lessonMinutes : null,

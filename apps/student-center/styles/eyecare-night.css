@@ -2220,6 +2220,28 @@
   color: #CBD5E1 !important;
 }
 
+:root[data-qitu-eyecare="true"] .qitu-inspiration-highlights {
+  background: #15181D !important;
+  border-color: #2E3540 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-highlights-label {
+  color: #64748B !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-highlight-item {
+  color: #CBD5E1 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-meta-badge {
+  background: #252A33 !important;
+  color: #94A3B8 !important;
+}
+
+:root[data-qitu-eyecare="true"] .qitu-inspiration-template-footer {
+  border-top-color: #2E3540 !important;
+}
+
 :root[data-qitu-eyecare="true"] .qitu-inspiration-detail-panel {
   background-color: #1E2228 !important;
   background: #1E2228 !important;

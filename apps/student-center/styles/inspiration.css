@@ -1,11 +1,10 @@
 /* 灵感空间（/student/inspiration）—— 「推荐项目 / 自由探索」双标签页。
  *
- * 只定义本模块自己的 qitu-inspiration-* 类。
- * 屏内工具栏（.qitu-screen-toolbar）与标签按钮（.qitu-tab）复用 projects.css，
- * 与「我的项目」的 ProjectTabs 保持完全一致的观感；
- * 按钮、标签纸、卡片容器复用 @qitu/ui/styles.css 的 .qitu-button / .qitu-tag-chip。
- *
- * 模板卡里的开始动作会创建对应项目并冻结模板团队绑定。
+ * 现代化 PBL 启发式交互设计：
+ * - 响应式自适应网格，拒绝挤压变形；
+ * - 纯净整洁的卡片布局，彻底消除卡片内滚动条与文字重叠；
+ * - 层次清晰的信息架构：封面/学科徽章、标题、简介、精简标签、探究亮点看板与预期成果；
+ * - 结构对齐的底部操作区：主次分明的高质感按钮。
  */
 
 .qitu-inspiration-detail {
@@ -18,49 +17,96 @@
 .qitu-inspiration-detail-panel {
   display: grid;
   gap: var(--qitu-space-lg);
-  padding: var(--qitu-space-xl);
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-md);
-  background: var(--qitu-surface);
+  padding: 28px;
+  border: 1px solid var(--qitu-border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--qitu-surface, #ffffff);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
 }
 
 .qitu-inspiration-detail-cover {
   display: block;
-  border-radius: var(--qitu-radius-md);
-  background: var(--qitu-page);
+  border-radius: 12px;
+  background: var(--qitu-page, #f8fafc);
+  overflow: hidden;
 }
 
-.qitu-inspiration-detail-panel h2 {
-  margin: 0 0 10px;
-  color: var(--qitu-heading);
-  font-size: 1rem;
+.qitu-inspiration-detail-section {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.qitu-inspiration-detail-section h2 {
+  margin: 0;
+  color: var(--qitu-heading, #0f172a);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qitu-inspiration-detail-section p {
+  margin: 0;
+  color: var(--qitu-text, #334155);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.qitu-inspiration-objectives-list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.qitu-inspiration-objectives-list li {
+  color: var(--qitu-text, #334155);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.qitu-inspiration-detail-summary {
+  margin: 0;
+  color: var(--qitu-text, #334155);
+  font-size: 0.95rem;
+  line-height: 1.7;
 }
 
 .qitu-inspiration-detail-note {
   margin: 0;
-  color: var(--qitu-muted);
+  color: var(--qitu-muted, #64748b);
+  font-size: 0.85rem;
   line-height: 1.7;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
 }
 
 .qitu-inspiration-start-action {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+  flex: 1;
+  width: 100%;
 }
 
 .qitu-inspiration-start-action .qitu-button {
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+  justify-content: center;
 }
 
 .qitu-inspiration-action-hint,
 .qitu-inspiration-action-error {
   margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .qitu-inspiration-action-hint {
-  color: var(--qitu-muted);
+  color: var(--qitu-muted, #64748b);
 }
 
 .qitu-inspiration-action-error {
@@ -69,7 +115,7 @@
 
 .qitu-inspiration-eyebrow {
   margin: 0 0 4px;
-  color: var(--qitu-primary);
+  color: var(--qitu-primary, #2563eb);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -82,44 +128,31 @@
   width: fit-content;
   max-width: 100%;
   padding: 4px;
-  background: var(--qitu-page);
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-lg);
+  background: var(--qitu-page, #f8fafc);
+  border: 1px solid var(--qitu-border, #e2e8f0);
+  border-radius: var(--qitu-radius-lg, 12px);
+  margin-bottom: 20px;
 }
 
-/* 面板本身可聚焦（键盘用户要能跳进面板），所以必须给可见焦点环，
-   不能只依赖隐藏出来的 outline。 */
 .qitu-inspiration-tabs [role='tabpanel']:focus-visible {
   outline: none;
-  border-radius: var(--qitu-radius-md);
+  border-radius: var(--qitu-radius-md, 10px);
   box-shadow: var(--qitu-focus-ring);
 }
 
-/* ---------- 推荐项目 ---------- */
+/* ---------- 推荐项目栅格 ---------- */
 
 .qitu-inspiration-recommended {
   display: grid;
   gap: var(--qitu-space-lg);
 }
 
-/* 推荐项目：4 个子窗口大小一致，最右边内容多支持向下滚动，具备 Steam 卡片沉浸式交互 */
+/* 现代化自适应网格：卡片维持 300px~420px 黄金尺寸，拒绝挤压 */
 .qitu-inspiration-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 20px;
   align-items: stretch;
-}
-
-@media (max-width: 1200px) {
-  .qitu-inspiration-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .qitu-inspiration-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ---------- 模板卡 (Steam 游戏卡片式高质感设计) ---------- */
@@ -127,148 +160,255 @@
 .qitu-inspiration-template-card {
   display: flex;
   flex-direction: column;
-  gap: var(--qitu-space-md);
-  padding: 18px;
+  padding: 20px;
   background: #ffffff;
-  border: 1.5px solid var(--qitu-border, #e4ecf7);
-  border-radius: 14px;
-  min-height: 440px;
-  height: 480px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  min-height: 460px;
   position: relative;
-  transition: box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.qitu-inspiration-template-card::-webkit-scrollbar {
-  width: 5px;
-}
-
-.qitu-inspiration-template-card::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .qitu-inspiration-template-card:hover {
   border-color: #3b82f6;
-  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.12), 0 2px 6px rgba(0,0,0,0.04);
   transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* 卡片头部 */
 .qitu-inspiration-template-header {
   display: flex;
-  gap: var(--qitu-space-md);
+  gap: 14px;
   align-items: flex-start;
+  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .qitu-inspiration-template-cover {
   display: grid;
   flex-shrink: 0;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  font-size: 22px;
-  background: var(--qitu-page);
-  border: 1px solid var(--qitu-border);
-  border-radius: var(--qitu-radius-md);
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e0e7ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
 }
 
-/* min-width: 0 才能让长标题在 flex 子项里正常换行而不是撑破卡片。 */
 .qitu-inspiration-template-heading {
   min-width: 0;
+  flex: 1;
 }
 
 .qitu-inspiration-template-title {
   margin: 0;
-  color: var(--qitu-heading);
-  font-size: 1.05rem;
+  color: #0f172a;
+  font-size: 1.08rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .qitu-inspiration-template-meta {
-  margin: 4px 0 0;
-  color: var(--qitu-muted);
-  font-size: 0.82rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.qitu-inspiration-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.qitu-inspiration-difficulty {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.qitu-difficulty-入门 {
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.qitu-difficulty-进阶 {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.qitu-difficulty-挑战 {
+  color: #c2410c;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.qitu-inspiration-meta-text {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* 卡片内容区 */
+.qitu-inspiration-template-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
 }
 
 .qitu-inspiration-template-summary {
   margin: 0;
-  color: var(--qitu-text);
-  font-size: 0.9rem;
+  color: #475569;
+  font-size: 0.88rem;
   line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---------- 四个阶段 ---------- */
+.qitu-inspiration-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 
-.qitu-inspiration-stages {
-  display: grid;
-  gap: var(--qitu-space-sm);
+/* 核心探究方向亮点看板 */
+.qitu-inspiration-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.qitu-inspiration-highlights-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.qitu-inspiration-highlights-list {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.qitu-inspiration-stage {
   display: flex;
-  gap: var(--qitu-space-sm);
-  align-items: baseline;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.qitu-inspiration-stage-index {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: var(--qitu-primary);
-  border-radius: var(--qitu-radius-pill);
+.qitu-inspiration-highlight-item {
+  position: relative;
+  padding-left: 14px;
+  font-size: 0.8rem;
+  color: #334155;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.qitu-inspiration-stage-label {
-  color: var(--qitu-text);
-  font-size: 0.85rem;
-  line-height: 1.5;
+.qitu-inspiration-highlight-item::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3b82f6;
 }
 
-/* ---------- 成果 ---------- */
-
+/* 预期成果条 */
 .qitu-inspiration-template-outcome {
   display: flex;
-  gap: var(--qitu-space-sm);
-  align-items: flex-start;
-  margin: 0;
-  padding: var(--qitu-space-sm);
-  font-size: 0.85rem;
-  background: var(--qitu-completed-soft);
-  border-radius: var(--qitu-radius-md);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
 }
 
 .qitu-inspiration-template-outcome-label {
   flex-shrink: 0;
-  color: var(--qitu-completed);
+  color: #15803d;
   font-weight: 700;
 }
 
-/* margin-top: auto 让不同高度的卡片底部操作区对齐。 */
+.qitu-inspiration-template-outcome-value {
+  color: #166534;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 卡片底部操作区 */
 .qitu-inspiration-template-footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--qitu-space-md);
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
   margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed #e2e8f0;
+  flex-shrink: 0;
+}
+
+.qitu-inspiration-card-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.qitu-card-btn {
+  flex: 1;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.qitu-card-start-btn button {
+  height: 38px;
+  font-weight: 600;
+  border-radius: 8px;
 }
 
 .qitu-inspiration-template-hint {
-  color: var(--qitu-muted);
-  font-size: 0.78rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.75rem;
 }
 
 /* ---------- 自由探索 ---------- */
@@ -281,29 +421,28 @@
 
 .qitu-inspiration-free-explore-description {
   margin: 0;
-  color: var(--qitu-text);
+  color: var(--qitu-text, #334155);
   line-height: 1.7;
 }
 
 .qitu-inspiration-free-explore-hint {
   margin: 0;
-  color: var(--qitu-muted);
+  color: var(--qitu-muted, #64748b);
   font-size: 0.8rem;
 }
 
-/* ---------- 窄屏 ---------- */
+/* ---------- 移动端窄屏适配 ---------- */
 
-@media (max-width: 760px) {
+@media (max-width: 680px) {
   .qitu-inspiration-tablist {
     width: 100%;
   }
 
   .qitu-inspiration-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 
-  .qitu-inspiration-template-footer {
+  .qitu-inspiration-card-actions {
     flex-direction: column;
-    align-items: stretch;
   }
 }

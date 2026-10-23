@@ -20,6 +20,8 @@ export interface InspirationTemplate {
   summary: string;
   subject: string;
   tags: string[];
+  /** 服务端完整的教学探究目标清单；用于探究亮点预览及详情展示。 */
+  learningObjectives?: string[];
   /** 服务端未提供可识别的难度时为 null：不显示，也不编造。 */
   difficulty: InspirationDifficulty | null;
   /** 由服务端 estimatedDurationMinutes 换算；无数据时为 null（不显示）。 */

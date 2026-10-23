@@ -27,13 +27,24 @@ export interface TemplateCardProps {
 }
 
 /**
- * 推荐项目模板卡。只读展示，不写项目状态、不创建正式项目；
- * 唯一动作是进入推荐项目详情，项目创建和团队绑定均由灵感空间/Projects owner 完成。
- *
- * 样式全部在 `styles/inspiration.css`（qitu-inspiration-* 类），不用内联样式，
- * 这样悬停/焦点/窄屏响应式才能生效。
+ * 推荐项目模板卡。
+ * 遵循 PBL 启发式探索设计：
+ * - 顶部醒目展示项目图标、完整标题与元信息徽章；
+ * - 摘要与短标签清晰呈现核心方向；
+ * - 探究亮点（核心目标微型看板）帮助学生快速了解挑战内容；
+ * - 底部主次分明的双按钮，支持【查看详情】与【与AI搭档开始】。
  */
 export function TemplateCard({ template, readOnly = false, dataSource }: TemplateCardProps) {
+  // 仅显示精简的规范短标签（<=12字，最多3个）
+  const displayTags = (template.tags ?? [])
+    .filter((t) => t && t.trim().length > 0 && t.length <= 12)
+    .slice(0, 3);
+
+  // 提取前2项代表性探究目标作为亮点速览
+  const highlightObjectives = (template.learningObjectives ?? [])
+    .filter((o) => o && o.trim().length > 0)
+    .slice(0, 2);
+
   return (
     <article className="qitu-inspiration-template-card">
       <header className="qitu-inspiration-template-header">
@@ -41,32 +52,70 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
           <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={48} />
         </span>
         <div className="qitu-inspiration-template-heading">
-          <h3 className="qitu-inspiration-template-title">{template.title}</h3>
-          <p className="qitu-inspiration-template-meta">{templateMetaLine(template)}</p>
+          <h3 className="qitu-inspiration-template-title" title={template.title}>
+            {template.title}
+          </h3>
+          <div className="qitu-inspiration-template-meta">
+            {template.subject && (
+              <span className="qitu-inspiration-meta-badge">{subjectLabel(template.subject)}</span>
+            )}
+            {template.difficulty && (
+              <span className={`qitu-inspiration-difficulty qitu-difficulty-${template.difficulty}`}>
+                {template.difficulty}
+              </span>
+            )}
+            {template.lessonCount !== null && (
+              <span className="qitu-inspiration-meta-text">约 {template.lessonCount} 课时</span>
+            )}
+          </div>
         </div>
       </header>
 
-      <p className="qitu-inspiration-template-summary">{studentTemplateSummary(template.summary)}</p>
+      <div className="qitu-inspiration-template-body">
+        {template.summary ? (
+          <p className="qitu-inspiration-template-summary" title={studentTemplateSummary(template.summary)}>
+            {studentTemplateSummary(template.summary)}
+          </p>
+        ) : null}
 
-      <TagChips tags={template.tags.map(subjectLabel)} />
+        {displayTags.length > 0 ? (
+          <div className="qitu-inspiration-tags-wrap">
+            <TagChips tags={displayTags.map(subjectLabel)} />
+          </div>
+        ) : null}
 
-      {template.outcome ? (
-        <p className="qitu-inspiration-template-outcome">
-          <span className="qitu-inspiration-template-outcome-label">成果</span>
-          <span>{template.outcome}</span>
-        </p>
-      ) : null}
+        {highlightObjectives.length > 0 ? (
+          <div className="qitu-inspiration-highlights">
+            <span className="qitu-inspiration-highlights-label">核心探究方向</span>
+            <ul className="qitu-inspiration-highlights-list">
+              {highlightObjectives.map((obj, idx) => (
+                <li key={idx} className="qitu-inspiration-highlight-item" title={obj}>
+                  {obj}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
-      <footer className="qitu-inspiration-template-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
-        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+        {template.outcome ? (
+          <div className="qitu-inspiration-template-outcome">
+            <span className="qitu-inspiration-template-outcome-label">🎯 预期成果</span>
+            <span className="qitu-inspiration-template-outcome-value" title={template.outcome}>
+              {template.outcome}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <footer className="qitu-inspiration-template-footer">
+        <div className="qitu-inspiration-card-actions">
           {readOnly ? (
-            <button type="button" className="qitu-button qitu-button-primary" style={{ flex: 1 }} disabled>
+            <button type="button" className="qitu-button qitu-button-secondary qitu-card-btn" disabled>
               查看详情
             </button>
           ) : (
             <StudentLink
-              className="qitu-button qitu-button-primary"
-              style={{ flex: 1, textAlign: 'center' }}
+              className="qitu-button qitu-button-secondary qitu-card-btn"
               href={templateExploreHref(template.id)}
             >
               查看详情
@@ -77,7 +126,7 @@ export function TemplateCard({ template, readOnly = false, dataSource }: Templat
             <RecommendedExplorationButton
               template={template}
               dataSource={dataSource}
-              className="qitu-button"
+              className="qitu-button qitu-button-primary qitu-card-btn qitu-card-start-btn"
             />
           )}
         </div>

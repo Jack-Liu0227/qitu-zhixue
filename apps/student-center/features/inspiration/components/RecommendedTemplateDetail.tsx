@@ -41,6 +41,9 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
     return <EmptyState title="推荐项目不存在" description="返回灵感空间查看其他推荐方向。" />;
   }
 
+  const displayTags = (template.tags ?? [])
+    .filter((t) => t && t.trim().length > 0 && t.length <= 12);
+
   return (
     <div className="qitu-inspiration-detail">
       {offline ? <OfflineBanner readOnly onRetry={retry} /> : null}
@@ -48,8 +51,14 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
         返回推荐项目
       </StudentLink>
       <article className="qitu-inspiration-detail-panel">
-        {template.coverAssetId && <EntityCover assetId={template.coverAssetId} height={180}
-          aspectRatio="16 / 9" className="qitu-inspiration-detail-cover" />}
+        {template.coverAssetId && (
+          <EntityCover
+            assetId={template.coverAssetId}
+            height={180}
+            aspectRatio="16 / 9"
+            className="qitu-inspiration-detail-cover"
+          />
+        )}
         <header className="qitu-inspiration-template-header">
           <span className="qitu-inspiration-template-cover" aria-hidden="true">
             <VisualAsset assetId={template.iconAssetId ?? 'subject-interdisciplinary-v1'} size={56} />
@@ -60,24 +69,47 @@ export function RecommendedTemplateDetail({ templateId }: { templateId: string }
             <p className="qitu-inspiration-template-meta">{templateMetaLine(template)}</p>
           </div>
         </header>
+
         <p className="qitu-inspiration-detail-summary">{studentTemplateSummary(template.summary)}</p>
-        <TagChips tags={template.tags.map(subjectLabel)} />
+
+        {displayTags.length > 0 ? (
+          <TagChips tags={displayTags.map(subjectLabel)} />
+        ) : null}
+
+        {template.learningObjectives && template.learningObjectives.length > 0 ? (
+          <section className="qitu-inspiration-detail-section" aria-labelledby="recommended-objectives-title">
+            <h2 id="recommended-objectives-title">核心探究目标</h2>
+            <ul className="qitu-inspiration-objectives-list">
+              {template.learningObjectives.map((obj, i) => (
+                <li key={i}>{obj}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         {template.lessonCount !== null ? (
-          <section aria-labelledby="recommended-lessons-title">
+          <section className="qitu-inspiration-detail-section" aria-labelledby="recommended-lessons-title">
             <h2 id="recommended-lessons-title">课时安排</h2>
             <p>共 {template.lessonCount} 课时{template.lessonMinutes ? ` · 每课时 ${template.lessonMinutes} 分钟` : ''}。</p>
           </section>
         ) : null}
+
         {template.outcome ? (
-          <section aria-labelledby="recommended-outcome-title">
+          <section className="qitu-inspiration-detail-section" aria-labelledby="recommended-outcome-title">
             <h2 id="recommended-outcome-title">预期成果</h2>
             <p>{template.outcome}</p>
           </section>
         ) : null}
+
         <p className="qitu-inspiration-detail-note">
           这是推荐的探究方向。与你的 AI搭档讨论并确认目标后，才会建立正式项目；也可以返回灵感空间自由探索。
         </p>
-        <RecommendedExplorationButton template={template} disabled={offline} className="qitu-button qitu-button-primary" />
+
+        <RecommendedExplorationButton
+          template={template}
+          disabled={offline}
+          className="qitu-button qitu-button-primary"
+        />
       </article>
     </div>
   );
