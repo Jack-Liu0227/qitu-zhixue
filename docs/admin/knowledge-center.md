@@ -20,6 +20,17 @@
 
 验证：Admin 类型检查及 lint 通过，隔离浏览器运行真实组件通过 27 项检查，包含原有本地/云端浏览能力、PDF 页码和设置草稿跨页签保留、来源草稿独立、嵌套目录与移动、上传刷新、移除成员后留在详情、删除库后返回列表、键盘切换、390px 布局，以及写入期间导航锁定、响应丢失时同键重试、写成功后回读 403 仅重试 GET。浏览器异常为 0；11 次写入全部由隔离合成 API 拦截，没有修改真实知识库。API 与数据库合同未改动，继续沿用此前已通过的知识模块 100 项测试。
 
+#### 统一面板发布回执
+
+2026-10-23 16:31（Asia/Shanghai），`eb67b1db8449c549dd844db0b35b3ea250b171af` 已合入 `study-remote/main`，正式目录 `/root/qitu-zhixue` 的 Admin build ID 为 `96EhqhJO3TqL4PcLvqO28`。Linux 依赖图构建、Admin typecheck、lint 和生产 build 全部通过，构建期间源码哈希无变化。
+
+- 已发布页面配合隔离合成 API 通过 27 项交互检查，浏览器异常为 0；PDF 翻页额外确认画布像素变化。认证、教材和 11 次写入均为测试拦截响应，不代表真实管理员账号及真实云端原文验收。
+- `/admin/settings/knowledge` 的 14 个 CSS/JS 引用和 `/admin/login` 的 11 个引用通过检查；匿名知识库 API 为 401，API readiness 为 live/ready，database、redis 均为 ok。
+- 只重建并启动 `qitu-admin`，PID `2259259 → 2269676`；API、官网/认证、学生、家长、教师、IMA MCP、embedding、workers、profile-growth 的 PID 未变化。未执行数据库迁移或生产知识库写操作。
+- 远端已有未提交改动，因此先推送临时分支，再快进合入 main；未使用 reset、stash 或覆盖同步。独立校验合并前后既有修改及未跟踪脚本的 SHA-256，一致。原运行产物、构建日志、源码快照、服务快照和浏览器脚本/结果保存在 `/root/qitu-backups/knowledge-workspace-20261023T083009Z/`。
+
+并行修改未纳入本次提交：Admin 的 `settings/assistants/page.tsx`、`settings/teams/page.tsx`、`settings/templates/page.tsx`、`TemplateTeamBindingPanel.tsx`、`teaching-binding/TeachingRoleInspector.tsx`；学生端的 `TutorPage.tsx`、`LessonAssessmentCard.tsx`、`LessonLearningDock.tsx`；`docs/plan/codex/README.md`、课程团队方案的 `05`、`06`、`07` 和 `README.md`，以及 `docs/student/template-session-openings-plan.md`、`docs/student/tutor.md`、`doc/e2e-dual-template-testing-v1.1.md`。本次只验证其内容被保留及 Admin 构建兼容，不将知识中心交互测试作为这些功能的验收。
+
 ### 已有文件查看（2026-10-23 首版，布局已被上节替代）
 
 配置与矩阵改版后，原 `LibraryDetail` 文件浏览组件未再被页面引用，导致已配置的本地、云端知识库均没有文件查看入口。本次在卡片及配置抽屉补回「查看文件」，参考仓库内固定版本 DeepTutor 的 `KbFilesTab`，采用左侧目录、右侧预览的只读弹窗，复用 `PdfDocumentPreview` 和既有 Admin 文件接口。
