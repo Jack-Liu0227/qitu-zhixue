@@ -23,7 +23,17 @@
 
 验证边界：实际页面组件在隔离浏览器宿主中通过 16 项交互检查，覆盖本地/云端 PDF、文本、目录/分页、无扩展名 PDF、请求竞态、权限重试、断网恢复、空列表、配置入口及 390px 布局；知识模块现有 100 项测试全部通过。管理员端 lint，以及 API/管理员端基于工作区源码解析的 typecheck 均通过。
 
-UNC `node_modules` 为旧安装快照，先构建 contracts、database、ai-client、infra、agent-memory、model-runtime；验证时将 `@qitu/*` 指向本次构建或实际源码，并在本机临时目录安装已声明的 PDF/飞书 SDK 依赖，没有替换共享安装快照。浏览器脚本与结果在执行机 `%TEMP%/qitu-knowledge-file-review/`；知识模块可通过 `node --import ./tooling/verify-workspace-source.mjs --test "services/api/.tmp/test-dist/modules/knowledge/*.test.js"` 复核。本记录证明源码和隔离测试结果，不代表已部署或已读取真实云端文件。
+UNC `node_modules` 为旧安装快照，先构建 contracts、database、ai-client、infra、agent-memory、model-runtime；验证时将 `@qitu/*` 指向本次构建或实际源码，并在本机临时目录安装已声明的 PDF/飞书 SDK 依赖，没有替换共享安装快照。浏览器脚本与结果在执行机 `%TEMP%/qitu-knowledge-file-review/`；知识模块可通过 `node --import ./tooling/verify-workspace-source.mjs --test "services/api/.tmp/test-dist/modules/knowledge/*.test.js"` 复核。隔离验证不代表已读取真实云端文件；实际发布回执如下。
+
+#### 发布回执
+
+2026-10-23 按用户要求同步至 `study-remote` 的 `main`，正式目录 `/root/qitu-zhixue`。Admin 运行构建包含 `06ad5df7f139da47bf5ad9c24f66e63980707dce`，Next build ID 为 `iBYLpIVv7O8smkABNac1x`。
+
+- Linux 按依赖图构建 Admin 依赖，Admin typecheck、lint、生产 build 通过；先停止 `qitu-admin` 再构建，启动后为 active。
+- 线上 `/admin/settings/knowledge` 的 14 个 CSS/JS 引用、`/admin/login` 的 11 个引用通过检查。匿名知识库 API 返回 401；API readiness 为 live/ready，database 和 redis 均为 ok。
+- 已发布页面配合隔离合成 API，再次通过上述 16 项浏览器检查，页面异常为 0。生产 HTML、JavaScript、CSS 和 PDF worker/font 资源均实际加载；认证与教材内容是测试拦截响应，不代表真实管理员登录或云端原文验收。
+- 只重建并启动 Admin。API、官网/认证、学生、家长、教师、IMA MCP、embedding、workers、profile-growth 的服务 PID 未变化；没有数据库迁移或知识库/助手授权写操作。
+- 旧 Admin `.next`、发布日志、服务前后 PID 和浏览器回执保存在 `/root/qitu-backups/knowledge-files-20261023T074118Z/`。远程未跟踪的测试脚本及本地并行编辑的助手/团队/教学文档未纳入本次提交；并行修改的 `test_bindings.mjs` 保持其当前版本，没有用备份覆盖。
 
 ## 管理与授权
 
