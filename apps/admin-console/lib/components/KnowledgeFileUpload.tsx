@@ -42,16 +42,22 @@ function readBase64(file: File): Promise<string> {
 export function KnowledgeFileUpload({
   baseId,
   onSaved,
+  disabled = false,
+  onBusyChange,
 }: {
   baseId: string;
   onSaved: (detail: BaseDetail) => Promise<void>;
+  disabled?: boolean;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState('');
   const picker = useRef<HTMLInputElement>(null);
   const folderPicker = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
   function pick(files: File[]) {
+    if (disabled || inFlight.current) return;
     if (files.length > 20) {
       setMessage('每批最多选择 20 个文件，请分批上传。');
       return;
@@ -79,7 +85,10 @@ export function KnowledgeFileUpload({
       current.map((row) => (row.key === key ? { ...row, state, message } : row)),
     );
   async function upload() {
+    if (disabled || inFlight.current) return;
+    inFlight.current = true;
     setRunning(true);
+    onBusyChange?.(true);
     setMessage('');
     let latest: BaseDetail | null = null;
     try {
@@ -105,7 +114,9 @@ export function KnowledgeFileUpload({
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '刷新列表失败，请重新打开详情。');
     } finally {
+      inFlight.current = false;
       setRunning(false);
+      onBusyChange?.(false);
     }
   }
   return (
@@ -116,12 +127,12 @@ export function KnowledgeFileUpload({
       </div>
       <button
         className={styles.dropzone}
-        disabled={running}
+        disabled={running || disabled}
         onClick={() => picker.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (!running) pick(Array.from(e.dataTransfer.files));
+          if (!running && !disabled) pick(Array.from(e.dataTransfer.files));
         }}
       >
         <span className={styles.uploadIcon}>
@@ -137,7 +148,7 @@ export function KnowledgeFileUpload({
         multiple
         aria-label="选择知识库文件"
         accept={extensions.map((e) => '.' + e).join(',')}
-        disabled={running}
+        disabled={running || disabled}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           event.target.value = '';
@@ -146,6 +157,7 @@ export function KnowledgeFileUpload({
       />
       <input
         ref={folderPicker}
+        disabled={running || disabled}
         hidden
         type="file"
         multiple
@@ -190,14 +202,16 @@ export function KnowledgeFileUpload({
       <div className={styles.uploadActions}>
         <button
           className={styles.textButton}
-          disabled={running}
+          disabled={running || disabled}
           onClick={() => folderPicker.current?.click()}
         >
           <Glyph name="upload" size={16} /> 上传文件夹
         </button>
         <button
           className={styles.primary}
-          disabled={running || !entries.some((row) => ['pending', 'failed'].includes(row.state))}
+          disabled={
+            running || disabled || !entries.some((row) => ['pending', 'failed'].includes(row.state))
+          }
           onClick={() => void upload()}
         >
           {running

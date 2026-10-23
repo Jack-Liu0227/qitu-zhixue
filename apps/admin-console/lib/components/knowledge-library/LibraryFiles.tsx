@@ -4,10 +4,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { centerRequest, type BaseDetail } from '../../api/knowledge-center';
 import { PdfDocumentPreview } from './PdfDocumentPreview';
+import { LocalFileTree } from './LocalFileTree';
 import { bytes, Glyph, message } from './shared';
 import styles from './KnowledgeLibrary.module.css';
 
-type FileEntry = { id: string; title: string; origin: Record<string, unknown> };
+export type FileEntry = { id: string; title: string; origin: Record<string, unknown> };
 type FilePage = {
   items: FileEntry[];
   folders: { id: string; name: string }[];
@@ -19,7 +20,21 @@ const isPdf = (file: FileEntry) =>
   file.origin?.mimeType === 'application/pdf' ||
   /\.pdf$/i.test(String(file.origin?.fileName ?? file.title));
 
-export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: boolean }) {
+export function LibraryFiles({
+  detail,
+  online,
+  refreshToken = 0,
+  disabled = false,
+  onManage,
+  onDelete,
+}: {
+  detail: BaseDetail;
+  online: boolean;
+  refreshToken?: number;
+  disabled?: boolean;
+  onManage?: (body: object) => Promise<boolean>;
+  onDelete?: (fileId: string) => Promise<boolean>;
+}) {
   const remote = !!detail.connection && detail.connection.status !== 'not_applicable';
   const basePath = `knowledge/bases/${encodeURIComponent(detail.id)}`;
   const [location, setLocation] = useState<Location>({ folderId: '', cursor: '' });
@@ -29,6 +44,8 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
   const [listError, setListError] = useState('');
   const [refresh, setRefresh] = useState(0);
   const [query, setQuery] = useState('');
+  const [folderName, setFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [selected, setSelected] = useState<FileEntry | null>(null);
   const [mode, setMode] = useState<'original' | 'text'>('text');
@@ -74,7 +91,7 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
       current = false;
       previewSequence.current++;
     };
-  }, [basePath, remote, location, refresh, online]);
+  }, [basePath, remote, location, refresh, refreshToken, online]);
 
   function navigate(next: Location, back = false) {
     clearPreview();
@@ -127,7 +144,9 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
           当前离线，请恢复网络后重新读取文件。
         </p>
       )}
-      <div className={`${styles.fileWorkspace} ${collapsed ? styles.collapsed : ''}`}>
+      <div
+        className={`${styles.fileWorkspace} ${styles.embeddedFiles} ${collapsed ? styles.collapsed : ''}`}
+      >
         <aside className={styles.fileSidebar} aria-label="知识库文件列表" aria-busy={loading}>
           <div className={styles.sidebarHead}>
             {!collapsed && (
@@ -136,6 +155,16 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
               </strong>
             )}
             <div>
+              {onManage && !collapsed && (
+                <button
+                  className={styles.iconButton}
+                  aria-label="新建文件夹"
+                  disabled={disabled || !online}
+                  onClick={() => setCreatingFolder(!creatingFolder)}
+                >
+                  <Glyph name="plus" size={15} />
+                </button>
+              )}
               <button
                 className={styles.iconButton}
                 aria-label="刷新文件"
@@ -158,6 +187,29 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
           </div>
           {!collapsed && (
             <>
+              {creatingFolder && onManage && (
+                <form
+                  className={styles.folderForm}
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    if (disabled || !online || !folderName.trim()) return;
+                    if (await onManage({ createFolder: folderName.trim() })) {
+                      setCreatingFolder(false);
+                      setFolderName('');
+                    }
+                  }}
+                >
+                  <input
+                    aria-label="新文件夹名称"
+                    placeholder="文件夹名称"
+                    value={folderName}
+                    maxLength={160}
+                    disabled={disabled}
+                    onChange={(event) => setFolderName(event.target.value)}
+                  />
+                  <button disabled={disabled || !online || !folderName.trim()}>创建</button>
+                </form>
+              )}
               <input
                 className={styles.fileSearch}
                 aria-label="搜索文件"
@@ -202,35 +254,47 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
                 </div>
               ) : (
                 <>
-                  {listing.folders.map((folder) => (
-                    <button
-                      key={folder.id}
-                      className={styles.fileRow}
-                      disabled={!online || folder.id === location.folderId}
-                      onClick={() => navigate({ folderId: folder.id, cursor: '' })}
-                    >
-                      <Glyph name="folder" />
-                      {folder.name}
-                    </button>
-                  ))}
-                  {visible.map((file) => (
-                    <button
-                      key={file.id}
-                      className={`${styles.fileRow} ${file.id === selected?.id ? styles.fileActive : ''}`}
-                      aria-pressed={file.id === selected?.id}
+                  {!remote && (
+                    <LocalFileTree
+                      files={visible}
+                      folders={listing.folders.map((folder) => folder.id)}
+                      query={query}
+                      selectedId={selected?.id}
                       disabled={!online}
-                      onClick={() => void showFile(file)}
-                    >
-                      <Glyph name="file" size={19} />
-                      <span>
-                        <strong>{file.title}</strong>
-                        <small>
-                          {bytes(file.origin?.byteSize)}
-                          {file.origin?.parser ? ' · 已解析' : ''}
-                        </small>
-                      </span>
-                    </button>
-                  ))}
+                      onSelect={(file) => void showFile(file)}
+                    />
+                  )}
+                  {remote &&
+                    listing.folders.map((folder) => (
+                      <button
+                        key={folder.id}
+                        className={styles.fileRow}
+                        disabled={!online || folder.id === location.folderId}
+                        onClick={() => navigate({ folderId: folder.id, cursor: '' })}
+                      >
+                        <Glyph name="folder" />
+                        {folder.name}
+                      </button>
+                    ))}
+                  {remote &&
+                    visible.map((file) => (
+                      <button
+                        key={file.id}
+                        className={`${styles.fileRow} ${file.id === selected?.id ? styles.fileActive : ''}`}
+                        aria-pressed={file.id === selected?.id}
+                        disabled={!online}
+                        onClick={() => void showFile(file)}
+                      >
+                        <Glyph name="file" size={19} />
+                        <span>
+                          <strong>{file.title}</strong>
+                          <small>
+                            {bytes(file.origin?.byteSize)}
+                            {file.origin?.parser ? ' · 已解析' : ''}
+                          </small>
+                        </span>
+                      </button>
+                    ))}
                   {online && !visible.length && (
                     <p className={styles.sidebarEmpty}>
                       {query
@@ -278,6 +342,45 @@ export function LibraryFiles({ detail, online }: { detail: BaseDetail; online: b
                   </button>
                 </div>
               </div>
+              {(onManage || onDelete) && (
+                <div className={styles.fileActions}>
+                  {onManage && (
+                    <label>
+                      移动到
+                      <select
+                        aria-label="移动文件到文件夹"
+                        value={String(selected.origin?.folder ?? '')}
+                        disabled={disabled || !online}
+                        onChange={(event) =>
+                          void onManage({
+                            moveFile: { memberId: selected.id, folder: event.target.value },
+                          })
+                        }
+                      >
+                        <option value="">根目录</option>
+                        {listing.folders.map((folder) => (
+                          <option value={folder.id} key={folder.id}>
+                            {folder.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {onDelete && (
+                    <button
+                      className={styles.dangerText}
+                      disabled={disabled || !online}
+                      onClick={() => {
+                        if (window.confirm(`从知识库移除“${selected.title}”？`))
+                          void onDelete(selected.id);
+                      }}
+                    >
+                      <Glyph name="trash" size={15} />
+                      移除文件
+                    </button>
+                  )}
+                </div>
+              )}
               {mode === 'original' ? (
                 <PdfDocumentPreview key={original} url={original} title={selected.title} />
               ) : previewBusy ? (
