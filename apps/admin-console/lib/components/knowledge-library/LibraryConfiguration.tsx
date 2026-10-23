@@ -21,12 +21,14 @@ export function LibraryConfiguration({
   online,
   onClose,
   onChanged,
+  onViewFiles,
 }: {
   detail: BaseDetail;
   engines: EngineGroup[];
   online: boolean;
   onClose: () => void;
   onChanged: () => Promise<void>;
+  onViewFiles: (detail: BaseDetail) => void;
 }) {
   const [base, setBase] = useState(detail);
   const [name, setName] = useState(detail.name);
@@ -172,6 +174,9 @@ export function LibraryConfiguration({
         <p>
           {group?.name ?? '未配置引擎'} · {remote ? '远端只读连接' : '本地索引库'}
         </p>
+        <button disabled={disabled} onClick={() => onViewFiles(base)}>
+          查看文件
+        </button>
         {error && (
           <p className={styles.error} role="alert">
             {error}

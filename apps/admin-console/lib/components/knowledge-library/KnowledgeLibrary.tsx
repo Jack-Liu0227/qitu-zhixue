@@ -15,6 +15,7 @@ import { KnowledgeEngines } from '../knowledge-engines/KnowledgeEngines';
 import { CreateLibraryModal, type LibraryCreation } from './CreateLibraryModal';
 import { KnowledgeBindingMatrix } from './KnowledgeBindingMatrix';
 import { LibraryConfiguration } from './LibraryConfiguration';
+import { LibraryFilesDialog } from './LibraryFilesDialog';
 import { RemoteConnectionChecks } from './RemoteConnectionChecks';
 import { connectionDiagnostic } from './connection-checks';
 import { Glyph, fileBase64, message, statusLabels, time, type ModelOption } from './shared';
@@ -27,6 +28,7 @@ export function KnowledgeLibrary() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [matrix, setMatrix] = useState<Matrix | null>(null);
   const [detail, setDetail] = useState<BaseDetail | null>(null);
+  const [detailView, setDetailView] = useState<'settings' | 'files'>('settings');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -78,12 +80,14 @@ export function KnowledgeLibrary() {
     setRefreshToken((token) => token + 1);
   }, [load]);
   const readMatrix = useCallback((value: Matrix) => setMatrix(value), []);
-  async function configure(id: string) {
+  async function configure(id: string, view: 'settings' | 'files' = 'settings') {
     if (checking) return;
     const token = ++detailGeneration.current;
     setBusy(true);
     setError('');
     setSelectedId(id);
+    setDetail(null);
+    setDetailView(view);
     try {
       const next = await centerRequest<BaseDetail>(`knowledge/bases/${encodeURIComponent(id)}`);
       if (token === detailGeneration.current) setDetail(next);
@@ -186,6 +190,7 @@ export function KnowledgeLibrary() {
           {notice}
         </div>
       )}
+      {busy && !detail && <p role="status">正在读取知识库…</p>}
       {!online && <p className={styles.error}>当前离线，可查看已读取配置，恢复网络后再保存。</p>}
       {loading && (
         <div className={styles.empty} role="status">
@@ -302,6 +307,13 @@ export function KnowledgeLibrary() {
                       <button
                         className={styles.textButton}
                         disabled={busy || checking}
+                        onClick={() => void configure(base.id, 'files')}
+                      >
+                        查看文件
+                      </button>
+                      <button
+                        className={styles.textButton}
+                        disabled={busy || checking}
                         onClick={() => void configure(base.id)}
                       >
                         配置
@@ -331,7 +343,7 @@ export function KnowledgeLibrary() {
           focusLibraryId={selectedId}
           onRead={readMatrix}
         />
-        <p>文件与教材内容在来源中维护；助手授权在此矩阵统一配置。</p>
+        <p>通过「查看文件」浏览已有教材；文件维护使用配置或关联来源，助手授权在此矩阵统一配置。</p>
       </div>
       {create && (
         <CreateLibraryModal
@@ -343,12 +355,26 @@ export function KnowledgeLibrary() {
           onCreate={created}
         />
       )}
-      {detail && (
+      {detail && detailView === 'files' && (
+        <LibraryFilesDialog
+          detail={detail}
+          online={online}
+          onClose={() => {
+            detailGeneration.current++;
+            setDetail(null);
+          }}
+        />
+      )}
+      {detail && detailView === 'settings' && (
         <LibraryConfiguration
           key={detail.id}
           detail={detail}
           engines={engines}
           online={online}
+          onViewFiles={(current) => {
+            setDetail(current);
+            setDetailView('files');
+          }}
           onClose={() => {
             detailGeneration.current++;
             setDetail(null);
